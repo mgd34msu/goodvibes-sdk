@@ -4,6 +4,121 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
+## [Unreleased]
+
+### Added
+
+- **The fix phase runs as a planned task graph.** A failing review no longer
+  hands one fixer a prompt: findings parse into typed tasks with dependency
+  edges feeding the one workstream engine, parallel where files allow, each
+  task adversarially re-reviewed, and the merged result re-tested against the
+  original ask. Surfaces render the graph via `fleet.graph.get` (nodes, edges,
+  and the elastic-pool state), and an elastic pool spawns an agent for a ready
+  task when none is free — all under the one fleet ceiling.
+- **The fleet observes externally-launched coding agents on the host.**
+  Claude Code / Codex sessions the daemon did not spawn or host are found by
+  read-only process-table detection and listed as `observed-external` rows
+  carrying an honest external kind, pid, working directory, start time, and
+  CPU-based liveness (active/quiet, never claiming quiet is proof of idle).
+  They are observed, not owned: they never count against `fleet.maxSize`, and
+  stop is never offered. Steering rides whatever channel the foreign session
+  genuinely exposes — a tmux pane, via send-keys — as a drill-in capability
+  (`fleet.observed.steer`); where no channel exists the row says so instead of
+  offering a dead action. Detection is opt-in at the daemon and degrades to a
+  quiet empty set.
+- **Third-party coding agents run as hosted daemon sessions.** Claude Code,
+  Codex, and opencode connect over the Agent Client Protocol and appear as
+  first-class fleet rows: steerable (the next prompt), stoppable, and their
+  permission asks route through the shared approval machinery like any native
+  ask.
+- **Sleep ownership.** While real work runs the daemon holds an idle+sleep
+  inhibitor (named holds, honest "held because X" state, a hard time cap so a
+  wedged hold cannot pin the host forever); on the sleep edge it checkpoints,
+  and on wake it re-arms timers and delivers missed receipts. The owner
+  keep-awake toggle survives surface closes, states the lid-switch split
+  honestly where the OS refuses that class, and applies live on a config
+  change.
+- **Local voice engines.** whisper.cpp / faster-whisper STT and piper / kokoro
+  TTS run as free local peers beside the premium provider route, selected by
+  the `voice.local.*` settings.
+- **Per-tool cancel and editable queued messages.** A single in-flight tool
+  call can be cancelled without killing the turn (`sessions.toolCalls.cancel`),
+  and messages queued mid-turn can be listed, edited, and deleted before the
+  model sees them (`sessions.queuedMessages.*`).
+- **Memory consolidation actually runs.** The daemon (the memory store's
+  single writer) drives the consolidation pass at idle with a slow scheduled
+  fallback: reversible merges and never-referenced decay just happen with
+  retained receipts; judgment outcomes (contradictions, cross-scope
+  duplicates) become review-queue entries a human resolves — and the receipts
+  plus pending proposals are served over `memory.consolidation.receipts`.
+- **CI watches mint themselves and retire.** A push seam registers the watch,
+  the daemon polls it, a red run offers the fix through the approval
+  machinery, and the watch retires once its terminal verdict is delivered.
+- **Per-device pairing tokens and a one-pass hand-off.** Pairing tokens are
+  per-device and individually revocable, and a hand-off bundle moves a pairing
+  to a new device in one pass.
+- **Plain http on the LAN is a supported posture.** LAN access over http is
+  labeled, not walled; the recommended https path is tailscale serve, which
+  terminates TLS with tailscale's own certificates. The daemon never mints
+  certificates — the certificate-minting helper was removed outright.
+- **A block on a human escalates past an attached surface.** A turn blocked
+  too long on an approval or input escalates to push delivery even when a
+  surface is attached, on a configurable grace, with bounded follow-ups.
+- **Missed automation runs become records, and schedules reconcile.** A run
+  the host slept through lands as an honest missed-run record delivered
+  through the job's own path, schedules reconcile automatically on wake, and
+  the runs source reads incrementally from a moment.
+- **Memory-injection provenance rides the turn wire.** TURN_COMPLETED carries
+  the turn's memory-sourced injected record ids as
+  `metadata.memory.recordIds` — the documented surface convention — with
+  honest absence when nothing memory-sourced landed.
+
+### Changed
+
+- **`orchestration.maxActiveAgents` is now `fleet.maxSize`** ("Maximum fleet
+  size") — the ONE ceiling on agents the daemon is responsible for: native
+  spawned agents, hosted third-party agents, and elastic fix-task agents all
+  count against it; merely observed external agents never do. **Migration:**
+  an existing `orchestration.maxActiveAgents` value moves onto the new key
+  invisibly at first load, with a one-line rename receipt on the announce-once
+  queue; spawn refusals name the new key.
+- **The WRFC reviewer verifies the contract, not the activity.** The reviewer
+  derives an acceptance checklist from the original task, independently
+  exercises the deliverable, and scores against that checklist — structural
+  evidence (compilation, hashes, diffs, the engineer's own report) is
+  supporting material only. The checklist gate is deterministic on BOTH review
+  paths: any unverified item blocks a pass whatever the score, and an
+  absent/empty checklist blocks (a review that records nothing verified
+  cannot pass).
+- **Config writes persist only user-set keys.** `save()` no longer freezes
+  every default onto disk; previously-frozen defaults are stripped once by an
+  invisible migration, external settings edits apply live through the config
+  watcher (now wired at the composition root), and the shared activity log
+  rotates at a size cap. Per-session crash snapshots restore silently with a
+  one-line receipt, and every append-only store the platform writes — session
+  journals, the activity log, telemetry ledgers, recovery snapshots — has a
+  registered retention owner swept at startup.
+
+### Fixed
+
+- **Power holds can never outlive their owner.** Process exit and signals
+  release every held inhibitor; the daemon releases holds on a real stop; and
+  inhibitors are stamped with the owning pid so a crashed process's orphans
+  are reaped at the next start instead of blocking host sleep forever.
+- **The published ConfigKey union matched the schema domains again** (23 keys
+  across `checkin.*`, `learning.consolidation.*`, `power.*`, `voice.local.*`,
+  and `fleet.maxSize` had schema definitions but no typed entries), and a
+  fail-closed gate now derives the key set from the schema domains so the
+  drift class cannot return.
+- **Three phantom exports closed** — `./platform/power`, `./platform/relay`,
+  and `./platform/version` are declared in the package exports map, and
+  `MemoryConsolidationScheduler` is re-exported from `./platform/state`, so
+  consumer composition roots stop deep-pathing and fork-mirroring.
+- **SSE streams outlive quiet periods** with a self-healing heartbeat, push
+  subscriptions self-heal via device-identity reconcile with bounded-retry
+  pruning, and a self-promoted service unit's ExecStart matches how the
+  process was really started.
+
 ## [1.8.0] - 2026-07-13
 
 ### Added
@@ -18,17 +133,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   exposes a one-line headline derived from its task/phase identity (never
   model output) and a quiet-too-long stall marker computed from timestamps,
   so every surface renders the same at-a-glance state without deriving it.
-- **The fleet observes externally-launched coding agents on the host.**
-  Claude Code / Codex sessions the daemon did not spawn or host are found by
-  read-only process-table detection and listed as `observed-external` rows
-  carrying an honest external kind, pid, working directory, start time, and
-  CPU-based liveness (active/quiet, never claiming quiet is proof of idle).
-  They are observed, not owned: they never count against `fleet.maxSize`, and
-  stop is never offered. Steering rides whatever channel the foreign session
-  genuinely exposes — a tmux pane, via send-keys — as a drill-in capability
-  (`fleet.observed.steer`); where no channel exists the row says so instead of
-  offering a dead action. Detection is opt-in at the daemon and degrades to a
-  quiet empty set.
 - **Finished work pushes by default.** Terminal fleet transitions
   (run-level kinds) push a completion notification to every paired target
   with zero setup, de-duped per node; per-class notification toggles
