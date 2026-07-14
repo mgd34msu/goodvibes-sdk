@@ -2,21 +2,20 @@
  * relay-security.test.ts
  *
  * Unit coverage for the relay security posture: the WebAuthn step-up policy
- * decision, the mutating-verb signal, the via-relay request predicate, and the
- * LAN certificate minter's openssl orchestration (driven through injected
- * runner/fs so it is deterministic and needs no real openssl on the host).
+ * decision, the mutating-verb signal, the via-relay request predicate — and
+ * the certificate-minting PROHIBITION guard: the daemon never mints
+ * certificates (no self-provisioned CA, ever), so no cert-minting symbol may
+ * exist on the public relay/daemon surface or in the relay source tree.
  */
 import { describe, expect, test } from 'bun:test';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { isRelayTunneledRequest, RELAY_VIA_HEADER } from '../packages/daemon-sdk/src/relay-registration.js';
 import {
   evaluateStepUp,
   isMutatingMethod,
 } from '../packages/sdk/src/platform/relay/step-up-policy.js';
-import {
-  mintLanCertificate,
-  type LanCertCommandRunner,
-  type LanCertFs,
-} from '../packages/sdk/src/platform/relay/lan-cert.js';
+import * as relaySurface from '../packages/sdk/src/platform/relay/index.js';
 
 describe('step-up policy decision', () => {
   test('only bites on mutating relay calls when required', () => {
@@ -52,65 +51,30 @@ describe('via-relay request predicate', () => {
   });
 });
 
-describe('LAN certificate minting orchestration', () => {
-  function fakes() {
-    const calls: string[][] = [];
-    const writes = new Map<string, string>();
-    const present = new Set<string>();
-    const runner: LanCertCommandRunner = {
-      run: async (command, args) => {
-        calls.push([command, ...args]);
-        return { code: 0, stdout: '', stderr: '' };
-      },
-    };
-    const fs: LanCertFs = {
-      mkdirp: async () => {},
-      writeFile: async (path, data) => {
-        writes.set(path, data);
-      },
-      exists: async (path) => present.has(path),
-    };
-    return { calls, writes, present, runner, fs };
-  }
-
-  test('issues the CA + leaf openssl sequence with a SAN config and returns servable paths', async () => {
-    const f = fakes();
-    const result = await mintLanCertificate(
-      { dir: '/home/daemon/tls', hostnames: ['daemon.local', 'studio.lan'], ipAddresses: ['127.0.0.1', '192.168.1.9'] },
-      { runner: f.runner, fs: f.fs },
-    );
-    // Four openssl invocations: CA self-sign, leaf key, CSR, CA-signed leaf.
-    expect(f.calls.length).toBe(4);
-    expect(f.calls[0]).toContain('req');
-    expect(f.calls[0]).toContain('-x509');
-    expect(f.calls[3]).toContain('x509');
-    expect(f.calls[3]).toContain('-CAcreateserial');
-    // SAN config carries every hostname and IP.
-    const san = f.writes.get('/home/daemon/tls/lan-san.cnf') ?? '';
-    expect(san).toContain('DNS.1 = daemon.local');
-    expect(san).toContain('DNS.2 = studio.lan');
-    expect(san).toContain('IP.1 = 127.0.0.1');
-    expect(san).toContain('IP.2 = 192.168.1.9');
-    // Servable paths + the CA the user must trust.
-    expect(result.caCertPath).toBe('/home/daemon/tls/ca-cert.pem');
-    expect(result.certPath).toBe('/home/daemon/tls/lan-cert.pem');
-    expect(result.keyPath).toBe('/home/daemon/tls/lan-key.pem');
-    expect(result.reused).toBe(false);
+describe('certificate-minting prohibition (the daemon never mints certificates)', () => {
+  test('no cert-minting symbol exists on the public relay surface', () => {
+    // The runtime export names of the relay barrel — the exact surface a
+    // consumer composes from (and what ./daemon re-exports).
+    const names = Object.keys(relaySurface);
+    const offenders = names.filter((name) => /cert|mint|x509|openssl/i.test(name));
+    expect(offenders).toEqual([]);
   });
 
-  test('reuses existing material without invoking openssl', async () => {
-    const f = fakes();
-    f.present.add('/home/daemon/tls/ca-cert.pem');
-    f.present.add('/home/daemon/tls/lan-cert.pem');
-    f.present.add('/home/daemon/tls/lan-key.pem');
-    const result = await mintLanCertificate({ dir: '/home/daemon/tls' }, { runner: f.runner, fs: f.fs });
-    expect(result.reused).toBe(true);
-    expect(f.calls.length).toBe(0);
+  test('no certificate-minting module exists in the relay source tree', () => {
+    const relayDir = join(import.meta.dir, '..', 'packages', 'sdk', 'src', 'platform', 'relay');
+    const files = readdirSync(relayDir);
+    expect(files.some((file) => /cert/i.test(file))).toBe(false);
+    // No relay source invokes openssl or self-signs anything.
+    for (const file of files) {
+      if (!file.endsWith('.ts')) continue;
+      const source = readFileSync(join(relayDir, file), 'utf8');
+      expect(source.includes('openssl'), `${file} must not orchestrate openssl`).toBe(false);
+      expect(/self.signed/i.test(source), `${file} must not self-sign`).toBe(false);
+    }
   });
 
-  test('surfaces an openssl failure as a clear error', async () => {
-    const f = fakes();
-    const failing: LanCertCommandRunner = { run: async () => ({ code: 1, stdout: '', stderr: 'boom' }) };
-    await expect(mintLanCertificate({ dir: '/home/daemon/tls' }, { runner: failing, fs: f.fs })).rejects.toThrow(/openssl/);
+  test('the daemon entry source exports no cert-minting name', () => {
+    const daemonEntry = readFileSync(join(import.meta.dir, '..', 'packages', 'sdk', 'src', 'daemon.ts'), 'utf8');
+    expect(/mint[A-Za-z]*Certificate|LanCert/i.test(daemonEntry)).toBe(false);
   });
 });

@@ -131,12 +131,16 @@ credential**: whoever holds one can reach the daemon through the relay.
   act on the daemon the operator controls. The security of the control rests on
   the signature check against the registered public key and the single-use,
   time-bound challenge — not on attestation provenance.
-- **Daemon-minted LAN HTTPS.** `mintLanCertificate` mints a local CA + a SAN
-  leaf certificate for the daemon's LAN endpoints so browsers stop warning on
-  LAN access. **Honest scope:** it *generates* (via `openssl`, not hand-rolled
-  ASN.1), *stores*, and returns paths that plug into the existing
-  `controlPlane.tls` config to *serve*. **Trusting the minted CA on your OS /
-  browser is your step** — the helper never touches the OS trust store.
+- **LAN HTTPS posture: the daemon never mints certificates.** There is no
+  self-provisioned CA and no daemon-generated certificate, ever. The
+  recommended path to https is **tailscale serve**: it fronts the daemon's
+  port and terminates TLS with tailscale's own certificates — certificate
+  issuance and renewal are tailscale's business, never the daemon's. The
+  daemon side is strictly read-only detection plus one explicit
+  user-initiated enable (`tailscale.get` / `tailscale.serve.run`; see
+  `platform/remote-access/tailscale.ts`). Where tailscale is absent, LAN
+  access stays plain http on the interface the operator chose — an honest
+  posture rather than a locally-minted trust root.
 - **Relay connections are visibly distinct.** Every tunneled request is tagged
   with an `x-goodvibes-via-relay` header (`isRelayTunneledRequest`), and the
   daemon exposes the relay registration status, so surfaces can show a
