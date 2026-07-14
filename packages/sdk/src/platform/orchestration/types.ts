@@ -7,8 +7,10 @@
  * hard departure from WrfcController is pipeline semantics: an item advances
  * to its next phase the instant its gate passes, claimed by WHATEVER capacity
  * slot is free — there is no pairwise binding of one reviewer to one
- * engineer's history (see wrfc-controller.ts startReview:883/startFix:1042,
- * which bind chain.reviewerAgentId/chain.fixerAgentId to a single chain).
+ * engineer's history (WrfcController binds chain.reviewerAgentId to a single
+ * chain in startReview). The controller's fix phase runs THROUGH this engine:
+ * startPlannedFix plans a task graph from reviewer findings
+ * (review-task-source.ts) and executes it as a workstream here.
  *
  * Float ordinals on Phase are load-bearing: inserting a phase mid-run assigns
  * an ordinal strictly between its neighbors, so existing phase ids — and
