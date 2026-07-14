@@ -6,11 +6,13 @@ export * from '@pellux/goodvibes-daemon-sdk';
 export { bootDaemon, DaemonServer } from './platform/daemon/index.js';
 export type { BootDaemonOptions, BootedDaemon } from './platform/daemon/index.js';
 
-// Daemon-side relay surface: reachability control, the WebAuthn step-up policy
-// hook + ceremony service (RuntimeServices.stepUpService — DaemonServer.start()
-// calls its createVerifier() unconditionally, so a consumer composing its own
-// RuntimeServices-compatible object needs the class, not a deep import), and
-// the LAN certificate minter.
+// Daemon-side relay surface: reachability control and the WebAuthn step-up
+// policy hook + ceremony service (RuntimeServices.stepUpService —
+// DaemonServer.start() calls its createVerifier() unconditionally, so a
+// consumer composing its own RuntimeServices-compatible object needs the
+// class, not a deep import). No certificate machinery: the daemon never mints
+// certificates (no self-provisioned CA, ever); the recommended https path is
+// tailscale serve (platform/remote-access/tailscale.ts).
 export {
   createRelayReachability,
   isRelayReachabilityEnabled,
@@ -21,7 +23,6 @@ export {
   StepUpService,
   parseAssertionHeader,
   encodeAssertionHeader,
-  mintLanCertificate,
   type RelayReachability,
   type RelayReachabilityOptions,
   type RelayReachabilityConfig,
@@ -37,9 +38,4 @@ export {
   type MintStepUpChallengeInput,
   type MintedStepUpChallenge,
   type StepUpChallengeFailure,
-  type MintLanCertificateOptions,
-  type LanCertificateResult,
-  type LanCertCommandRunner,
-  type LanCertFs,
-  type LanCertDeps,
 } from './platform/relay/index.js';

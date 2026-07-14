@@ -38,7 +38,7 @@
   },
   "./daemon": {
     "gzip_bytes": 658,
-    "rationale": "daemon route handler re-export entry; measured 548 B gzip after adding the StepUpService class + its ceremony types (RuntimeServices.stepUpService is required \u2014 DaemonServer.start() calls createVerifier() unconditionally \u2014 so a consumer composing its own RuntimeServices-compatible object needs the class, not a deep import) alongside the pre-existing relay surface (reachability control + WebAuthn step-up policy hook + LAN certificate minter re-exports for the zero-knowledge relay); headroom max(ceil(548*1.2)=658, 548+50=598) \u2192 658 (1.2x dominates by 60 B)"
+    "rationale": "daemon route handler re-export entry; measured 548 B gzip after adding the StepUpService class + its ceremony types (RuntimeServices.stepUpService is required \u2014 DaemonServer.start() calls createVerifier() unconditionally \u2014 so a consumer composing its own RuntimeServices-compatible object needs the class, not a deep import) alongside the pre-existing relay surface (reachability control + WebAuthn step-up policy hook re-exports for the zero-knowledge relay; the certificate-minting helper was REMOVED — the daemon never mints certificates, tailscale serve is the https path); headroom max(ceil(548*1.2)=658, 548+50=598) \u2192 658 (1.2x dominates by 60 B)"
   },
   "./errors": {
     "gzip_bytes": 112,
@@ -362,8 +362,8 @@
     "rationale": "sleep-ownership composition surface (PowerManager, wireRuntimePower, logind seam, work signals) — exported for consumer composition roots after the 2026-07-14 phantom-export find; measured 292 B gzip; headroom max(ceil(292*1.2)=351, 292+50=342) -> 351 (1.2x dominates)"
   },
   "./platform/relay": {
-    "gzip_bytes": 441,
-    "rationale": "relay reachability + WebAuthn step-up composition surface (StepUpService, createRelayReachability, step-up policy) — exported for consumer composition roots after the 2026-07-14 phantom-export find; measured 367 B gzip; headroom max(ceil(367*1.2)=441, 367+50=417) -> 441 (1.2x dominates)"
+    "gzip_bytes": 590,
+    "rationale": "relay reachability + WebAuthn step-up composition surface (StepUpService, createRelayReachability, step-up policy); re-measured 491 B gzip after the certificate-minting helper was deleted (bundler chunk reshuffle moved shared bytes into this entry even as the surface shrank); headroom max(ceil(491*1.2)=590, 491+50=541) -> 590 (1.2x dominates)"
   },
   "./platform/profiles": {
     "gzip_bytes": 110,
