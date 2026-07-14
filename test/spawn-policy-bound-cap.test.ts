@@ -11,13 +11,14 @@ import {
   ORCHESTRATION_CAP_KEYS,
 } from '../packages/sdk/src/platform/runtime/orchestration/spawn-policy.js';
 import { coreConfigDefaults } from '../packages/sdk/src/platform/config/schema-domain-core.js';
+import { fleetConfigDefaults } from '../packages/sdk/src/platform/config/schema-domain-fleet.js';
 
 // Config manager stub that returns null for every key, exercising the
 // schema-default fallback path.
 const nullConfig = { get: () => null };
 
 describe('spawn policy — bound cap identity', () => {
-  test('active-agents cap names orchestration.maxActiveAgents when it binds', () => {
+  test('active-agents cap names fleet.maxSize when it binds (owner-renamed cap)', () => {
     const decision = evaluateOrchestrationSpawn({
       configManager: nullConfig,
       mode: 'manual-batch',
@@ -27,7 +28,7 @@ describe('spawn policy — bound cap identity', () => {
     expect(decision.allowed).toBe(false);
     expect(decision.availableSlots).toBe(0);
     expect(decision.boundCap).toEqual({ key: ORCHESTRATION_CAP_KEYS.maxActiveAgents, value: 5 });
-    expect(decision.reason).toContain('orchestration.maxActiveAgents=5');
+    expect(decision.reason).toContain('fleet.maxSize=5');
   });
 
   test('disabled recursion names orchestration.recursionEnabled when it binds', () => {
@@ -71,7 +72,7 @@ describe('spawn policy — bound cap identity', () => {
       mode: 'manual-batch',
       activeAgents: 0,
     });
-    expect(decision.maxAgents).toBe(coreConfigDefaults.orchestration.maxActiveAgents);
+    expect(decision.maxAgents).toBe(fleetConfigDefaults.fleet.maxSize);
     expect(decision.maxAgents).toBe(8);
   });
 });

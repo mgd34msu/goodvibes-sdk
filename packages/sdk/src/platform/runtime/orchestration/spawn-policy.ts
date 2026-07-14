@@ -1,5 +1,9 @@
 import type { ConfigManager } from '../../config/manager.js';
 import { coreConfigDefaults } from '../../config/schema-domain-core.js';
+import { fleetConfigDefaults } from '../../config/schema-domain-fleet.js';
+
+/** The ONE fleet ceiling's config key ("Maximum fleet size"; renamed from orchestration.maxActiveAgents). */
+export const FLEET_MAX_SIZE_KEY = 'fleet.maxSize';
 
 export type OrchestrationSpawnMode = 'manual-batch' | 'plan-auto' | 'recursive-child';
 
@@ -9,7 +13,8 @@ export type OrchestrationSpawnMode = 'manual-batch' | 'plan-auto' | 'recursive-c
  * setting refused or queued a spawn.
  */
 export const ORCHESTRATION_CAP_KEYS = {
-  maxActiveAgents: 'orchestration.maxActiveAgents',
+  /** The one fleet ceiling (renamed 2026-07: refusals name fleet.maxSize). */
+  maxActiveAgents: FLEET_MAX_SIZE_KEY,
   maxDepth: 'orchestration.maxDepth',
   recursionEnabled: 'orchestration.recursionEnabled',
 } as const;
@@ -53,7 +58,7 @@ export function evaluateOrchestrationSpawn(input: {
   // Fallbacks source the documented schema defaults (coreConfigDefaults) rather
   // than re-declaring literals, so the in-file value can never silently drift
   // from the config default.
-  const maxAgents = input.overrides?.maxAgents ?? ((input.configManager.get('orchestration.maxActiveAgents') as number | null) ?? coreConfigDefaults.orchestration.maxActiveAgents);
+  const maxAgents = input.overrides?.maxAgents ?? ((input.configManager.get(FLEET_MAX_SIZE_KEY as never) as number | null) ?? fleetConfigDefaults.fleet.maxSize);
   const maxDepth = input.overrides?.maxDepth ?? ((input.configManager.get('orchestration.maxDepth') as number | null) ?? coreConfigDefaults.orchestration.maxDepth);
   const recursionEnabled = input.overrides?.recursionEnabled ?? ((input.configManager.get('orchestration.recursionEnabled') as boolean | null) ?? coreConfigDefaults.orchestration.recursionEnabled);
   const requestedDepth = input.requestedDepth ?? 0;

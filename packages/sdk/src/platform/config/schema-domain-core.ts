@@ -70,7 +70,6 @@ export const coreConfigDefaults = {
   },
   orchestration: {
     recursionEnabled: false,
-    maxActiveAgents: 8,
     maxDepth: 0,
   },
   planner: {
@@ -491,13 +490,6 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
     type: 'boolean',
     default: false,
     description: 'Allow recursive agent orchestration under bounded policy controls',
-  },
-  {
-    key: 'orchestration.maxActiveAgents',
-    type: 'number',
-    default: 8,
-    description: 'Total active agents allowed across the orchestration tree',
-    ...numRange(1, 20),
   },
   {
     key: 'orchestration.maxDepth',
