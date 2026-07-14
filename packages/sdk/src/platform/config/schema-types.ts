@@ -849,7 +849,35 @@ export type ConfigKey =
   | 'agents.contextCompactThreshold'
   | 'agents.maxTurns'
   | 'agents.maxTurnsCap'
-  | 'pricing.modelPrices';
+  | 'pricing.modelPrices'
+  // Proactive check-in (schema-domain-runtime.ts).
+  | 'checkin.enabled'
+  | 'checkin.cadence'
+  | 'checkin.deliveryChannel'
+  | 'checkin.quietHours'
+  // Memory consolidation (schema-domain-learning.ts).
+  | 'learning.consolidation.enabled'
+  | 'learning.consolidation.intervalMs'
+  | 'learning.consolidation.minIdleMs'
+  | 'learning.consolidation.maxMergesPerRun'
+  | 'learning.consolidation.maxDecaysPerRun'
+  | 'learning.consolidation.maxProposalsPerRun'
+  | 'learning.consolidation.decayAgeDays'
+  | 'learning.consolidation.decayConfidenceStep'
+  | 'learning.consolidation.archiveConfidenceFloor'
+  // Sleep ownership (schema-domain-power.ts).
+  | 'power.keepAwake'
+  | 'power.inhibitWhileWorking'
+  | 'power.workInhibitMaxMinutes'
+  // Local voice engines (schema-domain-voice-local.ts).
+  | 'voice.local.sttEngine'
+  | 'voice.local.sttBinary'
+  | 'voice.local.sttModelPath'
+  | 'voice.local.ttsEngine'
+  | 'voice.local.ttsBinary'
+  | 'voice.local.ttsModelPath'
+  // The one fleet ceiling (schema-domain-fleet.ts).
+  | 'fleet.maxSize';
 
 /** Maps a ConfigKey to its value type. */
 export type ConfigValue<K extends ConfigKey> =
@@ -1215,4 +1243,27 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'agents.maxTurns' ? number :
   K extends 'agents.maxTurnsCap' ? number :
   K extends 'pricing.modelPrices' ? Record<string, ManualModelPriceConfig> :
+  K extends 'checkin.enabled' ? boolean :
+  K extends 'checkin.cadence' ? string :
+  K extends 'checkin.deliveryChannel' ? string :
+  K extends 'checkin.quietHours' ? string :
+  K extends 'learning.consolidation.enabled' ? boolean :
+  K extends 'learning.consolidation.intervalMs' ? number :
+  K extends 'learning.consolidation.minIdleMs' ? number :
+  K extends 'learning.consolidation.maxMergesPerRun' ? number :
+  K extends 'learning.consolidation.maxDecaysPerRun' ? number :
+  K extends 'learning.consolidation.maxProposalsPerRun' ? number :
+  K extends 'learning.consolidation.decayAgeDays' ? number :
+  K extends 'learning.consolidation.decayConfidenceStep' ? number :
+  K extends 'learning.consolidation.archiveConfidenceFloor' ? number :
+  K extends 'power.keepAwake' ? boolean :
+  K extends 'power.inhibitWhileWorking' ? boolean :
+  K extends 'power.workInhibitMaxMinutes' ? number :
+  K extends 'voice.local.sttEngine' ? '' | 'whisper-cpp' | 'faster-whisper' :
+  K extends 'voice.local.sttBinary' ? string :
+  K extends 'voice.local.sttModelPath' ? string :
+  K extends 'voice.local.ttsEngine' ? '' | 'piper' | 'kokoro' :
+  K extends 'voice.local.ttsBinary' ? string :
+  K extends 'voice.local.ttsModelPath' ? string :
+  K extends 'fleet.maxSize' ? number :
   never;
