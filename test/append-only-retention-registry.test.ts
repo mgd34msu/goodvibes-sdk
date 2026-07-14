@@ -30,6 +30,7 @@ const KNOWN_APPEND_ONLY_STORES: readonly AppendOnlyStoreId[] = [
   'session-journals',
   'activity-log',
   'telemetry-local-ledger',
+  'session-recovery-snapshots',
 ];
 
 const dirs: string[] = [];
@@ -96,6 +97,47 @@ describe('start-time retention sweep', () => {
     expect(statSync(newer).size).toBe(200_000);
   });
 
+  test('the full production roots sweep every registered store — none silently skipped', () => {
+    const workingDirectory = tempDir();
+    const homeDirectory = tempDir();
+    const surfaceRoot = 'tui';
+    // Materialize each store's target so the sweep genuinely visits it.
+    mkdirSync(resolveScopedDirectory(workingDirectory, surfaceRoot, 'sessions'), { recursive: true });
+    const logDir = join(homeDirectory, 'logs');
+    const telemetryDir = join(homeDirectory, 'telemetry');
+    const recoveryDir = resolveScopedDirectory(homeDirectory, surfaceRoot, 'recovery');
+    mkdirSync(logDir, { recursive: true });
+    mkdirSync(telemetryDir, { recursive: true });
+    mkdirSync(recoveryDir, { recursive: true });
+    writeFileSync(join(logDir, 'activity.md'), 'log line\n', 'utf-8');
+    writeFileSync(join(telemetryDir, 'spans.jsonl'), '{}\n', 'utf-8');
+    writeFileSync(join(recoveryDir, 'recovery-s1.jsonl'), '{}\n', 'utf-8');
+
+    const outcome = runAppendOnlyRetentionSweep({ workingDirectory, surfaceRoot, homeDirectory, logDir, telemetryDir });
+    // Every registered store swept; the roots omission class (a registered
+    // entry that never runs in production) is what this pins down.
+    expect([...outcome.sweptStores].sort()).toEqual([...KNOWN_APPEND_ONLY_STORES].sort());
+    expect(outcome.skippedStores).toEqual([]);
+  });
+
+  test('a stale never-restored recovery snapshot is reclaimed by the sweep', () => {
+    const homeDirectory = tempDir();
+    const surfaceRoot = 'tui';
+    const recoveryDir = resolveScopedDirectory(homeDirectory, surfaceRoot, 'recovery');
+    mkdirSync(recoveryDir, { recursive: true });
+    const stale = join(recoveryDir, 'recovery-dead-session.jsonl');
+    writeFileSync(stale, 'x'.repeat(1000), 'utf-8');
+    const past = Date.now() / 1000 - 90 * 24 * 3600;
+    (require('node:fs') as typeof import('node:fs')).utimesSync(stale, past, past);
+
+    const outcome = runAppendOnlyRetentionSweep(
+      { homeDirectory, surfaceRoot },
+      { policyOverride: { redact: true, retention: { maxAgeMs: 30 * 24 * 3600 * 1000, maxTotalBytes: 10_000_000 } } },
+    );
+    expect(outcome.sweptStores).toContain('session-recovery-snapshots');
+    expect(() => statSync(stale)).toThrow();
+  });
+
   test('stores whose roots are absent are skipped, not errors', () => {
     const outcome = runAppendOnlyRetentionSweep({ workingDirectory: undefined });
     // With no roots at all, every store is skipped and nothing throws.
@@ -105,7 +147,7 @@ describe('start-time retention sweep', () => {
 
   test('runStartupAppendOnlySweep never throws and returns an outcome', () => {
     const workingDirectory = tempDir();
-    const result = runStartupAppendOnlySweep(workingDirectory, 'tui', () => undefined);
+    const result = runStartupAppendOnlySweep({ workingDirectory, surfaceRoot: 'tui' }, () => undefined);
     expect(result).not.toBeNull();
     expect(result!.sweptStores).toContain('session-journals');
   });

@@ -446,8 +446,21 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     stores: [{ name: 'memory store', dbPath: memoryDbPath }, { name: 'memory vector index', dbPath: resolveMemoryVectorDbPath(memoryDbPath) }, { name: 'code index store', dbPath: codeIndexDbPath }],
   });
   storeSnapshotScheduler.start();
-  // Start-time janitor: one retention pass over every registered append-only store (best-effort).
-  runStartupAppendOnlySweep(workingDirectory, surfaceRoot, (k) => configManager.get(k as never));
+  // Start-time janitor: one retention pass over every registered append-only
+  // store (best-effort). Every root the composition knows is passed — omitting
+  // logDir/telemetryDir/homeDirectory would silently skip the activity-log,
+  // telemetry-ledger, and recovery-snapshot stores on every sweep.
+  runStartupAppendOnlySweep({
+    workingDirectory,
+    surfaceRoot,
+    homeDirectory,
+    logDir: shellPaths.resolveUserPath('logs'),
+    telemetryDir: shellPaths.resolveUserPath('telemetry'),
+  }, (k) => configManager.get(k as never));
+  // External config edits apply LIVE through the same subscribe() pipeline an
+  // in-process set() uses — a hand-edited settings file needs no restart. The
+  // underlying file watchers are unref'd, so this never pins the event loop.
+  configManager.watchConfigFiles();
   // Memory consolidation runs HERE — this runtime is the memory store's single
   // writer. Idle trigger (no busy broker sessions) + slow schedule fallback;
   // reversible outcomes only, receipts retained, learning.consolidation.* tunes it.
