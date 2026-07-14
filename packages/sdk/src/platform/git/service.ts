@@ -15,6 +15,50 @@ function isMissingGitIdentityError(error: unknown): boolean {
 }
 
 /**
+ * Extract bare repo-relative conflict paths from a failed merge's message.
+ *
+ * The documented contract is PATHS — a conflict-resolution session seeds from
+ * this list, so a `path:reason` entry is a product defect. Two real raw shapes
+ * exist depending on the git/simple-git output pairing:
+ *
+ *  1. git's own informational lines, forwarded in the error message:
+ *     `CONFLICT (content): Merge conflict in <path>`
+ *  2. simple-git's parsed merge-summary rendering (a merge rejection built
+ *     with no explicit message stringifies its summary):
+ *     `CONFLICTS: <path>:<reason>[, <path>:<reason>…]` — each entry is the
+ *     parsed conflict's `file:reason` pair (e.g. `shared.txt:content`), so
+ *     the `:<reason>` suffix must be stripped to recover the bare path.
+ *
+ * This is the FALLBACK route only — the merge handler prefers the structured
+ * conflict entries the git library attaches to its rejection. Exported so
+ * regression tests can pin both raw shapes as fixtures with no dependence on
+ * the host's git version.
+ */
+export function conflictPathsFromMergeOutput(message: string): string[] {
+  const paths: string[] = [];
+  for (const line of message.split('\n')) {
+    const summaryForm = /^\s*CONFLICTS:\s*(.+)$/.exec(line);
+    if (summaryForm) {
+      for (const entry of summaryForm[1]!.split(', ')) {
+        // Strip the `:<reason>` suffix (content, add/add, modify/delete,
+        // rename/rename, …): reasons are lowercase words, optionally
+        // slash- or space-joined. Everything before it is the path.
+        const path = entry.replace(/:[a-z][a-z /-]*$/, '').trim();
+        if (path) paths.push(path);
+      }
+      continue;
+    }
+    if (!line.includes('CONFLICT')) continue;
+    // `CONFLICT (content): Merge conflict in <path>` -> `<path>` — the prose
+    // ("Merge conflict in ...") used to leak through and downstream consumers
+    // saw it as the "file".
+    const path = line.replace(/^.*CONFLICT.*?:\s*/, '').replace(/^Merge conflict in\s+/, '').trim();
+    if (path) paths.push(path);
+  }
+  return paths;
+}
+
+/**
  * GitService — Wraps simple-git with hook emission on all mutating operations.
  *
  * Read-only operations (status, branch, log, diff, blame) do NOT emit hooks.
@@ -295,21 +339,22 @@ export class GitService {
       await this.firePost('merge', { branch, success: true });
       return { success: true };
     } catch (err) {
-      // simple-git throws on merge conflicts — only handle actual conflicts
+      // simple-git throws on merge conflicts — only handle actual conflicts.
+      // Prefer the machine-readable conflict entries simple-git parsed from
+      // the merge output (GitResponseError.git.conflicts: {file, reason})
+      // over scraping the message: the message's shape varies with the
+      // git/simple-git pairing (see conflictPathsFromMergeOutput) and is
+      // length-truncated by summarizeError, so it is only the fallback.
+      const structured = (err as { git?: { conflicts?: ReadonlyArray<{ file?: string | null }> } }).git?.conflicts;
+      const structuredFiles = (structured ?? [])
+        .map((entry) => (typeof entry.file === 'string' ? entry.file.trim() : ''))
+        .filter(Boolean);
       const message = summarizeError(err);
-      if (!message.includes('CONFLICT')) {
+      if (structuredFiles.length === 0 && !message.includes('CONFLICT')) {
         await this.fireFail('merge', { branch, error: message });
         throw err;
       }
-      const conflicts = message
-        .split('\n')
-        .filter((l) => l.includes('CONFLICT'))
-        // `CONFLICT (content): Merge conflict in <path>` -> `<path>` — the
-        // documented contract is PATHS; the prose ("Merge conflict in ...")
-        // used to leak through and downstream consumers saw it as the "file".
-        .map((l) => l.replace(/^.*CONFLICT.*?:\s*/, '').replace(/^Merge conflict in\s+/, '').trim())
-        .filter(Boolean);
-
+      const conflicts = structuredFiles.length > 0 ? structuredFiles : conflictPathsFromMergeOutput(message);
       await this.fireFail('merge', { branch, error: message, conflicts });
       return { success: false, conflicts };
     }
