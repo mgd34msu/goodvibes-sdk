@@ -5439,6 +5439,19 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
             "sessionId": "sample",
             "agentId": "sample"
           },
+          "review": {
+            "score": 0,
+            "passed": false,
+            "cycles": 0,
+            "checklist": [
+              {
+                "item": "sample",
+                "verified": false,
+                "evidence": "sample",
+                "howExercised": "sample"
+              }
+            ]
+          },
           "observed": {
             "externalKind": "claude-code",
             "pid": 0,
@@ -5728,6 +5741,19 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
             "sessionId": "sample",
             "agentId": "sample"
           },
+          "review": {
+            "score": 0,
+            "passed": false,
+            "cycles": 0,
+            "checklist": [
+              {
+                "item": "sample",
+                "verified": false,
+                "evidence": "sample",
+                "howExercised": "sample"
+              }
+            ]
+          },
           "observed": {
             "externalKind": "claude-code",
             "pid": 0,
@@ -5815,6 +5841,19 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           "sessionRef": {
             "sessionId": "sample",
             "agentId": "sample"
+          },
+          "review": {
+            "score": 0,
+            "passed": false,
+            "cycles": 0,
+            "checklist": [
+              {
+                "item": "sample",
+                "verified": false,
+                "evidence": "sample",
+                "howExercised": "sample"
+              }
+            ]
           },
           "observed": {
             "externalKind": "claude-code",

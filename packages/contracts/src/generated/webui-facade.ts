@@ -7460,6 +7460,19 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
             "sessionId": "sample",
             "agentId": "sample"
           },
+          "review": {
+            "score": 0,
+            "passed": false,
+            "cycles": 0,
+            "checklist": [
+              {
+                "item": "sample",
+                "verified": false,
+                "evidence": "sample",
+                "howExercised": "sample"
+              }
+            ]
+          },
           "observed": {
             "externalKind": "claude-code",
             "pid": 0,
@@ -7753,6 +7766,19 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
             "sessionId": "sample",
             "agentId": "sample"
           },
+          "review": {
+            "score": 0,
+            "passed": false,
+            "cycles": 0,
+            "checklist": [
+              {
+                "item": "sample",
+                "verified": false,
+                "evidence": "sample",
+                "howExercised": "sample"
+              }
+            ]
+          },
           "observed": {
             "externalKind": "claude-code",
             "pid": 0,
@@ -7839,6 +7865,19 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "sessionRef": {
             "sessionId": "sample",
             "agentId": "sample"
+          },
+          "review": {
+            "score": 0,
+            "passed": false,
+            "cycles": 0,
+            "checklist": [
+              {
+                "item": "sample",
+                "verified": false,
+                "evidence": "sample",
+                "howExercised": "sample"
+              }
+            ]
           },
           "observed": {
             "externalKind": "claude-code",

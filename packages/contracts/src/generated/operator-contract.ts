@@ -30050,6 +30050,53 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     },
                     "additionalProperties": false
                   },
+                  "review": {
+                    "type": "object",
+                    "properties": {
+                      "score": {
+                        "type": "number"
+                      },
+                      "passed": {
+                        "type": "boolean"
+                      },
+                      "cycles": {
+                        "type": "number"
+                      },
+                      "checklist": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "item": {
+                              "type": "string"
+                            },
+                            "verified": {
+                              "type": "boolean"
+                            },
+                            "evidence": {
+                              "type": "string"
+                            },
+                            "howExercised": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "item",
+                            "verified",
+                            "evidence"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "score",
+                      "passed",
+                      "cycles",
+                      "checklist"
+                    ],
+                    "additionalProperties": false
+                  },
                   "observed": {
                     "type": "object",
                     "properties": {
@@ -31410,6 +31457,53 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     },
                     "additionalProperties": false
                   },
+                  "review": {
+                    "type": "object",
+                    "properties": {
+                      "score": {
+                        "type": "number"
+                      },
+                      "passed": {
+                        "type": "boolean"
+                      },
+                      "cycles": {
+                        "type": "number"
+                      },
+                      "checklist": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "item": {
+                              "type": "string"
+                            },
+                            "verified": {
+                              "type": "boolean"
+                            },
+                            "evidence": {
+                              "type": "string"
+                            },
+                            "howExercised": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "item",
+                            "verified",
+                            "evidence"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "score",
+                      "passed",
+                      "cycles",
+                      "checklist"
+                    ],
+                    "additionalProperties": false
+                  },
                   "observed": {
                     "type": "object",
                     "properties": {
@@ -31820,6 +31914,53 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "type": "string"
                       }
                     },
+                    "additionalProperties": false
+                  },
+                  "review": {
+                    "type": "object",
+                    "properties": {
+                      "score": {
+                        "type": "number"
+                      },
+                      "passed": {
+                        "type": "boolean"
+                      },
+                      "cycles": {
+                        "type": "number"
+                      },
+                      "checklist": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "item": {
+                              "type": "string"
+                            },
+                            "verified": {
+                              "type": "boolean"
+                            },
+                            "evidence": {
+                              "type": "string"
+                            },
+                            "howExercised": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "item",
+                            "verified",
+                            "evidence"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "score",
+                      "passed",
+                      "cycles",
+                      "checklist"
+                    ],
                     "additionalProperties": false
                   },
                   "observed": {

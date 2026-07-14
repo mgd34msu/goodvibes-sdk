@@ -1906,3 +1906,84 @@ describe('WrfcController — acceptance-checklist gate (deterministic, both revi
     h.controller.dispose();
   });
 });
+
+describe('WrfcController — the review record rides the wire (checklist + verdict)', () => {
+  function reviewJsonWire(report: Record<string, unknown>): string {
+    return ['```json', JSON.stringify({
+      version: 1, archetype: 'reviewer', summary: 'review', dimensions: [], issues: [], constraintFindings: [],
+      ...report,
+    }), '```'].join('\n');
+  }
+
+  test('a chain with a completed review serves verdict, score, and the checklist with verified/unverified intact', async () => {
+    const h = createHarness({ maxFixAttempts: 3 });
+    const engRecord = h.addAgent('eng-wire-1', 'Build the exporter.');
+    const chain = h.controller.createChain(engRecord);
+    h.setOutput(chain.engineerAgentId!, 'Implemented the exporter.');
+    emitAgentCompleted(h.bus, chain.engineerAgentId!);
+    await flushMicrotasks(20);
+
+    const reviewer = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
+    // Perfect score but ONE unverified contract item — the gate fails it, and
+    // the wire must serve the TRUE (controller) verdict with the items intact.
+    h.setOutput(reviewer.id, reviewJsonWire({
+      score: 10, passed: true,
+      acceptanceChecklist: [
+        { item: 'exports CSV', verified: true, evidence: 'exported a real file', howExercised: 'ran the CLI directly' },
+        { item: 'handles empty input', verified: false, evidence: 'crashed on an empty list' },
+      ],
+    }));
+    emitAgentCompleted(h.bus, reviewer.id);
+    await flushMicrotasks(20);
+
+    const { adaptChain } = await import('../packages/sdk/src/platform/runtime/fleet/adapters/wrfc.js');
+    const node = adaptChain(chain, [], Date.now());
+    expect(node.review).toBeDefined();
+    // The CONTROLLER verdict — not the reviewer's passed:true claim.
+    expect(node.review!.passed).toBe(false);
+    expect(node.review!.score).toBe(10);
+    expect(node.review!.cycles).toBe(1);
+    expect(node.review!.checklist).toEqual([
+      { item: 'exports CSV', verified: true, evidence: 'exported a real file', howExercised: 'ran the CLI directly' },
+      { item: 'handles empty input', verified: false, evidence: 'crashed on an empty list' },
+    ]);
+    h.controller.dispose();
+  });
+
+  test('pre-review, the node serves NO review field (absent, never an empty shell)', async () => {
+    const h = createHarness();
+    const engRecord = h.addAgent('eng-wire-2', 'Build the widget.');
+    const chain = h.controller.createChain(engRecord);
+    const { adaptChain } = await import('../packages/sdk/src/platform/runtime/fleet/adapters/wrfc.js');
+    const node = adaptChain(chain, [], Date.now());
+    expect('review' in node).toBe(false);
+    h.controller.dispose();
+  });
+
+  test('the wire shape round-trips JSON serialization intact', async () => {
+    const h = createHarness();
+    const engRecord = h.addAgent('eng-wire-3', 'Build the widget.');
+    const chain = h.controller.createChain(engRecord);
+    h.setOutput(chain.engineerAgentId!, 'done');
+    emitAgentCompleted(h.bus, chain.engineerAgentId!);
+    await flushMicrotasks(20);
+    const reviewer = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
+    h.setOutput(reviewer.id, reviewJsonWire({
+      score: 10, passed: true,
+      acceptanceChecklist: [{ item: 'meets the ask', verified: true, evidence: 'exercised directly' }],
+    }));
+    emitAgentCompleted(h.bus, reviewer.id);
+    await flushMicrotasks(20);
+    const { adaptChain } = await import('../packages/sdk/src/platform/runtime/fleet/adapters/wrfc.js');
+    const node = adaptChain(chain, [], Date.now());
+    // Exactly what a REST/ws consumer receives after serialization.
+    const overWire = JSON.parse(JSON.stringify({ ...node, raw: undefined })) as typeof node;
+    expect(overWire.review).toEqual({
+      score: 10,
+      passed: true,
+      cycles: 1,
+      checklist: [{ item: 'meets the ask', verified: true, evidence: 'exercised directly' }],
+    });
+    h.controller.dispose();
+  });
+});

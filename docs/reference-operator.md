@@ -30436,6 +30436,53 @@ Return the session-archived process nodes (same node shape as fleet.snapshot; st
             },
             "additionalProperties": false
           },
+          "review": {
+            "type": "object",
+            "properties": {
+              "score": {
+                "type": "number"
+              },
+              "passed": {
+                "type": "boolean"
+              },
+              "cycles": {
+                "type": "number"
+              },
+              "checklist": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "item": {
+                      "type": "string"
+                    },
+                    "verified": {
+                      "type": "boolean"
+                    },
+                    "evidence": {
+                      "type": "string"
+                    },
+                    "howExercised": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "item",
+                    "verified",
+                    "evidence"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "score",
+              "passed",
+              "cycles",
+              "checklist"
+            ],
+            "additionalProperties": false
+          },
           "observed": {
             "type": "object",
             "properties": {
@@ -31862,6 +31909,53 @@ Paginated, filtered (kinds/states) query over the live process registry. Cursor 
             },
             "additionalProperties": false
           },
+          "review": {
+            "type": "object",
+            "properties": {
+              "score": {
+                "type": "number"
+              },
+              "passed": {
+                "type": "boolean"
+              },
+              "cycles": {
+                "type": "number"
+              },
+              "checklist": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "item": {
+                      "type": "string"
+                    },
+                    "verified": {
+                      "type": "boolean"
+                    },
+                    "evidence": {
+                      "type": "string"
+                    },
+                    "howExercised": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "item",
+                    "verified",
+                    "evidence"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "score",
+              "passed",
+              "cycles",
+              "checklist"
+            ],
+            "additionalProperties": false
+          },
           "observed": {
             "type": "object",
             "properties": {
@@ -32290,6 +32384,53 @@ Return a point-in-time capture of every live/completed runtime process (agents, 
                 "type": "string"
               }
             },
+            "additionalProperties": false
+          },
+          "review": {
+            "type": "object",
+            "properties": {
+              "score": {
+                "type": "number"
+              },
+              "passed": {
+                "type": "boolean"
+              },
+              "cycles": {
+                "type": "number"
+              },
+              "checklist": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "item": {
+                      "type": "string"
+                    },
+                    "verified": {
+                      "type": "boolean"
+                    },
+                    "evidence": {
+                      "type": "string"
+                    },
+                    "howExercised": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "item",
+                    "verified",
+                    "evidence"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "score",
+              "passed",
+              "cycles",
+              "checklist"
+            ],
             "additionalProperties": false
           },
           "observed": {

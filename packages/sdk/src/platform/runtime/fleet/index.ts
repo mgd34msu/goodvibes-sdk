@@ -15,6 +15,8 @@ export type {
   ProcessAttentionReason,
   ProcessHeadline,
   ProcessStallTell,
+  ProcessReviewChecklistItem,
+  ProcessReviewSummary,
   ObservedAgentKind,
   ObservedSteerChannel,
   ObservedLiveness,

@@ -2,7 +2,7 @@
 
 import type { WrfcChain, WrfcSubtask } from '../../../agents/wrfc-types.js';
 import { mergeCostSource, mergePricingAsOf } from '../../../orchestration/types.js';
-import type { ProcessNode, ProcessState, ProcessUsage } from '../types.js';
+import type { ProcessNode, ProcessReviewSummary, ProcessState, ProcessUsage } from '../types.js';
 import { chainNodeId, subtaskNodeId } from './agent.js';
 
 // 'interrupted' is included: it is only ever produced on an AGENT node
@@ -219,6 +219,40 @@ export function activeSubtaskMemberAgentId(subtask: WrfcSubtask): string | undef
 }
 
 /** WrfcSubtask → ProcessNode (child of its chain node). */
+/** Wire cap on checklist evidence/how-exercised text (whole items are never dropped). */
+const REVIEW_EVIDENCE_MAX_CHARS = 280;
+
+function capText(text: string): string {
+  return text.length <= REVIEW_EVIDENCE_MAX_CHARS ? text : text.slice(0, REVIEW_EVIDENCE_MAX_CHARS - 1) + '…';
+}
+
+/**
+ * The latest review as served on the wire: verdict (the CONTROLLER's
+ * gate-inclusive verdict when recorded; the reviewer's own claim only as a
+ * legacy fallback), score, cycle count, and the acceptance checklist — so a
+ * consumer renders what was ACTUALLY verified. Returns undefined when no
+ * review has completed (the wire field stays absent, never an empty shell).
+ */
+export function deriveReviewSummary(source: {
+  readonly reviewerReport?: { readonly score: number; readonly passed: boolean; readonly acceptanceChecklist?: ReadonlyArray<{ item: string; verified: boolean; evidence: string; howExercised?: string | undefined }> | undefined } | undefined;
+  readonly lastReviewVerdict?: { passed: boolean; score: number } | undefined;
+  readonly reviewCycles: number;
+}): ProcessReviewSummary | undefined {
+  const report = source.reviewerReport;
+  if (!report) return undefined;
+  return {
+    score: source.lastReviewVerdict?.score ?? report.score,
+    passed: source.lastReviewVerdict?.passed ?? report.passed,
+    cycles: source.reviewCycles,
+    checklist: (report.acceptanceChecklist ?? []).map((entry) => ({
+      item: capText(entry.item),
+      verified: entry.verified,
+      evidence: capText(entry.evidence),
+      ...(entry.howExercised !== undefined ? { howExercised: capText(entry.howExercised) } : {}),
+    })),
+  };
+}
+
 export function adaptSubtask(subtask: WrfcSubtask, chain: WrfcChain, opts: { steerable: boolean }): ProcessNode {
   const { state, phase } = subtaskState(subtask);
   const killable = state !== 'done' && state !== 'failed' && state !== 'killed';
@@ -241,6 +275,7 @@ export function adaptSubtask(subtask: WrfcSubtask, chain: WrfcChain, opts: { ste
     // Steer targets the live member agent driving this subtask's current
     // phase, NOT the subtask node itself (which has no conversation loop).
     capabilities: { interruptible: false, killable, pausable: false, resumable: false, steerable: opts.steerable },
+    ...(deriveReviewSummary(subtask) ? { review: deriveReviewSummary(subtask) } : {}),
     raw: subtask,
   };
 }
@@ -284,6 +319,7 @@ export function adaptChain(chain: WrfcChain, memberNodes: readonly ProcessNode[]
     // conversation loop of its own, so it is NEVER steerable — steer the
     // member subtask instead (adaptSubtask, above).
     capabilities: { interruptible: false, killable, pausable: false, resumable: false, steerable: false },
+    ...(deriveReviewSummary(chain) ? { review: deriveReviewSummary(chain) } : {}),
     raw: chain,
   };
 }
