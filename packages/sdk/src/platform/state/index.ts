@@ -116,6 +116,12 @@ export type {
   MemoryConsolidationProposal,
   MemoryConsolidationRunReceipt,
 } from './memory-consolidation.js';
+// The daemon-side consolidation driver: a consumer composing its own runtime
+// constructs it exactly like the SDK's composition root (runtime/services.ts) —
+// memoryRegistry + live configSource + isIdle. Its dep types (registry, config
+// source, usage lookup, run receipt) are already exported just above.
+export { MemoryConsolidationScheduler } from './memory-consolidation-scheduler.js';
+export type { MemoryConsolidationSchedulerOptions } from './memory-consolidation-scheduler.js';
 export { detectReferencedMemoryIds } from './memory-usage-detection.js';
 export type {
   MemoryReferenceTier,
