@@ -31,7 +31,8 @@ import { join } from 'node:path';
 export type AppendOnlyStoreId =
   | 'session-journals'
   | 'activity-log'
-  | 'telemetry-local-ledger';
+  | 'telemetry-local-ledger'
+  | 'session-recovery-snapshots';
 
 /**
  * The roots a sweep resolves store paths from. A store whose required root is
@@ -41,6 +42,8 @@ export type AppendOnlyStoreId =
 export interface AppendOnlyRetentionRoots {
   readonly workingDirectory?: string | undefined;
   readonly surfaceRoot?: string | undefined;
+  /** The user home root (holds the scoped recovery/ crash-snapshot directory). */
+  readonly homeDirectory?: string | undefined;
   /** Directory holding the shared activity.md log, when the caller configured one. */
   readonly logDir?: string | undefined;
   /** Directory holding local telemetry ledger jsonl files, when configured. */
@@ -102,6 +105,19 @@ export const APPEND_ONLY_STORES: readonly AppendOnlyStoreDescriptor[] = [
     resolve(roots) {
       if (!roots.telemetryDir) return EMPTY_TARGETS;
       return { journalDirs: [roots.telemetryDir], files: [] };
+    },
+  },
+  {
+    id: 'session-recovery-snapshots',
+    owner: 'per-session crash-recovery snapshots (runtime/session-persistence.ts)',
+    description: 'per-session crash-recovery jsonl snapshots under the scoped recovery/ directory; a snapshot that was never restored goes stale and needs retention like any other append-only artifact',
+    policy: DEFAULT_AT_REST_POLICY,
+    resolve(roots) {
+      if (!roots.homeDirectory) return EMPTY_TARGETS;
+      return {
+        journalDirs: [resolveScopedDirectory(roots.homeDirectory, roots.surfaceRoot, 'recovery')],
+        files: [],
+      };
     },
   },
 ];
@@ -193,15 +209,19 @@ export function runAppendOnlyRetentionSweep(
  * Convenience start-time entry point wired at runtime construction: resolve the
  * at-rest policy from a config getter and run the sweep, swallowing any failure
  * so a retention problem never takes runtime startup down.
+ *
+ * Takes the FULL roots object: a caller that omits logDir/telemetryDir/
+ * homeDirectory silently skips the activity-log, telemetry-ledger, and
+ * recovery-snapshot stores every sweep — registered entries that never run.
+ * The composition root passes every root it knows.
  */
 export function runStartupAppendOnlySweep(
-  workingDirectory: string,
-  surfaceRoot: string | undefined,
+  roots: AppendOnlyRetentionRoots,
   configGet?: (key: string) => unknown,
 ): AppendOnlySweepOutcome | null {
   try {
     return runAppendOnlyRetentionSweep(
-      { workingDirectory, surfaceRoot },
+      roots,
       { policyOverride: configGet ? resolveAtRestPolicy(configGet) : undefined },
     );
   } catch (error) {

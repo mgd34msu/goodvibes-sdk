@@ -33,7 +33,11 @@ export function watchConfigFiles(
       if (curr.mtimeMs === prev.mtimeMs && curr.size === prev.size) return;
       onChange();
     };
-    watchFile(path, { interval: intervalMs }, listener);
+    const watcher = watchFile(path, { interval: intervalMs }, listener);
+    // Never pin the event loop: an idle process must be able to exit even
+    // when the composition root left the watch running (same posture as the
+    // fleet registry's unref'd tick).
+    (watcher as { unref?: () => void }).unref?.();
     listeners.set(path, listener);
   }
   return {
