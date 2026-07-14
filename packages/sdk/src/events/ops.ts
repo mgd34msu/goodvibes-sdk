@@ -92,6 +92,18 @@ export type OpsEvent =
       outcome: 'success' | 'rejected' | 'error';
       errorMessage?: string | undefined;
     }
+  /** The host sleep-ownership state changed (work inhibitor, keep-awake toggle, sleep edge). */
+  | {
+      type: 'OPS_POWER_STATE_CHANGED';
+      /** True while any sleep inhibitor (work or keep-awake) is held. */
+      inhibited: boolean;
+      /** The owner keep-awake toggle ("sleep disabled" chip source). */
+      keepAwake: boolean;
+      /** Live reasons the work inhibitor is held ("held because X"). */
+      workReasons: readonly string[];
+      /** The honest-split note when part of the requested coverage was refused. */
+      note?: string | undefined;
+    }
   /** A subscriber threw an error during event dispatch; emitted after dedup threshold. */
   | {
       type: 'OPS_LISTENER_MISBEHAVING';

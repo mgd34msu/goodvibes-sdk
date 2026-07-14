@@ -83,6 +83,10 @@ const DIRECT_TRANSPORT_COVERAGE: Record<string, string> = {
   // daemon's LIVE local runtime through the bound live-turn controls — the
   // same daemon-only shape as permissionMode/contextUsage above; same
   // deliberate 'http-only' skip.
+  // power.* act on the daemon's own host (sleep inhibitors) — daemon-only by
+  // nature, same deliberate 'http-only' skip as the session-runtime verbs.
+  'power.status.get': 'http-only',
+  'power.keepAwake.set': 'http-only',
   'sessions.toolCalls.cancel': 'http-only',
   'sessions.queuedMessages.list': 'http-only',
   'sessions.queuedMessages.edit': 'http-only',

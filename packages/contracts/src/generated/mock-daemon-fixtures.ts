@@ -5824,6 +5824,82 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       }
     }
   },
+  "power.keepAwake.set": {
+    "methodId": "power.keepAwake.set",
+    "http": {
+      "method": "POST",
+      "path": "/api/power/keep-awake"
+    },
+    "status": 200,
+    "body": {
+      "platform": "sample",
+      "work": {
+        "held": false,
+        "grantedClasses": [
+          "handle-lid-switch"
+        ],
+        "deniedClasses": [
+          "handle-lid-switch"
+        ],
+        "reasons": [
+          "sample"
+        ],
+        "heldSince": 0,
+        "capMinutes": 0,
+        "capExpiresAt": 0,
+        "capExpired": false
+      },
+      "keepAwake": {
+        "enabled": false,
+        "held": false,
+        "grantedClasses": [
+          "handle-lid-switch"
+        ],
+        "deniedClasses": [
+          "handle-lid-switch"
+        ],
+        "note": "sample"
+      }
+    }
+  },
+  "power.status.get": {
+    "methodId": "power.status.get",
+    "http": {
+      "method": "GET",
+      "path": "/api/power/status"
+    },
+    "status": 200,
+    "body": {
+      "platform": "sample",
+      "work": {
+        "held": false,
+        "grantedClasses": [
+          "handle-lid-switch"
+        ],
+        "deniedClasses": [
+          "handle-lid-switch"
+        ],
+        "reasons": [
+          "sample"
+        ],
+        "heldSince": 0,
+        "capMinutes": 0,
+        "capExpiresAt": 0,
+        "capExpired": false
+      },
+      "keepAwake": {
+        "enabled": false,
+        "held": false,
+        "grantedClasses": [
+          "handle-lid-switch"
+        ],
+        "deniedClasses": [
+          "handle-lid-switch"
+        ],
+        "note": "sample"
+      }
+    }
+  },
   "intelligence.snapshot": {
     "methodId": "intelligence.snapshot",
     "http": {

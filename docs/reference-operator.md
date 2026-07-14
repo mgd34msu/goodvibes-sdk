@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `407`
+- Methods: `409`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -32297,6 +32297,347 @@ Return the health integration snapshot.
     "integrationProblems"
   ],
   "additionalProperties": true
+}
+```
+
+#### `power.keepAwake.set`
+
+Turn the owner keep-awake toggle on or off: a daemon-held sleep inhibitor INDEPENDENT of work state, surviving surface closes, persisted as power.keepAwake. Covers idle + sleep + lid-switch classes where grantable; the returned state names any refused class honestly. No timers, no AC-only sub-options — the always-visible chip is the safety mechanism. Emits runtime.ops OPS_POWER_STATE_CHANGED so every attached surface updates its chip.
+
+- Title: `Set the Owner Keep-Awake Toggle`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/power/keep-awake`
+- Scopes: `write:config`
+- Emits events: `runtime.ops`
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "enabled": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "enabled"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "platform": {
+      "type": "string"
+    },
+    "work": {
+      "type": "object",
+      "properties": {
+        "held": {
+          "type": "boolean"
+        },
+        "grantedClasses": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "handle-lid-switch",
+              "idle",
+              "sleep"
+            ]
+          }
+        },
+        "deniedClasses": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "handle-lid-switch",
+              "idle",
+              "sleep"
+            ]
+          }
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "heldSince": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "capMinutes": {
+          "type": "number"
+        },
+        "capExpiresAt": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "capExpired": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "held",
+        "grantedClasses",
+        "deniedClasses",
+        "reasons",
+        "heldSince",
+        "capMinutes",
+        "capExpiresAt",
+        "capExpired"
+      ],
+      "additionalProperties": false
+    },
+    "keepAwake": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "held": {
+          "type": "boolean"
+        },
+        "grantedClasses": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "handle-lid-switch",
+              "idle",
+              "sleep"
+            ]
+          }
+        },
+        "deniedClasses": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "handle-lid-switch",
+              "idle",
+              "sleep"
+            ]
+          }
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "enabled",
+        "held",
+        "grantedClasses",
+        "deniedClasses",
+        "note"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "platform",
+    "work",
+    "keepAwake"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `power.status.get`
+
+The host sleep-ownership state: whether the automatic work inhibitor is held (and the live "held because X" reasons, cap, and expiry), and the owner keep-awake toggle with the classes the OS actually granted vs refused — a refused lid-switch block is stated honestly ("idle sleep blocked; lid-close suspend is controlled by your OS here"), never papered over. Surfaces render the always-visible "sleep disabled" chip from this state and the runtime.ops OPS_POWER_STATE_CHANGED event.
+
+- Title: `Get Sleep-Ownership State`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/power/status`
+- Scopes: `read:health`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "platform": {
+      "type": "string"
+    },
+    "work": {
+      "type": "object",
+      "properties": {
+        "held": {
+          "type": "boolean"
+        },
+        "grantedClasses": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "handle-lid-switch",
+              "idle",
+              "sleep"
+            ]
+          }
+        },
+        "deniedClasses": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "handle-lid-switch",
+              "idle",
+              "sleep"
+            ]
+          }
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "heldSince": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "capMinutes": {
+          "type": "number"
+        },
+        "capExpiresAt": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "capExpired": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "held",
+        "grantedClasses",
+        "deniedClasses",
+        "reasons",
+        "heldSince",
+        "capMinutes",
+        "capExpiresAt",
+        "capExpired"
+      ],
+      "additionalProperties": false
+    },
+    "keepAwake": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "held": {
+          "type": "boolean"
+        },
+        "grantedClasses": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "handle-lid-switch",
+              "idle",
+              "sleep"
+            ]
+          }
+        },
+        "deniedClasses": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "handle-lid-switch",
+              "idle",
+              "sleep"
+            ]
+          }
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "enabled",
+        "held",
+        "grantedClasses",
+        "deniedClasses",
+        "note"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "platform",
+    "work",
+    "keepAwake"
+  ],
+  "additionalProperties": false
 }
 ```
 
