@@ -58,7 +58,7 @@ export type WrfcOwnerDecisionAction =
  * chain — an intended stop, not a failure — and must read as cancelled at every
  * surface (chain row, owner row, cohort tally, completion narration).
  */
-export type WrfcChainFailureKind = 'transport' | 'other' | 'cancelled';
+export type WrfcChainFailureKind = 'transport' | 'other' | 'cancelled' | 'max_turns';
 
 export interface WrfcOwnerDecision {
   id: string;

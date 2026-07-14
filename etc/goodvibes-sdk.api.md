@@ -18283,7 +18283,10 @@ export type WorkflowEvent = {
     type: 'WORKFLOW_CHAIN_FAILED';
     chainId: string;
     reason: string;
-    failureKind?: 'transport' | 'other' | 'cancelled' | undefined;
+    failureKind?: 'transport' | 'other' | 'cancelled' | 'max_turns' | undefined;
+    turnLimit?: number | undefined;
+    turnLimitSource?: 'default' | 'spawn-override' | 'policy-bound' | undefined;
+    membersSettled?: boolean | undefined;
 } | {
     type: 'WORKFLOW_AUTO_COMMITTED';
     chainId: string;

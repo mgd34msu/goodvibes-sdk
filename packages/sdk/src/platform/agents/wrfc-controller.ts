@@ -56,6 +56,7 @@ import {
   type WrfcCommitScope,
 } from './wrfc-config.js';
 import { isTransportFailureMessage } from '../types/errors.js';
+import { isTurnBudgetExhaustedMessage } from './turn-budget.js';
 import {
   buildEngineerConstraintAddendum,
 } from './wrfc-prompt-addenda.js';
@@ -864,7 +865,13 @@ export class WrfcController {
       return;
     }
     this.setWrfcWorkPlanTaskStatus(chain, agentId, 'failed', reason);
-    this.failChain(chain, reason, isTransportFailureMessage(reason) ? 'transport' : 'other');
+    // A member that spent its whole turn budget is a typed turn-budget exhaustion
+    // (set at the source on the record), not an infrastructure error — carry the
+    // applied limit + source onto the outcome so a consumer never regexes prose.
+    const failedRecord = this.agentManager.getStatus(agentId);
+    const isTurnBudget = failedRecord?.failureReason === 'max_turns' || isTurnBudgetExhaustedMessage(reason);
+    const failureKind = isTransportFailureMessage(reason) ? 'transport' : isTurnBudget ? 'max_turns' : 'other';
+    this.failChain(chain, reason, failureKind, failedRecord?.turnBudget);
   }
 
   /**
@@ -1052,11 +1059,7 @@ export class WrfcController {
 
     chain.reviewScores.push(review.score);
     if (passed) {
-      this.appendOwnerDecision(chain, 'review_passed', `Review score ${review.score}/10 met threshold ${threshold}/10`, {
-        agentId: chain.reviewerAgentId,
-        role: 'reviewer',
-        reviewScore: review.score,
-      });
+      this.appendOwnerDecision(chain, 'review_passed', `Review score ${review.score}/10 met threshold ${threshold}/10`, { agentId: chain.reviewerAgentId, role: 'reviewer', reviewScore: review.score });
       this.transition(chain, 'awaiting_gates');
       await this.checkAndRunGatesForAll();
       return;
@@ -1092,11 +1095,7 @@ export class WrfcController {
       return;
     }
 
-    this.appendOwnerDecision(chain, 'review_failed', `Review score ${review.score}/10 did not pass full-scope WRFC review`, {
-      agentId: chain.reviewerAgentId,
-      role: 'reviewer',
-      reviewScore: review.score,
-    });
+    this.appendOwnerDecision(chain, 'review_failed', `Review score ${review.score}/10 did not pass full-scope WRFC review`, { agentId: chain.reviewerAgentId, role: 'reviewer', reviewScore: review.score });
     this.startFix(chain, review);
   }
 
@@ -1650,7 +1649,20 @@ export class WrfcController {
     return [subject, ...bodyLines].join('\n');
   }
 
-  private failChain(chain: WrfcChain, reason: string, failureKind: NonNullable<WrfcChain['failureKind']> = 'other'): void {
+  /** Whether every chain member (owner + children) is terminal (gone or in a terminal status). */
+  private allChainMembersTerminal(chain: WrfcChain): boolean {
+    return (chain.allAgentIds ?? [chain.ownerAgentId]).every((agentId) => {
+      const s = this.agentManager.getStatus(agentId)?.status;
+      return s === undefined || s === 'completed' || s === 'failed' || s === 'cancelled';
+    });
+  }
+
+  private failChain(
+    chain: WrfcChain,
+    reason: string,
+    failureKind: NonNullable<WrfcChain['failureKind']> = 'other',
+    turnBudget?: { limit: number; source: 'default' | 'spawn-override' | 'policy-bound' } | undefined,
+  ): void {
     if (chain.state === 'pending') {
       this.chainQueue = this.chainQueue.filter((queued) => queued.record.id !== chain.ownerAgentId);
     }
@@ -1678,12 +1690,17 @@ export class WrfcController {
     chain.completedAt = Date.now();
     this.setWrfcWorkPlanTaskStatus(chain, chain.ownerAgentId, 'failed', reason);
     this.cancelRunningChildren(chain);
-    this.appendOwnerDecision(chain, 'chain_failed', reason, {
-      agentId: chain.ownerAgentId,
-    });
+    this.appendOwnerDecision(chain, 'chain_failed', reason, { agentId: chain.ownerAgentId });
     this.completeOwnerAgent(chain, 'failed', reason);
     this.workmap.append({ ts: new Date().toISOString(), wrfcId: chain.id, event: 'chain_failed', reason });
-    emitWorkflowChainFailed(this.runtimeBus, createWrfcWorkflowContext(this.sessionId, chain.id), { chainId: chain.id, reason, failureKind });
+    emitWorkflowChainFailed(this.runtimeBus, createWrfcWorkflowContext(this.sessionId, chain.id), {
+      chainId: chain.id,
+      reason,
+      failureKind,
+      ...(failureKind === 'max_turns' && turnBudget ? { turnLimit: turnBudget.limit, turnLimitSource: turnBudget.source } : {}),
+      // Explicit quiescence signal (cancels are only dispatched above); false ⇒ await members' terminal AGENT_* events.
+      membersSettled: this.allChainMembersTerminal(chain),
+    });
 
     logger.error('WrfcController.failChain', { chainId: chain.id, reason });
     this.scheduleChainCleanup(chain);
@@ -1745,9 +1762,7 @@ export class WrfcController {
     chain.completedAt = Date.now();
     chain.ownerTerminalEmitted = true;
     this.setWrfcWorkPlanTaskStatus(chain, chain.ownerAgentId, 'cancelled', narration);
-    this.appendOwnerDecision(chain, 'chain_cancelled', narration, {
-      agentId: chain.ownerAgentId,
-    });
+    this.appendOwnerDecision(chain, 'chain_cancelled', narration, { agentId: chain.ownerAgentId });
     const owner = this.agentManager.getStatus(chain.ownerAgentId);
     if (owner) {
       owner.status = 'cancelled';
@@ -1905,9 +1920,7 @@ export class WrfcController {
       template: ownerRecord.template,
       wrfcId: chain.id,
     });
-    this.appendOwnerDecision(chain, 'chain_created', 'WRFC owner created for original ask', {
-      agentId: ownerRecord.id,
-    });
+    this.appendOwnerDecision(chain, 'chain_created', 'WRFC owner created for original ask', { agentId: ownerRecord.id });
     this.upsertWrfcWorkPlanTask(chain, 'owner', ownerRecord, 'pending');
     return chain;
   }
@@ -2454,11 +2467,7 @@ export class WrfcController {
     }
     if (passed) {
       subtask.state = 'passed';
-      this.appendOwnerDecision(chain, 'subtask_review_passed', `Sub-deliverable ${subtask.id} passed review with ${review.score}/10`, {
-        agentId: subtask.reviewerAgentId,
-        role: 'reviewer',
-        reviewScore: review.score,
-      });
+      this.appendOwnerDecision(chain, 'subtask_review_passed', `Sub-deliverable ${subtask.id} passed review with ${review.score}/10`, { agentId: subtask.reviewerAgentId, role: 'reviewer', reviewScore: review.score });
       if ((chain.subtasks ?? []).every((candidate) => candidate.state === 'passed')) {
         this.startIntegration(chain);
       }
@@ -2472,11 +2481,7 @@ export class WrfcController {
       return;
     }
 
-    this.appendOwnerDecision(chain, 'subtask_review_failed', `Sub-deliverable ${subtask.id} review did not pass`, {
-      agentId: subtask.reviewerAgentId,
-      role: 'reviewer',
-      reviewScore: review.score,
-    });
+    this.appendOwnerDecision(chain, 'subtask_review_failed', `Sub-deliverable ${subtask.id} review did not pass`, { agentId: subtask.reviewerAgentId, role: 'reviewer', reviewScore: review.score });
     this.startCompoundSubtaskFix(chain, subtask, review);
   }
 
@@ -2654,9 +2659,7 @@ export class WrfcController {
     const summary = commitNote
       ? `WRFC chain ${chain.id} passed (${reviewOutcome}); ${commitNote}`
       : `WRFC chain ${chain.id} passed (${reviewOutcome})`;
-    this.appendOwnerDecision(chain, 'chain_passed', 'WRFC full-scope review and quality gates passed', {
-      agentId: chain.ownerAgentId,
-    });
+    this.appendOwnerDecision(chain, 'chain_passed', 'WRFC full-scope review and quality gates passed', { agentId: chain.ownerAgentId });
     this.setWrfcWorkPlanTaskStatus(chain, chain.ownerAgentId, 'done', 'WRFC full-scope review and quality gates passed');
     this.completeOwnerAgent(chain, 'completed', summary);
     emitWrfcChainPassed(this.runtimeBus, this.sessionId, chain.id);

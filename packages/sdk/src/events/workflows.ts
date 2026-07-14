@@ -54,10 +54,27 @@ export type WorkflowEvent =
        * network/transport error that had already exhausted its automatic retry
        * budget (see WrfcChain.transportRetryCount); 'cancelled' means an operator
        * killed/interrupted the chain (an intended stop, NOT a failure — narrate it
-       * as cancelled); absent/'other' covers ordinary review/gate rejections and
-       * anything else. Optional so existing consumers keep working unchanged.
+       * as cancelled); 'max_turns' means a member agent spent its whole turn
+       * budget (a machine-readable turn-budget exhaustion, distinct from an
+       * infrastructure error, so a consumer never has to regex the reason);
+       * absent/'other' covers ordinary review/gate rejections and anything else.
+       * Optional so existing consumers keep working unchanged.
        */
-      failureKind?: 'transport' | 'other' | 'cancelled' | undefined;
+      failureKind?: 'transport' | 'other' | 'cancelled' | 'max_turns' | undefined;
+      /** On a 'max_turns' failure: the turn ceiling that applied. */
+      turnLimit?: number | undefined;
+      /** On a 'max_turns' failure: which input set the ceiling (default / spawn-override / policy-bound). */
+      turnLimitSource?: 'default' | 'spawn-override' | 'policy-bound' | undefined;
+      /**
+       * Whether EVERY chain member (owner + children) was already terminal when
+       * this outcome was emitted — the explicit quiescence signal. True means the
+       * outcome landed at true quiescence and a consumer can finalize immediately;
+       * false means members are still winding down (their own terminal AGENT_*
+       * events are still to come), so a consumer that needs full quiescence should
+       * await those before finalizing rather than polling. Absent on consumers
+       * that predate the field.
+       */
+      membersSettled?: boolean | undefined;
     }
   | { type: 'WORKFLOW_AUTO_COMMITTED'; chainId: string; commitHash?: string | undefined }
   | { type: 'WORKFLOW_CASCADE_ABORTED'; chainId: string; reason: string }
