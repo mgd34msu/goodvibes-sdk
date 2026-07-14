@@ -9,7 +9,6 @@ import type { HookEvent } from '../hooks/types.js';
 import { getManagedSettingLock } from '../runtime/settings/control-plane.js';
 import { requireSurfaceRoot, resolveSharedDirectory, resolveSurfaceDirectory, resolveSurfaceSharedFile } from '../runtime/surface-root.js';
 import { summarizeError } from '../utils/error-display.js';
-import { toRecord } from '../utils/record-coerce.js';
 import { FeatureAnnouncementStore, featureAnnouncementsPath } from '../runtime/feature-announcements.js';
 import { migrateDangerDaemonAlias, migrateLegacyFeatureToggles } from './migrations.js';
 import {
@@ -20,6 +19,12 @@ import {
   readSharedTierFile,
   removeSharedKey,
 } from './shared-config-tier.js';
+import {
+  deleteRawDotPath,
+  readRawSettingsFile,
+  stripFrozenDefaults,
+  writeRawDotPath,
+} from './settings-io.js';
 
 /** Deep immutable type — prevents mutation of nested objects returned from getAll(). */
 export type DeepReadonly<T> = {
@@ -282,7 +287,7 @@ export class ConfigManager {
       if (useSharedTier) {
         persistSharedKey(this.sharedTierPath!, key, value);
       } else {
-        this.save();
+        this.persistGlobalKey(key, value);
       }
     } catch (error) {
       parent[field] = previousValue;
@@ -441,10 +446,34 @@ export class ConfigManager {
     return CONFIG_SCHEMA;
   }
 
-  /** Persist current config to global TUI settings file. */
-  save(): void {
+  /**
+   * Persist a single key to the global settings file by read-merge-write, so
+   * hand edits and other keys survive and no default reaches disk unless it was
+   * explicitly set. Generalizes the shared-tier / project per-key pattern.
+   */
+  private persistGlobalKey(key: ConfigKey, value: unknown): void {
+    const raw = readRawSettingsFile(this.configPath);
+    writeRawDotPath(raw, key, value);
+    this.writeRawGlobal(raw);
+  }
+
+  /** Write a raw settings object to the global settings file. */
+  private writeRawGlobal(raw: Record<string, unknown>): void {
     mkdirSync(dirname(this.configPath), { recursive: true });
-    writeFileSync(this.configPath, JSON.stringify(this.config, null, 2) + '\n', 'utf-8');
+    writeFileSync(this.configPath, JSON.stringify(raw, null, 2) + '\n', 'utf-8');
+  }
+
+  /**
+   * Persist current config to the global settings file, writing only the keys
+   * that differ from the shipped defaults (plus unknown keys) — a whole-config
+   * write no longer freezes every default onto disk. Resolved config is
+   * unchanged on reload (defaults are re-merged in).
+   */
+  save(): void {
+    const { config: minimal } = stripFrozenDefaults(
+      structuredClone(this.config) as unknown as Record<string, unknown>,
+    );
+    this.writeRawGlobal(minimal);
   }
 
   /** Persist current config to the project-level surface settings file. */
@@ -452,8 +481,11 @@ export class ConfigManager {
     if (!this.projectConfigPath) {
       throw new Error('ConfigManager.saveProject requires an explicit workingDir.');
     }
+    const { config: minimal } = stripFrozenDefaults(
+      structuredClone(this.config) as unknown as Record<string, unknown>,
+    );
     mkdirSync(dirname(this.projectConfigPath), { recursive: true });
-    writeFileSync(this.projectConfigPath, JSON.stringify(this.config, null, 2) + '\n', 'utf-8');
+    writeFileSync(this.projectConfigPath, JSON.stringify(minimal, null, 2) + '\n', 'utf-8');
   }
 
   /** Load config from disk: global then project (project wins). Deep-merges with defaults. */
@@ -463,8 +495,11 @@ export class ConfigManager {
       try {
         const raw = readFileSync(this.configPath, 'utf-8');
         const parsed = JSON.parse(raw) as Record<string, unknown>;
-        const migrated = this.applyLegacySettingsMigration(
-          this.applyDangerDaemonMigration(parsed, this.configPath),
+        const migrated = this.applyDefaultStripMigration(
+          this.applyLegacySettingsMigration(
+            this.applyDangerDaemonMigration(parsed, this.configPath),
+            this.configPath,
+          ),
           this.configPath,
         );
 
@@ -479,8 +514,11 @@ export class ConfigManager {
       try {
         const raw = readFileSync(this.projectConfigPath, 'utf-8');
         const parsed = JSON.parse(raw) as Record<string, unknown>;
-        const migrated = this.applyLegacySettingsMigration(
-          this.applyDangerDaemonMigration(parsed, this.projectConfigPath),
+        const migrated = this.applyDefaultStripMigration(
+          this.applyLegacySettingsMigration(
+            this.applyDangerDaemonMigration(parsed, this.projectConfigPath),
+            this.projectConfigPath,
+          ),
           this.projectConfigPath,
         );
         this.config = sanitizeConfigShape(deepMerge(this.config, migrated) as GoodVibesConfig);
@@ -612,36 +650,81 @@ export class ConfigManager {
   }
 
   /**
-   * Merge a partial patch into a config category and auto-save.
-   *
-   * This is the correct way to update array or object fields within a category
-   * that cannot be expressed as a scalar dot-path key (e.g. notifications.webhookUrls).
-   * The patch is shallow-merged into the existing category value.
+   * One invisible pass that strips previously-frozen defaults (leaves equal to
+   * the shipped default) from an existing file the old whole-config save()
+   * baked them into, keeping genuine user values and unknown keys. Rewrites the
+   * minimized file and drops a one-line receipt through the announce-once queue
+   * exactly once per file; an already-minimal file is left untouched.
+   */
+  private applyDefaultStripMigration(parsed: Record<string, unknown>, sourcePath: string): Record<string, unknown> {
+    const { config: stripped, changed } = stripFrozenDefaults(parsed);
+    if (!changed) return parsed;
+    try {
+      writeFileSync(sourcePath, JSON.stringify(stripped, null, 2) + '\n', 'utf-8');
+    } catch (err) {
+      // Resolved config is identical either way; the strip re-runs idempotently.
+      logger.warn(`Settings default-strip could not be persisted to ${sourcePath}: ${summarizeError(err)}`);
+      return stripped;
+    }
+    const receiptText = `Settings tidied: previously-frozen default values were removed from ${sourcePath}; only your explicit settings remain on disk.`;
+    logger.info(receiptText);
+    try {
+      new FeatureAnnouncementStore(featureAnnouncementsPath(this)).record(
+        `settings-defaults-stripped:${sourcePath}`,
+        receiptText,
+      );
+    } catch (err) {
+      logger.warn(`Settings default-strip receipt could not be queued: ${summarizeError(err)}`);
+    }
+    return stripped;
+  }
+
+  /**
+   * Merge a partial patch into a config category and auto-save — the correct
+   * way to update array/object fields that cannot be expressed as a scalar
+   * dot-path key (e.g. notifications.webhookUrls). Shallow-merged.
    */
   mergeCategory<C extends keyof GoodVibesConfig>(category: C, patch: Partial<GoodVibesConfig[C]>): void {
     const current = this.config[category]! as Record<string, unknown>;
     const patchObj = patch as Record<string, unknown>;
+    const raw = readRawSettingsFile(this.configPath);
+    const categoryName = String(category);
+    let rawCategory = raw[categoryName];
+    if (rawCategory === null || typeof rawCategory !== 'object' || Array.isArray(rawCategory)) {
+      rawCategory = {};
+      raw[categoryName] = rawCategory;
+    }
+    const rawCat = rawCategory as Record<string, unknown>;
+    // Only the patched keys reach disk — the category's default sub-keys are
+    // never frozen in.
     for (const key of Object.keys(patchObj)) {
       if (patchObj[key] !== undefined) {
         current[key] = patchObj[key];
+        rawCat[key] = patchObj[key];
       }
     }
-    this.save();
+    if (Object.keys(rawCat).length === 0) delete raw[categoryName];
+    this.writeRawGlobal(raw);
   }
 
   /**
-   * Remove a key from an object-shaped category and auto-save.
-   *
-   * mergeCategory can only set keys (undefined patch values are skipped, and
-   * getCategory returns a clone, so delete-then-merge is a silent no-op) —
-   * clearing an override, e.g. a feature-flag entry back to its default,
-   * requires this explicit removal.
+   * Remove a key from an object-shaped category and auto-save. mergeCategory
+   * can only set keys, so clearing an override (e.g. a feature-flag entry back
+   * to its default) requires this explicit removal.
    */
   removeCategoryKey<C extends keyof GoodVibesConfig>(category: C, key: string): void {
     const current = this.config[category]! as Record<string, unknown>;
     if (!(key in current)) return;
     delete current[key];
-    this.save();
+    const raw = readRawSettingsFile(this.configPath);
+    const categoryName = String(category);
+    const rawCategory = raw[categoryName];
+    if (rawCategory !== null && typeof rawCategory === 'object' && !Array.isArray(rawCategory)) {
+      const rawCat = rawCategory as Record<string, unknown>;
+      delete rawCat[key];
+      if (Object.keys(rawCat).length === 0) delete raw[categoryName];
+    }
+    this.writeRawGlobal(raw);
   }
 
   /**
@@ -651,14 +734,18 @@ export class ConfigManager {
   reset(key?: ConfigKey): void {
     if (key === undefined) {
       this.config = cloneDefaultConfig();
+      // A full reset means no explicit keys remain — clear the file to defaults.
+      this.writeRawGlobal({});
     } else {
       const schema = CONFIG_SCHEMA.find(s => s.key === key);
       if (!schema) throw new ConfigError(`Unknown config key: ${key}`);
       const livePath = this.resolvePath(key);
-      const defaultPath = resolveArbitraryPath(toRecord(DEFAULT_CONFIG_SNAPSHOT), key);
-      livePath.parent[livePath.field] = structuredClone(defaultPath.parent[defaultPath.field]);
+      livePath.parent[livePath.field] = structuredClone(readDotPath(DEFAULT_CONFIG_SNAPSHOT, key).value);
+      // Remove the explicit on-disk value so the key falls back to its default.
+      const raw = readRawSettingsFile(this.configPath);
+      deleteRawDotPath(raw, key);
+      this.writeRawGlobal(raw);
     }
-    this.save();
     // Reset removes the shared-tier OVERRIDE for any shared key, so the key falls
     // back to its surface-local/default value — otherwise a stale shared value
     // would re-overlay on the next load and defeat the reset.
@@ -695,26 +782,4 @@ function deepMerge(target: unknown, source: unknown): unknown {
 
 function isObject(val: unknown): val is Record<string, unknown> {
   return val !== null && typeof val === 'object' && !Array.isArray(val);
-}
-
-function resolveArbitraryPath(
-  root: Record<string, unknown>,
-  key: string,
-): { parent: Record<string, unknown>; field: string } {
-  const parts = key.split('.');
-  let cursor: unknown = root;
-  for (let i = 0; i < parts.length - 1; i++) {
-    const part = parts[i]!;
-    if (cursor == null || typeof cursor !== 'object' || !(part in (cursor as Record<string, unknown>))) {
-      throw new Error(`Invalid config path: section '${parts.slice(0, i + 1).join('.')}' does not exist`);
-    }
-    cursor = (cursor as Record<string, unknown>)[part];
-  }
-  if (cursor == null || typeof cursor !== 'object') {
-    throw new Error(`Invalid config path: section '${parts.slice(0, -1).join('.')}' does not exist`);
-  }
-  return {
-    parent: cursor as Record<string, unknown>,
-    field: parts[parts.length - 1]!,
-  };
 }
