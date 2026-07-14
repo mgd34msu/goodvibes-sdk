@@ -1,5 +1,5 @@
 /**
- * wrfc-planned-fix.ts — shared helpers for the planned-fix path (1.4.3), used
+ * wrfc-planned-fix.ts — shared helpers for the planned-fix path, used
  * by both the chain-level and compound-subtask fix cycles in WrfcController.
  * The single-fixer prompt path is gone; these helpers keep the controller
  * under its line budget while both cycles share one honest shape.

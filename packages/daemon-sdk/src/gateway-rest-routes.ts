@@ -117,7 +117,7 @@ export const GATEWAY_REST_ROUTES: readonly GatewayRestRoute[] = [
   // dispatchDaemonApiRoutes tries the gateway-REST table BEFORE the operator
   // dispatcher, this entry is what answers the URL.
   route('GET', '/api/runtime/metrics', 'runtime.metrics.get'),
-  // fleet.graph.get — the workstream task-graph view (1.4.3).
+  // fleet.graph.get — the workstream task-graph view.
   route('GET', '/api/fleet/workstreams/{workstreamId}/graph', 'fleet.graph.get'),
   // power.* — sleep ownership: the chip state + the owner keep-awake toggle.
   route('GET', '/api/power/status', 'power.status.get'),

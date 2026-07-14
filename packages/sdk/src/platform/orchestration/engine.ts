@@ -2,7 +2,7 @@
 
 /**
  * OrchestrationEngine (see CHANGELOG 0.38.0) — owns Workstream state and
- * drives the pipeline; the ONE engine the 1.4.3 fix graphs also feed. The
+ * drives the pipeline; the ONE engine review-derived fix graphs also feed. The
  * tick loop is reactive (every phase completion re-ticks); items are marked
  * 'in-phase' synchronously before any await, so re-entrant ticks never race
  * a concurrent claim.

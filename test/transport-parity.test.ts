@@ -121,7 +121,7 @@ const DIRECT_TRANSPORT_COVERAGE: Record<string, string> = {
   // (a webui diff-review cockpit).
   'fleet.attempts.list': 'http-only',
   'fleet.attempts.pick': 'http-only',
-  // fleet.graph.get (the 1.4.3 task-graph view): same in-process story.
+  // fleet.graph.get (the workstream task-graph view): same in-process story.
   'fleet.graph.get': 'http-only',
   'fleet.attempts.judge': 'http-only',
   // fleet.conflicts.* (merge-conflict rows + the one-action resolution): same

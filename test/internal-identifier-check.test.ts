@@ -34,6 +34,11 @@ describe('internal-identifier rule', () => {
       'covers ' + 'A1' + '/' + 'A2' + ' together', // slash-chained lettered ids
       'see ' + 'WO-' + '0B for details', // digit-then-letter work-order id
       'see ' + 'WO-' + '207b for details', // digits-then-lowercase-letter work-order id
+      // Contextual plan-item shapes (the label class a shipped-comment sweep
+      // found after the first cut of this rule):
+      'recorded in plan ' + 'ite' + 'm 1.4.3 of the roadmap', // "plan item N.N.N"
+      'this extends ' + 'ite' + 'm 2.3 as ruled', // bare "item N.N"
+      'per ' + 'Ite' + 'm 1.4.2, the gate holds', // case-insensitive
     ];
     for (const text of banned) {
       const violations = violationsFor(text);
@@ -70,6 +75,12 @@ describe('internal-identifier rule', () => {
       'RestartSteps=8 with RestartMaxDelaySec=300', // plain unit directives
       'systemd 254 supports escalating restart delays', // version numbers
       'HTTP 400/404/405 are handled distinctly', // numeric slash chains
+      // Semver / release-version strings must NEVER trip the plan-item shape —
+      // versions are the doctrine's sanctioned provenance:
+      "isDaemonVersionCompatible('1.4.2', '1.0.0') stays true", // bare semver args
+      'Full-detach catalog (1.2.0) reads serialize a bare array', // parenthesized release version
+      'requires v1.8.0 or newer', // v-prefixed version
+      'the checklist item has 1.5 points', // "item" not directly adjoining the number
     ];
     for (const text of legal) {
       expect(violationsFor(text)).toEqual([]);

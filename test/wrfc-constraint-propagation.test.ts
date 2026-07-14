@@ -246,7 +246,7 @@ async function seedChainWithConstraints(
   opts?: { scoreThreshold?: number; maxFixAttempts?: number; fixBehavior?: 'merged' | 'failed' | 'pending' },
 ): Promise<SeededChain> {
   const h = createHarness(opts);
-  // The planned-fix path (1.4.3): review failures run a workstream through the
+  // The planned-fix path: review failures run a workstream through the
   // stub runner. 'pending' (default) parks the chain honestly in 'fixing'.
   const fixRuns = installStubFixRunner(h.controller, opts?.fixBehavior ?? 'pending');
   const ownerRecord = h.addAgent('owner-seed', 'seed task');
