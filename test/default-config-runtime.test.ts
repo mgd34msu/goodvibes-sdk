@@ -82,12 +82,12 @@ describe('DEFAULT_CONFIG registers every recently-added domain', () => {
     const get = manager.get.bind(manager) as unknown as (k: string) => unknown;
     // Before the domain was registered these threw "section 'learning' does not exist".
     expect(() => get('learning.consolidation.enabled')).not.toThrow();
-    expect(get('learning.consolidation.enabled')).toBe(false);
+    expect(get('learning.consolidation.enabled')).toBe(true);
     expect(get('learning.consolidation.decayAgeDays')).toBe(45);
-    expect(() => manager.setDynamic('learning.consolidation.enabled' as Parameters<typeof manager.setDynamic>[0], true)).not.toThrow();
+    expect(() => manager.setDynamic('learning.consolidation.enabled' as Parameters<typeof manager.setDynamic>[0], false)).not.toThrow();
     // Resolver behavior is unchanged: with a schema default present it reads the
-    // same values it previously fell back to.
-    expect(resolveMemoryConsolidationConfig(manager)).toEqual({ ...DEFAULT_MEMORY_CONSOLIDATION_CONFIG, enabled: true });
+    // same values it previously fell back to (enabled reflects the set() above).
+    expect(resolveMemoryConsolidationConfig(manager)).toEqual({ ...DEFAULT_MEMORY_CONSOLIDATION_CONFIG, enabled: false });
   });
 });
 

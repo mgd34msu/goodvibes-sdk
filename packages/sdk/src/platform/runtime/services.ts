@@ -46,6 +46,7 @@ import { MemoryStore } from '../state/memory-store.js';
 import { CodeIndexStore } from '../state/code-index-store.js';
 import { CodeIndexReindexScheduler } from '../state/code-index-reindex.js';
 import { StoreSnapshotScheduler } from '../state/store-snapshots.js';
+import { MemoryConsolidationScheduler } from '../state/memory-consolidation-scheduler.js';
 import { runStartupAppendOnlySweep } from './retention/append-only-registry.js';
 import { resolveMemoryVectorDbPath } from '../state/memory-vector-store.js';
 import type { RuntimeEventBus } from './events/index.js';
@@ -178,21 +179,19 @@ export interface RuntimeServices {
   readonly memoryStore: MemoryStore;
   readonly memoryRegistry: MemoryRegistry;
   /**
-   * Repo source-tree code index (Stage A). Constructed and
-   * schema-initialized eagerly like memoryStore, but the actual walk/chunk/
-   * embed build is NOT auto-triggered here — call `.scheduleBuild()` from an
-   * explicit call site (a `/codebase reindex` command, a session-start hook,
-   * etc.) once one exists. Auto-triggering from every RuntimeServices
-   * construction would run a full source-tree walk against whatever
-   * workingDirectory a caller passes in — including the hundreds of existing
-   * tests that build RuntimeServices fixtures — which is both slow and
-   * surprising for embedders that never asked for it.
+   * Repo source-tree code index (Stage A). Schema-initialized eagerly like
+   * memoryStore, but the walk/chunk/embed build is NOT auto-triggered here —
+   * call `.scheduleBuild()` from an explicit site; auto-triggering on every
+   * RuntimeServices construction would walk arbitrary workingDirectories
+   * (including every test fixture), slow and surprising for embedders.
    */
   readonly codeIndexStore: CodeIndexStore;
   /** Stage B tool-site incremental reindex scheduler (bound to codeIndexStore). */
   readonly codeIndexReindexScheduler: CodeIndexReindexScheduler;
   /** Daily snapshots of every SQLite store this runtime writes, with bounded retention; unref'd timers (same lifecycle posture as processRegistry — hosts that tear down a runtime stop() it themselves). */
   readonly storeSnapshotScheduler: StoreSnapshotScheduler;
+  /** Idle+schedule memory consolidation driver (this runtime is the store's single writer); unref'd timers, stop() on teardown. */
+  readonly memoryConsolidationScheduler: MemoryConsolidationScheduler;
   readonly serviceRegistry: ServiceRegistry;
   readonly secretsManager: SecretsManager;
   /** Relay WebAuthn step-up ceremony service (shared by the stepup.* verbs and the relay gate's verifier). */
@@ -280,22 +279,12 @@ export interface RuntimeServices {
   readonly workspaceCheckpointManager: WorkspaceCheckpointManager;
   readonly integrationHelpers: IntegrationHelperService;
   /**
-   * Re-root all path-bound services to a new working directory.
-   *
-   * Called by WorkspaceSwapManager.requestSwap() after the new directory has
-   * been verified and its subdirectories created.
-   *
-   * Stores that are re-rooted in-process:
-   * - MemoryStore (memory.sqlite + vector index): closed and reopened at new path.
-   * - ProjectIndex: flushed at its current path, then reset to the new directory.
-   *
-   * Stores that require a process restart to fully re-root emit a warn-level log
-   * naming the subsystem. They keep using their current filesystem path until the daemon is
-   * restarted with --working-dir=<newDir> (or the persisted daemon-settings.json
-   * value is picked up at startup).
-   *
-   * @throws if MemoryStore or ProjectIndex reroot fails. Propagated as INVALID_PATH
-   * by WorkspaceSwapManager.
+   * Re-root all path-bound services to a new working directory (called by
+   * WorkspaceSwapManager.requestSwap after verification). Re-rooted in-process:
+   * MemoryStore (closed/reopened) and ProjectIndex (flushed/reset). Stores that
+   * need a process restart to re-root emit a warn-level log naming the
+   * subsystem and keep their current path until the daemon restarts.
+   * @throws if MemoryStore or ProjectIndex reroot fails (INVALID_PATH).
    */
   rerootStores(newWorkingDir: string): Promise<void>;
 }
@@ -476,6 +465,11 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   storeSnapshotScheduler.start();
   // Start-time janitor: one retention pass over every registered append-only store (best-effort).
   runStartupAppendOnlySweep(workingDirectory, surfaceRoot, (k) => configManager.get(k as never));
+  // Memory consolidation runs HERE — this runtime is the memory store's single
+  // writer. Idle trigger (no busy broker sessions) + slow schedule fallback;
+  // reversible outcomes only, receipts retained, learning.consolidation.* tunes it.
+  const memoryConsolidationScheduler = new MemoryConsolidationScheduler({ memoryRegistry, configSource: configManager, isIdle: () => sessionBroker.countBusySessions() === 0 });
+  memoryConsolidationScheduler.start();
   const deliveryManager = new AutomationDeliveryManager({
     configManager,
     secretsManager,
@@ -869,6 +863,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     codeIndexStore,
     codeIndexReindexScheduler,
     storeSnapshotScheduler,
+    memoryConsolidationScheduler,
     serviceRegistry,
     secretsManager,
     stepUpService,
