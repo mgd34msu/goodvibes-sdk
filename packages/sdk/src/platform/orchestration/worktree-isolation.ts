@@ -242,12 +242,19 @@ export function createWorktreeIsolationManager(deps: WorktreeIsolationManagerDep
       if (outcome.status === 'merged') {
         item.mergeState = 'merged';
         item.mergeHash = outcome.hash;
+        // A retry that lands clears the prior conflict markers — the tree is
+        // reclaimed below and nothing may keep reading as conflicted.
+        item.conflictFiles = undefined;
+        item.worktreeKept = false;
         deps.emit({ type: 'item-merged', workstreamId: workstream.id, itemId: item.id, branch: instance.branch, hash: outcome.hash });
         await removeWorktree(workstream, item, instance, false);
         return;
       }
       if (outcome.status === 'conflict') {
         item.mergeState = 'conflict';
+        // Structured list first (a resolution session seeds from DATA), the
+        // prose blockedReason kept for display compatibility.
+        item.conflictFiles = [...outcome.files];
         item.blockedReason = `merge-conflict: ${outcome.files.join(', ') || 'unknown files'}`;
         deps.emit({
           type: 'item-merge-conflict', workstreamId: workstream.id, itemId: item.id,
@@ -261,6 +268,8 @@ export function createWorktreeIsolationManager(deps: WorktreeIsolationManagerDep
       // hash — there is no merge commit to report) and the worktree is
       // reclaimed like any other successfully-integrated item.
       item.mergeState = 'merged';
+      item.conflictFiles = undefined;
+      item.worktreeKept = false;
       await removeWorktree(workstream, item, instance, false);
     } catch (error) {
       logger.error('worktree-isolation: integration attempt threw', { itemId: item.id, error: summarizeError(error) });

@@ -134,6 +134,8 @@ export const OPERATOR_METHOD_IDS = [
   "fleet.attempts.judge",
   "fleet.attempts.list",
   "fleet.attempts.pick",
+  "fleet.conflicts.list",
+  "fleet.conflicts.resolve",
   "fleet.list",
   "fleet.snapshot",
   "fleet.unarchive",
@@ -395,6 +397,7 @@ export const OPERATOR_METHOD_IDS = [
   "workspaces.registrations.list",
   "workspaces.registrations.remove",
   "workspaces.resolve",
+  "worktrees.discard",
   "worktrees.setup.run",
   "worktrees.snapshot",
 ] as const;

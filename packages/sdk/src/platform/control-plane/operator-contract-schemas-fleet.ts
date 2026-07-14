@@ -88,7 +88,9 @@ const PROCESS_SESSION_REF_SCHEMA = objectSchema({
 }, []);
 
 const PROCESS_ATTENTION_SCHEMA = objectSchema({
-  reason: enumSchema(['approval', 'input']),
+  // ONE waiting-on-human class: approval ask, operator input, a ready
+  // best-of-N pick, and a merge conflict are all first-class reasons.
+  reason: enumSchema(['approval', 'input', 'pick', 'conflict']),
   detail: STRING_SCHEMA,
 }, ['reason']);
 
@@ -413,14 +415,57 @@ export const FLEET_ATTEMPTS_LIST_OUTPUT_SCHEMA = objectSchema({
 export const FLEET_ATTEMPTS_PICK_INPUT_SCHEMA = objectSchema({
   groupId: STRING_SCHEMA,
   winnerItemId: STRING_SCHEMA,
+  // The confirm step of the one-act pick: absent/false returns the group's
+  // candidates + diffs WITHOUT applying (the confirm preview); true applies.
+  confirm: BOOLEAN_SCHEMA,
 }, ['groupId', 'winnerItemId']);
 
 export const FLEET_ATTEMPTS_PICK_OUTPUT_SCHEMA = objectSchema({
+  // True when the winner was actually merged and the losers cleaned; false is
+  // the structured confirm refusal carrying the group so a surface renders
+  // choice -> confirm -> applied through this ONE verb.
+  applied: BOOLEAN_SCHEMA,
   groupId: STRING_SCHEMA,
   winnerItemId: STRING_SCHEMA,
   loserItemIds: STRING_LIST_SCHEMA,
   auto: BOOLEAN_SCHEMA,
-}, ['groupId', 'winnerItemId', 'loserItemIds', 'auto']);
+  requiresConfirm: BOOLEAN_SCHEMA,
+  group: HELD_MERGE_GROUP_SCHEMA,
+}, ['applied', 'groupId', 'winnerItemId']);
+
+// ── Merge-conflict rows (fleet.conflicts.list / .resolve) ───────────────────
+// A conflicted item's KEPT worktree needs a human resolution; the resolve verb
+// spawns a seeded session inside that tree (the CI fix-session machinery) and
+// the tree is reclaimed when the re-merge lands.
+
+const CONFLICT_ITEM_SCHEMA = objectSchema({
+  workstreamId: STRING_SCHEMA,
+  itemId: STRING_SCHEMA,
+  title: STRING_SCHEMA,
+  worktreePath: STRING_SCHEMA,
+  branch: STRING_SCHEMA,
+  files: STRING_LIST_SCHEMA,
+  resolutionSessionId: STRING_SCHEMA,
+}, ['workstreamId', 'itemId', 'title', 'worktreePath', 'files']);
+
+export const FLEET_CONFLICTS_LIST_INPUT_SCHEMA = objectSchema({
+  workstreamId: STRING_SCHEMA,
+}, []);
+
+export const FLEET_CONFLICTS_LIST_OUTPUT_SCHEMA = objectSchema({
+  conflicts: arraySchema(CONFLICT_ITEM_SCHEMA),
+}, ['conflicts']);
+
+export const FLEET_CONFLICTS_RESOLVE_INPUT_SCHEMA = objectSchema({
+  itemId: STRING_SCHEMA,
+}, ['itemId']);
+
+export const FLEET_CONFLICTS_RESOLVE_OUTPUT_SCHEMA = objectSchema({
+  itemId: STRING_SCHEMA,
+  sessionId: STRING_SCHEMA,
+  worktreePath: STRING_SCHEMA,
+  files: STRING_LIST_SCHEMA,
+}, ['itemId', 'sessionId', 'worktreePath', 'files']);
 
 export const FLEET_ATTEMPTS_JUDGE_INPUT_SCHEMA = objectSchema({
   groupId: STRING_SCHEMA,

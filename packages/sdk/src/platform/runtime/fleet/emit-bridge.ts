@@ -33,7 +33,7 @@ import {
   emitFleetNodeStateChanged,
   emitFleetNodeUnblocked,
 } from '../emitters/fleet.js';
-import type { FleetSnapshot, ProcessNode, ProcessState } from './types.js';
+import type { FleetSnapshot, ProcessAttentionReason, ProcessNode, ProcessState } from './types.js';
 import type { ProcessRegistry } from './types.js';
 import { logger } from '../../utils/logger.js';
 import { summarizeError } from '../../utils/error-display.js';
@@ -52,7 +52,7 @@ function isTerminal(state: ProcessState): boolean {
 /** The minimal per-node prior state the diff needs. */
 interface PriorNodeState {
   readonly state: ProcessState;
-  readonly attentionReason: 'approval' | 'input' | undefined;
+  readonly attentionReason: ProcessAttentionReason | undefined;
 }
 
 export interface FleetEmitBridgeDeps {

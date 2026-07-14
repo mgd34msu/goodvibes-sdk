@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `398`
+- Methods: `401`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -30213,7 +30213,9 @@ Return the session-archived process nodes (same node shape as fleet.snapshot; st
                 "type": "string",
                 "enum": [
                   "approval",
-                  "input"
+                  "input",
+                  "pick",
+                  "conflict"
                 ]
               },
               "detail": {
@@ -30698,6 +30700,9 @@ Accept one attempt as the winner of its best-of-N group: its worktree branch is 
     },
     "winnerItemId": {
       "type": "string"
+    },
+    "confirm": {
+      "type": "boolean"
     }
   },
   "required": [
@@ -30714,6 +30719,9 @@ Accept one attempt as the winner of its best-of-N group: its worktree branch is 
 {
   "type": "object",
   "properties": {
+    "applied": {
+      "type": "boolean"
+    },
     "groupId": {
       "type": "string"
     },
@@ -30728,13 +30736,408 @@ Accept one attempt as the winner of its best-of-N group: its worktree branch is 
     },
     "auto": {
       "type": "boolean"
+    },
+    "requiresConfirm": {
+      "type": "boolean"
+    },
+    "group": {
+      "type": "object",
+      "properties": {
+        "groupId": {
+          "type": "string"
+        },
+        "workstreamId": {
+          "type": "string"
+        },
+        "sourceTitle": {
+          "type": "string"
+        },
+        "ready": {
+          "type": "boolean"
+        },
+        "candidates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "itemId": {
+                "type": "string"
+              },
+              "attemptIndex": {
+                "type": "number"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "held-merge",
+                  "failed"
+                ]
+              },
+              "title": {
+                "type": "string"
+              },
+              "worktreePath": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "branch": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "usage": {
+                "type": "object",
+                "properties": {
+                  "inputTokens": {
+                    "type": "number"
+                  },
+                  "outputTokens": {
+                    "type": "number"
+                  },
+                  "cacheReadTokens": {
+                    "type": "number"
+                  },
+                  "cacheWriteTokens": {
+                    "type": "number"
+                  },
+                  "reasoningTokens": {
+                    "type": "number"
+                  },
+                  "llmCallCount": {
+                    "type": "number"
+                  },
+                  "turnCount": {
+                    "type": "number"
+                  },
+                  "toolCallCount": {
+                    "type": "number"
+                  },
+                  "costUsd": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "costState": {
+                    "type": "string",
+                    "enum": [
+                      "priced",
+                      "unpriced",
+                      "estimated"
+                    ]
+                  },
+                  "costSource": {
+                    "type": "string",
+                    "enum": [
+                      "user",
+                      "provider",
+                      "catalog",
+                      "mixed"
+                    ]
+                  },
+                  "pricingAsOf": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "inputTokens",
+                  "outputTokens",
+                  "cacheReadTokens",
+                  "cacheWriteTokens",
+                  "llmCallCount",
+                  "turnCount",
+                  "toolCallCount",
+                  "costUsd",
+                  "costState"
+                ],
+                "additionalProperties": false
+              },
+              "failureReason": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "diff": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "files": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "unifiedDiff": {
+                        "type": "string"
+                      },
+                      "stat": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "files",
+                      "unifiedDiff",
+                      "stat"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "itemId",
+              "attemptIndex",
+              "state",
+              "title",
+              "worktreePath",
+              "branch",
+              "usage",
+              "failureReason",
+              "diff"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "autoAccept": {
+          "type": "boolean"
+        },
+        "judgment": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "proposedWinnerItemId": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "reasons": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "model": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "scoredBy": {
+                  "type": "string",
+                  "enum": [
+                    "model"
+                  ]
+                }
+              },
+              "required": [
+                "proposedWinnerItemId",
+                "reasons",
+                "model",
+                "scoredBy"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "groupId",
+        "workstreamId",
+        "sourceTitle",
+        "ready",
+        "candidates",
+        "autoAccept",
+        "judgment"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [
+    "applied",
     "groupId",
-    "winnerItemId",
-    "loserItemIds",
-    "auto"
+    "winnerItemId"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `fleet.conflicts.list`
+
+Return every work item whose integration merge CONFLICTED and is waiting on a human: the kept worktree path, item branch, the STRUCTURED conflicting-file list, and the resolution session id once one was spawned. Optionally filtered to one workstream. Read-only.
+
+- Title: `List Merge-Conflict Rows`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `read:fleet`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "workstreamId": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "conflicts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "workstreamId": {
+            "type": "string"
+          },
+          "itemId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "worktreePath": {
+            "type": "string"
+          },
+          "branch": {
+            "type": "string"
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "resolutionSessionId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "workstreamId",
+          "itemId",
+          "title",
+          "worktreePath",
+          "files"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "conflicts"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `fleet.conflicts.resolve`
+
+The conflict row's one action: spawn a resolution session INSIDE the kept worktree, seeded with the structured conflict list and tree path (the same seeded-session machinery as the CI fix flow), and stamp the REAL session id back onto the item. When the resolution lands and the re-merge succeeds, the kept tree is reclaimed automatically. An item with no unresolved conflict is an honest 409.
+
+- Title: `Spawn a Conflict-Resolution Session`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `write:fleet`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "itemId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "itemId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "itemId": {
+      "type": "string"
+    },
+    "sessionId": {
+      "type": "string"
+    },
+    "worktreePath": {
+      "type": "string"
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "itemId",
+    "sessionId",
+    "worktreePath",
+    "files"
   ],
   "additionalProperties": false
 }
@@ -30988,7 +31391,9 @@ Paginated, filtered (kinds/states) query over the live process registry. Cursor 
                 "type": "string",
                 "enum": [
                   "approval",
-                  "input"
+                  "input",
+                  "pick",
+                  "conflict"
                 ]
               },
               "detail": {
@@ -31276,7 +31681,9 @@ Return a point-in-time capture of every live/completed runtime process (agents, 
                 "type": "string",
                 "enum": [
                   "approval",
-                  "input"
+                  "input",
+                  "pick",
+                  "conflict"
                 ]
               },
               "detail": {
@@ -89172,6 +89579,72 @@ Resolve a path against the registry: covered (by which nearest registered root),
 ```
 
 ### worktrees
+
+#### `worktrees.discard`
+
+Remove a worktree per the eviction-preserving rules: any uncommitted state is first committed onto the worktree's branch (a preservation failure REFUSES the removal rather than losing work), the directory is removed, and the branch is KEPT. Returns an honest receipt (ok, branch kept, preservation commit, detail) either way.
+
+- Title: `Discard a Worktree`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `write:worktrees`
+- Emits events: none
+- Dangerous: `yes`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "path": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "path"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "path": {
+      "type": "string"
+    },
+    "ok": {
+      "type": "boolean"
+    },
+    "branch": {
+      "type": "string"
+    },
+    "preservedCommit": {
+      "type": "string"
+    },
+    "discardedAt": {
+      "type": "number"
+    },
+    "detail": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "path",
+    "ok",
+    "discardedAt",
+    "detail"
+  ],
+  "additionalProperties": false
+}
+```
 
 #### `worktrees.setup.run`
 

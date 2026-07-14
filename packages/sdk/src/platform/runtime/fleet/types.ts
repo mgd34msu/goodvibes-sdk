@@ -137,12 +137,18 @@ export type ProcessCostState = 'priced' | 'unpriced' | 'estimated';
 export type ProcessCostSource = 'user' | 'provider' | 'catalog' | 'mixed';
 
 /**
- * Why a node needs a human's attention.
+ * Why a node needs a human's attention. ONE state class: every way a node can
+ * be waiting on a human is a first-class reason here, so every surface
+ * inherits glyph, count, jump key, and push from the same classification.
  * - 'approval' — a tool call on this node is blocked waiting for an
  *   approve/deny decision (derived from a pending shared approval).
  * - 'input'    — the node is otherwise blocked waiting for operator input.
+ * - 'pick'     — a best-of-N attempt group is READY: every attempt settled,
+ *   held candidates parked, and only a human's winner pick advances it.
+ * - 'conflict' — a merge conflict needs a human resolution before the work
+ *   can land.
  */
-export type ProcessAttentionReason = 'approval' | 'input';
+export type ProcessAttentionReason = 'approval' | 'input' | 'pick' | 'conflict';
 
 /**
  * Derived attention marker for a node that is blocked on a human.
@@ -241,6 +247,13 @@ export interface ProcessAttemptGroup {
   readonly total: number;
   /** True while this sibling is a held (passed, parked) candidate awaiting the winner pick. */
   readonly held: boolean;
+  /**
+   * True once the WHOLE group is ready for the winner pick: every sibling
+   * settled (held or failed) with at least one held candidate. The flagged
+   * pick a panel acts on — candidates and diffs come from fleet.attempts.list
+   * with this node's groupId, and fleet.attempts.pick completes it.
+   */
+  readonly ready: boolean;
 }
 
 /** A point-in-time capture of the whole fleet. */

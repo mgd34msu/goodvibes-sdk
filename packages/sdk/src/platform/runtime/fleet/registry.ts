@@ -53,6 +53,7 @@ import {
   adaptWorkItem,
   adaptWorkstream,
   collectLiveItemUsage,
+  readyAttemptGroupIds,
   phaseNodeId,
   workItemNodeId,
   workstreamNodeId,
@@ -405,6 +406,9 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
       // collectLiveItemUsage) so the workstream rollup and the per-item nodes
       // show live mid-phase usage instead of n/a until the phase boundary.
       const liveByItemId = collectLiveItemUsage(workstream, agentNodeById);
+      // Ready best-of-N groups, resolved once per workstream — flags the pick
+      // on the workstream node and marks each member's attemptGroup.ready.
+      const readyGroups = readyAttemptGroupIds(workstream);
       nodes.push(adaptWorkstream(workstream, capturedAt, liveByItemId));
       for (const phase of workstream.phases) {
         nodes.push(adaptPhase(phase, workstream));
@@ -419,7 +423,7 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
         const parentId = item.currentPhaseId
           ? phaseNodeId(workstream.id, item.currentPhaseId)
           : workstreamNodeId(workstream.id);
-        nodes.push(adaptWorkItem(item, workstream.id, parentId, { steerable: deps.messageBus !== undefined && memberLive, live: liveByItemId.get(item.id) }));
+        nodes.push(adaptWorkItem(item, workstream.id, parentId, { steerable: deps.messageBus !== undefined && memberLive, live: liveByItemId.get(item.id), readyGroups }));
       }
     }
 

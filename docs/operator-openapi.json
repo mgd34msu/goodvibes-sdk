@@ -3,7 +3,7 @@
   "info": {
     "title": "GoodVibes Operator API",
     "version": "1.8.0",
-    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 398 cataloged methods: 353 with dedicated REST bindings, 45 reachable only through the generic invoke endpoint. 97 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
+    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 401 cataloged methods: 353 with dedicated REST bindings, 48 reachable only through the generic invoke endpoint. 97 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
   },
   "servers": [
     {
@@ -89115,6 +89115,8 @@
           "fleet.attempts.judge",
           "fleet.attempts.list",
           "fleet.attempts.pick",
+          "fleet.conflicts.list",
+          "fleet.conflicts.resolve",
           "fleet.list",
           "fleet.snapshot",
           "fleet.unarchive",
@@ -89143,6 +89145,7 @@
           "sessions.search",
           "tailscale.get",
           "tailscale.serve.run",
+          "worktrees.discard",
           "worktrees.setup.run"
         ]
       }
@@ -90605,6 +90608,24 @@
     },
     {
       "id": "fleet.attempts.pick",
+      "category": "fleet",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "fleet.conflicts.list",
+      "category": "fleet",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "fleet.conflicts.resolve",
       "category": "fleet",
       "access": "authenticated",
       "rest": null,
@@ -92903,6 +92924,15 @@
       "category": "workspaces",
       "access": "authenticated",
       "rest": "POST /api/workspaces/resolve",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "worktrees.discard",
+      "category": "worktrees",
+      "access": "authenticated",
+      "rest": null,
       "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
