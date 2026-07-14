@@ -389,6 +389,10 @@
     "gzip_bytes": 192,
     "rationale": "platform runtime re-export entry; measured 142 B gzip @ commit 4e5a5e2; headroom max(ceil(142*1.2)=171, 142+50=192) \u2192 192 (+50 B floor dominates by 21 B)"
   },
+  "./platform/runtime/fleet/observed": {
+    "gzip_bytes": 2438,
+    "rationale": "daemon-composition subpath for the observed foreign-agent source (ObservedAgentSource + detector/reader seams) so forks composing their own runtime instantiate it without deep paths; measured 2031 B gzip at the export commit; headroom max(ceil(2031*1.2)=2438, 2031+50=2081) -> 2438 (1.2x dominates)"
+  },
   "./platform/runtime/fleet": {
     "gzip_bytes": 663,
     "rationale": "fleet process registry entrypoint; re-measured 552 B gzip after the observed-external adapter landed (adapters/observed.js adaptObservedAgent/steerObservedNode/observedNodeId, reachable from createProcessRegistry via registry.ts's observed fold); headroom max(ceil(552*1.2)=663, 552+50=602) -> 663 (1.2x dominates)"
