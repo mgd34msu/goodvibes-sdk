@@ -17,7 +17,8 @@
 
 import { describe, expect, test } from 'bun:test';
 import { WrfcController } from '../packages/sdk/src/platform/agents/wrfc-controller.js';
-import { createWrfcControllerForTest } from '../packages/sdk/src/platform/agents/wrfc-controller-test-support.js';
+import { createWrfcControllerForTest, installStubFixRunner, type StubFixRunInput } from '../packages/sdk/src/platform/agents/wrfc-controller-test-support.js';
+import { parseReviewIntoTasks } from '../packages/sdk/src/platform/orchestration/review-task-source.js';
 import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.js';
 import { createEventEnvelope } from '../packages/sdk/src/platform/runtime/event-envelope.js';
 import type { AgentRecord } from '../packages/sdk/src/platform/tools/agent/manager.js';
@@ -235,13 +236,18 @@ interface SeededChain {
   chain: ReturnType<WrfcController['createChain']>;
   engineerAgentId: string;
   reviewerAgentId: () => string;
+  /** The planned-fix invocations the stub runner recorded (the path that replaced the single fixer). */
+  fixRuns: StubFixRunInput[];
 }
 
 async function seedChainWithConstraints(
   constraints: Constraint[],
-  opts?: { scoreThreshold?: number; maxFixAttempts?: number },
+  opts?: { scoreThreshold?: number; maxFixAttempts?: number; fixBehavior?: 'merged' | 'failed' | 'pending' },
 ): Promise<SeededChain> {
   const h = createHarness(opts);
+  // The planned-fix path (1.4.3): review failures run a workstream through the
+  // stub runner. 'pending' (default) parks the chain honestly in 'fixing'.
+  const fixRuns = installStubFixRunner(h.controller, opts?.fixBehavior ?? 'pending');
   const ownerRecord = h.addAgent('owner-seed', 'seed task');
   const chain = h.controller.createChain(ownerRecord);
 
@@ -250,7 +256,7 @@ async function seedChainWithConstraints(
   await flushMicrotasks(20);
 
   const reviewerAgentId = () => latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer').id;
-  return { h, chain, engineerAgentId: chain.engineerAgentId!, reviewerAgentId };
+  return { h, chain, engineerAgentId: chain.engineerAgentId!, reviewerAgentId, fixRuns };
 }
 
 // ---------------------------------------------------------------------------
@@ -298,13 +304,13 @@ describe('Engineer → review propagation', () => {
 // A2: Review → fix propagation with markers
 // ---------------------------------------------------------------------------
 
-describe('Review → fix propagation with markers', () => {
-  test('unsatisfied constraint forces hard-fail despite score >= threshold, SATISFIED/UNSATISFIED markers in fix task', async () => {
+describe('Review → planned-fix propagation', () => {
+  test('unsatisfied constraint forces hard-fail despite score >= threshold; the review reaches the planned-fix runner intact', async () => {
     const constraints: Constraint[] = [
       { id: 'c1', text: 'must be pure', source: 'prompt' },
       { id: 'c2', text: 'no deps', source: 'prompt' },
     ];
-    const { h, chain, reviewerAgentId } = await seedChainWithConstraints(constraints, { maxFixAttempts: 3 });
+    const { h, chain, reviewerAgentId, fixRuns } = await seedChainWithConstraints(constraints, { maxFixAttempts: 3 });
 
     const findings: ConstraintFinding[] = [
       { constraintId: 'c1', satisfied: true, evidence: 'pure function, no side effects' },
@@ -317,28 +323,28 @@ describe('Review → fix propagation with markers', () => {
     // Hard-fail on unsatisfied constraint even though score >= 9.9 threshold
     expect(chain.state).toBe('fixing');
 
-    // The WORKFLOW_REVIEW_COMPLETED event should show passed: false
     const reviewEvent = h.workflowEvents.find((e) => e.type === 'WORKFLOW_REVIEW_COMPLETED');
     expect(reviewEvent?.type).toBe('WORKFLOW_REVIEW_COMPLETED');
     expect(eventData(reviewEvent!)['passed']).toBe(false);
 
-    // The fixer agent task should contain SATISFIED and UNSATISFIED markers
-    const fixerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'fixer');
-    expect(fixerRecord).not.toBeUndefined(); // presence-only: fixer agent was spawned
-    const fixerTask = fixerRecord!.task;
-    expect(fixerTask).toContain('c1 [SATISFIED]');
-    expect(fixerTask).toContain('c2 [UNSATISFIED]');
-    expect(fixerTask).toContain('Constraint preservation during fix');
+    // The planned-fix runner (the path that replaced the single fixer) received
+    // the review; the parsed constraint task carries the finding's evidence.
+    expect(fixRuns).toHaveLength(1);
+    const tasks = parseReviewIntoTasks({ review: fixRuns[0]!.review, originalTask: fixRuns[0]!.originalTask });
+    const constraintTask = tasks.find((t) => t.source === 'constraint' && t.title.includes('c2'));
+    expect(constraintTask).toBeDefined();
+    expect(constraintTask!.description).toContain('imports lodash');
+    expect(tasks.some((t) => t.title.includes('c1'))).toBe(false); // satisfied constraints spawn no task
 
     h.controller.dispose();
   });
 
-  test('missing finding for a known constraint forces fix and is observable', async () => {
+  test('missing finding for a known constraint forces fix; the synthesized unverified finding reaches the runner', async () => {
     const constraints: Constraint[] = [
       { id: 'c1', text: 'must be pure', source: 'prompt' },
       { id: 'c2', text: 'no deps', source: 'prompt' },
     ];
-    const { h, chain, reviewerAgentId } = await seedChainWithConstraints(constraints, { maxFixAttempts: 3 });
+    const { h, chain, reviewerAgentId, fixRuns } = await seedChainWithConstraints(constraints, { maxFixAttempts: 3 });
 
     h.setOutput(reviewerAgentId(), reviewerOutput(10.0, [
       { constraintId: 'c1', satisfied: true, evidence: 'pure function, no side effects' },
@@ -360,9 +366,13 @@ describe('Review → fix propagation with markers', () => {
     expect(fixEvent?.type).toBe('WORKFLOW_FIX_ATTEMPTED');
     expect(eventData(fixEvent!)['targetConstraintIds']).toEqual(['c2']);
 
-    const fixerTask = latestSpawnedByWrfcRole(h.spawnedRecords, 'fixer').task;
-    expect(fixerTask).toContain('c1 [SATISFIED]');
-    expect(fixerTask).toContain('c2 [UNVERIFIED]');
+    // The controller synthesizes an unsatisfied finding for the MISSING
+    // constraint so the planned fix always covers it (unverified is unmet).
+    expect(fixRuns).toHaveLength(1);
+    const tasks = parseReviewIntoTasks({ review: fixRuns[0]!.review, originalTask: fixRuns[0]!.originalTask });
+    const c2Task = tasks.find((t) => t.source === 'constraint' && t.title.includes('c2'));
+    expect(c2Task).toBeDefined();
+    expect(c2Task!.description).toContain('no reviewer finding');
 
     h.controller.dispose();
   });
@@ -393,217 +403,100 @@ describe('Review → fix propagation with markers', () => {
 });
 
 // ---------------------------------------------------------------------------
-// A3: Fixer continuity enforcement — clean return
+// A3-A6 (planned-fix rework): the fixer constraint-continuity defect class is
+// STRUCTURALLY GONE — no fixer agent's echoed constraints can ever touch the
+// chain. The planned path re-reviews the MERGED result with the authoritative
+// constraint list, derived from the ORIGINAL ask, never from task output.
 // ---------------------------------------------------------------------------
 
-describe('Fixer continuity — clean return', () => {
-  test('fixer returns same ids → no synthetic issues injected', async () => {
+describe('Planned fix — authoritative constraints survive to the terminal gate', () => {
+  test('after a merged fix cycle the terminal-gate reviewer receives the ORIGINAL ask and the authoritative constraints', async () => {
     const constraints: Constraint[] = [
       { id: 'c1', text: 'must be pure', source: 'prompt' },
       { id: 'c2', text: 'no deps', source: 'prompt' },
     ];
-    const { h, chain, reviewerAgentId } = await seedChainWithConstraints(constraints, { maxFixAttempts: 3 });
+    const { h, chain, reviewerAgentId, fixRuns } = await seedChainWithConstraints(constraints, {
+      maxFixAttempts: 3,
+      fixBehavior: 'merged',
+    });
 
-    // Fail review to trigger fixer
     const findings: ConstraintFinding[] = [
       { constraintId: 'c1', satisfied: false, evidence: 'has side effects', severity: 'major' },
       { constraintId: 'c2', satisfied: false, evidence: 'uses lodash', severity: 'major' },
     ];
-    h.setOutput(reviewerAgentId(), reviewerOutput(5.0, findings));
-    emitAgentCompleted(h.bus, reviewerAgentId());
-    await flushMicrotasks(20);
+    const firstReviewer = reviewerAgentId();
+    h.setOutput(firstReviewer, reviewerOutput(5.0, findings));
+    emitAgentCompleted(h.bus, firstReviewer);
+    await flushMicrotasks(40);
 
-    expect(chain.state).toBe('fixing');
-    const fixerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'fixer');
-
-    // Fixer returns same constraint ids — continuity preserved
-    h.setOutput(fixerRecord.id, engineerOutput(constraints));
-    emitAgentCompleted(h.bus, fixerRecord.id);
-    await flushMicrotasks(20);
-
+    // The planned-fix cycle ran and merged; the TERMINAL CONTRACT GATE spawned
+    // a fresh reviewer over the merged result.
+    expect(fixRuns).toHaveLength(1);
+    expect(fixRuns[0]!.originalTask).toBe(chain.task); // re-derived from the ORIGINAL request
+    const reviewer2 = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
+    expect(reviewer2.id).not.toBe(firstReviewer);
+    // The re-review carries the ORIGINAL ask and the AUTHORITATIVE constraints
+    // (never anything a task agent echoed).
+    expect(reviewer2.task).toContain(chain.task);
+    expect(reviewer2.task).toContain('must be pure');
+    expect(reviewer2.task).toContain('no deps');
+    expect(chain.constraints.map((c) => c.id)).toEqual(['c1', 'c2']);
+    // No synthetic continuity machinery fires on the planned path.
     expect(chain.syntheticIssues ?? []).toHaveLength(0);
-    expect(chain.constraints).toHaveLength(2);
-    expect(chain.constraints[0]?.id).toBe('c1');
-    expect(chain.constraints[1]?.id).toBe('c2');
 
     h.controller.dispose();
   });
-});
 
-// ---------------------------------------------------------------------------
-// A4: Fixer continuity — missing id
-// ---------------------------------------------------------------------------
+  test('a slice-green fix cycle does NOT complete the chain — the terminal gate decides (test pins this exact case)', async () => {
+    const constraints: Constraint[] = [{ id: 'c1', text: 'must be pure', source: 'prompt' }];
+    const { h, chain, reviewerAgentId, fixRuns } = await seedChainWithConstraints(constraints, {
+      maxFixAttempts: 3,
+      fixBehavior: 'merged',
+    });
 
-describe('Fixer continuity — id missing', () => {
-  test('fixer drops c2 → synthetic critical issue injected, authoritative list preserved', async () => {
-    const constraints: Constraint[] = [
-      { id: 'c1', text: 'must be pure', source: 'prompt' },
-      { id: 'c2', text: 'no deps', source: 'prompt' },
-    ];
-    const { h, chain, reviewerAgentId } = await seedChainWithConstraints(constraints, { maxFixAttempts: 3 });
-
-    const findings: ConstraintFinding[] = [
-      { constraintId: 'c1', satisfied: false, evidence: 'side effect', severity: 'major' },
-      { constraintId: 'c2', satisfied: false, evidence: 'uses lodash', severity: 'major' },
-    ];
-    h.setOutput(reviewerAgentId(), reviewerOutput(5.0, findings));
-    emitAgentCompleted(h.bus, reviewerAgentId());
-    await flushMicrotasks(20);
-
-    const fixerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'fixer');
-    // Fixer only returns c1, drops c2
-    h.setOutput(fixerRecord.id, engineerOutput([{ id: 'c1', text: 'must be pure', source: 'prompt' }]));
-    emitAgentCompleted(h.bus, fixerRecord.id);
-    await flushMicrotasks(20);
-
-    // syntheticIssues is cleared into the reviewer2 task during startReview;
-    // verify it was injected by checking the reviewer2 task content.
-    const reviewer2Record = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
-    expect(reviewer2Record).not.toBeUndefined(); // presence-only: array element existence check
-    const reviewer2Task = reviewer2Record!.task;
-    expect(reviewer2Task).toContain('## Synthetic issues from controller');
-    expect(reviewer2Task).toContain('c2');
-    expect(reviewer2Task).toContain('[CRITICAL]');
-
-    // Authoritative constraint list unchanged
-    expect(chain.constraints).toHaveLength(2);
-    expect(chain.constraints.map((c) => c.id)).toContain('c1');
-    expect(chain.constraints.map((c) => c.id)).toContain('c2');
-
-    h.controller.dispose();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// A5: Fixer continuity — extra id
-// ---------------------------------------------------------------------------
-
-describe('Fixer continuity — id extra', () => {
-  test('fixer adds c99 → synthetic critical issue injected, authoritative list unchanged', async () => {
-    const constraints: Constraint[] = [
-      { id: 'c1', text: 'must be pure', source: 'prompt' },
-      { id: 'c2', text: 'no deps', source: 'prompt' },
-    ];
-    const { h, chain, reviewerAgentId } = await seedChainWithConstraints(constraints, { maxFixAttempts: 3 });
-
-    h.setOutput(reviewerAgentId(), reviewerOutput(5.0, []));
-    emitAgentCompleted(h.bus, reviewerAgentId());
-    await flushMicrotasks(20);
-
-    const fixerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'fixer');
-    // Fixer invents c99
-    h.setOutput(fixerRecord.id, engineerOutput([
-      { id: 'c1', text: 'must be pure', source: 'prompt' },
-      { id: 'c2', text: 'no deps', source: 'prompt' },
-      { id: 'c99', text: 'invented constraint', source: 'prompt' },
+    const firstReviewer = reviewerAgentId();
+    h.setOutput(firstReviewer, reviewerOutput(5.0, [
+      { constraintId: 'c1', satisfied: false, evidence: 'impure', severity: 'major' },
     ]));
-    emitAgentCompleted(h.bus, fixerRecord.id);
-    await flushMicrotasks(20);
+    emitAgentCompleted(h.bus, firstReviewer);
+    await flushMicrotasks(40);
 
-    // syntheticIssues is cleared into the reviewer2 task during startReview;
-    // verify it was injected by checking the reviewer2 task content.
-    const reviewer2Record = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
-    expect(reviewer2Record).not.toBeUndefined(); // presence-only: array element existence check
-    const reviewer2Task = reviewer2Record!.task;
-    expect(reviewer2Task).toContain('## Synthetic issues from controller');
-    expect(reviewer2Task).toContain('c99');
-    expect(reviewer2Task).toContain('[CRITICAL]');
-    // Authoritative list still has exactly 2
-    expect(chain.constraints).toHaveLength(2);
-    expect(chain.constraints.map((c) => c.id)).not.toContain('c99');
+    // Every task in the fix workstream merged (the stub resolved 'merged') —
+    // task-level green. The chain is NOT complete: it sits in 'reviewing',
+    // waiting on the original-contract re-run.
+    expect(fixRuns).toHaveLength(1);
+    expect(chain.state).toBe('reviewing');
 
-    h.controller.dispose();
-  });
-});
-
-describe('A5b: Fixer continuity — no authoritative constraints', () => {
-  test('fixer-invented constraints are ignored and not forwarded as synthetic review failures', async () => {
-    const { h, chain, reviewerAgentId } = await seedChainWithConstraints([], { maxFixAttempts: 3 });
-
-    h.setOutput(reviewerAgentId(), reviewerOutput(5.0, []));
-    emitAgentCompleted(h.bus, reviewerAgentId());
-    await flushMicrotasks(20);
-
-    const fixerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'fixer');
-    expect(fixerRecord.task).toContain('Return "constraints": []');
-    h.setOutput(fixerRecord.id, engineerOutput([
-      { id: 'c1', text: 'invented implementation detail', source: 'prompt' },
-      { id: 'c2', text: 'another invented detail', source: 'prompt' },
+    // The terminal gate FAILS the contract again → a second planned cycle is
+    // born (the loop), still never completing on slice green alone.
+    const reviewer2 = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
+    h.setOutput(reviewer2.id, reviewerOutput(5.0, [
+      { constraintId: 'c1', satisfied: false, evidence: 'still impure', severity: 'major' },
     ]));
-    emitAgentCompleted(h.bus, fixerRecord.id);
-    await flushMicrotasks(20);
-
-    const reviewer2Record = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
-    expect(reviewer2Record.task).not.toContain('## Synthetic issues from controller');
-    expect(reviewer2Record.task).not.toContain('Fixer regressed constraint continuity');
-    expect(reviewer2Record.task).toContain('"constraints": []');
-    expect(reviewer2Record.task).not.toContain('invented implementation detail');
-    expect(chain.constraints).toEqual([]);
+    emitAgentCompleted(h.bus, reviewer2.id);
+    await flushMicrotasks(40);
+    expect(fixRuns).toHaveLength(2);
+    expect(chain.state).toBe('reviewing'); // cycle 2 merged (stub) -> gate again
 
     h.controller.dispose();
   });
-});
 
-describe('A5c: Fixer continuity — malformed constrained fixer report', () => {
-  test('non-engineer fixer output creates one synthetic continuity issue for missing authoritative constraints', async () => {
-    const constraints: Constraint[] = [
-      { id: 'c1', text: 'must be pure', source: 'prompt' },
-      { id: 'c2', text: 'no deps', source: 'prompt' },
-    ];
-    const { h, chain, reviewerAgentId } = await seedChainWithConstraints(constraints, { maxFixAttempts: 3 });
+  test('a structurally failed fix cycle fails the chain honestly', async () => {
+    const constraints: Constraint[] = [{ id: 'c1', text: 'must be pure', source: 'prompt' }];
+    const { h, chain, reviewerAgentId, fixRuns } = await seedChainWithConstraints(constraints, {
+      maxFixAttempts: 3,
+      fixBehavior: 'failed',
+    });
 
-    h.setOutput(reviewerAgentId(), reviewerOutput(5.0, []));
+    h.setOutput(reviewerAgentId(), reviewerOutput(5.0, [
+      { constraintId: 'c1', satisfied: false, evidence: 'impure', severity: 'major' },
+    ]));
     emitAgentCompleted(h.bus, reviewerAgentId());
-    await flushMicrotasks(20);
+    await flushMicrotasks(40);
 
-    const fixerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'fixer');
-    h.setOutput(fixerRecord.id, 'Fixed the issue, but did not return an EngineerReport JSON block.');
-    emitAgentCompleted(h.bus, fixerRecord.id);
-    await flushMicrotasks(20);
-
-    const reviewer2Record = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
-    const reviewer2Task = reviewer2Record.task;
-    expect(reviewer2Task).toContain('## Synthetic issues from controller');
-    expect(reviewer2Task).toContain('missing=[c1,c2] extra=[]');
-    expect(reviewer2Task.match(/Fixer regressed constraint continuity/g) ?? []).toHaveLength(1);
-    expect(chain.constraints.map((constraint) => constraint.id)).toEqual(['c1', 'c2']);
-
-    h.controller.dispose();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// A6: Synthetic issue consumption (fire-once)
-// ---------------------------------------------------------------------------
-
-describe('Synthetic issue consumption', () => {
-  test('synthetic issues prepended to review task then cleared', async () => {
-    const constraints: Constraint[] = [
-      { id: 'c1', text: 'must be pure', source: 'prompt' },
-      { id: 'c2', text: 'no deps', source: 'prompt' },
-    ];
-    const { h, chain, reviewerAgentId } = await seedChainWithConstraints(constraints, { maxFixAttempts: 3 });
-
-    // Fail review → fixer
-    h.setOutput(reviewerAgentId(), reviewerOutput(5.0, []));
-    emitAgentCompleted(h.bus, reviewerAgentId());
-    await flushMicrotasks(20);
-
-    const fixerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'fixer');
-    // Fixer drops c2 → inject synthetic issue
-    h.setOutput(fixerRecord.id, engineerOutput([{ id: 'c1', text: 'must be pure', source: 'prompt' }]));
-    emitAgentCompleted(h.bus, fixerRecord.id);
-    await flushMicrotasks(20);
-
-    // The second reviewer's task should be prepended with synthetic issue block
-    const reviewer2Record = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
-    expect(reviewer2Record).not.toBeUndefined(); // presence-only: array element existence check
-    const reviewer2Task = reviewer2Record!.task;
-    expect(reviewer2Task).toContain('## Synthetic issues from controller');
-    expect(reviewer2Task).toContain('[CRITICAL]');
-
-    // syntheticIssues should be cleared after the review was started
-    expect(chain.syntheticIssues ?? []).toHaveLength(0);
+    expect(fixRuns).toHaveLength(1);
+    expect(chain.state).toBe('failed');
+    expect(chain.error).toContain('tasks-failed');
 
     h.controller.dispose();
   });
@@ -634,20 +527,21 @@ describe('Empty-list no-op — reviewer side', () => {
 // A8: Empty-list no-op — fixer side
 // ---------------------------------------------------------------------------
 
-describe('Empty-list no-op — fixer side', () => {
-  test('constraints:[] → fix task has no constraint section', async () => {
-    const { h, chain, reviewerAgentId } = await seedChainWithConstraints([], { maxFixAttempts: 3 });
+describe('Empty-list no-op — planned-fix side', () => {
+  test('constraints:[] → the parsed fix tasks carry no constraint tasks', async () => {
+    const { h, chain, reviewerAgentId, fixRuns } = await seedChainWithConstraints([], { maxFixAttempts: 3 });
 
-    h.setOutput(reviewerAgentId(), reviewerOutput(5.0, []));
+    h.setOutput(reviewerAgentId(), reviewerOutput(5.0, [], {
+      issues: [{ severity: 'major', description: 'logic bug in adder', pointValue: 2 }],
+    }));
     emitAgentCompleted(h.bus, reviewerAgentId());
     await flushMicrotasks(20);
 
     expect(chain.state).toBe('fixing');
-    const fixerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'fixer');
-    const fixerTask = fixerRecord.task;
-
-    expect(fixerTask).not.toContain('## Constraints (authoritative');
-    expect(fixerTask).not.toContain('Constraint preservation during fix');
+    expect(fixRuns).toHaveLength(1);
+    const tasks = parseReviewIntoTasks({ review: fixRuns[0]!.review, originalTask: fixRuns[0]!.originalTask });
+    expect(tasks.some((t) => t.source === 'constraint')).toBe(false);
+    expect(tasks.some((t) => t.source === 'finding')).toBe(true);
 
     h.controller.dispose();
   });
@@ -970,11 +864,14 @@ describe('WORKFLOW_REVIEW_COMPLETED event payload', () => {
 // ---------------------------------------------------------------------------
 
 describe('WORKFLOW_CONSTRAINTS_ENUMERATED emitted exactly once', () => {
-  test('emitted on initial engineer completion, NOT re-emitted on fixer re-runs', async () => {
+  test('emitted on initial engineer completion, NOT re-emitted by planned-fix cycles', async () => {
     const constraints: Constraint[] = [
       { id: 'c1', text: 'must be pure', source: 'prompt' },
     ];
-    const { h, chain, reviewerAgentId } = await seedChainWithConstraints(constraints, { maxFixAttempts: 3 });
+    const { h, chain, reviewerAgentId } = await seedChainWithConstraints(constraints, {
+      maxFixAttempts: 3,
+      fixBehavior: 'merged',
+    });
 
     const enumeratedCount = () =>
       h.workflowEvents.filter((e) => e.type === 'WORKFLOW_CONSTRAINTS_ENUMERATED').length;
@@ -982,23 +879,18 @@ describe('WORKFLOW_CONSTRAINTS_ENUMERATED emitted exactly once', () => {
     // After engineer completion: exactly 1 emission
     expect(enumeratedCount()).toBe(1);
 
-    // Fail review → spawn fixer
+    // Fail review → a planned-fix cycle runs (merged) → terminal-gate reviewer
     h.setOutput(reviewerAgentId(), reviewerOutput(5.0, [
       { constraintId: 'c1', satisfied: false, evidence: 'impure', severity: 'major' },
     ]));
     emitAgentCompleted(h.bus, reviewerAgentId());
-    await flushMicrotasks(20);
+    await flushMicrotasks(40);
 
-    const fixerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'fixer');
-    // Fixer returns same constraints
-    h.setOutput(fixerRecord.id, engineerOutput(constraints));
-    emitAgentCompleted(h.bus, fixerRecord.id);
-    await flushMicrotasks(20);
-
-    // Still exactly 1 — fixer re-run does NOT re-emit
+    // Still exactly 1 — the fix cycle does NOT re-emit
     expect(enumeratedCount()).toBe(1);
     expect(chain.constraintsEnumerated).toBe(true);
 
     h.controller.dispose();
   });
 });
+

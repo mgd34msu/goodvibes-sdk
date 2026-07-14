@@ -21,6 +21,7 @@ import {
   parseReviewerCompletionReport,
 } from '../packages/sdk/src/platform/agents/wrfc-reporting.js';
 import { WrfcController, CURRENT_WRFC_CHAIN_SCHEMA_VERSION } from '../packages/sdk/src/platform/agents/wrfc-controller.js';
+import { installStubFixRunner } from '../packages/sdk/src/platform/agents/wrfc-controller-test-support.js';
 import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.js';
 import { createEventEnvelope } from '../packages/sdk/src/platform/runtime/event-envelope.js';
 import type { AgentRecord } from '../packages/sdk/src/platform/tools/agent/manager.js';
@@ -958,6 +959,7 @@ describe('MIN-4: claimsVerified=false blocks review pass mechanically', () => {
   test('reviewer says 10/10 but claimsVerified=false → no pass, chain goes to fixing', async () => {
     const tmpDir = mkdtempSync(join(tmpdir(), 'wrfc-min4-'));
     const { bus, controller, agentStore, spawnedRecords } = createHarness({ projectRoot: tmpDir });
+    installStubFixRunner(controller, 'pending'); // the planned-fix path parks the chain honestly in 'fixing'
 
     const ownerRecord = makeRecord({ id: 'owner-min4', task: 'MIN-4 test' });
     agentStore.set('owner-min4', ownerRecord);
@@ -1047,21 +1049,17 @@ describe('MIN-6: resume re-injects synthetic issue when claimsVerified=false', (
 // MIN-11: Fixer claim verification (MAJ-9 fix — fixer class no longer exempted)
 // ---------------------------------------------------------------------------
 
-describe('MIN-11: Fixer claim verification — phantom-work detection applies to fixers too', () => {
-  test('(a) lying fixer: claims files, none exist, no git diff → claimsVerified=false, synthetic critical issue, mechanical block at 10/10', async () => {
-    // MAJ-9: A fixer that claims files it did not write must be caught the same way as
-    // a lying engineer. Prior to the fix, chain.state === 'fixing' exempted the fixer
-    // from verifyEngineerClaims, leaving chain.claimsVerified stale-true from the
-    // engineer pass. A 10/10 reviewer score then passed unchanged code.
-    const tmpDir = mkdtempSync(join(tmpdir(), 'wrfc-fixer-lying-'));
+describe('MIN-11 (planned-fix rework): the fixer agent class no longer exists', () => {
+  test('a failing review runs the planned workstream — no fixer agent ever spawns; per-task phantom detection lives in the engine phases', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'wrfc-fixer-gone-'));
     const { bus, controller, agentStore, spawnedRecords } = createHarness({ projectRoot: tmpDir });
+    const fixRuns = installStubFixRunner(controller, 'merged');
 
-    const ownerRecord = makeRecord({ id: 'owner-f-lie', task: 'Fixer lying test' });
-    agentStore.set('owner-f-lie', ownerRecord);
+    const ownerRecord = makeRecord({ id: 'owner-f-gone', task: 'Planned path test' });
+    agentStore.set('owner-f-gone', ownerRecord);
     const chain = controller.createChain(ownerRecord);
     await flushMicrotasks();
 
-    // Engineer completes honestly (existing file) → claimsVerified=true
     const engineerRecord = spawnedRecords.find((r) => r.wrfcRole === 'engineer')!;
     const existingFile = join(tmpDir, 'src', 'honest.ts');
     mkdirSync(join(tmpDir, 'src'), { recursive: true });
@@ -1069,181 +1067,19 @@ describe('MIN-11: Fixer claim verification — phantom-work detection applies to
     emitAgentCompleted(bus, engineerRecord.id, agentStore, engineerReportOutput('Honest work', ['src/honest.ts'], []));
     await flushMicrotasks();
 
-    const chainAfterEngineer = controller.getChain(chain.id)!;
-    expect(chainAfterEngineer.claimsVerified).toBe(true); // engineer was honest
-    expect(chainAfterEngineer.state).toBe('reviewing');
-
-    // Reviewer fails the chain → triggers fixer
     const reviewerRecord = spawnedRecords.find((r) => r.wrfcRole === 'reviewer')!;
     emitAgentCompleted(bus, reviewerRecord.id, agentStore, reviewerReportOutput(5.0, false));
-    await flushMicrotasks();
+    await flushMicrotasks(40);
 
-    expect(controller.getChain(chain.id)!.state).toBe('fixing');
-
-    // Fixer lies: claims a file that does NOT exist on disk; tmpDir is not a git repo
-    const fixerRecord = spawnedRecords.find((r) => r.wrfcRole === 'fixer')!;
-    emitAgentCompleted(bus, fixerRecord.id, agentStore, engineerReportOutput('Fixed everything', ['src/phantom-fix.ts'], []));
-    await flushMicrotasks();
-
-    // MAJ-9: claimsVerified must be updated to false (not stale-true from engineer pass)
-    const chainAfterFixer = controller.getChain(chain.id)!;
-    expect(chainAfterFixer.claimsVerified).toBe(false);
-    expect(chainAfterFixer.state).toBe('reviewing');
-
-    // A synthetic critical issue must be present in the new reviewer's task
-    const reviewer2Record = spawnedRecords.filter((r) => r.wrfcRole === 'reviewer').at(-1)!;
-    expect(reviewer2Record.task).toContain('## Synthetic issues from controller');
-    expect(reviewer2Record.task).toContain('[CRITICAL]');
-
-    // Even at 10/10, the MIN-4 mechanical block must prevent passing
-    emitAgentCompleted(bus, reviewer2Record.id, agentStore, reviewerReportOutput(10, true));
-    await flushMicrotasks();
-
-    const chainAfterReview2 = controller.getChain(chain.id)!;
-    expect(chainAfterReview2.state).not.toBe('passed'); // blocked — not a pass
-    expect(chainAfterReview2.state).toBe('fixing');     // sent back for another fix attempt
-
-    controller.dispose();
-  });
-
-  test('(b) honest fixer: claimed files exist → claimsVerified=true, chain can pass', async () => {
-    const tmpDir = mkdtempSync(join(tmpdir(), 'wrfc-fixer-honest-'));
-    mkdirSync(join(tmpDir, 'src'), { recursive: true });
-    writeFileSync(join(tmpDir, 'src', 'real.ts'), 'export {}');
-
-    const { bus, controller, agentStore, spawnedRecords } = createHarness({ projectRoot: tmpDir });
-
-    const ownerRecord = makeRecord({ id: 'owner-f-hon', task: 'Fixer honest test' });
-    agentStore.set('owner-f-hon', ownerRecord);
-    const chain = controller.createChain(ownerRecord);
-    await flushMicrotasks();
-
-    // Engineer completes with existing file → claimsVerified=true
-    const engineerRecord = spawnedRecords.find((r) => r.wrfcRole === 'engineer')!;
-    emitAgentCompleted(bus, engineerRecord.id, agentStore, engineerReportOutput('Done', ['src/real.ts'], []));
-    await flushMicrotasks();
-    expect(controller.getChain(chain.id)!.claimsVerified).toBe(true);
-
-    // Reviewer fails → trigger fixer
-    const reviewerRecord = spawnedRecords.find((r) => r.wrfcRole === 'reviewer')!;
-    emitAgentCompleted(bus, reviewerRecord.id, agentStore, reviewerReportOutput(5.0, false));
-    await flushMicrotasks();
-    expect(controller.getChain(chain.id)!.state).toBe('fixing');
-
-    // Fixer claims the SAME existing file (still on disk) → verified=true
-    const fixerRecord = spawnedRecords.find((r) => r.wrfcRole === 'fixer')!;
-    emitAgentCompleted(bus, fixerRecord.id, agentStore, engineerReportOutput('Fixed', ['src/real.ts'], []));
-    await flushMicrotasks();
-
-    const chainAfterFixer = controller.getChain(chain.id)!;
-    expect(chainAfterFixer.claimsVerified).toBe(true); // honest fixer — file exists
-    expect(chainAfterFixer.state).toBe('reviewing');
-
-    // Reviewer passes at 10/10 — no MIN-4 block
-    const reviewer2Record = spawnedRecords.filter((r) => r.wrfcRole === 'reviewer').at(-1)!;
-    emitAgentCompleted(bus, reviewer2Record.id, agentStore, reviewerReportOutput(10, true));
-    await flushMicrotasks();
-
-    // Chain should pass (go through gate phase or passed)
-    const finalState = controller.getChain(chain.id)!.state;
-    expect(['passed', 'gating', 'committing', 'awaiting_gates']).toContain(finalState);
-
-    controller.dispose();
-  });
-
-  test('(c) fixer with zero claims → advisory issue injected, reviewer-adjudicated (claimsVerified stays undefined)', async () => {
-    const tmpDir = mkdtempSync(join(tmpdir(), 'wrfc-fixer-noclaims-'));
-    // tmpDir is not a git repo → verifyEngineerClaims returns kind=unverifiable_no_claims
-
-    const { bus, controller, agentStore, spawnedRecords } = createHarness({ projectRoot: tmpDir });
-
-    const ownerRecord = makeRecord({ id: 'owner-f-nc', task: 'Fixer no-claims test' });
-    agentStore.set('owner-f-nc', ownerRecord);
-    const chain = controller.createChain(ownerRecord);
-    await flushMicrotasks();
-
-    // Engineer: claim a file that exists (so engineer pass is clean)
-    const realFile = join(tmpDir, 'index.ts');
-    writeFileSync(realFile, 'export {}');
-    const engineerRecord = spawnedRecords.find((r) => r.wrfcRole === 'engineer')!;
-    emitAgentCompleted(bus, engineerRecord.id, agentStore, engineerReportOutput('Done', ['index.ts'], []));
-    await flushMicrotasks();
-    expect(controller.getChain(chain.id)!.claimsVerified).toBe(true);
-
-    // Reviewer fails the chain → fixer spawned
-    const reviewerRecord = spawnedRecords.find((r) => r.wrfcRole === 'reviewer')!;
-    emitAgentCompleted(bus, reviewerRecord.id, agentStore, reviewerReportOutput(5.0, false));
-    await flushMicrotasks();
-    expect(controller.getChain(chain.id)!.state).toBe('fixing');
-
-    // Fixer sends zero claims — no files listed, no git diff possible in tmpDir
-    const fixerRecord = spawnedRecords.find((r) => r.wrfcRole === 'fixer')!;
-    emitAgentCompleted(bus, fixerRecord.id, agentStore, engineerReportOutput('Fixed it', [], []));
-    await flushMicrotasks();
-
-    const chainAfterFixer = controller.getChain(chain.id)!;
-    // kind=unverifiable_no_claims: claimsVerified is NOT set to false — left as undefined.
-    // (Cannot confirm work wasn't done; advisory synthetic issue is the enforcement path.)
-    expect(chainAfterFixer.claimsVerified).not.toBe(false);
-    // chain should proceed to reviewing (not blocked mechanically)
-    expect(chainAfterFixer.state).toBe('reviewing');
-    // Advisory synthetic issue was injected into the reviewer's task
-    const reviewer2Record = spawnedRecords.filter((r) => r.wrfcRole === 'reviewer').at(-1)!;
-    expect(reviewer2Record.task).toContain('## Synthetic issues from controller');
-    expect(reviewer2Record.task).toContain('phantom work');
-
-    controller.dispose();
-  });
-
-  test('(d) harness skip predicate: nonexistent projectRoot skips verification for both engineer and fixer — no synthetic issues', async () => {
-    // The environment-driven skip fires when projectRoot did not exist on disk at
-    // controller construction time (cached as projectRootExistedAtStartup). This is
-    // the preferred harness opt-out over the explicit skipClaimVerification flag.
-    // The WrfcController caches existsSync at constructor time because the WrfcWorkmap
-    // mkdir's the directory tree during the first appendOwnerDecision call, making a
-    // late-bound check unreliable.
-    const nonexistentRoot = '/tmp/wrfc-does-not-exist-' + Math.random().toString(36).slice(2);
-    // Sanity: confirm the path really does not exist before controller construction
-    const { existsSync: fsExistsSync } = await import('node:fs');
-    expect(fsExistsSync(nonexistentRoot)).toBe(false);
-
-    const { bus, controller, agentStore, spawnedRecords } = createHarness({ projectRoot: nonexistentRoot });
-
-    const ownerRecord = makeRecord({ id: 'owner-skip', task: 'Skip predicate test' });
-    agentStore.set('owner-skip', ownerRecord);
-    const chain = controller.createChain(ownerRecord);
-    await flushMicrotasks();
-
-    // Engineer: claim files that obviously don't exist
-    const engineerRecord = spawnedRecords.find((r) => r.wrfcRole === 'engineer')!;
-    emitAgentCompleted(bus, engineerRecord.id, agentStore, engineerReportOutput('Done', ['src/missing.ts'], []));
-    await flushMicrotasks();
-
-    const chainAfterEngineer = controller.getChain(chain.id)!;
-    // Verification skipped — no synthetic issues, claimsVerified NOT set to false
-    expect(chainAfterEngineer.claimsVerified).not.toBe(false);
-    expect(chainAfterEngineer.state).toBe('reviewing');
-    // No synthetic issues injected (reviewer task should not contain the phantom-work header)
-    const reviewerRecord = spawnedRecords.find((r) => r.wrfcRole === 'reviewer')!;
-    expect(reviewerRecord.task).not.toContain('## Synthetic issues from controller');
-
-    // Reviewer fails → fixer spawned
-    emitAgentCompleted(bus, reviewerRecord.id, agentStore, reviewerReportOutput(5.0, false));
-    await flushMicrotasks();
-    expect(controller.getChain(chain.id)!.state).toBe('fixing');
-
-    // Fixer: also claims nonexistent files — verification must be skipped too
-    const fixerRecord = spawnedRecords.find((r) => r.wrfcRole === 'fixer')!;
-    emitAgentCompleted(bus, fixerRecord.id, agentStore, engineerReportOutput('Fixed', ['src/still-missing.ts'], []));
-    await flushMicrotasks();
-
-    const chainAfterFixer = controller.getChain(chain.id)!;
-    // Verification skipped for fixer too — no synthetic issues, claimsVerified NOT false
-    expect(chainAfterFixer.claimsVerified).not.toBe(false);
-    expect(chainAfterFixer.state).toBe('reviewing');
-    const reviewer2Record = spawnedRecords.filter((r) => r.wrfcRole === 'reviewer').at(-1)!;
-    expect(reviewer2Record.task).not.toContain('## Synthetic issues from controller');
-
-    controller.dispose();
+    // The planned-fix workstream ran (elastic tasks in isolated worktrees,
+    // slice reviews inside the engine — where per-task claim verification
+    // lives, see phase-runner). NO fixer agent exists to lie:
+    expect(fixRuns).toHaveLength(1);
+    expect(spawnedRecords.filter((r) => r.wrfcRole === 'fixer')).toHaveLength(0);
+    // The terminal contract gate re-reviews the merged result.
+    expect(controller.getChain(chain.id)!.state).toBe('reviewing');
+    const reviewer2 = spawnedRecords.filter((r) => r.wrfcRole === 'reviewer').at(-1)!;
+    expect(reviewer2.id).not.toBe(reviewerRecord.id);
   });
 });
+

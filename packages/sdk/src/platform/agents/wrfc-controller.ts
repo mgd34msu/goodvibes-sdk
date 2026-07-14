@@ -4,7 +4,6 @@ import { AgentMessageBus } from './message-bus.js';
 import { type CompletionReport, type Constraint, type EngineerReport, type ReviewerReport } from './completion-report.js';
 import {
   buildGateFailureTask,
-  buildFixTask,
   buildReviewTask,
   parseEngineerCompletionReport,
   parseReviewerCompletionReport,
@@ -29,6 +28,8 @@ import type { AgentRecord } from '../tools/agent/index.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 import type { ExecutionPlanManager } from '../core/execution-plan.js';
+import type { FixWorkstreamRunner } from '../orchestration/fix-workstream-runner.js';
+import { augmentReviewWithMissingConstraintFindings, buildMergedFixReport } from './wrfc-planned-fix.js';
 import type { AgentEvent, RuntimeEventBus } from '../runtime/events/index.js';
 import type {
   ProjectWorkPlanTaskCreateInput,
@@ -143,6 +144,8 @@ export class WrfcController {
   private readonly createWorktree: () => WrfcWorktreeOps;
   private readonly selectChildRoute: WrfcChildRouteSelector | null;
   private workPlanService: WrfcWorkPlanService | null = null;
+  /** The planned-fix executor over the ONE workstream engine (1.4.3). Wired by the composition root; the single-fixer prompt path no longer exists. */
+  private fixWorkstreamRunner: FixWorkstreamRunner | null = null;
   private readonly workPlanTaskQueues = new Map<string, Promise<void>>();
   /** Tracks last-seen timestamp per agent for watchdog timeout. */
   private readonly agentLastSeen = new Map<string, number>();
@@ -224,6 +227,9 @@ export class WrfcController {
     this.workPlanService = service ?? null;
   }
 
+  /** Wire the planned-fix runner (the one engine); absent => failing reviews fail the chain naming the missing wiring. */
+  setFixWorkstreamRunner(runner: FixWorkstreamRunner | null | undefined): void { this.fixWorkstreamRunner = runner ?? null; }
+
   getChain(chainId: string): WrfcChain | null { return this.chains.get(chainId) ?? null; }
 
   listChains(): WrfcChain[] { return Array.from(this.chains.values()); }
@@ -280,10 +286,10 @@ export class WrfcController {
       // Re-spawn fixer using the last reviewer report.
       const reviewerReport = chain.reviewerReport;
       if (reviewerReport) {
-        this.appendOwnerDecision(chain, 'resume_started', `WRFC owner re-spawning fixer for interrupted chain (was fixing)`);
+        this.appendOwnerDecision(chain, 'resume_started', `WRFC owner re-starting the planned-fix cycle for interrupted chain (was fixing)`);
         // Reset to reviewing so transition() will allow fixing.
         chain.state = 'reviewing';
-        this.startFix(chain, reviewerReport);
+        this.startPlannedFix(chain, reviewerReport);
         return true;
       }
       this.appendOwnerDecision(chain, 'resume_skipped', 'WRFC chain in fixing state but no reviewer report found for re-fix');
@@ -714,22 +720,10 @@ export class WrfcController {
   }
 
   /**
-   * Returns true when verifyEngineerClaims should be skipped for a completion event.
-   *
-   * Skip conditions (applied uniformly to engineer AND fixer completions):
-   *   1. `this.skipClaimVerification` is true — explicit opt-out for test harnesses that
-   *      use real /tmp paths (directories that exist on disk) where files are never actually
-   *      written to disk by agents. Injected only via createWrfcControllerForTest (never a
-   *      public constructor option). Use this when the environment-driven skip does not apply.
-   *   2. `!this.projectRootExistedAtStartup` — environment-driven skip: projectRoot did not
-   *      exist on disk when this controller was constructed. Cached at construction time because
-   *      the WrfcWorkmap mkdir's the directory tree on the first appendOwnerDecision call,
-   *      making a late-bound existsSync check unreliable (would always return true after that).
-   *      Preferred mechanism; harnesses should use nonexistent projectRoot paths when feasible.
-   *
-   * PRODUCTION INVARIANT: In any real GoodVibes session the projectRoot is the cloned
-   * repo root which always exists at startup. Both skip conditions are false in production;
-   * claim verification always runs for both engineer and fixer completions.
+   * True when verifyEngineerClaims should be skipped: the explicit test-only
+   * flag (createWrfcControllerForTest), or projectRoot not existing at
+   * construction (cached — the workmap mkdirs it later). Both are false in
+   * any real session, so claim verification always runs in production.
    */
   private shouldSkipClaimVerification(): boolean {
     return this.skipClaimVerification || !this.projectRootExistedAtStartup;
@@ -1095,10 +1089,17 @@ export class WrfcController {
     }
 
     this.appendOwnerDecision(chain, 'review_failed', `Review score ${review.score}/10 did not pass full-scope WRFC review`, { agentId: chain.reviewerAgentId, role: 'reviewer', reviewScore: review.score });
-    this.startFix(chain, review);
+    this.startPlannedFix(chain, review);
   }
 
-  private startFix(chain: WrfcChain, review: ReviewerReport): void {
+  /**
+   * The planned-fix path (1.4.3): review findings parse into a dependency
+   * graph run by the ONE engine (elastic pool, isolated worktrees,
+   * reviewed-and-merged release). Merged => the terminal contract gate
+   * re-reviews against the ORIGINAL request; task-level green is telemetry.
+   * Structured failures (cycle/orphaned/tasks-failed) fail the chain honestly.
+   */
+  private startPlannedFix(chain: WrfcChain, review: ReviewerReport): void {
     chain.fixAttempts += 1;
     this.transition(chain, 'fixing');
 
@@ -1111,56 +1112,45 @@ export class WrfcController {
       ...(targetConstraintIds.length > 0 ? { targetConstraintIds } : {}),
     });
 
-    const fixerRecord = this.spawnWrfcAgent(
-      chain,
-      'fixer',
-      'engineer',
-      buildFixTask(
-        chain.id,
-        chain.task,
-        review,
-        getWrfcScoreThreshold(this.configManager),
-        chain.fixAttempts,
-        chain.constraints,
-        review.constraintFindings ?? [],
-      ),
-      true,
-    );
+    const runner = this.fixWorkstreamRunner;
+    if (!runner) {
+      this.failChain(chain, 'planned-fix execution is not wired in this composition (setFixWorkstreamRunner was never called)');
+      return;
+    }
+    this.workmap.append({ ts: new Date().toISOString(), wrfcId: chain.id, event: 'fix_started', attempt: chain.fixAttempts });
+    this.appendOwnerDecision(chain, 'spawn_fixer',
+      `Planned fix cycle ${chain.fixAttempts}: review findings decomposed into a dependency-graph workstream (elastic fleet, isolated worktrees, reviewed-and-merged release)`,
+      { role: 'fixer' });
 
-    chain.fixerAgentId = fixerRecord.id;
-    this.registerSpawnedChild(chain, fixerRecord, 'fixer');
-    chain.currentNodeId = startWrfcOrchestrationNode(
-      this.runtimeBus,
-      this.sessionId,
-      chain.id,
-      `fix:${chain.fixAttempts}`,
-      'fixer',
-      `Fix attempt ${chain.fixAttempts}`,
-      fixerRecord.id,
-    );
-
-    this.workmap.append({
-      ts: new Date().toISOString(),
-      wrfcId: chain.id,
-      event: 'fix_started',
-      agentId: fixerRecord.id,
-      attempt: chain.fixAttempts,
-    });
-
-    logger.debug('WrfcController.startFix', {
+    const rawScope = getWrfcCommitScope(this.configManager);
+    // 'off' cannot drive a worktree merge lane — the fix graph needs commits; scoped is the safe floor.
+    const commitScope = rawScope === 'off' ? 'scoped' : rawScope;
+    const effectiveReview = augmentReviewWithMissingConstraintFindings(review, targetConstraintIds);
+    void runner.run({
       chainId: chain.id,
-      fixerAgentId: fixerRecord.id,
+      originalTask: chain.task,
+      review: effectiveReview,
       attempt: chain.fixAttempts,
+      commitScope,
+    }).then((outcome) => {
+      if (isChainTerminal(chain.state)) return; // cancelled/failed while the cycle ran
+      if (outcome.status === 'failed') {
+        this.appendOwnerDecision(chain, 'review_failed', `Planned fix cycle ${chain.fixAttempts} failed (${outcome.structured ?? 'failed'}): ${outcome.reason}`, { role: 'fixer' });
+        this.failChain(chain, `planned fix cycle ${chain.fixAttempts} ${outcome.structured ?? 'failed'}: ${outcome.reason}`);
+        return;
+      }
+      // TERMINAL CONTRACT GATE: re-review the MERGED RESULT against the
+      // ORIGINAL request (never the intermediate review); a slice-green
+      // workstream that misses the contract fails here and loops (bounded).
+      this.appendOwnerDecision(chain, 'review_passed', `Planned fix cycle ${chain.fixAttempts}: ${outcome.taskCount} tasks merged (workstream ${outcome.workstreamId}); running the original-contract re-review`, { role: 'fixer' });
+      const mergedReport = buildMergedFixReport(outcome, chain.constraints, ' onto the base branch');
+      // The merged result is the chain's latest engineer report.
+      chain.engineerReport = mergedReport;
+      this.startReview(chain, mergedReport);
+    }).catch((error) => {
+      if (isChainTerminal(chain.state)) return;
+      this.failChain(chain, `planned fix cycle ${chain.fixAttempts} threw: ${summarizeError(error)}`);
     });
-    this.appendOwnerDecision(chain, 'spawn_fixer', this.withRouteReason(
-      'Fix review findings while preserving the full original WRFC ask',
-      fixerRecord,
-    ), {
-      agentId: fixerRecord.id,
-      role: 'fixer',
-      record: fixerRecord,
-    });
-    this.upsertWrfcWorkPlanTask(chain, 'fixer', fixerRecord, 'in_progress');
   }
 
   private async runGates(chain: WrfcChain): Promise<QualityGateResult[]> {
@@ -1455,8 +1445,22 @@ export class WrfcController {
       return;
     }
 
+    // Planned-fix cycles land their work via the engine lane; with no gate
+    // fixer/integrator the initial engineer tree is superseded — nothing to commit.
+    const plannedFixOwnsTheCommit = chain.fixAttempts > 0
+      && !chain.fixerAgentId
+      && !chain.integratorAgentId
+      && (!chain.subtasks || chain.subtasks.length === 0);
+    if (plannedFixOwnsTheCommit) {
+      this.completeChainAsPassed(chain, 'commit handled by the planned-fix workstream integration lane');
+      return;
+    }
     const commitCandidateIds = this.autoCommitCandidateAgentIds(chain);
     if (commitCandidateIds.length === 0) {
+      if (chain.fixAttempts > 0) {
+        this.completeChainAsPassed(chain, 'commit handled by the planned-fix workstream integration lane');
+        return;
+      }
       // A structurally odd chain (no engineer/fixer/integrator) cannot be auto-committed, but the
       // full-scope review and gates already passed — that is what determines success. Surface the
       // miss as a warning on a passing chain rather than flipping a green chain to FAILED.
@@ -1568,13 +1572,19 @@ export class WrfcController {
 
     if (chain.subtasks && chain.subtasks.length > 0) {
       for (const subtask of chain.subtasks) {
-        add(subtask.fixerAgentId ?? subtask.engineerAgentId);
+        // A subtask whose fix work went through a planned workstream cycle is
+        // already committed/merged by the engine's integration lane — its
+        // original engineer tree is superseded, never re-merged here.
+        add(subtask.fixerAgentId ?? (subtask.fixAttempts > 0 ? undefined : subtask.engineerAgentId));
       }
       add(chain.integratorAgentId);
       return candidates;
     }
 
-    add(chain.fixerAgentId ?? chain.engineerAgentId);
+    // Same rule at chain level: planned-fix cycles (fixAttempts > 0 with no
+    // gate fixer) land their work via the engine lane; the initial engineer
+    // tree is superseded.
+    add(chain.fixerAgentId ?? (chain.fixAttempts > 0 ? undefined : chain.engineerAgentId));
     add(chain.integratorAgentId);
     if (candidates.length > 0) {
       return candidates;
@@ -2484,6 +2494,7 @@ export class WrfcController {
     this.startCompoundSubtaskFix(chain, subtask, review);
   }
 
+  /** The compound sub-deliverable fix rides the SAME planned-fix path; merged cycles re-review against the sub-deliverable's own ask. */
   private startCompoundSubtaskFix(chain: WrfcChain, subtask: WrfcSubtask, review: ReviewerReport): void {
     subtask.fixAttempts += 1;
     subtask.state = 'fixing';
@@ -2495,42 +2506,38 @@ export class WrfcController {
       ...(targetConstraintIds.length > 0 ? { targetConstraintIds } : {}),
     });
 
-    const fixerRecord = this.spawnWrfcAgent(
-      chain,
-      'fixer',
-      'engineer',
-      buildFixTask(
-        chain.id,
-        `Parent WRFC ask:\n${chain.task}\n\nSub-deliverable ${subtask.id}:\n${subtask.task}`,
-        review,
-        getWrfcScoreThreshold(this.configManager),
-        subtask.fixAttempts,
-        subtask.constraints,
-        review.constraintFindings ?? [],
-      ),
-      true,
-      subtask.id,
-    );
-    subtask.fixerAgentId = fixerRecord.id;
-    this.registerSpawnedChild(chain, fixerRecord, 'fixer', subtask.id);
-    subtask.currentNodeId = startWrfcOrchestrationNode(
-      this.runtimeBus,
-      this.sessionId,
-      chain.id,
-      `subtask:${subtask.id}:fix:${subtask.fixAttempts}`,
-      'fixer',
-      `Fix ${subtask.title}`,
-      fixerRecord.id,
-    );
-    this.appendOwnerDecision(chain, 'spawn_fixer', this.withRouteReason(
-      `Fix compound sub-deliverable ${subtask.id}`,
-      fixerRecord,
-    ), {
-      agentId: fixerRecord.id,
-      role: 'fixer',
-      record: fixerRecord,
+    const runner = this.fixWorkstreamRunner;
+    if (!runner) {
+      subtask.state = 'failed';
+      this.failChain(chain, `Sub-deliverable ${subtask.id}: planned-fix execution is not wired in this composition (setFixWorkstreamRunner was never called)`);
+      return;
+    }
+    const subtaskAsk = `Parent WRFC ask:\n${chain.task}\n\nSub-deliverable ${subtask.id}:\n${subtask.task}`;
+    this.appendOwnerDecision(chain, 'spawn_fixer', `Planned fix cycle ${subtask.fixAttempts} for sub-deliverable ${subtask.id}: review findings decomposed into a dependency-graph workstream`, { role: 'fixer' });
+    const rawScope = getWrfcCommitScope(this.configManager);
+    const commitScope = rawScope === 'off' ? 'scoped' : rawScope;
+    void runner.run({
+      chainId: `${chain.id}:${subtask.id}`,
+      originalTask: subtaskAsk,
+      review,
+      attempt: subtask.fixAttempts,
+      commitScope,
+    }).then((outcome) => {
+      if (isChainTerminal(chain.state)) return;
+      if (outcome.status === 'failed') {
+        subtask.state = 'failed';
+        this.failChain(chain, `Sub-deliverable ${subtask.id} planned fix cycle ${subtask.fixAttempts} ${outcome.structured ?? 'failed'}: ${outcome.reason}`);
+        return;
+      }
+      const mergedReport = buildMergedFixReport(outcome, subtask.constraints, ` for sub-deliverable ${subtask.id}`);
+      // The merged output IS the subtask's latest engineer report (integration summarizes it).
+      subtask.engineerReport = mergedReport;
+      this.startCompoundSubtaskReview(chain, subtask, mergedReport);
+    }).catch((error) => {
+      if (isChainTerminal(chain.state)) return;
+      subtask.state = 'failed';
+      this.failChain(chain, `Sub-deliverable ${subtask.id} planned fix cycle threw: ${summarizeError(error)}`);
     });
-    this.upsertWrfcWorkPlanTask(chain, 'fixer', fixerRecord, 'in_progress', subtask.id);
   }
 
   private startIntegration(chain: WrfcChain): void {
@@ -2893,20 +2900,10 @@ export class WrfcController {
   }
 
   /**
-   * Resolve the work-plan-visible role for an agent in a chain.
-   *
-   * Primary source: the durable `record.wrfcRole` stamped by
-   * `applyWrfcAgentMetadata`. This preserves superseded-agent identity
-   * (e.g. an earlier fixer whose `fixerAgentId` slot was reassigned still
-   * resolves to 'fixer', so autoCommit continues to include its worktree).
-   *
-   * Structural fallback: `workPlanRoleForAgent`, which matches against the
-   * CURRENT chain/subtask agent-id slots. Returns null for any agent no
-   * longer in a current slot.
-   *
-   * Note: 'orchestrator' and 'verifier' are filtered out because they have
-   * no work-plan task representation; workPlanTaskIdForAgent does not
-   * accept those roles.
+   * Resolve the work-plan-visible role for an agent: the durable
+   * record.wrfcRole first (preserves superseded-agent identity), else the
+   * current-slot structural fallback; orchestrator/verifier filter out (no
+   * work-plan representation).
    */
   private resolveWrfcRole(
     chain: WrfcChain,
