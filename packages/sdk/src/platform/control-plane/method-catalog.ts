@@ -37,6 +37,9 @@ import {
 import {
   builtinGatewayPairingMethodDescriptors,
 } from './method-catalog-pairing.js';
+import {
+  builtinGatewayTailscaleMethodDescriptors,
+} from './method-catalog-tailscale.js';
 import type {
   GatewayEventDescriptor,
   GatewayEventListOptions,
@@ -118,6 +121,7 @@ const BUILTIN_GATEWAY_METHODS: readonly GatewayMethodDescriptor[] = [
   ...builtinGatewayAdminMethodDescriptors,
   ...builtinGatewayPushMethodDescriptors,
   ...builtinGatewayPairingMethodDescriptors,
+  ...builtinGatewayTailscaleMethodDescriptors,
   ...builtinGatewaySkillsMethodDescriptors,
   ...builtinGatewayPrincipalsMethodDescriptors,
   ...builtinGatewayChannelProfilesMethodDescriptors,

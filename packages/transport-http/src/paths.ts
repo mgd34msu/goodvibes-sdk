@@ -33,6 +33,33 @@ export interface TransportPaths {
   readonly controlUrl: string;
 }
 
+/**
+ * Whether a URL hostname addresses a private network — loopback, an RFC 1918
+ * range (10/8, 172.16/12, 192.168/16), or an mDNS `.local` name.
+ *
+ * Plain-http origins on these hosts are a DELIBERATE, SUPPORTED posture (a
+ * phone on the same LAN talking to the daemon), not a mistake to wall off:
+ * TLS on a home network is the user's own responsibility and the daemon never
+ * mints certificates, so the transport must work over http here — in a browser
+ * bundle too, where no process.env escape hatch exists. Genuinely public http
+ * origins keep the insecure-transport wall.
+ *
+ * Accepts the hostname as URL.hostname yields it (IPv6 still in brackets).
+ */
+export function isPrivateNetworkHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  if (host === 'localhost' || host === '::1' || host.endsWith('.localhost')) return true;
+  if (host.endsWith('.local')) return true; // mDNS
+  const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!ipv4) return false;
+  const [a, b] = [Number(ipv4[1]), Number(ipv4[2])];
+  if (a === 127) return true; // loopback
+  if (a === 10) return true; // 10/8
+  if (a === 172 && b >= 16 && b <= 31) return true; // 172.16/12
+  if (a === 192 && b === 168) return true; // 192.168/16
+  return false;
+}
+
 export function normalizeBaseUrl(baseUrl: string): string {
   const normalized = baseUrl.trim();
   if (!normalized) {
@@ -54,18 +81,22 @@ export function normalizeBaseUrl(baseUrl: string): string {
     throw new ConfigurationError(`Unsupported transport baseUrl protocol: ${protocol}`, {
       code: 'SDK_TRANSPORT_BASE_URL_PROTOCOL_UNSUPPORTED',
       source: 'transport',
-      hint: 'Use https:// or wss://. http:// and ws:// are accepted only for local development or explicit insecure deployments.',
+      hint: 'Use https:// or wss://. http:// and ws:// are supported on private-network origins (localhost, RFC 1918, .local) and for explicit public-http deployments.',
     });
   }
-  const host = parsed.hostname.toLowerCase();
-  const local = host === 'localhost' || host === '::1' || host === '127.0.0.1' || host.startsWith('127.');
+  // Private-network origins (loopback, RFC 1918, .local mDNS) are a supported
+  // plain-http posture — no throw, and no env escape hatch needed (which would
+  // not exist in a browser bundle anyway). Only a genuinely PUBLIC http origin
+  // keeps the wall; the server-side env override remains for an intentional
+  // public-http deployment.
+  const privateNetwork = isPrivateNetworkHost(parsed.hostname);
   const runtimeProcess = (globalThis as { readonly process?: { readonly env?: Record<string, string | undefined> } }).process;
   const allowInsecure = runtimeProcess?.env?.GOODVIBES_ALLOW_INSECURE_TRANSPORT === 'true';
-  if ((protocol === 'http:' || protocol === 'ws:') && !local && !allowInsecure) {
-    throw new ConfigurationError('Refusing insecure non-local GoodVibes transport baseUrl.', {
+  if ((protocol === 'http:' || protocol === 'ws:') && !privateNetwork && !allowInsecure) {
+    throw new ConfigurationError('Refusing insecure PUBLIC GoodVibes transport baseUrl.', {
       code: 'SDK_TRANSPORT_INSECURE_BASE_URL',
       source: 'transport',
-      hint: 'Use https:// or wss://, or set GOODVIBES_ALLOW_INSECURE_TRANSPORT=true for an intentional non-local development deployment.',
+      hint: 'Use https:// or wss:// for public origins. Plain http is supported on private-network origins (localhost, 10/8, 172.16/12, 192.168/16, .local). For an intentional public-http deployment set GOODVIBES_ALLOW_INSECURE_TRANSPORT=true (server-side only).',
     });
   }
   return normalized.replace(/\/+$/, '');

@@ -44,4 +44,4 @@ export { DEFAULT_HTTP_RETRY_POLICY, applyPerMethodPolicy, getHttpRetryDelay, isR
 export type { StreamReconnectPolicy, ResolvedStreamReconnectPolicy } from './reconnect.js';
 export { DEFAULT_STREAM_RECONNECT_POLICY, getStreamReconnectDelay, normalizeStreamReconnectPolicy } from './reconnect.js';
 export type { TransportPaths } from './paths.js';
-export { buildUrl, createTransportPaths, normalizeBaseUrl } from './paths.js';
+export { buildUrl, createTransportPaths, normalizeBaseUrl, isPrivateNetworkHost } from './paths.js';

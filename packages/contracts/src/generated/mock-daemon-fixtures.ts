@@ -11955,7 +11955,42 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
         }
       ],
       "fragment": "sample",
-      "deepLink": "sample"
+      "deepLink": "sample",
+      "posture": {
+        "origin": "sample",
+        "scheme": "sample",
+        "privateNetwork": false,
+        "secureContext": false,
+        "notice": "sample",
+        "capabilities": [
+          {
+            "capability": "sample",
+            "available": false,
+            "reason": "sample"
+          }
+        ]
+      }
+    }
+  },
+  "pairing.posture.get": {
+    "methodId": "pairing.posture.get",
+    "http": null,
+    "status": 200,
+    "body": {
+      "posture": {
+        "origin": "sample",
+        "scheme": "sample",
+        "privateNetwork": false,
+        "secureContext": false,
+        "notice": "sample",
+        "capabilities": [
+          {
+            "capability": "sample",
+            "available": false,
+            "reason": "sample"
+          }
+        ]
+      }
     }
   },
   "pairing.tokens.create": {
@@ -13422,6 +13457,40 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           "metadata": {}
         }
       ]
+    }
+  },
+  "tailscale.get": {
+    "methodId": "tailscale.get",
+    "http": null,
+    "status": 200,
+    "body": {
+      "available": false,
+      "loggedIn": false,
+      "magicDnsName": "sample",
+      "httpsUrl": "sample",
+      "detail": "sample",
+      "lastServe": {
+        "at": 0,
+        "command": "sample",
+        "ok": false,
+        "url": "sample",
+        "detail": "sample"
+      }
+    }
+  },
+  "tailscale.serve.run": {
+    "methodId": "tailscale.serve.run",
+    "http": null,
+    "status": 200,
+    "body": {
+      "receipt": {
+        "at": 0,
+        "command": "sample",
+        "ok": false,
+        "url": "sample",
+        "detail": "sample"
+      },
+      "publicBaseUrlUpdated": false
     }
   },
   "review.snapshot": {

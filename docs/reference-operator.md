@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `395`
+- Methods: `398`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -65242,7 +65242,7 @@ Apply the surface's per-offer decisions in ONE pass: an accepted notifications o
 
 #### `pairing.handoff.create`
 
-Mint a per-device token AND assemble the set-up OFFER SET this daemon can satisfy (notifications — carrying the VAPID public key; relay; passkey step-up), so a freshly-paired surface can complete them in one pass. Returns the offer set, the `#pair=<token>` deep-link fragment (the exact URL-fragment shape the web app consumes — token in `pair=`, offers in `offers=`), and a full deep link when a web origin is configured. The token secret is returned exactly once. Each offer is independently declinable at completion.
+Mint a per-device token AND assemble the set-up OFFER SET this daemon can satisfy (notifications — carrying the VAPID public key; relay; passkey step-up), so a freshly-paired surface can complete them in one pass. Returns the offer set, the `#pair=<token>` deep-link fragment (the exact URL-fragment shape the web app consumes — token in `pair=`, offers in `offers=`), a full deep link when a web origin is configured, and that origin's honest TLS/capability POSTURE: the one plain-http-on-LAN notice line (stated here, never a nag) plus per-capability availability labels so surfaces render "needs https — available via tailscale" instead of dead buttons. The token secret is returned exactly once. Each offer is independently declinable at completion.
 
 - Title: `Create Pairing Hand-off`
 - Source: `builtin`
@@ -65334,12 +65334,154 @@ Mint a per-device token AND assemble the set-up OFFER SET this daemon can satisf
     },
     "deepLink": {
       "type": "string"
+    },
+    "posture": {
+      "type": "object",
+      "properties": {
+        "origin": {
+          "type": "string"
+        },
+        "scheme": {
+          "type": "string"
+        },
+        "privateNetwork": {
+          "type": "boolean"
+        },
+        "secureContext": {
+          "type": "boolean"
+        },
+        "notice": {
+          "type": "string"
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "capability": {
+                "type": "string"
+              },
+              "available": {
+                "type": "boolean"
+              },
+              "reason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "capability",
+              "available"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "origin",
+        "scheme",
+        "privateNetwork",
+        "secureContext",
+        "capabilities"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [
     "token",
     "offers",
     "fragment"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `pairing.posture.get`
+
+The honest TLS/capability posture of a web origin — pass your surface's current origin (or omit it to read the configured web origin). Plain http on a private-network origin (LAN IP, .local, localhost) is a supported posture reported with its ONE notice line; browser-gated capabilities (service worker/PWA install, push, microphone) are each labeled available or "needs https — available via tailscale" so surfaces render labels instead of dead buttons. Localhost keeps all three. The daemon never mints certificates.
+
+- Title: `Get Origin TLS/Capability Posture`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `read:control-plane`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "origin": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "posture": {
+      "type": "object",
+      "properties": {
+        "origin": {
+          "type": "string"
+        },
+        "scheme": {
+          "type": "string"
+        },
+        "privateNetwork": {
+          "type": "boolean"
+        },
+        "secureContext": {
+          "type": "boolean"
+        },
+        "notice": {
+          "type": "string"
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "capability": {
+                "type": "string"
+              },
+              "available": {
+                "type": "boolean"
+              },
+              "reason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "capability",
+              "available"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "origin",
+        "scheme",
+        "privateNetwork",
+        "secureContext",
+        "capabilities"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "posture"
   ],
   "additionalProperties": false
 }
@@ -72247,6 +72389,147 @@ Return queued and leased remote work items.
   },
   "required": [
     "work"
+  ],
+  "additionalProperties": false
+}
+```
+
+### remote-access
+
+#### `tailscale.get`
+
+READ-ONLY detection of a usable tailscale environment: binary present, logged-in status, MagicDNS name, and the https URL `tailscale serve` would yield. Never invokes a state-changing tailscale command. Where tailscale is absent the result says so once — surfaces offer the auto-wire affordance only when this reports a usable environment; nothing nags. Includes the most recent serve receipt, if any.
+
+- Title: `Detect Tailscale Environment`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `read:control-plane`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+none
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "available": {
+      "type": "boolean"
+    },
+    "loggedIn": {
+      "type": "boolean"
+    },
+    "magicDnsName": {
+      "type": "string"
+    },
+    "httpsUrl": {
+      "type": "string"
+    },
+    "detail": {
+      "type": "string"
+    },
+    "lastServe": {
+      "type": "object",
+      "properties": {
+        "at": {
+          "type": "number"
+        },
+        "command": {
+          "type": "string"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "url": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "at",
+        "command",
+        "ok",
+        "detail"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "available",
+    "loggedIn",
+    "detail"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `tailscale.serve.run`
+
+The one-action https affordance: run `tailscale serve --bg <web port>` so tailscale fronts the daemon's web surface at its https MagicDNS URL. This is the ONLY state-changing tailscale command the daemon ever runs, and only from this explicit user-initiated verb. The attempt is recorded with an honest receipt either way; on success web.publicBaseUrl is updated to the https URL from the same resolution. The daemon never mints certificates — TLS is terminated by tailscale.
+
+- Title: `Set Up Tailscale Serve For The Daemon`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `write:control-plane`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+none
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "receipt": {
+      "type": "object",
+      "properties": {
+        "at": {
+          "type": "number"
+        },
+        "command": {
+          "type": "string"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "url": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "at",
+        "command",
+        "ok",
+        "detail"
+      ],
+      "additionalProperties": false
+    },
+    "publicBaseUrlUpdated": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "receipt",
+    "publicBaseUrlUpdated"
   ],
   "additionalProperties": false
 }

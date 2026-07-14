@@ -47,6 +47,28 @@ const MINTED_PAIRING_TOKEN_SCHEMA = objectSchema({
   createdAt: NUMBER_SCHEMA,
 }, ['id', 'name', 'token', 'createdAt']);
 
+/**
+ * The honest TLS/capability posture of a web origin: whether plain http on a
+ * private network applies (the supported LAN posture, with its ONE notice line
+ * stated at pairing — never a nag), and which browser-gated capabilities the
+ * origin can support, each unavailable one labeled with why and the supported
+ * path (tailscale) so surfaces render labels instead of dead buttons. The
+ * daemon never mints certificates; https comes from the user's own TLS or
+ * tailscale.
+ */
+const ORIGIN_POSTURE_SCHEMA = objectSchema({
+  origin: STRING_SCHEMA,
+  scheme: STRING_SCHEMA,
+  privateNetwork: BOOLEAN_SCHEMA,
+  secureContext: BOOLEAN_SCHEMA,
+  notice: STRING_SCHEMA,
+  capabilities: arraySchema(objectSchema({
+    capability: STRING_SCHEMA,
+    available: BOOLEAN_SCHEMA,
+    reason: STRING_SCHEMA,
+  }, ['capability', 'available'])),
+}, ['origin', 'scheme', 'privateNetwork', 'secureContext', 'capabilities']);
+
 export const builtinGatewayPairingMethodDescriptors: readonly GatewayMethodDescriptor[] = [
   methodDescriptor({
     id: 'pairing.tokens.list',
@@ -112,7 +134,7 @@ export const builtinGatewayPairingMethodDescriptors: readonly GatewayMethodDescr
   methodDescriptor({
     id: 'pairing.handoff.create',
     title: 'Create Pairing Hand-off',
-    description: 'Mint a per-device token AND assemble the set-up OFFER SET this daemon can satisfy (notifications — carrying the VAPID public key; relay; passkey step-up), so a freshly-paired surface can complete them in one pass. Returns the offer set, the `#pair=<token>` deep-link fragment (the exact URL-fragment shape the web app consumes — token in `pair=`, offers in `offers=`), and a full deep link when a web origin is configured. The token secret is returned exactly once. Each offer is independently declinable at completion.',
+    description: 'Mint a per-device token AND assemble the set-up OFFER SET this daemon can satisfy (notifications — carrying the VAPID public key; relay; passkey step-up), so a freshly-paired surface can complete them in one pass. Returns the offer set, the `#pair=<token>` deep-link fragment (the exact URL-fragment shape the web app consumes — token in `pair=`, offers in `offers=`), a full deep link when a web origin is configured, and that origin\'s honest TLS/capability POSTURE: the one plain-http-on-LAN notice line (stated here, never a nag) plus per-capability availability labels so surfaces render "needs https — available via tailscale" instead of dead buttons. The token secret is returned exactly once. Each offer is independently declinable at completion.',
     category: 'pairing',
     scopes: ['write:control-plane'],
     transport: ['ws'],
@@ -129,7 +151,18 @@ export const builtinGatewayPairingMethodDescriptors: readonly GatewayMethodDescr
       }, ['kind', 'available'])),
       fragment: STRING_SCHEMA,
       deepLink: STRING_SCHEMA,
+      posture: ORIGIN_POSTURE_SCHEMA,
     }, ['token', 'offers', 'fragment']),
+  }),
+  methodDescriptor({
+    id: 'pairing.posture.get',
+    title: 'Get Origin TLS/Capability Posture',
+    description: 'The honest TLS/capability posture of a web origin — pass your surface\'s current origin (or omit it to read the configured web origin). Plain http on a private-network origin (LAN IP, .local, localhost) is a supported posture reported with its ONE notice line; browser-gated capabilities (service worker/PWA install, push, microphone) are each labeled available or "needs https — available via tailscale" so surfaces render labels instead of dead buttons. Localhost keeps all three. The daemon never mints certificates.',
+    category: 'pairing',
+    scopes: ['read:control-plane'],
+    transport: ['ws'],
+    inputSchema: objectSchema({ origin: STRING_SCHEMA }, []),
+    outputSchema: objectSchema({ posture: ORIGIN_POSTURE_SCHEMA }, ['posture']),
   }),
   methodDescriptor({
     id: 'pairing.handoff.complete',

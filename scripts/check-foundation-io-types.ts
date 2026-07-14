@@ -46,6 +46,7 @@ import { fileURLToPath } from 'node:url';
 import { builtinGatewayControlCompanionMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-companion.ts';
 import { builtinGatewayPushMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-push.ts';
 import { builtinGatewayPairingMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-pairing.ts';
+import { builtinGatewayTailscaleMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-tailscale.ts';
 import { builtinGatewayPermissionRuleMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-permission-rules.ts';
 import { builtinGatewayControlCoreMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-core.ts';
 import { builtinGatewayRuntimeMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-runtime.ts';
@@ -208,6 +209,7 @@ const CATALOG_DESCRIPTORS = [
   ...builtinGatewayRuntimeMethodDescriptors,
   ...builtinGatewayPushMethodDescriptors,
   ...builtinGatewayPairingMethodDescriptors,
+  ...builtinGatewayTailscaleMethodDescriptors,
 ];
 
 function descriptorSchemas(methodId: string): { input: Record<string, unknown>; output: Record<string, unknown> } {
@@ -395,6 +397,10 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   // Pairing hand-off bundle (offer set completed in one pass):
   { methodId: 'pairing.handoff.create', ...descriptorSchemas('pairing.handoff.create') },
   { methodId: 'pairing.handoff.complete', ...descriptorSchemas('pairing.handoff.complete') },
+  // Origin TLS/capability posture + tailscale auto-wire:
+  { methodId: 'pairing.posture.get', ...descriptorSchemas('pairing.posture.get') },
+  { methodId: 'tailscale.get', ...descriptorSchemas('tailscale.get') },
+  { methodId: 'tailscale.serve.run', ...descriptorSchemas('tailscale.serve.run') },
 ];
 
 const fileText = readFileSync(FOUNDATION_TYPES_PATH, 'utf8');
