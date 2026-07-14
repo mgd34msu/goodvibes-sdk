@@ -3,7 +3,7 @@
   "info": {
     "title": "GoodVibes Operator API",
     "version": "1.8.0",
-    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 401 cataloged methods: 353 with dedicated REST bindings, 48 reachable only through the generic invoke endpoint. 97 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
+    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 403 cataloged methods: 353 with dedicated REST bindings, 50 reachable only through the generic invoke endpoint. 97 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
   },
   "servers": [
     {
@@ -79170,7 +79170,8 @@
                       "webui",
                       "companion-task",
                       "companion-chat",
-                      "automation"
+                      "automation",
+                      "acp"
                     ]
                   },
                   "project": {
@@ -89099,6 +89100,8 @@
           }
         },
         "x-invoke-only-methods": [
+          "acp.agents.list",
+          "acp.sessions.create",
           "channels.test.send",
           "checkpoints.create",
           "checkpoints.diff",
@@ -89351,6 +89354,24 @@
       "category": "accounts",
       "access": "authenticated",
       "rest": "GET /api/accounts",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "acp.agents.list",
+      "category": "acp",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "schema-less",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "acp.sessions.create",
+      "category": "acp",
+      "access": "authenticated",
+      "rest": null,
       "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"

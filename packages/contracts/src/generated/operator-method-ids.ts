@@ -1,5 +1,7 @@
 export const OPERATOR_METHOD_IDS = [
   "accounts.snapshot",
+  "acp.agents.list",
+  "acp.sessions.create",
   "approvals.approve",
   "approvals.cancel",
   "approvals.claim",

@@ -48,6 +48,7 @@ import { builtinGatewayPushMethodDescriptors } from '../packages/sdk/src/platfor
 import { builtinGatewayPairingMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-pairing.ts';
 import { builtinGatewayTailscaleMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-tailscale.ts';
 import { builtinGatewayControlAutomationMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-automation.ts';
+import { builtinGatewayAcpMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-acp.ts';
 import { builtinGatewayPermissionRuleMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-permission-rules.ts';
 import { builtinGatewayControlCoreMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-core.ts';
 import { builtinGatewayRuntimeMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-runtime.ts';
@@ -221,6 +222,7 @@ const CATALOG_DESCRIPTORS = [
   ...builtinGatewayPairingMethodDescriptors,
   ...builtinGatewayTailscaleMethodDescriptors,
   ...builtinGatewayControlAutomationMethodDescriptors,
+  ...builtinGatewayAcpMethodDescriptors,
 ];
 
 function descriptorSchemas(methodId: string): { input: Record<string, unknown>; output: Record<string, unknown> } {
@@ -443,6 +445,9 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   { methodId: 'fleet.conflicts.list', input: FLEET_CONFLICTS_LIST_INPUT_SCHEMA, output: FLEET_CONFLICTS_LIST_OUTPUT_SCHEMA },
   { methodId: 'fleet.conflicts.resolve', input: FLEET_CONFLICTS_RESOLVE_INPUT_SCHEMA, output: FLEET_CONFLICTS_RESOLVE_OUTPUT_SCHEMA },
   { methodId: 'worktrees.discard', input: WORKTREE_DISCARD_INPUT_SCHEMA, output: WORKTREE_DISCARD_OUTPUT_SCHEMA },
+  // Hosted third-party ACP agents (discovery + one-act spawn):
+  { methodId: 'acp.agents.list', ...descriptorSchemas('acp.agents.list') },
+  { methodId: 'acp.sessions.create', ...descriptorSchemas('acp.sessions.create') },
 ];
 
 const fileText = readFileSync(FOUNDATION_TYPES_PATH, 'utf8');

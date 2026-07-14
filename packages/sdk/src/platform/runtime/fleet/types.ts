@@ -27,6 +27,10 @@ export type ProcessKind =
   | 'workstream'
   | 'phase'
   | 'work-item'
+  // A HOSTED third-party coding agent (Claude Code / Codex CLI / opencode)
+  // running as a long-lived daemon session over the Agent Client Protocol —
+  // see platform/acp/host.ts and adapters/acp-host.ts.
+  | 'acp-agent'
   // The repo source-tree code index's initial build (Stage A). Not
   // 'background-process': an index build has no pid (ProcessManager
   // is shell/OS-process-only), so it gets its own kind, mirroring the

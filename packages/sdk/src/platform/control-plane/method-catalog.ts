@@ -40,6 +40,9 @@ import {
 import {
   builtinGatewayTailscaleMethodDescriptors,
 } from './method-catalog-tailscale.js';
+import {
+  builtinGatewayAcpMethodDescriptors,
+} from './method-catalog-acp.js';
 import type {
   GatewayEventDescriptor,
   GatewayEventListOptions,
@@ -122,6 +125,7 @@ const BUILTIN_GATEWAY_METHODS: readonly GatewayMethodDescriptor[] = [
   ...builtinGatewayPushMethodDescriptors,
   ...builtinGatewayPairingMethodDescriptors,
   ...builtinGatewayTailscaleMethodDescriptors,
+  ...builtinGatewayAcpMethodDescriptors,
   ...builtinGatewaySkillsMethodDescriptors,
   ...builtinGatewayPrincipalsMethodDescriptors,
   ...builtinGatewayChannelProfilesMethodDescriptors,

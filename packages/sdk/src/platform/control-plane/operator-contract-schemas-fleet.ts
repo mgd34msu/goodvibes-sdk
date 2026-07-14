@@ -32,6 +32,7 @@ const PROCESS_KIND_SCHEMA = enumSchema([
   'workstream',
   'phase',
   'work-item',
+  'acp-agent',
   'code-index',
 ]);
 const PROCESS_STATE_SCHEMA = enumSchema([

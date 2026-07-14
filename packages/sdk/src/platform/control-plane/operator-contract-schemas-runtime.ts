@@ -25,7 +25,7 @@ const INBOUND_SERVER_SURFACE_SCHEMA = enumSchema(['controlPlane', 'httpListener'
 const INBOUND_TLS_MODE_SCHEMA = enumSchema(['off', 'proxy', 'direct']);
 const OUTBOUND_TRUST_MODE_SCHEMA = enumSchema(['bundled', 'bundled+custom', 'custom']);
 const OUTBOUND_CA_STRATEGY_SCHEMA = enumSchema(['bun-default', 'bundled+custom', 'custom']);
-const SHARED_SESSION_KIND_SCHEMA = enumSchema(['tui', 'agent', 'webui', 'companion-task', 'companion-chat', 'automation']);
+const SHARED_SESSION_KIND_SCHEMA = enumSchema(['tui', 'agent', 'webui', 'companion-task', 'companion-chat', 'automation', 'acp']);
 /**
  * READ-path kind schema: an OPEN enum. The known kinds are the same set as
  * {@link SHARED_SESSION_KIND_SCHEMA}, but response/output validation must accept

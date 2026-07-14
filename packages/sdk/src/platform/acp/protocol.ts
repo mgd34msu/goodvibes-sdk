@@ -9,7 +9,6 @@
 export type {
   Client,
   Agent,
-  AgentSideConnection,
   ClientSideConnection,
   RequestError,
 } from '@agentclientprotocol/sdk';
@@ -24,9 +23,10 @@ export type {
   NewSessionResponse,
   RequestPermissionRequest,
   RequestPermissionResponse,
+  CancelNotification,
 } from '@agentclientprotocol/sdk';
 
-export { ndJsonStream } from '@agentclientprotocol/sdk';
+export { ndJsonStream, AgentSideConnection, PROTOCOL_VERSION } from '@agentclientprotocol/sdk';
 
 // ---------------------------------------------------------------------------
 // Local types

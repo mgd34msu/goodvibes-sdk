@@ -66,6 +66,7 @@ import { CrossSessionTaskRegistry } from '../sessions/orchestration/index.js';
 import { ApiTokenAuditor } from '../security/token-audit.js';
 import { UserAuthManager } from '../security/user-auth.js';
 import { PairingTokenManager } from '../pairing/pairing-token-store.js';
+import { AcpHostService } from '../acp/host.js';
 import { WebhookNotifier } from '../integrations/webhooks.js';
 import { McpRegistry } from '../mcp/registry.js';
 import { createMcpElicitationApprovalHandler } from '../mcp/elicitation.js';
@@ -474,11 +475,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // this runtime writes, bounded by the retention engine. Timers are unref'd
   // so an undisposed scheduler cannot pin the event loop.
   const storeSnapshotScheduler = new StoreSnapshotScheduler({
-    stores: [
-      { name: 'memory store', dbPath: memoryDbPath },
-      { name: 'memory vector index', dbPath: resolveMemoryVectorDbPath(memoryDbPath) },
-      { name: 'code index store', dbPath: codeIndexDbPath },
-    ],
+    stores: [{ name: 'memory store', dbPath: memoryDbPath }, { name: 'memory vector index', dbPath: resolveMemoryVectorDbPath(memoryDbPath) }, { name: 'code index store', dbPath: codeIndexDbPath }],
   });
   storeSnapshotScheduler.start();
   const deliveryManager = new AutomationDeliveryManager({
@@ -597,9 +594,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const channelPolicy = new ChannelPolicyManager({
     storePath: shellPaths.resolveProjectPath(surfaceRoot, 'channels', 'policies.json'),
   });
-  const distributedRuntime = new DistributedRuntimeManager(
-    shellPaths.resolveProjectPath(surfaceRoot, 'remote', 'distributed-runtime.json'),
-  );
+  const distributedRuntime = new DistributedRuntimeManager(shellPaths.resolveProjectPath(surfaceRoot, 'remote', 'distributed-runtime.json'));
   distributedRuntime.attachRuntime({
     sessionBridge: sessionBroker,
     approvalBridge: approvalBroker,
@@ -629,11 +624,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const worktreeRegistry = new WorktreeRegistry(workingDirectory, { surfaceRoot });
   const webhookNotifier = new WebhookNotifier();
   const replayEngine = new DeterministicReplayEngine(workingDirectory);
-  const providerOptimizer = new ProviderOptimizer(
-    providerRegistry,
-    providerCapabilityRegistry,
-    false,
-  );
+  const providerOptimizer = new ProviderOptimizer(providerRegistry, providerCapabilityRegistry, false);
   bindProviderOptimizerFeatureFlag(featureFlags, providerOptimizer);
   applyProviderOptimizerConfigMode(configManager, providerOptimizer);
   // Poll-free runtime event for permission-mode changes so surfaces can render a live mode pill.
@@ -812,6 +803,13 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // comment for the dispose story (no RuntimeServices-wide shutdown seam yet).
   // Archive-aware: finished agent/swarm subtrees can be moved out of the
   // live fleet view into a session-scoped archive (see fleet/archive.ts).
+  // Hosted third-party coding agents (ACP): permission asks route through the SHARED approval broker (approvals panel + push like any native ask); each hosted agent maps onto a kind-'acp' shared session.
+  const acpHost = new AcpHostService({
+    requestPermission: (request) => approvalBroker.requestApproval({ request }),
+    registerSession: ({ id, title, agentTitle, cwd }) => void sessionBroker
+      .register({ sessionId: id, kind: 'acp', title, project: cwd, participant: { surfaceKind: 'service', surfaceId: `acp-host:${agentTitle}`, lastSeenAt: Date.now() } })
+      .catch(() => { /* best-effort; the fleet row is authoritative */ }),
+  });
   const processRegistry = withFleetArchive(createProcessRegistry({
     agentManager,
     wrfcController,
@@ -829,6 +827,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     priceUsage,
     priceProvenance,
     codeIndexService: codeIndexStore,
+    acpHost,
   }));
 
   // Surface fleet lifecycle deltas on the runtime bus `fleet` domain (gateway fans it out; no polling). sessionPresence gates needs-input push suppression. Both subscriptions live for the registry's lifetime.
@@ -838,7 +837,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     return s ? hasFreshSurfaceParticipant(s, Date.now(), SURFACE_ROUTE_FRESHNESS_MS) : false;
   };
   const stepUpService = new StepUpService({ secrets: secretsManager });
-  registerGatewayVerbGroups(gatewayMethods, { processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, requestApproval: (input) => approvalBroker.requestApproval(input), stampFixSessionOnApproval: (offerCallId, outcome) => approvalBroker.stampFixSession(offerCallId, outcome), watcherRegistry, userPermissionRuleStore, shellPaths, runtimeBus: options.runtimeBus, sessionPresence: { isAttached }, configManager, runtimeStore: options.runtimeStore, channelDeliveryRouter, providerRegistry, automationManager, sessionLister: sessionBroker, sessionIntake: sessionBroker, workingDirectory, attemptsController: orchestrationEngine, stepUpService, memoryRegistry, pairingTokens }); // see routes/register-gateway-verb-groups.ts
+  registerGatewayVerbGroups(gatewayMethods, { processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, requestApproval: (input) => approvalBroker.requestApproval(input), stampFixSessionOnApproval: (offerCallId, outcome) => approvalBroker.stampFixSession(offerCallId, outcome), watcherRegistry, userPermissionRuleStore, shellPaths, runtimeBus: options.runtimeBus, sessionPresence: { isAttached }, configManager, runtimeStore: options.runtimeStore, channelDeliveryRouter, providerRegistry, automationManager, sessionLister: sessionBroker, sessionIntake: sessionBroker, workingDirectory, attemptsController: orchestrationEngine, stepUpService, memoryRegistry, pairingTokens, acpHost }); // see routes/register-gateway-verb-groups.ts
   return {
     workingDirectory,
     homeDirectory,

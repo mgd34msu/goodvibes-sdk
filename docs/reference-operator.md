@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `401`
+- Methods: `403`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -309,6 +309,201 @@ Return provider account posture.
     "providers",
     "configuredCount",
     "issueCount"
+  ],
+  "additionalProperties": false
+}
+```
+
+### acp
+
+#### `acp.agents.list`
+
+READ-ONLY discovery of installed ACP-capable third-party coding agents (Claude Code, Codex CLI, opencode): existence checks over $PATH and known install directories — no process is ever executed, no registration ceremony. Returns only what is present (id, title, resolved binary path, ACP launch args); absence is a quiet empty list, never a nag.
+
+- Title: `List Installed Third-Party Coding Agents`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `read:fleet`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+none
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "agents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "binaryPath": {
+            "type": "string"
+          },
+          "args": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "binaryPath",
+          "args"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "agents"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `acp.sessions.create`
+
+Spawn a discovered third-party agent into a working directory as a hosted daemon session in ONE act: the binary is launched in ACP stdio mode, the handshake and session creation run under a bound timeout, and the result is the hosted record — which appears as a steerable/stoppable fleet row (kind acp-agent) whose permission asks classify as waiting-on-human. A binary that fails the handshake returns the SAME record with state "failed" and a structured error (which binary, which stage, what happened) — an honest outcome, never a hung row and never a bare string. An optional initial prompt starts the first turn.
+
+- Title: `Spawn a Third-Party Coding Agent Session`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `write:fleet`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "agentId": {
+      "type": "string"
+    },
+    "cwd": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "prompt": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "agentId",
+    "cwd"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "hosted": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "agentId": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "binaryPath": {
+          "type": "string"
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "startedAt": {
+          "type": "number"
+        },
+        "completedAt": {
+          "type": "number"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "progress": {
+          "type": "string"
+        },
+        "pendingPermission": {
+          "type": "string"
+        },
+        "error": {
+          "type": "object",
+          "properties": {
+            "binary": {
+              "type": "string"
+            },
+            "stage": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "binary",
+            "stage",
+            "message"
+          ],
+          "additionalProperties": false
+        },
+        "promptCount": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "agentId",
+        "title",
+        "binaryPath",
+        "cwd",
+        "state",
+        "startedAt",
+        "promptCount"
+      ],
+      "additionalProperties": false
+    },
+    "started": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "hosted",
+    "started"
   ],
   "additionalProperties": false
 }
@@ -30036,6 +30231,7 @@ Return the session-archived process nodes (same node shape as fleet.snapshot; st
               "workstream",
               "phase",
               "work-item",
+              "acp-agent",
               "code-index"
             ]
           },
@@ -31214,6 +31410,7 @@ Paginated, filtered (kinds/states) query over the live process registry. Cursor 
               "workstream",
               "phase",
               "work-item",
+              "acp-agent",
               "code-index"
             ]
           },
@@ -31504,6 +31701,7 @@ Return a point-in-time capture of every live/completed runtime process (agents, 
               "workstream",
               "phase",
               "work-item",
+              "acp-agent",
               "code-index"
             ]
           },
@@ -80490,7 +80688,8 @@ Idempotently register (or heartbeat) a session keyed on a caller-supplied id, ca
         "webui",
         "companion-task",
         "companion-chat",
-        "automation"
+        "automation",
+        "acp"
       ]
     },
     "project": {

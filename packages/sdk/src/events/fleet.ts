@@ -31,6 +31,7 @@ export type FleetNodeKind =
   | 'workstream'
   | 'phase'
   | 'work-item'
+  | 'acp-agent'
   | 'code-index';
 
 /** Mirrors ProcessState. */

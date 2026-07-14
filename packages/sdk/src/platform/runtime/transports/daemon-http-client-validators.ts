@@ -177,7 +177,7 @@ export function assertTelemetryMetricsSnapshot(value: unknown, endpoint: string)
  * from a newer/older peer; we degrade honestly rather than surface an invalid
  * kind (mixed-version stance — docs/decisions/2026-07-05-session-wire-mixed-version.md). */
 const KNOWN_SESSION_KINDS = new Set<SharedSessionRecord['kind']>([
-  'tui', 'agent', 'webui', 'companion-task', 'companion-chat', 'automation',
+  'tui', 'agent', 'webui', 'companion-task', 'companion-chat', 'automation', 'acp',
 ]);
 
 export function normalizeSharedSessionRecord(record: SharedSessionRecord | Record<string, unknown>): SharedSessionRecord {

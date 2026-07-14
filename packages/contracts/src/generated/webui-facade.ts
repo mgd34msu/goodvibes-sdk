@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.8.0
- * Methods: 401 total, 353 REST-routed, 48 ws-only invoke.
+ * Methods: 403 total, 353 REST-routed, 50 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -1456,6 +1456,8 @@ export const WEBUI_METHOD_ROUTES: Readonly<Record<string, WebuiRouteDefinition>>
  * /api/control-plane/methods/{methodId}/invoke.
  */
 export const WEBUI_WS_INVOKE_METHOD_IDS: readonly string[] = [
+  "acp.agents.list",
+  "acp.sessions.create",
   "channels.test.send",
   "checkpoints.create",
   "checkpoints.diff",
@@ -1509,6 +1511,8 @@ export const WEBUI_WS_INVOKE_METHOD_IDS: readonly string[] = [
 /** methodId -> disposition for every cataloged method. */
 export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDisposition>> = {
   "accounts.snapshot": "rest",
+  "acp.agents.list": "ws-invoke",
+  "acp.sessions.create": "ws-invoke",
   "approvals.approve": "rest",
   "approvals.cancel": "rest",
   "approvals.claim": "rest",
@@ -1978,6 +1982,51 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
       ],
       "configuredCount": 0,
       "issueCount": 0
+    }
+  },
+  "acp.agents.list": {
+    "input": null,
+    "output": {
+      "agents": [
+        {
+          "id": "sample",
+          "title": "sample",
+          "binaryPath": "sample",
+          "args": [
+            "sample"
+          ]
+        }
+      ]
+    }
+  },
+  "acp.sessions.create": {
+    "input": {
+      "agentId": "sample",
+      "cwd": "sample",
+      "title": "sample",
+      "prompt": "sample"
+    },
+    "output": {
+      "hosted": {
+        "id": "sample",
+        "agentId": "sample",
+        "title": "sample",
+        "binaryPath": "sample",
+        "cwd": "sample",
+        "state": "sample",
+        "startedAt": 0,
+        "completedAt": 0,
+        "sessionId": "sample",
+        "progress": "sample",
+        "pendingPermission": "sample",
+        "error": {
+          "binary": "sample",
+          "stage": "sample",
+          "message": "sample"
+        },
+        "promptCount": 0
+      },
+      "started": false
     }
   },
   "approvals.approve": {
