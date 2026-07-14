@@ -21,6 +21,7 @@ import {
 } from './shared-config-tier.js';
 import {
   deleteRawDotPath,
+  isFrozenDefaultDump,
   readRawSettingsFile,
   stripFrozenDefaults,
   writeRawDotPath,
@@ -648,8 +649,7 @@ export class ConfigManager {
     const keyList = result.changedKeys.length > 0 ? result.changedKeys.join(', ') : 'no value changes';
     const receiptText = `Settings migrated: legacy featureFlags entries now live on their domain settings keys (${keyList}) in ${sourcePath}.`;
     logger.info(receiptText);
-    // The receipt rides the announce-once pending queue surfaces drain at
-    // attach — exactly once per migrated file (id is per-source-path).
+    // The receipt rides the announce-once queue, once per migrated file.
     try {
       new FeatureAnnouncementStore(featureAnnouncementsPath(this)).record(
         `settings-migration-feature-toggles:${sourcePath}`,
@@ -666,12 +666,14 @@ export class ConfigManager {
 
   /**
    * One invisible pass that strips previously-frozen defaults (leaves equal to
-   * the shipped default) from an existing file the old whole-config save()
-   * baked them into, keeping genuine user values and unknown keys. Rewrites the
-   * minimized file and drops a one-line receipt through the announce-once queue
-   * exactly once per file; an already-minimal file is left untouched.
+   * the shipped default) from an existing whole-config dump, keeping genuine
+   * user values and unknown keys. Drops a one-line receipt through the
+   * announce-once queue exactly once per file.
    */
   private applyDefaultStripMigration(parsed: Record<string, unknown>, sourcePath: string): Record<string, unknown> {
+    // Conservative: only a whole-config dump (the frozen-defaults artifact) is
+    // minimized; a sparse hand-authored file is left untouched (deliberate intent).
+    if (!isFrozenDefaultDump(parsed)) return parsed;
     const { config: stripped, changed } = stripFrozenDefaults(parsed);
     if (!changed) return parsed;
     try {
@@ -710,8 +712,7 @@ export class ConfigManager {
       raw[categoryName] = rawCategory;
     }
     const rawCat = rawCategory as Record<string, unknown>;
-    // Only the patched keys reach disk — the category's default sub-keys are
-    // never frozen in.
+    // Only the patched keys reach disk — the category's defaults are never frozen in.
     for (const key of Object.keys(patchObj)) {
       if (patchObj[key] !== undefined) {
         current[key] = patchObj[key];
@@ -761,9 +762,8 @@ export class ConfigManager {
       deleteRawDotPath(raw, key);
       this.writeRawGlobal(raw);
     }
-    // Reset removes the shared-tier OVERRIDE for any shared key, so the key falls
-    // back to its surface-local/default value — otherwise a stale shared value
-    // would re-overlay on the next load and defeat the reset.
+    // Reset removes the shared-tier OVERRIDE for any shared key, else a stale
+    // shared value would re-overlay on the next load and defeat the reset.
     if (this.sharedTierPath) {
       const resetKeys = key === undefined ? SHARED_CONFIG_KEYS : (isSharedConfigKey(key) ? [key] : []);
       for (const sharedKey of resetKeys) {

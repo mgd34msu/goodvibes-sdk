@@ -40,7 +40,7 @@ export interface ActivityLoggerOptions {
  * counter — seeded once from the existing file at configure() and incremented
  * per flush — so the hot write path never stats the file per entry.
  */
-class ActivityLogger {
+export class ActivityLogger {
   private logPath: string | null = null;
   private buffer: string[] = [];
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
