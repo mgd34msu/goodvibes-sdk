@@ -52,7 +52,7 @@ type SharedSessionMessageInput = {
 };
 export type SharedSessionRecordResponse = {
   readonly id: string;
-  readonly kind: 'tui' | 'agent' | 'webui' | 'companion-task' | 'companion-chat' | 'automation';
+  readonly kind: 'tui' | 'agent' | 'webui' | 'companion-task' | 'companion-chat' | 'automation' | 'acp';
   readonly project: string;
   readonly title: string;
   readonly status: 'active' | 'closed';
@@ -85,7 +85,7 @@ type SharedSessionParticipantResponse = {
 const DEFAULT_LIST_LIMIT = 100;
 const MAX_LIST_LIMIT = 500;
 const MAX_SESSION_TOOL_NAMES = 64;
-export const SHARED_SESSION_KINDS = new Set<SharedSessionRecordResponse['kind']>(['tui', 'agent', 'webui', 'companion-task', 'companion-chat', 'automation']);
+export const SHARED_SESSION_KINDS = new Set<SharedSessionRecordResponse['kind']>(['tui', 'agent', 'webui', 'companion-task', 'companion-chat', 'automation', 'acp']);
 const SHARED_SESSION_STATUSES = new Set<SharedSessionRecordResponse['status']>(['active', 'closed']);
 
 function readBoundedLimit(url: URL, key = 'limit'): number {
