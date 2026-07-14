@@ -178,6 +178,12 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
   const streamEnabled = context.configManager.get('display.stream') as boolean;
 
   let continueLoop = true;
+  // MEMORY-sourced knowledge-record ids injected anywhere in THIS turn
+  // (TurnInjectionRecord filtered to source 'memory'; code-index hits excluded).
+  // Accumulated across the loop's LLM calls and stamped onto TURN_COMPLETED as
+  // metadata.memory.recordIds — the provenance convention surfaces read. Stays
+  // empty (and the event carries no metadata field) when nothing memory-sourced landed.
+  const turnMemoryRecordIds = new Set<string>();
   // One compact-and-retry per runTurn() when the provider rejects a request
   // as exceeding the context window; a second rejection surfaces as an error.
   let contextOverflowRetried = false;
@@ -368,6 +374,10 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
         turnKnowledgeBlock = block;
         if (turnInjectionRecord.injectedIds.length > 0) {
           context.addInjectedKnowledgeIds(turnInjectionRecord.injectedIds);
+          // Memory provenance: only 'memory'-sourced ids reach the wire chip.
+          turnInjectionRecord.injectedIds.forEach((id, index) => {
+            if (turnInjectionRecord.injectedSources[index] === 'memory') turnMemoryRecordIds.add(id);
+          });
         }
         context.recordTurnKnowledgeInjection(turnInjectionRecord);
       } else {
@@ -649,6 +659,7 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
         messageQueueLength: context.getMessageQueueLength(),
         requestRender: context.requestRender,
         sessionId: context.sessionId,
+        memoryRecordIds: [...turnMemoryRecordIds],
       });
 
       const allFailed = results.results.length > 0 && results.results.every((result) => result.success === false);
@@ -705,6 +716,7 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
       setAutoSpawnTimeout: (timeout) => { context.setAutoSpawnTimeout(timeout); },
       autoSpawnTimeoutMs: AUTO_SPAWN_FALLBACK_DELAY_MS,
       sessionId: context.sessionId,
+      memoryRecordIds: [...turnMemoryRecordIds],
     });
   }
 }

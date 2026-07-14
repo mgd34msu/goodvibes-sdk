@@ -171,7 +171,15 @@ export function emitPostHooksDone(
   bus.emit('turn', createEventEnvelope('POST_HOOKS_DONE', { type: 'POST_HOOKS_DONE', ...data }, ctx));
 }
 
-/** Emit TURN_COMPLETED when the turn finishes successfully. */
+/**
+ * Emit TURN_COMPLETED when the turn finishes successfully.
+ *
+ * `memoryRecordIds` — the turn's MEMORY-sourced injected knowledge-record ids
+ * (TurnInjectionRecord filtered to source 'memory'). When non-empty they are
+ * stamped as `metadata.memory.recordIds` (the published provenance convention
+ * surfaces read); when absent/empty the event carries NO metadata field —
+ * honest absence, never an empty array.
+ */
 export function emitTurnCompleted(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
@@ -179,9 +187,18 @@ export function emitTurnCompleted(
     turnId: string;
     response: string;
     stopReason: 'completed' | 'empty_response';
+    memoryRecordIds?: readonly string[] | undefined;
   }
 ): void {
-  bus.emit('turn', createEventEnvelope('TURN_COMPLETED', { type: 'TURN_COMPLETED', ...data }, ctx));
+  const { memoryRecordIds, ...payload } = data;
+  const metadata = memoryRecordIds && memoryRecordIds.length > 0
+    ? { memory: { recordIds: [...memoryRecordIds] } }
+    : undefined;
+  bus.emit('turn', createEventEnvelope('TURN_COMPLETED', {
+    type: 'TURN_COMPLETED',
+    ...payload,
+    ...(metadata ? { metadata } : {}),
+  }, ctx));
 }
 
 /** Emit TURN_ERROR when the turn fails. */
