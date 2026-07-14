@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.8.0
- * Methods: 398 total, 353 REST-routed, 45 ws-only invoke.
+ * Methods: 401 total, 353 REST-routed, 48 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -1472,6 +1472,8 @@ export const WEBUI_WS_INVOKE_METHOD_IDS: readonly string[] = [
   "fleet.attempts.judge",
   "fleet.attempts.list",
   "fleet.attempts.pick",
+  "fleet.conflicts.list",
+  "fleet.conflicts.resolve",
   "fleet.list",
   "fleet.snapshot",
   "fleet.unarchive",
@@ -1500,6 +1502,7 @@ export const WEBUI_WS_INVOKE_METHOD_IDS: readonly string[] = [
   "rewind.plan",
   "sessions.changes.get",
   "sessions.search",
+  "worktrees.discard",
   "worktrees.setup.run"
 ] as const;
 
@@ -1646,6 +1649,8 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "fleet.attempts.judge": "ws-invoke",
   "fleet.attempts.list": "ws-invoke",
   "fleet.attempts.pick": "ws-invoke",
+  "fleet.conflicts.list": "ws-invoke",
+  "fleet.conflicts.resolve": "ws-invoke",
   "fleet.list": "ws-invoke",
   "fleet.snapshot": "ws-invoke",
   "fleet.unarchive": "ws-invoke",
@@ -1901,6 +1906,7 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "workspaces.registrations.list": "rest",
   "workspaces.registrations.remove": "rest",
   "workspaces.resolve": "rest",
+  "worktrees.discard": "ws-invoke",
   "worktrees.setup.run": "ws-invoke",
   "worktrees.snapshot": "rest"
 } as const;
@@ -7445,15 +7451,98 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
   "fleet.attempts.pick": {
     "input": {
       "groupId": "sample",
-      "winnerItemId": "sample"
+      "winnerItemId": "sample",
+      "confirm": false
     },
     "output": {
+      "applied": false,
       "groupId": "sample",
       "winnerItemId": "sample",
       "loserItemIds": [
         "sample"
       ],
-      "auto": false
+      "auto": false,
+      "requiresConfirm": false,
+      "group": {
+        "groupId": "sample",
+        "workstreamId": "sample",
+        "sourceTitle": "sample",
+        "ready": false,
+        "candidates": [
+          {
+            "itemId": "sample",
+            "attemptIndex": 0,
+            "state": "held-merge",
+            "title": "sample",
+            "worktreePath": "sample",
+            "branch": "sample",
+            "usage": {
+              "inputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0,
+              "reasoningTokens": 0,
+              "llmCallCount": 0,
+              "turnCount": 0,
+              "toolCallCount": 0,
+              "costUsd": 0,
+              "costState": "priced",
+              "costSource": "user",
+              "pricingAsOf": "sample"
+            },
+            "failureReason": "sample",
+            "diff": {
+              "files": [
+                "sample"
+              ],
+              "unifiedDiff": "sample",
+              "stat": "sample"
+            }
+          }
+        ],
+        "autoAccept": false,
+        "judgment": {
+          "proposedWinnerItemId": "sample",
+          "reasons": [
+            "sample"
+          ],
+          "model": "sample",
+          "scoredBy": "model"
+        }
+      }
+    }
+  },
+  "fleet.conflicts.list": {
+    "input": {
+      "workstreamId": "sample"
+    },
+    "output": {
+      "conflicts": [
+        {
+          "workstreamId": "sample",
+          "itemId": "sample",
+          "title": "sample",
+          "worktreePath": "sample",
+          "branch": "sample",
+          "files": [
+            "sample"
+          ],
+          "resolutionSessionId": "sample"
+        }
+      ]
+    }
+  },
+  "fleet.conflicts.resolve": {
+    "input": {
+      "itemId": "sample"
+    },
+    "output": {
+      "itemId": "sample",
+      "sessionId": "sample",
+      "worktreePath": "sample",
+      "files": [
+        "sample"
+      ]
     }
   },
   "fleet.list": {
@@ -18972,6 +19061,19 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
       "declinedRoot": "sample",
       "viaWorktreeLink": false,
       "reason": "sample"
+    }
+  },
+  "worktrees.discard": {
+    "input": {
+      "path": "sample"
+    },
+    "output": {
+      "path": "sample",
+      "ok": false,
+      "branch": "sample",
+      "preservedCommit": "sample",
+      "discardedAt": 0,
+      "detail": "sample"
     }
   },
   "worktrees.setup.run": {

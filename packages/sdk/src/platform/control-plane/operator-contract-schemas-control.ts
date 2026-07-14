@@ -244,6 +244,20 @@ export const WORKTREE_SETUP_RUN_OUTPUT_SCHEMA = objectSchema({
   setup: WORKTREE_SETUP_RESULT_SCHEMA,
 }, ['path', 'setup']);
 
+export const WORKTREE_DISCARD_INPUT_SCHEMA = objectSchema({
+  path: STRING_SCHEMA,
+}, ['path']);
+
+/** The honest discard receipt: directory removed, branch KEPT, dirty state preserved as a commit. */
+export const WORKTREE_DISCARD_OUTPUT_SCHEMA = objectSchema({
+  path: STRING_SCHEMA,
+  ok: BOOLEAN_SCHEMA,
+  branch: STRING_SCHEMA,
+  preservedCommit: STRING_SCHEMA,
+  discardedAt: NUMBER_SCHEMA,
+  detail: STRING_SCHEMA,
+}, ['path', 'ok', 'discardedAt', 'detail']);
+
 const WORKTREE_SUMMARY_SCHEMA = objectSchema({
   total: NUMBER_SCHEMA,
   active: NUMBER_SCHEMA,

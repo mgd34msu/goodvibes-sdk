@@ -5,6 +5,7 @@
 ```ts
 
 import { RelayPairingPayload } from '@pellux/goodvibes-transport-core/relay';
+import { SimpleGit } from 'simple-git';
 import type { StoreApi } from 'zustand';
 
 // Warning: (ae-forgotten-export) The symbol "SessionEvent" needs to be exported by the entry point embed.d.ts

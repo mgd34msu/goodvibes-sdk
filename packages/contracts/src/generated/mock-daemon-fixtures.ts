@@ -5481,12 +5481,94 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
     "http": null,
     "status": 200,
     "body": {
+      "applied": false,
       "groupId": "sample",
       "winnerItemId": "sample",
       "loserItemIds": [
         "sample"
       ],
-      "auto": false
+      "auto": false,
+      "requiresConfirm": false,
+      "group": {
+        "groupId": "sample",
+        "workstreamId": "sample",
+        "sourceTitle": "sample",
+        "ready": false,
+        "candidates": [
+          {
+            "itemId": "sample",
+            "attemptIndex": 0,
+            "state": "held-merge",
+            "title": "sample",
+            "worktreePath": "sample",
+            "branch": "sample",
+            "usage": {
+              "inputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0,
+              "reasoningTokens": 0,
+              "llmCallCount": 0,
+              "turnCount": 0,
+              "toolCallCount": 0,
+              "costUsd": 0,
+              "costState": "priced",
+              "costSource": "user",
+              "pricingAsOf": "sample"
+            },
+            "failureReason": "sample",
+            "diff": {
+              "files": [
+                "sample"
+              ],
+              "unifiedDiff": "sample",
+              "stat": "sample"
+            }
+          }
+        ],
+        "autoAccept": false,
+        "judgment": {
+          "proposedWinnerItemId": "sample",
+          "reasons": [
+            "sample"
+          ],
+          "model": "sample",
+          "scoredBy": "model"
+        }
+      }
+    }
+  },
+  "fleet.conflicts.list": {
+    "methodId": "fleet.conflicts.list",
+    "http": null,
+    "status": 200,
+    "body": {
+      "conflicts": [
+        {
+          "workstreamId": "sample",
+          "itemId": "sample",
+          "title": "sample",
+          "worktreePath": "sample",
+          "branch": "sample",
+          "files": [
+            "sample"
+          ],
+          "resolutionSessionId": "sample"
+        }
+      ]
+    }
+  },
+  "fleet.conflicts.resolve": {
+    "methodId": "fleet.conflicts.resolve",
+    "http": null,
+    "status": 200,
+    "body": {
+      "itemId": "sample",
+      "sessionId": "sample",
+      "worktreePath": "sample",
+      "files": [
+        "sample"
+      ]
     }
   },
   "fleet.list": {
@@ -16550,6 +16632,19 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       "declinedRoot": "sample",
       "viaWorktreeLink": false,
       "reason": "sample"
+    }
+  },
+  "worktrees.discard": {
+    "methodId": "worktrees.discard",
+    "http": null,
+    "status": 200,
+    "body": {
+      "path": "sample",
+      "ok": false,
+      "branch": "sample",
+      "preservedCommit": "sample",
+      "discardedAt": 0,
+      "detail": "sample"
     }
   },
   "worktrees.setup.run": {

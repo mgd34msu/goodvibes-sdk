@@ -213,6 +213,13 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     // single pass — a multi-offer apply action, not a generic CRUD word.
     'complete',
   ],
+  'worktree-lifecycle': [
+    // worktrees.discard — the eviction-preserving removal (dirty state
+    // committed onto the KEPT branch, directory removed, branch kept, honest
+    // receipt). Deliberately NOT `delete`: delete implies the branch and the
+    // work go away; discard keeps both recoverable.
+    'discard',
+  ],
   'rewind-safety': [
     // The unified message-anchored rewind (rewind.plan / rewind.apply): a
     // terraform-style dry-run/apply pair over the platform's existing history

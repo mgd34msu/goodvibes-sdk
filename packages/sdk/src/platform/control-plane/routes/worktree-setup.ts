@@ -15,9 +15,9 @@ import { runWorktreeSetup, type WorktreeSetupConfig } from '../../runtime/worktr
 import { GatewayVerbError } from './gateway-verb-error.js';
 import { readInvocationParams } from './invocation-params.js';
 
-/** The deps `worktrees.setup.run` needs — the registry to record onto, the source root to carry from, and the current setup config. */
+/** The deps the worktree lifecycle verbs need — the registry to act on, the source root to carry from, and the current setup config. */
 export interface WorktreeSetupGatewayDeps {
-  readonly registry: Pick<WorktreeRegistry, 'recordSetup'>;
+  readonly registry: Pick<WorktreeRegistry, 'recordSetup' | 'discard'>;
   readonly sourceRoot: string;
   /** Resolves the current per-project setup config (read fresh each run so a config change takes effect without a restart). */
   readonly resolveConfig: () => WorktreeSetupConfig;
@@ -40,8 +40,23 @@ export function createWorktreeSetupRunHandler(deps: WorktreeSetupGatewayDeps): G
   };
 }
 
-/** Attach the `worktrees.setup.run` handler to its already-registered descriptor. Missing descriptor is a silent no-op. */
+/**
+ * `worktrees.discard` — discard actually discards: the registry's
+ * eviction-preserving removal (dirty state committed onto the KEPT branch,
+ * directory removed, record dropped) with the honest receipt as the output.
+ */
+export function createWorktreeDiscardHandler(deps: WorktreeSetupGatewayDeps): GatewayMethodHandler {
+  return async (invocation) => {
+    const params = readInvocationParams(invocation);
+    const path = requiredString(params.path, 'path');
+    return await deps.registry.discard(path);
+  };
+}
+
+/** Attach the worktree lifecycle handlers to their already-registered descriptors. Missing descriptors are silent no-ops. */
 export function registerWorktreeSetupGatewayMethods(catalog: GatewayMethodCatalog, deps: WorktreeSetupGatewayDeps): void {
-  const descriptor = catalog.get('worktrees.setup.run');
-  if (descriptor) catalog.register(descriptor, createWorktreeSetupRunHandler(deps), { replace: true });
+  const setup = catalog.get('worktrees.setup.run');
+  if (setup) catalog.register(setup, createWorktreeSetupRunHandler(deps), { replace: true });
+  const discard = catalog.get('worktrees.discard');
+  if (discard) catalog.register(discard, createWorktreeDiscardHandler(deps), { replace: true });
 }

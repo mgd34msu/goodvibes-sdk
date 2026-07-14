@@ -56,6 +56,8 @@ import {
   SECURITY_SETTINGS_REPORT_SCHEMA,
   SETTINGS_SNAPSHOT_SCHEMA,
   WORKTREE_SNAPSHOT_SCHEMA,
+  WORKTREE_DISCARD_INPUT_SCHEMA,
+  WORKTREE_DISCARD_OUTPUT_SCHEMA,
   WORKTREE_SETUP_RUN_INPUT_SCHEMA,
   WORKTREE_SETUP_RUN_OUTPUT_SCHEMA,
   MEMORY_PROJECTIONS_LIST_INPUT_SCHEMA,
@@ -478,6 +480,20 @@ export const builtinGatewayRuntimeMethodDescriptors: readonly GatewayMethodDescr
     transport: ['ws'],
     inputSchema: WORKTREE_SETUP_RUN_INPUT_SCHEMA,
     outputSchema: WORKTREE_SETUP_RUN_OUTPUT_SCHEMA,
+  }),
+  // Discard actually discards: the eviction-preserving removal (dirty state
+  // committed onto the branch first, directory removed, BRANCH KEPT) with an
+  // honest receipt — never just a state-field write. Handler: routes/worktree-setup.ts.
+  methodDescriptor({
+    id: 'worktrees.discard',
+    title: 'Discard a Worktree',
+    description: 'Remove a worktree per the eviction-preserving rules: any uncommitted state is first committed onto the worktree\'s branch (a preservation failure REFUSES the removal rather than losing work), the directory is removed, and the branch is KEPT. Returns an honest receipt (ok, branch kept, preservation commit, detail) either way.',
+    category: 'worktrees',
+    scopes: ['write:worktrees'],
+    dangerous: true,
+    transport: ['ws'],
+    inputSchema: WORKTREE_DISCARD_INPUT_SCHEMA,
+    outputSchema: WORKTREE_DISCARD_OUTPUT_SCHEMA,
   }),
   methodDescriptor({
     id: 'intelligence.snapshot',

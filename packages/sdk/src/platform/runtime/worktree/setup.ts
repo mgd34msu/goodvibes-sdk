@@ -16,7 +16,7 @@
  * passed).
  */
 
-import { cpSync, existsSync, mkdirSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { logger } from '../../utils/logger.js';
 import { summarizeError } from '../../utils/error-display.js';
@@ -203,4 +203,92 @@ export function resolveWorktreeSetupConfig(get: (key: string) => unknown): Workt
 function readStringArray(value: unknown): readonly string[] {
   if (!Array.isArray(value)) return [];
   return value.filter((entry): entry is string => typeof entry === 'string' && entry.length > 0);
+}
+
+/** Injectable filesystem probes for derivation, so tests never need a real repo. */
+export interface DeriveSetupIo {
+  readonly fileExists: (path: string) => boolean;
+  readonly listDir: (path: string) => readonly string[];
+}
+
+const defaultDeriveIo: DeriveSetupIo = {
+  fileExists: (path) => existsSync(path),
+  listDir: (path) => {
+    try {
+      return readdirSync(path);
+    } catch {
+      return [];
+    }
+  },
+};
+
+/**
+ * Lockfile → install command, grouped per ecosystem so a polyglot repo derives
+ * one install per ecosystem (first match within a group wins, in the listed
+ * precedence). The derived commands are lockfile-faithful (`npm ci`, frozen
+ * lockfiles) so a worktree install can never rewrite the lockfile.
+ */
+const LOCKFILE_ECOSYSTEMS: ReadonlyArray<ReadonlyArray<{ readonly file: string; readonly command: string }>> = [
+  // JavaScript/TypeScript — one package manager per repo.
+  [
+    { file: 'bun.lock', command: 'bun install' },
+    { file: 'bun.lockb', command: 'bun install' },
+    { file: 'package-lock.json', command: 'npm ci' },
+    { file: 'pnpm-lock.yaml', command: 'pnpm install --frozen-lockfile' },
+    { file: 'yarn.lock', command: 'yarn install --frozen-lockfile' },
+  ],
+  // Python — uv's lock wins over a bare requirements file.
+  [
+    { file: 'uv.lock', command: 'uv sync' },
+    { file: 'requirements.txt', command: 'pip install -r requirements.txt' },
+  ],
+  // Rust / Go.
+  [{ file: 'Cargo.lock', command: 'cargo fetch' }],
+  [{ file: 'go.sum', command: 'go mod download' }],
+];
+
+/**
+ * Derive worktree setup from the repo itself: each ecosystem's lockfile yields
+ * its install command, and the presence of `.env` / `.env.*` files at the repo
+ * root yields the carry-over globs for them. A repo with no lockfile and no
+ * env files derives NOTHING — setup stays an honest `skipped`, exactly as if
+ * no config existed.
+ */
+export function deriveWorktreeSetup(sourceRoot: string, io: DeriveSetupIo = defaultDeriveIo): WorktreeSetupConfig {
+  const commands: string[] = [];
+  for (const ecosystem of LOCKFILE_ECOSYSTEMS) {
+    const match = ecosystem.find((candidate) => io.fileExists(join(sourceRoot, candidate.file)));
+    if (match) commands.push(match.command);
+  }
+  const rootEntries = io.listDir(sourceRoot);
+  const hasEnvFiles = rootEntries.some((entry) => entry === '.env' || entry.startsWith('.env.'));
+  return {
+    commands,
+    carryOverGlobs: hasEnvFiles ? ['.env', '.env.*'] : [],
+  };
+}
+
+/**
+ * The EFFECTIVE worktree setup: derived from the repo by default, with user
+ * config OVERRIDING the derivation per field — a configured `commands` array
+ * replaces the derived install commands; a configured `carryOverGlobs` array
+ * replaces the derived env globs. User config never merely enables derivation;
+ * its presence supersedes it. An isolated agent therefore starts with deps and
+ * env with ZERO configuration, and absence of any signal (no lockfile, no env
+ * files, no config) is an honest no-op.
+ */
+export function resolveEffectiveWorktreeSetup(
+  get: (key: string) => unknown,
+  sourceRoot: string,
+  io: DeriveSetupIo = defaultDeriveIo,
+): WorktreeSetupConfig {
+  const configured = resolveWorktreeSetupConfig(get);
+  const needsDerivedCommands = configured.commands.length === 0;
+  const needsDerivedGlobs = configured.carryOverGlobs.length === 0;
+  if (!needsDerivedCommands && !needsDerivedGlobs) return configured;
+  const derived = deriveWorktreeSetup(sourceRoot, io);
+  return {
+    commands: needsDerivedCommands ? derived.commands : configured.commands,
+    carryOverGlobs: needsDerivedGlobs ? derived.carryOverGlobs : configured.carryOverGlobs,
+  };
 }

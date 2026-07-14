@@ -18,6 +18,10 @@ import { registerPushGatewayMethods } from './push.js';
 import { registerPairingGatewayMethods, type PairingGatewayService } from './pairing.js';
 import { registerPairingHandoffGatewayMethods } from './pairing-handoff.js';
 import { registerTailscaleGatewayMethods } from './tailscale.js';
+import { createFleetConflictsListHandler, createFleetConflictsResolveHandler, type FleetConflictsDeps } from './fleet.js';
+import { startCiFixSession, startConflictResolutionSession } from './seeded-sessions.js';
+// Compatibility re-export: consumers/tests import startCiFixSession from here.
+export { startCiFixSession, startConflictResolutionSession } from './seeded-sessions.js';
 import { defaultTailscaleRunner, TailscaleServeReceiptStore, type TailscaleCommandRunner } from '../../remote-access/tailscale.js';
 import { registerSkillsGatewayMethods } from './skills.js';
 import { registerPrincipalsGatewayMethods } from './principals.js';
@@ -26,7 +30,7 @@ import { registerChannelProfilesGatewayMethods } from './channel-profiles.js';
 import { registerChannelTestGatewayMethods } from './channel-test.js';
 import { registerWorktreeSetupGatewayMethods } from './worktree-setup.js';
 import { WorktreeRegistry } from '../../runtime/worktree/registry.js';
-import { resolveWorktreeSetupConfig } from '../../runtime/worktree/setup.js';
+import { resolveEffectiveWorktreeSetup } from '../../runtime/worktree/setup.js';
 import { registerCostGatewayMethods } from './cost.js';
 import { registerPermissionRulesGatewayMethods } from './permission-rules.js';
 import type { UserPermissionRuleStore } from '../../permissions/user-rule-store.js';
@@ -81,56 +85,6 @@ function parseChannelDeliveryTarget(channel: string): ChannelDeliveryTarget {
   };
 }
 
-/**
- * Start a one-shot fix-session pre-briefed with the failing CI jobs, and
- * return the REAL spawned session's id — the id session attach/resume
- * resolves. The automation job id ('auto-…') is a scheduling handle no
- * attach can resolve and must never be surfaced as the fix session; this is
- * pinned by test (job-id vs session-id confusion).
- *
- * Mechanics: the job is created DISABLED (the scheduler can never race a
- * second run) and executed immediately via runNow, whose returned run
- * carries the spawned ids. The job targets a pinned FRESH shared session
- * (never the operator's own preferred session), so the fix work lives in a
- * real attachable session with the spawned agent bound to it. A start that
- * produces no attachable session is an honest error outcome, never a dead id.
- */
-export async function startCiFixSession(
-  automation: Pick<AutomationManager, 'createJob' | 'runNow'>,
-  brief: FixSessionBrief,
-): Promise<FixSessionStartOutcome> {
-  const target = brief.prNumber !== undefined ? `PR #${brief.prNumber}` : (brief.ref ?? 'the default branch');
-  const prompt = [
-    `CI failed for ${brief.repo} (${target}).`,
-    `Failing jobs: ${brief.failingJobs.join(', ') || 'unknown'}.`,
-    '',
-    brief.logs,
-    '',
-    'Investigate the failing CI jobs and fix them.',
-  ].join('\n');
-  try {
-    const job = await automation.createJob({
-      name: `Fix CI: ${brief.repo}`,
-      prompt,
-      schedule: { kind: 'at', at: Date.now() },
-      target: {
-        kind: 'main',
-        sessionId: `ci-fix-${randomUUID().slice(0, 10)}`,
-        surfaceKind: 'service',
-        createIfMissing: true,
-      },
-      enabled: false,
-      deleteAfterRun: true,
-    });
-    const run = await automation.runNow(job.id);
-    if (run.sessionId) return { sessionId: run.sessionId };
-    return { error: `the fix run started without an attachable session (run ${run.id}, status ${run.status})` };
-  } catch (error) {
-    // Automation subsystem disabled, concurrency ceiling, or spawn failure —
-    // the honest failure travels instead of a dead id.
-    return { error: summarizeError(error) };
-  }
-}
 import { createSessionRuntimeControls, registerSessionRuntimeGatewayMethods } from './session-runtime.js';
 import type { ConfigManager } from '../../config/manager.js';
 import type { RuntimeStore } from '../../runtime/store/index.js';
@@ -295,6 +249,50 @@ function toFleetNotice(event: FleetEvent): FleetNotice {
 
 export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: GatewayVerbGroupDeps): void {
   registerFleetCheckpointsSearchGatewayMethods(catalog, deps);
+
+  // fleet.conflicts.* — a conflict row's one action: spawn a seeded resolution
+  // session inside the kept tree (the CI fix-session machinery) and reclaim
+  // the tree once the resolution lands (re-merge on run success). Registered
+  // only when the engine's conflict surface AND the automation manager exist.
+  const attemptsEngine = deps.attemptsController;
+  if (attemptsEngine?.listWorkstreams && attemptsEngine.stampConflictSession && attemptsEngine.retryItemIntegration && deps.automationManager) {
+    const automation = deps.automationManager;
+    const engine = attemptsEngine;
+    /** jobId -> itemId for started resolution sessions awaiting run completion. */
+    const pendingResolutions = new Map<string, string>();
+    const conflictsDeps: FleetConflictsDeps = {
+      listWorkstreams: () => engine.listWorkstreams!(),
+      stampConflictSession: (itemId, sessionId) => engine.stampConflictSession!(itemId, sessionId),
+      startResolutionSession: async (seed) => {
+        const started = await startConflictResolutionSession(automation, seed);
+        if ('error' in started) return started;
+        pendingResolutions.set(started.jobId, seed.itemId);
+        return { sessionId: started.sessionId };
+      },
+    };
+    const attachConflict = (id: string, handler: ReturnType<typeof createFleetConflictsListHandler>): void => {
+      const descriptor = catalog.get(id);
+      if (descriptor) catalog.register(descriptor, handler, { replace: true });
+    };
+    attachConflict('fleet.conflicts.list', createFleetConflictsListHandler(conflictsDeps));
+    attachConflict('fleet.conflicts.resolve', createFleetConflictsResolveHandler(conflictsDeps));
+    // Reclaim on success: the resolution session's automation run completing
+    // successfully re-attempts the merge through the same integration lane —
+    // a clean merge removes the kept tree; a re-conflict honestly stays flagged.
+    if (deps.runtimeBus) {
+      deps.runtimeBus.onDomain('automation', (envelope) => {
+        const payload = envelope.payload as { type?: string; jobId?: string; outcome?: string };
+        if (payload.type !== 'AUTOMATION_RUN_COMPLETED' || !payload.jobId) return;
+        const itemId = pendingResolutions.get(payload.jobId);
+        if (!itemId) return;
+        pendingResolutions.delete(payload.jobId);
+        if (payload.outcome !== 'success') return;
+        void engine.retryItemIntegration!(itemId).catch((error) => {
+          logger.warn('fleet.conflicts: post-resolution re-merge failed', { itemId, error: summarizeError(error) });
+        });
+      });
+    }
+  }
 
   // The canonical skill service over a directory of Markdown documents under the
   // daemon's own state directory. Constructed here (from the shellPaths this
@@ -463,7 +461,9 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
     registerWorktreeSetupGatewayMethods(catalog, {
       registry: worktreeSetupRegistry,
       sourceRoot,
-      resolveConfig: () => resolveWorktreeSetupConfig((key) => (deps.configManager.get as unknown as (k: string) => unknown)(key)),
+      // Derived-by-default setup (lockfile → install command, .env carry-over);
+      // user config overrides the derivation per field, never merely enables it.
+      resolveConfig: () => resolveEffectiveWorktreeSetup((key) => (deps.configManager.get as unknown as (k: string) => unknown)(key), deps.workingDirectory!),
     });
   }
 

@@ -55,7 +55,7 @@ import {
 import type { ConfigManager } from '../config/manager.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import { WorktreeRegistry } from '../runtime/worktree/registry.js';
-import { runWorktreeSetup, resolveWorktreeSetupConfig } from '../runtime/worktree/setup.js';
+import { runWorktreeSetup, resolveEffectiveWorktreeSetup } from '../runtime/worktree/setup.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 
@@ -151,6 +151,10 @@ export interface OrchestrationEngine {
   pickAttemptWinner(groupId: string, winnerItemId: string): Promise<AttemptPickResult>;
   /** Best-of-N: run the optional judge over a group's candidates and PROPOSE a winner (never auto-picks). Rejects when no judge is configured. */
   proposeAttemptWinner(groupId: string): Promise<AttemptJudgment>;
+  /** Stamp the real conflict-resolution session id onto a conflicted item. False when unknown/not conflicted. */
+  stampConflictSession(itemId: string, sessionId: string): boolean;
+  /** Re-attempt a conflicted item's merge through the same lane; success reclaims the kept tree and clears the conflict markers. */
+  retryItemIntegration(itemId: string): Promise<'merged' | 'conflict' | 'not-conflicted'>;
   serializeWorkstream(workstreamId: string): string | null;
   /** Import a serialized snapshot (a full WorkstreamSnapshot JSON string, see persistence.ts). Refuses to overwrite a non-terminal in-memory workstream unless force=true. */
   importWorkstream(snapshotJson: string, force?: boolean): boolean;
@@ -218,7 +222,8 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     deps.runWorktreeSetup ??
     (async (worktreePath: string): Promise<void> => {
       const registry = new WorktreeRegistry(deps.projectRoot);
-      const config = resolveWorktreeSetupConfig((key) => (deps.configManager.get as unknown as (k: string) => unknown)(key));
+      // Derived-by-default (lockfile → install, .env carry-over); user config overrides.
+      const config = resolveEffectiveWorktreeSetup((key) => (deps.configManager.get as unknown as (k: string) => unknown)(key), deps.projectRoot);
       const result = await runWorktreeSetup(worktreePath, deps.projectRoot, config);
       registry.recordSetup(worktreePath, result);
     });
@@ -765,6 +770,20 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     listHeldMergeGroups: (workstreamId) => attempts.listGroups(workstreamId),
     pickAttemptWinner: (groupId, winnerItemId) => attempts.pickWinner(groupId, winnerItemId),
     proposeAttemptWinner: (groupId) => attempts.proposeWinner(groupId),
+    stampConflictSession: (itemId, sessionId) => {
+      const found = findItemAndWorkstream(itemId);
+      if (!found || found.item.mergeState !== 'conflict') return false;
+      found.item.conflictSessionId = sessionId;
+      return true;
+    },
+    retryItemIntegration: async (itemId) => {
+      const found = findItemAndWorkstream(itemId);
+      if (!found || found.item.mergeState !== 'conflict') return 'not-conflicted';
+      // Same lane as first-pass integration; success clears markers + reclaims the tree.
+      await worktreeIsolation.enqueueIntegration(found.workstream, found.item);
+      const resulting: string | undefined = found.item.mergeState; // mutated by the lane
+      return resulting === 'merged' ? 'merged' : 'conflict';
+    },
     serializeWorkstream,
     importWorkstream,
     resumeWorkstream,

@@ -110,6 +110,29 @@ function assertAcyclicAndResolved(proposal: PlanProposal): void {
  * Assemble a `CreateWorkstreamInput` from an approved multi-item PlanProposal.
  * See the module doc for the full mapping and the assembly-time assertions.
  */
+/**
+ * Approve-and-launch as ONE confirmed act: assemble the proposal into a
+ * workstream, create it, and START it in a single call. The `confirm: true`
+ * flag is the explicit confirmation — without it nothing is created (a
+ * structured refusal, not a throw), so a surface renders proposal -> confirm ->
+ * running through this one function instead of shelling the user through
+ * approve-then-assemble-then-create-then-start ceremony.
+ */
+export function approveAndLaunchProposal(
+  engine: Pick<import('./engine.js').OrchestrationEngine, 'createWorkstream' | 'start'>,
+  proposal: PlanProposal,
+  configManager: Pick<ConfigManager, 'get' | 'getCategory'>,
+  opts: FromPlanProposalOptions & { readonly confirm?: boolean | undefined } = {},
+): { launched: true; workstreamId: string } | { launched: false; requiresConfirm: true } {
+  if (opts.confirm !== true) {
+    return { launched: false, requiresConfirm: true };
+  }
+  const input = fromPlanProposal(proposal, configManager, opts);
+  const workstream = engine.createWorkstream(input);
+  engine.start(workstream.id);
+  return { launched: true, workstreamId: workstream.id };
+}
+
 export function fromPlanProposal(
   proposal: PlanProposal,
   configManager: Pick<ConfigManager, 'get' | 'getCategory'>,

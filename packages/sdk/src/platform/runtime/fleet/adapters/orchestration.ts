@@ -146,6 +146,11 @@ export function activeWorkItemAgentId(item: WorkItem): string | undefined {
 }
 
 function workItemState(item: WorkItem): ProcessState {
+  // A merge conflict overrides the coarse pipeline state: the item's phases
+  // may have passed, but its work has NOT landed — reporting 'done' would be
+  // dishonest. 'stalled' is the existing "stuck, not progressing" state; the
+  // needsAttention 'conflict' marker carries the waiting-on-human meaning.
+  if (item.mergeState === 'conflict') return 'stalled';
   switch (item.state) {
     case 'passed':
       return 'done';
@@ -184,11 +189,41 @@ function workItemState(item: WorkItem): ProcessState {
   }
 }
 
+/**
+ * The best-of-N groups in this workstream that are READY for the winner pick:
+ * every sibling settled (held-merge or failed) and at least one held
+ * candidate. Pure over the items — the same readiness the attempts
+ * coordinator computes, derived here so the snapshot needs no engine access.
+ */
+export function readyAttemptGroupIds(workstream: Workstream): ReadonlySet<string> {
+  const byGroup = new Map<string, WorkItem[]>();
+  for (const item of workstream.items) {
+    if (!item.attemptGroupId) continue;
+    const members = byGroup.get(item.attemptGroupId) ?? [];
+    members.push(item);
+    byGroup.set(item.attemptGroupId, members);
+  }
+  const ready = new Set<string>();
+  for (const [groupId, members] of byGroup) {
+    const allSettled = members.every((member) => member.state === 'held-merge' || member.state === 'failed');
+    const anyHeld = members.some((member) => member.state === 'held-merge');
+    // A group whose pick already landed has a merged/passed winner — no longer ready.
+    const anyPicked = members.some((member) => member.attemptWinner === true);
+    if (allSettled && anyHeld && !anyPicked) ready.add(groupId);
+  }
+  return ready;
+}
+
 function workstreamState(workstream: Workstream): ProcessState {
   if (workstream.items.length === 0) return 'idle';
   if (workstream.items.some((item) => item.state === 'in-phase')) return 'executing-tool';
   if (workstream.items.some((item) => item.state === 'pending' || item.state === 'awaiting-capacity')) return 'queued';
   if (workstream.items.some((item) => item.state === 'blocked-budget' || item.state === 'blocked-dependency')) return 'stalled';
+  // Unresolved merge conflicts and undecided best-of-N picks keep the
+  // workstream honest: its work has NOT all landed, so it is neither done nor
+  // failed — it is waiting (conflict = stuck; ready pick = parked on a human).
+  if (workstream.items.some((item) => item.mergeState === 'conflict')) return 'stalled';
+  if (workstream.items.some((item) => item.state === 'held-merge')) return 'paused';
   return workstream.items.some((item) => item.state === 'failed') ? 'failed' : 'done';
 }
 
@@ -265,11 +300,18 @@ function aggregateWorkItemCost(usages: readonly WorkItemUsage[]): { costUsd: num
  * growing numbers instead of n/a until it completes; omit it
  * (or pass undefined) for the committed-only view.
  */
-export function adaptWorkItem(item: WorkItem, workstreamId: string, parentId: string, opts: { steerable: boolean; live?: LiveItemUsage | undefined }): ProcessNode {
+export function adaptWorkItem(item: WorkItem, workstreamId: string, parentId: string, opts: { steerable: boolean; live?: LiveItemUsage | undefined; readyGroups?: ReadonlySet<string> | undefined }): ProcessNode {
   const state = workItemState(item);
   const killable = !TERMINAL_ITEM_STATES.has(item.state);
   const activeAgentId = activeWorkItemAgentId(item);
   const usage = displayWorkItemUsage(item, opts.live);
+  // A merge conflict is a first-class waiting-on-human condition: the item's
+  // kept tree needs a human resolution before its work can land. Same
+  // classification the approval block uses, so glyph/count/jump/push all
+  // inherit for free (emit-bridge + push fan out on needsAttention).
+  const conflictAttention = item.mergeState === 'conflict'
+    ? { reason: 'conflict' as const, detail: item.blockedReason ?? 'merge conflict' }
+    : undefined;
   return {
     id: workItemNodeId(item.id),
     kind: 'work-item',
@@ -317,15 +359,18 @@ export function adaptWorkItem(item: WorkItem, workstreamId: string, parentId: st
       resumable: false,
       steerable: activeAgentId !== undefined && opts.steerable,
     },
+    ...(conflictAttention ? { needsAttention: conflictAttention } : {}),
     sessionRef: activeAgentId ? { agentId: activeAgentId } : undefined,
     // Best-of-N sibling grouping (attempts.ts) — surfaced so the fleet renders the
-    // N siblings as one group and marks which are held candidates for a pick.
+    // N siblings as one group, marks held candidates, and flags a READY group
+    // (all settled, pick actionable now via fleet.attempts.list/pick).
     attemptGroup: item.attemptGroupId
       ? {
           groupId: item.attemptGroupId,
           index: item.attemptIndex ?? 0,
           total: item.attemptTotal ?? 1,
           held: item.state === 'held-merge',
+          ready: opts.readyGroups?.has(item.attemptGroupId) ?? false,
         }
       : undefined,
     raw: { item, workstreamId },
@@ -377,6 +422,18 @@ export function adaptPhase(phase: Phase, workstream: Workstream): ProcessNode {
 export function adaptWorkstream(workstream: Workstream, now: number, liveByItemId?: ReadonlyMap<string, LiveItemUsage>): ProcessNode {
   const state = workstreamState(workstream);
   const killable = state !== 'done' && state !== 'failed';
+  // ONE waiting-on-human flag per ready best-of-N group, carried on the
+  // workstream node (the pick is one decision over N siblings — flagging every
+  // held sibling would inflate the attention count N-fold for one act).
+  const readyGroups = readyAttemptGroupIds(workstream);
+  const pickAttention = readyGroups.size > 0
+    ? {
+        reason: 'pick' as const,
+        detail: readyGroups.size === 1
+          ? 'best-of-N pick ready'
+          : `${readyGroups.size} best-of-N picks ready`,
+      }
+    : undefined;
   const completedAt = (state === 'done' || state === 'failed')
     ? workstream.items.reduce<number | undefined>(
         (latest, item) => (item.completedAt !== undefined && (latest === undefined || item.completedAt > latest) ? item.completedAt : latest),
@@ -400,6 +457,7 @@ export function adaptWorkstream(workstream: Workstream, now: number, liveByItemI
     ...(costSource !== undefined ? { costSource } : {}),
     ...(pricingAsOf !== undefined ? { pricingAsOf } : {}),
     currentActivity: undefined,
+    ...(pickAttention ? { needsAttention: pickAttention } : {}),
     // A workstream is an FSM coordinating work-items, not itself a
     // conversation loop — steer a work-item instead (mirrors wrfc-chain).
     // Kill is DERIVED (no native single-call cancel): cascades

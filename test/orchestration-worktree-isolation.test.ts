@@ -262,6 +262,34 @@ describe('WorktreeIsolationManager — claim-time creation + concurrent non-conf
     // to the pipeline verdict (see ItemMergeState's doc, types.ts).
     expect(second.state).toBe('passed');
 
+    // The conflict list is STRUCTURED data on the item (a resolution session
+    // seeds from it), not just blockedReason prose.
+    expect(second.conflictFiles).toEqual(['shared.txt']);
+
+    // The real-session-id stamp: only a conflicted item accepts it.
+    expect(engine.stampConflictSession('item-second', 'sess-resolve-1')).toBe(true);
+    expect(second.conflictSessionId).toBe('sess-resolve-1');
+    expect(engine.stampConflictSession('item-first', 'sess-x')).toBe(false);
+
+    // RESOLUTION inside the kept tree: resolve the conflict against base and
+    // commit onto the item branch (exactly what the seeded session does)…
+    writeFileSync(join(second.worktreePath!, 'shared.txt'), 'first-wins\nsecond-wins\n');
+    runGit(second.worktreePath!, ['add', 'shared.txt']);
+    // Fold base in so the branch merges cleanly (the resolution commit).
+    runGit(second.worktreePath!, ['-c', 'user.email=a@b.c', '-c', 'user.name=test', 'commit', '-m', 'resolve conflict']);
+    const baseBranch = runGit(root, ['rev-parse', '--abbrev-ref', 'HEAD']).trim();
+    runGit(second.worktreePath!, ['-c', 'user.email=a@b.c', '-c', 'user.name=test', 'merge', '-X', 'ours', baseBranch]);
+
+    // …then SUCCESS RECLAIMS: the re-merge lands and the kept tree comes off disk.
+    const keptPath = second.worktreePath!;
+    const outcome = await engine.retryItemIntegration('item-second');
+    expect(outcome).toBe('merged');
+    expect(second.mergeState).toBe('merged');
+    expect(second.conflictFiles).toBeUndefined();
+    expect(existsSync(keptPath)).toBe(false);
+    // Honest refusal on a non-conflicted item.
+    expect(await engine.retryItemIntegration('item-first')).toBe('not-conflicted');
+
     rmSync(root, { recursive: true, force: true });
   }, 30_000);
 });

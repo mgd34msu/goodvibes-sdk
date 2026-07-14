@@ -47,13 +47,21 @@ import { builtinGatewayControlCompanionMethodDescriptors } from '../packages/sdk
 import { builtinGatewayPushMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-push.ts';
 import { builtinGatewayPairingMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-pairing.ts';
 import { builtinGatewayTailscaleMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-tailscale.ts';
+import { builtinGatewayControlAutomationMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-automation.ts';
 import { builtinGatewayPermissionRuleMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-permission-rules.ts';
 import { builtinGatewayControlCoreMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-core.ts';
 import { builtinGatewayRuntimeMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-runtime.ts';
 import {
   EMPTY_OBJECT_SCHEMA,
+  JSON_ARRAY_SCHEMA,
+  JSON_OBJECT_SCHEMA,
+  JSON_VALUE_SCHEMA,
 } from '../packages/sdk/src/platform/control-plane/method-catalog-shared.ts';
 import {
+  FLEET_CONFLICTS_LIST_INPUT_SCHEMA,
+  FLEET_CONFLICTS_LIST_OUTPUT_SCHEMA,
+  FLEET_CONFLICTS_RESOLVE_INPUT_SCHEMA,
+  FLEET_CONFLICTS_RESOLVE_OUTPUT_SCHEMA,
   CHECKPOINTS_CREATE_INPUT_SCHEMA,
   CHECKPOINTS_CREATE_OUTPUT_SCHEMA,
   CHECKPOINTS_DIFF_INPUT_SCHEMA,
@@ -119,6 +127,8 @@ import {
   CHANNEL_TEST_SEND_OUTPUT_SCHEMA,
 } from '../packages/sdk/src/platform/control-plane/operator-contract-schemas-channels.ts';
 import {
+  WORKTREE_DISCARD_INPUT_SCHEMA,
+  WORKTREE_DISCARD_OUTPUT_SCHEMA,
   WORKTREE_SETUP_RUN_INPUT_SCHEMA,
   WORKTREE_SETUP_RUN_OUTPUT_SCHEMA,
   WORKTREE_SNAPSHOT_SCHEMA,
@@ -210,6 +220,7 @@ const CATALOG_DESCRIPTORS = [
   ...builtinGatewayPushMethodDescriptors,
   ...builtinGatewayPairingMethodDescriptors,
   ...builtinGatewayTailscaleMethodDescriptors,
+  ...builtinGatewayControlAutomationMethodDescriptors,
 ];
 
 function descriptorSchemas(methodId: string): { input: Record<string, unknown>; output: Record<string, unknown> } {
@@ -229,6 +240,19 @@ function renderType(schema: Record<string, unknown>): string {
   // sites, e.g. artifacts.create/get/list, approvals.*, sessions.close, etc).
   if (schema === (METADATA_SCHEMA as unknown as Record<string, unknown>)) {
     return '({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string })';
+  }
+
+  // The self-referential JSON-value family renders as the fixed literals the
+  // existing file uses everywhere (verified against the committed entries) —
+  // identity-matched, because structural recursion would never terminate.
+  if (schema === (JSON_VALUE_SCHEMA as unknown as Record<string, unknown>)) {
+    return '({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string';
+  }
+  if (schema === (JSON_OBJECT_SCHEMA as unknown as Record<string, unknown>)) {
+    return '({  } & { readonly [key: string]: JsonValue })';
+  }
+  if (schema === (JSON_ARRAY_SCHEMA as unknown as Record<string, unknown>)) {
+    return 'readonly JsonValue[]';
   }
 
   if (Array.isArray((schema as { anyOf?: unknown[] }).anyOf)) {
@@ -401,6 +425,24 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   { methodId: 'pairing.posture.get', ...descriptorSchemas('pairing.posture.get') },
   { methodId: 'tailscale.get', ...descriptorSchemas('tailscale.get') },
   { methodId: 'tailscale.serve.run', ...descriptorSchemas('tailscale.serve.run') },
+  // Run/task status enums that DRIFTED silently because these typed-map
+  // entries had no ENTRIES row (the automation.runs.list 'missed' incident):
+  // every typed entry that embeds a wire enum is now under the drift check,
+  // so widening an enum without updating the hand-authored map FAILS here.
+  { methodId: 'automation.runs.list', ...descriptorSchemas('automation.runs.list') },
+  { methodId: 'automation.runs.get', ...descriptorSchemas('automation.runs.get') },
+  { methodId: 'automation.runs.cancel', ...descriptorSchemas('automation.runs.cancel') },
+  { methodId: 'automation.runs.retry', ...descriptorSchemas('automation.runs.retry') },
+  { methodId: 'automation.heartbeat.run', ...descriptorSchemas('automation.heartbeat.run') },
+  { methodId: 'automation.schedules.list', ...descriptorSchemas('automation.schedules.list') },
+  { methodId: 'tasks.list', ...descriptorSchemas('tasks.list') },
+  { methodId: 'tasks.get', ...descriptorSchemas('tasks.get') },
+  { methodId: 'tasks.cancel', ...descriptorSchemas('tasks.cancel') },
+  { methodId: 'tasks.retry', ...descriptorSchemas('tasks.retry') },
+  // Merge-conflict rows + the one-action resolution, and discard-that-discards:
+  { methodId: 'fleet.conflicts.list', input: FLEET_CONFLICTS_LIST_INPUT_SCHEMA, output: FLEET_CONFLICTS_LIST_OUTPUT_SCHEMA },
+  { methodId: 'fleet.conflicts.resolve', input: FLEET_CONFLICTS_RESOLVE_INPUT_SCHEMA, output: FLEET_CONFLICTS_RESOLVE_OUTPUT_SCHEMA },
+  { methodId: 'worktrees.discard', input: WORKTREE_DISCARD_INPUT_SCHEMA, output: WORKTREE_DISCARD_OUTPUT_SCHEMA },
 ];
 
 const fileText = readFileSync(FOUNDATION_TYPES_PATH, 'utf8');

@@ -65,7 +65,7 @@ export {
 
 export { engineerReviewPhases, fromChainSpec } from './controller-compat.js';
 
-export { fromPlanProposal } from './proposal-workstream.js';
+export { fromPlanProposal, approveAndLaunchProposal } from './proposal-workstream.js';
 export type { FromPlanProposalOptions } from './proposal-workstream.js';
 
 export type { PhaseRunnerAgentManagerLike, PhaseRunnerDeps, PhaseRunOutcome, WrfcWorktreeOps } from './phase-runner.js';

@@ -295,6 +295,19 @@ export interface WorkItem {
    */
   worktreeKept?: boolean | undefined;
   /**
+   * The STRUCTURED conflicting-path list recorded when mergeState becomes
+   * 'conflict' — the same list the item-merge-conflict event carries, persisted
+   * on the item so a resolution session is seeded from data, never from
+   * parsing the blockedReason prose.
+   */
+  conflictFiles?: readonly string[] | undefined;
+  /**
+   * The real session id of the conflict-resolution session spawned for this
+   * item's kept tree (fleet.conflicts.resolve), stamped when the seeded
+   * session starts — the same honest real-id stamping the CI fix flow records.
+   */
+  conflictSessionId?: string | undefined;
+  /**
    * Best-of-N grouping (see attempts.ts). Set on every sibling attempt item the
    * engine spawned from ONE work item declared with `attempts: N`. All siblings
    * of the same source item share this id; the fleet surfaces it (ProcessNode.

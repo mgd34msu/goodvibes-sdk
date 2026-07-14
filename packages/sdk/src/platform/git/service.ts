@@ -289,7 +289,10 @@ export class GitService {
       const conflicts = message
         .split('\n')
         .filter((l) => l.includes('CONFLICT'))
-        .map((l) => l.replace(/^.*CONFLICT.*?:\s*/, '').trim())
+        // `CONFLICT (content): Merge conflict in <path>` -> `<path>` — the
+        // documented contract is PATHS; the prose ("Merge conflict in ...")
+        // used to leak through and downstream consumers saw it as the "file".
+        .map((l) => l.replace(/^.*CONFLICT.*?:\s*/, '').replace(/^Merge conflict in\s+/, '').trim())
         .filter(Boolean);
 
       await this.fireFail('merge', { branch, error: message, conflicts });

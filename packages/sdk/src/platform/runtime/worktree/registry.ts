@@ -289,4 +289,87 @@ export class WorktreeRegistry {
     delete store.records[normalized];
     writeStore(store, getStorePath(this.workingDirectory, this.surfaceRoot));
   }
+
+  /**
+   * DISCARD actually discards — per the eviction-preserving rules:
+   *  1. Any uncommitted state is first COMMITTED onto the worktree's branch
+   *     (data safety; a preservation failure refuses the removal rather than
+   *     losing work).
+   *  2. The worktree DIRECTORY is removed (`git worktree remove`).
+   *  3. The BRANCH is kept — never deleted on this path.
+   * Returns an honest receipt either way; the record is dropped only when the
+   * directory really came off disk.
+   */
+  public async discard(path: string): Promise<WorktreeDiscardReceipt> {
+    const normalized = isAbsolute(path) ? path : normalizePath(path, this.workingDirectory);
+    const discardedAt = Date.now();
+    const worktreeGit = this.createWorktreeGit(normalized);
+    let branch: string | undefined;
+    let preservedCommit: string | undefined;
+    try {
+      branch = (await worktreeGit.branch()).current;
+      const status = await worktreeGit.status();
+      if (!status.isClean()) {
+        await worktreeGit.addAll();
+        const commit = await worktreeGit.commit('goodvibes: preserve working state before discard', {
+          noVerify: true,
+          fallbackIdentity: { name: 'goodvibes', email: 'goodvibes@localhost' },
+        });
+        preservedCommit = commit.hash;
+      }
+    } catch (error) {
+      // Preservation failed — refuse the removal (losing work is worse than a
+      // lingering directory) and say so honestly.
+      return {
+        path: normalized,
+        ok: false,
+        ...(branch ? { branch } : {}),
+        discardedAt,
+        detail: `discard refused: could not preserve uncommitted state (${String(error instanceof Error ? error.message : error)})`,
+      };
+    }
+    try {
+      await this.git.worktreeRemove(normalized);
+    } catch (error) {
+      return {
+        path: normalized,
+        ok: false,
+        ...(branch ? { branch } : {}),
+        ...(preservedCommit ? { preservedCommit } : {}),
+        discardedAt,
+        detail: `discard failed: worktree removal did not complete (${String(error instanceof Error ? error.message : error)})`,
+      };
+    }
+    const store = readStore(getStorePath(this.workingDirectory, this.surfaceRoot));
+    delete store.records[normalized];
+    writeStore(store, getStorePath(this.workingDirectory, this.surfaceRoot));
+    return {
+      path: normalized,
+      ok: true,
+      ...(branch ? { branch } : {}),
+      ...(preservedCommit ? { preservedCommit } : {}),
+      discardedAt,
+      detail: preservedCommit
+        ? `worktree removed; uncommitted state preserved as ${preservedCommit.slice(0, 12)} on kept branch ${branch ?? '(unknown)'}`
+        : `worktree removed; branch ${branch ?? '(unknown)'} kept`,
+    };
+  }
+
+  /** Injectable seam for tests: a GitService rooted INSIDE the worktree being discarded. */
+  protected createWorktreeGit(worktreePath: string): Pick<GitService, 'branch' | 'status' | 'addAll' | 'commit'> {
+    return new GitService(worktreePath);
+  }
+}
+
+/** The honest record of one discard: what came off disk, what was kept, what was preserved. */
+export interface WorktreeDiscardReceipt {
+  readonly path: string;
+  /** True only when the directory really came off disk. */
+  readonly ok: boolean;
+  /** The branch that was KEPT (never deleted by discard). */
+  readonly branch?: string | undefined;
+  /** The preservation commit recorded for uncommitted state, when the tree was dirty. */
+  readonly preservedCommit?: string | undefined;
+  readonly discardedAt: number;
+  readonly detail: string;
 }

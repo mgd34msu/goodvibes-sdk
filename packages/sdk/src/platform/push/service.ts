@@ -60,7 +60,7 @@ export interface FleetNotice {
   readonly type: string;
   readonly nodeId: string;
   readonly label?: string | undefined;
-  readonly reason?: 'approval' | 'input' | undefined;
+  readonly reason?: 'approval' | 'input' | 'pick' | 'conflict' | undefined;
   readonly sessionId?: string | undefined;
   /** Node kind (agent, chain, workstream, …) — the completion source's scope filter. */
   readonly kind?: string | undefined;
@@ -127,7 +127,7 @@ interface TrackedBlock {
   readonly nodeId: string;
   readonly sessionId?: string | undefined;
   readonly label?: string | undefined;
-  readonly reason?: 'approval' | 'input' | undefined;
+  readonly reason?: 'approval' | 'input' | 'pick' | 'conflict' | undefined;
   readonly blockedAt: number;
   /** True once the escalation push (regardless of attachment) has fired. */
   escalated: boolean;
@@ -379,7 +379,15 @@ export class PushService {
   /** Compose and fire one needs-input push (immediate or escalated). */
   private sendNeedsInput(notice: FleetNotice, escalated: boolean, waitedMs?: number): void {
     const label = notice.label ?? 'A background task';
-    const reason = notice.reason === 'approval' ? 'needs your approval' : 'needs your input';
+    // One waiting-on-human class, four honest phrasings — a ready best-of-N
+    // pick and a merge conflict push through the SAME source as approvals.
+    const reason = notice.reason === 'approval'
+      ? 'needs your approval'
+      : notice.reason === 'pick'
+        ? 'has a best-of-N pick ready for you'
+        : notice.reason === 'conflict'
+          ? 'has a merge conflict waiting on you'
+          : 'needs your input';
     const body = escalated
       ? `${label} has been waiting ${formatWaited(waitedMs ?? 0)} and still ${reason}.`
       : `${label} ${reason}.`;

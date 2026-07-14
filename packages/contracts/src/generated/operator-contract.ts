@@ -29846,7 +29846,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "type": "string",
                         "enum": [
                           "approval",
-                          "input"
+                          "input",
+                          "pick",
+                          "conflict"
                         ]
                       },
                       "detail": {
@@ -30300,6 +30302,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "winnerItemId": {
               "type": "string"
+            },
+            "confirm": {
+              "type": "boolean"
             }
           },
           "required": [
@@ -30311,6 +30316,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "outputSchema": {
           "type": "object",
           "properties": {
+            "applied": {
+              "type": "boolean"
+            },
             "groupId": {
               "type": "string"
             },
@@ -30325,17 +30333,394 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "auto": {
               "type": "boolean"
+            },
+            "requiresConfirm": {
+              "type": "boolean"
+            },
+            "group": {
+              "type": "object",
+              "properties": {
+                "groupId": {
+                  "type": "string"
+                },
+                "workstreamId": {
+                  "type": "string"
+                },
+                "sourceTitle": {
+                  "type": "string"
+                },
+                "ready": {
+                  "type": "boolean"
+                },
+                "candidates": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "itemId": {
+                        "type": "string"
+                      },
+                      "attemptIndex": {
+                        "type": "number"
+                      },
+                      "state": {
+                        "type": "string",
+                        "enum": [
+                          "held-merge",
+                          "failed"
+                        ]
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "worktreePath": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "branch": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "usage": {
+                        "type": "object",
+                        "properties": {
+                          "inputTokens": {
+                            "type": "number"
+                          },
+                          "outputTokens": {
+                            "type": "number"
+                          },
+                          "cacheReadTokens": {
+                            "type": "number"
+                          },
+                          "cacheWriteTokens": {
+                            "type": "number"
+                          },
+                          "reasoningTokens": {
+                            "type": "number"
+                          },
+                          "llmCallCount": {
+                            "type": "number"
+                          },
+                          "turnCount": {
+                            "type": "number"
+                          },
+                          "toolCallCount": {
+                            "type": "number"
+                          },
+                          "costUsd": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "costState": {
+                            "type": "string",
+                            "enum": [
+                              "priced",
+                              "unpriced",
+                              "estimated"
+                            ]
+                          },
+                          "costSource": {
+                            "type": "string",
+                            "enum": [
+                              "user",
+                              "provider",
+                              "catalog",
+                              "mixed"
+                            ]
+                          },
+                          "pricingAsOf": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "inputTokens",
+                          "outputTokens",
+                          "cacheReadTokens",
+                          "cacheWriteTokens",
+                          "llmCallCount",
+                          "turnCount",
+                          "toolCallCount",
+                          "costUsd",
+                          "costState"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "failureReason": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "diff": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "files": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "unifiedDiff": {
+                                "type": "string"
+                              },
+                              "stat": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "files",
+                              "unifiedDiff",
+                              "stat"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "itemId",
+                      "attemptIndex",
+                      "state",
+                      "title",
+                      "worktreePath",
+                      "branch",
+                      "usage",
+                      "failureReason",
+                      "diff"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "autoAccept": {
+                  "type": "boolean"
+                },
+                "judgment": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "proposedWinnerItemId": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "reasons": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "model": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "scoredBy": {
+                          "type": "string",
+                          "enum": [
+                            "model"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "proposedWinnerItemId",
+                        "reasons",
+                        "model",
+                        "scoredBy"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "groupId",
+                "workstreamId",
+                "sourceTitle",
+                "ready",
+                "candidates",
+                "autoAccept",
+                "judgment"
+              ],
+              "additionalProperties": false
             }
           },
           "required": [
+            "applied",
             "groupId",
-            "winnerItemId",
-            "loserItemIds",
-            "auto"
+            "winnerItemId"
           ],
           "additionalProperties": false
         },
         "dangerous": true,
+        "invokable": true
+      },
+      {
+        "id": "fleet.conflicts.list",
+        "title": "List Merge-Conflict Rows",
+        "description": "Return every work item whose integration merge CONFLICTED and is waiting on a human: the kept worktree path, item branch, the STRUCTURED conflicting-file list, and the resolution session id once one was spawned. Optionally filtered to one workstream. Read-only.",
+        "category": "fleet",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "read:fleet"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "workstreamId": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "conflicts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "workstreamId": {
+                    "type": "string"
+                  },
+                  "itemId": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "worktreePath": {
+                    "type": "string"
+                  },
+                  "branch": {
+                    "type": "string"
+                  },
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "resolutionSessionId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "workstreamId",
+                  "itemId",
+                  "title",
+                  "worktreePath",
+                  "files"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "conflicts"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "fleet.conflicts.resolve",
+        "title": "Spawn a Conflict-Resolution Session",
+        "description": "The conflict row's one action: spawn a resolution session INSIDE the kept worktree, seeded with the structured conflict list and tree path (the same seeded-session machinery as the CI fix flow), and stamp the REAL session id back onto the item. When the resolution lands and the re-merge succeeds, the kept tree is reclaimed automatically. An item with no unresolved conflict is an honest 409.",
+        "category": "fleet",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "write:fleet"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "itemId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "itemId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "itemId": {
+              "type": "string"
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "worktreePath": {
+              "type": "string"
+            },
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "itemId",
+            "sessionId",
+            "worktreePath",
+            "files"
+          ],
+          "additionalProperties": false
+        },
         "invokable": true
       },
       {
@@ -30577,7 +30962,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "type": "string",
                         "enum": [
                           "approval",
-                          "input"
+                          "input",
+                          "pick",
+                          "conflict"
                         ]
                       },
                       "detail": {
@@ -30856,7 +31243,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "type": "string",
                         "enum": [
                           "approval",
-                          "input"
+                          "input",
+                          "pick",
+                          "conflict"
                         ]
                       },
                       "detail": {
@@ -87693,6 +88082,64 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "worktrees.discard",
+        "title": "Discard a Worktree",
+        "description": "Remove a worktree per the eviction-preserving rules: any uncommitted state is first committed onto the worktree's branch (a preservation failure REFUSES the removal rather than losing work), the directory is removed, and the branch is KEPT. Returns an honest receipt (ok, branch kept, preservation commit, detail) either way.",
+        "category": "worktrees",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "write:worktrees"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "ok": {
+              "type": "boolean"
+            },
+            "branch": {
+              "type": "string"
+            },
+            "preservedCommit": {
+              "type": "string"
+            },
+            "discardedAt": {
+              "type": "number"
+            },
+            "detail": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "ok",
+            "discardedAt",
+            "detail"
+          ],
+          "additionalProperties": false
+        },
+        "dangerous": true,
+        "invokable": true
+      },
+      {
         "id": "worktrees.setup.run",
         "title": "Re-run Worktree Setup",
         "description": "Re-run cold-start setup (configured commands + untracked-file carry-over) on a live worktree by path, recording the honest outcome onto the worktree record. Returns the setup result: state skipped (nothing configured), succeeded, or failed with the failing step and error. A failed setup is a visible worktree state, never silent.",
@@ -89567,10 +90014,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 398,
-      "typedInputs": 398,
+      "methods": 401,
+      "typedInputs": 401,
       "genericInputs": 0,
-      "typedOutputs": 398,
+      "typedOutputs": 401,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -89579,8 +90026,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       "withWireEvents": 32
     },
     "validationCoverage": {
-      "methods": 398,
-      "validated": 392,
+      "methods": 401,
+      "validated": 395,
       "skippedGeneric": 0,
       "skippedUntyped": 6
     }

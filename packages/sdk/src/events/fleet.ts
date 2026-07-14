@@ -49,8 +49,8 @@ export type FleetNodeState =
   | 'queued'
   | 'paused';
 
-/** Mirrors ProcessAttentionReason. */
-export type FleetAttentionReason = 'approval' | 'input';
+/** Mirrors ProcessAttentionReason — every way a node can wait on a human is first-class. */
+export type FleetAttentionReason = 'approval' | 'input' | 'pick' | 'conflict';
 
 export type FleetEvent =
   /** A node appeared in the fleet for the first time. */
@@ -83,7 +83,7 @@ export type FleetEvent =
       label: string;
       sessionId?: string | undefined;
     }
-  /** A node became blocked waiting for a human (approve/deny or input). */
+  /** A node became blocked waiting for a human (approve/deny, input, a ready best-of-N pick, or a merge conflict). */
   | {
       type: 'FLEET_NODE_BLOCKED_ON_USER';
       nodeId: string;
