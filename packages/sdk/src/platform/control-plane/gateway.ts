@@ -15,6 +15,7 @@ import {
 } from '../runtime/emitters/index.js';
 import { renderControlPlaneGatewayWebUi } from './gateway-web-ui.js';
 import { buildGatewayDisabledResponseBody } from './gateway-disabled-response.js';
+import { SSE_HEARTBEAT_INTERVAL_MS } from './sse-timing.js';
 import { CHANNEL_REQUIRED_SCOPE, clientMayReceiveEventDomain, clientMaySeeScopedChannel } from './gateway-scope-enforcement.js';
 import type {
   ControlPlaneClientDescriptor,
@@ -79,6 +80,8 @@ export interface ControlPlaneEventStreamOptions {
   readonly surfaceId?: string | undefined;
   readonly remoteAddress?: string | undefined;
   readonly capabilities?: readonly string[] | undefined;
+  /** SSE keep-alive interval (ms); defaults to SSE_HEARTBEAT_INTERVAL_MS. First heartbeat always fires on open. */
+  readonly heartbeatIntervalMs?: number | undefined;
 }
 
 interface LiveControlPlaneClient {
@@ -631,30 +634,20 @@ export class ControlPlaneGateway {
 
     const traceId = `control-plane:${clientId}`;
     const eventClientKind = options.clientKind === 'daemon' ? 'service' : (options.clientKind ?? 'web');
-    emitControlPlaneClientConnected(this.runtimeBus, {
-      sessionId: options.sessionId ?? 'control-plane',
-      source: 'control-plane.gateway',
-      traceId,
-    }, {
+    // One shared event context for every control-plane lifecycle emit below.
+    const evtCtx = { sessionId: options.sessionId ?? 'control-plane', source: 'control-plane.gateway', traceId };
+    emitControlPlaneClientConnected(this.runtimeBus, evtCtx, {
       clientId,
       clientKind: eventClientKind,
       transport,
     });
-    emitControlPlaneSubscriptionCreated(this.runtimeBus, {
-      sessionId: options.sessionId ?? 'control-plane',
-      source: 'control-plane.gateway',
-      traceId,
-    }, {
+    emitControlPlaneSubscriptionCreated(this.runtimeBus, evtCtx, {
       clientId,
       subscriptionId: clientId,
       topics: selectedDomains,
     });
     if (options.principalId) {
-      emitControlPlaneAuthGranted(this.runtimeBus, {
-        sessionId: options.sessionId ?? 'control-plane',
-        source: 'control-plane.gateway',
-        traceId,
-      }, {
+      emitControlPlaneAuthGranted(this.runtimeBus, evtCtx, {
         clientId,
         principalId: options.principalId,
         principalKind: options.principalKind ?? 'token',
@@ -698,20 +691,19 @@ export class ControlPlaneGateway {
           domains: sseLiveDomains,
           send,
         });
-        emitStreamSubscriberConnected(this.runtimeBus!, {
-          sessionId: options.sessionId ?? 'control-plane',
-          source: 'control-plane.gateway',
-          traceId,
-        }, {
+        emitStreamSubscriberConnected(this.runtimeBus!, evtCtx, {
           streamId: clientId,
           subscriberId: clientId,
           streamType: transport,
         });
-        const heartbeat = setInterval(() => {
-          send('heartbeat', { clientId, ts: Date.now() });
-        }, 15_000);
+        const emitHeartbeat = (): void => send('heartbeat', { clientId, ts: Date.now() });
+        const heartbeatIntervalMs = options.heartbeatIntervalMs ?? SSE_HEARTBEAT_INTERVAL_MS;
+        const heartbeat = setInterval(emitHeartbeat, heartbeatIntervalMs);
         (heartbeat as unknown as { unref?: () => void }).unref?.();
+        let torn = false;
         teardown = () => {
+          if (torn) return; // idempotent: cancel + abort can both fire.
+          torn = true;
           clearInterval(heartbeat);
           for (const unsub of unsubs) unsub();
           this.liveClients.delete(clientId);
@@ -730,28 +722,16 @@ export class ControlPlaneGateway {
               isRunning: true,
               connectionState: [...this.clients.values()].some((client) => client.connected) ? 'connected' : 'disconnected',
             }, 'control-plane.gateway.disconnect');
-            emitControlPlaneSubscriptionDropped(this.runtimeBus!, {
-              sessionId: options.sessionId ?? 'control-plane',
-              source: 'control-plane.gateway',
-              traceId,
-            }, {
+            emitControlPlaneSubscriptionDropped(this.runtimeBus!, evtCtx, {
               clientId,
               subscriptionId: clientId,
               reason: 'stream-closed',
             });
-            emitControlPlaneClientDisconnected(this.runtimeBus!, {
-              sessionId: options.sessionId ?? 'control-plane',
-              source: 'control-plane.gateway',
-              traceId,
-            }, {
+            emitControlPlaneClientDisconnected(this.runtimeBus!, evtCtx, {
               clientId,
               reason: 'stream-closed',
             });
-            emitStreamSubscriberDisconnected(this.runtimeBus!, {
-              sessionId: options.sessionId ?? 'control-plane',
-              source: 'control-plane.gateway',
-              traceId,
-            }, {
+            emitStreamSubscriberDisconnected(this.runtimeBus!, evtCtx, {
               streamId: clientId,
               subscriberId: clientId,
               streamType: transport,
@@ -761,10 +741,14 @@ export class ControlPlaneGateway {
         };
         request.signal.addEventListener('abort', () => {
           teardown();
-          controller.close();
+          // cancel may have already closed the controller; closing twice throws.
+          try { controller.close(); } catch { /* already closed by cancel */ }
         }, { once: true });
         send('ready', { clientId, domains: selectedDomains });
         replayRecentTraffic(this.recentEvents, send, { ...options, clientId, domains: selectedDomains }, sseLiveDomains, lastEventId);
+        // First keep-alive immediately on open (not one interval later), so the
+        // window before the first interval can't strand a quiet stream.
+        emitHeartbeat();
       },
       cancel: () => {
         teardown();
