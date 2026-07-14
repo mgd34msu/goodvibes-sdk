@@ -29,7 +29,7 @@ import type { SharedSessionKind, SharedSessionParticipant } from '../packages/sd
 import { SHARED_SESSION_KINDS } from '../packages/daemon-sdk/src/runtime-session-routes.ts';
 
 const ALL_KINDS: readonly SharedSessionKind[] = [
-  'tui', 'agent', 'webui', 'companion-task', 'companion-chat', 'automation',
+  'tui', 'agent', 'webui', 'companion-task', 'companion-chat', 'automation', 'acp',
 ];
 
 function makeRouteBindings(): RouteBindingManager {
@@ -113,7 +113,7 @@ describe('SharedSessionKind lockstep (type ↔ validator ↔ wire schema)', () =
     });
   });
 
-  test('the sessions.register wire schema enumerates exactly the six kinds', () => {
+  test('the sessions.register wire schema enumerates exactly the declared kinds', () => {
     const register = OPERATOR_CONTRACT.operator.methods.find((m) => m.id === 'sessions.register');
     expect(register).toBeDefined();
     const kindEnum = (register!.inputSchema as { properties?: { kind?: { enum?: string[] } } })
@@ -121,7 +121,7 @@ describe('SharedSessionKind lockstep (type ↔ validator ↔ wire schema)', () =
     expect(new Set(kindEnum)).toEqual(new Set(ALL_KINDS));
   });
 
-  test('the daemon-sdk route validators (register + list) enumerate exactly the six kinds', () => {
+  test('the daemon-sdk route validators (register + list) enumerate exactly the declared kinds', () => {
     // A kind added to the type + broker + wire schema but not here would silently
     // drift out of lockstep with the daemon route validation. handleRegisterSharedSession
     // now shares this single set (no duplicate register-only set), so both the
