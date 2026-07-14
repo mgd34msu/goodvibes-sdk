@@ -61,7 +61,10 @@ export type SharedSessionKind =
   | 'webui'
   | 'companion-task'
   | 'companion-chat'
-  | 'automation';
+  | 'automation'
+  // A hosted third-party coding agent (Claude Code / Codex CLI / opencode)
+  // running as a daemon session over the Agent Client Protocol.
+  | 'acp';
 
 /**
  * Why a session was closed. Drives the honest reopen-on-heartbeat rule:

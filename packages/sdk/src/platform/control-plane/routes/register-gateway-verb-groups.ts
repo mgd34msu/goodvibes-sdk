@@ -18,6 +18,8 @@ import { registerPushGatewayMethods } from './push.js';
 import { registerPairingGatewayMethods, type PairingGatewayService } from './pairing.js';
 import { registerPairingHandoffGatewayMethods } from './pairing-handoff.js';
 import { registerTailscaleGatewayMethods } from './tailscale.js';
+import { registerAcpGatewayMethods } from './acp.js';
+import { discoverAcpAgents, type AcpHostService } from '../../acp/host.js';
 import { createFleetConflictsListHandler, createFleetConflictsResolveHandler, type FleetConflictsDeps } from './fleet.js';
 import { startCiFixSession, startConflictResolutionSession } from './seeded-sessions.js';
 // Compatibility re-export: consumers/tests import startCiFixSession from here.
@@ -167,6 +169,14 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
   readonly pairingWebOrigin?: (() => string | undefined) | undefined;
   /** Injectable tailscale command runner (tests); absent ⇒ the real spawnSync runner. */
   readonly tailscaleRunner?: TailscaleCommandRunner | undefined;
+  /**
+   * Optional: the hosted third-party ACP agent service. When present, the
+   * acp.* verbs (discovery + spawn) are registered over it; absent → they stay
+   * cataloged-but-unhandled (graceful degrade for narrower embeds).
+   */
+  readonly acpHost?: Pick<AcpHostService, 'spawnAgent' | 'list'> | undefined;
+  /** Injectable discovery seam for the acp verbs (tests); absent ⇒ the real read-only discovery. */
+  readonly acpDiscover?: (() => ReturnType<typeof discoverAcpAgents>) | undefined;
   /**
    * Config surface backing the session-scoped permission-mode verbs
    * (sessions.permissionMode.get/set): the daemon's own `permissions.mode`
@@ -586,6 +596,15 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
       ...(deps.pairingWebOrigin ? { webOrigin: deps.pairingWebOrigin } : {}),
     });
   }
+  // Hosted third-party coding agents (ACP): read-only discovery + the one-act
+  // spawn. Registered only when the composition root threads the host service.
+  if (deps.acpHost) {
+    registerAcpGatewayMethods(catalog, {
+      host: deps.acpHost,
+      discover: deps.acpDiscover ?? ((): ReturnType<typeof discoverAcpAgents> => discoverAcpAgents()),
+    });
+  }
+
   // Tailscale auto-wire: read-only detection + the one-action serve affordance
   // (the recommended https path — the daemon never mints certificates). Where
   // tailscale is absent, detection reports it once; nothing nags.

@@ -60,6 +60,8 @@ import {
 } from './adapters/orchestration.js';
 import type { CodeIndexProcessSource } from './adapters/code-index.js';
 import { adaptCodeIndex } from './adapters/code-index.js';
+import { adaptHostedAcpAgent, killHostedAcpNode, steerHostedAcpNode } from './adapters/acp-host.js';
+import type { AcpHostService } from '../../acp/host.js';
 import type { WorkItem, Workstream } from '../../orchestration/types.js';
 import type { OrchestrationEngine } from '../../orchestration/engine.js';
 import { DEFAULT_STALL_TELL_MS, HeadlineTable, deriveStallTell } from './headlines.js';
@@ -127,6 +129,8 @@ export interface ProcessRegistryDeps {
    * behavior — zero code-index nodes, no new capability.
    */
   readonly codeIndexService?: CodeIndexProcessSource | undefined;
+  /** Optional: hosted third-party ACP agents fold in as 'acp-agent' nodes (steer = next prompt, kill = stop, permission ask = awaiting-approval). Absent ⇒ exactly today's behavior. */
+  readonly acpHost?: Pick<AcpHostService, 'list' | 'prompt' | 'stop'> | undefined;
   /**
    * Optional: folds `/schedule` automation jobs
    * (platform/automation, a SEPARATE subsystem from the workflow-tool's
@@ -406,8 +410,7 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
       // collectLiveItemUsage) so the workstream rollup and the per-item nodes
       // show live mid-phase usage instead of n/a until the phase boundary.
       const liveByItemId = collectLiveItemUsage(workstream, agentNodeById);
-      // Ready best-of-N groups, resolved once per workstream — flags the pick
-      // on the workstream node and marks each member's attemptGroup.ready.
+      // Ready best-of-N groups, resolved once per workstream (workstream flag + member attemptGroup.ready).
       const readyGroups = readyAttemptGroupIds(workstream);
       nodes.push(adaptWorkstream(workstream, capturedAt, liveByItemId));
       for (const phase of workstream.phases) {
@@ -447,6 +450,9 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
     for (const summary of deps.processManager.list()) {
       const record = deps.processManager.getStatus(summary.id);
       if (record) nodes.push(adaptBackgroundProcess(record, capturedAt));
+    }
+    if (deps.acpHost) {
+      for (const hosted of deps.acpHost.list()) nodes.push(adaptHostedAcpAgent(hosted, capturedAt));
     }
     if (deps.codeIndexService) {
       nodes.push(adaptCodeIndex(deps.codeIndexService, capturedAt));
@@ -618,6 +624,8 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
         if (!deps.orchestrationEngine?.kill(item.id)) return [];
         return [node.id];
       }
+      case 'acp-agent':
+        return killHostedAcpNode(deps.acpHost, node, (hostedId, error) => logger.warn('[fleet] hosted ACP agent stop failed', { id: hostedId, error: summarizeError(error) }));
       case 'phase':
         // Pure grouping node — not killable (see adaptPhase capabilities).
         return [];
@@ -746,6 +754,8 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
     const { nodes } = assemble();
     const target = nodes.find((node) => node.id === id);
     if (!target) return { queued: false, reason: 'no such process' };
+    // A hosted ACP agent's steer travels over its own stdio connection (no message bus needed).
+    if (target.kind === 'acp-agent') return steerHostedAcpNode(deps.acpHost, target, text);
     if (!deps.messageBus) {
       return { queued: false, reason: 'steering is unavailable: no message bus configured' };
     }
@@ -781,11 +791,7 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
           return { queued: false, reason: 'no live member agent to steer for this subtask' };
         }
         const messageId = crypto.randomUUID();
-        const sent = deps.messageBus.send('operator', agentId, text, {
-          kind: 'steer',
-          ttlMs: STEER_TTL_MS,
-          id: messageId,
-        });
+        const sent = deps.messageBus.send('operator', agentId, text, { kind: 'steer', ttlMs: STEER_TTL_MS, id: messageId });
         return sent ? { queued: true, messageId } : { queued: false, reason: 'steering message was blocked' };
       }
       case 'wrfc-chain':
@@ -797,11 +803,7 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
           return { queued: false, reason: 'no live agent to steer for this work item' };
         }
         const messageId = crypto.randomUUID();
-        const sent = deps.messageBus.send('operator', agentId, text, {
-          kind: 'steer',
-          ttlMs: STEER_TTL_MS,
-          id: messageId,
-        });
+        const sent = deps.messageBus.send('operator', agentId, text, { kind: 'steer', ttlMs: STEER_TTL_MS, id: messageId });
         return sent ? { queued: true, messageId } : { queued: false, reason: 'steering message was blocked' };
       }
       case 'workstream':

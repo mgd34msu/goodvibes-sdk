@@ -37,6 +37,7 @@ const SHARED_SESSION_KINDS: readonly SharedSessionKind[] = [
   'companion-task',
   'companion-chat',
   'automation',
+  'acp',
 ];
 const SHARED_SESSION_STATUSES: readonly SharedSessionStatus[] = ['active', 'closed'];
 

@@ -63,6 +63,7 @@ const PROCESS_KINDS: readonly ProcessKind[] = [
   'workstream',
   'phase',
   'work-item',
+  'acp-agent',
   'code-index',
 ];
 

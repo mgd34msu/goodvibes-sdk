@@ -7,7 +7,7 @@ import type { SharedSessionStoreSnapshot } from './session-broker-helpers.js';
 import type { SharedSessionMessage, SharedSessionParticipant, SharedSessionRecord } from './session-types.js';
 import { isRecord } from '../utils/record-coerce.js';
 
-const SESSION_KINDS = new Set<SharedSessionRecord['kind']>(['tui', 'agent', 'webui', 'companion-task', 'companion-chat', 'automation']);
+const SESSION_KINDS = new Set<SharedSessionRecord['kind']>(['tui', 'agent', 'webui', 'companion-task', 'companion-chat', 'automation', 'acp']);
 const SESSION_STATUSES = new Set<SharedSessionRecord['status']>(['active', 'closed']);
 const MESSAGE_ROLES = new Set<SharedSessionMessage['role']>(['user', 'assistant', 'system']);
 

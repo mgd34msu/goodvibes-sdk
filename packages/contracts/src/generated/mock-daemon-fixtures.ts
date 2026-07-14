@@ -77,6 +77,50 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       "issueCount": 0
     }
   },
+  "acp.agents.list": {
+    "methodId": "acp.agents.list",
+    "http": null,
+    "status": 200,
+    "body": {
+      "agents": [
+        {
+          "id": "sample",
+          "title": "sample",
+          "binaryPath": "sample",
+          "args": [
+            "sample"
+          ]
+        }
+      ]
+    }
+  },
+  "acp.sessions.create": {
+    "methodId": "acp.sessions.create",
+    "http": null,
+    "status": 200,
+    "body": {
+      "hosted": {
+        "id": "sample",
+        "agentId": "sample",
+        "title": "sample",
+        "binaryPath": "sample",
+        "cwd": "sample",
+        "state": "sample",
+        "startedAt": 0,
+        "completedAt": 0,
+        "sessionId": "sample",
+        "progress": "sample",
+        "pendingPermission": "sample",
+        "error": {
+          "binary": "sample",
+          "stage": "sample",
+          "message": "sample"
+        },
+        "promptCount": 0
+      },
+      "started": false
+    }
+  },
   "approvals.approve": {
     "methodId": "approvals.approve",
     "http": {

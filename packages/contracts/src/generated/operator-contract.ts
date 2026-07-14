@@ -527,6 +527,182 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "acp.agents.list",
+        "title": "List Installed Third-Party Coding Agents",
+        "description": "READ-ONLY discovery of installed ACP-capable third-party coding agents (Claude Code, Codex CLI, opencode): existence checks over $PATH and known install directories — no process is ever executed, no registration ceremony. Returns only what is present (id, title, resolved binary path, ACP launch args); absence is a quiet empty list, never a nag.",
+        "category": "acp",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "read:fleet"
+        ],
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "agents": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "binaryPath": {
+                    "type": "string"
+                  },
+                  "args": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "title",
+                  "binaryPath",
+                  "args"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "agents"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "acp.sessions.create",
+        "title": "Spawn a Third-Party Coding Agent Session",
+        "description": "Spawn a discovered third-party agent into a working directory as a hosted daemon session in ONE act: the binary is launched in ACP stdio mode, the handshake and session creation run under a bound timeout, and the result is the hosted record — which appears as a steerable/stoppable fleet row (kind acp-agent) whose permission asks classify as waiting-on-human. A binary that fails the handshake returns the SAME record with state \"failed\" and a structured error (which binary, which stage, what happened) — an honest outcome, never a hung row and never a bare string. An optional initial prompt starts the first turn.",
+        "category": "acp",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "write:fleet"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "agentId": {
+              "type": "string"
+            },
+            "cwd": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "prompt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "agentId",
+            "cwd"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "hosted": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "agentId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "binaryPath": {
+                  "type": "string"
+                },
+                "cwd": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "startedAt": {
+                  "type": "number"
+                },
+                "completedAt": {
+                  "type": "number"
+                },
+                "sessionId": {
+                  "type": "string"
+                },
+                "progress": {
+                  "type": "string"
+                },
+                "pendingPermission": {
+                  "type": "string"
+                },
+                "error": {
+                  "type": "object",
+                  "properties": {
+                    "binary": {
+                      "type": "string"
+                    },
+                    "stage": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "binary",
+                    "stage",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                },
+                "promptCount": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "agentId",
+                "title",
+                "binaryPath",
+                "cwd",
+                "state",
+                "startedAt",
+                "promptCount"
+              ],
+              "additionalProperties": false
+            },
+            "started": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "hosted",
+            "started"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "approvals.approve",
         "title": "Approve Approval",
         "description": "Approve a pending approval. Optionally pass selectedHunks (edit-tool approvals only): the daemon filters the approval's own edit list to those hunk indices server-side, so every surface produces identical modified-edit args. Omitting selectedHunks approves the whole request (back-compat). An out-of-range index or a non-edit approval is rejected with a 400. rememberTier generalizes the decision (a generalizing tier persists a durable rule and sweeps queued asks it covers); modifiedArgs carries an argument-modifying approval — e.g. the typed answer to a command's terminal prompt — to the waiting call (selectedHunks supersedes it when both are present). The response's recorded block reports what the broker actually recorded.",
@@ -29669,6 +29845,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "workstream",
                       "phase",
                       "work-item",
+                      "acp-agent",
                       "code-index"
                     ]
                   },
@@ -30785,6 +30962,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "workstream",
                       "phase",
                       "work-item",
+                      "acp-agent",
                       "code-index"
                     ]
                   },
@@ -31066,6 +31244,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "workstream",
                       "phase",
                       "work-item",
+                      "acp-agent",
                       "code-index"
                     ]
                   },
@@ -79162,7 +79341,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "webui",
                 "companion-task",
                 "companion-chat",
-                "automation"
+                "automation",
+                "acp"
               ]
             },
             "project": {
@@ -90014,10 +90194,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 401,
-      "typedInputs": 401,
+      "methods": 403,
+      "typedInputs": 403,
       "genericInputs": 0,
-      "typedOutputs": 401,
+      "typedOutputs": 403,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -90026,10 +90206,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       "withWireEvents": 32
     },
     "validationCoverage": {
-      "methods": 401,
-      "validated": 395,
+      "methods": 403,
+      "validated": 396,
       "skippedGeneric": 0,
-      "skippedUntyped": 6
+      "skippedUntyped": 7
     }
   },
   "peer": {

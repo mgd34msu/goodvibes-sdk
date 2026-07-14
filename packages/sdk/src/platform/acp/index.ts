@@ -15,3 +15,18 @@ export {
   type AcpAgentOptions,
   type EmbeddedSessionFactory,
 } from './agent.js';
+export {
+  AcpHostService,
+  discoverAcpAgents,
+  KNOWN_ACP_AGENTS,
+} from './host.js';
+export type {
+  DiscoveredAcpAgent,
+  DiscoveryIo,
+  HostedAcpAgent,
+  HostedAcpState,
+  AcpHostError,
+  AcpHostServiceDeps,
+  AcpSessionRegistrar,
+  KnownAcpAgent,
+} from './host.js';
