@@ -47,6 +47,17 @@ export { createProviderBackedAttemptJudge, parseAttemptVerdict } from './judge.j
 export type { CreateWorkstreamInput, OrchestrationEngine, OrchestrationEngineDeps } from './engine.js';
 export { createOrchestrationEngine } from './engine.js';
 
+// The 1.4.3 fix-phase rework: review findings as a second task source, the
+// dynamic-graph muscles, the elastic pool, and the planned-fix runner.
+export { parseReviewIntoTasks, planTaskGraph, planFixWorkstream, clusterOf, ELASTIC_PHASE_CAPACITY } from './review-task-source.js';
+export type { ReviewTask, ReviewTaskSource, SemanticEdgePlanner } from './review-task-source.js';
+export { createFixWorkstreamRunner } from './fix-workstream-runner.js';
+export type { FixWorkstreamRunner, FixWorkstreamOutcome, FixWorkstreamRunnerDeps } from './fix-workstream-runner.js';
+export { addDependencyEdge, addConflictSerializationEdges, buildGraphSnapshot, detectOrphans, remainingDepths, wouldCreateCycle } from './graph-dynamics.js';
+export type { EdgeAddResult, WorkstreamGraphSnapshot, GraphNodeSnapshot, GraphEdgeSnapshot, PoolStateSnapshot } from './graph-dynamics.js';
+export { gateClaimAgainstFleet, isElastic, poolState, retirementEvent } from './elastic-pool.js';
+export type { FleetCapacityProbe, FleetCapacityFn } from './elastic-pool.js';
+
 export type { CancellationRegistry } from './cancellation.js';
 export { createCancellationRegistry } from './cancellation.js';
 

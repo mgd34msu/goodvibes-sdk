@@ -351,6 +351,16 @@ export interface WorkItem {
    * workstream budget; see budget.ts).
    */
   itemBudget?: BudgetCeiling | undefined;
+  /** File-cluster label from the planner pass (warm-adjacency scheduling; review-sourced tasks). */
+  cluster?: string | undefined;
+  /** The file citations this task carries (parser-derived; shared-file edges + conflict serialization read these). */
+  files?: string[] | undefined;
+  /** Bounded auto-retry count consumed before the item hard-fails (see engine maxItemRetries). */
+  retryCount?: number | undefined;
+  /** True once a transitive blocker hard-failed past its retry bound (structured item-orphaned outcome). */
+  orphaned?: boolean | undefined;
+  /** Epoch ms of the last observed phase activity — the stalled-tell timestamp. */
+  lastActivityAt?: number | undefined;
 }
 
 export interface WorkItemSpec {
@@ -387,7 +397,20 @@ export interface WorkItemSpec {
   readonly autoAcceptWinner?: boolean | undefined;
   /** Optional per-item budget ceiling (see WorkItem.itemBudget). Falls out naturally for best-of-N attempts; harmless on any item. */
   readonly budget?: BudgetCeiling | undefined;
+  /** File-cluster label (planner pass). */
+  readonly cluster?: string | undefined;
+  /** File citations for shared-file edges + conflict serialization. */
+  readonly files?: readonly string[] | undefined;
 }
+
+/**
+ * When an edge RELEASES its dependent:
+ * - 'passed' (default, legacy): the blocker reached 'passed'.
+ * - 'reviewed-and-merged': the blocker passed its adversarial slice review AND
+ *   its merge landed in the integration lane (worktree mode). Claimed-done —
+ *   or even passed-but-unmerged — releases NOTHING.
+ */
+export type ReleasePolicy = 'passed' | 'reviewed-and-merged';
 
 /** Sensible cap on best-of-N sibling attempts per work item — enough to compare, bounded against runaway fan-out/cost. */
 export const MAX_ATTEMPTS = 5;
@@ -472,6 +495,8 @@ export interface Workstream {
    * workstreams. Persisted and surfaced for honest origin reporting.
    */
   readonly provenance?: WorkstreamProvenance | undefined;
+  /** Edge-release policy (see {@link ReleasePolicy}). Absent = 'passed' (legacy). */
+  readonly releasePolicy?: ReleasePolicy | undefined;
   readonly createdAt: number;
 }
 
@@ -739,6 +764,13 @@ export type OrchestrationEvent =
   | { readonly type: 'item-attempt-held'; readonly workstreamId: string; readonly groupId: string; readonly itemId: string }
   | { readonly type: 'attempts-ready'; readonly workstreamId: string; readonly groupId: string; readonly candidateItemIds: readonly string[] }
   | { readonly type: 'attempt-judge-proposed'; readonly workstreamId: string; readonly groupId: string; readonly proposedWinnerItemId: string | null; readonly reasons: readonly string[] }
-  | { readonly type: 'attempt-winner-picked'; readonly workstreamId: string; readonly groupId: string; readonly winnerItemId: string; readonly loserItemIds: readonly string[]; readonly auto: boolean };
+  | { readonly type: 'attempt-winner-picked'; readonly workstreamId: string; readonly groupId: string; readonly winnerItemId: string; readonly loserItemIds: readonly string[]; readonly auto: boolean }
+  /** Runtime-dynamic graph lifecycle (1.4.3): live edges, structured cycle/orphan outcomes, elastic-pool state. */
+  | { readonly type: 'item-edge-added'; readonly workstreamId: string; readonly itemId: string; readonly dependsOnId: string; readonly reason: string }
+  | { readonly type: 'graph-cycle'; readonly workstreamId: string; readonly itemIds: readonly string[]; readonly cycle: readonly string[] }
+  | { readonly type: 'item-orphaned'; readonly workstreamId: string; readonly itemId: string; readonly blockerItemId: string; readonly reason: string }
+  | { readonly type: 'pool-at-cap'; readonly workstreamId: string; readonly ready: number; readonly running: number; readonly capKey: string; readonly maxSize: number }
+  | { readonly type: 'pool-spawn-refused'; readonly workstreamId: string; readonly itemId: string; readonly reason: string }
+  | { readonly type: 'agent-retired'; readonly workstreamId: string; readonly agentId: string; readonly reason: string };
 
 export type OrchestrationEventListener = (event: OrchestrationEvent) => void;

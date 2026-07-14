@@ -1,17 +1,11 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * OrchestrationEngine (see CHANGELOG 0.38.0) — owns Workstream state and drives the
- * pipeline. WRAPS a canned/authored workstream; does not rewrite or touch
- * WrfcController (stage 1 of the 3-stage migration — see controller-compat.ts).
- *
- * The tick loop is reactive, not timer-driven: `start()` runs one tick;
- * every phase-run completion re-runs tick() for its workstream. Because JS
- * is single-threaded, computeClaims()'s synchronous read of in-flight counts
- * is never racing a concurrent claim — items are marked 'in-phase'
- * synchronously before any `await` inside the claim loop, so a re-entrant
- * tick() (triggered by an earlier completion resolving on a later turn of
- * the microtask queue) always sees up-to-date state.
+ * OrchestrationEngine (see CHANGELOG 0.38.0) — owns Workstream state and
+ * drives the pipeline; the ONE engine the 1.4.3 fix graphs also feed. The
+ * tick loop is reactive (every phase completion re-ticks); items are marked
+ * 'in-phase' synchronously before any await, so re-entrant ticks never race
+ * a concurrent claim.
  */
 import { checkBudget } from './budget.js';
 import { createCancellationRegistry, type CancellationRegistry } from './cancellation.js';
@@ -30,6 +24,8 @@ import {
 } from './persistence.js';
 import { computeClaims, firstPhase, nextPhaseAfter, reviewPhaseBefore, sortedPhases } from './scheduler.js';
 import { applyDependencyGates } from './dependency-gate.js';
+import { addConflictSerializationEdges, addDependencyEdge, buildGraphSnapshot, detectOrphans, type EdgeAddResult, type WorkstreamGraphSnapshot } from './graph-dynamics.js';
+import { gateClaimAgainstFleet, isElastic, isHardFailed, poolState, retirementEvent, shouldAutoRetry, type FleetCapacityFn } from './elastic-pool.js';
 import {
   CURRENT_WORKSTREAM_SCHEMA_VERSION,
   emptyWorkItemUsage,
@@ -47,6 +43,7 @@ import {
   type Workstream,
   type WorkstreamIsolation,
   type WorkstreamProvenance,
+  type ReleasePolicy,
   type AttemptJudge,
   type AttemptJudgment,
   type AttemptPickResult,
@@ -70,30 +67,23 @@ export interface OrchestrationEngineDeps {
   /** Provenance for the same resolution priceUsage prices with — stamped onto committed usage records at pricing time. */
   readonly priceProvenance?: PriceProvenanceFn | undefined;
   readonly skipClaimVerification?: boolean | undefined;
-  /** Bounds re-review cycles through a dynamically-inserted fix phase. Default 5 (mirrors WrfcController's default maxFixAttempts). */
+  /** Bounds re-review cycles through a dynamically-inserted fix phase. Default 5. */
   readonly maxPhaseVisits?: number | undefined;
   readonly now?: (() => number) | undefined;
   /** Set false to skip wiring the debounced disk writer (tests that don't want filesystem side effects). Default true. */
   readonly persist?: boolean | undefined;
-  /** Bounds how many KEPT (merge-conflict or dirty-after-fail/kill) worktrees a `worktree`-isolation workstream retains before oldest-first eviction. Default 20. Irrelevant to `shared`-isolation workstreams. */
+  /** Kept-worktree retention bound before oldest-first eviction (worktree mode). Default 20. */
   readonly keptWorktreeCap?: number | undefined;
-  /**
-   * Cold-start setup hook run once, right after each `worktree`-isolation item
-   * worktree is created (install deps, run codegen, carry over untracked
-   * files). Wired by the composition root (services.ts) to run the configured
-   * setup and record the honest outcome onto the worktree registry; a failing
-   * setup never fails worktree creation. Absent → no provisioning (today's
-   * broken-by-default behavior).
-   */
+  /** Cold-start worktree setup hook (deps install, .env carry-over); wired by the composition root; a failing setup never fails creation. */
   readonly runWorktreeSetup?: ((worktreePath: string) => Promise<void> | void) | undefined;
-  /**
-   * Optional best-of-N judge: a model call that scores a group's candidates and
-   * PROPOSES a winner (fleet.attempts.judge). Absent → the judge verbs report no
-   * judge is configured and a winner must be picked explicitly. Never auto-picks
-   * unless the source item opted into autoAcceptWinner. Kept injectable so the
-   * engine stays provider-agnostic (services.ts wires the real provider call).
-   */
+  /** Optional best-of-N judge (PROPOSES a winner; never auto-picks unless the item opted in). Injectable — provider-agnostic. */
   readonly judgeAttempts?: AttemptJudge | undefined;
+  /** Live probe of the ONE fleet ceiling (fleet.maxSize) for elastic workstreams; absent = ungated (legacy). */
+  readonly fleetCapacity?: FleetCapacityFn | undefined;
+  /** Bounded per-task auto-retries before hard-fail (elastic fix graphs). Default 0 = off (legacy). */
+  readonly maxItemRetries?: number | undefined;
+  /** In-phase items with no observed activity past this window carry the stalled tell. Default 10 minutes. */
+  readonly stallAfterMs?: number | undefined;
 }
 
 export interface CreateWorkstreamInput {
@@ -109,12 +99,10 @@ export interface CreateWorkstreamInput {
    * contrast with `'worktree'` mode.
    */
   readonly isolation?: WorkstreamIsolation | undefined;
-  /**
-   * Workstream-level provenance (BIG-3 item 1). Set by `fromPlanProposal` when
-   * assembling from an approved PlanProposal; omitted by compat/`fromChainSpec`
-   * callers. Stored verbatim on the created Workstream.
-   */
+  /** Workstream provenance (set by fromPlanProposal; omitted by compat callers). */
   readonly provenance?: WorkstreamProvenance | undefined;
+  /** Edge-release policy; 'reviewed-and-merged' also engages the elastic pool. Absent = 'passed' (legacy). */
+  readonly releasePolicy?: ReleasePolicy | undefined;
 }
 
 export interface OrchestrationEngine {
@@ -122,45 +110,37 @@ export interface OrchestrationEngine {
   getWorkstream(id: string): Workstream | null;
   listWorkstreams(): Workstream[];
   insertPhase(workstreamId: string, afterOrdinal: number, spec: PhaseSpec): Phase | null;
-  /** Begin (or resume ticking) a workstream's pipeline. Idempotent — safe to call on an already-running workstream. */
+  /** Begin (or resume ticking) a workstream's pipeline. Idempotent. */
   start(workstreamId: string): void;
-  /** Abort a work item's in-flight agent (if any) and mark it terminally failed. Never affects sibling items. */
+  /** Abort an item's in-flight agent and mark it terminally failed (siblings untouched). */
   kill(itemId: string): boolean;
-  /**
-   * Replace (or clear, via `undefined`) a workstream's budget ceiling and
-   * immediately re-tick it, so any item already sitting in 'blocked-budget'
-   * gets reconsidered right away — the only recovery path for that state
-   * (see WorkItemState's 'blocked-budget' doc, types.ts). Returns false if
-   * the workstream doesn't exist.
-   */
+  /** Replace/clear a workstream's budget ceiling and re-tick (the 'blocked-budget' recovery path). */
   updateBudget(workstreamId: string, ceiling: BudgetCeiling | undefined): boolean;
-  /**
-   * Reset a terminally-FAILED work item so it re-runs from its first phase —
-   * the documented recovery path (BIG-3 item 2) for a failed dependency and
-   * the dependents it left stuck in 'blocked-dependency'. updateBudget-style:
-   * mutates then immediately re-ticks, so the retry starts at once and any
-   * dependents unblock on the next tick after it passes. Returns false if the
-   * item doesn't exist or isn't in the 'failed' state (a passed or in-flight
-   * item is never disturbed).
-   */
+  /** Reset a terminally-FAILED item to re-run from its first phase (the failed-dependency recovery path); re-ticks immediately. */
   retryItem(itemId: string): boolean;
   getPhaseResults(workstreamId: string): readonly PhaseResult[];
-  /** Best-of-N: the held-merge groups awaiting a winner pick, each with its candidates' diffs (optionally one workstream). */
+  /** Best-of-N: held-merge groups awaiting a winner pick. */
   listHeldMergeGroups(workstreamId?: string): Promise<HeldMergeGroup[]>;
-  /** Best-of-N: accept a winner — merge its worktree through the integration lane, clean the losers. Rejects (AttemptError) on unknown/not-ready group or an invalid winner. */
+  /** Best-of-N: accept a winner (merges through the lane; losers cleaned). */
   pickAttemptWinner(groupId: string, winnerItemId: string): Promise<AttemptPickResult>;
-  /** Best-of-N: run the optional judge over a group's candidates and PROPOSE a winner (never auto-picks). Rejects when no judge is configured. */
+  /** Best-of-N: judge the candidates and PROPOSE a winner (never auto-picks). */
   proposeAttemptWinner(groupId: string): Promise<AttemptJudgment>;
-  /** Stamp the real conflict-resolution session id onto a conflicted item. False when unknown/not conflicted. */
+  /** Stamp the conflict-resolution session id onto a conflicted item. */
   stampConflictSession(itemId: string, sessionId: string): boolean;
-  /** Re-attempt a conflicted item's merge through the same lane; success reclaims the kept tree and clears the conflict markers. */
+  /** Re-attempt a conflicted item's merge through the same lane. */
   retryItemIntegration(itemId: string): Promise<'merged' | 'conflict' | 'not-conflicted'>;
+  /** Add a dependency edge LIVE (a discovered missed dependency / manual serialization). Cycles are refused with a structured graph-cycle outcome. */
+  addDependency(itemId: string, dependsOnId: string, reason: string): EdgeAddResult | null;
+  /** Re-queue a non-terminal item to its first phase (the discovering task's "may re-queue"); cancels its in-flight agent. */
+  requeueItem(itemId: string, reason: string): boolean;
+  /** The surface-facing task graph: nodes, edges, states, elastic-pool state, stalled tells. */
+  getGraphSnapshot(workstreamId: string): WorkstreamGraphSnapshot | null;
   serializeWorkstream(workstreamId: string): string | null;
-  /** Import a serialized snapshot (a full WorkstreamSnapshot JSON string, see persistence.ts). Refuses to overwrite a non-terminal in-memory workstream unless force=true. */
+  /** Import a serialized snapshot; refuses to clobber a non-terminal workstream unless forced. */
   importWorkstream(snapshotJson: string, force?: boolean): boolean;
   /** Import + start from the on-disk snapshot for one workstream id. */
   resumeWorkstream(workstreamId: string): boolean;
-  /** Import + start every snapshot under .goodvibes/orchestration/. Returns the count resumed. */
+  /** Import + start every on-disk snapshot; returns the count resumed. */
   resumeAllFromDisk(): number;
   on(listener: OrchestrationEventListener): () => void;
   dispose(): void;
@@ -174,13 +154,18 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
   const now = deps.now ?? ((): number => Date.now());
   const sessionId = deps.sessionId ?? crypto.randomUUID().slice(0, 8);
   const maxPhaseVisits = deps.maxPhaseVisits ?? 5;
+  const maxItemRetries = deps.maxItemRetries ?? 0;
+  const stallAfterMs = deps.stallAfterMs ?? 10 * 60 * 1000;
+  /** Workstreams currently in the announced at-cap state (event fires once per transition). */
+  const atCapNoted = new Set<string>();
+  const requeuedInFlight = new Set<string>(); // requeued mid-flight: the settling run must not clobber the reset
   const workstreams = new Map<string, Workstream>();
   const completedResults = new Map<string, PhaseResult[]>();
   const cancellation: CancellationRegistry = createCancellationRegistry();
   const listeners = new Set<OrchestrationEventListener>();
   let disposed = false;
 
-  function emit(event: OrchestrationEvent): void {
+  function dispatch(event: OrchestrationEvent): void {
     for (const listener of listeners) {
       try {
         listener(event);
@@ -190,34 +175,34 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     }
   }
 
+  function emit(event: OrchestrationEvent): void {
+    dispatch(event);
+    // An integration conflict adds serialization edges (dynamic graph).
+    if (event.type === 'item-merge-conflict') {
+      const workstream = workstreams.get(event.workstreamId);
+      const item = workstream?.items.find((i) => i.id === event.itemId);
+      if (workstream && item && isElastic(workstream)) {
+        addConflictSerializationEdges(workstream, item, event.files, dispatch);
+      }
+    }
+  }
+
   function on(listener: OrchestrationEventListener): () => void {
     listeners.add(listener);
     return () => listeners.delete(listener);
   }
 
-  // Dirty-residue guard (see CHANGELOG 0.38.0): snapshot the working tree's
-  // dirty paths + content hashes ONCE, right at engine launch (synchronous —
-  // see dirty-guard.ts's doc comment for why this must not be a promise
-  // backed by real subprocess I/O), before any phase of this run has had a
-  // chance to touch anything. A previously killed run sharing this same
-  // projectRoot can leave uncommitted residue behind; this snapshot is what
-  // lets a later scoped commit tell "residue from before this run" apart
-  // from "this run's own changes" (see dirty-guard.ts and phase-runner.ts's
-  // commitPhaseWork).
+  // Dirty-residue guard: snapshot dirty paths+hashes ONCE at launch (sync —
+  // see dirty-guard.ts) so a later scoped commit can tell prior-run residue
+  // from this run's own changes.
   const launchDirtySnapshot: DirtyLaunchSnapshot = snapshotDirtyTree(deps.projectRoot);
   if (launchDirtySnapshot.size > 0) {
     emit({ type: 'dirty-tree-at-launch', paths: [...launchDirtySnapshot.keys()] });
   }
 
-  // Worktree-isolation lane (only ever exercised by a workstream created with
-  // isolation: 'worktree' — see createWorkstream/runItemPhase/failItem below).
-  // Constructing this unconditionally is cheap: it does no I/O until a
-  // worktree-mode workstream actually calls into it.
-  // Cold-start setup hook: use the injected override (tests), else self-wire a
-  // default that runs the configured per-project setup and records the honest
-  // outcome onto the worktree registry (the same store worktrees.snapshot reads,
-  // so a failed setup is a visible worktree state). A registry constructed on
-  // projectRoot with no surfaceRoot matches getWorktreeSnapshot's own reader.
+  // Worktree-isolation lane (worktree-mode workstreams only; no I/O until
+  // used). Cold-start setup hook: injected override (tests) else the derived
+  // per-project setup, outcome recorded onto the worktree registry.
   const runWorktreeSetupHook =
     deps.runWorktreeSetup ??
     (async (worktreePath: string): Promise<void> => {
@@ -240,11 +225,8 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     return workstreams.get(id) ?? null;
   }
 
-  // Best-of-N sibling attempts (see attempts.ts). The coordinator holds the group
-  // registry + pick/judge orchestration; the engine keeps only the thin hooks
-  // below. Its enqueueIntegration/cleanup/diff delegates reuse the same worktree
-  // lane the ordinary path uses, so a picked winner merges exactly like any other
-  // passed item and a loser is cleaned exactly like a failed one.
+  // Best-of-N sibling attempts (attempts.ts): coordinator owns the groups;
+  // its delegates reuse the same worktree lane as the ordinary path.
   const attempts: AttemptsCoordinator = createAttemptsCoordinator({
     emit,
     getWorkstream,
@@ -292,6 +274,8 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
       usage: emptyWorkItemUsage(),
       transportRetryCount: 0,
       createdAt: now(),
+      ...(spec.cluster !== undefined ? { cluster: spec.cluster } : {}),
+      ...(spec.files !== undefined ? { files: [...spec.files] } : {}),
       ...(startPhaseId ? {} : { completedAt: now() }),
     };
   }
@@ -307,6 +291,7 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
       budget: input.budget,
       isolation: input.isolation,
       provenance: input.provenance,
+      releasePolicy: input.releasePolicy,
       createdAt: now(),
     };
     const first = firstPhase(workstream)?.id ?? null;
@@ -370,15 +355,26 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
   }
 
   function failItem(workstream: Workstream, item: WorkItem, reason: string): void {
+    // Bounded auto-retry; past the bound the failure is HARD. Cancels never retry.
+    if (shouldAutoRetry(item, reason, maxItemRetries)) {
+      item.retryCount = (item.retryCount ?? 0) + 1;
+      const first = firstPhase(workstream);
+      if (first) {
+        item.state = 'pending';
+        item.currentPhaseId = first.id;
+        item.failureReason = undefined;
+        item.blockedReason = undefined;
+        item.visits.clear();
+        emit({ type: 'item-retried', workstreamId: workstream.id, itemId: item.id, reason: `auto-retry ${item.retryCount}/${maxItemRetries}: ${reason}` });
+        queueMicrotask(() => { if (!disposed) tick(workstream.id); });
+        return;
+      }
+    }
     item.state = 'failed';
     item.completedAt = now();
     item.failureReason = reason;
     emit({ type: 'item-failed', workstreamId: workstream.id, itemId: item.id, reason });
-    // Worktree-mode fail/kill cleanup rule (remove only if clean, else KEEP —
-    // data safety): covers every failItem call site uniformly, including
-    // kill() and the tick()-catch path for a throw before any phase outcome.
-    // No-op (instantly resolves) for a shared-isolation workstream, or an
-    // item that never reached a claim and therefore never got a worktree.
+    // Worktree fail/kill cleanup: remove only if clean, else KEEP (data safety).
     if (workstream.isolation === 'worktree') {
       void worktreeIsolation.cleanupTerminated(workstream, item).catch((error) => {
         logger.error('orchestration engine: worktree cleanup after item failure did not complete', {
@@ -386,19 +382,11 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
         });
       });
     }
-    // A failed best-of-N attempt still counts toward its group's readiness (a
-    // no-op for a non-attempt item — onItemFailedTerminal gates on attemptGroupId).
+    // A failed attempt still counts toward its best-of-N group's readiness.
     attempts.onItemFailedTerminal(workstream, item);
   }
 
-  /**
-   * Record a NON-FATAL bookkeeping note on an item without touching its
-   * terminal status. Used for post-gate faults that do not
-   * negate the phase's passed work — e.g. a scoped commit that could not
-   * complete. The item still passes/advances; the warning rides along on
-   * `item.warnings` and, for a terminal pass, in the `item-passed` event, so a
-   * passed-with-caveats outcome is visible instead of hidden or mislabelled.
-   */
+  /** Record a NON-FATAL note on an item without touching terminal status (passed-with-caveats stays visible). */
   function warnItem(item: WorkItem, note: string): void {
     (item.warnings ??= []).push(note);
     logger.warn('orchestration engine: non-fatal bookkeeping warning on a passed work item', {
@@ -407,7 +395,7 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     });
   }
 
-  /** Indirection to defeat TS's cross-await narrowing of item.state — see the call site below. */
+  /** Defeats TS's cross-await narrowing of item.state. */
   function currentState(item: WorkItem): WorkItem['state'] {
     return item.state;
   }
@@ -417,14 +405,11 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     item.state = 'in-phase';
     item.currentPhaseId = phase.id;
     item.blockedReason = undefined;
+    item.lastActivityAt = now();
 
-    // Worktree mode: ensure this item has its dedicated worktree BEFORE
-    // spawning its phase agent (idempotent — a no-op from the item's second
-    // phase onward, since the worktree persists across the item's whole run;
-    // see WorktreeIsolationManager.ensureWorktree). A setup failure here is a
-    // genuine phase-run failure (there is nowhere isolated for the agent to
-    // work) — fail the item honestly rather than silently falling back to the
-    // shared tree, which would defeat isolation's whole purpose.
+    // Worktree mode: ensure the item's dedicated worktree BEFORE spawning
+    // (idempotent). A setup failure is a genuine phase failure — never a
+    // silent fallback to the shared tree.
     let itemWorktree: Awaited<ReturnType<WorktreeIsolationManager['ensureWorktree']>> | undefined;
     if (workstream.isolation === 'worktree') {
       try {
@@ -452,18 +437,11 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
       itemWorktree,
     });
 
-    // ── Bookkeeping region (AFTER the phase produced its outcome) ───────────
-    // From here on everything is bookkeeping layered on top of a verdict the
-    // phase has ALREADY reached (outcome.result.gate + agentStatus). It must
-    // never be able to turn a passed phase into a failed item: the item's
-    // terminal status derives ONLY from that phase outcome, plus the narrow
-    // negating set (bookkeeping.ts). A bookkeeping fault becomes a warning on a
-    // passed item (warnItem), never a failure — that is what makes "item failed
-    // while every phase passed and the commit landed" unrepresentable
-    // (the dual-outcome bookkeeping contract). A throw BEFORE this point — inside runPhase, e.g. a gate
-    // subprocess that never yielded a verdict — legitimately reaches tick()'s
-    // catch and fails the item, because there is then no phase outcome to
-    // stand on.
+    // ── Bookkeeping region (AFTER the phase outcome) ────────────────────────
+    // Everything below layers on a verdict already reached; a bookkeeping
+    // fault becomes a warning on a passed item (or, for the narrow negating
+    // set, an explicit fail) — never a silent contradiction of the gate.
+    item.lastActivityAt = now();
     try {
       item.usage = mergeWorkItemUsage(item.usage, outcome.result.usage);
     } catch (error) {
@@ -474,15 +452,14 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     completedResults.set(workstream.id, results);
     emit({ type: 'workstream-persisted', workstreamId: workstream.id });
 
-    // kill() already transitioned the item to 'failed' synchronously before
-    // this promise settled — don't clobber that terminal state. Read through
-    // currentState() (not a direct `item.state` narrowing site) since TS's
-    // control-flow analysis otherwise "remembers" the 'in-phase' assignment
-    // above as if it still held after the `await`, even though kill() can
-    // mutate the same object concurrently while this call was in flight.
+    // kill() may have transitioned the item to 'failed' while this phase was
+    // in flight — read via currentState() to defeat stale narrowing and never
+    // clobber that terminal state.
     if (currentState(item) === 'failed') return;
 
     if (outcome.agentStatus === 'cancelled') {
+      // A deliberate requeue already reset this item — never clobber it.
+      if (requeuedInFlight.delete(item.id)) return;
       failItem(workstream, item, 'cancelled by operator');
       return;
     }
@@ -514,22 +491,14 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
         warnItem(item, `scoped commit did not complete (non-fatal): ${commit.reason ?? 'commit failed'}`);
       }
 
-      // A fix phase's PASSING gate routes BACK to the review phase it was
-      // inserted after (dynamic insertion places 'fix' at an ordinal AFTER
-      // its review, per design (b) — "inserts a fix phase after review and
-      // re-routes that item back"), not forward past it. Every other kind
-      // advances to the next phase by ordinal as usual.
+      // A fix phase's PASSING gate routes BACK to its review phase (never
+      // forward past it); every other kind advances by ordinal.
       const forwardTarget = phase.kind === 'fix'
         ? (reviewPhaseBefore(workstream, phase) ?? nextPhaseAfter(workstream, phase.ordinal) ?? null)
         : (nextPhaseAfter(workstream, phase.ordinal) ?? null);
       routeItem(workstream, item, forwardTarget, phase.id);
-      // The item just terminated PASSED (no further phase) — in worktree mode
-      // its branch now enters the single sequential integration lane
-      // (completion order, not claim order). Fire-and-forget: the lane
-      // manages its own ordering and never rejects (see
-      // WorktreeIsolationManager.enqueueIntegration), so tick() is never
-      // blocked waiting on a merge that may itself await a sibling ahead of
-      // it in the lane.
+      // Terminal pass in worktree mode: the branch enters the sequential
+      // integration lane (fire-and-forget; the lane orders itself).
       if (forwardTarget === null && workstream.isolation === 'worktree') {
         // Best-of-N attempt → HOLD (park as a candidate, do not auto-merge);
         // an ordinary item → enqueue its integration. onItemPassedTerminal
@@ -566,16 +535,33 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     // dependencies before computeClaims decides capacity (which never sees a
     // 'blocked-dependency' item, see scheduler.ts computeClaims).
     applyDependencyGates(workstream, emit);
+    if (isElastic(workstream)) { // orphan pass: hard-failed blockers surface on dependents immediately
+      detectOrphans(workstream, (candidate) => isHardFailed(candidate, maxItemRetries), emit);
+    }
     const claims = computeClaims(workstream);
+    // One fleet probe per tick; claims allowed this tick count against it.
+    const fleetProbe = isElastic(workstream) && deps.fleetCapacity ? deps.fleetCapacity() : null;
+    let fleetActive = fleetProbe?.active ?? 0;
     for (const { item, phase } of claims) {
+      if (item.orphaned) continue; // orphaned outcome already surfaced
+      if (fleetProbe) {
+        const decision = gateClaimAgainstFleet(workstream, item, { ...fleetProbe, active: fleetActive }, atCapNoted.has(workstreamId));
+        if (!decision.allow) {
+          if (decision.event) {
+            if (decision.event.type === 'pool-at-cap') atCapNoted.add(workstreamId);
+            emit(decision.event);
+          }
+          // The task stays VISIBLY ready with its reason — never a silent stall.
+          item.state = 'awaiting-capacity';
+          item.blockedReason = decision.reason;
+          continue;
+        }
+        atCapNoted.delete(workstreamId);
+        fleetActive += 1; // this claim spawns a fresh fleet agent
+        item.blockedReason = undefined;
+      }
       const budgetCheck = checkBudget(workstream, item);
-      if (!budgetCheck.allowed) {
-        // Re-checked on every tick (computeClaims keeps 'blocked-budget'
-        // items in the waiting set — see scheduler.ts) rather than a
-        // one-time transition: the reason can change between checks (e.g.
-        // token ceiling was the blocker, then a cost ceiling is reached
-        // too), so keep it current even though the event only fires once
-        // per NEW block to avoid spamming listeners on every idle tick.
+      if (!budgetCheck.allowed) { // re-decided every tick; the event fires once per NEW block
         const wasAlreadyBlocked = item.state === 'blocked-budget';
         item.state = 'blocked-budget';
         item.blockedReason = budgetCheck.reason;
@@ -586,20 +572,18 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
       }
       void runItemPhase(workstream, item, phase)
         .catch((error) => {
-          // Reaching here means runItemPhase rejected BEFORE the phase produced
-          // an outcome — the run threw inside runPhase (spawn, gate execution,
-          // etc.) with no gate verdict to stand on. That is a genuine phase
-          // failure, so failing the item is honest. Post-outcome bookkeeping
-          // faults never reach here: runItemPhase converts them to warnings on
-          // a passed item (or, for the negating set, an explicit failItem) —
-          // see its bookkeeping region.
+          // A rejection here means no phase outcome exists (the run threw
+          // before a verdict) — failing the item is honest.
           logger.error('orchestration engine: phase run threw before producing an outcome', {
             workstreamId, itemId: item.id, phaseId: phase.id, error: summarizeError(error),
           });
           failItem(workstream, item, summarizeError(error));
         })
         .finally(() => {
-          if (!disposed) tick(workstreamId);
+          if (disposed) return;
+          tick(workstreamId);
+          const retire = retirementEvent(workstream, item.agentId); // empty ready set + no imminent release = retire
+          if (retire) emit(retire);
         });
     }
   }
@@ -637,13 +621,9 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
   }
 
   /**
-   * See the OrchestrationEngine.retryItem doc. Resets a failed item to
-   * 'pending' at the first phase; clears the terminal fields and the per-phase
-   * visit budget (a fresh fix-cycle allowance for the retry) but RETAINS
-   * accumulated `usage` (monotone — a retry adds to the tally, never wipes it).
-   * In worktree mode a still-present KEPT worktree is reused (ensureWorktree is
-   * idempotent on worktreePath); a worktree already removed after the failure
-   * is recreated at the next first claim.
+   * Reset a failed item to 'pending' at the first phase (fresh visit budget,
+   * usage RETAINED — monotone). A KEPT worktree is reused; a removed one is
+   * recreated at the next claim.
    */
   function retryItem(itemId: string): boolean {
     const found = findItemAndWorkstream(itemId);
@@ -663,6 +643,41 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     return true;
   }
 
+  function addDependency(itemId: string, dependsOnId: string, reason: string): EdgeAddResult | null {
+    const found = findItemAndWorkstream(itemId);
+    if (!found) return null;
+    const result = addDependencyEdge(found.workstream, itemId, dependsOnId, reason, emit);
+    if (result.added) tick(found.workstream.id); // re-gate immediately
+    return result;
+  }
+
+  function requeueItem(itemId: string, reason: string): boolean {
+    const found = findItemAndWorkstream(itemId);
+    if (!found) return false;
+    const { workstream, item } = found;
+    if (item.state === 'passed' || item.state === 'failed') return false;
+    if (item.state === 'in-phase') requeuedInFlight.add(itemId);
+    cancellation.abort(itemId);
+    if (item.agentId) deps.agentManager.cancel(item.agentId, 'interrupt');
+    const first = firstPhase(workstream);
+    if (!first) return false;
+    item.state = 'pending';
+    item.currentPhaseId = first.id;
+    item.agentId = undefined;
+    item.blockedReason = undefined;
+    emit({ type: 'item-requeued', workstreamId: workstream.id, itemId, reason });
+    tick(workstream.id);
+    return true;
+  }
+
+  function getGraphSnapshot(workstreamId: string): WorkstreamGraphSnapshot | null {
+    const workstream = workstreams.get(workstreamId);
+    if (!workstream) return null;
+    const probe = isElastic(workstream) && deps.fleetCapacity ? deps.fleetCapacity() : null;
+    return buildGraphSnapshot(workstream, poolState(workstream, probe),
+      (item) => item.state === 'in-phase' && item.lastActivityAt !== undefined && now() - item.lastActivityAt > stallAfterMs);
+  }
+
   function serializeWorkstream(workstreamId: string): string | null {
     const workstream = workstreams.get(workstreamId);
     if (!workstream) return null;
@@ -674,17 +689,9 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
   }
 
   /**
-   * An item persisted as 'in-phase' was mid-run when the snapshot was
-   * written (the debounced writer, persistence.ts, captures state
-   * synchronously — see runItemPhase — so this is always a crash artifact,
-   * never a live agent this process could still be waiting on). Left
-   * verbatim, it would count as an OCCUPIED capacity slot forever
-   * (computeClaims, scheduler.ts) while never being in the re-claimable
-   * waiting set, permanently starving every sibling in the same phase.
-   * Requeue it as 'pending' and drop the stale agentId so the next tick()
-   * reclaims it like any other waiting item — its prior PhaseResult (if any)
-   * was only ever pushed AFTER phase completion (see runItemPhase), so
-   * re-running the phase from here cannot produce a duplicate result.
+   * An imported 'in-phase' item is always a crash artifact (no prior-process
+   * agent survives). Requeue as 'pending' and drop the stale agentId so it is
+   * re-claimable instead of occupying a capacity slot forever.
    */
   function reconcileImportedItems(workstream: Workstream): void {
     for (const item of workstream.items) {
@@ -714,15 +721,9 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     reconcileImportedItems(workstream);
     workstreams.set(workstream.id, workstream);
     completedResults.set(workstream.id, [...snapshot.completedResults]);
-    // Orphan worktree reconciliation (worktree mode only) — SYNCHRONOUS and
-    // done BEFORE this function returns, i.e. before any caller can call
-    // start()/tick() on this workstream. An on-disk `ws/<wsShort>/*` worktree
-    // not already recorded on one of the just-imported items is a crash
-    // artifact from a prior process; adopt it onto a matching unresolved item
-    // or report it for the operator (NEVER deleted on sight) — see
-    // WorktreeIsolationManager.reconcileOrphans for why this must not race
-    // the first tick()'s claim (it would otherwise risk creating a second
-    // worktree at the same deterministic path).
+    // Orphan worktree reconciliation (worktree mode) — synchronous, BEFORE any
+    // tick can claim (see WorktreeIsolationManager.reconcileOrphans): adopt or
+    // report crash-artifact trees, never delete on sight.
     if (workstream.isolation === 'worktree') {
       worktreeIsolation.reconcileOrphans(workstream);
     }
@@ -784,6 +785,9 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
       const resulting: string | undefined = found.item.mergeState; // mutated by the lane
       return resulting === 'merged' ? 'merged' : 'conflict';
     },
+    addDependency,
+    requeueItem,
+    getGraphSnapshot,
     serializeWorkstream,
     importWorkstream,
     resumeWorkstream,
