@@ -10,6 +10,18 @@
  * whatever slot happens to be free, never bound to a specific sibling item.
  */
 import type { Phase, WorkItem, Workstream } from './types.js';
+import { remainingDepths } from './graph-dynamics.js';
+
+/** True when `dep` RELEASES its dependents under the workstream's release policy. */
+export function dependencySatisfied(workstream: Workstream, dep: WorkItem): boolean {
+  if (dep.state !== 'passed') return false;
+  if (workstream.releasePolicy !== 'reviewed-and-merged') return true;
+  // Reviewed-and-merged: passed means every phase (incl. the adversarial slice
+  // review) passed; the merge must ALSO have landed. Claimed-done — an agent
+  // report, an in-flight phase, or passed-but-unmerged — releases nothing.
+  if (workstream.isolation !== 'worktree') return true;
+  return dep.mergeState === 'merged';
+}
 
 export function sortedPhases(workstream: Workstream): Phase[] {
   return [...workstream.phases].sort((a, b) => a.ordinal - b.ordinal);
@@ -80,9 +92,10 @@ export function dependencyStatus(workstream: Workstream, item: WorkItem): Depend
       if (groupStatus === 'failed') { failed.push(bestOfNWaitingLabel(workstream, depId)); continue; }
       continue; // 'not-a-group' → truly dangling, ignore
     }
-    if (dep.state === 'passed') continue;
-    if (dep.state === 'failed') failed.push(dep.title);
-    else waiting.push(dep.title);
+    if (dependencySatisfied(workstream, dep)) continue;
+    if (dep.state === 'failed') { failed.push(dep.title); continue; }
+    if (dep.state === 'passed') { waiting.push(`${dep.title} (merge pending)`); continue; }
+    waiting.push(dep.title);
   }
   return { ready: waiting.length === 0 && failed.length === 0, waiting, failed };
 }
@@ -143,6 +156,14 @@ export function computeClaims(workstream: Workstream): PhaseClaim[] {
       (item) => item.currentPhaseId === phase.id
         && (item.state === 'pending' || item.state === 'awaiting-capacity' || item.state === 'blocked-budget'),
     );
+    // Deepest-remaining-path first within the ready set, so the critical path
+    // never idles; cluster is the tiebreak (adjacent same-cluster tasks run
+    // consecutively — the bounded warm-adjacency the planner's clusters buy).
+    const depths = remainingDepths(workstream);
+    waiting.sort((a, b) =>
+      (depths.get(b.id) ?? 0) - (depths.get(a.id) ?? 0)
+      || (a.cluster ?? '').localeCompare(b.cluster ?? '')
+      || a.createdAt - b.createdAt);
     for (const item of waiting) {
       if (free <= 0) break;
       claims.push({ item, phase });
