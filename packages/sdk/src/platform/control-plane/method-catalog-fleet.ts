@@ -20,7 +20,7 @@
  * position, not in reasoning).
  */
 import type { GatewayMethodDescriptor } from './method-catalog-shared.js';
-import { EMPTY_OBJECT_SCHEMA, methodDescriptor } from './method-catalog-shared.js';
+import { BOOLEAN_SCHEMA, EMPTY_OBJECT_SCHEMA, NUMBER_SCHEMA, STRING_SCHEMA, methodDescriptor, objectSchema } from './method-catalog-shared.js';
 import {
   CHECKPOINTS_CREATE_INPUT_SCHEMA,
   CHECKPOINTS_CREATE_OUTPUT_SCHEMA,
@@ -66,6 +66,52 @@ export const builtinGatewayFleetMethodDescriptors: readonly GatewayMethodDescrip
     transport: ['ws'],
     inputSchema: EMPTY_OBJECT_SCHEMA,
     outputSchema: FLEET_SNAPSHOT_OUTPUT_SCHEMA,
+  }),
+  methodDescriptor({
+    id: 'fleet.graph.get',
+    title: 'Get Workstream Task Graph',
+    description: 'The dependency-graph view of one workstream: nodes (id, title, state, cluster, files, merge state, blocked reason, orphaned flag, deepest-remaining-path depth, stalled tell, agent), edges (from depends on to), and the elastic-pool state (ready/running counts, at-cap, cap key + size, any spawn refusal). Surfaces render the task graph under the chain from this — the fleet/observability idiom. 404 when the workstream is unknown to this daemon.',
+    category: 'fleet',
+    scopes: ['read:fleet'],
+    http: { method: 'GET', path: '/api/fleet/workstreams/{workstreamId}/graph' },
+    inputSchema: objectSchema({ workstreamId: STRING_SCHEMA }, ['workstreamId']),
+    outputSchema: objectSchema({
+      workstreamId: STRING_SCHEMA,
+      title: STRING_SCHEMA,
+      nodes: {
+        type: 'array',
+        items: objectSchema({
+          id: STRING_SCHEMA,
+          title: STRING_SCHEMA,
+          state: STRING_SCHEMA,
+          cluster: STRING_SCHEMA,
+          files: { type: 'array', items: STRING_SCHEMA },
+          mergeState: STRING_SCHEMA,
+          blockedReason: STRING_SCHEMA,
+          orphaned: BOOLEAN_SCHEMA,
+          remainingDepth: NUMBER_SCHEMA,
+          stalled: BOOLEAN_SCHEMA,
+          agentId: STRING_SCHEMA,
+        }, ['id', 'title', 'state', 'files', 'orphaned', 'remainingDepth', 'stalled']),
+      },
+      edges: {
+        type: 'array',
+        items: objectSchema({ from: STRING_SCHEMA, to: STRING_SCHEMA }, ['from', 'to']),
+      },
+      pool: {
+        anyOf: [
+          objectSchema({
+            ready: NUMBER_SCHEMA,
+            running: NUMBER_SCHEMA,
+            atCap: BOOLEAN_SCHEMA,
+            capKey: STRING_SCHEMA,
+            maxSize: NUMBER_SCHEMA,
+            refusal: STRING_SCHEMA,
+          }, ['ready', 'running', 'atCap', 'capKey', 'maxSize']),
+          { type: 'null' },
+        ],
+      },
+    }, ['workstreamId', 'title', 'nodes', 'edges', 'pool']),
   }),
   methodDescriptor({
     id: 'fleet.list',

@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.8.0
- * Methods: 409 total, 359 REST-routed, 50 ws-only invoke.
+ * Methods: 410 total, 360 REST-routed, 50 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -535,6 +535,10 @@ export const WEBUI_METHOD_ROUTES: Readonly<Record<string, WebuiRouteDefinition>>
   "email.send": {
     "method": "POST",
     "path": "/api/email/send"
+  },
+  "fleet.graph.get": {
+    "method": "GET",
+    "path": "/api/fleet/workstreams/{workstreamId}/graph"
   },
   "health.snapshot": {
     "method": "GET",
@@ -1679,6 +1683,7 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "fleet.attempts.pick": "ws-invoke",
   "fleet.conflicts.list": "ws-invoke",
   "fleet.conflicts.resolve": "ws-invoke",
+  "fleet.graph.get": "rest",
   "fleet.list": "ws-invoke",
   "fleet.snapshot": "ws-invoke",
   "fleet.unarchive": "ws-invoke",
@@ -7622,6 +7627,46 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
       "files": [
         "sample"
       ]
+    }
+  },
+  "fleet.graph.get": {
+    "input": {
+      "workstreamId": "sample"
+    },
+    "output": {
+      "workstreamId": "sample",
+      "title": "sample",
+      "nodes": [
+        {
+          "id": "sample",
+          "title": "sample",
+          "state": "sample",
+          "cluster": "sample",
+          "files": [
+            "sample"
+          ],
+          "mergeState": "sample",
+          "blockedReason": "sample",
+          "orphaned": false,
+          "remainingDepth": 0,
+          "stalled": false,
+          "agentId": "sample"
+        }
+      ],
+      "edges": [
+        {
+          "from": "sample",
+          "to": "sample"
+        }
+      ],
+      "pool": {
+        "ready": 0,
+        "running": 0,
+        "atCap": false,
+        "capKey": "sample",
+        "maxSize": 0,
+        "refusal": "sample"
+      }
     }
   },
   "fleet.list": {

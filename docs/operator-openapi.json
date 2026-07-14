@@ -3,7 +3,7 @@
   "info": {
     "title": "GoodVibes Operator API",
     "version": "1.8.0",
-    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 409 cataloged methods: 359 with dedicated REST bindings, 50 reachable only through the generic invoke endpoint. 97 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
+    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 410 cataloged methods: 360 with dedicated REST bindings, 50 reachable only through the generic invoke endpoint. 97 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
   },
   "servers": [
     {
@@ -29943,6 +29943,177 @@
             }
           }
         }
+      }
+    },
+    "/api/fleet/workstreams/{workstreamId}/graph": {
+      "get": {
+        "operationId": "fleet.graph.get",
+        "summary": "Get Workstream Task Graph",
+        "description": "The dependency-graph view of one workstream: nodes (id, title, state, cluster, files, merge state, blocked reason, orphaned flag, deepest-remaining-path depth, stalled tell, agent), edges (from depends on to), and the elastic-pool state (ready/running counts, at-cap, cap key + size, any spawn refusal). Surfaces render the task graph under the chain from this — the fleet/observability idiom. 404 when the workstream is unknown to this daemon.",
+        "tags": [
+          "fleet"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "workstreamId": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "nodes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "state": {
+                            "type": "string"
+                          },
+                          "cluster": {
+                            "type": "string"
+                          },
+                          "files": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "mergeState": {
+                            "type": "string"
+                          },
+                          "blockedReason": {
+                            "type": "string"
+                          },
+                          "orphaned": {
+                            "type": "boolean"
+                          },
+                          "remainingDepth": {
+                            "type": "number"
+                          },
+                          "stalled": {
+                            "type": "boolean"
+                          },
+                          "agentId": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "title",
+                          "state",
+                          "files",
+                          "orphaned",
+                          "remainingDepth",
+                          "stalled"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "edges": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "from": {
+                            "type": "string"
+                          },
+                          "to": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "from",
+                          "to"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "pool": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "ready": {
+                              "type": "number"
+                            },
+                            "running": {
+                              "type": "number"
+                            },
+                            "atCap": {
+                              "type": "boolean"
+                            },
+                            "capKey": {
+                              "type": "string"
+                            },
+                            "maxSize": {
+                              "type": "number"
+                            },
+                            "refusal": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "ready",
+                            "running",
+                            "atCap",
+                            "capKey",
+                            "maxSize"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "workstreamId",
+                    "title",
+                    "nodes",
+                    "edges",
+                    "pool"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "read:fleet"
+        ],
+        "parameters": [
+          {
+            "name": "workstreamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       }
     },
     "/api/health": {
@@ -91339,6 +91510,15 @@
       "category": "fleet",
       "access": "authenticated",
       "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "fleet.graph.get",
+      "category": "fleet",
+      "access": "authenticated",
+      "rest": "GET /api/fleet/workstreams/{workstreamId}/graph",
       "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
