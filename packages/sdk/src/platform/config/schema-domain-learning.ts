@@ -23,7 +23,7 @@
  */
 import { type ConfigSettingDefinition, intRange } from './schema-shared.js';
 
-/** Idle-time memory consolidation policy (`learning.consolidation.*`). Off by default. */
+/** Idle-time memory consolidation policy (`learning.consolidation.*`). On by default; `enabled: false` is the off switch. */
 export interface LearningConfig {
   consolidation: {
     enabled: boolean;
@@ -53,7 +53,7 @@ declare module './schema-types.js' {
 export const learningConfigDefaults: { learning: LearningConfig } = {
   learning: {
     consolidation: {
-      enabled: false,
+      enabled: true,
       intervalMs: 6 * 60 * 60 * 1000,
       minIdleMs: 0,
       maxMergesPerRun: 10,
@@ -70,9 +70,9 @@ export const learningConfigSettings: ConfigSettingDefinition[] = [
   {
     key: 'learning.consolidation.enabled',
     type: 'boolean',
-    default: false,
+    default: true,
     description:
-      'Master switch for the idle-time memory consolidation pass (dedupe merges, confidence decay of never-referenced records, and review proposals). Off by default — the pass runs only when explicitly enabled.',
+      'Master switch for the idle-time memory consolidation pass (dedupe merges, confidence decay of never-referenced records, and review proposals). On by default — the daemon runs it at idle and on a slow schedule; every outcome is reversible or proposal-gated, and false turns the pass off.',
   },
   {
     key: 'learning.consolidation.intervalMs',

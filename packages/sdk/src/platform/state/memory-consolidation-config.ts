@@ -7,16 +7,17 @@
  * memory-consolidation.ts; this module is just the config shape + a resolver
  * with an injectable read seam.
  *
- * Off by default — the consolidation pass only runs when a user has explicitly
- * enabled it. The shared SDK config schema has no `learning.consolidation`
- * category, so these are read directly from a user-supplied `learning` block
- * that the ConfigManager deep-merge preserves to `getRaw()`.
+ * ON by default: the daemon (the memory store's single writer) runs the pass
+ * on its idle/schedule triggers, and `enabled: false` is the user's off
+ * switch. These keys are read from the `learning` block the ConfigManager
+ * deep-merge preserves to `getRaw()` (registered in
+ * config/schema-domain-learning.ts, whose defaults mirror these).
  *
  * settings.json example:
  *
  *   "learning": {
  *     "consolidation": {
- *       "enabled": false,
+ *       "enabled": true,
  *       "intervalMs": 21600000,
  *       "minIdleMs": 0,
  *       "maxMergesPerRun": 10,
@@ -29,7 +30,7 @@
  *   }
  */
 export interface ResolvedMemoryConsolidationConfig {
-  /** Master switch. When false the pass never runs. Default false. */
+  /** Master switch. When false the pass never runs. Default true (daemon-run). */
   readonly enabled: boolean;
   /** Minimum time between runs, in ms. Default 6 hours. Doubles as the schedule cadence. */
   readonly intervalMs: number;
@@ -50,7 +51,7 @@ export interface ResolvedMemoryConsolidationConfig {
 }
 
 export const DEFAULT_MEMORY_CONSOLIDATION_CONFIG: ResolvedMemoryConsolidationConfig = {
-  enabled: false,
+  enabled: true,
   intervalMs: 6 * 60 * 60 * 1000,
   minIdleMs: 0,
   maxMergesPerRun: 10,
