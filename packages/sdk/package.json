@@ -453,6 +453,10 @@
       "types": "./dist/platform/runtime/fleet/index.d.ts",
       "import": "./dist/platform/runtime/fleet/index.js"
     },
+    "./platform/runtime/fleet/observed": {
+      "types": "./dist/platform/runtime/fleet/observed/source.d.ts",
+      "import": "./dist/platform/runtime/fleet/observed/source.js"
+    },
     "./platform/runtime/state": {
       "types": "./dist/platform/runtime/state.d.ts",
       "import": "./dist/platform/runtime/state.js"
