@@ -357,6 +357,14 @@
     "gzip_bytes": 114,
     "rationale": "new public package export budget; measured 64 B gzip @ v0.33.0 release verification; headroom max(ceil(64*1.2)=77, 64+50=114) -> 114 (+50 B floor dominates)"
   },
+  "./platform/power": {
+    "gzip_bytes": 351,
+    "rationale": "sleep-ownership composition surface (PowerManager, wireRuntimePower, logind seam, work signals) — exported for consumer composition roots after the 2026-07-14 phantom-export find; measured 292 B gzip; headroom max(ceil(292*1.2)=351, 292+50=342) -> 351 (1.2x dominates)"
+  },
+  "./platform/relay": {
+    "gzip_bytes": 441,
+    "rationale": "relay reachability + WebAuthn step-up composition surface (StepUpService, createRelayReachability, step-up policy) — exported for consumer composition roots after the 2026-07-14 phantom-export find; measured 367 B gzip; headroom max(ceil(367*1.2)=441, 367+50=417) -> 441 (1.2x dominates)"
+  },
   "./platform/profiles": {
     "gzip_bytes": 110,
     "rationale": "new public package export budget; measured 60 B gzip @ v0.33.0 release verification; headroom max(ceil(60*1.2)=72, 60+50=110) -> 110 (+50 B floor dominates)"
@@ -458,8 +466,8 @@
     "rationale": "canonical skill service: Markdown+frontmatter model, progressive-disclosure parse, and CRUD over an injectable store (filesystem + in-memory); measured 560 B gzip @ initial landing; headroom max(ceil(560*1.2)=672, 560+50=610) -> 672 (1.2x dominates)"
   },
   "./platform/state": {
-    "gzip_bytes": 1179,
-    "rationale": "measured 982 B gzip @ the memory-file-projection + temporal-validity landing, v1.6.1 line (with the hoisted memory consolidation/usage policy: new memory-file-projection, memory-temporal, memory-consolidation, memory-usage-detection/stats exports on the state barrel); headroom max(ceil(982*1.2)=1179, 982+50=1032) -> 1179 (1.2x dominates)"
+    "gzip_bytes": 1437,
+    "rationale": "re-measured 1197 B gzip after MemoryConsolidationScheduler joined the barrel (the daemon-side consolidation driver, exported so consumers stop fork-mirroring it — 2026-07-14 phantom-export find); headroom max(ceil(1197*1.2)=1437, 1197+50=1247) -> 1437 (1.2x dominates)"
   },
   "./platform/state/store-snapshots": {
     "gzip_bytes": 3485,
@@ -484,6 +492,10 @@
   "./platform/utils": {
     "gzip_bytes": 277,
     "rationale": "public platform seam; measured 227 B gzip @ commit 4e5a5e2; headroom max(ceil(227*1.2)=273, 227+50=277) \u2192 277 (+50 B floor dominates by 4 B)"
+  },
+  "./platform/version": {
+    "gzip_bytes": 295,
+    "rationale": "single-file SDK VERSION constant (cli/acp/mcp compose it) \u2014 exported for consumer composition roots after the 2026-07-14 phantom-export find; measured 245 B gzip; headroom max(ceil(245*1.2)=294, 245+50=295) -> 295 (+50 B floor dominates)"
   },
   "./platform/voice": {
     "gzip_bytes": 309,

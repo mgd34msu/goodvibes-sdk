@@ -345,6 +345,10 @@
       "types": "./dist/platform/plugins/index.d.ts",
       "import": "./dist/platform/plugins/index.js"
     },
+    "./platform/power": {
+      "types": "./dist/platform/power/index.d.ts",
+      "import": "./dist/platform/power/index.js"
+    },
     "./platform/presentation": {
       "types": "./dist/platform/presentation/index.d.ts",
       "import": "./dist/platform/presentation/index.js"
@@ -356,6 +360,10 @@
     "./platform/providers": {
       "types": "./dist/platform/providers/index.d.ts",
       "import": "./dist/platform/providers/index.js"
+    },
+    "./platform/relay": {
+      "types": "./dist/platform/relay/index.d.ts",
+      "import": "./dist/platform/relay/index.js"
     },
     "./platform/rewind": {
       "types": "./dist/platform/rewind/index.d.ts",
@@ -476,6 +484,10 @@
     "./platform/utils": {
       "types": "./dist/platform/utils/index.d.ts",
       "import": "./dist/platform/utils/index.js"
+    },
+    "./platform/version": {
+      "types": "./dist/platform/version.d.ts",
+      "import": "./dist/platform/version.js"
     },
     "./platform/voice": {
       "types": "./dist/platform/voice/index.d.ts",
