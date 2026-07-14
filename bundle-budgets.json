@@ -346,8 +346,8 @@
     "rationale": "orchestration engine + best-of-N attempts (coordinator, provider-backed judge, held-merge types); measured 541 B gzip; headroom max(ceil(541*1.2)=650, 541+50=591) \u2192 650 (1.2x dominates by 59 B)"
   },
   "./platform/pairing": {
-    "gzip_bytes": 377,
-    "rationale": "public facade grew with per-pairing revocable tokens (PairingTokenManager) + the notifications/relay/passkey hand-off bundle (link build/parse); measured 314 B gzip; headroom max(ceil(314*1.2)=377, 314+50=364) \u2192 377 (1.2x dominates)"
+    "gzip_bytes": 454,
+    "rationale": "public facade grew again with the origin TLS/capability posture exports (describeOriginPosture + the LAN plain-http notice line); measured 378 B gzip; headroom max(ceil(378*1.2)=454, 378+50=428) \u2192 454 (1.2x dominates)"
   },
   "./platform/permissions": {
     "gzip_bytes": 157,
