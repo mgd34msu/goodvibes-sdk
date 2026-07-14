@@ -376,7 +376,7 @@ export class SharedSessionBroker {
    * session ("detach != close != kill"). Emits `session-detached`. Idempotent:
    * unknown session -> null (404); closed session or no matching participant ->
    * returned unchanged (a closed session emits no updates, so "stop receiving
-   * updates" is already satisfied). See {@link detachSharedSessionParticipant}.
+   * updates" is already satisfied). See the module helper `detachSharedSessionParticipant`.
    */
   async detachParticipant(sessionId: string, surfaceId: string): Promise<SharedSessionRecord | null> {
     await this.start();
@@ -807,7 +807,7 @@ export class SharedSessionBroker {
     };
   }
 
-  /** Collection read for a live surface (see {@link filterSessionInputsSince}). */
+  /** Collection read for a live surface (see the module helper `filterSessionInputsSince`). */
   getInputsSince(
     sessionId: string,
     options: { readonly state?: SharedSessionInputRecord['state'] | undefined; readonly since?: number | undefined; readonly limit?: number | undefined } = {},
@@ -817,7 +817,7 @@ export class SharedSessionBroker {
 
   /** A live surface reports a collected input delivered (`consumed:false`) or
    * consumed/completed (`consumed:true`); emits a session_update. Lifecycle rules
-   * live in {@link markSurfaceInputDelivered}. */
+   * live in the module helper `markSurfaceInputDelivered`. */
   async markInputDelivered(
     sessionId: string,
     inputId: string,
@@ -882,7 +882,7 @@ export class SharedSessionBroker {
   }
 
   /** Periodic sweep: idle-close active sessions and (only under a finite retention
-   * window) delete closed ones. Full policy lives in {@link sweepSharedSessions}. */
+   * window) delete closed ones. Full policy lives in the module helper `sweepSharedSessions`. */
   private gcSweep(): void {
     const anyChanged = sweepSharedSessions(
       { sessions: this.sessions, messages: this.messages, inputs: this.inputs },
