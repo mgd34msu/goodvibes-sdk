@@ -212,6 +212,15 @@ describe('S2c re-point — session mutators advertise control.session_update', (
     // test just below guards against.
     const RUNTIME_CHANNEL_MUTATORS: Readonly<Record<string, string>> = {
       'sessions.permissionMode.set': 'runtime.permissions',
+      // The live-turn mutators act on the daemon's LIVE runtime, not on broker
+      // session records: a per-call cancel settles as tool events on the
+      // runtime.tools domain, and a queued-message edit/delete broadcasts
+      // QUEUED_MESSAGES_CHANGED on runtime.session (core/orchestrator.ts
+      // emitQueueChange) — each advertises its real channel, never a
+      // session-update broadcast it does not drive.
+      'sessions.toolCalls.cancel': 'runtime.tools',
+      'sessions.queuedMessages.edit': 'runtime.session',
+      'sessions.queuedMessages.delete': 'runtime.session',
     };
     const missing = writeSessionMethods
       .filter((m) => !(m.id in RUNTIME_CHANNEL_MUTATORS))

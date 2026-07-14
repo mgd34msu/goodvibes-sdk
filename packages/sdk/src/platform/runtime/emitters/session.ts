@@ -34,6 +34,15 @@ export function emitSessionStarted(
   bus.emit('session', sessionEvent('SESSION_STARTED', data, ctx));
 }
 
+/** Emit QUEUED_MESSAGES_CHANGED when the pending mid-turn queue mutates. */
+export function emitQueuedMessagesChanged(
+  bus: RuntimeEventBus,
+  ctx: EmitterContext,
+  data: { sessionId: string; action: 'enqueued' | 'edited' | 'deleted' | 'delivered'; messageId: string; pendingCount: number }
+): void {
+  bus.emit('session', sessionEvent('QUEUED_MESSAGES_CHANGED', data, ctx));
+}
+
 /** Emit SESSION_LOADING when an existing session is being loaded from disk. */
 export function emitSessionLoading(
   bus: RuntimeEventBus,

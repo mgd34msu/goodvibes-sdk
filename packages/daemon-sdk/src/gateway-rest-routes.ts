@@ -93,6 +93,11 @@ export const GATEWAY_REST_ROUTES: readonly GatewayRestRoute[] = [
   route('GET', '/api/sessions/{sessionId}/permission-mode', 'sessions.permissionMode.get'),
   route('POST', '/api/sessions/{sessionId}/permission-mode', 'sessions.permissionMode.set'),
   route('GET', '/api/sessions/{sessionId}/context-usage', 'sessions.contextUsage.get'),
+  // Live-turn verbs: per-call cancel + queued mid-turn message management.
+  route('POST', '/api/sessions/{sessionId}/tool-calls/{callId}/cancel', 'sessions.toolCalls.cancel'),
+  route('GET', '/api/sessions/{sessionId}/queued-messages', 'sessions.queuedMessages.list'),
+  route('POST', '/api/sessions/{sessionId}/queued-messages/{messageId}', 'sessions.queuedMessages.edit'),
+  route('DELETE', '/api/sessions/{sessionId}/queued-messages/{messageId}', 'sessions.queuedMessages.delete'),
   // stepup.* — relay WebAuthn step-up ceremony (register a credential, mint a
   // challenge). Both handler-backed gateway verbs with an advertised REST path.
   route('POST', '/api/stepup/credentials', 'stepup.credentials.register'),

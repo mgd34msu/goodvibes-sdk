@@ -79322,6 +79322,9 @@
           "method": "DELETE",
           "path": "/api/sessions/{sessionId}/queued-messages/{messageId}"
         },
+        "events": [
+          "runtime.session"
+        ],
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -79378,6 +79381,9 @@
           "method": "POST",
           "path": "/api/sessions/{sessionId}/queued-messages/{messageId}"
         },
+        "events": [
+          "runtime.session"
+        ],
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -80796,6 +80802,9 @@
           "method": "POST",
           "path": "/api/sessions/{sessionId}/tool-calls/{callId}/cancel"
         },
+        "events": [
+          "runtime.tools"
+        ],
         "inputSchema": {
           "type": "object",
           "properties": {

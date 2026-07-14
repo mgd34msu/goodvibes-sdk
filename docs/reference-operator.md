@@ -80667,7 +80667,7 @@ Remove a message still waiting in the mid-turn queue so it is never delivered. A
 - Transport: `http`, `ws`
 - HTTP: `DELETE /api/sessions/{sessionId}/queued-messages/{messageId}`
 - Scopes: `write:sessions`
-- Emits events: none
+- Emits events: `runtime.session`
 - Dangerous: `no`
 - Invokable: `yes`
 
@@ -80727,7 +80727,7 @@ Replace the text of a message still waiting in the mid-turn queue. A message alr
 - Transport: `http`, `ws`
 - HTTP: `POST /api/sessions/{sessionId}/queued-messages/{messageId}`
 - Scopes: `write:sessions`
-- Emits events: none
+- Emits events: `runtime.session`
 - Dangerous: `no`
 - Invokable: `yes`
 
@@ -82165,7 +82165,7 @@ Cancel a single running tool call by its callId, leaving the turn and any other 
 - Transport: `http`, `ws`
 - HTTP: `POST /api/sessions/{sessionId}/tool-calls/{callId}/cancel`
 - Scopes: `write:sessions`
-- Emits events: none
+- Emits events: `runtime.tools`
 - Dangerous: `no`
 - Invokable: `yes`
 
