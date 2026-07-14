@@ -342,8 +342,8 @@
     "rationale": "public facade; measured 633 B gzip @ commit c0e5910; headroom max(ceil(633*1.2)=760, 633+50=683) \u2192 760 (1.2x dominates by 77 B)"
   },
   "./platform/orchestration": {
-    "gzip_bytes": 650,
-    "rationale": "orchestration engine + best-of-N attempts (coordinator, provider-backed judge, held-merge types); measured 541 B gzip; headroom max(ceil(541*1.2)=650, 541+50=591) \u2192 650 (1.2x dominates by 59 B)"
+    "gzip_bytes": 1001,
+    "rationale": "re-anchored after intentional export expansion: review-task-source parser/planner, graph dynamics (live edges, cycle refusal, orphans, graph snapshot), elastic pool, fix-workstream runner; measured 834 B gzip @ commit f22cfa27; headroom max(ceil(834*1.2)=1001, 834+50=884) \u2192 1001 (1.2x dominates by 117 B)"
   },
   "./platform/pairing": {
     "gzip_bytes": 454,
