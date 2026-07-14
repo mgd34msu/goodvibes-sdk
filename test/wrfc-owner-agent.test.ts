@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 import { WrfcController } from '../packages/sdk/src/platform/agents/wrfc-controller.js';
 import { WrfcExternalWorkBridge, type WrfcExternalWorkAdapter } from '../packages/sdk/src/platform/agents/wrfc-external-adapter.js';
-import { buildFixTask, buildReviewTask } from '../packages/sdk/src/platform/agents/wrfc-reporting.js';
+import { buildReviewTask } from '../packages/sdk/src/platform/agents/wrfc-reporting.js';
+import { parseReviewIntoTasks } from '../packages/sdk/src/platform/orchestration/review-task-source.js';
 import { AgentManager, type AgentRecord } from '../packages/sdk/src/platform/tools/agent/manager.js';
 import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.js';
 import { createEventEnvelope } from '../packages/sdk/src/platform/runtime/event-envelope.js';
@@ -450,19 +451,24 @@ describe('WRFC owner agent orchestration', () => {
     expect(reviewTask).toContain('Do not fail only because no files exist');
     expect(reviewTask).toContain('constraintFindings: array of exactly');
 
-    const fixTask = buildFixTask('wrfc-test', originalAsk, {
-      version: 1,
-      archetype: 'reviewer',
-      summary: 'Only checked one touched file.',
-      score: 7,
-      passed: false,
-      dimensions: [],
-      issues: [{ severity: 'major', description: 'Missed public API updates', pointValue: 2 }],
-    }, 9.9, 1);
-
-    expect(fixTask).toContain('Original WRFC ask (authoritative scope for every fix loop)');
-    expect(fixTask).toContain(originalAsk);
-    expect(fixTask).toContain('Do not limit the fix to only the files/functions named by the latest review');
+    // The single-fixer prompt path is GONE (1.4.3): a failing review parses
+    // into typed tasks that each carry the ORIGINAL ask as the contract.
+    const tasks = parseReviewIntoTasks({
+      review: {
+        version: 1,
+        archetype: 'reviewer',
+        summary: 'Only checked one touched file.',
+        score: 7,
+        passed: false,
+        dimensions: [],
+        issues: [{ severity: 'major', description: 'Missed public API updates', pointValue: 2 }],
+      } as never,
+      originalTask: originalAsk,
+    });
+    expect(tasks.length).toBe(1);
+    expect(tasks[0]!.description).toContain('ORIGINAL REQUEST (the contract every fix must serve)');
+    expect(tasks[0]!.description).toContain(originalAsk);
+    expect(tasks[0]!.description).toContain('Missed public API updates');
   });
 
   test('external work bridge delegates through the generic WRFC adapter seam', async () => {

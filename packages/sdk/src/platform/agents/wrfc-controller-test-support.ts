@@ -24,3 +24,45 @@ export function createWrfcControllerForTest(
 ): WrfcController {
   return new WrfcController(runtimeBus, messageBus, deps);
 }
+
+/** One recorded planned-fix invocation the stub runner saw. */
+export interface StubFixRunInput {
+  readonly chainId: string;
+  readonly originalTask: string;
+  readonly review: import('./completion-report.js').ReviewerReport;
+  readonly attempt: number;
+}
+
+/**
+ * Install a scripted FixWorkstreamRunner on a controller under test (the
+ * planned-fix path that replaced the single-fixer prompt). Behaviors:
+ * - 'merged' (default): every cycle resolves merged — the controller proceeds
+ *   to the terminal contract re-review (a fresh reviewer spawn the harness
+ *   can complete);
+ * - 'failed': every cycle resolves a structured tasks-failed outcome;
+ * - 'pending': the promise never settles — the chain stays honestly 'fixing'.
+ * Returns the recorded invocations for assertions.
+ */
+export function installStubFixRunner(
+  controller: WrfcController,
+  behavior: 'merged' | 'failed' | 'pending' = 'merged',
+): StubFixRunInput[] {
+  const runs: StubFixRunInput[] = [];
+  controller.setFixWorkstreamRunner({
+    run(input) {
+      runs.push({ chainId: input.chainId, originalTask: input.originalTask, review: input.review, attempt: input.attempt });
+      if (behavior === 'pending') return new Promise(() => { /* never settles */ });
+      if (behavior === 'failed') {
+        return Promise.resolve({ status: 'failed' as const, reason: 'stub: fix tasks failed', structured: 'tasks-failed' as const });
+      }
+      return Promise.resolve({
+        status: 'merged' as const,
+        workstreamId: `ws-stub-${runs.length}`,
+        taskCount: (input.review.issues ?? []).length || 1,
+        mergedTitles: (input.review.issues ?? []).map((issue) => issue.description).slice(0, 5),
+        filesModified: (input.review.issues ?? []).flatMap((issue) => (issue.file ? [issue.file] : [])),
+      });
+    },
+  });
+  return runs;
+}

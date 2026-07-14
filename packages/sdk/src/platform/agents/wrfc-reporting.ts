@@ -451,81 +451,10 @@ function buildReviewBrief(report: CompletionReport): string[] {
 
   return lines;
 }
+// buildFixTask is GONE (1.4.3): the single-fixer prompt path was replaced by
+// planned task execution — review findings parse into a dependency-graph
+// workstream (orchestration/review-task-source.ts + fix-workstream-runner.ts).
 
-export function buildFixTask(
-  chainId: string,
-  originalTask: string,
-  review: ReviewerReport,
-  threshold: number,
-  fixAttempts: number,
-  constraints: Constraint[] = [],
-  constraintFindings: ConstraintFinding[] = [],
-): string {
-  const issueList = review.issues
-    .map((issue) => {
-      const location = issue.file ? ` (${issue.file}${issue.line ? `:${issue.line}` : ''})` : '';
-      return `- [${issue.severity.toUpperCase()}] ${issue.description}${location} (-${issue.pointValue} pts)`;
-    })
-    .join('\n');
-  const base = [
-    `WRFC Fix Request`,
-    `Chain ID: ${chainId}`,
-    ``,
-    `Original WRFC ask (authoritative scope for every fix loop):`,
-    originalTask,
-    ``,
-    `Review score: ${review.score}/10 (threshold: ${threshold}/10)`,
-    `Fix attempt: ${fixAttempts}`,
-    ``,
-    `Issues to address:`,
-    issueList || '(no structured issues — see review summary)',
-    ``,
-    `Review summary: ${review.summary}`,
-    ``,
-    `Instructions:`,
-    `1. Address ALL issues listed above, prioritizing critical and major items.`,
-    `2. Keep the original WRFC ask in scope. Do not limit the fix to only the files/functions named by the latest review if the original ask requires broader correction.`,
-    `3. Fix each issue completely — partial fixes will reduce your score.`,
-    `4. Re-run Gather, Plan, Apply explicitly before writing your final answer.`,
-    `5. Before finalizing, spot-check your complete result against the original ask and record any remaining misses under issues[] or uncertainties[].`,
-    `6. Return a structured EngineerReport JSON block including gatheredContext, plannedActions, and appliedChanges in your final response.`,
-  ].join('\n');
-
-  if (constraints.length === 0) {
-    return [
-      base,
-      ``,
-      `Constraint continuity: the initial engineer declared no user-declared constraints for this chain. Return "constraints": [] in your EngineerReport. Do not invent constraint ids from the review findings, implementation details, or quality rubric.`,
-    ].join('\n');
-  }
-
-  // Build a finding-lookup map: constraintId -> ConstraintFinding
-  const findingMap = new Map<string, ConstraintFinding>();
-  for (const finding of constraintFindings) {
-    findingMap.set(finding.constraintId, finding);
-  }
-
-  const visible = constraints.slice(0, CONSTRAINTS_TASK_LIMIT);
-  const overflow = constraints.length - visible.length;
-  const constraintLines = visible.map((c) => {
-    const finding = findingMap.get(c.id);
-    const marker = finding === undefined ? 'UNVERIFIED' : finding.satisfied ? 'SATISFIED' : 'UNSATISFIED';
-    return `- ${c.id} [${marker}]: ${c.text}`;
-  });
-  if (overflow > 0) {
-    constraintLines.push(`(+${overflow} more)`);
-  }
-
-  const constraintSection = [
-    `## Constraints (authoritative — preserve through fix)`,
-    ``,
-    `These are the user-declared constraints for this chain. They are binding on every fix iteration.`,
-    ``,
-    ...constraintLines,
-  ].join('\n');
-
-  return base + '\n\n---\n\n' + constraintSection + '\n\n---\n\n' + buildFixerConstraintAddendum();
-}
 
 export function buildGateFailureTask(
   chainId: string,

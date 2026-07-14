@@ -18,7 +18,7 @@ import {
   isFanoutShapeConstraintText,
   userRequestsParallelFanout,
 } from '../packages/sdk/src/platform/tools/agent/wrfc-batch-policy.js';
-import { createWrfcControllerForTest } from '../packages/sdk/src/platform/agents/wrfc-controller-test-support.js';
+import { createWrfcControllerForTest, installStubFixRunner } from '../packages/sdk/src/platform/agents/wrfc-controller-test-support.js';
 import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.js';
 import { createEventEnvelope } from '../packages/sdk/src/platform/runtime/event-envelope.js';
 import type { AgentRecord } from '../packages/sdk/src/platform/tools/agent/manager.js';
@@ -218,6 +218,7 @@ describe('WrfcController — fan-out-collapse system-unsatisfiable constraints',
     const owner = makeRecord({ id: 'owner-2', task: 'implement endpoints with agents in parallel' });
     // No fanoutCollapse marker — nothing was collapsed, so nothing is excluded.
     const chain = h.controller.createChain(owner);
+    installStubFixRunner(h.controller, 'pending'); // planned-fix path: parks honestly in 'fixing'
 
     const constraints: Constraint[] = [
       { id: 'c1', text: 'agents must run in parallel', source: 'prompt' },

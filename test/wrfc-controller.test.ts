@@ -8,6 +8,7 @@
  */
 import { describe, expect, test, beforeEach } from 'bun:test';
 import { WrfcController } from '../packages/sdk/src/platform/agents/wrfc-controller.js';
+import { installStubFixRunner } from '../packages/sdk/src/platform/agents/wrfc-controller-test-support.js';
 import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.js';
 import { createEventEnvelope } from '../packages/sdk/src/platform/runtime/event-envelope.js';
 import type { AgentRecord } from '../packages/sdk/src/platform/tools/agent/manager.js';
@@ -550,8 +551,9 @@ describe('WrfcController — happy path', () => {
     h.controller.dispose();
   });
 
-  test('autoCommit merges the latest fixer output instead of superseded engineer output', async () => {
+  test('autoCommit defers to the planned-fix integration lane instead of merging superseded engineer output', async () => {
     const h = createHarness({ autoCommit: true, gitRepo: true, maxFixAttempts: 2, commitScope: 'all' });
+    installStubFixRunner(h.controller, 'merged');
 
     const ownerRecord = h.addAgent('owner-autocommit-fix-1', 'implement fixed auto commit feature');
     const chain = h.controller.createChain(ownerRecord);
@@ -563,23 +565,21 @@ describe('WrfcController — happy path', () => {
     const firstReviewer = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
     h.setOutput(firstReviewer.id, FAILING_REVIEW_OUTPUT);
     emitAgentCompleted(h.bus, firstReviewer.id);
-    await flushMicrotasks();
+    await flushMicrotasks(40);
 
-    const fixer = latestSpawnedByWrfcRole(h.spawnedRecords, 'fixer');
-    h.setOutput(fixer.id, 'Fixed implementation.');
-    emitAgentCompleted(h.bus, fixer.id);
-    await flushMicrotasks();
-
+    // The planned-fix cycle merged its work through the ENGINE's integration
+    // lane; the terminal contract gate spawned a fresh reviewer.
     const secondReviewer = h.spawnedRecords.filter((record) => record.wrfcRole === 'reviewer').at(-1)!;
+    expect(secondReviewer.id).not.toBe(firstReviewer.id);
     h.setOutput(secondReviewer.id, PASSING_REVIEW_OUTPUT);
     emitAgentCompleted(h.bus, secondReviewer.id);
-    await flushMicrotasks();
+    await flushMicrotasks(40);
 
     expect(chain.state).toBe('passed');
-    expect(h.mergedAgentIds).toEqual([fixer.id]);
-    expect(h.mergedAgentIds).not.toContain(chain.engineerAgentId);
-    expect(h.mergedAgentIds).not.toContain(firstReviewer.id);
-    expect(h.mergedAgentIds).not.toContain(secondReviewer.id);
+    // The superseded engineer tree is NEVER re-merged at chain level — the fix
+    // work already landed via the workstream lane; no fixer agent exists.
+    expect(h.mergedAgentIds).toEqual([]);
+    expect(h.spawnedRecords.filter((record) => record.wrfcRole === 'fixer')).toHaveLength(0);
 
     h.controller.dispose();
   });
@@ -694,8 +694,9 @@ describe('WrfcController — happy path', () => {
     h.controller.dispose();
   });
 
-  test('compound subtask fix loop stays scoped and integration uses latest fixed output', async () => {
+  test('compound subtask fix loop rides the planned path, stays scoped, and integrates the merged result', async () => {
     const h = createHarness();
+    const fixRuns = installStubFixRunner(h.controller, 'merged');
 
     const ownerRecord = h.addAgent('owner-compound-2', 'Build a small API with a rate limiter and request logger.', 'orchestrator');
     ownerRecord.wrfcSubtasks = [
@@ -720,32 +721,27 @@ describe('WrfcController — happy path', () => {
     const loggerReviewer = h.spawnedRecords.find((record) =>
       record.wrfcRole === 'reviewer' && record.wrfcSubtaskId === loggerSubtask.id)!;
 
+    // The limiter review fails → ITS planned-fix cycle runs, scoped to the
+    // sub-deliverable (never a chain-wide fixer); the sibling is untouched.
     h.setOutput(firstLimiterReviewer.id, reviewerReportOutput(7, false, [
       { constraintId: 'c1', satisfied: false, evidence: 'burst capacity is missing', severity: 'major' },
     ]));
     emitAgentCompleted(h.bus, firstLimiterReviewer.id);
-    await flushMicrotasks(20);
+    await flushMicrotasks(40);
 
     expect(chain.state).toBe('engineering');
-    expect(limiterSubtask.state).toBe('fixing');
-    expect(loggerSubtask.state).toBe('reviewing');
-    expect(h.spawnedRecords.filter((record) => record.wrfcRole === 'fixer' && record.wrfcSubtaskId === limiterSubtask.id)).toHaveLength(1);
+    expect(fixRuns).toHaveLength(1);
+    expect(fixRuns[0]!.chainId).toBe(`${chain.id}:${limiterSubtask.id}`);
+    expect(fixRuns[0]!.originalTask).toContain('token bucket rate limiter');
+    expect(h.spawnedRecords.filter((record) => record.wrfcRole === 'fixer')).toHaveLength(0);
     expect(h.spawnedRecords.filter((record) => record.wrfcRole === 'integrator')).toHaveLength(0);
 
     h.setOutput(loggerReviewer.id, reviewerReportOutput(10, true));
     emitAgentCompleted(h.bus, loggerReviewer.id);
     await flushMicrotasks(20);
-
     expect(loggerSubtask.state).toBe('passed');
-    expect(h.spawnedRecords.filter((record) => record.wrfcRole === 'integrator')).toHaveLength(0);
 
-    const limiterFixer = latestSpawnedByWrfcRole(h.spawnedRecords, 'fixer');
-    h.setOutput(limiterFixer.id, engineerReportOutput('fixed limiter implementation', [
-      { id: 'c1', text: 'support burst capacity', source: 'prompt' },
-    ]));
-    emitAgentCompleted(h.bus, limiterFixer.id);
-    await flushMicrotasks(20);
-
+    // The merged cycle re-reviews the SUB-DELIVERABLE (its own terminal gate).
     const secondLimiterReviewer = h.spawnedRecords.filter((record) =>
       record.wrfcRole === 'reviewer' && record.wrfcSubtaskId === limiterSubtask.id).at(-1)!;
     expect(secondLimiterReviewer.id).not.toBe(firstLimiterReviewer.id);
@@ -753,11 +749,13 @@ describe('WrfcController — happy path', () => {
       { constraintId: 'c1', satisfied: true, evidence: 'burst capacity is implemented' },
     ]));
     emitAgentCompleted(h.bus, secondLimiterReviewer.id);
-    await flushMicrotasks(20);
+    await flushMicrotasks(40);
 
     const integrator = latestSpawnedByWrfcRole(h.spawnedRecords, 'integrator');
     expect(chain.state).toBe('integrating');
-    expect(integrator.task).toContain('Engineer summary: fixed limiter implementation');
+    // Integration sees the planned-fix workstream's merged summary, not the
+    // superseded initial output.
+    expect(integrator.task).toContain('Planned fix workstream');
     expect(integrator.task).toContain('Engineer summary: logger implementation');
 
     h.controller.dispose();
@@ -1203,13 +1201,13 @@ describe('WrfcController — gate failure', () => {
 describe('WrfcController — escalation', () => {
   test('score below threshold after maxFixAttempts → WORKFLOW_CHAIN_FAILED emitted', async () => {
     const h = createHarness({ scoreThreshold: 9.9, maxFixAttempts: 1 });
+    const fixRuns = installStubFixRunner(h.controller, 'merged');
 
     const ownerRecord = h.addAgent('owner-esc-1', 'implement escalation feature');
     const chain = h.controller.createChain(ownerRecord);
 
     expect(chain.state).toBe('engineering');
 
-    // Engineer completes
     h.setOutput(chain.engineerAgentId!, 'Implementation done.');
     emitAgentCompleted(h.bus, chain.engineerAgentId!);
     await flushMicrotasks();
@@ -1217,24 +1215,14 @@ describe('WrfcController — escalation', () => {
     expect(chain.state).toBe('reviewing');
     const reviewerRecord1 = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
 
-    // Reviewer 1 fails (score 5/10)
+    // Reviewer 1 fails (score 5/10) → planned fix cycle 1 runs and merges
     h.setOutput(reviewerRecord1.id, FAILING_REVIEW_OUTPUT);
     emitAgentCompleted(h.bus, reviewerRecord1.id);
-    await flushMicrotasks();
+    await flushMicrotasks(40);
 
-    // With maxFixAttempts=1, a fixer is spawned (attempt 1)
-    expect(chain.state).toBe('fixing');
     expect(chain.fixAttempts).toBe(1);
-    expect(h.spawnedRecords.filter((record) => record.wrfcRole === 'fixer')).toHaveLength(1);
-
-    const fixerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'fixer');
-    expect(chain.fixerAgentId).toBe(fixerRecord.id);
-
-    // Fixer completes — triggers second review
-    h.setOutput(fixerRecord.id, 'Fixed some issues.');
-    emitAgentCompleted(h.bus, fixerRecord.id);
-    await flushMicrotasks();
-
+    expect(fixRuns).toHaveLength(1);
+    // The terminal contract gate re-reviews the merged result.
     expect(chain.state).toBe('reviewing');
     expect(h.spawnedRecords.filter((record) => record.wrfcRole === 'reviewer')).toHaveLength(2);
     const reviewerRecord2 = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
@@ -1242,25 +1230,18 @@ describe('WrfcController — escalation', () => {
     // Second reviewer also fails — fixAttempts(1) >= maxFixAttempts(1) → fail chain
     h.setOutput(reviewerRecord2.id, FAILING_REVIEW_OUTPUT);
     emitAgentCompleted(h.bus, reviewerRecord2.id);
-    await flushMicrotasks();
+    await flushMicrotasks(40);
 
-    // Chain should now be in 'failed' state
     expect(chain.state).toBe('failed');
     expect(chain.error).toMatch(/below threshold/i);
 
-    // Verify WORKFLOW_CHAIN_FAILED event emitted
     const types = h.workflowEvents.map((e) => e.type);
     expect(types).toContain('WORKFLOW_FIX_ATTEMPTED');
     expect(types).toContain('WORKFLOW_REVIEW_COMPLETED');
     expect(types).toContain('WORKFLOW_CHAIN_FAILED');
 
-    // Verify WORKFLOW_CHAIN_FAILED payload contains chainId
     const failedEvent = h.workflowEvents.find((e) => e.type === 'WORKFLOW_CHAIN_FAILED');
     expect(failedEvent?.type).toBe('WORKFLOW_CHAIN_FAILED');
-
-    // Verify fix-attempted event shape
-    const fixAttemptEvent = h.workflowEvents.find((e) => e.type === 'WORKFLOW_FIX_ATTEMPTED');
-    expect(fixAttemptEvent?.type).toBe('WORKFLOW_FIX_ATTEMPTED');
 
     h.controller.dispose();
   });
@@ -1521,8 +1502,9 @@ describe('WrfcController — constraint integration', () => {
     h.controller.dispose();
   });
 
-  test('constraint-forced fail → fix → pass — full state sequence', async () => {
+  test('constraint-forced fail → planned fix → pass — full state sequence', async () => {
     const h = createHarness({ maxFixAttempts: 3 });
+    const fixRuns = installStubFixRunner(h.controller, 'merged');
 
     const engRecord = h.addAgent('eng-c3', 'implement with one constraint');
     const chain = h.controller.createChain(engRecord);
@@ -1536,35 +1518,28 @@ describe('WrfcController — constraint integration', () => {
     expect(chain.state).toBe('reviewing');
     const reviewer1 = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
 
-    // Score 10 but c1 unsatisfied → constraint-forced fail
+    // Score 10 but c1 unsatisfied → constraint-forced fail → planned fix cycle
     h.setOutput(reviewer1.id, makeReviewerOutput(10.0, [
       { constraintId: 'c1', satisfied: false, evidence: 'has side effect' },
     ]));
     emitAgentCompleted(h.bus, reviewer1.id);
-    await flushMicrotasks(20);
+    await flushMicrotasks(40);
 
-    expect(chain.state).toBe('fixing');
     expect(chain.fixAttempts).toBe(1);
-
-    const fixerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'fixer');
-    h.setOutput(fixerRecord.id, makeEngineerOutput([
-      { id: 'c1', text: 'must be pure', source: 'prompt' },
-    ]));
-    emitAgentCompleted(h.bus, fixerRecord.id);
-    await flushMicrotasks(20);
-
+    expect(fixRuns).toHaveLength(1);
+    // Merged → the terminal contract gate re-reviews against the ORIGINAL ask.
     expect(chain.state).toBe('reviewing');
     const reviewer2 = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
+    expect(reviewer2.id).not.toBe(reviewer1.id);
 
     h.setOutput(reviewer2.id, makeReviewerOutput(10.0, [
       { constraintId: 'c1', satisfied: true, evidence: 'pure function confirmed' },
     ]));
     emitAgentCompleted(h.bus, reviewer2.id);
-    await flushMicrotasks(20);
+    await flushMicrotasks(40);
 
     expect(chain.state).toBe('passed');
 
-    // Verify the full state sequence
     const stateChanges = h.workflowEvents
       .filter((e) => e.type === 'WORKFLOW_STATE_CHANGED')
       .map((e) => p5EventData(e)['to'] as string);
