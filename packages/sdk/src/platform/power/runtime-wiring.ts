@@ -29,11 +29,24 @@ export interface RuntimePowerWiringInput {
   readonly seam?: PowerPlatformSeam | undefined;
 }
 
+/**
+ * The real host power seam for the current OS: Linux logind (which spawns the
+ * systemd-inhibit inhibitor children and the read-only sleep-edge dbus-monitor
+ * watcher) or the honest unavailable seam elsewhere. Spawning a real
+ * sleep-edge watcher is a host-level side effect, so only the standalone
+ * daemon opts into it — the generic runtime-services factory defaults to the
+ * unavailable seam (no spawn) for test determinism, exactly like the
+ * observe-external-agents host scan.
+ */
+export function createHostPowerSeam(): PowerPlatformSeam {
+  return osPlatform() === 'linux'
+    ? createLinuxLogindSeam()
+    : createUnavailablePowerSeam(`no power seam for ${osPlatform()} yet`);
+}
+
 /** Compose and start the runtime's PowerManager. Never throws; never blocks startup. */
 export function wireRuntimePower(input: RuntimePowerWiringInput): PowerManager {
-  const seam = input.seam ?? (osPlatform() === 'linux'
-    ? createLinuxLogindSeam()
-    : createUnavailablePowerSeam(`no power seam for ${osPlatform()} yet`));
+  const seam = input.seam ?? createHostPowerSeam();
   const manager = new PowerManager({
     seam,
     readConfig: input.readConfig,

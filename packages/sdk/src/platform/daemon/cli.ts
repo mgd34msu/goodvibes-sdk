@@ -4,6 +4,7 @@ import { resolveDaemonEnabled } from '../config/index.js';
 import { RuntimeEventBus } from '../runtime/events/index.js';
 import { createRuntimeStore } from '../runtime/store/index.js';
 import { createRuntimeServices } from '../runtime/services.js';
+import { createHostPowerSeam } from '../power/runtime-wiring.js';
 import { DaemonServer } from './server.js';
 import { HttpListener } from './http-listener.js';
 import { PlatformServiceManager } from './service-manager.js';
@@ -124,6 +125,10 @@ async function main(): Promise<void> {
     // sessions on the host read-only (fleet visibility + steer; never counted,
     // never stopped). Off in the generic factory for test determinism.
     observeExternalAgents: true,
+    // The real standalone daemon owns the host sleep edge (work inhibition,
+    // keep-awake, sleep-edge checkpoint/catch-up). Off in the generic factory
+    // so tests never spawn systemd-inhibit / dbus-monitor host processes.
+    powerSeam: createHostPowerSeam(),
   });
 
   const userAuth = runtimeServices.localUserAuthManager;

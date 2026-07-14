@@ -10,9 +10,12 @@
  *     sources by construction).
  */
 import { describe, expect, test } from 'bun:test';
+import { spawnSync } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import {
   classifyExternalKind,
   classifyObservedProcesses,
+  defaultProcessTableReader,
   paneForTty,
   type ObservedRawProcess,
   type ProcessTableReader,
@@ -410,4 +413,90 @@ describe('routes/fleet — fleet.observed.steer handler', () => {
     expect(() => handler(invoke({ text: 'go' }))).toThrow(/id is required/);
     expect(() => handler(invoke({ id: observedNode.id }))).toThrow(/text is required/);
   });
+});
+
+// ── Live steer channel proof (this host) ─────────────────────────────────────
+// A recorded end-to-end proof of the real steer channel: pid → tty → pane, then
+// the exact three-send recipe, read back from the pane. The authoring-time
+// fixtures above assert the argv/parse/dispatch shapes; this leg proves the
+// channel actually carries text on a real tmux server.
+//
+// Session discipline (absolute): the test creates its OWN uniquely-named
+// session and only ever targets THAT name — it never lists, reads, resizes,
+// sends to, or kills any session it did not create. Pane discovery is scoped to
+// the owned session; the process-table scan is the OS process table, not a tmux
+// read.
+describe('live tmux steer on this host (observed-agent steer channel end-to-end)', () => {
+  test('discovers our own tmux-hosted agent-shaped session, resolves its pane, and the three-send steer lands in the pane', async () => {
+    const tmuxOk = spawnSync('tmux', ['-V'], { encoding: 'utf-8' }).status === 0;
+    if (!tmuxOk) {
+      console.warn('[observed test] tmux unavailable in this environment — live steer proof skipped honestly');
+      return;
+    }
+    const session = `gv-obs-live-${randomBytes(4).toString('hex')}`;
+    const tmux = (args: readonly string[]): { status: number | null; stdout: string } => {
+      const r = spawnSync('tmux', [...args], { encoding: 'utf-8' });
+      return { status: r.status, stdout: r.stdout ?? '' };
+    };
+    let created = false;
+    try {
+      // Our OWN session running an agent-shaped interactive process: argv0
+      // 'claude' (so the real detector classifies it as claude-code) executing
+      // `cat`, which echoes whatever we steer into the pane so we can read it
+      // back. `exec -a` is a bash builtin; the exec replaces the shell so the
+      // pane pid IS the agent-shaped process.
+      const create = tmux(['new-session', '-d', '-s', session, '-x', '200', '-y', '50', "bash -c 'exec -a claude cat'"]);
+      expect(create.status).toBe(0);
+      created = true;
+      // Resolve our pane's pid strictly by OUR session name.
+      const panePid = Number(tmux(['list-panes', '-t', session, '-F', '#{pane_pid}']).stdout.trim());
+      expect(Number.isInteger(panePid) && panePid > 0).toBe(true);
+
+      // Real discovery + real channel resolution over live host data: the real
+      // process-table reader finds our agent-shaped process (pid → tty), and a
+      // pane reader SCOPED TO OUR SESSION supplies the tty → pane mapping the
+      // real paneForTty resolves. No other session is read.
+      const scopedPaneReader: TmuxPaneReader = {
+        listPanes: () =>
+          tmux(['list-panes', '-t', session, '-F', '#{pane_tty} #{pane_id}']).stdout
+            .split('\n')
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .map((line) => {
+              const sep = line.indexOf(' ');
+              return { tty: line.slice(0, sep), paneId: line.slice(sep + 1).trim() };
+            }),
+      };
+      const source = new ObservedAgentSource({
+        processReader: defaultProcessTableReader(),
+        paneReader: scopedPaneReader,
+        now: () => Date.now(),
+      });
+      const ours = source.list().find((r) => r.pid === panePid);
+      expect(ours, 'our tmux-hosted agent-shaped session must be discovered').toBeDefined();
+      expect(ours!.externalKind).toBe('claude-code');
+      expect(ours!.steer.kind).toBe('tmux');
+
+      // Real steer path: the exact three-send recipe over real tmux against our
+      // pane. `cat` echoes the literal marker back into the pane.
+      const marker = `gv-steer-${randomBytes(4).toString('hex')}`;
+      const result = source.steer(ours!, marker);
+      expect(result.queued).toBe(true);
+
+      // Read the pane back BY OUR SESSION NAME and confirm the steered text
+      // arrived (pane needs a beat to render the echo).
+      let landed = false;
+      for (let i = 0; i < 40 && !landed; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        landed = tmux(['capture-pane', '-t', session, '-p']).stdout.includes(marker);
+      }
+      expect(landed).toBe(true);
+      console.warn(
+        `[observed test] live tmux steer proof EXERCISED: discovered our own session ${session} (pid ${panePid}) as an observed claude-code row, resolved its tmux pane, ran the three-send recipe, and read the steered text "${marker}" back from the pane.`,
+      );
+    } finally {
+      // Kill ONLY our own session, by exact name.
+      if (created) tmux(['kill-session', '-t', session]);
+    }
+  }, 20_000);
 });

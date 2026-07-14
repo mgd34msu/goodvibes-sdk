@@ -47,7 +47,7 @@ import { CodeIndexStore } from '../state/code-index-store.js';
 import { CodeIndexReindexScheduler } from '../state/code-index-reindex.js';
 import { StoreSnapshotScheduler } from '../state/store-snapshots.js';
 import { MemoryConsolidationScheduler } from '../state/memory-consolidation-scheduler.js';
-import { PowerManager, wireRuntimePower } from '../power/index.js';
+import { PowerManager, wireRuntimePower, createUnavailablePowerSeam, type PowerPlatformSeam } from '../power/index.js';
 import { emitProviderVoiceUsage } from './emitters/providers.js';
 import { runStartupAppendOnlySweep } from './retention/append-only-registry.js';
 import { resolveMemoryVectorDbPath } from '../state/memory-vector-store.js';
@@ -150,15 +150,14 @@ export interface RuntimeServicesOptions {
    */
   readonly autoStartCodeIndex?: boolean | undefined;
   /**
-   * Opt-in: fold externally-launched coding-agent sessions observed read-only on
-   * the host (Claude Code / Codex the daemon did not spawn) into the fleet as
-   * observed-external rows. Off by default so the generic factory never scans the
-   * host process table (test determinism) — the real standalone daemon (cli.ts)
-   * turns it on; embedders may too. Absent/false ⇒ no observed rows at all.
+   * Opt-in: fold host coding-agent sessions the daemon did not spawn into the
+   * fleet as read-only observed rows. Off by default (test determinism); the standalone daemon (cli.ts) turns it on.
    */
   readonly observeExternalAgents?: boolean | undefined;
   /** Override the broker store path (default: home-scoped durable store). */
   readonly sessionStorePath?: string | undefined;
+  /** Opt-in host power seam for sleep ownership; absent ⇒ non-spawning unavailable seam (test determinism), the standalone daemon (cli.ts) passes createHostPowerSeam(). */
+  readonly powerSeam?: PowerPlatformSeam | undefined;
 }
 
 export interface RuntimeServices {
@@ -869,6 +868,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const sessionLiveTurnControls = new SessionLiveTurnControlsHolder();
   // Sleep ownership: work-signal inhibition, keep-awake toggle, sleep-edge checkpoint + wake catch-up.
   const powerManager = wireRuntimePower({
+    seam: options.powerSeam ?? createUnavailablePowerSeam('runtime services constructed without a host power seam'),
     readConfig: (key) => configManager.get(key as never),
     writeConfig: (key, value) => configManager.setDynamic(key as never, value),
     subscribeConfig: (key, cb) => configManager.subscribe(key as never, cb as never),
