@@ -3,11 +3,12 @@
 /**
  * Scheduler (see CHANGELOG 0.38.0) — pure capacity-matching helpers, no side
  * effects. The hard departure from WrfcController's pairwise
- * engineer<->reviewer binding (startReview:883/startFix:1042): each tick,
- * for every phase in ordinal order, free capacity slots (capacity minus
- * in-flight) are filled from whichever waiting items are queued for that
- * phase — an item advances the instant ITS gate passes, claimed by
- * whatever slot happens to be free, never bound to a specific sibling item.
+ * engineer<->reviewer binding (startReview / the startPlannedFix planned
+ * workstream): each tick, for every phase in ordinal order, free capacity
+ * slots (capacity minus in-flight) are filled from whichever waiting items
+ * are queued for that phase — an item advances the instant ITS gate passes,
+ * claimed by whatever slot happens to be free, never bound to a specific
+ * sibling item.
  */
 import type { Phase, WorkItem, Workstream } from './types.js';
 import { remainingDepths } from './graph-dynamics.js';
