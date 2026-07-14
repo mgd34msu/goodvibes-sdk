@@ -17,7 +17,7 @@ import { describe, expect, test } from 'bun:test';
 import { execFileSync } from 'node:child_process';
 import { PowerManager, LID_SWITCH_HONEST_SPLIT } from '../packages/sdk/src/platform/power/manager.ts';
 import { bindPowerWorkSignals } from '../packages/sdk/src/platform/power/work-signals.ts';
-import { createLinuxLogindSeam } from '../packages/sdk/src/platform/power/linux-logind.ts';
+import { createLinuxLogindSeam, reapOrphanedInhibitors } from '../packages/sdk/src/platform/power/linux-logind.ts';
 import type { PowerInhibitClass, PowerPlatformSeam } from '../packages/sdk/src/platform/power/types.ts';
 
 /** A scriptable seam recording every acquire/release, with per-class denials. */
@@ -195,6 +195,94 @@ describe('sleep-edge honesty', () => {
     await settle();
     expect(calls).toEqual(['checkpoint', 're-arm:consolidation', 're-arm:snapshots', 'receipts:missed-run-heartbeat']);
     await manager.stop();
+  });
+});
+
+describe('process-exit hygiene (holds never outlive the process)', () => {
+  test('the registered exit cleanup releases every held inhibitor', async () => {
+    const { seam, log } = fixtureSeam();
+    let exitCleanup: (() => void) | null = null;
+    let unregistered = false;
+    const manager = new PowerManager({
+      seam,
+      readConfig: () => true, // inhibitWhileWorking on
+      registerProcessExitHooks: (cleanup) => {
+        exitCleanup = cleanup;
+        return () => { unregistered = true; };
+      },
+    });
+    await manager.start();
+    expect(exitCleanup).not.toBeNull();
+    manager.holdWork('turn-1', 'a running turn');
+    await manager.setKeepAwake(true, { persist: false });
+    await settle();
+    expect(log.filter((line) => line.startsWith('acquire:'))).toHaveLength(2);
+    // Simulate process exit: the cleanup must release BOTH holds (the seam
+    // handles signal their inhibit children synchronously).
+    exitCleanup!();
+    await settle();
+    expect(log.filter((line) => line.startsWith('release:'))).toHaveLength(2);
+    // stop() deregisters the hooks.
+    await manager.stop();
+    expect(unregistered).toBe(true);
+  });
+
+  test('start() reaps a crashed process\'s stamped orphan inhibitors — never a live owner\'s', async () => {
+    const killed: number[] = [];
+    const reaped = await reapOrphanedInhibitors('goodvibes', {
+      listProcesses: () => [
+        // Dead owner (pid 99991): must be reaped.
+        { pid: 501, args: 'systemd-inhibit --what=sleep --who=goodvibes [owner-pid 99991] --why=work --mode=block sleep infinity' },
+        // Live owner (pid 42): must be left alone.
+        { pid: 502, args: 'systemd-inhibit --what=idle --who=goodvibes [owner-pid 42] --why=work --mode=block sleep infinity' },
+        // Someone else\'s inhibitor without our stamp: never touched.
+        { pid: 503, args: 'systemd-inhibit --what=sleep --who=other-tool --why=backup --mode=block sleep infinity' },
+        // Not an inhibitor at all.
+        { pid: 504, args: 'sleep infinity' },
+      ],
+      isAlive: (pid) => pid === 42,
+      kill: (pid) => { killed.push(pid); },
+      selfPid: 1000,
+    });
+    expect(reaped).toBe(1);
+    expect(killed).toEqual([501]);
+  });
+
+  test('the manager start() invokes the seam orphan reaper', async () => {
+    const { seam } = fixtureSeam();
+    let reapCalled = 0;
+    const reapingSeam: PowerPlatformSeam = { ...seam, reapOrphans: async () => { reapCalled += 1; return 0; } };
+    const manager = new PowerManager({ seam: reapingSeam, registerProcessExitHooks: () => () => undefined });
+    await manager.start();
+    expect(reapCalled).toBe(1);
+    await manager.stop();
+  });
+
+  test('a power.keepAwake config change applies LIVE through the subscription', async () => {
+    const { seam, log } = fixtureSeam();
+    const config: Record<string, unknown> = { 'power.keepAwake': false };
+    const subscribers = new Map<string, (value: unknown) => void>();
+    const manager = new PowerManager({
+      seam,
+      readConfig: (key) => config[key],
+      subscribeConfig: (key, cb) => { subscribers.set(key, cb); return () => subscribers.delete(key); },
+      registerProcessExitHooks: () => () => undefined,
+    });
+    await manager.start();
+    expect(manager.getState().keepAwake.enabled).toBe(false);
+    // A persist-only settings write lands: the subscription flips the real inhibitor.
+    config['power.keepAwake'] = true;
+    subscribers.get('power.keepAwake')!(true);
+    await settle();
+    expect(manager.getState().keepAwake.enabled).toBe(true);
+    expect(log.some((line) => line.startsWith('acquire:'))).toBe(true);
+    // And flipping back releases it live.
+    subscribers.get('power.keepAwake')!(false);
+    await settle();
+    expect(manager.getState().keepAwake.enabled).toBe(false);
+    expect(log.some((line) => line.startsWith('release:'))).toBe(true);
+    await manager.stop();
+    expect(subscribers.size).toBe(0);
   });
 });
 

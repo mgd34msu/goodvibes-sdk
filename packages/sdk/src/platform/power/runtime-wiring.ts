@@ -18,6 +18,8 @@ import type { RuntimeEventBus } from '../runtime/events/index.js';
 export interface RuntimePowerWiringInput {
   readonly readConfig: (key: string) => unknown;
   readonly writeConfig: (key: string, value: boolean) => void;
+  /** Live config subscription (ConfigManager.subscribe shape) so power.keepAwake changes apply live. */
+  readonly subscribeConfig?: ((key: string, cb: (newValue: unknown) => void) => () => void) | undefined;
   readonly runtimeBus?: RuntimeEventBus | null | undefined;
   /** Checkpoint hook for PrepareForSleep(true) — checkpoint what's checkpointable. */
   readonly sleepCheckpoint?: (() => void | Promise<void>) | undefined;
@@ -36,6 +38,7 @@ export function wireRuntimePower(input: RuntimePowerWiringInput): PowerManager {
     seam,
     readConfig: input.readConfig,
     writeConfig: input.writeConfig,
+    subscribeConfig: input.subscribeConfig,
     onStateChanged: input.runtimeBus
       ? (state) => {
         emitOpsPowerStateChanged(input.runtimeBus!, { sessionId: 'system', traceId: `power:${Date.now()}`, source: 'power-manager' }, {

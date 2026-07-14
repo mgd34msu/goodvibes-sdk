@@ -43,6 +43,14 @@ export interface PowerPlatformSeam {
    * Optional: a platform without the signal simply never fires it.
    */
   onPrepareForSleep?(callback: (sleeping: boolean) => void): () => void;
+  /**
+   * Reap inhibitor child processes left behind by a CRASHED previous process
+   * (holds are stamped with the owning pid; an inhibitor whose owner is dead
+   * has no one to release it and blocks host sleep indefinitely). Kills only
+   * this platform's own stamped orphans; returns how many were reaped.
+   * Optional: platforms without out-of-process inhibitors have no orphans.
+   */
+  reapOrphans?(): Promise<number>;
 }
 
 /** A no-op seam for platforms without an implementation (honest unavailability). */

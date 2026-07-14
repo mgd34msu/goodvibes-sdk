@@ -526,6 +526,17 @@ export class DaemonServer {
     this.agentTaskAdapterUnsub?.();
     this.agentTaskAdapterUnsub = null;
     await this.sessionBroker.stop();
+    // Release sleep-inhibitor holds on a REAL shutdown (not an in-process
+    // restart cycle, where the runtime services — and their holds — live on):
+    // an exited daemon must never leave systemd-inhibit children blocking
+    // host sleep with no owner.
+    if (!this._restarting) {
+      try {
+        await this.runtimeServices.powerManager.stop();
+      } catch (error) {
+        logger.warn('DaemonServer: power-manager stop failed', { error: summarizeError(error) });
+      }
+    }
 
     this.lifecycle?.onStopping(this._restarting);
 
