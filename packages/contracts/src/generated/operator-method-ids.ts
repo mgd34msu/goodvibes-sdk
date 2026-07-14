@@ -234,6 +234,7 @@ export const OPERATOR_METHOD_IDS = [
   "media.generate",
   "media.providers.list",
   "media.transform",
+  "memory.consolidation.receipts",
   "memory.doctor",
   "memory.embeddings.default.set",
   "memory.projections.get",

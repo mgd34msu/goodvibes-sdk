@@ -172,11 +172,18 @@ export interface UserAuthManagerLike {
   clearBootstrapCredentialFile(): boolean;
 }
 
+/** The memory-consolidation scheduler slice the receipts route reads (RuntimeServices.memoryConsolidationScheduler satisfies it structurally). */
+export interface MemoryConsolidationSchedulerLike {
+  listReceipts(): readonly unknown[];
+}
+
 export interface DaemonIntegrationRouteContext {
   readonly channelPlugins: ChannelAccountRegistryLike;
   readonly integrationHelpers: IntegrationHelperServiceLike | null;
   readonly memoryEmbeddingRegistry: MemoryEmbeddingRegistryLike;
   readonly memoryRegistry: MemoryRegistryLike;
+  /** Optional: absent on embedders without the consolidation scheduler — the receipts route answers 501 honestly. */
+  readonly memoryConsolidation?: MemoryConsolidationSchedulerLike | null | undefined;
   readonly parseJsonBody: (req: Request) => Promise<JsonRecord | Response>;
   readonly providerRuntime: ProviderRuntimeSnapshotServiceLike;
   readonly requireAdmin: (req: Request) => Response | null;

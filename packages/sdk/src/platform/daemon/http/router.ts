@@ -125,6 +125,8 @@ interface DaemonHttpRouterContext {
   readonly multimodalService: MultimodalService;
   readonly artifactStore: ArtifactStore;
   readonly memoryRegistry: MemoryRegistry;
+  /** Consolidation receipts + pending proposals for the memory.consolidation.receipts route. */
+  readonly memoryConsolidation?: { listReceipts(): readonly unknown[] } | null | undefined;
   readonly memoryEmbeddingRegistry: MemoryEmbeddingProviderRegistry;
   readonly platformServiceManager: PlatformServiceManager;
   readonly integrationHelpers: IntegrationHelperService | null;
@@ -473,6 +475,7 @@ export class DaemonHttpRouter {
         integrationHelpers: this.context.integrationHelpers,
         memoryEmbeddingRegistry: this.context.memoryEmbeddingRegistry,
         memoryRegistry: this.context.memoryRegistry,
+        memoryConsolidation: this.context.memoryConsolidation ?? null,
         parseJsonBody: (request) => this.parseJsonBody(request),
         providerRuntime: {
           listSnapshots: () => listProviderRuntimeSnapshots(this.context.providerRegistry),

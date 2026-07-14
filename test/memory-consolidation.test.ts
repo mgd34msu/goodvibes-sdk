@@ -120,6 +120,40 @@ describe('runMemoryConsolidation — merges', () => {
   });
 });
 
+describe('runMemoryConsolidation — proposals reach the review machinery', () => {
+  test('a contradiction proposal marks BOTH disagreeing records contradicted (review-queue entry + injection exclusion)', () => {
+    // Same summary, different detail, and the survivor is NOT clearly newer-verified.
+    const a = rec({ id: 'a', reviewState: 'fresh', confidence: 60, updatedAt: NOW, summary: 'the port', detail: 'port is 8080' });
+    const b = rec({ id: 'b', reviewState: 'fresh', confidence: 60, updatedAt: NOW, summary: 'the port', detail: 'port is 9090' });
+    const reg = new FakeRegistry([a, b]);
+    const receipt = runMemoryConsolidation({ memoryRegistry: reg, config: cfg(), now: NOW, trigger: 'idle', idle: true });
+    const contradiction = receipt.proposed.find((p) => p.kind === 'contradiction');
+    expect(contradiction).toBeDefined();
+    // Both referenced records carry the contradicted flag — the existing
+    // review machinery: they enter the review queue and are excluded from
+    // injection until a human resolves. Nothing is deleted.
+    for (const id of contradiction!.ids) {
+      expect(reg.records.get(id)!.reviewState).toBe('contradicted');
+      expect(reg.records.get(id)!.staleReason).toContain('disagree');
+    }
+    expect(reg.records.size).toBe(2);
+  });
+
+  test('a cross-scope-duplicate proposal re-enters its records into the review queue WITHOUT blocking injection', () => {
+    const a = rec({ id: 'a', scope: 'project', reviewState: 'reviewed', summary: 'shared', updatedAt: NOW });
+    const b = rec({ id: 'b', scope: 'team', reviewState: 'reviewed', summary: 'shared', updatedAt: NOW });
+    const reg = new FakeRegistry([a, b]);
+    const receipt = runMemoryConsolidation({ memoryRegistry: reg, config: cfg(), now: NOW, trigger: 'idle', idle: true });
+    expect(receipt.proposed.some((p) => p.kind === 'cross-scope-duplicate')).toBe(true);
+    // Reviewed records flip to fresh (queue priority) — never stale/contradicted:
+    // they do not disagree, so they stay injectable.
+    expect(reg.records.get('a')!.reviewState).toBe('fresh');
+    expect(reg.records.get('b')!.reviewState).toBe('fresh');
+    // And the receipt lists them as touched.
+    expect(receipt.note.length).toBeGreaterThan(0);
+  });
+});
+
 describe('runMemoryConsolidation — decay', () => {
   test('aged never-referenced record decays by step; usage signal availability reported', () => {
     const aged = rec({ id: 'aged', confidence: 60, updatedAt: NOW - 100 * DAY_MS });

@@ -62507,6 +62507,178 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "memory.consolidation.receipts",
+        "title": "Memory Consolidation Receipts",
+        "description": "Return the retained memory-consolidation run receipts (what each idle/scheduled pass scanned, merged, archived, decayed) and the pending judgment PROPOSALS they carry (contradictions, cross-scope duplicates) — the records a proposal references are already marked into the review queue, and a human resolves them through the confirmation-gated review route. A runtime without the consolidation scheduler answers an honest 501.",
+        "category": "memory",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:memory"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/memory/consolidation/receipts"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "receipts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "runId": {
+                    "type": "string"
+                  },
+                  "ranAt": {
+                    "type": "string"
+                  },
+                  "trigger": {
+                    "type": "string"
+                  },
+                  "idle": {
+                    "type": "boolean"
+                  },
+                  "scanned": {
+                    "type": "number"
+                  },
+                  "merged": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {},
+                      "additionalProperties": true
+                    }
+                  },
+                  "archived": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {},
+                      "additionalProperties": true
+                    }
+                  },
+                  "decayed": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {},
+                      "additionalProperties": true
+                    }
+                  },
+                  "proposed": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "contradiction",
+                            "cross-scope-duplicate",
+                            "stale-delete"
+                          ]
+                        },
+                        "ids": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "route": {
+                          "type": "string"
+                        },
+                        "reason": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "ids",
+                        "route",
+                        "reason"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "usageSignalAvailable": {
+                    "type": "boolean"
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "runId",
+                  "ranAt",
+                  "trigger",
+                  "idle",
+                  "scanned",
+                  "merged",
+                  "archived",
+                  "decayed",
+                  "proposed",
+                  "usageSignalAvailable",
+                  "note"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "pendingProposals": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "contradiction",
+                      "cross-scope-duplicate",
+                      "stale-delete"
+                    ]
+                  },
+                  "ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "route": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "ids",
+                  "route",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "receipts",
+            "pendingProposals"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "memory.doctor",
         "title": "Memory Doctor",
         "description": "Return sqlite-vec and memory embedding-provider diagnostics.",
@@ -91233,10 +91405,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 411,
-      "typedInputs": 411,
+      "methods": 412,
+      "typedInputs": 412,
       "genericInputs": 0,
-      "typedOutputs": 411,
+      "typedOutputs": 412,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -91245,8 +91417,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       "withWireEvents": 32
     },
     "validationCoverage": {
-      "methods": 411,
-      "validated": 404,
+      "methods": 412,
+      "validated": 405,
       "skippedGeneric": 0,
       "skippedUntyped": 7
     }

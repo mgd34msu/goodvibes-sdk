@@ -11654,6 +11654,56 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       }
     }
   },
+  "memory.consolidation.receipts": {
+    "methodId": "memory.consolidation.receipts",
+    "http": {
+      "method": "GET",
+      "path": "/api/memory/consolidation/receipts"
+    },
+    "status": 200,
+    "body": {
+      "receipts": [
+        {
+          "runId": "sample",
+          "ranAt": "sample",
+          "trigger": "sample",
+          "idle": false,
+          "scanned": 0,
+          "merged": [
+            {}
+          ],
+          "archived": [
+            {}
+          ],
+          "decayed": [
+            {}
+          ],
+          "proposed": [
+            {
+              "kind": "contradiction",
+              "ids": [
+                "sample"
+              ],
+              "route": "sample",
+              "reason": "sample"
+            }
+          ],
+          "usageSignalAvailable": false,
+          "note": "sample"
+        }
+      ],
+      "pendingProposals": [
+        {
+          "kind": "contradiction",
+          "ids": [
+            "sample"
+          ],
+          "route": "sample",
+          "reason": "sample"
+        }
+      ]
+    }
+  },
   "memory.doctor": {
     "methodId": "memory.doctor",
     "http": {

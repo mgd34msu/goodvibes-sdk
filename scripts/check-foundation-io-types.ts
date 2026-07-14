@@ -366,6 +366,8 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   { methodId: 'fleet.graph.get', ...descriptorSchemas('fleet.graph.get') },
   // Drill-in steer of an observed foreign agent:
   { methodId: 'fleet.observed.steer', ...descriptorSchemas('fleet.observed.steer') },
+  // Consolidation receipts + pending proposals:
+  { methodId: 'memory.consolidation.receipts', ...descriptorSchemas('memory.consolidation.receipts') },
   // Delete-honesty verbs (landed after this check's first cut; covered
   // per the follow-up noted in docs/decisions/2026-07-06-foundation-io-types-hand-authored.md):
   { methodId: 'sessions.delete', ...descriptorSchemas('sessions.delete') },

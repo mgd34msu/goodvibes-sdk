@@ -3,7 +3,7 @@
   "info": {
     "title": "GoodVibes Operator API",
     "version": "1.8.0",
-    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 411 cataloged methods: 360 with dedicated REST bindings, 51 reachable only through the generic invoke endpoint. 97 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
+    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 412 cataloged methods: 361 with dedicated REST bindings, 51 reachable only through the generic invoke endpoint. 97 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
   },
   "servers": [
     {
@@ -62678,6 +62678,184 @@
         }
       }
     },
+    "/api/memory/consolidation/receipts": {
+      "get": {
+        "operationId": "memory.consolidation.receipts",
+        "summary": "Memory Consolidation Receipts",
+        "description": "Return the retained memory-consolidation run receipts (what each idle/scheduled pass scanned, merged, archived, decayed) and the pending judgment PROPOSALS they carry (contradictions, cross-scope duplicates) — the records a proposal references are already marked into the review queue, and a human resolves them through the confirmation-gated review route. A runtime without the consolidation scheduler answers an honest 501.",
+        "tags": [
+          "memory"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "receipts": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "runId": {
+                            "type": "string"
+                          },
+                          "ranAt": {
+                            "type": "string"
+                          },
+                          "trigger": {
+                            "type": "string"
+                          },
+                          "idle": {
+                            "type": "boolean"
+                          },
+                          "scanned": {
+                            "type": "number"
+                          },
+                          "merged": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {},
+                              "additionalProperties": true
+                            }
+                          },
+                          "archived": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {},
+                              "additionalProperties": true
+                            }
+                          },
+                          "decayed": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {},
+                              "additionalProperties": true
+                            }
+                          },
+                          "proposed": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "contradiction",
+                                    "cross-scope-duplicate",
+                                    "stale-delete"
+                                  ]
+                                },
+                                "ids": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "route": {
+                                  "type": "string"
+                                },
+                                "reason": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "ids",
+                                "route",
+                                "reason"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "usageSignalAvailable": {
+                            "type": "boolean"
+                          },
+                          "note": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "runId",
+                          "ranAt",
+                          "trigger",
+                          "idle",
+                          "scanned",
+                          "merged",
+                          "archived",
+                          "decayed",
+                          "proposed",
+                          "usageSignalAvailable",
+                          "note"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "pendingProposals": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "contradiction",
+                              "cross-scope-duplicate",
+                              "stale-delete"
+                            ]
+                          },
+                          "ids": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "route": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "ids",
+                          "route",
+                          "reason"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "receipts",
+                    "pendingProposals"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "read:memory"
+        ]
+      }
+    },
     "/api/memory/doctor": {
       "get": {
         "operationId": "memory.doctor",
@@ -92537,6 +92715,15 @@
       "category": "media",
       "access": "admin",
       "rest": "POST /api/multimodal/writeback",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "memory.consolidation.receipts",
+      "category": "memory",
+      "access": "authenticated",
+      "rest": "GET /api/memory/consolidation/receipts",
       "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
