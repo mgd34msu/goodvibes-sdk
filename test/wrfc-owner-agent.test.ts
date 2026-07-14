@@ -143,7 +143,13 @@ describe('WRFC owner agent orchestration', () => {
     expect(runRecords.map((record) => record.id)).toEqual([engineer.id, reviewer.id]);
 
     const passed = waitForWorkflowEvent(bus, 'WORKFLOW_CHAIN_PASSED');
-    reviewer.fullOutput = 'Review passed. Score: 10/10';
+    // Structured review: the mechanical gate requires a recorded acceptance
+    // checklist — a prose-only score line can no longer pass, by design.
+    reviewer.fullOutput = ['```json', JSON.stringify({
+      version: 1, archetype: 'reviewer', summary: 'Review passed.',
+      score: 10, passed: true, dimensions: [], issues: [], constraintFindings: [],
+      acceptanceChecklist: [{ item: 'deliverable meets the task ask', verified: true, evidence: 'exercised in test fixture' }],
+    }), '```'].join('\n');
     emitAgentCompleted(bus, reviewer.id);
     await passed;
     await flushMicrotasks(20);

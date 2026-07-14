@@ -86,6 +86,7 @@ export function reviewerReportOutput(opts: {
       dimensions: [],
       issues: opts.passed ? [] : [{ severity: 'major', description: 'needs a fix', pointValue: 1 }],
       constraintFindings: opts.constraintFindings ?? [],
+      acceptanceChecklist: [{ item: 'deliverable meets the task ask', verified: true, evidence: 'exercised in test fixture' }],
     }),
     '```',
   ].join('\n');

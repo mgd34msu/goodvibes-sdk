@@ -55,6 +55,36 @@ export interface AcceptanceChecklistItem {
   howExercised?: string | undefined;
 }
 
+/** The mechanical acceptance-checklist gate result — shared by every review path. */
+export interface AcceptanceChecklistGate {
+  /** Checklist items the reviewer recorded as NOT verified — each one blocks a pass. */
+  readonly unmet: readonly AcceptanceChecklistItem[];
+  /**
+   * True when the reviewer emitted NO checklist at all (absent or empty).
+   * A review that records nothing about what was verified against the task
+   * contract cannot pass: an empty checklist was previously indistinguishable
+   * from all-verified, which let contract-blind reviews through the gate.
+   */
+  readonly missing: boolean;
+}
+
+/**
+ * Evaluate the acceptance-checklist gate for a reviewer report. Deterministic
+ * and shared so the main chain review and the compound-subtask review apply
+ * the IDENTICAL mechanics: any `verified:false` item blocks, and an
+ * absent/empty checklist blocks (the reviewer must record what was verified —
+ * the report contract already demands the field; this makes it mechanical).
+ */
+export function evaluateAcceptanceChecklistGate(
+  review: { acceptanceChecklist?: AcceptanceChecklistItem[] | undefined },
+): AcceptanceChecklistGate {
+  const checklist = review.acceptanceChecklist ?? [];
+  return {
+    unmet: checklist.filter((entry) => entry.verified === false),
+    missing: checklist.length === 0,
+  };
+}
+
 /** Engineer agent completion report. */
 export interface EngineerReport extends BaseCompletionReport {
   archetype: 'engineer';
