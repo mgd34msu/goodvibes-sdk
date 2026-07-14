@@ -231,6 +231,12 @@ export interface ProcessNode {
    */
   readonly attemptGroup?: ProcessAttemptGroup | undefined;
   /**
+   * The latest review's verdict, score, and acceptance checklist — present
+   * ONLY on a wrfc-chain / wrfc-subtask node whose review has completed.
+   * Absent before any review (never an empty shell). See {@link ProcessReviewSummary}.
+   */
+  readonly review?: ProcessReviewSummary | undefined;
+  /**
    * Observed foreign-agent facts — present ONLY on an `observed-external` node
    * (a coding-agent session goodvibes did not spawn or host). Absent on every
    * owned/hosted node. See {@link ProcessObserved}.
@@ -322,6 +328,36 @@ export interface ProcessObserved {
    * it to keep the steer verb off the list and behind the row's detail view.
    */
   readonly steerDrillInOnly: true;
+}
+
+/**
+ * One acceptance-checklist item from the latest review, as served on the wire:
+ * the requirement the reviewer derived from the original task, whether it was
+ * independently verified, and the evidence — so a consumer renders what was
+ * ACTUALLY verified, not just a score. Long evidence is summarised
+ * (length-capped) at the read-model.
+ */
+export interface ProcessReviewChecklistItem {
+  readonly item: string;
+  readonly verified: boolean;
+  readonly evidence: string;
+  readonly howExercised?: string | undefined;
+}
+
+/**
+ * The latest review on a WRFC chain / compound sub-deliverable, served on the
+ * wire. `passed` is the CONTROLLER verdict (gate-inclusive: checklist,
+ * constraints, claims verification) — the reviewer's own claim cannot
+ * overstate it. Present only once a review has completed; a chain that has
+ * not been reviewed carries NO review field (absent, never an empty shell).
+ */
+export interface ProcessReviewSummary {
+  readonly score: number;
+  readonly passed: boolean;
+  /** How many review cycles have completed (1 = first review). */
+  readonly cycles: number;
+  /** The acceptance checklist the reviewer scored against. Empty array = the reviewer emitted none (itself a gate failure). */
+  readonly checklist: readonly ProcessReviewChecklistItem[];
 }
 
 /** A work-item node's best-of-N sibling grouping, surfaced on the wire. */

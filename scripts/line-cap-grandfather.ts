@@ -26,8 +26,8 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
     justification: 'runtime-domain method descriptors (memory/mcp/voice/etc), crossed the cap with the memory.consolidation.receipts descriptor (typed receipts + pending-proposals output schema); next split: memory.* descriptors to a sibling file, mirroring method-catalog-fleet.ts',
   },
   'packages/sdk/src/platform/agents/wrfc-controller.ts': {
-    ceiling: 2979,
-    justification: 'pre-split monolith, shrink-only; +13 for the acceptance-checklist gate applied to BOTH review paths (the shared evaluateAcceptanceChecklistGate call, the unmet-items and missing-checklist critical-issue appends, and the pass-term additions in the main chain review and the compound-subtask review — gate mechanics live in completion-report.ts)',
+    ceiling: 2983,
+    justification: 'pre-split monolith, shrink-only; +13 for the acceptance-checklist gate applied to BOTH review paths (the shared evaluateAcceptanceChecklistGate call, the unmet-items and missing-checklist critical-issue appends, and the pass-term additions in the main chain review and the compound-subtask review — gate mechanics live in completion-report.ts); +4 for stamping the gate-inclusive lastReviewVerdict onto the chain and subtask at their review gates, so wire consumers render the TRUE verdict rather than the reviewer claim',
   },
   // store.ts ~1.12k — knowledge store consolidated surface, pre-split, shrink-only
   'packages/sdk/src/platform/knowledge/store.ts': {

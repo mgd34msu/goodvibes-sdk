@@ -122,6 +122,23 @@ const PROCESS_OBSERVED_SCHEMA = objectSchema({
   steerDrillInOnly: BOOLEAN_SCHEMA,
 }, ['externalKind', 'pid', 'liveness', 'steer', 'steerDrillInOnly']);
 
+// The latest review on a wrfc-chain / wrfc-subtask node: the CONTROLLER
+// verdict (gate-inclusive), the score, the cycle count, and the acceptance
+// checklist so a consumer renders what was ACTUALLY verified. Present only
+// once a review has completed — absent before (never an empty shell).
+const PROCESS_REVIEW_CHECKLIST_ITEM_SCHEMA = objectSchema({
+  item: STRING_SCHEMA,
+  verified: BOOLEAN_SCHEMA,
+  evidence: STRING_SCHEMA,
+  howExercised: STRING_SCHEMA,
+}, ['item', 'verified', 'evidence']);
+const PROCESS_REVIEW_SUMMARY_SCHEMA = objectSchema({
+  score: NUMBER_SCHEMA,
+  passed: BOOLEAN_SCHEMA,
+  cycles: NUMBER_SCHEMA,
+  checklist: arraySchema(PROCESS_REVIEW_CHECKLIST_ITEM_SCHEMA),
+}, ['score', 'passed', 'cycles', 'checklist']);
+
 export const PROCESS_NODE_SCHEMA = objectSchema({
   id: STRING_SCHEMA,
   kind: PROCESS_KIND_SCHEMA,
@@ -143,6 +160,7 @@ export const PROCESS_NODE_SCHEMA = objectSchema({
   capabilities: PROCESS_CAPABILITIES_SCHEMA,
   needsAttention: PROCESS_ATTENTION_SCHEMA,
   sessionRef: PROCESS_SESSION_REF_SCHEMA,
+  review: PROCESS_REVIEW_SUMMARY_SCHEMA,
   observed: PROCESS_OBSERVED_SCHEMA,
 }, ['id', 'kind', 'label', 'state', 'elapsedMs', 'costState', 'capabilities'], { additionalProperties: true });
 

@@ -1015,6 +1015,9 @@ export class WrfcController {
     }
     // MIN-4: claimsVerified===false is a mechanical block — cannot pass review regardless of score.
     const passed = review.score >= threshold && !constraintFailure && checklistGate.unmet.length === 0 && !checklistGate.missing && chain.claimsVerified !== false;
+    // The gate-inclusive verdict rides the chain so wire consumers render the
+    // TRUE outcome, not the reviewer's own passed claim.
+    chain.lastReviewVerdict = { passed, score: review.score, at: Date.now() };
 
     this.completeCurrentNode(chain, `Score ${review.score}/10${passed ? ' passed' : ' needs fixes'}`);
 
@@ -2447,6 +2450,7 @@ export class WrfcController {
     }
     // MIN-4: claimsVerified===false is a mechanical block on compound subtasks too.
     const passed = review.score >= threshold && !constraintEvaluation.constraintFailure && checklistGate.unmet.length === 0 && !checklistGate.missing && subtask.claimsVerified !== false;
+    subtask.lastReviewVerdict = { passed, score: review.score, at: Date.now() };
     this.completeSubtaskNode(chain, subtask, `Score ${review.score}/10${passed ? ' passed' : ' needs fixes'}`);
 
     emitWorkflowReviewCompleted(this.runtimeBus, createWrfcWorkflowContext(this.sessionId, chain.id), {

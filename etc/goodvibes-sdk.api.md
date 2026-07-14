@@ -9317,6 +9317,17 @@ export interface OperatorMethodOutputMap {
                 sessionId?: string;
                 agentId?: string;
             };
+            review?: {
+                score: number;
+                passed: boolean;
+                cycles: number;
+                checklist: readonly ({
+                    item: string;
+                    verified: boolean;
+                    evidence: string;
+                    howExercised?: string;
+                })[];
+            };
             observed?: {
                 externalKind: "claude-code" | "codex" | "opencode" | "unknown";
                 pid: number;
@@ -9541,6 +9552,17 @@ export interface OperatorMethodOutputMap {
                 sessionId?: string;
                 agentId?: string;
             };
+            review?: {
+                score: number;
+                passed: boolean;
+                cycles: number;
+                checklist: readonly ({
+                    item: string;
+                    verified: boolean;
+                    evidence: string;
+                    howExercised?: string;
+                })[];
+            };
             observed?: {
                 externalKind: "claude-code" | "codex" | "opencode" | "unknown";
                 pid: number;
@@ -9620,6 +9642,17 @@ export interface OperatorMethodOutputMap {
             sessionRef?: {
                 sessionId?: string;
                 agentId?: string;
+            };
+            review?: {
+                score: number;
+                passed: boolean;
+                cycles: number;
+                checklist: readonly ({
+                    item: string;
+                    verified: boolean;
+                    evidence: string;
+                    howExercised?: string;
+                })[];
             };
             observed?: {
                 externalKind: "claude-code" | "codex" | "opencode" | "unknown";

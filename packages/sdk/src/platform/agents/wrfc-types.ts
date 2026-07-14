@@ -101,6 +101,8 @@ export interface WrfcSubtask {
   fixerAgentId?: string | undefined;
   engineerReport?: CompletionReport | undefined;
   reviewerReport?: ReviewerReport | undefined;
+  /** The CONTROLLER verdict on the latest review (gate-inclusive) — the reviewer's own passed claim can be overridden by the deterministic gates. */
+  lastReviewVerdict?: { passed: boolean; score: number; at: number } | undefined;
   fixAttempts: number;
   reviewCycles: number;
   reviewScores: number[];
@@ -130,6 +132,8 @@ export interface WrfcChain {
   allAgentIds: string[];
   engineerReport?: CompletionReport | undefined;
   reviewerReport?: ReviewerReport | undefined;
+  /** The CONTROLLER verdict on the latest review (gate-inclusive) — the reviewer's own passed claim can be overridden by the deterministic gates. */
+  lastReviewVerdict?: { passed: boolean; score: number; at: number } | undefined;
   integratorReport?: CompletionReport | undefined;
   subtasks?: WrfcSubtask[] | undefined;
   fixAttempts: number;
