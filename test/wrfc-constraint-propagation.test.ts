@@ -73,6 +73,7 @@ function reviewerOutput(
     dimensions: [],
     issues: [],
     constraintFindings: findings,
+    acceptanceChecklist: [{ item: 'deliverable meets the task ask', verified: true, evidence: 'exercised in test fixture' }],
     ...overrides,
   };
   return jsonBlock(report);

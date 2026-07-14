@@ -48,8 +48,16 @@ function makeRecord(overrides: Partial<AgentRecord> & { id: string; task: string
   };
 }
 
-/** Reviewer output text that parses as a passing score (>= 9.9). */
-const PASSING_REVIEW_OUTPUT = 'The implementation looks solid. Score: 10/10';
+/**
+ * A structured passing review. The mechanical gate requires the reviewer to
+ * record what was verified (acceptanceChecklist) — a prose-only score line can
+ * no longer pass, by design.
+ */
+const PASSING_REVIEW_OUTPUT = ['```json', JSON.stringify({
+  version: 1, archetype: 'reviewer', summary: 'The implementation looks solid.',
+  score: 10, passed: true, dimensions: [], issues: [], constraintFindings: [],
+  acceptanceChecklist: [{ item: 'deliverable meets the task ask', verified: true, evidence: 'exercised in test fixture' }],
+}), '```'].join('\n');
 
 /** Reviewer output text that parses as a failing score (below 9.9). */
 const FAILING_REVIEW_OUTPUT = 'There are serious issues with the implementation. Score: 5/10';
@@ -92,6 +100,9 @@ function reviewerReportOutput(
       dimensions: [],
       issues: passed ? [] : [{ severity: 'major', description: 'Needs a fix.', pointValue: 1 }],
       constraintFindings,
+      // The mechanical gate requires the reviewer to record what was verified;
+      // an absent/empty checklist cannot pass whatever the score.
+      acceptanceChecklist: [{ item: 'deliverable meets the task ask', verified: true, evidence: 'exercised in test fixture' }],
     }),
     '```',
   ].join('\n');
@@ -1423,6 +1434,7 @@ function makeReviewerOutput(
     dimensions: [],
     issues: [],
     constraintFindings: findings,
+    acceptanceChecklist: [{ item: 'deliverable meets the task ask', verified: true, evidence: 'exercised in test fixture' }],
   });
 }
 
@@ -1807,6 +1819,90 @@ describe('WrfcController — importChain zombie reap (d5)', () => {
 
     expect(h.controller.getChain(chain.id)!.state).toBe('engineering');
 
+    h.controller.dispose();
+  });
+});
+
+describe('WrfcController — acceptance-checklist gate (deterministic, both review paths)', () => {
+  function reviewJson(report: Record<string, unknown>): string {
+    return ['```json', JSON.stringify({
+      version: 1, archetype: 'reviewer', summary: 'review', dimensions: [], issues: [], constraintFindings: [],
+      ...report,
+    }), '```'].join('\n');
+  }
+
+  test('a compound SUBTASK review with an unverified checklist item and a passing score does NOT pass — a fix cycle starts', async () => {
+    const h = createHarness({ maxFixAttempts: 3 });
+    const ownerRecord = h.addAgent('owner-gate-1', 'Build two modules.', 'orchestrator');
+    ownerRecord.wrfcSubtasks = [
+      { task: 'Implement module A.', template: 'engineer' },
+      { task: 'Implement module B.', template: 'engineer' },
+    ];
+    const chain = h.controller.createChain(ownerRecord);
+    const subtask = chain.subtasks![0]!;
+
+    h.setOutput(subtask.engineerAgentId!, 'Implemented module A.');
+    emitAgentCompleted(h.bus, subtask.engineerAgentId!);
+    await flushMicrotasks(20);
+
+    const reviewer = h.spawnedRecords.filter((record) => record.wrfcRole === 'reviewer').at(-1)!;
+    // Perfect score, but the reviewer itself recorded an UNVERIFIED contract item.
+    h.setOutput(reviewer.id, reviewJson({
+      score: 10, passed: true,
+      acceptanceChecklist: [
+        { item: 'exports the documented function name', verified: false, evidence: 'exported a different name' },
+        { item: 'compiles', verified: true, evidence: 'built cleanly' },
+      ],
+    }));
+    emitAgentCompleted(h.bus, reviewer.id);
+    await flushMicrotasks(20);
+
+    expect(subtask.state).not.toBe('passed');
+    // The fix cycle started for the sub-deliverable.
+    expect(subtask.fixAttempts).toBeGreaterThanOrEqual(1);
+    h.controller.dispose();
+  });
+
+  test('an EMPTY-checklist review of a build deliverable does NOT pass, whatever the score', async () => {
+    const h = createHarness({ maxFixAttempts: 3 });
+    const engRecord = h.addAgent('eng-gate-2', 'Build the widget.');
+    const chain = h.controller.createChain(engRecord);
+    h.setOutput(chain.engineerAgentId!, 'Implemented the widget.');
+    emitAgentCompleted(h.bus, chain.engineerAgentId!);
+    await flushMicrotasks(20);
+
+    const reviewer = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
+    // Perfect score, but NO checklist at all — the review records nothing verified.
+    h.setOutput(reviewer.id, reviewJson({ score: 10, passed: true, acceptanceChecklist: [] }));
+    emitAgentCompleted(h.bus, reviewer.id);
+    await flushMicrotasks(20);
+
+    expect(chain.state).not.toBe('passed');
+    // A fix cycle started (the fix may already be mid-flight through the stubbed runner).
+    expect(chain.fixAttempts).toBeGreaterThanOrEqual(1);
+    h.controller.dispose();
+  });
+
+  test('a genuine all-verified checklist with a passing score passes', async () => {
+    const h = createHarness();
+    const engRecord = h.addAgent('eng-gate-3', 'Build the widget.');
+    const chain = h.controller.createChain(engRecord);
+    h.setOutput(chain.engineerAgentId!, 'Implemented the widget.');
+    emitAgentCompleted(h.bus, chain.engineerAgentId!);
+    await flushMicrotasks(20);
+
+    const reviewer = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
+    h.setOutput(reviewer.id, reviewJson({
+      score: 10, passed: true,
+      acceptanceChecklist: [
+        { item: 'widget renders', verified: true, evidence: 'rendered it directly', howExercised: 'ran the demo page' },
+        { item: 'API shape matches the ask', verified: true, evidence: 'called each documented method' },
+      ],
+    }));
+    emitAgentCompleted(h.bus, reviewer.id);
+    await flushMicrotasks(20);
+
+    expect(chain.state).toBe('passed');
     h.controller.dispose();
   });
 });

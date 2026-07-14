@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { AgentMessageBus } from './message-bus.js';
-import { type CompletionReport, type Constraint, type EngineerReport, type ReviewerReport } from './completion-report.js';
+import { evaluateAcceptanceChecklistGate, type CompletionReport, type Constraint, type EngineerReport, type ReviewerReport } from './completion-report.js';
 import {
   buildGateFailureTask,
   buildReviewTask,
@@ -1003,14 +1003,18 @@ export class WrfcController {
       unsatisfiedConstraintIds,
       constraintFailure,
     } = constraintEvaluation;
-    // A false acceptance-checklist item ⇒ the deliverable doesn't meet the contract derived from the task (wrong interface/cardinality/format/threshold): correct-but-not-what-was-asked cannot pass, whatever the score.
-    const unmetChecklist = (review.acceptanceChecklist ?? []).filter((entry) => entry.verified === false);
-    if (unmetChecklist.length > 0) {
+    // A false acceptance-checklist item ⇒ the deliverable doesn't meet the contract derived from the task (wrong interface/cardinality/format/threshold): correct-but-not-what-was-asked cannot pass, whatever the score. An ABSENT/EMPTY checklist also blocks — a review that records nothing about what was verified cannot pass (shared deterministic gate, completion-report.ts).
+    const checklistGate = evaluateAcceptanceChecklistGate(review);
+    if (checklistGate.unmet.length > 0) {
       review.issues ??= [];
-      review.issues.push({ severity: 'critical', description: `Acceptance checklist not met: ${unmetChecklist.map((entry) => entry.item).join('; ')}`, pointValue: 0 });
+      review.issues.push({ severity: 'critical', description: `Acceptance checklist not met: ${checklistGate.unmet.map((entry) => entry.item).join('; ')}`, pointValue: 0 });
+    }
+    if (checklistGate.missing) {
+      review.issues ??= [];
+      review.issues.push({ severity: 'critical', description: 'Reviewer emitted no acceptance checklist — the review records nothing about what was verified against the task contract, so it cannot pass. Emit acceptanceChecklist items derived from the original task.', pointValue: 0 });
     }
     // MIN-4: claimsVerified===false is a mechanical block — cannot pass review regardless of score.
-    const passed = review.score >= threshold && !constraintFailure && unmetChecklist.length === 0 && chain.claimsVerified !== false;
+    const passed = review.score >= threshold && !constraintFailure && checklistGate.unmet.length === 0 && !checklistGate.missing && chain.claimsVerified !== false;
 
     this.completeCurrentNode(chain, `Score ${review.score}/10${passed ? ' passed' : ' needs fixes'}`);
 
@@ -2428,8 +2432,21 @@ export class WrfcController {
   ): Promise<void> {
     const threshold = getWrfcScoreThreshold(this.configManager);
     const constraintEvaluation = this.evaluateSubtaskConstraints(subtask, review);
+    // The SAME deterministic acceptance-checklist gate as the main chain review
+    // (shared helper, completion-report.ts): a verified:false item blocks a
+    // pass whatever the score, and an absent/empty checklist blocks — a
+    // sub-deliverable review that records nothing verified cannot pass.
+    const checklistGate = evaluateAcceptanceChecklistGate(review);
+    if (checklistGate.unmet.length > 0) {
+      review.issues ??= [];
+      review.issues.push({ severity: 'critical', description: `Acceptance checklist not met: ${checklistGate.unmet.map((entry) => entry.item).join('; ')}`, pointValue: 0 });
+    }
+    if (checklistGate.missing) {
+      review.issues ??= [];
+      review.issues.push({ severity: 'critical', description: 'Reviewer emitted no acceptance checklist — the review records nothing about what was verified against the sub-deliverable contract, so it cannot pass. Emit acceptanceChecklist items derived from the sub-deliverable ask.', pointValue: 0 });
+    }
     // MIN-4: claimsVerified===false is a mechanical block on compound subtasks too.
-    const passed = review.score >= threshold && !constraintEvaluation.constraintFailure && subtask.claimsVerified !== false;
+    const passed = review.score >= threshold && !constraintEvaluation.constraintFailure && checklistGate.unmet.length === 0 && !checklistGate.missing && subtask.claimsVerified !== false;
     this.completeSubtaskNode(chain, subtask, `Score ${review.score}/10${passed ? ' passed' : ' needs fixes'}`);
 
     emitWorkflowReviewCompleted(this.runtimeBus, createWrfcWorkflowContext(this.sessionId, chain.id), {

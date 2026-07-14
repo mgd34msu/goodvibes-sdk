@@ -106,7 +106,7 @@ function engineerOutput(constraints: Constraint[], overrides: Partial<EngineerRe
 function reviewerOutput(score: number, findings: ConstraintFinding[], overrides: Partial<ReviewerReport> = {}): string {
   return jsonBlock({
     version: 1, archetype: 'reviewer', summary: 'review', score, passed: score >= 9.9,
-    dimensions: [], issues: [], constraintFindings: findings, ...overrides,
+    dimensions: [], issues: [], constraintFindings: findings, acceptanceChecklist: [{ item: 'deliverable meets the task ask', verified: true, evidence: 'exercised in test fixture' }], ...overrides,
   });
 }
 
