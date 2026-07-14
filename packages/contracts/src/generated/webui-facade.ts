@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.8.0
- * Methods: 410 total, 360 REST-routed, 50 ws-only invoke.
+ * Methods: 411 total, 360 REST-routed, 51 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -1505,6 +1505,7 @@ export const WEBUI_WS_INVOKE_METHOD_IDS: readonly string[] = [
   "fleet.conflicts.list",
   "fleet.conflicts.resolve",
   "fleet.list",
+  "fleet.observed.steer",
   "fleet.snapshot",
   "fleet.unarchive",
   "pairing.handoff.complete",
@@ -1685,6 +1686,7 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "fleet.conflicts.resolve": "ws-invoke",
   "fleet.graph.get": "rest",
   "fleet.list": "ws-invoke",
+  "fleet.observed.steer": "ws-invoke",
   "fleet.snapshot": "ws-invoke",
   "fleet.unarchive": "ws-invoke",
   "health.snapshot": "rest",
@@ -7452,6 +7454,23 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "sessionRef": {
             "sessionId": "sample",
             "agentId": "sample"
+          },
+          "observed": {
+            "externalKind": "claude-code",
+            "pid": 0,
+            "cwd": "sample",
+            "liveness": {
+              "state": "active",
+              "cpuSeconds": 0,
+              "detail": "sample"
+            },
+            "steer": {
+              "kind": "tmux",
+              "paneId": "sample",
+              "tty": "sample",
+              "reason": "sample"
+            },
+            "steerDrillInOnly": false
           }
         }
       ]
@@ -7728,12 +7747,40 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "sessionRef": {
             "sessionId": "sample",
             "agentId": "sample"
+          },
+          "observed": {
+            "externalKind": "claude-code",
+            "pid": 0,
+            "cwd": "sample",
+            "liveness": {
+              "state": "active",
+              "cpuSeconds": 0,
+              "detail": "sample"
+            },
+            "steer": {
+              "kind": "tmux",
+              "paneId": "sample",
+              "tty": "sample",
+              "reason": "sample"
+            },
+            "steerDrillInOnly": false
           }
         }
       ],
       "nextCursor": "sample",
       "hasMore": false,
       "capturedAt": 0
+    }
+  },
+  "fleet.observed.steer": {
+    "input": {
+      "id": "sample",
+      "text": "sample"
+    },
+    "output": {
+      "queued": false,
+      "messageId": "sample",
+      "reason": "sample"
     }
   },
   "fleet.snapshot": {
@@ -7787,6 +7834,23 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "sessionRef": {
             "sessionId": "sample",
             "agentId": "sample"
+          },
+          "observed": {
+            "externalKind": "claude-code",
+            "pid": 0,
+            "cwd": "sample",
+            "liveness": {
+              "state": "active",
+              "cpuSeconds": 0,
+              "detail": "sample"
+            },
+            "steer": {
+              "kind": "tmux",
+              "paneId": "sample",
+              "tty": "sample",
+              "reason": "sample"
+            },
+            "steerDrillInOnly": false
           }
         }
       ],

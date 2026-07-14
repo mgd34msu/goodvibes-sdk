@@ -15,6 +15,10 @@ export type {
   ProcessAttentionReason,
   ProcessHeadline,
   ProcessStallTell,
+  ObservedAgentKind,
+  ObservedSteerChannel,
+  ObservedLiveness,
+  ProcessObserved,
   ProcessNode,
   FleetSnapshot,
   FleetQueryFilter,
@@ -45,3 +49,20 @@ export { scheduleNodeId } from './adapters/schedule.js';
 export { workstreamNodeId, phaseNodeId } from './adapters/orchestration.js';
 export { codeIndexNodeId } from './adapters/code-index.js';
 export type { CodeIndexProcessSource } from './adapters/code-index.js';
+export { observedNodeId, adaptObservedAgent, steerObservedNode } from './adapters/observed.js';
+export { ObservedAgentSource, defaultTmuxCommandRunner } from './observed/source.js';
+export type { ObservedAgentRow, ObservedAgentSourceDeps, TmuxCommandRunner } from './observed/source.js';
+export {
+  classifyExternalKind,
+  classifyObservedProcesses,
+  paneForTty,
+  defaultProcessTableReader,
+  defaultTmuxPaneReader,
+} from './observed/detect.js';
+export type {
+  ObservedRawProcess,
+  ClassifiedObservedProcess,
+  ProcessTableReader,
+  TmuxPaneReader,
+  TmuxPaneRow,
+} from './observed/detect.js';

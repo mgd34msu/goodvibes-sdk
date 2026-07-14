@@ -52,6 +52,8 @@ import {
   FLEET_ARCHIVED_LIST_OUTPUT_SCHEMA,
   FLEET_LIST_INPUT_SCHEMA,
   FLEET_LIST_OUTPUT_SCHEMA,
+  FLEET_OBSERVED_STEER_INPUT_SCHEMA,
+  FLEET_OBSERVED_STEER_OUTPUT_SCHEMA,
   FLEET_SNAPSHOT_OUTPUT_SCHEMA,
   FLEET_UNARCHIVE_OUTPUT_SCHEMA,
 } from './operator-contract-schemas.js';
@@ -193,6 +195,16 @@ export const builtinGatewayFleetMethodDescriptors: readonly GatewayMethodDescrip
     transport: ['ws'],
     inputSchema: FLEET_ATTEMPTS_JUDGE_INPUT_SCHEMA,
     outputSchema: FLEET_ATTEMPTS_JUDGE_OUTPUT_SCHEMA,
+  }),
+  methodDescriptor({
+    id: 'fleet.observed.steer',
+    title: 'Steer an Observed Foreign Agent',
+    description: 'Drill-in steer of an externally-launched coding-agent session goodvibes only OBSERVES (a Claude Code / Codex process it did not spawn or host). The steer rides the foreign session\'s own control channel — for a tmux-hosted session, the exact three-send recipe (message text, then two Enters) targeted at its pane. queued:false with an honest reason when the row exposes no channel (no controlling terminal / no tmux pane) or a send fails. STOP is never offered on an observed row — observing and steering is not owning the lifecycle. Weighted as a drill-in capability (see the node\'s observed.steerDrillInOnly), never a bulk affordance.',
+    category: 'fleet',
+    scopes: ['write:fleet'],
+    transport: ['ws'],
+    inputSchema: FLEET_OBSERVED_STEER_INPUT_SCHEMA,
+    outputSchema: FLEET_OBSERVED_STEER_OUTPUT_SCHEMA,
   }),
   methodDescriptor({
     id: 'fleet.conflicts.list',

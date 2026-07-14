@@ -64,6 +64,7 @@ const PROCESS_KINDS: readonly ProcessKind[] = [
   'phase',
   'work-item',
   'acp-agent',
+  'observed-external',
   'code-index',
 ];
 
@@ -186,6 +187,35 @@ export function createFleetListHandler(registry: FleetQueryOnlyRegistry): Gatewa
 
 /** Registry surface for the archive verbs — optional so a runtime without the archive layer degrades honestly. */
 export type FleetArchiveCapableRegistry = FleetQueryOnlyRegistry & Partial<FleetArchiveView>;
+
+/** Registry surface fleet.observed.steer needs — read one node, steer it. */
+export type FleetSteerCapableRegistry = Pick<ProcessRegistry, 'getNode' | 'steer'>;
+
+/**
+ * fleet.observed.steer handler — the drill-in steer of an observed foreign
+ * agent. Scoped to 'observed-external' rows by construction: an unknown id is a
+ * 404, and steering a non-observed kind through this verb is refused (400) so it
+ * can never become a back door to a native agent's steer path. The steer itself
+ * rides the foreign session's own channel (registry dispatch → tmux send-keys).
+ */
+export function createFleetObservedSteerHandler(registry: FleetSteerCapableRegistry): GatewayMethodHandler {
+  return (invocation) => {
+    const params = readInvocationParams(invocation);
+    const id = typeof params.id === 'string' ? params.id.trim() : '';
+    const text = typeof params.text === 'string' ? params.text : '';
+    if (!id) throw new GatewayVerbError('id is required', 'INVALID_ARGUMENT', 400);
+    if (!text) throw new GatewayVerbError('text is required', 'INVALID_ARGUMENT', 400);
+    const node = registry.getNode(id);
+    if (!node) throw new GatewayVerbError(`No fleet node ${id} on this daemon.`, 'FLEET_NODE_NOT_FOUND', 404);
+    if (node.kind !== 'observed-external') {
+      throw new GatewayVerbError('fleet.observed.steer steers only observed-external rows.', 'INVALID_ARGUMENT', 400);
+    }
+    const result = registry.steer(id, text);
+    return result.queued
+      ? { queued: true, messageId: result.messageId }
+      : { queued: false, reason: result.reason };
+  };
+}
 
 function requireArchive<K extends keyof FleetArchiveView>(
   registry: FleetArchiveCapableRegistry,
@@ -422,7 +452,7 @@ export function createFleetGraphGetHandler(controller: FleetAttemptsController):
 
 export function registerFleetGatewayMethods(
   catalog: GatewayMethodCatalog,
-  registry: FleetArchiveCapableRegistry,
+  registry: FleetArchiveCapableRegistry & FleetSteerCapableRegistry,
   attempts?: FleetAttemptsController,
 ): void {
   const attach = (id: string, handler: GatewayMethodHandler): void => {
@@ -431,6 +461,7 @@ export function registerFleetGatewayMethods(
   };
   attach('fleet.snapshot', createFleetSnapshotHandler(registry));
   attach('fleet.list', createFleetListHandler(registry));
+  attach('fleet.observed.steer', createFleetObservedSteerHandler(registry));
   attach('fleet.archive', createFleetArchiveHandler(registry));
   attach('fleet.unarchive', createFleetUnarchiveHandler(registry));
   attach('fleet.archiveFinished', createFleetArchiveFinishedHandler(registry));

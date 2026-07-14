@@ -29846,6 +29846,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "phase",
                       "work-item",
                       "acp-agent",
+                      "observed-external",
                       "code-index"
                     ]
                   },
@@ -30047,6 +30048,86 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "type": "string"
                       }
                     },
+                    "additionalProperties": false
+                  },
+                  "observed": {
+                    "type": "object",
+                    "properties": {
+                      "externalKind": {
+                        "type": "string",
+                        "enum": [
+                          "claude-code",
+                          "codex",
+                          "opencode",
+                          "unknown"
+                        ]
+                      },
+                      "pid": {
+                        "type": "number"
+                      },
+                      "cwd": {
+                        "type": "string"
+                      },
+                      "liveness": {
+                        "type": "object",
+                        "properties": {
+                          "state": {
+                            "type": "string",
+                            "enum": [
+                              "active",
+                              "quiet"
+                            ]
+                          },
+                          "cpuSeconds": {
+                            "type": "number"
+                          },
+                          "detail": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "state",
+                          "cpuSeconds",
+                          "detail"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "steer": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "tmux",
+                              "none"
+                            ]
+                          },
+                          "paneId": {
+                            "type": "string"
+                          },
+                          "tty": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "steerDrillInOnly": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "externalKind",
+                      "pid",
+                      "liveness",
+                      "steer",
+                      "steerDrillInOnly"
+                    ],
                     "additionalProperties": false
                   }
                 },
@@ -31125,6 +31206,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "phase",
                       "work-item",
                       "acp-agent",
+                      "observed-external",
                       "code-index"
                     ]
                   },
@@ -31327,6 +31409,86 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       }
                     },
                     "additionalProperties": false
+                  },
+                  "observed": {
+                    "type": "object",
+                    "properties": {
+                      "externalKind": {
+                        "type": "string",
+                        "enum": [
+                          "claude-code",
+                          "codex",
+                          "opencode",
+                          "unknown"
+                        ]
+                      },
+                      "pid": {
+                        "type": "number"
+                      },
+                      "cwd": {
+                        "type": "string"
+                      },
+                      "liveness": {
+                        "type": "object",
+                        "properties": {
+                          "state": {
+                            "type": "string",
+                            "enum": [
+                              "active",
+                              "quiet"
+                            ]
+                          },
+                          "cpuSeconds": {
+                            "type": "number"
+                          },
+                          "detail": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "state",
+                          "cpuSeconds",
+                          "detail"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "steer": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "tmux",
+                              "none"
+                            ]
+                          },
+                          "paneId": {
+                            "type": "string"
+                          },
+                          "tty": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "steerDrillInOnly": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "externalKind",
+                      "pid",
+                      "liveness",
+                      "steer",
+                      "steerDrillInOnly"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -31355,6 +31517,55 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "items",
             "hasMore",
             "capturedAt"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "fleet.observed.steer",
+        "title": "Steer an Observed Foreign Agent",
+        "description": "Drill-in steer of an externally-launched coding-agent session goodvibes only OBSERVES (a Claude Code / Codex process it did not spawn or host). The steer rides the foreign session's own control channel — for a tmux-hosted session, the exact three-send recipe (message text, then two Enters) targeted at its pane. queued:false with an honest reason when the row exposes no channel (no controlling terminal / no tmux pane) or a send fails. STOP is never offered on an observed row — observing and steering is not owning the lifecycle. Weighted as a drill-in capability (see the node's observed.steerDrillInOnly), never a bulk affordance.",
+        "category": "fleet",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "write:fleet"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "text"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "queued": {
+              "type": "boolean"
+            },
+            "messageId": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "queued"
           ],
           "additionalProperties": false
         },
@@ -31407,6 +31618,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "phase",
                       "work-item",
                       "acp-agent",
+                      "observed-external",
                       "code-index"
                     ]
                   },
@@ -31608,6 +31820,86 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "type": "string"
                       }
                     },
+                    "additionalProperties": false
+                  },
+                  "observed": {
+                    "type": "object",
+                    "properties": {
+                      "externalKind": {
+                        "type": "string",
+                        "enum": [
+                          "claude-code",
+                          "codex",
+                          "opencode",
+                          "unknown"
+                        ]
+                      },
+                      "pid": {
+                        "type": "number"
+                      },
+                      "cwd": {
+                        "type": "string"
+                      },
+                      "liveness": {
+                        "type": "object",
+                        "properties": {
+                          "state": {
+                            "type": "string",
+                            "enum": [
+                              "active",
+                              "quiet"
+                            ]
+                          },
+                          "cpuSeconds": {
+                            "type": "number"
+                          },
+                          "detail": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "state",
+                          "cpuSeconds",
+                          "detail"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "steer": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "tmux",
+                              "none"
+                            ]
+                          },
+                          "paneId": {
+                            "type": "string"
+                          },
+                          "tty": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "steerDrillInOnly": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "externalKind",
+                      "pid",
+                      "liveness",
+                      "steer",
+                      "steerDrillInOnly"
+                    ],
                     "additionalProperties": false
                   }
                 },
@@ -90941,10 +91233,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 410,
-      "typedInputs": 410,
+      "methods": 411,
+      "typedInputs": 411,
       "genericInputs": 0,
-      "typedOutputs": 410,
+      "typedOutputs": 411,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -90953,8 +91245,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       "withWireEvents": 32
     },
     "validationCoverage": {
-      "methods": 410,
-      "validated": 403,
+      "methods": 411,
+      "validated": 404,
       "skippedGeneric": 0,
       "skippedUntyped": 7
     }

@@ -129,6 +129,10 @@ const DIRECT_TRANSPORT_COVERAGE: Record<string, string> = {
   // the wire verbs exist for remote consumers.
   'fleet.conflicts.list': 'http-only',
   'fleet.conflicts.resolve': 'http-only',
+  // fleet.observed.steer (drill-in steer of an observed foreign agent): same
+  // in-process story — the TUI drives observed rows off its direct registry
+  // reference; the wire verb exists for remote consumers.
+  'fleet.observed.steer': 'http-only',
 };
 
 interface ParityViolation { readonly id: string; readonly reason: string }

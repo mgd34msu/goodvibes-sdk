@@ -14,7 +14,7 @@
  * is constructed last of the three, so the call site is right after it).
  */
 import type { GatewayMethodCatalog } from '../method-catalog.js';
-import { registerFleetGatewayMethods, type FleetQueryOnlyRegistry, type FleetAttemptsController } from './fleet.js';
+import { registerFleetGatewayMethods, type FleetQueryOnlyRegistry, type FleetSteerCapableRegistry, type FleetAttemptsController } from './fleet.js';
 import { registerCheckpointGatewayMethods, type CheckpointsGatewayManager, type CheckpointsEventSink } from './checkpoints.js';
 import { registerSessionSearchGatewayMethod, type SessionSearchBroker } from './session-search.js';
 import { createEventEnvelope } from '../../runtime/events/index.js';
@@ -22,7 +22,7 @@ import type { RuntimeEventBus, RuntimeEventEnvelope } from '../../runtime/events
 import type { WorkspaceEvent } from '../../../events/workspace.js';
 
 export interface FleetCheckpointsSearchGatewayDeps {
-  readonly processRegistry: FleetQueryOnlyRegistry;
+  readonly processRegistry: FleetQueryOnlyRegistry & FleetSteerCapableRegistry;
   readonly workspaceCheckpointManager: CheckpointsGatewayManager;
   readonly sessionBroker: SessionSearchBroker;
   /**
