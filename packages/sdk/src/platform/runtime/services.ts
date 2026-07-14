@@ -853,6 +853,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const powerManager = wireRuntimePower({
     readConfig: (key) => configManager.get(key as never),
     writeConfig: (key, value) => configManager.setDynamic(key as never, value),
+    subscribeConfig: (key, cb) => configManager.subscribe(key as never, cb as never),
     runtimeBus: options.runtimeBus,
     sleepCheckpoint: () => storeSnapshotScheduler.tick(),
     wakeCatchUp: [() => memoryConsolidationScheduler.tick(), () => storeSnapshotScheduler.tick(), async () => { await automationManager.triggerHeartbeat({ source: 'wake-catchup' }); }] });

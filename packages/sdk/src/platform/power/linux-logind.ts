@@ -14,12 +14,94 @@
  * required for signal watching).
  */
 import { spawn, execFile, type ChildProcess } from 'node:child_process';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 import type { PowerInhibitClass, PowerInhibitHandle, PowerPlatformSeam } from './types.js';
 
 /** Grace period for an inhibit child to prove it started (denials exit fast). */
 const START_PROBE_MS = 300;
+
+/**
+ * The owner-pid stamp carried in every inhibit child's --who string. A crashed
+ * owner cannot release its children, so each child is marked with the pid that
+ * spawned it — the reaper kills a stamped child exactly when that pid is dead.
+ */
+function stampWho(who: string, ownerPid: number): string {
+  return `${who} [owner-pid ${ownerPid}]`;
+}
+
+const OWNER_PID_STAMP = /\[owner-pid (\d+)\]/;
+
+function pidIsAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    // EPERM means the pid exists but is not ours — alive.
+    return (error as NodeJS.ErrnoException).code === 'EPERM';
+  }
+}
+
+/** Injectable process-table seams so the reaper is fixture-testable. */
+export interface OrphanReaperDeps {
+  /** List candidate processes: pid + full command line. Default: Linux /proc scan. */
+  readonly listProcesses?: (() => ReadonlyArray<{ pid: number; args: string }>) | undefined;
+  readonly isAlive?: ((pid: number) => boolean) | undefined;
+  readonly kill?: ((pid: number) => void) | undefined;
+  readonly selfPid?: number | undefined;
+}
+
+function defaultListProcesses(): ReadonlyArray<{ pid: number; args: string }> {
+  if (!existsSync('/proc')) return [];
+  const rows: Array<{ pid: number; args: string }> = [];
+  let entries: string[];
+  try {
+    entries = readdirSync('/proc');
+  } catch {
+    return [];
+  }
+  for (const entry of entries) {
+    if (!/^\d+$/.test(entry)) continue;
+    try {
+      const args = readFileSync(`/proc/${entry}/cmdline`, 'utf-8').replace(/\0+$/, '').split('\0').join(' ');
+      if (args) rows.push({ pid: Number(entry), args });
+    } catch {
+      // process exited between readdir and read — skip.
+    }
+  }
+  return rows;
+}
+
+/**
+ * Kill inhibitor children whose stamped owner pid is DEAD (crashed owner:
+ * nothing will ever release them; they block host sleep with no owner).
+ * Matches only systemd-inhibit processes carrying this module's own
+ * owner-pid stamp — never anything else. Returns the number reaped.
+ */
+export async function reapOrphanedInhibitors(who: string, deps: OrphanReaperDeps = {}): Promise<number> {
+  const list = deps.listProcesses ?? defaultListProcesses;
+  const isAlive = deps.isAlive ?? pidIsAlive;
+  const kill = deps.kill ?? ((pid: number) => process.kill(pid, 'SIGTERM'));
+  const selfPid = deps.selfPid ?? process.pid;
+  let reaped = 0;
+  for (const row of list()) {
+    if (!row.args.includes('systemd-inhibit')) continue;
+    if (!row.args.includes(`--who=${who} `) && !row.args.includes(`--who=${who} [`)) continue;
+    const stamp = OWNER_PID_STAMP.exec(row.args);
+    if (!stamp) continue;
+    const ownerPid = Number(stamp[1]);
+    if (ownerPid === selfPid || isAlive(ownerPid)) continue;
+    try {
+      kill(row.pid);
+      reaped += 1;
+      logger.info('[power] reaped an orphaned inhibitor from a dead process', { inhibitorPid: row.pid, deadOwnerPid: ownerPid });
+    } catch (error) {
+      logger.warn('[power] orphaned-inhibitor reap failed', { inhibitorPid: row.pid, error: summarizeError(error) });
+    }
+  }
+  return reaped;
+}
 
 function spawnInhibitChild(cls: PowerInhibitClass, who: string, why: string): Promise<ChildProcess | null> {
   return new Promise((resolve) => {
@@ -56,12 +138,17 @@ export function createLinuxLogindSeam(options: { readonly who?: string | undefin
         });
       });
     },
+    async reapOrphans(): Promise<number> {
+      return reapOrphanedInhibitors(who);
+    },
     async inhibit(input): Promise<PowerInhibitHandle | null> {
       const children: Array<{ cls: PowerInhibitClass; child: ChildProcess }> = [];
       const granted: PowerInhibitClass[] = [];
       const denied: PowerInhibitClass[] = [];
       for (const cls of input.classes) {
-        const child = await spawnInhibitChild(cls, who, input.why);
+        // Stamped with the owning pid so a crashed owner's children are
+        // recoverable by the reaper (nothing else will ever release them).
+        const child = await spawnInhibitChild(cls, stampWho(who, process.pid), input.why);
         if (child) {
           children.push({ cls, child });
           granted.push(cls);

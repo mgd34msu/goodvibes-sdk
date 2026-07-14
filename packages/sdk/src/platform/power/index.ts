@@ -4,7 +4,8 @@
  */
 export { PowerManager, LID_SWITCH_HONEST_SPLIT } from './manager.js';
 export type { PowerState, PowerInhibitorView, PowerManagerOptions, PowerSleepEdgeHooks } from './manager.js';
-export { createLinuxLogindSeam } from './linux-logind.js';
+export { createLinuxLogindSeam, reapOrphanedInhibitors } from './linux-logind.js';
+export type { OrphanReaperDeps } from './linux-logind.js';
 export { bindPowerWorkSignals } from './work-signals.js';
 export { wireRuntimePower } from './runtime-wiring.js';
 export type { RuntimePowerWiringInput } from './runtime-wiring.js';

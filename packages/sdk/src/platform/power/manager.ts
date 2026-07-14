@@ -67,9 +67,52 @@ export interface PowerManagerOptions {
   readonly readConfig?: ((key: string) => unknown) | undefined;
   /** Persist the keep-awake toggle (power.keepAwake) when set over the wire. */
   readonly writeConfig?: ((key: string, value: boolean) => void) | undefined;
+  /**
+   * Subscribe to live config changes (ConfigManager.subscribe shape). When
+   * present, a power.keepAwake change — from any writer, including an external
+   * settings edit — applies LIVE, not just at start().
+   */
+  readonly subscribeConfig?: ((key: string, cb: (newValue: unknown) => void) => () => void) | undefined;
   /** Emits the state-change event surfaces subscribe the chip to. */
   readonly onStateChanged?: ((state: PowerState) => void) | undefined;
+  /**
+   * Process exit/signal hook registration seam (injectable for tests).
+   * Default registers on the real `process`. The registered cleanup releases
+   * every held inhibitor so the out-of-process inhibit children die with us —
+   * an exiting daemon must never leave a hold blocking host sleep.
+   */
+  readonly registerProcessExitHooks?: ((cleanup: () => void) => () => void) | undefined;
   readonly now?: (() => number) | undefined;
+}
+
+/**
+ * Default process-exit hook registration: the 'exit' event (normal exits and
+ * signal-handled exits) plus SIGINT/SIGTERM/SIGHUP once-handlers. A signal
+ * handler releases the holds and then re-raises the signal ONLY when it was
+ * the sole listener — when a host application (the daemon) also handles the
+ * signal, that handler owns process shutdown and this one only releases.
+ */
+function defaultRegisterProcessExitHooks(cleanup: () => void): () => void {
+  const signals: NodeJS.Signals[] = ['SIGINT', 'SIGTERM', 'SIGHUP'];
+  const onExit = (): void => cleanup();
+  const signalHandlers = new Map<NodeJS.Signals, () => void>();
+  process.on('exit', onExit);
+  for (const signal of signals) {
+    const handler = (): void => {
+      cleanup();
+      if (process.listenerCount(signal) === 0) {
+        // We were the only listener (process.once already removed us): nothing
+        // else owns shutdown, so restore default behavior and re-raise.
+        process.kill(process.pid, signal);
+      }
+    };
+    signalHandlers.set(signal, handler);
+    process.once(signal, handler);
+  }
+  return () => {
+    process.removeListener('exit', onExit);
+    for (const [signal, handler] of signalHandlers) process.removeListener(signal, handler);
+  };
 }
 
 const DEFAULT_WORK_CAP_MINUTES = 180;
@@ -84,6 +127,8 @@ export class PowerManager {
   private keepAwakeEnabled = false;
   private readonly sleepHooks: PowerSleepEdgeHooks[] = [];
   private unsubscribeSleepEdge: (() => void) | null = null;
+  private unsubscribeKeepAwakeConfig: (() => void) | null = null;
+  private unregisterExitHooks: (() => void) | null = null;
   /** Serializes acquire/release transitions so async seam calls never race. */
   private transition: Promise<void> = Promise.resolve();
 
@@ -103,8 +148,24 @@ export class PowerManager {
     return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : DEFAULT_WORK_CAP_MINUTES;
   }
 
-  /** Start: apply the persisted keep-awake toggle and watch the sleep edge. */
+  /**
+   * Start: reap dead-owner orphan inhibitors, register exit/signal cleanup,
+   * apply the persisted keep-awake toggle, watch the sleep edge, and subscribe
+   * keep-awake to live config changes.
+   */
   async start(): Promise<void> {
+    // A previous process that CRASHED could not release its inhibit children;
+    // stamped holds let this start reap exactly those (never a live owner's).
+    try {
+      await this.options.seam.reapOrphans?.();
+    } catch (error) {
+      logger.warn('[power] orphan-inhibitor reap failed', { error: summarizeError(error) });
+    }
+    // Exit/signal cleanup at the source: an exiting process must never leave
+    // an inhibitor blocking host sleep with no owner.
+    this.unregisterExitHooks ??= (this.options.registerProcessExitHooks ?? defaultRegisterProcessExitHooks)(
+      () => this.releaseAllHoldsNow(),
+    );
     if (this.options.seam.onPrepareForSleep) {
       this.unsubscribeSleepEdge = this.options.seam.onPrepareForSleep((sleeping) => {
         void this.handleSleepEdge(sleeping);
@@ -113,11 +174,24 @@ export class PowerManager {
     if (this.readBool('power.keepAwake', false)) {
       await this.setKeepAwake(true, { persist: false });
     }
+    // Live-apply: a persist-only settings write (or an external file edit
+    // applied by the config watcher) flips the real inhibitor, not just disk.
+    this.unsubscribeKeepAwakeConfig ??= this.options.subscribeConfig?.('power.keepAwake', (newValue) => {
+      const enabled = newValue === true;
+      if (enabled === this.keepAwakeEnabled) return;
+      void this.setKeepAwake(enabled, { persist: false }).catch((error) => {
+        logger.warn('[power] live keep-awake apply failed', { error: summarizeError(error) });
+      });
+    }) ?? null;
   }
 
   async stop(): Promise<void> {
     this.unsubscribeSleepEdge?.();
     this.unsubscribeSleepEdge = null;
+    this.unsubscribeKeepAwakeConfig?.();
+    this.unsubscribeKeepAwakeConfig = null;
+    this.unregisterExitHooks?.();
+    this.unregisterExitHooks = null;
     if (this.workCapTimer) clearTimeout(this.workCapTimer);
     await this.enqueue(async () => {
       await this.workHandle?.release();
@@ -125,6 +199,25 @@ export class PowerManager {
       await this.keepAwakeHandle?.release();
       this.keepAwakeHandle = null;
     });
+  }
+
+  /**
+   * Release every held inhibitor NOW, without awaiting — for process-exit
+   * paths where only synchronous work runs. The seam handles kill their
+   * inhibit children synchronously before their first await, so the children
+   * are signalled even from an 'exit' handler.
+   */
+  releaseAllHoldsNow(): void {
+    if (this.workCapTimer) {
+      clearTimeout(this.workCapTimer);
+      this.workCapTimer = null;
+    }
+    const work = this.workHandle;
+    const keepAwake = this.keepAwakeHandle;
+    this.workHandle = null;
+    this.keepAwakeHandle = null;
+    void work?.release().catch(() => undefined);
+    void keepAwake?.release().catch(() => undefined);
   }
 
   /** Register sleep-edge hooks (checkpoint on sleep, catch-up on wake). */
