@@ -85,7 +85,39 @@ export type ToolExecutionDeps = {
    * block the tool-result path.
    */
   onToolExecuted?: ((toolName: string, args: Record<string, unknown>, success: boolean) => void) | undefined;
+  /**
+   * Per-call cancellation seam: `open(callId)` yields the AbortSignal passed to
+   * the tool body (registering the call as cancellable), `close(callId)`
+   * retires it once the call settles. A cancel of ONE call aborts only that
+   * call's signal — other calls in the batch and the turn itself continue.
+   * Optional/undefined preserves the previous uncancellable behavior.
+   */
+  toolCallSignals?: {
+    open(callId: string): AbortSignal;
+    close(callId: string): void;
+  } | undefined;
 };
+
+/** The human-readable per-call cancellation message the model sees. */
+export const TOOL_CALL_CANCELLED_MESSAGE = 'cancelled by user';
+
+/**
+ * Normalize a settled (or thrown-through) result of a call whose per-call
+ * signal was aborted into the structured cancelled shape: the model sees
+ * "cancelled by user" with `cancelled: true`, keeping any partial output the
+ * tool produced before it stopped. The tiny race where a tool completes
+ * successfully in the same instant the user cancels still reports cancelled —
+ * the user's decision is the truth the model should adapt to.
+ */
+function toCancelledResult(callId: string, settled: ToolResult | null): ToolResult {
+  return {
+    callId,
+    success: false,
+    error: TOOL_CALL_CANCELLED_MESSAGE,
+    cancelled: true,
+    ...(settled?.output !== undefined ? { output: settled.output } : {}),
+  };
+}
 
 export async function executeToolCalls(
   deps: ToolExecutionDeps,
@@ -190,26 +222,40 @@ export async function executeToolCalls(
     }
 
     let result: ToolResult;
+    const callSignal = deps.toolCallSignals?.open(call.id);
     try {
       // Open a cost-attribution origin scope around the tool body: any LLM usage
       // a tool drives synchronously (e.g. an MCP tool's model call) is attributed
       // to this tool/MCP server rather than the agent's own reasoning.
       result = await withCostOriginAsync(
         { tool: call.name, callId: call.id, mcpServer: mcpServerOfToolName(call.name) },
-        () => deps.toolRegistry.execute(call.id, call.name, checkResult.modifiedArgs ?? call.arguments),
+        () => deps.toolRegistry.execute(
+          call.id,
+          call.name,
+          checkResult.modifiedArgs ?? call.arguments,
+          callSignal ? { signal: callSignal } : undefined,
+        ),
       );
+      if (callSignal?.aborted) {
+        // The user cancelled THIS call mid-flight: the model sees a structured
+        // cancelled result and the turn continues.
+        result = toCancelledResult(call.id, result);
+      }
     } catch (err) {
-      const message =
-        err instanceof ToolError
+      const message = callSignal?.aborted
+        ? TOOL_CALL_CANCELLED_MESSAGE
+        : err instanceof ToolError
           ? err.message
           : err instanceof Error
             ? err.message
             : summarizeError(err);
-      result = {
-        callId: call.id,
-        success: false,
-        error: message,
-      };
+      result = callSignal?.aborted
+        ? toCancelledResult(call.id, null)
+        : {
+          callId: call.id,
+          success: false,
+          error: message,
+        };
 
       if (deps.hookDispatcher) {
         try {
@@ -230,6 +276,8 @@ export async function executeToolCalls(
           });
         }
       }
+    } finally {
+      deps.toolCallSignals?.close(call.id);
     }
 
     if (deps.hookDispatcher && result.success === true) {

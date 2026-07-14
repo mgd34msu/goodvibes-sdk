@@ -87,7 +87,7 @@ function parseChannelDeliveryTarget(channel: string): ChannelDeliveryTarget {
   };
 }
 
-import { createSessionRuntimeControls, registerSessionRuntimeGatewayMethods } from './session-runtime.js';
+import { createSessionRuntimeControls, registerSessionRuntimeGatewayMethods, type SessionLiveTurnControlsHolder } from './session-runtime.js';
 import type { ConfigManager } from '../../config/manager.js';
 import type { RuntimeStore } from '../../runtime/store/index.js';
 import { FileSystemSkillStore, SkillService } from '../../skills/index.js';
@@ -189,6 +189,13 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
    * resolution the session-runtime verbs gate on (getState().session.id).
    */
   readonly runtimeStore: Pick<RuntimeStore, 'getState'>;
+  /**
+   * Optional: the live-turn controls holder an interactive consumer binds its
+   * Orchestrator into. When present, sessions.toolCalls.cancel and the
+   * sessions.queuedMessages.* verbs act on the bound runtime; absent (or
+   * nothing bound) those verbs refuse honestly (LIVE_TURN_CONTROLS_UNAVAILABLE).
+   */
+  readonly sessionLiveTurnControls?: SessionLiveTurnControlsHolder | undefined;
   /**
    * The following three are wired only by the full runtime-services composition
    * root; when any is absent (e.g. the terminal-shell embed) the proactive
@@ -539,7 +546,11 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   // services composition root, exactly like the skill/push groups above.
   registerSessionRuntimeGatewayMethods(
     catalog,
-    createSessionRuntimeControls({ config: deps.configManager, store: deps.runtimeStore }),
+    createSessionRuntimeControls({
+      config: deps.configManager,
+      store: deps.runtimeStore,
+      liveTurnHolder: deps.sessionLiveTurnControls,
+    }),
   );
 
   const pushService = new PushService({

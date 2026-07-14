@@ -87,6 +87,38 @@ export interface SessionContextUsage {
 }
 
 /**
+ * The live-turn control surface an interactive runtime host (an Orchestrator)
+ * binds so remote surfaces can cancel one in-flight tool call and manage the
+ * pending mid-turn message queue. Matches the Orchestrator's own public
+ * methods structurally, so binding is `holder.bind(orchestrator)`.
+ */
+export interface SessionLiveTurnControls {
+  cancelToolCall(callId: string): boolean;
+  listQueuedMessages(): ReadonlyArray<{ readonly id: string; readonly queuedAt: number; readonly text: string }>;
+  editQueuedMessage(id: string, text: string): boolean;
+  deleteQueuedMessage(id: string): boolean;
+}
+
+/**
+ * Settable holder an interactive consumer binds its live Orchestrator-backed
+ * controls into (the contextAccountingHolder pattern): the verbs read whatever
+ * is currently bound; unbinding (or a different instance being bound) is safe.
+ */
+export class SessionLiveTurnControlsHolder {
+  private controls: SessionLiveTurnControls | null = null;
+  bind(controls: SessionLiveTurnControls): void {
+    this.controls = controls;
+  }
+  /** Unbind only when the caller is still the bound instance (idempotent). */
+  unbind(controls: SessionLiveTurnControls): void {
+    if (this.controls === controls) this.controls = null;
+  }
+  get(): SessionLiveTurnControls | null {
+    return this.controls;
+  }
+}
+
+/**
  * The narrow control surface the session-runtime verbs need over the live
  * local runtime. `isLocalSession` decides whether a requested session id is
  * the runtime this daemon hosts (the only one whose mode/usage it can answer
@@ -97,6 +129,8 @@ export interface SessionRuntimeControls {
   getPermissionMode(): PermissionMode;
   setPermissionMode(mode: PermissionMode): void;
   getContextUsage(): SessionContextUsage;
+  /** The live-turn controls currently bound, or null when no interactive runtime is attached. */
+  getLiveTurnControls(): SessionLiveTurnControls | null;
 }
 
 function requireLocalSessionId(controls: SessionRuntimeControls, params: Record<string, unknown>): string {
@@ -133,6 +167,91 @@ export function createSessionPermissionModeSetHandler(controls: SessionRuntimeCo
       mode: toOperatorPermissionMode(nextMode),
       previousMode,
     };
+  };
+}
+
+/** Resolve the bound live-turn controls or refuse honestly (no fabricated success). */
+function requireLiveTurnControls(controls: SessionRuntimeControls): SessionLiveTurnControls {
+  const live = controls.getLiveTurnControls();
+  if (!live) {
+    throw new GatewayVerbError(
+      'No interactive runtime is bound on this daemon — live-turn controls are unavailable for this session.',
+      'LIVE_TURN_CONTROLS_UNAVAILABLE',
+      404,
+    );
+  }
+  return live;
+}
+
+export function createSessionToolCallCancelHandler(controls: SessionRuntimeControls): GatewayMethodHandler {
+  return (invocation) => {
+    const params = readInvocationParams(invocation);
+    const sessionId = requireLocalSessionId(controls, params);
+    const live = requireLiveTurnControls(controls);
+    const callId = typeof params.callId === 'string' ? params.callId.trim() : '';
+    if (!callId) {
+      throw new GatewayVerbError('callId is required', 'INVALID_ARGUMENT', 400);
+    }
+    if (!live.cancelToolCall(callId)) {
+      throw new GatewayVerbError(
+        `No tool call ${callId} is currently in flight (already settled, or never started).`,
+        'TOOL_CALL_NOT_RUNNING',
+        404,
+      );
+    }
+    return { sessionId, callId, cancelled: true };
+  };
+}
+
+export function createSessionQueuedMessagesListHandler(controls: SessionRuntimeControls): GatewayMethodHandler {
+  return (invocation) => {
+    const sessionId = requireLocalSessionId(controls, readInvocationParams(invocation));
+    const live = requireLiveTurnControls(controls);
+    return { sessionId, messages: live.listQueuedMessages() };
+  };
+}
+
+export function createSessionQueuedMessageEditHandler(controls: SessionRuntimeControls): GatewayMethodHandler {
+  return (invocation) => {
+    const params = readInvocationParams(invocation);
+    const sessionId = requireLocalSessionId(controls, params);
+    const live = requireLiveTurnControls(controls);
+    const messageId = typeof params.messageId === 'string' ? params.messageId.trim() : '';
+    const text = typeof params.text === 'string' ? params.text : '';
+    if (!messageId) {
+      throw new GatewayVerbError('messageId is required', 'INVALID_ARGUMENT', 400);
+    }
+    if (!text.trim()) {
+      throw new GatewayVerbError('text must be non-empty', 'INVALID_ARGUMENT', 400);
+    }
+    if (!live.editQueuedMessage(messageId, text)) {
+      throw new GatewayVerbError(
+        `Message ${messageId} is not in the pending queue (already delivered — delivered messages are immutable).`,
+        'MESSAGE_NOT_QUEUED',
+        404,
+      );
+    }
+    return { sessionId, id: messageId, text };
+  };
+}
+
+export function createSessionQueuedMessageDeleteHandler(controls: SessionRuntimeControls): GatewayMethodHandler {
+  return (invocation) => {
+    const params = readInvocationParams(invocation);
+    const sessionId = requireLocalSessionId(controls, params);
+    const live = requireLiveTurnControls(controls);
+    const messageId = typeof params.messageId === 'string' ? params.messageId.trim() : '';
+    if (!messageId) {
+      throw new GatewayVerbError('messageId is required', 'INVALID_ARGUMENT', 400);
+    }
+    if (!live.deleteQueuedMessage(messageId)) {
+      throw new GatewayVerbError(
+        `Message ${messageId} is not in the pending queue (already delivered — delivered messages are immutable).`,
+        'MESSAGE_NOT_QUEUED',
+        404,
+      );
+    }
+    return { sessionId, id: messageId, deleted: true };
   };
 }
 
@@ -180,12 +299,17 @@ export interface SessionRuntimeStateReader {
 export function createSessionRuntimeControls(deps: {
   readonly config: PermissionModeConfig;
   readonly store: SessionRuntimeStateReader;
+  /** Live-turn controls holder an interactive consumer binds; absent = no live-turn verbs. */
+  readonly liveTurnHolder?: SessionLiveTurnControlsHolder | undefined;
 }): SessionRuntimeControls {
   const LOCAL_RUNTIME_ALIAS = 'runtime';
   return {
     isLocalSession(sessionId: string): boolean {
       const localId = deps.store.getState().session.id;
       return sessionId === LOCAL_RUNTIME_ALIAS || (localId.length > 0 && sessionId === localId);
+    },
+    getLiveTurnControls(): SessionLiveTurnControls | null {
+      return deps.liveTurnHolder?.get() ?? null;
     },
     getPermissionMode(): PermissionMode {
       return deps.config.get('permissions.mode');
@@ -225,4 +349,8 @@ export function registerSessionRuntimeGatewayMethods(
   attach('sessions.permissionMode.get', createSessionPermissionModeGetHandler(controls));
   attach('sessions.permissionMode.set', createSessionPermissionModeSetHandler(controls));
   attach('sessions.contextUsage.get', createSessionContextUsageGetHandler(controls));
+  attach('sessions.toolCalls.cancel', createSessionToolCallCancelHandler(controls));
+  attach('sessions.queuedMessages.list', createSessionQueuedMessagesListHandler(controls));
+  attach('sessions.queuedMessages.edit', createSessionQueuedMessageEditHandler(controls));
+  attach('sessions.queuedMessages.delete', createSessionQueuedMessageDeleteHandler(controls));
 }

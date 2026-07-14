@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.8.0
- * Methods: 403 total, 353 REST-routed, 50 ws-only invoke.
+ * Methods: 407 total, 357 REST-routed, 50 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -1264,6 +1264,18 @@ export const WEBUI_METHOD_ROUTES: Readonly<Record<string, WebuiRouteDefinition>>
     "method": "POST",
     "path": "/api/sessions/{sessionId}/permission-mode"
   },
+  "sessions.queuedMessages.delete": {
+    "method": "DELETE",
+    "path": "/api/sessions/{sessionId}/queued-messages/{messageId}"
+  },
+  "sessions.queuedMessages.edit": {
+    "method": "POST",
+    "path": "/api/sessions/{sessionId}/queued-messages/{messageId}"
+  },
+  "sessions.queuedMessages.list": {
+    "method": "GET",
+    "path": "/api/sessions/{sessionId}/queued-messages"
+  },
   "sessions.register": {
     "method": "POST",
     "path": "/api/sessions/register"
@@ -1275,6 +1287,10 @@ export const WEBUI_METHOD_ROUTES: Readonly<Record<string, WebuiRouteDefinition>>
   "sessions.steer": {
     "method": "POST",
     "path": "/api/sessions/{sessionId}/steer"
+  },
+  "sessions.toolCalls.cancel": {
+    "method": "POST",
+    "path": "/api/sessions/{sessionId}/tool-calls/{callId}/cancel"
   },
   "security.settings": {
     "method": "GET",
@@ -1864,10 +1880,14 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "sessions.messages.list": "rest",
   "sessions.permissionMode.get": "rest",
   "sessions.permissionMode.set": "rest",
+  "sessions.queuedMessages.delete": "rest",
+  "sessions.queuedMessages.edit": "rest",
+  "sessions.queuedMessages.list": "rest",
   "sessions.register": "rest",
   "sessions.reopen": "rest",
   "sessions.search": "ws-invoke",
   "sessions.steer": "rest",
+  "sessions.toolCalls.cancel": "rest",
   "security.settings": "rest",
   "settings.snapshot": "rest",
   "skills.create": "rest",
@@ -17417,6 +17437,44 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
       "previousMode": "plan"
     }
   },
+  "sessions.queuedMessages.delete": {
+    "input": {
+      "sessionId": "sample",
+      "messageId": "sample"
+    },
+    "output": {
+      "sessionId": "sample",
+      "id": "sample",
+      "deleted": false
+    }
+  },
+  "sessions.queuedMessages.edit": {
+    "input": {
+      "sessionId": "sample",
+      "messageId": "sample",
+      "text": "sample"
+    },
+    "output": {
+      "sessionId": "sample",
+      "id": "sample",
+      "text": "sample"
+    }
+  },
+  "sessions.queuedMessages.list": {
+    "input": {
+      "sessionId": "sample"
+    },
+    "output": {
+      "sessionId": "sample",
+      "messages": [
+        {
+          "id": "sample",
+          "queuedAt": 0,
+          "text": "sample"
+        }
+      ]
+    }
+  },
   "sessions.register": {
     "input": {
       "sessionId": "sample",
@@ -17701,6 +17759,17 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
       },
       "mode": "spawn",
       "agentId": "sample"
+    }
+  },
+  "sessions.toolCalls.cancel": {
+    "input": {
+      "sessionId": "sample",
+      "callId": "sample"
+    },
+    "output": {
+      "sessionId": "sample",
+      "callId": "sample",
+      "cancelled": false
     }
   },
   "security.settings": {

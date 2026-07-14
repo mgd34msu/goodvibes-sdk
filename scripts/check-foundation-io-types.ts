@@ -51,6 +51,7 @@ import { builtinGatewayControlAutomationMethodDescriptors } from '../packages/sd
 import { builtinGatewayAcpMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-acp.ts';
 import { builtinGatewayPermissionRuleMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-permission-rules.ts';
 import { builtinGatewayControlCoreMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-core.ts';
+import { builtinGatewayControlLiveTurnMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-live-turn.ts';
 import { builtinGatewayRuntimeMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-runtime.ts';
 import {
   EMPTY_OBJECT_SCHEMA,
@@ -215,6 +216,7 @@ const FOUNDATION_TYPES_PATH = resolve(
 // the same object the daemon registers, with zero mirroring.
 const CATALOG_DESCRIPTORS = [
   ...builtinGatewayControlCoreMethodDescriptors,
+  ...builtinGatewayControlLiveTurnMethodDescriptors,
   ...builtinGatewayControlCompanionMethodDescriptors,
   ...builtinGatewayPermissionRuleMethodDescriptors,
   ...builtinGatewayRuntimeMethodDescriptors,
@@ -348,6 +350,11 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   { methodId: 'permissions.rules.delete', ...descriptorSchemas('permissions.rules.delete') },
   { methodId: 'sessions.permissionMode.set', ...descriptorSchemas('sessions.permissionMode.set') },
   { methodId: 'sessions.contextUsage.get', ...descriptorSchemas('sessions.contextUsage.get') },
+  // Live-turn verbs: per-call cancel + queued mid-turn message management:
+  { methodId: 'sessions.toolCalls.cancel', ...descriptorSchemas('sessions.toolCalls.cancel') },
+  { methodId: 'sessions.queuedMessages.list', ...descriptorSchemas('sessions.queuedMessages.list') },
+  { methodId: 'sessions.queuedMessages.edit', ...descriptorSchemas('sessions.queuedMessages.edit') },
+  { methodId: 'sessions.queuedMessages.delete', ...descriptorSchemas('sessions.queuedMessages.delete') },
   // Delete-honesty verbs (landed after this check's first cut; covered
   // per the follow-up noted in docs/decisions/2026-07-06-foundation-io-types-hand-authored.md):
   { methodId: 'sessions.delete', ...descriptorSchemas('sessions.delete') },

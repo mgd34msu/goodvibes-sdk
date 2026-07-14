@@ -79307,6 +79307,190 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "sessions.queuedMessages.delete",
+        "title": "Delete a Queued Mid-Turn Message",
+        "description": "Remove a message still waiting in the mid-turn queue so it is never delivered. A message already delivered to the model cannot be removed — deleting it is a 404 MESSAGE_NOT_QUEUED. Only the daemon's live local runtime session is controllable; any other session id is a 404 SESSION_NOT_LOCAL.",
+        "category": "sessions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:sessions"
+        ],
+        "http": {
+          "method": "DELETE",
+          "path": "/api/sessions/{sessionId}/queued-messages/{messageId}"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "messageId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId",
+            "messageId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            },
+            "deleted": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "sessionId",
+            "id",
+            "deleted"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "sessions.queuedMessages.edit",
+        "title": "Edit a Queued Mid-Turn Message",
+        "description": "Replace the text of a message still waiting in the mid-turn queue. A message already delivered to the model is immutable — editing it is a 404 MESSAGE_NOT_QUEUED. Editing replaces any multimodal content with the new plain text. Only the daemon's live local runtime session is controllable; any other session id is a 404 SESSION_NOT_LOCAL.",
+        "category": "sessions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:sessions"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/sessions/{sessionId}/queued-messages/{messageId}"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "messageId": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId",
+            "messageId",
+            "text"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId",
+            "id",
+            "text"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "sessions.queuedMessages.list",
+        "title": "List Queued Mid-Turn Messages",
+        "description": "List the messages queued behind the current turn (submitted while the model was thinking), in delivery order. Queued messages remain editable and deletable until they are delivered; a delivered message no longer appears here. Only the daemon's live local runtime session is resolvable; any other session id is a 404 SESSION_NOT_LOCAL.",
+        "category": "sessions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:sessions"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/sessions/{sessionId}/queued-messages"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "messages": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "queuedAt": {
+                    "type": "number"
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "queuedAt",
+                  "text"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "sessionId",
+            "messages"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "sessions.register",
         "title": "Register Shared Session",
         "description": "Idempotently register (or heartbeat) a session keyed on a caller-supplied id, carrying its kind, project, and participant identity. Re-calling with the same id advances the participant lastSeenAt (heartbeat). Registering against a CLOSED session does NOT silently reopen it — the heartbeat is recorded and the still-closed record is returned with reopened=false and conflict={status:closed}; pass reopen=true to reopen. A titled session is never renamed by the heartbeat. An unknown kind is rejected (400), not coerced. Prefer this over sessions.create for external runtimes that own their session id.",
@@ -80591,6 +80775,62 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "input",
             "mode",
             "agentId"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "sessions.toolCalls.cancel",
+        "title": "Cancel One In-Flight Tool Call",
+        "description": "Cancel a single running tool call by its callId, leaving the turn and any other running calls untouched. The cancelled call settles as a structured \"cancelled by user\" tool result the model adapts to in the same turn — distinct from a whole-turn interrupt. Only the daemon's live local runtime session is controllable; any other session id is a 404 SESSION_NOT_LOCAL, and an unknown or already-settled callId is a 404 TOOL_CALL_NOT_RUNNING.",
+        "category": "sessions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:sessions"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/sessions/{sessionId}/tool-calls/{callId}/cancel"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "callId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId",
+            "callId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "callId": {
+              "type": "string"
+            },
+            "cancelled": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "sessionId",
+            "callId",
+            "cancelled"
           ],
           "additionalProperties": false
         },
@@ -90194,10 +90434,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 403,
-      "typedInputs": 403,
+      "methods": 407,
+      "typedInputs": 407,
       "genericInputs": 0,
-      "typedOutputs": 403,
+      "typedOutputs": 407,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -90206,8 +90446,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       "withWireEvents": 32
     },
     "validationCoverage": {
-      "methods": 403,
-      "validated": 396,
+      "methods": 407,
+      "validated": 400,
       "skippedGeneric": 0,
       "skippedUntyped": 7
     }

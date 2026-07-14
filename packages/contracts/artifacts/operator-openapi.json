@@ -3,7 +3,7 @@
   "info": {
     "title": "GoodVibes Operator API",
     "version": "1.8.0",
-    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 403 cataloged methods: 353 with dedicated REST bindings, 50 reachable only through the generic invoke endpoint. 97 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
+    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 407 cataloged methods: 357 with dedicated REST bindings, 50 reachable only through the generic invoke endpoint. 97 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
   },
   "servers": [
     {
@@ -78948,6 +78948,246 @@
         }
       }
     },
+    "/api/sessions/{sessionId}/queued-messages/{messageId}": {
+      "delete": {
+        "operationId": "sessions.queuedMessages.delete",
+        "summary": "Delete a Queued Mid-Turn Message",
+        "description": "Remove a message still waiting in the mid-turn queue so it is never delivered. A message already delivered to the model cannot be removed — deleting it is a 404 MESSAGE_NOT_QUEUED. Only the daemon's live local runtime session is controllable; any other session id is a 404 SESSION_NOT_LOCAL.",
+        "tags": [
+          "sessions"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sessionId": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "deleted": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "sessionId",
+                    "id",
+                    "deleted"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "write:sessions"
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "messageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "post": {
+        "operationId": "sessions.queuedMessages.edit",
+        "summary": "Edit a Queued Mid-Turn Message",
+        "description": "Replace the text of a message still waiting in the mid-turn queue. A message already delivered to the model is immutable — editing it is a 404 MESSAGE_NOT_QUEUED. Editing replaces any multimodal content with the new plain text. Only the daemon's live local runtime session is controllable; any other session id is a 404 SESSION_NOT_LOCAL.",
+        "tags": [
+          "sessions"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sessionId": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "sessionId",
+                    "id",
+                    "text"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "write:sessions"
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "messageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sessionId": {
+                    "type": "string"
+                  },
+                  "messageId": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "sessionId",
+                  "messageId",
+                  "text"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sessions/{sessionId}/queued-messages": {
+      "get": {
+        "operationId": "sessions.queuedMessages.list",
+        "summary": "List Queued Mid-Turn Messages",
+        "description": "List the messages queued behind the current turn (submitted while the model was thinking), in delivery order. Queued messages remain editable and deletable until they are delivered; a delivered message no longer appears here. Only the daemon's live local runtime session is resolvable; any other session id is a 404 SESSION_NOT_LOCAL.",
+        "tags": [
+          "sessions"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sessionId": {
+                      "type": "string"
+                    },
+                    "messages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "queuedAt": {
+                            "type": "number"
+                          },
+                          "text": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "queuedAt",
+                          "text"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "sessionId",
+                    "messages"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "read:sessions"
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
     "/api/sessions/register": {
       "post": {
         "operationId": "sessions.register",
@@ -80082,6 +80322,98 @@
                   "body"
                 ],
                 "additionalProperties": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sessions/{sessionId}/tool-calls/{callId}/cancel": {
+      "post": {
+        "operationId": "sessions.toolCalls.cancel",
+        "summary": "Cancel One In-Flight Tool Call",
+        "description": "Cancel a single running tool call by its callId, leaving the turn and any other running calls untouched. The cancelled call settles as a structured \"cancelled by user\" tool result the model adapts to in the same turn — distinct from a whole-turn interrupt. Only the daemon's live local runtime session is controllable; any other session id is a 404 SESSION_NOT_LOCAL, and an unknown or already-settled callId is a 404 TOOL_CALL_NOT_RUNNING.",
+        "tags": [
+          "sessions"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sessionId": {
+                      "type": "string"
+                    },
+                    "callId": {
+                      "type": "string"
+                    },
+                    "cancelled": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "sessionId",
+                    "callId",
+                    "cancelled"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "write:sessions"
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "callId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sessionId": {
+                    "type": "string"
+                  },
+                  "callId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "sessionId",
+                  "callId"
+                ],
+                "additionalProperties": false
               }
             }
           }
@@ -92536,6 +92868,33 @@
       "outputSchemaCoverage": "typed"
     },
     {
+      "id": "sessions.queuedMessages.delete",
+      "category": "sessions",
+      "access": "authenticated",
+      "rest": "DELETE /api/sessions/{sessionId}/queued-messages/{messageId}",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "sessions.queuedMessages.edit",
+      "category": "sessions",
+      "access": "authenticated",
+      "rest": "POST /api/sessions/{sessionId}/queued-messages/{messageId}",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "sessions.queuedMessages.list",
+      "category": "sessions",
+      "access": "authenticated",
+      "rest": "GET /api/sessions/{sessionId}/queued-messages",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
       "id": "sessions.register",
       "category": "sessions",
       "access": "authenticated",
@@ -92567,6 +92926,15 @@
       "category": "sessions",
       "access": "authenticated",
       "rest": "POST /api/sessions/{sessionId}/steer",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "sessions.toolCalls.cancel",
+      "category": "sessions",
+      "access": "authenticated",
+      "rest": "POST /api/sessions/{sessionId}/tool-calls/{callId}/cancel",
       "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"

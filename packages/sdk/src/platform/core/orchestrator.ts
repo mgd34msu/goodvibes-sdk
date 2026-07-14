@@ -21,6 +21,7 @@ import {
   type ConversationFollowUpItem,
 } from './conversation-follow-ups.js';
 import { OrchestratorFollowUpRuntime } from './orchestrator-follow-up-runtime.js';
+import { ToolCallAbortRegistry, listQueuedMessages, editQueuedMessage, deleteQueuedMessage } from './orchestrator-live-turn.js';
 import { AgentManager } from '../tools/agent/index.js';
 import { WrfcController } from '../agents/wrfc-controller.js';
 import { randomUUID, createHash } from 'node:crypto';
@@ -88,24 +89,10 @@ export interface OrchestratorUserInputOptions {
 }
 
 /**
- * Options for constructing an {@link Orchestrator}.
- *
- * @example
- * ```ts
- * const orchestrator = new Orchestrator({
- *   conversation,
- *   getViewportHeight: () => window.innerHeight,
- *   scrollToEnd: (vHeight) => scrollContainer.scrollTo({ top: vHeight }),
- *   toolRegistry,
- *   permissionManager,
- *   getSystemPrompt: () => mySystemPrompt,
- *   hookDispatcher,
- *   flagManager,
- *   requestRender: () => renderFn(),
- *   runtimeBus,
- *   services: { agentManager, wrfcController },
- * });
- * ```
+ * Options for constructing an {@link Orchestrator}: the conversation, viewport
+ * callbacks, tool registry, permission manager, system-prompt getter, hook
+ * dispatcher, flag manager, render callback, runtime bus, and services
+ * (agentManager, wrfcController).
  */
 export interface OrchestratorOptions {
   /** Manages the conversation message history. */
@@ -173,10 +160,14 @@ export class Orchestrator {
   public streamingInputTokens = 0;
   /** Output tokens received so far in the current streaming turn (one per delta chunk). */
   public streamingOutputTokens = 0;
-  public messageQueue: { text: string; content?: ContentPart[] | undefined; options?: OrchestratorUserInputOptions | undefined }[] = [];
+  public messageQueue: { id: string; queuedAt: number; text: string; content?: ContentPart[] | undefined; options?: OrchestratorUserInputOptions | undefined }[] = [];
 
   private animInterval: ReturnType<typeof setInterval> | null = null;
   private abortController: AbortController | null = null;
+  /** Per-tool-call abort registry (per-call cancel; see orchestrator-live-turn.ts). */
+  private readonly toolCallAborts = new ToolCallAbortRegistry();
+  /** Monotonic id source for queued-message ids. */
+  private queuedMessageSeq = 0;
   private autoSpawnTimeout: ReturnType<typeof setTimeout> | null = null;
   private acpManager: AcpManager | null = null;
   /** Message count at the start of a turn, used to rollback on cancel. */
@@ -272,26 +263,7 @@ export class Orchestrator {
   private readonly passiveKnowledgeInjectionBudgetTokens: number | undefined;
   private readonly passiveKnowledgeInjectionRelevanceFloor: number | undefined;
 
-  /**
-   * Construct an Orchestrator using a named-options object.
-   *
-   * @example
-   * ```ts
-   * const orchestrator = new Orchestrator({
-   *   conversation,
-   *   getViewportHeight: () => terminalRows,
-   *   scrollToEnd: (vHeight) => ui.scrollToEnd(vHeight),
-   *   toolRegistry,
-   *   permissionManager,
-   *   getSystemPrompt: () => systemPrompt,
-   *   hookDispatcher,
-   *   flagManager,
-   *   requestRender: () => render(),
-   *   runtimeBus,
-   *   services: { agentManager, wrfcController },
-   * });
-   * ```
-   */
+  /** Construct an Orchestrator using a named-options object ({@link OrchestratorOptions}). */
   constructor(options: OrchestratorOptions) {
     const {
       conversation,
@@ -357,6 +329,10 @@ export class Orchestrator {
       ...this.coreServices,
       ...services,
     };
+    // Bind this orchestrator as the daemon's live-turn control target so remote
+    // surfaces can cancel one in-flight tool call and manage the queued-message
+    // list over the operator wire. dispose() unbinds.
+    this.coreServices.sessionLiveTurnControls?.bind(this);
   }
 
   /**
@@ -453,9 +429,46 @@ export class Orchestrator {
     this.followUpRuntime.enqueue(item);
   }
 
+  /**
+   * Cancel ONE in-flight tool call by its callId, leaving the turn and any
+   * other running calls untouched: the cancelled call settles as a structured
+   * "cancelled by user" result the model adapts to in the same turn.
+   */
+  public cancelToolCall(callId: string): boolean {
+    return this.toolCallAborts.cancel(callId);
+  }
+
+  /** The callIds of tool calls currently in flight (cancellable via cancelToolCall). */
+  public listRunningToolCalls(): readonly string[] {
+    return this.toolCallAborts.list();
+  }
+
+  /** The pending (undelivered, still editable) mid-turn messages, in delivery order. */
+  public listQueuedMessages(): ReadonlyArray<{ id: string; queuedAt: number; text: string }> {
+    return listQueuedMessages(this.messageQueue);
+  }
+
+  /** Replace a still-queued message's text; false once delivered (immutable). */
+  public editQueuedMessage(id: string, text: string): boolean {
+    const edited = editQueuedMessage(this.messageQueue, id, text);
+    if (edited) this.requestRender();
+    return edited;
+  }
+
+  /** Remove a still-queued message before delivery; false once delivered. */
+  public deleteQueuedMessage(id: string): boolean {
+    const deleted = deleteQueuedMessage(this.messageQueue, id);
+    if (deleted) this.requestRender();
+    return deleted;
+  }
+
   /** Abort the current in-flight LLM request, if any. */
   public abort(): void {
     this.abortController?.abort();
+    // A whole-turn abort also cancels every in-flight tool call, so cooperative
+    // tools (exec children, fetches) stop instead of running to completion.
+    // (Optional-chained: bare-prototype test fixtures skip field initializers.)
+    this.toolCallAborts?.abortAll();
     if (this.autoSpawnTimeout !== null) {
       clearTimeout(this.autoSpawnTimeout);
       this.autoSpawnTimeout = null;
@@ -479,6 +492,7 @@ export class Orchestrator {
    * construct transient orchestrators against a shared RuntimeEventBus.
    */
   public dispose(): void {
+    this.coreServices.sessionLiveTurnControls?.unbind(this);
     this.abort();
     if (this.animInterval) {
       clearInterval(this.animInterval);
@@ -509,7 +523,8 @@ export class Orchestrator {
     if (!text.trim() && !content?.length) return;
 
     if (this.isThinking || this.isCompacting) {
-      this.messageQueue.push({ text, content, options });
+      this.queuedMessageSeq += 1;
+      this.messageQueue.push({ id: `qm-${this.queuedMessageSeq}`, queuedAt: Date.now(), text, content, options });
       this.requestRender();
       return;
     }
@@ -917,17 +932,9 @@ export class Orchestrator {
   }
 
   /**
-   * Pre-flight context window check.
-   *
-   * Estimates the token count of the pending request and compares it against
-   * the model's context window from the catalog. If the request exceeds the
-   * context window:
-   *   1. If auto-compact is enabled (threshold configured), compact first.
-   *   2. If still exceeds after compact, emit a clear error message with
-   *      specific token counts and suggest alternatives.
-   *
-   * @returns 'ok' (within context), 'compacted' (compacted and now OK), or
-   *          'error' (still exceeds even after compact, or compact disabled).
+   * Pre-flight context window check: estimate the pending request's tokens vs
+   * the model's window; over-limit compacts first (when enabled), then errors
+   * with specific counts. Returns 'ok' | 'compacted' | 'error'.
    */
   private async checkContextWindowPreflight(
     turnId: string,
@@ -994,16 +1001,10 @@ export class Orchestrator {
   }
 
   /**
-   * Returns `true` when per-turn passive knowledge injection is
-   * active for this session. Shares the SAME `agent-passive-knowledge-injection` flag as
-   * the agent path (agents/orchestrator-runner.ts) rather than a sibling main-session
-   * flag — the flag's own description already promises "the EVOLVING main-session
-   * conversation" coverage (see runtime/feature-flags/flags.ts), so wiring the main loop
-   * under the same id completes that promise instead of duplicating a second toggle for
-   * what is, from an operator's perspective, one feature.
-   *
-   * Defaults to `true` (flag `defaultState: 'enabled'`) when no flag manager has been
-   * wired in, matching {@link isReconciliationEnabled}'s convention.
+   * True when per-turn passive knowledge injection is active. Shares the SAME
+   * `agent-passive-knowledge-injection` flag as the agent path (one operator
+   * feature, one toggle). Defaults to true with no flag manager wired,
+   * matching {@link isReconciliationEnabled}'s convention.
    */
   private isPassiveKnowledgeInjectionEnabled(): boolean {
     if (this.flagManager === null) return true;
@@ -1046,18 +1047,9 @@ export class Orchestrator {
   }
 
   /**
-   * Reconcile unresolved tool calls at turn end.
-   *
-   * Called when the turn loop exits while `_pendingToolCalls` is non-empty,
-   * or when a malformed provider response is detected. Injects synthetic error
-   * results for every unresolved call, adds a system message, and emits a
-   * typed `TOOL_RECONCILED` runtime event.
-   *
-   * When the capability gate is off this method logs a warning and returns
-   * without taking action.
-   *
-   * @param resolvedResults - Tool results already collected this iteration.
-   * @param reason          - Why reconciliation was triggered.
+   * Reconcile unresolved tool calls at turn end (non-empty _pendingToolCalls
+   * or malformed provider response): inject synthetic error results, add a
+   * system message, emit TOOL_RECONCILED. Gate-off logs and no-ops.
    */
   private reconcileUnresolvedToolCalls(
     resolvedResults: ToolResult[],
@@ -1085,6 +1077,7 @@ export class Orchestrator {
       onToolExecuted: this.coreServices.codeIndexReindexScheduler
         ? (toolName, args, success) => this.coreServices.codeIndexReindexScheduler!.onToolExecuted(toolName, args, success)
         : undefined,
+      toolCallSignals: this.toolCallAborts,
     }, turnId, calls);
     // Per-model edit-failure + exec-expectation-miss telemetry (measurement only;
     // must never disturb the tool-execution path, so model resolution is defensive).
