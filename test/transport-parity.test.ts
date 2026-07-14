@@ -110,6 +110,11 @@ const DIRECT_TRANSPORT_COVERAGE: Record<string, string> = {
   'fleet.attempts.list': 'http-only',
   'fleet.attempts.pick': 'http-only',
   'fleet.attempts.judge': 'http-only',
+  // fleet.conflicts.* (merge-conflict rows + the one-action resolution): same
+  // in-process story — the TUI reads conflicts off its direct engine reference;
+  // the wire verbs exist for remote consumers.
+  'fleet.conflicts.list': 'http-only',
+  'fleet.conflicts.resolve': 'http-only',
 };
 
 interface ParityViolation { readonly id: string; readonly reason: string }
