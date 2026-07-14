@@ -4,7 +4,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
-## [Unreleased]
+## [1.9.0] - 2026-07-14
 
 ### Added
 
