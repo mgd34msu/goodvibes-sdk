@@ -89,6 +89,8 @@ type AgentOrchestratorToolDeps = {
   readonly codeIndex?: import('./turn-knowledge-injection.js').TurnCodeIndexSource | undefined;
   readonly isCodeInjectionSettingEnabled?: (() => boolean) | undefined;
   readonly codeIndexReindexScheduler?: Pick<import('../state/code-index-reindex.js').CodeIndexReindexScheduler, 'onToolExecuted'> | undefined;
+  /** Additional per-tool-execution tap (e.g. CI auto-watch minting); composed with the reindex scheduler, never blocking. */
+  readonly toolExecutionObserver?: ((toolName: string, args: Record<string, unknown>, success: boolean) => void) | undefined;
   readonly sessionOrchestration: import('../sessions/orchestration/index.js').CrossSessionTaskRegistry;
   readonly archetypeLoader?: import('./archetypes.js').ArchetypeLoader | undefined;
   readonly configManager?: ConfigManager | undefined;
@@ -625,8 +627,11 @@ export class AgentOrchestrator {
       memoryRegistry: this.toolDeps?.memoryRegistry,
       codeIndex: this.toolDeps?.codeIndex,
       isCodeInjectionSettingEnabled: this.toolDeps?.isCodeInjectionSettingEnabled,
-      onToolExecuted: this.toolDeps?.codeIndexReindexScheduler
-        ? (toolName, args, success) => this.toolDeps!.codeIndexReindexScheduler!.onToolExecuted(toolName, args, success)
+      onToolExecuted: (this.toolDeps?.codeIndexReindexScheduler || this.toolDeps?.toolExecutionObserver)
+        ? (toolName, args, success) => {
+          this.toolDeps?.codeIndexReindexScheduler?.onToolExecuted(toolName, args, success);
+          this.toolDeps?.toolExecutionObserver?.(toolName, args, success);
+        }
         : undefined,
       archetypeLoader: this.toolDeps?.archetypeLoader,
       providerOptimizer: this.toolDeps?.providerOptimizer,

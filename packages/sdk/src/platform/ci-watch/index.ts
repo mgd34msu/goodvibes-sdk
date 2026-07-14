@@ -19,6 +19,15 @@ export {
   type CiWatchPollTarget,
 } from './poller.js';
 export { CiWatchStore } from './subscriptions.js';
+export {
+  CiWatchAutoMinter,
+  DEFAULT_AUTO_WATCH_CHANNEL,
+  detectCiPushInCommand,
+  execCommandsFromArgs,
+  parseGitHubSlug,
+  type CiWatchAutoMintDeps,
+  type DetectedCiPush,
+} from './auto-watch.js';
 export { createGhCliCiSource, type GhCliCiSourceOptions } from './gh-source.js';
 export { deriveCiReport, deriveOverall, failingJobNames, renderCiReportLines } from './report.js';
 export {

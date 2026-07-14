@@ -58,7 +58,7 @@ import type { AutomationManager } from '../../automation/index.js';
 import type { ChannelDeliveryRouter } from '../../channels/delivery-router.js';
 import type { ChannelDeliveryTarget } from '../../channels/delivery/types.js';
 import { registerCiGatewayMethods } from './ci.js';
-import { CiWatchService, CiWatchStore, createGhCliCiSource, registerCiWatchPolling, type CiPollingHost, type FixSessionBrief, type FixSessionStartOutcome } from '../../ci-watch/index.js';
+import { CiWatchAutoMinter, CiWatchService, CiWatchStore, createGhCliCiSource, registerCiWatchPolling, type CiPollingHost, type FixSessionBrief, type FixSessionStartOutcome } from '../../ci-watch/index.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { randomUUID } from 'node:crypto';
 import type { PermissionPromptDecision, PermissionPromptRequest } from '../../permissions/prompt.js';
@@ -224,6 +224,13 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
    * cataloged-but-unhandled, a graceful degrade for embeds with no worktree root.
    */
   readonly workingDirectory?: string | undefined;
+  /**
+   * Optional: receives the CI auto-watch tool-execution observer once the
+   * ci-watch service exists, so the composition root can hang it on the shared
+   * tool-execution seam — work pushed through the platform then mints its own
+   * CI watch with no ceremony. Absent → only the scripted ci.watches.create.
+   */
+  readonly onCiAutoWatch?: ((observer: (toolName: string, args: Record<string, unknown>, success: boolean) => void) => void) | undefined;
   /**
    * Optional: a daemon-side conversation store port for the conversation half of
    * the unified rewind (rewind.plan/apply with scope 'conversation' or 'both').
@@ -436,6 +443,13 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
       : {}),
   });
   registerCiGatewayMethods(catalog, ciWatchService);
+  // Self-minting at the push seam: a successful exec containing `git push` /
+  // `gh pr create` mints a watch for the pushed branch (delivery defaults to
+  // the operator web surface; the watch retires itself after its verdict).
+  if (deps.onCiAutoWatch && deps.workingDirectory) {
+    const autoMinter = new CiWatchAutoMinter({ service: ciWatchService, workingDirectory: deps.workingDirectory });
+    deps.onCiAutoWatch((toolName, args, success) => autoMinter.onToolExecuted(toolName, args, success));
+  }
   // The daemon polls registered watches on the watchers.ciPollIntervalMs
   // cadence (15s floor, sequential passes, overlap-guarded) via the existing
   // watcher-registry polling machinery — a standing watch no longer stands

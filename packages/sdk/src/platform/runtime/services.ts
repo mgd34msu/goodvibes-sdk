@@ -740,6 +740,9 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const onSandboxedRun = createSandboxContainmentAnnouncer(announcementStore, (announcement) => {
     logger.info(announcement.text, { announcement: announcement.id });
   });
+  // Late-bound CI auto-watch observer: registerGatewayVerbGroups fills it in
+  // below once the ci-watch service exists; until then it is a no-op.
+  let ciAutoWatchObserver: ((toolName: string, args: Record<string, unknown>, success: boolean) => void) | null = null;
   agentOrchestrator.setDependencies({
     sandboxEscalationHandler,
     execPromptAnswerHandler,
@@ -763,6 +766,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     codeIndex: codeIndexStore,
     isCodeInjectionSettingEnabled: codeInjectionSettingEnabled,
     codeIndexReindexScheduler,
+    toolExecutionObserver: (toolName, args, success) => ciAutoWatchObserver?.(toolName, args, success),
     archetypeLoader,
     configManager,
     providerRegistry,
@@ -830,7 +834,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   };
   const stepUpService = new StepUpService({ secrets: secretsManager });
   const sessionLiveTurnControls = new SessionLiveTurnControlsHolder();
-  registerGatewayVerbGroups(gatewayMethods, { processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, requestApproval: (input) => approvalBroker.requestApproval(input), stampFixSessionOnApproval: (offerCallId, outcome) => approvalBroker.stampFixSession(offerCallId, outcome), watcherRegistry, userPermissionRuleStore, shellPaths, runtimeBus: options.runtimeBus, sessionPresence: { isAttached }, configManager, runtimeStore: options.runtimeStore, channelDeliveryRouter, providerRegistry, automationManager, sessionLister: sessionBroker, sessionIntake: sessionBroker, workingDirectory, attemptsController: orchestrationEngine, stepUpService, memoryRegistry, pairingTokens, acpHost, sessionLiveTurnControls }); // see routes/register-gateway-verb-groups.ts
+  registerGatewayVerbGroups(gatewayMethods, { processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, requestApproval: (input) => approvalBroker.requestApproval(input), stampFixSessionOnApproval: (offerCallId, outcome) => approvalBroker.stampFixSession(offerCallId, outcome), watcherRegistry, userPermissionRuleStore, shellPaths, runtimeBus: options.runtimeBus, sessionPresence: { isAttached }, configManager, runtimeStore: options.runtimeStore, channelDeliveryRouter, providerRegistry, automationManager, sessionLister: sessionBroker, sessionIntake: sessionBroker, workingDirectory, attemptsController: orchestrationEngine, stepUpService, memoryRegistry, pairingTokens, acpHost, sessionLiveTurnControls, onCiAutoWatch: (observer) => { ciAutoWatchObserver = observer; } }); // see routes/register-gateway-verb-groups.ts
   return {
     workingDirectory,
     homeDirectory,
