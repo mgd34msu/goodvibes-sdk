@@ -140,6 +140,12 @@ export interface AgentRecord {
     reasoningSummaryCount?: number | undefined;
   };
   error?: string | undefined;
+  /** Per-spawn turn-budget override; replaces the agents.maxTurns default for this run, capped by agents.maxTurnsCap. */
+  maxTurns?: number | undefined;
+  /** The applied turn budget + its source, stamped on a turn-budget-exhaustion failure so the outcome can report it. */
+  turnBudget?: { limit: number; source: 'default' | 'spawn-override' | 'policy-bound' } | undefined;
+  /** Machine-readable failure reason set at the source (e.g. 'max_turns'), not derived from prose. */
+  failureReason?: string | undefined;
   fullOutput?: string | undefined;
   streamingContent?: string | undefined;
   wrfcId?: string | undefined;

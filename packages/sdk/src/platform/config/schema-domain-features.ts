@@ -81,6 +81,10 @@ export interface AgentsConfig {
   /** Estimate token usage before each provider call and compact past the threshold. */
   contextWindowGuard: boolean;
   contextCompactThreshold: number;
+  /** Default per-agent turn budget (hard cap on turns before a run is a max-turns failure). */
+  maxTurns: number;
+  /** Upper bound a per-spawn maxTurns override cannot exceed — the policy cap always wins. */
+  maxTurnsCap: number;
 }
 
 declare module './schema-types.js' {
@@ -141,6 +145,8 @@ export const featureConfigDefaults: {
     },
     contextWindowGuard: true,
     contextCompactThreshold: 0.85,
+    maxTurns: 50,
+    maxTurnsCap: 200,
   },
 };
 
@@ -337,5 +343,21 @@ export const featureConfigSettings: ConfigSetting[] = [
     description:
       'Fraction of the model context window at which the agent context-window guard triggers sub-agent conversation compaction (estimated system + messages + tool tokens above this fraction compacts). Distinct from behavior.autoCompactThreshold, which governs main-session conversation compaction.',
     ...numRange(0.1, 0.99),
+  },
+  {
+    key: 'agents.maxTurns',
+    type: 'number',
+    default: 50,
+    description:
+      'Default per-agent turn budget: the hard cap on how many turns one agent run may take before it terminates as a max-turns failure (a machine-readable turn-budget-exhausted outcome, distinct from an infrastructure error). A per-spawn override may lower or raise this, but never past agents.maxTurnsCap. Prevents an unbounded agent loop.',
+    ...intRange(1, 10_000),
+  },
+  {
+    key: 'agents.maxTurnsCap',
+    type: 'number',
+    default: 200,
+    description:
+      'The upper bound a per-spawn maxTurns override cannot exceed. When a spawn requests more turns than this, the cap wins and the applied budget is reported as policy-bound. Keeps a caller from lifting the turn ceiling without limit.',
+    ...intRange(1, 100_000),
   },
 ];

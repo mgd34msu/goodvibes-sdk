@@ -1254,6 +1254,45 @@ describe('WrfcController — escalation', () => {
     h.controller.dispose();
   });
 
+  test('turn-budget exhaustion is a typed max_turns outcome carrying the limit + source, at quiescence', async () => {
+    const h = createHarness();
+    const ownerRecord = h.addAgent('owner-maxturns-1', 'task that exhausts its turn budget');
+    const chain = h.controller.createChain(ownerRecord);
+    expect(chain.state).toBe('engineering');
+
+    // Stamp the structured turn-budget outcome on the engineer record at the
+    // source and mark it terminal — exactly what the orchestrator-runner does on
+    // overflow (record.status='failed' + the structured fields) before emitting.
+    const engineer = h.agentStore.get(chain.engineerAgentId!);
+    if (engineer) {
+      engineer.status = 'failed';
+      engineer.failureReason = 'max_turns';
+      engineer.turnBudget = { limit: 120, source: 'spawn-override' };
+    }
+    // The owner terminalizes inside failChain; reflect that in the mock store so
+    // the quiescence snapshot sees every member terminal.
+    ownerRecord.status = 'failed';
+
+    emitAgentFailed(h.bus, chain.engineerAgentId!, 'Exceeded maximum turn limit (120)');
+    await flushMicrotasks();
+
+    expect(chain.state).toBe('failed');
+    // Typed, machine-readable outcome — not an infrastructure error.
+    expect(chain.failureKind).toBe('max_turns');
+
+    const failedEvent = h.workflowEvents.find((e) => e.type === 'WORKFLOW_CHAIN_FAILED');
+    const payload = (failedEvent?.payload as { payload?: Record<string, unknown> }).payload ?? {};
+    expect(payload.failureKind).toBe('max_turns');
+    expect(payload.turnLimit).toBe(120);
+    expect(payload.turnLimitSource).toBe('spawn-override');
+    // The prose is unchanged so anything that renders it still works.
+    expect(payload.reason).toBe('Exceeded maximum turn limit (120)');
+    // Quiescence signal: with the only child now terminal, the outcome landed settled.
+    expect(payload.membersSettled).toBe(true);
+
+    h.controller.dispose();
+  });
+
   test('transport-classified child failure retries once before failing the chain', async () => {
     const h = createHarness({ transportRetryLimit: 1, transportRetryDelayMs: 5 });
 

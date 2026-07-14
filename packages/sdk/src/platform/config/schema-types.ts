@@ -849,6 +849,8 @@ export type ConfigKey =
   | 'agents.passiveInjection.codeLimit'
   | 'agents.contextWindowGuard'
   | 'agents.contextCompactThreshold'
+  | 'agents.maxTurns'
+  | 'agents.maxTurnsCap'
   | 'pricing.modelPrices';
 
 /** Maps a ConfigKey to its value type. */
@@ -1213,5 +1215,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'agents.passiveInjection.codeLimit' ? number :
   K extends 'agents.contextWindowGuard' ? boolean :
   K extends 'agents.contextCompactThreshold' ? number :
+  K extends 'agents.maxTurns' ? number :
+  K extends 'agents.maxTurnsCap' ? number :
   K extends 'pricing.modelPrices' ? Record<string, ManualModelPriceConfig> :
   never;

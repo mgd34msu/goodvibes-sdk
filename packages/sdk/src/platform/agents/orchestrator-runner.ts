@@ -42,9 +42,11 @@ import { summarizeError } from '../utils/error-display.js';
 import { resolveScopedDirectory } from '../runtime/surface-root.js';
 import { appendGoodVibesRuntimeAwarenessPrompt } from '../tools/goodvibes-runtime/index.js';
 import { gateBackgroundToolCall, type BackgroundPermissionManager } from './background-permission-gate.js';
+import { resolveTurnBudget, formatTurnLimitError, TURN_BUDGET_EXHAUSTED, type ResolvedTurnBudget } from './turn-budget.js';
 import { toolFormatTelemetry } from '../runtime/telemetry/tool-format-telemetry.js';
 
-const MAX_TURNS = 50; // hard cap per agent run to prevent unbounded loops
+const MAX_TURNS = 50; // fallback turn budget when no config source (mirrors agents.maxTurns default)
+const MAX_TURNS_CAP = 200; // fallback policy bound when no config source (mirrors agents.maxTurnsCap default)
 const NETWORK_RETRY_DELAYS_MS = [5_000, 10_000, 20_000, 40_000, 60_000]; // exponential back-off on transient network errors
 const RATE_LIMIT_RETRY_DELAY_MS = 60_000; // fixed pause on 429/quota responses
 const RATE_LIMIT_MAX_RETRIES = 3; // cap retries so a sustained quota violation terminates cleanly
@@ -58,6 +60,16 @@ const MIN_WINDOW_FOR_LLM_COMPACT = 12_000; // don't attempt LLM-driven compactio
  */
 function resolveContextCompactThreshold(context: AgentOrchestratorRunContext): number {
   return context.configManager?.get('agents.contextCompactThreshold') ?? CONTEXT_COMPACT_THRESHOLD;
+}
+
+/** The applied turn ceiling: agents.maxTurns default, a per-spawn override, clamped by the agents.maxTurnsCap bound. */
+function resolveRunTurnBudget(context: AgentOrchestratorRunContext, record: AgentRecord): ResolvedTurnBudget {
+  const cfg = context.configManager;
+  return resolveTurnBudget({
+    configDefault: Number(cfg?.get('agents.maxTurns') ?? MAX_TURNS),
+    spawnOverride: record.maxTurns,
+    policyCap: Number(cfg?.get('agents.maxTurnsCap') ?? MAX_TURNS_CAP),
+  });
 }
 
 type EmitterContext = import('../runtime/emitters/index.js').EmitterContext;
@@ -397,43 +409,20 @@ async function finalizeAgentRun(
   cleanupLeakedProcesses(context.processManager, preAgentProcessIds);
 
   if (context.runtimeBus && record.status !== 'failed' && statusAfterLoop !== 'cancelled') {
-    context.emitAgentCompletedEvent(
-      record.id,
-      (record.completedAt ?? Date.now()) - record.startedAt,
-      record.fullOutput ?? '',
-      record.toolCallCount,
-      record.usage,
-    );
+    context.emitAgentCompletedEvent(record.id, (record.completedAt ?? Date.now()) - record.startedAt, record.fullOutput ?? '', record.toolCallCount, record.usage);
     context.emitOrchestrationCompleted(record, record.fullOutput ?? '');
   }
 
   if (record.status === 'failed') {
-    context.emitAgentFailedEvent(
-      record.id,
-      record.error ?? 'Circuit breaker tripped',
-      Date.now() - record.startedAt,
-    );
+    context.emitAgentFailedEvent(record.id, record.error ?? 'Circuit breaker tripped', Date.now() - record.startedAt);
     context.emitOrchestrationFailed(record, record.error ?? 'Circuit breaker tripped');
     logger.error(`Agent ${record.id} circuit-breaker terminated`, { error: record.error, toolCallCount: record.toolCallCount });
-    session?.appendMessage({
-      type: 'session_end',
-      status: 'failed',
-      error: record.error,
-      toolCallCount: record.toolCallCount,
-      durationMs: Date.now() - record.startedAt,
-      timestamp: new Date().toISOString(),
-    });
+    session?.appendMessage({ type: 'session_end', status: 'failed', error: record.error, toolCallCount: record.toolCallCount, durationMs: Date.now() - record.startedAt, timestamp: new Date().toISOString() });
   } else if (statusAfterLoop === 'cancelled') {
     context.emitAgentCancelledEvent(record.id, 'Agent cancelled');
     context.emitOrchestrationCancelled(record, 'Agent cancelled');
     logger.info(`Agent ${record.id} cancelled (detected post-loop)`, { toolCallCount: record.toolCallCount });
-    session?.appendMessage({
-      type: 'session_end',
-      status: 'cancelled',
-      toolCallCount: record.toolCallCount,
-      durationMs: Date.now() - record.startedAt,
-      timestamp: new Date().toISOString(),
-    });
+    session?.appendMessage({ type: 'session_end', status: 'cancelled', toolCallCount: record.toolCallCount, durationMs: Date.now() - record.startedAt, timestamp: new Date().toISOString() });
   } else {
     logger.info(`Agent ${record.id} completed`, { toolCallCount: record.toolCallCount });
     session?.appendMessage({
@@ -575,6 +564,7 @@ export async function runAgentTask(
 
     let continueLoop = true;
     let turn = 0;
+    const turnBudget = resolveRunTurnBudget(context, record);
     record.progress = 'Turn 1 · Thinking…';
     context.emitAgentProgress(record.id, record.progress);
     context.emitOrchestrationProgress(record, record.progress);
@@ -605,14 +595,17 @@ export async function runAgentTask(
         }
         return;
       }
-      if (++turn > MAX_TURNS) {
+      if (++turn > turnBudget.limit) {
         const lastMessages = conversation.getMessagesForLLM();
         const lastAssistant = [...lastMessages].reverse().find(m => m.role === 'assistant');
         if (lastAssistant) {
           record.fullOutput = typeof lastAssistant.content === 'string' ? lastAssistant.content : '';
         }
         record.status = 'failed';
-        record.error = `Exceeded maximum turn limit (${MAX_TURNS})`;
+        // Prose unchanged; the structured outcome is stamped alongside (no regex needed downstream).
+        record.error = formatTurnLimitError(turnBudget.limit);
+        record.failureReason = TURN_BUDGET_EXHAUSTED;
+        record.turnBudget = turnBudget;
         if (session) {
           session.appendMessage({ type: 'session_end', status: 'max_turns_exceeded', turn, timestamp: new Date().toISOString() });
           await disposeSession(session);
