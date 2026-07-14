@@ -7,6 +7,7 @@ import { runtimeConfigDefaults, runtimePrimaryConfigSettings, runtimeSecondaryCo
 import { atRestConfigDefaults, atRestConfigSettings } from './schema-domain-at-rest.js';
 import { learningConfigDefaults, learningConfigSettings } from './schema-domain-learning.js';
 import { powerConfigDefaults, powerConfigSettings } from './schema-domain-power.js';
+import { voiceLocalConfigDefaults, voiceLocalConfigSettings } from './schema-domain-voice-local.js';
 import { surfaceConfigDefaults, surfaceConfigSettings } from './schema-domain-surfaces.js';
 import { featureConfigDefaults, featureConfigSettings } from './schema-domain-features.js';
 import { featureControlSettings } from './schema-domain-feature-controls.js';
@@ -46,6 +47,7 @@ export const DEFAULT_CONFIG = {
   worktree: runtimeConfigDefaults.worktree,
   learning: learningConfigDefaults.learning,
   power: powerConfigDefaults.power,
+  voice: voiceLocalConfigDefaults.voice,
   batch: runtimeConfigDefaults.batch,
   cloudflare: runtimeConfigDefaults.cloudflare,
   daemon: coreConfigDefaults.daemon,
@@ -69,6 +71,7 @@ export const CONFIG_SCHEMA: ConfigSetting[] = [
   ...atRestConfigSettings,
   ...learningConfigSettings,
   ...powerConfigSettings,
+  ...voiceLocalConfigSettings,
   ...surfaceConfigSettings,
   ...runtimeSecondaryConfigSettings,
   ...updateConfigSettings,

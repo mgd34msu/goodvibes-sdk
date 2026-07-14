@@ -89,6 +89,7 @@ function parseChannelDeliveryTarget(channel: string): ChannelDeliveryTarget {
 
 import { createSessionRuntimeControls, registerSessionRuntimeGatewayMethods, type SessionLiveTurnControlsHolder } from './session-runtime.js';
 import { registerPowerGatewayMethods, type PowerGatewayService } from './power.js';
+import { bindCostAttributionIngest } from './attribution-ingest.js';
 import type { ConfigManager } from '../../config/manager.js';
 import type { RuntimeStore } from '../../runtime/store/index.js';
 import { FileSystemSkillStore, SkillService } from '../../skills/index.js';
@@ -745,50 +746,8 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   registerRewindGatewayMethods(catalog, rewindService);
 
   if (deps.runtimeBus) {
-    deps.runtimeBus.onDomain('turn', (envelope) => {
-      const event = envelope.payload;
-      if (event.type === 'LLM_RESPONSE_RECEIVED') {
-        costAttribution.record({
-          at: Date.now(),
-          provider: event.provider,
-          model: event.model,
-          sessionId: envelope.sessionId,
-          // Attribution dimensions: the agent (from the envelope) and the
-          // tool/hook/MCP-server cause (stamped on the event by the cost-origin
-          // scope). Each is left undefined when the emit carried no such origin,
-          // so a top-level reasoning call stays attributed to session/agent only.
-          ...(envelope.agentId !== undefined ? { agentId: envelope.agentId } : {}),
-          ...(event.originTool !== undefined ? { tool: event.originTool } : {}),
-          ...(event.originHook !== undefined ? { hook: event.originHook } : {}),
-          ...(event.originMcpServer !== undefined ? { mcpServer: event.originMcpServer } : {}),
-          inputTokens: event.inputTokens,
-          outputTokens: event.outputTokens,
-          cacheReadTokens: event.cacheReadTokens ?? 0,
-          cacheWriteTokens: event.cacheWriteTokens ?? 0,
-        });
-        // Quota snapshot from rate-limit headers carried on THIS (successful)
-        // response — the pre-limit signal, not just the post-429 cooldown.
-        if (event.rateLimit) {
-          quotaWindow.record({
-            provider: event.provider,
-            at: Date.now(),
-            ...(event.rateLimit.limit !== undefined ? { limit: event.rateLimit.limit } : {}),
-            ...(event.rateLimit.remaining !== undefined ? { remaining: event.rateLimit.remaining } : {}),
-            ...(event.rateLimit.resetAt !== undefined ? { resetAt: event.rateLimit.resetAt } : {}),
-            ...(event.rateLimit.retryAfterMs !== undefined ? { retryAfterMs: event.rateLimit.retryAfterMs } : {}),
-          });
-        }
-      } else if (event.type === 'STREAM_RETRY' && isRateLimitReason(event.reason)) {
-        // A rate-limit retry carries the provider's requested backoff, which is
-        // the real cooldown window the fan-out assessment reasons over.
-        quotaWindow.record({ provider: event.provider, at: Date.now(), retryAfterMs: event.delayMs });
-      }
-    });
+    // LLM + metered-voice usage -> the attribution ledger (see attribution-ingest.ts).
+    bindCostAttributionIngest(deps.runtimeBus, costAttribution, quotaWindow);
   }
 }
 
-/** Whether a STREAM_RETRY reason names a rate-limit/quota condition (as opposed to a transient network/server retry). */
-function isRateLimitReason(reason: string): boolean {
-  const lower = reason.toLowerCase();
-  return lower.includes('rate') || lower.includes('quota') || lower.includes('429') || lower.includes('limit') || lower.includes('overloaded');
-}

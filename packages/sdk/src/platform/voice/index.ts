@@ -20,6 +20,10 @@ export type { VoiceProviderDescriptor } from './provider-registry.js';
 export { VoiceService } from './service.js';
 export type { VoiceServiceStatus } from './service.js';
 export { ensureBuiltinVoiceProviders } from './builtin-providers.js';
+export type { BuiltinVoiceProviderOptions } from './builtin-providers.js';
+export { createLocalVoiceProvider } from './providers/local.js';
+export type { LocalVoiceProviderOptions, LocalEngineRunner, LocalVoiceConfigReader } from './providers/local.js';
+export type { VoiceBillableUsage } from './service.js';
 
 // Spoken-turn (live TTS) policy engine — shared behavioral contract; consumers
 // inject an AudioSink for I/O. See ./spoken-turn.

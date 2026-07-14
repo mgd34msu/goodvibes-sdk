@@ -18,8 +18,33 @@ export interface VoiceServiceStatus {
   readonly note: string;
 }
 
+/** One billable voice call (metered providers only; local emits nothing). */
+export interface VoiceBillableUsage {
+  readonly providerId: string;
+  readonly modelId: string | undefined;
+  readonly kind: 'tts' | 'stt';
+  /** The provider's billable unit count: characters submitted for TTS, seconds of audio for STT. */
+  readonly billableUnits: number;
+  readonly unit: 'characters' | 'seconds';
+}
+
 export class VoiceService {
-  constructor(private readonly registry: VoiceProviderRegistry) {}
+  constructor(
+    private readonly registry: VoiceProviderRegistry,
+    /** Cost-attribution sink for METERED providers (wired by the runtime root). */
+    private readonly onBillableUsage?: ((usage: VoiceBillableUsage) => void) | undefined,
+  ) {}
+
+  /** Record a metered call; a provider with billing 'none' emits nothing (honest no-dimension). */
+  private recordUsage(provider: { id: string; billing?: 'metered' | 'none' | undefined }, usage: Omit<VoiceBillableUsage, 'providerId'>): void {
+    if (provider.billing === 'none') return;
+    if (usage.billableUnits <= 0) return;
+    try {
+      this.onBillableUsage?.({ providerId: provider.id, ...usage });
+    } catch {
+      // A cost sink failure must never fail the voice call.
+    }
+  }
 
   async getStatus(enabled: boolean): Promise<VoiceServiceStatus> {
     const providers = await this.registry.status();
@@ -48,7 +73,9 @@ export class VoiceService {
     if (!provider?.synthesize) {
       throw providerNotConfiguredError(providerId, 'Voice TTS provider');
     }
-    return provider.synthesize(request);
+    const result = await provider.synthesize(request);
+    this.recordUsage(provider, { modelId: request.modelId, kind: 'tts', billableUnits: request.text.length, unit: 'characters' });
+    return result;
   }
 
   async synthesizeStream(providerId: string | undefined, request: VoiceSynthesisRequest): Promise<VoiceSynthesisStreamResult> {
@@ -56,7 +83,11 @@ export class VoiceService {
     if (!provider?.synthesizeStream) {
       throw providerNotConfiguredError(providerId, 'Voice streaming TTS provider');
     }
-    return provider.synthesizeStream(request);
+    const result = await provider.synthesizeStream(request);
+    // Streaming TTS bills on the submitted characters (the provider's own
+    // billing unit) — recorded at accept time, not per chunk.
+    this.recordUsage(provider, { modelId: request.modelId, kind: 'tts', billableUnits: request.text.length, unit: 'characters' });
+    return result;
   }
 
   async transcribe(providerId: string | undefined, request: VoiceTranscriptionRequest): Promise<VoiceTranscriptionResult> {
@@ -64,7 +95,12 @@ export class VoiceService {
     if (!provider?.transcribe) {
       throw providerNotConfiguredError(providerId, 'Voice STT provider');
     }
-    return provider.transcribe(request);
+    const result = await provider.transcribe(request);
+    // STT bills on audio seconds where known; a provider that reported no
+    // duration falls back to 1 second minimum so metered usage is never lost.
+    const seconds = request.audio.durationMs !== undefined ? Math.max(1, Math.round(request.audio.durationMs / 1000)) : 1;
+    this.recordUsage(provider, { modelId: request.modelId, kind: 'stt', billableUnits: seconds, unit: 'seconds' });
+    return result;
   }
 
   async openRealtimeSession(providerId: string | undefined, request: VoiceRealtimeSessionRequest): Promise<VoiceRealtimeSession> {

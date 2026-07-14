@@ -21,6 +21,15 @@ export function emitProviderWarning(
   bus.emit('providers', createEventEnvelope('PROVIDER_WARNING', { type: 'PROVIDER_WARNING', ...data }, ctx));
 }
 
+/** Emit PROVIDER_VOICE_USAGE for one billable voice call on a metered provider. */
+export function emitProviderVoiceUsage(
+  bus: RuntimeEventBus,
+  ctx: EmitterContext,
+  data: { provider: string; modelId?: string | undefined; kind: 'tts' | 'stt'; billableUnits: number; unit: 'characters' | 'seconds' }
+): void {
+  bus.emit('providers', createEventEnvelope('PROVIDER_VOICE_USAGE', { type: 'PROVIDER_VOICE_USAGE', ...data }, ctx));
+}
+
 export function emitModelFallback(
   bus: RuntimeEventBus,
   ctx: EmitterContext,
