@@ -15100,6 +15100,50 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       "previousMode": "plan"
     }
   },
+  "sessions.queuedMessages.delete": {
+    "methodId": "sessions.queuedMessages.delete",
+    "http": {
+      "method": "DELETE",
+      "path": "/api/sessions/{sessionId}/queued-messages/{messageId}"
+    },
+    "status": 200,
+    "body": {
+      "sessionId": "sample",
+      "id": "sample",
+      "deleted": false
+    }
+  },
+  "sessions.queuedMessages.edit": {
+    "methodId": "sessions.queuedMessages.edit",
+    "http": {
+      "method": "POST",
+      "path": "/api/sessions/{sessionId}/queued-messages/{messageId}"
+    },
+    "status": 200,
+    "body": {
+      "sessionId": "sample",
+      "id": "sample",
+      "text": "sample"
+    }
+  },
+  "sessions.queuedMessages.list": {
+    "methodId": "sessions.queuedMessages.list",
+    "http": {
+      "method": "GET",
+      "path": "/api/sessions/{sessionId}/queued-messages"
+    },
+    "status": 200,
+    "body": {
+      "sessionId": "sample",
+      "messages": [
+        {
+          "id": "sample",
+          "queuedAt": 0,
+          "text": "sample"
+        }
+      ]
+    }
+  },
   "sessions.register": {
     "methodId": "sessions.register",
     "http": {
@@ -15347,6 +15391,19 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       },
       "mode": "spawn",
       "agentId": "sample"
+    }
+  },
+  "sessions.toolCalls.cancel": {
+    "methodId": "sessions.toolCalls.cancel",
+    "http": {
+      "method": "POST",
+      "path": "/api/sessions/{sessionId}/tool-calls/{callId}/cancel"
+    },
+    "status": 200,
+    "body": {
+      "sessionId": "sample",
+      "callId": "sample",
+      "cancelled": false
     }
   },
   "security.settings": {

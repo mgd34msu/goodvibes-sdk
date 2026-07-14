@@ -114,6 +114,10 @@ export { registerFleetCheckpointsSearchGatewayMethods } from './routes/register-
 // browser-push group (see routes/register-gateway-verb-groups.ts).
 export { registerGatewayVerbGroups } from './routes/register-gateway-verb-groups.js';
 export type { GatewayVerbGroupDeps } from './routes/register-gateway-verb-groups.js';
+// Live-turn controls holder: an interactive consumer binds its Orchestrator so
+// sessions.toolCalls.cancel / sessions.queuedMessages.* act on the live runtime.
+export { SessionLiveTurnControlsHolder } from './routes/session-runtime.js';
+export type { SessionLiveTurnControls } from './routes/session-runtime.js';
 // skills.* CRUD verb registration over the canonical SkillService (see routes/skills.ts).
 export { registerSkillsGatewayMethods } from './routes/skills.js';
 export type { SkillsGatewayService } from './routes/skills.js';

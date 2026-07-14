@@ -1,4 +1,5 @@
 import { simpleGit, type SimpleGit } from 'simple-git';
+import { parseUnifiedDiff, type StructuredDiff } from './structured-diff.js';
 import type { HookDispatcher } from '../hooks/dispatcher.js';
 import type { HookEvent } from '../hooks/types.js';
 import { logger } from '../utils/logger.js';
@@ -112,6 +113,20 @@ export class GitService {
       return this.git.diff([ref]);
     }
     return this.git.diff();
+  }
+
+  /**
+   * The FULL working-tree diff (optionally vs a ref), parsed into structured
+   * per-file/per-hunk form with no size cap — the diff-view serving path that
+   * replaces consumer-side raw-text truncation. Read-only — no hooks emitted.
+   */
+  async diffStructured(ref?: string): Promise<StructuredDiff> {
+    return parseUnifiedDiff(await this.diff(ref));
+  }
+
+  /** diffBetween, structured and uncapped (see diffStructured). Read-only. */
+  async diffBetweenStructured(before: string, after: string, files?: string[]): Promise<StructuredDiff> {
+    return parseUnifiedDiff(await this.diffBetween(before, after, files));
   }
 
   /**

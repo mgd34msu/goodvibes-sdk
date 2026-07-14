@@ -8,7 +8,7 @@ import { SubscriptionManager } from '../config/subscriptions.js';
 import { AutomationDeliveryManager, AutomationManager, AutomationRouteStore } from '../automation/index.js';
 import { ChannelPluginRegistry, ChannelPolicyManager, RouteBindingManager, SurfaceRegistry } from '../channels/index.js';
 import { ChannelDeliveryRouter } from '../channels/delivery-router.js';
-import { ApprovalBroker, GatewayMethodCatalog, SharedSessionBroker, registerGatewayVerbGroups } from '../control-plane/index.js';
+import { ApprovalBroker, GatewayMethodCatalog, SessionLiveTurnControlsHolder, SharedSessionBroker, registerGatewayVerbGroups } from '../control-plane/index.js';
 import { StepUpService } from '../relay/step-up-service.js';
 import { hasFreshSurfaceParticipant, SURFACE_ROUTE_FRESHNESS_MS } from '../control-plane/session-broker-sessions.js';
 import { buildSharedSessionAgentSpawnRoutingInput } from '../control-plane/session-intents.js';
@@ -248,12 +248,10 @@ export interface RuntimeServices {
   readonly agentManager: AgentManager;
   readonly agentMessageBus: AgentMessageBus;
   readonly agentOrchestrator: AgentOrchestrator;
-  /**
-   * Settable holder for the context_accounting tool's session source. The tool
-   * is registered on the shared roster; an interactive consumer binds its
-   * Orchestrator-backed source here (see tools/context-accounting).
-   */
+  /** Settable holder for the context_accounting tool's session source; an interactive consumer binds its Orchestrator-backed source here. */
   readonly contextAccountingHolder: ContextAccountingHolder;
+  /** Settable holder an interactive consumer binds its Orchestrator into, powering sessions.toolCalls.cancel + sessions.queuedMessages.* (same pattern as contextAccountingHolder). */
+  readonly sessionLiveTurnControls: SessionLiveTurnControlsHolder;
   readonly wrfcController: WrfcController;
   /**
    * Orchestration engine — ships ALONGSIDE wrfcController,
@@ -837,7 +835,8 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     return s ? hasFreshSurfaceParticipant(s, Date.now(), SURFACE_ROUTE_FRESHNESS_MS) : false;
   };
   const stepUpService = new StepUpService({ secrets: secretsManager });
-  registerGatewayVerbGroups(gatewayMethods, { processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, requestApproval: (input) => approvalBroker.requestApproval(input), stampFixSessionOnApproval: (offerCallId, outcome) => approvalBroker.stampFixSession(offerCallId, outcome), watcherRegistry, userPermissionRuleStore, shellPaths, runtimeBus: options.runtimeBus, sessionPresence: { isAttached }, configManager, runtimeStore: options.runtimeStore, channelDeliveryRouter, providerRegistry, automationManager, sessionLister: sessionBroker, sessionIntake: sessionBroker, workingDirectory, attemptsController: orchestrationEngine, stepUpService, memoryRegistry, pairingTokens, acpHost }); // see routes/register-gateway-verb-groups.ts
+  const sessionLiveTurnControls = new SessionLiveTurnControlsHolder();
+  registerGatewayVerbGroups(gatewayMethods, { processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, requestApproval: (input) => approvalBroker.requestApproval(input), stampFixSessionOnApproval: (offerCallId, outcome) => approvalBroker.stampFixSession(offerCallId, outcome), watcherRegistry, userPermissionRuleStore, shellPaths, runtimeBus: options.runtimeBus, sessionPresence: { isAttached }, configManager, runtimeStore: options.runtimeStore, channelDeliveryRouter, providerRegistry, automationManager, sessionLister: sessionBroker, sessionIntake: sessionBroker, workingDirectory, attemptsController: orchestrationEngine, stepUpService, memoryRegistry, pairingTokens, acpHost, sessionLiveTurnControls }); // see routes/register-gateway-verb-groups.ts
   return {
     workingDirectory,
     homeDirectory,
@@ -924,6 +923,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     agentMessageBus,
     agentOrchestrator,
     contextAccountingHolder,
+    sessionLiveTurnControls,
     wrfcController,
     orchestrationEngine,
     processManager,

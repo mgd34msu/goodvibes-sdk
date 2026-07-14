@@ -66,6 +66,14 @@ export interface ToolResult {
    * call-scoped denial data the asking agent can act on. See {@link ToolDenial}.
    */
   denial?: ToolDenial | undefined;
+  /**
+   * True when this specific call was cancelled by the user mid-flight (per-call
+   * cooperative cancellation — NOT a whole-turn abort). The turn continues:
+   * the model sees this structured result and adapts. `error` carries the
+   * human-readable "cancelled by user"; partial `output` is preserved when the
+   * tool produced any before stopping.
+   */
+  cancelled?: boolean | undefined;
 }
 
 /**

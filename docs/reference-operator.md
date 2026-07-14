@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `403`
+- Methods: `407`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -80657,6 +80657,202 @@ Set a session's permission mode to plan, normal, accept-edits, or auto. Emits ru
 }
 ```
 
+#### `sessions.queuedMessages.delete`
+
+Remove a message still waiting in the mid-turn queue so it is never delivered. A message already delivered to the model cannot be removed — deleting it is a 404 MESSAGE_NOT_QUEUED. Only the daemon's live local runtime session is controllable; any other session id is a 404 SESSION_NOT_LOCAL.
+
+- Title: `Delete a Queued Mid-Turn Message`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `DELETE /api/sessions/{sessionId}/queued-messages/{messageId}`
+- Scopes: `write:sessions`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "messageId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId",
+    "messageId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "deleted": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "sessionId",
+    "id",
+    "deleted"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `sessions.queuedMessages.edit`
+
+Replace the text of a message still waiting in the mid-turn queue. A message already delivered to the model is immutable — editing it is a 404 MESSAGE_NOT_QUEUED. Editing replaces any multimodal content with the new plain text. Only the daemon's live local runtime session is controllable; any other session id is a 404 SESSION_NOT_LOCAL.
+
+- Title: `Edit a Queued Mid-Turn Message`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/sessions/{sessionId}/queued-messages/{messageId}`
+- Scopes: `write:sessions`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "messageId": {
+      "type": "string"
+    },
+    "text": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId",
+    "messageId",
+    "text"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "text": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId",
+    "id",
+    "text"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `sessions.queuedMessages.list`
+
+List the messages queued behind the current turn (submitted while the model was thinking), in delivery order. Queued messages remain editable and deletable until they are delivered; a delivered message no longer appears here. Only the daemon's live local runtime session is resolvable; any other session id is a 404 SESSION_NOT_LOCAL.
+
+- Title: `List Queued Mid-Turn Messages`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/sessions/{sessionId}/queued-messages`
+- Scopes: `read:sessions`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "queuedAt": {
+            "type": "number"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "queuedAt",
+          "text"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "sessionId",
+    "messages"
+  ],
+  "additionalProperties": false
+}
+```
+
 #### `sessions.register`
 
 Idempotently register (or heartbeat) a session keyed on a caller-supplied id, carrying its kind, project, and participant identity. Re-calling with the same id advances the participant lastSeenAt (heartbeat). Registering against a CLOSED session does NOT silently reopen it — the heartbeat is recorded and the still-closed record is returned with reopened=false and conflict={status:closed}; pass reopen=true to reopen. A titled session is never renamed by the heartbeat. An unknown kind is rejected (400), not coerced. Prefer this over sessions.create for external runtimes that own their session id.
@@ -81954,6 +82150,66 @@ Deliver a live steering message to the active agent for a shared session, option
     "input",
     "mode",
     "agentId"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `sessions.toolCalls.cancel`
+
+Cancel a single running tool call by its callId, leaving the turn and any other running calls untouched. The cancelled call settles as a structured "cancelled by user" tool result the model adapts to in the same turn — distinct from a whole-turn interrupt. Only the daemon's live local runtime session is controllable; any other session id is a 404 SESSION_NOT_LOCAL, and an unknown or already-settled callId is a 404 TOOL_CALL_NOT_RUNNING.
+
+- Title: `Cancel One In-Flight Tool Call`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/sessions/{sessionId}/tool-calls/{callId}/cancel`
+- Scopes: `write:sessions`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "callId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId",
+    "callId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "callId": {
+      "type": "string"
+    },
+    "cancelled": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "sessionId",
+    "callId",
+    "cancelled"
   ],
   "additionalProperties": false
 }

@@ -66,7 +66,30 @@ export type OrchestratorCoreServices = {
    * path(s) (never blocking the tool result).
    */
   codeIndexReindexScheduler?: Pick<CodeIndexReindexScheduler, 'onToolExecuted'> | undefined;
+  /**
+   * The daemon's live-turn controls holder (control-plane
+   * SessionLiveTurnControlsHolder, typed structurally to keep core free of a
+   * control-plane import). When wired via setCoreServices, the orchestrator
+   * binds itself so remote surfaces can cancel one in-flight tool call and
+   * list/edit/delete queued mid-turn messages over the operator wire; dispose()
+   * unbinds. Optional/undefined is a hard no-op.
+   */
+  sessionLiveTurnControls?: LiveTurnControlsBinding | undefined;
 };
+
+/** The structural slice of the live-turn controls an Orchestrator provides. */
+export interface OrchestratorLiveTurnControls {
+  cancelToolCall(callId: string): boolean;
+  listQueuedMessages(): ReadonlyArray<{ readonly id: string; readonly queuedAt: number; readonly text: string }>;
+  editQueuedMessage(id: string, text: string): boolean;
+  deleteQueuedMessage(id: string): boolean;
+}
+
+/** Structural mirror of control-plane SessionLiveTurnControlsHolder (bind/unbind). */
+export interface LiveTurnControlsBinding {
+  bind(controls: OrchestratorLiveTurnControls): void;
+  unbind(controls: OrchestratorLiveTurnControls): void;
+}
 
 export function normalizeUsage(
   usage: Awaited<ReturnType<LLMProvider['chat']>>['usage'],
