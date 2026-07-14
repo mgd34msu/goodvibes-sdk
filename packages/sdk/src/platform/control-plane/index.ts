@@ -7,6 +7,7 @@ export type {
 } from './types.js';
 export type { ControlPlaneGatewayConfig, ControlPlaneEventStreamOptions, ControlPlaneRecentEvent } from './gateway.js';
 export { ControlPlaneGateway } from './gateway.js';
+export { SSE_HEARTBEAT_INTERVAL_MS, sseIdleTimeoutSeconds } from './sse-timing.js';
 export {
   GatewayMethodCatalog,
 } from './method-catalog.js';

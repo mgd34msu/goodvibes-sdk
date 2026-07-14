@@ -13,6 +13,7 @@ import type {
 } from '../automation/index.js';
 import type { ApprovalBroker, ControlPlaneGateway, SharedSessionBroker } from '../control-plane/index.js';
 import type { GatewayMethodCatalog } from '../control-plane/index.js';
+import { sseIdleTimeoutSeconds } from '../control-plane/index.js';
 import type {
   BuiltinChannelRuntime,
   ChannelReplyPipeline,
@@ -377,6 +378,8 @@ export class DaemonServer {
       this.server = this.serveFactory({
         port: this.port,
         hostname: this.host,
+        // Derived from the SSE heartbeat interval so a quiet stream outlives it (Bun's 10s default would not).
+        idleTimeout: sseIdleTimeoutSeconds(),
         ...(this.tlsState.tls ? { tls: this.tlsState.tls } : {}),
         async fetch(req: Request, server: UpgradeCapableServer): Promise<Response | undefined> {
           const upgrade = self.tryUpgradeControlPlaneWebSocket(req, server);
@@ -560,12 +563,7 @@ export class DaemonServer {
           logger.info('DaemonServer: controlPlane binding changed, restarting daemon server…');
           await this.stop();
           // Re-resolve host/port from updated config
-          const newBinding = resolveHostBinding(
-            (this.configManager.get('controlPlane.hostMode') as 'local' | 'network' | 'custom' | undefined) ?? 'local',
-            String(this.configManager.get('controlPlane.host') ?? '127.0.0.1'),
-            Number(this.configManager.get('controlPlane.port') ?? 3421),
-            'controlPlane',
-          );
+          const newBinding = resolveHostBinding((this.configManager.get('controlPlane.hostMode') as 'local' | 'network' | 'custom' | undefined) ?? 'local', String(this.configManager.get('controlPlane.host') ?? '127.0.0.1'), Number(this.configManager.get('controlPlane.port') ?? 3421), 'controlPlane');
           this.host = newBinding.host;
           this.port = newBinding.port;
           await this.start();
@@ -825,10 +823,7 @@ export class DaemonServer {
             hint: 'Wait for the current agent to complete or raise the orchestration.maxActiveAgents configuration.',
             status: 429,
           },
-          {
-            status: 429,
-            headers: { 'Retry-After': '5' },
-          },
+          { status: 429, headers: { 'Retry-After': '5' } },
         );
       }
       return jsonErrorResponse(err, { status: 500, fallbackMessage: 'Failed to spawn agent' });
