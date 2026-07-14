@@ -49,20 +49,7 @@ export { scheduleNodeId } from './adapters/schedule.js';
 export { workstreamNodeId, phaseNodeId } from './adapters/orchestration.js';
 export { codeIndexNodeId } from './adapters/code-index.js';
 export type { CodeIndexProcessSource } from './adapters/code-index.js';
-export { observedNodeId, adaptObservedAgent, steerObservedNode } from './adapters/observed.js';
-export { ObservedAgentSource, defaultTmuxCommandRunner } from './observed/source.js';
-export type { ObservedAgentRow, ObservedAgentSourceDeps, TmuxCommandRunner } from './observed/source.js';
-export {
-  classifyExternalKind,
-  classifyObservedProcesses,
-  paneForTty,
-  defaultProcessTableReader,
-  defaultTmuxPaneReader,
-} from './observed/detect.js';
-export type {
-  ObservedRawProcess,
-  ClassifiedObservedProcess,
-  ProcessTableReader,
-  TmuxPaneReader,
-  TmuxPaneRow,
-} from './observed/detect.js';
+// Observed foreign-agent rows: the render-facing TYPES ship through the type
+// block above (ProcessObserved etc.); the detector/source/adapter VALUES stay
+// daemon-internal (imported directly from ./observed/* and ./adapters/observed.js
+// where composed), so no observed runtime code is dragged into this barrel entry.

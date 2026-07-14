@@ -120,6 +120,10 @@ async function main(): Promise<void> {
     getConversationTitle: () => 'goodvibes daemon',
     workingDir,
     homeDirectory,
+    // The real standalone daemon observes externally-launched coding-agent
+    // sessions on the host read-only (fleet visibility + steer; never counted,
+    // never stopped). Off in the generic factory for test determinism.
+    observeExternalAgents: true,
   });
 
   const userAuth = runtimeServices.localUserAuthManager;

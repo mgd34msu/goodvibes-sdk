@@ -126,7 +126,8 @@ import {
   createWorkflowServices,
   type WorkflowServices,
 } from '../tools/workflow/index.js';
-import { createProcessRegistry, withFleetArchive, attachFleetEmitBridge, ObservedAgentSource, type ArchivableProcessRegistry } from './fleet/index.js';
+import { createProcessRegistry, withFleetArchive, attachFleetEmitBridge, type ArchivableProcessRegistry } from './fleet/index.js';
+import { ObservedAgentSource } from './fleet/observed/source.js';
 import { createOrchestrationEngine, createProviderBackedAttemptJudge, type OrchestrationEngine } from '../orchestration/index.js';
 import { createFixWorkstreamRunner } from '../orchestration/fix-workstream-runner.js';
 import { makeRuntimeFleetProbe } from './orchestration/fleet-count.js';
@@ -148,6 +149,14 @@ export interface RuntimeServicesOptions {
    * RuntimeServices never runs an unrequested source-tree walk.
    */
   readonly autoStartCodeIndex?: boolean | undefined;
+  /**
+   * Opt-in: fold externally-launched coding-agent sessions observed read-only on
+   * the host (Claude Code / Codex the daemon did not spawn) into the fleet as
+   * observed-external rows. Off by default so the generic factory never scans the
+   * host process table (test determinism) — the real standalone daemon (cli.ts)
+   * turns it on; embedders may too. Absent/false ⇒ no observed rows at all.
+   */
+  readonly observeExternalAgents?: boolean | undefined;
   /** Override the broker store path (default: home-scoped durable store). */
   readonly sessionStorePath?: string | undefined;
 }
@@ -794,9 +803,10 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // Read-only detection of externally-launched coding-agent sessions on this
   // host (Claude Code / Codex the daemon did not spawn). These fold in as
   // observed rows for visibility + steer; they NEVER count against fleet.maxSize
-  // (fleet-count.ts accepts only owned sources by construction). Absence is a
-  // quiet empty set.
-  const observedAgents = new ObservedAgentSource();
+  // (fleet-count.ts accepts only owned sources by construction). Opt-in so the
+  // generic factory never scans the host process table by default; absence (or
+  // opt-out) is a quiet empty set.
+  const observedAgents = options.observeExternalAgents ? new ObservedAgentSource() : undefined;
   const processRegistry = withFleetArchive(createProcessRegistry({
     agentManager,
     wrfcController,
