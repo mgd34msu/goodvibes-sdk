@@ -48,6 +48,7 @@ import { CodeIndexReindexScheduler } from '../state/code-index-reindex.js';
 import { StoreSnapshotScheduler } from '../state/store-snapshots.js';
 import { MemoryConsolidationScheduler } from '../state/memory-consolidation-scheduler.js';
 import { PowerManager, wireRuntimePower } from '../power/index.js';
+import { emitProviderVoiceUsage } from './emitters/providers.js';
 import { runStartupAppendOnlySweep } from './retention/append-only-registry.js';
 import { resolveMemoryVectorDbPath } from '../state/memory-vector-store.js';
 import type { RuntimeEventBus } from './events/index.js';
@@ -453,8 +454,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     workingDirectory,
     isEnabled: codeInjectionSettingEnabled,
   });
-  // A daily snapshot of every SQLite store this runtime writes, bounded by the
-  // retention engine. Timers are unref'd so an undisposed scheduler cannot pin the event loop.
+  // Daily snapshots of every SQLite store, bounded by the retention engine (unref'd timers).
   const storeSnapshotScheduler = new StoreSnapshotScheduler({
     stores: [{ name: 'memory store', dbPath: memoryDbPath }, { name: 'memory vector index', dbPath: resolveMemoryVectorDbPath(memoryDbPath) }, { name: 'code index store', dbPath: codeIndexDbPath }],
   });
@@ -545,8 +545,9 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   });
   wrfcController.setWorkPlanService(projectPlanningService);
   const voiceProviders = new VoiceProviderRegistry();
-  ensureBuiltinVoiceProviders(voiceProviders);
-  const voiceService = new VoiceService(voiceProviders);
+  ensureBuiltinVoiceProviders(voiceProviders, { readConfig: (key) => configManager.get(key as never) });
+  // Metered voice spend -> attribution ingest; local engines emit nothing.
+  const voiceService = new VoiceService(voiceProviders, (usage) => emitProviderVoiceUsage(options.runtimeBus, { sessionId: 'system', traceId: `voice:${Date.now()}`, source: 'voice-service' }, { provider: usage.providerId, modelId: usage.modelId, kind: usage.kind, billableUnits: usage.billableUnits, unit: usage.unit }));
   const webSearchProviders = new WebSearchProviderRegistry({
     env: process.env,
     serviceRegistry,
@@ -736,8 +737,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const onSandboxedRun = createSandboxContainmentAnnouncer(announcementStore, (announcement) => {
     logger.info(announcement.text, { announcement: announcement.id });
   });
-  // Late-bound CI auto-watch observer: registerGatewayVerbGroups fills it in
-  // below once the ci-watch service exists; until then it is a no-op.
+  // Late-bound CI auto-watch observer (filled by registerGatewayVerbGroups below).
   let ciAutoWatchObserver: ((toolName: string, args: Record<string, unknown>, success: boolean) => void) | null = null;
   agentOrchestrator.setDependencies({
     sandboxEscalationHandler,

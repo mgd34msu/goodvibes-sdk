@@ -109,6 +109,13 @@ export interface VoiceProvider {
   readonly id: string;
   readonly label: string;
   readonly capabilities: readonly VoiceProviderCapability[];
+  /**
+   * Billing dimension: 'metered' (cloud APIs — usage flows through cost
+   * attribution) or 'none' (local engines — honest absence of a billing
+   * dimension, never a fake $0.00). Undefined reads as 'metered', the safe
+   * default for every cloud provider.
+   */
+  readonly billing?: 'metered' | 'none' | undefined;
   status?(): Promise<VoiceProviderStatus> | VoiceProviderStatus;
   listVoices?(): Promise<readonly VoiceDescriptor[]> | readonly VoiceDescriptor[];
   synthesize?(request: VoiceSynthesisRequest): Promise<VoiceSynthesisResult>;

@@ -16917,6 +16917,15 @@ export type ProviderEvent = {
     from: string;
     to: string;
     provider: string;
+}
+/** One billable voice call on a METERED provider (local engines emit nothing). */
+| {
+    type: 'PROVIDER_VOICE_USAGE';
+    provider: string;
+    modelId?: string | undefined;
+    kind: 'tts' | 'stt';
+    billableUnits: number;
+    unit: 'characters' | 'seconds';
 } | {
     type: 'MODEL_CHANGED';
     registryKey: string;
