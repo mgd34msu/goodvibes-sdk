@@ -105,6 +105,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   release every held inhibitor; the daemon releases holds on a real stop; and
   inhibitors are stamped with the owning pid so a crashed process's orphans
   are reaped at the next start instead of blocking host sleep forever.
+- **Long-running and repeated sessions no longer accumulate orphaned system-bus
+  watcher processes.** The sleep-edge watcher (a read-only `dbus-monitor`
+  subscription to logind's PrepareForSleep signal) now dies with the process
+  that started it: every watcher is tracked and killed on exit and on
+  interrupt/terminate signals, is stamped with its owner pid so a crashed
+  owner's watcher is reaped at the next start, and is spawned through an
+  injectable seam so tests never launch a real one. Previously each start left
+  a watcher behind; over many restarts they could pile up and exhaust the
+  desktop's per-user D-Bus connection quota, cutting every process of that user
+  off from the system bus.
 - **The published ConfigKey union matched the schema domains again** (23 keys
   across `checkin.*`, `learning.consolidation.*`, `power.*`, `voice.local.*`,
   and `fleet.maxSize` had schema definitions but no typed entries), and a

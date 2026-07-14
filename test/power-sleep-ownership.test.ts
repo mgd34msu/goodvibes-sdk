@@ -14,7 +14,8 @@
  *   the honest fixture fallback (reason stated) when it does not.
  */
 import { describe, expect, test } from 'bun:test';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync, type ChildProcess } from 'node:child_process';
+import { EventEmitter } from 'node:events';
 import { PowerManager, LID_SWITCH_HONEST_SPLIT } from '../packages/sdk/src/platform/power/manager.ts';
 import { bindPowerWorkSignals } from '../packages/sdk/src/platform/power/work-signals.ts';
 import { createLinuxLogindSeam, reapOrphanedInhibitors } from '../packages/sdk/src/platform/power/linux-logind.ts';
@@ -248,6 +249,70 @@ describe('process-exit hygiene (holds never outlive the process)', () => {
     expect(killed).toEqual([501]);
   });
 
+  test('start() reaps a crashed process\'s stamped orphan sleep-edge watcher — never a live owner\'s', async () => {
+    const killed: number[] = [];
+    const watcher = (ownerPid: number): string =>
+      `dbus-monitor --system type='signal',interface='org.freedesktop.login1.Manager',member='PrepareForSleep' type='signal',interface='org.goodvibes.SleepWatch',member='GoodvibesSleepWatchOwner${ownerPid}'`;
+    const reaped = await reapOrphanedInhibitors('goodvibes', {
+      listProcesses: () => [
+        // Dead owner (pid 99992): the leaked watcher must be reaped.
+        { pid: 601, args: watcher(99992) },
+        // Live owner (pid 43): its watcher must be left alone.
+        { pid: 602, args: watcher(43) },
+        // A dbus-monitor without our stamp: never touched.
+        { pid: 603, args: "dbus-monitor --system type='signal',member='PrepareForSleep'" },
+        // A stamped watcher whose signal is not PrepareForSleep: not ours.
+        { pid: 604, args: "dbus-monitor --system type='signal',member='NameOwnerChanged' member='GoodvibesSleepWatchOwner99992'" },
+      ],
+      isAlive: (pid) => pid === 43,
+      kill: (pid) => { killed.push(pid); },
+      selfPid: 1000,
+    });
+    expect(reaped).toBe(1);
+    expect(killed).toEqual([601]);
+  });
+
+  test('the sleep-edge watcher stamps its owner pid, parses PrepareForSleep, and the unsubscribe reaps the child (no real spawn)', () => {
+    // A fake child so the unit test never launches a real dbus-monitor.
+    function fakeMonitor(): { child: ChildProcess; feed: (s: string) => void; killed: () => boolean } {
+      const emitter = new EventEmitter();
+      const stdout = new EventEmitter();
+      let killed = false;
+      const child = emitter as unknown as ChildProcess;
+      (child as unknown as { stdout: EventEmitter }).stdout = stdout;
+      (child as unknown as { unref: () => void }).unref = () => {};
+      (child as unknown as { kill: (s?: string) => boolean }).kill = () => { killed = true; emitter.emit('exit'); return true; };
+      (child as unknown as { pid: number }).pid = 424242;
+      return { child, feed: (s) => stdout.emit('data', Buffer.from(s, 'utf-8')), killed: () => killed };
+    }
+    const spawns: Array<{ command: string; args: readonly string[] }> = [];
+    let fake!: ReturnType<typeof fakeMonitor>;
+    const seam = createLinuxLogindSeam({
+      spawnMonitor: (command, args) => {
+        spawns.push({ command, args });
+        fake = fakeMonitor();
+        return fake.child;
+      },
+    });
+    const edges: boolean[] = [];
+    const unsubscribe = seam.onPrepareForSleep!((sleeping) => edges.push(sleeping));
+    // dbus-monitor spawned with two match rules: the real PrepareForSleep rule
+    // and the inert owner-pid stamp carrying THIS process's pid.
+    expect(spawns).toHaveLength(1);
+    expect(spawns[0]!.command).toBe('dbus-monitor');
+    expect(spawns[0]!.args[0]).toBe('--system');
+    expect(spawns[0]!.args[1]).toContain("member='PrepareForSleep'");
+    expect(spawns[0]!.args[2]).toContain(`GoodvibesSleepWatchOwner${process.pid}`);
+    // A real PrepareForSleep signal frame drives the callback both ways.
+    fake.feed('signal time=1 sender=x -> path=/org/freedesktop/login1; interface=org.freedesktop.login1.Manager; member=PrepareForSleep\n   boolean true\n');
+    expect(edges).toEqual([true]);
+    fake.feed('signal time=2 sender=x -> path=/org/freedesktop/login1; interface=org.freedesktop.login1.Manager; member=PrepareForSleep\n   boolean false\n');
+    expect(edges).toEqual([true, false]);
+    // Unsubscribe reaps the child.
+    unsubscribe();
+    expect(fake.killed()).toBe(true);
+  });
+
   test('the manager start() invokes the seam orphan reaper', async () => {
     const { seam } = fixtureSeam();
     let reapCalled = 0;
@@ -305,5 +370,51 @@ describe('live logind proof on this host', () => {
     await new Promise((resolve) => setTimeout(resolve, 300));
     const after = execFileSync('systemd-inhibit', ['--list', '--no-legend'], { encoding: 'utf-8' });
     expect(after).not.toContain('goodvibes-test-proof');
+    console.warn('[power test] live logind proof EXERCISED: an unprivileged idle inhibitor was genuinely held (listed by systemd-inhibit) and released via logind on this host.');
   }, 15_000);
+});
+
+describe('live sleep-edge watcher on this host (proves the leak fix)', () => {
+  test('a real dbus-monitor watcher spawns, carries its owner-pid stamp, and the unsubscribe reaps it — no orphan left', async () => {
+    const hasDbusMonitor = spawnSync('sh', ['-c', 'command -v dbus-monitor'], { encoding: 'utf-8' }).status === 0;
+    if (!hasDbusMonitor) {
+      console.warn('[power test] dbus-monitor unavailable in this environment — live sleep-edge watcher proof skipped honestly');
+      return;
+    }
+    // Our watcher carries this process's pid in its stamp match rule, so pgrep
+    // counts ONLY watchers this test spawned — never the host's own watcher.
+    const stamp = `GoodvibesSleepWatchOwner${process.pid}`;
+    const countMine = (): number => {
+      const result = spawnSync('pgrep', ['-fc', stamp], { encoding: 'utf-8' });
+      return Number((result.stdout ?? '').trim()) || 0;
+    };
+    const seam = createLinuxLogindSeam({ who: 'goodvibes-test-proof' });
+    let unsubscribe: (() => void) | null = null;
+    try {
+      const before = countMine();
+      unsubscribe = seam.onPrepareForSleep!(() => {});
+      let alive = before;
+      for (let i = 0; i < 40 && alive <= before; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        alive = countMine();
+      }
+      expect(alive).toBeGreaterThan(before);
+      // The unsubscribe closure reaps exactly our watcher.
+      unsubscribe();
+      unsubscribe = null;
+      let after = alive;
+      for (let i = 0; i < 40 && after > before; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        after = countMine();
+      }
+      expect(after).toBe(before);
+      console.warn('[power test] live sleep-edge watcher proof EXERCISED: a real dbus-monitor spawned, carried our owner-pid stamp, and the unsubscribe reaped it (no leak).');
+    } finally {
+      // Guarantee no watcher of ours survives even on assertion failure.
+      if (unsubscribe) {
+        try { unsubscribe(); } catch { /* already gone */ }
+      }
+      spawnSync('pkill', ['-f', stamp]);
+    }
+  }, 20_000);
 });
