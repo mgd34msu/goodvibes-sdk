@@ -4,6 +4,7 @@ import {
   existsSync,
   mkdirSync,
   openSync,
+  readdirSync,
   readFileSync,
   readSync,
   renameSync,
@@ -85,8 +86,60 @@ export function getLastSessionPointerPath(workingDirectory: string, surfaceRoot?
   return join(getUserSessionsDir(workingDirectory, surfaceRoot), 'last-session.json');
 }
 
-export function getRecoveryFilePath(homeDirectory: string, surfaceRoot?: string): string {
-  return resolveScopedDirectory(homeDirectory, surfaceRoot, 'recovery.jsonl');
+/** Filename prefix for per-session crash-recovery snapshots. */
+const RECOVERY_FILE_PREFIX = 'recovery-';
+const RECOVERY_FILE_SUFFIX = '.jsonl';
+
+/**
+ * Directory holding per-session crash-recovery snapshots
+ * (`<scope>/recovery/recovery-<sessionId>.jsonl`). Each concurrent session
+ * owns its own file, so two sessions crashing (or snapshotting) at once never
+ * clobber a single shared recovery file.
+ */
+export function getRecoveryDir(homeDirectory: string, surfaceRoot?: string): string {
+  return resolveScopedDirectory(homeDirectory, surfaceRoot, 'recovery');
+}
+
+/** Restrict a session id to a safe single filename segment (no path traversal). */
+function sanitizeRecoverySessionId(sessionId: string): string {
+  const safe = sessionId.replace(/[^A-Za-z0-9._-]/g, '_');
+  if (!safe || safe === '.' || safe === '..') {
+    throw new Error('Session persistence requires a non-empty recovery session id.');
+  }
+  return safe;
+}
+
+/**
+ * The recovery snapshot path for a specific session:
+ * `<scope>/recovery/recovery-<sessionId>.jsonl`.
+ */
+export function getRecoveryFilePath(homeDirectory: string, sessionId: string, surfaceRoot?: string): string {
+  const safe = sanitizeRecoverySessionId(sessionId);
+  return join(getRecoveryDir(homeDirectory, surfaceRoot), `${RECOVERY_FILE_PREFIX}${safe}${RECOVERY_FILE_SUFFIX}`);
+}
+
+/** All per-session recovery files currently on disk, newest-first by mtime. */
+function listRecoveryFiles(homeDirectory: string, surfaceRoot?: string): Array<{ path: string; mtimeMs: number }> {
+  const dir = getRecoveryDir(homeDirectory, surfaceRoot);
+  if (!existsSync(dir)) return [];
+  let names: string[];
+  try {
+    names = readdirSync(dir).filter(
+      (name) => name.startsWith(RECOVERY_FILE_PREFIX) && name.endsWith(RECOVERY_FILE_SUFFIX),
+    );
+  } catch {
+    return [];
+  }
+  const entries: Array<{ path: string; mtimeMs: number }> = [];
+  for (const name of names) {
+    const path = join(dir, name);
+    try {
+      entries.push({ path, mtimeMs: statSync(path).mtimeMs });
+    } catch {
+      // File vanished between readdir and stat — skip.
+    }
+  }
+  return entries.sort((a, b) => b.mtimeMs - a.mtimeMs);
 }
 
 export function generateUserSessionId(): string {
@@ -176,7 +229,7 @@ export function writeRecoveryFile(
   try {
     if (!snapshot.messages.length) return;
     const homeDirectory = requireHomeDirectory(options);
-    const recoveryFile = getRecoveryFilePath(homeDirectory, options?.surfaceRoot);
+    const recoveryFile = getRecoveryFilePath(homeDirectory, sessionId, options?.surfaceRoot);
     const lines: string[] = [];
     lines.push(JSON.stringify({ type: 'meta', sessionId, title, timestamp: Date.now() }));
     if (snapshot.titleSource || snapshot.returnContext) {
@@ -201,56 +254,99 @@ export function writeRecoveryFile(
   }
 }
 
-export function deleteRecoveryFile(options?: SessionPersistenceOptions): void {
+/**
+ * Delete a per-session recovery snapshot (after a clean save, or once its
+ * conversation has been restored). With an explicit `sessionId` only that
+ * session's file is removed; without one, every recovery snapshot in the scope
+ * is cleared (the full-reset path). A missing file is fine.
+ */
+export function deleteRecoveryFile(options?: SessionPersistenceOptions, sessionId?: string): void {
   try {
     const homeDirectory = requireHomeDirectory(options);
-    unlinkSync(getRecoveryFilePath(homeDirectory, options?.surfaceRoot));
+    if (sessionId) {
+      try {
+        unlinkSync(getRecoveryFilePath(homeDirectory, sessionId, options?.surfaceRoot));
+      } catch {
+        // missing file is fine
+      }
+      return;
+    }
+    for (const entry of listRecoveryFiles(homeDirectory, options?.surfaceRoot)) {
+      try {
+        unlinkSync(entry.path);
+      } catch {
+        // missing file is fine
+      }
+    }
   } catch {
-    // missing file is fine
+    // missing directory / unresolved home is fine
   }
 }
 
+/** Read the first-line meta of a recovery file into a RecoveryFileInfo. */
+function readRecoveryMeta(recoveryFile: string): RecoveryFileInfo | null {
+  const fd = openSync(recoveryFile, 'r');
+  const buf = Buffer.alloc(4096);
+  const bytesRead = readSync(fd, buf, 0, 4096, 0);
+  closeSync(fd);
+  const firstLine = buf.toString('utf-8', 0, bytesRead).split('\n')[0];
+  const meta = JSON.parse(firstLine!) as {
+    title?: string | undefined;
+    timestamp?: number | undefined;
+    sessionId?: string | undefined;
+    returnContext?: SessionReturnContextSummary | undefined;
+  };
+  return {
+    title: meta.title ?? '',
+    timestamp: meta.timestamp ?? 0,
+    sessionId: meta.sessionId ?? '',
+    returnContext: meta.returnContext,
+  };
+}
+
+/**
+ * The newest crash-recovery snapshot across all per-session files that is
+ * genuinely newer than the last clean session save (older-or-equal snapshots
+ * were superseded by a clean save and are not a crash). Returns null when no
+ * live crash snapshot exists.
+ */
 export function checkRecoveryFile(options?: SessionPersistenceOptions): RecoveryFileInfo | null {
   try {
     const { workingDirectory, homeDirectory } = resolveSessionPersistencePaths({
       workingDirectory: requireWorkingDirectory(options),
       homeDirectory: requireHomeDirectory(options),
     });
-    const recoveryFile = getRecoveryFilePath(homeDirectory, options?.surfaceRoot);
-    if (!existsSync(recoveryFile)) return null;
-    const recoveryMtime = statSync(recoveryFile).mtimeMs;
     const pointerPath = getLastSessionPointerPath(workingDirectory, options?.surfaceRoot);
-    if (existsSync(pointerPath)) {
-      const lastCleanMtime = statSync(pointerPath).mtimeMs;
-      if (recoveryMtime <= lastCleanMtime) return null;
+    const lastCleanMtime = existsSync(pointerPath) ? statSync(pointerPath).mtimeMs : 0;
+    for (const entry of listRecoveryFiles(homeDirectory, options?.surfaceRoot)) {
+      // listRecoveryFiles is newest-first; the first snapshot strictly newer
+      // than the last clean save is the one to offer.
+      if (entry.mtimeMs <= lastCleanMtime) continue;
+      try {
+        return readRecoveryMeta(entry.path);
+      } catch {
+        // Unreadable/partial snapshot — skip to the next candidate.
+      }
     }
-    const fd = openSync(recoveryFile, 'r');
-    const buf = Buffer.alloc(4096);
-    const bytesRead = readSync(fd, buf, 0, 4096, 0);
-    closeSync(fd);
-    const firstLine = buf.toString('utf-8', 0, bytesRead).split('\n')[0];
-    const meta = JSON.parse(firstLine!) as {
-      title?: string | undefined;
-      timestamp?: number | undefined;
-      sessionId?: string | undefined;
-      returnContext?: SessionReturnContextSummary | undefined;
-    };
-    return {
-      title: meta.title ?? '',
-      timestamp: meta.timestamp ?? 0,
-      sessionId: meta.sessionId ?? '',
-      returnContext: meta.returnContext,
-    };
+    return null;
   } catch (error) {
     logger.warn('[Recovery] Check failed', { error: summarizeError(error) });
     return null;
   }
 }
 
-export function loadRecoveryConversation(options?: SessionPersistenceOptions): SessionSnapshot | null {
+/**
+ * Load a recovery snapshot's conversation. With an explicit `sessionId` the
+ * matching per-session file is loaded; without one, the newest crash snapshot
+ * (the same one checkRecoveryFile offers) is loaded.
+ */
+export function loadRecoveryConversation(options?: SessionPersistenceOptions, sessionId?: string): SessionSnapshot | null {
   try {
     const homeDirectory = requireHomeDirectory(options);
-    const recoveryFile = getRecoveryFilePath(homeDirectory, options?.surfaceRoot);
+    const recoveryFile = sessionId
+      ? getRecoveryFilePath(homeDirectory, sessionId, options?.surfaceRoot)
+      : listRecoveryFiles(homeDirectory, options?.surfaceRoot)[0]?.path;
+    if (!recoveryFile) return null;
     const raw = readFileSync(recoveryFile, 'utf-8');
     const lines = raw.split('\n').filter(Boolean);
     if (lines.length < 2) return { messages: [] };
@@ -292,4 +388,62 @@ export function loadRecoveryConversation(options?: SessionPersistenceOptions): S
     logger.warn('[Recovery] Load failed', { error: summarizeError(error) });
     return null;
   }
+}
+
+/**
+ * A one-line receipt sink — the structural shape of FeatureAnnouncementStore's
+ * announce-once queue (`record(id, text)`), so auto-restore can enqueue its
+ * receipt into the same attach-time queue surfaces drain, without this module
+ * depending on the config layer.
+ */
+export interface RecoveryReceiptSink {
+  record(id: string, text?: string): boolean;
+}
+
+/** The outcome of a silent auto-restore. */
+export interface RecoveryRestoreResult {
+  readonly snapshot: SessionSnapshot;
+  readonly info: RecoveryFileInfo;
+  /** The one-line receipt describing the restore. */
+  readonly receipt: string;
+}
+
+/** Build the one-line restore receipt, verbatim. */
+function recoveryReceiptText(info: RecoveryFileInfo, messageCount: number): string {
+  const label = info.title.trim().length > 0 ? ` "${info.title.trim()}"` : '';
+  const plural = messageCount === 1 ? 'message' : 'messages';
+  return `Restored an interrupted session${label}: ${messageCount} ${plural} recovered from a crash snapshot.`;
+}
+
+/**
+ * Silent crash-recovery restore. When a live crash snapshot exists (newer than
+ * the last clean save), its conversation is loaded and returned WITHOUT a
+ * prompt, its snapshot file is cleared, and a single one-line receipt is
+ * enqueued into the receipts sink (exactly once per snapshot session) so the
+ * restore surfaces as a receipt rather than an interruption. Returns null when
+ * there is nothing to restore.
+ *
+ * This is the SDK-side replacement for the old restore-and-collide dance: with
+ * per-session snapshot files there is no shared recovery file to guard, so the
+ * consuming surface's collision-preservation workaround is no longer needed.
+ */
+export function autoRestoreRecovery(
+  options?: SessionPersistenceOptions,
+  receipts?: RecoveryReceiptSink,
+): RecoveryRestoreResult | null {
+  const info = checkRecoveryFile(options);
+  if (!info) return null;
+  const snapshot = loadRecoveryConversation(options, info.sessionId || undefined);
+  if (!snapshot || snapshot.messages.length === 0) return null;
+  const receipt = recoveryReceiptText(info, snapshot.messages.length);
+  if (receipts) {
+    try {
+      receipts.record(`session-recovery-restored:${info.sessionId}`, receipt);
+    } catch (error) {
+      logger.warn('[Recovery] receipt enqueue failed', { error: summarizeError(error) });
+    }
+  }
+  // The snapshot has served its purpose — clear it so it is not re-offered.
+  deleteRecoveryFile(options, info.sessionId || undefined);
+  return { snapshot, info, receipt };
 }
