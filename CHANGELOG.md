@@ -18,6 +18,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   exposes a one-line headline derived from its task/phase identity (never
   model output) and a quiet-too-long stall marker computed from timestamps,
   so every surface renders the same at-a-glance state without deriving it.
+- **The fleet observes externally-launched coding agents on the host.**
+  Claude Code / Codex sessions the daemon did not spawn or host are found by
+  read-only process-table detection and listed as `observed-external` rows
+  carrying an honest external kind, pid, working directory, start time, and
+  CPU-based liveness (active/quiet, never claiming quiet is proof of idle).
+  They are observed, not owned: they never count against `fleet.maxSize`, and
+  stop is never offered. Steering rides whatever channel the foreign session
+  genuinely exposes — a tmux pane, via send-keys — as a drill-in capability
+  (`fleet.observed.steer`); where no channel exists the row says so instead of
+  offering a dead action. Detection is opt-in at the daemon and degrades to a
+  quiet empty set.
 - **Finished work pushes by default.** Terminal fleet transitions
   (run-level kinds) push a completion notification to every paired target
   with zero setup, de-duped per node; per-class notification toggles
