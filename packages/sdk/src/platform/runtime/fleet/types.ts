@@ -31,6 +31,14 @@ export type ProcessKind =
   // running as a long-lived daemon session over the Agent Client Protocol —
   // see platform/acp/host.ts and adapters/acp-host.ts.
   | 'acp-agent'
+  // An externally-launched coding-agent session goodvibes did NOT spawn or host
+  // (someone's own Claude Code / Codex process on this host), found by read-only
+  // process-table detection. It is OBSERVED, not owned: it never counts against
+  // fleet.maxSize (fleet-count.ts accepts only owned sources by construction),
+  // stop is never offered, and steering rides whatever control channel the
+  // foreign session genuinely exposes (a tmux pane) or honestly says there is
+  // none. See adapters/observed.ts and observed/*.
+  | 'observed-external'
   // The repo source-tree code index's initial build (Stage A). Not
   // 'background-process': an index build has no pid (ProcessManager
   // is shell/OS-process-only), so it gets its own kind, mirroring the
@@ -222,6 +230,12 @@ export interface ProcessNode {
    * Absent on every ordinary (single-attempt) node.
    */
   readonly attemptGroup?: ProcessAttemptGroup | undefined;
+  /**
+   * Observed foreign-agent facts — present ONLY on an `observed-external` node
+   * (a coding-agent session goodvibes did not spawn or host). Absent on every
+   * owned/hosted node. See {@link ProcessObserved}.
+   */
+  readonly observed?: ProcessObserved | undefined;
   /** Opaque source record (AgentRecord, WrfcChain, …) for drill-downs. */
   readonly raw?: unknown;
 }
@@ -242,6 +256,72 @@ export interface ProcessStallTell {
   readonly since: number;
   /** now - since at snapshot time. */
   readonly quietForMs: number;
+}
+
+/**
+ * The honest external kind of an observed foreign coding-agent process. Derived
+ * from the process's binary/argv shape by read-only detection; `unknown` is a
+ * real, honest value (a known-shape match failed) rather than a guess.
+ */
+export type ObservedAgentKind = 'claude-code' | 'codex' | 'opencode' | 'unknown';
+
+/**
+ * How (or whether) an observed foreign row can be steered. A genuine channel
+ * carries what a surface needs to dispatch through it; `none` carries the plain
+ * reason there is no channel so a surface renders the reason, never a dead
+ * action. STOP is NEVER represented here — observing and steering a foreign
+ * session is not owning its lifecycle.
+ */
+export type ObservedSteerChannel =
+  | {
+      readonly kind: 'tmux';
+      /** The tmux pane id (e.g. `%90`) send-keys targets. */
+      readonly paneId: string;
+      /** The controlling terminal that mapped the process to the pane (e.g. `/dev/pts/11`). */
+      readonly tty: string;
+    }
+  | {
+      readonly kind: 'none';
+      /** Plain-language reason no steer channel exists (no controlling tty, no tmux pane for the tty). */
+      readonly reason: string;
+    };
+
+/**
+ * Recent-activity liveness for an observed process, from cheap read-only OS
+ * signals only. `active` means the process's cumulative CPU time ADVANCED since
+ * the previous detection snapshot; `quiet` means it did not — which is NOT proof
+ * the agent is idle (it may be blocked on the network or on a human), only that
+ * no CPU was burned in the interval. The detail states exactly that.
+ */
+export interface ObservedLiveness {
+  readonly state: 'active' | 'quiet';
+  /** Cumulative CPU seconds the OS reports for the process (monotonic per pid). */
+  readonly cpuSeconds: number;
+  /** Plain-language meaning — honest about what `quiet` can and cannot tell you. */
+  readonly detail: string;
+}
+
+/**
+ * The observed-foreign-agent facts carried on an `observed-external` ProcessNode.
+ * goodvibes did NOT spawn this process; the row's FIRST job is visibility, and
+ * goodvibes never presents itself as the foreign session's cockpit. A steer verb
+ * is offered only on the row's drill-in detail surface (see `steerDrillInOnly`),
+ * only when `steer.kind` is a real channel, and stop is never offered at all.
+ */
+export interface ProcessObserved {
+  readonly externalKind: ObservedAgentKind;
+  readonly pid: number;
+  /** The process's working directory, when derivable read-only. */
+  readonly cwd?: string | undefined;
+  readonly liveness: ObservedLiveness;
+  readonly steer: ObservedSteerChannel;
+  /**
+   * UX weight (owner ruling): steering a foreign agent is a DRILL-IN capability,
+   * available only once the row is opened in the visibility pane — never a
+   * primary or bulk affordance. Always `true` on observed rows; a surface reads
+   * it to keep the steer verb off the list and behind the row's detail view.
+   */
+  readonly steerDrillInOnly: true;
 }
 
 /** A work-item node's best-of-N sibling grouping, surfaced on the wire. */

@@ -126,7 +126,7 @@ import {
   createWorkflowServices,
   type WorkflowServices,
 } from '../tools/workflow/index.js';
-import { createProcessRegistry, withFleetArchive, attachFleetEmitBridge, type ArchivableProcessRegistry } from './fleet/index.js';
+import { createProcessRegistry, withFleetArchive, attachFleetEmitBridge, ObservedAgentSource, type ArchivableProcessRegistry } from './fleet/index.js';
 import { createOrchestrationEngine, createProviderBackedAttemptJudge, type OrchestrationEngine } from '../orchestration/index.js';
 import { createFixWorkstreamRunner } from '../orchestration/fix-workstream-runner.js';
 import { makeRuntimeFleetProbe } from './orchestration/fleet-count.js';
@@ -791,6 +791,12 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     return makeRuntimeFleetProbe({ readConfig: (key) => configManager.get(key as never), agentManager, acpHost })();
   }
 ;
+  // Read-only detection of externally-launched coding-agent sessions on this
+  // host (Claude Code / Codex the daemon did not spawn). These fold in as
+  // observed rows for visibility + steer; they NEVER count against fleet.maxSize
+  // (fleet-count.ts accepts only owned sources by construction). Absence is a
+  // quiet empty set.
+  const observedAgents = new ObservedAgentSource();
   const processRegistry = withFleetArchive(createProcessRegistry({
     agentManager,
     wrfcController,
@@ -809,6 +815,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     priceProvenance,
     codeIndexService: codeIndexStore,
     acpHost,
+    observedAgents,
   }));
 
   // Surface fleet lifecycle deltas on the runtime bus `fleet` domain (gateway fans it out; no polling). sessionPresence gates needs-input push suppression. Both subscriptions live for the registry's lifetime.

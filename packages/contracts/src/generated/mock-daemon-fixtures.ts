@@ -5438,6 +5438,23 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           "sessionRef": {
             "sessionId": "sample",
             "agentId": "sample"
+          },
+          "observed": {
+            "externalKind": "claude-code",
+            "pid": 0,
+            "cwd": "sample",
+            "liveness": {
+              "state": "active",
+              "cpuSeconds": 0,
+              "detail": "sample"
+            },
+            "steer": {
+              "kind": "tmux",
+              "paneId": "sample",
+              "tty": "sample",
+              "reason": "sample"
+            },
+            "steerDrillInOnly": false
           }
         }
       ]
@@ -5710,12 +5727,39 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           "sessionRef": {
             "sessionId": "sample",
             "agentId": "sample"
+          },
+          "observed": {
+            "externalKind": "claude-code",
+            "pid": 0,
+            "cwd": "sample",
+            "liveness": {
+              "state": "active",
+              "cpuSeconds": 0,
+              "detail": "sample"
+            },
+            "steer": {
+              "kind": "tmux",
+              "paneId": "sample",
+              "tty": "sample",
+              "reason": "sample"
+            },
+            "steerDrillInOnly": false
           }
         }
       ],
       "nextCursor": "sample",
       "hasMore": false,
       "capturedAt": 0
+    }
+  },
+  "fleet.observed.steer": {
+    "methodId": "fleet.observed.steer",
+    "http": null,
+    "status": 200,
+    "body": {
+      "queued": false,
+      "messageId": "sample",
+      "reason": "sample"
     }
   },
   "fleet.snapshot": {
@@ -5771,6 +5815,23 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           "sessionRef": {
             "sessionId": "sample",
             "agentId": "sample"
+          },
+          "observed": {
+            "externalKind": "claude-code",
+            "pid": 0,
+            "cwd": "sample",
+            "liveness": {
+              "state": "active",
+              "cpuSeconds": 0,
+              "detail": "sample"
+            },
+            "steer": {
+              "kind": "tmux",
+              "paneId": "sample",
+              "tty": "sample",
+              "reason": "sample"
+            },
+            "steerDrillInOnly": false
           }
         }
       ],

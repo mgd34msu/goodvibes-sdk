@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `410`
+- Methods: `411`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -30232,6 +30232,7 @@ Return the session-archived process nodes (same node shape as fleet.snapshot; st
               "phase",
               "work-item",
               "acp-agent",
+              "observed-external",
               "code-index"
             ]
           },
@@ -30433,6 +30434,86 @@ Return the session-archived process nodes (same node shape as fleet.snapshot; st
                 "type": "string"
               }
             },
+            "additionalProperties": false
+          },
+          "observed": {
+            "type": "object",
+            "properties": {
+              "externalKind": {
+                "type": "string",
+                "enum": [
+                  "claude-code",
+                  "codex",
+                  "opencode",
+                  "unknown"
+                ]
+              },
+              "pid": {
+                "type": "number"
+              },
+              "cwd": {
+                "type": "string"
+              },
+              "liveness": {
+                "type": "object",
+                "properties": {
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "active",
+                      "quiet"
+                    ]
+                  },
+                  "cpuSeconds": {
+                    "type": "number"
+                  },
+                  "detail": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "state",
+                  "cpuSeconds",
+                  "detail"
+                ],
+                "additionalProperties": false
+              },
+              "steer": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "tmux",
+                      "none"
+                    ]
+                  },
+                  "paneId": {
+                    "type": "string"
+                  },
+                  "tty": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false
+              },
+              "steerDrillInOnly": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "externalKind",
+              "pid",
+              "liveness",
+              "steer",
+              "steerDrillInOnly"
+            ],
             "additionalProperties": false
           }
         },
@@ -31577,6 +31658,7 @@ Paginated, filtered (kinds/states) query over the live process registry. Cursor 
               "phase",
               "work-item",
               "acp-agent",
+              "observed-external",
               "code-index"
             ]
           },
@@ -31779,6 +31861,86 @@ Paginated, filtered (kinds/states) query over the live process registry. Cursor 
               }
             },
             "additionalProperties": false
+          },
+          "observed": {
+            "type": "object",
+            "properties": {
+              "externalKind": {
+                "type": "string",
+                "enum": [
+                  "claude-code",
+                  "codex",
+                  "opencode",
+                  "unknown"
+                ]
+              },
+              "pid": {
+                "type": "number"
+              },
+              "cwd": {
+                "type": "string"
+              },
+              "liveness": {
+                "type": "object",
+                "properties": {
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "active",
+                      "quiet"
+                    ]
+                  },
+                  "cpuSeconds": {
+                    "type": "number"
+                  },
+                  "detail": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "state",
+                  "cpuSeconds",
+                  "detail"
+                ],
+                "additionalProperties": false
+              },
+              "steer": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "tmux",
+                      "none"
+                    ]
+                  },
+                  "paneId": {
+                    "type": "string"
+                  },
+                  "tty": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false
+              },
+              "steerDrillInOnly": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "externalKind",
+              "pid",
+              "liveness",
+              "steer",
+              "steerDrillInOnly"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -31807,6 +31969,64 @@ Paginated, filtered (kinds/states) query over the live process registry. Cursor 
     "items",
     "hasMore",
     "capturedAt"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `fleet.observed.steer`
+
+Drill-in steer of an externally-launched coding-agent session goodvibes only OBSERVES (a Claude Code / Codex process it did not spawn or host). The steer rides the foreign session's own control channel — for a tmux-hosted session, the exact three-send recipe (message text, then two Enters) targeted at its pane. queued:false with an honest reason when the row exposes no channel (no controlling terminal / no tmux pane) or a send fails. STOP is never offered on an observed row — observing and steering is not owning the lifecycle. Weighted as a drill-in capability (see the node's observed.steerDrillInOnly), never a bulk affordance.
+
+- Title: `Steer an Observed Foreign Agent`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `write:fleet`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "text": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "text"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "queued": {
+      "type": "boolean"
+    },
+    "messageId": {
+      "type": "string"
+    },
+    "reason": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "queued"
   ],
   "additionalProperties": false
 }
@@ -31868,6 +32088,7 @@ Return a point-in-time capture of every live/completed runtime process (agents, 
               "phase",
               "work-item",
               "acp-agent",
+              "observed-external",
               "code-index"
             ]
           },
@@ -32069,6 +32290,86 @@ Return a point-in-time capture of every live/completed runtime process (agents, 
                 "type": "string"
               }
             },
+            "additionalProperties": false
+          },
+          "observed": {
+            "type": "object",
+            "properties": {
+              "externalKind": {
+                "type": "string",
+                "enum": [
+                  "claude-code",
+                  "codex",
+                  "opencode",
+                  "unknown"
+                ]
+              },
+              "pid": {
+                "type": "number"
+              },
+              "cwd": {
+                "type": "string"
+              },
+              "liveness": {
+                "type": "object",
+                "properties": {
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "active",
+                      "quiet"
+                    ]
+                  },
+                  "cpuSeconds": {
+                    "type": "number"
+                  },
+                  "detail": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "state",
+                  "cpuSeconds",
+                  "detail"
+                ],
+                "additionalProperties": false
+              },
+              "steer": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "tmux",
+                      "none"
+                    ]
+                  },
+                  "paneId": {
+                    "type": "string"
+                  },
+                  "tty": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false
+              },
+              "steerDrillInOnly": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "externalKind",
+              "pid",
+              "liveness",
+              "steer",
+              "steerDrillInOnly"
+            ],
             "additionalProperties": false
           }
         },

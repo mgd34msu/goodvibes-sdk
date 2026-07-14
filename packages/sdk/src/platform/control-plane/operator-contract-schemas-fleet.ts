@@ -33,6 +33,7 @@ const PROCESS_KIND_SCHEMA = enumSchema([
   'phase',
   'work-item',
   'acp-agent',
+  'observed-external',
   'code-index',
 ]);
 const PROCESS_STATE_SCHEMA = enumSchema([
@@ -95,6 +96,32 @@ const PROCESS_ATTENTION_SCHEMA = objectSchema({
   detail: STRING_SCHEMA,
 }, ['reason']);
 
+// Observed foreign-agent facts, present ONLY on an 'observed-external' node.
+const OBSERVED_LIVENESS_SCHEMA = objectSchema({
+  // 'active' — CPU advanced since the last sample; 'quiet' — it did not (NOT
+  // proof of idle; the detail says so).
+  state: enumSchema(['active', 'quiet']),
+  cpuSeconds: NUMBER_SCHEMA,
+  detail: STRING_SCHEMA,
+}, ['state', 'cpuSeconds', 'detail']);
+const OBSERVED_STEER_CHANNEL_SCHEMA = objectSchema({
+  // 'tmux' — steerable via tmux send-keys (paneId/tty present); 'none' — no
+  // channel exists (reason present). Stop is never represented here.
+  kind: enumSchema(['tmux', 'none']),
+  paneId: STRING_SCHEMA,
+  tty: STRING_SCHEMA,
+  reason: STRING_SCHEMA,
+}, ['kind']);
+const PROCESS_OBSERVED_SCHEMA = objectSchema({
+  externalKind: enumSchema(['claude-code', 'codex', 'opencode', 'unknown']),
+  pid: NUMBER_SCHEMA,
+  cwd: STRING_SCHEMA,
+  liveness: OBSERVED_LIVENESS_SCHEMA,
+  steer: OBSERVED_STEER_CHANNEL_SCHEMA,
+  // UX weight: steering a foreign agent is a drill-in capability, never primary/bulk.
+  steerDrillInOnly: BOOLEAN_SCHEMA,
+}, ['externalKind', 'pid', 'liveness', 'steer', 'steerDrillInOnly']);
+
 export const PROCESS_NODE_SCHEMA = objectSchema({
   id: STRING_SCHEMA,
   kind: PROCESS_KIND_SCHEMA,
@@ -116,6 +143,7 @@ export const PROCESS_NODE_SCHEMA = objectSchema({
   capabilities: PROCESS_CAPABILITIES_SCHEMA,
   needsAttention: PROCESS_ATTENTION_SCHEMA,
   sessionRef: PROCESS_SESSION_REF_SCHEMA,
+  observed: PROCESS_OBSERVED_SCHEMA,
 }, ['id', 'kind', 'label', 'state', 'elapsedMs', 'costState', 'capabilities'], { additionalProperties: true });
 
 export const FLEET_SNAPSHOT_OUTPUT_SCHEMA = objectSchema({
@@ -161,6 +189,23 @@ export const FLEET_ARCHIVED_LIST_OUTPUT_SCHEMA = objectSchema({
   capturedAt: NUMBER_SCHEMA,
   nodes: arraySchema(PROCESS_NODE_SCHEMA),
 }, ['capturedAt', 'nodes']);
+
+// ── fleet.observed.steer — drill-in steer of an observed foreign agent ──────
+// Rides the foreign session's own control channel (tmux send-keys). STOP is
+// never offered on an observed row; this is steer only. ws-only invoke verb.
+export const FLEET_OBSERVED_STEER_INPUT_SCHEMA = objectSchema({
+  // The observed node id (e.g. `observed:3289628`).
+  id: STRING_SCHEMA,
+  text: STRING_SCHEMA,
+}, ['id', 'text']);
+
+export const FLEET_OBSERVED_STEER_OUTPUT_SCHEMA = objectSchema({
+  // queued:true — the three-send recipe reached the pane; queued:false carries
+  // the honest reason (no channel, or a send-keys failure).
+  queued: BOOLEAN_SCHEMA,
+  messageId: STRING_SCHEMA,
+  reason: STRING_SCHEMA,
+}, ['queued']);
 
 const CHECKPOINT_KIND_SCHEMA = enumSchema(['turn', 'agent-run', 'manual']);
 const RETENTION_CLASS_SCHEMA = enumSchema(['short', 'standard', 'forensic']);

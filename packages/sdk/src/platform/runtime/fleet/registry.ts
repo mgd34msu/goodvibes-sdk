@@ -61,6 +61,8 @@ import {
 import type { CodeIndexProcessSource } from './adapters/code-index.js';
 import { adaptCodeIndex } from './adapters/code-index.js';
 import { adaptHostedAcpAgent, killHostedAcpNode, steerHostedAcpNode } from './adapters/acp-host.js';
+import { adaptObservedAgent, steerObservedNode } from './adapters/observed.js';
+import type { ObservedAgentSource } from './observed/source.js';
 import type { AcpHostService } from '../../acp/host.js';
 import type { WorkItem, Workstream } from '../../orchestration/types.js';
 import type { OrchestrationEngine } from '../../orchestration/engine.js';
@@ -131,6 +133,8 @@ export interface ProcessRegistryDeps {
   readonly codeIndexService?: CodeIndexProcessSource | undefined;
   /** Optional: hosted third-party ACP agents fold in as 'acp-agent' nodes (steer = next prompt, kill = stop, permission ask = awaiting-approval). Absent ⇒ exactly today's behavior. */
   readonly acpHost?: Pick<AcpHostService, 'list' | 'prompt' | 'stop'> | undefined;
+  /** Optional: externally-launched agents observed read-only on the host fold in as 'observed-external' rows (steer = the foreign session's own channel, e.g. tmux; stop never offered; NOT counted against fleet.maxSize). Absent ⇒ exactly today's behavior. */
+  readonly observedAgents?: Pick<ObservedAgentSource, 'list' | 'steer'> | undefined;
   /**
    * Optional: folds `/schedule` automation jobs
    * (platform/automation, a SEPARATE subsystem from the workflow-tool's
@@ -454,6 +458,9 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
     if (deps.acpHost) {
       for (const hosted of deps.acpHost.list()) nodes.push(adaptHostedAcpAgent(hosted, capturedAt));
     }
+    if (deps.observedAgents) {
+      for (const row of deps.observedAgents.list()) nodes.push(adaptObservedAgent(row, capturedAt));
+    }
     if (deps.codeIndexService) {
       nodes.push(adaptCodeIndex(deps.codeIndexService, capturedAt));
     }
@@ -756,6 +763,8 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
     if (!target) return { queued: false, reason: 'no such process' };
     // A hosted ACP agent's steer travels over its own stdio connection (no message bus needed).
     if (target.kind === 'acp-agent') return steerHostedAcpNode(deps.acpHost, target, text);
+    // An observed foreign agent's steer travels over its own control channel (tmux send-keys); stop is never offered.
+    if (target.kind === 'observed-external') return steerObservedNode(deps.observedAgents, target, text);
     if (!deps.messageBus) {
       return { queued: false, reason: 'steering is unavailable: no message bus configured' };
     }

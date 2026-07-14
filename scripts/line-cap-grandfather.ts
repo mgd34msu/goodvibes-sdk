@@ -171,8 +171,8 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
   },
   // registry.ts (runtime/fleet) ~0.81k — runtime fleet registry, pre-split, shrink-only
   'packages/sdk/src/platform/runtime/fleet/registry.ts': {
-    ceiling: 837,
-    justification: 'runtime fleet registry, pre-split, shrink-only; +12 for steer-wake: a wedged (failed) agent whose loop has exited is re-triggered via agentManager.wakeWithSteer instead of an honest refusal (the branch + comment in steer()\'s agent case); +19 for the headline + stall-tell read-model projections: the stallTellMs dep, the HeadlineTable side-table construction, and the post-assemble node mapping that attaches headline/stall to every snapshot (derivation + anti-feed contract live in headlines.ts)',
+    ceiling: 842,
+    justification: 'runtime fleet registry, pre-split, shrink-only; +12 for steer-wake: a wedged (failed) agent whose loop has exited is re-triggered via agentManager.wakeWithSteer instead of an honest refusal (the branch + comment in steer()\'s agent case); +19 for the headline + stall-tell read-model projections: the stallTellMs dep, the HeadlineTable side-table construction, and the post-assemble node mapping that attaches headline/stall to every snapshot (derivation + anti-feed contract live in headlines.ts); +5 for the observed-external fold: the optional observedAgents dep, the assemble() fold of read-only observed rows, and the steer() dispatch case to the foreign session\'s own channel (detection/liveness/steer logic all live in observed/* and adapters/observed.ts)',
   },
   // registry.ts (providers) ~0.82k — provider registry, split candidate
   'packages/sdk/src/platform/providers/registry.ts': {
