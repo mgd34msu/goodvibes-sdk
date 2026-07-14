@@ -34,6 +34,7 @@ import type { RuntimeEventBus, TurnInputOrigin } from '../runtime/events/index.j
 import { HelperModel } from '../config/helper-model.js';
 import {
   emitPreflightFail,
+  emitQueuedMessagesChanged,
   emitStreamEnd,
   emitTurnCancel,
   emitTurnError,
@@ -149,9 +150,8 @@ export class Orchestrator {
   public thinkingFrame = 0;
   public usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
   /**
-   * Input tokens from the most recent LLM response — represents current context window usage.
-   * Includes cache read/write tokens for accurate context window occupancy.
-   * Value is 0 before the first LLM response (context bar shows empty, which is correct).
+   * Input tokens from the most recent LLM response (incl. cache read/write) —
+   * current context-window usage; 0 before the first response.
    */
   public lastInputTokens = 0;
   /** Fresh input tokens from the most recent turn (excluding cache-read reuse where applicable). */
@@ -190,21 +190,13 @@ export class Orchestrator {
   private readonly sessionId: string;
 
   /**
-   * Submission key for the currently active turn.
-   *
-   * Generated at the start of each `runTurn` call and used as the idempotency
-   * key for the turn-level deduplication fence. A duplicate `runTurn` call with
-   * the same text that arrives while a turn is still in-flight will be detected
-   * via the shared `idempotencyStore` and rejected before re-executing.
-   *
-   * The key is reset to `null` when the turn completes.
+   * Submission key for the active turn: generated per runTurn, used as the
+   * idempotency key of the turn-level dedup fence (a duplicate in-flight
+   * runTurn with the same text is rejected), reset to null on completion.
    */
   public currentSubmissionKey: string | null = null;
 
-  /**
-   * Tracks whether the current turn ended in failure.
-   * Set to `true` in the catch block; read in `finally` to decide markComplete vs markFailed.
-   */
+  /** True when the turn failed (set in catch; read in finally for markComplete vs markFailed). */
   private _turnFailed = false;
 
   /** Event replay queue — ensures model acknowledges significant events */
@@ -221,13 +213,9 @@ export class Orchestrator {
   private readonly ownedCacheHitTracker = new CacheHitTracker();
 
   /**
-   * Optional capability-gate manager.
-   *
-   * When provided, the `tool-result-reconciliation` flag is
-   * consulted at each turn end to decide whether to use full reconciliation
-   * (`enabled`) or skip reconciliation (`disabled`).
-   * When `null`, reconciliation defaults to enabled (matching the flag's
-   * declared `defaultState`).
+   * Optional capability-gate manager: the `tool-result-reconciliation` flag is
+   * consulted at each turn end (enabled = full reconciliation); null defaults
+   * to enabled, matching the flag's declared defaultState.
    */
   private flagManager: FeatureFlagManager | null = null;
 
@@ -451,15 +439,29 @@ export class Orchestrator {
   /** Replace a still-queued message's text; false once delivered (immutable). */
   public editQueuedMessage(id: string, text: string): boolean {
     const edited = editQueuedMessage(this.messageQueue, id, text);
-    if (edited) this.requestRender();
+    if (edited) {
+      this.emitQueueChange('edited', id);
+      this.requestRender();
+    }
     return edited;
   }
 
   /** Remove a still-queued message before delivery; false once delivered. */
   public deleteQueuedMessage(id: string): boolean {
     const deleted = deleteQueuedMessage(this.messageQueue, id);
-    if (deleted) this.requestRender();
+    if (deleted) {
+      this.emitQueueChange('deleted', id);
+      this.requestRender();
+    }
     return deleted;
+  }
+
+  /** Broadcast a pending-queue mutation as a runtime.session event (wire-honest). */
+  private emitQueueChange(action: 'enqueued' | 'edited' | 'deleted' | 'delivered', messageId: string): void {
+    if (!this.runtimeBus) return;
+    emitQueuedMessagesChanged(this.runtimeBus, createEmitterContext(this.sessionId, 'queue'), {
+      sessionId: this.sessionId, action, messageId, pendingCount: this.messageQueue.length,
+    });
   }
 
   /** Abort the current in-flight LLM request, if any. */
@@ -524,7 +526,9 @@ export class Orchestrator {
 
     if (this.isThinking || this.isCompacting) {
       this.queuedMessageSeq += 1;
-      this.messageQueue.push({ id: `qm-${this.queuedMessageSeq}`, queuedAt: Date.now(), text, content, options });
+      const id = `qm-${this.queuedMessageSeq}`;
+      this.messageQueue.push({ id, queuedAt: Date.now(), text, content, options });
+      this.emitQueueChange('enqueued', id);
       this.requestRender();
       return;
     }
@@ -551,6 +555,7 @@ export class Orchestrator {
   private async drainMessageQueue(): Promise<void> {
     while (this.messageQueue.length > 0 && !this.isThinking && !this.isCompacting) {
       const next = this.messageQueue.shift()!;
+      this.emitQueueChange('delivered', next.id);
       await this.runTurn(next.text, next.content, next.options);
     }
     this.followUpRuntime.scheduleFlush();

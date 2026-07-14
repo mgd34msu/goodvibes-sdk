@@ -14,6 +14,7 @@ import {
   STRING_SCHEMA,
   methodDescriptor,
   objectSchema,
+  runtimeEventId,
 } from './method-catalog-shared.js';
 
 export const builtinGatewayControlLiveTurnMethodDescriptors: readonly GatewayMethodDescriptor[] = [
@@ -24,6 +25,7 @@ export const builtinGatewayControlLiveTurnMethodDescriptors: readonly GatewayMet
     category: 'sessions',
     scopes: ['write:sessions'],
     http: { method: 'POST', path: '/api/sessions/{sessionId}/tool-calls/{callId}/cancel' },
+    events: [runtimeEventId('tools')],
     inputSchema: objectSchema({
       sessionId: STRING_SCHEMA,
       callId: STRING_SCHEMA,
@@ -61,6 +63,7 @@ export const builtinGatewayControlLiveTurnMethodDescriptors: readonly GatewayMet
     category: 'sessions',
     scopes: ['write:sessions'],
     http: { method: 'POST', path: '/api/sessions/{sessionId}/queued-messages/{messageId}' },
+    events: [runtimeEventId('session')],
     inputSchema: objectSchema({
       sessionId: STRING_SCHEMA,
       messageId: STRING_SCHEMA,
@@ -79,6 +82,7 @@ export const builtinGatewayControlLiveTurnMethodDescriptors: readonly GatewayMet
     category: 'sessions',
     scopes: ['write:sessions'],
     http: { method: 'DELETE', path: '/api/sessions/{sessionId}/queued-messages/{messageId}' },
+    events: [runtimeEventId('session')],
     inputSchema: objectSchema({
       sessionId: STRING_SCHEMA,
       messageId: STRING_SCHEMA,

@@ -79,6 +79,14 @@ const DIRECT_TRANSPORT_COVERAGE: Record<string, string> = {
   'sessions.permissionMode.get': 'http-only',
   'sessions.permissionMode.set': 'http-only',
   'sessions.contextUsage.get': 'http-only',
+  // Live-turn verbs (per-call cancel + queued-message management) act on the
+  // daemon's LIVE local runtime through the bound live-turn controls — the
+  // same daemon-only shape as permissionMode/contextUsage above; same
+  // deliberate 'http-only' skip.
+  'sessions.toolCalls.cancel': 'http-only',
+  'sessions.queuedMessages.list': 'http-only',
+  'sessions.queuedMessages.edit': 'http-only',
+  'sessions.queuedMessages.delete': 'http-only',
   // sessions.changes.get: aggregate workspace file changes for a session,
   // joined over its stamped WorkspaceCheckpoints. A wire-only read for REMOTE
   // surfaces that cannot reach the in-process workspaceCheckpointManager the

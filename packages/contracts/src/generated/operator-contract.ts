@@ -79324,6 +79324,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "method": "DELETE",
           "path": "/api/sessions/{sessionId}/queued-messages/{messageId}"
         },
+        "events": [
+          "runtime.session"
+        ],
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -79380,6 +79383,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "method": "POST",
           "path": "/api/sessions/{sessionId}/queued-messages/{messageId}"
         },
+        "events": [
+          "runtime.session"
+        ],
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -80798,6 +80804,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "method": "POST",
           "path": "/api/sessions/{sessionId}/tool-calls/{callId}/cancel"
         },
+        "events": [
+          "runtime.tools"
+        ],
         "inputSchema": {
           "type": "object",
           "properties": {
