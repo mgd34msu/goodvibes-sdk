@@ -77,6 +77,23 @@ function jsonEqual(a: unknown, b: unknown): boolean {
 }
 
 /**
+ * True when a raw settings file looks like a whole-config dump the old save()
+ * produced — every top-level default domain is present. This is the provenance
+ * signal the read-time strip migration keys off: a full dump is the frozen-
+ * defaults artifact and is safe to minimize; a sparse, hand-authored file
+ * (even one whose lone key happens to equal a default) is deliberate user
+ * intent and is left untouched. Keeps the migration conservative.
+ */
+export function isFrozenDefaultDump(
+  raw: Record<string, unknown>,
+  defaults: Record<string, unknown> = DEFAULT_CONFIG_SNAPSHOT as unknown as Record<string, unknown>,
+): boolean {
+  const domains = Object.keys(defaults);
+  if (domains.length === 0) return false;
+  return domains.every((domain) => domain in raw);
+}
+
+/**
  * Drop every leaf whose value equals the shipped default at the same path —
  * the "frozen defaults" a whole-config write used to bake in. Keys absent from
  * the defaults (genuine user data we cannot classify) are kept as-is; a value
