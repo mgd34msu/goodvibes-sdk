@@ -3,7 +3,7 @@
   "info": {
     "title": "GoodVibes Operator API",
     "version": "1.8.0",
-    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 395 cataloged methods: 353 with dedicated REST bindings, 42 reachable only through the generic invoke endpoint. 97 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
+    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 398 cataloged methods: 353 with dedicated REST bindings, 45 reachable only through the generic invoke endpoint. 97 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
   },
   "servers": [
     {
@@ -89120,6 +89120,7 @@
           "fleet.unarchive",
           "pairing.handoff.complete",
           "pairing.handoff.create",
+          "pairing.posture.get",
           "pairing.tokens.create",
           "pairing.tokens.delete",
           "pairing.tokens.list",
@@ -89140,6 +89141,8 @@
           "rewind.plan",
           "sessions.changes.get",
           "sessions.search",
+          "tailscale.get",
+          "tailscale.serve.run",
           "worktrees.setup.run"
         ]
       }
@@ -91789,6 +91792,15 @@
       "outputSchemaCoverage": "typed"
     },
     {
+      "id": "pairing.posture.get",
+      "category": "pairing",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
       "id": "pairing.tokens.create",
       "category": "pairing",
       "access": "authenticated",
@@ -92155,6 +92167,24 @@
       "rest": "GET /api/remote/work",
       "typedClientIo": true,
       "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "tailscale.get",
+      "category": "remote-access",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "schema-less",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "tailscale.serve.run",
+      "category": "remote-access",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "schema-less",
       "outputSchemaCoverage": "typed"
     },
     {

@@ -312,6 +312,9 @@ export interface OperatorMethodInputMap {
   "pairing.tokens.revokeShared": {  };
   "pairing.handoff.create": { name: string; offers?: readonly string[]; };
   "pairing.handoff.complete": { accept?: { notifications?: { endpoint: string; keys: { p256dh: string; auth: string; }; deviceId?: string; }; relay?: boolean; passkey?: { rpId: string; origin: string; credentialId: string; publicKeyCose: string; }; }; };
+  "pairing.posture.get": { origin?: string; };
+  "tailscale.get": {  };
+  "tailscale.serve.run": {  };
 }
 
 export interface OperatorMethodOutputMap {
@@ -611,8 +614,11 @@ export interface OperatorMethodOutputMap {
   "pairing.tokens.rename": { id: string; renamed: boolean; };
   "pairing.tokens.delete": { id: string; revoked: boolean; };
   "pairing.tokens.revokeShared": { legacySharedRevoked: boolean; };
-  "pairing.handoff.create": { token: { id: string; name: string; token: string; createdAt: number; }; offers: readonly ({ kind: string; available: boolean; vapidPublicKey?: string; })[]; fragment: string; deepLink?: string; };
+  "pairing.handoff.create": { token: { id: string; name: string; token: string; createdAt: number; }; offers: readonly ({ kind: string; available: boolean; vapidPublicKey?: string; })[]; fragment: string; deepLink?: string; posture?: { origin: string; scheme: string; privateNetwork: boolean; secureContext: boolean; notice?: string; capabilities: readonly ({ capability: string; available: boolean; reason?: string; })[]; }; };
   "pairing.handoff.complete": { results: readonly ({ kind: string; status: string; detail?: string; })[]; };
+  "pairing.posture.get": { posture: { origin: string; scheme: string; privateNetwork: boolean; secureContext: boolean; notice?: string; capabilities: readonly ({ capability: string; available: boolean; reason?: string; })[]; }; };
+  "tailscale.get": { available: boolean; loggedIn: boolean; magicDnsName?: string; httpsUrl?: string; detail: string; lastServe?: { at: number; command: string; ok: boolean; url?: string; detail: string; }; };
+  "tailscale.serve.run": { receipt: { at: number; command: string; ok: boolean; url?: string; detail: string; }; publicBaseUrlUpdated: boolean; };
 }
 
 export interface OperatorEventPayloadMap {

@@ -29,6 +29,7 @@ import {
   PAIRING_HANDOFF_OFFER_KINDS,
   type PairingHandoffOfferKind,
 } from '../../pairing/pairing-handoff.js';
+import { describeOriginPosture } from '../../pairing/origin-posture.js';
 import { GatewayVerbError } from './gateway-verb-error.js';
 import { readInvocationParams } from './invocation-params.js';
 
@@ -100,7 +101,30 @@ function createHandoffCreateHandler(deps: PairingHandoffDeps): GatewayMethodHand
       offers: offerDetails,
       fragment,
       ...(deepLink ? { deepLink } : {}),
+      // The honest TLS/capability posture of the origin the QR points at, so a
+      // surface states the plain-http-LAN line ONCE at pairing (never a nag)
+      // and labels browser-gated gaps instead of rendering dead buttons.
+      ...(webOrigin ? { posture: describeOriginPosture(webOrigin) } : {}),
     };
+  };
+}
+
+/**
+ * pairing.posture.get — the same posture read outside a pairing exchange: a
+ * surface passes its OWN current origin (or omits it to read the configured web
+ * origin) and renders labeled capability gaps for wherever it is running.
+ */
+function createPostureGetHandler(deps: PairingHandoffDeps): GatewayMethodHandler {
+  return async (invocation) => {
+    requirePrincipal(invocation);
+    const params = readInvocationParams(invocation);
+    const origin = typeof params.origin === 'string' && params.origin.trim().length > 0
+      ? params.origin
+      : deps.webOrigin?.();
+    if (!origin) {
+      throw new GatewayVerbError('No origin supplied and no web origin is configured', 'ORIGIN_UNKNOWN', 404);
+    }
+    return { posture: describeOriginPosture(origin) };
   };
 }
 
@@ -174,6 +198,7 @@ function createHandoffCompleteHandler(deps: PairingHandoffDeps): GatewayMethodHa
 const HANDOFF_HANDLER_FACTORIES: Readonly<Record<string, (deps: PairingHandoffDeps) => GatewayMethodHandler>> = {
   'pairing.handoff.create': createHandoffCreateHandler,
   'pairing.handoff.complete': createHandoffCompleteHandler,
+  'pairing.posture.get': createPostureGetHandler,
 };
 
 /**

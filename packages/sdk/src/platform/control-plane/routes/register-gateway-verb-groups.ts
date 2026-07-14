@@ -17,6 +17,8 @@ import { registerFleetCheckpointsSearchGatewayMethods, type FleetCheckpointsSear
 import { registerPushGatewayMethods } from './push.js';
 import { registerPairingGatewayMethods, type PairingGatewayService } from './pairing.js';
 import { registerPairingHandoffGatewayMethods } from './pairing-handoff.js';
+import { registerTailscaleGatewayMethods } from './tailscale.js';
+import { defaultTailscaleRunner, TailscaleServeReceiptStore, type TailscaleCommandRunner } from '../../remote-access/tailscale.js';
 import { registerSkillsGatewayMethods } from './skills.js';
 import { registerPrincipalsGatewayMethods } from './principals.js';
 import { PrincipalRegistry, PrincipalStore } from '../../principals/index.js';
@@ -209,6 +211,8 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
   readonly relayAvailable?: (() => boolean) | undefined;
   /** The configured web-app origin the pairing QR points at ⇒ hand-off returns a full deep link. */
   readonly pairingWebOrigin?: (() => string | undefined) | undefined;
+  /** Injectable tailscale command runner (tests); absent ⇒ the real spawnSync runner. */
+  readonly tailscaleRunner?: TailscaleCommandRunner | undefined;
   /**
    * Config surface backing the session-scoped permission-mode verbs
    * (sessions.permissionMode.get/set): the daemon's own `permissions.mode`
@@ -582,6 +586,17 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
       ...(deps.pairingWebOrigin ? { webOrigin: deps.pairingWebOrigin } : {}),
     });
   }
+  // Tailscale auto-wire: read-only detection + the one-action serve affordance
+  // (the recommended https path — the daemon never mints certificates). Where
+  // tailscale is absent, detection reports it once; nothing nags.
+  registerTailscaleGatewayMethods(catalog, {
+    runner: deps.tailscaleRunner ?? defaultTailscaleRunner(),
+    receipts: new TailscaleServeReceiptStore(deps.shellPaths.resolveUserPath('control-plane', 'tailscale-serve-receipts.json')),
+    resolveWebPort: () => Number((deps.configManager.get as (k: string) => unknown)('web.port') ?? 3423),
+    setPublicBaseUrl: (url) => {
+      (deps.configManager.set as (k: string, v: unknown) => unknown)('web.publicBaseUrl', url);
+    },
+  });
   // Real event source: approvals-needed -> push to every registered device.
   // The unsubscribe handle is intentionally not retained — the subscription
   // lives for the daemon's lifetime, exactly like the fleet/checkpoint verb

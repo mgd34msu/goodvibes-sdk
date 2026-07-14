@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.8.0
- * Methods: 395 total, 353 REST-routed, 42 ws-only invoke.
+ * Methods: 398 total, 353 REST-routed, 45 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -1477,6 +1477,7 @@ export const WEBUI_WS_INVOKE_METHOD_IDS: readonly string[] = [
   "fleet.unarchive",
   "pairing.handoff.complete",
   "pairing.handoff.create",
+  "pairing.posture.get",
   "pairing.tokens.create",
   "pairing.tokens.delete",
   "pairing.tokens.list",
@@ -1493,6 +1494,8 @@ export const WEBUI_WS_INVOKE_METHOD_IDS: readonly string[] = [
   "push.vapid.get",
   "quota.fanout.get",
   "quota.snapshot.get",
+  "tailscale.get",
+  "tailscale.serve.run",
   "rewind.apply",
   "rewind.plan",
   "sessions.changes.get",
@@ -1774,6 +1777,7 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "memory.vector.stats": "rest",
   "pairing.handoff.complete": "ws-invoke",
   "pairing.handoff.create": "ws-invoke",
+  "pairing.posture.get": "ws-invoke",
   "pairing.tokens.create": "ws-invoke",
   "pairing.tokens.delete": "ws-invoke",
   "pairing.tokens.list": "ws-invoke",
@@ -1815,6 +1819,8 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "remote.snapshot": "rest",
   "remote.work.cancel": "rest",
   "remote.work.list": "rest",
+  "tailscale.get": "ws-invoke",
+  "tailscale.serve.run": "ws-invoke",
   "review.snapshot": "rest",
   "rewind.apply": "ws-invoke",
   "rewind.plan": "ws-invoke",
@@ -14321,7 +14327,42 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
         }
       ],
       "fragment": "sample",
-      "deepLink": "sample"
+      "deepLink": "sample",
+      "posture": {
+        "origin": "sample",
+        "scheme": "sample",
+        "privateNetwork": false,
+        "secureContext": false,
+        "notice": "sample",
+        "capabilities": [
+          {
+            "capability": "sample",
+            "available": false,
+            "reason": "sample"
+          }
+        ]
+      }
+    }
+  },
+  "pairing.posture.get": {
+    "input": {
+      "origin": "sample"
+    },
+    "output": {
+      "posture": {
+        "origin": "sample",
+        "scheme": "sample",
+        "privateNetwork": false,
+        "secureContext": false,
+        "notice": "sample",
+        "capabilities": [
+          {
+            "capability": "sample",
+            "available": false,
+            "reason": "sample"
+          }
+        ]
+      }
     }
   },
   "pairing.tokens.create": {
@@ -15753,6 +15794,36 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "metadata": {}
         }
       ]
+    }
+  },
+  "tailscale.get": {
+    "input": null,
+    "output": {
+      "available": false,
+      "loggedIn": false,
+      "magicDnsName": "sample",
+      "httpsUrl": "sample",
+      "detail": "sample",
+      "lastServe": {
+        "at": 0,
+        "command": "sample",
+        "ok": false,
+        "url": "sample",
+        "detail": "sample"
+      }
+    }
+  },
+  "tailscale.serve.run": {
+    "input": null,
+    "output": {
+      "receipt": {
+        "at": 0,
+        "command": "sample",
+        "ok": false,
+        "url": "sample",
+        "detail": "sample"
+      },
+      "publicBaseUrlUpdated": false
     }
   },
   "review.snapshot": {
