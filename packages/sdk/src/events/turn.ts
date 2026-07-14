@@ -130,12 +130,30 @@ export type TurnEvent =
   | { type: 'TOOLS_DONE'; turnId: string }
   /** Post-processing hooks (WRFC, formatters, etc.) have completed. */
   | { type: 'POST_HOOKS_DONE'; turnId: string }
-  /** Turn completed successfully with a final response. */
-  | { type: 'TURN_COMPLETED'; turnId: string; response: string; stopReason: Extract<TurnStopReason, 'completed' | 'empty_response'> }
+  /**
+   * Turn completed successfully with a final response.
+   *
+   * `metadata.memory.recordIds` carries the MEMORY-sourced knowledge-record ids
+   * that were injected into this turn (TurnInjectionRecord.injectedIds filtered
+   * to source 'memory' — code-index hits are deliberately excluded). The path
+   * shape matches the documented surface convention exactly
+   * (`metadata.memory.recordIds: string[]`), so a provenance chip reads it
+   * unchanged. A turn with no memory injections carries NO metadata field —
+   * honest absence, never an empty array.
+   */
+  | { type: 'TURN_COMPLETED'; turnId: string; response: string; stopReason: Extract<TurnStopReason, 'completed' | 'empty_response'>; metadata?: TurnCompletedMetadata | undefined }
   /** Turn failed with an error. */
   | { type: 'TURN_ERROR'; turnId: string; error: string; stopReason: Exclude<TurnStopReason, 'completed' | 'empty_response' | 'cancelled'> }
   /** Turn was cancelled by the user or system. */
   | { type: 'TURN_CANCEL'; turnId: string; reason?: string; stopReason: Extract<TurnStopReason, 'cancelled'> };
+
+/**
+ * Optional provenance metadata on TURN_COMPLETED. The `memory.recordIds` path
+ * is a published convention surfaces already read — keep the shape stable.
+ */
+export interface TurnCompletedMetadata {
+  readonly memory?: { readonly recordIds: readonly string[] } | undefined;
+}
 
 /** All turn event type literals as a union. */
 export type TurnEventType = TurnEvent['type'];

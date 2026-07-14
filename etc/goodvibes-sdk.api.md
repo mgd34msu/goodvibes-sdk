@@ -18532,12 +18532,23 @@ export type TurnEvent =
     type: 'POST_HOOKS_DONE';
     turnId: string;
 }
-/** Turn completed successfully with a final response. */
+/**
+* Turn completed successfully with a final response.
+*
+* `metadata.memory.recordIds` carries the MEMORY-sourced knowledge-record ids
+* that were injected into this turn (TurnInjectionRecord.injectedIds filtered
+* to source 'memory' — code-index hits are deliberately excluded). The path
+* shape matches the documented surface convention exactly
+* (`metadata.memory.recordIds: string[]`), so a provenance chip reads it
+* unchanged. A turn with no memory injections carries NO metadata field —
+* honest absence, never an empty array.
+*/
 | {
     type: 'TURN_COMPLETED';
     turnId: string;
     response: string;
     stopReason: Extract<TurnStopReason, 'completed' | 'empty_response'>;
+    metadata?: TurnCompletedMetadata | undefined;
 }
 /** Turn failed with an error. */
 | {
@@ -18885,6 +18896,10 @@ export type WorkspaceEventType = WorkspaceEvent['type'];
 
 // @public (undocumented)
 export type WrfcState = 'pending' | 'engineering' | 'integrating' | 'reviewing' | 'fixing' | 'awaiting_gates' | 'gating' | 'passed' | 'failed' | 'committing';
+
+// Warnings were encountered during analysis:
+//
+// packages/sdk/src/events/turn.ts:144:134 - (ae-forgotten-export) The symbol "TurnCompletedMetadata" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 
