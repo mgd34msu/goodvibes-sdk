@@ -189,7 +189,7 @@ export class SpawnTokenManager {
     if (currentAgentCount >= config.maxActiveAgents) {
       return {
         allowed: false,
-        reason: `maxActiveAgents limit reached (${currentAgentCount}/${config.maxActiveAgents})`,
+        reason: `fleet.maxSize limit reached (${currentAgentCount}/${config.maxActiveAgents})`,
       };
     }
     if (token.depth > config.maxDepth) {

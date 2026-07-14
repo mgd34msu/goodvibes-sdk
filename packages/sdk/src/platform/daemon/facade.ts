@@ -820,7 +820,7 @@ export class DaemonServer {
             category: 'service',
             source: 'runtime',
             recoverable: true,
-            hint: 'Wait for the current agent to complete or raise the orchestration.maxActiveAgents configuration.',
+            hint: 'Wait for the current agent to complete or raise the fleet.maxSize configuration (Maximum fleet size).',
             status: 429,
           },
           { status: 429, headers: { 'Retry-After': '5' } },

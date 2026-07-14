@@ -311,3 +311,37 @@ export function migrateLegacyFeatureToggles(parsed: Record<string, unknown>): Le
 
   return { migrated: true, config, changedKeys, unknownIds };
 }
+
+/** Outcome of the fleet.maxSize rename migration (orchestration.maxActiveAgents -> fleet.maxSize). */
+export interface FleetMaxSizeMigrationResult {
+  readonly config: Record<string, unknown>;
+  /** True when a legacy value was actually moved (the receipt fires only then). */
+  readonly migrated: boolean;
+  readonly movedValue?: number | undefined;
+}
+
+/**
+ * Invisible key migration for the owner-named cap ("Maximum fleet size"):
+ * an explicit legacy `orchestration.maxActiveAgents` moves onto
+ * `fleet.maxSize` (which wins if BOTH are present — the new key is the one
+ * the user can see) and the legacy key is removed. Idempotent; a file with
+ * no legacy key is returned untouched.
+ */
+export function migrateFleetMaxSizeRename(parsed: Record<string, unknown>): FleetMaxSizeMigrationResult {
+  const orchestration = parsed.orchestration;
+  if (orchestration === null || typeof orchestration !== 'object' || Array.isArray(orchestration)) {
+    return { config: parsed, migrated: false };
+  }
+  const legacy = (orchestration as Record<string, unknown>).maxActiveAgents;
+  if (typeof legacy !== 'number') return { config: parsed, migrated: false };
+  const config = structuredClone(parsed);
+  const orch = config.orchestration as Record<string, unknown>;
+  delete orch.maxActiveAgents;
+  if (Object.keys(orch).length === 0) delete config.orchestration;
+  const fleet = (config.fleet !== null && typeof config.fleet === 'object' && !Array.isArray(config.fleet))
+    ? config.fleet as Record<string, unknown>
+    : {};
+  if (fleet.maxSize === undefined) fleet.maxSize = legacy;
+  config.fleet = fleet;
+  return { config, migrated: true, movedValue: legacy };
+}

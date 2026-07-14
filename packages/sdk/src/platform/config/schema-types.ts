@@ -358,7 +358,6 @@ export interface GoodVibesConfig {
   };
   orchestration: {
     recursionEnabled: boolean;  // default: false — allow recursive agent spawning under bounded policy
-    maxActiveAgents: number;    // default: 8 — total active agents across the orchestration tree
     maxDepth: number;           // default: 0 — 0=off, higher values allow deeper bounded recursion
   };
   planner: {
@@ -541,7 +540,6 @@ export type ConfigKey =
   | 'permissions.tools.mcp'
   | 'diagnostics.postEdit'
   | 'orchestration.recursionEnabled'
-  | 'orchestration.maxActiveAgents'
   | 'orchestration.maxDepth'
   | 'planner.decomposition'
   | 'planner.maxTurns'
@@ -907,7 +905,6 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'permissions.tools.mcp' ? PermissionAction :
   K extends 'diagnostics.postEdit' ? 'on' | 'off' :
   K extends 'orchestration.recursionEnabled' ? boolean :
-  K extends 'orchestration.maxActiveAgents' ? number :
   K extends 'orchestration.maxDepth' ? number :
   K extends 'planner.decomposition' ? 'agent' | 'heuristic' :
   K extends 'planner.maxTurns' ? number :

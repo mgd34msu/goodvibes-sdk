@@ -128,6 +128,8 @@ import {
 } from '../tools/workflow/index.js';
 import { createProcessRegistry, withFleetArchive, attachFleetEmitBridge, type ArchivableProcessRegistry } from './fleet/index.js';
 import { createOrchestrationEngine, createProviderBackedAttemptJudge, type OrchestrationEngine } from '../orchestration/index.js';
+import { createFixWorkstreamRunner } from '../orchestration/fix-workstream-runner.js';
+import { makeRuntimeFleetProbe } from './orchestration/fleet-count.js';
 
 export interface RuntimeServicesOptions {
   readonly runtimeBus: RuntimeEventBus;
@@ -179,13 +181,7 @@ export interface RuntimeServices {
   readonly projectPlanningService: ProjectPlanningService;
   readonly memoryStore: MemoryStore;
   readonly memoryRegistry: MemoryRegistry;
-  /**
-   * Repo source-tree code index (Stage A). Schema-initialized eagerly like
-   * memoryStore, but the walk/chunk/embed build is NOT auto-triggered here —
-   * call `.scheduleBuild()` from an explicit site; auto-triggering on every
-   * RuntimeServices construction would walk arbitrary workingDirectories
-   * (including every test fixture), slow and surprising for embedders.
-   */
+  /** Repo code index (Stage A): schema-initialized eagerly; the build is never auto-triggered here (would walk arbitrary workingDirectories incl. test fixtures). */
   readonly codeIndexStore: CodeIndexStore;
   /** Stage B tool-site incremental reindex scheduler (bound to codeIndexStore). */
   readonly codeIndexReindexScheduler: CodeIndexReindexScheduler;
@@ -255,34 +251,16 @@ export interface RuntimeServices {
   /** Settable holder an interactive consumer binds its Orchestrator into, powering sessions.toolCalls.cancel + sessions.queuedMessages.* (same pattern as contextAccountingHolder). */
   readonly sessionLiveTurnControls: SessionLiveTurnControlsHolder;
   readonly wrfcController: WrfcController;
-  /**
-   * Orchestration engine — ships ALONGSIDE wrfcController (stage 1 of the
-   * 3-stage migration, see platform/orchestration/controller-compat.ts): an
-   * opt-in pipeline/capacity-matching scheduler. Not auto-started — callers
-   * call orchestrationEngine.start(id) or resumeAllFromDisk().
-   */
+  /** Orchestration engine (alongside wrfcController; controller-compat.ts): opt-in pipeline scheduler, never auto-started. */
   readonly orchestrationEngine: OrchestrationEngine;
   readonly processManager: ProcessManager;
-  /**
-   * Live process registry: queryable + subscribable fleet aggregation over
-   * agentManager/wrfcController/processManager/watcherRegistry/workflow.
-   * LIFECYCLE: no RuntimeServices dispose seam exists, so nothing calls
-   * dispose() here — the coalesced tick is unref'd and runs only while
-   * subscribers exist; hosts that tear down a runtime dispose() themselves.
-   */
+  /** Live process registry (fleet aggregation). No dispose seam exists; the unref'd tick runs only while subscribers exist — hosts dispose() themselves. */
   readonly processRegistry: ArchivableProcessRegistry;
   readonly modeManager: ModeManager;
   readonly fileUndoManager: FileUndoManager;
   readonly workspaceCheckpointManager: WorkspaceCheckpointManager;
   readonly integrationHelpers: IntegrationHelperService;
-  /**
-   * Re-root all path-bound services to a new working directory (called by
-   * WorkspaceSwapManager.requestSwap after verification). Re-rooted in-process:
-   * MemoryStore (closed/reopened) and ProjectIndex (flushed/reset). Stores that
-   * need a process restart to re-root emit a warn-level log naming the
-   * subsystem and keep their current path until the daemon restarts.
-   * @throws if MemoryStore or ProjectIndex reroot fails (INVALID_PATH).
-   */
+  /** Re-root path-bound services to a new working directory (WorkspaceSwapManager). MemoryStore + ProjectIndex re-root in-process; others warn and keep their path until restart. @throws INVALID_PATH on failure. */
   rerootStores(newWorkingDir: string): Promise<void>;
 }
 
@@ -787,7 +765,12 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     runtimeBus: options.runtimeBus,
     projectRoot: workingDirectory,
     priceUsage, priceProvenance, judgeAttempts: createProviderBackedAttemptJudge(providerRegistry), // best-of-N judge (fleet.attempts.judge); never auto-picks unless opted in
+    fleetCapacity: () => fleetCapacityProbe(),
+    maxItemRetries: 2,
   });
+  // The planned-fix path (the single-fixer prompt path is GONE): review
+  // findings decompose into dependency-graph workstreams run by the ONE engine.
+  wrfcController.setFixWorkstreamRunner(createFixWorkstreamRunner({ engine: orchestrationEngine }));
 
   // Live process registry — narrow structural deps only, constructed
   // after every source manager exists. See the RuntimeServices interface
@@ -800,7 +783,14 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     registerSession: ({ id, title, agentTitle, cwd }) => void sessionBroker
       .register({ sessionId: id, kind: 'acp', title, project: cwd, participant: { surfaceKind: 'service', surfaceId: `acp-host:${agentTitle}`, lastSeenAt: Date.now() } })
       .catch(() => { /* best-effort; the fleet row is authoritative */ }),
-  });
+  })
+  // The ONE fleet ceiling's live probe (fleet.maxSize): native + ACP-hosted +
+  // elastic fixers; responsibility only, by construction (fleet-count.ts).
+  // Hoisted fn — referenced by the engine above, called only at tick time.
+  function fleetCapacityProbe() {
+    return makeRuntimeFleetProbe({ readConfig: (key) => configManager.get(key as never), agentManager, acpHost })();
+  }
+;
   const processRegistry = withFleetArchive(createProcessRegistry({
     agentManager,
     wrfcController,

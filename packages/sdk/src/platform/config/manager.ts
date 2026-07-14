@@ -10,7 +10,7 @@ import { getManagedSettingLock } from '../runtime/settings/control-plane.js';
 import { requireSurfaceRoot, resolveSharedDirectory, resolveSurfaceDirectory, resolveSurfaceSharedFile } from '../runtime/surface-root.js';
 import { summarizeError } from '../utils/error-display.js';
 import { FeatureAnnouncementStore, featureAnnouncementsPath } from '../runtime/feature-announcements.js';
-import { migrateDangerDaemonAlias, migrateLegacyFeatureToggles } from './migrations.js';
+import { applyDangerDaemonMigrationPass, applyDefaultStripMigrationPass, applyFleetMaxSizeMigrationPass, applyLegacySettingsMigrationPass } from './manager-migration-passes.js';
 import {
   SHARED_CONFIG_KEYS,
   isSharedConfigKey,
@@ -518,8 +518,11 @@ export class ConfigManager {
         const raw = readFileSync(this.configPath, 'utf-8');
         const parsed = JSON.parse(raw) as Record<string, unknown>;
         const migrated = this.applyDefaultStripMigration(
-          this.applyLegacySettingsMigration(
-            this.applyDangerDaemonMigration(parsed, this.configPath),
+          this.applyFleetMaxSizeMigration(
+            this.applyLegacySettingsMigration(
+              this.applyDangerDaemonMigration(parsed, this.configPath),
+              this.configPath,
+            ),
             this.configPath,
           ),
           this.configPath,
@@ -537,8 +540,11 @@ export class ConfigManager {
         const raw = readFileSync(this.projectConfigPath, 'utf-8');
         const parsed = JSON.parse(raw) as Record<string, unknown>;
         const migrated = this.applyDefaultStripMigration(
-          this.applyLegacySettingsMigration(
-            this.applyDangerDaemonMigration(parsed, this.projectConfigPath),
+          this.applyFleetMaxSizeMigration(
+            this.applyLegacySettingsMigration(
+              this.applyDangerDaemonMigration(parsed, this.projectConfigPath),
+              this.projectConfigPath,
+            ),
             this.projectConfigPath,
           ),
           this.projectConfigPath,
@@ -614,86 +620,21 @@ export class ConfigManager {
     }
   }
 
-  /**
-   * Removal-of-`danger.daemon` migration (see CHANGELOG 1.0.0): rewrite an
-   * explicit legacy `danger.daemon = false` onto `daemon.enabled = false`
-   * before the raw JSON is merged, so the removed alias's off-switch is honored
-   * rather than flipped on. Logs only when it rewrites; see migrations.ts.
-   */
+  /** Load-time migration passes (see manager-migration-passes.ts). */
+  private migrationReceipt(id: string, text: string): void {
+    new FeatureAnnouncementStore(featureAnnouncementsPath(this)).record(id, text);
+  }
   private applyDangerDaemonMigration(parsed: Record<string, unknown>, sourcePath: string): Record<string, unknown> {
-    const result = migrateDangerDaemonAlias(parsed);
-    if (result.rewroteDaemonEnabledFalse) {
-      logger.info(
-        `Migrated deprecated 'danger.daemon: false' to 'daemon.enabled: false' (${sourcePath}). ` +
-        `The legacy off-switch is preserved; 'danger.daemon' is no longer read.`,
-      );
-    }
-    return result.config;
+    return applyDangerDaemonMigrationPass(parsed, sourcePath);
   }
-
-  /**
-   * Legacy featureFlags-record migration: entries dissolve onto the per-domain
-   * settings keys that now own each capability (see migrateLegacyFeatureToggles
-   * for the mapping contract). The rewritten file is persisted immediately so
-   * the migration runs exactly once, with a one-line receipt.
-   */
   private applyLegacySettingsMigration(parsed: Record<string, unknown>, sourcePath: string): Record<string, unknown> {
-    const result = migrateLegacyFeatureToggles(parsed);
-    if (!result.migrated) return parsed;
-    try {
-      writeFileSync(sourcePath, JSON.stringify(result.config, null, 2) + '\n', 'utf-8');
-    } catch (err) {
-      // Keep the in-memory migration; it re-runs idempotently on the next start.
-      logger.warn(`Settings migration could not be persisted to ${sourcePath}: ${summarizeError(err)}`);
-    }
-    const keyList = result.changedKeys.length > 0 ? result.changedKeys.join(', ') : 'no value changes';
-    const receiptText = `Settings migrated: legacy featureFlags entries now live on their domain settings keys (${keyList}) in ${sourcePath}.`;
-    logger.info(receiptText);
-    // The receipt rides the announce-once queue, once per migrated file.
-    try {
-      new FeatureAnnouncementStore(featureAnnouncementsPath(this)).record(
-        `settings-migration-feature-toggles:${sourcePath}`,
-        receiptText,
-      );
-    } catch (err) {
-      logger.warn(`Settings-migration receipt could not be queued: ${summarizeError(err)}`);
-    }
-    if (result.unknownIds.length > 0) {
-      logger.warn(`Settings migration dropped unknown legacy entries: ${result.unknownIds.join(', ')} (${sourcePath}).`);
-    }
-    return result.config;
+    return applyLegacySettingsMigrationPass(parsed, sourcePath, (id, text) => this.migrationReceipt(id, text));
   }
-
-  /**
-   * One invisible pass that strips previously-frozen defaults (leaves equal to
-   * the shipped default) from an existing whole-config dump, keeping genuine
-   * user values and unknown keys. Drops a one-line receipt through the
-   * announce-once queue exactly once per file.
-   */
+  private applyFleetMaxSizeMigration(parsed: Record<string, unknown>, sourcePath: string): Record<string, unknown> {
+    return applyFleetMaxSizeMigrationPass(parsed, sourcePath, (id, text) => this.migrationReceipt(id, text));
+  }
   private applyDefaultStripMigration(parsed: Record<string, unknown>, sourcePath: string): Record<string, unknown> {
-    // Conservative: only a whole-config dump (the frozen-defaults artifact) is
-    // minimized; a sparse hand-authored file is left untouched (deliberate intent).
-    if (!isFrozenDefaultDump(parsed)) return parsed;
-    const { config: stripped, changed } = stripFrozenDefaults(parsed);
-    if (!changed) return parsed;
-    try {
-      writeFileSync(sourcePath, JSON.stringify(stripped, null, 2) + '\n', 'utf-8');
-    } catch (err) {
-      // Resolved config is identical either way; the strip re-runs idempotently.
-      logger.warn(`Settings default-strip could not be persisted to ${sourcePath}: ${summarizeError(err)}`);
-      return stripped;
-    }
-    const receiptText = `Settings tidied: previously-frozen default values were removed from ${sourcePath}; only your explicit settings remain on disk.`;
-    logger.info(receiptText);
-    try {
-      new FeatureAnnouncementStore(featureAnnouncementsPath(this)).record(
-        `settings-defaults-stripped:${sourcePath}`,
-        receiptText,
-      );
-    } catch (err) {
-      logger.warn(`Settings default-strip receipt could not be queued: ${summarizeError(err)}`);
-    }
-    return stripped;
+    return applyDefaultStripMigrationPass(parsed, sourcePath, (id, text) => this.migrationReceipt(id, text));
   }
 
   /**
