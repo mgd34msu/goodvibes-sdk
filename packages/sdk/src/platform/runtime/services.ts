@@ -46,6 +46,7 @@ import { MemoryStore } from '../state/memory-store.js';
 import { CodeIndexStore } from '../state/code-index-store.js';
 import { CodeIndexReindexScheduler } from '../state/code-index-reindex.js';
 import { StoreSnapshotScheduler } from '../state/store-snapshots.js';
+import { runStartupAppendOnlySweep } from './retention/append-only-registry.js';
 import { resolveMemoryVectorDbPath } from '../state/memory-vector-store.js';
 import type { RuntimeEventBus } from './events/index.js';
 import { createDomainDispatch } from './store/index.js';
@@ -452,32 +453,31 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     embeddingRegistry: memoryEmbeddingRegistry,
   });
   const memoryRegistry = new MemoryRegistry(memoryStore);
-  // Repo source-tree code index (Stage A) — shares
-  // memoryEmbeddingRegistry so code + memory embeddings use one provider and
-  // one dimensionality. Schema init only; build is not auto-triggered here
-  // (see the RuntimeServices.codeIndexStore doc comment).
+  // Repo source-tree code index (Stage A) — shares memoryEmbeddingRegistry so
+  // code + memory embeddings use one provider and one dimensionality. Schema
+  // init only; build is not auto-triggered here (see codeIndexStore doc).
   const codeIndexDbPath = join(workingDirectory, '.goodvibes', surfaceRoot, 'code-index.sqlite');
   const codeIndexStore = new CodeIndexStore(workingDirectory, codeIndexDbPath, memoryEmbeddingRegistry);
   codeIndexStore.init();
   if (options.autoStartCodeIndex) {
     codeIndexStore.scheduleBuild();
   }
-  // Stage B: tool-site incremental reindex. Gated on the SDK's autoStartCodeIndex opt-in
-  // (this library's storage.codeIndexEnabled analog) AND the built-state check inside the
-  // scheduler — an unbuilt index is a no-op either way.
+  // Stage B: tool-site incremental reindex. Gated on autoStartCodeIndex AND the
+  // built-state check inside the scheduler — an unbuilt index is a no-op.
   const codeInjectionSettingEnabled = (): boolean => options.autoStartCodeIndex === true;
   const codeIndexReindexScheduler = new CodeIndexReindexScheduler({
     target: codeIndexStore,
     workingDirectory,
     isEnabled: codeInjectionSettingEnabled,
   });
-  // Data safety with no discipline: a daily snapshot of every SQLite store
-  // this runtime writes, bounded by the retention engine. Timers are unref'd
-  // so an undisposed scheduler cannot pin the event loop.
+  // A daily snapshot of every SQLite store this runtime writes, bounded by the
+  // retention engine. Timers are unref'd so an undisposed scheduler cannot pin the event loop.
   const storeSnapshotScheduler = new StoreSnapshotScheduler({
     stores: [{ name: 'memory store', dbPath: memoryDbPath }, { name: 'memory vector index', dbPath: resolveMemoryVectorDbPath(memoryDbPath) }, { name: 'code index store', dbPath: codeIndexDbPath }],
   });
   storeSnapshotScheduler.start();
+  // Start-time janitor: one retention pass over every registered append-only store (best-effort).
+  runStartupAppendOnlySweep(workingDirectory, surfaceRoot, (k) => configManager.get(k as never));
   const deliveryManager = new AutomationDeliveryManager({
     configManager,
     secretsManager,
