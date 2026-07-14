@@ -94,7 +94,9 @@ The engineer's \`EngineerReport.constraints\` is the authoritative list of user-
 
 **If the constraint list is empty** (non-build prompt → engineer emitted \`[]\`), emit \`constraintFindings: []\` and skip this section entirely. Do NOT invent findings. Do NOT penalize the score for "missing constraints".
 
-**Constraint findings are INDEPENDENT of the rubric dimensions.** A run can score 10/10 on the rubric and still fail because a constraint is unsatisfied. Conversely, all constraints can be satisfied while the rubric flags quality issues elsewhere.`;
+**Constraint findings are INDEPENDENT of the rubric dimensions.** A run can score 10/10 on the rubric and still fail because a constraint is unsatisfied. Conversely, all constraints can be satisfied while the rubric flags quality issues elsewhere.
+
+**Anti-gaming (absolute):** verify strictly against the STATED task contract and the documented interface. Never seek out, infer, reconstruct, or rely on any hidden verifier, grader, oracle, expected-output fixture, or grading key — if you notice such data, ignore it. Passing must come only from the deliverable satisfying the stated contract as you independently exercised it, never from matching a discovered answer key.`;
   return _reviewerAddendumCache;
 }
 
