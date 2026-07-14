@@ -25,6 +25,7 @@ import {
   stripFrozenDefaults,
   writeRawDotPath,
 } from './settings-io.js';
+import { watchConfigFiles, reloadAndNotifyChanges, type ConfigFileWatchHandle } from './config-file-watcher.js';
 
 /** Deep immutable type — prevents mutation of nested objects returned from getAll(). */
 export type DeepReadonly<T> = {
@@ -116,10 +117,7 @@ function requireAbsoluteOwnedPath(path: string | undefined, name: string): strin
   return resolve(trimmed);
 }
 
-/**
- * Ensure the shared ~/.goodvibes/<surface>.json exists (empty object if not).
- * This is reserved for future cross-app use — no TUI settings go here.
- */
+/** Ensure the shared ~/.goodvibes/<surface>.json exists (empty object if not). */
 function ensureSharedConfig(sharedPath: string): void {
   if (!existsSync(sharedPath)) {
     mkdirSync(dirname(sharedPath), { recursive: true });
@@ -146,6 +144,8 @@ export class ConfigManager {
   private readonly sharedKeysPresent = new Set<ConfigKey>();
   private hookDispatcher: Pick<HookDispatcher, 'fire'> | null = null;
   private readonly _listeners = new Map<string, Set<(newVal: unknown, oldVal: unknown) => void>>();
+  /** Active config-file watch handle (external-edit live reload), or null. */
+  private _fileWatch: ConfigFileWatchHandle | null = null;
 
   constructor(overrides: ConfigOverrides) {
     const roots = overrides as ConfigRoots;
@@ -176,8 +176,7 @@ export class ConfigManager {
 
     // The surface-root-INDEPENDENT shared tier for cross-surface keys (tts.*):
     // an explicit override, else derived from homeDir as ~/.goodvibes/shared/
-    // settings.json. A configDir-only construction with no homeDir has no shared
-    // tier (legacy per-surface behavior preserved).
+    // settings.json. A configDir-only construction (no homeDir) has no shared tier.
     const sharedTierPath = requireAbsoluteOwnedPath(roots.sharedTierPath, 'sharedTierPath');
     this.sharedTierPath = sharedTierPath ?? (
       this.homeDirectory ? resolveSharedDirectory(this.homeDirectory, 'shared', 'settings.json') : null
@@ -299,12 +298,10 @@ export class ConfigManager {
   }
 
   /**
-   * Set a single key and persist it to the PROJECT settings overlay, leaving
-   * the global settings file untouched. The project file keeps only its own
-   * explicit keys — the new value is merged into the raw on-disk shape rather
-   * than writing the full resolved config, so an approval like
-   * fetch.allowLocalhost scopes to this project and survives restarts. Falls
-   * back to the global set() when no project settings path exists.
+   * Set a single key and persist it to the PROJECT settings overlay (merged
+   * into the raw on-disk shape, keeping only explicit keys), leaving the global
+   * file untouched — so an approval like fetch.allowLocalhost scopes to this
+   * project and survives restarts. Falls back to set() with no project path.
    */
   setProjectValue<K extends ConfigKey>(key: K, value: ConfigValue<K>, options: ConfigSetOptions = {}): void {
     if (!this.projectConfigPath) {
@@ -355,21 +352,51 @@ export class ConfigManager {
     this.emitConfigHook(key, previousValue, value);
   }
 
-  /**
-   * Subscribe to changes on a specific config key.
-   * Returns an unsubscribe function. Safe to call multiple times.
-   */
+  /** Subscribe to changes on a config key; returns an unsubscribe function. */
   subscribe<K extends ConfigKey>(key: K, cb: ConfigChangeCallback<K>): ConfigUnsubscribe {
     if (!this._listeners.has(key)) {
       this._listeners.set(key, new Set());
     }
-    // Cast via unknown -> (n: unknown, o: unknown) => void to avoid deeply-recursive ConfigValue<K> comparison
-    // that exceeds TypeScript's stack depth limit on the 100-entry conditional type.
+    // Cast via unknown to avoid deeply-recursive ConfigValue<K> comparison that
+    // exceeds TypeScript's stack depth on the 100-entry conditional type.
     const wrapped = (newVal: unknown, oldVal: unknown) => (cb as (n: unknown, o: unknown) => void)(newVal, oldVal);
     this._listeners.get(key)?.add(wrapped);
     return () => {
       this._listeners.get(key)?.delete(wrapped);
     };
+  }
+
+  /**
+   * Watch the on-disk config files (global, project, shared-tier) for EXTERNAL
+   * edits and apply them live through the same subscribe() pipeline an
+   * in-process set() uses — no restart. Returns a stop function.
+   */
+  watchConfigFiles(options: { intervalMs?: number } = {}): () => void {
+    this.stopWatchingConfigFiles();
+    const paths = [this.configPath, this.projectConfigPath, this.sharedTierPath].filter(
+      (p): p is string => typeof p === 'string' && p.length > 0,
+    );
+    this._fileWatch = watchConfigFiles(paths, () => this.reloadFromDiskAndNotify(), options.intervalMs);
+    return () => this.stopWatchingConfigFiles();
+  }
+
+  /** Stop watching all config files opened by watchConfigFiles(). */
+  stopWatchingConfigFiles(): void {
+    this._fileWatch?.stop();
+    this._fileWatch = null;
+  }
+
+  /** Re-read config from disk and fire subscribers for every watched key that changed. */
+  private reloadFromDiskAndNotify(): void {
+    reloadAndNotifyChanges({
+      listenerKeys: this._listeners.keys(),
+      get: (key) => this.get(key as ConfigKey),
+      load: () => this.load(),
+      notify: (key, oldValue, newValue) => {
+        this.notifyListeners(key as ConfigKey, oldValue, newValue);
+        this.emitConfigHook(key as ConfigKey, oldValue, newValue);
+      },
+    });
   }
 
   /** Notify synchronous subscribers of a key change. */
@@ -388,9 +415,7 @@ export class ConfigManager {
     }
   }
 
-  /**
-   * Fire the Change:config hook for a config key change.
-   */
+  /** Fire the Change:config hook for a config key change. */
   private emitConfigHook(key: ConfigKey, previousValue: unknown, newValue: unknown): void {
     if (!this.hookDispatcher) return;
     try {
@@ -418,9 +443,8 @@ export class ConfigManager {
   }
 
   /**
-   * Set a config value from a validated ConfigKey with unknown value type.
-   * Used when iterating schema entries where the value type cannot be statically
-   * inferred. Runtime validation is still applied by the underlying set() method.
+   * Set a config value from a validated ConfigKey with unknown value type (when
+   * iterating schema entries). Runtime validation still applies via set().
    */
   setDynamic(key: ConfigKey, value: unknown, options: ConfigSetOptions = {}): void {
     this.set(key, value as never, options);
@@ -436,7 +460,7 @@ export class ConfigManager {
     return structuredClone(this.config[category]);
   }
 
-  /** Return a deep-cloned snapshot of the live config. Safe for read-only external consumers. */
+  /** Return a deep-cloned snapshot of the live config (read-only consumers). */
   getRaw(): Readonly<GoodVibesConfig> {
     return structuredClone(this.config) as Readonly<GoodVibesConfig>;
   }
@@ -448,8 +472,7 @@ export class ConfigManager {
 
   /**
    * Persist a single key to the global settings file by read-merge-write, so
-   * hand edits and other keys survive and no default reaches disk unless it was
-   * explicitly set. Generalizes the shared-tier / project per-key pattern.
+   * hand edits and other keys survive and no default reaches disk unless set.
    */
   private persistGlobalKey(key: ConfigKey, value: unknown): void {
     const raw = readRawSettingsFile(this.configPath);
@@ -457,7 +480,6 @@ export class ConfigManager {
     this.writeRawGlobal(raw);
   }
 
-  /** Write a raw settings object to the global settings file. */
   private writeRawGlobal(raw: Record<string, unknown>): void {
     mkdirSync(dirname(this.configPath), { recursive: true });
     writeFileSync(this.configPath, JSON.stringify(raw, null, 2) + '\n', 'utf-8');
@@ -465,9 +487,8 @@ export class ConfigManager {
 
   /**
    * Persist current config to the global settings file, writing only the keys
-   * that differ from the shipped defaults (plus unknown keys) — a whole-config
-   * write no longer freezes every default onto disk. Resolved config is
-   * unchanged on reload (defaults are re-merged in).
+   * that differ from the shipped defaults (plus unknown keys) — no default is
+   * frozen onto disk; resolved config is unchanged on reload.
    */
   save(): void {
     const { config: minimal } = stripFrozenDefaults(
@@ -527,17 +548,16 @@ export class ConfigManager {
       }
     }
 
-    // Overlay the surface-root-independent shared tier LAST (it wins over the
-    // surface silo) for the shared keys only — so every surface resolves the same
-    // voice, while a key absent from the shared file falls back to the local value.
+    // Overlay the shared tier LAST (it wins over the surface silo) for the
+    // shared keys only; an absent shared key falls back to the local value.
     this.loadSharedTier();
   }
 
   /**
-   * Overlay any shared-tier values for the shared keys onto the resolved config.
-   * A shared key absent from the shared file is left at its surface-local value
-   * (the fallback that keeps existing setups working). Records which keys were
-   * actually sourced from the shared tier so describeConfigKeySource is honest.
+   * Overlay shared-tier values for the shared keys onto the resolved config; a
+   * shared key absent from the file is left at its surface-local value. Records
+   * which keys were sourced from the shared tier so describeConfigKeySource is
+   * honest.
    */
   private loadSharedTier(): void {
     this.sharedKeysPresent.clear();
@@ -563,9 +583,9 @@ export class ConfigManager {
   }
 
   /**
-   * Report which tier a key's live value resolves from (shared / project / global
-   * / default) and whether it rides the shared tier. Reads the on-disk layers on
-   * demand so the resolution order is inspectable, not just documented.
+   * Report which tier a key's live value resolves from (shared / project /
+   * global / default) and whether it rides the shared tier. Reads the on-disk
+   * layers on demand so the resolution order is inspectable.
    */
   describeConfigKeySource(key: ConfigKey): ConfigKeySource {
     const value = this.get(key);
@@ -594,12 +614,10 @@ export class ConfigManager {
   }
 
   /**
-   * Removal-of-`danger.daemon` migration (see CHANGELOG 1.0.0): rewrite an explicit legacy
-   * `danger.daemon = false` onto `daemon.enabled = false` before the raw JSON
-   * is merged with defaults, so the removed alias's two-year off-switch is
-   * honored rather than silently flipped on. Reports honestly via the logger
-   * when it actually rewrites a value; a no-op migration (alias absent, or
-   * `= true`) stays silent. See migrations.ts for the full contract.
+   * Removal-of-`danger.daemon` migration (see CHANGELOG 1.0.0): rewrite an
+   * explicit legacy `danger.daemon = false` onto `daemon.enabled = false`
+   * before the raw JSON is merged, so the removed alias's off-switch is honored
+   * rather than flipped on. Logs only when it rewrites; see migrations.ts.
    */
   private applyDangerDaemonMigration(parsed: Record<string, unknown>, sourcePath: string): Record<string, unknown> {
     const result = migrateDangerDaemonAlias(parsed);
@@ -624,17 +642,14 @@ export class ConfigManager {
     try {
       writeFileSync(sourcePath, JSON.stringify(result.config, null, 2) + '\n', 'utf-8');
     } catch (err) {
-      // Keep the in-memory migration even when the write-back fails; it will
-      // simply re-run (idempotently) on the next start.
+      // Keep the in-memory migration; it re-runs idempotently on the next start.
       logger.warn(`Settings migration could not be persisted to ${sourcePath}: ${summarizeError(err)}`);
     }
     const keyList = result.changedKeys.length > 0 ? result.changedKeys.join(', ') : 'no value changes';
     const receiptText = `Settings migrated: legacy featureFlags entries now live on their domain settings keys (${keyList}) in ${sourcePath}.`;
     logger.info(receiptText);
-    // The migration receipt reaches surfaces, not only the activity log: it
-    // rides the announce-once pending queue the consuming status receipts
-    // read drains at attach — exactly once per migrated file (the id is
-    // per-source-path, matching the migration's own exactly-once semantics).
+    // The receipt rides the announce-once pending queue surfaces drain at
+    // attach — exactly once per migrated file (id is per-source-path).
     try {
       new FeatureAnnouncementStore(featureAnnouncementsPath(this)).record(
         `settings-migration-feature-toggles:${sourcePath}`,
