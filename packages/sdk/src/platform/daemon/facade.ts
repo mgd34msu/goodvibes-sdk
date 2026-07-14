@@ -276,7 +276,7 @@ export class DaemonServer {
     return true;
   }
 
-  /** Bound TCP port after {@link start} (resolves a `port: 0` request to the real port). */
+  /** Bound TCP port after {@link DaemonServer.start} (resolves a `port: 0` request to the real port). */
   get boundPort(): number {
     const served = (this.server as { port?: number } | null)?.port;
     return typeof served === 'number' ? served : this.port;

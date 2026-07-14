@@ -106,7 +106,7 @@ function extractErrorMessage(err: unknown): string {
  * This is the authoritative event transport for runtime domain signaling.
  *
  * DISPATCH ORDERING GUARANTEE (contract — pinned by
- * test/runtime-event-bus-dispatch-contract.test.ts): {@link emit} NEVER invokes
+ * test/runtime-event-bus-dispatch-contract.test.ts): {@link RuntimeEventBus.emit} NEVER invokes
  * a subscriber synchronously. Each matching handler is deferred to its own
  * `queueMicrotask`, so emit() always returns to its caller — and the caller's
  * remaining synchronous statements run — BEFORE any listener fires. A component
