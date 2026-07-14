@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `386`
+- Methods: `395`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -65112,6 +65112,582 @@ Return the current sqlite-vec vector-store posture.
 }
 ```
 
+### pairing
+
+#### `pairing.handoff.complete`
+
+Apply the surface's per-offer decisions in ONE pass: an accepted notifications offer registers the browser push subscription (endpoint + keys, optional deviceId), an accepted passkey offer registers the WebAuthn credential, an accepted relay offer is acknowledged. Each offer returns an honest per-offer result (completed / declined / unavailable / failed); an omitted or false offer is reported as declined, never silently half-applied.
+
+- Title: `Complete Pairing Hand-off`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `write:control-plane`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "accept": {
+      "type": "object",
+      "properties": {
+        "notifications": {
+          "type": "object",
+          "properties": {
+            "endpoint": {
+              "type": "string"
+            },
+            "keys": {
+              "type": "object",
+              "properties": {
+                "p256dh": {
+                  "type": "string"
+                },
+                "auth": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "p256dh",
+                "auth"
+              ],
+              "additionalProperties": false
+            },
+            "deviceId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "endpoint",
+            "keys"
+          ],
+          "additionalProperties": false
+        },
+        "relay": {
+          "type": "boolean"
+        },
+        "passkey": {
+          "type": "object",
+          "properties": {
+            "rpId": {
+              "type": "string"
+            },
+            "origin": {
+              "type": "string"
+            },
+            "credentialId": {
+              "type": "string"
+            },
+            "publicKeyCose": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "rpId",
+            "origin",
+            "credentialId",
+            "publicKeyCose"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "status"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "results"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `pairing.handoff.create`
+
+Mint a per-device token AND assemble the set-up OFFER SET this daemon can satisfy (notifications — carrying the VAPID public key; relay; passkey step-up), so a freshly-paired surface can complete them in one pass. Returns the offer set, the `#pair=<token>` deep-link fragment (the exact URL-fragment shape the web app consumes — token in `pair=`, offers in `offers=`), and a full deep link when a web origin is configured. The token secret is returned exactly once. Each offer is independently declinable at completion.
+
+- Title: `Create Pairing Hand-off`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `write:control-plane`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "offers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "token": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "token",
+        "createdAt"
+      ],
+      "additionalProperties": false
+    },
+    "offers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "vapidPublicKey": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "available"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "fragment": {
+      "type": "string"
+    },
+    "deepLink": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "token",
+    "offers",
+    "fragment"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `pairing.tokens.create`
+
+Mint a new named per-device operator token and return its plaintext secret EXACTLY ONCE (for a QR / pairing hand-off). Only a hash is persisted; the secret is never listed or returned again. The name is user-visible and editable.
+
+- Title: `Mint Paired Device Token`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `write:control-plane`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "token": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "token",
+        "createdAt"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "token"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `pairing.tokens.delete`
+
+Revoke (permanently delete) one paired device token. Revocation is immediate: the token fails the very next request with a 401, and every OTHER paired device keeps working. An unknown id is a 404 PAIRING_TOKEN_NOT_FOUND, never a 200-noop.
+
+- Title: `Revoke Paired Device Token`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `write:control-plane`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "revoked": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "id",
+    "revoked"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `pairing.tokens.list`
+
+List the per-pairing operator tokens (paired devices/browsers) as redacted views: id, user-visible name, created timestamp, and last-seen timestamp. The token secret is never stored in listable form and is never returned.
+
+- Title: `List Paired Device Tokens`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `read:control-plane`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+none
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "tokens": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "number"
+          },
+          "lastSeenAt": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "legacySharedRevoked": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "tokens",
+    "legacySharedRevoked"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `pairing.tokens.migrate`
+
+A client currently authenticated with the legacy single shared token mints its OWN named per-device token and receives the plaintext secret once — the honest migration path. This does NOT revoke the shared token; that is a separate explicit step (pairing.tokens.revokeShared).
+
+- Title: `Migrate Off The Shared Token`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `write:control-plane`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "token": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "token",
+        "createdAt"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "token"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `pairing.tokens.rename`
+
+Change the user-visible name of a paired device token. An unknown id is a 404 PAIRING_TOKEN_NOT_FOUND.
+
+- Title: `Rename Paired Device Token`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `write:control-plane`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "name"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "renamed": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "id",
+    "renamed"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `pairing.tokens.revokeShared`
+
+Turn off the legacy single shared operator token. After this, only per-device pairing tokens (and user sessions) authenticate; the shared token stops working immediately. Idempotent.
+
+- Title: `Revoke The Legacy Shared Token`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `write:control-plane`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+none
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "legacySharedRevoked": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "legacySharedRevoked"
+  ],
+  "additionalProperties": false
+}
+```
+
 ### panels
 
 #### `panels.list`
@@ -67101,7 +67677,7 @@ Return usage and pricing posture for a single provider.
 
 #### `push.subscriptions.create`
 
-Store a browser Push subscription (endpoint capability URL + p256dh/auth keys) for the authenticated operator so the daemon can deliver notifications to that device. Re-registering the same endpoint updates its keys in place rather than duplicating it. The stored endpoint and keys are never returned over the wire; the response is the redacted subscription view.
+Store a browser Push subscription (endpoint capability URL + p256dh/auth keys) for the authenticated operator so the daemon can deliver notifications to that device. When a stable deviceId is supplied the record reconciles on that device identity — a browser whose push endpoint rotated re-registers the same deviceId with a new endpoint and heals the one record in place rather than piling up a stale duplicate; without a deviceId it reconciles on the raw endpoint (legacy). The stored endpoint and keys are never returned over the wire; the response is the redacted subscription view.
 
 - Title: `Register Web Push Subscription`
 - Source: `builtin`
@@ -67137,6 +67713,9 @@ Store a browser Push subscription (endpoint capability URL + p256dh/auth keys) f
         "auth"
       ],
       "additionalProperties": false
+    },
+    "deviceId": {
+      "type": "string"
     }
   },
   "required": [
@@ -67162,6 +67741,9 @@ Store a browser Push subscription (endpoint capability URL + p256dh/auth keys) f
         "principalId": {
           "type": "string"
         },
+        "deviceId": {
+          "type": "string"
+        },
         "endpointOrigin": {
           "type": "string"
         },
@@ -67176,6 +67758,9 @@ Store a browser Push subscription (endpoint capability URL + p256dh/auth keys) f
         },
         "lastOutcome": {
           "type": "string"
+        },
+        "consecutiveFailures": {
+          "type": "number"
         }
       },
       "required": [
@@ -67282,6 +67867,9 @@ none
           "principalId": {
             "type": "string"
           },
+          "deviceId": {
+            "type": "string"
+          },
           "endpointOrigin": {
             "type": "string"
           },
@@ -67296,6 +67884,9 @@ none
           },
           "lastOutcome": {
             "type": "string"
+          },
+          "consecutiveFailures": {
+            "type": "number"
           }
         },
         "required": [
@@ -67311,6 +67902,116 @@ none
   },
   "required": [
     "subscriptions"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `push.subscriptions.reconcile`
+
+Reconcile-on-open: the client presents its device identity (deviceId) and its CURRENT endpoint + p256dh/auth keys, and the daemon heals the record for that device in place — updating a stale endpoint the daemon had been holding — then reports what drifted (created / endpoint-updated / keys-updated / unchanged) so the client learns whether the daemon was out of date. A live reconcile also clears the bounded-retry failure counter. The stored endpoint and keys are never returned; the response is the redacted subscription view plus the drift discriminant.
+
+- Title: `Reconcile Web Push Subscription`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `write:push`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "deviceId": {
+      "type": "string"
+    },
+    "endpoint": {
+      "type": "string"
+    },
+    "keys": {
+      "type": "object",
+      "properties": {
+        "p256dh": {
+          "type": "string"
+        },
+        "auth": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "p256dh",
+        "auth"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "deviceId",
+    "endpoint",
+    "keys"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "subscription": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "principalId": {
+          "type": "string"
+        },
+        "deviceId": {
+          "type": "string"
+        },
+        "endpointOrigin": {
+          "type": "string"
+        },
+        "endpointHash": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "lastDeliveryAt": {
+          "type": "number"
+        },
+        "lastOutcome": {
+          "type": "string"
+        },
+        "consecutiveFailures": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "principalId",
+        "endpointOrigin",
+        "endpointHash",
+        "createdAt"
+      ],
+      "additionalProperties": false
+    },
+    "drift": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "subscription",
+    "drift"
   ],
   "additionalProperties": false
 }

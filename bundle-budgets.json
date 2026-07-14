@@ -346,8 +346,8 @@
     "rationale": "orchestration engine + best-of-N attempts (coordinator, provider-backed judge, held-merge types); measured 541 B gzip; headroom max(ceil(541*1.2)=650, 541+50=591) \u2192 650 (1.2x dominates by 59 B)"
   },
   "./platform/pairing": {
-    "gzip_bytes": 238,
-    "rationale": "public facade; measured 188 B gzip @ commit 4e5a5e2; headroom max(ceil(188*1.2)=226, 188+50=238) \u2192 238 (+50 B floor dominates by 12 B)"
+    "gzip_bytes": 377,
+    "rationale": "public facade grew with per-pairing revocable tokens (PairingTokenManager) + the notifications/relay/passkey hand-off bundle (link build/parse); measured 314 B gzip; headroom max(ceil(314*1.2)=377, 314+50=364) \u2192 377 (1.2x dominates)"
   },
   "./platform/permissions": {
     "gzip_bytes": 157,
