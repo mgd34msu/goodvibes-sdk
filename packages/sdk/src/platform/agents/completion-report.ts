@@ -35,6 +35,26 @@ export interface ConstraintFinding {
   severity?: 'critical' | 'major' | 'minor';  // only when !satisfied
 }
 
+/**
+ * One item of the reviewer's acceptance checklist: a requirement DERIVED FROM
+ * THE ORIGINAL TASK (interface, argument names/count/order, format, path,
+ * cardinality, threshold, exit behavior, side effect), whether the reviewer
+ * INDEPENDENTLY verified it, the evidence, and how it was exercised. Landed in
+ * the review record so a consumer can render exactly what was verified — and so
+ * work that is correct but not what was asked (a false interface/cardinality/
+ * threshold item) cannot pass.
+ */
+export interface AcceptanceChecklistItem {
+  /** The requirement, in the reviewer's words, derived from the original task. */
+  item: string;
+  /** Whether the reviewer independently confirmed the deliverable meets it. */
+  verified: boolean;
+  /** Concrete evidence for the verdict. */
+  evidence: string;
+  /** How the reviewer INDEPENDENTLY exercised it (real invocation, not the engineer's tests). */
+  howExercised?: string | undefined;
+}
+
 /** Engineer agent completion report. */
 export interface EngineerReport extends BaseCompletionReport {
   archetype: 'engineer';
@@ -71,6 +91,12 @@ export interface ReviewerReport extends BaseCompletionReport {
   }>;
   /** Per-constraint satisfaction findings from the reviewer. Defaults to [] when absent. */
   constraintFindings?: ConstraintFinding[] | undefined;
+  /**
+   * The acceptance checklist the reviewer derived from the original task and
+   * scored against, with how each item was independently exercised. The review
+   * record of what was verified. Defaults to [] when absent (older reports).
+   */
+  acceptanceChecklist?: AcceptanceChecklistItem[] | undefined;
 }
 
 /** Tester agent completion report. */
@@ -144,6 +170,35 @@ function normalizeConstraintFinding(f: unknown): ConstraintFinding | null {
     finding.severity = severity;
   }
   return finding;
+}
+
+function normalizeAcceptanceChecklistItem(raw: unknown): AcceptanceChecklistItem | null {
+  if (typeof raw !== 'object' || raw === null) return null;
+  const obj = raw as Record<string, unknown>;
+  const evidence = evidenceToString(obj['evidence']);
+  if (typeof obj['item'] !== 'string' || obj['item'].length === 0 || typeof obj['verified'] !== 'boolean' || evidence === null) {
+    return null;
+  }
+  const entry: AcceptanceChecklistItem = { item: obj['item'], verified: obj['verified'], evidence };
+  if (typeof obj['howExercised'] === 'string' && obj['howExercised'].length > 0) {
+    entry.howExercised = obj['howExercised'];
+  }
+  return entry;
+}
+
+function normalizeAcceptanceChecklist(
+  raw: unknown,
+): { items: AcceptanceChecklistItem[]; dropped: number; malformedContainer: boolean } {
+  if (raw === undefined) return { items: [], dropped: 0, malformedContainer: false };
+  if (!Array.isArray(raw)) return { items: [], dropped: 0, malformedContainer: true };
+  const items: AcceptanceChecklistItem[] = [];
+  let dropped = 0;
+  for (const entry of raw) {
+    const normalized = normalizeAcceptanceChecklistItem(entry);
+    if (normalized) items.push(normalized);
+    else dropped += 1;
+  }
+  return { items, dropped, malformedContainer: false };
 }
 
 function filterWellFormed<T>(
@@ -280,6 +335,13 @@ function applyConstraintDefaults(parsed: Record<string, unknown>): Record<string
       appendReviewerIssue(next, 'Malformed constraintFindings field ignored: expected an array of {constraintId:string,satisfied:boolean,evidence:string,severity?:critical|major|minor}.');
     } else if (normalized.dropped > 0) {
       appendReviewerIssue(next, `Malformed constraintFindings ignored: ${normalized.dropped} entr${normalized.dropped === 1 ? 'y' : 'ies'}; expected {constraintId:string,satisfied:boolean,evidence:string,severity?:critical|major|minor}.`);
+    }
+    const checklist = normalizeAcceptanceChecklist(next['acceptanceChecklist']);
+    next['acceptanceChecklist'] = checklist.items;
+    if (checklist.malformedContainer) {
+      appendReviewerIssue(next, 'Malformed acceptanceChecklist field ignored: expected an array of {item:string,verified:boolean,evidence:string,howExercised?:string}.');
+    } else if (checklist.dropped > 0) {
+      appendReviewerIssue(next, `Malformed acceptanceChecklist ignored: ${checklist.dropped} entr${checklist.dropped === 1 ? 'y' : 'ies'}; expected {item:string,verified:boolean,evidence:string,howExercised?:string}.`);
     }
   }
   return next;

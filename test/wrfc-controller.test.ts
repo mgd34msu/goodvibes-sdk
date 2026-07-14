@@ -350,6 +350,42 @@ describe('WrfcController — happy path', () => {
     })).toBe(true);
   });
 
+  test('a perfect score cannot pass when an acceptance-checklist item is unverified (wrong interface / wrong units are REJECTED)', async () => {
+    const h = createHarness();
+    const ownerRecord = h.addAgent('owner-contract-1', 'Build a CLI taking --input/--output named flags that writes 2 rows in meters.');
+    const chain = h.controller.createChain(ownerRecord);
+
+    h.setOutput(chain.engineerAgentId!, 'Implemented the CLI. Summary: done.');
+    emitAgentCompleted(h.bus, chain.engineerAgentId!);
+    await flushMicrotasks();
+
+    const reviewerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
+    // Reviewer reports a PERFECT score and passed:true, but its own acceptance
+    // checklist — derived from the task — flags the interface and the units as
+    // NOT met (a valid-but-wrong deliverable). The contract gate must reject it.
+    h.setOutput(reviewerRecord.id, ['```json', JSON.stringify({
+      version: 1,
+      archetype: 'reviewer',
+      summary: 'looks internally consistent',
+      score: 10,
+      passed: true,
+      dimensions: [],
+      issues: [],
+      constraintFindings: [],
+      acceptanceChecklist: [
+        { item: 'accepts --input/--output as NAMED flags', verified: false, evidence: 'invoked directly: it read positional args, not named flags', howExercised: 'ran the CLI with --input a --output b' },
+        { item: 'output values are in meters', verified: false, evidence: 're-derived the numbers: they are in feet, wrong units' },
+      ],
+    }), '```'].join('\n'));
+    emitAgentCompleted(h.bus, reviewerRecord.id);
+    await flushMicrotasks();
+
+    // Rejected: the chain did NOT pass despite the 10/10 self-report.
+    expect(chain.state).not.toBe('passed');
+    expect(h.workflowEvents.map((e) => e.type)).not.toContain('WORKFLOW_CHAIN_PASSED');
+    h.controller.dispose();
+  });
+
   test('engineer completes → reviewer spawned → passing score → WORKFLOW_CHAIN_PASSED emitted', async () => {
     const h = createHarness();
 

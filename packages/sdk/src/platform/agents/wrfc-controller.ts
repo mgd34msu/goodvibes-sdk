@@ -1000,15 +1000,8 @@ export class WrfcController {
     const constraintEvaluation = this.evaluateConstraints(chain, review);
     if (constraintEvaluation.ignoredConstraintFindingIds.length > 0) {
       review.issues ??= [];
-      review.issues.push({
-        severity: 'major',
-        description: `Reviewer reported findings for unknown constraints; ignored ids=[${constraintEvaluation.ignoredConstraintFindingIds.join(',')}]`,
-        pointValue: 2,
-      });
-      logger.warn('WrfcController: ignored unknown constraint findings', {
-        chainId: chain.id,
-        ignoredConstraintFindingIds: constraintEvaluation.ignoredConstraintFindingIds,
-      });
+      review.issues.push({ severity: 'major', description: `Reviewer reported findings for unknown constraints; ignored ids=[${constraintEvaluation.ignoredConstraintFindingIds.join(',')}]`, pointValue: 2 });
+      logger.warn('WrfcController: ignored unknown constraint findings', { chainId: chain.id, ignoredConstraintFindingIds: constraintEvaluation.ignoredConstraintFindingIds });
     }
     const {
       constraintsSatisfied,
@@ -1016,8 +1009,14 @@ export class WrfcController {
       unsatisfiedConstraintIds,
       constraintFailure,
     } = constraintEvaluation;
+    // A false acceptance-checklist item ⇒ the deliverable doesn't meet the contract derived from the task (wrong interface/cardinality/format/threshold): correct-but-not-what-was-asked cannot pass, whatever the score.
+    const unmetChecklist = (review.acceptanceChecklist ?? []).filter((entry) => entry.verified === false);
+    if (unmetChecklist.length > 0) {
+      review.issues ??= [];
+      review.issues.push({ severity: 'critical', description: `Acceptance checklist not met: ${unmetChecklist.map((entry) => entry.item).join('; ')}`, pointValue: 0 });
+    }
     // MIN-4: claimsVerified===false is a mechanical block — cannot pass review regardless of score.
-    const passed = review.score >= threshold && !constraintFailure && chain.claimsVerified !== false;
+    const passed = review.score >= threshold && !constraintFailure && unmetChecklist.length === 0 && chain.claimsVerified !== false;
 
     this.completeCurrentNode(chain, `Score ${review.score}/10${passed ? ' passed' : ' needs fixes'}`);
 
