@@ -120,6 +120,22 @@ export function createDaemonIntegrationRouteHandlers(
     getWorktrees: () => withHelpers(context.integrationHelpers, (helpers) => Response.json(helpers.getWorktreeSnapshot())),
     getIntelligence: () => withHelpers(context.integrationHelpers, (helpers) => Response.json(helpers.getIntelligenceSnapshot())),
     getMemoryDoctor: async () => Response.json(await context.memoryRegistry.doctor()),
+    getMemoryConsolidationReceipts: () => {
+      // What consolidation DID (retained run receipts) and what it PROPOSED —
+      // judgment outcomes a human acts on via the confirmation-gated review
+      // route. Pending = proposals carried by the retained receipts (the
+      // scheduler ring bounds them); the referenced records are already
+      // marked into the review queue by the engine.
+      if (!context.memoryConsolidation) {
+        return jsonErrorResponse({ error: 'This runtime has no memory-consolidation scheduler.' }, { status: 501 });
+      }
+      const receipts = context.memoryConsolidation.listReceipts();
+      const pendingProposals = receipts.flatMap((receipt) => {
+        const proposed = (receipt as { proposed?: unknown }).proposed;
+        return Array.isArray(proposed) ? proposed : [];
+      });
+      return Response.json({ receipts, pendingProposals });
+    },
     getMemoryVectorStats: () => Response.json({ vector: context.memoryRegistry.vectorStats() }),
     getMemoryReviewQueue: (url) => {
       const limit = readBoundedPositiveInteger(url.searchParams.get('limit'), 10, 1_000);

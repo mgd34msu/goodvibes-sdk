@@ -519,6 +519,7 @@ export function createDaemonFacadeCollaborators(
     multimodalService: runtime.multimodalService,
     artifactStore: runtime.artifactStore,
     memoryRegistry: runtime.runtimeServices.memoryRegistry,
+    memoryConsolidation: { listReceipts: () => runtime.runtimeServices.memoryConsolidationScheduler.listReceipts() },
     memoryEmbeddingRegistry: runtime.runtimeServices.memoryEmbeddingRegistry,
     platformServiceManager: runtime.platformServiceManager,
     integrationHelpers: runtime.integrationHelpers,

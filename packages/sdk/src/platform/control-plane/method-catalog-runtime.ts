@@ -12,7 +12,7 @@ import {
   runtimeEventId,
   arraySchema,
 } from './method-catalog-shared.js';
-import { enumSchema, nullableSchema } from './operator-contract-schemas-shared.js';
+import { STRING_LIST_SCHEMA, enumSchema, nullableSchema } from './operator-contract-schemas-shared.js';
 import {
   CONTINUITY_SNAPSHOT_SCHEMA,
   DISTRIBUTED_NODE_HOST_CONTRACT_SCHEMA,
@@ -546,6 +546,41 @@ export const builtinGatewayRuntimeMethodDescriptors: readonly GatewayMethodDescr
     http: { method: 'POST', path: '/api/memory/embeddings/default' },
     inputSchema: bodyEnvelopeSchema({ providerId: STRING_SCHEMA }, ['providerId']),
     outputSchema: MEMORY_DOCTOR_REPORT_SCHEMA,
+  }),
+  methodDescriptor({
+    id: 'memory.consolidation.receipts',
+    title: 'Memory Consolidation Receipts',
+    description: 'Return the retained memory-consolidation run receipts (what each idle/scheduled pass scanned, merged, archived, decayed) and the pending judgment PROPOSALS they carry (contradictions, cross-scope duplicates) — the records a proposal references are already marked into the review queue, and a human resolves them through the confirmation-gated review route. A runtime without the consolidation scheduler answers an honest 501.',
+    category: 'memory',
+    scopes: ['read:memory'],
+    http: { method: 'GET', path: '/api/memory/consolidation/receipts' },
+    inputSchema: EMPTY_OBJECT_SCHEMA,
+    outputSchema: objectSchema({
+      receipts: arraySchema(objectSchema({
+        runId: STRING_SCHEMA,
+        ranAt: STRING_SCHEMA,
+        trigger: STRING_SCHEMA,
+        idle: BOOLEAN_SCHEMA,
+        scanned: NUMBER_SCHEMA,
+        merged: arraySchema(objectSchema({}, [], { additionalProperties: true })),
+        archived: arraySchema(objectSchema({}, [], { additionalProperties: true })),
+        decayed: arraySchema(objectSchema({}, [], { additionalProperties: true })),
+        proposed: arraySchema(objectSchema({
+          kind: enumSchema(['contradiction', 'cross-scope-duplicate', 'stale-delete']),
+          ids: STRING_LIST_SCHEMA,
+          route: STRING_SCHEMA,
+          reason: STRING_SCHEMA,
+        }, ['kind', 'ids', 'route', 'reason'])),
+        usageSignalAvailable: BOOLEAN_SCHEMA,
+        note: STRING_SCHEMA,
+      }, ['runId', 'ranAt', 'trigger', 'idle', 'scanned', 'merged', 'archived', 'decayed', 'proposed', 'usageSignalAvailable', 'note'])),
+      pendingProposals: arraySchema(objectSchema({
+        kind: enumSchema(['contradiction', 'cross-scope-duplicate', 'stale-delete']),
+        ids: STRING_LIST_SCHEMA,
+        route: STRING_SCHEMA,
+        reason: STRING_SCHEMA,
+      }, ['kind', 'ids', 'route', 'reason'])),
+    }, ['receipts', 'pendingProposals']),
   }),
   methodDescriptor({
     id: 'memory.review-queue',

@@ -464,7 +464,25 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // Memory consolidation runs HERE — this runtime is the memory store's single
   // writer. Idle trigger (no busy broker sessions) + slow schedule fallback;
   // reversible outcomes only, receipts retained, learning.consolidation.* tunes it.
-  const memoryConsolidationScheduler = new MemoryConsolidationScheduler({ memoryRegistry, configSource: configManager, isIdle: () => sessionBroker.countBusySessions() === 0 });
+  // Announce-once receipts (constructed HERE, before its first consumer): the
+  // consolidation scheduler's run receipts and later the sandbox containment
+  // line share the one store.
+  const announcementStore = new FeatureAnnouncementStore(featureAnnouncementsPath(configManager));
+  const memoryConsolidationScheduler = new MemoryConsolidationScheduler({
+    memoryRegistry,
+    configSource: configManager,
+    isIdle: () => sessionBroker.countBusySessions() === 0,
+    // Attach notice per run that DID something: an SDK-composed daemon records
+    // what consolidation merged/decayed/proposed without consumer re-wiring.
+    onReceipt: (receipt) => {
+      const changed = receipt.merged.length + receipt.archived.length + receipt.decayed.length + receipt.proposed.length;
+      if (changed === 0) return;
+      announcementStore.record(
+        `memory-consolidation:${receipt.runId}`,
+        `Memory consolidation ran (${receipt.trigger}): ${receipt.merged.length} merged, ${receipt.decayed.length} decayed, ${receipt.archived.length} archived, ${receipt.proposed.length} proposal${receipt.proposed.length === 1 ? '' : 's'} awaiting review.`,
+      );
+    },
+  });
   memoryConsolidationScheduler.start();
   const deliveryManager = new AutomationDeliveryManager({
     configManager,
@@ -733,7 +751,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   });
   // Announce-once receipts for default-on features: the first contained exec
   // run yields the one-time containment line (persisted, once per install).
-  const announcementStore = new FeatureAnnouncementStore(featureAnnouncementsPath(configManager));
+  // (Store constructed above, before the consolidation scheduler.)
   const onSandboxedRun = createSandboxContainmentAnnouncer(announcementStore, (announcement) => {
     logger.info(announcement.text, { announcement: announcement.id });
   });

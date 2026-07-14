@@ -239,6 +239,7 @@ async function dispatchOperatorRoutesInner(
   if (pathname === '/api/automation/heartbeat' && method === 'GET') return handlers.getAutomationHeartbeat();
   if (pathname === '/api/automation/heartbeat' && method === 'POST') return handlers.postAutomationHeartbeat(req);
   if (pathname === '/api/memory/doctor' && method === 'GET') return handlers.getMemoryDoctor();
+  if (pathname === '/api/memory/consolidation/receipts' && method === 'GET') return handlers.getMemoryConsolidationReceipts();
   if (pathname === '/api/memory/review-queue' && method === 'GET') return handlers.getMemoryReviewQueue(url);
   if (pathname === '/api/memory/vector' && method === 'GET') return handlers.getMemoryVectorStats();
   if (pathname === '/api/memory/vector/rebuild' && method === 'POST') return handlers.postMemoryVectorRebuild(req);

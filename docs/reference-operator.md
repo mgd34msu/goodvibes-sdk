@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `411`
+- Methods: `412`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -63385,6 +63385,182 @@ Persist a multimodal analysis result as an artifact and ingest it into the struc
 ```
 
 ### memory
+
+#### `memory.consolidation.receipts`
+
+Return the retained memory-consolidation run receipts (what each idle/scheduled pass scanned, merged, archived, decayed) and the pending judgment PROPOSALS they carry (contradictions, cross-scope duplicates) — the records a proposal references are already marked into the review queue, and a human resolves them through the confirmation-gated review route. A runtime without the consolidation scheduler answers an honest 501.
+
+- Title: `Memory Consolidation Receipts`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/memory/consolidation/receipts`
+- Scopes: `read:memory`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "receipts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "runId": {
+            "type": "string"
+          },
+          "ranAt": {
+            "type": "string"
+          },
+          "trigger": {
+            "type": "string"
+          },
+          "idle": {
+            "type": "boolean"
+          },
+          "scanned": {
+            "type": "number"
+          },
+          "merged": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": true
+            }
+          },
+          "archived": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": true
+            }
+          },
+          "decayed": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": true
+            }
+          },
+          "proposed": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "contradiction",
+                    "cross-scope-duplicate",
+                    "stale-delete"
+                  ]
+                },
+                "ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "route": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "ids",
+                "route",
+                "reason"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "usageSignalAvailable": {
+            "type": "boolean"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "runId",
+          "ranAt",
+          "trigger",
+          "idle",
+          "scanned",
+          "merged",
+          "archived",
+          "decayed",
+          "proposed",
+          "usageSignalAvailable",
+          "note"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "pendingProposals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "contradiction",
+              "cross-scope-duplicate",
+              "stale-delete"
+            ]
+          },
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "route": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "ids",
+          "route",
+          "reason"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "receipts",
+    "pendingProposals"
+  ],
+  "additionalProperties": false
+}
+```
 
 #### `memory.doctor`
 

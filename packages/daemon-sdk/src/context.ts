@@ -182,6 +182,7 @@ export interface DaemonPlatformStatusRouteHandlers {
 /** Route handlers for the memory subsystem: diagnostics, vector stats, review queue, rebuild, embedding config, and canonical-store record CRUD/search. */
 export interface DaemonMemoryRouteHandlers {
   getMemoryDoctor(): MaybeResponse;
+  getMemoryConsolidationReceipts(): MaybeResponse;
   getMemoryVectorStats(): MaybeResponse;
   getMemoryReviewQueue(url: URL): MaybeResponse;
   postMemoryVectorRebuild(req: Request): MaybeResponse;

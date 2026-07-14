@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.8.0
- * Methods: 411 total, 360 REST-routed, 51 ws-only invoke.
+ * Methods: 412 total, 361 REST-routed, 51 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -976,6 +976,10 @@ export const WEBUI_METHOD_ROUTES: Readonly<Record<string, WebuiRouteDefinition>>
     "method": "POST",
     "path": "/api/multimodal/writeback"
   },
+  "memory.consolidation.receipts": {
+    "method": "GET",
+    "path": "/api/memory/consolidation/receipts"
+  },
   "memory.doctor": {
     "method": "GET",
     "path": "/api/memory/doctor"
@@ -1798,6 +1802,7 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "multimodal.providers.list": "rest",
   "multimodal.status": "rest",
   "multimodal.writeback": "rest",
+  "memory.consolidation.receipts": "rest",
   "memory.doctor": "rest",
   "memory.embeddings.default.set": "rest",
   "memory.projections.get": "rest",
@@ -13970,6 +13975,51 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
         "knowledgeSourceId": "sample",
         "metadata": {}
       }
+    }
+  },
+  "memory.consolidation.receipts": {
+    "input": {},
+    "output": {
+      "receipts": [
+        {
+          "runId": "sample",
+          "ranAt": "sample",
+          "trigger": "sample",
+          "idle": false,
+          "scanned": 0,
+          "merged": [
+            {}
+          ],
+          "archived": [
+            {}
+          ],
+          "decayed": [
+            {}
+          ],
+          "proposed": [
+            {
+              "kind": "contradiction",
+              "ids": [
+                "sample"
+              ],
+              "route": "sample",
+              "reason": "sample"
+            }
+          ],
+          "usageSignalAvailable": false,
+          "note": "sample"
+        }
+      ],
+      "pendingProposals": [
+        {
+          "kind": "contradiction",
+          "ids": [
+            "sample"
+          ],
+          "route": "sample",
+          "reason": "sample"
+        }
+      ]
     }
   },
   "memory.doctor": {

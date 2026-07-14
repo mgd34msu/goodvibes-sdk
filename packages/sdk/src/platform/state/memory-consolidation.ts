@@ -176,6 +176,16 @@ function planAndApplyMerges(input: MemoryConsolidationInput, active: readonly Me
         route: 'memory action:"curator" query:"consolidation"',
         reason: 'Same-summary records span multiple scopes; merging across scope needs review.',
       });
+      // Enter the review queue WITHOUT blocking injection: these records do
+      // not disagree (unlike a contradiction), so they stay usable — marking
+      // them fresh re-prioritises them for the human review queue, which is
+      // reviewState-derived. Touched so the receipt lists them honestly.
+      for (const record of bucket) {
+        if (record.reviewState !== 'fresh') {
+          input.memoryRegistry.review(record.id, { state: 'fresh', reviewedBy: 'consolidation' });
+        }
+        touched.add(record.id);
+      }
       continue;
     }
 
@@ -206,12 +216,27 @@ function planAndApplyMerges(input: MemoryConsolidationInput, active: readonly Me
         duplicateIds.push(loser.id);
         touched.add(loser.id);
       } else {
+        const reason = 'Same-summary records disagree and neither is a clearly-newer verified winner.';
         proposals.push({
           kind: 'contradiction',
           ids: [survivor.id, loser.id],
           route: 'memory action:"curator" query:"consolidation"',
-          reason: 'Same-summary records disagree and neither is a clearly-newer verified winner.',
+          reason,
         });
+        // The proposal REACHES the review machinery: both disagreeing records
+        // are marked contradicted (the existing review flag the merge/decay
+        // paths also drive), which prioritises them in the review queue and
+        // excludes them from injection until a human resolves through the
+        // confirmation-gated review route. Nothing is deleted; the resolution
+        // stays the human's.
+        for (const id of [survivor.id, loser.id]) {
+          input.memoryRegistry.review(id, {
+            state: 'contradicted',
+            staleReason: reason,
+            reviewedBy: 'consolidation',
+          });
+        }
+        touched.add(survivor.id);
         touched.add(loser.id);
       }
     }
