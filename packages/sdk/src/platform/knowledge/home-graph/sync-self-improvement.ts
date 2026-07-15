@@ -2,7 +2,7 @@ import type { ArtifactStore } from '../../artifacts/index.js';
 import { sleep, yieldEvery } from '../cooperative.js';
 import type { KnowledgeSemanticService } from '../semantic/index.js';
 import type { KnowledgeStore } from '../store.js';
-import { edgeIsActive, readHomeAssistantMetadataString, uniqueStrings } from './helpers.js';
+import { edgeIsActive, readHomeAssistantMetadataString } from './helpers.js';
 import { refreshHomeGraphDevicePassport } from './generated-pages.js';
 import { isUsefulHomeGraphPageFact } from './page-quality.js';
 import { readHomeGraphSearchState } from './search.js';
@@ -68,7 +68,9 @@ export async function enrichHomeGraphSpaceSources(
 ): Promise<void> {
   const sources = readHomeGraphSearchState(runtime.store, spaceId).sources;
   await runtime.semanticService.enrichSources(sources, { knowledgeSpaceId: spaceId });
-  const result = await runtime.semanticService.selfImprove({ knowledgeSpaceId: spaceId, reason: 'reindex' });
+  // stopWhenPaused: the sync pump is background work — a governor pause stops
+  // it at the next safe boundary instead of running through memory pressure.
+  const result = await runtime.semanticService.selfImprove({ knowledgeSpaceId: spaceId, reason: 'reindex' }, { stopWhenPaused: true });
   const installationId = readHomeGraphInstallationIdFromSpace(spaceId);
   if (installationId && ((result.acceptedSourceIds?.length ?? 0) > 0 || (result.promotedFactCount ?? 0) > 0 || result.closedGaps > 0)) {
     await refreshHomeGraphDevicePagesForSourceIds(runtime, spaceId, installationId, result.acceptedSourceIds ?? []);
@@ -82,16 +84,21 @@ export async function enrichAndImproveHomeGraphSource(
 ): Promise<void> {
   await runtime.semanticService.enrichSource(sourceId, { knowledgeSpaceId: spaceId });
   if (!sourceHasUsefulSemanticFacts(runtime.store, sourceId, spaceId)) return;
-  const result = await runtime.semanticService.selfImprove({
+  // The enrichment already produced usable facts — refresh this source's page
+  // now; repair-accepted refreshes ride the governed run / next sync pump.
+  const installationId = readHomeGraphInstallationIdFromSpace(spaceId);
+  if (installationId) {
+    await refreshHomeGraphDevicePagesForSourceIds(runtime, spaceId, installationId, [sourceId]);
+  }
+  // Self-improvement rides the governed background scheduler — a direct 0ms
+  // per-ingest run would bypass the floor, coalescing, zero-gap backoff, and
+  // the memory governor's pause (the incident's hot-loop shape).
+  runtime.semanticService.queueBackgroundSelfImprove({
     knowledgeSpaceId: spaceId,
     sourceIds: [sourceId],
     reason: 'ingest',
     limit: SYNC_SELF_IMPROVEMENT_INGEST_LIMIT,
   });
-  const installationId = readHomeGraphInstallationIdFromSpace(spaceId);
-  if (installationId && ((result.acceptedSourceIds?.length ?? 0) > 0 || (result.promotedFactCount ?? 0) > 0 || result.closedGaps > 0)) {
-    await refreshHomeGraphDevicePagesForSourceIds(runtime, spaceId, installationId, uniqueStrings([sourceId, ...(result.acceptedSourceIds ?? [])]));
-  }
 }
 
 function sourceHasUsefulSemanticFacts(store: KnowledgeStore, sourceId: string, spaceId: string): boolean {

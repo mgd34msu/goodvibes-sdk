@@ -883,6 +883,41 @@ export class SharedSessionBroker {
 
   /** Periodic sweep: idle-close active sessions and (only under a finite retention
    * window) delete closed ones. Full policy lives in the module helper `sweepSharedSessions`. */
+  /** Retained in-memory record count (sessions + message/input bucket entries), for MemoryGovernor visibility. */
+  retainedRecordCount(): number {
+    let total = this.sessions.size;
+    for (const bucket of this.messages.values()) total += bucket.length;
+    for (const bucket of this.inputs.values()) total += bucket.length;
+    return total;
+  }
+
+  /**
+   * MemoryGovernor trim hook — a REAL reclaim. `floor` runs the idle/closed
+   * session GC sweep immediately; `flush` additionally truncates the message
+   * and input buckets of every non-busy session to a short tail (the full
+   * transcript persists in the session store; these buckets are the live
+   * relay mirror).
+   */
+  trimRetained(level: 'floor' | 'flush'): void {
+    this.gcSweep();
+    if (level !== 'flush') return;
+    const keepTail = 20;
+    const isBusy = (sessionId: string): boolean => {
+      const session = this.sessions.get(sessionId);
+      return session ? session.pendingInputCount > 0 : false;
+    };
+    for (const [sessionId, bucket] of this.messages) {
+      if (!isBusy(sessionId) && bucket.length > keepTail) {
+        this.messages.set(sessionId, bucket.slice(-keepTail));
+      }
+    }
+    for (const [sessionId, bucket] of this.inputs) {
+      if (!isBusy(sessionId) && bucket.length > keepTail) {
+        this.inputs.set(sessionId, bucket.slice(-keepTail));
+      }
+    }
+  }
+
   private gcSweep(): void {
     const anyChanged = sweepSharedSessions(
       { sessions: this.sessions, messages: this.messages, inputs: this.inputs },

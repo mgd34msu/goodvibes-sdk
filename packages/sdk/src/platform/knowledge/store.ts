@@ -113,6 +113,14 @@ import {
   getKnowledgeSpaceId,
 } from './spaces.js';
 
+/**
+ * Retained job-run history cap (in-memory mirror AND sqlite rows). Runs are
+ * append-per-execution; without a cap the history accretes one record per run
+ * for the daemon's whole life and survives restarts (the incident's ~1,400
+ * zero-result self-improvement objects were this class).
+ */
+const MAX_RETAINED_JOB_RUNS = 500;
+
 export class KnowledgeStore {
   private readonly sqlite: SQLiteStore;
   private readonly dbPath: string;
@@ -201,6 +209,20 @@ export class KnowledgeStore {
   /** One bounded page of nodes (insertion order, no full materialization). */
   listNodesPage(offset: number, limit: number): KnowledgeNodeRecord[] {
     return pageKnowledgeNodes(this.asReadView(), offset, limit);
+  }
+
+  /**
+   * Single-pass cursor over sources (insertion order, no materialization).
+   * O(N) for a full scan — offset paging in a loop re-walks the Map from zero
+   * per page (O(N²/page)). Map iterators tolerate concurrent upsert/delete.
+   */
+  iterateSources(): IterableIterator<KnowledgeSourceRecord> {
+    return this.sources.values();
+  }
+
+  /** Single-pass cursor over nodes. See {@link iterateSources}. */
+  iterateNodes(): IterableIterator<KnowledgeNodeRecord> {
+    return this.nodes.values();
   }
 
   listNodesInSpace(spaceId: string): KnowledgeNodeRecord[] {
@@ -854,8 +876,32 @@ export class KnowledgeStore {
       now,
     ]);
     this.jobRuns.set(record.id, record);
+    // Retention on write: keep the run history bounded in memory AND on disk.
+    this.pruneJobRuns(MAX_RETAINED_JOB_RUNS);
     await this.sqlite.save();
     return record;
+  }
+
+  /**
+   * Bound the retained job-run history to `keep` records. Active (queued /
+   * running) runs are never pruned; settled runs beyond the cap are removed
+   * oldest-first from BOTH the in-memory mirror and the sqlite table, so the
+   * history cannot accrete without bound across uptime or restarts. Also the
+   * MemoryGovernor's trim hook for this store (a real reclaim, not a no-op).
+   */
+  pruneJobRuns(keep: number): number {
+    const cap = Math.max(0, Math.trunc(keep));
+    if (this.jobRuns.size <= cap) return 0;
+    const settled = [...this.jobRuns.values()]
+      .filter((run) => run.status !== 'queued' && run.status !== 'running')
+      .sort((a, b) => a.updatedAt - b.updatedAt);
+    const active = this.jobRuns.size - settled.length;
+    const toDrop = settled.slice(0, Math.max(0, this.jobRuns.size - Math.max(cap, active)));
+    for (const run of toDrop) {
+      this.jobRuns.delete(run.id);
+      this.sqlite.run('DELETE FROM knowledge_job_runs WHERE id = ?', [run.id]);
+    }
+    return toDrop.length;
   }
 
   async upsertRefinementTask(input: KnowledgeRefinementTaskUpsertInput): Promise<KnowledgeRefinementTaskRecord> {
@@ -1056,6 +1102,10 @@ export class KnowledgeStore {
     for (const record of snapshot.extractions) this.extractions.set(record.id, record);
     this.jobRuns.clear();
     for (const record of snapshot.jobRuns) this.jobRuns.set(record.id, record);
+    // Retention at load: an unbounded run history otherwise accretes across
+    // daemon restarts (one record per job run, forever — the incident's
+    // zero-result self-improvement objects were exactly this class).
+    this.pruneJobRuns(MAX_RETAINED_JOB_RUNS);
     this.refinementTasks.clear();
     for (const record of snapshot.refinementTasks) this.refinementTasks.set(record.id, record);
     this.usageRecords.clear();

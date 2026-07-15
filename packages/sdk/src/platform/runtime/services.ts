@@ -445,6 +445,14 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const cacheRegistry = new CacheRegistry();
   const pauseController = new PauseController();
   const MEMORY_BACKGROUND_JOB_IDS = ['knowledge-self-improvement', 'memory-consolidation', 'code-index-reindex'];
+  // Late-bound admission gate: the expensive entry points (knowledge job runs,
+  // ingestion, semantic reindex/self-improve, consolidation, code-index) are
+  // constructed before the MemoryGovernor; they capture this closure, and the
+  // governor binds into it at the composition tail. Until then everything is
+  // admitted (the daemon is still booting).
+  const admitExpensiveWorkRef: { current: ((label: string) => { allowed: boolean; reason?: string | undefined }) | null } = { current: null };
+  const admitExpensiveWork = (label: string): { allowed: boolean; reason?: string | undefined } =>
+    admitExpensiveWorkRef.current?.(label) ?? { allowed: true };
   const codeIndexStore = new CodeIndexStore(workingDirectory, codeIndexDbPath, memoryEmbeddingRegistry);
   codeIndexStore.init();
   if (options.autoStartCodeIndex) {
@@ -457,8 +465,9 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     target: codeIndexStore,
     workingDirectory,
     // Honor governor backpressure: a paused code-index reindex job stops
-    // scheduling new work until the governor resumes it.
-    isEnabled: () => codeInjectionSettingEnabled() && !pauseController.isPaused('code-index-reindex'),
+    // scheduling new work until the governor resumes it, and the critical
+    // memory tier refuses new reindex work outright.
+    isEnabled: () => codeInjectionSettingEnabled() && !pauseController.isPaused('code-index-reindex') && admitExpensiveWork('code-index reindex').allowed,
   });
   // Daily snapshots of every SQLite store, bounded by the retention engine (unref'd timers).
   const storeSnapshotScheduler = new StoreSnapshotScheduler({
@@ -490,8 +499,9 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const memoryConsolidationScheduler = new MemoryConsolidationScheduler({
     memoryRegistry,
     configSource: configManager,
-    // Idle AND not paused by the governor — memory pressure defers consolidation.
-    isIdle: () => sessionBroker.countBusySessions() === 0 && !pauseController.isPaused('memory-consolidation'),
+    // Idle AND not paused by the governor AND admitted at the current memory
+    // tier — memory pressure defers consolidation.
+    isIdle: () => sessionBroker.countBusySessions() === 0 && !pauseController.isPaused('memory-consolidation') && admitExpensiveWork('memory consolidation').allowed,
     // Attach notice per run that DID something: an SDK-composed daemon records
     // what consolidation merged/decayed/proposed without consumer re-wiring.
     onReceipt: (receipt) => {
@@ -554,22 +564,26 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     llm: knowledgeSemanticLlm,
     maxLlmSourcesPerReindex: 3,
     isBackgroundPaused: isKnowledgeBackgroundPaused,
+    admitExpensiveWork,
   });
   const homeGraphSemanticService = new KnowledgeSemanticService(homeGraphKnowledgeStore, {
     llm: knowledgeSemanticLlm,
     maxLlmSourcesPerReindex: 3,
     objectProfiles: HOME_GRAPH_KNOWLEDGE_EXTENSION.objectProfiles,
     isBackgroundPaused: isKnowledgeBackgroundPaused,
+    admitExpensiveWork,
   });
   const agentKnowledgeSemanticService = new KnowledgeSemanticService(agentKnowledgeStore, {
     llm: knowledgeSemanticLlm,
     maxLlmSourcesPerReindex: 3,
     isBackgroundPaused: isKnowledgeBackgroundPaused,
+    admitExpensiveWork,
   });
   const knowledgeService = new KnowledgeService(knowledgeStore, artifactStore, undefined, {
     memoryRegistry,
     runtimeBus: options.runtimeBus,
     semanticService: knowledgeSemanticService,
+    admitExpensiveWork,
   });
   knowledgeService.attachRuntimeBus(options.runtimeBus);
   const agentKnowledgeService = new KnowledgeService(agentKnowledgeStore, artifactStore, undefined, {
@@ -919,9 +933,17 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     pauseController,
     jobIds: MEMORY_BACKGROUND_JOB_IDS,
     receiptPath: shellPaths.resolveProjectPath(surfaceRoot, 'memory', 'tripwire-receipt.json'),
-    knowledgeEntryCount: () => knowledgeStore.retainedEntryCount() + agentKnowledgeStore.retainedEntryCount() + homeGraphKnowledgeStore.retainedEntryCount(),
-    busySessionCount: () => sessionBroker.countBusySessions(),
+    // REAL cache adapters: genuine counts + trims that reclaim (job-run
+    // history pruning; broker GC + bucket truncation).
+    knowledgeStores: [knowledgeStore, agentKnowledgeStore, homeGraphKnowledgeStore],
+    sessionBroker,
+    // Graceful tripwire shutdown: the same checkpoint work the sleep-edge path
+    // runs (store snapshots), so in-flight state is flushed before the exit.
+    onTripwireShutdown: () => { storeSnapshotScheduler.tick(); },
   });
+  // Late-bind the admission gate now that the governor exists: the expensive
+  // entry points captured `admitExpensiveWork` earlier via this holder.
+  admitExpensiveWorkRef.current = (label) => memoryGovernor.admitExpensiveWork(label);
   // Managed local-voice provisioning: status read + one-act install that
   // provisions the piper engine + a default voice and pre-configures the
   // voice.local.* keys (user-set keys preserved).

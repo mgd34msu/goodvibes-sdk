@@ -55,6 +55,9 @@ async function answerHomeGraphQueryOnce(input: {
       timeoutMs: input.query.timeoutMs,
     });
     scheduleBackground(() => {
+      // Governor backpressure: skip the post-answer enrichment tail while
+      // background knowledge work is paused for memory pressure.
+      if (input.semanticService?.isBackgroundWorkPaused()) return;
       void input.semanticService?.enrichSources(uniqueSources(sources), {
         knowledgeSpaceId: input.spaceId,
         limit: Math.min(3, Math.max(1, sources.length)),

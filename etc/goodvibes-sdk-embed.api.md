@@ -342,6 +342,7 @@ export class SharedSessionBroker {
     register(input: RegisterSharedSessionInput): Promise<SharedSessionRegisterResult>;
     // (undocumented)
     reopenSession(sessionId: string): Promise<SharedSessionRecord | null>;
+    retainedRecordCount(): number;
     // Warning: (ae-forgotten-export) The symbol "SharedSessionContinuationRunner" needs to be exported by the entry point embed.d.ts
     //
     // (undocumented)
@@ -359,6 +360,7 @@ export class SharedSessionBroker {
     stop(): Promise<void>;
     // (undocumented)
     submitMessage(input: SubmitSharedSessionMessageInput): Promise<SharedSessionSubmission>;
+    trimRetained(level: 'floor' | 'flush'): void;
 }
 
 // @public (undocumented)

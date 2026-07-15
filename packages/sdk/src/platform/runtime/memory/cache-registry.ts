@@ -37,22 +37,21 @@ export interface RegisteredCache {
 }
 
 /**
- * Every cache class the daemon retains. Extend this when adding one — the
- * membership check fails loudly on an id not listed here.
+ * Every cache class the daemon retains AND can genuinely observe + shrink.
+ * Extend this when adding one — the membership check fails loudly on an id not
+ * listed here, and a registration whose trim is a no-op is a defect (it makes
+ * the governor's shed tiers theater): every entry here must come with a real
+ * entryCount and a trim that actually reclaims.
  */
 export type MemoryCacheId =
   | 'knowledge-store'
   | 'session-union'
-  | 'discovery-scan-ttl'
-  | 'provider-model-catalog'
   | 'event-replay-ring';
 
 /** The canonical membership set. Adding a cache means adding its id here. */
 export const KNOWN_MEMORY_CACHES: readonly MemoryCacheId[] = [
   'knowledge-store',
   'session-union',
-  'discovery-scan-ttl',
-  'provider-model-catalog',
   'event-replay-ring',
 ];
 

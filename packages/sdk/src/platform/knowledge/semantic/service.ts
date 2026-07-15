@@ -19,6 +19,12 @@ import type {
 import { readRecord, readString, readStringArray, sourceSemanticHash, sourceSemanticText } from './utils.js';
 import { uniqueStrings } from './utils.js';
 import { runKnowledgeSemanticSelfImprovement } from './self-improvement.js';
+import {
+  BackgroundSelfImproveScheduler,
+  DEFAULT_SELF_IMPROVE_MIN_DELAY_MS,
+  DEFAULT_SELF_IMPROVE_ZERO_GAP_BACKOFF_MS,
+  selfImprovementRunKey,
+} from './background-scheduler.js';
 import { isGeneratedKnowledgeSource } from '../generated-projections.js';
 
 export interface KnowledgeSemanticServiceOptions {
@@ -49,26 +55,24 @@ export interface KnowledgeSemanticServiceOptions {
    * (the foreground path is untouched). Wired from the daemon composition.
    */
   readonly isBackgroundPaused?: (() => boolean) | undefined;
+  /**
+   * MemoryGovernor admission gate: consulted before a background run fires and
+   * before an explicit reindex — at the critical tier the run is refused with
+   * an honest structured reason instead of allocating toward OOM.
+   */
+  readonly admitExpensiveWork?: ((label: string) => { allowed: boolean; reason?: string | undefined }) | undefined;
+  /** Test seam: timer scheduling (defaults to scheduleBackground). */
+  readonly scheduleSeam?: ((callback: () => void, delayMs: number) => void) | undefined;
+  /** Test seam: clock (defaults to Date.now). */
+  readonly now?: (() => number) | undefined;
 }
 
-/** Default floor for background self-improvement scheduling (ms). */
-const DEFAULT_SELF_IMPROVE_MIN_DELAY_MS = 5_000;
-/** Default zero-gap backoff window; matches the hourly reindex cadence (ms). */
-const DEFAULT_SELF_IMPROVE_ZERO_GAP_BACKOFF_MS = 3_600_000;
-/** Page size for bounded distinct-space discovery over the full store. */
+/** Event-loop yield cadence for the single-pass distinct-space scan. */
 const SELF_IMPROVE_SPACE_PAGE_SIZE = 500;
-
-/** Per-scope background scheduling state: coalescing flag + zero-gap backoff deadline. */
-interface BackgroundRunState {
-  pending: boolean;
-  zeroGapUntil: number;
-}
 
 export class KnowledgeSemanticService {
   private readonly activeGapRepairs = new Set<string>();
   private readonly activeSelfImprovementRuns = new Map<string, Promise<KnowledgeSemanticSelfImproveResult>>();
-  /** Per-scope background-scheduling state that debounces bursts and enforces zero-gap backoff. */
-  private readonly backgroundRunState = new Map<string, BackgroundRunState>();
 
   constructor(
     private readonly store: KnowledgeStore,
@@ -141,6 +145,12 @@ export class KnowledgeSemanticService {
     readonly errors: readonly { readonly sourceId: string; readonly error: string }[];
     readonly selfImprovement: KnowledgeSemanticSelfImproveResult;
   }> {
+    // Critical-tier admission: reindex is one of the expensive verbs the
+    // governor refuses honestly under memory pressure.
+    const admission = this.options.admitExpensiveWork?.('knowledge semantic reindex');
+    if (admission && !admission.allowed) {
+      throw new Error(admission.reason ?? 'knowledge semantic reindex refused: daemon is under critical memory pressure.');
+    }
     await this.store.init();
     const allowed = input.sourceIds?.length ? new Set(input.sourceIds) : null;
     const sources = listSemanticSources(this.store, input.knowledgeSpaceId)
@@ -186,7 +196,7 @@ export class KnowledgeSemanticService {
       deferRepair: Boolean(this.options.gapRepairer),
     });
     const backgroundRepairLimit = Math.max(1, this.options.backgroundRepairLimit ?? 8);
-    this.runSelfImprovementInBackground({
+    this.queueBackgroundSelfImprove({
       knowledgeSpaceId: input.knowledgeSpaceId,
       sourceIds: input.sourceIds,
       force: true,
@@ -308,7 +318,7 @@ export class KnowledgeSemanticService {
 
   private runAnswerRefinementInBackground(spaceId: string, gapIds: readonly string[]): void {
     if (!this.options.gapRepairer || gapIds.length === 0) return;
-    this.runSelfImprovementInBackground({
+    this.queueBackgroundSelfImprove({
       knowledgeSpaceId: spaceId,
       gapIds,
       reason: 'answer',
@@ -318,55 +328,41 @@ export class KnowledgeSemanticService {
     });
   }
 
-  private runSelfImprovementInBackground(input: KnowledgeSemanticSelfImproveInput, delayMs = 0): void {
-    if (!this.options.gapRepairer) return;
-    // Governor backpressure: when the daemon is under memory pressure this job
-    // is paused — do not schedule new background runs. The hourly foreground
-    // path still runs; only the self-scheduled churn defers.
-    if (this.options.isBackgroundPaused?.()) return;
-    // One scheduling slot per scope+reason. Coalescing here is what stops a burst
-    // of enrichment/answer events from each queuing its own delay-0 run — the hot
-    // loop that fanned control-plane events until the daemon OOM'd.
-    const key = `${selfImprovementRunKey(input)}|${input.reason ?? 'none'}`;
-    const state = this.backgroundRunState.get(key) ?? { pending: false, zeroGapUntil: 0 };
-    if (state.pending) return; // a run is already queued for this scope — coalesce
-    if (Date.now() < state.zeroGapUntil) return; // last run found no gaps — defer to the hourly schedule
-    const minDelayMs = Math.max(0, this.options.backgroundSelfImproveMinDelayMs ?? DEFAULT_SELF_IMPROVE_MIN_DELAY_MS);
-    const backoffMs = Math.max(0, this.options.backgroundSelfImproveZeroGapBackoffMs ?? DEFAULT_SELF_IMPROVE_ZERO_GAP_BACKOFF_MS);
-    // Enforce the floor: a background run is NEVER scheduled sooner than minDelayMs,
-    // even when the caller passes delayMs=0.
-    const flooredDelayMs = Math.max(minDelayMs, Math.max(0, delayMs));
-    state.pending = true;
-    this.backgroundRunState.set(key, state);
-    scheduleBackground(() => {
-      void this.selfImprove(input)
-        .then((result) => {
-          const next = this.backgroundRunState.get(key) ?? { pending: false, zeroGapUntil: 0 };
-          next.pending = false;
-          // Zero candidate gaps ⇒ back off; a run that found nothing must not keep
-          // rescheduling itself. A subsequent run that finds gaps clears the window.
-          next.zeroGapUntil = (result.candidateGaps ?? 0) === 0 ? Date.now() + backoffMs : 0;
-          this.backgroundRunState.set(key, next);
-        })
-        .catch((error: unknown) => {
-          const next = this.backgroundRunState.get(key);
-          if (next) next.pending = false;
-          logger.warn('Knowledge semantic background self-improvement failed', {
-            error: error instanceof Error ? error.message : String(error),
-            knowledgeSpaceId: input.knowledgeSpaceId,
-            reason: input.reason,
-          });
-        });
-    }, flooredDelayMs);
+  /** The governed background scheduler (floor/coalesce/backoff/pause/admit). */
+  private readonly backgroundScheduler = new BackgroundSelfImproveScheduler({
+    run: (input) => this.selfImprove(input, { stopWhenPaused: true }),
+    enabled: () => Boolean(this.options.gapRepairer),
+    isPaused: () => this.options.isBackgroundPaused?.() === true,
+    admit: (label) => this.options.admitExpensiveWork?.(label) ?? { allowed: true },
+    minDelayMs: () => this.options.backgroundSelfImproveMinDelayMs ?? DEFAULT_SELF_IMPROVE_MIN_DELAY_MS,
+    backoffMs: () => this.options.backgroundSelfImproveZeroGapBackoffMs ?? DEFAULT_SELF_IMPROVE_ZERO_GAP_BACKOFF_MS,
+    now: () => this.options.now?.() ?? Date.now(),
+    schedule: (callback, delayMs) => {
+      if (this.options.scheduleSeam) this.options.scheduleSeam(callback, delayMs);
+      else scheduleBackground(callback, delayMs);
+    },
+  });
+
+  /**
+   * THE background self-improvement entry point: every trigger (enrichment
+   * tails, answer refinement, Home Graph ingest, knowledge-service ingest)
+   * routes through the governed scheduler — see background-scheduler.ts for
+   * the five guards. Public so out-of-package producers (home-graph) use it.
+   */
+  queueBackgroundSelfImprove(input: KnowledgeSemanticSelfImproveInput, delayMs = 0): void {
+    this.backgroundScheduler.queue(input, delayMs);
   }
 
-  async selfImprove(input: KnowledgeSemanticSelfImproveInput = {}): Promise<KnowledgeSemanticSelfImproveResult> {
+  async selfImprove(
+    input: KnowledgeSemanticSelfImproveInput = {},
+    runOptions: { readonly stopWhenPaused?: boolean } = {},
+  ): Promise<KnowledgeSemanticSelfImproveResult> {
     await this.store.init();
     if (input.deferRepair !== true) {
       const runKey = selfImprovementRunKey(input);
       const activeRun = this.activeSelfImprovementRuns.get(runKey);
       if (activeRun && !input.gapIds?.length) return activeSelfImproveResult(input);
-      const run = this.runSelfImproveUnlocked(input);
+      const run = this.runSelfImproveUnlocked(input, runOptions);
       if (!input.gapIds?.length) this.activeSelfImprovementRuns.set(runKey, run);
       try {
         return await run;
@@ -374,19 +370,51 @@ export class KnowledgeSemanticService {
         if (this.activeSelfImprovementRuns.get(runKey) === run) this.activeSelfImprovementRuns.delete(runKey);
       }
     }
-    return this.runSelfImproveUnlocked(input);
+    return this.runSelfImproveUnlocked(input, runOptions);
   }
 
-  private async runSelfImproveUnlocked(input: KnowledgeSemanticSelfImproveInput): Promise<KnowledgeSemanticSelfImproveResult> {
+  /** True when a background run should stop at the next safe yield point. */
+  private backgroundStopRequested(runOptions: { readonly stopWhenPaused?: boolean }): boolean {
+    return runOptions.stopWhenPaused === true && this.options.isBackgroundPaused?.() === true;
+  }
+
+  /** Public pause probe so producers (home-graph ask/ingest tails) can defer their own background work. */
+  isBackgroundWorkPaused(): boolean {
+    return this.options.isBackgroundPaused?.() === true;
+  }
+
+  private async runSelfImproveUnlocked(
+    input: KnowledgeSemanticSelfImproveInput,
+    runOptions: { readonly stopWhenPaused?: boolean } = {},
+  ): Promise<KnowledgeSemanticSelfImproveResult> {
+    // Critical-tier admission for the expensive run shapes (space/whole-store
+    // sweeps, not the answer path's cheap deferRepair task-queue pass): refuse
+    // with an honest structured result instead of allocating toward OOM.
+    if (input.deferRepair !== true) {
+      const admission = this.options.admitExpensiveWork?.('knowledge self-improvement run');
+      if (admission && !admission.allowed) {
+        return {
+          ...emptySelfImproveResult(),
+          budgetExhausted: true,
+          truncated: true,
+          errors: [{ gapId: input.knowledgeSpaceId ?? 'global', error: admission.reason ?? 'refused: daemon is under critical memory pressure' }],
+        };
+      }
+    }
     if (!input.knowledgeSpaceId && !input.sourceIds?.length && !input.gapIds?.length) {
-      // Distinct-space discovery over the WHOLE store. Paging keeps a single run's
-      // allocation bounded to one SELF_IMPROVE_SPACE_PAGE_SIZE page at a time
-      // instead of materializing every source+node record at once (the previous
-      // Number.MAX_SAFE_INTEGER call, which allocated the full store per run).
-      const spaces = uniqueStrings([...this.collectSemanticSpaceIds()]);
+      // Distinct-space discovery over the WHOLE store: one O(N) cursor pass
+      // (never a full array+sort materialization, never an O(N²) offset
+      // re-scan), yielding to the event loop between chunks.
+      const spaces = uniqueStrings([...await this.collectSemanticSpaceIds(() => this.backgroundStopRequested(runOptions))]);
       let combined = emptySelfImproveResult();
       for (const [index, spaceId] of spaces.entries()) {
         await yieldEvery(index, 1);
+        // Governor backpressure lands mid-run too: a paused background run
+        // stops at the next space boundary instead of allocating through the
+        // whole store while the daemon sheds memory.
+        if (this.backgroundStopRequested(runOptions)) {
+          return { ...combined, truncated: true, budgetExhausted: true };
+        }
         const result = await runKnowledgeSemanticSelfImprovement({
           store: this.store,
           gapRepairer: this.options.gapRepairer,
@@ -415,26 +443,28 @@ export class KnowledgeSemanticService {
 
   /**
    * Collect every distinct non-stale knowledge-space id across all sources and
-   * nodes, reading the store one bounded page at a time. Each page allocates at
-   * most SELF_IMPROVE_SPACE_PAGE_SIZE records; the loop stops when a short page
-   * signals the end. Behavior matches the old full-materialization scan (all
-   * spaces are discovered) with a bounded per-run footprint.
+   * nodes in ONE cursor pass over each collection (O(N)), yielding to the
+   * event loop every SELF_IMPROVE_SPACE_PAGE_SIZE records so a huge store
+   * never blocks the loop, and honoring a stop signal at each yield.
    */
-  private collectSemanticSpaceIds(): Set<string> {
+  private async collectSemanticSpaceIds(stop?: () => boolean): Promise<Set<string>> {
     const spaceIds = new Set<string>();
-    for (let offset = 0; ; offset += SELF_IMPROVE_SPACE_PAGE_SIZE) {
-      const page = this.store.listSourcesPage(offset, SELF_IMPROVE_SPACE_PAGE_SIZE);
-      for (const source of page) {
-        if (source.status !== 'stale') spaceIds.add(getKnowledgeSpaceId(source));
+    let index = 0;
+    for (const source of this.store.iterateSources()) {
+      if (index > 0 && index % SELF_IMPROVE_SPACE_PAGE_SIZE === 0) {
+        await yieldToEventLoop();
+        if (stop?.()) return spaceIds;
       }
-      if (page.length < SELF_IMPROVE_SPACE_PAGE_SIZE) break;
+      index += 1;
+      if (source.status !== 'stale') spaceIds.add(getKnowledgeSpaceId(source));
     }
-    for (let offset = 0; ; offset += SELF_IMPROVE_SPACE_PAGE_SIZE) {
-      const page = this.store.listNodesPage(offset, SELF_IMPROVE_SPACE_PAGE_SIZE);
-      for (const node of page) {
-        if (node.status !== 'stale') spaceIds.add(getKnowledgeSpaceId(node));
+    for (const node of this.store.iterateNodes()) {
+      if (index > 0 && index % SELF_IMPROVE_SPACE_PAGE_SIZE === 0) {
+        await yieldToEventLoop();
+        if (stop?.()) return spaceIds;
       }
-      if (page.length < SELF_IMPROVE_SPACE_PAGE_SIZE) break;
+      index += 1;
+      if (node.status !== 'stale') spaceIds.add(getKnowledgeSpaceId(node));
     }
     return spaceIds;
   }
@@ -616,11 +646,6 @@ function activeSelfImproveResult(input: KnowledgeSemanticSelfImproveInput): Know
   };
 }
 
-function selfImprovementRunKey(input: KnowledgeSemanticSelfImproveInput): string {
-  if (input.knowledgeSpaceId) return `space:${normalizeKnowledgeSpaceId(input.knowledgeSpaceId)}`;
-  if (input.sourceIds?.length) return `sources:${uniqueStrings(input.sourceIds).sort().join(',')}`;
-  return 'global';
-}
 
 function sourceCanUseLlmUpgrade(store: KnowledgeStore, source: KnowledgeSourceRecord): boolean {
   const extraction = store.getExtractionBySourceId(source.id);

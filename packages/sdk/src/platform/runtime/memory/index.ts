@@ -32,6 +32,7 @@ export {
 
 export {
   MemoryGovernor,
+  resolveEffectiveSystemRamMb,
   type MemoryTier,
   type MemorySample,
   type MemorySampler,
