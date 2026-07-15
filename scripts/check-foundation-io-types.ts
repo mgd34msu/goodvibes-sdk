@@ -53,6 +53,8 @@ import { builtinGatewayPermissionRuleMethodDescriptors } from '../packages/sdk/s
 import { builtinGatewayControlCoreMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-core.ts';
 import { builtinGatewayControlLiveTurnMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-live-turn.ts';
 import { builtinGatewayPowerMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-power.ts';
+import { builtinGatewayMemoryMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-memory.ts';
+import { builtinGatewayVoiceSetupMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-voice-setup.ts';
 import { builtinGatewayFleetMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-fleet.ts';
 import { builtinGatewayRuntimeMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-runtime.ts';
 import {
@@ -220,6 +222,8 @@ const CATALOG_DESCRIPTORS = [
   ...builtinGatewayControlCoreMethodDescriptors,
   ...builtinGatewayControlLiveTurnMethodDescriptors,
   ...builtinGatewayPowerMethodDescriptors,
+  ...builtinGatewayMemoryMethodDescriptors,
+  ...builtinGatewayVoiceSetupMethodDescriptors,
   ...builtinGatewayFleetMethodDescriptors,
   ...builtinGatewayControlCompanionMethodDescriptors,
   ...builtinGatewayPermissionRuleMethodDescriptors,
@@ -362,6 +366,11 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   // Sleep-ownership verbs (power.*):
   { methodId: 'power.status.get', ...descriptorSchemas('power.status.get') },
   { methodId: 'power.keepAwake.set', ...descriptorSchemas('power.keepAwake.set') },
+  // Memory governance observability:
+  { methodId: 'ops.memory.get', ...descriptorSchemas('ops.memory.get') },
+  // Managed local-voice provisioning:
+  { methodId: 'voice.local.status', ...descriptorSchemas('voice.local.status') },
+  { methodId: 'voice.local.install', ...descriptorSchemas('voice.local.install') },
   // The workstream task-graph view:
   { methodId: 'fleet.graph.get', ...descriptorSchemas('fleet.graph.get') },
   // Drill-in steer of an observed foreign agent:

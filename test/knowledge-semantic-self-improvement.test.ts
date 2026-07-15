@@ -538,6 +538,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
     const { store } = createStores();
     const calls: unknown[] = [];
     const semantic = new KnowledgeSemanticService(store, {
+      backgroundSelfImproveMinDelayMs: 10,
       llm: new GapRepairAnswerLlm(),
       gapRepairer: async (request) => {
         calls.push(request);
@@ -870,6 +871,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
     const { store } = createStores();
     const calls: unknown[] = [];
     const semantic = new KnowledgeSemanticService(store, {
+      backgroundSelfImproveMinDelayMs: 10,
       llm: new GapRepairAnswerLlm(),
       gapRepairer: async (request) => {
         calls.push(request);

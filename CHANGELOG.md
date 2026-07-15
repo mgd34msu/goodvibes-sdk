@@ -4,6 +4,70 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
+## [Unreleased]
+
+### Added
+
+- **Local voice now installs itself in one act, with a default voice and speech
+  engine — nothing downloads until you ask.** A new managed setup downloads and
+  checksum-verifies the piper text-to-speech engine and a good default voice
+  into a goodvibes-managed folder, then points the local-voice settings at them
+  so speech works immediately, without any manual path configuration. It never
+  overwrites a setting you already customized, it is resumable (re-running skips
+  anything already installed and verified), and every state is honest: a
+  size-labeled offer before you start, a clear message on a failed or
+  checksum-mismatched download (which keeps nothing), and an honest
+  "not available on this platform" where no verified build exists. Local
+  speech-to-text (whisper.cpp) is reported unsupported for now because it ships
+  no official prebuilt binary and setup never compiles on your machine. Two new
+  reads/actions expose it: `voice.local.status` and `voice.local.install`.
+- **The daemon now watches its own memory and defends against runaway growth.**
+  A memory governor samples the daemon's memory use on an interval and, as it
+  approaches a budget, sheds memory in stages: trim caches and run garbage
+  collection, then flush caches and pause deferrable background work (knowledge
+  self-improvement, memory consolidation, and code-index reindex all honor the
+  pause), then refuse new expensive work with an honest message. If memory keeps
+  climbing after a full flush — a genuine leak — it writes a diagnostic receipt
+  and exits cleanly so a supervisor restarts it fresh, instead of being killed
+  at the edge of running the machine out of memory. Every cache the daemon keeps
+  is registered so the governor can see and shrink it, and a new `ops.memory`
+  read serves the live state (tier, budget, memory use, per-cache footprints,
+  paused jobs, tripwire status). New settings, with their defaults:
+  `memory.budgetMb` (default `0` = auto: the smaller of 25% of system RAM or
+  4096 MB), `memory.tier.elevatedPct` (`60`), `memory.tier.highPct` (`80`),
+  `memory.tier.criticalPct` (`95`), `memory.tripwire.rateMbPerSec` (`25`), and
+  `memory.tripwire.sustainSec` (`60`).
+
+### Fixed
+
+- **A control-plane relay leak that could grow the daemon's memory without
+  bound.** Requests tunneled to the daemon over the relay — each carrying its
+  authorization header — and the secure channels behind them are now capped and
+  released after delivery: too many open channels evict the coldest one, and a
+  backlog of in-flight requests is refused with an honest "overloaded" response
+  instead of piling up in memory. The 401 auto-refresh retry path also releases
+  the failed request promptly so a burst of retries can't pin memory.
+- **A background knowledge-improvement task that could spin in a tight loop.**
+  After a burst of edits triggered knowledge enrichment, the follow-up
+  self-improvement work could reschedule itself immediately over and over. It
+  now waits a real minimum delay, collapses a burst of triggers into a single
+  pending run, and — when a run finds nothing left to improve — stops
+  rescheduling and falls back to the normal hourly pass. A single run also no
+  longer loads the entire knowledge store into memory at once; it reads in
+  bounded pages.
+- **Interrupted voice-model downloads are no longer used.** A voice model
+  (piper/kokoro `.onnx`) is now downloaded to a temporary file and only moved
+  into place after its size and file signature check out, so a download cut
+  short can never leave a truncated model that the speech engine would choke on.
+  A failed download is cleaned up and reported honestly.
+- **The local text-to-speech engine fails honestly instead of crash-looping.**
+  When the installed piper/onnxruntime can't load a voice model on this host
+  (for example, the model is newer than the engine supports), the provider now
+  detects the hard failure on the first attempt and reports one clear,
+  actionable "engine unavailable" state — what failed and what to check —
+  instead of re-invoking the engine for every chunk and producing a storm of
+  crashes. Reconfiguring the engine or model clears the state and retries.
+
 ## [1.9.0] - 2026-07-14
 
 ### Added

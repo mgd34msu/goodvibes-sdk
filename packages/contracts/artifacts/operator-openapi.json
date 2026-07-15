@@ -3,7 +3,7 @@
   "info": {
     "title": "GoodVibes Operator API",
     "version": "1.9.0",
-    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 412 cataloged methods: 361 with dedicated REST bindings, 51 reachable only through the generic invoke endpoint. 97 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
+    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 415 cataloged methods: 364 with dedicated REST bindings, 51 reachable only through the generic invoke endpoint. 97 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
   },
   "servers": [
     {
@@ -30433,6 +30433,154 @@
         ]
       }
     },
+    "/api/ops/memory": {
+      "get": {
+        "operationId": "ops.memory.get",
+        "summary": "Get Memory Governance State",
+        "description": "The MemoryGovernor snapshot: the current memory-pressure tier and budget, resident set size and heap, per-cache footprints the governor can shrink, which deferrable background jobs are paused, and the leak-tripwire state. Read-only observability so operators can see the daemon shedding memory before it approaches OOM.",
+        "tags": [
+          "health"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tier": {
+                      "type": "string",
+                      "enum": [
+                        "normal",
+                        "elevated",
+                        "high",
+                        "critical"
+                      ]
+                    },
+                    "budgetMb": {
+                      "type": "number"
+                    },
+                    "rssMb": {
+                      "type": "number"
+                    },
+                    "heapUsedMb": {
+                      "type": "number"
+                    },
+                    "heapTotalMb": {
+                      "type": "number"
+                    },
+                    "usedPct": {
+                      "type": "number"
+                    },
+                    "refusingExpensiveWork": {
+                      "type": "boolean"
+                    },
+                    "caches": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "entries": {
+                            "type": "number"
+                          },
+                          "estimatedBytes": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "entries"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "pausedJobs": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "tripwire": {
+                      "type": "object",
+                      "properties": {
+                        "armed": {
+                          "type": "boolean"
+                        },
+                        "sustainedSec": {
+                          "type": "number"
+                        },
+                        "rateMbPerSec": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "armed",
+                        "sustainedSec",
+                        "rateMbPerSec"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "thresholds": {
+                      "type": "object",
+                      "properties": {
+                        "elevatedPct": {
+                          "type": "number"
+                        },
+                        "highPct": {
+                          "type": "number"
+                        },
+                        "criticalPct": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "elevatedPct",
+                        "highPct",
+                        "criticalPct"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "tier",
+                    "budgetMb",
+                    "rssMb",
+                    "heapUsedMb",
+                    "usedPct",
+                    "refusingExpensiveWork",
+                    "caches",
+                    "pausedJobs",
+                    "tripwire",
+                    "thresholds"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "read:health"
+        ]
+      }
+    },
     "/api/power/keep-awake": {
       "post": {
         "operationId": "power.keepAwake.set",
@@ -30769,6 +30917,326 @@
                     "platform",
                     "work",
                     "keepAwake"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "read:health"
+        ]
+      }
+    },
+    "/api/voice/local/install": {
+      "post": {
+        "operationId": "voice.local.install",
+        "summary": "Install the Managed Local-Voice Runtime",
+        "description": "One-act setup: download + checksum-verify the piper TTS engine and a default voice into the goodvibes-managed directory, then point the voice.local.* config keys at the managed install — never overwriting a key you already set to a custom value (skipped keys are reported). After this, local TTS works with zero further configuration. Downloads only when you ask; a failed or checksum-mismatched download keeps nothing.",
+        "tags": [
+          "health"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "provisioned": {
+                      "type": "boolean"
+                    },
+                    "platform": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "tts": {
+                      "type": "object",
+                      "properties": {
+                        "engine": {
+                          "type": "string"
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "provisioned",
+                            "unsupported-platform",
+                            "download-failed",
+                            "checksum-mismatch"
+                          ]
+                        },
+                        "binaryPath": {
+                          "type": "string"
+                        },
+                        "modelPath": {
+                          "type": "string"
+                        },
+                        "reason": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "engine",
+                        "state"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "stt": {
+                      "type": "object",
+                      "properties": {
+                        "engine": {
+                          "type": "string"
+                        },
+                        "state": {
+                          "type": "string"
+                        },
+                        "reason": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "engine",
+                        "state",
+                        "reason"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "components": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "state": {
+                            "type": "string",
+                            "enum": [
+                              "installed",
+                              "skipped",
+                              "failed"
+                            ]
+                          },
+                          "bytes": {
+                            "type": "number"
+                          },
+                          "error": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "state"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "configured": {
+                      "type": "object",
+                      "properties": {
+                        "set": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string"
+                              },
+                              "value": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "key",
+                              "value"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "skipped": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string"
+                              },
+                              "reason": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "key",
+                              "reason"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "set",
+                        "skipped"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "provisioned",
+                    "platform",
+                    "tts",
+                    "stt",
+                    "components",
+                    "configured"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "write:config"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/voice/local/status": {
+      "get": {
+        "operationId": "voice.local.status",
+        "summary": "Get Managed Local-Voice Runtime State",
+        "description": "Whether the managed local voice runtime (piper TTS + a default voice) is installed: not-provisioned (with a size-labeled offer), partial, provisioned, or unsupported-platform. STT (whisper.cpp) reports unsupported honestly — no official prebuilt binary exists and provisioning never compiles on your machine. Read-only.",
+        "tags": [
+          "health"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "platform": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "not-provisioned",
+                        "partial",
+                        "provisioned",
+                        "unsupported-platform"
+                      ]
+                    },
+                    "tts": {
+                      "type": "object",
+                      "properties": {
+                        "engine": {
+                          "type": "string"
+                        },
+                        "binaryPresent": {
+                          "type": "boolean"
+                        },
+                        "voicePresent": {
+                          "type": "boolean"
+                        },
+                        "binaryPath": {
+                          "type": "string"
+                        },
+                        "modelPath": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "engine",
+                        "binaryPresent",
+                        "voicePresent",
+                        "binaryPath",
+                        "modelPath"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "stt": {
+                      "type": "object",
+                      "properties": {
+                        "engine": {
+                          "type": "string"
+                        },
+                        "supported": {
+                          "type": "boolean"
+                        },
+                        "reason": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "engine",
+                        "supported",
+                        "reason"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "offerBytes": {
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "platform",
+                    "state",
+                    "tts",
+                    "stt",
+                    "offerBytes"
                   ],
                   "additionalProperties": false
                 }
@@ -91748,6 +92216,15 @@
       "outputSchemaCoverage": "typed"
     },
     {
+      "id": "ops.memory.get",
+      "category": "health",
+      "access": "authenticated",
+      "rest": "GET /api/ops/memory",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
       "id": "power.keepAwake.set",
       "category": "health",
       "access": "authenticated",
@@ -91761,6 +92238,24 @@
       "category": "health",
       "access": "authenticated",
       "rest": "GET /api/power/status",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "voice.local.install",
+      "category": "health",
+      "access": "authenticated",
+      "rest": "POST /api/voice/local/install",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "voice.local.status",
+      "category": "health",
+      "access": "authenticated",
+      "rest": "GET /api/voice/local/status",
       "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"

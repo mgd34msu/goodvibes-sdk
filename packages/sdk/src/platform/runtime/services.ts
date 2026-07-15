@@ -57,7 +57,7 @@ import type { DomainDispatch, RuntimeStore } from './store/index.js';
 import { DistributedRuntimeManager } from './remote/distributed-runtime-manager.js';
 import { RemoteRunnerRegistry, RemoteSupervisor } from './remote/index.js';
 import { IntegrationHelperService } from './integration/helpers.js';
-import { VoiceProviderRegistry, VoiceService, ensureBuiltinVoiceProviders } from '../voice/index.js';
+import { VoiceProviderRegistry, VoiceService, ensureBuiltinVoiceProviders, localVoiceRuntimeStatus, preconfigureLocalVoiceKeys, provisionLocalVoiceRuntime } from '../voice/index.js';
 import { WebSearchProviderRegistry, WebSearchService } from '../web-search/index.js';
 import { MemoryEmbeddingProviderRegistry } from '../state/memory-embeddings.js';
 import { HookActivityTracker } from '../hooks/activity.js';
@@ -131,6 +131,12 @@ import { ObservedAgentSource } from './fleet/observed/source.js';
 import { createOrchestrationEngine, createProviderBackedAttemptJudge, type OrchestrationEngine } from '../orchestration/index.js';
 import { createFixWorkstreamRunner } from '../orchestration/fix-workstream-runner.js';
 import { makeRuntimeFleetProbe } from './orchestration/fleet-count.js';
+import {
+  CacheRegistry,
+  PauseController,
+  wireDaemonMemoryGovernance,
+  type MemoryGovernor,
+} from './memory/index.js';
 
 export interface RuntimeServicesOptions {
   readonly runtimeBus: RuntimeEventBus;
@@ -163,6 +169,12 @@ export interface RuntimeServicesOptions {
 export interface RuntimeServices {
   readonly workingDirectory: string;
   readonly homeDirectory: string;
+  /** SDK-owned memory governance: samples RSS/heap, sheds caches, pauses jobs, trips on leaks. */
+  readonly memoryGovernor: MemoryGovernor;
+  /** Registry of every retained cache the governor can observe and shrink. */
+  readonly cacheRegistry: CacheRegistry;
+  /** Backpressure seam the governor drives to pause/resume deferrable background jobs. */
+  readonly pauseController: PauseController;
   readonly shellPaths: ShellPathService;
   readonly configManager: ConfigManager;
   readonly featureFlags: FeatureFlagManager;
@@ -427,6 +439,12 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // code + memory embeddings use one provider and one dimensionality. Schema
   // init only; build is not auto-triggered here (see codeIndexStore doc).
   const codeIndexDbPath = join(workingDirectory, '.goodvibes', surfaceRoot, 'code-index.sqlite');
+  // Memory governance seams built EARLY so scheduler gates and the knowledge
+  // background job can consult the pause controller before the MemoryGovernor
+  // (constructed at the composition tail) drives it.
+  const cacheRegistry = new CacheRegistry();
+  const pauseController = new PauseController();
+  const MEMORY_BACKGROUND_JOB_IDS = ['knowledge-self-improvement', 'memory-consolidation', 'code-index-reindex'];
   const codeIndexStore = new CodeIndexStore(workingDirectory, codeIndexDbPath, memoryEmbeddingRegistry);
   codeIndexStore.init();
   if (options.autoStartCodeIndex) {
@@ -438,7 +456,9 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const codeIndexReindexScheduler = new CodeIndexReindexScheduler({
     target: codeIndexStore,
     workingDirectory,
-    isEnabled: codeInjectionSettingEnabled,
+    // Honor governor backpressure: a paused code-index reindex job stops
+    // scheduling new work until the governor resumes it.
+    isEnabled: () => codeInjectionSettingEnabled() && !pauseController.isPaused('code-index-reindex'),
   });
   // Daily snapshots of every SQLite store, bounded by the retention engine (unref'd timers).
   const storeSnapshotScheduler = new StoreSnapshotScheduler({
@@ -470,7 +490,8 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const memoryConsolidationScheduler = new MemoryConsolidationScheduler({
     memoryRegistry,
     configSource: configManager,
-    isIdle: () => sessionBroker.countBusySessions() === 0,
+    // Idle AND not paused by the governor — memory pressure defers consolidation.
+    isIdle: () => sessionBroker.countBusySessions() === 0 && !pauseController.isPaused('memory-consolidation'),
     // Attach notice per run that DID something: an SDK-composed daemon records
     // what consolidation merged/decayed/proposed without consumer re-wiring.
     onReceipt: (receipt) => {
@@ -528,18 +549,22 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     timeoutMs: 20_000,
     maxConcurrent: 1,
   });
+  const isKnowledgeBackgroundPaused = (): boolean => pauseController.isPaused('knowledge-self-improvement');
   const knowledgeSemanticService = new KnowledgeSemanticService(knowledgeStore, {
     llm: knowledgeSemanticLlm,
     maxLlmSourcesPerReindex: 3,
+    isBackgroundPaused: isKnowledgeBackgroundPaused,
   });
   const homeGraphSemanticService = new KnowledgeSemanticService(homeGraphKnowledgeStore, {
     llm: knowledgeSemanticLlm,
     maxLlmSourcesPerReindex: 3,
     objectProfiles: HOME_GRAPH_KNOWLEDGE_EXTENSION.objectProfiles,
+    isBackgroundPaused: isKnowledgeBackgroundPaused,
   });
   const agentKnowledgeSemanticService = new KnowledgeSemanticService(agentKnowledgeStore, {
     llm: knowledgeSemanticLlm,
     maxLlmSourcesPerReindex: 3,
+    isBackgroundPaused: isKnowledgeBackgroundPaused,
   });
   const knowledgeService = new KnowledgeService(knowledgeStore, artifactStore, undefined, {
     memoryRegistry,
@@ -562,7 +587,10 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   });
   wrfcController.setWorkPlanService(projectPlanningService);
   const voiceProviders = new VoiceProviderRegistry();
-  ensureBuiltinVoiceProviders(voiceProviders, { readConfig: (key) => configManager.get(key as never) });
+  ensureBuiltinVoiceProviders(voiceProviders, {
+    readConfig: (key) => configManager.get(key as never),
+    managedVoiceRoot: shellPaths.resolveUserPath('voice'),
+  });
   // Metered voice spend -> attribution ingest; local engines emit nothing.
   const voiceService = new VoiceService(voiceProviders, (usage) => emitProviderVoiceUsage(options.runtimeBus, { sessionId: 'system', traceId: `voice:${Date.now()}`, source: 'voice-service' }, { provider: usage.providerId, modelId: usage.modelId, kind: usage.kind, billableUnits: usage.billableUnits, unit: usage.unit }));
   const webSearchProviders = new WebSearchProviderRegistry({
@@ -875,10 +903,61 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     runtimeBus: options.runtimeBus,
     sleepCheckpoint: () => storeSnapshotScheduler.tick(),
     wakeCatchUp: [() => memoryConsolidationScheduler.tick(), () => storeSnapshotScheduler.tick(), async () => { await automationManager.triggerHeartbeat({ source: 'wake-catchup' }); }] });
-  registerGatewayVerbGroups(gatewayMethods, { processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, requestApproval: (input) => approvalBroker.requestApproval(input), stampFixSessionOnApproval: (offerCallId, outcome) => approvalBroker.stampFixSession(offerCallId, outcome), watcherRegistry, userPermissionRuleStore, shellPaths, runtimeBus: options.runtimeBus, sessionPresence: { isAttached }, configManager, runtimeStore: options.runtimeStore, channelDeliveryRouter, providerRegistry, automationManager, sessionLister: sessionBroker, sessionIntake: sessionBroker, workingDirectory, attemptsController: orchestrationEngine, stepUpService, memoryRegistry, pairingTokens, acpHost, sessionLiveTurnControls, powerManager, onCiAutoWatch: (observer) => { ciAutoWatchObserver = observer; } }); // see routes/register-gateway-verb-groups.ts
+  // Construct + start the MemoryGovernor (default ON — a safety feature) with the
+  // standard KNOWN cache adapters (see wireDaemonMemoryGovernance).
+  const { memoryGovernor } = wireDaemonMemoryGovernance({
+    config: {
+      budgetMb: configManager.get('memory.budgetMb'),
+      elevatedPct: configManager.get('memory.tier.elevatedPct'),
+      highPct: configManager.get('memory.tier.highPct'),
+      criticalPct: configManager.get('memory.tier.criticalPct'),
+      tripwireRateMbPerSec: configManager.get('memory.tripwire.rateMbPerSec'),
+      tripwireSustainSec: configManager.get('memory.tripwire.sustainSec'),
+    },
+    runtimeBus: options.runtimeBus,
+    cacheRegistry,
+    pauseController,
+    jobIds: MEMORY_BACKGROUND_JOB_IDS,
+    receiptPath: shellPaths.resolveProjectPath(surfaceRoot, 'memory', 'tripwire-receipt.json'),
+    knowledgeEntryCount: () => knowledgeStore.retainedEntryCount() + agentKnowledgeStore.retainedEntryCount() + homeGraphKnowledgeStore.retainedEntryCount(),
+    busySessionCount: () => sessionBroker.countBusySessions(),
+  });
+  // Managed local-voice provisioning: status read + one-act install that
+  // provisions the piper engine + a default voice and pre-configures the
+  // voice.local.* keys (user-set keys preserved).
+  const managedVoiceRoot = shellPaths.resolveUserPath('voice');
+  const voiceSetup = {
+    status: () => localVoiceRuntimeStatus({ managedRoot: managedVoiceRoot }),
+    install: async () => {
+      const provision = await provisionLocalVoiceRuntime({ managedRoot: managedVoiceRoot });
+      let configured: { set: { key: string; value: string }[]; skipped: { key: string; reason: string }[] } = { set: [], skipped: [] };
+      if (provision.tts.state === 'provisioned' && provision.tts.binaryPath && provision.tts.modelPath) {
+        const receipt = preconfigureLocalVoiceKeys({
+          getConfig: (k) => String(configManager.get(k as never) ?? ''),
+          setConfig: (k, v) => configManager.setDynamic(k as never, v),
+          ttsEngine: provision.tts.engine,
+          ttsBinary: provision.tts.binaryPath,
+          ttsModelPath: provision.tts.modelPath,
+        });
+        configured = { set: [...receipt.set], skipped: [...receipt.skipped] };
+      }
+      return {
+        provisioned: provision.tts.state === 'provisioned',
+        platform: provision.platform,
+        tts: provision.tts,
+        stt: provision.stt,
+        components: provision.components,
+        configured,
+      };
+    },
+  };
+  registerGatewayVerbGroups(gatewayMethods, { processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, requestApproval: (input) => approvalBroker.requestApproval(input), stampFixSessionOnApproval: (offerCallId, outcome) => approvalBroker.stampFixSession(offerCallId, outcome), watcherRegistry, userPermissionRuleStore, shellPaths, runtimeBus: options.runtimeBus, sessionPresence: { isAttached }, configManager, runtimeStore: options.runtimeStore, channelDeliveryRouter, providerRegistry, automationManager, sessionLister: sessionBroker, sessionIntake: sessionBroker, workingDirectory, attemptsController: orchestrationEngine, stepUpService, memoryRegistry, pairingTokens, acpHost, sessionLiveTurnControls, powerManager, memoryGovernor, voiceSetup, onCiAutoWatch: (observer) => { ciAutoWatchObserver = observer; } }); // see routes/register-gateway-verb-groups.ts
   return {
     workingDirectory,
     homeDirectory,
+    memoryGovernor,
+    cacheRegistry,
+    pauseController,
     shellPaths,
     configManager,
     featureFlags,

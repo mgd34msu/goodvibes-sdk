@@ -32424,6 +32424,148 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "ops.memory.get",
+        "title": "Get Memory Governance State",
+        "description": "The MemoryGovernor snapshot: the current memory-pressure tier and budget, resident set size and heap, per-cache footprints the governor can shrink, which deferrable background jobs are paused, and the leak-tripwire state. Read-only observability so operators can see the daemon shedding memory before it approaches OOM.",
+        "category": "health",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:health"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/ops/memory"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "tier": {
+              "type": "string",
+              "enum": [
+                "normal",
+                "elevated",
+                "high",
+                "critical"
+              ]
+            },
+            "budgetMb": {
+              "type": "number"
+            },
+            "rssMb": {
+              "type": "number"
+            },
+            "heapUsedMb": {
+              "type": "number"
+            },
+            "heapTotalMb": {
+              "type": "number"
+            },
+            "usedPct": {
+              "type": "number"
+            },
+            "refusingExpensiveWork": {
+              "type": "boolean"
+            },
+            "caches": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "entries": {
+                    "type": "number"
+                  },
+                  "estimatedBytes": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "entries"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "pausedJobs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "tripwire": {
+              "type": "object",
+              "properties": {
+                "armed": {
+                  "type": "boolean"
+                },
+                "sustainedSec": {
+                  "type": "number"
+                },
+                "rateMbPerSec": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "armed",
+                "sustainedSec",
+                "rateMbPerSec"
+              ],
+              "additionalProperties": false
+            },
+            "thresholds": {
+              "type": "object",
+              "properties": {
+                "elevatedPct": {
+                  "type": "number"
+                },
+                "highPct": {
+                  "type": "number"
+                },
+                "criticalPct": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "elevatedPct",
+                "highPct",
+                "criticalPct"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "tier",
+            "budgetMb",
+            "rssMb",
+            "heapUsedMb",
+            "usedPct",
+            "refusingExpensiveWork",
+            "caches",
+            "pausedJobs",
+            "tripwire",
+            "thresholds"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "power.keepAwake.set",
         "title": "Set the Owner Keep-Awake Toggle",
         "description": "Turn the owner keep-awake toggle on or off: a daemon-held sleep inhibitor INDEPENDENT of work state, surviving surface closes, persisted as power.keepAwake. Covers idle + sleep + lid-switch classes where grantable; the returned state names any refused class honestly. No timers, no AC-only sub-options — the always-visible chip is the safety mechanism. Emits runtime.ops OPS_POWER_STATE_CHANGED so every attached surface updates its chip.",
@@ -32754,6 +32896,302 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "platform",
             "work",
             "keepAwake"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "voice.local.install",
+        "title": "Install the Managed Local-Voice Runtime",
+        "description": "One-act setup: download + checksum-verify the piper TTS engine and a default voice into the goodvibes-managed directory, then point the voice.local.* config keys at the managed install — never overwriting a key you already set to a custom value (skipped keys are reported). After this, local TTS works with zero further configuration. Downloads only when you ask; a failed or checksum-mismatched download keeps nothing.",
+        "category": "health",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:config"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/voice/local/install"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "provisioned": {
+              "type": "boolean"
+            },
+            "platform": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "tts": {
+              "type": "object",
+              "properties": {
+                "engine": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "provisioned",
+                    "unsupported-platform",
+                    "download-failed",
+                    "checksum-mismatch"
+                  ]
+                },
+                "binaryPath": {
+                  "type": "string"
+                },
+                "modelPath": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "engine",
+                "state"
+              ],
+              "additionalProperties": false
+            },
+            "stt": {
+              "type": "object",
+              "properties": {
+                "engine": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "engine",
+                "state",
+                "reason"
+              ],
+              "additionalProperties": false
+            },
+            "components": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "installed",
+                      "skipped",
+                      "failed"
+                    ]
+                  },
+                  "bytes": {
+                    "type": "number"
+                  },
+                  "error": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "state"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "configured": {
+              "type": "object",
+              "properties": {
+                "set": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "key": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "key",
+                      "value"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "skipped": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "key": {
+                        "type": "string"
+                      },
+                      "reason": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "key",
+                      "reason"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "set",
+                "skipped"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "provisioned",
+            "platform",
+            "tts",
+            "stt",
+            "components",
+            "configured"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "voice.local.status",
+        "title": "Get Managed Local-Voice Runtime State",
+        "description": "Whether the managed local voice runtime (piper TTS + a default voice) is installed: not-provisioned (with a size-labeled offer), partial, provisioned, or unsupported-platform. STT (whisper.cpp) reports unsupported honestly — no official prebuilt binary exists and provisioning never compiles on your machine. Read-only.",
+        "category": "health",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:health"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/voice/local/status"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "platform": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "state": {
+              "type": "string",
+              "enum": [
+                "not-provisioned",
+                "partial",
+                "provisioned",
+                "unsupported-platform"
+              ]
+            },
+            "tts": {
+              "type": "object",
+              "properties": {
+                "engine": {
+                  "type": "string"
+                },
+                "binaryPresent": {
+                  "type": "boolean"
+                },
+                "voicePresent": {
+                  "type": "boolean"
+                },
+                "binaryPath": {
+                  "type": "string"
+                },
+                "modelPath": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "engine",
+                "binaryPresent",
+                "voicePresent",
+                "binaryPath",
+                "modelPath"
+              ],
+              "additionalProperties": false
+            },
+            "stt": {
+              "type": "object",
+              "properties": {
+                "engine": {
+                  "type": "string"
+                },
+                "supported": {
+                  "type": "boolean"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "engine",
+                "supported",
+                "reason"
+              ],
+              "additionalProperties": false
+            },
+            "offerBytes": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "platform",
+            "state",
+            "tts",
+            "stt",
+            "offerBytes"
           ],
           "additionalProperties": false
         },
@@ -91546,10 +91984,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 412,
-      "typedInputs": 412,
+      "methods": 415,
+      "typedInputs": 415,
       "genericInputs": 0,
-      "typedOutputs": 412,
+      "typedOutputs": 415,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -91558,8 +91996,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       "withWireEvents": 32
     },
     "validationCoverage": {
-      "methods": 412,
-      "validated": 405,
+      "methods": 415,
+      "validated": 408,
       "skippedGeneric": 0,
       "skippedUntyped": 7
     }

@@ -869,6 +869,13 @@ export type ConfigKey =
   | 'power.keepAwake'
   | 'power.inhibitWhileWorking'
   | 'power.workInhibitMaxMinutes'
+  // MemoryGovernor (schema-domain-memory.ts).
+  | 'memory.budgetMb'
+  | 'memory.tier.elevatedPct'
+  | 'memory.tier.highPct'
+  | 'memory.tier.criticalPct'
+  | 'memory.tripwire.rateMbPerSec'
+  | 'memory.tripwire.sustainSec'
   // Local voice engines (schema-domain-voice-local.ts).
   | 'voice.local.sttEngine'
   | 'voice.local.sttBinary'
@@ -1259,6 +1266,12 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'power.keepAwake' ? boolean :
   K extends 'power.inhibitWhileWorking' ? boolean :
   K extends 'power.workInhibitMaxMinutes' ? number :
+  K extends 'memory.budgetMb' ? number :
+  K extends 'memory.tier.elevatedPct' ? number :
+  K extends 'memory.tier.highPct' ? number :
+  K extends 'memory.tier.criticalPct' ? number :
+  K extends 'memory.tripwire.rateMbPerSec' ? number :
+  K extends 'memory.tripwire.sustainSec' ? number :
   K extends 'voice.local.sttEngine' ? '' | 'whisper-cpp' | 'faster-whisper' :
   K extends 'voice.local.sttBinary' ? string :
   K extends 'voice.local.sttModelPath' ? string :

@@ -1,0 +1,91 @@
+/**
+ * manifest.ts — the PINNED local-voice runtime manifest: exact versions, URLs,
+ * byte sizes, and sha256 checksums for the managed engines + default models the
+ * provisioner installs.
+ *
+ * Nothing here is fetched without a matching checksum, so a mirror swap or a
+ * corrupted asset is refused rather than run. Adding a platform means pinning
+ * its build here (verified against the real asset); a platform with no pinned,
+ * verified build reports `unsupported` honestly instead of downloading blind.
+ *
+ * TTS — Piper (MIT). The official release tarball bundles the piper binary, its
+ * shared libs, AND espeak-ng-data, so one archive provisions the whole engine.
+ * Default voice: en_US-lessac-medium — a widely-used, well-regarded medium
+ * en_US voice (good quality/size balance at ~63 MB) from rhasspy/piper-voices.
+ *
+ * STT — whisper.cpp (MIT). whisper.cpp publishes NO official prebuilt binary for
+ * Linux/macOS in its GitHub releases (only source), and this provisioner never
+ * compiles on the user's machine, so STT is reported `unsupported` with an
+ * honest reason. The default model would be ggml-base.en; it is not downloaded
+ * while no verified binary exists to run it.
+ */
+import type { VerifiedDownloadSpec } from './download-verified.js';
+
+export type VoicePlatform = 'linux-x64' | 'linux-arm64' | 'darwin-x64' | 'darwin-arm64';
+
+export function currentVoicePlatform(): VoicePlatform | null {
+  const p = process.platform;
+  const a = process.arch;
+  if (p === 'linux' && a === 'x64') return 'linux-x64';
+  if (p === 'linux' && a === 'arm64') return 'linux-arm64';
+  if (p === 'darwin' && a === 'x64') return 'darwin-x64';
+  if (p === 'darwin' && a === 'arm64') return 'darwin-arm64';
+  return null;
+}
+
+/** The piper engine archive for a platform (tarball with binary + libs + espeak-ng-data). */
+export interface PiperEngineManifest {
+  readonly version: string;
+  readonly archive: VerifiedDownloadSpec;
+  /** Path of the piper binary inside the extracted archive (relative to the extract dir). */
+  readonly binaryRelPath: string;
+}
+
+/** A piper voice: the onnx model plus its json config. */
+export interface PiperVoiceManifest {
+  readonly id: string;
+  readonly onnx: VerifiedDownloadSpec;
+  readonly json: VerifiedDownloadSpec;
+}
+
+/**
+ * Pinned piper engine builds per platform. Only platforms with a verified,
+ * checksummed build appear; others resolve to `unsupported`.
+ */
+export const PIPER_ENGINES: Partial<Record<VoicePlatform, PiperEngineManifest>> = {
+  'linux-x64': {
+    version: '2023.11.14-2',
+    archive: {
+      url: 'https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_x86_64.tar.gz',
+      bytes: 26460462,
+      sha256: 'a50cb45f355b7af1f6d758c1b360717877ba0a398cc8cbe6d2a7a3a26e225992',
+    },
+    binaryRelPath: 'piper/piper',
+  },
+};
+
+/** The single default voice provisioned for TTS. */
+export const DEFAULT_PIPER_VOICE: PiperVoiceManifest = {
+  id: 'en_US-lessac-medium',
+  onnx: {
+    url: 'https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/lessac/medium/en_US-lessac-medium.onnx',
+    bytes: 63201294,
+    sha256: '5efe09e69902187827af646e1a6e9d269dee769f9877d17b16b1b46eeaaf019f',
+  },
+  json: {
+    url: 'https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json',
+    bytes: 4885,
+    sha256: 'efe19c417bed055f2d69908248c6ba650fa135bc868b0e6abb3da181dab690a0',
+  },
+};
+
+/** Human-readable total download size for the offer (bytes). */
+export function piperProvisionBytes(platform: VoicePlatform): number | null {
+  const engine = PIPER_ENGINES[platform];
+  if (!engine) return null;
+  return engine.archive.bytes + DEFAULT_PIPER_VOICE.onnx.bytes + DEFAULT_PIPER_VOICE.json.bytes;
+}
+
+/** Why STT is not provisioned: no official prebuilt whisper.cpp binary exists. */
+export const WHISPER_UNSUPPORTED_REASON =
+  'whisper.cpp publishes no official prebuilt binary (source only), and managed provisioning never compiles on your machine. To enable local STT, install whisper.cpp yourself and set voice.local.sttEngine/sttBinary/sttModelPath.';

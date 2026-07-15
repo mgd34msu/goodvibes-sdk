@@ -200,6 +200,7 @@ export { createRelayDaemonRegistration, RELAY_VIA_HEADER, isRelayTunneledRequest
 export type {
   RelayDaemonRegistration,
   RelayDaemonRegistrationOptions,
+  RelayRegistrationStats,
   RelayRegistrationStatus,
   RelayRegistrationLogger,
   RelayClientWebSocket,

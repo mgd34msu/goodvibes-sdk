@@ -81,6 +81,43 @@ export function listKnowledgeNodes(view: KnowledgeStoreReadView, limit = 100): K
     .slice(0, sliceLimit(limit));
 }
 
+/**
+ * Read one bounded page of source records without materializing (or sorting)
+ * the whole collection. Iterates the underlying map in insertion order and
+ * copies at most `limit` records starting at `offset`. Callers that need EVERY
+ * record (e.g. distinct-space discovery) loop over ascending offsets until a
+ * short page is returned, keeping each iteration's allocation bounded to `limit`
+ * — unlike {@link listKnowledgeSources}, which spreads and sorts the entire map.
+ */
+export function pageKnowledgeSources(view: KnowledgeStoreReadView, offset: number, limit: number): KnowledgeSourceRecord[] {
+  const start = Math.max(0, Math.trunc(offset));
+  const count = Math.max(0, Math.trunc(limit));
+  if (count === 0) return [];
+  const out: KnowledgeSourceRecord[] = [];
+  let i = 0;
+  for (const source of view.sources.values()) {
+    if (i >= start) out.push(source);
+    i += 1;
+    if (out.length >= count) break;
+  }
+  return out;
+}
+
+/** Read one bounded page of node records. See {@link pageKnowledgeSources}. */
+export function pageKnowledgeNodes(view: KnowledgeStoreReadView, offset: number, limit: number): KnowledgeNodeRecord[] {
+  const start = Math.max(0, Math.trunc(offset));
+  const count = Math.max(0, Math.trunc(limit));
+  if (count === 0) return [];
+  const out: KnowledgeNodeRecord[] = [];
+  let i = 0;
+  for (const node of view.nodes.values()) {
+    if (i >= start) out.push(node);
+    i += 1;
+    if (out.length >= count) break;
+  }
+  return out;
+}
+
 export function listKnowledgeNodesInSpace(
   view: KnowledgeStoreReadView,
   spaceId: string,

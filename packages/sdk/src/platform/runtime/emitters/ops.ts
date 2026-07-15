@@ -47,6 +47,27 @@ export function emitOpsPowerStateChanged(
   }, ctx));
 }
 
+/** Emit OPS_MEMORY_PRESSURE when the MemoryGovernor changes tier or its leak tripwire fires. */
+export function emitOpsMemoryPressure(
+  bus: RuntimeEventBus,
+  ctx: EmitterContext,
+  data: {
+    tier: 'normal' | 'elevated' | 'high' | 'critical';
+    previousTier: 'normal' | 'elevated' | 'high' | 'critical';
+    rssMb: number;
+    heapMb: number;
+    budgetMb: number;
+    usedPct: number;
+    tripwire?: { rateMbPerSec: number; sustainedSec: number; action: 'exit' } | undefined;
+    note?: string | undefined;
+  }
+): void {
+  bus.emit('ops', createEventEnvelope('OPS_MEMORY_PRESSURE', {
+    type: 'OPS_MEMORY_PRESSURE',
+    ...data,
+  }, ctx));
+}
+
 /** Emit OPS_CACHE_METRICS for cache hit-rate and token accounting snapshots. */
 export function emitOpsCacheMetrics(
   bus: RuntimeEventBus,

@@ -124,6 +124,13 @@ export function createAutoRefreshMiddleware(
     }
 
     // ── Reactive 401 retry ─────────────────────────────────────────────────
+    // Release the original 401 error before we await the refresh + retry. That
+    // error can transitively retain the whole failed request — its headers
+    // include the operator-token Authorization header, and under a 401 storm the
+    // async retry window would otherwise pin one such error-plus-request context
+    // per in-flight call. We have already extracted everything we need from it
+    // (the 401 classification), so drop the reference now.
+    caughtErr = undefined;
     // Build retry options that preserve the original request attributes and
     // carry the loop-prevention flag so the next pass through this middleware
     // just calls next() without re-entering the refresh logic.

@@ -5967,6 +5967,44 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       }
     }
   },
+  "ops.memory.get": {
+    "methodId": "ops.memory.get",
+    "http": {
+      "method": "GET",
+      "path": "/api/ops/memory"
+    },
+    "status": 200,
+    "body": {
+      "tier": "normal",
+      "budgetMb": 0,
+      "rssMb": 0,
+      "heapUsedMb": 0,
+      "heapTotalMb": 0,
+      "usedPct": 0,
+      "refusingExpensiveWork": false,
+      "caches": [
+        {
+          "id": "sample",
+          "name": "sample",
+          "entries": 0,
+          "estimatedBytes": 0
+        }
+      ],
+      "pausedJobs": [
+        "sample"
+      ],
+      "tripwire": {
+        "armed": false,
+        "sustainedSec": 0,
+        "rateMbPerSec": 0
+      },
+      "thresholds": {
+        "elevatedPct": 0,
+        "highPct": 0,
+        "criticalPct": 0
+      }
+    }
+  },
   "power.keepAwake.set": {
     "methodId": "power.keepAwake.set",
     "http": {
@@ -6041,6 +6079,77 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
         ],
         "note": "sample"
       }
+    }
+  },
+  "voice.local.install": {
+    "methodId": "voice.local.install",
+    "http": {
+      "method": "POST",
+      "path": "/api/voice/local/install"
+    },
+    "status": 200,
+    "body": {
+      "provisioned": false,
+      "platform": "sample",
+      "tts": {
+        "engine": "sample",
+        "state": "provisioned",
+        "binaryPath": "sample",
+        "modelPath": "sample",
+        "reason": "sample"
+      },
+      "stt": {
+        "engine": "sample",
+        "state": "sample",
+        "reason": "sample"
+      },
+      "components": [
+        {
+          "id": "sample",
+          "state": "installed",
+          "bytes": 0,
+          "error": "sample"
+        }
+      ],
+      "configured": {
+        "set": [
+          {
+            "key": "sample",
+            "value": "sample"
+          }
+        ],
+        "skipped": [
+          {
+            "key": "sample",
+            "reason": "sample"
+          }
+        ]
+      }
+    }
+  },
+  "voice.local.status": {
+    "methodId": "voice.local.status",
+    "http": {
+      "method": "GET",
+      "path": "/api/voice/local/status"
+    },
+    "status": 200,
+    "body": {
+      "platform": "sample",
+      "state": "not-provisioned",
+      "tts": {
+        "engine": "sample",
+        "binaryPresent": false,
+        "voicePresent": false,
+        "binaryPath": "sample",
+        "modelPath": "sample"
+      },
+      "stt": {
+        "engine": "sample",
+        "supported": false,
+        "reason": "sample"
+      },
+      "offerBytes": 0
     }
   },
   "intelligence.snapshot": {
