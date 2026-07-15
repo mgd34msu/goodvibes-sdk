@@ -124,13 +124,21 @@ export function createAutoRefreshMiddleware(
     }
 
     // ── Reactive 401 retry ─────────────────────────────────────────────────
-    // Release the original 401 error before we await the refresh + retry. That
-    // error can transitively retain the whole failed request — its headers
-    // include the operator-token Authorization header, and under a 401 storm the
-    // async retry window would otherwise pin one such error-plus-request context
-    // per in-flight call. We have already extracted everything we need from it
-    // (the 401 classification), so drop the reference now.
+    // Release the original 401 error before we await the refresh + retry. The
+    // transport's end-of-chain catch (composeMiddleware) sets `ctx.error` to
+    // the SAME error object innerFetch threw before rethrowing it to us, and
+    // ctx stays strongly reachable for the whole call — so clearing only the
+    // local `caughtErr` would be a no-op (verified by WeakRef probe): the
+    // error, which can transitively retain the failed request and its
+    // operator-token Authorization header, would stay pinned via ctx.error for
+    // the entire refresh+retry await window. Under a 401 storm that is one
+    // pinned error-plus-request context per in-flight call. We have already
+    // extracted everything we need (the 401 classification), so release BOTH
+    // references now. Post-retry semantics are preserved: every exit path from
+    // this block explicitly sets ctx.error (terminal errors) or leaves it
+    // cleared (successful retry), so no later reader observes a stale 401.
     caughtErr = undefined;
+    ctx.error = undefined;
     // Build retry options that preserve the original request attributes and
     // carry the loop-prevention flag so the next pass through this middleware
     // just calls next() without re-entering the refresh logic.

@@ -81,8 +81,75 @@ interface UpgradeCapableServer {
   upgrade(req: Request, options?: { data?: unknown }): boolean;
 }
 
+/**
+ * Max concurrently in-flight WS 'call' invocations, counted for the FULL
+ * lifetime of each call — from Request synthesis through response-body
+ * buffering. Each in-flight call retains a synthesized Request whose headers
+ * carry the operator-token Authorization header (the exact object shape found
+ * ~206k times in the 2026-07-14 OOM core), so an unbounded backlog is exactly
+ * the retained-context growth this cap prevents. Beyond the cap a call is
+ * refused with an honest structured 503, never retained.
+ */
+const WS_CALL_MAX_IN_FLIGHT = 256;
+/**
+ * Ceiling on a WS-call response body. A response larger than this (or a
+ * never-ending stream reached as a plain call) is aborted with a structured
+ * error instead of being buffered without bound by `response.text()`.
+ */
+const WS_CALL_MAX_RESPONSE_BYTES = 8 * 1024 * 1024;
+/**
+ * Per-event WS send backpressure ceiling: when the socket's native outgoing
+ * buffer exceeds this, further events to that client are dropped (counted)
+ * rather than growing the native buffer without bound to a stalled consumer.
+ */
+const WS_EVENT_MAX_BUFFERED_BYTES = 4 * 1024 * 1024;
+
+/**
+ * Read a response body to text with a hard byte ceiling. Returns
+ * `{ ok:false }` (and cancels the body) when the ceiling is exceeded — the
+ * caller aborts and reports a structured error instead of buffering forever.
+ */
+async function readBodyBounded(response: Response, maxBytes: number): Promise<{ ok: true; text: string } | { ok: false; bytesRead: number }> {
+  const body = response.body;
+  if (!body) return { ok: true, text: '' };
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (value) {
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel().catch(() => {});
+        return { ok: false, bytesRead: total };
+      }
+      chunks.push(value);
+    }
+  }
+  const merged = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    merged.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return { ok: true, text: new TextDecoder().decode(merged) };
+}
+
 export class DaemonControlPlaneHelper {
+  /** Live WS 'call' invocations (full lifetime incl. response buffering). */
+  private wsCallsInFlight = 0;
+  /** Calls refused at the in-flight cap (cumulative, for ops visibility). */
+  private wsCallsRefused = 0;
+  /** Events dropped to stalled WS consumers (cumulative). */
+  private wsEventsDropped = 0;
+
   constructor(private readonly context: DaemonControlPlaneContext) {}
+
+  /** Retained-context footprint of the WS call path, for tests and ops output. */
+  wsCallStats(): { inFlight: number; refused: number; eventsDropped: number } {
+    return { inFlight: this.wsCallsInFlight, refused: this.wsCallsRefused, eventsDropped: this.wsEventsDropped };
+  }
 
   private trustProxyEnabled(): boolean {
     return this.context.trustProxyEnabled();
@@ -279,6 +346,7 @@ export class DaemonControlPlaneHelper {
   handleControlPlaneWebSocketOpen(ws: {
     data: ControlPlaneWebSocketData;
     send(message: string): void;
+    getBufferedAmount?(): number;
   }): void {
     const connection = this.context.controlPlaneGateway.openWebSocketClient({
       clientKind: ws.data.clientKind,
@@ -289,6 +357,14 @@ export class DaemonControlPlaneHelper {
       ...(ws.data.scopes.length > 0 ? { scopes: ws.data.scopes } : {}),
       remoteAddress: ws.data.remoteAddress,
     }, (event, payload) => {
+      // Backpressure guard: a stalled consumer must not grow the socket's
+      // native outgoing buffer without bound during an event storm — drop the
+      // event (counted) once the buffered amount crosses the ceiling.
+      const buffered = ws.getBufferedAmount?.() ?? 0;
+      if (buffered > WS_EVENT_MAX_BUFFERED_BYTES) {
+        this.wsEventsDropped += 1;
+        return;
+      }
       ws.send(JSON.stringify({ type: 'event', event, payload }));
     });
     ws.data.clientId = connection.clientId;
@@ -475,31 +551,74 @@ export class DaemonControlPlaneHelper {
       if (value === undefined || value === null) continue;
       url.searchParams.set(key, String(value));
     }
-    const request = new Request(url.toString(), {
-      method: input.method,
-      headers: {
-        Authorization: `Bearer ${input.authToken}`,
-        ...(input.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
-      },
-      ...(input.body !== undefined ? { body: JSON.stringify(input.body) } : {}),
-    });
-    const response = await this.context.dispatchApiRoutes(request) ?? Response.json({ error: 'Not found' }, { status: 404 });
-    const raw = await response.text();
-    let body: unknown = raw;
-    if (raw.length > 0) {
-      try {
-        body = JSON.parse(raw);
-      } catch {
-        body = raw;
-      }
-    } else {
-      body = null;
+    // In-flight cap over the FULL call lifetime (dispatch + response buffering):
+    // beyond it, refuse with an honest 503 instead of retaining another
+    // operator-token Request context.
+    if (this.wsCallsInFlight >= WS_CALL_MAX_IN_FLIGHT) {
+      this.wsCallsRefused += 1;
+      return {
+        status: 503,
+        ok: false,
+        body: { error: 'ws-call-overloaded', message: `Daemon is at its concurrent WS-call cap (${WS_CALL_MAX_IN_FLIGHT}); retry shortly.` },
+      };
     }
-    return {
-      status: response.status,
-      ok: response.ok,
-      body,
-    };
+    this.wsCallsInFlight += 1;
+    // Abortable request: streaming endpoints (SSE event sources) tear down on
+    // request.signal abort — without this, a stream reached as a plain call
+    // would pin the Request + Response + a growing buffer forever.
+    const abort = new AbortController();
+    try {
+      const request = new Request(url.toString(), {
+        method: input.method,
+        headers: {
+          Authorization: `Bearer ${input.authToken}`,
+          ...(input.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        },
+        ...(input.body !== undefined ? { body: JSON.stringify(input.body) } : {}),
+        signal: abort.signal,
+      });
+      const response = await this.context.dispatchApiRoutes(request) ?? Response.json({ error: 'Not found' }, { status: 404 });
+      // A streaming response cannot be delivered over the request/response call
+      // frame — refuse honestly (and tear the producer down) instead of
+      // buffering an endless body via text().
+      const contentType = response.headers.get('content-type') ?? '';
+      if (contentType.includes('text/event-stream')) {
+        abort.abort();
+        await response.body?.cancel().catch(() => {});
+        return {
+          status: 501,
+          ok: false,
+          body: { error: 'streaming-not-supported', message: 'This path serves an event stream; it cannot be invoked as a WS call. Subscribe via the events channel instead.' },
+        };
+      }
+      const bounded = await readBodyBounded(response, WS_CALL_MAX_RESPONSE_BYTES);
+      if (!bounded.ok) {
+        abort.abort();
+        return {
+          status: 502,
+          ok: false,
+          body: { error: 'response-too-large', message: `Response exceeded the ${WS_CALL_MAX_RESPONSE_BYTES}-byte WS-call ceiling (streaming or oversized endpoint).` },
+        };
+      }
+      const raw = bounded.text;
+      let body: unknown = raw;
+      if (raw.length > 0) {
+        try {
+          body = JSON.parse(raw);
+        } catch {
+          body = raw;
+        }
+      } else {
+        body = null;
+      }
+      return {
+        status: response.status,
+        ok: response.ok,
+        body,
+      };
+    } finally {
+      this.wsCallsInFlight -= 1;
+    }
   }
 
   async invokeGatewayMethodCall(input: {
