@@ -197,8 +197,11 @@ export interface OperatorMethodInputMap {
   "panels.open": ({ id: string; pane?: string; } & { readonly [key: string]: unknown });
   "permissions.rules.list": {  };
   "permissions.rules.delete": { ruleId: string; };
+  "ops.memory.get": {  };
   "power.keepAwake.set": { enabled: boolean; };
   "power.status.get": {  };
+  "voice.local.install": {  };
+  "voice.local.status": {  };
   "principals.create": { name: string; kind: "bot" | "service" | "token" | "user"; identities?: readonly ({ channel: string; value: string; })[]; metadata?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); };
   "principals.delete": { principalId: string; };
   "principals.get": { principalId: string; };
@@ -515,6 +518,9 @@ export interface OperatorMethodOutputMap {
   "panels.open": { opened: boolean; id: string; pane: "bottom" | "top"; };
   "permissions.rules.list": { rules: readonly ({ id: string; effect: "allow" | "deny"; tier: "command-class" | "exact" | "path" | "tool"; tool: string; description?: string; createdAt: number; })[]; };
   "permissions.rules.delete": { deleted: boolean; };
+  "ops.memory.get": { tier: "critical" | "elevated" | "high" | "normal"; budgetMb: number; rssMb: number; heapUsedMb: number; heapTotalMb?: number; usedPct: number; refusingExpensiveWork: boolean; caches: readonly ({ id: string; name: string; entries: number; estimatedBytes?: number; })[]; pausedJobs: readonly string[]; tripwire: { armed: boolean; sustainedSec: number; rateMbPerSec: number; }; thresholds: { elevatedPct: number; highPct: number; criticalPct: number; }; };
+  "voice.local.install": { provisioned: boolean; platform: null | string; tts: { engine: string; state: "checksum-mismatch" | "download-failed" | "provisioned" | "unsupported-platform"; binaryPath?: string; modelPath?: string; reason?: string; }; stt: { engine: string; state: string; reason: string; }; components: readonly ({ id: string; state: "failed" | "installed" | "skipped"; bytes?: number; error?: string; })[]; configured: { set: readonly ({ key: string; value: string; })[]; skipped: readonly ({ key: string; reason: string; })[]; }; };
+  "voice.local.status": { platform: null | string; state: "not-provisioned" | "partial" | "provisioned" | "unsupported-platform"; tts: { engine: string; binaryPresent: boolean; voicePresent: boolean; binaryPath: string; modelPath: string; }; stt: { engine: string; supported: boolean; reason: string; }; offerBytes: null | number; };
   "power.keepAwake.set": { platform: string; work: { held: boolean; grantedClasses: readonly ("handle-lid-switch" | "idle" | "sleep")[]; deniedClasses: readonly ("handle-lid-switch" | "idle" | "sleep")[]; reasons: readonly string[]; heldSince: null | number; capMinutes: number; capExpiresAt: null | number; capExpired: boolean; }; keepAwake: { enabled: boolean; held: boolean; grantedClasses: readonly ("handle-lid-switch" | "idle" | "sleep")[]; deniedClasses: readonly ("handle-lid-switch" | "idle" | "sleep")[]; note: null | string; }; };
   "power.status.get": { platform: string; work: { held: boolean; grantedClasses: readonly ("handle-lid-switch" | "idle" | "sleep")[]; deniedClasses: readonly ("handle-lid-switch" | "idle" | "sleep")[]; reasons: readonly string[]; heldSince: null | number; capMinutes: number; capExpiresAt: null | number; capExpired: boolean; }; keepAwake: { enabled: boolean; held: boolean; grantedClasses: readonly ("handle-lid-switch" | "idle" | "sleep")[]; deniedClasses: readonly ("handle-lid-switch" | "idle" | "sleep")[]; note: null | string; }; };
   "principals.create": { principal: { id: string; name: string; kind: "bot" | "service" | "token" | "user"; identities: readonly ({ channel: string; value: string; })[]; createdAt: number; updatedAt: number; metadata?: ({  } & { readonly [key: string]: ({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string }); }; };

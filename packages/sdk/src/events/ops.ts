@@ -111,6 +111,36 @@ export type OpsEvent =
       eventType: string;
       errorMessage: string;
       errorCount: number;
+    }
+  /**
+   * The MemoryGovernor crossed a memory-pressure tier, or its leak tripwire
+   * fired. Emitted so operators (and supervisors) see the daemon defending its
+   * own footprint instead of drifting toward OOM.
+   */
+  | {
+      type: 'OPS_MEMORY_PRESSURE';
+      /** The tier now in effect. */
+      tier: 'normal' | 'elevated' | 'high' | 'critical';
+      /** The tier previously in effect. */
+      previousTier: 'normal' | 'elevated' | 'high' | 'critical';
+      /** Resident set size, in MB, at the sample that triggered this event. */
+      rssMb: number;
+      /** Heap used, in MB. */
+      heapMb: number;
+      /** The configured (or auto-resolved) memory budget, in MB. */
+      budgetMb: number;
+      /** RSS as a percentage of the budget. */
+      usedPct: number;
+      /** Present only when the leak tripwire fired: sustained growth after a full flush. */
+      tripwire?:
+        | {
+            rateMbPerSec: number;
+            sustainedSec: number;
+            /** The action taken — a graceful exit so a supervisor restarts clean. */
+            action: 'exit';
+          }
+        | undefined;
+      note?: string | undefined;
     };
 
 /** All ops event type literals as a union. */

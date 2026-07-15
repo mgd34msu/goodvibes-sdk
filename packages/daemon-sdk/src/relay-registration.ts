@@ -81,8 +81,45 @@ export interface RelayDaemonRegistrationOptions {
   readonly maxStreamsPerPipe?: number;
   /** Bounded per-stream send buffer, in chunks; overflow drops-with-notice (default 256). */
   readonly streamBufferChunks?: number;
+  /**
+   * Max simultaneously-open secure-channel pipes retained in memory (default
+   * 512). Each pipe holds a live secure channel derived from the connecting
+   * surface's session; a relay that drops pipes WITHOUT sending a pipe-close
+   * control frame (crash, network partition) would otherwise leave the channel
+   * context — and the operator-token-authenticated requests riding it — pinned
+   * forever. When the cap is hit the least-recently-used pipe is evicted (its
+   * streams closed) so retained-context count stays bounded.
+   */
+  readonly maxPipes?: number;
+  /**
+   * Max concurrently in-flight tunneled REQUESTS across all pipes (default
+   * 1024). Each in-flight request retains its reconstructed Request — headers
+   * (including the operator-token Authorization header) and any buffered body —
+   * until dispatch resolves. When the cap is hit a new request is refused with
+   * an honest 503 `relay-overloaded` response instead of being retained, so a
+   * dispatch stall (or a hot job-transition loop fanning requests) can never
+   * accumulate request contexts without limit.
+   */
+  readonly maxInFlightRequests?: number;
   readonly logger?: RelayRegistrationLogger;
   readonly onStatusChange?: (status: RelayRegistrationStatus) => void;
+}
+
+/**
+ * Point-in-time footprint of the retained relay contexts. Exposed so ops
+ * surfaces and regression tests can assert the caps hold under load.
+ */
+export interface RelayRegistrationStats {
+  /** Open secure-channel pipes currently retained. */
+  readonly pipes: number;
+  /** Tunneled requests currently mid-dispatch (contexts still retained). */
+  readonly inFlightRequests: number;
+  /** Live event-subscription streams currently retained across all pipes. */
+  readonly streams: number;
+  /** Pipes evicted because the maxPipes cap was exceeded (cumulative). */
+  readonly droppedPipes: number;
+  /** Requests refused because the maxInFlightRequests cap was exceeded (cumulative). */
+  readonly droppedRequests: number;
 }
 
 /** A running daemon-side relay registration. */
@@ -92,6 +129,8 @@ export interface RelayDaemonRegistration {
   readonly status: RelayRegistrationStatus;
   /** Mint a pairing payload a surface can scan to reach this daemon. */
   mintPairing(label?: string): Promise<RelayPairingPayload>;
+  /** Retained-context footprint, for ops visibility and cap regression tests. */
+  stats(): RelayRegistrationStats;
 }
 
 const SILENT: RelayRegistrationLogger = { info: () => {}, warn: () => {}, error: () => {} };
@@ -110,6 +149,8 @@ function toBytes(data: unknown): Uint8Array<ArrayBuffer> | null {
 
 const DEFAULT_MAX_STREAMS_PER_PIPE = 8;
 const DEFAULT_STREAM_BUFFER_CHUNKS = 256;
+const DEFAULT_MAX_PIPES = 512;
+const DEFAULT_MAX_IN_FLIGHT_REQUESTS = 1024;
 
 /**
  * The daemon-side pump for one event subscription: it seals event-source chunks
@@ -194,15 +235,58 @@ export function createRelayDaemonRegistration(options: RelayDaemonRegistrationOp
   const maxDelay = options.reconnectMaxDelayMs ?? 30_000;
   const maxStreamsPerPipe = options.maxStreamsPerPipe ?? DEFAULT_MAX_STREAMS_PER_PIPE;
   const streamBufferChunks = options.streamBufferChunks ?? DEFAULT_STREAM_BUFFER_CHUNKS;
+  const maxPipes = Math.max(1, Math.trunc(options.maxPipes ?? DEFAULT_MAX_PIPES));
+  const maxInFlightRequests = Math.max(1, Math.trunc(options.maxInFlightRequests ?? DEFAULT_MAX_IN_FLIGHT_REQUESTS));
 
   let status: RelayRegistrationStatus = 'idle';
   let socket: RelayClientWebSocket | null = null;
   let stopped = false;
   let attempt = 0;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  let inFlightRequests = 0;
+  let droppedPipes = 0;
+  let droppedRequests = 0;
+  // Secure channels keyed by pipe. Map insertion order is the LRU order used
+  // to evict the coldest pipe when the maxPipes cap is exceeded; a served frame
+  // re-inserts its pipe so active pipes stay warm (see touchPipe).
   const channels = new Map<string, RelaySecureChannel>();
   // Per-pipe live event subscriptions: pipeKey -> (streamId -> record).
   const pipeStreams = new Map<string, Map<string, DaemonStreamRecord>>();
+
+  function countStreams(): number {
+    let total = 0;
+    for (const streams of pipeStreams.values()) total += streams.size;
+    return total;
+  }
+
+  /** Move a pipe to the warm (most-recent) end of the LRU order. */
+  function touchPipe(pipeKey: string): void {
+    const channel = channels.get(pipeKey);
+    if (!channel) return;
+    channels.delete(pipeKey);
+    channels.set(pipeKey, channel);
+  }
+
+  /**
+   * Enforce the maxPipes cap by evicting the least-recently-used pipe(s). Each
+   * eviction closes the pipe's streams and drops its channel, releasing the
+   * retained request/session context with a structured, counted log line —
+   * never a silent leak.
+   */
+  function enforcePipeCap(): void {
+    while (channels.size > maxPipes) {
+      const oldest = channels.keys().next().value as string | undefined;
+      if (oldest === undefined) break;
+      channels.delete(oldest);
+      closePipeStreams(oldest);
+      droppedPipes += 1;
+      logger.warn('relay pipe cap exceeded — evicted coldest pipe', {
+        maxPipes,
+        droppedPipes,
+        pipe: oldest,
+      });
+    }
+  }
 
   function closePipeStreams(pipeKey: string): void {
     const streams = pipeStreams.get(pipeKey);
@@ -234,9 +318,11 @@ export function createRelayDaemonRegistration(options: RelayDaemonRegistrationOp
       // First frame on a new pipe is the client's handshake initiation.
       const { keys, message2 } = await respondToHandshake(options.identity, ridBytes, payload);
       channels.set(pipeKey, new RelaySecureChannel(keys, 'daemon'));
+      enforcePipeCap();
       ws.send(framePipePayload(pipeIdBytes, message2));
       return;
     }
+    touchPipe(pipeKey);
     await serveTunneledFrame(pipeKey, existing, pipeIdBytes, payload, ws);
   }
 
@@ -273,17 +359,38 @@ export function createRelayDaemonRegistration(options: RelayDaemonRegistrationOp
     pipeIdBytes: Uint8Array<ArrayBuffer>,
     ws: RelayClientWebSocket,
   ): Promise<void> {
+    // In-flight request cap: refuse (don't retain) when saturated. Each in-flight
+    // request pins its reconstructed Request — headers carry the operator-token
+    // Authorization header — until dispatch resolves, so an unbounded backlog is
+    // exactly the retained-context leak this guard prevents. The refusal is an
+    // honest structured 503 the surface can surface and retry.
+    if (inFlightRequests >= maxInFlightRequests) {
+      droppedRequests += 1;
+      logger.warn('relay in-flight request cap exceeded — refused', {
+        maxInFlightRequests,
+        droppedRequests,
+      });
+      const busy = encodeTunnelFrame(
+        { id: header.id, kind: 'response', status: 503, headers: [['content-type', 'application/json'], ['retry-after', '1']] },
+        encodeUtf8(JSON.stringify({ error: 'relay-overloaded', message: 'Daemon relay is at its in-flight request cap; retry shortly.' })),
+      );
+      ws.send(framePipePayload(pipeIdBytes, await channel.seal(busy)));
+      return;
+    }
     const request = new Request(new URL(header.path, options.localBaseUrl), {
       method: header.method,
       headers: [...header.headers.map(([k, v]) => [k, v] as [string, string]), [RELAY_VIA_HEADER, '1']],
       ...(body.length > 0 ? { body } : {}),
     });
+    inFlightRequests += 1;
     let response: Response;
     try {
       response = (await options.dispatch(request)) ?? new Response('Not found', { status: 404 });
     } catch (err) {
       logger.error('relay dispatch failed', { error: String(err) });
       response = new Response('Internal error', { status: 500 });
+    } finally {
+      inFlightRequests -= 1;
     }
     const bodyBytes = new Uint8Array(await response.arrayBuffer());
     const respHeaders: Array<[string, string]> = [];
@@ -452,6 +559,15 @@ export function createRelayDaemonRegistration(options: RelayDaemonRegistrationOp
         daemonPublicKey: await relayIdentityPublicKeyBase64Url(options.identity),
         ...(label !== undefined ? { label } : {}),
       });
+    },
+    stats(): RelayRegistrationStats {
+      return {
+        pipes: channels.size,
+        inFlightRequests,
+        streams: countStreams(),
+        droppedPipes,
+        droppedRequests,
+      };
     },
   };
 }

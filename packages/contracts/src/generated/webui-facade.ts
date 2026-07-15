@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.9.0
- * Methods: 412 total, 361 REST-routed, 51 ws-only invoke.
+ * Methods: 415 total, 364 REST-routed, 51 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -544,6 +544,10 @@ export const WEBUI_METHOD_ROUTES: Readonly<Record<string, WebuiRouteDefinition>>
     "method": "GET",
     "path": "/api/health"
   },
+  "ops.memory.get": {
+    "method": "GET",
+    "path": "/api/ops/memory"
+  },
   "power.keepAwake.set": {
     "method": "POST",
     "path": "/api/power/keep-awake"
@@ -551,6 +555,14 @@ export const WEBUI_METHOD_ROUTES: Readonly<Record<string, WebuiRouteDefinition>>
   "power.status.get": {
     "method": "GET",
     "path": "/api/power/status"
+  },
+  "voice.local.install": {
+    "method": "POST",
+    "path": "/api/voice/local/install"
+  },
+  "voice.local.status": {
+    "method": "GET",
+    "path": "/api/voice/local/status"
   },
   "intelligence.snapshot": {
     "method": "GET",
@@ -1694,8 +1706,11 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "fleet.snapshot": "ws-invoke",
   "fleet.unarchive": "ws-invoke",
   "health.snapshot": "rest",
+  "ops.memory.get": "rest",
   "power.keepAwake.set": "rest",
   "power.status.get": "rest",
+  "voice.local.install": "rest",
+  "voice.local.status": "rest",
   "intelligence.snapshot": "rest",
   "homeassistant.homeGraph.askHomeGraph": "rest",
   "homeassistant.homeGraph.browse": "rest",
@@ -7986,6 +8001,39 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
       }
     }
   },
+  "ops.memory.get": {
+    "input": {},
+    "output": {
+      "tier": "normal",
+      "budgetMb": 0,
+      "rssMb": 0,
+      "heapUsedMb": 0,
+      "heapTotalMb": 0,
+      "usedPct": 0,
+      "refusingExpensiveWork": false,
+      "caches": [
+        {
+          "id": "sample",
+          "name": "sample",
+          "entries": 0,
+          "estimatedBytes": 0
+        }
+      ],
+      "pausedJobs": [
+        "sample"
+      ],
+      "tripwire": {
+        "armed": false,
+        "sustainedSec": 0,
+        "rateMbPerSec": 0
+      },
+      "thresholds": {
+        "elevatedPct": 0,
+        "highPct": 0,
+        "criticalPct": 0
+      }
+    }
+  },
   "power.keepAwake.set": {
     "input": {
       "enabled": false
@@ -8052,6 +8100,67 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
         ],
         "note": "sample"
       }
+    }
+  },
+  "voice.local.install": {
+    "input": {},
+    "output": {
+      "provisioned": false,
+      "platform": "sample",
+      "tts": {
+        "engine": "sample",
+        "state": "provisioned",
+        "binaryPath": "sample",
+        "modelPath": "sample",
+        "reason": "sample"
+      },
+      "stt": {
+        "engine": "sample",
+        "state": "sample",
+        "reason": "sample"
+      },
+      "components": [
+        {
+          "id": "sample",
+          "state": "installed",
+          "bytes": 0,
+          "error": "sample"
+        }
+      ],
+      "configured": {
+        "set": [
+          {
+            "key": "sample",
+            "value": "sample"
+          }
+        ],
+        "skipped": [
+          {
+            "key": "sample",
+            "reason": "sample"
+          }
+        ]
+      }
+    }
+  },
+  "voice.local.status": {
+    "input": {},
+    "output": {
+      "platform": "sample",
+      "state": "not-provisioned",
+      "tts": {
+        "engine": "sample",
+        "binaryPresent": false,
+        "voicePresent": false,
+        "binaryPath": "sample",
+        "modelPath": "sample"
+      },
+      "stt": {
+        "engine": "sample",
+        "supported": false,
+        "reason": "sample"
+      },
+      "offerBytes": 0
     }
   },
   "intelligence.snapshot": {

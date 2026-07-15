@@ -100,6 +100,8 @@ import {
   listKnowledgeSchedules,
   listKnowledgeSources,
   listKnowledgeSourcesInSpace,
+  pageKnowledgeSources,
+  pageKnowledgeNodes,
   listKnowledgeUsageRecords,
   type KnowledgeStoreReadView,
 } from './store-read.js';
@@ -170,6 +172,14 @@ export class KnowledgeStore {
     return getKnowledgeStoreStatus(this.asReadView());
   }
 
+  /** Cheap count of retained in-memory records, for MemoryGovernor cache visibility. */
+  retainedEntryCount(): number {
+    const status = this.status() as unknown as Record<string, unknown>;
+    let total = 0;
+    for (const value of Object.values(status)) if (typeof value === 'number') total += value;
+    return total;
+  }
+
   async batch<T>(operation: () => Promise<T>): Promise<T> { await this.init(); return this.sqlite.batch(operation); }
   listSources(limit = 100): KnowledgeSourceRecord[] {
     return listKnowledgeSources(this.asReadView(), limit);
@@ -181,6 +191,16 @@ export class KnowledgeStore {
 
   listNodes(limit = 100): KnowledgeNodeRecord[] {
     return listKnowledgeNodes(this.asReadView(), limit);
+  }
+
+  /** One bounded page of sources (insertion order, no full materialization). */
+  listSourcesPage(offset: number, limit: number): KnowledgeSourceRecord[] {
+    return pageKnowledgeSources(this.asReadView(), offset, limit);
+  }
+
+  /** One bounded page of nodes (insertion order, no full materialization). */
+  listNodesPage(offset: number, limit: number): KnowledgeNodeRecord[] {
+    return pageKnowledgeNodes(this.asReadView(), offset, limit);
   }
 
   listNodesInSpace(spaceId: string): KnowledgeNodeRecord[] {

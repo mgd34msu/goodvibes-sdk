@@ -122,6 +122,12 @@ export const GATEWAY_REST_ROUTES: readonly GatewayRestRoute[] = [
   // power.* — sleep ownership: the chip state + the owner keep-awake toggle.
   route('GET', '/api/power/status', 'power.status.get'),
   route('POST', '/api/power/keep-awake', 'power.keepAwake.set'),
+  // ops.memory.get — the MemoryGovernor snapshot (tier, budget, RSS/heap,
+  // per-cache footprints, paused jobs, tripwire state).
+  route('GET', '/api/ops/memory', 'ops.memory.get'),
+  // voice.local.* — managed local-voice runtime status + one-act install.
+  route('GET', '/api/voice/local/status', 'voice.local.status'),
+  route('POST', '/api/voice/local/install', 'voice.local.install'),
 ];
 
 /**
