@@ -13,6 +13,7 @@
  * operator's registered devices.
  */
 import type { GatewayMethodCatalog } from '../method-catalog.js';
+import { resolveWebPort } from '../../daemon/host-resolver.js';
 import { registerFleetCheckpointsSearchGatewayMethods, type FleetCheckpointsSearchGatewayDeps } from './register-fleet-checkpoints-search.js';
 import { registerPushGatewayMethods } from './push.js';
 import { registerPairingGatewayMethods, type PairingGatewayService } from './pairing.js';
@@ -649,7 +650,7 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   registerTailscaleGatewayMethods(catalog, {
     runner: deps.tailscaleRunner ?? defaultTailscaleRunner(),
     receipts: new TailscaleServeReceiptStore(deps.shellPaths.resolveUserPath('control-plane', 'tailscale-serve-receipts.json')),
-    resolveWebPort: () => Number((deps.configManager.get as (k: string) => unknown)('web.port') ?? 3423),
+    resolveWebPort: () => resolveWebPort((deps.configManager.get as (k: string) => unknown)('web.port')),
     setPublicBaseUrl: (url) => {
       (deps.configManager.set as (k: string, v: unknown) => unknown)('web.publicBaseUrl', url);
     },

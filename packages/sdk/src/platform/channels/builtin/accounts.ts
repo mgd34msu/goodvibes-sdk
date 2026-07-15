@@ -1,4 +1,5 @@
 import type { ServiceSecretField } from '../../config/service-registry.js';
+import { resolveWebBinding } from '../../daemon/host-resolver.js';
 import type { ProviderRuntimeSurface } from '../provider-runtime.js';
 import type {
   ChannelAccountAction,
@@ -36,7 +37,8 @@ export async function buildBuiltinAccount(
         secrets: [],
         metadata: {
           baseUrl: context.deps.configManager.get('web.publicBaseUrl'),
-          port: context.deps.configManager.get('web.port'),
+          // Anchored to the web binding resolver (validated port, never 0/NaN).
+          port: resolveWebBinding({ hostMode: context.deps.configManager.get('web.hostMode'), host: context.deps.configManager.get('web.host'), port: context.deps.configManager.get('web.port') }).port,
         },
       });
     case 'slack': {
