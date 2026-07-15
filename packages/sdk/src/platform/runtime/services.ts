@@ -57,7 +57,7 @@ import type { DomainDispatch, RuntimeStore } from './store/index.js';
 import { DistributedRuntimeManager } from './remote/distributed-runtime-manager.js';
 import { RemoteRunnerRegistry, RemoteSupervisor } from './remote/index.js';
 import { IntegrationHelperService } from './integration/helpers.js';
-import { VoiceProviderRegistry, VoiceService, ensureBuiltinVoiceProviders, localVoiceRuntimeStatus, preconfigureLocalVoiceKeys, provisionLocalVoiceRuntime } from '../voice/index.js';
+import { VoiceProviderRegistry, VoiceService, ensureBuiltinVoiceProviders, localVoiceRuntimeStatus, preconfigureLocalVoiceKeys, provisionLocalVoiceRuntime, readVoiceInstallStamp, writeVoiceInstallStamp } from '../voice/index.js';
 import { WebSearchProviderRegistry, WebSearchService } from '../web-search/index.js';
 import { MemoryEmbeddingProviderRegistry } from '../state/memory-embeddings.js';
 import { HookActivityTracker } from '../hooks/activity.js';
@@ -954,14 +954,26 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
       const provision = await provisionLocalVoiceRuntime({ managedRoot: managedVoiceRoot });
       let configured: { set: { key: string; value: string }[]; skipped: { key: string; reason: string }[] } = { set: [], skipped: [] };
       if (provision.tts.state === 'provisioned' && provision.tts.binaryPath && provision.tts.modelPath) {
+        // Ownership-aware preconfigure: values THIS installer previously wrote
+        // (recorded in the install stamp) update to the new managed paths;
+        // genuinely user-set values still win; a user-cleared installer value
+        // is a deliberate disable and stays cleared.
+        const stamp = readVoiceInstallStamp(managedVoiceRoot);
         const receipt = preconfigureLocalVoiceKeys({
           getConfig: (k) => String(configManager.get(k as never) ?? ''),
           setConfig: (k, v) => configManager.setDynamic(k as never, v),
           ttsEngine: provision.tts.engine,
           ttsBinary: provision.tts.binaryPath,
           ttsModelPath: provision.tts.modelPath,
+          priorInstallWrites: stamp?.configWrites,
         });
         configured = { set: [...receipt.set], skipped: [...receipt.skipped] };
+        if (stamp) {
+          writeVoiceInstallStamp(managedVoiceRoot, { ...stamp, configWrites: { ...stamp.configWrites, ...receipt.installWrites } });
+        }
+        // A successful (re-)install is the recovery act: clear any tripped
+        // local-engine circuit breaker so the next call retries the fresh engine.
+        voiceProviders.get('local')?.resetEngineFailureState?.();
       }
       return {
         provisioned: provision.tts.state === 'provisioned',

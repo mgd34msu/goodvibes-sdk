@@ -8,7 +8,7 @@
  */
 import { describe, expect, test } from 'bun:test';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -100,9 +100,10 @@ describe('managed path resolution + status', () => {
     const dir = scratch();
     const paths = resolveManagedVoicePaths(dir);
     expect(localVoiceRuntimeStatus({ managedRoot: dir, platform: 'linux-x64' }).state).toBe('not-provisioned');
-    // Binary present but voice absent ⇒ partial.
+    // Binary present (and executable — a truncated/non-exec binary is honestly
+    // NOT 'present') but voice absent ⇒ partial.
     mkdirSync(join(paths.enginesDir, 'piper'), { recursive: true });
-    writeFileSync(paths.piperBinary, 'binary');
+    writeFileSync(paths.piperBinary, 'binary', { mode: 0o755 });
     expect(localVoiceRuntimeStatus({ managedRoot: dir, platform: 'linux-x64' }).state).toBe('partial');
     // A platform with no pinned build.
     const unsupported = localVoiceRuntimeStatus({ managedRoot: dir, platform: null });
@@ -177,5 +178,214 @@ describe('provision honest states (mock fetch)', () => {
     const paths = resolveManagedVoicePaths(dir);
     expect(existsSync(paths.defaultVoiceOnnx)).toBe(false); // nothing left behind
     rmSync(dir, { recursive: true, force: true });
+  });
+});
+
+describe('fix-round hardening (reviewer scenarios)', () => {
+  const enc = new TextEncoder();
+  function tarballFixture(binaryContent: string) {
+    // A fake "archive": the test extractor interprets it by writing the binary.
+    return enc.encode(JSON.stringify({ binary: binaryContent }).padEnd(8192, ' '));
+  }
+  function fakeExtractor(): (archivePath: string, destDir: string) => Promise<void> {
+    return async (archivePath, destDir) => {
+      const payload = JSON.parse(new TextDecoder().decode(readFileSync(archivePath)).trim()) as { binary: string };
+      mkdirSync(join(destDir, 'piper'), { recursive: true });
+      writeFileSync(join(destDir, 'piper', 'piper'), payload.binary, { mode: 0o755 });
+    };
+  }
+  function specFor(bytes: Uint8Array) {
+    return { bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') };
+  }
+
+  function pinned(bytes: Uint8Array, url: string) {
+    return { url, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') };
+  }
+  function servingFetch(byUrl: Record<string, Uint8Array>): typeof fetch {
+    return (async (url: string | URL | Request) => {
+      const body = byUrl[String(url)];
+      if (!body) return { ok: false, status: 404, headers: { get: () => null }, arrayBuffer: async () => new ArrayBuffer(0) };
+      return { ok: true, status: 200, headers: { get: () => null }, arrayBuffer: async () => body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength) };
+    }) as unknown as typeof fetch;
+  }
+  function fixtureManifests(binaryContent: string, engineVersion: string) {
+    const archiveBytes = tarballFixture(binaryContent);
+    const onnxBytes = (() => { const b = new Uint8Array(8192); b[0] = 0x08; return b; })();
+    const jsonBytes = enc.encode('{"sample_rate":22050}'.padEnd(4885, ' '));
+    const engine = { version: engineVersion, archive: pinned(archiveBytes, `https://e.test/piper-${engineVersion}.tar.gz`), binaryRelPath: 'piper/piper' };
+    const voice = { id: 'fixture-voice', onnx: pinned(onnxBytes, 'https://v.test/voice.onnx'), json: pinned(jsonBytes, 'https://v.test/voice.onnx.json') };
+    const fetchImpl = servingFetch({
+      [engine.archive.url]: archiveBytes,
+      [voice.onnx.url]: onnxBytes,
+      [voice.json.url]: jsonBytes,
+    });
+    return { engine, voice, fetchImpl };
+  }
+
+  test('an engine version bump RE-EXTRACTS and replaces the old binary (no silent no-op)', async () => {
+    const dir = scratch();
+    const { provisionLocalVoiceRuntime: provision, readVoiceInstallStamp } = await import('../packages/sdk/src/platform/voice/provisioning/index.ts');
+    const paths = resolveManagedVoicePaths(dir, 'linux-x64');
+    // Install v1 end-to-end.
+    const v1 = fixtureManifests('binary-v1', 'v1');
+    const first = await provision({ managedRoot: dir, platform: 'linux-x64', engineOverride: v1.engine, voiceOverride: v1.voice, fetchImpl: v1.fetchImpl, extractArchive: fakeExtractor() });
+    expect(first.tts.state).toBe('provisioned');
+    expect(readFileSync(paths.piperBinary, 'utf-8')).toBe('binary-v1');
+    expect(readVoiceInstallStamp(dir)?.engineVersion).toBe('v1');
+    // Re-run at the SAME version: everything skips, binary untouched.
+    const again = await provision({ managedRoot: dir, platform: 'linux-x64', engineOverride: v1.engine, voiceOverride: v1.voice, fetchImpl: v1.fetchImpl, extractArchive: async () => { throw new Error('must not re-extract at the same version with a verified archive'); } });
+    expect(again.tts.state).toBe('provisioned');
+    expect(readFileSync(paths.piperBinary, 'utf-8')).toBe('binary-v1');
+    // Bump the pinned engine to v2 (the exact case the incident needed — a newer
+    // piper to fix the onnxruntime IR incompatibility): the OLD binary exists,
+    // but the install must download AND extract the new one, replacing it.
+    const v2 = fixtureManifests('binary-v2', 'v2');
+    const bumped = await provision({ managedRoot: dir, platform: 'linux-x64', engineOverride: v2.engine, voiceOverride: v1.voice, fetchImpl: v2.fetchImpl, extractArchive: fakeExtractor() });
+    expect(bumped.tts.state).toBe('provisioned');
+    expect(readFileSync(paths.piperBinary, 'utf-8')).toBe('binary-v2'); // REPLACED
+    expect(readVoiceInstallStamp(dir)?.engineVersion).toBe('v2');
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  test('a mid-extract kill never leaves a truncated binary reporting provisioned (atomic swap)', async () => {
+    const dir = scratch();
+    const { provisionLocalVoiceRuntime: provision } = await import('../packages/sdk/src/platform/voice/provisioning/index.ts');
+    const paths = resolveManagedVoicePaths(dir, 'linux-x64');
+    const v1 = fixtureManifests('good-binary', 'v1');
+    // Extractor that dies mid-write (simulated SIGKILL/power loss): a truncated
+    // 0-byte binary lands in the TEMP dir, then the extractor throws.
+    const killedMidTar = async (_archive: string, destDir: string): Promise<void> => {
+      mkdirSync(join(destDir, 'piper'), { recursive: true });
+      writeFileSync(join(destDir, 'piper', 'piper'), ''); // truncated
+      throw new Error('killed mid-tar');
+    };
+    const result = await provision({ managedRoot: dir, platform: 'linux-x64', engineOverride: v1.engine, voiceOverride: v1.voice, fetchImpl: v1.fetchImpl, extractArchive: killedMidTar });
+    expect(result.tts.state).toBe('download-failed');
+    // NOTHING at the final binary path — the partial tree stayed in temp and was cleaned.
+    expect(existsSync(paths.piperBinary)).toBe(false);
+    expect(localVoiceRuntimeStatus({ managedRoot: dir, platform: 'linux-x64' }).tts.binaryPresent).toBe(false);
+    // Even an extractor that "succeeds" but produced a truncated binary is refused.
+    const truncatedOk = async (_archive: string, destDir: string): Promise<void> => {
+      mkdirSync(join(destDir, 'piper'), { recursive: true });
+      writeFileSync(join(destDir, 'piper', 'piper'), ''); // 0 bytes
+    };
+    const result2 = await provision({ managedRoot: dir, platform: 'linux-x64', engineOverride: v1.engine, voiceOverride: v1.voice, fetchImpl: v1.fetchImpl, extractArchive: truncatedOk });
+    expect(result2.tts.state).toBe('download-failed');
+    expect(result2.tts.reason).toMatch(/missing a usable binary/);
+    expect(existsSync(paths.piperBinary)).toBe(false);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  test('manifest binaryRelPath drives the managed paths (no duplicated constant)', async () => {
+    const dir = scratch();
+    const paths = resolveManagedVoicePaths(dir, 'linux-x64');
+    const { PIPER_ENGINES } = await import('../packages/sdk/src/platform/voice/provisioning/manifest.ts');
+    expect(paths.piperBinary).toBe(join(dir, 'engines', PIPER_ENGINES['linux-x64']!.binaryRelPath));
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  test('status verification is cached by (path,size,mtime) — the model is hashed once, not per poll', async () => {
+    const dir = scratch();
+    const { fileMatchesCached } = await import('../packages/sdk/src/platform/voice/provisioning/index.ts');
+    const file = join(dir, 'model.onnx');
+    const bytes = new Uint8Array(1024 * 1024);
+    bytes[0] = 0x08;
+    writeFileSync(file, bytes);
+    const spec = { url: 'u', bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') };
+    const t0 = performance.now();
+    expect(fileMatchesCached(file, spec)).toBe(true); // first call hashes
+    const firstMs = performance.now() - t0;
+    const t1 = performance.now();
+    for (let i = 0; i < 200; i++) expect(fileMatchesCached(file, spec)).toBe(true);
+    const cachedMsPer = (performance.now() - t1) / 200;
+    expect(cachedMsPer).toBeLessThan(Math.max(0.5, firstMs)); // cached polls are stat-only
+    rmSync(dir, { recursive: true, force: true });
+  });
+});
+
+describe('ownership-stamped preconfigure (reviewer scenario)', () => {
+  test('install-written values UPDATE on re-install; user-set values win; user-cleared stays cleared', () => {
+    const store: Record<string, string> = {};
+    // First install writes all three.
+    const first = preconfigureLocalVoiceKeys({
+      getConfig: (k) => store[k] ?? '',
+      setConfig: (k, v) => { store[k] = v; },
+      ttsEngine: 'piper',
+      ttsBinary: '/managed/v1/piper',
+      ttsModelPath: '/managed/models/voice-a.onnx',
+    });
+    expect(first.set.length).toBe(3);
+    // The manifest changes (new layout + new default voice); the user has ALSO
+    // customized the model path, and CLEARED the engine key (deliberate disable).
+    store['voice.local.ttsModelPath'] = '/my/voice.onnx';
+    store['voice.local.ttsEngine'] = '';
+    const second = preconfigureLocalVoiceKeys({
+      getConfig: (k) => store[k] ?? '',
+      setConfig: (k, v) => { store[k] = v; },
+      ttsEngine: 'piper',
+      ttsBinary: '/managed/v2/piper',
+      ttsModelPath: '/managed/models/voice-b.onnx',
+      priorInstallWrites: first.installWrites,
+    });
+    // Installer-owned binary path updated to v2 (no longer frozen at v1):
+    expect(store['voice.local.ttsBinary']).toBe('/managed/v2/piper');
+    // User-set model path wins:
+    expect(store['voice.local.ttsModelPath']).toBe('/my/voice.onnx');
+    // User-cleared engine key respected (NOT re-written):
+    expect(store['voice.local.ttsEngine']).toBe('');
+    expect(second.skipped.some((s) => s.reason.includes('cleared by the user'))).toBe(true);
+    expect(second.skipped.some((s) => s.reason.includes('user value'))).toBe(true);
+  });
+});
+
+describe('breaker classification + reset (reviewer scenario)', () => {
+  test('an exit-1 with routine onnxruntime WARNING noise does NOT trip the breaker', async () => {
+    let calls = 0;
+    const provider = createLocalVoiceProvider({
+      readConfig: (k) => ({ 'voice.local.ttsEngine': 'piper', 'voice.local.ttsBinary': '/p', 'voice.local.ttsModelPath': '/m.onnx' } as Record<string, string>)[k] ?? '',
+      fileExists: () => true,
+      runner: async () => {
+        calls += 1;
+        // execFile folds stderr into error.message; piper prints this on
+        // perfectly healthy runs — an exit-1 here is TRANSIENT (disk full etc).
+        throw new Error("Command failed: piper\n[W:onnxruntime:, graph.cc] Removing initializer 'w_1'. It is not used by any node.\nwrite failed: No space left on device");
+      },
+    });
+    await expect(provider.synthesize!({ text: 'x', metadata: {} } as never)).rejects.toThrow();
+    await expect(provider.synthesize!({ text: 'x', metadata: {} } as never)).rejects.toThrow();
+    expect(calls).toBe(2); // NOT tripped — both calls invoked the engine
+  });
+
+  test('resetEngineFailureState clears a genuinely tripped breaker (the install recovery act)', async () => {
+    let calls = 0;
+    let healthy = false;
+    const provider = createLocalVoiceProvider({
+      readConfig: (k) => ({ 'voice.local.ttsEngine': 'piper', 'voice.local.ttsBinary': '/p', 'voice.local.ttsModelPath': '/m.onnx' } as Record<string, string>)[k] ?? '',
+      fileExists: () => true,
+      runner: async (input) => {
+        calls += 1;
+        if (!healthy) {
+          const e = new Error("terminate called after throwing an instance of 'Ort::Exception'\n  what(): Unsupported model IR version: 9, max supported IR version: 8") as Error & { signal?: string };
+          e.signal = 'SIGABRT';
+          throw e;
+        }
+        const o = input.args[input.args.indexOf('--output_file') + 1]!;
+        writeFileSync(String(o), 'RIFF-wav');
+        return { stdout: '' };
+      },
+    });
+    await expect(provider.synthesize!({ text: 'x', metadata: {} } as never)).rejects.toThrow(/unavailable on this host/);
+    await expect(provider.synthesize!({ text: 'x', metadata: {} } as never)).rejects.toThrow(/unavailable on this host/);
+    expect(calls).toBe(1); // tripped
+    // The message names recovery acts that WORK on managed installs.
+    await provider.synthesize!({ text: 'x', metadata: {} } as never).catch((e: unknown) => {
+      expect(String(e)).toMatch(/voice\.local\.install|restart the daemon/);
+    });
+    // voice.local.install fixed the engine and calls the reset act:
+    healthy = true;
+    provider.resetEngineFailureState!();
+    const result = await provider.synthesize!({ text: 'x', metadata: {} } as never);
+    expect(result.providerId).toBe('local');
+    expect(calls).toBe(2);
   });
 });
