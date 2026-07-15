@@ -122,4 +122,10 @@ export interface VoiceProvider {
   synthesizeStream?(request: VoiceSynthesisRequest): Promise<VoiceSynthesisStreamResult> | VoiceSynthesisStreamResult;
   transcribe?(request: VoiceTranscriptionRequest): Promise<VoiceTranscriptionResult>;
   openRealtimeSession?(request: VoiceRealtimeSessionRequest): Promise<VoiceRealtimeSession>;
+  /**
+   * Clear any tripped engine-failure state (circuit breaker) so the next call
+   * retries the engine. The managed install flow calls this after replacing an
+   * engine/model, giving users a recovery act that genuinely works.
+   */
+  resetEngineFailureState?(): void;
 }

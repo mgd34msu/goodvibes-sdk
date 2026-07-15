@@ -6,6 +6,7 @@
 export {
   downloadVerifiedFile,
   fileMatches,
+  fileMatchesCached,
   type VerifiedDownloadSpec,
   type VerifiedDownloadOptions,
   type VerifiedDownloadResult,
@@ -27,6 +28,8 @@ export {
   localVoiceRuntimeStatus,
   resolveManagedVoicePaths,
   resolveManagedEngine,
+  readVoiceInstallStamp,
+  writeVoiceInstallStamp,
   type VoiceProvisionOptions,
   type VoiceProvisionResult,
   type VoiceProvisionProgress,
@@ -36,6 +39,7 @@ export {
   type ArchiveExtractor,
   type TtsProvisionState,
   type VoiceComponentOutcome,
+  type VoiceInstallStamp,
 } from './provisioner.js';
 
 export {

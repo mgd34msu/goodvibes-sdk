@@ -53,6 +53,33 @@ export function fileMatches(path: string, spec: VerifiedDownloadSpec): boolean {
   }
 }
 
+/** Verification results memoized by (path, size, mtimeMs) so status polls never re-hash. */
+const verificationCache = new Map<string, { size: number; mtimeMs: number; matched: boolean }>();
+
+/**
+ * Like {@link fileMatches} but cached by (path, size, mtime): repeated status
+ * polls do not synchronously re-read and re-hash a 63MB model on every call.
+ * A file whose size or mtime changed is re-verified with the full hash —
+ * provisioning decisions (download skip/replace) always use the full hash.
+ */
+export function fileMatchesCached(path: string, spec: VerifiedDownloadSpec): boolean {
+  let size: number;
+  let mtimeMs: number;
+  try {
+    const stat = statSync(path);
+    size = stat.size;
+    mtimeMs = stat.mtimeMs;
+  } catch {
+    verificationCache.delete(path);
+    return false;
+  }
+  const cached = verificationCache.get(path);
+  if (cached && cached.size === size && cached.mtimeMs === mtimeMs) return cached.matched;
+  const matched = fileMatches(path, spec);
+  verificationCache.set(path, { size, mtimeMs, matched });
+  return matched;
+}
+
 /**
  * Download a component to `destPath` atomically, verifying size + sha256.
  * Skips (returns skipped:true) when the file already matches — this is what
