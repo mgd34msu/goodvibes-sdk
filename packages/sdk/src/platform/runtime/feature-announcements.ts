@@ -14,6 +14,7 @@
  * pure empty-state builder, and a first-contained-run announcer callback.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { resolveWebBinding } from '../daemon/host-resolver.js';
 import { dirname, join } from 'node:path';
 import { logger } from '../utils/logger.js';
 import type { ConfigManager } from '../config/manager.js';
@@ -138,7 +139,10 @@ export function featureAnnouncementsPath(
 export function resolveWebSurfaceUrl(configManager: Pick<ConfigManager, 'get'>): string {
   const publicBaseUrl = configManager.get('web.publicBaseUrl');
   if (publicBaseUrl.trim().length > 0) return publicBaseUrl;
-  return `http://${configManager.get('web.host')}:${configManager.get('web.port')}`;
+  // Anchored to the web binding resolver so the announced URL always carries a
+  // validated port and the mode-resolved host (never a raw 0/NaN/typo value).
+  const binding = resolveWebBinding({ hostMode: configManager.get('web.hostMode'), host: configManager.get('web.host'), port: configManager.get('web.port') });
+  return `http://${binding.host}:${binding.port}`;
 }
 
 export const WEB_SURFACE_ANNOUNCEMENT_ID = 'web-surface-url';

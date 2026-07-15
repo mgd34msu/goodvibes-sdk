@@ -1,4 +1,5 @@
 import { createDomainDispatch } from '../runtime/store/index.js';
+import { resolveWebBinding } from '../daemon/host-resolver.js';
 import type { DomainDispatch, RuntimeStore } from '../runtime/store/index.js';
 import type { SurfaceRecord } from '../runtime/store/domains/surfaces.js';
 import { ConfigManager } from '../config/manager.js';
@@ -114,7 +115,9 @@ export class SurfaceRegistry {
         configuredAt,
         capabilities: ['ingress', 'egress', 'threaded_reply'],
         metadata: {
-          port: this.configManager.get('web.port'),
+          // Anchored to the web binding resolver — the raw stored value can be
+          // 0/NaN/malformed; consumers render the validated truth.
+          port: resolveWebBinding({ hostMode: this.configManager.get('web.hostMode'), host: this.configManager.get('web.host'), port: this.configManager.get('web.port') }).port,
           baseUrl: this.configManager.get('web.publicBaseUrl'),
         },
       },
