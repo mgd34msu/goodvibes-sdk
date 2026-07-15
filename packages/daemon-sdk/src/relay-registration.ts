@@ -95,7 +95,8 @@ export interface RelayDaemonRegistrationOptions {
    * Max concurrently in-flight tunneled REQUESTS across all pipes (default
    * 1024). Each in-flight request retains its reconstructed Request — headers
    * (including the operator-token Authorization header) and any buffered body —
-   * until dispatch resolves. When the cap is hit a new request is refused with
+   * for the FULL lifetime: dispatch AND response buffering (the max-memory
+   * phase). When the cap is hit a new request is refused with
    * an honest 503 `relay-overloaded` response instead of being retained, so a
    * dispatch stall (or a hot job-transition loop fanning requests) can never
    * accumulate request contexts without limit.
@@ -151,6 +152,36 @@ const DEFAULT_MAX_STREAMS_PER_PIPE = 8;
 const DEFAULT_STREAM_BUFFER_CHUNKS = 256;
 const DEFAULT_MAX_PIPES = 512;
 const DEFAULT_MAX_IN_FLIGHT_REQUESTS = 1024;
+/** Ceiling on one tunneled response body; larger (or endless) bodies are refused with 502. */
+const MAX_TUNNEL_RESPONSE_BYTES = 32 * 1024 * 1024;
+
+/** Read a response body with a hard byte ceiling; over-ceiling reads are cancelled and refused. */
+async function readTunnelBodyBounded(response: Response, maxBytes: number): Promise<{ ok: true; bytes: Uint8Array<ArrayBuffer> } | { ok: false }> {
+  const body = response.body;
+  if (!body) return { ok: true, bytes: new Uint8Array(0) };
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (value) {
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel().catch(() => {});
+        return { ok: false };
+      }
+      chunks.push(value);
+    }
+  }
+  const merged = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    merged.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return { ok: true, bytes: merged };
+}
 
 /**
  * The daemon-side pump for one event subscription: it seals event-source chunks
@@ -377,29 +408,63 @@ export function createRelayDaemonRegistration(options: RelayDaemonRegistrationOp
       ws.send(framePipePayload(pipeIdBytes, await channel.seal(busy)));
       return;
     }
+    // Abortable request: a streaming endpoint reached as a plain tunneled
+    // request tears down on request.signal abort; without a signal its
+    // producer would run (and buffer) forever.
+    const abort = new AbortController();
     const request = new Request(new URL(header.path, options.localBaseUrl), {
       method: header.method,
       headers: [...header.headers.map(([k, v]) => [k, v] as [string, string]), [RELAY_VIA_HEADER, '1']],
       ...(body.length > 0 ? { body } : {}),
+      signal: abort.signal,
     });
+    // The in-flight count covers the FULL request lifetime — dispatch AND
+    // response buffering. Buffering is the max-memory phase; releasing the slot
+    // at dispatch-resolve would let N buffering requests bypass the cap.
     inFlightRequests += 1;
-    let response: Response;
     try {
-      response = (await options.dispatch(request)) ?? new Response('Not found', { status: 404 });
-    } catch (err) {
-      logger.error('relay dispatch failed', { error: String(err) });
-      response = new Response('Internal error', { status: 500 });
+      let response: Response;
+      try {
+        response = (await options.dispatch(request)) ?? new Response('Not found', { status: 404 });
+      } catch (err) {
+        logger.error('relay dispatch failed', { error: String(err) });
+        response = new Response('Internal error', { status: 500 });
+      }
+      // A plain tunneled request must never buffer an event stream: refuse
+      // honestly and tear the producer down (the stream-open frame kind is the
+      // supported path for subscriptions).
+      const contentType = response.headers.get('content-type') ?? '';
+      if (contentType.includes('text/event-stream')) {
+        abort.abort();
+        await response.body?.cancel().catch(() => {});
+        const refused = encodeTunnelFrame(
+          { id: header.id, kind: 'response', status: 501, headers: [['content-type', 'application/json']] },
+          encodeUtf8(JSON.stringify({ error: 'streaming-not-supported', message: 'This path serves an event stream; open it with a stream-open frame instead of a plain request.' })),
+        );
+        ws.send(framePipePayload(pipeIdBytes, await channel.seal(refused)));
+        return;
+      }
+      const bounded = await readTunnelBodyBounded(response, MAX_TUNNEL_RESPONSE_BYTES);
+      if (!bounded.ok) {
+        abort.abort();
+        const refused = encodeTunnelFrame(
+          { id: header.id, kind: 'response', status: 502, headers: [['content-type', 'application/json']] },
+          encodeUtf8(JSON.stringify({ error: 'response-too-large', message: `Response exceeded the ${MAX_TUNNEL_RESPONSE_BYTES}-byte tunneled-request ceiling.` })),
+        );
+        ws.send(framePipePayload(pipeIdBytes, await channel.seal(refused)));
+        return;
+      }
+      const bodyBytes = bounded.bytes;
+      const respHeaders: Array<[string, string]> = [];
+      response.headers.forEach((value, key) => respHeaders.push([key, value]));
+      const out = encodeTunnelFrame(
+        { id: header.id, kind: 'response', status: response.status, headers: respHeaders },
+        bodyBytes,
+      );
+      ws.send(framePipePayload(pipeIdBytes, await channel.seal(out)));
     } finally {
       inFlightRequests -= 1;
     }
-    const bodyBytes = new Uint8Array(await response.arrayBuffer());
-    const respHeaders: Array<[string, string]> = [];
-    response.headers.forEach((value, key) => respHeaders.push([key, value]));
-    const out = encodeTunnelFrame(
-      { id: header.id, kind: 'response', status: response.status, headers: respHeaders },
-      new Uint8Array(bodyBytes.buffer.slice(bodyBytes.byteOffset, bodyBytes.byteOffset + bodyBytes.byteLength)),
-    );
-    ws.send(framePipePayload(pipeIdBytes, await channel.seal(out)));
   }
 
   async function openTunneledStream(
