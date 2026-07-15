@@ -93,7 +93,9 @@ function makeGovernor(over: Partial<{ budgetMb: number; rssMb: number }> = {}) {
   let gcCount = 0;
   const opsEvents: MemoryPressureEvent[] = [];
   const receipts: MemoryTripwireReceipt[] = [];
+  const shutdowns: MemoryTripwireReceipt[] = [];
   let exitReceipt: MemoryTripwireReceipt | null = null;
+  let shutdownWasBeforeExit = false;
 
   const gov = new MemoryGovernor(
     { budgetMb: over.budgetMb ?? 100, elevatedPct: 60, highPct: 80, criticalPct: 95, tripwireRateMbPerSec: 25, tripwireSustainSec: 60 },
@@ -105,12 +107,14 @@ function makeGovernor(over: Partial<{ budgetMb: number; rssMb: number }> = {}) {
       gc: () => { gcCount += 1; },
       emitOps: (e) => opsEvents.push(e),
       writeReceipt: (r) => receipts.push(r),
+      shutdown: (r) => { shutdowns.push(r); shutdownWasBeforeExit = exitReceipt === null; },
       exit: (r) => { exitReceipt = r; },
     },
   );
 
   return {
-    gov, trims, jobEvents, opsEvents, receipts,
+    gov, trims, jobEvents, opsEvents, receipts, shutdowns,
+    shutdownBeforeExit: () => shutdownWasBeforeExit,
     setRssMb: (mb: number) => { rssBytes = mb * MB; },
     advance: (ms: number) => { clock += ms; },
     gcCount: () => gcCount,
@@ -163,21 +167,25 @@ describe('MemoryGovernor tier machine', () => {
 });
 
 describe('MemoryGovernor leak tripwire', () => {
-  test('sustained post-flush growth writes a receipt and exits gracefully', () => {
+  test('sustained post-flush growth writes a receipt, runs shutdown, then exits', async () => {
     const h = makeGovernor({ budgetMb: 100 });
     // Enter high → arms the tripwire against the post-flush baseline (85MB @ t0).
     h.setRssMb(85);
     h.gov.sampleOnce();
-    // Grow ~1MB/s (well over the 25MB/s? no — need > 25MB/s sustained). Grow fast:
-    // +40MB per 1s tick keeps rss above high and rate > 25MB/s.
+    // +40MB per 1s tick keeps rss above high and rate > 25MB/s sustained.
     for (let i = 0; i < 61; i++) {
       h.advance(1000);
       h.setRssMb(85 + (i + 1) * 40); // steep, sustained growth
       h.gov.sampleOnce();
-      if (h.exitReceipt()) break;
+      if (h.receipts.length > 0) break;
     }
+    // The exit is GRACEFUL (shutdown hook + flush beat before exit) — await it.
+    for (let i = 0; i < 50 && !h.exitReceipt(); i++) await new Promise((r) => setTimeout(r, 10));
     const receipt = h.exitReceipt();
     expect(receipt).not.toBeNull();
+    // Shutdown ran BEFORE exit, with the same receipt.
+    expect(h.shutdowns.length).toBe(1);
+    expect(h.shutdownBeforeExit()).toBe(true);
     expect(receipt!.kind).toBe('memory-leak-tripwire');
     expect(receipt!.rateMbPerSec).toBeGreaterThan(25);
     expect(h.receipts.length).toBe(1);
@@ -235,7 +243,7 @@ describe('MemoryGovernor budget resolution + snapshot', () => {
     expect(pauseController.isPaused('knowledge-self-improvement')).toBe(true);
     // The ops.memory verb serves this snapshot.
     const snap = memoryGovernor.snapshot();
-    expect(snap.caches.length).toBe(5);
+    expect(snap.caches.length).toBe(KNOWN_MEMORY_CACHES.length);
     expect(snap.pausedJobs.length).toBe(3);
     expect(snap.tier).toBe('high');
   });
@@ -251,5 +259,120 @@ describe('MemoryGovernor budget resolution + snapshot', () => {
     expect(snap.thresholds).toEqual({ elevatedPct: 60, highPct: 80, criticalPct: 95 });
     expect(snap.pausedJobs).toEqual([]);
     expect(snap.tripwire.armed).toBe(false);
+  });
+});
+
+describe('fix-round hardening (reviewer scenarios)', () => {
+  const baseConfig = { budgetMb: 100, elevatedPct: 60, highPct: 80, criticalPct: 95, tripwireRateMbPerSec: 25, tripwireSustainSec: 60 };
+  const noopDeps = { sampler: () => ({ rssBytes: 0, heapUsedBytes: 0 }) };
+
+  test('inverted tier thresholds are refused loudly at construction (criticalPct=10 typo)', () => {
+    const reg = new CacheRegistry();
+    const pc = new PauseController();
+    expect(() => new MemoryGovernor({ ...baseConfig, criticalPct: 10 }, { caches: reg, pauses: pc, ...noopDeps }))
+      .toThrow(/memory\.tier\.elevatedPct.*memory\.tier\.highPct.*memory\.tier\.criticalPct/s);
+    expect(() => new MemoryGovernor({ ...baseConfig, elevatedPct: 90, highPct: 50 }, { caches: reg, pauses: pc, ...noopDeps }))
+      .toThrow(/must hold/);
+  });
+
+  test('budget auto-resolution honors the cgroup v2/v1 limit below physical RAM', async () => {
+    const { resolveEffectiveSystemRamMb } = await import('../packages/sdk/src/platform/runtime/memory/index.ts');
+    // v2 limit 2GB on a 64GB host -> 2048MB effective.
+    expect(resolveEffectiveSystemRamMb((p) => {
+      if (p === '/sys/fs/cgroup/memory.max') return String(2 * 1024 * 1024 * 1024);
+      throw new Error('ENOENT');
+    }, 64 * 1024)).toBe(2048);
+    // v2 'max' (unlimited) falls through to v1; v1 huge sentinel ignored -> physical RAM.
+    expect(resolveEffectiveSystemRamMb((p) => {
+      if (p === '/sys/fs/cgroup/memory.max') return 'max';
+      if (p === '/sys/fs/cgroup/memory/memory.limit_in_bytes') return '9223372036854771712';
+      throw new Error('ENOENT');
+    }, 64 * 1024)).toBe(64 * 1024);
+    // No cgroup files at all -> physical RAM.
+    expect(resolveEffectiveSystemRamMb(() => { throw new Error('ENOENT'); }, 8 * 1024)).toBe(8 * 1024);
+  });
+
+  test('sliding-window rate: a late-onset leak after LONG high-tier residency still trips in ~sustain time', async () => {
+    const h = makeGovernor({ budgetMb: 100_000 }); // large budget: high at 80GB
+    h.setRssMb(81_000); // enter high, arm tripwire
+    h.gov.sampleOnce();
+    // 10 HOURS of flat residency at high tier (the lifetime-average dilution case).
+    for (let i = 0; i < 7200; i++) {
+      h.advance(5_000);
+      h.gov.sampleOnce();
+    }
+    expect(h.exitReceipt()).toBeNull();
+    // NOW a genuine 140MB/s leak starts: with a lifetime average this would stay
+    // diluted below 25MB/s for ~2.2 hours; the sliding window sees it in ~60s.
+    let rss = 81_000;
+    let receiptAtTick = -1;
+    for (let i = 0; i < 40; i++) {
+      h.advance(5_000);
+      rss += 700; // 140MB/s * 5s
+      h.setRssMb(rss);
+      h.gov.sampleOnce();
+      if (h.receipts.length > 0) { receiptAtTick = i; break; }
+    }
+    expect(receiptAtTick).toBeGreaterThanOrEqual(0);
+    expect(receiptAtTick).toBeLessThanOrEqual(30); // ~within a couple of sustain windows, not hours
+  });
+
+  test('the tripwire receipt directory is created on a fresh install (no ENOENT swallow)', async () => {
+    const { mkdtempSync, existsSync, rmSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const { tmpdir } = await import('node:os');
+    const root = mkdtempSync(join(tmpdir(), 'gv-receipt-'));
+    const receiptPath = join(root, 'surface', 'memory', 'tripwire-receipt.json'); // parent dirs DO NOT exist
+    let rss = 10 * MB;
+    let clock = 0;
+    const handles = createMemoryGovernance({
+      config: { ...baseConfig, tripwireSustainSec: 10 },
+      caches: [],
+      jobIds: [],
+      receiptPath,
+      start: false,
+      deps: { sampler: () => ({ rssBytes: rss, heapUsedBytes: rss }), now: () => clock, gc: () => {}, exit: () => {} },
+    });
+    rss = 85 * MB; handles.memoryGovernor.sampleOnce(); // arm
+    for (let i = 0; i < 20; i++) {
+      clock += 1000; rss += 40 * MB;
+      handles.memoryGovernor.sampleOnce();
+      if (existsSync(receiptPath)) break;
+    }
+    expect(existsSync(receiptPath)).toBe(true);
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  test('wireDaemonMemoryGovernance registers REAL adapters: counts reflect stores and trims reclaim', async () => {
+    const jobRunCounts = [120, 60, 30];
+    const pruned: number[] = [];
+    const brokerTrims: string[] = [];
+    let rss = 10 * MB;
+    const { memoryGovernor, cacheRegistry } = (await import('../packages/sdk/src/platform/runtime/memory/index.ts')).wireDaemonMemoryGovernance({
+      config: baseConfig,
+      cacheRegistry: new CacheRegistry(),
+      pauseController: new PauseController(),
+      jobIds: ['knowledge-self-improvement'],
+      receiptPath: '/tmp/unused-receipt.json',
+      knowledgeStores: jobRunCounts.map((_count, i) => ({
+        retainedEntryCount: () => jobRunCounts[i]!,
+        pruneJobRuns: (keep: number) => { pruned.push(keep); jobRunCounts[i] = Math.min(jobRunCounts[i]!, keep); return 0; },
+      })),
+      sessionBroker: {
+        retainedRecordCount: () => 42,
+        trimRetained: (level: 'floor' | 'flush') => { brokerTrims.push(level); },
+      },
+    });
+    memoryGovernor.stop(); // no interval in tests
+    // Real counts:
+    const foot = cacheRegistry.footprints();
+    expect(foot.find((f) => f.id === 'knowledge-store')!.entries).toBe(210);
+    expect(foot.find((f) => f.id === 'session-union')!.entries).toBe(42);
+    // Real trims: flush prunes job runs to the flush floor and flushes the broker.
+    cacheRegistry.trimAll('flush');
+    expect(pruned).toEqual([0, 0, 0]);
+    expect(brokerTrims).toEqual(['flush']);
+    expect(cacheRegistry.footprints().find((f) => f.id === 'knowledge-store')!.entries).toBe(0);
+    void rss;
   });
 });

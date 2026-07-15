@@ -785,6 +785,38 @@ export class ControlPlaneGateway {
     });
   }
 
+  /** Retained replay/message entries (ring + surface messages), for MemoryGovernor visibility. */
+  retainedEventCount(): number {
+    return this._recentEventsCount + this.recentMessages.length;
+  }
+
+  /**
+   * MemoryGovernor trim hook — a REAL reclaim. `floor` halves the retained
+   * replay history (keeps the newest half of the ring); `flush` clears the
+   * replay ring and the surface-message buffer entirely. Replay after a flush
+   * degrades honestly: reconnecting clients simply get no replayed backlog.
+   */
+  trimRetainedEvents(level: 'floor' | 'flush'): void {
+    if (level === 'flush') {
+      this._recentEventsRing.fill(undefined);
+      this._recentEventsHead = 0;
+      this._recentEventsCount = 0;
+      this.recentMessages.length = 0;
+      return;
+    }
+    const keep = Math.floor(this._recentEventsCount / 2);
+    const newest = this.recentEvents.slice(0, keep); // newest-first view
+    this._recentEventsRing.fill(undefined);
+    this._recentEventsHead = 0;
+    this._recentEventsCount = 0;
+    for (const entry of newest.reverse()) {
+      this._recentEventsRing[this._recentEventsHead] = entry;
+      this._recentEventsHead = (this._recentEventsHead + 1) % this._recentEventsCapacity;
+      this._recentEventsCount += 1;
+    }
+    if (this.recentMessages.length > 50) this.recentMessages.length = 50;
+  }
+
   private rememberEvent(
     event: string,
     payload: unknown,

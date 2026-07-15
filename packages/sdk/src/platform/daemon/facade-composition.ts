@@ -284,6 +284,15 @@ export function resolveDaemonFacadeRuntime(config: DaemonConfig): ResolvedDaemon
     },
   });
 
+  // Register the gateway's replay ring with the MemoryGovernor: a REAL count
+  // and a REAL trim (floor halves the retained history; flush clears it, and
+  // replay degrades honestly to an empty backlog for reconnecting clients).
+  runtimeServices.cacheRegistry.register('event-replay-ring', {
+    name: 'control-plane event replay ring + surface messages',
+    entryCount: () => controlPlaneGateway.retainedEventCount(),
+    trim: (level) => controlPlaneGateway.trimRetainedEvents(level),
+  });
+
   runtimeServices.knowledgeService.attachRuntimeBus(runtimeBus);
   runtimeServices.agentKnowledgeService.attachRuntimeBus(runtimeBus);
   runtimeServices.sessionBroker.attachRuntimeBus(runtimeBus, (agentId) => {

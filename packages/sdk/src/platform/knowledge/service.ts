@@ -122,6 +122,12 @@ export interface KnowledgeServiceConfig {
   readonly memoryRegistry: Pick<MemoryRegistry, 'add' | 'getAll' | 'getStore'>;
   readonly runtimeBus?: RuntimeEventBus | null | undefined;
   readonly semanticService?: KnowledgeSemanticService | undefined;
+  /**
+   * MemoryGovernor admission gate for the expensive entry points (job runs,
+   * url/artifact ingestion). At the critical memory tier new expensive work is
+   * refused with an honest structured error instead of piling on allocation.
+   */
+  readonly admitExpensiveWork?: ((label: string) => { allowed: boolean; reason?: string | undefined }) | undefined;
 }
 
 export interface KnowledgeServiceStatus extends KnowledgeStatus {
@@ -164,7 +170,10 @@ export class KnowledgeService {
       syncReviewedMemory: this.syncReviewedMemory.bind(this),
       semanticEnrichSource: async (sourceId: string, knowledgeSpaceId?: string) => {
         await this.semanticService.enrichSource(sourceId, { knowledgeSpaceId });
-        await this.semanticService.selfImprove({
+        // Self-improvement rides the governed background scheduler (floor,
+        // coalescing, zero-gap backoff, governor pause) — a per-ingest direct
+        // run would bypass every one of those guards.
+        this.semanticService.queueBackgroundSelfImprove({
           knowledgeSpaceId,
           sourceIds: [sourceId],
           reason: 'ingest',
@@ -520,7 +529,20 @@ export class KnowledgeService {
     readonly allowPrivateHosts?: boolean | undefined;
     readonly metadata?: Record<string, unknown> | undefined;
   }): Promise<{ source: KnowledgeSourceRecord; artifactId?: string; extraction?: KnowledgeExtractionRecord; issues: readonly KnowledgeIssueRecord[] }> {
+    this.requireAdmission('knowledge url ingestion');
     return ingestKnowledgeUrl(this.getIngestContext(), input);
+  }
+
+  /**
+   * Consult the MemoryGovernor before expensive work: at the critical tier the
+   * governor refuses with an honest reason, which surfaces as a structured
+   * error instead of the daemon allocating toward OOM.
+   */
+  private requireAdmission(label: string): void {
+    const decision = this.options.admitExpensiveWork?.(label);
+    if (decision && !decision.allowed) {
+      throw new Error(decision.reason ?? `${label} refused: daemon is under critical memory pressure.`);
+    }
   }
 
   async ingestArtifact(input: {
@@ -536,6 +558,7 @@ export class KnowledgeService {
     readonly allowPrivateHosts?: boolean | undefined;
     readonly metadata?: Record<string, unknown> | undefined;
   }): Promise<{ source: KnowledgeSourceRecord; artifactId?: string; extraction?: KnowledgeExtractionRecord; issues: readonly KnowledgeIssueRecord[] }> {
+    this.requireAdmission('knowledge artifact ingestion');
     return ingestKnowledgeArtifact(this.getIngestContext(), input);
   }
 
@@ -822,6 +845,7 @@ export class KnowledgeService {
       readonly limit?: number | undefined;
     } = {},
   ): Promise<KnowledgeJobRunRecord> {
+    this.requireAdmission('knowledge job run');
     return this.scheduleService.runJob(id, input);
   }
 

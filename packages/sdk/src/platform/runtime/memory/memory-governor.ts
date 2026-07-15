@@ -25,9 +25,43 @@
  * and samplers.
  */
 import { totalmem } from 'node:os';
+import { readFileSync } from 'node:fs';
 import { logger } from '../../utils/logger.js';
 import type { CacheRegistry, CacheFootprint } from './cache-registry.js';
 import type { PauseController } from './pause-controller.js';
+
+/**
+ * Effective system memory in MB: the smaller of physical RAM and the cgroup
+ * memory limit when one applies (v2 `memory.max`, v1 `limit_in_bytes`). On a
+ * cgroup-limited host (container, systemd MemoryMax=) budgeting off raw
+ * totalmem() would place every tier ABOVE the kernel kill line — the daemon
+ * would be OOM-killed while the governor still reported 'normal'.
+ */
+export function resolveEffectiveSystemRamMb(
+  readFile: (path: string) => string = (p) => readFileSync(p, 'utf-8'),
+  physicalRamMb: number = totalmem() / (1024 * 1024),
+): number {
+  const parseLimit = (raw: string): number | null => {
+    const text = raw.trim();
+    if (text === 'max') return null; // v2 unlimited
+    const bytes = Number(text);
+    if (!Number.isFinite(bytes) || bytes <= 0) return null;
+    const mb = bytes / (1024 * 1024);
+    // v1 reports a huge sentinel (~PiB) when unlimited; ignore anything
+    // implausibly larger than physical RAM.
+    if (mb > physicalRamMb * 4) return null;
+    return mb;
+  };
+  for (const path of ['/sys/fs/cgroup/memory.max', '/sys/fs/cgroup/memory/memory.limit_in_bytes']) {
+    try {
+      const limit = parseLimit(readFile(path));
+      if (limit !== null) return Math.min(limit, physicalRamMb);
+    } catch {
+      // file absent (no cgroup limit of that version) — try the next
+    }
+  }
+  return physicalRamMb;
+}
 
 export type MemoryTier = 'normal' | 'elevated' | 'high' | 'critical';
 
@@ -67,7 +101,14 @@ export interface MemoryGovernorDeps {
   readonly emitOps?: ((event: MemoryPressureEvent) => void) | undefined;
   /** Persist a tripwire receipt so a supervisor sees why the daemon exited. */
   readonly writeReceipt?: ((receipt: MemoryTripwireReceipt) => void) | undefined;
-  /** Perform the graceful exit (default process.exit(1)). Injected in tests. */
+  /**
+   * Graceful shutdown hook run BEFORE the tripwire exit — the daemon
+   * composition wires the same work its signal handlers do (session/store
+   * snapshots, inhibitor release). Bounded by a 10s ceiling so a wedged hook
+   * cannot pin a leaking daemon alive.
+   */
+  readonly shutdown?: ((receipt: MemoryTripwireReceipt) => Promise<void> | void) | undefined;
+  /** Perform the final exit (default process.exit(1)). Injected in tests. */
   readonly exit?: ((receipt: MemoryTripwireReceipt) => void) | undefined;
 }
 
@@ -147,6 +188,7 @@ export class MemoryGovernor {
   private readonly gc: () => void;
   private readonly emitOps: ((event: MemoryPressureEvent) => void) | undefined;
   private readonly writeReceipt: ((receipt: MemoryTripwireReceipt) => void) | undefined;
+  private readonly shutdown: ((receipt: MemoryTripwireReceipt) => Promise<void> | void) | undefined;
   private readonly exit: (receipt: MemoryTripwireReceipt) => void;
   private readonly sampleIntervalMs: number;
 
@@ -162,13 +204,24 @@ export class MemoryGovernor {
   private timer: ReturnType<typeof setInterval> | null = null;
   private exited = false;
 
-  // Tripwire state: armed after a full flush, tracks growth since the flush.
-  private flushBaselineBytes: number | null = null;
-  private flushBaselineAt = 0;
+  // Tripwire state: armed after a full flush. The growth rate is computed over
+  // a SLIDING window of recent samples (not a lifetime average since arming) —
+  // a daemon long-resident at high tier would otherwise dilute a genuine
+  // late-onset leak below the threshold for hours.
+  private tripwireArmed = false;
+  private tripwireSamples: Array<{ at: number; rssBytes: number }> = [];
   private tripwireOverSince: number | null = null;
   private lastRateMbPerSec = 0;
 
   constructor(config: MemoryGovernorConfig, deps: MemoryGovernorDeps) {
+    // Tier ordering is load-bearing for the whole ladder: an inverted config
+    // (e.g. criticalPct=10 as a typo for 100) would put the daemon in
+    // permanent critical at startup. Refuse it loudly, resolver-style.
+    if (!(config.elevatedPct > 0 && config.elevatedPct < config.highPct && config.highPct < config.criticalPct && config.criticalPct <= 100)) {
+      throw new Error(
+        `invalid memory tier thresholds: memory.tier.elevatedPct (${config.elevatedPct}) < memory.tier.highPct (${config.highPct}) < memory.tier.criticalPct (${config.criticalPct}) must hold, each in (0, 100]. Fix the memory.tier.* settings.`,
+      );
+    }
     this.caches = deps.caches;
     this.pauses = deps.pauses;
     this.sampler = deps.sampler ?? defaultSampler;
@@ -176,10 +229,11 @@ export class MemoryGovernor {
     this.gc = deps.gc ?? defaultGc;
     this.emitOps = deps.emitOps;
     this.writeReceipt = deps.writeReceipt;
+    this.shutdown = deps.shutdown;
     this.exit = deps.exit ?? ((): void => { process.exit(1); });
     this.sampleIntervalMs = Math.max(250, config.sampleIntervalMs ?? 5_000);
 
-    const resolveRam = deps.resolveSystemRamMb ?? ((): number => totalmem() / MB);
+    const resolveRam = deps.resolveSystemRamMb ?? resolveEffectiveSystemRamMb;
     this.budgetMb = config.budgetMb > 0
       ? config.budgetMb
       : Math.max(256, Math.min(Math.floor(resolveRam() * 0.25), 4096));
@@ -242,7 +296,7 @@ export class MemoryGovernor {
       caches: this.caches.footprints(),
       pausedJobs: this.pauses.pausedJobs(),
       tripwire: {
-        armed: this.flushBaselineBytes !== null,
+        armed: this.tripwireArmed,
         sustainedSec: this.tripwireOverSince !== null ? round1((this.now() - this.tripwireOverSince) / 1000) : 0,
         rateMbPerSec: round1(this.lastRateMbPerSec),
       },
@@ -307,31 +361,40 @@ export class MemoryGovernor {
   }
 
   private armTripwire(sample: MemorySample): void {
-    // Re-baseline only when not already armed, so growth is measured from the
-    // FIRST flush, not reset on every high sample.
-    if (this.flushBaselineBytes === null) {
-      this.flushBaselineBytes = sample.rssBytes;
-      this.flushBaselineAt = this.now();
+    // Arm once on the first flush; the sliding sample window starts here.
+    if (!this.tripwireArmed) {
+      this.tripwireArmed = true;
+      this.tripwireSamples = [{ at: this.now(), rssBytes: sample.rssBytes }];
       this.tripwireOverSince = null;
     }
   }
 
   private disarmTripwire(): void {
-    this.flushBaselineBytes = null;
+    this.tripwireArmed = false;
+    this.tripwireSamples = [];
     this.tripwireOverSince = null;
     this.lastRateMbPerSec = 0;
   }
 
   private checkTripwire(sample: MemorySample): void {
-    if (this.flushBaselineBytes === null) return;
-    const elapsedSec = (this.now() - this.flushBaselineAt) / 1000;
+    if (!this.tripwireArmed) return;
+    const now = this.now();
+    this.tripwireSamples.push({ at: now, rssBytes: sample.rssBytes });
+    // Sliding window: rate over the last sustain-window of samples. Evict
+    // anything older than 2x the window so memory stays bounded and a long
+    // residency at high tier cannot dilute a late-onset leak.
+    const windowStart = now - this.tripwireSustainMs;
+    while (this.tripwireSamples.length > 2 && this.tripwireSamples[1]!.at <= windowStart) {
+      this.tripwireSamples.shift();
+    }
+    const oldest = this.tripwireSamples[0]!;
+    const elapsedSec = (now - oldest.at) / 1000;
     if (elapsedSec <= 0) return;
-    const growthBytes = sample.rssBytes - this.flushBaselineBytes;
-    const rateBytesPerSec = growthBytes / elapsedSec;
+    const rateBytesPerSec = (sample.rssBytes - oldest.rssBytes) / elapsedSec;
     this.lastRateMbPerSec = rateBytesPerSec / MB;
     if (rateBytesPerSec > this.tripwireRateBytesPerSec) {
-      if (this.tripwireOverSince === null) this.tripwireOverSince = this.now();
-      const sustainedMs = this.now() - this.tripwireOverSince;
+      if (this.tripwireOverSince === null) this.tripwireOverSince = now;
+      const sustainedMs = now - this.tripwireOverSince;
       if (sustainedMs >= this.tripwireSustainMs) {
         this.fireTripwire(sample);
       }
@@ -359,7 +422,7 @@ export class MemoryGovernor {
       topCaches,
       note: 'RSS kept growing after a full cache flush — a genuine leak. Exiting so a supervisor restarts clean.',
     };
-    logger.error('[memory] leak tripwire fired — exiting for a clean restart', {
+    logger.error('[memory] leak tripwire fired — shutting down for a clean restart', {
       rssMb: receipt.rssMb,
       rateMbPerSec: receipt.rateMbPerSec,
       sustainedSec: receipt.sustainedSec,
@@ -375,7 +438,28 @@ export class MemoryGovernor {
     } catch (error) {
       logger.warn('[memory] tripwire receipt write failed', { error: String(error) });
     }
-    this.exit(receipt);
+    // GRACEFUL exit: run the composition's shutdown work (the same session/
+    // store snapshot + inhibitor-release path the signal handlers use), give
+    // async I/O (ops event delivery, log flush) a beat, THEN exit nonzero.
+    // Bounded so a wedged shutdown hook cannot pin the leaking daemon alive.
+    void (async (): Promise<void> => {
+      try {
+        await Promise.race([
+          Promise.resolve(this.shutdown?.(receipt)),
+          new Promise<void>((resolve) => {
+            const t = setTimeout(resolve, 10_000);
+            (t as unknown as { unref?: () => void }).unref?.();
+          }),
+        ]);
+      } catch (error) {
+        logger.warn('[memory] tripwire shutdown hook failed', { error: String(error) });
+      }
+      await new Promise<void>((resolve) => {
+        const t = setTimeout(resolve, 100);
+        (t as unknown as { unref?: () => void }).unref?.();
+      });
+      this.exit(receipt);
+    })();
   }
 
   private emitPressure(
