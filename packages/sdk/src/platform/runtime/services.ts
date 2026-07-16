@@ -930,6 +930,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
       criticalPct: configManager.get('memory.tier.criticalPct'),
       tripwireRateMbPerSec: configManager.get('memory.tripwire.rateMbPerSec'),
       tripwireSustainSec: configManager.get('memory.tripwire.sustainSec'),
+      hardLimitPct: configManager.get('memory.hardLimitPct'),
     },
     runtimeBus: options.runtimeBus,
     cacheRegistry,
@@ -940,9 +941,8 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     // history pruning; broker GC + bucket truncation).
     knowledgeStores: [knowledgeStore, agentKnowledgeStore, homeGraphKnowledgeStore],
     sessionBroker,
-    // Graceful tripwire shutdown: the same checkpoint work the sleep-edge path
-    // runs (store snapshots), so in-flight state is flushed before the exit.
-    onTripwireShutdown: () => { storeSnapshotScheduler.tick(); },
+    // Graceful tripwire shutdown flushes in-flight state via ASYNC store snapshots (fs/promises): sync copyFileSync on a stalled disk would block the event loop, so the governor's 10s shutdown ceiling could never fire — threadpool copies keep it enforceable.
+    onTripwireShutdown: async () => { await storeSnapshotScheduler.snapshotAllAsync('tripwire'); },
   });
   // Late-bind the admission gate now that the governor exists: the expensive
   // entry points captured `admitExpensiveWork` earlier via this holder.

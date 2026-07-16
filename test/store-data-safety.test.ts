@@ -19,6 +19,7 @@ import {
   listStoreSnapshots,
   restoreStoreSnapshot,
   snapshotStoreFile,
+  snapshotStoreFileAsync,
   StoreSnapshotScheduler,
   storeSnapshotDir,
 } from '../packages/sdk/src/platform/state/store-snapshots.js';
@@ -211,6 +212,51 @@ describe('restore is one command', () => {
     const dbPath = join(dir, 'store.sqlite');
     writeFileSync(dbPath, 'x');
     expect(() => restoreStoreSnapshot(dbPath)).toThrow(/no snapshots exist/);
+  }));
+});
+
+// The memory-governor tripwire exit runs its store snapshots through the ASYNC
+// twin so a stalled disk cannot block the event loop (which would defeat the
+// governor's 10s shutdown ceiling). These pin that the async path produces the
+// same snapshot the sync path does, including WAL/SHM sidecars.
+describe('tripwire-path async snapshots (slice 4c)', () => {
+  test('snapshotStoreFileAsync writes the store plus its -wal/-shm sidecars, mtime-stamped', async () => withScratch(async (dir) => {
+    const dbPath = join(dir, 'store.sqlite');
+    writeFileSync(dbPath, 'live-state');
+    writeFileSync(`${dbPath}-wal`, 'wal-bytes');
+    writeFileSync(`${dbPath}-shm`, 'shm-bytes');
+    const at = Date.now() - 5000;
+    const snapshotPath = await snapshotStoreFileAsync(dbPath, 'tripwire', { now: () => at });
+    expect(snapshotPath).not.toBeNull();
+    expect(readFileSync(snapshotPath!, 'utf-8')).toBe('live-state');
+    expect(readFileSync(`${snapshotPath!}-wal`, 'utf-8')).toBe('wal-bytes');
+    expect(readFileSync(`${snapshotPath!}-shm`, 'utf-8')).toBe('shm-bytes');
+    // The snapshot is stamped with the LOGICAL time, matching the sync twin.
+    const listed = listStoreSnapshots(dbPath).find((s) => s.reason === 'tripwire');
+    expect(listed).toBeDefined();
+    expect(Math.abs(listed!.createdAt - at)).toBeLessThan(1000);
+  }));
+
+  test('snapshotStoreFileAsync skips a non-existent or empty store (best-effort)', async () => withScratch(async (dir) => {
+    expect(await snapshotStoreFileAsync(join(dir, 'missing.sqlite'), 'tripwire')).toBeNull();
+    const empty = join(dir, 'empty.sqlite');
+    writeFileSync(empty, '');
+    expect(await snapshotStoreFileAsync(empty, 'tripwire')).toBeNull();
+  }));
+
+  test('scheduler.snapshotAllAsync snapshots every registered store and does not throw on a bad one', async () => withScratch(async (dir) => {
+    const good = join(dir, 'good.sqlite');
+    writeFileSync(good, 'good-bytes');
+    const missing = join(dir, 'missing.sqlite'); // never created — must not throw
+    const scheduler = new StoreSnapshotScheduler({
+      stores: [{ name: 'good', dbPath: good }, { name: 'missing', dbPath: missing }],
+      setTimer: () => 0 as unknown as ReturnType<typeof setTimeout>,
+      clearTimer: () => {},
+    });
+    await scheduler.snapshotAllAsync('tripwire');
+    expect(listStoreSnapshots(good).filter((s) => s.reason === 'tripwire')).toHaveLength(1);
+    expect(listStoreSnapshots(missing)).toHaveLength(0);
+    scheduler.stop();
   }));
 });
 

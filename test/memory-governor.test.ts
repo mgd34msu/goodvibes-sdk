@@ -80,7 +80,7 @@ describe('PauseController seam', () => {
 });
 
 /** A governor test harness with a controllable sampler + fake clock. */
-function makeGovernor(over: Partial<{ budgetMb: number; rssMb: number }> = {}) {
+function makeGovernor(over: Partial<{ budgetMb: number; rssMb: number; hardLimitPct: number }> = {}) {
   const reg = new CacheRegistry();
   const trims: CacheTrimLevel[] = [];
   reg.register('knowledge-store', { name: 'k', entryCount: () => 3, estimateBytes: () => 300, trim: (l) => trims.push(l) });
@@ -94,11 +94,12 @@ function makeGovernor(over: Partial<{ budgetMb: number; rssMb: number }> = {}) {
   const opsEvents: MemoryPressureEvent[] = [];
   const receipts: MemoryTripwireReceipt[] = [];
   const shutdowns: MemoryTripwireReceipt[] = [];
+  const sequence: Array<'receipt' | 'shutdown' | 'exit'> = [];
   let exitReceipt: MemoryTripwireReceipt | null = null;
   let shutdownWasBeforeExit = false;
 
   const gov = new MemoryGovernor(
-    { budgetMb: over.budgetMb ?? 100, elevatedPct: 60, highPct: 80, criticalPct: 95, tripwireRateMbPerSec: 25, tripwireSustainSec: 60 },
+    { budgetMb: over.budgetMb ?? 100, elevatedPct: 60, highPct: 80, criticalPct: 95, tripwireRateMbPerSec: 25, tripwireSustainSec: 60, ...(over.hardLimitPct !== undefined ? { hardLimitPct: over.hardLimitPct } : {}) },
     {
       caches: reg,
       pauses: pc,
@@ -106,14 +107,14 @@ function makeGovernor(over: Partial<{ budgetMb: number; rssMb: number }> = {}) {
       now: () => clock,
       gc: () => { gcCount += 1; },
       emitOps: (e) => opsEvents.push(e),
-      writeReceipt: (r) => receipts.push(r),
-      shutdown: (r) => { shutdowns.push(r); shutdownWasBeforeExit = exitReceipt === null; },
-      exit: (r) => { exitReceipt = r; },
+      writeReceipt: (r) => { receipts.push(r); sequence.push('receipt'); },
+      shutdown: (r) => { shutdowns.push(r); shutdownWasBeforeExit = exitReceipt === null; sequence.push('shutdown'); },
+      exit: (r) => { exitReceipt = r; sequence.push('exit'); },
     },
   );
 
   return {
-    gov, trims, jobEvents, opsEvents, receipts, shutdowns,
+    gov, trims, jobEvents, opsEvents, receipts, shutdowns, sequence,
     shutdownBeforeExit: () => shutdownWasBeforeExit,
     setRssMb: (mb: number) => { rssBytes = mb * MB; },
     advance: (ms: number) => { clock += ms; },
@@ -204,6 +205,75 @@ describe('MemoryGovernor leak tripwire', () => {
     }
     expect(h.exitReceipt()).toBeNull();
   });
+
+  test('the tripwire writes + flushes the receipt BEFORE the shutdown hook (forensics survive a wedged hook)', async () => {
+    const h = makeGovernor({ budgetMb: 100 });
+    h.setRssMb(85);
+    h.gov.sampleOnce();
+    for (let i = 0; i < 61 && h.receipts.length === 0; i++) {
+      h.advance(1000);
+      h.setRssMb(85 + (i + 1) * 40);
+      h.gov.sampleOnce();
+    }
+    for (let i = 0; i < 50 && !h.exitReceipt(); i++) await new Promise((r) => setTimeout(r, 10));
+    // Receipt persisted first, THEN the shutdown hook ran, THEN exit — so a hook
+    // that wedges on a stalled disk can never lose the one forensic artifact.
+    expect(h.sequence).toEqual(['receipt', 'shutdown', 'exit']);
+  });
+});
+
+describe('MemoryGovernor absolute-RSS backstop (slice 4b)', () => {
+  test('a slow sub-tripwire leak exits at the hard limit with a hard-limit receipt (not a kernel OOM)', async () => {
+    // Budget 4096MB, hard limit 120% = 4915.2MB. Arm the tripwire at high tier,
+    // then leak at 5MB/s — WELL under the 25MB/s rate tripwire, so ONLY the
+    // absolute-RSS backstop can end it. Without the backstop this rides to OOM.
+    const h = makeGovernor({ budgetMb: 4096, hardLimitPct: 120 });
+    let rss = 3300; // > high (3276.8) — arms the tripwire
+    h.setRssMb(rss);
+    h.gov.sampleOnce();
+    for (let i = 0; i < 800 && h.receipts.length === 0; i++) {
+      h.advance(5000);
+      rss += 25; // 5MB/s * 5s
+      h.setRssMb(rss);
+      h.gov.sampleOnce();
+    }
+    for (let i = 0; i < 50 && !h.exitReceipt(); i++) await new Promise((r) => setTimeout(r, 10));
+    const receipt = h.exitReceipt();
+    expect(receipt).not.toBeNull();
+    expect(receipt!.trigger).toBe('hard-limit');
+    // Exited just above the hard limit — nowhere near the incident's 100GB OOM.
+    expect(receipt!.rssMb).toBeGreaterThanOrEqual(4915);
+    expect(receipt!.rssMb).toBeLessThan(5600);
+    // The growth rate never reached the tripwire threshold: this is the SLOW path.
+    expect(receipt!.rateMbPerSec).toBeLessThan(25);
+    // The receipt carries the tier-climb history, ending at critical.
+    expect(receipt!.tierHistory.length).toBeGreaterThan(0);
+    expect(receipt!.tierHistory.at(-1)?.tier).toBe('critical');
+    // Same graceful exit path as the rate tripwire: receipt, then shutdown, then exit.
+    expect(h.sequence).toEqual(['receipt', 'shutdown', 'exit']);
+    expect(h.shutdowns.length).toBe(1);
+  });
+
+  test('RSS below the hard limit for the whole run never fires the backstop', async () => {
+    const h = makeGovernor({ budgetMb: 4096, hardLimitPct: 120 });
+    h.setRssMb(4000); // above critical, but under the 4915MB hard limit
+    h.gov.sampleOnce();
+    for (let i = 0; i < 200; i++) {
+      h.advance(5000);
+      h.gov.sampleOnce(); // flat — sustained but never crosses the limit
+    }
+    expect(h.exitReceipt()).toBeNull();
+  });
+
+  test('a transient spike above the hard limit that recedes before the window never fires', () => {
+    const h = makeGovernor({ budgetMb: 4096, hardLimitPct: 120 });
+    h.setRssMb(3300);
+    h.gov.sampleOnce();
+    // Spike over the limit for 30s (< 60s sustain window), then drop back.
+    for (let i = 0; i < 6; i++) { h.advance(5000); h.setRssMb(5000); h.gov.sampleOnce(); }
+    h.advance(5000); h.setRssMb(3300); h.gov.sampleOnce();
+    expect(h.exitReceipt()).toBeNull();
+  });
 });
 
 describe('MemoryGovernor budget resolution + snapshot', () => {
@@ -275,9 +345,21 @@ describe('fix-round hardening (reviewer scenarios)', () => {
       .toThrow(/must hold/);
   });
 
+  test('a hard limit at/below criticalPct is refused loudly at construction', () => {
+    const reg = new CacheRegistry();
+    const pc = new PauseController();
+    // Equal to critical is not ABOVE the ladder — refuse it.
+    expect(() => new MemoryGovernor({ ...baseConfig, hardLimitPct: 95 }, { caches: reg, pauses: pc, ...noopDeps }))
+      .toThrow(/memory\.hardLimitPct.*memory\.tier\.criticalPct/s);
+    expect(() => new MemoryGovernor({ ...baseConfig, hardLimitPct: 90 }, { caches: reg, pauses: pc, ...noopDeps }))
+      .toThrow(/must exceed/);
+    // Omitted → defaults to 120 (> criticalPct 95): constructs fine.
+    expect(() => new MemoryGovernor({ ...baseConfig }, { caches: reg, pauses: pc, ...noopDeps })).not.toThrow();
+  });
+
   test('budget auto-resolution honors the cgroup v2/v1 limit below physical RAM', async () => {
     const { resolveEffectiveSystemRamMb } = await import('../packages/sdk/src/platform/runtime/memory/index.ts');
-    // v2 limit 2GB on a 64GB host -> 2048MB effective.
+    // v2 limit 2GB at the ROOT on a 64GB host -> 2048MB effective (fallback path).
     expect(resolveEffectiveSystemRamMb((p) => {
       if (p === '/sys/fs/cgroup/memory.max') return String(2 * 1024 * 1024 * 1024);
       throw new Error('ENOENT');
@@ -290,6 +372,82 @@ describe('fix-round hardening (reviewer scenarios)', () => {
     }, 64 * 1024)).toBe(64 * 1024);
     // No cgroup files at all -> physical RAM.
     expect(resolveEffectiveSystemRamMb(() => { throw new Error('ENOENT'); }, 8 * 1024)).toBe(8 * 1024);
+  });
+
+  test('cgroup walk finds a systemd MemoryMax= limit on the OWN cgroup path (root is unlimited)', async () => {
+    const { resolveEffectiveSystemRamMb } = await import('../packages/sdk/src/platform/runtime/memory/index.ts');
+    // The failure the fix closes: a daemon under `systemd MemoryMax=2G` has its
+    // limit at /sys/fs/cgroup/system.slice/<unit>.service/memory.max — the root
+    // memory.max is 'max' (unlimited). A root-only read misses it and budgets
+    // off physical RAM, so every tier sits above the kernel kill line.
+    const files: Record<string, string> = {
+      '/proc/self/cgroup': '0::/system.slice/goodvibes-daemon.service\n',
+      '/sys/fs/cgroup/memory.max': 'max',
+      '/sys/fs/cgroup/system.slice/memory.max': 'max',
+      '/sys/fs/cgroup/system.slice/goodvibes-daemon.service/memory.max': String(2 * 1024 * 1024 * 1024),
+    };
+    const read = (p: string): string => {
+      if (p in files) return files[p]!;
+      throw new Error(`ENOENT ${p}`);
+    };
+    expect(resolveEffectiveSystemRamMb(read, 64 * 1024)).toBe(2048);
+  });
+
+  test('cgroup walk takes the MINIMUM limit along the ancestor chain', async () => {
+    const { resolveEffectiveSystemRamMb } = await import('../packages/sdk/src/platform/runtime/memory/index.ts');
+    // A parent slice caps at 4G, the leaf unit caps at 1G — the effective limit
+    // is the tighter (leaf) one.
+    const files: Record<string, string> = {
+      '/proc/self/cgroup': '0::/system.slice/app.slice/leaf.service\n',
+      '/sys/fs/cgroup/system.slice/app.slice/memory.max': String(4 * 1024 * 1024 * 1024),
+      '/sys/fs/cgroup/system.slice/app.slice/leaf.service/memory.max': String(1 * 1024 * 1024 * 1024),
+    };
+    const read = (p: string): string => {
+      if (p in files) return files[p]!;
+      throw new Error(`ENOENT ${p}`);
+    };
+    expect(resolveEffectiveSystemRamMb(read, 64 * 1024)).toBe(1024);
+  });
+
+  test('cgroup walk: a container with the limit at the ROOT (0::/) is still honored', async () => {
+    const { resolveEffectiveSystemRamMb } = await import('../packages/sdk/src/platform/runtime/memory/index.ts');
+    // Docker default (private cgroup namespace): the process reports 0::/ and
+    // the limit lives at the root memory.max.
+    const files: Record<string, string> = {
+      '/proc/self/cgroup': '0::/\n',
+      '/sys/fs/cgroup/memory.max': String(512 * 1024 * 1024),
+    };
+    const read = (p: string): string => {
+      if (p in files) return files[p]!;
+      throw new Error(`ENOENT ${p}`);
+    };
+    expect(resolveEffectiveSystemRamMb(read, 8 * 1024)).toBe(512);
+  });
+
+  test('cgroup walk: no cgroup limit anywhere -> physical RAM', async () => {
+    const { resolveEffectiveSystemRamMb } = await import('../packages/sdk/src/platform/runtime/memory/index.ts');
+    // v2 unified with an unlimited own path and no root limit: physical RAM.
+    const files: Record<string, string> = {
+      '/proc/self/cgroup': '0::/user.slice/user-1000.slice/session-3.scope\n',
+    };
+    const read = (p: string): string => {
+      if (p in files) return files[p]!;
+      throw new Error(`ENOENT ${p}`);
+    };
+    expect(resolveEffectiveSystemRamMb(read, 16 * 1024)).toBe(16 * 1024);
+  });
+
+  test('cgroup walk: v1 memory controller resolves the own-path limit', async () => {
+    const { resolveEffectiveSystemRamMb } = await import('../packages/sdk/src/platform/runtime/memory/index.ts');
+    const files: Record<string, string> = {
+      '/proc/self/cgroup': '5:memory:/system.slice/goodvibes.service\n0::/system.slice/goodvibes.service\n',
+      '/sys/fs/cgroup/memory/system.slice/goodvibes.service/memory.limit_in_bytes': String(3 * 1024 * 1024 * 1024),
+    };
+    const read = (p: string): string => {
+      if (p in files) return files[p]!;
+      throw new Error(`ENOENT ${p}`);
+    };
+    expect(resolveEffectiveSystemRamMb(read, 64 * 1024)).toBe(3072);
   });
 
   test('sliding-window rate: a late-onset leak after LONG high-tier residency still trips in ~sustain time', async () => {

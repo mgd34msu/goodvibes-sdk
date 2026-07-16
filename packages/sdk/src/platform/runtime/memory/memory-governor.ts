@@ -20,6 +20,15 @@
  * footprints + heap stats), emits an ops attention event, writes a receipt, and
  * exits gracefully so a supervisor restarts clean — never a silent abort.
  *
+ * Absolute-RSS backstop: the rate tripwire is blind to any leak SLOWER than
+ * `tripwireRateMbPerSec` — such a leak would ride past the budget to a kernel
+ * OOM kill with no exit and no receipt. So a second, rate-independent ceiling
+ * sits ABOVE the tier ladder: if RSS holds at/above `hardLimitPct` of the
+ * budget for `tripwireSustainSec`, the governor takes the SAME graceful exit +
+ * receipt path (the receipt's `trigger` is `hard-limit` and carries the tier
+ * history). This is what turns a slow leak into a receipted restart instead of
+ * a silent OOM.
+ *
  * Everything I/O (sampler, clock, gc, exit, receipt write, ops emit) is
  * injected, so the tier machine and tripwire are unit-testable with fake clocks
  * and samplers.
@@ -32,10 +41,16 @@ import type { PauseController } from './pause-controller.js';
 
 /**
  * Effective system memory in MB: the smaller of physical RAM and the cgroup
- * memory limit when one applies (v2 `memory.max`, v1 `limit_in_bytes`). On a
- * cgroup-limited host (container, systemd MemoryMax=) budgeting off raw
- * totalmem() would place every tier ABOVE the kernel kill line — the daemon
- * would be OOM-killed while the governor still reported 'normal'.
+ * memory limit that applies to THIS PROCESS. The process's own cgroup is
+ * resolved from /proc/self/cgroup and every ancestor directory up to the
+ * cgroup root is checked (the effective limit is the MINIMUM along the chain)
+ * — a daemon run under systemd MemoryMax= has its limit at
+ * /sys/fs/cgroup/system.slice/<unit>.service/memory.max, which a root-only
+ * read misses entirely. Root-path reads remain as the final fallback (a
+ * container with a private cgroup namespace reports `0::/`, which the walk
+ * covers anyway). Without this, a limited daemon budgets off physical RAM and
+ * every tier sits ABOVE the kernel kill line: the kernel OOM-kills it while
+ * the governor still reports 'normal'.
  */
 export function resolveEffectiveSystemRamMb(
   readFile: (path: string) => string = (p) => readFileSync(p, 'utf-8'),
@@ -52,14 +67,55 @@ export function resolveEffectiveSystemRamMb(
     if (mb > physicalRamMb * 4) return null;
     return mb;
   };
-  for (const path of ['/sys/fs/cgroup/memory.max', '/sys/fs/cgroup/memory/memory.limit_in_bytes']) {
+  const tryRead = (path: string): number | null => {
     try {
-      const limit = parseLimit(readFile(path));
-      if (limit !== null) return Math.min(limit, physicalRamMb);
+      return parseLimit(readFile(path));
     } catch {
-      // file absent (no cgroup limit of that version) — try the next
+      return null; // absent — not limited at this level/version
     }
+  };
+  /** Ancestor chain of a cgroup path: '/system.slice/gv.service' -> ['', '/system.slice', '/system.slice/gv.service']. */
+  const ancestorsOf = (cgroupPath: string): string[] => {
+    const clean = cgroupPath === '/' ? '' : cgroupPath.replace(/\/$/, '');
+    const parts = clean.split('/').filter(Boolean);
+    const chain: string[] = [''];
+    let current = '';
+    for (const part of parts) {
+      current += `/${part}`;
+      chain.push(current);
+    }
+    return chain;
+  };
+  const limits: number[] = [];
+  try {
+    const selfCgroup = readFile('/proc/self/cgroup');
+    for (const line of selfCgroup.split('\n')) {
+      // v2 unified: '0::<path>'. v1 memory controller: '<n>:memory:<path>'.
+      const v2 = /^0::(.*)$/.exec(line.trim());
+      if (v2) {
+        for (const dir of ancestorsOf(v2[1] ?? '/')) {
+          const limit = tryRead(`/sys/fs/cgroup${dir}/memory.max`);
+          if (limit !== null) limits.push(limit);
+        }
+        continue;
+      }
+      const v1 = /^\d+:memory:(.*)$/.exec(line.trim());
+      if (v1) {
+        for (const dir of ancestorsOf(v1[1] ?? '/')) {
+          const limit = tryRead(`/sys/fs/cgroup/memory${dir}/memory.limit_in_bytes`);
+          if (limit !== null) limits.push(limit);
+        }
+      }
+    }
+  } catch {
+    // /proc/self/cgroup unreadable (non-Linux) — fall through to root reads
   }
+  // Root-path fallbacks (private-namespace containers; kept for compatibility).
+  for (const path of ['/sys/fs/cgroup/memory.max', '/sys/fs/cgroup/memory/memory.limit_in_bytes']) {
+    const limit = tryRead(path);
+    if (limit !== null) limits.push(limit);
+  }
+  if (limits.length > 0) return Math.min(Math.min(...limits), physicalRamMb);
   return physicalRamMb;
 }
 
@@ -85,6 +141,16 @@ export interface MemoryGovernorConfig {
   readonly criticalPct: number;
   readonly tripwireRateMbPerSec: number;
   readonly tripwireSustainSec: number;
+  /**
+   * Absolute-RSS backstop, as a percent of the budget ABOVE the tier ladder
+   * (must exceed criticalPct; default 120). The rate tripwire only catches
+   * FAST leaks; a leak slower than tripwireRateMbPerSec would ride past the
+   * budget all the way to a kernel OOM kill with no exit and no receipt. When
+   * RSS stays at/above this percent of the budget for the tripwire sustain
+   * window, the governor takes the SAME graceful exit + receipt path,
+   * independent of growth rate. Optional for back-compat; defaults to 120.
+   */
+  readonly hardLimitPct?: number | undefined;
   /** Sampling cadence in ms (default 5000). */
   readonly sampleIntervalMs?: number | undefined;
 }
@@ -124,9 +190,22 @@ export interface MemoryPressureEvent {
   readonly note?: string | undefined;
 }
 
-/** Written to disk when the leak tripwire fires. */
+/** One recorded tier transition, oldest-first, carried in the exit receipt. */
+export interface MemoryTierTransition {
+  readonly at: number;
+  readonly tier: MemoryTier;
+}
+
+/** Written to disk when the governor exits under memory pressure. */
 export interface MemoryTripwireReceipt {
   readonly kind: 'memory-leak-tripwire';
+  /**
+   * Which backstop fired: 'rate-tripwire' — post-flush growth exceeded
+   * tripwireRateMbPerSec for the sustain window (a FAST leak); 'hard-limit' —
+   * RSS held at/above hardLimitPct×budget for the sustain window regardless of
+   * rate (a SLOW leak the rate tripwire is structurally blind to).
+   */
+  readonly trigger: 'rate-tripwire' | 'hard-limit';
   readonly at: number;
   readonly rssMb: number;
   readonly budgetMb: number;
@@ -134,6 +213,8 @@ export interface MemoryTripwireReceipt {
   readonly sustainedSec: number;
   readonly heap: MemorySample;
   readonly topCaches: readonly CacheFootprint[];
+  /** Tier ladder history (oldest-first) so the receipt shows how RSS climbed. */
+  readonly tierHistory: readonly MemoryTierTransition[];
   readonly note: string;
 }
 
@@ -196,6 +277,8 @@ export class MemoryGovernor {
   private readonly elevatedBytes: number;
   private readonly highBytes: number;
   private readonly criticalBytes: number;
+  private readonly hardLimitBytes: number;
+  private readonly hardLimitPct: number;
   private readonly tripwireRateBytesPerSec: number;
   private readonly tripwireSustainMs: number;
 
@@ -203,6 +286,13 @@ export class MemoryGovernor {
   private refusing = false;
   private timer: ReturnType<typeof setInterval> | null = null;
   private exited = false;
+
+  // Tier-ladder history (oldest-first, bounded) so an exit receipt shows how
+  // RSS climbed through the tiers before the backstop fired.
+  private tierHistory: MemoryTierTransition[] = [];
+  // Absolute-RSS backstop: the first sample at/above the hard limit stamps this;
+  // it clears the moment RSS drops back under. Fires once sustained.
+  private hardLimitOverSince: number | null = null;
 
   // Tripwire state: armed after a full flush. The growth rate is computed over
   // a SLIDING window of recent samples (not a lifetime average since arming) —
@@ -220,6 +310,15 @@ export class MemoryGovernor {
     if (!(config.elevatedPct > 0 && config.elevatedPct < config.highPct && config.highPct < config.criticalPct && config.criticalPct <= 100)) {
       throw new Error(
         `invalid memory tier thresholds: memory.tier.elevatedPct (${config.elevatedPct}) < memory.tier.highPct (${config.highPct}) < memory.tier.criticalPct (${config.criticalPct}) must hold, each in (0, 100]. Fix the memory.tier.* settings.`,
+      );
+    }
+    // The backstop lives ABOVE the tier ladder — a hard limit at/below critical
+    // would be indistinguishable from (or fire before) the critical tier and
+    // defeat its purpose as a last-resort ceiling.
+    const hardLimitPct = config.hardLimitPct ?? 120;
+    if (!(hardLimitPct > config.criticalPct)) {
+      throw new Error(
+        `invalid memory hard limit: memory.hardLimitPct (${hardLimitPct}) must exceed memory.tier.criticalPct (${config.criticalPct}). Fix the memory.hardLimitPct setting.`,
       );
     }
     this.caches = deps.caches;
@@ -241,6 +340,8 @@ export class MemoryGovernor {
     this.elevatedBytes = budgetBytes * (config.elevatedPct / 100);
     this.highBytes = budgetBytes * (config.highPct / 100);
     this.criticalBytes = budgetBytes * (config.criticalPct / 100);
+    this.hardLimitPct = hardLimitPct;
+    this.hardLimitBytes = budgetBytes * (hardLimitPct / 100);
     this.tripwireRateBytesPerSec = config.tripwireRateMbPerSec * MB;
     this.tripwireSustainMs = config.tripwireSustainSec * 1000;
   }
@@ -317,9 +418,39 @@ export class MemoryGovernor {
     if (nextTier !== this.tier) {
       const previousTier = this.tier;
       this.tier = nextTier;
+      this.recordTierTransition(nextTier);
       this.applyTier(nextTier, previousTier, sample);
     }
     this.checkTripwire(sample);
+    this.checkHardLimit(sample);
+  }
+
+  /** Append a bounded tier-transition entry for the exit receipt's history. */
+  private recordTierTransition(tier: MemoryTier): void {
+    this.tierHistory.push({ at: this.now(), tier });
+    // Bound the history so a long-lived daemon flapping tiers cannot grow it
+    // unboundedly — the receipt only needs the recent climb.
+    if (this.tierHistory.length > 32) this.tierHistory.shift();
+  }
+
+  /**
+   * Absolute-RSS backstop above the tier ladder. The rate tripwire is
+   * structurally blind to any leak slower than tripwireRateMbPerSec, so a slow
+   * leak would ride past the budget to a kernel OOM kill with no exit and no
+   * receipt. When RSS holds at/above hardLimitPct×budget for the sustain
+   * window, take the SAME graceful exit path the rate tripwire uses.
+   */
+  private checkHardLimit(sample: MemorySample): void {
+    if (this.exited) return;
+    if (sample.rssBytes < this.hardLimitBytes) {
+      this.hardLimitOverSince = null;
+      return;
+    }
+    const now = this.now();
+    if (this.hardLimitOverSince === null) this.hardLimitOverSince = now;
+    if (now - this.hardLimitOverSince >= this.tripwireSustainMs) {
+      this.fireExit(sample, 'hard-limit');
+    }
   }
 
   private tierFor(rssBytes: number): MemoryTier {
@@ -396,23 +527,29 @@ export class MemoryGovernor {
       if (this.tripwireOverSince === null) this.tripwireOverSince = now;
       const sustainedMs = now - this.tripwireOverSince;
       if (sustainedMs >= this.tripwireSustainMs) {
-        this.fireTripwire(sample);
+        this.fireExit(sample, 'rate-tripwire');
       }
     } else {
       this.tripwireOverSince = null;
     }
   }
 
-  private fireTripwire(sample: MemorySample): void {
+  private fireExit(sample: MemorySample, trigger: 'rate-tripwire' | 'hard-limit'): void {
     if (this.exited) return;
     this.exited = true;
     this.stop();
-    const sustainedSec = this.tripwireOverSince !== null ? (this.now() - this.tripwireOverSince) / 1000 : this.tripwireSustainMs / 1000;
+    const sustainedSec = trigger === 'hard-limit'
+      ? (this.hardLimitOverSince !== null ? (this.now() - this.hardLimitOverSince) / 1000 : this.tripwireSustainMs / 1000)
+      : (this.tripwireOverSince !== null ? (this.now() - this.tripwireOverSince) / 1000 : this.tripwireSustainMs / 1000);
     const topCaches = [...this.caches.footprints()]
       .sort((a, b) => (b.estimatedBytes ?? b.entries) - (a.estimatedBytes ?? a.entries))
       .slice(0, 5);
+    const note = trigger === 'hard-limit'
+      ? `RSS held at/above the hard limit (${this.hardLimitPct}% of the ${this.budgetMb}MB budget) — a sub-threshold leak the rate tripwire cannot see. Exiting so a supervisor restarts clean.`
+      : 'RSS kept growing after a full cache flush — a genuine leak. Exiting so a supervisor restarts clean.';
     const receipt: MemoryTripwireReceipt = {
       kind: 'memory-leak-tripwire',
+      trigger,
       at: this.now(),
       rssMb: round1(sample.rssBytes / MB),
       budgetMb: this.budgetMb,
@@ -420,9 +557,11 @@ export class MemoryGovernor {
       sustainedSec: round1(sustainedSec),
       heap: sample,
       topCaches,
-      note: 'RSS kept growing after a full cache flush — a genuine leak. Exiting so a supervisor restarts clean.',
+      tierHistory: [...this.tierHistory],
+      note,
     };
-    logger.error('[memory] leak tripwire fired — shutting down for a clean restart', {
+    logger.error(`[memory] ${trigger} fired — shutting down for a clean restart`, {
+      trigger,
       rssMb: receipt.rssMb,
       rateMbPerSec: receipt.rateMbPerSec,
       sustainedSec: receipt.sustainedSec,

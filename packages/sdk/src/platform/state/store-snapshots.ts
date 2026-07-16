@@ -14,6 +14,7 @@
  *   (RetentionPolicy + SnapshotPruner deleting real files).
  */
 import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync, utimesSync } from 'node:fs';
+import { copyFile } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
@@ -186,6 +187,41 @@ export function defaultStoreSnapshotRetention(): RetentionPolicy {
  * through the retention engine after every sweep. Time and timers are
  * injectable; the loop never keeps the process alive.
  */
+/**
+ * Async twin of {@link snapshotStoreFile}: identical path/uniquify/mtime logic
+ * with threadpool copies (fs/promises), for callers whose deadline must remain
+ * enforceable while the disk stalls (the memory-governor tripwire exit).
+ */
+export async function snapshotStoreFileAsync(
+  dbPath: string,
+  reason: string,
+  options: { now?: () => number } = {},
+): Promise<string | null> {
+  if (!isRealDbPath(dbPath) || !existsSync(dbPath)) return null;
+  if (statSync(dbPath).size === 0) return null;
+  const at = (options.now ?? Date.now)();
+  const dir = storeSnapshotDir(dbPath);
+  mkdirSync(dir, { recursive: true });
+  let snapshotPath = join(dir, `${timestampSlug(at)}.${reason}${SNAPSHOT_SUFFIX}`);
+  for (let counter = 1; existsSync(snapshotPath); counter += 1) {
+    snapshotPath = join(dir, `${timestampSlug(at)}-${counter}.${reason}${SNAPSHOT_SUFFIX}`);
+  }
+  await copyFile(dbPath, snapshotPath);
+  for (const sidecar of ['-wal', '-shm']) {
+    if (existsSync(`${dbPath}${sidecar}`)) {
+      await copyFile(`${dbPath}${sidecar}`, `${snapshotPath}${sidecar}`);
+    }
+  }
+  try {
+    const atSeconds = at / 1000;
+    utimesSync(snapshotPath, atSeconds, atSeconds);
+  } catch (error) {
+    logger.warn('store snapshot mtime stamp failed', { snapshotPath, error: summarizeError(error) });
+  }
+  logger.info('store snapshot written', { store: basename(dbPath), reason, snapshotPath });
+  return snapshotPath;
+}
+
 export class StoreSnapshotScheduler {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private stopped = false;
@@ -239,6 +275,24 @@ export class StoreSnapshotScheduler {
       await this.pruneRegisteredSnapshots();
     } finally {
       this.scheduleNext();
+    }
+  }
+
+  /**
+   * Snapshot every registered store NOW using ASYNC (threadpool) file copies.
+   * This is the tripwire-exit path: synchronous copyFileSync on a stalled disk
+   * blocks the event loop itself, so no outer timeout could ever fire — async
+   * copyFile keeps the loop free and lets the governor's shutdown ceiling
+   * genuinely bound the work. Best-effort per store; no pruning.
+   */
+  async snapshotAllAsync(reason: string): Promise<void> {
+    const now = (this.options.now ?? Date.now)();
+    for (const store of this.options.stores) {
+      try {
+        await snapshotStoreFileAsync(store.dbPath, reason, { now: () => now });
+      } catch (error) {
+        logger.warn('async store snapshot failed', { store: store.name, error: summarizeError(error) });
+      }
     }
   }
 
