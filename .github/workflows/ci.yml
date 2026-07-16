@@ -46,6 +46,7 @@ jobs:
     name: Eval gate (floors + regression)
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    needs: [build]
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -54,10 +55,16 @@ jobs:
       # The eval scripts execute SDK source directly (bun scripts/eval-*.ts ->
       # packages/sdk/src/...), and that source imports bare workspace specifiers
       # (@pellux/goodvibes-errors, etc.) whose package exports resolve to ./dist.
-      # Build the workspace first so those dist entrypoints exist; without this
-      # the eval steps fail with "Cannot find module '@pellux/goodvibes-errors'".
-      - name: Build workspace
-        run: bun run build
+      # Restore the single `build` job's artifact instead of rebuilding — the
+      # dist entrypoints those bare specifiers resolve to are the exact bytes the
+      # build job produced (build once, restore everywhere).
+      - name: Download workspace package output
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: workspace-build-output
+          path: /tmp/workspace-build-output
+      - name: Restore workspace package output
+        run: tar -xzf /tmp/workspace-build-output/workspace-build-output.tgz -C .
       - name: Baseline drift check
         run: bun run eval:baseline:check
       - name: Run eval gate
@@ -108,7 +115,10 @@ jobs:
         with:
           name: workspace-build-output
           path: /tmp/workspace-build-output.tgz
-          retention-days: 1
+          # Retained long enough for the by-reference release to restore this
+          # exact build (the artifact-integrity handoff in release.yml downloads
+          # it by the CI run id and asserts its head SHA == the tagged SHA).
+          retention-days: 7
           if-no-files-found: error
 
   # ---------------------------------------------------------------------------
@@ -120,6 +130,7 @@ jobs:
     name: Platform matrix (${{ matrix.platform }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    needs: [build]
     strategy:
       fail-fast: false
       matrix:
@@ -132,18 +143,22 @@ jobs:
           # Matrix policy: single Node version (22) per run. Add a second
           # `include` row targeting Node 24 LTS once it is released to expand
           # runtime coverage without multiplying CI time unnecessarily.
+          # Each leg restores the single `build` job's artifact (below) and runs
+          # tests against those exact dist bytes — no per-leg rebuild. The bun
+          # leg invokes scripts/test.ts directly (not `bun run test`) so the
+          # `pretest` tsc build does not re-emit over the restored artifact.
           - platform: bun
             node-version: "22"
-            test-cmd: bun run build && bun run test
+            test-cmd: bun scripts/test.ts
           - platform: rn-bundle
             node-version: "22"
-            test-cmd: bun run build && bun run test:rn
+            test-cmd: bun run test:rn
           - platform: workers
             node-version: "22"
-            test-cmd: bun run build && bun run test:workers
+            test-cmd: bun run test:workers
           - platform: workers-wrangler
             node-version: "22"
-            test-cmd: bun run build && bun run test:workers:wrangler
+            test-cmd: bun run test:workers:wrangler
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -153,6 +168,13 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - name: Setup Bun + deps (cached)
         uses: ./.github/actions/setup
+      - name: Download workspace package output
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: workspace-build-output
+          path: /tmp/workspace-build-output
+      - name: Restore workspace package output
+        run: tar -xzf /tmp/workspace-build-output/workspace-build-output.tgz -C .
       - name: Configure git identity for worktree/orchestration tests
         # The orchestration worktree flow makes real git commits and relies on
         # ambient git config (as in a real user environment). A fresh CI runner

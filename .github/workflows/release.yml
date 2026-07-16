@@ -1,10 +1,17 @@
 name: Release
 
 # Default to read-only permissions. Individual jobs elevate as needed.
-# The `production` environment (referenced by publish-npm)
-# must be configured in GitHub repo settings with required reviewers and deployment
-# branch restrictions (tags only). This YAML alone cannot enforce manual approval;
-# the gate lives in the GitHub UI at Settings > Environments > production.
+# The `production` environment (referenced by publish-npm) must be configured in
+# GitHub repo settings with required reviewers and deployment branch
+# restrictions (tags only). This YAML alone cannot enforce manual approval; the
+# gate lives in the GitHub UI at Settings > Environments > production.
+#
+# By-reference release (2026-07-16 redesign): validation happened exactly once,
+# on the release commit's push-CI run. This workflow VERIFIES that run is
+# per-job green (release-verify, ~2m) instead of re-running the 45-minute gate
+# suite, then restores that CI run's build artifact for publish after an
+# integrity check (recorded head SHA == tagged SHA). Tagging is gated on push-CI
+# green, which structurally retires the tag-redo dance.
 permissions:
   contents: read
 
@@ -12,11 +19,11 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: "Run the full release pipeline without publishing to npm"
+        description: "Run the release pipeline without publishing to npm"
         required: false
         default: "true"
       ref:
-        description: "Git ref to release"
+        description: "Git ref to dry-run"
         required: false
         default: "main"
   push:
@@ -46,13 +53,19 @@ jobs:
       - name: Verify git tag matches package.json version
         run: bun scripts/verify-release-tag-version.ts
 
-  # Note: each release job runs its own `bun install --frozen-lockfile` (~30 s each)
-  # rather than using the .github/actions/setup composite action. The install is
-  # repeated across generate-sbom, validate-release, and publish-npm to keep each
-  # job self-contained (the release pipeline
-  # does not use caching to guarantee a pristine install before publish).
-  # Keep this path uncached and self-contained; publish jobs must prove they can
-  # install from the lockfile without relying on an earlier job's dependency cache.
+  # By-reference validation: verify the tagged commit's push-CI run is per-job
+  # green. Replaces the old 45-minute validate-release re-run. Emits the CI run
+  # id + head SHA so publish-npm can restore that run's build artifact.
+  release-verify:
+    if: github.event_name == 'push'
+    needs: [verify-tag-version]
+    uses: ./.github/workflows/reusable-release-verify.yml
+    with:
+      sha: ${{ github.sha }}
+      workflow: ci.yml
+    secrets:
+      token: ${{ secrets.GITHUB_TOKEN }}
+
   generate-sbom:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -87,96 +100,48 @@ jobs:
           path: sbom.cdx.json
           retention-days: 90
 
-  validate-release:
+  # Manual dispatch is dry-run only — it never publishes. The push path is the
+  # only way to a real publish, and publish-npm is `if: push` gated below.
+  dry-run:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
-    needs: [verify-tag-version, generate-sbom]
-    # Gate: verify-tag-version runs only on `push` (tag push); it is skipped on
-    # workflow_dispatch (manual dry-runs). Explicit success/skipped checks avoid
-    # accidentally accepting unexpected result states (e.g. 'cancelled').
-    # The downstream publish steps are each independently gated by
-    # `if: github.event_name == 'push'`, so a manual dispatch cannot trigger a
-    # real publish even when tag-verification is skipped.
-    # WARNING: Removing any inner `github.event_name == 'push'` gate on a publish
-    # step would allow manual dispatch to publish without tag verification.
-    if: >-
-      always() &&
-      needs.generate-sbom.result == 'success' &&
-      (
-        (github.event_name == 'push' && needs.verify-tag-version.result == 'success') ||
-        (github.event_name == 'workflow_dispatch' && needs.verify-tag-version.result == 'skipped')
-      )
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: ${{ github.event.inputs.ref || github.ref }}
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: "1.3.10"
+      - name: Reject manual non-dry-run release
+        if: github.event.inputs.dry_run != 'true'
+        run: |
+          echo "workflow_dispatch releases are dry-run only; push a verified v* tag to publish." >&2
+          exit 1
+      - name: Setup Bun + deps (cached)
+        uses: ./.github/actions/setup
       - name: Setup Node
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: "22"
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-      - name: Configure git identity for worktree/orchestration tests
-        # The orchestration worktree flow makes real git commits and relies on
-        # ambient git config (as it does in a real user environment). A fresh CI
-        # runner has no identity, so those commits fail and the worktree
-        # integration tests hang/timeout. Provide a deterministic identity.
-        run: |
-          git config --global user.email "ci@goodvibes.local"
-          git config --global user.name "GoodVibes CI"
-      - name: Reject manual non-dry-run release
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run != 'true'
-        run: |
-          echo "workflow_dispatch releases are dry-run only; push a verified v* tag to publish." >&2
-          exit 1
-      - name: Validate workspace once before publish jobs
-        run: bun run validate
-      - name: Security audit
-        run: bun run security:audit
-      - name: Run Bun test suite
-        run: bun run test
-      - name: Run React Native bundle guard
-        run: bun run test:rn
-      - name: Run Workers tests
-        run: bun run test:workers
-      - name: Run Wrangler Workers tests
-        run: bun run test:workers:wrangler
-      - name: Verify generated contract artifacts
-        run: bun run contracts:check
-      - name: Release dry run
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true'
+      - name: Release dry run (pack + publish preview, no registry write)
         run: bun run release:dry-run
-      - name: Archive workspace build output
-        run: tar -czf /tmp/workspace-build-output.tgz packages/*/dist
-      - name: Upload workspace build output
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: workspace-build-output
-          path: /tmp/workspace-build-output.tgz
-          if-no-files-found: error
-          retention-days: 7
 
   publish-npm:
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    needs: [verify-tag-version, generate-sbom, validate-release]
+    needs: [verify-tag-version, release-verify, generate-sbom]
     if: >-
       always() &&
       github.event_name == 'push' &&
-      needs.generate-sbom.result == 'success' &&
-      needs.validate-release.result == 'success' &&
-      needs.verify-tag-version.result == 'success'
+      needs.verify-tag-version.result == 'success' &&
+      needs.release-verify.result == 'success' &&
+      needs.generate-sbom.result == 'success'
     environment:
       name: production
       url: https://www.npmjs.com/package/@pellux/goodvibes-sdk
     permissions:
       contents: read
       id-token: write
+      actions: read
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -193,11 +158,26 @@ jobs:
           registry-url: "https://registry.npmjs.org"
       - name: Install dependencies
         run: bun install --frozen-lockfile
-      - name: Download workspace build output
+      # Artifact-integrity handoff: restore the exact build the CI run produced
+      # for this SHA (not a fresh throwaway build), and assert the run's recorded
+      # head SHA equals the tagged SHA before trusting its bytes.
+      - name: Assert recorded head SHA matches the tagged SHA
+        env:
+          RECORDED_SHA: ${{ needs.release-verify.outputs.head_sha }}
+          TAGGED_SHA: ${{ github.sha }}
+        run: |
+          if [ "$RECORDED_SHA" != "$TAGGED_SHA" ]; then
+            echo "Artifact integrity check FAILED: CI build head SHA ($RECORDED_SHA) != tagged SHA ($TAGGED_SHA)." >&2
+            exit 1
+          fi
+          echo "Artifact integrity OK: $RECORDED_SHA == $TAGGED_SHA"
+      - name: Download CI build artifact (by recorded run id)
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: workspace-build-output
           path: /tmp/workspace-build-output
+          run-id: ${{ needs.release-verify.outputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Restore workspace build output
         run: tar -xzf /tmp/workspace-build-output/workspace-build-output.tgz -C .
       - name: Verify npm registry is empty or complete for this version
@@ -208,19 +188,20 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: bun run release:publish:ci
-      - name: Verify published packages
+      - name: Verify published packages (propagation poll)
         env:
           GOODVIBES_VERIFY_ATTEMPTS: "48"
           GOODVIBES_VERIFY_DELAY_MS: "5000"
         run: bun run release:verify:published
 
   github-release:
-    # Gate: create the GitHub release only after npm publish and SBOM generation succeed.
+    # Create the GitHub release only after npm publish and SBOM generation succeed.
     if: always() && github.event_name == 'push' && needs.publish-npm.result == 'success' && needs.generate-sbom.result == 'success'
     needs: [publish-npm, generate-sbom]
-    # Pinned to ubuntu-24.04 (not ubuntu-latest) to prevent BSD awk semantics from
-    # silently breaking the changelog extraction step if the runner image changes.
+    # Pinned to ubuntu-24.04 (not ubuntu-latest) to prevent BSD awk semantics
+    # from silently breaking the changelog extraction step.
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     permissions:
       contents: write
     steps:
@@ -242,7 +223,6 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           # Release notes are extracted directly from CHANGELOG.md.
-          # docs/releases/<version>.md is not used; CHANGELOG is the single source of truth.
           EXCERPT=$(awk -v version="$VERSION" '
             $0 ~ "^## \\[" version "\\]([[:space:]]|-|$)" { in_section = 1; next }
             in_section && /^## / { exit }
