@@ -86,7 +86,7 @@ export interface UiOperationsReadModelOptions {
 }
 
 export function createOperationsReadModels(
-  runtimeServices: RuntimeServices,
+  runtimeServices: Pick<RuntimeServices, 'runtimeStore' | 'approvalBroker' | 'sessionBroker'>,
   options: UiOperationsReadModelOptions = {},
 ): UiOperationsReadModels {
   const { runtimeStore } = runtimeServices;

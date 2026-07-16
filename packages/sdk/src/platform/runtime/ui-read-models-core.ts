@@ -49,7 +49,9 @@ export interface UiCoreReadModels {
   readonly tasks: UiReadModel<UiTasksSnapshot>;
 }
 
-export function createCoreReadModels(runtimeServices: RuntimeServices): UiCoreReadModels {
+export function createCoreReadModels(
+  runtimeServices: Pick<RuntimeServices, 'runtimeStore' | 'runtimeBus' | 'providerRegistry'>,
+): UiCoreReadModels {
   const { runtimeStore } = runtimeServices;
 
   return {

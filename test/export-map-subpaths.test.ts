@@ -38,6 +38,19 @@ const DIR_SUBPATH_SURFACE: Record<string, readonly string[]> = {
   // The consolidation driver rides the existing ./platform/state barrel — a
   // consumer constructs it the way runtime/services.ts does.
   './platform/state': ['MemoryConsolidationScheduler', 'runMemoryConsolidation', 'resolveMemoryConsolidationConfig'],
+  // The memory-governance layer: fork-composing consumers (agent, TUI) build
+  // their own runtime services and must construct the governor the way
+  // runtime/services.ts does — this was the 2026-07-16 phantom-export find
+  // (dist-built, composed in-process, absent from the map).
+  './platform/runtime/memory': [
+    'CacheRegistry', 'PauseController', 'MemoryGovernor',
+    'createMemoryGovernance', 'wireDaemonMemoryGovernance',
+    'KNOWN_MEMORY_CACHES', 'isMemoryCacheRegistered', 'assertMemoryCacheRegistered',
+    'resolveEffectiveSystemRamMb',
+  ],
+  // singleFlight is composition machinery the SDK's own voice-install path
+  // uses — consumers must not have to duplicate it.
+  './platform/utils': ['singleFlight', 'logger'],
 };
 
 describe('export-map subpath resolution (committed manifest)', () => {
@@ -76,4 +89,45 @@ describe('export-map subpath resolution (committed manifest)', () => {
       }
     });
   }
+
+  test('./platform/runtime/memory entrypoint COMPOSES: a consumer builds a working governor through the package name', async () => {
+    // The way a fork-composed runtime (agent, TUI) constructs it — real
+    // registry + controller, injected sampler/clock, no interval started.
+    const memory = await import('@pellux/goodvibes-sdk/platform/runtime/memory');
+    let rss = 10 * 1024 * 1024;
+    const { cacheRegistry, pauseController, memoryGovernor } = memory.createMemoryGovernance({
+      config: { budgetMb: 100, elevatedPct: 60, highPct: 80, criticalPct: 95, tripwireRateMbPerSec: 25, tripwireSustainSec: 60 },
+      caches: [{ id: 'knowledge-store', cache: { name: 'k', entryCount: () => 1, trim: () => {} } }],
+      jobIds: ['knowledge-self-improvement'],
+      start: false,
+      deps: {
+        sampler: () => ({ rssBytes: rss, heapUsedBytes: rss / 2 }),
+        now: () => 0,
+        gc: () => {},
+        exit: () => {},
+        resolveSystemRamMb: () => 8 * 1024,
+      },
+    });
+    expect(cacheRegistry.registeredIds()).toEqual(['knowledge-store']);
+    rss = 85 * 1024 * 1024; // above highPct of the 100MB budget
+    memoryGovernor.sampleOnce();
+    expect(memoryGovernor.currentTier()).toBe('high');
+    expect(pauseController.isPaused('knowledge-self-improvement')).toBe(true);
+    expect(memoryGovernor.snapshot().budgetMb).toBe(100);
+    memoryGovernor.stop();
+  });
+
+  test('./platform/utils entrypoint serves a WORKING singleFlight through the package name', async () => {
+    const { singleFlight } = await import('@pellux/goodvibes-sdk/platform/utils');
+    let runs = 0;
+    let release: (() => void) | undefined;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const run = singleFlight(async () => { runs += 1; await gate; return runs; });
+    const [a, b] = [run(), run()]; // concurrent callers join ONE in-flight run
+    release!();
+    expect(await a).toBe(1);
+    expect(await b).toBe(1);
+    expect(runs).toBe(1);
+    expect(await run()).toBe(2); // after settlement a fresh run starts
+  });
 });

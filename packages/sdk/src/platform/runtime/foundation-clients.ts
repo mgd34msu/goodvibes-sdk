@@ -20,8 +20,41 @@ import type { TaskManager } from './tasks/types.js';
 import { createDirectTransportFromServices, type DirectTransport } from './transports/direct.js';
 import type { UiTasksSnapshot } from './ui-read-models.js';
 
+/**
+ * The EXACT slice of the runtime-services composition that
+ * {@link createRuntimeFoundationClients} (and the transport/api factories it
+ * composes) actually reads. Named and exported so a fork that composes its own
+ * runtime services can construct the options from real objects it owns —
+ * without fabricating the SDK-internal remainder of RuntimeServices (memory
+ * governor, cache registry, pause controller, schedulers, ...), none of which
+ * this layer touches.
+ */
+export type RuntimeFoundationServicesSlice = Pick<
+  RuntimeServices,
+  | 'runtimeBus'
+  | 'shellPaths'
+  | 'runtimeStore'
+  | 'sessionBroker'
+  | 'approvalBroker'
+  | 'providerRegistry'
+  | 'serviceRegistry'
+  | 'subscriptionManager'
+  | 'secretsManager'
+  | 'distributedRuntime'
+  | 'remoteRunnerRegistry'
+  | 'remoteSupervisor'
+  | 'benchmarkStore'
+  | 'favoritesStore'
+  | 'knowledgeService'
+  | 'memoryRegistry'
+  | 'codeIndexStore'
+  | 'hookDispatcher'
+  | 'hookWorkbench'
+  | 'mcpRegistry'
+>;
+
 export interface RuntimeFoundationClientsOptions extends OperatorClientServicesOptions {
-  readonly runtimeServices: RuntimeServices;
+  readonly runtimeServices: RuntimeFoundationServicesSlice;
   readonly tasksReadModel: {
     getSnapshot(): UiTasksSnapshot;
   };

@@ -397,6 +397,10 @@
     "gzip_bytes": 663,
     "rationale": "fleet process registry entrypoint; re-measured 552 B gzip after the observed-external adapter landed (adapters/observed.js adaptObservedAgent/steerObservedNode/observedNodeId, reachable from createProcessRegistry via registry.ts's observed fold); headroom max(ceil(552*1.2)=663, 552+50=602) -> 663 (1.2x dominates)"
   },
+  "./platform/runtime/memory": {
+    "gzip_bytes": 468,
+    "rationale": "memory-governance composition surface for fork-composed runtimes (agent, TUI): CacheRegistry + PauseController + MemoryGovernor + createMemoryGovernance/wireDaemonMemoryGovernance + the KNOWN_MEMORY_CACHES contract; barrel re-export shim; measured 390 B gzip at first export; headroom max(ceil(390*1.2)=468, 390+50=440) -> 468 (1.2x dominates)"
+  },
   "./platform/runtime/memory-spine": {
     "gzip_bytes": 675,
     "rationale": "public runtime seam for the daemon-owned memory service; full-detach 1.2.0 added the extended verb catalog (list/searchSemantic/update/link/linksFor/reviewQueue/export/import/vectorStats/doctor) plus the freshness-stamped recall snapshot seam (recall-snapshot.ts); measured 562 B gzip; headroom max(ceil(562*1.2)=675, 562+50=612) \u2192 675 (1.2x dominates by 63 B); bumped from 443 to 675 for the widened surface"
