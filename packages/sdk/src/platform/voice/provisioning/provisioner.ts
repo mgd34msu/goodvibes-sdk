@@ -16,7 +16,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writ
 import { dirname, join } from 'node:path';
 import { logger } from '../../utils/logger.js';
 import { summarizeError } from '../../utils/error-display.js';
-import { downloadVerifiedFile, fileMatches, fileMatchesCached, type VerifiedDownloadResult } from './download-verified.js';
+import { downloadVerifiedFile, fileMatches, fileMatchesCached, fileSha256, type VerifiedDownloadResult } from './download-verified.js';
 import {
   DEFAULT_PIPER_VOICE,
   DEFAULT_WHISPER_MODEL,
@@ -120,7 +120,13 @@ export interface VoiceProvisionProgress {
 }
 
 export type TtsProvisionState = 'provisioned' | 'unsupported-platform' | 'download-failed' | 'checksum-mismatch';
-export type SttProvisionState = TtsProvisionState | 'bundle-unavailable';
+/**
+ * STT terminal states. `bundle-unavailable`: no hosted URL and no sideloaded
+ * archive (and no usable binary). `sideload-mismatch`: an archive IS present at
+ * the sideload path but fails the current pin, so it is refused rather than
+ * extracted — reported explicitly so the user knows to rebuild/replace it.
+ */
+export type SttProvisionState = TtsProvisionState | 'bundle-unavailable' | 'sideload-mismatch';
 export interface VoiceComponentOutcome {
   readonly id: string;
   readonly state: 'installed' | 'skipped' | 'failed';
@@ -256,7 +262,7 @@ export async function provisionLocalVoiceRuntime(options: VoiceProvisionOptions)
   }
 
   // ── STT: the goodvibes-built whisper.cpp bundle + the default ggml model ──
-  stt = await provisionWhisperStt({
+  const whisperOutcome = await provisionWhisperStt({
     options,
     platform,
     paths,
@@ -266,17 +272,20 @@ export async function provisionLocalVoiceRuntime(options: VoiceProvisionOptions)
     download,
     emit,
   });
+  stt = whisperOutcome.stt;
 
   // Stamp the installed versions so a later manifest bump knows to replace.
+  // STT provenance prefers what THIS run actually installed on disk; otherwise
+  // it PRESERVES the prior stamp — a failed or absent STT half must never erase
+  // sttEngineVersion/sttModelId, the only version provenance the sideload update
+  // path has (a rewrite-erase would freeze a later correct sideload forever).
+  const sttEngineVersion = whisperOutcome.installedEngineVersion ?? priorStamp?.sttEngineVersion;
+  const sttModelId = whisperOutcome.installedModelId ?? priorStamp?.sttModelId;
   writeVoiceInstallStamp(options.managedRoot, {
     engineVersion: engine.version,
     voiceId: voice.id,
-    ...(stt.state === 'provisioned'
-      ? {
-          sttEngineVersion: (options.whisperOverride ?? WHISPER_ENGINES[platform])?.version ?? '',
-          sttModelId: (options.whisperModelOverride ?? DEFAULT_WHISPER_MODEL).id,
-        }
-      : {}),
+    ...(sttEngineVersion !== undefined ? { sttEngineVersion } : {}),
+    ...(sttModelId !== undefined ? { sttModelId } : {}),
     configWrites: priorStamp?.configWrites ?? {},
   });
 
@@ -289,12 +298,32 @@ export async function provisionLocalVoiceRuntime(options: VoiceProvisionOptions)
   };
 }
 
+/** The STT provision outcome plus what it ACTUALLY put on disk (for the stamp). */
+interface WhisperProvisionOutcome {
+  readonly stt: VoiceProvisionResult['stt'];
+  /**
+   * The whisper engine version now on disk, attestable ONLY when the installed
+   * binary came from a pin-verified archive of that version. null when this run
+   * did not (re)install a pin-verified engine — the caller then preserves the
+   * prior stamp rather than claiming a version it cannot attest.
+   */
+  readonly installedEngineVersion: string | null;
+  /** The whisper model id verified on disk this run, or null. */
+  readonly installedModelId: string | null;
+}
+
 /**
  * Provision the STT half: the pinned whisper.cpp bundle (hosted URL when the
  * release pipeline has published it, else a sideloaded archive matching the
  * SAME pin at the managed archive path) plus the default ggml model from its
  * stable Hugging Face URL. Every terminal state is honest; an STT failure
  * never blocks TTS.
+ *
+ * Extraction is gated on the on-disk archive VERIFYING against the current pin:
+ * a stale/mismatched archive is never extracted and its version is never
+ * stamped over the running binary. A present-but-mismatched sideload archive is
+ * reported explicitly (sideload-mismatch, or a skip note when an older verified
+ * binary is still usable) rather than silently ignored.
  */
 async function provisionWhisperStt(ctx: {
   readonly options: VoiceProvisionOptions;
@@ -305,33 +334,67 @@ async function provisionWhisperStt(ctx: {
   readonly extractArchive: ArchiveExtractor;
   readonly download: (id: string, spec: { url: string; bytes: number; sha256: string }, dest: string) => Promise<VerifiedDownloadResult>;
   readonly emit: (component: string, phase: ProvisionPhase, message?: string) => void;
-}): Promise<VoiceProvisionResult['stt']> {
+}): Promise<WhisperProvisionOutcome> {
   const { options, platform, paths, priorStamp, components, extractArchive, download, emit } = ctx;
   const whisper = options.whisperOverride ?? WHISPER_ENGINES[platform];
   const model = options.whisperModelOverride ?? DEFAULT_WHISPER_MODEL;
+  const unprovisioned = (stt: VoiceProvisionResult['stt']): WhisperProvisionOutcome =>
+    ({ stt, installedEngineVersion: null, installedModelId: null });
   if (!whisper) {
-    return { engine: 'whisper-cpp', state: 'unsupported-platform', reason: WHISPER_UNSUPPORTED_REASON };
+    return unprovisioned({ engine: 'whisper-cpp', state: 'unsupported-platform', reason: WHISPER_UNSUPPORTED_REASON });
   }
+  const pinSpec = { url: '', bytes: whisper.bundle.bytes, sha256: whisper.bundle.sha256 };
 
-  // Obtain the engine bundle: hosted download when a URL is pinned; otherwise a
-  // sideloaded archive at the managed path verifying against the SAME pin.
+  // Obtain the engine bundle. `bundleVerified` gates extraction: it is true ONLY
+  // when the on-disk archive matches the current pin (fresh verified download,
+  // or a pin-matching sideload) — extraction never runs against an unverified
+  // archive, so a bumped version can never be stamped over an old binary.
   let archiveFresh = false;
+  let bundleVerified = false;
   if (whisper.bundle.url) {
     const result = await download('whisper-engine', { url: whisper.bundle.url, bytes: whisper.bundle.bytes, sha256: whisper.bundle.sha256 }, paths.whisperArchive);
     if (!result.ok) {
       const state: SttProvisionState = result.reason === 'checksum-mismatch' ? 'checksum-mismatch' : 'download-failed';
       emit('whisper-engine', 'error', result.error);
-      return { engine: 'whisper-cpp', state, reason: result.error };
+      return unprovisioned({ engine: 'whisper-cpp', state, reason: result.error });
     }
     archiveFresh = !result.skipped;
-  } else if (fileMatches(paths.whisperArchive, { url: '', bytes: whisper.bundle.bytes, sha256: whisper.bundle.sha256 })) {
-    emit('whisper-engine', 'skip', 'using the sideloaded whisper bundle (pin verified)');
-    components.push({ id: 'whisper-engine', state: 'skipped', bytes: whisper.bundle.bytes });
-  } else if (!isUsableBinary(paths.whisperBinary)) {
-    const reason = `The whisper.cpp ${whisper.version} bundle for ${platform} is pinned (sha256 ${whisper.bundle.sha256.slice(0, 12)}…) but not yet hosted. Build it reproducibly with scripts/build-whisper-bundle.ts and drop the archive at ${paths.whisperArchive}, or wait for a release that hosts it. Local TTS is unaffected.`;
-    emit('whisper-engine', 'error', reason);
-    components.push({ id: 'whisper-engine', state: 'failed', error: reason });
-    return { engine: 'whisper-cpp', state: 'bundle-unavailable', reason };
+    bundleVerified = true;
+  } else {
+    const archivePresent = existsSync(paths.whisperArchive);
+    const archiveMatchesPin = archivePresent && fileMatches(paths.whisperArchive, pinSpec);
+    if (archiveMatchesPin) {
+      bundleVerified = true;
+      emit('whisper-engine', 'skip', 'using the sideloaded whisper bundle (pin verified)');
+      components.push({ id: 'whisper-engine', state: 'skipped', bytes: whisper.bundle.bytes });
+      // A pin-matching archive whose version differs from the stamp is a NEWLY
+      // sideloaded bundle: force extraction even though an old usable binary
+      // exists, so the update actually applies (else it would freeze forever).
+      if (priorStamp?.sttEngineVersion !== undefined && priorStamp.sttEngineVersion !== whisper.version) {
+        archiveFresh = true;
+      }
+    } else if (archivePresent) {
+      // Present but fails the current pin — NEVER extract it. Report honestly.
+      const got = fileSha256(paths.whisperArchive);
+      const reason = `A whisper bundle is present at ${paths.whisperArchive} but does not match the pinned sha256 (got ${(got ?? 'unreadable').slice(0, 12)}…, want ${whisper.bundle.sha256.slice(0, 12)}…). Rebuild it byte-for-byte with scripts/build-whisper-bundle.ts, or wait for a release that hosts it. Local TTS is unaffected.`;
+      if (isUsableBinary(paths.whisperBinary)) {
+        // An older verified binary is still installed — keep serving it; the pin
+        // update simply cannot be applied from a mismatched archive, and the
+        // stamp stays at the recorded (old) version rather than claiming the new.
+        emit('whisper-engine', 'skip', reason);
+        components.push({ id: 'whisper-engine', state: 'skipped', error: reason });
+      } else {
+        emit('whisper-engine', 'error', reason);
+        components.push({ id: 'whisper-engine', state: 'failed', error: reason });
+        return unprovisioned({ engine: 'whisper-cpp', state: 'sideload-mismatch', reason });
+      }
+    } else if (!isUsableBinary(paths.whisperBinary)) {
+      const reason = `The whisper.cpp ${whisper.version} bundle for ${platform} is pinned (sha256 ${whisper.bundle.sha256.slice(0, 12)}…) but not yet hosted. Build it reproducibly with scripts/build-whisper-bundle.ts and drop the archive at ${paths.whisperArchive}, or wait for a release that hosts it. Local TTS is unaffected.`;
+      emit('whisper-engine', 'error', reason);
+      components.push({ id: 'whisper-engine', state: 'failed', error: reason });
+      return unprovisioned({ engine: 'whisper-cpp', state: 'bundle-unavailable', reason });
+    }
+    // else: no archive present but a usable binary is already installed — keep it.
   }
 
   // Model (real hosted URL, checksum-pinned).
@@ -339,16 +402,17 @@ async function provisionWhisperStt(ctx: {
   if (!modelResult.ok) {
     const state: SttProvisionState = modelResult.reason === 'checksum-mismatch' ? 'checksum-mismatch' : 'download-failed';
     emit('whisper-model', 'error', modelResult.error);
-    return { engine: 'whisper-cpp', state, reason: modelResult.error };
+    return unprovisioned({ engine: 'whisper-cpp', state, reason: modelResult.error });
   }
 
-  // Atomic extract, version-aware (same discipline as the piper engine).
+  // Atomic extract — ONLY from a pin-verified archive. A version bump or missing
+  // binary that cannot be served from a verified archive is left as-is above.
   const versionChanged = priorStamp?.sttEngineVersion !== undefined && priorStamp.sttEngineVersion !== whisper.version;
-  const needsExtract = !isUsableBinary(paths.whisperBinary) || versionChanged || archiveFresh;
+  const needsExtract = bundleVerified && (!isUsableBinary(paths.whisperBinary) || versionChanged || archiveFresh);
   if (needsExtract) {
     if (!existsSync(paths.whisperArchive)) {
       const reason = `whisper bundle archive missing at ${paths.whisperArchive}`;
-      return { engine: 'whisper-cpp', state: 'bundle-unavailable', reason };
+      return unprovisioned({ engine: 'whisper-cpp', state: 'bundle-unavailable', reason });
     }
     try {
       emit('whisper-engine', 'extract', versionChanged ? `updating whisper engine ${priorStamp?.sttEngineVersion} -> ${whisper.version}` : 'extracting whisper engine');
@@ -357,16 +421,23 @@ async function provisionWhisperStt(ctx: {
       const message = summarizeError(error);
       emit('whisper-engine', 'error', message);
       components.push({ id: 'whisper-engine-extract', state: 'failed', error: message });
-      return { engine: 'whisper-cpp', state: 'download-failed', reason: `whisper extract failed: ${message}` };
+      return unprovisioned({ engine: 'whisper-cpp', state: 'download-failed', reason: `whisper extract failed: ${message}` });
     }
   }
   if (!isUsableBinary(paths.whisperBinary)) {
     const message = `whisper binary not found (or not executable) at ${paths.whisperBinary} after extraction`;
     emit('whisper-engine', 'error', message);
-    return { engine: 'whisper-cpp', state: 'download-failed', reason: message };
+    return unprovisioned({ engine: 'whisper-cpp', state: 'download-failed', reason: message });
   }
   emit('whisper-engine', 'done', 'local STT provisioned');
-  return { engine: 'whisper-cpp', state: 'provisioned', binaryPath: paths.whisperBinary, modelPath: paths.whisperModel };
+  // Only claim the pinned version when the installed binary is attestably from a
+  // pin-verified archive; otherwise preserve whatever the prior stamp recorded.
+  const installedEngineVersion = bundleVerified ? whisper.version : (priorStamp?.sttEngineVersion ?? null);
+  return {
+    stt: { engine: 'whisper-cpp', state: 'provisioned', binaryPath: paths.whisperBinary, modelPath: paths.whisperModel },
+    installedEngineVersion,
+    installedModelId: model.id,
+  };
 }
 
 /** A binary is usable when it exists, is non-empty, and is executable. */
@@ -457,7 +528,7 @@ export function localVoiceRuntimeStatus(options: { managedRoot: string; platform
         binaryPath: paths.whisperBinary,
         modelPath: paths.whisperModel,
         ...(whisper.bundle.url === null && !sttBinaryPresent
-          ? { reason: `The pinned whisper.cpp ${whisper.version} bundle is not yet hosted; sideload it at ${paths.whisperArchive} (scripts/build-whisper-bundle.ts) or wait for a hosting release.` }
+          ? { reason: `The pinned whisper.cpp ${whisper.version} bundle (sha256 ${whisper.bundle.sha256.slice(0, 12)}…) is not yet hosted. Build it byte-for-byte with scripts/build-whisper-bundle.ts and drop the archive at ${paths.whisperArchive} — it must match the pin exactly (the script produces a reproducible tarball) — or wait for a hosting release.` }
           : {}),
       }
     : {

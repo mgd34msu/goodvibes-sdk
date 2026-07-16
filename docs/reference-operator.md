@@ -33482,7 +33482,8 @@ One-act setup: download + checksum-verify the piper TTS engine, a default voice,
             "unsupported-platform",
             "download-failed",
             "checksum-mismatch",
-            "bundle-unavailable"
+            "bundle-unavailable",
+            "sideload-mismatch"
           ]
         },
         "binaryPath": {
