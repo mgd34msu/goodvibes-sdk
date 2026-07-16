@@ -4,6 +4,43 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
+## [Unreleased]
+
+### Added
+
+- **`@pellux/goodvibes-toolchain` — a shared CI/CD toolchain package (the 11th
+  workspace package).** The release, publish, and verification scripts that
+  previously lived as 2–3 parallel copies across the GoodVibes repos now have one
+  published home. Each tool — `sdk-pin-gate`, `build-binaries`, `release-cut`,
+  `coverage-gate`, `verification-ledger`, `post-build-smoke`,
+  `package-install-check`, `publish-package`, `per-job-green`, `changelog-gate`,
+  `sha256sums` — ships as a policy function with injectable I/O plus a thin CLI
+  (`bin`) entry. Repo-specific values are supplied by a documented
+  `toolchain.config.json` contract (see `docs/release-and-publishing.md`);
+  behavior lives in the package. Consumers dev-depend on it.
+- **Reusable GitHub workflows (`workflow_call`), hosted here and consumed
+  cross-repo.** `reusable-release-verify.yml` verifies a commit's push-CI run is
+  per-job green by reference (the toolchain `per-job-green` tool, with a
+  503-resilient check-suites fallback) and emits the run id + head SHA;
+  `reusable-npm-publish.yml` (provenance + propagation poll),
+  `reusable-gh-release.yml` (changelog excerpt + `SHA256SUMS`), and
+  `reusable-binary-matrix.yml` (build-binaries + post-build-smoke) round out the
+  set. The composite setup action gains a single-source `bun-version` input.
+
+### Changed
+
+- **CI builds once; the platform matrix and eval gate restore that artifact.**
+  `ci.yml` no longer rebuilds the workspace inside each matrix leg and the eval
+  gate — they restore the single `build` job's `workspace-build-output`. Gate
+  coverage is unchanged.
+- **The SDK release is now by reference.** `release.yml` replaces the
+  ~45-minute `validate-release` re-run with `reusable-release-verify` plus an
+  artifact-integrity handoff: `publish-npm` restores the CI build for the
+  recorded run id and asserts its head SHA equals the tagged SHA before
+  publishing. `verify-tag-version`, the SBOM release, provenance publish,
+  empty-or-complete verification, the propagation poll, and the GitHub release
+  are all preserved.
+
 ## [1.10.1] - 2026-07-16
 
 ### Added

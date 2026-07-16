@@ -21,6 +21,36 @@ The SDK targets Bun for daemon/platform surfaces and browser, Hermes, and
 Workers for companion-safe surfaces. Node.js is not a documented consumer
 runtime target; see [Runtime surfaces](./surfaces.md).
 
+## By-Reference Release Flow
+
+A commit is validated exactly once — on its push-CI run, per-job green.
+Everything downstream verifies *that run's* conclusions instead of re-executing
+work. Local release tooling never re-runs gates; it prepares, commits, and tags.
+
+1. **Land the release commit on `main`.** Push-CI (`ci.yml`) builds the
+   workspace once, uploads the `workspace-build-output` artifact, and runs every
+   gate. The matrix legs and the eval gate restore that one artifact rather than
+   rebuilding — build once, restore everywhere.
+2. **Cut locally.** With CI green, run the local release cut (bump every
+   workspace `package.json`, refresh generated version surfaces, prepend the
+   `CHANGELOG.md` section, commit, and create the annotated tag). This step runs
+   **no gates** — validation already happened in step 1. See *Release Commands*.
+3. **Push the tag.** `release.yml` runs:
+   - `verify-tag-version` — the tag equals `packages/sdk` version.
+   - `release-verify` — the reusable `reusable-release-verify.yml` confirms the
+     tagged commit's push-CI run concluded with **every job green** (the
+     toolchain `per-job-green` tool, with a 503-resilient check-suites
+     fallback). This replaces the former 45-minute `validate-release` re-run.
+   - `publish-npm` — restores the **CI build artifact for the recorded run id**,
+     asserts the run's head SHA equals the tagged SHA (the artifact-integrity
+     handoff), verifies the registry is empty-or-complete, publishes with
+     provenance from the `production` environment, and polls propagation.
+   - `github-release` — SBOM asset plus the tag's `CHANGELOG.md` excerpt.
+
+Because tagging is gated on push-CI green, the tag-redo dance is structurally
+retired. The SDK release wall drops from ~45–70m to ~15–20m, dominated by the
+publish itself.
+
 ## Validation Scope
 
 Release validation covers:
@@ -64,6 +94,45 @@ Before opening a PR, run the focused check that matches the change rather than t
 | Bundle size | `bun run bundle:check` |
 | Dependencies / licenses | `bun run sbom:check` and `bun run security:audit` |
 | Packaging / `exports` map | `bun run publint:check` and `bun run types:resolution-check` |
+
+## Shared Toolchain (`@pellux/goodvibes-toolchain`)
+
+The release, publish, and verification scripts shared across the GoodVibes repos
+live in one published workspace package, `@pellux/goodvibes-toolchain`. Each tool
+is a policy function with injectable I/O plus a thin CLI (`bin`) entry. Repos
+keep only their repo-specific values in a `toolchain.config.json` at the repo
+root; the behavior lives in the package.
+
+Tools: `sdk-pin-gate`, `build-binaries`, `release-cut`, `coverage-gate`,
+`verification-ledger`, `post-build-smoke`, `package-install-check`,
+`publish-package`, `per-job-green`, `changelog-gate`, `sha256sums`.
+
+### `toolchain.config.json` contract
+
+All sections are optional — a repo declares only the tools it uses. Import the
+`ToolchainConfig` type from the package for editor help.
+
+| Field | Purpose |
+|-------|---------|
+| `packageName` (required) | The repo's primary npm package name. |
+| `sdkPin` | `{ sdkPackage, pinSource: "dependencies"｜"devDependencies", lockfile, overlayMarker, sourceRoots[], enforceExportsMap }` — parameterizes the SDK-pin tri-agreement. The agent bundles the SDK as a `devDependencies` pin; webui sets `enforceExportsMap: true`. |
+| `build` | `{ appEntrypoint, daemonEntrypoint?, outDir, addonOutDir, targets[], prebuild[][] }`. A target carries `{ key, bunTarget, appArtifact, daemonArtifact?, nativeAddonPackage?, nativeAddonFile? }`. Presence of `daemonEntrypoint` + a target's `daemonArtifact` builds the daemon leg. |
+| `coverage` | `{ funcsFloor, linesFloor, command[] }` — the aggregate-coverage ratchet. |
+| `smoke` | `{ bannerPrefix, forbiddenStrings[], binaryDefault }` — post-build binary smoke. |
+| `releaseCut` | `{ branch, versionFiles[], syncCommands[][], commitPaths[], changelogHeading: "bracket"｜"plain", changelogInsertMarker: "first-separator"｜"top" }`. |
+| `publish` | `{ packageName, defaultRegistry, requiredTarballPaths[], forbiddenTarballPrefixes[], maxTarballBytes }`. |
+| `perJobGreen` | `{ owner, repo, workflow, event, pollIntervalMs, deadlineMs }` (the CLI also accepts `--repo/--sha/--workflow` and `GITHUB_REPOSITORY`/`GITHUB_SHA`). |
+
+### Reusable workflows
+
+Hosted in this repo's `.github/workflows` and consumed cross-repo via
+`uses: mgd34msu/goodvibes-sdk/.github/workflows/<name>.yml@main`:
+`reusable-release-verify.yml` (by-reference per-job-green, emits `run_id` +
+`head_sha`), `reusable-npm-publish.yml` (provenance + propagation poll),
+`reusable-gh-release.yml` (changelog excerpt + `SHA256SUMS`), and
+`reusable-binary-matrix.yml` (build-binaries + post-build-smoke). The composite
+`./.github/actions/setup` action is the single Bun setup (one `bun-version`
+source, frozen-lockfile + cache always on).
 
 ## Changelog
 
