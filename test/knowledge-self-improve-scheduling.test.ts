@@ -244,14 +244,14 @@ describe('fix-round 2: in-flight gap evidence and sweep backoff', () => {
 
   test('the collapsed global sweep honors its OWN zero-gap backoff across burst waves; gap evidence clears it', async () => {
     const h = harness({ minDelayMs: 10, zeroGapBackoffMs: 3_600_000, candidateGaps: 0 });
-    // Wave 1: 9+ distinct scopes → bounded runs incl. one global sweep; all zero-gap.
+    // First burst: 9+ distinct scopes → bounded runs incl. one global sweep; all zero-gap.
     for (let i = 0; i < 20; i++) h.svc.queueBackgroundSelfImprove({ reason: 'ingest', sourceIds: [`w1-${i}`] }, 0);
     await h.advance(50);
     const wave1Runs = h.runs.length;
     expect(wave1Runs).toBeLessThanOrEqual(9);
     const sweep = h.state().get('global|sweep')!;
     expect(sweep.zeroGapUntil).toBeGreaterThan(0); // sweep parked itself
-    // Wave 2 INSIDE the sweep's backoff window: 20 NEW distinct sources.
+    // Second burst INSIDE the sweep's backoff window: 20 NEW distinct sources.
     for (let i = 0; i < 20; i++) h.svc.queueBackgroundSelfImprove({ reason: 'ingest', sourceIds: [`w2-${i}`] }, 0);
     await h.advance(50);
     // The distinct scoped keys may run (they carry their own state), but NO
