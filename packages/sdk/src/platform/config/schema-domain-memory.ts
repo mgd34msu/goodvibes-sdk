@@ -26,6 +26,13 @@ export interface MemoryConfig {
     /** How long (s) the growth must be sustained after a flush before exiting. */
     sustainSec: number;
   };
+  /**
+   * Absolute-RSS backstop as a percent of the budget, ABOVE the tier ladder
+   * (must exceed tier.criticalPct). The rate tripwire only catches fast leaks;
+   * this ceiling catches a slow leak that would otherwise ride to a kernel OOM
+   * kill. Default 120.
+   */
+  hardLimitPct: number;
 }
 declare module './schema-types.js' {
   interface GoodVibesConfig {
@@ -45,6 +52,7 @@ export const memoryConfigDefaults: { memory: MemoryConfig } = {
       rateMbPerSec: 25,
       sustainSec: 60,
     },
+    hardLimitPct: 120,
   },
 };
 
@@ -96,5 +104,13 @@ export const memoryConfigSettings: ConfigSettingDefinition[] = [
     description:
       'Leak tripwire sustain window in seconds: the post-flush growth rate must exceed memory.tripwire.rateMbPerSec continuously for this long before the governor writes a receipt and exits for a clean supervisor restart.',
     ...intRange(1, 86_400),
+  },
+  {
+    key: 'memory.hardLimitPct',
+    type: 'number',
+    default: 120,
+    description:
+      'Absolute-RSS backstop as a percent of the budget, above the tier ladder (must exceed memory.tier.criticalPct). The rate tripwire only catches fast leaks; if RSS holds at/above this percent of the budget for memory.tripwire.sustainSec, the governor writes a hard-limit receipt and exits — so a slow leak the rate tripwire cannot see becomes a clean restart instead of a kernel OOM kill.',
+    ...intRange(101, 100_000),
   },
 ];

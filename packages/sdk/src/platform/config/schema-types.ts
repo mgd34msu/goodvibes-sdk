@@ -246,18 +246,16 @@ export interface CloudflareConfig {
 
 export interface TelemetryConfig {
   /**
-   * when true, raw prompt/response content remains visible in
-   * telemetry events (and view='raw' is permitted for operators).
-   * Default false: prompt/response fields in events are redacted via the
-   * standard sanitizer at safe-view egress. Set true only in non-production
-   * environments; a startup WARN is logged.
+   * When true, raw prompt/response content remains visible in telemetry events
+   * (and view='raw' is permitted for operators). Default false: those fields are
+   * redacted via the standard sanitizer at safe-view egress. Set true only in
+   * non-production environments; a startup WARN is logged.
    */
   includeRawPrompts: boolean;
   /**
-   * Export permission/policy decision-log records to an OTLP endpoint. Off by
-   * default (export-only, no ingestion). When enabled with an endpoint, each
-   * recorded decision is mapped to OTLP span and/or log semantics and POSTed as
-   * OTLP/HTTP JSON. See `decisionOtlpSignal` for which record shape is emitted.
+   * Export permission/policy decision-log records to an OTLP endpoint. Off by default (export-only, no
+   * ingestion). When enabled with an endpoint, each decision is mapped to OTLP span and/or log semantics
+   * and POSTed as OTLP/HTTP JSON. See `decisionOtlpSignal` for which record shape is emitted.
    */
   decisionOtlpEnabled: boolean;
   /** OTLP/HTTP JSON endpoint base for decision-log export (empty = disabled). */
@@ -876,6 +874,7 @@ export type ConfigKey =
   | 'memory.tier.criticalPct'
   | 'memory.tripwire.rateMbPerSec'
   | 'memory.tripwire.sustainSec'
+  | 'memory.hardLimitPct'
   // Local voice engines (schema-domain-voice-local.ts).
   | 'voice.local.sttEngine'
   | 'voice.local.sttBinary'
@@ -1272,6 +1271,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'memory.tier.criticalPct' ? number :
   K extends 'memory.tripwire.rateMbPerSec' ? number :
   K extends 'memory.tripwire.sustainSec' ? number :
+  K extends 'memory.hardLimitPct' ? number :
   K extends 'voice.local.sttEngine' ? '' | 'whisper-cpp' | 'faster-whisper' :
   K extends 'voice.local.sttBinary' ? string :
   K extends 'voice.local.sttModelPath' ? string :
