@@ -474,8 +474,8 @@
     "rationale": "re-measured 1197 B gzip after MemoryConsolidationScheduler joined the barrel (the daemon-side consolidation driver, exported so consumers stop fork-mirroring it — 2026-07-14 phantom-export find); headroom max(ceil(1197*1.2)=1437, 1197+50=1247) -> 1437 (1.2x dominates)"
   },
   "./platform/state/store-snapshots": {
-    "gzip_bytes": 3485,
-    "rationale": "StoreSnapshotScheduler + snapshot/restore/list helpers with the retention engine pieces they compose (RetentionPolicy, SnapshotPruner, RetentionClass) so consumers stop fork-mirroring the scheduler; measured 2904 B gzip at first export; headroom max(ceil(2904*1.2)=3485, 2904+50=2954) -> 3485 (1.2x dominates)"
+    "gzip_bytes": 4304,
+    "rationale": "StoreSnapshotScheduler + snapshot/restore/list helpers with the retention engine pieces they compose (RetentionPolicy, SnapshotPruner, RetentionClass), plus the async snapshot twin (snapshotStoreFileAsync/snapshotAllAsync) the memory-governor tripwire exit uses so a stalled disk cannot block the event loop; measured 3586 B gzip after adding the async twin; headroom max(ceil(3586*1.2)=4304, 3586+50=3636) -> 4304 (1.2x dominates)"
   },
   "./platform/templates": {
     "gzip_bytes": 100,
