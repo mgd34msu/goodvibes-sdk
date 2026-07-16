@@ -44,6 +44,9 @@
     },
     {
       "path": "./packages/terminal-shell"
+    },
+    {
+      "path": "./packages/toolchain"
     }
   ]
 }

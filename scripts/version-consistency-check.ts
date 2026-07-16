@@ -19,6 +19,7 @@ const DEFAULT_WORKSPACE_PACKAGES = [
   'packages/peer-sdk',
   'packages/sdk',
   'packages/terminal-shell',
+  'packages/toolchain',
   'packages/transport-core',
   'packages/transport-http',
   'packages/transport-realtime',
