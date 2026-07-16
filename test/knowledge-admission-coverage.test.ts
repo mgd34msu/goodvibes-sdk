@@ -79,7 +79,7 @@ describe('home-graph 0ms ingest-enrichment tail honors pause + admission', () =>
 
 describe('composition + pump shape pins', () => {
   test('services.ts threads admitExpensiveWork into the agent and home-graph constructions', () => {
-    const src = readFileSync('/home/buzzkill/Projects/goodvibes-sdk/packages/sdk/src/platform/runtime/services.ts', 'utf-8');
+    const src = readFileSync('packages/sdk/src/platform/runtime/services.ts', 'utf-8');
     const agentBlock = src.slice(src.indexOf('const agentKnowledgeService = new KnowledgeService('), src.indexOf('agentKnowledgeService.attachRuntimeBus'));
     expect(agentBlock).toContain('admitExpensiveWork');
     const hgBlock = src.slice(src.indexOf('const homeGraphService = new HomeGraphService('), src.indexOf('const projectPlanningService'));
@@ -87,7 +87,7 @@ describe('composition + pump shape pins', () => {
   });
 
   test('the sync pump selfImprove loop passes stopWhenPaused (the allowlist justification is true)', () => {
-    const src = readFileSync('/home/buzzkill/Projects/goodvibes-sdk/packages/sdk/src/platform/knowledge/home-graph/sync-self-improvement.ts', 'utf-8');
+    const src = readFileSync('packages/sdk/src/platform/knowledge/home-graph/sync-self-improvement.ts', 'utf-8');
     // The pump's per-round call carries the runOptions, not just the reindex helper's.
     const pumpCall = src.slice(src.indexOf("reason: 'homegraph-sync'"), src.indexOf("reason: 'homegraph-sync'") + 500);
     expect(pumpCall).toContain('{ stopWhenPaused: true }');
