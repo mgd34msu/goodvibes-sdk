@@ -55,3 +55,41 @@ describe('voice.local provisioning verbs are wired', () => {
     expect(catalog.get('voice.local.install')).toBeDefined();
   });
 });
+
+describe('install single-flight + admission (fix-round 2)', () => {
+  test('concurrent install calls collapse into ONE run; callers share the result; next call starts fresh', async () => {
+    const { singleFlight } = await import('../packages/sdk/src/platform/utils/single-flight.ts');
+    let runs = 0;
+    const gates: Array<(v: string) => void> = [];
+    const run = singleFlight(() => {
+      runs += 1;
+      return new Promise<string>((r) => { gates.push(r); });
+    });
+    const a = run();
+    const b = run();
+    const c = run();
+    expect(runs).toBe(1); // one in-flight execution for three concurrent callers
+    gates[0]!('done');
+    expect(await a).toBe('done');
+    expect(await b).toBe('done');
+    expect(await c).toBe('done');
+    // After settlement a new call starts a FRESH run.
+    const d = run();
+    expect(runs).toBe(2);
+    gates[1]!('again');
+    expect(await d).toBe('again');
+  });
+
+  test('failures release the flight (a later call retries instead of joining a dead promise)', async () => {
+    const { singleFlight } = await import('../packages/sdk/src/platform/utils/single-flight.ts');
+    let runs = 0;
+    const run = singleFlight(async () => {
+      runs += 1;
+      if (runs === 1) throw new Error('first fails');
+      return 'second-succeeds';
+    });
+    await expect(run()).rejects.toThrow('first fails');
+    expect(await run()).toBe('second-succeeds');
+    expect(runs).toBe(2);
+  });
+});

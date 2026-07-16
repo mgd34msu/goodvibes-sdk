@@ -663,6 +663,22 @@ export class DaemonControlPlaneHelper {
       }
     }
     if (this.context.gatewayMethods.hasHandler(input.methodId)) {
+      // ONE contract: no WS call arm is unbounded. The registered-handler branch
+      // shares the same in-flight counter as the direct http-dispatch path —
+      // each in-flight invocation retains its auth token + client-controlled
+      // frame body for the handler's full latency, so an uncapped pipeline of
+      // methodId frames was the same retained-context class the direct-path cap
+      // closed (probed: 5,000 concurrent handler invocations, invisible to
+      // wsCallStats, before this guard).
+      if (this.wsCallsInFlight >= WS_CALL_MAX_IN_FLIGHT) {
+        this.wsCallsRefused += 1;
+        return {
+          status: 503,
+          ok: false,
+          body: { error: 'ws-call-overloaded', message: `Daemon is at its concurrent WS-call cap (${WS_CALL_MAX_IN_FLIGHT}); retry shortly.` },
+        };
+      }
+      this.wsCallsInFlight += 1;
       try {
         const body = await this.context.gatewayMethods.invoke(input.methodId, {
           body: input.body,
@@ -694,6 +710,8 @@ export class DaemonControlPlaneHelper {
           ok: false,
           body: { error: summarizeError(error) },
         };
+      } finally {
+        this.wsCallsInFlight -= 1;
       }
     }
     if (!descriptor.http) {
