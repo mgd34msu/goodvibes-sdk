@@ -17,6 +17,11 @@ const SUBPATH_SURFACE: Record<string, readonly string[]> = {
   './platform/state/store-snapshots': ['StoreSnapshotScheduler', 'RetentionPolicy', 'SnapshotPruner', 'defaultStoreSnapshotRetention', 'snapshotStoreFile', 'restoreStoreSnapshot', 'listStoreSnapshots'],
   './platform/runtime/permissions/exec-prompt-wiring': ['buildExecPromptAnswerHandler'],
   './platform/runtime/self-update': ['compareVersions', 'normalizeVersion', 'resolveLatestReleaseTag', 'resolveArtifactNames', 'verifyChecksum'],
+  // The daemon's managed local-voice setup composer: fork-composing consumers
+  // (TUI) build their own runtime services and must construct the voice-setup
+  // service the way runtime/services.ts does, rather than rebuilding it from the
+  // voice/provisioning primitives.
+  './platform/runtime/voice-setup': ['createVoiceSetupService'],
   './platform/daemon/auto-updater': ['DaemonAutoUpdater', 'defaultDownloadBaseUrl'],
   './platform/daemon/receipts': ['DaemonReceiptStore', 'formatReceiptTime', 'realReceiptStoreIo'],
   // Single-file module: the SDK's own version constant (cli/acp/mcp compose it).
@@ -115,6 +120,80 @@ describe('export-map subpath resolution (committed manifest)', () => {
     expect(pauseController.isPaused('knowledge-self-improvement')).toBe(true);
     expect(memoryGovernor.snapshot().budgetMb).toBe(100);
     memoryGovernor.stop();
+  });
+
+  test('./platform/runtime/voice-setup entrypoint COMPOSES: a consumer builds a working setup service through the package name', async () => {
+    // The way a fork-composed runtime (TUI) constructs it — the provisioner and
+    // status-read are injected seams, so the entrypoint runs with no network,
+    // no download, and no real voice runtime on the host.
+    const { createVoiceSetupService } = await import('@pellux/goodvibes-sdk/platform/runtime/voice-setup');
+
+    const config = new Map<string, string>();
+    let resetCalls = 0;
+    const managedVoiceRoot = join(import.meta.dir, '.test-tmp', `voice-setup-${process.pid}-${Date.now()}`);
+
+    const service = createVoiceSetupService({
+      managedVoiceRoot,
+      getConfig: (key) => config.get(key) ?? '',
+      setConfig: (key, value) => void config.set(key, value),
+      resetLocalEngineFailureState: () => { resetCalls += 1; },
+      admitExpensiveWork: () => ({ allowed: true }),
+      // Injected provisioner: a fully provisioned TTS + STT, no I/O.
+      provision: async () => ({
+        platform: 'linux-x64',
+        tts: { engine: 'piper', state: 'provisioned', binaryPath: '/managed/piper', modelPath: '/managed/voice.onnx' },
+        stt: { engine: 'whisper-cpp', state: 'provisioned', binaryPath: '/managed/whisper', modelPath: '/managed/model.bin' },
+        components: [{ id: 'piper', state: 'installed', bytes: 1024 }],
+      }),
+      // Injected status-read: a deterministic snapshot, no filesystem probe.
+      readStatus: () => ({
+        platform: 'linux-x64',
+        state: 'provisioned',
+        tts: { engine: 'piper', binaryPresent: true, voicePresent: true, binaryPath: '/managed/piper', modelPath: '/managed/voice.onnx' },
+        stt: { engine: 'whisper-cpp', supported: true, state: 'provisioned', binaryPresent: true, modelPresent: true, binaryPath: '/managed/whisper', modelPath: '/managed/model.bin' },
+        offerBytes: null,
+      }),
+    });
+
+    // status() serves the injected snapshot (idle: no installInProgress).
+    const status = service.status();
+    expect(status.state).toBe('provisioned');
+    expect(status.installInProgress).toBeUndefined();
+
+    // install() drives the composed happy path: the provisioner result becomes
+    // the wire receipt, the managed keys are preconfigured (getConfig was
+    // unset), and a successful install clears the local-engine failure state.
+    const receipt = await service.install();
+    expect(receipt.provisioned).toBe(true);
+    expect(receipt.tts.state).toBe('provisioned');
+    expect(receipt.stt.state).toBe('provisioned');
+    expect(receipt.components).toHaveLength(1);
+    expect(receipt.configured.set.length).toBeGreaterThan(0);
+    expect(config.size).toBeGreaterThan(0);
+    expect(resetCalls).toBe(1);
+  });
+
+  test('./platform/runtime/voice-setup install() refuses honestly under critical memory pressure', async () => {
+    const { createVoiceSetupService } = await import('@pellux/goodvibes-sdk/platform/runtime/voice-setup');
+    let provisionCalls = 0;
+    const service = createVoiceSetupService({
+      managedVoiceRoot: join(import.meta.dir, '.test-tmp', `voice-setup-denied-${process.pid}-${Date.now()}`),
+      getConfig: () => '',
+      setConfig: () => {},
+      resetLocalEngineFailureState: () => {},
+      // Critical-tier admission refuses the expensive install outright.
+      admitExpensiveWork: () => ({ allowed: false, reason: 'daemon is under critical memory pressure' }),
+      provision: async () => { provisionCalls += 1; throw new Error('provision must not run when admission is denied'); },
+      readStatus: () => ({
+        platform: null,
+        state: 'unsupported-platform',
+        tts: { engine: 'piper', binaryPresent: false, voicePresent: false, binaryPath: '', modelPath: '' },
+        stt: { engine: 'whisper-cpp', supported: false, state: 'unsupported-platform', binaryPresent: false, modelPresent: false, binaryPath: '', modelPath: '' },
+        offerBytes: null,
+      }),
+    });
+    await expect(service.install()).rejects.toThrow(/critical memory pressure/);
+    expect(provisionCalls).toBe(0);
   });
 
   test('./platform/utils entrypoint serves a WORKING singleFlight through the package name', async () => {

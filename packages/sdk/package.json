@@ -1,6 +1,6 @@
 {
   "name": "@pellux/goodvibes-sdk",
-  "version": "1.10.0",
+  "version": "1.10.1",
   "description": "TypeScript SDK for building GoodVibes operator, peer, web, mobile, and daemon-connected apps with typed contracts, auth, realtime events, and transport layers.",
   "keywords": [
     "goodvibes",
@@ -420,6 +420,10 @@
     "./platform/runtime/self-update": {
       "types": "./dist/platform/runtime/self-update.d.ts",
       "import": "./dist/platform/runtime/self-update.js"
+    },
+    "./platform/runtime/voice-setup": {
+      "types": "./dist/platform/runtime/voice-setup.d.ts",
+      "import": "./dist/platform/runtime/voice-setup.js"
     },
     "./platform/scheduler": {
       "types": "./dist/platform/scheduler/index.d.ts",

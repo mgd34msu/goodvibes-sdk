@@ -445,6 +445,10 @@
     "gzip_bytes": 125,
     "rationale": "new public package export budget; measured 75 B gzip @ v0.33.0 release verification; headroom max(ceil(75*1.2)=90, 75+50=125) -> 125 (+50 B floor dominates)"
   },
+  "./platform/runtime/voice-setup": {
+    "gzip_bytes": 1924,
+    "rationale": "managed local-voice setup composer for fork-composed runtimes (TUI): createVoiceSetupService wires the single-flight install + live-progress status over the voice/provisioning primitives (provisionLocalVoiceRuntime/localVoiceRuntimeStatus/preconfigureLocalVoiceKeys/install-stamp) plus singleFlight; measured 1603 B gzip at first export; headroom max(ceil(1603*1.2)=1924, 1603+50=1653) -> 1924 (1.2x dominates)"
+  },
   "./platform/runtime/state": {
     "gzip_bytes": 423,
     "rationale": "public runtime seam; measured 352 B gzip @ commit 4e5a5e2; headroom max(ceil(352*1.2)=423, 352+50=402) \u2192 423 (1.2x dominates by 21 B)"

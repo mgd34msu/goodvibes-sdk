@@ -65,6 +65,13 @@ export type {
   RuntimeFoundationClientsOptions,
   RuntimeFoundationServicesSlice,
 } from './foundation-clients.js';
+// The FULL runtime-services composition interface. `RuntimeFoundationServicesSlice`
+// is the narrow `Pick<>` a foundation-clients consumer needs; this is the whole
+// interface a fork that composes its own runtime services owns and constructs.
+// It is the stable public name for what `startHostServices`'s runtimeServices
+// parameter takes — consumers name this alias instead of re-anchoring through
+// the positional `Parameters<typeof startHostServices>[3]`.
+export type { RuntimeServices } from './services.js';
 export { createOperatorClient } from './operator-client.js';
 export type { OperatorClient } from './operator-client.js';
 export { createPeerClient } from './peer-client.js';

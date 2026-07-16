@@ -4,6 +4,28 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
+## [1.10.1] - 2026-07-16
+
+### Added
+
+- **A stable public name for the full runtime-services interface.** Apps that
+  compose their own runtime services (rather than letting the SDK build them)
+  need to name the complete runtime-services type. The previous release narrowed
+  the foundation-clients options to a small slice of that interface, which
+  removed the only public name for the whole thing and forced consumers to
+  re-derive it from the position of an argument in a function signature — a
+  fragile anchor. The full interface is now exported by name as `RuntimeServices`
+  from the runtime bootstrap surface (`@pellux/goodvibes-sdk/platform/runtime`,
+  the `bootstrap` namespace), alongside the existing narrow
+  `RuntimeFoundationServicesSlice`.
+- **The managed local-voice setup service is now importable on its own.** The
+  daemon composes its local-voice install-and-status service from a single
+  factory, but that factory had no import path of its own, so an app composing
+  its own runtime had to rebuild it from lower-level pieces. It is now published
+  at `@pellux/goodvibes-sdk/platform/runtime/voice-setup` (`createVoiceSetupService`),
+  so a consumer constructs the exact same service the daemon does — with its
+  provisioner and status-read seams injected — instead of duplicating the wiring.
+
 ## [1.10.0] - 2026-07-16
 
 ### Added
