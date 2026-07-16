@@ -26,6 +26,7 @@ describe('Home Graph sync self-improvement cancellation', () => {
       artifactStore: {} as never,
       reportBackgroundError: () => {},
       semanticService: {
+        isBackgroundWorkPaused: () => false,
         selfImprove: async () => {
           calls += 1;
           controller.abort();
@@ -57,6 +58,48 @@ describe('Home Graph sync self-improvement cancellation', () => {
 
     expect(calls).toBe(1);
   });
+
+  test('a governor pause mid-pump stops the pump at the next ROUND boundary, with a receipt logged', async () => {
+    const { logger } = await import('../packages/sdk/src/platform/utils/logger.js');
+    const controller = new AbortController();
+    let paused = false;
+    let calls = 0;
+    const infoLines: string[] = [];
+    const patched = logger as unknown as { info: (message: string, data?: Record<string, unknown>) => void };
+    const originalInfo = patched.info.bind(logger);
+    patched.info = (message, data) => { infoLines.push(message); originalInfo(message, data); };
+    try {
+      await runHomeGraphSyncSelfImprovementPump({
+        store: {} as never,
+        artifactStore: {} as never,
+        reportBackgroundError: () => {},
+        semanticService: {
+          isBackgroundWorkPaused: () => paused,
+          selfImprove: async () => {
+            calls += 1;
+            // The governor enters the high tier WHILE round 0 runs (pauseAll).
+            paused = true;
+            // A continue-worthy result: without the pause gate the pump would
+            // run up to 10 rounds of LLM-backed work through the pressure.
+            return {
+              scannedGaps: 3, candidateGaps: 3, processedGaps: 3, createdGaps: 0,
+              repairableGaps: 3, suppressedGaps: 0, skippedGaps: 0, searched: 0,
+              ingestedSources: 0, linkedRepairs: 0, blockedGaps: 0, closedGaps: 0,
+              queuedTasks: 2, truncated: false, budgetExhausted: false,
+              taskIds: ['t1', 't2'], ingestedSourceIds: [], acceptedSourceIds: [],
+              promotedFactCount: 0, errors: [],
+            };
+          },
+        } as never,
+      }, 'homeassistant:house-1', 'house-1', controller.signal);
+    } finally {
+      delete (patched as { info?: unknown }).info; // restore the prototype method
+    }
+    // Stopped at the round-1 boundary: exactly ONE round ran, not up to 10.
+    expect(calls).toBe(1);
+    // The stop is receipted, naming the pause.
+    expect(infoLines.some((line) => /pump stopped.*paused for memory pressure/i.test(line))).toBe(true);
+  }, 20_000);
 
   test('rolls back device passport node and edge when cancellation happens during refresh', async () => {
     const root = mkdtempSync(join(tmpdir(), 'goodvibes-homegraph-abort-'));

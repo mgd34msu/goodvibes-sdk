@@ -429,11 +429,18 @@ export class KnowledgeSemanticService {
             const source = this.store.getSource(sourceId);
             return source ? enrichKnowledgeSource({ store: this.store, llm: this.options.llm }, source, options) : Promise.resolve(null);
           },
+          // Pause stop is consulted INSIDE the run too (per-gap boundary),
+          // not only between spaces here.
+          shouldStop: () => this.backgroundStopRequested(runOptions),
         }, { ...input, knowledgeSpaceId: spaceId });
         combined = mergeSelfImproveResults(combined, result);
       }
       return combined;
     }
+    // SPACE-SCOPED run (every sync-pump round takes this branch): thread the
+    // pause stop into the runner's per-gap yield points — without this,
+    // stopWhenPaused was structurally inert for space-scoped runs and the pump
+    // ran its full LLM budget straight through a high-tier governor pause.
     return runKnowledgeSemanticSelfImprovement({
       store: this.store,
       gapRepairer: this.options.gapRepairer,
@@ -443,6 +450,7 @@ export class KnowledgeSemanticService {
         const source = this.store.getSource(sourceId);
         return source ? enrichKnowledgeSource({ store: this.store, llm: this.options.llm }, source, options) : Promise.resolve(null);
       },
+      shouldStop: () => this.backgroundStopRequested(runOptions),
     }, input);
   }
 

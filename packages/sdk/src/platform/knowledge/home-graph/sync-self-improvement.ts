@@ -38,10 +38,21 @@ export async function runHomeGraphSyncSelfImprovementPump(
   const deadlineAt = Date.now() + SYNC_SELF_IMPROVEMENT_MAX_RUN_MS;
   for (let round = 0; round < SYNC_SELF_IMPROVEMENT_MAX_ROUNDS; round += 1) {
     if (signal.aborted) return;
+    // Between-rounds governor gate: a high-tier pause (pauseAll) must stop the
+    // pump at the next ROUND boundary — the pump is exactly the deferrable
+    // background work the pause exists to shed. Belt-and-suspenders with the
+    // in-run stopWhenPaused consult below (which stops a round already in
+    // flight at its next per-gap yield point).
+    if (runtime.semanticService.isBackgroundWorkPaused()) {
+      logger.info('Home Graph sync self-improvement pump stopped: background knowledge work is paused for memory pressure', { spaceId, round });
+      return;
+    }
     const remainingMs = Math.max(0, deadlineAt - Date.now());
     if (remainingMs <= 0) return;
     // stopWhenPaused: the pump is background work — a governor pause stops each
     // round at the next safe boundary (the allowlist justification requires it).
+    // This is threaded through to the runner's per-gap yield points, so it is
+    // real for these space-scoped rounds, not just whole-store sweeps.
     const result = await runtime.semanticService.selfImprove({
       knowledgeSpaceId: spaceId,
       reason: 'homegraph-sync',
