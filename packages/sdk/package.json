@@ -401,6 +401,10 @@
       "types": "./dist/platform/runtime/permissions/exec-prompt-wiring.d.ts",
       "import": "./dist/platform/runtime/permissions/exec-prompt-wiring.js"
     },
+    "./platform/runtime/memory": {
+      "types": "./dist/platform/runtime/memory/index.d.ts",
+      "import": "./dist/platform/runtime/memory/index.js"
+    },
     "./platform/runtime/memory-spine": {
       "types": "./dist/platform/runtime/memory-spine/index.d.ts",
       "import": "./dist/platform/runtime/memory-spine/index.js"

@@ -57,11 +57,13 @@ export type {
   OperatorClientServicesOptions,
   OperatorClientServices,
   OperatorClientReadModels,
+  OperatorClientRuntimeSlice,
 } from './foundation-services.js';
 export { createRuntimeFoundationClients } from './foundation-clients.js';
 export type {
   RuntimeFoundationClients,
   RuntimeFoundationClientsOptions,
+  RuntimeFoundationServicesSlice,
 } from './foundation-clients.js';
 export { createOperatorClient } from './operator-client.js';
 export type { OperatorClient } from './operator-client.js';

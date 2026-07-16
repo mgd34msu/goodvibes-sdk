@@ -16,6 +16,7 @@ export * from './request-body.js';
 export * from './retry.js';
 export * from './ring-buffer.js';
 export * from './shell-split.js';
+export * from './single-flight.js';
 export * from './terminal-width.js';
 export * from './url-safety.js';
 export * from './walk-dir.js';

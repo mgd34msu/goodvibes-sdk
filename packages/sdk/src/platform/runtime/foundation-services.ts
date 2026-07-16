@@ -41,8 +41,27 @@ export interface DirectTransportServices {
   readonly peer: PeerClientDependencies;
 }
 
+/**
+ * What the operator-client factory actually reads from the runtime-services
+ * composition. Kept a Pick (like createPeerClientDependencies below) so
+ * fork-composed runtimes can call this without the full internal
+ * RuntimeServices shape.
+ */
+export type OperatorClientRuntimeSlice = Pick<
+  RuntimeServices,
+  | 'runtimeBus'
+  | 'shellPaths'
+  | 'runtimeStore'
+  | 'sessionBroker'
+  | 'approvalBroker'
+  | 'providerRegistry'
+  | 'serviceRegistry'
+  | 'subscriptionManager'
+  | 'secretsManager'
+>;
+
 function createOperatorClientReadModels(
-  runtimeServices: RuntimeServices,
+  runtimeServices: Pick<RuntimeServices, 'runtimeStore' | 'runtimeBus' | 'providerRegistry' | 'approvalBroker' | 'sessionBroker'>,
   options: OperatorClientServicesOptions = {},
 ): OperatorClientReadModels {
   const core = createCoreReadModels(runtimeServices);
@@ -56,7 +75,7 @@ function createOperatorClientReadModels(
 }
 
 export function createOperatorClientServices(
-  runtimeServices: RuntimeServices,
+  runtimeServices: OperatorClientRuntimeSlice,
   options: OperatorClientServicesOptions = {},
 ): OperatorClientServices {
   return {
@@ -86,7 +105,7 @@ export function createPeerClientDependencies(
 export interface DirectTransportServicesOptions extends OperatorClientServicesOptions {}
 
 export function createDirectTransportServices(
-  runtimeServices: RuntimeServices,
+  runtimeServices: OperatorClientRuntimeSlice & Pick<RuntimeServices, 'distributedRuntime' | 'remoteRunnerRegistry' | 'remoteSupervisor'>,
   options: DirectTransportServicesOptions = {},
 ): DirectTransportServices {
   return {

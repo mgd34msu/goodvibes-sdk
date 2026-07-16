@@ -10,7 +10,7 @@ export function combineSubscriptions(...teardowns: Array<() => void>): () => voi
 }
 
 export function createStoreBackedReadModel<TSnapshot>(
-  runtimeServices: RuntimeServices,
+  runtimeServices: Pick<RuntimeServices, 'runtimeStore'>,
   getSnapshot: () => TSnapshot,
 ): UiReadModel<TSnapshot> {
   return {
@@ -38,7 +38,7 @@ export function projectValues<T>(
   return compare ? items.sort(compare) : items;
 }
 
-export function listProviderIds(runtimeServices: RuntimeServices): readonly string[] {
+export function listProviderIds(runtimeServices: Pick<RuntimeServices, 'providerRegistry'>): readonly string[] {
   const providerIds = new Set<string>(
     runtimeServices.providerRegistry.listProviders().map((provider) => provider.name),
   );
