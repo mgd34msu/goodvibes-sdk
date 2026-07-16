@@ -86,9 +86,25 @@ export class HomeGraphService {
   constructor(
     private readonly store: KnowledgeStore,
     private readonly artifactStore: ArtifactStore,
-    private readonly options: { readonly semanticService?: KnowledgeSemanticService } = {},
+    private readonly options: {
+      readonly semanticService?: KnowledgeSemanticService;
+      /**
+       * MemoryGovernor admission gate: the HTTP-exposed ingest verbs run the
+       * whole ingestion pipeline (artifact writes, extraction, enrichment) —
+       * at the critical tier they refuse with an honest structured reason.
+       */
+      readonly admitExpensiveWork?: ((label: string) => { allowed: boolean; reason?: string | undefined }) | undefined;
+    } = {},
   ) {
     this.options.semanticService?.addObjectProfiles(HOME_GRAPH_KNOWLEDGE_EXTENSION.objectProfiles);
+  }
+
+  /** Refuse expensive work at the critical memory tier (see MemoryGovernor). */
+  private requireAdmission(label: string): void {
+    const decision = this.options.admitExpensiveWork?.(label);
+    if (decision && !decision.allowed) {
+      throw new Error(decision.reason ?? `${label} refused: daemon is under critical memory pressure.`);
+    }
   }
 
   dispose(): void {
@@ -111,6 +127,7 @@ export class HomeGraphService {
   }
 
   async ingestUrl(input: HomeGraphIngestUrlInput): Promise<HomeGraphIngestResult> {
+    this.requireAdmission('home-graph url ingestion');
     const { spaceId, installationId } = resolveHomeGraphSpace(input);
     const artifact = await this.artifactStore.create({
       uri: input.url,
@@ -137,6 +154,7 @@ export class HomeGraphService {
   }
 
   async ingestNote(input: HomeGraphIngestNoteInput): Promise<HomeGraphIngestResult> {
+    this.requireAdmission('home-graph note ingestion');
     const { spaceId, installationId } = resolveHomeGraphSpace(input);
     const title = input.title ?? `Home Assistant note ${new Date().toISOString()}`;
     const artifact = await this.artifactStore.create({
@@ -166,6 +184,7 @@ export class HomeGraphService {
   }
 
   async ingestArtifact(input: HomeGraphIngestArtifactInput): Promise<HomeGraphIngestResult> {
+    this.requireAdmission('home-graph artifact ingestion');
     const { spaceId, installationId } = resolveHomeGraphSpace(input);
     const artifact = input.artifactId
       ? this.artifactStore.get(input.artifactId)

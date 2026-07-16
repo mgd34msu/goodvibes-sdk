@@ -1,4 +1,5 @@
 import type { ArtifactStore } from '../../artifacts/index.js';
+import { logger } from '../../utils/logger.js';
 import { sleep, yieldEvery } from '../cooperative.js';
 import type { KnowledgeSemanticService } from '../semantic/index.js';
 import type { KnowledgeStore } from '../store.js';
@@ -39,6 +40,8 @@ export async function runHomeGraphSyncSelfImprovementPump(
     if (signal.aborted) return;
     const remainingMs = Math.max(0, deadlineAt - Date.now());
     if (remainingMs <= 0) return;
+    // stopWhenPaused: the pump is background work — a governor pause stops each
+    // round at the next safe boundary (the allowlist justification requires it).
     const result = await runtime.semanticService.selfImprove({
       knowledgeSpaceId: spaceId,
       reason: 'homegraph-sync',
@@ -49,7 +52,7 @@ export async function runHomeGraphSyncSelfImprovementPump(
       ),
       force: round > 0,
       signal,
-    });
+    }, { stopWhenPaused: true });
     if (signal.aborted) return;
     if ((result.acceptedSourceIds?.length ?? 0) > 0 || (result.promotedFactCount ?? 0) > 0 || result.closedGaps > 0) {
       await refreshHomeGraphDevicePagesForSourceIds(runtime, spaceId, installationId, result.acceptedSourceIds ?? [], signal);
@@ -82,6 +85,18 @@ export async function enrichAndImproveHomeGraphSource(
   sourceId: string,
   spaceId: string,
 ): Promise<void> {
+  // Governor backpressure on the 0ms ingest tail: while background knowledge
+  // work is paused (or refused at the critical tier) the LLM-backed enrichment
+  // defers honestly — the source persists and the next sync/reindex enriches it.
+  if (runtime.semanticService.isBackgroundWorkPaused()) {
+    logger.info('Home Graph ingest enrichment deferred: background knowledge work is paused for memory pressure', { spaceId, sourceId });
+    return;
+  }
+  const admission = runtime.semanticService.admitBackgroundWork('home-graph ingest enrichment');
+  if (!admission.allowed) {
+    logger.warn('Home Graph ingest enrichment refused by the memory governor', { spaceId, sourceId, reason: admission.reason });
+    return;
+  }
   await runtime.semanticService.enrichSource(sourceId, { knowledgeSpaceId: spaceId });
   if (!sourceHasUsefulSemanticFacts(runtime.store, sourceId, spaceId)) return;
   // The enrichment already produced usable facts — refresh this source's page

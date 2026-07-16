@@ -590,11 +590,13 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const agentKnowledgeService = new KnowledgeService(agentKnowledgeStore, artifactStore, undefined, {
     memoryRegistry,
     runtimeBus: options.runtimeBus,
+    admitExpensiveWork,
     semanticService: agentKnowledgeSemanticService,
   });
   agentKnowledgeService.attachRuntimeBus(options.runtimeBus);
   const homeGraphService = new HomeGraphService(homeGraphKnowledgeStore, artifactStore, {
     semanticService: homeGraphSemanticService,
+    admitExpensiveWork,
   });
   const projectPlanningService = new ProjectPlanningService(knowledgeStore, {
     defaultProjectId: projectPlanningProjectIdFromPath(workingDirectory),
