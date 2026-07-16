@@ -52,8 +52,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   transcribe). Voice engine bundles live at a single append-only release tag
   with a checksum sidecar per asset; other platforms report "unsupported"
   honestly until their bundle is published there. A new setting,
-  `memory.hardLimitPct` (default `120`), adds an absolute-memory backstop above
-  the pressure tiers.
+  `memory.hardLimitPct` (default `90`), adds an absolute-memory backstop
+  anchored to the machine's real kill line — the daemon's own service/container
+  memory limit where one applies, else physical RAM.
 - **Product-generated macOS launchd service files now carry a provenance key.**
   Because launchd has no description field, a `GoodVibesManagedBy` entry (a
   stable marker plus the service description) is written into every plist
@@ -121,12 +122,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   crashes. Reconfiguring the engine or model clears the state and retries.
 - **The memory self-defense now also catches a SLOW leak and a service memory
   cap.** A leak too gradual to trip the growth-rate detector would previously
-  ride past the budget to a kernel out-of-memory kill with no receipt; an
+  ride all the way to a kernel out-of-memory kill with no receipt; an
   absolute-memory backstop now writes a diagnostic receipt and exits cleanly
-  when memory holds above the hard limit. The budget also now honors a systemd
-  `MemoryMax=` limit set on the daemon's own service unit (not just a
-  container's), and the leak-exit's state snapshots run without being able to
-  block the exit on a stalled disk.
+  just before the machine's real kill line — 90% of the daemon's own
+  service/container memory limit where one applies, else 90% of physical RAM
+  (`memory.hardLimitPct`, default `90`). The backstop is deliberately anchored
+  to that kill line and not to the (intentionally small) memory budget: a
+  daemon with a large but stable, healthy working set above the budget on a
+  big-memory host stays alive at the critical tier — refusing new expensive
+  work — rather than being restarted in a loop while most of the machine's
+  memory sits free. The budget also now honors a systemd `MemoryMax=` limit set
+  on the daemon's own service unit (not just a container's), and the leak-exit's
+  state snapshots run without being able to block the exit on a stalled disk.
 - **Local speech-to-text updates apply honestly and never freeze behind a false
   version stamp.** A locally-provided engine archive is now verified against the
   pinned checksum BEFORE it is unpacked, so a stale or mismatched archive is

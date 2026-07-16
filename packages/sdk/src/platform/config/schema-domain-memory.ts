@@ -27,10 +27,13 @@ export interface MemoryConfig {
     sustainSec: number;
   };
   /**
-   * Absolute-RSS backstop as a percent of the budget, ABOVE the tier ladder
-   * (must exceed tier.criticalPct). The rate tripwire only catches fast leaks;
-   * this ceiling catches a slow leak that would otherwise ride to a kernel OOM
-   * kill. Default 120.
+   * Absolute-RSS backstop as a percent of the EFFECTIVE KILL CEILING — the
+   * own-cgroup memory limit where one applies, else physical RAM. Default 90.
+   * Anchored to the ceiling (not the budget) so a large-but-stable working set
+   * above the deliberately-small budget never exits a healthy daemon; the
+   * critical tier handles that by refusing new expensive work and staying
+   * alive. This only fires when the kernel/cgroup OOM killer is genuinely
+   * imminent and the leak was too slow for the rate tripwire to see.
    */
   hardLimitPct: number;
 }
@@ -52,7 +55,7 @@ export const memoryConfigDefaults: { memory: MemoryConfig } = {
       rateMbPerSec: 25,
       sustainSec: 60,
     },
-    hardLimitPct: 120,
+    hardLimitPct: 90,
   },
 };
 
@@ -108,9 +111,9 @@ export const memoryConfigSettings: ConfigSettingDefinition[] = [
   {
     key: 'memory.hardLimitPct',
     type: 'number',
-    default: 120,
+    default: 90,
     description:
-      'Absolute-RSS backstop as a percent of the budget, above the tier ladder (must exceed memory.tier.criticalPct). The rate tripwire only catches fast leaks; if RSS holds at/above this percent of the budget for memory.tripwire.sustainSec, the governor writes a hard-limit receipt and exits — so a slow leak the rate tripwire cannot see becomes a clean restart instead of a kernel OOM kill.',
-    ...intRange(101, 100_000),
+      'Absolute-memory backstop as a percent of the EFFECTIVE KILL CEILING — the daemon\'s own cgroup memory limit where one applies, else physical RAM. If RSS holds at/above this percent of that ceiling for memory.tripwire.sustainSec, the governor writes a hard-limit receipt and exits so a supervisor restarts clean — catching a leak too slow for memory.tripwire.rateMbPerSec just before the kernel/cgroup OOM killer would strike. Default 90: fire at 90% of the real kill line, leaving a safety margin for the exit itself. Deliberately anchored to the kill ceiling and NOT to memory.budgetMb: the budget caps small by design (25% of RAM, max 4096 MB), and a large-but-stable working set above the budget on a big-RAM host is handled by the critical tier (refuse new expensive work, stay alive) — anchoring the exit to the budget would put such a healthy daemon in a permanent restart loop.',
+    ...intRange(1, 100),
   },
 ];
