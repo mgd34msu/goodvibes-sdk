@@ -17,10 +17,14 @@ export {
   piperProvisionBytes,
   PIPER_ENGINES,
   DEFAULT_PIPER_VOICE,
+  WHISPER_ENGINES,
+  DEFAULT_WHISPER_MODEL,
   WHISPER_UNSUPPORTED_REASON,
   type VoicePlatform,
   type PiperEngineManifest,
   type PiperVoiceManifest,
+  type WhisperEngineManifest,
+  type WhisperModelManifest,
 } from './manifest.js';
 
 export {
@@ -38,6 +42,7 @@ export {
   type ManagedVoicePaths,
   type ArchiveExtractor,
   type TtsProvisionState,
+  type SttProvisionState,
   type VoiceComponentOutcome,
   type VoiceInstallStamp,
 } from './provisioner.js';

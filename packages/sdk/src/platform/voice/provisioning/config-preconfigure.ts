@@ -34,6 +34,10 @@ export interface VoicePreconfigDeps {
   readonly ttsEngine: string;
   readonly ttsBinary: string;
   readonly ttsModelPath: string;
+  /** STT values, present only when STT provisioned (same ownership rules). */
+  readonly sttEngine?: string | undefined;
+  readonly sttBinary?: string | undefined;
+  readonly sttModelPath?: string | undefined;
   /** The values a previous install wrote (from the install stamp). */
   readonly priorInstallWrites?: Record<string, string> | undefined;
 }
@@ -81,5 +85,10 @@ export function preconfigureLocalVoiceKeys(deps: VoicePreconfigDeps): VoicePreco
   apply('voice.local.ttsEngine', deps.ttsEngine);
   apply('voice.local.ttsBinary', deps.ttsBinary);
   apply('voice.local.ttsModelPath', deps.ttsModelPath);
+  if (deps.sttEngine && deps.sttBinary && deps.sttModelPath) {
+    apply('voice.local.sttEngine', deps.sttEngine);
+    apply('voice.local.sttBinary', deps.sttBinary);
+    apply('voice.local.sttModelPath', deps.sttModelPath);
+  }
   return { set, skipped, installWrites };
 }

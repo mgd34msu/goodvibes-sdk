@@ -32,8 +32,13 @@ const RUNTIME_STATUS_SCHEMA = objectSchema({
   stt: objectSchema({
     engine: STRING_SCHEMA,
     supported: BOOLEAN_SCHEMA,
+    state: { type: 'string', enum: ['not-provisioned', 'partial', 'provisioned', 'unsupported-platform'] },
+    binaryPresent: BOOLEAN_SCHEMA,
+    modelPresent: BOOLEAN_SCHEMA,
+    binaryPath: STRING_SCHEMA,
+    modelPath: STRING_SCHEMA,
     reason: STRING_SCHEMA,
-  }, ['engine', 'supported', 'reason']),
+  }, ['engine', 'supported', 'state', 'binaryPresent', 'modelPresent', 'binaryPath', 'modelPath']),
   offerBytes: NULLABLE_NUMBER,
 }, ['platform', 'state', 'tts', 'stt', 'offerBytes']);
 
@@ -49,9 +54,11 @@ const INSTALL_RESULT_SCHEMA = objectSchema({
   }, ['engine', 'state']),
   stt: objectSchema({
     engine: STRING_SCHEMA,
-    state: STRING_SCHEMA,
+    state: { type: 'string', enum: ['provisioned', 'unsupported-platform', 'download-failed', 'checksum-mismatch', 'bundle-unavailable'] },
+    binaryPath: STRING_SCHEMA,
+    modelPath: STRING_SCHEMA,
     reason: STRING_SCHEMA,
-  }, ['engine', 'state', 'reason']),
+  }, ['engine', 'state']),
   components: {
     type: 'array',
     items: objectSchema({
@@ -72,7 +79,7 @@ export const builtinGatewayVoiceSetupMethodDescriptors: readonly GatewayMethodDe
     id: 'voice.local.status',
     title: 'Get Managed Local-Voice Runtime State',
     description:
-      'Whether the managed local voice runtime (piper TTS + a default voice) is installed: not-provisioned (with a size-labeled offer), partial, provisioned, or unsupported-platform. STT (whisper.cpp) reports unsupported honestly — no official prebuilt binary exists and provisioning never compiles on your machine. Read-only.',
+      'Whether the managed local voice runtime (piper TTS + a default voice) is installed: not-provisioned (with a size-labeled offer), partial, provisioned, or unsupported-platform. STT (whisper.cpp) reports its own managed state: goodvibes builds and pins the whisper.cpp bundle per platform (no official prebuilt exists; provisioning never compiles on your machine), so where a pinned bundle exists STT provisions like TTS, and elsewhere it reports unsupported honestly. Read-only.',
     category: 'health',
     scopes: ['read:health'],
     http: { method: 'GET', path: '/api/voice/local/status' },
@@ -83,7 +90,7 @@ export const builtinGatewayVoiceSetupMethodDescriptors: readonly GatewayMethodDe
     id: 'voice.local.install',
     title: 'Install the Managed Local-Voice Runtime',
     description:
-      'One-act setup: download + checksum-verify the piper TTS engine and a default voice into the goodvibes-managed directory, then point the voice.local.* config keys at the managed install — never overwriting a key you already set to a custom value (skipped keys are reported). After this, local TTS works with zero further configuration. Downloads only when you ask; a failed or checksum-mismatched download keeps nothing.',
+      'One-act setup: download + checksum-verify the piper TTS engine, a default voice, and (where a pinned goodvibes-built bundle exists) the whisper.cpp STT engine with its default model into the goodvibes-managed directory, then point the voice.local.* config keys at the managed install — never overwriting a key you already set to a custom value (skipped keys are reported). After this, local TTS works with zero further configuration. Downloads only when you ask; a failed or checksum-mismatched download keeps nothing.',
     category: 'health',
     scopes: ['write:config'],
     http: { method: 'POST', path: '/api/voice/local/install' },

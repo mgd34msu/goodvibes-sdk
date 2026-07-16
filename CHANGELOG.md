@@ -18,9 +18,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   size-labeled offer before you start, a clear message on a failed or
   checksum-mismatched download (which keeps nothing), and an honest
   "not available on this platform" where no verified build exists. Local
-  speech-to-text (whisper.cpp) is reported unsupported for now because it ships
-  no official prebuilt binary and setup never compiles on your machine. Two new
-  reads/actions expose it: `voice.local.status` and `voice.local.install`.
+  speech-to-text is managed too: whisper.cpp ships no official prebuilt binary,
+  so goodvibes builds it reproducibly (static, portable, smoke-verified) and
+  pins the exact artifact per platform; setup installs it with the same
+  checksum-verified, atomic discipline along with a default recognition model,
+  and points the local-voice settings at both. Where the pinned bundle is not
+  yet hosted, setup says so honestly and accepts the identical artifact placed
+  locally (it must match the pin byte-for-byte). Installs are version-aware:
+  when a newer pinned engine ships, re-running setup replaces the old binary
+  atomically instead of silently keeping it, and the engine's failure state is
+  cleared so the fresh install is retried immediately. Two reads/actions expose
+  it: `voice.local.status` and `voice.local.install`.
 - **The daemon now watches its own memory and defends against runaway growth.**
   A memory governor samples the daemon's memory use on an interval and, as it
   approaches a budget, sheds memory in stages: trim caches and run garbage
@@ -40,6 +48,37 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Fixed
 
+- **Concurrent daemon calls over the local network are now capped and can never
+  pin memory without bound.** The socket path surfaces use to invoke daemon
+  methods refused nothing before: a burst of calls retained one
+  credential-carrying request context each without limit, and a call that hit a
+  live event-stream endpoint buffered its endless response forever. Calls are
+  now capped in flight for their FULL lifetime including response reading
+  (beyond the cap they get an honest "busy, retry shortly" answer), responses
+  are size-bounded, event-stream endpoints refuse the call shape with a clear
+  message and tear down cleanly, and events to a stalled client are dropped
+  (counted) instead of growing the socket buffer without bound. The failed-call
+  retry path also genuinely releases the failed request during the token-refresh
+  window now.
+- **The daemon's memory self-defense acts instead of just observing.** Cache
+  registrations reclaim real memory when trimmed (knowledge run history,
+  session relay buckets, the event replay buffer), the "refuse expensive work
+  under critical pressure" promise is enforced at the expensive entry points
+  (knowledge runs, ingestion, reindex, consolidation, code indexing) with clear
+  refusal reasons, the leak-detector exit flushes state and writes its
+  diagnostic receipt even on a fresh install, the memory budget respects
+  container/service memory limits, misordered pressure thresholds are rejected
+  at startup with a clear error, the leak detector measures recent growth (so a
+  slow-starting leak on a long-running daemon is still caught quickly), and a
+  pause takes effect immediately - queued and in-flight background work stops
+  at the next safe point instead of running through the pressure.
+- **Background knowledge work can no longer stampede.** Every trigger routes
+  through one governed scheduler: a burst across many distinct files collapses
+  into a single sweep instead of hundreds of parallel runs, a repair request
+  arriving during the quiet-period backoff with concrete evidence runs instead
+  of being silently dropped (and merged requests keep their targets), the
+  per-run history is bounded on disk and in memory, and full-store scans are
+  single-pass with breathing room for other work.
 - **A control-plane relay leak that could grow the daemon's memory without
   bound.** Requests tunneled to the daemon over the relay — each carrying its
   authorization header — and the secure channels behind them are now capped and

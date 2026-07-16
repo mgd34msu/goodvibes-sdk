@@ -16,7 +16,7 @@ export interface VoiceLocalInstallResult {
     readonly modelPath?: string | undefined;
     readonly reason?: string | undefined;
   };
-  readonly stt: { readonly engine: string; readonly state: string; readonly reason: string };
+  readonly stt: { readonly engine: string; readonly state: string; readonly binaryPath?: string | undefined; readonly modelPath?: string | undefined; readonly reason?: string | undefined };
   readonly components: ReadonlyArray<{ readonly id: string; readonly state: string; readonly bytes?: number | undefined; readonly error?: string | undefined }>;
   readonly configured: {
     readonly set: ReadonlyArray<{ readonly key: string; readonly value: string }>;

@@ -86,6 +86,58 @@ export function piperProvisionBytes(platform: VoicePlatform): number | null {
   return engine.archive.bytes + DEFAULT_PIPER_VOICE.onnx.bytes + DEFAULT_PIPER_VOICE.json.bytes;
 }
 
-/** Why STT is not provisioned: no official prebuilt whisper.cpp binary exists. */
+/** Why STT is not provisioned on platforms with no pinned goodvibes whisper bundle. */
 export const WHISPER_UNSUPPORTED_REASON =
-  'whisper.cpp publishes no official prebuilt binary (source only), and managed provisioning never compiles on your machine. To enable local STT, install whisper.cpp yourself and set voice.local.sttEngine/sttBinary/sttModelPath.';
+  'No pinned, checksum-verified whisper.cpp bundle exists for this platform (whisper.cpp publishes no official prebuilt binary, and managed provisioning never compiles on your machine). To enable local STT, install whisper.cpp yourself and set voice.local.sttEngine/sttBinary/sttModelPath.';
+
+/**
+ * The goodvibes-built whisper.cpp engine bundle for a platform. whisper.cpp
+ * ships no official prebuilt binaries, so goodvibes builds them reproducibly
+ * (scripts/build-whisper-bundle.ts, static ggml, stripped) and pins the
+ * artifact here. `bundle.url` is null until the artifact is hosted by the
+ * release pipeline — the byte count and sha256 are ALWAYS pinned, so a
+ * sideloaded bundle (dropped at the managed archive path) verifies against
+ * the same pin and installs identically.
+ */
+export interface WhisperEngineManifest {
+  readonly version: string;
+  readonly bundle: { readonly url: string | null; readonly bytes: number; readonly sha256: string };
+  /** Path of the whisper-cli binary inside the extracted archive. */
+  readonly binaryRelPath: string;
+}
+
+/** A whisper ggml model (hosted on Hugging Face — real, stable URLs). */
+export interface WhisperModelManifest {
+  readonly id: string;
+  readonly bin: VerifiedDownloadSpec;
+}
+
+/**
+ * Pinned goodvibes whisper.cpp builds per platform. Built from the v-tagged
+ * whisper.cpp source with static ggml; the pin below is the exact artifact
+ * produced (and smoke-verified: `whisper-cli -m ggml-base.en.bin -f jfk.wav`
+ * transcribes correctly) by scripts/build-whisper-bundle.ts on linux-x64.
+ */
+export const WHISPER_ENGINES: Partial<Record<VoicePlatform, WhisperEngineManifest>> = {
+  'linux-x64': {
+    version: '1.8.2',
+    bundle: {
+      // Hosted by the release pipeline; until then a sideloaded bundle matching
+      // this pin installs identically (see provisioner.ts).
+      url: null,
+      bytes: 1121557,
+      sha256: '80948cd00eed6b43fc7bc307424713a4b4890bc1aec11bdc560aba9357834ac5',
+    },
+    binaryRelPath: 'whisper/whisper-cli',
+  },
+};
+
+/** The default STT model: base.en — the standard quality/size balance (~148MB). */
+export const DEFAULT_WHISPER_MODEL: WhisperModelManifest = {
+  id: 'ggml-base.en',
+  bin: {
+    url: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin',
+    bytes: 147964211,
+    sha256: 'a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002',
+  },
+};
