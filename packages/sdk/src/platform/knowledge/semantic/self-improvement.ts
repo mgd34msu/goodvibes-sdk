@@ -44,6 +44,15 @@ interface SelfImproveContext {
   readonly activeGapRepairs: Set<string>;
   readonly objectProfiles?: readonly KnowledgeObjectProfilePolicy[] | undefined;
   readonly enrichSource?: (sourceId: string, options: { readonly force?: boolean; readonly knowledgeSpaceId?: string }) => Promise<unknown>;
+  /**
+   * Cooperative stop probe (memory-governor pause), consulted at the SAME
+   * yield points as `input.signal` — before/after gap discovery and at the top
+   * of every per-gap iteration. This is what makes `stopWhenPaused` real for
+   * SPACE-SCOPED runs: without it the pause was only honored between spaces of
+   * a whole-store sweep, and every sync-pump round (always space-scoped) ran
+   * its full LLM-backed budget straight through a governor pause.
+   */
+  readonly shouldStop?: (() => boolean) | undefined;
 }
 
 interface GapRepairOutcome {
@@ -109,14 +118,18 @@ export async function runKnowledgeSemanticSelfImprovement(
     await recoverNoRepairerTasks(context.store, spaceId);
   }
   if (input.signal?.aborted) return emptySelfImproveResult(spaceId, 'Run was cancelled before intrinsic gap discovery.');
+  if (context.shouldStop?.()) return emptySelfImproveResult(spaceId, 'Run was stopped before intrinsic gap discovery: background knowledge work is paused for memory pressure.');
   const createdGaps = gapIdFilter ? 0 : await discoverIntrinsicGaps(context.store, spaceId, sourceIdFilter, objectProfiles);
   if (input.signal?.aborted) return emptySelfImproveResult(spaceId, 'Run was cancelled after intrinsic gap discovery.');
+  if (context.shouldStop?.()) return emptySelfImproveResult(spaceId, 'Run was stopped after intrinsic gap discovery: background knowledge work is paused for memory pressure.');
   const candidates = collectCandidateGaps(context.store, spaceId, sourceIdFilter, gapIdFilter);
   const plan = createSelfImproveRunPlan(candidates, input);
   const state = createSelfImproveRunState(plan);
 
   for (const gap of plan.gaps) {
-    if (input.signal?.aborted) {
+    // Governor pause stop lands INSIDE a space-scoped run too: the per-gap
+    // boundary is the run's natural yield point, same as signal abort.
+    if (input.signal?.aborted || context.shouldStop?.()) {
       markRunBudgetExhausted(state);
       break;
     }

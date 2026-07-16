@@ -362,6 +362,60 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
     expect(store.listEdges().some((edge) => edge.fromKind === 'source' && edge.fromId === official.id && edge.toKind === 'node' && edge.toId === device.id && edge.relation === 'source_for')).toBe(true);
   });
 
+  test('a governor pause stops a SPACE-SCOPED run at its next per-gap yield point (stopWhenPaused is not inert)', async () => {
+    const { store } = createStores();
+    const spaceId = homeAssistantKnowledgeSpaceId('house');
+    const official = await store.upsertSource({
+      connectorId: 'semantic-gap-repair',
+      sourceType: 'url',
+      title: 'LG 86NANO90UNA official specifications',
+      canonicalUri: 'https://www.lg.com/us/tvs/lg-86nano90una-4k-uhd-tv',
+      tags: ['semantic-gap-repair'],
+      status: 'indexed',
+      metadata: { knowledgeSpaceId: spaceId },
+    });
+    for (const slug of ['pause-gap-1', 'pause-gap-2', 'pause-gap-3']) {
+      await store.upsertNode({
+        kind: 'knowledge_gap',
+        slug,
+        title: `What does ${slug} need?`,
+        aliases: [],
+        confidence: 75,
+        sourceId: official.id,
+        metadata: { knowledgeSpaceId: spaceId, semanticKind: 'gap', gapKind: 'answer', sourceIds: [official.id] },
+      });
+    }
+    let paused = false;
+    let repairCalls = 0;
+    const semantic = new KnowledgeSemanticService(store, {
+      isBackgroundPaused: () => paused,
+      gapRepairer: async () => {
+        repairCalls += 1;
+        // The governor enters the high tier while the FIRST gap repairs
+        // (pauseAll): the run must stop at the next per-gap boundary instead
+        // of repairing all three gaps through the pressure.
+        paused = true;
+        return { searched: true, evidenceSufficient: false, acceptedSourceIds: [], ingestedSourceIds: [], skippedUrls: [] };
+      },
+    });
+    // Space-scoped — the branch every sync-pump round takes.
+    const result = await semantic.selfImprove({ knowledgeSpaceId: spaceId, force: true }, { stopWhenPaused: true });
+    expect(repairCalls).toBe(1);
+    expect(result.processedGaps).toBe(1);
+    // Honest partial-result flags: the stop is reported, never silent.
+    expect(result.truncated).toBe(true);
+    expect(result.budgetExhausted).toBe(true);
+    // WITHOUT stopWhenPaused (a foreground/operator run), the pause does not
+    // stop it — the flag is a background-run contract, not a global gate.
+    paused = false;
+    const semantic2 = new KnowledgeSemanticService(store, {
+      isBackgroundPaused: () => true, // paused the whole time
+      gapRepairer: async () => ({ searched: true, evidenceSufficient: false, acceptedSourceIds: [], ingestedSourceIds: [], skippedUrls: [] }),
+    });
+    const foreground = await semantic2.selfImprove({ knowledgeSpaceId: spaceId, force: true });
+    expect(foreground.processedGaps).toBeGreaterThan(1);
+  });
+
   test('web gap repair rejects low-confidence search results', async () => {
     const ingested: unknown[] = [];
     const repairer = createWebKnowledgeGapRepairer({

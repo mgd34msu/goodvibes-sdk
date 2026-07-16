@@ -58,7 +58,9 @@ describe('no self-improve scheduler bypasses (gate)', () => {
     // Files allowed to call selfImprove directly:
     //  - semantic/service.ts: the scheduler itself + the answer path (deferRepair task-queue pass)
     //  - home-graph/sync-self-improvement.ts: the delayed, single-flight sync pump —
-    //    governed via { stopWhenPaused: true } and the in-run admission gate
+    //    governed via a between-rounds isBackgroundWorkPaused() gate plus
+    //    { stopWhenPaused: true } threaded into the runner's per-gap yield
+    //    points (real for space-scoped rounds), and the in-run admission gate
     //  - knowledge/service.ts: the manual reindex/selfImprove verb surface (operator-invoked,
     //    admission-gated inside runSelfImproveUnlocked)
     const allowed = new Set([
@@ -95,10 +97,30 @@ describe('no self-improve scheduler bypasses (gate)', () => {
     ).toEqual([]);
   });
 
-  test('the sync pump passes stopWhenPaused so a governor pause stops it mid-run', () => {
+  test('the sync pump is genuinely pause-governed: stopWhenPaused on BOTH selfImprove calls plus a between-rounds gate', () => {
     const text = readFileSync('/home/buzzkill/Projects/goodvibes-sdk/packages/sdk/src/platform/knowledge/home-graph/sync-self-improvement.ts', 'utf-8');
+    // The whole-space reindex call carries stopWhenPaused.
     expect(text).toMatch(/selfImprove\([^)]*\{ knowledgeSpaceId: spaceId, reason: 'reindex' \}, \{ stopWhenPaused: true \}\)/);
+    // The PUMP's per-round call carries stopWhenPaused too (this was the
+    // regression: only the reindex shape was pinned, so the pump call could
+    // silently drop it).
+    expect(text).toMatch(/reason: 'homegraph-sync'[\s\S]{0,400}\}, \{ stopWhenPaused: true \}\)/);
+    // And the pump loop itself gates between rounds on the pause probe —
+    // stopWhenPaused alone only stops a round already in flight.
+    expect(text).toMatch(/isBackgroundWorkPaused\(\)/);
     // The per-ingest path routes through the governed scheduler.
     expect(text).toMatch(/queueBackgroundSelfImprove\(/);
+  });
+
+  test('the space-scoped runner path threads the pause stop into per-gap yield points (stopWhenPaused is not inert)', () => {
+    const service = readFileSync('/home/buzzkill/Projects/goodvibes-sdk/packages/sdk/src/platform/knowledge/semantic/service.ts', 'utf-8');
+    // BOTH runKnowledgeSemanticSelfImprovement call sites pass shouldStop
+    // (the whole-store per-space call AND the space-scoped call every pump
+    // round takes).
+    const shouldStopCount = (service.match(/shouldStop: \(\) => this\.backgroundStopRequested\(runOptions\)/g) ?? []).length;
+    expect(shouldStopCount).toBe(2);
+    // The runner consults it at its per-gap loop boundary, same as abort.
+    const runner = readFileSync('/home/buzzkill/Projects/goodvibes-sdk/packages/sdk/src/platform/knowledge/semantic/self-improvement.ts', 'utf-8');
+    expect(runner).toMatch(/input\.signal\?\.aborted \|\| context\.shouldStop\?\.\(\)/);
   });
 });
