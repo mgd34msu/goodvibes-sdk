@@ -22,7 +22,10 @@ jobs:
   # ---------------------------------------------------------------------------
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # The whole-workspace validate lane grew past 10 minutes with the memory-
+    # governance and managed-voice suites; 20 keeps honest headroom without
+    # masking a hang (individual bun tests carry their own timeouts).
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
