@@ -17,6 +17,7 @@ import { dirname, join } from 'node:path';
 import { logger } from '../../utils/logger.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { downloadVerifiedFile, fileMatches, fileMatchesCached, fileSha256, type VerifiedDownloadResult } from './download-verified.js';
+import type { VoiceInstallProgressSnapshot } from './install-progress.js';
 import {
   DEFAULT_PIPER_VOICE,
   DEFAULT_WHISPER_MODEL,
@@ -117,6 +118,14 @@ export interface VoiceProvisionProgress {
   readonly component: string;
   readonly phase: ProvisionPhase;
   readonly message?: string | undefined;
+  /** The component's pinned size in bytes, where the manifest knows it. */
+  readonly bytesTotal?: number | undefined;
+  /**
+   * Bytes landed on disk, where known. Downloads verify whole-file (atomic
+   * temp+rename), so this is reported at completion boundaries (done/skip),
+   * not incrementally mid-transfer.
+   */
+  readonly bytesDone?: number | undefined;
 }
 
 export type TtsProvisionState = 'provisioned' | 'unsupported-platform' | 'download-failed' | 'checksum-mismatch';
@@ -184,8 +193,19 @@ export interface VoiceProvisionOptions {
 /** Provision the managed local voice runtime (piper TTS + default voice). */
 export async function provisionLocalVoiceRuntime(options: VoiceProvisionOptions): Promise<VoiceProvisionResult> {
   const platform = options.platform === undefined ? currentVoicePlatform() : options.platform;
-  const emit = (component: string, phase: ProvisionPhase, message?: string): void => {
-    options.onProgress?.({ component, phase, ...(message ? { message } : {}) });
+  const emit = (
+    component: string,
+    phase: ProvisionPhase,
+    message?: string,
+    bytes?: { readonly bytesTotal?: number | undefined; readonly bytesDone?: number | undefined },
+  ): void => {
+    options.onProgress?.({
+      component,
+      phase,
+      ...(message ? { message } : {}),
+      ...(bytes?.bytesTotal !== undefined ? { bytesTotal: bytes.bytesTotal } : {}),
+      ...(bytes?.bytesDone !== undefined ? { bytesDone: bytes.bytesDone } : {}),
+    });
   };
   // STT resolves independently of TTS; the placeholder is replaced below.
   let stt: VoiceProvisionResult['stt'] = { engine: 'whisper-cpp', state: 'unsupported-platform', reason: WHISPER_UNSUPPORTED_REASON };
@@ -212,7 +232,12 @@ export async function provisionLocalVoiceRuntime(options: VoiceProvisionOptions)
       spec,
       destPath: dest,
       fetchImpl: options.fetchImpl,
-      onProgress: (phase, message) => emit(id, phase, message),
+      // Byte-labeled progress: the pinned total is always known from the
+      // manifest; completion boundaries (done/skip) report the landed bytes.
+      onProgress: (phase, message) => emit(id, phase, message, {
+        bytesTotal: spec.bytes,
+        ...(phase === 'done' || phase === 'skip' ? { bytesDone: spec.bytes } : {}),
+      }),
     });
     if (result.ok) {
       components.push({ id, state: result.skipped ? 'skipped' : 'installed', bytes: result.bytes });
@@ -509,6 +534,13 @@ export interface VoiceRuntimeStatus {
   };
   /** Total download size of a fresh provision, in bytes (null on unsupported platforms). */
   readonly offerBytes: number | null;
+  /**
+   * Present ONLY while a voice.local.install run is active: the live
+   * per-component progress of that run (the daemon composition merges it in —
+   * see install-progress.ts). Surfaces poll status during install to render
+   * real progress instead of busy→receipt.
+   */
+  readonly installInProgress?: VoiceInstallProgressSnapshot | undefined;
 }
 
 /** Report whether the managed voice runtime is installed, without touching the network. */

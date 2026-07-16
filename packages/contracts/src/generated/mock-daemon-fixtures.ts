@@ -6156,7 +6156,19 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
         "modelPath": "sample",
         "reason": "sample"
       },
-      "offerBytes": 0
+      "offerBytes": 0,
+      "installInProgress": {
+        "startedAt": 0,
+        "components": [
+          {
+            "component": "sample",
+            "phase": "skip",
+            "message": "sample",
+            "bytesTotal": 0,
+            "bytesDone": 0
+          }
+        ]
+      }
     }
   },
   "intelligence.snapshot": {

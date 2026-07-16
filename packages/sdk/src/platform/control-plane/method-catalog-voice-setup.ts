@@ -19,6 +19,26 @@ import {
 const NULLABLE_NUMBER = { anyOf: [NUMBER_SCHEMA, { type: 'null' }] };
 const NULLABLE_STRING = { anyOf: [STRING_SCHEMA, { type: 'null' }] };
 
+/**
+ * Live progress of the ACTIVE voice.local.install run, served inside the
+ * status read while — and only while — an install is running. The install verb
+ * is plain request/response, so surfaces poll status during the provision to
+ * render real per-component progress instead of busy→receipt.
+ */
+const INSTALL_IN_PROGRESS_SCHEMA = objectSchema({
+  startedAt: NUMBER_SCHEMA,
+  components: {
+    type: 'array',
+    items: objectSchema({
+      component: STRING_SCHEMA,
+      phase: { type: 'string', enum: ['skip', 'download', 'verify', 'extract', 'done', 'error'] },
+      message: STRING_SCHEMA,
+      bytesTotal: NUMBER_SCHEMA,
+      bytesDone: NUMBER_SCHEMA,
+    }, ['component', 'phase']),
+  },
+}, ['startedAt', 'components']);
+
 const RUNTIME_STATUS_SCHEMA = objectSchema({
   platform: NULLABLE_STRING,
   state: { type: 'string', enum: ['not-provisioned', 'partial', 'provisioned', 'unsupported-platform'] },
@@ -40,6 +60,7 @@ const RUNTIME_STATUS_SCHEMA = objectSchema({
     reason: STRING_SCHEMA,
   }, ['engine', 'supported', 'state', 'binaryPresent', 'modelPresent', 'binaryPath', 'modelPath']),
   offerBytes: NULLABLE_NUMBER,
+  installInProgress: INSTALL_IN_PROGRESS_SCHEMA,
 }, ['platform', 'state', 'tts', 'stt', 'offerBytes']);
 
 const INSTALL_RESULT_SCHEMA = objectSchema({
@@ -79,7 +100,7 @@ export const builtinGatewayVoiceSetupMethodDescriptors: readonly GatewayMethodDe
     id: 'voice.local.status',
     title: 'Get Managed Local-Voice Runtime State',
     description:
-      'Whether the managed local voice runtime (piper TTS + a default voice) is installed: not-provisioned (with a size-labeled offer), partial, provisioned, or unsupported-platform. STT (whisper.cpp) reports its own managed state: goodvibes builds and pins the whisper.cpp bundle per platform (no official prebuilt exists; provisioning never compiles on your machine), so where a pinned bundle exists STT provisions like TTS, and elsewhere it reports unsupported honestly. Read-only.',
+      'Whether the managed local voice runtime (piper TTS + a default voice) is installed: not-provisioned (with a size-labeled offer), partial, provisioned, or unsupported-platform. STT (whisper.cpp) reports its own managed state: goodvibes builds and pins the whisper.cpp bundle per platform (no official prebuilt exists; provisioning never compiles on your machine), so where a pinned bundle exists STT provisions like TTS, and elsewhere it reports unsupported honestly. While a voice.local.install run is active, the response also carries installInProgress — the live per-component progress (phase, byte sizes where known) of that run — so surfaces poll this read during the install to render real progress; the section is absent when no install is running. Read-only.',
     category: 'health',
     scopes: ['read:health'],
     http: { method: 'GET', path: '/api/voice/local/status' },
