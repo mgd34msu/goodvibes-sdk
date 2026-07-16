@@ -14,7 +14,7 @@
  *   the honest fixture fallback (reason stated) when it does not.
  */
 import { describe, expect, test } from 'bun:test';
-import { execFileSync, spawnSync, type ChildProcess } from 'node:child_process';
+import { execFileSync, spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { PowerManager, LID_SWITCH_HONEST_SPLIT } from '../packages/sdk/src/platform/power/manager.ts';
 import { bindPowerWorkSignals } from '../packages/sdk/src/platform/power/work-signals.ts';
@@ -358,6 +358,31 @@ describe('live logind proof on this host', () => {
       // Honest fallback: this environment has no logind session bus access;
       // the fixture-backed policy tests above still prove the full contract.
       console.warn('[power test] logind unavailable in this environment — live proof skipped honestly');
+      return;
+    }
+    // Staging precondition, verified before any assertion: a reachable bus does
+    // not guarantee this session may actually take and LIST inhibitors (some CI
+    // runner instances answer the bus but scope inhibitor listing away from the
+    // job's session). Stage a plain-CLI probe inhibitor and require it to appear
+    // in --list; if the environment cannot stage the fixture, skip honestly —
+    // the proof must be EXERCISED or SKIPPED, never failed by the host.
+    const probeWho = `gv-logind-probe-${process.pid}`;
+    const probe = spawn('systemd-inhibit', ['--what=idle', `--who=${probeWho}`, '--why=staging probe', '--mode=block', 'sleep', '10'], { stdio: 'ignore' });
+    let probeListed = false;
+    try {
+      for (let i = 0; i < 20 && !probeListed; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        try {
+          probeListed = execFileSync('systemd-inhibit', ['--list', '--no-legend'], { encoding: 'utf-8' }).includes(probeWho);
+        } catch {
+          break;
+        }
+      }
+    } finally {
+      try { probe.kill('SIGTERM'); } catch { /* already gone */ }
+    }
+    if (!probeListed) {
+      console.warn('[power test] logind bus answers but inhibitors are not grantable/listable from this session — live proof skipped honestly');
       return;
     }
     const handle = await seam.inhibit({ classes: ['idle'], who: 'goodvibes-test-proof', why: 'live test proof' });
