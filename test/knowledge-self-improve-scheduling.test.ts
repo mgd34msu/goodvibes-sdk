@@ -189,3 +189,80 @@ describe('governor pause + admission at fire time', () => {
     expect([...h.state().values()].some((s) => s.pending)).toBe(false);
   });
 });
+
+describe('fix-round 2: in-flight gap evidence and sweep backoff', () => {
+  test('gapIds arriving while a run is IN FLIGHT are re-queued by the completion, not wiped — and a zero-gap result does not park them', async () => {
+    const { store } = createStores();
+    let clock = 0;
+    const timers: ScheduledTimer[] = [];
+    const runs: KnowledgeSemanticSelfImproveInput[] = [];
+    const releases: Array<(gaps: number) => void> = [];
+    const svc = new KnowledgeSemanticService(store, {
+      gapRepairer,
+      backgroundSelfImproveMinDelayMs: 10,
+      backgroundSelfImproveZeroGapBackoffMs: 3_600_000,
+      now: () => clock,
+      scheduleSeam: (cb, delayMs) => { timers.push({ cb, at: clock + delayMs }); },
+    });
+    const internal = svc as unknown as {
+      selfImprove(input: KnowledgeSemanticSelfImproveInput, runOptions?: unknown): Promise<KnowledgeSemanticSelfImproveResult>;
+      backgroundScheduler: { state: Map<string, { pending: boolean; zeroGapUntil: number }> };
+    };
+    internal.selfImprove = (input) => {
+      runs.push(input);
+      return new Promise((resolve) => {
+        releases.push((gaps) => resolve({ candidateGaps: gaps } as unknown as KnowledgeSemanticSelfImproveResult));
+      });
+    };
+    const fireDue = (): void => {
+      for (;;) {
+        const due = timers.findIndex((t) => t.at <= clock);
+        if (due < 0) break;
+        timers.splice(due, 1)[0]!.cb();
+      }
+    };
+
+    // g1 schedules and FIRES (run now in flight, unsettled).
+    svc.queueBackgroundSelfImprove({ reason: 'answer', knowledgeSpaceId: 'space-x', gapIds: ['g1'] }, 0);
+    clock += 10; fireDue();
+    expect(runs.length).toBe(1);
+    // g2 arrives MID-RUN (the reviewer's probe: two answer() calls ~10s apart).
+    svc.queueBackgroundSelfImprove({ reason: 'answer', knowledgeSpaceId: 'space-x', gapIds: ['g2'] }, 0);
+    // The in-flight run completes with ZERO candidate gaps.
+    releases[0]!(0);
+    await new Promise((r) => setTimeout(r, 5));
+    // g2 was RE-QUEUED (not wiped) and the scope was NOT parked over it.
+    const state = internal.backgroundScheduler.state.get('space:space-x|answer')!;
+    expect(state.pending).toBe(true);
+    expect(state.zeroGapUntil).toBe(0);
+    clock += 10; fireDue();
+    await new Promise((r) => setTimeout(r, 5));
+    expect(runs.length).toBe(2);
+    expect(runs[1]!.gapIds).toEqual(['g2']);
+    releases[1]!(1);
+  });
+
+  test('the collapsed global sweep honors its OWN zero-gap backoff across burst waves; gap evidence clears it', async () => {
+    const h = harness({ minDelayMs: 10, zeroGapBackoffMs: 3_600_000, candidateGaps: 0 });
+    // Wave 1: 9+ distinct scopes → bounded runs incl. one global sweep; all zero-gap.
+    for (let i = 0; i < 20; i++) h.svc.queueBackgroundSelfImprove({ reason: 'ingest', sourceIds: [`w1-${i}`] }, 0);
+    await h.advance(50);
+    const wave1Runs = h.runs.length;
+    expect(wave1Runs).toBeLessThanOrEqual(9);
+    const sweep = h.state().get('global|sweep')!;
+    expect(sweep.zeroGapUntil).toBeGreaterThan(0); // sweep parked itself
+    // Wave 2 INSIDE the sweep's backoff window: 20 NEW distinct sources.
+    for (let i = 0; i < 20; i++) h.svc.queueBackgroundSelfImprove({ reason: 'ingest', sourceIds: [`w2-${i}`] }, 0);
+    await h.advance(50);
+    // The distinct scoped keys may run (they carry their own state), but NO
+    // second global sweep fires through its own backoff.
+    const sweepRuns = h.runs.filter((r) => !r.knowledgeSpaceId && !r.sourceIds?.length && !r.gapIds?.length).length;
+    expect(sweepRuns).toBe(1);
+    // Concrete gap evidence on an overflow trigger CLEARS the sweep backoff.
+    for (let i = 0; i < 8; i++) h.svc.queueBackgroundSelfImprove({ reason: 'ingest', sourceIds: [`w3-${i}`] }, 0);
+    h.svc.queueBackgroundSelfImprove({ reason: 'ingest', sourceIds: ['w3-overflow'], gapIds: ['g-real'] }, 0);
+    await h.advance(50);
+    const sweepRunsAfterEvidence = h.runs.filter((r) => !r.knowledgeSpaceId && !r.sourceIds?.length && !r.gapIds?.length).length;
+    expect(sweepRunsAfterEvidence).toBe(2);
+  });
+});

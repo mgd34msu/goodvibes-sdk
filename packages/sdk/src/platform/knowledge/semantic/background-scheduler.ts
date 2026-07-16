@@ -122,7 +122,15 @@ export class BackgroundSelfImproveScheduler {
       key = GLOBAL_SWEEP_KEY;
       effectiveInput = { reason: input.reason, ...(input.force !== undefined ? { force: input.force } : {}) };
       const sweep = this.state.get(key);
-      if (sweep?.pending) return; // one queued sweep absorbs the whole burst
+      if (sweep) {
+        // The backoff must be checked against the FINAL key: a sustained
+        // distinct-scope burst would otherwise re-run the collapsed sweep
+        // back-to-back straight through the sweep's own zero-gap window.
+        // Concrete gap evidence still clears it, exactly like a scoped key.
+        if (input.gapIds?.length) sweep.zeroGapUntil = 0;
+        if (sweep.pending) return; // one queued sweep absorbs the whole burst
+        if (now < sweep.zeroGapUntil) return; // the sweep found nothing recently — parked
+      }
     }
     const minDelayMs = Math.max(0, this.deps.minDelayMs());
     const backoffMs = Math.max(0, this.deps.backoffMs());
@@ -154,23 +162,34 @@ export class BackgroundSelfImproveScheduler {
         }
         return;
       }
+      // CONSUME the queued input: anything re-armed onto pendingInput after
+      // this point arrived MID-RUN and must not be lost when the run settles.
       const runInput = st?.pendingInput ?? effectiveInput;
-      void this.deps.run(runInput)
-        .then((result) => {
-          const next = this.state.get(key) ?? { pending: false, zeroGapUntil: 0 };
-          next.pending = false;
-          next.pendingInput = undefined;
-          // Zero candidate gaps ⇒ back off; a run that found nothing must not
-          // keep rescheduling itself. New-gap evidence clears the window.
-          next.zeroGapUntil = (result.candidateGaps ?? 0) === 0 ? this.deps.now() + backoffMs : 0;
+      if (st) st.pendingInput = undefined;
+      // If new input (gap evidence) merged in while the run executed, the
+      // completion re-queues it through the full guard set instead of wiping
+      // it — and a zero-gap RESULT must not park the scope over that fresh
+      // evidence (the run that just finished never looked at it).
+      const settle = (result: { candidateGaps?: number | undefined } | null): void => {
+        const next = this.state.get(key) ?? { pending: false, zeroGapUntil: 0 };
+        next.pending = false;
+        const rearmed = next.pendingInput;
+        next.pendingInput = undefined;
+        if (rearmed) {
+          next.zeroGapUntil = 0;
           this.state.set(key, next);
-        })
+          this.queue(rearmed, 0);
+          return;
+        }
+        // Zero candidate gaps ⇒ back off; a run that found nothing must not
+        // keep rescheduling itself. New-gap evidence clears the window.
+        next.zeroGapUntil = result !== null && (result.candidateGaps ?? 0) === 0 ? this.deps.now() + backoffMs : 0;
+        this.state.set(key, next);
+      };
+      void this.deps.run(runInput)
+        .then((result) => settle(result))
         .catch((error: unknown) => {
-          const next = this.state.get(key);
-          if (next) {
-            next.pending = false;
-            next.pendingInput = undefined;
-          }
+          settle(null);
           logger.warn('Knowledge semantic background self-improvement failed', {
             error: error instanceof Error ? error.message : String(error),
             knowledgeSpaceId: input.knowledgeSpaceId,
