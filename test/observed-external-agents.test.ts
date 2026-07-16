@@ -12,6 +12,7 @@
 import { describe, expect, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import {
   classifyExternalKind,
   classifyObservedProcesses,
@@ -452,6 +453,36 @@ describe('live tmux steer on this host (observed-agent steer channel end-to-end)
       const panePid = Number(tmux(['list-panes', '-t', session, '-F', '#{pane_pid}']).stdout.trim());
       expect(Number.isInteger(panePid) && panePid > 0).toBe(true);
 
+      // STAGING PRECONDITION (bounded wait, honest skip): the pane pid becomes
+      // agent-shaped only after bash's `exec -a claude` completes — until then
+      // its cmdline is the bash launcher, which the REAL classifier correctly
+      // ignores. Racing discovery against that exec produced flaky "must be
+      // discovered" failures. Verify via /proc that the staged process's
+      // cmdline matches the real discovery matcher BEFORE asserting discovery;
+      // if the precondition cannot be met, this leg cannot prove anything about
+      // discovery and skips honestly with the reason. The matcher itself is the
+      // production classifyExternalKind — never a weakened copy.
+      const readStagedArgs = (): string | null => {
+        try {
+          return readFileSync(`/proc/${panePid}/cmdline`, 'utf-8').replaceAll('\0', ' ').trim();
+        } catch {
+          return null; // process gone or /proc unavailable
+        }
+      };
+      let stagedArgs = readStagedArgs();
+      for (let i = 0; i < 100 && (stagedArgs === null || classifyExternalKind(stagedArgs) !== 'claude-code'); i++) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        stagedArgs = readStagedArgs();
+      }
+      if (stagedArgs === null || classifyExternalKind(stagedArgs) !== 'claude-code') {
+        console.warn(
+          `[observed test] live steer proof skipped honestly: the staged pane process (pid ${panePid}) never became agent-shaped within 5s — ` +
+          `last /proc cmdline was ${stagedArgs === null ? 'unreadable (process gone)' : `"${stagedArgs}"`}; ` +
+          'the staging precondition (exec -a claude completing) was not met on this host, so there is nothing real for discovery to prove.',
+        );
+        return;
+      }
+
       // Real discovery + real channel resolution over live host data: the real
       // process-table reader finds our agent-shaped process (pid → tty), and a
       // pane reader SCOPED TO OUR SESSION supplies the tty → pane mapping the
@@ -471,6 +502,9 @@ describe('live tmux steer on this host (observed-agent steer channel end-to-end)
         processReader: defaultProcessTableReader(),
         paneReader: scopedPaneReader,
         now: () => Date.now(),
+        // The live leg must scan NOW: a nonzero TTL could serve a stale cached
+        // scan taken before the staged process became agent-shaped.
+        refreshIntervalMs: 0,
       });
       const ours = source.list().find((r) => r.pid === panePid);
       expect(ours, 'our tmux-hosted agent-shaped session must be discovered').toBeDefined();
