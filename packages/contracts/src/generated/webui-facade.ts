@@ -8116,7 +8116,9 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
       },
       "stt": {
         "engine": "sample",
-        "state": "sample",
+        "state": "provisioned",
+        "binaryPath": "sample",
+        "modelPath": "sample",
         "reason": "sample"
       },
       "components": [
@@ -8158,6 +8160,11 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
       "stt": {
         "engine": "sample",
         "supported": false,
+        "state": "not-provisioned",
+        "binaryPresent": false,
+        "modelPresent": false,
+        "binaryPath": "sample",
+        "modelPath": "sample",
         "reason": "sample"
       },
       "offerBytes": 0
