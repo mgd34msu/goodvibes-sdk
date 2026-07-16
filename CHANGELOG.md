@@ -55,6 +55,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   `memory.hardLimitPct` (default `90`), adds an absolute-memory backstop
   anchored to the machine's real kill line — the daemon's own service/container
   memory limit where one applies, else physical RAM.
+- **Voice install progress is visible while it runs.** `voice.local.install` is
+  a plain request/response call, so surfaces could only show a spinner during
+  the ~209MB download. `voice.local.status` now carries an `installInProgress`
+  section while — and only while — an install is running: per-component progress
+  (name, phase: download/verify/extract, byte sizes where known), fed by the
+  installer's own progress events. Surfaces simply poll status during an
+  install to render real progress; a second concurrent install call still joins
+  the one in-flight run. No new streaming machinery. (Note for surface authors:
+  labeling the STT `bundle-unavailable` state as "not yet published" is an
+  accurate reading — the wire enum name is unchanged.)
 - **Product-generated macOS launchd service files now carry a provenance key.**
   Because launchd has no description field, a `GoodVibesManagedBy` entry (a
   stable marker plus the service description) is written into every plist

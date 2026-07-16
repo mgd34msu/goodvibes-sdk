@@ -48,6 +48,13 @@ export {
 } from './provisioner.js';
 
 export {
+  createVoiceInstallProgressTracker,
+  type VoiceInstallProgressTracker,
+  type VoiceInstallProgressSnapshot,
+  type VoiceInstallComponentProgress,
+} from './install-progress.js';
+
+export {
   preconfigureLocalVoiceKeys,
   type VoicePreconfigReceipt,
   type VoicePreconfigDeps,

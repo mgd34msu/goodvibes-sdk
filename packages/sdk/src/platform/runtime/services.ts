@@ -57,7 +57,8 @@ import type { DomainDispatch, RuntimeStore } from './store/index.js';
 import { DistributedRuntimeManager } from './remote/distributed-runtime-manager.js';
 import { RemoteRunnerRegistry, RemoteSupervisor } from './remote/index.js';
 import { IntegrationHelperService } from './integration/helpers.js';
-import { VoiceProviderRegistry, VoiceService, ensureBuiltinVoiceProviders, localVoiceRuntimeStatus, preconfigureLocalVoiceKeys, provisionLocalVoiceRuntime, readVoiceInstallStamp, writeVoiceInstallStamp } from '../voice/index.js';
+import { VoiceProviderRegistry, VoiceService, ensureBuiltinVoiceProviders } from '../voice/index.js';
+import { createVoiceSetupService } from './voice-setup.js';
 import { WebSearchProviderRegistry, WebSearchService } from '../web-search/index.js';
 import { MemoryEmbeddingProviderRegistry } from '../state/memory-embeddings.js';
 import { HookActivityTracker } from '../hooks/activity.js';
@@ -131,7 +132,6 @@ import { ObservedAgentSource } from './fleet/observed/source.js';
 import { createOrchestrationEngine, createProviderBackedAttemptJudge, type OrchestrationEngine } from '../orchestration/index.js';
 import { createFixWorkstreamRunner } from '../orchestration/fix-workstream-runner.js';
 import { makeRuntimeFleetProbe } from './orchestration/fleet-count.js';
-import { singleFlight } from '../utils/single-flight.js';
 import {
   CacheRegistry,
   PauseController,
@@ -947,62 +947,19 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // Late-bind the admission gate now that the governor exists: the expensive
   // entry points captured `admitExpensiveWork` earlier via this holder.
   admitExpensiveWorkRef.current = (label) => memoryGovernor.admitExpensiveWork(label);
-  // Managed local-voice provisioning: status read + one-act install that
-  // provisions the piper engine + a default voice and pre-configures the
-  // voice.local.* keys (user-set keys preserved).
+  // Managed local-voice provisioning: single-flight one-act install +
+  // status read carrying live install progress while an install runs
+  // (surfaces poll status during the ~209MB provision). Ownership-aware
+  // preconfigure, breaker reset, and admission gating live in
+  // runtime/voice-setup.ts.
   const managedVoiceRoot = shellPaths.resolveUserPath('voice');
-  // Single-flight: concurrent installs are never meaningful — the second (and
-  // every further) concurrent caller joins the in-progress install's promise
-  // instead of starting parallel multi-hundred-MB downloads.
-  const runVoiceInstall = singleFlight(async () => {
-      const provision = await provisionLocalVoiceRuntime({ managedRoot: managedVoiceRoot });
-      let configured: { set: { key: string; value: string }[]; skipped: { key: string; reason: string }[] } = { set: [], skipped: [] };
-      if (provision.tts.state === 'provisioned' && provision.tts.binaryPath && provision.tts.modelPath) {
-        // Ownership-aware preconfigure: values THIS installer previously wrote
-        // (recorded in the install stamp) update to the new managed paths;
-        // genuinely user-set values still win; a user-cleared installer value
-        // is a deliberate disable and stays cleared.
-        const stamp = readVoiceInstallStamp(managedVoiceRoot);
-        const receipt = preconfigureLocalVoiceKeys({
-          getConfig: (k) => String(configManager.get(k as never) ?? ''),
-          setConfig: (k, v) => configManager.setDynamic(k as never, v),
-          ttsEngine: provision.tts.engine,
-          ttsBinary: provision.tts.binaryPath,
-          ttsModelPath: provision.tts.modelPath,
-          ...(provision.stt.state === 'provisioned' && provision.stt.binaryPath && provision.stt.modelPath
-            ? { sttEngine: provision.stt.engine, sttBinary: provision.stt.binaryPath, sttModelPath: provision.stt.modelPath }
-            : {}),
-          priorInstallWrites: stamp?.configWrites,
-        });
-        configured = { set: [...receipt.set], skipped: [...receipt.skipped] };
-        if (stamp) {
-          writeVoiceInstallStamp(managedVoiceRoot, { ...stamp, configWrites: { ...stamp.configWrites, ...receipt.installWrites } });
-        }
-        // A successful (re-)install is the recovery act: clear any tripped
-        // local-engine circuit breaker so the next call retries the fresh engine.
-        voiceProviders.get('local')?.resetEngineFailureState?.();
-      }
-      return {
-        provisioned: provision.tts.state === 'provisioned',
-        platform: provision.platform,
-        tts: provision.tts,
-        stt: provision.stt,
-        components: provision.components,
-        configured,
-      };
+  const voiceSetup = createVoiceSetupService({
+    managedVoiceRoot,
+    getConfig: (k) => String(configManager.get(k as never) ?? ''),
+    setConfig: (k, v) => configManager.setDynamic(k as never, v),
+    resetLocalEngineFailureState: () => voiceProviders.get('local')?.resetEngineFailureState?.(),
+    admitExpensiveWork: (label) => admitExpensiveWork(label),
   });
-  const voiceSetup = {
-    status: () => localVoiceRuntimeStatus({ managedRoot: managedVoiceRoot }),
-    install: async () => {
-      // Critical-tier admission: a provision run allocates archive + model
-      // buffers — refuse honestly instead of piling onto memory pressure.
-      const admission = admitExpensiveWork('voice runtime install');
-      if (!admission.allowed) {
-        throw new Error(admission.reason ?? 'voice runtime install refused: daemon is under critical memory pressure.');
-      }
-      return runVoiceInstall();
-    },
-  };
   registerGatewayVerbGroups(gatewayMethods, { processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, requestApproval: (input) => approvalBroker.requestApproval(input), stampFixSessionOnApproval: (offerCallId, outcome) => approvalBroker.stampFixSession(offerCallId, outcome), watcherRegistry, userPermissionRuleStore, shellPaths, runtimeBus: options.runtimeBus, sessionPresence: { isAttached }, configManager, runtimeStore: options.runtimeStore, channelDeliveryRouter, providerRegistry, automationManager, sessionLister: sessionBroker, sessionIntake: sessionBroker, workingDirectory, attemptsController: orchestrationEngine, stepUpService, memoryRegistry, pairingTokens, acpHost, sessionLiveTurnControls, powerManager, memoryGovernor, voiceSetup, onCiAutoWatch: (observer) => { ciAutoWatchObserver = observer; } }); // see routes/register-gateway-verb-groups.ts
   return {
     workingDirectory,

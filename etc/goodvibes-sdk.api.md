@@ -15244,6 +15244,16 @@ export interface OperatorMethodOutputMap {
             reason?: string;
         };
         offerBytes: null | number;
+        installInProgress?: {
+            startedAt: number;
+            components: readonly ({
+                component: string;
+                phase: "done" | "download" | "error" | "extract" | "skip" | "verify";
+                message?: string;
+                bytesTotal?: number;
+                bytesDone?: number;
+            })[];
+        };
     };
     // (undocumented)
     "voice.providers.list": {

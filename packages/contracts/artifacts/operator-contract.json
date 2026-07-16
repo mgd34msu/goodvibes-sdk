@@ -33096,7 +33096,7 @@
       {
         "id": "voice.local.status",
         "title": "Get Managed Local-Voice Runtime State",
-        "description": "Whether the managed local voice runtime (piper TTS + a default voice) is installed: not-provisioned (with a size-labeled offer), partial, provisioned, or unsupported-platform. STT (whisper.cpp) reports its own managed state: goodvibes builds and pins the whisper.cpp bundle per platform (no official prebuilt exists; provisioning never compiles on your machine), so where a pinned bundle exists STT provisions like TTS, and elsewhere it reports unsupported honestly. Read-only.",
+        "description": "Whether the managed local voice runtime (piper TTS + a default voice) is installed: not-provisioned (with a size-labeled offer), partial, provisioned, or unsupported-platform. STT (whisper.cpp) reports its own managed state: goodvibes builds and pins the whisper.cpp bundle per platform (no official prebuilt exists; provisioning never compiles on your machine), so where a pinned bundle exists STT provisions like TTS, and elsewhere it reports unsupported honestly. While a voice.local.install run is active, the response also carries installInProgress — the live per-component progress (phase, byte sizes where known) of that run — so surfaces poll this read during the install to render real progress; the section is absent when no install is running. Read-only.",
         "category": "health",
         "source": "builtin",
         "access": "authenticated",
@@ -33220,6 +33220,55 @@
                   "type": "null"
                 }
               ]
+            },
+            "installInProgress": {
+              "type": "object",
+              "properties": {
+                "startedAt": {
+                  "type": "number"
+                },
+                "components": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "component": {
+                        "type": "string"
+                      },
+                      "phase": {
+                        "type": "string",
+                        "enum": [
+                          "skip",
+                          "download",
+                          "verify",
+                          "extract",
+                          "done",
+                          "error"
+                        ]
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "bytesTotal": {
+                        "type": "number"
+                      },
+                      "bytesDone": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "component",
+                      "phase"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "startedAt",
+                "components"
+              ],
+              "additionalProperties": false
             }
           },
           "required": [
