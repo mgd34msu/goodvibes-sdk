@@ -1,0 +1,99 @@
+# Reusable: release-verify (by reference)
+#
+# Consumer contract
+#   Verifies that a commit's PUSH CI run completed with EVERY job green — the
+#   by-reference validation that replaces re-running gates at release time.
+#   Runs the toolchain `per-job-green` CLI (all-jobs-green with a 503-resilient
+#   check-suites fallback) and surfaces the resolved run id + head SHA so a
+#   publish job can restore that run's build artifact and assert integrity.
+#
+#   Call it:
+#     jobs:
+#       release-verify:
+#         uses: mgd34msu/goodvibes-sdk/.github/workflows/reusable-release-verify.yml@main
+#         with:
+#           sha: ${{ github.sha }}
+#         secrets:
+#           token: ${{ secrets.GITHUB_TOKEN }}
+#
+#   Inputs:  sha (required), repository (default: caller repo), workflow
+#            (default ci.yml), event (default push), bun-version, toolchain-spec.
+#   Outputs: run_id, head_sha, ok.
+#   Secrets: token — a GITHUB_TOKEN with actions:read on the target repo.
+
+on:
+  workflow_call:
+    inputs:
+      sha:
+        description: Commit SHA whose push-CI run must be per-job green.
+        required: true
+        type: string
+      repository:
+        description: owner/repo to inspect (defaults to the calling repo).
+        required: false
+        type: string
+        default: ""
+      workflow:
+        description: Workflow file whose run is verified.
+        required: false
+        type: string
+        default: ci.yml
+      event:
+        description: Triggering event to match.
+        required: false
+        type: string
+        default: push
+      bun-version:
+        required: false
+        type: string
+        default: "1.3.10"
+      toolchain-spec:
+        description: npm spec of the toolchain CLI package to run via bunx.
+        required: false
+        type: string
+        default: "@pellux/goodvibes-toolchain"
+    outputs:
+      run_id:
+        description: The resolved Actions run id (for the artifact-integrity handoff).
+        value: ${{ jobs.verify.outputs.run_id }}
+      head_sha:
+        description: The head SHA the resolved run actually built.
+        value: ${{ jobs.verify.outputs.head_sha }}
+      ok:
+        description: "'true' when every job of the run concluded success."
+        value: ${{ jobs.verify.outputs.ok }}
+    secrets:
+      token:
+        description: Token with actions:read to query the run's per-job conclusions.
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+      checks: read
+    outputs:
+      run_id: ${{ steps.pjg.outputs.run_id }}
+      head_sha: ${{ steps.pjg.outputs.head_sha }}
+      ok: ${{ steps.pjg.outputs.ok }}
+    steps:
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: ${{ inputs.bun-version }}
+      - name: Verify push-CI run is per-job green
+        id: pjg
+        env:
+          GH_TOKEN: ${{ secrets.token || github.token }}
+        run: |
+          bunx ${{ inputs.toolchain-spec }} goodvibes-per-job-green \
+            --repo "${{ inputs.repository || github.repository }}" \
+            --sha "${{ inputs.sha }}" \
+            --workflow "${{ inputs.workflow }}" \
+            --event "${{ inputs.event }}"

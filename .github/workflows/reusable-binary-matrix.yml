@@ -1,0 +1,79 @@
+# Reusable: binary build matrix (toolchain build-binaries + post-build-smoke)
+#
+# Consumer contract
+#   Builds the repo's compiled binaries across a target matrix using the
+#   toolchain `build-binaries` CLI (necessary builds only — the throwaway
+#   validate build is gone), runs the per-target `post-build-smoke` hook when a
+#   binary can execute on the runner, and uploads each target's artifacts.
+#
+#   Call it:
+#     jobs:
+#       binaries:
+#         uses: mgd34msu/goodvibes-sdk/.github/workflows/reusable-binary-matrix.yml@main
+#         with:
+#           targets: '[{"key":"linux-x64","runner":"ubuntu-latest","smoke":true},
+#                      {"key":"darwin-arm64","runner":"macos-14","smoke":true}]'
+#           artifact-glob: "dist/goodvibes-* dist/lib"
+#
+#   Inputs:  targets (required JSON array of {key,runner,smoke}), artifact-glob,
+#            artifact-prefix (default binaries), bun-version, toolchain-spec.
+#   Each leg runs `goodvibes-build-binaries --target <key>`; smoke legs also run
+#   `goodvibes-post-build-smoke`. Config (entrypoints, addon, daemon leg) comes
+#   from the caller repo's toolchain.config.json.
+
+on:
+  workflow_call:
+    inputs:
+      targets:
+        description: JSON array of {key, runner, smoke} objects.
+        required: true
+        type: string
+      artifact-glob:
+        description: Space-separated globs of built outputs to upload per target.
+        required: false
+        type: string
+        default: "dist"
+      artifact-prefix:
+        required: false
+        type: string
+        default: binaries
+      bun-version:
+        required: false
+        type: string
+        default: "1.3.10"
+      toolchain-spec:
+        required: false
+        type: string
+        default: "@pellux/goodvibes-toolchain"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.target.key }}
+    runs-on: ${{ matrix.target.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(inputs.targets) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Setup Bun + deps (cached)
+        uses: ./.github/actions/setup
+        with:
+          bun-version: ${{ inputs.bun-version }}
+      - name: Build target
+        run: bunx ${{ inputs.toolchain-spec }} goodvibes-build-binaries --target ${{ matrix.target.key }}
+      - name: Post-build smoke
+        if: matrix.target.smoke
+        run: bunx ${{ inputs.toolchain-spec }} goodvibes-post-build-smoke
+      - name: Upload target artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ${{ inputs.artifact-prefix }}-${{ matrix.target.key }}
+          path: ${{ inputs.artifact-glob }}
+          if-no-files-found: error
+          retention-days: 1
