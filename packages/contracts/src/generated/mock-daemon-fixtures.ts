@@ -6100,7 +6100,9 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       },
       "stt": {
         "engine": "sample",
-        "state": "sample",
+        "state": "provisioned",
+        "binaryPath": "sample",
+        "modelPath": "sample",
         "reason": "sample"
       },
       "components": [
@@ -6147,6 +6149,11 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       "stt": {
         "engine": "sample",
         "supported": false,
+        "state": "not-provisioned",
+        "binaryPresent": false,
+        "modelPresent": false,
+        "binaryPath": "sample",
+        "modelPath": "sample",
         "reason": "sample"
       },
       "offerBytes": 0

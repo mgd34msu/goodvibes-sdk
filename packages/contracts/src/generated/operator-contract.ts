@@ -32904,7 +32904,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "voice.local.install",
         "title": "Install the Managed Local-Voice Runtime",
-        "description": "One-act setup: download + checksum-verify the piper TTS engine and a default voice into the goodvibes-managed directory, then point the voice.local.* config keys at the managed install — never overwriting a key you already set to a custom value (skipped keys are reported). After this, local TTS works with zero further configuration. Downloads only when you ask; a failed or checksum-mismatched download keeps nothing.",
+        "description": "One-act setup: download + checksum-verify the piper TTS engine, a default voice, and (where a pinned goodvibes-built bundle exists) the whisper.cpp STT engine with its default model into the goodvibes-managed directory, then point the voice.local.* config keys at the managed install — never overwriting a key you already set to a custom value (skipped keys are reported). After this, local TTS works with zero further configuration. Downloads only when you ask; a failed or checksum-mismatched download keeps nothing.",
         "category": "health",
         "source": "builtin",
         "access": "authenticated",
@@ -32978,6 +32978,19 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   "type": "string"
                 },
                 "state": {
+                  "type": "string",
+                  "enum": [
+                    "provisioned",
+                    "unsupported-platform",
+                    "download-failed",
+                    "checksum-mismatch",
+                    "bundle-unavailable"
+                  ]
+                },
+                "binaryPath": {
+                  "type": "string"
+                },
+                "modelPath": {
                   "type": "string"
                 },
                 "reason": {
@@ -32986,8 +32999,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               },
               "required": [
                 "engine",
-                "state",
-                "reason"
+                "state"
               ],
               "additionalProperties": false
             },
@@ -33085,7 +33097,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "voice.local.status",
         "title": "Get Managed Local-Voice Runtime State",
-        "description": "Whether the managed local voice runtime (piper TTS + a default voice) is installed: not-provisioned (with a size-labeled offer), partial, provisioned, or unsupported-platform. STT (whisper.cpp) reports unsupported honestly — no official prebuilt binary exists and provisioning never compiles on your machine. Read-only.",
+        "description": "Whether the managed local voice runtime (piper TTS + a default voice) is installed: not-provisioned (with a size-labeled offer), partial, provisioned, or unsupported-platform. STT (whisper.cpp) reports its own managed state: goodvibes builds and pins the whisper.cpp bundle per platform (no official prebuilt exists; provisioning never compiles on your machine), so where a pinned bundle exists STT provisions like TTS, and elsewhere it reports unsupported honestly. Read-only.",
         "category": "health",
         "source": "builtin",
         "access": "authenticated",
@@ -33164,6 +33176,27 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "supported": {
                   "type": "boolean"
                 },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "not-provisioned",
+                    "partial",
+                    "provisioned",
+                    "unsupported-platform"
+                  ]
+                },
+                "binaryPresent": {
+                  "type": "boolean"
+                },
+                "modelPresent": {
+                  "type": "boolean"
+                },
+                "binaryPath": {
+                  "type": "string"
+                },
+                "modelPath": {
+                  "type": "string"
+                },
                 "reason": {
                   "type": "string"
                 }
@@ -33171,7 +33204,11 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               "required": [
                 "engine",
                 "supported",
-                "reason"
+                "state",
+                "binaryPresent",
+                "modelPresent",
+                "binaryPath",
+                "modelPath"
               ],
               "additionalProperties": false
             },
