@@ -26,7 +26,20 @@ function defaultTestArgs(): readonly string[] {
   } catch {
     // Integration tests are optional in package-only checkouts.
   }
-  return [...rootTestFiles, ...integrationArgs];
+  // Include the toolchain unit-test subdirectory when present. Mirrors the
+  // integration pattern so `bun run test` (and CI's platform-matrix) exercises
+  // the @pellux/goodvibes-toolchain suites without listing each file.
+  const toolchainDir = resolve(testRoot, 'toolchain');
+  let toolchainArgs: string[] = [];
+  try {
+    const entries = readdirSync(toolchainDir, { withFileTypes: true });
+    if (entries.some((e) => e.isFile() && /\.test\.(ts|tsx|mjs)$/.test(e.name))) {
+      toolchainArgs = ['test/toolchain'];
+    }
+  } catch {
+    // Toolchain tests are optional in package-only checkouts.
+  }
+  return [...rootTestFiles, ...integrationArgs, ...toolchainArgs];
 }
 
 function resolveTestArgs(): readonly string[] {

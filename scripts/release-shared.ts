@@ -19,6 +19,7 @@ export const packageDirs = [
   'packages/peer-sdk',
   'packages/sdk',
   'packages/terminal-shell',
+  'packages/toolchain',
 ];
 
 export const publicPackageDirs = packageDirs;

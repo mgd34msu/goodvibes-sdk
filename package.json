@@ -116,6 +116,7 @@
     "@pellux/goodvibes-peer-sdk": "workspace:*",
     "@pellux/goodvibes-sdk": "workspace:*",
     "@pellux/goodvibes-terminal-shell": "workspace:*",
+    "@pellux/goodvibes-toolchain": "workspace:*",
     "@pellux/goodvibes-transport-core": "workspace:*",
     "@pellux/goodvibes-transport-http": "workspace:*",
     "@pellux/goodvibes-transport-realtime": "workspace:*",
