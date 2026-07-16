@@ -86,6 +86,38 @@ voice engine. This is a real end to end synthesis measurement."). Larger
 models trade latency for accuracy; GPU hosts should prefer faster-whisper for
 STT per the sources above.
 
+## Managed engine bundles: hosting + stability contract
+
+`voice.local.install` provisions the STT engine (whisper.cpp) from a
+goodvibes-built, checksum-pinned bundle. Those bundles are hosted at ONE
+append-only GitHub release tag — **`voice-runtimes-v1`** on the SDK repo — with a
+`<asset>.sha256` sidecar next to every asset.
+
+Stability contract (relied on by the pinned manifest and every referencing
+script):
+
+- **Append-only.** Assets are added under new, versioned filenames
+  (`goodvibes-whisper-cpp-<version>-<platform>.tar.gz`). An existing asset is
+  **never re-uploaded in place and never renamed**. The publish workflow uploads
+  without `--clobber`, so an attempt to replace a pinned asset fails loudly.
+- **Move-in-lockstep.** If an asset location ever must change, every script/doc
+  that references it (the manifest `bundle.url`, this doc, the build script's
+  printed URL) is updated in the **same commit** — a pinned URL is never left
+  dangling.
+- **Reproducible.** `scripts/build-whisper-bundle.ts` produces a byte-reproducible
+  tarball (`tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner`,
+  `gzip -n`), so a clean rebuild of identical inputs matches the pinned `sha256`.
+  A user can therefore build the bundle themselves and sideload it — dropping it
+  at `<managedRoot>/engines/whisper.tar.gz` — and it verifies against the same
+  pin whether or not a hosted URL is set.
+
+Building + publishing a new bundle: run `scripts/build-whisper-bundle.ts` (it
+prints the bundle, its `.sha256` sidecar, and the durable hosted URL), or trigger
+the **Voice runtimes** workflow (`.github/workflows/voice-runtimes.yml`), then
+stamp the printed `WHISPER_ENGINES` entry into the manifest. linux-x64 is hosted
+today; other platforms report `unsupported` honestly until their bundle is
+uploaded to the same tag.
+
 ## Cost honesty
 
 - **ElevenLabs (premium route)**: every synthesis/transcription through the

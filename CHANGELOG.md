@@ -45,6 +45,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   4096 MB), `memory.tier.elevatedPct` (`60`), `memory.tier.highPct` (`80`),
   `memory.tier.criticalPct` (`95`), `memory.tripwire.rateMbPerSec` (`25`), and
   `memory.tripwire.sustainSec` (`60`).
+- **Local speech-to-text is now available out of the box on Linux x86_64.** The
+  goodvibes-built whisper.cpp bundle is hosted, so `voice.local.install`
+  downloads, checksum-verifies, and installs the speech engine and its default
+  model with no manual build — verified end to end (download, verify, extract,
+  transcribe). Voice engine bundles live at a single append-only release tag
+  with a checksum sidecar per asset; other platforms report "unsupported"
+  honestly until their bundle is published there. A new setting,
+  `memory.hardLimitPct` (default `120`), adds an absolute-memory backstop above
+  the pressure tiers.
+- **Product-generated macOS launchd service files now carry a provenance key.**
+  Because launchd has no description field, a `GoodVibesManagedBy` entry (a
+  stable marker plus the service description) is written into every plist
+  goodvibes generates, so a managed service file is identifiable as ours.
 
 ### Fixed
 
@@ -106,6 +119,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   actionable "engine unavailable" state — what failed and what to check —
   instead of re-invoking the engine for every chunk and producing a storm of
   crashes. Reconfiguring the engine or model clears the state and retries.
+- **The memory self-defense now also catches a SLOW leak and a service memory
+  cap.** A leak too gradual to trip the growth-rate detector would previously
+  ride past the budget to a kernel out-of-memory kill with no receipt; an
+  absolute-memory backstop now writes a diagnostic receipt and exits cleanly
+  when memory holds above the hard limit. The budget also now honors a systemd
+  `MemoryMax=` limit set on the daemon's own service unit (not just a
+  container's), and the leak-exit's state snapshots run without being able to
+  block the exit on a stalled disk.
+- **Local speech-to-text updates apply honestly and never freeze behind a false
+  version stamp.** A locally-provided engine archive is now verified against the
+  pinned checksum BEFORE it is unpacked, so a stale or mismatched archive is
+  never installed and then recorded as the new version; a mismatched archive is
+  reported explicitly. A re-install whose speech-to-text half fails now keeps the
+  recorded engine/model versions instead of erasing them, so a later correct
+  update still applies. The default recognition model is pinned to an immutable
+  source revision, so an upstream change can't break fresh installs.
+- **A local web surface announcement no longer misstates its reach.** When the
+  web host mode is an unrecognized or oddly-cased value, the daemon serves
+  loopback-only under a safe default; the startup announcement now says the value
+  was unrecognized and the surface serves this machine only, instead of printing
+  a bare address that could read as a live network binding.
 
 ## [1.9.0] - 2026-07-14
 

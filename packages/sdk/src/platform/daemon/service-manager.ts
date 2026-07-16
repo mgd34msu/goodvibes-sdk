@@ -186,6 +186,16 @@ export function renderSystemdUnit(
   ].join('\n');
 }
 
+/**
+ * Stable provenance marker written into every product-generated launchd plist.
+ * launchd has no Description field (unlike a systemd unit), so the definition's
+ * description was previously dropped entirely — a product-written plist was not
+ * provenance-identifiable. This additive custom key carries the writer identity
+ * plus the description; launchd ignores keys it does not know. The prefix is
+ * STABLE (pinned by a render test) so tooling can match product-written plists.
+ */
+const LAUNCHD_MANAGED_BY_PREFIX = 'goodvibes daemon service manager';
+
 function renderLaunchdPlist(definition: ManagedServiceDefinition): string {
   const envLines = Object.entries(definition.env)
     .filter(([, value]) => value.length > 0)
@@ -201,6 +211,8 @@ function renderLaunchdPlist(definition: ManagedServiceDefinition): string {
     '<dict>',
     '  <key>Label</key>',
     `  <string>${definition.name}</string>`,
+    '  <key>GoodVibesManagedBy</key>',
+    `  <string>${LAUNCHD_MANAGED_BY_PREFIX} — ${definition.description}</string>`,
     '  <key>ProgramArguments</key>',
     '  <array>',
     args,

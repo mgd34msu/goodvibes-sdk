@@ -172,6 +172,43 @@ describe('web surface URL announcement', () => {
     expect(resolveWebSurfaceUrl(fakeConfig({ 'web.publicBaseUrl': '' }))).toBe('http://127.0.0.1:3423');
     expect(resolveWebSurfaceUrl(fakeConfig({ 'web.publicBaseUrl': 'https://ops.example' }))).toBe('https://ops.example');
   });
+
+  test('a case/space-variant hostMode (recognized-local) STILL carries the scope note', () => {
+    // '  Local ' resolves to local (trim+lowercase); the old raw `=== "local"`
+    // check dropped the note here, misleading the operator that it was widened.
+    const store = new FeatureAnnouncementStore(storePath());
+    const lines = collectStartupAnnouncements({ configManager: fakeConfig({ 'web.hostMode': '  Local ' }), store });
+    expect(lines[0]?.text).toContain('http://127.0.0.1:3423');
+    expect(lines[0]?.text).toContain('serving this machine only');
+  });
+
+  test('an UNRECOGNIZED hostMode announces the honest fallback, not a bare loopback URL implying network mode', () => {
+    // The operator typed 'LAN' expecting network exposure; the daemon safely
+    // serves loopback. The announcement must SAY the value was unrecognized and
+    // the safe local default applied — never imply the network mode is live.
+    const store = new FeatureAnnouncementStore(storePath());
+    const lines = collectStartupAnnouncements({ configManager: fakeConfig({ 'web.hostMode': 'LAN' }), store });
+    expect(lines[0]?.text).toContain('http://127.0.0.1:3423');
+    expect(lines[0]?.text).toContain('unrecognized');
+    expect(lines[0]?.text).toContain('LAN');
+    expect(lines[0]?.text).toContain('this machine only');
+  });
+
+  test('a recognized network hostMode takes NO local scope note', () => {
+    const store = new FeatureAnnouncementStore(storePath());
+    const lines = collectStartupAnnouncements({ configManager: fakeConfig({ 'web.hostMode': 'network' }), store });
+    expect(lines[0]?.text).not.toContain('this machine only');
+    expect(lines[0]?.text).not.toContain('unrecognized');
+  });
+
+  test('a recognized network hostMode with a public base URL announces that URL and no local note', () => {
+    const store = new FeatureAnnouncementStore(storePath());
+    const lines = collectStartupAnnouncements({
+      configManager: fakeConfig({ 'web.publicBaseUrl': 'https://ops.example', 'web.hostMode': 'network' }),
+      store,
+    });
+    expect(lines[0]?.text).toBe('Web surface ready: https://ops.example');
+  });
 });
 
 describe('automation empty state', () => {

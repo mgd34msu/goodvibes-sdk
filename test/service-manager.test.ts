@@ -130,6 +130,26 @@ describe('launchd plist rendering (install) — platform faked via service.platf
     expect(contents).toContain('<key>KeepAlive</key>\n  <false/>');
     expect(contents).not.toContain('EnvironmentVariables');
   }));
+
+  test('every product-written plist carries a stable GoodVibesManagedBy provenance key (launchd has no Description field)', () => withTempDir((dir) => {
+    const configManager = launchdConfig(dir, 'goodvibes-provenance');
+    const def = definition({ name: 'goodvibes-provenance', workingDirectory: dir, description: 'GoodVibes daemon (provenance test)' });
+    const manager = new PlatformServiceManager(configManager, {
+      workingDirectory: dir, homeDirectory: dir, definitionOverride: def, featureFlags: flags(['service-management']),
+    });
+    const contents = readFileSync(manager.install().path, 'utf-8');
+    // Additive key present, carrying the writer identity + the definition's
+    // description (which launchd itself has nowhere to store).
+    expect(contents).toContain('<key>GoodVibesManagedBy</key>');
+    expect(contents).toContain('<string>goodvibes daemon service manager — GoodVibes daemon (provenance test)</string>');
+    // Existing keys are untouched — Label still the definition name.
+    expect(contents).toContain('<key>Label</key>\n  <string>goodvibes-provenance</string>');
+    // Stability: a second render of the same definition is byte-identical for
+    // the provenance key (no timestamp/nonce crept in).
+    const second = readFileSync(manager.install().path, 'utf-8');
+    const key = (s: string): string => s.slice(s.indexOf('<key>GoodVibesManagedBy</key>'), s.indexOf('<key>ProgramArguments</key>'));
+    expect(key(second)).toBe(key(contents));
+  }));
 });
 
 describe('launchd status()/uninstall() semantics', () => {

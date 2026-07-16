@@ -530,7 +530,9 @@ describe('managed STT (goodvibes-built whisper.cpp)', () => {
     const status = localVoiceRuntimeStatus({ managedRoot: dir, platform: 'linux-x64' });
     expect(status.stt.supported).toBe(true); // linux-x64 HAS a pinned goodvibes build
     expect(status.stt.state).toBe('not-provisioned');
-    expect(status.stt.reason).toMatch(/sideload|hosting release/i); // honest pending-hosting note
+    // linux-x64 is now HOSTED (voice-runtimes-v1), so there is no pending-hosting
+    // note — the user just runs voice.local.install to download it.
+    expect(status.stt.reason).toBeUndefined();
     const none = localVoiceRuntimeStatus({ managedRoot: dir, platform: 'darwin-arm64' });
     expect(none.stt.supported).toBe(false);
     expect(none.stt.state).toBe('unsupported-platform');

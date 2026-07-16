@@ -9,15 +9,24 @@
  * goodvibes-whisper-cpp-<version>-<platform>.tar.gz containing
  * `whisper/whisper-cli`.
  *
- * Usage:  bun scripts/build-whisper-bundle.ts [--version 1.8.2] [--out DIR]
+ * Usage:  bun scripts/build-whisper-bundle.ts [--version 1.8.2] [--out DIR] [--tag voice-runtimes-v1]
  *
- * Output: the bundle tarball plus its byte count and sha256 — paste these into
- * the platform's WHISPER_ENGINES entry, and upload the tarball wherever the
- * release hosts artifacts, then set `bundle.url`. Until it is hosted, the SAME
- * artifact installs via sideload: drop it at <managedRoot>/engines/whisper.tar.gz
- * and run voice.local.install (the pin verifies it either way).
+ * Hosting convention: ALL voice engine assets live at ONE append-only GitHub
+ * release tag (default `voice-runtimes-v1`), each with a `<asset>.sha256`
+ * sidecar next to it. Assets there are STABLE: never re-uploaded in place and
+ * never renamed (a new build gets a new versioned filename). So the `bundle.url`
+ * this script prints is durable, and any script/doc that references an asset
+ * must be updated in the SAME commit that would move it. The tarball is
+ * byte-reproducible (see the tar/gzip flags below), so a rebuild of identical
+ * inputs matches the pinned sha256 and a sideloaded copy installs identically.
  *
- * Requires: cmake, a C/C++ toolchain, tar, curl. Bails honestly when missing.
+ * Output: the bundle tarball, its byte count and sha256, the durable hosted URL,
+ * and the ready-to-paste WHISPER_ENGINES entry. Upload the tarball AND a
+ * `<name>.sha256` sidecar to the tag, then the url is live. Before it is hosted
+ * for a platform, the SAME artifact installs via sideload: drop it at
+ * <managedRoot>/engines/whisper.tar.gz and run voice.local.install.
+ *
+ * Requires: cmake, a C/C++ toolchain, tar, curl, gzip. Bails honestly when missing.
  */
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
@@ -47,6 +56,9 @@ async function run(cmd: string[], cwd?: string): Promise<void> {
 
 const version = arg('version', '1.8.2');
 const outDir = resolve(arg('out', '.tmp/whisper-bundle'));
+// The single append-only release tag that hosts every voice engine asset.
+const tag = arg('tag', 'voice-runtimes-v1');
+const releaseRepo = arg('repo', 'mgd34msu/goodvibes-sdk');
 const platform = platformKey();
 
 for (const tool of ['cmake', 'tar', 'curl', 'gzip']) {
@@ -100,21 +112,29 @@ try {
 
   const bytes = statSync(bundlePath).size;
   const sha256 = createHash('sha256').update(readFileSync(bundlePath)).digest('hex');
+  // The .sha256 sidecar that must sit next to the asset at the release tag.
+  const sidecarPath = `${bundlePath}.sha256`;
+  await Bun.write(sidecarPath, `${sha256}  ${bundleName}\n`);
+  const hostedUrl = `https://github.com/${releaseRepo}/releases/download/${tag}/${bundleName}`;
   console.log('');
-  console.log(`[build-whisper-bundle] bundle: ${bundlePath}`);
-  console.log(`[build-whisper-bundle] bytes:  ${bytes}`);
-  console.log(`[build-whisper-bundle] sha256: ${sha256}`);
+  console.log(`[build-whisper-bundle] bundle:  ${bundlePath}`);
+  console.log(`[build-whisper-bundle] sidecar: ${sidecarPath}`);
+  console.log(`[build-whisper-bundle] bytes:   ${bytes}`);
+  console.log(`[build-whisper-bundle] sha256:  ${sha256}`);
+  console.log(`[build-whisper-bundle] hosted:  ${hostedUrl}`);
   console.log('');
   console.log('WHISPER_ENGINES manifest entry:');
   console.log(JSON.stringify({
     [platform]: {
       version,
-      bundle: { url: '<hosted artifact URL, or null while sideload-only>', bytes, sha256 },
+      bundle: { url: hostedUrl, bytes, sha256 },
       binaryRelPath: 'whisper/whisper-cli',
     },
   }, null, 2));
   console.log('');
-  console.log(`Sideload install: cp ${bundleName} <managedRoot>/engines/whisper.tar.gz && run voice.local.install`);
+  console.log(`Upload BOTH files to the append-only '${tag}' tag (never re-upload in place / rename):`);
+  console.log(`  gh release upload ${tag} ${bundlePath} ${sidecarPath} --repo ${releaseRepo}`);
+  console.log(`Sideload (before hosting): cp ${bundleName} <managedRoot>/engines/whisper.tar.gz && run voice.local.install`);
 } finally {
   rmSync(work, { recursive: true, force: true });
 }
