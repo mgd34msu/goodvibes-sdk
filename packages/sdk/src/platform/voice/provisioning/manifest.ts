@@ -15,9 +15,11 @@
  *
  * STT — whisper.cpp (MIT). whisper.cpp publishes NO official prebuilt binary for
  * Linux/macOS in its GitHub releases (only source), and this provisioner never
- * compiles on the user's machine, so STT is reported `unsupported` with an
- * honest reason. The default model would be ggml-base.en; it is not downloaded
- * while no verified binary exists to run it.
+ * compiles on the user's machine, so goodvibes builds the bundle reproducibly
+ * and HOSTS it at the append-only `voice-runtimes-v1` release tag (with a
+ * .sha256 sidecar). linux-x64 is hosted today; other platforms report
+ * `unsupported` honestly until their bundle is uploaded to that same tag. The
+ * default model is ggml-base.en, pinned to an immutable Hugging Face revision.
  */
 import type { VerifiedDownloadSpec } from './download-verified.js';
 
@@ -94,10 +96,11 @@ export const WHISPER_UNSUPPORTED_REASON =
  * The goodvibes-built whisper.cpp engine bundle for a platform. whisper.cpp
  * ships no official prebuilt binaries, so goodvibes builds them reproducibly
  * (scripts/build-whisper-bundle.ts, static ggml, stripped) and pins the
- * artifact here. `bundle.url` is null until the artifact is hosted by the
- * release pipeline — the byte count and sha256 are ALWAYS pinned, so a
- * sideloaded bundle (dropped at the managed archive path) verifies against
- * the same pin and installs identically.
+ * artifact here. `bundle.url` points at the hosted asset once uploaded to the
+ * append-only `voice-runtimes-v1` tag, and is null until then — the byte count
+ * and sha256 are ALWAYS pinned, so a sideloaded copy of the same bytes (dropped
+ * at the managed archive path) verifies against the same pin and installs
+ * identically whether or not a URL is set.
  */
 export interface WhisperEngineManifest {
   readonly version: string;
@@ -122,14 +125,18 @@ export const WHISPER_ENGINES: Partial<Record<VoicePlatform, WhisperEngineManifes
   'linux-x64': {
     version: '1.8.2',
     bundle: {
-      // Hosted by the release pipeline; until then a sideloaded bundle matching
-      // this pin installs identically (see provisioner.ts).
-      url: null,
+      // Hosted at the append-only voice-runtimes-v1 release tag (a .sha256
+      // sidecar sits next to the asset). Assets there are never re-uploaded in
+      // place or renamed, so this URL + pin is stable; a sideloaded copy of the
+      // same bytes still verifies and installs identically (see provisioner.ts).
+      url: 'https://github.com/mgd34msu/goodvibes-sdk/releases/download/voice-runtimes-v1/goodvibes-whisper-cpp-1.8.2-linux-x64.tar.gz',
       bytes: 1121557,
       sha256: '80948cd00eed6b43fc7bc307424713a4b4890bc1aec11bdc560aba9357834ac5',
     },
     binaryRelPath: 'whisper/whisper-cli',
   },
+  // Other platforms stay honestly unstamped (url null / absent) until the build
+  // workflow uploads their verified bundles to the voice-runtimes-v1 tag.
 };
 
 /**

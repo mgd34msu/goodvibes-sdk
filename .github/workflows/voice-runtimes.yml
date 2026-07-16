@@ -1,0 +1,77 @@
+name: Voice runtimes
+
+# Build a goodvibes voice engine bundle reproducibly and publish it to the ONE
+# append-only release tag that hosts every voice engine asset: `voice-runtimes-v1`.
+# Each asset ships with a `<asset>.sha256` sidecar. Assets are STABLE — never
+# re-uploaded in place and never renamed; a new build produces a new versioned
+# filename. Upload is therefore non-clobbering: re-running for an already-present
+# filename fails loudly rather than silently replacing a pinned asset.
+#
+# Manual only: this publishes a durable artifact that the SDK manifest pins, so
+# it is never triggered automatically. After a successful run, stamp the printed
+# WHISPER_ENGINES entry (url + bytes + sha256) into
+# packages/sdk/src/platform/voice/provisioning/manifest.ts in the same PR.
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      engine:
+        description: "Which engine bundle to build"
+        required: true
+        default: "whisper"
+        type: choice
+        options:
+          - whisper
+      version:
+        description: "Engine version (whisper.cpp source tag, no leading v)"
+        required: false
+        default: "1.8.2"
+
+concurrency:
+  # Never let two publish runs race the same append-only tag.
+  group: voice-runtimes-${{ github.event.inputs.engine }}-${{ github.event.inputs.version }}
+  cancel-in-progress: false
+
+env:
+  VOICE_RUNTIMES_TAG: voice-runtimes-v1
+
+jobs:
+  build-and-publish:
+    name: Build + publish (linux-x64)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      # Needed to create the release (if absent) and upload assets to the tag.
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Setup Bun + deps (cached)
+        uses: ./.github/actions/setup
+      - name: Install build toolchain
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cmake build-essential
+      - name: Build the reproducible bundle
+        run: bun scripts/build-whisper-bundle.ts --version "${{ github.event.inputs.version }}" --out .tmp/voice-runtimes --tag "$VOICE_RUNTIMES_TAG" --repo "${{ github.repository }}"
+      - name: Ensure the append-only release tag exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view "$VOICE_RUNTIMES_TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release create "$VOICE_RUNTIMES_TAG" \
+              --repo "${{ github.repository }}" \
+              --title "Voice runtimes (append-only)" \
+              --notes "Append-only host for goodvibes voice engine bundles. Assets are never re-uploaded in place or renamed; each carries a .sha256 sidecar."
+          fi
+      - name: Upload bundle + sidecar (append-only — fails if the asset already exists)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # No --clobber: uploading a filename that already exists must FAIL so a
+          # pinned asset is never silently replaced.
+          gh release upload "$VOICE_RUNTIMES_TAG" \
+            .tmp/voice-runtimes/goodvibes-whisper-cpp-${{ github.event.inputs.version }}-linux-x64.tar.gz \
+            .tmp/voice-runtimes/goodvibes-whisper-cpp-${{ github.event.inputs.version }}-linux-x64.tar.gz.sha256 \
+            --repo "${{ github.repository }}"

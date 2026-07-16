@@ -163,9 +163,26 @@ export function collectStartupAnnouncements(deps: {
 }): FeatureAnnouncement[] {
   const lines: FeatureAnnouncement[] = [];
   if (deps.configManager.get('web.enabled')) {
-    const hostMode = deps.configManager.get('web.hostMode');
-    const scope = hostMode === 'local' ? ' — serving this machine only until web.hostMode is widened' : '';
-    const text = `Web surface ready: ${resolveWebSurfaceUrl(deps.configManager)}${scope}`;
+    const url = resolveWebSurfaceUrl(deps.configManager);
+    // The scope suffix MUST come from the RESOLVER, not the raw stored value: a
+    // case/space variant ('  Local ') is recognized-local and still needs the
+    // scope note the old raw `=== 'local'` check silently dropped, and an
+    // unrecognized value ('LAN') is served at loopback under the safe fallback —
+    // it must be announced as unrecognized, never as the network mode the
+    // operator may have believed they set.
+    const rawHostMode = deps.configManager.get('web.hostMode');
+    const binding = resolveWebBinding({
+      hostMode: rawHostMode,
+      host: deps.configManager.get('web.host'),
+      port: deps.configManager.get('web.port'),
+    });
+    let suffix = '';
+    if (!binding.recognized) {
+      suffix = ` — web.hostMode value ${JSON.stringify(String(rawHostMode))} is unrecognized; applied the safe local default, so this serves this machine only`;
+    } else if (binding.effectiveMode === 'local') {
+      suffix = ' — serving this machine only until web.hostMode is widened';
+    }
+    const text = `Web surface ready: ${url}${suffix}`;
     // Recording WITH text also enqueues the line for surface delivery.
     if (deps.store.record(WEB_SURFACE_ANNOUNCEMENT_ID, text)) {
       lines.push({ id: WEB_SURFACE_ANNOUNCEMENT_ID, text });
