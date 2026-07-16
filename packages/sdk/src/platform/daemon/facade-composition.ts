@@ -74,14 +74,19 @@ function ensureAgentKnowledgeService(runtimeServices: RuntimeServices): RuntimeS
     timeoutMs: 20_000,
     maxConcurrent: 1,
   });
+  const admitExpensiveWork = (label: string): { allowed: boolean; reason?: string | undefined } =>
+    runtimeServices.memoryGovernor.admitExpensiveWork(label);
   const semanticService = new KnowledgeSemanticService(store, {
     llm: semanticLlm,
     maxLlmSourcesPerReindex: 3,
+    isBackgroundPaused: () => runtimeServices.pauseController.isPaused('knowledge-self-improvement'),
+    admitExpensiveWork,
   });
   const service = new KnowledgeService(store, runtimeServices.artifactStore, undefined, {
     memoryRegistry: runtimeServices.memoryRegistry,
     runtimeBus: runtimeServices.runtimeBus,
     semanticService,
+    admitExpensiveWork,
   });
   semanticService.setGapRepairer(createWebKnowledgeGapRepairer({
     searchService: runtimeServices.webSearchService,

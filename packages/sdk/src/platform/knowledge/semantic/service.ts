@@ -383,6 +383,11 @@ export class KnowledgeSemanticService {
     return this.options.isBackgroundPaused?.() === true;
   }
 
+  /** Public admission probe (MemoryGovernor critical tier) for producers' own expensive tails. */
+  admitBackgroundWork(label: string): { allowed: boolean; reason?: string | undefined } {
+    return this.options.admitExpensiveWork?.(label) ?? { allowed: true };
+  }
+
   private async runSelfImproveUnlocked(
     input: KnowledgeSemanticSelfImproveInput,
     runOptions: { readonly stopWhenPaused?: boolean } = {},
