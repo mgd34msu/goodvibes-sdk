@@ -15200,7 +15200,7 @@ export interface OperatorMethodOutputMap {
         };
         stt: {
             engine: string;
-            state: "bundle-unavailable" | "checksum-mismatch" | "download-failed" | "provisioned" | "unsupported-platform";
+            state: "bundle-unavailable" | "checksum-mismatch" | "download-failed" | "provisioned" | "sideload-mismatch" | "unsupported-platform";
             binaryPath?: string;
             modelPath?: string;
             reason?: string;
