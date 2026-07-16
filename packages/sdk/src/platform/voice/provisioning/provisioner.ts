@@ -16,15 +16,19 @@ import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writ
 import { dirname, join } from 'node:path';
 import { logger } from '../../utils/logger.js';
 import { summarizeError } from '../../utils/error-display.js';
-import { downloadVerifiedFile, fileMatchesCached, type VerifiedDownloadResult } from './download-verified.js';
+import { downloadVerifiedFile, fileMatches, fileMatchesCached, type VerifiedDownloadResult } from './download-verified.js';
 import {
   DEFAULT_PIPER_VOICE,
+  DEFAULT_WHISPER_MODEL,
   PIPER_ENGINES,
+  WHISPER_ENGINES,
   WHISPER_UNSUPPORTED_REASON,
   currentVoicePlatform,
   piperProvisionBytes,
   type PiperEngineManifest,
   type PiperVoiceManifest,
+  type WhisperEngineManifest,
+  type WhisperModelManifest,
   type VoicePlatform,
 } from './manifest.js';
 
@@ -35,6 +39,10 @@ const INSTALL_STAMP_FILE = 'install-stamp.json';
 export interface VoiceInstallStamp {
   readonly engineVersion: string;
   readonly voiceId: string;
+  /** Installed whisper engine version (absent when STT is not provisioned). */
+  readonly sttEngineVersion?: string | undefined;
+  /** Installed whisper model id (absent when STT is not provisioned). */
+  readonly sttModelId?: string | undefined;
   /** The exact voice.local.* values THIS installer wrote (ownership marker). */
   readonly configWrites: Record<string, string>;
 }
@@ -47,6 +55,10 @@ export interface ManagedVoicePaths {
   readonly piperBinary: string;
   readonly defaultVoiceOnnx: string;
   readonly defaultVoiceJson: string;
+  /** The whisper bundle archive path — ALSO the sideload drop location. */
+  readonly whisperArchive: string;
+  readonly whisperBinary: string;
+  readonly whisperModel: string;
 }
 
 export function resolveManagedVoicePaths(managedRoot: string, platform?: VoicePlatform | null): ManagedVoicePaths {
@@ -57,6 +69,7 @@ export function resolveManagedVoicePaths(managedRoot: string, platform?: VoicePl
   // binaryRelPath (a duplicated constant here silently broke that).
   const resolved = platform === undefined ? currentVoicePlatform() : platform;
   const binaryRelPath = (resolved ? PIPER_ENGINES[resolved]?.binaryRelPath : undefined) ?? 'piper/piper';
+  const whisperRelPath = (resolved ? WHISPER_ENGINES[resolved]?.binaryRelPath : undefined) ?? 'whisper/whisper-cli';
   return {
     managedRoot,
     enginesDir,
@@ -65,6 +78,9 @@ export function resolveManagedVoicePaths(managedRoot: string, platform?: VoicePl
     piperBinary: join(enginesDir, binaryRelPath),
     defaultVoiceOnnx: join(modelsDir, `${DEFAULT_PIPER_VOICE.id}.onnx`),
     defaultVoiceJson: join(modelsDir, `${DEFAULT_PIPER_VOICE.id}.onnx.json`),
+    whisperArchive: join(enginesDir, 'whisper.tar.gz'),
+    whisperBinary: join(enginesDir, whisperRelPath),
+    whisperModel: join(modelsDir, `${DEFAULT_WHISPER_MODEL.id}.bin`),
   };
 }
 
@@ -74,7 +90,13 @@ export function readVoiceInstallStamp(managedRoot: string): VoiceInstallStamp | 
     const raw = readFileSync(join(managedRoot, INSTALL_STAMP_FILE), 'utf-8');
     const parsed = JSON.parse(raw) as VoiceInstallStamp;
     if (typeof parsed.engineVersion !== 'string' || typeof parsed.voiceId !== 'string') return null;
-    return { engineVersion: parsed.engineVersion, voiceId: parsed.voiceId, configWrites: parsed.configWrites ?? {} };
+    return {
+      engineVersion: parsed.engineVersion,
+      voiceId: parsed.voiceId,
+      ...(typeof parsed.sttEngineVersion === 'string' ? { sttEngineVersion: parsed.sttEngineVersion } : {}),
+      ...(typeof parsed.sttModelId === 'string' ? { sttModelId: parsed.sttModelId } : {}),
+      configWrites: parsed.configWrites ?? {},
+    };
   } catch {
     return null;
   }
@@ -98,6 +120,7 @@ export interface VoiceProvisionProgress {
 }
 
 export type TtsProvisionState = 'provisioned' | 'unsupported-platform' | 'download-failed' | 'checksum-mismatch';
+export type SttProvisionState = TtsProvisionState | 'bundle-unavailable';
 export interface VoiceComponentOutcome {
   readonly id: string;
   readonly state: 'installed' | 'skipped' | 'failed';
@@ -114,7 +137,13 @@ export interface VoiceProvisionResult {
     readonly modelPath?: string | undefined;
     readonly reason?: string | undefined;
   };
-  readonly stt: { readonly engine: 'whisper-cpp'; readonly state: 'unsupported-platform'; readonly reason: string };
+  readonly stt: {
+    readonly engine: 'whisper-cpp';
+    readonly state: SttProvisionState;
+    readonly binaryPath?: string | undefined;
+    readonly modelPath?: string | undefined;
+    readonly reason?: string | undefined;
+  };
   readonly components: readonly VoiceComponentOutcome[];
 }
 
@@ -140,15 +169,20 @@ export interface VoiceProvisionOptions {
   readonly engineOverride?: PiperEngineManifest | undefined;
   /** Override the pinned default voice manifest (tests / staged rollouts). */
   readonly voiceOverride?: PiperVoiceManifest | undefined;
+  /** Override the pinned whisper engine manifest (tests / staged rollouts). */
+  readonly whisperOverride?: WhisperEngineManifest | undefined;
+  /** Override the pinned whisper model manifest (tests / staged rollouts). */
+  readonly whisperModelOverride?: WhisperModelManifest | undefined;
 }
 
 /** Provision the managed local voice runtime (piper TTS + default voice). */
 export async function provisionLocalVoiceRuntime(options: VoiceProvisionOptions): Promise<VoiceProvisionResult> {
   const platform = options.platform === undefined ? currentVoicePlatform() : options.platform;
-  const stt = { engine: 'whisper-cpp' as const, state: 'unsupported-platform' as const, reason: WHISPER_UNSUPPORTED_REASON };
   const emit = (component: string, phase: ProvisionPhase, message?: string): void => {
     options.onProgress?.({ component, phase, ...(message ? { message } : {}) });
   };
+  // STT resolves independently of TTS; the placeholder is replaced below.
+  let stt: VoiceProvisionResult['stt'] = { engine: 'whisper-cpp', state: 'unsupported-platform', reason: WHISPER_UNSUPPORTED_REASON };
 
   const engine = options.engineOverride ?? (platform ? PIPER_ENGINES[platform] : undefined);
   const voice = options.voiceOverride ?? DEFAULT_PIPER_VOICE;
@@ -207,7 +241,7 @@ export async function provisionLocalVoiceRuntime(options: VoiceProvisionOptions)
   if (needsExtract) {
     try {
       emit('piper-engine', 'extract', versionChanged ? `updating piper engine ${priorStamp?.engineVersion} -> ${engine.version}` : 'extracting piper engine');
-      await extractPiperAtomically(paths, engine.binaryRelPath, extractArchive);
+      await extractEngineAtomically(paths.enginesDir, paths.piperArchive, engine.binaryRelPath, extractArchive);
     } catch (error) {
       const message = summarizeError(error);
       emit('piper-engine', 'error', message);
@@ -221,10 +255,28 @@ export async function provisionLocalVoiceRuntime(options: VoiceProvisionOptions)
     return { platform, tts: { engine: 'piper', state: 'download-failed', reason: message }, stt, components };
   }
 
+  // ── STT: the goodvibes-built whisper.cpp bundle + the default ggml model ──
+  stt = await provisionWhisperStt({
+    options,
+    platform,
+    paths,
+    priorStamp,
+    components,
+    extractArchive,
+    download,
+    emit,
+  });
+
   // Stamp the installed versions so a later manifest bump knows to replace.
   writeVoiceInstallStamp(options.managedRoot, {
     engineVersion: engine.version,
     voiceId: voice.id,
+    ...(stt.state === 'provisioned'
+      ? {
+          sttEngineVersion: (options.whisperOverride ?? WHISPER_ENGINES[platform])?.version ?? '',
+          sttModelId: (options.whisperModelOverride ?? DEFAULT_WHISPER_MODEL).id,
+        }
+      : {}),
     configWrites: priorStamp?.configWrites ?? {},
   });
 
@@ -235,6 +287,86 @@ export async function provisionLocalVoiceRuntime(options: VoiceProvisionOptions)
     stt,
     components,
   };
+}
+
+/**
+ * Provision the STT half: the pinned whisper.cpp bundle (hosted URL when the
+ * release pipeline has published it, else a sideloaded archive matching the
+ * SAME pin at the managed archive path) plus the default ggml model from its
+ * stable Hugging Face URL. Every terminal state is honest; an STT failure
+ * never blocks TTS.
+ */
+async function provisionWhisperStt(ctx: {
+  readonly options: VoiceProvisionOptions;
+  readonly platform: VoicePlatform;
+  readonly paths: ManagedVoicePaths;
+  readonly priorStamp: VoiceInstallStamp | null;
+  readonly components: VoiceComponentOutcome[];
+  readonly extractArchive: ArchiveExtractor;
+  readonly download: (id: string, spec: { url: string; bytes: number; sha256: string }, dest: string) => Promise<VerifiedDownloadResult>;
+  readonly emit: (component: string, phase: ProvisionPhase, message?: string) => void;
+}): Promise<VoiceProvisionResult['stt']> {
+  const { options, platform, paths, priorStamp, components, extractArchive, download, emit } = ctx;
+  const whisper = options.whisperOverride ?? WHISPER_ENGINES[platform];
+  const model = options.whisperModelOverride ?? DEFAULT_WHISPER_MODEL;
+  if (!whisper) {
+    return { engine: 'whisper-cpp', state: 'unsupported-platform', reason: WHISPER_UNSUPPORTED_REASON };
+  }
+
+  // Obtain the engine bundle: hosted download when a URL is pinned; otherwise a
+  // sideloaded archive at the managed path verifying against the SAME pin.
+  let archiveFresh = false;
+  if (whisper.bundle.url) {
+    const result = await download('whisper-engine', { url: whisper.bundle.url, bytes: whisper.bundle.bytes, sha256: whisper.bundle.sha256 }, paths.whisperArchive);
+    if (!result.ok) {
+      const state: SttProvisionState = result.reason === 'checksum-mismatch' ? 'checksum-mismatch' : 'download-failed';
+      emit('whisper-engine', 'error', result.error);
+      return { engine: 'whisper-cpp', state, reason: result.error };
+    }
+    archiveFresh = !result.skipped;
+  } else if (fileMatches(paths.whisperArchive, { url: '', bytes: whisper.bundle.bytes, sha256: whisper.bundle.sha256 })) {
+    emit('whisper-engine', 'skip', 'using the sideloaded whisper bundle (pin verified)');
+    components.push({ id: 'whisper-engine', state: 'skipped', bytes: whisper.bundle.bytes });
+  } else if (!isUsableBinary(paths.whisperBinary)) {
+    const reason = `The whisper.cpp ${whisper.version} bundle for ${platform} is pinned (sha256 ${whisper.bundle.sha256.slice(0, 12)}…) but not yet hosted. Build it reproducibly with scripts/build-whisper-bundle.ts and drop the archive at ${paths.whisperArchive}, or wait for a release that hosts it. Local TTS is unaffected.`;
+    emit('whisper-engine', 'error', reason);
+    components.push({ id: 'whisper-engine', state: 'failed', error: reason });
+    return { engine: 'whisper-cpp', state: 'bundle-unavailable', reason };
+  }
+
+  // Model (real hosted URL, checksum-pinned).
+  const modelResult = await download('whisper-model', model.bin, paths.whisperModel);
+  if (!modelResult.ok) {
+    const state: SttProvisionState = modelResult.reason === 'checksum-mismatch' ? 'checksum-mismatch' : 'download-failed';
+    emit('whisper-model', 'error', modelResult.error);
+    return { engine: 'whisper-cpp', state, reason: modelResult.error };
+  }
+
+  // Atomic extract, version-aware (same discipline as the piper engine).
+  const versionChanged = priorStamp?.sttEngineVersion !== undefined && priorStamp.sttEngineVersion !== whisper.version;
+  const needsExtract = !isUsableBinary(paths.whisperBinary) || versionChanged || archiveFresh;
+  if (needsExtract) {
+    if (!existsSync(paths.whisperArchive)) {
+      const reason = `whisper bundle archive missing at ${paths.whisperArchive}`;
+      return { engine: 'whisper-cpp', state: 'bundle-unavailable', reason };
+    }
+    try {
+      emit('whisper-engine', 'extract', versionChanged ? `updating whisper engine ${priorStamp?.sttEngineVersion} -> ${whisper.version}` : 'extracting whisper engine');
+      await extractEngineAtomically(paths.enginesDir, paths.whisperArchive, whisper.binaryRelPath, extractArchive);
+    } catch (error) {
+      const message = summarizeError(error);
+      emit('whisper-engine', 'error', message);
+      components.push({ id: 'whisper-engine-extract', state: 'failed', error: message });
+      return { engine: 'whisper-cpp', state: 'download-failed', reason: `whisper extract failed: ${message}` };
+    }
+  }
+  if (!isUsableBinary(paths.whisperBinary)) {
+    const message = `whisper binary not found (or not executable) at ${paths.whisperBinary} after extraction`;
+    emit('whisper-engine', 'error', message);
+    return { engine: 'whisper-cpp', state: 'download-failed', reason: message };
+  }
+  emit('whisper-engine', 'done', 'local STT provisioned');
+  return { engine: 'whisper-cpp', state: 'provisioned', binaryPath: paths.whisperBinary, modelPath: paths.whisperModel };
 }
 
 /** A binary is usable when it exists, is non-empty, and is executable. */
@@ -254,17 +386,18 @@ function isUsableBinary(path: string): boolean {
  * truncated binary at the final path reporting 'provisioned' — the exact
  * partial-artifact class the download side already prevents via temp+rename.
  */
-async function extractPiperAtomically(
-  paths: ManagedVoicePaths,
+async function extractEngineAtomically(
+  enginesDir: string,
+  archivePath: string,
   binaryRelPath: string,
   extractArchive: ArchiveExtractor,
 ): Promise<void> {
-  const topDir = binaryRelPath.split('/')[0]!; // the archive's root dir (e.g. 'piper')
-  const finalTree = join(paths.enginesDir, topDir);
-  const tmpDir = join(paths.enginesDir, `.extract-${Date.now().toString(36)}`);
+  const topDir = binaryRelPath.split('/')[0]!; // the archive's root dir (e.g. 'piper', 'whisper')
+  const finalTree = join(enginesDir, topDir);
+  const tmpDir = join(enginesDir, `.extract-${Date.now().toString(36)}`);
   try {
     mkdirSync(tmpDir, { recursive: true });
-    await extractArchive(paths.piperArchive, tmpDir);
+    await extractArchive(archivePath, tmpDir);
     const extractedBinary = join(tmpDir, binaryRelPath);
     if (!isUsableBinary(extractedBinary)) {
       throw new Error(`extracted archive is missing a usable binary at ${binaryRelPath}`);
@@ -292,7 +425,17 @@ export interface VoiceRuntimeStatus {
     readonly binaryPath: string;
     readonly modelPath: string;
   };
-  readonly stt: { readonly engine: 'whisper-cpp'; readonly supported: false; readonly reason: string };
+  readonly stt: {
+    readonly engine: 'whisper-cpp';
+    /** A pinned goodvibes whisper bundle exists for this platform. */
+    readonly supported: boolean;
+    readonly state: 'not-provisioned' | 'partial' | 'provisioned' | 'unsupported-platform';
+    readonly binaryPresent: boolean;
+    readonly modelPresent: boolean;
+    readonly binaryPath: string;
+    readonly modelPath: string;
+    readonly reason?: string | undefined;
+  };
   /** Total download size of a fresh provision, in bytes (null on unsupported platforms). */
   readonly offerBytes: number | null;
 }
@@ -301,7 +444,32 @@ export interface VoiceRuntimeStatus {
 export function localVoiceRuntimeStatus(options: { managedRoot: string; platform?: VoicePlatform | null | undefined }): VoiceRuntimeStatus {
   const platform = options.platform === undefined ? currentVoicePlatform() : options.platform;
   const paths = resolveManagedVoicePaths(options.managedRoot, platform);
-  const stt = { engine: 'whisper-cpp' as const, supported: false as const, reason: WHISPER_UNSUPPORTED_REASON };
+  const whisper = platform ? WHISPER_ENGINES[platform] : undefined;
+  const sttBinaryPresent = isUsableBinary(paths.whisperBinary);
+  const sttModelPresent = fileMatchesCached(paths.whisperModel, DEFAULT_WHISPER_MODEL.bin);
+  const stt: VoiceRuntimeStatus['stt'] = whisper
+    ? {
+        engine: 'whisper-cpp',
+        supported: true,
+        state: sttBinaryPresent && sttModelPresent ? 'provisioned' : (sttBinaryPresent || sttModelPresent) ? 'partial' : 'not-provisioned',
+        binaryPresent: sttBinaryPresent,
+        modelPresent: sttModelPresent,
+        binaryPath: paths.whisperBinary,
+        modelPath: paths.whisperModel,
+        ...(whisper.bundle.url === null && !sttBinaryPresent
+          ? { reason: `The pinned whisper.cpp ${whisper.version} bundle is not yet hosted; sideload it at ${paths.whisperArchive} (scripts/build-whisper-bundle.ts) or wait for a hosting release.` }
+          : {}),
+      }
+    : {
+        engine: 'whisper-cpp',
+        supported: false,
+        state: 'unsupported-platform',
+        binaryPresent: false,
+        modelPresent: false,
+        binaryPath: paths.whisperBinary,
+        modelPath: paths.whisperModel,
+        reason: WHISPER_UNSUPPORTED_REASON,
+      };
   if (!platform || !PIPER_ENGINES[platform]) {
     return {
       platform,
@@ -335,8 +503,12 @@ export function resolveManagedEngine(
   managedRoot: string,
   fileExists: (path: string) => boolean = existsSync,
 ): { engine: string; binary: string; modelPath: string } | null {
-  if (prefix !== 'tts') return null;
   const paths = resolveManagedVoicePaths(managedRoot);
-  if (!fileExists(paths.piperBinary) || !fileExists(paths.defaultVoiceOnnx)) return null;
-  return { engine: 'piper', binary: paths.piperBinary, modelPath: paths.defaultVoiceOnnx };
+  if (prefix === 'tts') {
+    if (!fileExists(paths.piperBinary) || !fileExists(paths.defaultVoiceOnnx)) return null;
+    return { engine: 'piper', binary: paths.piperBinary, modelPath: paths.defaultVoiceOnnx };
+  }
+  // STT: the goodvibes-built whisper.cpp bundle + the default ggml model.
+  if (!fileExists(paths.whisperBinary) || !fileExists(paths.whisperModel)) return null;
+  return { engine: 'whisper-cpp', binary: paths.whisperBinary, modelPath: paths.whisperModel };
 }

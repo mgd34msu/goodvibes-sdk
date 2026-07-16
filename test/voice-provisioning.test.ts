@@ -181,46 +181,44 @@ describe('provision honest states (mock fetch)', () => {
   });
 });
 
-describe('fix-round hardening (reviewer scenarios)', () => {
-  const enc = new TextEncoder();
-  function tarballFixture(binaryContent: string) {
-    // A fake "archive": the test extractor interprets it by writing the binary.
-    return enc.encode(JSON.stringify({ binary: binaryContent }).padEnd(8192, ' '));
-  }
-  function fakeExtractor(): (archivePath: string, destDir: string) => Promise<void> {
-    return async (archivePath, destDir) => {
-      const payload = JSON.parse(new TextDecoder().decode(readFileSync(archivePath)).trim()) as { binary: string };
-      mkdirSync(join(destDir, 'piper'), { recursive: true });
-      writeFileSync(join(destDir, 'piper', 'piper'), payload.binary, { mode: 0o755 });
-    };
-  }
-  function specFor(bytes: Uint8Array) {
-    return { bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') };
-  }
+const enc = new TextEncoder();
+function tarballFixture(binaryContent: string) {
+  // A fake "archive": the test extractor interprets it by writing the binary.
+  return enc.encode(JSON.stringify({ binary: binaryContent }).padEnd(8192, ' '));
+}
+function fakeExtractor(): (archivePath: string, destDir: string) => Promise<void> {
+  return async (archivePath, destDir) => {
+    const payload = JSON.parse(new TextDecoder().decode(readFileSync(archivePath)).trim()) as { binary: string };
+    mkdirSync(join(destDir, 'piper'), { recursive: true });
+    writeFileSync(join(destDir, 'piper', 'piper'), payload.binary, { mode: 0o755 });
+  };
+}
 
-  function pinned(bytes: Uint8Array, url: string) {
-    return { url, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') };
-  }
-  function servingFetch(byUrl: Record<string, Uint8Array>): typeof fetch {
-    return (async (url: string | URL | Request) => {
-      const body = byUrl[String(url)];
-      if (!body) return { ok: false, status: 404, headers: { get: () => null }, arrayBuffer: async () => new ArrayBuffer(0) };
-      return { ok: true, status: 200, headers: { get: () => null }, arrayBuffer: async () => body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength) };
-    }) as unknown as typeof fetch;
-  }
-  function fixtureManifests(binaryContent: string, engineVersion: string) {
-    const archiveBytes = tarballFixture(binaryContent);
-    const onnxBytes = (() => { const b = new Uint8Array(8192); b[0] = 0x08; return b; })();
-    const jsonBytes = enc.encode('{"sample_rate":22050}'.padEnd(4885, ' '));
-    const engine = { version: engineVersion, archive: pinned(archiveBytes, `https://e.test/piper-${engineVersion}.tar.gz`), binaryRelPath: 'piper/piper' };
-    const voice = { id: 'fixture-voice', onnx: pinned(onnxBytes, 'https://v.test/voice.onnx'), json: pinned(jsonBytes, 'https://v.test/voice.onnx.json') };
-    const fetchImpl = servingFetch({
-      [engine.archive.url]: archiveBytes,
-      [voice.onnx.url]: onnxBytes,
-      [voice.json.url]: jsonBytes,
-    });
-    return { engine, voice, fetchImpl };
-  }
+function pinned(bytes: Uint8Array, url: string) {
+  return { url, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') };
+}
+function servingFetch(byUrl: Record<string, Uint8Array>): typeof fetch {
+  return (async (url: string | URL | Request) => {
+    const body = byUrl[String(url)];
+    if (!body) return { ok: false, status: 404, headers: { get: () => null }, arrayBuffer: async () => new ArrayBuffer(0) };
+    return { ok: true, status: 200, headers: { get: () => null }, arrayBuffer: async () => body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength) };
+  }) as unknown as typeof fetch;
+}
+function fixtureManifests(binaryContent: string, engineVersion: string) {
+  const archiveBytes = tarballFixture(binaryContent);
+  const onnxBytes = (() => { const b = new Uint8Array(8192); b[0] = 0x08; return b; })();
+  const jsonBytes = enc.encode('{"sample_rate":22050}'.padEnd(4885, ' '));
+  const engine = { version: engineVersion, archive: pinned(archiveBytes, `https://e.test/piper-${engineVersion}.tar.gz`), binaryRelPath: 'piper/piper' };
+  const voice = { id: 'fixture-voice', onnx: pinned(onnxBytes, 'https://v.test/voice.onnx'), json: pinned(jsonBytes, 'https://v.test/voice.onnx.json') };
+  const fetchImpl = servingFetch({
+    [engine.archive.url]: archiveBytes,
+    [voice.onnx.url]: onnxBytes,
+    [voice.json.url]: jsonBytes,
+  });
+  return { engine, voice, fetchImpl };
+}
+
+describe('fix-round hardening (reviewer scenarios)', () => {
 
   test('an engine version bump RE-EXTRACTS and replaces the old binary (no silent no-op)', async () => {
     const dir = scratch();
@@ -387,5 +385,152 @@ describe('breaker classification + reset (reviewer scenario)', () => {
     const result = await provider.synthesize!({ text: 'x', metadata: {} } as never);
     expect(result.providerId).toBe('local');
     expect(calls).toBe(2);
+  });
+});
+
+describe('managed STT (goodvibes-built whisper.cpp)', () => {
+  function whisperFixture(binaryContent: string, version = 'w1') {
+    const archiveBytes = tarballFixture(binaryContent); // reuses the {binary} payload shape
+    const modelBytes = (() => { const b = new Uint8Array(16384); b.fill(7); return b; })();
+    return {
+      whisper: { version, bundle: { url: `https://w.test/whisper-${version}.tar.gz` as string | null, bytes: archiveBytes.length, sha256: createHash('sha256').update(archiveBytes).digest('hex') }, binaryRelPath: 'whisper/whisper-cli' },
+      model: { id: 'fixture-model', bin: pinned(modelBytes, 'https://w.test/model.bin') },
+      archiveBytes, modelBytes,
+    };
+  }
+  const whisperExtractor = async (archivePath: string, destDir: string): Promise<void> => {
+    const payload = JSON.parse(new TextDecoder().decode(readFileSync(archivePath)).trim()) as { binary: string };
+    mkdirSync(join(destDir, 'whisper'), { recursive: true });
+    writeFileSync(join(destDir, 'whisper', 'whisper-cli'), payload.binary, { mode: 0o755 });
+  };
+  const bothExtractor = async (archivePath: string, destDir: string): Promise<void> => {
+    // piper archives extract piper/, whisper archives extract whisper/ — pick by content.
+    const payload = JSON.parse(new TextDecoder().decode(readFileSync(archivePath)).trim()) as { binary: string };
+    const top = payload.binary.startsWith('whisper') ? 'whisper' : 'piper';
+    mkdirSync(join(destDir, top), { recursive: true });
+    writeFileSync(join(destDir, top, top === 'whisper' ? 'whisper-cli' : 'piper'), payload.binary, { mode: 0o755 });
+  };
+
+  test('a HOSTED whisper bundle provisions STT end-to-end (download + verify + atomic extract)', async () => {
+    const dir = scratch();
+    const { provisionLocalVoiceRuntime: provision, resolveManagedEngine } = await import('../packages/sdk/src/platform/voice/provisioning/index.ts');
+    const v1 = fixtureManifests('binary-v1', 'v1');
+    const w = whisperFixture('whisper-binary-1');
+    const fetchImpl = ((url: string | URL | Request) => {
+      const u = String(url);
+      const map: Record<string, Uint8Array> = {
+        [v1.engine.archive.url]: tarballFixture('binary-v1'),
+        [v1.voice.onnx.url]: (() => { const b = new Uint8Array(8192); b[0] = 0x08; return b; })(),
+        [v1.voice.json.url]: enc.encode('{"sample_rate":22050}'.padEnd(4885, ' ')),
+        [w.whisper.bundle.url!]: w.archiveBytes,
+        [w.model.bin.url]: w.modelBytes,
+      };
+      const body = map[u];
+      return Promise.resolve(body
+        ? { ok: true, status: 200, headers: { get: () => null }, arrayBuffer: async () => body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength) }
+        : { ok: false, status: 404, headers: { get: () => null }, arrayBuffer: async () => new ArrayBuffer(0) });
+    }) as unknown as typeof fetch;
+    const result = await provision({
+      managedRoot: dir, platform: 'linux-x64',
+      engineOverride: v1.engine, voiceOverride: v1.voice,
+      whisperOverride: w.whisper, whisperModelOverride: w.model,
+      fetchImpl, extractArchive: bothExtractor,
+    });
+    expect(result.tts.state).toBe('provisioned');
+    expect(result.stt.state).toBe('provisioned');
+    const paths = resolveManagedVoicePaths(dir, 'linux-x64');
+    expect(readFileSync(paths.whisperBinary, 'utf-8')).toBe('whisper-binary-1');
+    expect(resolveManagedEngine('stt', dir)).toEqual({ engine: 'whisper-cpp', binary: paths.whisperBinary, modelPath: paths.whisperModel });
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  test('no hosted URL + no sideload -> honest bundle-unavailable naming the recipe; TTS unaffected', async () => {
+    const dir = scratch();
+    const { provisionLocalVoiceRuntime: provision } = await import('../packages/sdk/src/platform/voice/provisioning/index.ts');
+    const v1 = fixtureManifests('binary-v1', 'v1');
+    const w = whisperFixture('whisper-binary-1');
+    const unhosted = { ...w.whisper, bundle: { ...w.whisper.bundle, url: null } };
+    const result = await provision({
+      managedRoot: dir, platform: 'linux-x64',
+      engineOverride: v1.engine, voiceOverride: v1.voice,
+      whisperOverride: unhosted, whisperModelOverride: w.model,
+      fetchImpl: v1.fetchImpl, extractArchive: bothExtractor,
+    });
+    expect(result.tts.state).toBe('provisioned'); // STT failure never blocks TTS
+    expect(result.stt.state).toBe('bundle-unavailable');
+    expect(result.stt.reason).toMatch(/build-whisper-bundle|sideload/i);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  test('a SIDELOADED bundle matching the pin provisions STT without a hosted URL', async () => {
+    const dir = scratch();
+    const { provisionLocalVoiceRuntime: provision } = await import('../packages/sdk/src/platform/voice/provisioning/index.ts');
+    const v1 = fixtureManifests('binary-v1', 'v1');
+    const w = whisperFixture('whisper-binary-1');
+    const unhosted = { ...w.whisper, bundle: { ...w.whisper.bundle, url: null } };
+    const paths = resolveManagedVoicePaths(dir, 'linux-x64');
+    mkdirSync(paths.enginesDir, { recursive: true });
+    writeFileSync(paths.whisperArchive, w.archiveBytes); // the documented drop location
+    const fetchImpl = ((url: string | URL | Request) => {
+      const u = String(url);
+      const map: Record<string, Uint8Array> = {
+        [v1.engine.archive.url]: tarballFixture('binary-v1'),
+        [v1.voice.onnx.url]: (() => { const b = new Uint8Array(8192); b[0] = 0x08; return b; })(),
+        [v1.voice.json.url]: enc.encode('{"sample_rate":22050}'.padEnd(4885, ' ')),
+        [w.model.bin.url]: w.modelBytes,
+      };
+      const body = map[u];
+      return Promise.resolve(body
+        ? { ok: true, status: 200, headers: { get: () => null }, arrayBuffer: async () => body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength) }
+        : { ok: false, status: 404, headers: { get: () => null }, arrayBuffer: async () => new ArrayBuffer(0) });
+    }) as unknown as typeof fetch;
+    const result = await provision({
+      managedRoot: dir, platform: 'linux-x64',
+      engineOverride: v1.engine, voiceOverride: v1.voice,
+      whisperOverride: unhosted, whisperModelOverride: w.model,
+      fetchImpl, extractArchive: bothExtractor,
+    });
+    expect(result.stt.state).toBe('provisioned');
+    expect(readFileSync(paths.whisperBinary, 'utf-8')).toBe('whisper-binary-1');
+    // A tampered sideload (pin mismatch) is refused honestly.
+    const dir2 = scratch();
+    const paths2 = resolveManagedVoicePaths(dir2, 'linux-x64');
+    mkdirSync(paths2.enginesDir, { recursive: true });
+    writeFileSync(paths2.whisperArchive, enc.encode('tampered'.padEnd(w.archiveBytes.length, 'x')));
+    const result2 = await provision({
+      managedRoot: dir2, platform: 'linux-x64',
+      engineOverride: v1.engine, voiceOverride: v1.voice,
+      whisperOverride: unhosted, whisperModelOverride: w.model,
+      fetchImpl, extractArchive: bothExtractor,
+    });
+    expect(result2.stt.state).toBe('bundle-unavailable'); // mismatch = not a verified bundle
+    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir2, { recursive: true, force: true });
+  });
+
+  test('STT preconfigure writes voice.local.stt* keys only when provisioned, with ownership rules', () => {
+    const store: Record<string, string> = { 'voice.local.sttBinary': '/my/whisper' };
+    const receipt = preconfigureLocalVoiceKeys({
+      getConfig: (k) => store[k] ?? '',
+      setConfig: (k, v) => { store[k] = v; },
+      ttsEngine: 'piper', ttsBinary: '/m/piper', ttsModelPath: '/m/v.onnx',
+      sttEngine: 'whisper-cpp', sttBinary: '/m/whisper-cli', sttModelPath: '/m/ggml-base.en.bin',
+    });
+    expect(store['voice.local.sttEngine']).toBe('whisper-cpp');
+    expect(store['voice.local.sttModelPath']).toBe('/m/ggml-base.en.bin');
+    expect(store['voice.local.sttBinary']).toBe('/my/whisper'); // user wins
+    expect(receipt.set.map((s) => s.key)).toContain('voice.local.sttEngine');
+  });
+
+  test('status reports the STT managed state honestly (unsupported only where no pinned bundle exists)', () => {
+    const dir = scratch();
+    const status = localVoiceRuntimeStatus({ managedRoot: dir, platform: 'linux-x64' });
+    expect(status.stt.supported).toBe(true); // linux-x64 HAS a pinned goodvibes build
+    expect(status.stt.state).toBe('not-provisioned');
+    expect(status.stt.reason).toMatch(/sideload|hosting release/i); // honest pending-hosting note
+    const none = localVoiceRuntimeStatus({ managedRoot: dir, platform: 'darwin-arm64' });
+    expect(none.stt.supported).toBe(false);
+    expect(none.stt.state).toBe('unsupported-platform');
+    rmSync(dir, { recursive: true, force: true });
   });
 });

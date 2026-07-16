@@ -15200,8 +15200,10 @@ export interface OperatorMethodOutputMap {
         };
         stt: {
             engine: string;
-            state: string;
-            reason: string;
+            state: "bundle-unavailable" | "checksum-mismatch" | "download-failed" | "provisioned" | "unsupported-platform";
+            binaryPath?: string;
+            modelPath?: string;
+            reason?: string;
         };
         components: readonly ({
             id: string;
@@ -15234,7 +15236,12 @@ export interface OperatorMethodOutputMap {
         stt: {
             engine: string;
             supported: boolean;
-            reason: string;
+            state: "not-provisioned" | "partial" | "provisioned" | "unsupported-platform";
+            binaryPresent: boolean;
+            modelPresent: boolean;
+            binaryPath: string;
+            modelPath: string;
+            reason?: string;
         };
         offerBytes: null | number;
     };

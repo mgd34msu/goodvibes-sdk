@@ -965,6 +965,9 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
           ttsEngine: provision.tts.engine,
           ttsBinary: provision.tts.binaryPath,
           ttsModelPath: provision.tts.modelPath,
+          ...(provision.stt.state === 'provisioned' && provision.stt.binaryPath && provision.stt.modelPath
+            ? { sttEngine: provision.stt.engine, sttBinary: provision.stt.binaryPath, sttModelPath: provision.stt.modelPath }
+            : {}),
           priorInstallWrites: stamp?.configWrites,
         });
         configured = { set: [...receipt.set], skipped: [...receipt.skipped] };
