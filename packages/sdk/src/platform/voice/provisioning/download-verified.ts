@@ -42,6 +42,19 @@ function sha256Hex(bytes: Uint8Array): string {
   return hash.digest('hex');
 }
 
+/**
+ * The lowercase hex sha256 of a file, or null when it cannot be read. For
+ * honest "got X, want Y" mismatch reporting; never throws.
+ */
+export function fileSha256(path: string): string | null {
+  try {
+    if (!existsSync(path)) return null;
+    return sha256Hex(readFileSync(path));
+  } catch {
+    return null;
+  }
+}
+
 /** True when an existing file already matches the pinned size + checksum. */
 export function fileMatches(path: string, spec: VerifiedDownloadSpec): boolean {
   try {

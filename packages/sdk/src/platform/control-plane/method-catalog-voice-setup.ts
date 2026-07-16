@@ -54,7 +54,7 @@ const INSTALL_RESULT_SCHEMA = objectSchema({
   }, ['engine', 'state']),
   stt: objectSchema({
     engine: STRING_SCHEMA,
-    state: { type: 'string', enum: ['provisioned', 'unsupported-platform', 'download-failed', 'checksum-mismatch', 'bundle-unavailable'] },
+    state: { type: 'string', enum: ['provisioned', 'unsupported-platform', 'download-failed', 'checksum-mismatch', 'bundle-unavailable', 'sideload-mismatch'] },
     binaryPath: STRING_SCHEMA,
     modelPath: STRING_SCHEMA,
     reason: STRING_SCHEMA,

@@ -503,7 +503,10 @@ describe('managed STT (goodvibes-built whisper.cpp)', () => {
       whisperOverride: unhosted, whisperModelOverride: w.model,
       fetchImpl, extractArchive: bothExtractor,
     });
-    expect(result2.stt.state).toBe('bundle-unavailable'); // mismatch = not a verified bundle
+    // Present-but-mismatched with no usable binary is reported EXPLICITLY as a
+    // sideload mismatch (got X, want Y) — not the generic bundle-unavailable.
+    expect(result2.stt.state).toBe('sideload-mismatch');
+    expect(result2.stt.reason).toMatch(/does not match the pinned sha256.*got.*want/is);
     rmSync(dir, { recursive: true, force: true });
     rmSync(dir2, { recursive: true, force: true });
   });
@@ -532,5 +535,111 @@ describe('managed STT (goodvibes-built whisper.cpp)', () => {
     expect(none.stt.supported).toBe(false);
     expect(none.stt.state).toBe('unsupported-platform');
     rmSync(dir, { recursive: true, force: true });
+  });
+
+  // Full piper+extras fetch: piper is only downloaded on the FIRST install
+  // (re-runs skip it), so the piper URLs are harmless to keep serving.
+  const enc2 = new TextEncoder();
+  function fullServe(v1: ReturnType<typeof fixtureManifests>, piperBinary: string, extra: Record<string, Uint8Array>): typeof fetch {
+    return servingFetch({
+      [v1.engine.archive.url]: tarballFixture(piperBinary),
+      [v1.voice.onnx.url]: (() => { const b = new Uint8Array(8192); b[0] = 0x08; return b; })(),
+      [v1.voice.json.url]: enc2.encode('{"sample_rate":22050}'.padEnd(4885, ' ')),
+      ...extra,
+    });
+  }
+
+  test('finding 9: a stale archive that fails the NEW pin is never extracted; old binary + version stamp are preserved (no false new-version stamp)', async () => {
+    const dir = scratch();
+    const { provisionLocalVoiceRuntime: provision, readVoiceInstallStamp } = await import('../packages/sdk/src/platform/voice/provisioning/index.ts');
+    const paths = resolveManagedVoicePaths(dir, 'linux-x64');
+    const v1 = fixtureManifests('binary-v1', 'v1');
+    const w1 = whisperFixture('whisper-binary-1', 'w1'); // hosted
+    const first = await provision({
+      managedRoot: dir, platform: 'linux-x64',
+      engineOverride: v1.engine, voiceOverride: v1.voice,
+      whisperOverride: w1.whisper, whisperModelOverride: w1.model,
+      fetchImpl: fullServe(v1, 'binary-v1', { [w1.whisper.bundle.url!]: w1.archiveBytes, [w1.model.bin.url]: w1.modelBytes }),
+      extractArchive: bothExtractor,
+    });
+    expect(first.stt.state).toBe('provisioned');
+    expect(readFileSync(paths.whisperBinary, 'utf-8')).toBe('whisper-binary-1');
+    expect(readVoiceInstallStamp(dir)?.sttEngineVersion).toBe('w1');
+    // The on-disk archive is still the w1 bytes (no NEW bundle was sideloaded);
+    // the manifest bumps to w2 (url null) so the stale archive fails the w2 pin.
+    const w2 = whisperFixture('whisper-binary-2', 'w2');
+    const w2Unhosted = { ...w2.whisper, bundle: { ...w2.whisper.bundle, url: null } };
+    const bumped = await provision({
+      managedRoot: dir, platform: 'linux-x64',
+      engineOverride: v1.engine, voiceOverride: v1.voice,
+      whisperOverride: w2Unhosted, whisperModelOverride: w1.model,
+      fetchImpl: fullServe(v1, 'binary-v1', { [w1.model.bin.url]: w1.modelBytes }),
+      extractArchive: async () => { throw new Error('must NOT extract a stale/mismatched archive'); },
+    });
+    // STT still served by the OLD binary; the stale archive was never extracted.
+    expect(bumped.stt.state).toBe('provisioned');
+    expect(readFileSync(paths.whisperBinary, 'utf-8')).toBe('whisper-binary-1');
+    // The stamp does NOT lie: it stays at w1, not the aspirational w2.
+    expect(readVoiceInstallStamp(dir)?.sttEngineVersion).toBe('w1');
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  test('finding 11: a failed STT re-install preserves the version stamp, so a later correct sideload of the new bundle applies (frozen-update fixed)', async () => {
+    const dir = scratch();
+    const { provisionLocalVoiceRuntime: provision, readVoiceInstallStamp } = await import('../packages/sdk/src/platform/voice/provisioning/index.ts');
+    const paths = resolveManagedVoicePaths(dir, 'linux-x64');
+    const v1 = fixtureManifests('binary-v1', 'v1');
+    const w1 = whisperFixture('whisper-binary-1', 'w1');
+    const w1Unhosted = { ...w1.whisper, bundle: { ...w1.whisper.bundle, url: null } };
+    // 1) Full install at w1 via a correct sideload.
+    mkdirSync(paths.enginesDir, { recursive: true });
+    writeFileSync(paths.whisperArchive, w1.archiveBytes);
+    const first = await provision({
+      managedRoot: dir, platform: 'linux-x64',
+      engineOverride: v1.engine, voiceOverride: v1.voice,
+      whisperOverride: w1Unhosted, whisperModelOverride: w1.model,
+      fetchImpl: fullServe(v1, 'binary-v1', { [w1.model.bin.url]: w1.modelBytes }),
+      extractArchive: bothExtractor,
+    });
+    expect(first.stt.state).toBe('provisioned');
+    expect(readVoiceInstallStamp(dir)?.sttEngineVersion).toBe('w1');
+    // 2) The model is deleted (space reclaim) and the user re-runs OFFLINE: the
+    //    STT model re-download fails. The stamp must NOT be erased.
+    rmSync(paths.whisperModel, { force: true });
+    const failed = await provision({
+      managedRoot: dir, platform: 'linux-x64',
+      engineOverride: v1.engine, voiceOverride: v1.voice,
+      whisperOverride: w1Unhosted, whisperModelOverride: w1.model,
+      fetchImpl: fullServe(v1, 'binary-v1', {}), // model URL 404s (offline)
+      extractArchive: bothExtractor,
+    });
+    expect(failed.stt.state).toBe('download-failed');
+    // The load-bearing fix: sttEngineVersion is PRESERVED, not erased.
+    expect(readVoiceInstallStamp(dir)?.sttEngineVersion).toBe('w1');
+    // 3) The manifest bumps to w2; the user sideloads the NEW bundle correctly and
+    //    the model is available again — the update now APPLIES precisely because
+    //    the preserved w1 stamp makes the version change detectable.
+    const w2 = whisperFixture('whisper-binary-2', 'w2');
+    const w2Unhosted = { ...w2.whisper, bundle: { ...w2.whisper.bundle, url: null } };
+    writeFileSync(paths.whisperArchive, w2.archiveBytes);
+    const updated = await provision({
+      managedRoot: dir, platform: 'linux-x64',
+      engineOverride: v1.engine, voiceOverride: v1.voice,
+      whisperOverride: w2Unhosted, whisperModelOverride: w2.model,
+      fetchImpl: fullServe(v1, 'binary-v1', { [w2.model.bin.url]: w2.modelBytes }),
+      extractArchive: bothExtractor,
+    });
+    expect(updated.stt.state).toBe('provisioned');
+    expect(readFileSync(paths.whisperBinary, 'utf-8')).toBe('whisper-binary-2'); // UPDATED
+    expect(readVoiceInstallStamp(dir)?.sttEngineVersion).toBe('w2');
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  test('finding 12: the default whisper model URL is pinned to an immutable HF revision, not the mutable main ref', async () => {
+    const { DEFAULT_WHISPER_MODEL } = await import('../packages/sdk/src/platform/voice/provisioning/manifest.ts');
+    expect(DEFAULT_WHISPER_MODEL.bin.url).not.toContain('/resolve/main/');
+    expect(DEFAULT_WHISPER_MODEL.bin.url).toMatch(/\/resolve\/[0-9a-f]{40}\/ggml-base\.en\.bin$/);
+    // The pin change keeps the checksum identical (same file bytes).
+    expect(DEFAULT_WHISPER_MODEL.bin.sha256).toBe('a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002');
   });
 });

@@ -32984,7 +32984,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "unsupported-platform",
                     "download-failed",
                     "checksum-mismatch",
-                    "bundle-unavailable"
+                    "bundle-unavailable",
+                    "sideload-mismatch"
                   ]
                 },
                 "binaryPath": {

@@ -132,11 +132,20 @@ export const WHISPER_ENGINES: Partial<Record<VoicePlatform, WhisperEngineManifes
   },
 };
 
-/** The default STT model: base.en — the standard quality/size balance (~148MB). */
+/**
+ * The default STT model: base.en — the standard quality/size balance (~148MB).
+ *
+ * Pinned to an IMMUTABLE Hugging Face commit revision, not the mutable `main`
+ * branch ref: an upstream re-export/re-quantize on main would otherwise change
+ * the bytes and fail the sha256 pin on every fresh provision, bricking STT
+ * platform-wide until a manifest update ships. The revision below is the repo
+ * commit at which ggml-base.en.bin carries exactly the pinned sha256 (verified
+ * via HF paths-info); the checksum is unchanged from the previous main pin.
+ */
 export const DEFAULT_WHISPER_MODEL: WhisperModelManifest = {
   id: 'ggml-base.en',
   bin: {
-    url: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin',
+    url: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-base.en.bin',
     bytes: 147964211,
     sha256: 'a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002',
   },

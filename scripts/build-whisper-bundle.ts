@@ -49,7 +49,7 @@ const version = arg('version', '1.8.2');
 const outDir = resolve(arg('out', '.tmp/whisper-bundle'));
 const platform = platformKey();
 
-for (const tool of ['cmake', 'tar', 'curl']) {
+for (const tool of ['cmake', 'tar', 'curl', 'gzip']) {
   if (!Bun.which(tool)) {
     console.error(`[build-whisper-bundle] '${tool}' is required but not on PATH.`);
     process.exit(1);
@@ -85,8 +85,18 @@ try {
   mkdirSync(outDir, { recursive: true });
   const bundleName = `goodvibes-whisper-cpp-${version}-${platform}.tar.gz`;
   const bundlePath = join(outDir, bundleName);
+  const tarPath = bundlePath.replace(/\.gz$/, '');
   rmSync(bundlePath, { force: true });
-  await run(['tar', '-czf', bundlePath, '-C', join(work, 'stage'), 'whisper']);
+  rmSync(tarPath, { force: true });
+  // BYTE-REPRODUCIBLE archive: without this the tarball embeds each run's fresh
+  // file mtimes + owner/group and gzip stamps its own timestamp, so a rebuild
+  // never matches the pinned sha256 and the sideload recovery instruction is
+  // un-followable. Normalize entry order, mtimes, and ownership in tar, then
+  // gzip with -n (no name/timestamp) — a clean rebuild of identical bytes now
+  // reproduces the exact same archive sha256.
+  await run(['tar', '--sort=name', '--mtime=@0', '--owner=0', '--group=0', '--numeric-owner',
+    '-cf', tarPath, '-C', join(work, 'stage'), 'whisper']);
+  await run(['gzip', '-n', '-f', tarPath]); // writes tarPath + '.gz' === bundlePath
 
   const bytes = statSync(bundlePath).size;
   const sha256 = createHash('sha256').update(readFileSync(bundlePath)).digest('hex');
