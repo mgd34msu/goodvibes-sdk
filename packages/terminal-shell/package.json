@@ -1,6 +1,6 @@
 {
   "name": "@pellux/goodvibes-terminal-shell",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "engines": {
     "bun": "1.3.10",
     "node": ">=22.0.0"
