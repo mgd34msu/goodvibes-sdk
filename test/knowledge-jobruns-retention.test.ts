@@ -54,7 +54,7 @@ describe('job-run history retention (bounded memory + disk)', () => {
 
 describe('no self-improve scheduler bypasses (gate)', () => {
   test('every .selfImprove( caller in the SDK source is on the governed allowlist', () => {
-    const root = '/home/buzzkill/Projects/goodvibes-sdk/packages/sdk/src';
+    const root = 'packages/sdk/src';
     // Files allowed to call selfImprove directly:
     //  - semantic/service.ts: the scheduler itself + the answer path (deferRepair task-queue pass)
     //  - home-graph/sync-self-improvement.ts: the delayed, single-flight sync pump —
@@ -98,7 +98,7 @@ describe('no self-improve scheduler bypasses (gate)', () => {
   });
 
   test('the sync pump is genuinely pause-governed: stopWhenPaused on BOTH selfImprove calls plus a between-rounds gate', () => {
-    const text = readFileSync('/home/buzzkill/Projects/goodvibes-sdk/packages/sdk/src/platform/knowledge/home-graph/sync-self-improvement.ts', 'utf-8');
+    const text = readFileSync('packages/sdk/src/platform/knowledge/home-graph/sync-self-improvement.ts', 'utf-8');
     // The whole-space reindex call carries stopWhenPaused.
     expect(text).toMatch(/selfImprove\([^)]*\{ knowledgeSpaceId: spaceId, reason: 'reindex' \}, \{ stopWhenPaused: true \}\)/);
     // The PUMP's per-round call carries stopWhenPaused too (this was the
@@ -113,14 +113,14 @@ describe('no self-improve scheduler bypasses (gate)', () => {
   });
 
   test('the space-scoped runner path threads the pause stop into per-gap yield points (stopWhenPaused is not inert)', () => {
-    const service = readFileSync('/home/buzzkill/Projects/goodvibes-sdk/packages/sdk/src/platform/knowledge/semantic/service.ts', 'utf-8');
+    const service = readFileSync('packages/sdk/src/platform/knowledge/semantic/service.ts', 'utf-8');
     // BOTH runKnowledgeSemanticSelfImprovement call sites pass shouldStop
     // (the whole-store per-space call AND the space-scoped call every pump
     // round takes).
     const shouldStopCount = (service.match(/shouldStop: \(\) => this\.backgroundStopRequested\(runOptions\)/g) ?? []).length;
     expect(shouldStopCount).toBe(2);
     // The runner consults it at its per-gap loop boundary, same as abort.
-    const runner = readFileSync('/home/buzzkill/Projects/goodvibes-sdk/packages/sdk/src/platform/knowledge/semantic/self-improvement.ts', 'utf-8');
+    const runner = readFileSync('packages/sdk/src/platform/knowledge/semantic/self-improvement.ts', 'utf-8');
     expect(runner).toMatch(/input\.signal\?\.aborted \|\| context\.shouldStop\?\.\(\)/);
   });
 });
