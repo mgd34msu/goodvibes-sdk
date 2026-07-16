@@ -80,7 +80,7 @@ describe('PauseController seam', () => {
 });
 
 /** A governor test harness with a controllable sampler + fake clock. */
-function makeGovernor(over: Partial<{ budgetMb: number; rssMb: number; hardLimitPct: number }> = {}) {
+function makeGovernor(over: Partial<{ budgetMb: number; rssMb: number; hardLimitPct: number; systemRamMb: number }> = {}) {
   const reg = new CacheRegistry();
   const trims: CacheTrimLevel[] = [];
   reg.register('knowledge-store', { name: 'k', entryCount: () => 3, estimateBytes: () => 300, trim: (l) => trims.push(l) });
@@ -106,6 +106,9 @@ function makeGovernor(over: Partial<{ budgetMb: number; rssMb: number; hardLimit
       sampler: (): MemorySample => ({ rssBytes, heapUsedBytes: rssBytes / 2, heapTotalBytes: rssBytes }),
       now: () => clock,
       gc: () => { gcCount += 1; },
+      // Host-independent kill ceiling (default 1TB — far above every tier/
+      // tripwire fixture), so no test's outcome depends on the CI host's RAM.
+      resolveSystemRamMb: () => over.systemRamMb ?? 1024 * 1024,
       emitOps: (e) => opsEvents.push(e),
       writeReceipt: (r) => { receipts.push(r); sequence.push('receipt'); },
       shutdown: (r) => { shutdowns.push(r); shutdownWasBeforeExit = exitReceipt === null; sequence.push('shutdown'); },
@@ -222,16 +225,39 @@ describe('MemoryGovernor leak tripwire', () => {
   });
 });
 
-describe('MemoryGovernor absolute-RSS backstop (slice 4b)', () => {
-  test('a slow sub-tripwire leak exits at the hard limit with a hard-limit receipt (not a kernel OOM)', async () => {
-    // Budget 4096MB, hard limit 120% = 4915.2MB. Arm the tripwire at high tier,
-    // then leak at 5MB/s — WELL under the 25MB/s rate tripwire, so ONLY the
-    // absolute-RSS backstop can end it. Without the backstop this rides to OOM.
-    const h = makeGovernor({ budgetMb: 4096, hardLimitPct: 120 });
-    let rss = 3300; // > high (3276.8) — arms the tripwire
+describe('MemoryGovernor absolute-RSS backstop (anchored to the effective kill ceiling)', () => {
+  test('a stable large working set above the budget NEVER exits: critical tier forever, no restart loop (64GB host, 5GB RSS)', () => {
+    // The regression this pins: auto budget caps at 4096MB, so a healthy daemon
+    // legitimately sitting at 5GB on a 64GB host (mmap'd sqlite pages + a big
+    // heap graph — not registered caches, not reclaimable by flush) is ABOVE
+    // budget×anything but ~59GB below the kernel kill line. That is the
+    // critical tier's stay-alive job (refuse expensive work), never an exit.
+    const h = makeGovernor({ budgetMb: 0, systemRamMb: 64 * 1024 }); // auto budget -> 4096MB
+    h.setRssMb(5000); // stable — never grows
+    h.gov.sampleOnce();
+    expect(h.gov.currentTier()).toBe('critical');
+    expect(h.gov.admitExpensiveWork('reindex').allowed).toBe(false);
+    // Six simulated hours of flat residency: still alive, still critical.
+    for (let i = 0; i < 4320; i++) {
+      h.advance(5000);
+      h.gov.sampleOnce();
+    }
+    expect(h.gov.currentTier()).toBe('critical');
+    expect(h.exitReceipt()).toBeNull();
+    expect(h.receipts.length).toBe(0);
+    expect(h.shutdowns.length).toBe(0);
+  });
+
+  test('a slow sub-tripwire leak toward the kill ceiling exits with a hard-limit receipt (not a kernel OOM)', async () => {
+    // 8GB host: auto budget 2048MB, hard limit 90% of 8192 = 7372.8MB. Arm the
+    // tripwire at high tier, then leak at 5MB/s — WELL under the 25MB/s rate
+    // tripwire, so ONLY the ceiling-anchored backstop can end it. Without the
+    // backstop this rides to the kernel/cgroup OOM kill with no receipt.
+    const h = makeGovernor({ budgetMb: 0, systemRamMb: 8 * 1024 });
+    let rss = 1700; // > high (1638.4MB of the 2048MB budget) — arms the tripwire
     h.setRssMb(rss);
     h.gov.sampleOnce();
-    for (let i = 0; i < 800 && h.receipts.length === 0; i++) {
+    for (let i = 0; i < 400 && h.receipts.length === 0; i++) {
       h.advance(5000);
       rss += 25; // 5MB/s * 5s
       h.setRssMb(rss);
@@ -241,11 +267,12 @@ describe('MemoryGovernor absolute-RSS backstop (slice 4b)', () => {
     const receipt = h.exitReceipt();
     expect(receipt).not.toBeNull();
     expect(receipt!.trigger).toBe('hard-limit');
-    // Exited just above the hard limit — nowhere near the incident's 100GB OOM.
-    expect(receipt!.rssMb).toBeGreaterThanOrEqual(4915);
-    expect(receipt!.rssMb).toBeLessThan(5600);
+    // Exited just above 90% of the 8192MB ceiling — before the kernel line.
+    expect(receipt!.rssMb).toBeGreaterThanOrEqual(7372);
+    expect(receipt!.rssMb).toBeLessThan(8192);
     // The growth rate never reached the tripwire threshold: this is the SLOW path.
     expect(receipt!.rateMbPerSec).toBeLessThan(25);
+    expect(receipt!.note).toMatch(/effective kill ceiling/);
     // The receipt carries the tier-climb history, ending at critical.
     expect(receipt!.tierHistory.length).toBeGreaterThan(0);
     expect(receipt!.tierHistory.at(-1)?.tier).toBe('critical');
@@ -254,24 +281,29 @@ describe('MemoryGovernor absolute-RSS backstop (slice 4b)', () => {
     expect(h.shutdowns.length).toBe(1);
   });
 
-  test('RSS below the hard limit for the whole run never fires the backstop', async () => {
-    const h = makeGovernor({ budgetMb: 4096, hardLimitPct: 120 });
-    h.setRssMb(4000); // above critical, but under the 4915MB hard limit
+  test('a cgroup-limited daemon anchors the backstop to ITS limit, not host RAM', async () => {
+    // resolveSystemRamMb already returns min(cgroup limit, physical), so a
+    // daemon under MemoryMax=2G fires at 90% of 2048 = 1843.2MB — before the
+    // cgroup killer at 2048 — even though the host has plenty of RAM.
+    const h = makeGovernor({ budgetMb: 512, systemRamMb: 2048 });
+    h.setRssMb(1900); // above 90% of the 2048MB cgroup ceiling, stable
     h.gov.sampleOnce();
-    for (let i = 0; i < 200; i++) {
+    for (let i = 0; i < 20 && h.receipts.length === 0; i++) {
       h.advance(5000);
-      h.gov.sampleOnce(); // flat — sustained but never crosses the limit
+      h.gov.sampleOnce();
     }
-    expect(h.exitReceipt()).toBeNull();
+    for (let i = 0; i < 50 && !h.exitReceipt(); i++) await new Promise((r) => setTimeout(r, 10));
+    expect(h.exitReceipt()?.trigger).toBe('hard-limit');
   });
 
-  test('a transient spike above the hard limit that recedes before the window never fires', () => {
-    const h = makeGovernor({ budgetMb: 4096, hardLimitPct: 120 });
-    h.setRssMb(3300);
+  test('a transient spike above the ceiling threshold that recedes before the window never fires', () => {
+    const h = makeGovernor({ budgetMb: 0, systemRamMb: 8 * 1024 });
+    h.setRssMb(1700);
     h.gov.sampleOnce();
-    // Spike over the limit for 30s (< 60s sustain window), then drop back.
-    for (let i = 0; i < 6; i++) { h.advance(5000); h.setRssMb(5000); h.gov.sampleOnce(); }
-    h.advance(5000); h.setRssMb(3300); h.gov.sampleOnce();
+    // Spike over the 7372.8MB threshold for 30s (< 60s sustain), then drop back.
+    for (let i = 0; i < 6; i++) { h.advance(5000); h.setRssMb(7500); h.gov.sampleOnce(); }
+    h.advance(5000); h.setRssMb(1700); h.gov.sampleOnce();
+    for (let i = 0; i < 20; i++) { h.advance(5000); h.gov.sampleOnce(); }
     expect(h.exitReceipt()).toBeNull();
   });
 });
@@ -345,16 +377,21 @@ describe('fix-round hardening (reviewer scenarios)', () => {
       .toThrow(/must hold/);
   });
 
-  test('a hard limit at/below criticalPct is refused loudly at construction', () => {
+  test('hard-limit validation: pct must be in (0,100], and the ceiling-anchored limit must sit ABOVE the critical tier', () => {
     const reg = new CacheRegistry();
     const pc = new PauseController();
-    // Equal to critical is not ABOVE the ladder — refuse it.
-    expect(() => new MemoryGovernor({ ...baseConfig, hardLimitPct: 95 }, { caches: reg, pauses: pc, ...noopDeps }))
-      .toThrow(/memory\.hardLimitPct.*memory\.tier\.criticalPct/s);
-    expect(() => new MemoryGovernor({ ...baseConfig, hardLimitPct: 90 }, { caches: reg, pauses: pc, ...noopDeps }))
-      .toThrow(/must exceed/);
-    // Omitted → defaults to 120 (> criticalPct 95): constructs fine.
-    expect(() => new MemoryGovernor({ ...baseConfig }, { caches: reg, pauses: pc, ...noopDeps })).not.toThrow();
+    const ceiling = { resolveSystemRamMb: () => 8 * 1024 };
+    // Out-of-range percent refused loudly (it is a percent of the kill ceiling).
+    expect(() => new MemoryGovernor({ ...baseConfig, hardLimitPct: 0 }, { caches: reg, pauses: pc, ...noopDeps, ...ceiling }))
+      .toThrow(/memory\.hardLimitPct.*\(0, 100\]/s);
+    expect(() => new MemoryGovernor({ ...baseConfig, hardLimitPct: 120 }, { caches: reg, pauses: pc, ...noopDeps, ...ceiling }))
+      .toThrow(/memory\.hardLimitPct/);
+    // A budget so close to the ceiling that the hard limit sits at/below the
+    // critical tier would exit before the stay-alive posture — refused loudly.
+    expect(() => new MemoryGovernor({ ...baseConfig, budgetMb: 8 * 1024, hardLimitPct: 90 }, { caches: reg, pauses: pc, ...noopDeps, ...ceiling }))
+      .toThrow(/sits at\/below the critical tier/);
+    // Omitted → defaults to 90% of the ceiling, far above a small budget: fine.
+    expect(() => new MemoryGovernor({ ...baseConfig, budgetMb: 100 }, { caches: reg, pauses: pc, ...noopDeps, ...ceiling })).not.toThrow();
   });
 
   test('budget auto-resolution honors the cgroup v2/v1 limit below physical RAM', async () => {
