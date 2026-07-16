@@ -131,6 +131,7 @@ import { ObservedAgentSource } from './fleet/observed/source.js';
 import { createOrchestrationEngine, createProviderBackedAttemptJudge, type OrchestrationEngine } from '../orchestration/index.js';
 import { createFixWorkstreamRunner } from '../orchestration/fix-workstream-runner.js';
 import { makeRuntimeFleetProbe } from './orchestration/fleet-count.js';
+import { singleFlight } from '../utils/single-flight.js';
 import {
   CacheRegistry,
   PauseController,
@@ -948,9 +949,10 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // provisions the piper engine + a default voice and pre-configures the
   // voice.local.* keys (user-set keys preserved).
   const managedVoiceRoot = shellPaths.resolveUserPath('voice');
-  const voiceSetup = {
-    status: () => localVoiceRuntimeStatus({ managedRoot: managedVoiceRoot }),
-    install: async () => {
+  // Single-flight: concurrent installs are never meaningful — the second (and
+  // every further) concurrent caller joins the in-progress install's promise
+  // instead of starting parallel multi-hundred-MB downloads.
+  const runVoiceInstall = singleFlight(async () => {
       const provision = await provisionLocalVoiceRuntime({ managedRoot: managedVoiceRoot });
       let configured: { set: { key: string; value: string }[]; skipped: { key: string; reason: string }[] } = { set: [], skipped: [] };
       if (provision.tts.state === 'provisioned' && provision.tts.binaryPath && provision.tts.modelPath) {
@@ -986,6 +988,17 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
         components: provision.components,
         configured,
       };
+  });
+  const voiceSetup = {
+    status: () => localVoiceRuntimeStatus({ managedRoot: managedVoiceRoot }),
+    install: async () => {
+      // Critical-tier admission: a provision run allocates archive + model
+      // buffers — refuse honestly instead of piling onto memory pressure.
+      const admission = admitExpensiveWork('voice runtime install');
+      if (!admission.allowed) {
+        throw new Error(admission.reason ?? 'voice runtime install refused: daemon is under critical memory pressure.');
+      }
+      return runVoiceInstall();
     },
   };
   registerGatewayVerbGroups(gatewayMethods, { processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, requestApproval: (input) => approvalBroker.requestApproval(input), stampFixSessionOnApproval: (offerCallId, outcome) => approvalBroker.stampFixSession(offerCallId, outcome), watcherRegistry, userPermissionRuleStore, shellPaths, runtimeBus: options.runtimeBus, sessionPresence: { isAttached }, configManager, runtimeStore: options.runtimeStore, channelDeliveryRouter, providerRegistry, automationManager, sessionLister: sessionBroker, sessionIntake: sessionBroker, workingDirectory, attemptsController: orchestrationEngine, stepUpService, memoryRegistry, pairingTokens, acpHost, sessionLiveTurnControls, powerManager, memoryGovernor, voiceSetup, onCiAutoWatch: (observer) => { ciAutoWatchObserver = observer; } }); // see routes/register-gateway-verb-groups.ts

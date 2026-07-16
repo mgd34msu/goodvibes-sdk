@@ -108,9 +108,14 @@ describe('WS call path retained-context caps', () => {
     }
     expect(producerCancelled).toBe(true);
     expect(helper.wsCallStats().inFlight).toBe(0);
-    await new Promise((r) => setTimeout(r, 20));
-    gc();
-    expect(refs.filter((r) => r.deref() !== undefined).length).toBe(0);
+    // GC is not single-pass deterministic — poll a few collections.
+    let live = refs.length;
+    for (let i = 0; i < 10 && live > 0; i++) {
+      await new Promise((r) => setTimeout(r, 20));
+      gc();
+      live = refs.filter((r) => r.deref() !== undefined).length;
+    }
+    expect(live).toBe(0);
   });
 
   test('an oversized response body is aborted with a structured 502, not buffered without bound', async () => {
@@ -161,5 +166,73 @@ describe('WS call path retained-context caps', () => {
     });
     expect(sent).toBe(0); // all dropped — never queued onto a stalled socket
     expect(helper.wsCallStats().eventsDropped).toBe(1000);
+  });
+});
+
+describe('methodId arm shares the in-flight cap (no unbounded handler concurrency)', () => {
+  test('a 5,000-frame methodId burst is capped at 256 concurrent handler invocations, refused with 503, visible in stats', async () => {
+    // Mirror of the reviewer's probe: a registered-handler verb invoked via the
+    // WS call frame's methodId arm (previously uncapped and invisible).
+    const { GatewayMethodCatalog: Catalog } = await import('../packages/sdk/src/platform/control-plane/method-catalog.ts');
+    const { methodDescriptor, objectSchema } = await import('../packages/sdk/src/platform/control-plane/method-catalog-shared.ts');
+    const catalog = new Catalog();
+    let inHandler = 0;
+    let peak = 0;
+    let release: () => void = () => {};
+    const gate = new Promise<void>((r) => { release = r; });
+    catalog.register(
+      methodDescriptor({
+        id: 'ops.memory.get', // reuse a cataloged shape; handler replaces it for the probe
+        title: 'probe', description: 'probe handler', category: 'health',
+        scopes: ['read:health'],
+        inputSchema: objectSchema({}, []),
+        outputSchema: objectSchema({}, []),
+      }),
+      async () => {
+        inHandler += 1;
+        peak = Math.max(peak, inHandler);
+        await gate;
+        inHandler -= 1;
+        return { ok: true };
+      },
+      { replace: true },
+    );
+    const helper = new DaemonControlPlaneHelper({
+      authToken: () => 'operator-token-xyz',
+      userAuth: {} as never,
+      agentManager: {} as never,
+      controlPlaneGateway: {} as never,
+      gatewayMethods: catalog,
+      distributedRuntime: {} as never,
+      host: '127.0.0.1', port: 4483,
+      trustProxyEnabled: () => false,
+      dispatchApiRoutes: async () => null,
+      parseJsonBody: async () => ({}),
+      requireAuthenticatedSession: () => null,
+    });
+
+    const N = 5000;
+    const calls: Promise<{ status: number }>[] = [];
+    for (let i = 0; i < N; i++) {
+      calls.push(helper.invokeGatewayMethodCall({
+        authToken: 'operator-token-xyz',
+        methodId: 'ops.memory.get',
+        context: { principalId: 'p', principalKind: 'user', admin: true, scopes: ['read:health'] },
+      }));
+    }
+    await new Promise((r) => setTimeout(r, 50));
+    // The handler arm is bounded by the SAME cap and VISIBLE in the stats.
+    expect(peak).toBeLessThanOrEqual(256);
+    expect(helper.wsCallStats().inFlight).toBeLessThanOrEqual(256);
+    expect(helper.wsCallStats().inFlight).toBeGreaterThan(0); // no longer invisible
+
+    release();
+    const settled = await Promise.all(calls);
+    const refused = settled.filter((s) => s.status === 503).length;
+    const served = settled.filter((s) => s.status === 200).length;
+    expect(refused).toBe(N - served);
+    expect(refused).toBeGreaterThan(0); // over-cap calls got the honest 503
+    expect(helper.wsCallStats().refused).toBe(refused);
+    expect(helper.wsCallStats().inFlight).toBe(0); // fully drained
   });
 });
