@@ -130,11 +130,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.token || github.token }}
         run: |
+          # --deadline-ms 17m, sized under this job's 20m timeout-minutes cap so
+          # an exhausted wait yields the tool's honest deadline-exceeded verdict
+          # instead of a raw job kill.
           bun packages/toolchain/dist/bin/per-job-green.js \
             --repo "${{ inputs.repository || github.repository }}" \
             --sha "${{ inputs.sha }}" \
             --workflow "${{ inputs.workflow }}" \
-            --event "${{ inputs.event }}"
+            --event "${{ inputs.event }}" \
+            --deadline-ms "1020000"
       # ── registry mode: consumer repos bunx the published toolchain. ────────
       - name: Setup Bun (registry toolchain)
         if: inputs.toolchain-source == 'registry'
@@ -147,8 +151,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.token || github.token }}
         run: |
+          # --deadline-ms 17m, sized under this job's 20m timeout-minutes cap so
+          # an exhausted wait yields the tool's honest deadline-exceeded verdict
+          # instead of a raw job kill.
           bunx ${{ inputs.toolchain-spec }} goodvibes-per-job-green \
             --repo "${{ inputs.repository || github.repository }}" \
             --sha "${{ inputs.sha }}" \
             --workflow "${{ inputs.workflow }}" \
-            --event "${{ inputs.event }}"
+            --event "${{ inputs.event }}" \
+            --deadline-ms "1020000"

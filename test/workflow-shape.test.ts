@@ -262,6 +262,23 @@ describe('reusable workflows: workflow_call contracts', () => {
   test('reusable-gh-release runs on ubuntu-24.04 for stable awk', () => {
     expect(load('reusable-gh-release.yml').jobs!['gh-release']!['runs-on']).toBe('ubuntu-24.04');
   });
+
+  test('per-job-green gets an explicit deadline sized UNDER the verify job cap in both modes', () => {
+    const wf = load('reusable-release-verify.yml');
+    const verify = wf.jobs!['verify']!;
+    const capMinutes = verify['timeout-minutes']!;
+    expect(capMinutes).toBeGreaterThan(0);
+    for (const id of ['pjg-workspace', 'pjg-registry']) {
+      const step = steps(verify).find((s) => s.id === id);
+      expect(step, `verify step ${id} must exist`).toBeTruthy();
+      const match = /--deadline-ms\s+"?(\d+)"?/.exec(String(step!.run ?? ''));
+      // Without an explicit deadline under the cap, the tool's honest
+      // deadline-exceeded verdict is unreachable — the job kill wins.
+      expect(match, `${id} must pass --deadline-ms`).toBeTruthy();
+      const deadlineMinutes = Number(match![1]) / 60_000;
+      expect(deadlineMinutes).toBeLessThan(capMinutes);
+    }
+  });
 });
 
 describe('composite setup action: single Bun source', () => {

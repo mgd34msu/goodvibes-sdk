@@ -150,6 +150,45 @@ export function runIdFromDetailsUrl(detailsUrl: string | undefined): number | nu
   return match?.[1] ? Number.parseInt(match[1], 10) : null;
 }
 
+/**
+ * Resolve the fallback run id to the TARGET workflow's run.
+ *
+ * Discriminator: neither the check-run nor the check-suite REST payload carries
+ * a workflow-file field, so each candidate run id (parsed from Actions
+ * details_urls) is confirmed against the single-run endpoint
+ * `GET /actions/runs/{id}`, whose `path` names the workflow file. A candidate
+ * is accepted only when its confirmed path matches `config.workflow`.
+ *
+ * Availability compromise: when the commit carries exactly ONE distinct
+ * candidate and its confirmation is UNAVAILABLE (any non-200 — i.e. not a
+ * CONFIRMED mismatch), the sole candidate is accepted: no ambiguity exists on
+ * the commit, and demanding confirmation during the very Actions-API outage the
+ * fallback exists for would gut it. With MULTIPLE candidates, confirmation is
+ * required — an unconfirmable set resolves to null (UNRESOLVED), never a guess.
+ */
+async function resolveFallbackRunId(deps: PerJobGreenDeps, config: PerJobGreenConfig, candidateIds: readonly number[]): Promise<number | null> {
+  const distinct = [...new Set(candidateIds)];
+  if (distinct.length === 0) return null;
+  const base = deps.apiBase ?? 'https://api.github.com';
+  let unavailable = 0;
+  for (const id of distinct) {
+    const res = await getWithRetry(deps, config, `${base}/repos/${config.owner}/${config.repo}/actions/runs/${id}`, `actions run ${id} workflow confirmation`);
+    if (res.status !== 200) {
+      unavailable += 1;
+      continue;
+    }
+    const path = (res.body as { path?: string } | null)?.path;
+    if (typeof path === 'string' && (path === config.workflow || path.endsWith(`/${config.workflow}`))) {
+      return id;
+    }
+  }
+  if (distinct.length === 1 && unavailable === 1) {
+    deps.logger.warn(`[per-job-green] sole fallback run candidate ${distinct[0]} accepted without workflow confirmation (confirmation endpoint unavailable; no ambiguity on this commit)`);
+    return distinct[0] ?? null;
+  }
+  return null;
+}
+
 /** Checks-API fallback: assess per-check conclusions for the commit when the Actions API is 503-ing. */
 async function evaluateCheckSuites(deps: PerJobGreenDeps, config: PerJobGreenConfig, sha: string): Promise<PerJobGreenResult | null> {
   const base = deps.apiBase ?? 'https://api.github.com';
@@ -167,11 +206,15 @@ async function evaluateCheckSuites(deps: PerJobGreenDeps, config: PerJobGreenCon
     .filter((c) => c.conclusion !== 'success' && c.conclusion !== 'neutral' && c.conclusion !== 'skipped')
     .map((c) => `${c.name} (${c.conclusion ?? 'unknown'})`);
   // Downstream artifact restores need the Actions run id even on this path.
-  // Actions-created check runs carry it in details_url; take the first that
-  // parses. If none parses, runId stays null and the caller must treat the
-  // handoff as unresolved (the bin surfaces run_id= empty; release pipelines
-  // hard-fail their artifact restore honestly instead of misdirecting it).
-  const runId = checks.map((c) => runIdFromDetailsUrl(c.details_url)).find((id): id is number => id !== null) ?? null;
+  // Actions-created check runs carry it in details_url. Resolution must be
+  // workflow-filtered (a commit can carry check runs from several push
+  // workflows); see resolveFallbackRunId for the exact discriminator. When no
+  // candidate resolves to the target workflow, runId stays null and the caller
+  // must treat the handoff as unresolved (the bin surfaces run_id= empty;
+  // release pipelines hard-fail their artifact restore honestly instead of
+  // misdirecting it).
+  const candidates = checks.map((c) => runIdFromDetailsUrl(c.details_url)).filter((id): id is number => id !== null);
+  const runId = await resolveFallbackRunId(deps, config, candidates);
   const runIdNote = runId === null ? '; run id UNRESOLVED from check-run details' : `; run id ${runId} resolved from check-run details`;
   return {
     ok: failures.length === 0,
