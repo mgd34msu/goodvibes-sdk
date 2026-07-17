@@ -38,7 +38,7 @@
 #         tarball-artifact: agent-npm-tarball
 #         publish-command: >-
 #           bunx @pellux/goodvibes-toolchain goodvibes-publish-package --poll
-#           --tarball "$(ls release-tarball/*.tgz)"
+#           --tarball "./$(ls release-tarball/*.tgz)"   # ./ prefix required: npm parses a bare a/b path as a GitHub spec
 #     Glob resolution is the consumer command's problem (the `ls` above). With
 #     no tarball-artifact the download step is skipped and behavior is
 #     byte-identical to the default pack-and-publish-cwd path.
