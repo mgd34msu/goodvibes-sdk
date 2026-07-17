@@ -133,7 +133,12 @@ Hosted in this repo's `.github/workflows` and consumed cross-repo via
 `{version}` expands to the un-prefixed tag; when the file exists at the
 checked-out ref its prose is the body, e.g. the TUI's `docs/releases/<version>.md`,
 otherwise the CHANGELOG excerpt — plus `SHA256SUMS`), and
-`reusable-binary-matrix.yml` (build-binaries + post-build-smoke). The composite
+`reusable-binary-matrix.yml` (build-binaries + per-leg post-build-smoke: each
+smoke leg declares its own `binary` in the targets JSON, since matrix legs only
+build their own suffixed artifact — `smoke.binaryDefault` serves local CLI runs
+only). The glob inputs (`assets-glob`, `artifact-glob`) accept spaces or
+newlines as separators; the workflows normalize them to the newline-separated
+form their sinks require. The composite
 `./.github/actions/setup` action is the single Bun setup (one `bun-version`
 source, frozen-lockfile + cache always on).
 
