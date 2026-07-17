@@ -3,9 +3,10 @@
 # Consumer contract
 #   Verifies that a commit's PUSH CI run completed with EVERY job green — the
 #   by-reference validation that replaces re-running gates at release time.
-#   Runs the toolchain `per-job-green` CLI (all-jobs-green with a 503-resilient
-#   check-suites fallback) and surfaces the resolved run id + head SHA so a
-#   publish job can restore that run's build artifact and assert integrity.
+#   Runs the toolchain `per-job-green` tool (all-jobs-green with bounded
+#   transient-error retries and a check-suites fallback) and surfaces the
+#   resolved run id + head SHA so a publish job can restore that run's build
+#   artifact and assert integrity.
 #
 #   Call it:
 #     jobs:
@@ -17,9 +18,22 @@
 #           token: ${{ secrets.GITHUB_TOKEN }}
 #
 #   Inputs:  sha (required), repository (default: caller repo), workflow
-#            (default ci.yml), event (default push), bun-version, toolchain-spec.
+#            (default ci.yml), event (default push), bun-version,
+#            toolchain-source (registry|workspace), toolchain-spec.
 #   Outputs: run_id, head_sha, ok.
 #   Secrets: token — a GITHUB_TOKEN with actions:read on the target repo.
+#
+#   toolchain-source:
+#   - `registry` (default, consumer repos): bunx the PUBLISHED
+#     @pellux/goodvibes-toolchain from npm. Correct once the SDK has published
+#     the package.
+#   - `workspace` (the SDK repo itself): check out the verified commit, install,
+#     build the workspace toolchain, and invoke its local dist bin. The SDK
+#     cannot bunx-from-registry — its own release is what publishes the
+#     toolchain (first release: the package does not exist yet; later releases:
+#     bunx would verify with the PREVIOUS version, not the commit under
+#     release). Only meaningful in a repo whose checkout contains
+#     packages/toolchain.
 
 on:
   workflow_call:
@@ -47,8 +61,15 @@ on:
         required: false
         type: string
         default: "1.3.10"
+      toolchain-source:
+        description: Where per-job-green comes from — `registry` (bunx the
+          published package; consumer repos) or `workspace` (build + run the
+          checked-out workspace toolchain; the SDK repo itself).
+        required: false
+        type: string
+        default: registry
       toolchain-spec:
-        description: npm spec of the toolchain CLI package to run via bunx.
+        description: npm spec of the toolchain CLI package (registry mode only).
         required: false
         type: string
         default: "@pellux/goodvibes-toolchain"
@@ -73,22 +94,56 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     permissions:
       contents: read
       actions: read
       checks: read
     outputs:
-      run_id: ${{ steps.pjg.outputs.run_id }}
-      head_sha: ${{ steps.pjg.outputs.head_sha }}
-      ok: ${{ steps.pjg.outputs.ok }}
+      run_id: ${{ steps.pjg-workspace.outputs.run_id || steps.pjg-registry.outputs.run_id }}
+      head_sha: ${{ steps.pjg-workspace.outputs.head_sha || steps.pjg-registry.outputs.head_sha }}
+      ok: ${{ steps.pjg-workspace.outputs.ok || steps.pjg-registry.outputs.ok }}
     steps:
-      - name: Setup Bun
+      - name: Reject an unknown toolchain-source
+        if: inputs.toolchain-source != 'registry' && inputs.toolchain-source != 'workspace'
+        run: |
+          echo "toolchain-source must be 'registry' or 'workspace' (got '${{ inputs.toolchain-source }}')." >&2
+          exit 1
+      # ── workspace mode: the SDK verifies itself with the toolchain at the
+      #    verified commit (self-hosting; no registry dependency). ────────────
+      - name: Checkout verified commit (workspace toolchain)
+        if: inputs.toolchain-source == 'workspace'
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ inputs.sha }}
+      - name: Setup Bun + deps (cached, workspace toolchain)
+        if: inputs.toolchain-source == 'workspace'
+        uses: ./.github/actions/setup
+        with:
+          bun-version: ${{ inputs.bun-version }}
+      - name: Build workspace toolchain
+        if: inputs.toolchain-source == 'workspace'
+        run: bunx tsc -b packages/toolchain
+      - name: Verify push-CI run is per-job green (workspace toolchain)
+        if: inputs.toolchain-source == 'workspace'
+        id: pjg-workspace
+        env:
+          GH_TOKEN: ${{ secrets.token || github.token }}
+        run: |
+          bun packages/toolchain/dist/bin/per-job-green.js \
+            --repo "${{ inputs.repository || github.repository }}" \
+            --sha "${{ inputs.sha }}" \
+            --workflow "${{ inputs.workflow }}" \
+            --event "${{ inputs.event }}"
+      # ── registry mode: consumer repos bunx the published toolchain. ────────
+      - name: Setup Bun (registry toolchain)
+        if: inputs.toolchain-source == 'registry'
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: ${{ inputs.bun-version }}
-      - name: Verify push-CI run is per-job green
-        id: pjg
+      - name: Verify push-CI run is per-job green (registry toolchain)
+        if: inputs.toolchain-source == 'registry'
+        id: pjg-registry
         env:
           GH_TOKEN: ${{ secrets.token || github.token }}
         run: |

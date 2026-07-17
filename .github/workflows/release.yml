@@ -56,6 +56,11 @@ jobs:
   # By-reference validation: verify the tagged commit's push-CI run is per-job
   # green. Replaces the old 45-minute validate-release re-run. Emits the CI run
   # id + head SHA so publish-npm can restore that run's build artifact.
+  #
+  # toolchain-source: workspace — the SDK MUST self-host per-job-green from the
+  # checked-out commit. bunx-from-registry would deadlock the first release
+  # (this release is what publishes @pellux/goodvibes-toolchain) and would make
+  # every later release verify itself with the PREVIOUS toolchain version.
   release-verify:
     if: github.event_name == 'push'
     needs: [verify-tag-version]
@@ -63,6 +68,7 @@ jobs:
     with:
       sha: ${{ github.sha }}
       workflow: ci.yml
+      toolchain-source: workspace
     secrets:
       token: ${{ secrets.GITHUB_TOKEN }}
 
