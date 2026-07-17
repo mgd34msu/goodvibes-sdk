@@ -149,6 +149,36 @@ describe('release.yml: by-reference release', () => {
     expect(needsOf(rv)).toContain('verify-tag-version');
   });
 
+  test('every caller job grants at least the permissions its called reusable workflow requests', () => {
+    // GitHub validates this at workflow startup: a called workflow's job may
+    // only use permissions the caller job grants. An under-granting caller is
+    // rejected with startup_failure and jobs: [] before anything runs.
+    const RANK: Record<string, number> = { none: 0, read: 1, write: 2 };
+    for (const wfName of ['release.yml', 'ci.yml']) {
+      const caller = load(wfName);
+      for (const [jobName, job] of Object.entries(caller.jobs ?? {})) {
+        const uses = String(job.uses ?? '');
+        const m = uses.match(/(?:^\.\/)?\.github\/workflows\/(reusable-[a-z-]+\.yml)/);
+        if (!m) continue;
+        const callee = load(m[1]!);
+        const requested: Record<string, string> = { ...(callee.permissions ?? {}) };
+        for (const calleeJob of Object.values(callee.jobs ?? {})) {
+          for (const [scope, level] of Object.entries(calleeJob.permissions ?? {})) {
+            if ((RANK[level] ?? 0) > (RANK[requested[scope] ?? 'none'] ?? 0)) requested[scope] = level;
+          }
+        }
+        const granted = job.permissions ?? caller.permissions ?? {};
+        for (const [scope, level] of Object.entries(requested)) {
+          const have = granted[scope] ?? 'none';
+          expect(
+            RANK[have] ?? 0,
+            `${wfName} job "${jobName}" grants ${scope}: ${have} but ${m[1]} requests ${scope}: ${level}`,
+          ).toBeGreaterThanOrEqual(RANK[level] ?? 0);
+        }
+      }
+    }
+  });
+
   test('publish-npm gates on release-verify, checks artifact integrity, and restores by run id', () => {
     const pub = rel.jobs!['publish-npm']!;
     expect(needsOf(pub)).toContain('release-verify');

@@ -64,6 +64,12 @@ jobs:
   release-verify:
     if: github.event_name == 'push'
     needs: [verify-tag-version]
+    # Caller permissions must be a superset of what the called workflow's jobs
+    # request, or GitHub rejects the whole workflow at startup (jobs: []).
+    permissions:
+      contents: read
+      actions: read
+      checks: read
     uses: ./.github/workflows/reusable-release-verify.yml
     with:
       sha: ${{ github.sha }}
