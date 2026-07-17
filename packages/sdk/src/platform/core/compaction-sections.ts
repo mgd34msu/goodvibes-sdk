@@ -56,12 +56,20 @@ function makeSection(
 // ---------------------------------------------------------------------------
 
 /**
+ * The mandatory first line of every compacted output. Exported so transcript
+ * renderers can recognize a compaction-continuation user message (it is
+ * machinery, not something the user typed) and present it folded instead of
+ * as a full multi-kilobyte wall of re-injected instructions.
+ */
+export const COMPACTION_HANDOFF_HEADER =
+  'IMPORTANT: This session is not new! Context was compacted, please read the following for proper handoff so you may resume work!';
+
+/**
  * buildHandoffHeader — always returns the mandatory handoff header.
  * This is the first line of every compacted output.
  */
 export function buildHandoffHeader(): CompactionSection {
-  const content =
-    'IMPORTANT: This session is not new! Context was compacted, please read the following for proper handoff so you may resume work!';
+  const content = COMPACTION_HANDOFF_HEADER;
   return {
     id: 'handoff-header',
     header: '',

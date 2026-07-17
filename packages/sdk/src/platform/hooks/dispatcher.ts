@@ -1,4 +1,4 @@
-import { readFileSync, statSync } from 'fs';
+import { existsSync, readFileSync, statSync } from 'fs';
 import { dirname } from 'path';
 import type { HookDefinition, HookChain, HookEvent, HookResult } from './types.js';
 import { matchesEventPath, matchesMatcher } from './matcher.js';
@@ -75,6 +75,13 @@ export class HookDispatcher {
   /** Load hooks from hooks.json file */
   loadFromFile(filePath: string): void {
     this.hooksBaseDirectory = dirname(filePath);
+    // No hooks file is the normal state for most installs — skip quietly
+    // instead of emitting a WARN (permission probe) + ERROR (read) pair on
+    // every startup for a file that was never created.
+    if (!existsSync(filePath)) {
+      logger.debug('HookDispatcher: no hooks file present, skipping load', { filePath });
+      return;
+    }
     try {
       // Warn if hooks.json is world-writable — it is a trust boundary.
       try {

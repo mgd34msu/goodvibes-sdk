@@ -93,3 +93,16 @@ describe('compaction — instruction / skill re-injection', () => {
     expect(result.event.instructionsReinjected).toBe(false);
   });
 });
+
+// The handoff-header constant is the transcript renderers' detection contract
+// for folding compaction-continuation messages — it must stay byte-identical
+// to what buildHandoffHeader() actually emits.
+import { buildHandoffHeader, COMPACTION_HANDOFF_HEADER } from '../packages/sdk/src/platform/core/compaction-sections.js';
+
+describe('compaction handoff header constant', () => {
+  test('COMPACTION_HANDOFF_HEADER matches buildHandoffHeader output', () => {
+    const section = buildHandoffHeader();
+    expect(section.content).toBe(COMPACTION_HANDOFF_HEADER);
+    expect(section.id).toBe('handoff-header');
+  });
+});
