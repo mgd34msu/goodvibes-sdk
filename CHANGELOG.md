@@ -4,6 +4,30 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
+## [1.11.3] - 2026-07-17
+
+### Fixed
+
+- **Missing hooks file no longer logs an error.** `HookDispatcher.loadFromFile`
+  skips cleanly (debug log) when the hooks file does not exist. An absent
+  `hooks.json` is the normal state for most installs and previously produced a
+  WARN (permission probe) + ERROR (read failure) pair on every startup.
+- **Error summaries keep redaction tokens.** The error-summary JSON stripper no
+  longer eats `[REDACTED*]` placeholders, which turned redacted paths like
+  `/home/[REDACTED]/hooks.json` into the misleading `/home/ /hooks.json` in logs.
+- **`publish-package` resolves tarball paths to absolute.** npm parses a bare
+  relative `dir/pkg.tgz` as a GitHub owner/repo spec; caller-supplied relative
+  paths are now resolved before they reach the npm argv (closes the hardening
+  item deferred from 1.11.2).
+
+### Added
+
+- **`COMPACTION_HANDOFF_HEADER` export (platform/core).** The mandatory first
+  line of every compaction-continuation message is now exported so transcript
+  renderers can recognize the compactor-authored user message and fold it
+  instead of re-printing the full re-injected instruction wall after every
+  automatic compaction.
+
 ## [1.11.2] - 2026-07-17
 
 ### Added

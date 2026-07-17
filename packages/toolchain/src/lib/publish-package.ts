@@ -8,6 +8,7 @@
  */
 
 import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import type { Exec, Logger, Sleep } from './effects.js';
 import { realExec, consoleLogger, realSleep } from './effects.js';
 import { DEFAULT_REGISTRY } from '../config.js';
@@ -52,7 +53,10 @@ export function runPublishPackage(options: PublishOptions): PublishResult {
   const logger = options.logger ?? consoleLogger;
   const registry = options.registry ?? DEFAULT_REGISTRY;
   const fileExists = options.fileExists ?? existsSync;
-  const tarball = options.tarballPath;
+  // Resolved to absolute before it ever reaches npm: npm parses a bare
+  // relative path like `dir/pkg.tgz` as a GitHub owner/repo spec, so a
+  // caller-supplied relative path would publish the wrong thing entirely.
+  const tarball = options.tarballPath === undefined ? undefined : resolve(options.tarballPath);
 
   if (tarball !== undefined) {
     // Tarball mode: publish a prebuilt .tgz. Validate the flag value — the file
