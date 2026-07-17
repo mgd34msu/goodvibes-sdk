@@ -4,6 +4,23 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
+## [1.11.1] - 2026-07-17
+
+### Fixed
+
+- **`@pellux/goodvibes-toolchain` gains a dispatcher bin named after the
+  package (`goodvibes-toolchain`).** `bunx @pellux/goodvibes-toolchain <tool>`
+  resolves the bin whose name matches the package's final path segment; with
+  only the eleven `goodvibes-*` tool bins exposed, bunx silently fell back to
+  the FIRST bin in the map (sdk-pin-gate) and ran it with the intended tool
+  name as a stray argument — crashing release-verify in checkout-less
+  workspaces and, worse, capable of "passing" while running the wrong tool
+  where a toolchain config exists. The dispatcher accepts bare
+  (`per-job-green`) and prefixed (`goodvibes-per-job-green`) tool names, so
+  every existing invocation string now reaches the intended tool; all eleven
+  direct bins are unchanged, and the dispatcher sits first in the bin map so a
+  first-bin fallback also lands on it.
+
 ## [1.11.0] - 2026-07-16
 
 ### Added

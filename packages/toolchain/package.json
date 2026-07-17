@@ -1,6 +1,6 @@
 {
   "name": "@pellux/goodvibes-toolchain",
-  "version": "1.11.0",
+  "version": "1.11.1",
   "engines": {
     "bun": "1.3.10",
     "node": ">=22.0.0"
@@ -21,6 +21,7 @@
     "./package.json": "./package.json"
   },
   "bin": {
+    "goodvibes-toolchain": "./dist/bin/toolchain.js",
     "goodvibes-sdk-pin-gate": "./dist/bin/sdk-pin-gate.js",
     "goodvibes-build-binaries": "./dist/bin/build-binaries.js",
     "goodvibes-release-cut": "./dist/bin/release-cut.js",
