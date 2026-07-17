@@ -50,7 +50,12 @@ describe('publish-package tarball mode', () => {
     expect(result.ok).toBe(true);
     expect(result.skipped).toBe(false);
     expect(publishArgs).not.toBeNull();
-    expect(publishArgs!).toContain('release-tarball/agent.tgz');
+    // The tarball path reaches npm as an ABSOLUTE path: npm parses a bare
+    // relative `dir/pkg.tgz` as a GitHub owner/repo spec, so publish-package
+    // resolves caller-supplied paths before building the argv.
+    const tarballArg = publishArgs!.find((a) => a.endsWith('/release-tarball/agent.tgz'));
+    expect(tarballArg).toBeDefined();
+    expect(tarballArg!.startsWith('/')).toBe(true);
     // npm never packs in tarball mode.
     expect(publishArgs!).not.toContain('pack');
   });
