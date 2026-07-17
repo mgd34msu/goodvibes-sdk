@@ -4,6 +4,42 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
+## [1.11.2] - 2026-07-17
+
+### Added
+
+- **The SDK now carries the toolchain.** `@pellux/goodvibes-sdk` declares
+  `@pellux/goodvibes-toolchain` as a runtime dependency, so installing the SDK
+  installs the shared CI/CD toolchain as well. Consumer repos can drop their
+  separate toolchain pin and rely on the one the SDK brings.
+- **Zero-touch releases (auto-tag on green).** CI gains a final `auto-release`
+  job that runs only after every gating job is green on a push to `main`. When
+  the release commit's version has no tag yet, it creates the annotated
+  `v<version>` tag at that commit and dispatches the release workflow at the tag
+  ref with `mode=release` — no human step between a merged release commit and a
+  published release. A tag that already exists is a logged no-op, and the manual
+  tag-push path is unchanged for redos. The release workflow gains a `mode`
+  input (`dry-run` | `release`, default `dry-run`); every job previously gated to
+  a tag push now also runs for a `mode=release` dispatch, while the dry-run job
+  is fenced to a non-release dispatch so it can never publish.
+- **`reusable-npm-publish.yml` gains a prebuilt-tarball publish mode.** A new
+  optional `tarball-artifact` input downloads a packed `.tgz` into
+  `./release-tarball/` before publishing, for repos whose npm bytes come from a
+  separate pack job. With no `tarball-artifact` the default pack-and-publish-cwd
+  behavior is byte-identical.
+
+### Fixed
+
+- **`publish-package` can publish a prebuilt tarball (`--tarball <path>`).** When
+  set, the tool publishes the given `.tgz` (`npm publish <path>`) instead of
+  packing the current directory, while keeping the already-published skip, the
+  propagation poll, and a dry-run that verifies the staged tarball is present.
+  A missing or non-`.tgz` path is rejected up front (exit 2) so a broken
+  pack→publish handoff fails loudly. This is the fix for consumers — such as the
+  agent, which bundles a runtime before packing — whose published bytes are
+  produced by a pack job rather than a bare checkout, so the publish must ship
+  the staged artifact.
+
 ## [1.11.1] - 2026-07-17
 
 ### Fixed

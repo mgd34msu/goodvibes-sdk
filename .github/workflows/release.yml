@@ -18,12 +18,20 @@ permissions:
 on:
   workflow_dispatch:
     inputs:
+      mode:
+        description: "dry-run (default; pack preview, no registry write) or release (publish the dispatched tag)"
+        required: false
+        type: choice
+        options:
+          - dry-run
+          - release
+        default: dry-run
       dry_run:
-        description: "Run the release pipeline without publishing to npm"
+        description: "Legacy dry-run guard (used only for a non-release dispatch)"
         required: false
         default: "true"
       ref:
-        description: "Git ref to dry-run"
+        description: "Git ref to dry-run (ignored in release mode, which uses the dispatched tag ref)"
         required: false
         default: "main"
   push:
@@ -38,7 +46,9 @@ concurrency:
 
 jobs:
   verify-tag-version:
-    if: github.event_name == 'push'
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'release')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -62,7 +72,9 @@ jobs:
   # (this release is what publishes @pellux/goodvibes-toolchain) and would make
   # every later release verify itself with the PREVIOUS toolchain version.
   release-verify:
-    if: github.event_name == 'push'
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'release')
     needs: [verify-tag-version]
     # Caller permissions must be a superset of what the called workflow's jobs
     # request, or GitHub rejects the whole workflow at startup (jobs: []).
@@ -85,14 +97,21 @@ jobs:
     if: >-
       always() &&
       (
-        (github.event_name == 'push' && needs.verify-tag-version.result == 'success') ||
-        (github.event_name == 'workflow_dispatch' && needs.verify-tag-version.result == 'skipped')
+        (
+          (github.event_name == 'push' ||
+           (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'release')) &&
+          needs.verify-tag-version.result == 'success'
+        ) ||
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.mode != 'release' &&
+         needs.verify-tag-version.result == 'skipped')
       )
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: ${{ github.event.inputs.ref || github.ref }}
+          # Release-mode dispatch runs at the tag ref (github.ref); a non-release
+          # dispatch uses its input ref; a push uses the pushed tag ref.
+          ref: ${{ (github.event.inputs.mode == 'release' && github.ref) || github.event.inputs.ref || github.ref }}
       - name: Setup Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
@@ -115,7 +134,7 @@ jobs:
   # Manual dispatch is dry-run only — it never publishes. The push path is the
   # only way to a real publish, and publish-npm is `if: push` gated below.
   dry-run:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.mode != 'release'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -143,7 +162,8 @@ jobs:
     needs: [verify-tag-version, release-verify, generate-sbom]
     if: >-
       always() &&
-      github.event_name == 'push' &&
+      (github.event_name == 'push' ||
+       (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'release')) &&
       needs.verify-tag-version.result == 'success' &&
       needs.release-verify.result == 'success' &&
       needs.generate-sbom.result == 'success'
@@ -158,7 +178,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: ${{ github.event.inputs.ref || github.ref }}
+          # Release-mode dispatch restores + publishes the tag ref (github.ref);
+          # a push uses the pushed tag ref. Never the "main" input default here.
+          ref: ${{ (github.event.inputs.mode == 'release' && github.ref) || github.event.inputs.ref || github.ref }}
       - name: Setup Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
@@ -225,7 +247,12 @@ jobs:
 
   github-release:
     # Create the GitHub release only after npm publish and SBOM generation succeed.
-    if: always() && github.event_name == 'push' && needs.publish-npm.result == 'success' && needs.generate-sbom.result == 'success'
+    if: >-
+      always() &&
+      (github.event_name == 'push' ||
+       (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'release')) &&
+      needs.publish-npm.result == 'success' &&
+      needs.generate-sbom.result == 'success'
     needs: [publish-npm, generate-sbom]
     # Pinned to ubuntu-24.04 (not ubuntu-latest) to prevent BSD awk semantics
     # from silently breaking the changelog extraction step.

@@ -30,6 +30,107 @@ describe('publish-package idempotency', () => {
   });
 });
 
+describe('publish-package tarball mode', () => {
+  test('publishes the tarball path (npm argv carries the .tgz), skipping the pack', () => {
+    let publishArgs: readonly string[] | null = null;
+    const exec = scriptedExec((_c, args) => {
+      if (args[0] === 'view') return { status: 1 }; // not yet published
+      if (args[0] === 'publish') { publishArgs = args; return { status: 0 }; }
+      return { status: 0 };
+    });
+    const result = runPublishPackage({
+      cwd: '/repo',
+      name: '@pellux/agent',
+      version: '1.12.3',
+      tarballPath: 'release-tarball/agent.tgz',
+      fileExists: () => true,
+      exec,
+      logger: captureLogger(),
+    });
+    expect(result.ok).toBe(true);
+    expect(result.skipped).toBe(false);
+    expect(publishArgs).not.toBeNull();
+    expect(publishArgs!).toContain('release-tarball/agent.tgz');
+    // npm never packs in tarball mode.
+    expect(publishArgs!).not.toContain('pack');
+  });
+
+  test('rejects a missing tarball file without publishing', () => {
+    let publishCalled = false;
+    const exec = scriptedExec((_c, args) => {
+      if (args[0] === 'publish') publishCalled = true;
+      return { status: 0 };
+    });
+    const result = runPublishPackage({
+      cwd: '/repo',
+      name: '@pellux/agent',
+      version: '1.12.3',
+      tarballPath: 'release-tarball/missing.tgz',
+      fileExists: () => false,
+      exec,
+      logger: captureLogger(),
+    });
+    expect(result.ok).toBe(false);
+    expect(result.detail).toContain('tarball not found');
+    expect(publishCalled).toBe(false);
+  });
+
+  test('rejects a non-.tgz tarball path', () => {
+    const result = runPublishPackage({
+      cwd: '/repo',
+      name: '@pellux/agent',
+      version: '1.12.3',
+      tarballPath: 'release-tarball/agent.zip',
+      fileExists: () => true,
+      exec: scriptedExec(() => ({ status: 0 })),
+      logger: captureLogger(),
+    });
+    expect(result.ok).toBe(false);
+    expect(result.detail).toContain('.tgz');
+  });
+
+  test('dry-run verifies the tarball exists but does not publish', () => {
+    let publishCalled = false;
+    const exec = scriptedExec((_c, args) => {
+      if (args[0] === 'publish' || args[0] === 'pack') publishCalled = true;
+      return { status: 0 };
+    });
+    const result = runPublishPackage({
+      cwd: '/repo',
+      name: '@pellux/agent',
+      version: '1.12.3',
+      tarballPath: 'release-tarball/agent.tgz',
+      dryRun: true,
+      fileExists: () => true,
+      exec,
+      logger: captureLogger(),
+    });
+    expect(result.ok).toBe(true);
+    expect(publishCalled).toBe(false);
+  });
+
+  test('skips when the tarball version is already published', () => {
+    let publishCalled = false;
+    const exec = scriptedExec((_c, args) => {
+      if (args[0] === 'view') return { status: 0, stdout: '1.12.3\n' };
+      if (args[0] === 'publish') { publishCalled = true; return { status: 0 }; }
+      return { status: 0 };
+    });
+    const result = runPublishPackage({
+      cwd: '/repo',
+      name: '@pellux/agent',
+      version: '1.12.3',
+      tarballPath: 'release-tarball/agent.tgz',
+      fileExists: () => true,
+      exec,
+      logger: captureLogger(),
+    });
+    expect(result.skipped).toBe(true);
+    expect(result.ok).toBe(true);
+    expect(publishCalled).toBe(false);
+  });
+});
+
 describe('publish-package propagation poll', () => {
   test('resolves once the version appears', async () => {
     let calls = 0;
