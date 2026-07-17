@@ -7,7 +7,9 @@ description: Pin Bun, restore its install cache, and run `bun install --frozen-l
 inputs:
   bun-version:
     description: Bun version to pin. Single source of truth for the estate; pass
-      a repo variable (e.g. ${{ vars.BUN_VERSION }}) to override the default.
+      a repo variable (vars.BUN_VERSION, wrapped in an expression at the call
+      site) to override the default. Expressions cannot appear literally in
+      this description — GitHub's template validator evaluates them even here.
     required: false
     default: "1.3.10"
 
