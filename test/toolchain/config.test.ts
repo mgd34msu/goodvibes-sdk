@@ -25,4 +25,14 @@ describe('toolchain config', () => {
     expect(resolved.event).toBe('push');
     expect(resolved.pollIntervalMs).toBeGreaterThan(0);
   });
+  test('per-job-green default retry posture: ~8 attempts with sleeps in the 5-10s band', () => {
+    const resolved = resolvePerJobGreenConfig({ owner: 'a', repo: 'b' });
+    expect(resolved.retryAttempts).toBe(8);
+    expect(resolved.retryDelayMs).toBeGreaterThanOrEqual(5000);
+    expect(resolved.retryDelayMs).toBeLessThanOrEqual(10000);
+    // And it stays configurable.
+    const custom = resolvePerJobGreenConfig({ owner: 'a', repo: 'b', retryAttempts: 3, retryDelayMs: 100 });
+    expect(custom.retryAttempts).toBe(3);
+    expect(custom.retryDelayMs).toBe(100);
+  });
 });

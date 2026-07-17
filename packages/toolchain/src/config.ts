@@ -115,6 +115,10 @@ export interface PerJobGreenConfig {
   readonly event: string;
   readonly pollIntervalMs: number;
   readonly deadlineMs: number;
+  /** Bounded retry attempts applied to EVERY GitHub API call before its status is treated as final. */
+  readonly retryAttempts: number;
+  /** Sleep between retry attempts. */
+  readonly retryDelayMs: number;
 }
 
 /** The complete repo config. All sections are optional so a repo declares only the tools it uses. */
@@ -135,6 +139,11 @@ export const DEFAULT_LOCKFILE = 'bun.lock';
 export const DEFAULT_REGISTRY = 'https://registry.npmjs.org';
 export const DEFAULT_POLL_INTERVAL_MS = 20_000;
 export const DEFAULT_DEADLINE_MS = 1_800_000;
+// Default transient-error posture: the GitHub API's observed flaky mode makes
+// single-shot calls fail a meaningful fraction of the time, so every call gets
+// ~8 bounded attempts with sleeps in the 5-10s band before its status is final.
+export const DEFAULT_RETRY_ATTEMPTS = 8;
+export const DEFAULT_RETRY_DELAY_MS = 7_000;
 
 /** Fill an SdkPinConfig with the conventional defaults for any missing field. */
 export function resolveSdkPinConfig(partial: Partial<SdkPinConfig> | undefined): SdkPinConfig {
@@ -158,6 +167,8 @@ export function resolvePerJobGreenConfig(partial: Partial<PerJobGreenConfig> & P
     event: partial.event ?? 'push',
     pollIntervalMs: partial.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS,
     deadlineMs: partial.deadlineMs ?? DEFAULT_DEADLINE_MS,
+    retryAttempts: partial.retryAttempts ?? DEFAULT_RETRY_ATTEMPTS,
+    retryDelayMs: partial.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS,
   };
 }
 
