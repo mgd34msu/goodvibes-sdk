@@ -129,7 +129,10 @@ Hosted in this repo's `.github/workflows` and consumed cross-repo via
 `uses: mgd34msu/goodvibes-sdk/.github/workflows/<name>.yml@main`:
 `reusable-release-verify.yml` (by-reference per-job-green, emits `run_id` +
 `head_sha`), `reusable-npm-publish.yml` (provenance + propagation poll),
-`reusable-gh-release.yml` (changelog excerpt + `SHA256SUMS`), and
+`reusable-gh-release.yml` (release body from an optional `notes-file` override —
+`{version}` expands to the un-prefixed tag; when the file exists at the
+checked-out ref its prose is the body, e.g. the TUI's `docs/releases/<version>.md`,
+otherwise the CHANGELOG excerpt — plus `SHA256SUMS`), and
 `reusable-binary-matrix.yml` (build-binaries + post-build-smoke). The composite
 `./.github/actions/setup` action is the single Bun setup (one `bun-version`
 source, frozen-lockfile + cache always on).
