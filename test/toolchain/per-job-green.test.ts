@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { verifyPerJobGreen, resolvePerJobGreenConfig, captureLogger, type HttpResponse } from '@pellux/goodvibes-toolchain';
+import { verifyPerJobGreen, resolvePerJobGreenConfig, runIdFromDetailsUrl, captureLogger, type HttpResponse } from '@pellux/goodvibes-toolchain';
 
 const config = resolvePerJobGreenConfig({ owner: 'mgd34msu', repo: 'goodvibes-sdk', pollIntervalMs: 1, deadlineMs: 1000 });
 
@@ -55,16 +55,48 @@ describe('per-job-green', () => {
     expect(result.ok).toBe(true);
   });
 
-  test('falls back to check-suites on a 503 from the Actions API', async () => {
+  test('falls back to check-suites on a 503 from the Actions API and resolves the run id from check-run details', async () => {
     const d = deps((url) => {
       if (url.includes('/actions/runs?')) return { status: 503, body: null };
       if (url.includes('/check-suites')) return { status: 200, body: { check_suites: [{ status: 'completed', conclusion: 'success' }] } };
-      if (url.includes('/check-runs')) return { status: 200, body: { check_runs: [{ name: 'CI / build', conclusion: 'success' }] } };
+      if (url.includes('/check-runs')) {
+        return {
+          status: 200,
+          body: {
+            check_runs: [
+              { name: 'gitleaks', conclusion: 'success', details_url: 'https://github.com/mgd34msu/goodvibes-sdk/security' },
+              { name: 'CI / build', conclusion: 'success', details_url: 'https://github.com/mgd34msu/goodvibes-sdk/actions/runs/7331/job/9001' },
+            ],
+          },
+        };
+      }
       return { status: 404, body: null };
     });
     const result = await verifyPerJobGreen(d, config, 'abc');
     expect(result.ok).toBe(true);
     expect(result.source).toBe('check-suites');
+    // The artifact-integrity handoff needs the run id even on the fallback path.
+    expect(result.runId).toBe(7331);
+  });
+
+  test('check-suites fallback with no parseable details_url reports run id unresolved (null)', async () => {
+    const d = deps((url) => {
+      if (url.includes('/actions/runs?')) return { status: 503, body: null };
+      if (url.includes('/check-suites')) return { status: 200, body: { check_suites: [{ status: 'completed', conclusion: 'success' }] } };
+      if (url.includes('/check-runs')) return { status: 200, body: { check_runs: [{ name: 'external-scan', conclusion: 'success' }] } };
+      return { status: 404, body: null };
+    });
+    const result = await verifyPerJobGreen(d, config, 'abc');
+    expect(result.ok).toBe(true);
+    expect(result.runId).toBeNull();
+    expect(result.reason).toContain('UNRESOLVED');
+  });
+
+  test('runIdFromDetailsUrl parses Actions job urls and rejects everything else', () => {
+    expect(runIdFromDetailsUrl('https://github.com/o/r/actions/runs/42/job/7')).toBe(42);
+    expect(runIdFromDetailsUrl('https://github.com/o/r/actions/runs/42')).toBe(42);
+    expect(runIdFromDetailsUrl('https://github.com/o/r/security/code-scanning')).toBeNull();
+    expect(runIdFromDetailsUrl(undefined)).toBeNull();
   });
 
   test('check-suites fallback reports a failing check', async () => {

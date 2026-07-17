@@ -103,6 +103,16 @@ async function evaluateRunJobs(deps: PerJobGreenDeps, config: PerJobGreenConfig,
   return jobs.filter((j) => j.conclusion !== 'success').map((j) => `${j.name} (${j.conclusion ?? j.status ?? 'unknown'})`);
 }
 
+/**
+ * Extract the Actions run id from a check-run's details_url. Actions-created
+ * check runs point at `https://github.com/{owner}/{repo}/actions/runs/{run_id}/job/{job_id}`.
+ */
+export function runIdFromDetailsUrl(detailsUrl: string | undefined): number | null {
+  if (!detailsUrl) return null;
+  const match = /\/actions\/runs\/(\d+)(?:\/|$)/.exec(detailsUrl);
+  return match?.[1] ? Number.parseInt(match[1], 10) : null;
+}
+
 /** Checks-API fallback: assess per-check conclusions for the commit when the Actions API is 503-ing. */
 async function evaluateCheckSuites(deps: PerJobGreenDeps, config: PerJobGreenConfig, sha: string): Promise<PerJobGreenResult | null> {
   const base = deps.apiBase ?? 'https://api.github.com';
@@ -115,18 +125,25 @@ async function evaluateCheckSuites(deps: PerJobGreenDeps, config: PerJobGreenCon
   const runsUrl = `${base}/repos/${config.owner}/${config.repo}/commits/${sha}/check-runs?per_page=100`;
   const runsRes = await deps.http(runsUrl, headers(deps.token));
   if (runsRes.status !== 200) return null;
-  const checks = asArray<{ name: string; conclusion?: string | null }>(runsRes.body, 'check_runs');
+  const checks = asArray<{ name: string; conclusion?: string | null; details_url?: string }>(runsRes.body, 'check_runs');
   const failures = checks
     .filter((c) => c.conclusion !== 'success' && c.conclusion !== 'neutral' && c.conclusion !== 'skipped')
     .map((c) => `${c.name} (${c.conclusion ?? 'unknown'})`);
+  // Downstream artifact restores need the Actions run id even on this path.
+  // Actions-created check runs carry it in details_url; take the first that
+  // parses. If none parses, runId stays null and the caller must treat the
+  // handoff as unresolved (the bin surfaces run_id= empty; release pipelines
+  // hard-fail their artifact restore honestly instead of misdirecting it).
+  const runId = checks.map((c) => runIdFromDetailsUrl(c.details_url)).find((id): id is number => id !== null) ?? null;
+  const runIdNote = runId === null ? '; run id UNRESOLVED from check-run details' : `; run id ${runId} resolved from check-run details`;
   return {
     ok: failures.length === 0,
-    runId: null,
+    runId,
     headSha: sha,
     failures,
     source: 'check-suites',
     reason: failures.length === 0
-      ? `check-suites fallback: all ${checks.length} checks green for ${sha}`
+      ? `check-suites fallback: all ${checks.length} checks green for ${sha}${runIdNote}`
       : `check-suites fallback: ${failures.length} check(s) not green`,
   };
 }

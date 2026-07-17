@@ -160,6 +160,26 @@ describe('release.yml: by-reference release', () => {
     expect(text).toContain('release:verify:published'); // propagation poll preserved
   });
 
+  test('publish-npm hard-fails on an empty run_id BEFORE download-artifact can misdirect', () => {
+    const pub = rel.jobs!['publish-npm']!;
+    const stepList = steps(pub);
+    const guardIdx = stepList.findIndex((s) => {
+      const env = s.env as Record<string, string> | undefined;
+      return env?.RUN_ID !== undefined && String(s.run ?? '').includes('exit 1');
+    });
+    const downloadIdx = stepList.findIndex(
+      (s) => s.uses?.toString().includes('download-artifact') && (s.with as { name?: string })?.name === 'workspace-build-output',
+    );
+    expect(guardIdx, 'publish-npm must guard against an empty release-verify run_id').toBeGreaterThanOrEqual(0);
+    expect(downloadIdx).toBeGreaterThanOrEqual(0);
+    // The guard must run before the CI-build download; an empty run-id fed to
+    // download-artifact silently stops targeting the CI run.
+    expect(guardIdx).toBeLessThan(downloadIdx);
+    const guard = stepList[guardIdx]!;
+    expect(String((guard.env as Record<string, string>).RUN_ID)).toContain('release-verify.outputs.run_id');
+    expect(String(guard.run)).toContain('-z');
+  });
+
   test('publish-npm keeps provenance identity and the production environment', () => {
     const pub = rel.jobs!['publish-npm']!;
     expect(pub.permissions?.['id-token']).toBe('write');
