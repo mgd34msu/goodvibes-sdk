@@ -6,9 +6,15 @@
  * never the rollup). Generalizes the agent repo's bespoke poll, which asserted
  * only the rollup plus one hard-coded job name.
  *
- * The GitHub Actions API is the primary source; when it returns 503 (its known
- * flaky mode under load) the Checks API (`check-suites` / `check-runs` on the
- * commit) is the fallback so a transient 503 never fails a release.
+ * Transient-error posture: EVERY GitHub API call (runs listing, per-run jobs,
+ * check-suites, check-runs) goes through a bounded retry loop (default 8
+ * attempts with 7s sleeps, configurable) before its status is treated as
+ * final — the API's known flaky mode makes single-shot calls fail a meaningful
+ * fraction of the time. When the runs listing stays unavailable after retries,
+ * the Checks API (`check-suites` / `check-runs` on the commit) is the fallback.
+ * "No run found yet" is never a failure — it waits and polls. Only an exhausted
+ * retry budget on a needed endpoint, a non-green job, or the deadline produces
+ * a failure, and each names its source honestly.
  */
 
 import type { HttpGetJson, HttpResponse, Logger, Sleep } from './effects.js';
@@ -73,6 +79,35 @@ function asArray<T>(value: unknown, key: string): readonly T[] {
   return [];
 }
 
+/** Statuses worth retrying: server errors, rate limiting, and transport failures. */
+function isTransientStatus(status: number): boolean {
+  return status === 0 || status === 429 || status >= 500;
+}
+
+/**
+ * GET with the tool's bounded transient-error retry. Every API call in this
+ * module goes through here; a thrown transport error counts as status 0 and is
+ * retried like a 5xx. Returns the last response once a definitive (non-
+ * transient) status arrives or the retry budget is exhausted.
+ */
+async function getWithRetry(deps: PerJobGreenDeps, config: PerJobGreenConfig, url: string, label: string): Promise<HttpResponse> {
+  let last: HttpResponse = { status: 0, body: null };
+  for (let attempt = 1; attempt <= config.retryAttempts; attempt++) {
+    try {
+      last = await deps.http(url, headers(deps.token));
+    } catch (error) {
+      last = { status: 0, body: error instanceof Error ? error.message : String(error) };
+    }
+    if (!isTransientStatus(last.status)) return last;
+    if (attempt < config.retryAttempts) {
+      deps.logger.warn(`[per-job-green] ${label}: transient ${last.status} (attempt ${attempt}/${config.retryAttempts}); retrying in ${config.retryDelayMs}ms`);
+      await deps.sleep(config.retryDelayMs);
+    }
+  }
+  deps.logger.warn(`[per-job-green] ${label}: still ${last.status} after ${config.retryAttempts} attempt(s)`);
+  return last;
+}
+
 /** Find the newest push run of the configured workflow for `sha`. Returns null if none exists yet. */
 async function resolveRun(
   deps: PerJobGreenDeps,
@@ -81,7 +116,7 @@ async function resolveRun(
 ): Promise<{ run: WorkflowRun | null; status: number }> {
   const base = deps.apiBase ?? 'https://api.github.com';
   const url = `${base}/repos/${config.owner}/${config.repo}/actions/runs?head_sha=${sha}&event=${config.event}&per_page=50`;
-  const res = await deps.http(url, headers(deps.token));
+  const res = await getWithRetry(deps, config, url, 'actions runs listing');
   if (res.status !== 200) return { run: null, status: res.status };
   const runs = asArray<WorkflowRun>(res.body, 'workflow_runs')
     .filter((r) => r.path?.endsWith(`/${config.workflow}`) || r.name === config.workflow);
@@ -94,9 +129,11 @@ async function resolveRun(
 async function evaluateRunJobs(deps: PerJobGreenDeps, config: PerJobGreenConfig, runId: number): Promise<string[]> {
   const base = deps.apiBase ?? 'https://api.github.com';
   const url = `${base}/repos/${config.owner}/${config.repo}/actions/runs/${runId}/jobs?per_page=100`;
-  const res = await deps.http(url, headers(deps.token));
+  const res = await getWithRetry(deps, config, url, `actions run ${runId} jobs`);
   if (res.status !== 200) {
-    return [`jobs-fetch-status-${res.status}`];
+    // Honest failure naming the endpoint: the retry budget is exhausted (or the
+    // status is definitively non-200), so the per-job conclusions are unknowable.
+    return [`actions run ${runId} jobs endpoint returned ${res.status} after ${config.retryAttempts} attempt(s)`];
   }
   const jobs = asArray<JobEntry>(res.body, 'jobs');
   if (jobs.length === 0) return ['no-jobs-reported'];
@@ -117,13 +154,13 @@ export function runIdFromDetailsUrl(detailsUrl: string | undefined): number | nu
 async function evaluateCheckSuites(deps: PerJobGreenDeps, config: PerJobGreenConfig, sha: string): Promise<PerJobGreenResult | null> {
   const base = deps.apiBase ?? 'https://api.github.com';
   const suitesUrl = `${base}/repos/${config.owner}/${config.repo}/commits/${sha}/check-suites`;
-  const suitesRes = await deps.http(suitesUrl, headers(deps.token));
+  const suitesRes = await getWithRetry(deps, config, suitesUrl, 'check-suites');
   if (suitesRes.status !== 200) return null;
   const suites = asArray<{ status?: string; conclusion?: string | null }>(suitesRes.body, 'check_suites');
   if (suites.length === 0) return null;
   if (suites.some((s) => s.status !== 'completed')) return null; // still running — let the caller keep polling
   const runsUrl = `${base}/repos/${config.owner}/${config.repo}/commits/${sha}/check-runs?per_page=100`;
-  const runsRes = await deps.http(runsUrl, headers(deps.token));
+  const runsRes = await getWithRetry(deps, config, runsUrl, 'check-runs');
   if (runsRes.status !== 200) return null;
   const checks = asArray<{ name: string; conclusion?: string | null; details_url?: string }>(runsRes.body, 'check_runs');
   const failures = checks
@@ -159,8 +196,10 @@ export async function verifyPerJobGreen(deps: PerJobGreenDeps, config: PerJobGre
   while (true) {
     const { run, status } = await resolveRun(deps, config, sha);
 
-    if (status === 503) {
-      deps.logger.warn(`[per-job-green] Actions API 503 — trying check-suites fallback for ${sha}`);
+    if (isTransientStatus(status)) {
+      // The runs listing stayed unavailable through its whole retry budget —
+      // try the Checks API before falling back to another poll cycle.
+      deps.logger.warn(`[per-job-green] Actions API unavailable (${status}) after retries — trying check-suites fallback for ${sha}`);
       const fallback = await evaluateCheckSuites(deps, config, sha);
       if (fallback) return fallback;
       deps.logger.warn('[per-job-green] check-suites fallback inconclusive; will retry');

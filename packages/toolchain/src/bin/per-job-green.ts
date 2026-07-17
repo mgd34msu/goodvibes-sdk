@@ -17,11 +17,26 @@ if (!owner || !repo || !sha) {
   process.exit(2);
 }
 
+function intArg(flag: string): number | undefined {
+  const raw = argValue(flag);
+  if (raw === undefined) return undefined;
+  const value = Number.parseInt(raw, 10);
+  if (!Number.isFinite(value) || value <= 0) {
+    consoleLogger.error(`per-job-green: ${flag} must be a positive integer (got '${raw}')`);
+    process.exit(2);
+  }
+  return value;
+}
+
+const retryAttempts = intArg('--retry-attempts');
+const retryDelayMs = intArg('--retry-delay-ms');
 const config = resolvePerJobGreenConfig({
   owner,
   repo,
   workflow: argValue('--workflow') ?? 'ci.yml',
   event: argValue('--event') ?? 'push',
+  ...(retryAttempts !== undefined ? { retryAttempts } : {}),
+  ...(retryDelayMs !== undefined ? { retryDelayMs } : {}),
 });
 
 const token = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN;
