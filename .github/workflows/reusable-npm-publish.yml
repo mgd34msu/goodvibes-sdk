@@ -18,12 +18,30 @@
 #
 #   Inputs:  package-name (required, for the environment URL + poll), environment
 #            (default production), registry, publish-command (how the repo
-#            publishes — default the toolchain CLI), bun-version, node-version.
+#            publishes — default the toolchain CLI), tarball-artifact (optional),
+#            bun-version, node-version.
 #   Secrets: npm-token (required).
 #
 #   The job requests id-token: write so npm records build provenance. The
 #   environment (configured in repo settings with required reviewers / tag-only
 #   deployment branches) is the human gate; this YAML cannot enforce approval.
+#
+#   Prebuilt-tarball publish (tarball-artifact):
+#     Consumers whose npm bytes are produced by a separate pack job — e.g. the
+#     agent repo bundles a runtime (`bun run build:package-runtime`) before
+#     `bun pm pack` — must publish the STAGED .tgz, not a bare checkout.
+#     Pass `tarball-artifact: <name>` (the upload-artifact name of the packed
+#     .tgz) and a `publish-command` that publishes that staged file. When set,
+#     this workflow downloads the artifact into ./release-tarball/ before the
+#     publish step. Example:
+#       with:
+#         tarball-artifact: agent-npm-tarball
+#         publish-command: >-
+#           bunx @pellux/goodvibes-toolchain goodvibes-publish-package --poll
+#           --tarball "$(ls release-tarball/*.tgz)"
+#     Glob resolution is the consumer command's problem (the `ls` above). With
+#     no tarball-artifact the download step is skipped and behavior is
+#     byte-identical to the default pack-and-publish-cwd path.
 
 on:
   workflow_call:
@@ -45,6 +63,14 @@ on:
         required: false
         type: string
         default: "bunx @pellux/goodvibes-toolchain goodvibes-publish-package --poll"
+      tarball-artifact:
+        description: Optional upload-artifact name of a prebuilt .tgz to publish.
+          When non-empty it is downloaded into ./release-tarball/ before the
+          publish step (for repos whose npm bytes come from a separate pack job).
+          Empty (default) keeps the pack-and-publish-cwd behavior byte-identical.
+        required: false
+        type: string
+        default: ""
       bun-version:
         required: false
         type: string
@@ -82,6 +108,12 @@ jobs:
         with:
           node-version: ${{ inputs.node-version }}
           registry-url: ${{ inputs.registry }}
+      - name: Download prebuilt publish tarball
+        if: inputs.tarball-artifact != ''
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: ${{ inputs.tarball-artifact }}
+          path: ./release-tarball
       - name: Publish (idempotent) + propagation poll
         env:
           NODE_AUTH_TOKEN: ${{ secrets.npm-token }}

@@ -136,6 +136,53 @@ describe('ci.yml: build once, restore everywhere', () => {
   });
 });
 
+describe('ci.yml: zero-touch auto-release', () => {
+  const ci = load('ci.yml');
+  const gatingJobs = ['validate', 'eval-gate', 'security-audit', 'build', 'platform-matrix', 'types-resolution-check', 'publint-check', 'sbom-check', 'artifact-lane'];
+
+  test('auto-release needs EVERY other ci.yml job (only runs when all are green)', () => {
+    const auto = ci.jobs!['auto-release']!;
+    const needs = needsOf(auto);
+    for (const job of gatingJobs) {
+      expect(needs, `auto-release must need ${job} so it only runs when that gate is green`).toContain(job);
+    }
+    // And its needs set is exactly the other jobs — no gate omitted, no self-need.
+    const otherJobs = jobs(ci).map(([n]) => n).filter((n) => n !== 'auto-release');
+    expect([...needs].sort()).toEqual([...otherJobs].sort());
+  });
+
+  test('auto-release is gated to pushes on main', () => {
+    const cond = String(ci.jobs!['auto-release']!.if);
+    expect(cond).toContain("github.ref == 'refs/heads/main'");
+    expect(cond).toContain("github.event_name == 'push'");
+  });
+
+  test('auto-release grants contents:write and actions:write', () => {
+    const perms = ci.jobs!['auto-release']!.permissions ?? {};
+    expect(perms.contents).toBe('write');
+    expect(perms.actions).toBe('write');
+  });
+
+  test('auto-release checks tag existence BEFORE creating the tag', () => {
+    const text = stepText(ci.jobs!['auto-release']!);
+    const existenceCheck = text.indexOf('git ls-remote --tags origin');
+    const tagCreate = text.indexOf('git tag -a');
+    expect(existenceCheck).toBeGreaterThanOrEqual(0);
+    expect(tagCreate).toBeGreaterThanOrEqual(0);
+    // The idempotent existence check must precede tag creation.
+    expect(existenceCheck).toBeLessThan(tagCreate);
+  });
+
+  test('auto-release dispatches release.yml with mode=release, not a bare tag push', () => {
+    const text = stepText(ci.jobs!['auto-release']!);
+    expect(text).toContain('gh workflow run release.yml');
+    expect(text).toContain('mode=release');
+    // The dispatch uses the tag ref so github.ref/github.sha point at the tag.
+    expect(text).toContain('--ref');
+    expect(text).toContain('refs/tags/');
+  });
+});
+
 describe('release.yml: by-reference release', () => {
   const rel = load('release.yml');
 
@@ -226,9 +273,36 @@ describe('release.yml: by-reference release', () => {
     expect(rel.concurrency?.['cancel-in-progress']).toBe(false);
   });
 
-  test('manual dispatch is dry-run only (publish-npm is push-gated)', () => {
-    expect(String(rel.jobs!['publish-npm']!.if)).toContain("github.event_name == 'push'");
-    expect(String(rel.jobs!['dry-run']!.if)).toContain("github.event_name == 'workflow_dispatch'");
+  test('dispatch is dry-run unless mode=release', () => {
+    // A release-mode dispatch is now a first-class publish path (the zero-touch
+    // auto-release job dispatches release.yml with mode=release), so publish-npm
+    // runs on a push OR a release-mode dispatch — while the dry-run job is fenced
+    // off to a NON-release dispatch so it can never publish.
+    const pubIf = String(rel.jobs!['publish-npm']!.if);
+    expect(pubIf).toContain("github.event_name == 'push'");
+    expect(pubIf).toContain("github.event_name == 'workflow_dispatch'");
+    expect(pubIf).toContain("inputs.mode == 'release'");
+
+    const dryIf = String(rel.jobs!['dry-run']!.if);
+    expect(dryIf).toContain("github.event_name == 'workflow_dispatch'");
+    expect(dryIf).toContain("inputs.mode != 'release'");
+  });
+
+  test('workflow_dispatch exposes a mode input defaulting to dry-run', () => {
+    const inputs = (rel.on as { workflow_dispatch?: { inputs?: Record<string, { default?: string; type?: string; options?: string[] }> } })
+      .workflow_dispatch?.inputs ?? {};
+    expect(inputs.mode).toBeTruthy();
+    expect(inputs.mode?.default).toBe('dry-run');
+    expect(inputs.mode?.type).toBe('choice');
+    expect(inputs.mode?.options).toEqual(expect.arrayContaining(['dry-run', 'release']));
+  });
+
+  test('the tag-push publish path is preserved unchanged (manual redo)', () => {
+    // Every release job that gates on a release-mode dispatch must still also
+    // gate on a plain push, so pushing a v* tag by hand releases exactly as before.
+    for (const name of ['verify-tag-version', 'release-verify', 'publish-npm', 'github-release']) {
+      expect(String(rel.jobs![name]!.if)).toContain("github.event_name == 'push'");
+    }
   });
 });
 
@@ -287,6 +361,32 @@ describe('reusable workflows: workflow_call contracts', () => {
     const call = (wf.on as { workflow_call?: { secrets?: Record<string, unknown> } }).workflow_call;
     expect(call?.secrets).toHaveProperty('npm-token');
     expect(wf.jobs!['publish']!.permissions?.['id-token']).toBe('write');
+  });
+
+  test('reusable-npm-publish has a tarball-artifact input defaulting to "" with a conditioned download step', () => {
+    const wf = load('reusable-npm-publish.yml');
+    const inputs = (wf.on as { workflow_call?: { inputs?: Record<string, { default?: string }> } }).workflow_call?.inputs ?? {};
+    // Optional input, empty default — the pack-and-publish-cwd default path is unchanged.
+    expect(inputs['tarball-artifact']).toBeTruthy();
+    expect(inputs['tarball-artifact']?.default).toBe('');
+
+    const job = wf.jobs!['publish']!;
+    const download = steps(job).find(
+      (s) => s.uses?.toString().includes('download-artifact') && String(s.if ?? '').includes('inputs.tarball-artifact'),
+    );
+    expect(download, 'a download-artifact step must be conditioned on a non-empty tarball-artifact').toBeTruthy();
+    // Conditioned on the input being non-empty, and it stages into ./release-tarball.
+    expect(String(download!.if)).toContain("inputs.tarball-artifact != ''");
+    expect((download!.with as { name?: string })?.name).toContain('inputs.tarball-artifact');
+    expect((download!.with as { path?: string })?.path).toContain('release-tarball');
+
+    // The download must run BEFORE the publish step.
+    const stepList = steps(job);
+    const downloadIdx = stepList.indexOf(download!);
+    const publishIdx = stepList.findIndex((s) => String(s.name ?? '').includes('Publish'));
+    expect(downloadIdx).toBeGreaterThanOrEqual(0);
+    expect(publishIdx).toBeGreaterThanOrEqual(0);
+    expect(downloadIdx).toBeLessThan(publishIdx);
   });
 
   test('reusable-gh-release runs on ubuntu-24.04 for stable awk', () => {

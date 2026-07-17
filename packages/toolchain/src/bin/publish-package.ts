@@ -1,9 +1,16 @@
 #!/usr/bin/env node
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { loadToolchainConfig } from '../lib/load-config.js';
 import { consoleLogger } from '../lib/effects.js';
 import { runPublishPackage, pollPropagation } from '../lib/publish-package.js';
+
+/** Read the value that follows a `--flag <value>` argument, or undefined when absent. */
+function flagValue(flag: string): string | undefined {
+  const index = process.argv.indexOf(flag);
+  if (index < 0) return undefined;
+  return process.argv[index + 1];
+}
 
 const root = process.cwd();
 const config = loadToolchainConfig(root);
@@ -15,7 +22,29 @@ const version = (JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 const dryRun = process.argv.includes('--dry-run');
 const registry = process.env.GOODVIBES_PUBLISH_REGISTRY ?? config.publish.defaultRegistry;
 
-const result = runPublishPackage({ cwd: root, name: config.publish.packageName, version, registry, dryRun, logger: consoleLogger });
+// --tarball <path>: publish a prebuilt .tgz instead of packing cwd. Validate the
+// flag value up front — a missing/empty path is a caller error (exit 2), kept
+// distinct from a publish failure (exit 1) so a broken pack→publish handoff is
+// unambiguous in CI logs.
+const tarballPath = flagValue('--tarball');
+if (process.argv.includes('--tarball') && (tarballPath === undefined || tarballPath.length === 0)) {
+  consoleLogger.error('publish-package: --tarball requires a file path');
+  process.exit(2);
+}
+if (tarballPath !== undefined && !existsSync(resolve(root, tarballPath))) {
+  consoleLogger.error(`publish-package: --tarball path does not exist: ${tarballPath}`);
+  process.exit(2);
+}
+
+const result = runPublishPackage({
+  cwd: root,
+  name: config.publish.packageName,
+  version,
+  registry,
+  dryRun,
+  ...(tarballPath !== undefined ? { tarballPath } : {}),
+  logger: consoleLogger,
+});
 consoleLogger.info(`publish-package: ${result.detail}`);
 if (!result.ok) process.exit(1);
 
