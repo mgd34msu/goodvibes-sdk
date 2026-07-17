@@ -167,6 +167,23 @@ jobs:
       # Artifact-integrity handoff: restore the exact build the CI run produced
       # for this SHA (not a fresh throwaway build), and assert the run's recorded
       # head SHA equals the tagged SHA before trusting its bytes.
+      #
+      # Guard FIRST on an empty run id: the per-job-green check-suites fallback
+      # can verify green without resolving the Actions run id. An empty run-id
+      # fed to download-artifact silently misdirects the download (it stops
+      # targeting the CI run), so fail early and honestly instead.
+      - name: Require a resolved CI run id for the artifact restore
+        env:
+          RUN_ID: ${{ needs.release-verify.outputs.run_id }}
+        run: |
+          if [ -z "$RUN_ID" ]; then
+            echo "release-verify reported green but could not resolve the CI run id (check-suites fallback path)." >&2
+            echo "The publish job restores the CI build artifact BY RUN ID; without it the download would" >&2
+            echo "misdirect to the current Release run. Re-run this workflow once the Actions API recovers" >&2
+            echo "so release-verify resolves the run id, then publish proceeds normally." >&2
+            exit 1
+          fi
+          echo "CI run id resolved: $RUN_ID"
       - name: Assert recorded head SHA matches the tagged SHA
         env:
           RECORDED_SHA: ${{ needs.release-verify.outputs.head_sha }}
