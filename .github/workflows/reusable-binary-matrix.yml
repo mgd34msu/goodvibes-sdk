@@ -11,25 +11,39 @@
 #       binaries:
 #         uses: mgd34msu/goodvibes-sdk/.github/workflows/reusable-binary-matrix.yml@main
 #         with:
-#           targets: '[{"key":"linux-x64","runner":"ubuntu-latest","smoke":true},
-#                      {"key":"darwin-arm64","runner":"macos-14","smoke":true}]'
+#           targets: '[{"key":"linux-x64","runner":"ubuntu-latest","smoke":true,"binary":"dist/goodvibes-linux-x64"},
+#                      {"key":"darwin-arm64","runner":"macos-14","smoke":true,"binary":"dist/goodvibes-macos-arm64"}]'
 #           artifact-glob: "dist/goodvibes-* dist/lib"
 #
-#   Inputs:  targets (required JSON array of {key,runner,smoke}), artifact-glob,
-#            artifact-prefix (default binaries), bun-version, toolchain-spec.
-#   Each leg runs `goodvibes-build-binaries --target <key>`; smoke legs also run
-#   `goodvibes-post-build-smoke`. Config (entrypoints, addon, daemon leg) comes
-#   from the caller repo's toolchain.config.json.
+#   Inputs:  targets (required JSON array of {key, runner, smoke, binary}),
+#            artifact-glob, artifact-prefix (default binaries), bun-version,
+#            toolchain-spec.
+#   Each leg runs `goodvibes-build-binaries --target <key>`. Smoke legs run
+#   `goodvibes-post-build-smoke --binary <the leg's own binary>` — each matrix
+#   leg only builds its own suffixed artifact, so the smoked binary MUST be the
+#   leg's (`binary` is required when smoke is true; the toolchain.config
+#   smoke.binaryDefault serves local CLI runs only, never heterogeneous matrix
+#   legs). Config (entrypoints, addon, daemon leg) comes from the caller repo's
+#   toolchain.config.json.
+#
+#   artifact-glob accepts whitespace-separated globs — spaces or newlines. The
+#   value is normalized to newline-separated form before it reaches
+#   actions/upload-artifact (whose `path` splits on newlines only), so both
+#   forms behave identically.
 
 on:
   workflow_call:
     inputs:
       targets:
-        description: JSON array of {key, runner, smoke} objects.
+        description: JSON array of {key, runner, smoke, binary} objects. `binary`
+          is the leg's own built artifact path (e.g. dist/goodvibes-linux-x64)
+          and is required when smoke is true.
         required: true
         type: string
       artifact-glob:
-        description: Space-separated globs of built outputs to upload per target.
+        description: Whitespace-separated globs (spaces or newlines) of built
+          outputs to upload per target. Normalized to newline-separated form
+          before use, so both separators work.
         required: false
         type: string
         default: "dist"
@@ -67,13 +81,37 @@ jobs:
           bun-version: ${{ inputs.bun-version }}
       - name: Build target
         run: bunx ${{ inputs.toolchain-spec }} goodvibes-build-binaries --target ${{ matrix.target.key }}
-      - name: Post-build smoke
+      - name: Post-build smoke (the leg's own binary)
         if: matrix.target.smoke
-        run: bunx ${{ inputs.toolchain-spec }} goodvibes-post-build-smoke
+        env:
+          LEG_BINARY: ${{ matrix.target.binary }}
+        run: |
+          set -euo pipefail
+          # Every leg builds only its own suffixed artifact, so the smoke must
+          # target THIS leg's binary. A shared smoke.binaryDefault cannot serve
+          # heterogeneous matrix legs; require the explicit path.
+          if [ -z "$LEG_BINARY" ]; then
+            echo "targets[].binary is required when smoke is true (the leg's own built artifact, e.g. dist/goodvibes-${{ matrix.target.key }})." >&2
+            exit 1
+          fi
+          bunx ${{ inputs.toolchain-spec }} goodvibes-post-build-smoke --binary "$LEG_BINARY"
+      - name: Normalize artifact globs (spaces -> newlines)
+        id: globs
+        env:
+          RAW_GLOBS: ${{ inputs.artifact-glob }}
+        run: |
+          set -euo pipefail
+          # actions/upload-artifact `path` splits on NEWLINES only; accept
+          # space-separated values too by normalizing all whitespace runs.
+          {
+            echo 'paths<<GOODVIBES_GLOBS_EOF'
+            tr -s ' \t' '\n' <<< "$RAW_GLOBS" | sed '/^$/d'
+            echo 'GOODVIBES_GLOBS_EOF'
+          } >> "$GITHUB_OUTPUT"
       - name: Upload target artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ${{ inputs.artifact-prefix }}-${{ matrix.target.key }}
-          path: ${{ inputs.artifact-glob }}
+          path: ${{ steps.globs.outputs.paths }}
           if-no-files-found: error
           retention-days: 1

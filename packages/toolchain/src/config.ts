@@ -73,7 +73,11 @@ export interface SmokeConfig {
   readonly bannerPrefix: string;
   /** Substrings whose presence in output signals a packaging failure, e.g. `["sqlite-vec","$bunfs/root"]`. */
   readonly forbiddenStrings: readonly string[];
-  /** Default binary path when `--binary` is not passed. */
+  /**
+   * Default binary path when `--binary` is not passed. Serves LOCAL CLI runs
+   * only — CI matrix legs each build a different suffixed artifact, so the
+   * reusable binary-matrix workflow always passes the leg's own `--binary`.
+   */
   readonly binaryDefault: string;
 }
 

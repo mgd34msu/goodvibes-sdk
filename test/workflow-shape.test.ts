@@ -293,6 +293,50 @@ describe('reusable workflows: workflow_call contracts', () => {
     expect(JSON.stringify(release)).toContain('steps.changelog.outputs.body');
   });
 
+  test('reusable-binary-matrix smokes each leg with ITS OWN binary, never a shared default', () => {
+    const wf = load('reusable-binary-matrix.yml');
+    const job = wf.jobs!['build']!;
+    const smoke = steps(job).find((s) => String(s.name ?? '').includes('smoke'));
+    expect(smoke, 'the smoke step must exist').toBeTruthy();
+    expect(String(smoke!.if)).toContain('matrix.target.smoke');
+    // The leg's own artifact comes from the same matrix include that drives the
+    // build; a shared smoke.binaryDefault cannot serve heterogeneous legs.
+    const env = smoke!.env as Record<string, string>;
+    expect(env.LEG_BINARY).toContain('matrix.target.binary');
+    const run = String(smoke!.run);
+    expect(run).toContain('--binary "$LEG_BINARY"');
+    // And an empty binary on a smoke leg fails fast instead of falling back.
+    expect(run).toContain('-z "$LEG_BINARY"');
+    expect(run).toContain('exit 1');
+  });
+
+  test('glob inputs are normalized to newlines before their newline-splitting sinks', () => {
+    // actions/upload-artifact `path` and softprops `files` split on NEWLINES
+    // only; both workflows must normalize whitespace-separated glob inputs so
+    // the documented space-separated form actually works.
+    const matrix = load('reusable-binary-matrix.yml');
+    const buildJob = matrix.jobs!['build']!;
+    const matrixNormalize = steps(buildJob).find((s) => s.id === 'globs');
+    expect(matrixNormalize, 'binary-matrix must have a glob normalization step').toBeTruthy();
+    expect(String(matrixNormalize!.run)).toContain("tr -s ' \\t' '\\n'");
+    expect((matrixNormalize!.env as Record<string, string>).RAW_GLOBS).toContain('inputs.artifact-glob');
+    const upload = steps(buildJob).find((s) => s.uses?.toString().includes('upload-artifact'))!;
+    expect(String((upload.with as Record<string, unknown>).path)).toContain('steps.globs.outputs.paths');
+    // The sink must consume the normalized value, not the raw input.
+    expect(String((upload.with as Record<string, unknown>).path)).not.toContain('inputs.artifact-glob');
+
+    const release = load('reusable-gh-release.yml');
+    const relJob = release.jobs!['gh-release']!;
+    const relNormalize = steps(relJob).find((s) => s.id === 'globs');
+    expect(relNormalize, 'gh-release must have a glob normalization step').toBeTruthy();
+    expect(String(relNormalize!.run)).toContain("tr -s ' \\t' '\\n'");
+    expect((relNormalize!.env as Record<string, string>).RAW_GLOBS).toContain('inputs.assets-glob');
+    const ghRelease = steps(relJob).find((s) => s.uses?.toString().includes('action-gh-release'))!;
+    const files = String((ghRelease.with as Record<string, unknown>).files);
+    expect(files).toContain('steps.globs.outputs.paths');
+    expect(files).not.toContain('inputs.assets-glob');
+  });
+
   test('per-job-green gets an explicit deadline sized UNDER the verify job cap in both modes', () => {
     const wf = load('reusable-release-verify.yml');
     const verify = wf.jobs!['verify']!;

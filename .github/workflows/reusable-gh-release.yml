@@ -25,6 +25,11 @@
 #            checked-out ref its content is the body, otherwise the changelog
 #            excerpt is used exactly as before), changelog-path (default
 #            CHANGELOG.md), sha256-name (default SHA256SUMS.txt), bun-version.
+#
+#   assets-glob accepts whitespace-separated globs — spaces or newlines. The
+#   value is normalized to newline-separated form before it reaches the
+#   softprops `files` sink (which splits on newlines only), so both forms
+#   behave identically.
 #   Runs on ubuntu-24.04 so awk changelog extraction stays GNU-stable.
 
 on:
@@ -39,7 +44,9 @@ on:
         type: string
         default: ""
       assets-glob:
-        description: Shell glob (relative to repo root) of assets to checksum + upload.
+        description: Whitespace-separated globs (spaces or newlines, relative to
+          repo root) of assets to checksum + upload. Normalized to
+          newline-separated form before use, so both separators work.
         required: true
         type: string
       notes-file:
@@ -120,11 +127,30 @@ jobs:
             printf '%s\n' "$excerpt" > /tmp/release_notes.md
           fi
           echo "body=/tmp/release_notes.md" >> "$GITHUB_OUTPUT"
+      - name: Normalize asset globs (spaces -> newlines)
+        id: globs
+        env:
+          RAW_GLOBS: ${{ inputs.assets-glob }}
+        run: |
+          set -euo pipefail
+          # softprops/action-gh-release `files` splits on NEWLINES only; accept
+          # space-separated values too by normalizing all whitespace runs.
+          {
+            echo 'paths<<GOODVIBES_GLOBS_EOF'
+            tr -s ' \t' '\n' <<< "$RAW_GLOBS" | sed '/^$/d'
+            echo 'GOODVIBES_GLOBS_EOF'
+          } >> "$GITHUB_OUTPUT"
       - name: Generate SHA256SUMS (missing asset is fatal)
+        env:
+          NORMALIZED_GLOBS: ${{ steps.globs.outputs.paths }}
         run: |
           set -euo pipefail
           shopt -s nullglob
-          assets=( ${{ inputs.assets-glob }} )
+          assets=()
+          while IFS= read -r glob; do
+            [ -n "$glob" ] || continue
+            for match in $glob; do assets+=( "$match" ); done
+          done <<< "$NORMALIZED_GLOBS"
           if [ ${#assets[@]} -eq 0 ]; then
             echo "No assets matched ${{ inputs.assets-glob }}" >&2
             exit 1
@@ -138,5 +164,5 @@ jobs:
           body_path: ${{ steps.changelog.outputs.body }}
           fail_on_unmatched_files: true
           files: |
-            ${{ inputs.assets-glob }}
+            ${{ steps.globs.outputs.paths }}
             ${{ inputs.sha256-name }}
