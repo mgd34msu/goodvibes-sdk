@@ -30,6 +30,10 @@ function intArg(flag: string): number | undefined {
 
 const retryAttempts = intArg('--retry-attempts');
 const retryDelayMs = intArg('--retry-delay-ms');
+// Size --deadline-ms UNDER the enclosing CI job's timeout cap so an exhausted
+// wait produces the tool's honest named verdict (deadline-exceeded) instead of
+// a raw job kill with no verdict at all.
+const deadlineMs = intArg('--deadline-ms');
 const config = resolvePerJobGreenConfig({
   owner,
   repo,
@@ -37,6 +41,7 @@ const config = resolvePerJobGreenConfig({
   event: argValue('--event') ?? 'push',
   ...(retryAttempts !== undefined ? { retryAttempts } : {}),
   ...(retryDelayMs !== undefined ? { retryDelayMs } : {}),
+  ...(deadlineMs !== undefined ? { deadlineMs } : {}),
 });
 
 const token = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN;

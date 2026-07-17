@@ -79,6 +79,52 @@ describe('per-job-green', () => {
     expect(result.runId).toBe(7331);
   });
 
+  test('fallback run-id resolution filters to the target workflow when a second push workflow reported check runs', async () => {
+    const d = deps((url) => {
+      if (url.includes('/actions/runs?')) return { status: 503, body: null };
+      if (url.includes('/check-suites')) {
+        return { status: 200, body: { check_suites: [{ status: 'completed', conclusion: 'success' }, { status: 'completed', conclusion: 'success' }] } };
+      }
+      if (url.includes('/check-runs')) {
+        return {
+          status: 200,
+          body: {
+            check_runs: [
+              // Another push workflow's check run appears FIRST — resolution
+              // must not take it just because it parses.
+              { name: 'voice-runtimes / build', conclusion: 'success', details_url: 'https://github.com/mgd34msu/goodvibes-sdk/actions/runs/111/job/1' },
+              { name: 'CI / build', conclusion: 'success', details_url: 'https://github.com/mgd34msu/goodvibes-sdk/actions/runs/222/job/2' },
+            ],
+          },
+        };
+      }
+      if (url.includes('/actions/runs/111')) return { status: 200, body: { id: 111, path: '.github/workflows/voice-runtimes.yml' } };
+      if (url.includes('/actions/runs/222')) return { status: 200, body: { id: 222, path: '.github/workflows/ci.yml' } };
+      return { status: 404, body: null };
+    });
+    const result = await verifyPerJobGreen(d, config, 'abc');
+    expect(result.ok).toBe(true);
+    expect(result.source).toBe('check-suites');
+    // Never the other workflow's run.
+    expect(result.runId).toBe(222);
+  });
+
+  test('a sole fallback candidate confirmed to belong to a DIFFERENT workflow is rejected as unresolved', async () => {
+    const d = deps((url) => {
+      if (url.includes('/actions/runs?')) return { status: 503, body: null };
+      if (url.includes('/check-suites')) return { status: 200, body: { check_suites: [{ status: 'completed', conclusion: 'success' }] } };
+      if (url.includes('/check-runs')) {
+        return { status: 200, body: { check_runs: [{ name: 'voice / build', conclusion: 'success', details_url: 'https://github.com/mgd34msu/goodvibes-sdk/actions/runs/111/job/1' }] } };
+      }
+      if (url.includes('/actions/runs/111')) return { status: 200, body: { id: 111, path: '.github/workflows/voice-runtimes.yml' } };
+      return { status: 404, body: null };
+    });
+    const result = await verifyPerJobGreen(d, config, 'abc');
+    expect(result.ok).toBe(true);
+    expect(result.runId).toBeNull();
+    expect(result.reason).toContain('UNRESOLVED');
+  });
+
   test('check-suites fallback with no parseable details_url reports run id unresolved (null)', async () => {
     const d = deps((url) => {
       if (url.includes('/actions/runs?')) return { status: 503, body: null };
