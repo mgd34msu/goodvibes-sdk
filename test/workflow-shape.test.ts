@@ -263,6 +263,36 @@ describe('reusable workflows: workflow_call contracts', () => {
     expect(load('reusable-gh-release.yml').jobs!['gh-release']!['runs-on']).toBe('ubuntu-24.04');
   });
 
+  test('reusable-gh-release: notes-file overrides the changelog excerpt, with the excerpt as fallback', () => {
+    const wf = load('reusable-gh-release.yml');
+    const inputs = (wf.on as { workflow_call?: { inputs?: Record<string, { default?: string; required?: boolean }> } }).workflow_call?.inputs ?? {};
+    // Optional input, empty default — existing callers keep the excerpt behavior.
+    expect(inputs['notes-file']).toBeTruthy();
+    expect(inputs['notes-file']?.default).toBe('');
+    expect(inputs['notes-file']?.required).not.toBe(true);
+
+    const job = wf.jobs!['gh-release']!;
+    const notesStep = steps(job).find((s) => s.id === 'changelog');
+    expect(notesStep, 'the release-notes step must keep the `changelog` id feeding body_path').toBeTruthy();
+    const run = String(notesStep!.run);
+    const env = notesStep!.env as Record<string, string>;
+    expect(env.NOTES_FILE).toContain('inputs.notes-file');
+
+    // Precedence: the notes-file existence branch must come BEFORE the awk
+    // changelog extraction (file wins; excerpt is the fallback), and the
+    // {version} placeholder must expand.
+    const fileBranch = run.indexOf('-f "$notes_path"');
+    const excerptBranch = run.indexOf('awk -v version=');
+    expect(fileBranch).toBeGreaterThanOrEqual(0);
+    expect(excerptBranch).toBeGreaterThanOrEqual(0);
+    expect(fileBranch).toBeLessThan(excerptBranch);
+    expect(run).toContain('{version}');
+
+    // The release step still consumes the resolved body path.
+    const release = steps(job).find((s) => s.uses?.toString().includes('action-gh-release'));
+    expect(JSON.stringify(release)).toContain('steps.changelog.outputs.body');
+  });
+
   test('per-job-green gets an explicit deadline sized UNDER the verify job cap in both modes', () => {
     const wf = load('reusable-release-verify.yml');
     const verify = wf.jobs!['verify']!;

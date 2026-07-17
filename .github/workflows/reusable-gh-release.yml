@@ -1,9 +1,10 @@
-# Reusable: GitHub Release (changelog excerpt + SHA256SUMS + assets)
+# Reusable: GitHub Release (notes-file or changelog excerpt + SHA256SUMS + assets)
 #
 # Consumer contract
-#   Creates a GitHub Release for a tag: extracts the tag's CHANGELOG section as
-#   the release body, generates a SHA256SUMS manifest over the staged assets via
-#   the toolchain `sha256sums` CLI (a missing asset is fatal), and uploads the
+#   Creates a GitHub Release for a tag: resolves the release body (an optional
+#   per-release notes file wins; otherwise the tag's CHANGELOG section is
+#   extracted), generates a SHA256SUMS manifest over the staged assets via the
+#   toolchain `sha256sums` CLI (a missing asset is fatal), and uploads the
 #   assets with a pinned softprops/action-gh-release. One copy, parameterized by
 #   the asset manifest.
 #
@@ -15,11 +16,15 @@
 #           tag: ${{ github.ref_name }}
 #           artifact-name: release-assets
 #           assets-glob: "dist/goodvibes-*"
+#           notes-file: "docs/releases/{version}.md"   # optional prose override
 #
 #   Inputs:  tag (required), artifact-name (a CI artifact to download into
-#            dist/, optional), assets-glob (files to hash + upload), changelog-
-#            path (default CHANGELOG.md), sha256-name (default SHA256SUMS.txt),
-#            bun-version.
+#            dist/, optional), assets-glob (files to hash + upload), notes-file
+#            (optional release-body override; `{version}` expands to the tag
+#            without its v prefix — when set AND the file exists at the
+#            checked-out ref its content is the body, otherwise the changelog
+#            excerpt is used exactly as before), changelog-path (default
+#            CHANGELOG.md), sha256-name (default SHA256SUMS.txt), bun-version.
 #   Runs on ubuntu-24.04 so awk changelog extraction stays GNU-stable.
 
 on:
@@ -37,6 +42,14 @@ on:
         description: Shell glob (relative to repo root) of assets to checksum + upload.
         required: true
         type: string
+      notes-file:
+        description: Optional release-body override. `{version}` expands to the
+          tag without its v prefix. When set and the file exists at the
+          checked-out ref, its content is the release body; otherwise the
+          changelog excerpt is used.
+        required: false
+        type: string
+        default: ""
       changelog-path:
         required: false
         type: string
@@ -78,21 +91,34 @@ jobs:
         with:
           name: ${{ inputs.artifact-name }}
           path: dist
-      - name: Extract changelog excerpt
+      - name: Resolve release notes (notes-file override, else changelog excerpt)
         id: changelog
         env:
           VERSION: ${{ inputs.tag }}
           CHANGELOG_PATH: ${{ inputs.changelog-path }}
+          NOTES_FILE: ${{ inputs.notes-file }}
         run: |
           set -euo pipefail
           version="${VERSION#v}"
-          excerpt="$(awk -v version="$version" '
-            $0 ~ "^## (\\[)?" version "([]) -]|$)" { in_section = 1; next }
-            in_section && /^## / { exit }
-            in_section { print }
-          ' "$CHANGELOG_PATH")"
-          if [ -z "$excerpt" ]; then excerpt="Release ${version}"; fi
-          printf '%s\n' "$excerpt" > /tmp/release_notes.md
+          # Precedence: a per-release notes file (e.g. docs/releases/<version>.md
+          # prose) wins over the changelog excerpt when configured AND present
+          # at the checked-out ref; otherwise fall back to the excerpt.
+          notes_path="${NOTES_FILE//\{version\}/$version}"
+          if [ -n "$notes_path" ] && [ -f "$notes_path" ]; then
+            echo "Release body: notes file $notes_path"
+            cp "$notes_path" /tmp/release_notes.md
+          else
+            if [ -n "$notes_path" ]; then
+              echo "Notes file $notes_path not found at this ref — falling back to the changelog excerpt."
+            fi
+            excerpt="$(awk -v version="$version" '
+              $0 ~ "^## (\\[)?" version "([]) -]|$)" { in_section = 1; next }
+              in_section && /^## / { exit }
+              in_section { print }
+            ' "$CHANGELOG_PATH")"
+            if [ -z "$excerpt" ]; then excerpt="Release ${version}"; fi
+            printf '%s\n' "$excerpt" > /tmp/release_notes.md
+          fi
           echo "body=/tmp/release_notes.md" >> "$GITHUB_OUTPUT"
       - name: Generate SHA256SUMS (missing asset is fatal)
         run: |
