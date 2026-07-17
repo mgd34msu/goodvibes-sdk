@@ -196,6 +196,42 @@ describe('reusable workflows: workflow_call contracts', () => {
     expect(Object.keys(outputs)).toEqual(expect.arrayContaining(['run_id', 'head_sha', 'ok']));
   });
 
+  test('reusable-release-verify supports both toolchain sources, defaulting to registry', () => {
+    const wf = load('reusable-release-verify.yml');
+    const inputs = (wf.on as { workflow_call?: { inputs?: Record<string, { default?: string }> } }).workflow_call?.inputs ?? {};
+    expect(inputs['toolchain-source']?.default).toBe('registry');
+
+    const verify = wf.jobs!['verify']!;
+    const byIf = (mode: string) => steps(verify).filter((s) => String(s.if ?? '').includes(`toolchain-source == '${mode}'`));
+    const workspaceSteps = byIf('workspace');
+    const registrySteps = byIf('registry');
+
+    // workspace mode self-hosts: checkout the verified commit, build the
+    // workspace toolchain, run the local dist bin — never bunx-from-registry.
+    expect(JSON.stringify(workspaceSteps)).toContain('actions/checkout');
+    expect(JSON.stringify(workspaceSteps)).toContain('tsc -b packages/toolchain');
+    expect(JSON.stringify(workspaceSteps)).toContain('packages/toolchain/dist/bin/per-job-green.js');
+    expect(JSON.stringify(workspaceSteps)).not.toContain('bunx @pellux/goodvibes-toolchain');
+
+    // registry mode bunx-es the published package and never assumes a checkout.
+    expect(JSON.stringify(registrySteps)).toContain('goodvibes-per-job-green');
+    expect(JSON.stringify(registrySteps)).not.toContain('actions/checkout');
+
+    // Both mode steps carry ids feeding the coalesced job outputs.
+    const outputsText = JSON.stringify(verify.outputs ?? {});
+    expect(outputsText).toContain('pjg-workspace');
+    expect(outputsText).toContain('pjg-registry');
+  });
+
+  test('the SDK release.yml self-hosts release-verify with the workspace toolchain', () => {
+    const rel = load('release.yml');
+    const rv = rel.jobs!['release-verify']! as Job & { with?: Record<string, unknown> };
+    // The SDK cannot bunx-from-registry: its own release publishes the
+    // toolchain (first-release bootstrap), and later releases must verify with
+    // the commit under release, not the previously published version.
+    expect(rv.with?.['toolchain-source']).toBe('workspace');
+  });
+
   test('reusable-npm-publish requests id-token and takes an npm-token secret', () => {
     const wf = load('reusable-npm-publish.yml');
     const call = (wf.on as { workflow_call?: { secrets?: Record<string, unknown> } }).workflow_call;
