@@ -91,10 +91,13 @@ function extractStructuredMessage(msg: string): string | undefined {
 }
 
 function stripJson(msg: string): string {
+  // The bracket pass must not eat [REDACTED*] placeholders from redaction.ts:
+  // stripping them turns e.g. /home/[REDACTED]/hooks.json into '/home/ /hooks.json',
+  // which reads as a real (and wrong) path in logs.
   return msg
     .replace(/\{[^{}]{0,500}\}/g, ' ')
-    .replace(/\[[^\[\]]{0,500}\]/g, ' ')
-    .replace(/\s{2,}/g, ' ')
+    .replace(/\[(?!REDACTED)[^\[\]]{0,500}\]/g, ' ')
+    .replace(/ {2,}/g, ' ')
     .trim();
 }
 
