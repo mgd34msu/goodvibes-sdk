@@ -4,6 +4,20 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
+## [1.11.4] - 2026-07-17
+
+### Fixed
+
+- **Secrets store key-mismatch class closed.** Keyfile generation is exclusive
+  (a process losing the creation race adopts the winner's key instead of
+  caching a private one); every store write revalidates the cached key against
+  the keyfile and refuses to encrypt on mismatch (restoring a missing keyfile
+  from the cached key); and store envelopes now record the writing key's
+  fingerprint, so a mismatched store reads back as "written with key X,
+  current keyfile is Y" instead of a bare authentication failure. Additive and
+  backward compatible: stores without the fingerprint decrypt exactly as
+  before and the store format version is unchanged.
+
 ## [1.11.3] - 2026-07-17
 
 ### Fixed
