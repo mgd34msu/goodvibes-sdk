@@ -25,11 +25,21 @@
  * Secret values are never logged.
  */
 
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto';
 import { dirname, isAbsolute, join, resolve } from 'path';
-import { hostname, userInfo } from 'os';
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import type { ConfigManager } from './manager.js';
+import {
+  SecretStoreUnreadableError,
+  SECRETS_STORE_FORMAT_VERSION,
+  assertCachedKeyIsCurrent,
+  decryptStore as decrypt,
+  deriveLegacyEncryptionKey,
+  encryptStore as encrypt,
+  keyFingerprint,
+  loadOrCreateKeyfile,
+  type EncryptedStoreEnvelope,
+} from './secrets-keyfile.js';
+export { SecretStoreUnreadableError } from './secrets-keyfile.js';
 import { getSecretRefSource, isSecretRefInput, resolveSecretRef } from './secret-refs.js';
 import { logger } from '../utils/logger.js';
 import { requireSurfaceRoot, resolveSharedDirectory, resolveSurfaceDirectory, resolveSurfaceSharedFile } from '../runtime/surface-root.js';
@@ -81,21 +91,6 @@ export interface SecretStorageReview {
   }[];
 }
 
-/**
- * On-disk envelope for the encrypted store. `version` was introduced together
- * with keyfile-derived encryption; files without a `version` field are legacy
- * stores encrypted with a key derived from the machine's hostname + username,
- * and are migrated to the current format on first successful read.
- */
-interface EncryptedStoreEnvelope {
-  version?: number;
-  iv: string;
-  tag: string;
-  data: string;
-}
-
-const SECRETS_STORE_FORMAT_VERSION = 2;
-
 type SecureStoreReadResult =
   | { readonly status: 'ok'; readonly secrets: Record<string, string> }
   | { readonly status: 'missing' }
@@ -105,18 +100,6 @@ type PlaintextStoreReadResult =
   | { readonly status: 'ok'; readonly secrets: Record<string, string> }
   | { readonly status: 'missing' }
   | { readonly status: 'unreadable'; readonly reason: string };
-
-/**
- * Thrown when a secrets store file exists on disk but cannot be read back
- * (wrong key, tampered content, malformed JSON, or an unknown future format).
- * Writes to that store are refused so its contents are never overwritten.
- */
-export class SecretStoreUnreadableError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'SecretStoreUnreadableError';
-  }
-}
 
 interface PlaintextStore {
   readonly version: 1;
@@ -169,41 +152,6 @@ function requireAbsoluteOwnedPath(path: string, name: string): string {
 
 function normalizeOptionalOwnedPath(path: string | undefined, name: string): string | undefined {
   return path === undefined ? undefined : requireAbsoluteOwnedPath(path, name);
-}
-
-/**
- * Key derivation used by stores written before keyfile-derived encryption.
- * Kept solely so those stores can be decrypted once and migrated; never used
- * for new writes.
- */
-function deriveLegacyEncryptionKey(identity?: LegacyStoreIdentity): Buffer {
-  const host = identity?.hostname ?? hostname();
-  const user = identity?.username ?? userInfo().username;
-  const seed = host + user + 'goodvibes-secrets';
-  return createHash('sha256').update(seed, 'utf8').digest();
-}
-
-function encrypt(plaintext: string, key: Buffer): EncryptedStoreEnvelope {
-  const iv = randomBytes(12);
-  const cipher = createCipheriv('aes-256-gcm', key, iv);
-  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
-  const tag = cipher.getAuthTag();
-  return {
-    version: SECRETS_STORE_FORMAT_VERSION,
-    iv: iv.toString('hex'),
-    tag: tag.toString('hex'),
-    data: encrypted.toString('hex'),
-  };
-}
-
-function decrypt(store: EncryptedStoreEnvelope, key: Buffer): string {
-  const iv = Buffer.from(store.iv, 'hex');
-  const tag = Buffer.from(store.tag, 'hex');
-  const data = Buffer.from(store.data, 'hex');
-  const decipher = createDecipheriv('aes-256-gcm', key, iv);
-  decipher.setAuthTag(tag);
-  const decrypted = Buffer.concat([decipher.update(data), decipher.final()]);
-  return decrypted.toString('utf8');
 }
 
 function loadConfiguredSecretPolicy(configManager?: Pick<ConfigManager, 'get'>): SecretStorageMode {
@@ -277,33 +225,10 @@ export class SecretsManager {
       ?? resolveSharedDirectory(this.options.globalHome, 'secrets.key');
   }
 
-  /**
-   * Load the encryption key from the keyfile, generating a fresh random key
-   * on first need. The keyfile is 0600 inside a 0700 directory; the key never
-   * derives from host identity, so a store directory copied to another
-   * machine (or a renamed host/user) keeps decrypting.
-   */
+  /** Load the encryption key, generating a fresh one exclusively on first need — see secrets-keyfile.ts. */
   private getEncryptionKey(): Buffer {
-    if (this.encKey) return this.encKey;
-    if (existsSync(this.keyFilePath)) {
-      const raw = readFileSync(this.keyFilePath, 'utf-8').trim();
-      if (!/^[0-9a-f]{64}$/i.test(raw)) {
-        throw new SecretStoreUnreadableError(
-          `Secrets keyfile at ${this.keyFilePath} is malformed. Restore it from backup; without the original key, existing encrypted stores cannot be read.`,
-        );
-      }
-      this.encKey = Buffer.from(raw, 'hex');
-      return this.encKey;
-    }
-    const key = randomBytes(32);
-    const keyDir = dirname(this.keyFilePath);
-    mkdirSync(keyDir, { recursive: true, mode: 0o700 });
-    chmodSync(keyDir, 0o700);
-    writeFileSync(this.keyFilePath, `${key.toString('hex')}\n`, { encoding: 'utf-8', mode: 0o600 });
-    chmodSync(this.keyFilePath, 0o600);
-    logger.info('SecretsManager: generated new secrets keyfile', { path: this.keyFilePath });
-    this.encKey = key;
-    return key;
+    this.encKey ??= loadOrCreateKeyfile(this.keyFilePath);
+    return this.encKey;
   }
 
   getGlobalHome(): string {
@@ -691,6 +616,17 @@ export class SecretsManager {
       };
     }
 
+    // Fingerprint fast-path: when the store records which key wrote it, a
+    // mismatch is reported precisely instead of surfacing later as a bare
+    // GCM authentication failure. Stores without keyId decrypt as before.
+    const currentKeyId = keyFingerprint(this.getEncryptionKey());
+    if (typeof envelope.keyId === 'string' && envelope.keyId !== currentKeyId) {
+      return {
+        status: 'unreadable',
+        reason: `store was written with encryption key ${envelope.keyId}, but the current keyfile is ${currentKeyId} — the keyfile changed after this store was written`,
+      };
+    }
+
     try {
       const secrets = JSON.parse(decrypt(envelope as EncryptedStoreEnvelope, this.getEncryptionKey())) as Record<string, string>;
       return { status: 'ok', secrets };
@@ -752,7 +688,12 @@ export class SecretsManager {
   }
 
   private writeEncryptedFile(filePath: string, secrets: Record<string, string>): void {
-    const store = encrypt(JSON.stringify(secrets), this.getEncryptionKey());
+    const key = this.getEncryptionKey();
+    // Never encrypt with a cached key the keyfile no longer backs — the
+    // resulting store would be unreadable by every other process (and by this
+    // one after restart). A missing keyfile is restored from the cached key.
+    assertCachedKeyIsCurrent(this.keyFilePath, key);
+    const store = encrypt(JSON.stringify(secrets), key);
     mkdirSync(dirname(filePath), { recursive: true, mode: 0o700 });
     writeFileSync(filePath, `${JSON.stringify(store, null, 2)}\n`, { encoding: 'utf-8', mode: 0o600 });
     chmodSync(filePath, 0o600);
