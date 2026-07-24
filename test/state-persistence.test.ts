@@ -151,6 +151,40 @@ describe('state persistence failures', () => {
     await expect(new KVState({ stateDir, sessionId: '1234abcd' }).load()).rejects.toThrow('JsonFileStore failed to load');
   });
 
+  test('KVState treats a corrupt LEGACY file as absent — the fallback may only recover data, never fail a clean session', async () => {
+    // The legacy unscoped state dir is dual-read for one release. Before that
+    // dual-read existed, junk sitting there was simply never opened and a new
+    // session started clean; a corrupt legacy file must not now turn that
+    // clean start into a hard failure.
+    const stateDir = tempDir('kv-state-scoped');
+    const legacyStateDir = tempDir('kv-state-legacy');
+    mkdirSync(stateDir, { recursive: true });
+    mkdirSync(legacyStateDir, { recursive: true });
+    writeFileSync(join(legacyStateDir, 'session_1234abcd.json'), '{bad', 'utf-8');
+
+    const kv = new KVState({ stateDir, legacyStateDir, sessionId: '1234abcd' });
+    await kv.load();
+    const all = await kv.list();
+    expect(all.id).toBe('1234abcd');
+    expect(typeof all.started_at).toBe('string');
+  });
+
+  test('KVState still copies a READABLE legacy file forward', async () => {
+    const stateDir = tempDir('kv-state-scoped-ok');
+    const legacyStateDir = tempDir('kv-state-legacy-ok');
+    mkdirSync(stateDir, { recursive: true });
+    mkdirSync(legacyStateDir, { recursive: true });
+    writeFileSync(
+      join(legacyStateDir, 'session_1234abcd.json'),
+      JSON.stringify({ id: '1234abcd', started_at: 'then', carried: 'forward' }),
+      'utf-8',
+    );
+
+    const kv = new KVState({ stateDir, legacyStateDir, sessionId: '1234abcd' });
+    expect(await kv.get(['carried'])).toEqual({ carried: 'forward' });
+    await kv.dispose();
+  });
+
   test('watcher snapshots reject malformed persisted state instead of loading as empty', () => {
     const dir = tempDir('watcher-store');
     mkdirSync(dir, { recursive: true });

@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import { resolveScopedDirectory } from '../runtime/surface-root.js';
 import { ToolRegistry } from './registry.js';
 import type { Tool } from '../types/tools.js';
 import { FileStateCache } from '../state/file-cache.js';
@@ -447,7 +448,14 @@ export function registerAllTools(
     ...(archetypeLoader ? { archetypeLoader } : {}),
     ...(wrfcController ? { wrfcController } : {}),
   }));
-  const kvState = new KVState({ stateDir: join(workingDirectory, '.goodvibes', 'state') });
+  // Scoped under the surface (surfaceRoot is required above, so this is
+  // always the scoped form); dual-reads the old unscoped .goodvibes/state
+  // for a pre-existing session_*.json exactly once, then copies it forward
+  // into the scoped location — see KVStateOptions.legacyStateDir.
+  const kvState = new KVState({
+    stateDir: resolveScopedDirectory(workingDirectory, deps.surfaceRoot, 'state'),
+    legacyStateDir: join(workingDirectory, '.goodvibes', 'state'),
+  });
   const hookDispatcher = new HookDispatcher();
   registerTool(createStateTool(kvState, projectIndex, {
     memoryDir: join(workingDirectory, '.goodvibes', 'memory'),

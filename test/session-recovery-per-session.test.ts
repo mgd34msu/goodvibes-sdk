@@ -8,7 +8,7 @@
  * no `.preserved` path exists in SDK code.
  */
 import { afterEach, describe, expect, test } from 'bun:test';
-import { existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -95,6 +95,35 @@ describe('per-session recovery snapshots', () => {
     // The snapshot is cleared after restore, so it is not re-offered.
     expect(existsSync(getRecoveryFilePath(homeDirectory, 'cccc3333'))).toBe(false);
     expect(checkRecoveryFile(opts)).toBeNull();
+  });
+
+  test('auto-restore retires ONLY the snapshot it restored, even when that snapshot has no session id', () => {
+    // A snapshot whose meta carries no sessionId used to fall through to the
+    // keyless full-reset delete, taking every other session's untouched crash
+    // snapshot with it. The restore now deletes exactly the file it read.
+    const { workingDirectory, homeDirectory } = tempRoot();
+    const opts = { workingDirectory, homeDirectory };
+    writeRecoveryFile(snapshotOf('bystander work'), 'dddd4444', 'Bystander', opts);
+    const bystanderPath = getRecoveryFilePath(homeDirectory, 'dddd4444');
+
+    // A snapshot with an empty session id, written later so it is the newest.
+    const idlessPath = join(getRecoveryDir(homeDirectory), 'recovery-idless.jsonl');
+    writeFileSync(
+      idlessPath,
+      [
+        JSON.stringify({ type: 'meta', sessionId: '', title: 'No Id', timestamp: Date.now() }),
+        JSON.stringify({ type: 'message', role: 'user', content: 'restore me' }),
+      ].join('\n') + '\n',
+      'utf-8',
+    );
+    const later = new Date(Date.now() + 5000);
+    execFileSync('touch', ['-d', later.toISOString(), idlessPath]);
+
+    const result = autoRestoreRecovery(opts);
+    expect(result?.snapshot.messages[0]?.content).toBe('restore me');
+    expect(existsSync(idlessPath)).toBe(false);
+    // The unrelated session's snapshot is untouched.
+    expect(existsSync(bystanderPath)).toBe(true);
   });
 
   test('checkRecoveryFile offers the newest live crash snapshot', () => {

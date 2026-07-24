@@ -44,6 +44,7 @@ import {
   type PruneResult,
 } from '../../runtime/retention/index.js';
 import { SideGitRunner, CHECKPOINT_REF_PREFIX, EMPTY_TREE_HASH, detectGitToplevel } from './side-git.js';
+import { acquireCrossProcessLock } from './cross-process-lock.js';
 import { WorkspaceCheckpointPruner } from './pruner.js';
 import { computeSessionChanges } from './session-changes.js';
 import {
@@ -72,107 +73,24 @@ interface Manifest {
   checkpoints: WorkspaceCheckpoint[];
 }
 
-export interface CreateCheckpointOptions {
-  readonly kind: CheckpointKind;
-  readonly label?: string | undefined;
-  readonly retentionClass?: RetentionClass | undefined;
-  readonly turnId?: string | undefined;
-  readonly agentId?: string | undefined;
-  /**
-   * Session this checkpoint belongs to. Explicit callers may pass it directly;
-   * automatic snapshots leave it undefined and let the manager's
-   * `resolveSessionId` hook stamp it from the triggering turn/agent. Never
-   * fabricated — stays undefined when no session is in scope.
-   */
-  readonly sessionId?: string | undefined;
-  /** Scope the snapshot to these paths instead of sweeping the whole workspace. */
-  readonly paths?: string[] | undefined;
-}
-
-export interface RestoreOptions {
-  /** Restrict restore to these paths instead of the whole workspace. */
-  readonly paths?: string[] | undefined;
-  /** Take a safety checkpoint of the current state before restoring. Defaults to true. */
-  readonly safetyCheckpoint?: boolean | undefined;
-}
-
-export interface ListCheckpointsFilter {
-  readonly kind?: CheckpointKind | undefined;
-  readonly since?: number | undefined;
-  readonly limit?: number | undefined;
-  /** Restrict to checkpoints stamped with this session id (see `WorkspaceCheckpoint.sessionId`). */
-  readonly sessionId?: string | undefined;
-}
-
-/**
- * Context handed to {@link WorkspaceCheckpointManagerOptions.resolveSessionId}
- * when an automatic snapshot fires, carrying whichever id the triggering
- * lifecycle event supplied (a turn id for TURN_* events, an agent id for
- * AGENT_COMPLETED). The resolver returns the owning session id, or undefined
- * when it cannot map the event to a session — in which case the checkpoint is
- * simply left unstamped rather than guessed.
- */
-export interface CheckpointSessionResolveContext {
-  readonly turnId?: string | undefined;
-  readonly agentId?: string | undefined;
-}
-
-export type CheckpointSessionResolver = (ctx: CheckpointSessionResolveContext) => string | undefined;
-
-export interface WorkspaceCheckpointManagerOptions {
-  readonly workspaceRoot: string;
-  /** Override the side repo's GIT_DIR. Defaults to `<workspaceRoot>/.goodvibes/checkpoints/git`. */
-  readonly checkpointDir?: string | undefined;
-  /** When provided, the manager subscribes to TURN_COMPLETED/TURN_ERROR/TURN_CANCEL/AGENT_COMPLETED for automatic snapshots. */
-  readonly runtimeBus?: RuntimeEventBus | undefined;
-  /**
-   * Optional hook that maps a triggering turn/agent to its owning session id so
-   * automatic snapshots can be stamped with `sessionId`. Consulted at the
-   * moment each lifecycle event fires (not at subscription time), so it may be
-   * installed after construction via {@link WorkspaceCheckpointManager.setSessionResolver}.
-   * Returning undefined leaves the checkpoint unstamped — the linkage is never
-   * fabricated.
-   */
-  readonly resolveSessionId?: CheckpointSessionResolver | undefined;
-  readonly retention?: Partial<RetentionConfig> | undefined;
-  /** Clock override for deterministic tests. */
-  readonly now?: (() => number) | undefined;
-  /**
-   * Prefer the enclosing git repository's top level over the raw
-   * `workspaceRoot` when the root is inside one. Defaults to `true`: keeps a
-   * daemon launched in a project subdirectory snapshotting the whole repo, and
-   * (with the broad-root guard) stops a `$HOME` cwd from becoming a checkpoint
-   * root. Set `false` to snapshot exactly `workspaceRoot`.
-   */
-  readonly preferGitRoot?: boolean | undefined;
-  /**
-   * Opt in to snapshotting a broad root (filesystem root, the user's home
-   * directory, or `~/.goodvibes`). Defaults to `false`: such roots are refused
-   * (no auto subscription, explicit `create()` throws) to avoid an unbounded
-   * store. Set only when a broad root is genuinely intended.
-   */
-  readonly allowBroadRoot?: boolean | undefined;
-  /**
-   * Opt in to a first snapshot whose full sweep exceeds
-   * `maxFirstSnapshotFiles`. Defaults to `false`: an oversized first sweep is
-   * refused with a message stating the count and this override.
-   */
-  readonly allowLargeFirstSnapshot?: boolean | undefined;
-  /** Ceiling for the first-ever snapshot's file sweep. Defaults to {@link DEFAULT_MAX_FIRST_SNAPSHOT_FILES}. */
-  readonly maxFirstSnapshotFiles?: number | undefined;
-  /**
-   * Run a retention sweep automatically (cheap threshold check, then a
-   * non-blocking `gc()` only when something is over-limit) after each
-   * successful `create()` and once at init. Defaults to `true`. Set `false` to
-   * drive retention purely via manual `gc()` (e.g. unit tests, or an embedder
-   * with its own schedule).
-   */
-  readonly autoRetention?: boolean | undefined;
-  /** Home-directory override (broad-root detection). Defaults to `os.homedir()`. */
-  readonly homeDir?: string | undefined;
-  /** Daemon state-directory override (broad-root detection). Defaults to `<homeDir>/.goodvibes`. */
-  readonly daemonStateDir?: string | undefined;
-}
+// Public option/filter shapes live in manager-options.ts (split out to stay
+// under the repo's 800-line file cap) and are re-exported here so every
+// existing `from './manager.js'` import site keeps working unchanged.
+export type {
+  CreateCheckpointOptions,
+  RestoreOptions,
+  ListCheckpointsFilter,
+  CheckpointSessionResolveContext,
+  CheckpointSessionResolver,
+  WorkspaceCheckpointManagerOptions,
+} from './manager-options.js';
+import type {
+  CreateCheckpointOptions,
+  RestoreOptions,
+  ListCheckpointsFilter,
+  CheckpointSessionResolver,
+  WorkspaceCheckpointManagerOptions,
+} from './manager-options.js';
 
 /**
  * WorkspaceCheckpointManager — create/list/diff/restore/gc for whole-workspace
@@ -197,6 +115,7 @@ export class WorkspaceCheckpointManager {
   // Root-guard configuration (see WorkspaceCheckpointManagerOptions).
   private readonly rawWorkspaceRoot: string;
   private readonly explicitCheckpointDir: string | undefined;
+  private readonly surfaceCheckpointsDir: string | undefined;
   private readonly retentionOverride: Partial<RetentionConfig> | undefined;
   private readonly preferGitRoot: boolean;
   private readonly allowBroadRoot: boolean;
@@ -233,16 +152,33 @@ export class WorkspaceCheckpointManager {
    * locked operation's behavior (e.g. `restore()`'s safety checkpoint) call
    * the `*Internal` method directly — never the public wrapper — so a single
    * logical operation never tries to re-enter its own lock.
+   *
+   * This in-process chain only serializes callers within THIS process. Two
+   * separate processes sharing the same checkpoint directory (two daemon
+   * instances, or a daemon and a CLI invocation, pointed at the same
+   * workspace) have no in-process chain in common — see the cross-process
+   * file lock acquired alongside it below (cross-process-lock.ts).
    */
   private lockChain: Promise<void> = Promise.resolve();
 
   private withLock<T>(fn: () => Promise<T>): Promise<T> {
     // `lockChain` is constructed below so it never itself rejects (its
     // continuation always swallows both outcomes) — chaining with a single
-    // `.then(fn)` is enough to guarantee `fn` only starts after every
-    // previously-queued operation has settled, regardless of whether that
-    // prior operation resolved or rejected.
-    const result = this.lockChain.then(fn);
+    // `.then(...)` is enough to guarantee the body only starts after every
+    // previously-queued operation (in this process) has settled, regardless
+    // of whether that prior operation resolved or rejected. The body itself
+    // additionally acquires the cross-process lock file before running `fn`,
+    // so a concurrent operation in ANOTHER process sharing this same
+    // checkpoint directory is serialized too — released in `finally` even if
+    // `fn` throws.
+    const result = this.lockChain.then(async () => {
+      const release = await acquireCrossProcessLock(join(this.sideGit.gitDir, '.gv-lock'));
+      try {
+        return await fn();
+      } finally {
+        release();
+      }
+    });
     this.lockChain = result.then(
       () => undefined,
       () => undefined,
@@ -256,6 +192,7 @@ export class WorkspaceCheckpointManager {
     this.resolveSessionId = opts.resolveSessionId;
     this.rawWorkspaceRoot = opts.workspaceRoot;
     this.explicitCheckpointDir = opts.checkpointDir;
+    this.surfaceCheckpointsDir = opts.surface?.checkpointsDir;
     this.retentionOverride = opts.retention;
     this.preferGitRoot = opts.preferGitRoot ?? true;
     this.allowBroadRoot = opts.allowBroadRoot ?? false;
@@ -278,7 +215,11 @@ export class WorkspaceCheckpointManager {
    */
   private buildForRoot(root: string): void {
     this.workspaceRoot = root;
-    this.checkpointRootDir = this.explicitCheckpointDir ?? join(root, '.goodvibes', 'checkpoints');
+    // Precedence: an explicit checkpointDir override always wins; otherwise a
+    // surface's checkpointsDir (fixed to the surface's own workingDirectory,
+    // not re-derived from `root` — see WorkspaceCheckpointManagerOptions.surface);
+    // otherwise the legacy, unscoped `<root>/.goodvibes/checkpoints` (compat).
+    this.checkpointRootDir = this.explicitCheckpointDir ?? this.surfaceCheckpointsDir ?? join(root, '.goodvibes', 'checkpoints');
     this.sideGit = new SideGitRunner({
       workspaceRoot: root,
       gitDir: join(this.checkpointRootDir, 'git'),
@@ -318,7 +259,21 @@ export class WorkspaceCheckpointManager {
 
   private async _init(): Promise<void> {
     await this.resolveAndGuardRoot();
-    await this.sideGit.init();
+    // Cross-process lock around the side repo's `git init`, not just the
+    // later withLock-guarded operations: two processes constructing a
+    // manager against the same not-yet-initialized checkpoint directory at
+    // once race `git init` itself (observed failure: "cannot copy
+    // .../info/exclude: File exists" when both processes' `git init` calls
+    // overlap), before any of the create/restore/gc/diff critical sections
+    // are ever reached.
+    {
+      const release = await acquireCrossProcessLock(join(this.sideGit.gitDir, '.gv-lock'));
+      try {
+        await this.sideGit.init();
+      } finally {
+        release();
+      }
+    }
     const manifest = await this.manifestStore.load();
     this.checkpoints = new Map((manifest?.checkpoints ?? []).map((c) => [c.id, c]));
     for (const checkpoint of this.checkpoints.values()) {

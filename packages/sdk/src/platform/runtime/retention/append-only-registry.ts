@@ -23,16 +23,20 @@ import {
   resolveAtRestPolicy,
   type AtRestPolicy,
 } from '../at-rest-persistence.js';
-import { resolveScopedDirectory } from '../surface-root.js';
+import { resolveScopedDirectory, resolveSharedDirectory } from '../surface-root.js';
+import { isLegacyAgentJournalFile } from './legacy-agent-journal-patterns.js';
 import { logger } from '../../utils/logger.js';
 import { join } from 'node:path';
+import { closeSync, openSync, readSync, readdirSync } from 'node:fs';
 
 /** Every append-only store the platform writes. Extend this when adding one. */
 export type AppendOnlyStoreId =
   | 'session-journals'
   | 'activity-log'
   | 'telemetry-local-ledger'
-  | 'session-recovery-snapshots';
+  | 'session-recovery-snapshots'
+  | 'session-conversations'
+  | 'legacy-event-store';
 
 /**
  * The roots a sweep resolves store paths from. A store whose required root is
@@ -42,7 +46,12 @@ export type AppendOnlyStoreId =
 export interface AppendOnlyRetentionRoots {
   readonly workingDirectory?: string | undefined;
   readonly surfaceRoot?: string | undefined;
-  /** The user home root (holds the scoped recovery/ crash-snapshot directory). */
+  /**
+   * The user home root. Not consumed by any store registered here today (the
+   * recovery-snapshot store moved to workingDirectory-scoping — see
+   * `session-recovery-snapshots` below); kept on the roots shape for callers
+   * that already pass it and for a future home-anchored store.
+   */
   readonly homeDirectory?: string | undefined;
   /** Directory holding the shared activity.md log, when the caller configured one. */
   readonly logDir?: string | undefined;
@@ -72,18 +81,110 @@ export interface AppendOnlyStoreDescriptor {
 
 const EMPTY_TARGETS: AppendOnlyStoreTargets = { journalDirs: [], files: [] };
 
+/**
+ * The legacy agent/workmap journal files sitting directly in `sessionsDir`
+ * (not its `agents/` subdirectory) from before the repoint to sessions/agents/.
+ * Classification (isLegacyAgentJournalFile) is shared with
+ * session-migration.ts's move, so the sweep and the move can never
+ * disagree about which files are legacy agent journals. Returns an empty
+ * list when the directory is absent or unreadable — this is a best-effort
+ * supplementary sweep, never a hard requirement.
+ *
+ * The classification is name AND first-line content: a user conversation the
+ * user saved under a name that happens to collide with a journal filename
+ * shape ("release_workmap", "agent-deadbeef" — both legal outputs of
+ * SessionManager.sanitizeName) is a real conversation, not a journal, and is
+ * left completely alone. So is anything unreadable or ambiguous.
+ */
+function listLegacyAgentJournalFiles(sessionsDir: string): string[] {
+  let names: string[];
+  try {
+    names = readdirSync(sessionsDir, { withFileTypes: true })
+      .filter((entry) => entry.isFile())
+      .map((entry) => entry.name);
+  } catch {
+    return [];
+  }
+  const files: string[] = [];
+  for (const name of names) {
+    const path = join(sessionsDir, name);
+    if (isLegacyAgentJournalFile(path, name)) files.push(path);
+  }
+  return files;
+}
+
+/**
+ * Read a saved session's `saveSource` off its meta line (line 0) without
+ * reading the whole file. Protective default: `'user'` (exempt from
+ * reclaim) for anything that is not unambiguously `saveSource: 'auto'` —
+ * an unreadable file, a malformed meta line, or (most importantly) a
+ * pre-upgrade file that predates this field entirely. Losing a user's saved
+ * session to an over-eager sweep is the failure mode this errs away from;
+ * only a file that explicitly says `'auto'` is ever a reclaim candidate.
+ */
+function peekSessionSaveSource(filePath: string): 'user' | 'auto' {
+  let fd: number;
+  try {
+    fd = openSync(filePath, 'r');
+  } catch {
+    return 'user';
+  }
+  try {
+    const buf = Buffer.alloc(4096);
+    const bytesRead = readSync(fd, buf, 0, 4096, 0);
+    const firstLine = buf.toString('utf-8', 0, bytesRead).split('\n')[0];
+    if (!firstLine) return 'user';
+    const meta = JSON.parse(firstLine) as { type?: unknown; saveSource?: unknown };
+    if (meta.type !== 'meta') return 'user';
+    return meta.saveSource === 'auto' ? 'auto' : 'user';
+  } catch {
+    return 'user';
+  } finally {
+    closeSync(fd);
+  }
+}
+
+/**
+ * The saved user-conversation files in `sessionsDir` (top-level `*.jsonl`
+ * only — never the sessions/agents/ subdirectory, which the session-journals
+ * store owns) that are eligible for retention: `saveSource: 'auto'` files
+ * only. A file the user explicitly saved (`saveSource: 'user'`), or any file
+ * with no readable saveSource at all, is never included here — see
+ * peekSessionSaveSource.
+ */
+function listReclaimableAutoSessionFiles(sessionsDir: string): string[] {
+  let names: string[];
+  try {
+    names = readdirSync(sessionsDir, { withFileTypes: true })
+      .filter((entry) => entry.isFile() && entry.name.endsWith('.jsonl'))
+      .map((entry) => entry.name);
+  } catch {
+    return [];
+  }
+  const files: string[] = [];
+  for (const name of names) {
+    const path = join(sessionsDir, name);
+    if (peekSessionSaveSource(path) === 'auto') files.push(path);
+  }
+  return files;
+}
+
 /** The canonical registry. Adding an append-only writer means adding an entry here. */
 export const APPEND_ONLY_STORES: readonly AppendOnlyStoreDescriptor[] = [
   {
     id: 'session-journals',
     owner: 'session/agent journal (agents/session.ts, agents/wrfc-workmap.ts)',
-    description: 'per-agent transcript journals and WRFC workmaps under the scoped sessions/ directory',
+    description: 'per-agent transcript journals and WRFC workmaps under the scoped sessions/agents/ directory, plus (this release only) any pre-repoint journal left flat in sessions/ from before agent journals moved out of the user-conversation directory',
     policy: DEFAULT_AT_REST_POLICY,
     resolve(roots) {
       if (!roots.workingDirectory) return EMPTY_TARGETS;
+      const sessionsDir = resolveScopedDirectory(roots.workingDirectory, roots.surfaceRoot, 'sessions');
       return {
-        journalDirs: [resolveScopedDirectory(roots.workingDirectory, roots.surfaceRoot, 'sessions')],
-        files: [],
+        journalDirs: [join(sessionsDir, 'agents')],
+        // Legacy sweep is filename-filtered, never the whole sessionsDir —
+        // that directory also holds user conversation *.jsonl files and must
+        // never be swept wholesale.
+        files: listLegacyAgentJournalFiles(sessionsDir),
       };
     },
   },
@@ -109,14 +210,45 @@ export const APPEND_ONLY_STORES: readonly AppendOnlyStoreDescriptor[] = [
   },
   {
     id: 'session-recovery-snapshots',
-    owner: 'per-session crash-recovery snapshots (runtime/session-persistence.ts)',
-    description: 'per-session crash-recovery jsonl snapshots under the scoped recovery/ directory; a snapshot that was never restored goes stale and needs retention like any other append-only artifact',
+    owner: 'per-session crash-recovery snapshots (runtime/session-recovery.ts, runtime/session-surface.ts)',
+    description: 'per-session crash-recovery jsonl snapshots under the workingDirectory-scoped recovery/ directory (SessionSurface.recoveryDir); a snapshot that was never restored goes stale and needs retention like any other append-only artifact',
     policy: DEFAULT_AT_REST_POLICY,
     resolve(roots) {
-      if (!roots.homeDirectory) return EMPTY_TARGETS;
+      // Anchored to workingDirectory, matching SessionSurface.recoveryDir —
+      // NOT homeDirectory. A crash snapshot lives with the project it
+      // happened in (see session-surface.ts's SessionSurface.recoveryDir doc
+      // comment); the legacy home-anchored resolution stays reachable only
+      // through session-recovery.ts's legacy call form, which this sweep
+      // does not follow.
+      if (!roots.workingDirectory) return EMPTY_TARGETS;
       return {
-        journalDirs: [resolveScopedDirectory(roots.homeDirectory, roots.surfaceRoot, 'recovery')],
+        journalDirs: [resolveScopedDirectory(roots.workingDirectory, roots.surfaceRoot, 'recovery')],
         files: [],
+      };
+    },
+  },
+  {
+    id: 'session-conversations',
+    owner: 'saved user conversation sessions (sessions/manager.ts SessionManager.save)',
+    description: 'saved conversation *.jsonl files under the scoped sessions/ directory; a file the user explicitly saved (saveSource "user"), or any pre-upgrade file with no saveSource at all, is exempt and never reclaimed — only saveSource "auto" files are subject to the bounded default retention policy',
+    policy: DEFAULT_AT_REST_POLICY,
+    resolve(roots) {
+      if (!roots.workingDirectory) return EMPTY_TARGETS;
+      const sessionsDir = resolveScopedDirectory(roots.workingDirectory, roots.surfaceRoot, 'sessions');
+      return { journalDirs: [], files: listReclaimableAutoSessionFiles(sessionsDir) };
+    },
+  },
+  {
+    id: 'legacy-event-store',
+    owner: 'legacy event store (dead: no live writer anywhere in the platform; last write observed 2026-07-02)',
+    description: 'the unscoped .goodvibes/state/events.jsonl file and its event-archives/ directory — dead data with no live writer, NOT the whole state dir (which holds live retries.json, agent-tracking.json, workflows/, and session_*.json KVState files)',
+    policy: DEFAULT_AT_REST_POLICY,
+    resolve(roots) {
+      if (!roots.workingDirectory) return EMPTY_TARGETS;
+      const stateDir = resolveSharedDirectory(roots.workingDirectory, 'state');
+      return {
+        journalDirs: [join(stateDir, 'event-archives')],
+        files: [join(stateDir, 'events.jsonl')],
       };
     },
   },
@@ -179,15 +311,32 @@ export function runAppendOnlyRetentionSweep(
     }
     const policy = options.policyOverride ?? store.policy;
     try {
+      const storePruned: string[] = [];
+      let storeReclaimedBytes = 0;
       for (const dir of targets.journalDirs) {
         const outcome = enforceJournalDirectoryRetention(dir, policy);
         deletedFiles += outcome.deletedFiles.length;
         reclaimedBytes += outcome.reclaimedBytes;
+        storePruned.push(...outcome.deletedFiles);
+        storeReclaimedBytes += outcome.reclaimedBytes;
       }
       if (targets.files.length > 0) {
         const outcome = enforceFileRetention(targets.files, policy);
         deletedFiles += outcome.deletedFiles.length;
         reclaimedBytes += outcome.reclaimedBytes;
+        storePruned.push(...outcome.deletedFiles);
+        storeReclaimedBytes += outcome.reclaimedBytes;
+      }
+      // Disclosure: every reclaim names exactly what was pruned, per store —
+      // not just an aggregate count. A reclaimed file is gone; this is the
+      // record of what happened and why (store id + owner).
+      if (storePruned.length > 0) {
+        logger.info('[retention] append-only store reclaimed files', {
+          store: store.id,
+          owner: store.owner,
+          reclaimedBytes: storeReclaimedBytes,
+          prunedFiles: storePruned,
+        });
       }
       swept.push(store.id);
     } catch (error) {
