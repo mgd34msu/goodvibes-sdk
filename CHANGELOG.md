@@ -4,6 +4,47 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
+## [1.12.0] - 2026-07-24
+
+### Added
+
+- **Declare-once product storage surfaces.** `createSessionSurface({ surfaceRoot,
+  workingDirectory, homeDirectory })` returns a `SessionSurface` from which
+  session stores, the last-session pointer, recovery snapshots, retention
+  sweep roots, KV state, and workspace checkpoint locations all derive.
+  Session-persistence functions, `SessionManager`, `WorkspaceCheckpointManager`,
+  and the integration helpers accept `{ surface }`; the loose per-call scope
+  options keep working with a one-time deprecation warning, and mixing the two
+  forms is a compile error. A marker-guarded one-time migration copies the
+  legacy pointer forward, relocates flat agent journals, and adopts a legacy
+  checkpoint store with an on-disk disclosure marker.
+- **Ask-then-retire recovery lifecycle.** `consumeRecovery` (load-then-delete of
+  exactly the identified snapshot), `removeRecoveryPoint` (user-driven discard),
+  and `checkRecoveryForSession` (does a named session hold unsaved crash data
+  newer than its store). Offers now use per-session supersession — a snapshot is
+  live while newer than its own session's durable store — so unrelated session
+  activity can no longer bury crash data; the global pointer mtime is no longer
+  consulted.
+- **Cross-process checkpoint lock.** Workspace checkpoint git operations are
+  serialized across processes: populated-create via hardlink (no zero-byte
+  publish window), mtime refresh while held, ticket-serialized stale takeover
+  by atomic rename, ownership-verified release, and same-process FIFO queueing.
+  Validated by an eight-process contention harness (zero overlaps across
+  6,400+ critical sections).
+
+### Fixed
+
+- **User-saved sessions never expire.** `SessionMeta.saveSource` ('user' | 'auto',
+  sticky once 'user') exempts explicitly saved conversations from retention;
+  files without the field are treated as user-saved. The agent-journal sweep is
+  content-verified so a conversation whose name merely looks like a journal can
+  never be swept or relocated.
+- **Retention sweeps the directories that are actually written**: recovery
+  snapshots (workspace-scoped), agent journals under sessions/agents/, and the
+  dead legacy event store; every reclaim logs a disclosure line.
+- **KV state** gains a surface scope with dual-read of the legacy directory and
+  tolerance for corrupt legacy files (treated as absent, logged once).
+
 ## [1.11.4] - 2026-07-17
 
 ### Fixed
