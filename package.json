@@ -128,7 +128,7 @@
     "fast-xml-parser": "Pinned to the audited 5.x parser release used by transitive Google/Cloud tooling.",
     "fast-uri": "Pinned to 3.1.2 to avoid GHSA-v39h-62p7-jpjc in AJV consumers used by release tooling.",
     "google-auth-library": "Pinned to an audited release for Cloudflare/Wrangler transitive auth tooling.",
-    "lodash": "Pinned to 4.18.1 (latest stable; outside the >=4.0.0 <=4.17.23 vulnerable range from GHSA-r5fr-rjxr-66jc — Code Injection via _.template). Bumped from 4.17.21 to escape the audit advisory.",
+    "lodash": "Pinned to 4.18.1 (latest stable; outside the >=4.0.0 <=4.17.23 vulnerable range from GHSA-r5fr-rjxr-66jc \u2014 Code Injection via _.template). Bumped from 4.17.21 to escape the audit advisory.",
     "minimatch": "Pinned to a patched glob matcher across build and release transitive dependencies.",
     "uuid": "Vendored CommonJS uuid v4 package for Verdaccio @cypress/request, which still requires a CommonJS uuid entry.",
     "esbuild": "Pinned to 0.28.1 to close GHSA-gv7w-rqvm-qjhr (missing binary integrity verification in Deno module, enabling RCE via NPM_CONFIG_REGISTRY). Wrangler 4.x pins esbuild <0.28.1; this override forces the patched release across all transitive consumers.",
@@ -138,7 +138,7 @@
   },
   "overrides": {
     "ajv": "8.18.0",
-    "fast-uri": "3.1.2",
+    "fast-uri": "^3.1.4",
     "fast-xml-parser": "5.7.1",
     "google-auth-library": "10.6.2",
     "bash-language-server": "file:vendor/bash-language-server",
@@ -148,6 +148,10 @@
     "esbuild": "0.28.1",
     "form-data": "4.0.6",
     "ws": "8.21.0",
-    "undici": "7.28.0"
+    "undici": "7.28.0",
+    "tar": "^7.5.16",
+    "brace-expansion": "^5.0.6",
+    "sharp": "^0.35.0",
+    "js-yaml": "^4.3.0"
   }
 }
