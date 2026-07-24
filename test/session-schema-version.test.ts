@@ -206,6 +206,56 @@ describe('SessionManager schemaVersion', () => {
     expect(CURRENT_SESSION_SCHEMA_VERSION).toBe(1);
   });
 
+  test('save() defaults saveSource to "auto" when the caller does not specify one', () => {
+    const dir = makeTmpDir();
+    try {
+      const mgr = new SessionManager('/unused', { sessionsDir: dir });
+      const { filePath } = mgr.save('auto-default', SAMPLE_MESSAGES, SAMPLE_META);
+      const raw = readFileSync(filePath, 'utf-8');
+      const parsed = JSON.parse(raw.split('\n')[0]!) as Record<string, unknown>;
+      expect(parsed.saveSource).toBe('auto');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test('save() persists an explicit saveSource: "user", and load()/getMeta() round-trip it', () => {
+    const dir = makeTmpDir();
+    try {
+      const mgr = new SessionManager('/unused', { sessionsDir: dir });
+      mgr.save('user-saved', SAMPLE_MESSAGES, { ...SAMPLE_META, saveSource: 'user' });
+
+      const { meta } = mgr.load('user-saved');
+      expect(meta.saveSource).toBe('user');
+      expect(mgr.getMeta('user-saved')?.saveSource).toBe('user');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test('legacy files without a saveSource field load with saveSource undefined (never fabricated)', () => {
+    const dir = makeTmpDir();
+    try {
+      const mgr = new SessionManager('/unused', { sessionsDir: dir });
+      const legacyMeta = JSON.stringify({
+        type: 'meta',
+        schemaVersion: 1,
+        timestamp: 1_000_000_000_000,
+        title: 'Pre-saveSource',
+        model: 'm',
+        provider: 'p',
+        titleSource: 'system',
+      });
+      writeFileSync(join(dir, 'pre-savesource.jsonl'), `${legacyMeta}\n`, 'utf-8');
+
+      const { meta } = mgr.load('pre-savesource');
+      expect(meta.saveSource).toBeUndefined();
+      expect(mgr.getMeta('pre-savesource')?.saveSource).toBeUndefined();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   test('atomic write: saved file exists and is not a tmp file', () => {
     const dir = makeTmpDir();
     try {

@@ -13,6 +13,21 @@ const RESERVED_KEYS = new Set(['id', 'started_at', '__proto__', 'constructor', '
 export interface KVStateOptions {
   readonly sessionId?: string | undefined;
   readonly stateDir: string;
+  /**
+   * A legacy, unscoped stateDir to fall back to for reads when the scoped
+   * `stateDir` has no file yet for this session id (dual-read, one release
+   * only — see the session-surface migration, runtime/session-migration.ts).
+   * Consulted ONLY when the scoped file is absent; a hit is copied forward
+   * into the scoped location on the next persist, so subsequent reads never
+   * need the fallback again. The legacy file itself is left in place — this
+   * class never deletes or moves it.
+   *
+   * A legacy file that cannot be read or parsed is treated as ABSENT (logged,
+   * then ignored): the fallback may only ever recover data, never turn junk in
+   * the old unscoped directory into a failure for a session that would
+   * otherwise have started clean.
+   */
+  readonly legacyStateDir?: string | undefined;
 }
 
 /**
@@ -34,6 +49,8 @@ export class KVState {
   private persistTimer: ReturnType<typeof setTimeout> | null = null;
   private loadPromise: Promise<void> | null = null;
   private readonly store: JsonFileStore<Record<string, unknown>>;
+  /** Legacy unscoped store to fall back to for reads only; undefined when no legacyStateDir was given or it is identical to the scoped stateDir. */
+  private readonly legacyStore: JsonFileStore<Record<string, unknown>> | undefined;
 
   constructor(options: KVStateOptions) {
     if (!options.stateDir || options.stateDir.trim().length === 0) {
@@ -43,6 +60,9 @@ export class KVState {
     this.stateDir = options.stateDir;
     this.filePath = join(this.stateDir, `session_${this.sessionId}.json`);
     this.store = new JsonFileStore(this.filePath);
+    this.legacyStore = (options.legacyStateDir && options.legacyStateDir !== this.stateDir)
+      ? new JsonFileStore(join(options.legacyStateDir, `session_${this.sessionId}.json`))
+      : undefined;
   }
 
   async get(keys: string[]): Promise<Record<string, unknown>> {
@@ -103,6 +123,34 @@ export class KVState {
       if (!this.data.id) this.data.id = this.sessionId;
       if (!this.data.started_at) this.data.started_at = new Date().toISOString();
       return;
+    }
+
+    if (this.legacyStore) {
+      // A corrupt/unreadable legacy file is treated as ABSENT, not as an
+      // error: before this dual-read existed, that file was never opened at
+      // all and a new session simply started clean. Letting JsonFileStore's
+      // throw escape here would turn "there is junk in the old unscoped state
+      // dir" into a hard failure of an unrelated new session. Logged once (a
+      // KVState instance loads at most once) so the junk is still visible.
+      let legacyLoaded: Record<string, unknown> | null = null;
+      try {
+        legacyLoaded = await this.legacyStore.load();
+      } catch (err) {
+        logger.warn('KVState: legacy state file unreadable — ignoring it and starting clean', {
+          sessionId: this.sessionId,
+          error: summarizeError(err),
+        });
+        legacyLoaded = null;
+      }
+      if (legacyLoaded) {
+        this.data = legacyLoaded;
+        if (!this.data.id) this.data.id = this.sessionId;
+        if (!this.data.started_at) this.data.started_at = new Date().toISOString();
+        // Copy forward into the scoped location so a future load never needs
+        // the legacy fallback again. The legacy file is left in place.
+        this.schedulePersist();
+        return;
+      }
     }
 
     this.data = {

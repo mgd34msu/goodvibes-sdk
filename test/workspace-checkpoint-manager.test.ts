@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { WorkspaceCheckpointManager } from '../packages/sdk/src/platform/workspace/checkpoint/manager.js';
+import { createSessionSurface } from '../packages/sdk/src/platform/runtime/session-surface.js';
 
 function runGit(cwd: string, args: string[]): string {
   const result = Bun.spawnSync(['git', ...args], { cwd });
@@ -322,5 +323,46 @@ describe('WorkspaceCheckpointManager session linkage', () => {
     expect(changes.to).toBe('EMPTY');
     expect(changes.files).toEqual([]);
     expect(changes.unifiedDiff).toBe('');
+  });
+});
+
+describe('WorkspaceCheckpointManager: surface-scoped checkpoint dir', () => {
+  test('a surface option resolves checkpoints under surface.checkpointsDir, not the legacy unscoped path', async () => {
+    const root = tempWorkspace('wcp-surface-');
+    const homeDirectory = tempWorkspace('wcp-surface-home-');
+    const surface = createSessionSurface({ surfaceRoot: 'tui', workingDirectory: root, homeDirectory });
+
+    const manager = new WorkspaceCheckpointManager({ workspaceRoot: root, surface, autoRetention: false });
+    writeFileSync(join(root, 'a.txt'), 'one\n');
+    const cp = await manager.create({ kind: 'manual', label: 'cp1' });
+    expect(cp).not.toBeNull();
+
+    // Lands under the surface's checkpointsDir...
+    expect(existsSync(join(surface.checkpointsDir, 'git', 'HEAD'))).toBe(true);
+    // ...and NOT under the legacy unscoped path.
+    expect(existsSync(join(root, '.goodvibes', 'checkpoints', 'git', 'HEAD'))).toBe(false);
+  });
+
+  test('legacy construction (no surface) is unchanged: still the unscoped <root>/.goodvibes/checkpoints path', async () => {
+    const root = tempWorkspace('wcp-legacy-path-');
+    const manager = new WorkspaceCheckpointManager({ workspaceRoot: root, autoRetention: false });
+    writeFileSync(join(root, 'a.txt'), 'one\n');
+    const cp = await manager.create({ kind: 'manual', label: 'cp1' });
+    expect(cp).not.toBeNull();
+    expect(existsSync(join(root, '.goodvibes', 'checkpoints', 'git', 'HEAD'))).toBe(true);
+  });
+
+  test('an explicit checkpointDir override still wins over a surface', async () => {
+    const root = tempWorkspace('wcp-override-');
+    const homeDirectory = tempWorkspace('wcp-override-home-');
+    const explicitDir = join(root, 'custom-checkpoints');
+    const surface = createSessionSurface({ surfaceRoot: 'tui', workingDirectory: root, homeDirectory });
+
+    const manager = new WorkspaceCheckpointManager({ workspaceRoot: root, surface, checkpointDir: explicitDir, autoRetention: false });
+    writeFileSync(join(root, 'a.txt'), 'one\n');
+    const cp = await manager.create({ kind: 'manual', label: 'cp1' });
+    expect(cp).not.toBeNull();
+    expect(existsSync(join(explicitDir, 'git', 'HEAD'))).toBe(true);
+    expect(existsSync(join(surface.checkpointsDir, 'git', 'HEAD'))).toBe(false);
   });
 });

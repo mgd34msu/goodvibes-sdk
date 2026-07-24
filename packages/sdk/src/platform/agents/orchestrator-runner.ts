@@ -518,7 +518,11 @@ export async function runAgentTask(
     record.provider = record.provider ?? activeRoute.provider.name;
 
     session = new AgentSession(record.id, modelId, record.provider ?? currentModel.provider ?? 'unknown', {
-      sessionsDir: resolveScopedDirectory(context.workingDirectory, context.surfaceRoot, 'sessions'),
+      // Agent journals live under sessions/agents/, a sibling of the user
+      // conversation files in sessions/ — never mixed with them, so a
+      // conversation-scoped sweep can never touch an agent transcript and
+      // vice versa (see append-only-registry.ts's session-journals store).
+      sessionsDir: resolveScopedDirectory(context.workingDirectory, context.surfaceRoot, 'sessions', 'agents'),
       stateDir: resolveScopedDirectory(context.workingDirectory, context.surfaceRoot, 'state'),
     }, context.atRestPolicy);
     session.appendMessage({ type: 'session_config', template: record.template, task: record.task, tools: record.tools, model: modelId, provider: record.provider ?? 'unknown', timestamp: new Date().toISOString() });

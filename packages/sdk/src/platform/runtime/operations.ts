@@ -115,6 +115,7 @@ export {
 export type { RuntimeTransitionResult } from './lifecycle-facade.js';
 export * from './session-maintenance.js';
 export * from './session-persistence.js';
+export * from './session-surface.js';
 export * from './session-return-context.js';
 export * from './retention/index.js';
 export type {

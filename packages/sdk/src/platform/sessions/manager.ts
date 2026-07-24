@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, unlinkSync, renameSync, openSync, fsyncSync, closeSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, readSync, readdirSync, writeFileSync, unlinkSync, renameSync, openSync, fsyncSync, closeSync } from 'fs';
 import { join } from 'path';
 import { logger } from '../utils/logger.js';
 import type { AgentRecord } from '../tools/agent/index.js';
@@ -6,6 +6,7 @@ import type { SessionReturnContextSummary } from '../runtime/session-return-cont
 import type { ConversationTitleSource } from '../core/conversation.js';
 import { summarizeError } from '../utils/error-display.js';
 import { resolveScopedDirectory } from '../runtime/surface-root.js';
+import type { SessionSurface } from '../runtime/session-surface.js';
 
 /**
  * Metadata for a saved session (the first JSONL line).
@@ -19,6 +20,26 @@ export interface SessionMeta {
   returnContext?: SessionReturnContextSummary | undefined;
   /** File format version written into the JSONL meta line. Present on files saved after schemaVersion was introduced. Missing on older files (treat as version 0). */
   schemaVersion?: number | undefined;
+  /**
+   * Who caused this save: `'user'` for an explicit save the user asked for
+   * (e.g. a `/save` command — never expired by the session-conversations
+   * retention store, see runtime/retention/append-only-registry.ts), `'auto'`
+   * for an automatic save (e.g. shutdownRuntime's save-on-exit), which the
+   * bounded default retention policy may reclaim. Defaults to `'auto'` when
+   * omitted at save time. A file with no `saveSource` at all (written before
+   * this field existed) is treated as `'user'` by the retention store — never
+   * assume an old file is safe to expire.
+   *
+   * INVARIANT — `'user'` is STICKY. Once a session file is stamped `'user'`,
+   * no `'auto'` (or omitted) save over the same file can downgrade it back to
+   * `'auto'`; SessionManager.save re-reads the existing file's stamp and keeps
+   * `'user'`. Without this, an automatic periodic save of the same session id
+   * (persistConversation, which defaults to `'auto'`) would quietly strip the
+   * retention exemption off a conversation the user explicitly asked to keep,
+   * and the next sweep would be free to delete it. Only an explicit
+   * `saveSource: 'user'` ever changes the stamp — always upward.
+   */
+  saveSource?: 'user' | 'auto' | undefined;
 }
 
 /**
@@ -52,11 +73,45 @@ export interface SessionInfo {
  */
 export const CURRENT_SESSION_SCHEMA_VERSION = 1;
 
+/**
+ * Turn a session name (or session id) into the filename stem its durable
+ * store file uses: `<sessionsDir>/<stem>.jsonl`. Module-level so a caller that
+ * needs a session's store path — e.g. the recovery layer asking "is this
+ * snapshot older than its own session's last clean save?" in
+ * runtime/session-recovery.ts — derives exactly the same filename this class
+ * writes, without constructing a SessionManager just to reach the rule.
+ * {@link SessionManager.sanitizeName} delegates here, so there is one rule,
+ * not two that can drift apart.
+ */
+export function sanitizeSessionName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9_-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    || 'session';
+}
+
 export class SessionManager {
   private sessionsDir: string;
 
-  constructor(baseDir: string, options?: { readonly surfaceRoot?: string | undefined; readonly sessionsDir?: string | undefined }) {
-    this.sessionsDir = options?.sessionsDir ?? resolveScopedDirectory(baseDir, options?.surfaceRoot, 'sessions');
+  constructor(
+    baseDir: string,
+    options?: {
+      readonly surfaceRoot?: string | undefined;
+      readonly sessionsDir?: string | undefined;
+      /**
+       * A declare-once `SessionSurface` (see platform/runtime/session-surface.ts).
+       * When given, `sessionsDir` is resolved from `surface.sessionsDir`,
+       * taking priority over an explicit `sessionsDir` or `surfaceRoot` option.
+       */
+      readonly surface?: SessionSurface | undefined;
+    },
+  ) {
+    this.sessionsDir = options?.surface?.sessionsDir
+      ?? options?.sessionsDir
+      ?? resolveScopedDirectory(baseDir, options?.surfaceRoot, 'sessions');
     // Clean up orphaned tmp files from a crashed write.
     this._cleanupOrphanTempFiles();
   }
@@ -124,6 +179,45 @@ export class SessionManager {
   }
 
   /**
+   * Read just the `saveSource` stamp off an existing session file's meta line
+   * (line 0), without loading the conversation. Returns undefined when the
+   * file is absent, unreadable, or carries no readable stamp.
+   */
+  private _readExistingSaveSource(filePath: string): 'user' | 'auto' | undefined {
+    if (!existsSync(filePath)) return undefined;
+    let fd: number;
+    try {
+      fd = openSync(filePath, 'r');
+    } catch {
+      return undefined;
+    }
+    try {
+      const buf = Buffer.alloc(8192);
+      const bytesRead = readSync(fd, buf, 0, 8192, 0);
+      const firstLine = buf.toString('utf-8', 0, bytesRead).split('\n')[0];
+      if (!firstLine?.trim()) return undefined;
+      const record = JSON.parse(firstLine) as { type?: unknown; saveSource?: unknown };
+      if (record.type !== 'meta') return undefined;
+      return record.saveSource === 'user' || record.saveSource === 'auto' ? record.saveSource : undefined;
+    } catch {
+      return undefined;
+    } finally {
+      closeSync(fd);
+    }
+  }
+
+  /**
+   * The `saveSource` to stamp on this write. `'user'` is sticky: an explicit
+   * `'user'` always wins, and an `'auto'`/omitted save over a file already
+   * stamped `'user'` PRESERVES `'user'` rather than downgrading it (see the
+   * invariant on {@link SessionMeta.saveSource}).
+   */
+  private _resolveSaveSource(filePath: string, incoming: 'user' | 'auto' | undefined): 'user' | 'auto' {
+    if (incoming === 'user') return 'user';
+    return this._readExistingSaveSource(filePath) === 'user' ? 'user' : (incoming ?? 'auto');
+  }
+
+  /**
    * Save conversation messages to a JSONL session file.
    * Overwrites if file already exists.
    * Returns the sanitized filename used (may differ from input name).
@@ -151,6 +245,7 @@ export class SessionManager {
       provider: meta.provider,
       titleSource: meta.titleSource ?? 'system',
       returnContext: meta.returnContext,
+      saveSource: this._resolveSaveSource(filePath, meta.saveSource),
     };
     lines.push(JSON.stringify(metaRecord));
 
@@ -223,6 +318,7 @@ export class SessionManager {
             ? (record.returnContext as SessionReturnContextSummary)
             : undefined,
           schemaVersion: fileVersion,
+          saveSource: record.saveSource === 'user' || record.saveSource === 'auto' ? record.saveSource : undefined,
         };
       } else if (record.type === 'message') {
         if (record.removed === true) continue;
@@ -365,6 +461,7 @@ export class SessionManager {
           ? (record.returnContext as SessionReturnContextSummary)
           : undefined,
         schemaVersion: fileVersion,
+        saveSource: record.saveSource === 'user' || record.saveSource === 'auto' ? record.saveSource : undefined,
       };
     } catch (err: unknown) {
       // Session file unreadable or missing meta: return null to caller.
@@ -483,12 +580,6 @@ export class SessionManager {
    * collapses multiple hyphens, trims leading/trailing hyphens.
    */
   sanitizeName(name: string): string {
-    return name
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9_-]/g, '')
-      .replace(/-+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      || 'session';
+    return sanitizeSessionName(name);
   }
 }

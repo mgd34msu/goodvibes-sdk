@@ -31,6 +31,8 @@ const KNOWN_APPEND_ONLY_STORES: readonly AppendOnlyStoreId[] = [
   'activity-log',
   'telemetry-local-ledger',
   'session-recovery-snapshots',
+  'session-conversations',
+  'legacy-event-store',
 ];
 
 const dirs: string[] = [];
@@ -73,11 +75,14 @@ describe('start-time retention sweep', () => {
   test('reclaims an over-budget append-only journal file', () => {
     const workingDirectory = tempDir();
     const surfaceRoot = 'tui';
-    const sessionsDir = resolveScopedDirectory(workingDirectory, surfaceRoot, 'sessions');
-    mkdirSync(sessionsDir, { recursive: true });
+    // Agent journals live under sessions/agents/ (see agents/session.ts,
+    // agents/wrfc-workmap.ts) — the session-journals store sweeps that
+    // directory wholesale, never the parent sessions/ (user conversations).
+    const agentJournalsDir = join(resolveScopedDirectory(workingDirectory, surfaceRoot, 'sessions'), 'agents');
+    mkdirSync(agentJournalsDir, { recursive: true });
     // Seed two agent journals well past a tiny total-size budget.
-    const older = join(sessionsDir, 'agent-old.jsonl');
-    const newer = join(sessionsDir, 'agent-new.jsonl');
+    const older = join(agentJournalsDir, 'agent-old.jsonl');
+    const newer = join(agentJournalsDir, 'agent-new.jsonl');
     writeFileSync(older, 'x'.repeat(200_000), 'utf-8');
     writeFileSync(newer, 'y'.repeat(200_000), 'utf-8');
     // Make the older file genuinely older so it is reclaimed first.
@@ -102,16 +107,26 @@ describe('start-time retention sweep', () => {
     const homeDirectory = tempDir();
     const surfaceRoot = 'tui';
     // Materialize each store's target so the sweep genuinely visits it.
-    mkdirSync(resolveScopedDirectory(workingDirectory, surfaceRoot, 'sessions'), { recursive: true });
+    const sessionsDir = resolveScopedDirectory(workingDirectory, surfaceRoot, 'sessions');
+    mkdirSync(sessionsDir, { recursive: true });
     const logDir = join(homeDirectory, 'logs');
     const telemetryDir = join(homeDirectory, 'telemetry');
-    const recoveryDir = resolveScopedDirectory(homeDirectory, surfaceRoot, 'recovery');
+    // Recovery snapshots are workingDirectory-scoped (SessionSurface.recoveryDir), not homeDirectory-scoped.
+    const recoveryDir = resolveScopedDirectory(workingDirectory, surfaceRoot, 'recovery');
     mkdirSync(logDir, { recursive: true });
     mkdirSync(telemetryDir, { recursive: true });
     mkdirSync(recoveryDir, { recursive: true });
     writeFileSync(join(logDir, 'activity.md'), 'log line\n', 'utf-8');
     writeFileSync(join(telemetryDir, 'spans.jsonl'), '{}\n', 'utf-8');
     writeFileSync(join(recoveryDir, 'recovery-s1.jsonl'), '{}\n', 'utf-8');
+    // session-conversations' target is computed from actual saveSource
+    // content (not a static path), so it needs a genuinely eligible ("auto")
+    // file present to count as visited rather than skipped.
+    writeFileSync(
+      join(sessionsDir, 'auto-saved.jsonl'),
+      `${JSON.stringify({ type: 'meta', saveSource: 'auto', timestamp: Date.now(), title: '', model: 'm', provider: 'p' })}\n`,
+      'utf-8',
+    );
 
     const outcome = runAppendOnlyRetentionSweep({ workingDirectory, surfaceRoot, homeDirectory, logDir, telemetryDir });
     // Every registered store swept; the roots omission class (a registered
@@ -121,9 +136,10 @@ describe('start-time retention sweep', () => {
   });
 
   test('a stale never-restored recovery snapshot is reclaimed by the sweep', () => {
-    const homeDirectory = tempDir();
+    const workingDirectory = tempDir();
     const surfaceRoot = 'tui';
-    const recoveryDir = resolveScopedDirectory(homeDirectory, surfaceRoot, 'recovery');
+    // Recovery snapshots are workingDirectory-scoped (SessionSurface.recoveryDir).
+    const recoveryDir = resolveScopedDirectory(workingDirectory, surfaceRoot, 'recovery');
     mkdirSync(recoveryDir, { recursive: true });
     const stale = join(recoveryDir, 'recovery-dead-session.jsonl');
     writeFileSync(stale, 'x'.repeat(1000), 'utf-8');
@@ -131,11 +147,83 @@ describe('start-time retention sweep', () => {
     (require('node:fs') as typeof import('node:fs')).utimesSync(stale, past, past);
 
     const outcome = runAppendOnlyRetentionSweep(
-      { homeDirectory, surfaceRoot },
+      { workingDirectory, surfaceRoot },
       { policyOverride: { redact: true, retention: { maxAgeMs: 30 * 24 * 3600 * 1000, maxTotalBytes: 10_000_000 } } },
     );
     expect(outcome.sweptStores).toContain('session-recovery-snapshots');
     expect(() => statSync(stale)).toThrow();
+  });
+
+  test('a legacy flat agent journal in sessions/ (pre-repoint) is still swept by the session-journals store', () => {
+    const workingDirectory = tempDir();
+    const surfaceRoot = 'tui';
+    const sessionsDir = resolveScopedDirectory(workingDirectory, surfaceRoot, 'sessions');
+    mkdirSync(sessionsDir, { recursive: true });
+    // A legacy agent journal and workmap sitting flat in sessions/, plus a
+    // user conversation file that must never be touched by this sweep.
+    const legacyAgentJournal = join(sessionsDir, 'agent-deadbeef.jsonl');
+    const legacyWorkmap = join(sessionsDir, 'ffffffff_workmap.jsonl');
+    const userConversation = join(sessionsDir, 'my-saved-chat.jsonl');
+    // Real opening records: classification is name AND first-line content
+    // (runtime/retention/legacy-agent-journal-patterns.ts), so these fixtures
+    // are the genuine article — an AgentSession session-start record and a
+    // WrfcWorkmap entry — not just correctly-named filler.
+    writeFileSync(
+      legacyAgentJournal,
+      JSON.stringify({ type: 'meta', agentId: 'agent-deadbeef', model: 'm', provider: 'p', title: '', timestamp: Date.now() }) + '\n'
+        + JSON.stringify({ type: 'message', role: 'assistant', content: 'x'.repeat(800) }) + '\n',
+      'utf-8',
+    );
+    writeFileSync(
+      legacyWorkmap,
+      JSON.stringify({ ts: new Date().toISOString(), wrfcId: 'ffffffff', event: 'chain_passed' }) + '\n',
+      'utf-8',
+    );
+    writeFileSync(userConversation, 'z'.repeat(1000), 'utf-8');
+    const past = Date.now() / 1000 - 90 * 24 * 3600;
+    const fs = require('node:fs') as typeof import('node:fs');
+    fs.utimesSync(legacyAgentJournal, past, past);
+    fs.utimesSync(legacyWorkmap, past, past);
+    fs.utimesSync(userConversation, past, past);
+
+    const outcome = runAppendOnlyRetentionSweep(
+      { workingDirectory, surfaceRoot },
+      { policyOverride: { redact: true, retention: { maxAgeMs: 30 * 24 * 3600 * 1000, maxTotalBytes: 10_000_000 } } },
+    );
+    expect(outcome.sweptStores).toContain('session-journals');
+    expect(() => statSync(legacyAgentJournal)).toThrow();
+    expect(() => statSync(legacyWorkmap)).toThrow();
+    // The user conversation file — same directory, same age — is never swept.
+    expect(statSync(userConversation).size).toBe(1000);
+  });
+
+  test('the legacy-event-store reclaims the dead events.jsonl + event-archives/, never the rest of state/', () => {
+    const workingDirectory = tempDir();
+    const stateDir = join(workingDirectory, '.goodvibes', 'state');
+    const archiveDir = join(stateDir, 'event-archives');
+    mkdirSync(archiveDir, { recursive: true });
+    const eventsFile = join(stateDir, 'events.jsonl');
+    const archivedFile = join(archiveDir, '2026-01.jsonl');
+    const liveRetries = join(stateDir, 'retries.json');
+    const liveKvState = join(stateDir, 'session_deadbeef.json');
+    writeFileSync(eventsFile, '{}\n', 'utf-8');
+    writeFileSync(archivedFile, '{}\n', 'utf-8');
+    writeFileSync(liveRetries, '{}\n', 'utf-8');
+    writeFileSync(liveKvState, '{}\n', 'utf-8');
+    const past = Date.now() / 1000 - 90 * 24 * 3600;
+    const fs = require('node:fs') as typeof import('node:fs');
+    for (const f of [eventsFile, archivedFile, liveRetries, liveKvState]) fs.utimesSync(f, past, past);
+
+    const outcome = runAppendOnlyRetentionSweep(
+      { workingDirectory },
+      { policyOverride: { redact: true, retention: { maxAgeMs: 30 * 24 * 3600 * 1000, maxTotalBytes: 10_000_000 } } },
+    );
+    expect(outcome.sweptStores).toContain('legacy-event-store');
+    expect(() => statSync(eventsFile)).toThrow();
+    expect(() => statSync(archivedFile)).toThrow();
+    // Live state files outside the two dead targets are never touched.
+    expect(statSync(liveRetries).isFile()).toBe(true);
+    expect(statSync(liveKvState).isFile()).toBe(true);
   });
 
   test('stores whose roots are absent are skipped, not errors', () => {
