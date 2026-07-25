@@ -26,6 +26,14 @@ import type { CompanionChatManager } from '../companion/companion-chat-manager.j
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 import { tryResolveApprovalReplyFromChannel, type ApprovalReplyBroker } from './approval-reply.js';
+import { tryResolveWorkProposalReplyFromChannel } from './work-proposal-reply.js';
+import {
+  deliverProposalNotice,
+  gateSurfaceSpawn,
+  startAgreedWork,
+  type SurfaceIngressOrigin,
+} from './surface-conversation-gate.js';
+import type { WorkProposalStore } from '../agents/work-proposal-store.js';
 
 interface PendingNtfyChatReply {
   readonly sessionId: string;
@@ -84,6 +92,14 @@ interface DaemonSurfaceActionContext {
    */
   readonly approvalBroker?: ApprovalReplyBroker | undefined;
   readonly resolveDefaultProviderModel?: (() => { provider: string; model: string } | null) | undefined;
+  /**
+   * Pending work proposals for the conversation-first gate. Absent = the gate
+   * is not installed and inbound messages spawn as they always did, which is
+   * what isolated contexts and older embedders get.
+   */
+  readonly workProposals?: WorkProposalStore | undefined;
+  /** Put one short line on the channel a binding points at. */
+  readonly deliverSurfaceNotice?: ((binding: import('../automation/routes.js').AutomationRouteBinding | undefined, text: string) => Promise<boolean>) | undefined;
 }
 
 export class DaemonSurfaceActionHelper {
@@ -95,17 +111,32 @@ export class DaemonSurfaceActionHelper {
   constructor(private readonly context: DaemonSurfaceActionContext) {}
 
   buildSurfaceAdapterContext(): SurfaceAdapterContext {
+    // One cell per inbound message (see SurfaceIngressOrigin). authorizeSurfaceIngress
+    // fills it; the gated trySpawnAgent below reads it.
+    const origin: { current: SurfaceIngressOrigin | null } = { current: null };
     return {
       serviceRegistry: this.context.serviceRegistry,
       secretsManager: this.context.secretsManager,
       configManager: this.context.configManager,
       routeBindings: this.context.routeBindings,
       sessionBroker: this.context.sessionBroker,
-      authorizeSurfaceIngress: (input) => this.authorizeSurfaceIngress(input),
+      authorizeSurfaceIngress: (input) => {
+        origin.current = {
+          surface: input.surface,
+          ...(input.text !== undefined ? { text: input.text } : {}),
+          ...(input.userId !== undefined ? { userId: input.userId } : {}),
+          ...(input.channelId !== undefined ? { channelId: input.channelId } : {}),
+          ...(input.threadId !== undefined ? { threadId: input.threadId } : {}),
+        };
+        return this.authorizeSurfaceIngress(input);
+      },
       parseSurfaceControlCommand: (text) => this.parseSurfaceControlCommand(text),
       performSurfaceControlCommand: (command) => this.performSurfaceControlCommand(command),
       performInteractiveSurfaceAction: (actionId, surface, request) => this.performInteractiveSurfaceAction(actionId, surface, request),
-      trySpawnAgent: (input, logLabel, sessionId) => this.context.trySpawnAgent(input, logLabel, sessionId),
+      // The shared spawn boundary: every channel surface adapter routes its
+      // spawn through the conversation-first gate (surface-conversation-gate.ts).
+      trySpawnAgent: (input, logLabel, sessionId) =>
+        gateSurfaceSpawn(this.conversationGateDeps(), origin.current, input, logLabel, sessionId),
       queueSurfaceReplyFromBinding: (binding, input) => this.context.queueSurfaceReplyFromBinding(binding, input),
       publishConversationFollowup: (sessionId, envelope) => this.publishConversationFollowup(sessionId, envelope),
       queueNtfyChatReply: (input) => this.queueNtfyChatReply(input),
@@ -127,9 +158,39 @@ export class DaemonSurfaceActionHelper {
     };
   }
 
+  /** The slice of this helper's context the conversation gate consults. */
+  private conversationGateDeps() {
+    return {
+      configManager: this.context.configManager,
+      routeBindings: this.context.routeBindings,
+      sessionBroker: this.context.sessionBroker,
+      trySpawnAgent: this.context.trySpawnAgent,
+      queueSurfaceReplyFromBinding: this.context.queueSurfaceReplyFromBinding,
+      workProposals: this.context.workProposals,
+      deliverSurfaceNotice: this.context.deliverSurfaceNotice,
+    };
+  }
+
   async authorizeSurfaceIngress(input: ChannelIngressPolicyInput): Promise<ChannelPolicyDecision> {
     const decision = await this.context.channelPolicy.evaluateIngress(input);
     if (!decision.allowed) return decision;
+    // An answer to a pending work proposal is consumed here, on the shared
+    // ingress hook every surface adapter already calls — which is what makes
+    // agreement answerable over whatever channel the proposal went out on,
+    // with no per-adapter wiring and no walk to a terminal.
+    const proposalReply = await tryResolveWorkProposalReplyFromChannel(input, {
+      proposals: this.context.workProposals,
+      startAgreedWork: (proposal, note) => startAgreedWork(this.conversationGateDeps(), proposal, note),
+      replyOnChannel: async (proposal, text) => {
+        const binding = proposal.routeId ? this.context.routeBindings.getBinding(proposal.routeId) : undefined;
+        await deliverProposalNotice(this.context, binding, text);
+      },
+    });
+    if (proposalReply.consumed) {
+      // Report not-allowed so the adapter neither creates a session nor sends
+      // a chat turn: the answer has already been acted on.
+      return { ...decision, allowed: false, reason: `work-proposal-${proposalReply.action}` };
+    }
     const consumed = await tryResolveApprovalReplyFromChannel(input, decision, {
       approvalBroker: this.context.approvalBroker,
       routeBindings: this.context.routeBindings,

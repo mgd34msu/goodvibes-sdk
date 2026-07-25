@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { constantTimeEquals, parseJsonRecord, readBearerOrHeaderToken, readTextBodyWithinLimit } from '../helpers.js';
 import type { SurfaceAdapterContext } from '../types.js';
+import { inboundDedupKey, ntfyInboundDedup } from '../inbound-dedup.js';
 import {
   isGoodVibesNtfyDeliveryEcho,
   resolveGoodVibesNtfyTopics,
@@ -61,6 +62,24 @@ export async function handleNtfySurfacePayload(
   if (!topic) {
     return Response.json({ error: 'Missing ntfy topic' }, { status: 400 });
   }
+  // One ntfy message can arrive twice: once on the long-lived JSON
+  // subscription and once on the HTTP webhook route (and again after a
+  // subscription reconnect resumes from an inclusive `since`). Both land here,
+  // so this is the single place that can tell the copies apart. Without it the
+  // pipeline ran twice and two agents worked the same message.
+  const messageId = typeof body.id === 'string' ? body.id : undefined;
+  const dedupKey = inboundDedupKey('ntfy', topic, messageId);
+  if (dedupKey && !ntfyInboundDedup.claim(dedupKey)) {
+    return Response.json({
+      acknowledged: true,
+      queued: false,
+      outcome: 'ignored',
+      reason: 'duplicate-delivery',
+      ignored: 'duplicate-delivery',
+      topic,
+    });
+  }
+
   const topics = resolveConfiguredNtfyTopics(context);
   if (topic === topics.chatTopic) {
     return handleNtfyChatPayload(body, context, topic, message);

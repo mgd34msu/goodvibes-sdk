@@ -1,5 +1,10 @@
+import { join } from 'node:path';
 import { AgentManager } from '../tools/agent/index.js';
 import { resolveHostBinding } from './host-resolver.js';
+import { WorkProposalStore } from '../agents/work-proposal-store.js';
+import { readConversationGateConfig } from '../agents/conversation-gate.js';
+import { logger } from '../utils/logger.js';
+import { summarizeError } from '../utils/error-display.js';
 import type { ConfigManager } from '../config/manager.js';
 import { RuntimeEventBus } from '../runtime/events/index.js';
 import { createRuntimeStore } from '../runtime/store/index.js';
@@ -455,6 +460,20 @@ export function createDaemonFacadeCollaborators(
     authToken: options.authToken,
     surfaceDeliveryEnabled: options.surfaceDeliveryEnabled,
   });
+  // Pending work proposals for the conversation-first spawn gate. Persisted
+  // beside the other control-plane state so a proposal survives a daemon
+  // restart; the store validates and reaps on load, so a stale one is not
+  // answerable after it expires.
+  const workProposals = new WorkProposalStore({
+    storePath: join(runtime.configManager.getControlPlaneConfigDir(), 'work-proposals.json'),
+    maxPending: readConversationGateConfig(runtime.configManager).maxPendingProposals,
+  });
+  void workProposals.init().catch((error: unknown) => {
+    logger.warn('WorkProposalStore init failed; the conversation gate will re-propose', {
+      error: summarizeError(error),
+    });
+  });
+
   const surfaceActionHelper = new DaemonSurfaceActionHelper({
     serviceRegistry: runtime.serviceRegistry,
     secretsManager: runtime.runtimeServices.secretsManager,
@@ -475,6 +494,8 @@ export function createDaemonFacadeCollaborators(
     handleApprovalAction: options.handleApprovalAction,
     approvalBroker: runtime.approvalBroker,
     resolveDefaultProviderModel: options.resolveDefaultProviderModel,
+    workProposals,
+    deliverSurfaceNotice: (binding, text) => surfaceDeliveryHelper.deliverSurfaceNotice(binding, text),
   });
   const controlPlaneHelper = new DaemonControlPlaneHelper({
     authToken: options.authToken,
@@ -606,6 +627,7 @@ export function createDaemonFacadeCollaborators(
     httpRouter,
     providerRuntime,
     builtinChannels,
+    workProposals,
   };
 }
 

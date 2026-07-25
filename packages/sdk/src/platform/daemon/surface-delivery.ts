@@ -9,6 +9,7 @@ import type { ChannelSurface } from '../channels/index.js';
 import { SlackIntegration, DiscordIntegration, NtfyIntegration } from '../integrations/index.js';
 import { logger } from '../utils/logger.js';
 import { validatePublicWebhookUrl } from '../utils/url-safety.js';
+import { resolveReachableBaseUrl } from '../utils/reachable-base-url.js';
 import type { SharedApprovalRecord } from '../control-plane/index.js';
 import type { PendingSurfaceReply } from './types.js';
 import { summarizeError } from '../utils/error-display.js';
@@ -92,6 +93,38 @@ export class DaemonSurfaceDeliveryHelper {
     if (!pending) return;
     this.context.pendingSurfaceReplies.set(input.agentId, pending);
     this.context.channelReplyPipeline.trackPending(pending);
+  }
+
+  /**
+   * Send a single short message to whatever surface a binding points at,
+   * without creating a tracked agent reply.
+   *
+   * This is what the conversation-first gate uses to put a work proposal (and
+   * its accept/decline acknowledgement) on the channel the message arrived on.
+   * It deliberately reuses the existing per-surface fan-out, so a proposal is
+   * deliverable on every surface the platform can already talk to — there is
+   * no second, gate-only delivery path to keep in sync.
+   */
+  async deliverSurfaceNotice(binding: RouteBinding | undefined, text: string): Promise<boolean> {
+    if (!binding || !text.trim()) return false;
+    if (!isSupportedDeliverySurface(binding.surfaceKind)) return false;
+    if (!this.context.surfaceDeliveryEnabled(binding.surfaceKind)) return false;
+    const pending = this.buildPendingSurfaceReply(binding, {
+      agentId: `notice:${binding.id}:${Date.now()}`,
+      task: text,
+    });
+    if (!pending) return false;
+    try {
+      await this.deliverSurfaceProgress(pending, text);
+      return true;
+    } catch (error) {
+      logger.warn('DaemonServer: surface notice delivery failed', {
+        surface: binding.surfaceKind,
+        routeId: binding.id,
+        error: summarizeError(error),
+      });
+      return false;
+    }
   }
 
   queueWebhookReply(input: WebhookReplyInput): void {
@@ -266,8 +299,9 @@ export class DaemonSurfaceDeliveryHelper {
     const topic = pending.topic ?? String(this.context.configManager.get('surfaces.ntfy.topic') ?? '');
     if (!topic) return;
     const ntfy = new NtfyIntegration(baseUrl, token ?? undefined);
-    const webBase = String(this.context.configManager.get('controlPlane.baseUrl') ?? this.context.configManager.get('web.publicBaseUrl') ?? '');
-    const baseAction = webBase.replace(/\/+$/, '');
+    // undefined = nothing configured resolves to an address a phone could
+    // reach; publish without a click target rather than with a dead one.
+    const baseAction = resolveReachableBaseUrl(this.context.configManager);
     await ntfy.publish(topic, message, {
       title: `Agent ${pending.agentId}`,
       ...(baseAction
@@ -356,9 +390,9 @@ export class DaemonSurfaceDeliveryHelper {
   }
 
   controlPlaneWebUrl(input: { readonly approvalId?: string; readonly sessionId?: string | undefined }): string | undefined {
-    const base = String(this.context.configManager.get('controlPlane.baseUrl') ?? this.context.configManager.get('web.publicBaseUrl') ?? '');
+    const base = resolveReachableBaseUrl(this.context.configManager);
     if (!base) return undefined;
-    const url = new URL(`${base.replace(/\/+$/, '')}/api/control-plane/web`);
+    const url = new URL(`${base}/api/control-plane/web`);
     if (input.approvalId) url.searchParams.set('approval', input.approvalId);
     if (input.sessionId) url.searchParams.set('session', input.sessionId);
     return url.toString();

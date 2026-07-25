@@ -1,5 +1,7 @@
 export * from './archetypes.js';
 export * from './communication-policy.js';
+export * from './conversation-gate.js';
+export * from './work-proposal-store.js';
 export * from './completion-report.js';
 export * from './message-bus-core.js';
 export * from './message-bus.js';

@@ -6,6 +6,7 @@ import { resolveSecretInput } from '../../config/secret-refs.js';
 import { ControlPlaneGateway } from '../../control-plane/gateway.js';
 import { DiscordIntegration, HomeAssistantIntegration, NtfyIntegration, SlackIntegration } from '../../integrations/index.js';
 import { validatePublicWebhookUrl } from '../../utils/url-safety.js';
+import { resolveReachableBaseUrl } from '../../utils/reachable-base-url.js';
 import type { ChannelDeliveryStrategy } from './types.js';
 import {
   appendAttachmentSummary,
@@ -179,11 +180,13 @@ export function createNtfyDeliveryStrategy(
       const topic = request.target.address ?? String(configManager.get('surfaces.ntfy.topic') ?? '');
       if (!topic) throw new Error('Missing ntfy topic');
       const ntfy = new NtfyIntegration(baseUrl, token ?? undefined);
-      const baseUrlHint = String(configManager.get('controlPlane.baseUrl') ?? configManager.get('web.publicBaseUrl') ?? '');
+      // undefined here means nothing configured resolves to a reachable
+      // address — omit the click target rather than shipping a dead link.
+      const baseUrlHint = resolveReachableBaseUrl(configManager);
       const primaryAttachment = attachments[0]!;
       await ntfy.publish(topic, appendAttachmentSummary(request.body, attachments), {
         title: request.target.label ?? titleFromBody(request.body),
-        ...(request.includeLinks && baseUrlHint ? { click: `${baseUrlHint.replace(/\/+$/, '')}/api/control-plane/web` } : {}),
+        ...(request.includeLinks && baseUrlHint ? { click: `${baseUrlHint}/api/control-plane/web` } : {}),
         ...(primaryAttachment?.contentUrl ? { attach: primaryAttachment.contentUrl } : {}),
         markGoodVibesOrigin: true,
       });

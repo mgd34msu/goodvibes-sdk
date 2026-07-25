@@ -9,7 +9,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * webui keeps its ergonomic wrappers (route interpolation, per-family typed
  * call sites) hand-written on top of these generated primitives.
  *
- * Contract product version: 1.13.1
+ * Contract product version: 1.14.0
  * Methods: 415 total, 364 REST-routed, 51 ws-only invoke.
  */
 

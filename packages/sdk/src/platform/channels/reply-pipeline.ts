@@ -13,6 +13,7 @@ import type { RouteBindingManager } from './route-manager.js';
 import { summarizeError } from '../utils/error-display.js';
 import { logger } from '../utils/logger.js';
 
+import { markEventsDelivered, selectUndeliveredEvents } from './reply-delta.js';
 const MAX_BUFFERED_EVENTS = 64;
 const DEFAULT_PROGRESS_INTERVAL_MS = 7_500;
 
@@ -38,6 +39,13 @@ interface ReplyPipelineDeps {
 interface ReplyBufferState {
   readonly pending: TrackedChannelReply;
   readonly events: ChannelRenderEvent[];
+  /**
+   * Ids of events already published to the surface — the delta watermark.
+   * Progress updates render only the events NOT in this set, so a notification
+   * carries what just happened rather than the whole accumulated log replayed
+   * from the top on every tick.
+   */
+  readonly deliveredEventIds: Set<string>;
   lastDeliveredText?: string | undefined;
   lastDeliveredAt?: number | undefined;
 }
@@ -502,6 +510,7 @@ export class ChannelReplyPipeline {
     this.buffers.set(pending.agentId, {
       pending,
       events: [],
+      deliveredEventIds: new Set<string>(),
     });
     if (typeof pending.workflowChainId === 'string' && pending.workflowChainId.length > 0) {
       this.workflowChains.set(pending.workflowChainId, pending.agentId);
@@ -529,12 +538,25 @@ export class ChannelReplyPipeline {
     const state = this.buffers.get(agentId);
     if (!state) return null;
     const policy = await this.resolvePolicy(state.pending.surfaceKind);
-    const text = buildRenderedText(policy.surface === 'ntfy' ? '' : explicitText ?? '', state.events, policy, 'progress');
+    const explicit = policy.surface === 'ntfy' ? '' : explicitText ?? '';
+    // Delta only. Rendering the whole accumulated buffer on every tick is what
+    // made each notification re-send everything that came before it, so line
+    // counts climbed 3 -> 10 -> 13 while the reader learned nothing new.
+    const freshEvents = selectUndeliveredEvents(state, state.events);
+    if (freshEvents.length === 0 && explicit.trim().length === 0) return null;
+    const text = buildRenderedText(explicit, freshEvents, policy, 'progress');
     if (!text) return null;
-    if (!force && state.lastDeliveredText === text && (this.now() - (state.lastDeliveredAt ?? 0)) < DEFAULT_PROGRESS_INTERVAL_MS) {
+    // Identical content is never republished, forced or not. `force` exists to
+    // bypass the pacing interval for something worth interrupting for; it is
+    // not authorization to send the same body again. Letting it skip this
+    // check is what turned one workstream into 14 copies of one message.
+    if (state.lastDeliveredText === text) return null;
+    if (!force && (this.now() - (state.lastDeliveredAt ?? 0)) < DEFAULT_PROGRESS_INTERVAL_MS && state.lastDeliveredText !== undefined) {
       return null;
     }
-    const result = await this.dispatch(state, policy, 'progress', text, state.events.slice(-policy.maxEventsPerUpdate));
+    const delivered = freshEvents.slice(-policy.maxEventsPerUpdate);
+    const result = await this.dispatch(state, policy, 'progress', text, delivered);
+    markEventsDelivered(state, freshEvents);
     state.lastDeliveredText = text;
     state.lastDeliveredAt = this.now();
     return result;
@@ -557,13 +579,25 @@ export class ChannelReplyPipeline {
       text: 'Completed',
       metadata: {},
     };
+    const renderEvents = finalEvents.length > 0 ? finalEvents : [...state.events, statusEvent];
+    const text = buildRenderedText(explicitText, renderEvents, policy, 'final');
+    // A chain that keeps tracking (ntfy workflow chains) can reach this more
+    // than once. An identical final body is a duplicate notification, not a
+    // second outcome — publish it once.
+    if (text && state.lastDeliveredText === text) {
+      if (!options.keepTracking) this.untrack(agentId);
+      return null;
+    }
     const result = await this.dispatch(
       state,
       policy,
       'final',
-      buildRenderedText(explicitText, finalEvents.length > 0 ? finalEvents : [...state.events, statusEvent], policy, 'final'),
+      text,
       finalEvents.length > 0 ? finalEvents : [...state.events.slice(-policy.maxEventsPerUpdate + 1), statusEvent],
     );
+    markEventsDelivered(state, renderEvents);
+    state.lastDeliveredText = text;
+    state.lastDeliveredAt = this.now();
     if (!options.keepTracking) {
       this.untrack(agentId);
     }
@@ -673,6 +707,7 @@ export class ChannelReplyPipeline {
         rootAgentId,
       },
       events: [],
+      deliveredEventIds: new Set<string>(),
     });
   }
 

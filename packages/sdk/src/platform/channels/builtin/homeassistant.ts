@@ -8,6 +8,7 @@ import type {
   ChannelToolDescriptor,
 } from '../types.js';
 import type { BuiltinChannelRuntimeDeps } from './shared.js';
+import { resolveReachableBaseUrl } from '../../utils/reachable-base-url.js';
 
 export const HOME_ASSISTANT_SURFACE = 'homeassistant' as const satisfies ChannelSurface;
 export const HOME_ASSISTANT_WEBHOOK_PATH = '/webhook/homeassistant';
@@ -291,10 +292,10 @@ export async function runHomeAssistantOperatorAction(
 }
 
 export function buildHomeAssistantManifest(deps: Pick<BuiltinChannelRuntimeDeps, 'configManager'>): HomeAssistantSurfaceManifest {
-  const baseUrl = firstNonEmpty(
-    String(deps.configManager.get('controlPlane.baseUrl') ?? ''),
-    String(deps.configManager.get('web.publicBaseUrl') ?? ''),
-  ) ?? '';
+  // A wildcard bind address is not a destination — resolveReachableBaseUrl
+  // substitutes this host's LAN address, or yields nothing so the manifest
+  // advertises no URL rather than an unreachable one.
+  const baseUrl = resolveReachableBaseUrl(deps.configManager) ?? '';
   const eventType = String(deps.configManager.get('surfaces.homeassistant.eventType') ?? HOME_ASSISTANT_DEFAULT_EVENT_TYPE);
   const deviceId = String(deps.configManager.get('surfaces.homeassistant.deviceId') ?? 'goodvibes-daemon') || 'goodvibes-daemon';
   return {
