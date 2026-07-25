@@ -6,6 +6,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ## [1.14.0] - 2026-07-25
 
+### Added
+
+- **The `hey goodvibes` wake-word classifier is published and pinned.** The
+  model is hosted at the same append-only release tag as the voice engine
+  bundles, in both onnx and TensorFlow Lite form, each with a checksum sidecar
+  and a required attribution NOTICE. `WAKE_WORD_MODELS` pins the URL, byte size
+  and sha256 of every artifact, and adopting a newer model is a one-line pin
+  change rather than re-plumbing — an accent-diverse retrain is expected to
+  replace this one.
+
+  The manifest records a recommended detection threshold of **0.9**, not
+  openWakeWord's shipped default of 0.5, which is too low for this phrase. It
+  also records, as data rather than a footnote, that the recall figures come
+  from synthetic speech: no human recording of the phrase exists yet, so
+  recall has no real microphones behind it. The false-accept figures are
+  measured on 81 hours of real human speech.
+
+  This is the artifact, its pin, and its attribution only — the wake-word
+  engine, config surface, provisioning flow and UI are not built yet. See
+  `docs/wake-word-model.md`.
+
 ### Changed
 
 - **A message from a channel no longer starts a workstream on its own.** An
@@ -44,6 +65,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   and each delivery ran the whole pipeline. Inbound messages are now
   de-duplicated across ingress paths by message id, with a bounded, expiring
   cache shared by every route.
+- **The release pack gate works on npm 11 and newer.** `npm pack --json` used to
+  emit an array of pack results and now emits an object keyed by package name.
+  The gate read the first array element, so on a newer npm it got `undefined`
+  and failed with an opaque error about a missing filename. It now accepts the
+  array, bare-object and name-keyed shapes, and ignores `npm notice` chatter
+  printed onto stdout by version-manager shims. CI pins node 22 and was never
+  affected; a contributor on a newer npm was.
 - **Notification links point somewhere reachable.** When the control plane is
   configured to bind every interface, a notification's click target could carry
   the wildcard bind address verbatim, so tapping it on a phone went nowhere.

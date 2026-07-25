@@ -315,6 +315,82 @@ export function run(command: string, args: readonly string[], cwd: string, optio
   }
 }
 
+/**
+ * npm wrappers (version-manager shims, "npm notice" lines) sometimes print plain
+ * text on stdout alongside the JSON document. Take the first balanced JSON value
+ * and ignore whatever surrounds it, tracking string literals so braces inside
+ * paths do not confuse the depth count.
+ */
+function extractJsonDocument(raw: string): string | undefined {
+  const start = raw.search(/[[{]/);
+  if (start < 0) return undefined;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let index = start; index < raw.length; index += 1) {
+    const char = raw[index];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (char === '\\') escaped = true;
+      else if (char === '"') inString = false;
+      continue;
+    }
+    if (char === '"') {
+      inString = true;
+      continue;
+    }
+    if (char === '[' || char === '{') depth += 1;
+    else if (char === ']' || char === '}') {
+      depth -= 1;
+      if (depth === 0) return raw.slice(start, index + 1);
+    }
+  }
+  return undefined;
+}
+
+function looksLikePackResult(value: unknown): value is { readonly filename: string } {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  return typeof (value as { filename?: unknown }).filename === 'string';
+}
+
+/**
+ * npm has emitted `npm pack --json` in more than one shape:
+ * - npm 10/11 emit an ARRAY: `[{ filename, files, ... }]`
+ * - npm 12 emits an OBJECT keyed by package name: `{ "<name>": { filename, ... } }`
+ *
+ * Reading `[0]` off the object form yields undefined and fails later with an
+ * opaque `result.filename` error, so accept every shape explicitly.
+ */
+export function selectPackResult(parsed: unknown): { readonly filename: string } | undefined {
+  if (Array.isArray(parsed)) return parsed.find(looksLikePackResult);
+  if (looksLikePackResult(parsed)) return parsed;
+  if (parsed && typeof parsed === 'object') {
+    return Object.values(parsed as Record<string, unknown>).find(looksLikePackResult);
+  }
+  return undefined;
+}
+
+export function parseNpmPackJson(raw: string): { readonly filename: string } {
+  const document = extractJsonDocument(raw);
+  if (document === undefined) {
+    throw new Error(`npm pack --json printed no JSON document; npm emitted: ${raw.trim().slice(0, 400)}`);
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(document);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new Error(`npm pack --json printed JSON that could not be parsed (${reason}); npm emitted: ${raw.trim().slice(0, 400)}`);
+  }
+  const result = selectPackResult(parsed);
+  if (!result) {
+    throw new Error(
+      `npm pack --json returned an unrecognized JSON shape; expected an array of pack results or an object keyed by package name, but npm emitted: ${raw.trim().slice(0, 400)}`,
+    );
+  }
+  return result;
+}
+
 export function packStage(stageDir: string, packDestination: string): { readonly filename: string } {
   const output = run(
     'npm',
@@ -322,7 +398,7 @@ export function packStage(stageDir: string, packDestination: string): { readonly
     stageDir,
     { stdio: 'pipe' },
   );
-  return JSON.parse(output)[0];
+  return parseNpmPackJson(output);
 }
 
 export function inspectPackedManifest(tarballPath: string): PackageManifest {
