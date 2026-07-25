@@ -4,6 +4,20 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
+## [1.13.1] - 2026-07-25
+
+### Fixed
+
+- **The append-only retention scheduler is reachable.** `RuntimeServices`
+  requires an `appendOnlyRetentionScheduler`, but `AppendOnlyRetentionScheduler`
+  and its options type were not exported from any public entry point in 1.13.0.
+  A host that composes its own `RuntimeServices` — rather than taking the one
+  `createRuntimeServices` builds — could not satisfy the interface at all, and
+  so could not run the periodic sweep that release introduced. The class,
+  `AppendOnlyRetentionSchedulerOptions` and `APPEND_ONLY_SWEEP_INTERVAL_MS` are
+  now exported from the retention barrel, which means they arrive with the rest
+  of `operations` from `@pellux/goodvibes-sdk/platform/runtime`.
+
 ## [1.13.0] - 2026-07-25
 
 ### Added
