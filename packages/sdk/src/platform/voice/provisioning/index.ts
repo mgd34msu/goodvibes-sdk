@@ -28,6 +28,17 @@ export {
 } from './manifest.js';
 
 export {
+  WAKE_WORD_MODELS,
+  DEFAULT_WAKE_WORD_MODEL_VERSION,
+  WAKE_WORD_FRONT_END_SOURCING,
+  OPENWAKEWORD_UPSTREAM_DEFAULT_THRESHOLD,
+  resolveWakeWordModel,
+  wakeWordProvisionBytes,
+  type WakeWordModelManifest,
+  type WakeWordModelMeasurements,
+} from './wake-word-manifest.js';
+
+export {
   provisionLocalVoiceRuntime,
   localVoiceRuntimeStatus,
   resolveManagedVoicePaths,
