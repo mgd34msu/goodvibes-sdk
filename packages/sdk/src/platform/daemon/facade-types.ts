@@ -87,6 +87,8 @@ export interface DaemonFacadeCollaborators {
   readonly httpRouter: DaemonHttpRouter;
   readonly providerRuntime: ChannelProviderRuntimeManager;
   readonly builtinChannels: BuiltinChannelRuntime;
+  /** Pending work proposals for the conversation-first spawn gate. */
+  readonly workProposals: import('../agents/work-proposal-store.js').WorkProposalStore;
 }
 
 type JsonBody = Record<string, unknown>;

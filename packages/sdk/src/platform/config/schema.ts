@@ -4,6 +4,7 @@
 
 import { coreConfigDefaults, coreHeadConfigSettings, coreTailConfigSettings } from './schema-domain-core.js';
 import { runtimeConfigDefaults, runtimePrimaryConfigSettings, runtimeSecondaryConfigSettings } from './schema-domain-runtime.js';
+import { conversationGateConfigDefaults, conversationGateConfigSettings } from './schema-domain-conversation-gate.js';
 import { atRestConfigDefaults, atRestConfigSettings } from './schema-domain-at-rest.js';
 import { learningConfigDefaults, learningConfigSettings } from './schema-domain-learning.js';
 import { powerConfigDefaults, powerConfigSettings } from './schema-domain-power.js';
@@ -44,6 +45,7 @@ export const DEFAULT_CONFIG = {
   network: runtimeConfigDefaults.network,
   relay: runtimeConfigDefaults.relay,
   runtime: runtimeConfigDefaults.runtime,
+  conversationGate: conversationGateConfigDefaults.conversationGate,
   telemetry: runtimeConfigDefaults.telemetry,
   atRest: atRestConfigDefaults.atRest,
   worktree: runtimeConfigDefaults.worktree,
@@ -72,6 +74,7 @@ export const DEFAULT_CONFIG = {
 export const CONFIG_SCHEMA: ConfigSetting[] = [
   ...coreHeadConfigSettings,
   ...runtimePrimaryConfigSettings,
+  ...conversationGateConfigSettings,
   ...atRestConfigSettings,
   ...learningConfigSettings,
   ...powerConfigSettings,

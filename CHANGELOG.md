@@ -4,6 +4,54 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
+## [1.14.0] - 2026-07-25
+
+### Changed
+
+- **A message from a channel no longer starts a workstream on its own.** An
+  inbound message from ntfy, Telegram, Slack, or Home Assistant used to spawn an
+  agent run directly. It now gets a conversational reply, and when the agent
+  judges that the message warrants actual work it PROPOSES that work and waits
+  for you to agree. The confirmation is answered on whatever channel the
+  proposal arrived on, so a proposal made over Telegram is accepted over
+  Telegram.
+
+  Work you already authorized is unaffected and never re-asks: schedules,
+  triggers, on-exit chains, generic webhooks, and a proposal you just agreed to
+  were all authorized when they were set up. The terminal app is unchanged —
+  you are sitting in front of it and typed the thing, so work starting is the
+  expected outcome.
+
+  The behavior is configurable. `propose` is the default described above;
+  `confirm-all` asks before every agent run, including messages that read as
+  pure chat, for a noisy or shared channel; `off` restores the previous
+  behavior where an inbound message starts work immediately.
+
+  Pending proposals are bounded, expire on their own, are validated when
+  reloaded, and report what they dropped and why, so a proposal that vanished
+  is never a mystery.
+
+### Fixed
+
+- **Notifications send what is new instead of the whole log.** A progress
+  notification used to re-send the entire accumulated event log every time, so
+  each update was longer than the last and mostly a repeat of it. Delivery now
+  tracks which events have already been published and sends only the ones that
+  have not, and an identical repeated message is suppressed rather than sent
+  twice.
+- **One inbound message can no longer start two agents.** The same message could
+  reach the adapter over both a long-lived subscription and the webhook route,
+  and each delivery ran the whole pipeline. Inbound messages are now
+  de-duplicated across ingress paths by message id, with a bounded, expiring
+  cache shared by every route.
+- **Notification links point somewhere reachable.** When the control plane is
+  configured to bind every interface, a notification's click target could carry
+  the wildcard bind address verbatim, so tapping it on a phone went nowhere.
+  The link now carries the machine's own routable address on the network, and
+  when there is no such address to use, the link is omitted rather than
+  shipped broken. A loopback address is left alone — it is the shipped default
+  and is correct for a notification clicked on the host itself.
+
 ## [1.13.1] - 2026-07-25
 
 ### Fixed

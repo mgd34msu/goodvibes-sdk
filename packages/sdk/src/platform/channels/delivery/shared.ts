@@ -8,6 +8,7 @@ import type {
   ChannelDeliveryTarget,
 } from './types.js';
 import { instrumentedFetch } from '../../utils/fetch-with-timeout.js';
+import { resolveReachableBaseUrl } from '../../utils/reachable-base-url.js';
 
 export function resolveChannelDeliverySurfaceKind(
   target: ChannelDeliveryTarget,
@@ -29,9 +30,9 @@ function buildArtifactContentPath(artifactId: string): string {
 }
 
 function buildArtifactContentUrl(configManager: ConfigManager, artifactId: string): string | undefined {
-  const baseUrl = String(configManager.get('controlPlane.baseUrl') ?? configManager.get('web.publicBaseUrl') ?? '').trim();
+  const baseUrl = resolveReachableBaseUrl(configManager);
   if (!baseUrl) return undefined;
-  return new URL(buildArtifactContentPath(artifactId), baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`).toString();
+  return new URL(buildArtifactContentPath(artifactId), `${baseUrl}/`).toString();
 }
 
 export async function resolveAttachments(

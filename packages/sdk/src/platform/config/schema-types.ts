@@ -607,7 +607,7 @@ export type ConfigKey =
   | 'controlPlane.hostMode'
   | 'controlPlane.host'
   | 'controlPlane.port'
-  | 'controlPlane.baseUrl'
+  | 'controlPlane.baseUrl' | 'conversationGate.mode' | 'conversationGate.proposalTtlMs' | 'conversationGate.maxPendingProposals'
   | 'controlPlane.streamMode'
   | 'controlPlane.allowRemote'
   | 'controlPlane.trustProxy'
@@ -1008,7 +1008,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'controlPlane.hostMode' ? 'local' | 'network' | 'custom' :
   K extends 'controlPlane.host' ? string :
   K extends 'controlPlane.port' ? number :
-  K extends 'controlPlane.baseUrl' ? string :
+  K extends 'controlPlane.baseUrl' ? string : K extends 'conversationGate.mode' ? 'propose' | 'confirm-all' | 'off' : K extends 'conversationGate.proposalTtlMs' ? number : K extends 'conversationGate.maxPendingProposals' ? number :
   K extends 'controlPlane.streamMode' ? 'sse' | 'websocket' | 'both' :
   K extends 'controlPlane.allowRemote' ? boolean :
   K extends 'controlPlane.trustProxy' ? boolean :
