@@ -4498,10 +4498,14 @@ Process automation jobs queued for the next heartbeat.
               "reasoningEffort": {
                 "type": "string",
                 "enum": [
+                  "none",
                   "instant",
+                  "minimal",
                   "low",
                   "medium",
-                  "high"
+                  "high",
+                  "xhigh",
+                  "max"
                 ]
               },
               "thinking": {
@@ -6113,10 +6117,14 @@ Create a durable automation job.
         "reasoningEffort": {
           "type": "string",
           "enum": [
+            "none",
             "instant",
+            "minimal",
             "low",
             "medium",
-            "high"
+            "high",
+            "xhigh",
+            "max"
           ]
         },
         "thinking": {
@@ -7092,10 +7100,14 @@ Return automation jobs and recent runs. Without ?limit/?cursor returns { jobs: [
               "reasoningEffort": {
                 "type": "string",
                 "enum": [
+                  "none",
                   "instant",
+                  "minimal",
                   "low",
                   "medium",
-                  "high"
+                  "high",
+                  "xhigh",
+                  "max"
                 ]
               },
               "thinking": {
@@ -8458,10 +8470,14 @@ Update a durable automation job. (Renamed from automation.jobs.patch in the 1.0.
         "reasoningEffort": {
           "type": "string",
           "enum": [
+            "none",
             "instant",
+            "minimal",
             "low",
             "medium",
-            "high"
+            "high",
+            "xhigh",
+            "max"
           ]
         },
         "thinking": {
@@ -9371,10 +9387,14 @@ Cancel an active automation run.
             "reasoningEffort": {
               "type": "string",
               "enum": [
+                "none",
                 "instant",
+                "minimal",
                 "low",
                 "medium",
-                "high"
+                "high",
+                "xhigh",
+                "max"
               ]
             },
             "thinking": {
@@ -10366,10 +10386,14 @@ Return a single automation run record.
             "reasoningEffort": {
               "type": "string",
               "enum": [
+                "none",
                 "instant",
+                "minimal",
                 "low",
                 "medium",
-                "high"
+                "high",
+                "xhigh",
+                "max"
               ]
             },
             "thinking": {
@@ -11465,10 +11489,14 @@ Return automation run history. Without ?limit/?cursor returns { runs: [...] } (b
               "reasoningEffort": {
                 "type": "string",
                 "enum": [
+                  "none",
                   "instant",
+                  "minimal",
                   "low",
                   "medium",
-                  "high"
+                  "high",
+                  "xhigh",
+                  "max"
                 ]
               },
               "thinking": {
@@ -12461,10 +12489,14 @@ Retry a completed or failed automation run.
             "reasoningEffort": {
               "type": "string",
               "enum": [
+                "none",
                 "instant",
+                "minimal",
                 "low",
                 "medium",
-                "high"
+                "high",
+                "xhigh",
+                "max"
               ]
             },
             "thinking": {
@@ -13710,10 +13742,14 @@ Create a schedule record.
         "reasoningEffort": {
           "type": "string",
           "enum": [
+            "none",
             "instant",
+            "minimal",
             "low",
             "medium",
-            "high"
+            "high",
+            "xhigh",
+            "max"
           ]
         },
         "thinking": {
@@ -14682,10 +14718,14 @@ Return schedule records.
               "reasoningEffort": {
                 "type": "string",
                 "enum": [
+                  "none",
                   "instant",
+                  "minimal",
                   "low",
                   "medium",
-                  "high"
+                  "high",
+                  "xhigh",
+                  "max"
                 ]
               },
               "thinking": {
@@ -15559,10 +15599,14 @@ Return schedule records.
               "reasoningEffort": {
                 "type": "string",
                 "enum": [
+                  "none",
                   "instant",
+                  "minimal",
                   "low",
                   "medium",
-                  "high"
+                  "high",
+                  "xhigh",
+                  "max"
                 ]
               },
               "thinking": {
@@ -79254,10 +79298,14 @@ Queue a deferred follow-up for a shared session so it runs after the current age
         "reasoningEffort": {
           "type": "string",
           "enum": [
+            "none",
             "instant",
+            "minimal",
             "low",
             "medium",
-            "high"
+            "high",
+            "xhigh",
+            "max"
           ]
         }
       },
@@ -79695,10 +79743,14 @@ Queue a deferred follow-up for a shared session so it runs after the current age
             "reasoningEffort": {
               "type": "string",
               "enum": [
+                "none",
                 "instant",
+                "minimal",
                 "low",
                 "medium",
-                "high"
+                "high",
+                "xhigh",
+                "max"
               ]
             }
           },
@@ -80254,10 +80306,14 @@ Cancel a queued shared-session input before it is delivered or spawned.
             "reasoningEffort": {
               "type": "string",
               "enum": [
+                "none",
                 "instant",
+                "minimal",
                 "low",
                 "medium",
-                "high"
+                "high",
+                "xhigh",
+                "max"
               ]
             }
           },
@@ -80517,10 +80573,14 @@ A live registered surface reports that it collected a queued input (moves it to 
             "reasoningEffort": {
               "type": "string",
               "enum": [
+                "none",
                 "instant",
+                "minimal",
                 "low",
                 "medium",
-                "high"
+                "high",
+                "xhigh",
+                "max"
               ]
             }
           },
@@ -80931,10 +80991,14 @@ Return explicit session inputs, including queued follow-ups and delivered steeri
               "reasoningEffort": {
                 "type": "string",
                 "enum": [
+                  "none",
                   "instant",
+                  "minimal",
                   "low",
                   "medium",
-                  "high"
+                  "high",
+                  "xhigh",
+                  "max"
                 ]
               }
             },
@@ -81376,10 +81440,14 @@ Append a user message to a shared session. Omitted `kind` defaults to `message` 
         "reasoningEffort": {
           "type": "string",
           "enum": [
+            "none",
             "instant",
+            "minimal",
             "low",
             "medium",
-            "high"
+            "high",
+            "xhigh",
+            "max"
           ]
         }
       },
@@ -81839,10 +81907,14 @@ Append a user message to a shared session. Omitted `kind` defaults to `message` 
                 "reasoningEffort": {
                   "type": "string",
                   "enum": [
+                    "none",
                     "instant",
+                    "minimal",
                     "low",
                     "medium",
-                    "high"
+                    "high",
+                    "xhigh",
+                    "max"
                   ]
                 }
               },
@@ -83315,10 +83387,14 @@ Deliver a live steering message to the active agent for a shared session, option
         "reasoningEffort": {
           "type": "string",
           "enum": [
+            "none",
             "instant",
+            "minimal",
             "low",
             "medium",
-            "high"
+            "high",
+            "xhigh",
+            "max"
           ]
         }
       },
@@ -83759,10 +83835,14 @@ Deliver a live steering message to the active agent for a shared session, option
             "reasoningEffort": {
               "type": "string",
               "enum": [
+                "none",
                 "instant",
+                "minimal",
                 "low",
                 "medium",
-                "high"
+                "high",
+                "xhigh",
+                "max"
               ]
             }
           },
@@ -85181,10 +85261,14 @@ Submit a task to the daemon or a shared session.
         "reasoningEffort": {
           "type": "string",
           "enum": [
+            "none",
             "instant",
+            "minimal",
             "low",
             "medium",
-            "high"
+            "high",
+            "xhigh",
+            "max"
           ]
         }
       },
