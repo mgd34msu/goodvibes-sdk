@@ -14,7 +14,7 @@
  * persistence call through whichever it was given.
  */
 import { afterEach, describe, expect, test } from 'bun:test';
-import { mkdirSync, rmSync } from 'node:fs';
+import { mkdirSync, rmSync, utimesSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -23,6 +23,7 @@ import {
   type IntegrationHelpersServices,
 } from '../packages/sdk/src/platform/runtime/integration/helpers.ts';
 import {
+  getRecoveryFilePath,
   writeLastSessionPointer,
   writeRecoveryFile,
 } from '../packages/sdk/src/platform/runtime/session-persistence.ts';
@@ -62,6 +63,12 @@ function legacyScoped(workingDirectory: string, homeDirectory: string): Integrat
   return new IntegrationHelperService({ ...stubServices(), workingDirectory, homeDirectory });
 }
 
+/** Stamp a snapshot old enough that the offer stops reading it as live state. */
+function abandon(path: string): void {
+  const at = new Date(Date.now() - 600_000);
+  utimesSync(path, at, at);
+}
+
 afterEach(() => {
   for (const dir of roots.splice(0)) {
     try {
@@ -85,6 +92,9 @@ describe('IntegrationHelperService: surface-scoped construction', () => {
       'Surface Work',
       { surface },
     );
+    // getContinuitySnapshot reports whether a snapshot would be OFFERED, so it
+    // has to be old enough that no live writer is implied.
+    abandon(surface.recoveryFile('surface-session'));
 
     const continuity = surfaceScoped(surface).getContinuitySnapshot();
     expect(continuity.lastSessionPointer).toBe('surface-session');
@@ -127,6 +137,7 @@ describe('IntegrationHelperService: legacy construction is unchanged', () => {
       'Legacy Work',
       { workingDirectory, homeDirectory },
     );
+    abandon(getRecoveryFilePath(homeDirectory, 'legacy-session'));
 
     const continuity = legacyScoped(workingDirectory, homeDirectory).getContinuitySnapshot();
     expect(continuity.lastSessionPointer).toBe('legacy-session');

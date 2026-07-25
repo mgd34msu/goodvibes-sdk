@@ -323,7 +323,11 @@ describe('session-persistence: legacy shared recovery dual-read (one-time offer)
 
   test('checkRecoveryFile finds a pre-upgrade snapshot that only exists in the legacy shared dir', () => {
     const { surface } = tempSurface();
-    writeLegacySharedRecovery(surface, 'pre-upgrade-1', 'from before scoping', 'Old Session');
+    const path = writeLegacySharedRecovery(surface, 'pre-upgrade-1', 'from before scoping', 'Old Session');
+    // Aged past the boot offer's live-refresh window: the pre-upgrade process
+    // that wrote it is gone, which is what makes this an offerable crash.
+    const abandoned = new Date(Date.now() - 600_000);
+    utimesSync(path, abandoned, abandoned);
 
     const info = checkRecoveryFile({ surface });
     expect(info?.sessionId).toBe('pre-upgrade-1');
@@ -333,9 +337,11 @@ describe('session-persistence: legacy shared recovery dual-read (one-time offer)
   test('the scoped (canonical) location is preferred when both exist and is newer', () => {
     const { surface } = tempSurface();
     const legacyPath = writeLegacySharedRecovery(surface, 'both-exist', 'legacy content', 'Legacy');
-    const past = new Date(Date.now() - 60_000);
-    utimesSync(legacyPath, past, past);
+    const older = new Date(Date.now() - 660_000);
+    utimesSync(legacyPath, older, older);
     writeRecoveryFile(snapshotOf('canonical content'), 'both-exist', 'Canonical', { surface });
+    const newer = new Date(Date.now() - 600_000);
+    utimesSync(surface.recoveryFile('both-exist'), newer, newer);
 
     const info = checkRecoveryFile({ surface });
     expect(info?.sessionId).toBe('both-exist');
