@@ -308,6 +308,7 @@ export function createTelegramDeliveryStrategy(
   configManager: ConfigManager,
   serviceRegistry: ServiceRegistry,
   artifactStore: ArtifactStore,
+  secretsManager?: Pick<SecretsManager, 'get' | 'getGlobalHome'>,
 ): ChannelDeliveryStrategy {
   return {
     id: 'channel-delivery:telegram',
@@ -318,7 +319,13 @@ export function createTelegramDeliveryStrategy(
       const attachments = await resolveAttachments(request, artifactStore, configManager);
       const token = firstNonEmpty(
         await serviceRegistry.resolveSecret('telegram', 'primary'),
-        String(configManager.get('surfaces.telegram.botToken') ?? ''),
+        // Resolve secret references the same way ingress does. Reading this key
+        // as a raw string sent the literal "goodvibes://secrets/..." text as the
+        // bot token, so a setup that could receive messages could not reply.
+        await resolveSecretInput(configManager.get('surfaces.telegram.botToken'), {
+          resolveLocalSecret: secretsManager ? (key) => secretsManager.get(key) : undefined,
+          homeDirectory: secretsManager?.getGlobalHome?.() ?? undefined,
+        }),
         process.env.TELEGRAM_BOT_TOKEN,
       );
       const chatId = firstNonEmpty(

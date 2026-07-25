@@ -17,7 +17,8 @@ import {
   runLiveModelRefresh,
   type LiveModelDiscoveryResult,
 } from './live-model-discovery.js';
-import { applyAnthropicThinking } from './anthropic-stream.js';
+import { applyAnthropicReasoning, isAnthropicThinkingEnabled } from './anthropic-stream.js';
+import { describeReasoningRejection } from './reasoning-effort.js';
 import { getCacheCapability } from './cache-capability.js';
 import { mapAnthropicStopReason } from './stop-reason-maps.js';
 import { getDefaultStrategy } from './cache-strategy.js';
@@ -263,7 +264,11 @@ export class AnthropicProvider implements LLMProvider {
 
       body['messages'] = anthropicMessages;
 
-      applyAnthropicThinking(body, reasoningEffort, clampMaxTokens(resolvedModel, Infinity));
+      const resolvedEffort = applyAnthropicReasoning(
+        body,
+        { model: resolvedModel, reasoningEffort, ...(params.reasoningEffortSpec ? { reasoningEffortSpec: params.reasoningEffortSpec } : {}) },
+        clampMaxTokens(resolvedModel, Infinity),
+      );
 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -272,7 +277,7 @@ export class AnthropicProvider implements LLMProvider {
       };
       // Build beta headers: thinking and/or extended TTL prompt caching.
       const betaFeatures: string[] = [];
-      if (body['thinking']) {
+      if (isAnthropicThinkingEnabled(body['thinking'])) {
         betaFeatures.push('interleaved-thinking-2025-05-14');
       }
       // Extended TTL (e.g. '1h') requires the prompt-caching beta header.
@@ -302,7 +307,8 @@ export class AnthropicProvider implements LLMProvider {
 
       if (!res.ok) {
         const text = await res.text().catch(() => 'unknown error');
-        throw new ProviderError(formatAnthropicErrorText(res.status, text), {
+        const effortHint = describeReasoningRejection(res.status, text, resolvedEffort.value) ?? '';
+        throw new ProviderError(`${formatAnthropicErrorText(res.status, text)}${effortHint}`, {
           statusCode: res.status,
           provider: this.name,
           operation: 'chat',
@@ -393,8 +399,10 @@ export class AnthropicProvider implements LLMProvider {
       policy: {
         local: false,
         streamProtocol: 'anthropic-sse',
-        reasoningMode: 'thinking_budget',
-        supportedReasoningEfforts: ['instant', 'low', 'medium', 'high'],
+        // Per model, not per provider: current generations take
+        // output_config.effort, Claude 4.5 and earlier take a thinking budget,
+        // and the levels each accepts come from the resolved spec.
+        reasoningMode: 'per-model-effort-or-thinking-budget',
         cacheStrategy: 'anthropic-prompt-cache',
       },
     };
@@ -534,7 +542,11 @@ export class AnthropicProvider implements LLMProvider {
     if (params.tools && params.tools.length > 0) {
       body['tools'] = toAnthropicTools(params.tools);
     }
-    applyAnthropicThinking(body, params.reasoningEffort, clampMaxTokens(resolvedModel, Infinity));
+    applyAnthropicReasoning(
+      body,
+      { model: resolvedModel, reasoningEffort: params.reasoningEffort, ...(params.reasoningEffortSpec ? { reasoningEffortSpec: params.reasoningEffortSpec } : {}) },
+      clampMaxTokens(resolvedModel, Infinity),
+    );
     return body;
   }
 

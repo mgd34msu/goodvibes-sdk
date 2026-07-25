@@ -2757,7 +2757,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
               "networkPolicy": "inherit",
               "filesystemPolicy": "inherit"
             },
-            "reasoningEffort": "instant",
+            "reasoningEffort": "none",
             "thinking": "sample",
             "wakeMode": "next-heartbeat",
             "timeoutMs": 0,
@@ -3049,7 +3049,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "networkPolicy": "inherit",
           "filesystemPolicy": "inherit"
         },
-        "reasoningEffort": "instant",
+        "reasoningEffort": "none",
         "thinking": "sample",
         "wakeMode": "next-heartbeat",
         "timeoutMs": 0,
@@ -3208,7 +3208,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
               "networkPolicy": "inherit",
               "filesystemPolicy": "inherit"
             },
-            "reasoningEffort": "instant",
+            "reasoningEffort": "none",
             "thinking": "sample",
             "wakeMode": "next-heartbeat",
             "timeoutMs": 0,
@@ -3438,7 +3438,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "networkPolicy": "inherit",
           "filesystemPolicy": "inherit"
         },
-        "reasoningEffort": "instant",
+        "reasoningEffort": "none",
         "thinking": "sample",
         "wakeMode": "next-heartbeat",
         "timeoutMs": 0,
@@ -3586,7 +3586,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
             "networkPolicy": "inherit",
             "filesystemPolicy": "inherit"
           },
-          "reasoningEffort": "instant",
+          "reasoningEffort": "none",
           "thinking": "sample",
           "wakeMode": "next-heartbeat",
           "timeoutMs": 0,
@@ -3752,7 +3752,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
             "networkPolicy": "inherit",
             "filesystemPolicy": "inherit"
           },
-          "reasoningEffort": "instant",
+          "reasoningEffort": "none",
           "thinking": "sample",
           "wakeMode": "next-heartbeat",
           "timeoutMs": 0,
@@ -3940,7 +3940,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
               "networkPolicy": "inherit",
               "filesystemPolicy": "inherit"
             },
-            "reasoningEffort": "instant",
+            "reasoningEffort": "none",
             "thinking": "sample",
             "wakeMode": "next-heartbeat",
             "timeoutMs": 0,
@@ -4107,7 +4107,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
             "networkPolicy": "inherit",
             "filesystemPolicy": "inherit"
           },
-          "reasoningEffort": "instant",
+          "reasoningEffort": "none",
           "thinking": "sample",
           "wakeMode": "next-heartbeat",
           "timeoutMs": 0,
@@ -4331,7 +4331,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "networkPolicy": "inherit",
           "filesystemPolicy": "inherit"
         },
-        "reasoningEffort": "instant",
+        "reasoningEffort": "none",
         "thinking": "sample",
         "wakeMode": "next-heartbeat",
         "timeoutMs": 0,
@@ -4487,7 +4487,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
               "networkPolicy": "inherit",
               "filesystemPolicy": "inherit"
             },
-            "reasoningEffort": "instant",
+            "reasoningEffort": "none",
             "thinking": "sample",
             "wakeMode": "next-heartbeat",
             "timeoutMs": 0,
@@ -4631,7 +4631,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
               "networkPolicy": "inherit",
               "filesystemPolicy": "inherit"
             },
-            "reasoningEffort": "instant",
+            "reasoningEffort": "none",
             "thinking": "sample",
             "wakeMode": "next-heartbeat",
             "timeoutMs": 0,
@@ -17301,7 +17301,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
         "tools": [
           "sample"
         ],
-        "reasoningEffort": "instant"
+        "reasoningEffort": "none"
       }
     },
     "output": {
@@ -17395,7 +17395,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "tools": [
             "sample"
           ],
-          "reasoningEffort": "instant"
+          "reasoningEffort": "none"
         },
         "error": "sample"
       },
@@ -17508,7 +17508,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "tools": [
             "sample"
           ],
-          "reasoningEffort": "instant"
+          "reasoningEffort": "none"
         },
         "error": "sample"
       }
@@ -17561,7 +17561,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "tools": [
             "sample"
           ],
-          "reasoningEffort": "instant"
+          "reasoningEffort": "none"
         },
         "error": "sample"
       }
@@ -17652,7 +17652,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
             "tools": [
               "sample"
             ],
-            "reasoningEffort": "instant"
+            "reasoningEffort": "none"
           },
           "error": "sample"
         }
@@ -17751,7 +17751,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
         "tools": [
           "sample"
         ],
-        "reasoningEffort": "instant"
+        "reasoningEffort": "none"
       }
     },
     "output": {
@@ -18062,7 +18062,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
         "tools": [
           "sample"
         ],
-        "reasoningEffort": "instant"
+        "reasoningEffort": "none"
       },
       "allowSpawnFallback": false
     },
@@ -18157,7 +18157,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "tools": [
             "sample"
           ],
-          "reasoningEffort": "instant"
+          "reasoningEffort": "none"
         },
         "error": "sample"
       },
@@ -18347,7 +18347,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
         "tools": [
           "sample"
         ],
-        "reasoningEffort": "instant"
+        "reasoningEffort": "none"
       },
       "sessionId": "sample",
       "routeId": "sample",

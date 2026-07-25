@@ -1,5 +1,23 @@
 import type { ServerType } from '../discovery/scanner.js';
 import type { ProviderCapability } from './capabilities.js';
+import type { ReasoningEffortSpec } from './reasoning-effort.js';
+
+/**
+ * Locally-discovered servers expose the four levels their adapters already map
+ * (`lm-studio.ts`, `ollama.ts`, `llama-cpp.ts`).
+ *
+ * Marked `declared` rather than `catalog` because it is our own table for these
+ * backends, not live feed data — and rather than `family` because it must
+ * outrank the vendor family table. A local `deepseek-r1:70b` shares its name
+ * with DeepSeek's hosted API but not its levels: the hosted row offers only
+ * `high` and `max`, neither of which the ollama adapter maps, while the four
+ * levels here are exactly the ones it does.
+ */
+export const LOCAL_SERVER_EFFORT: ReasoningEffortSpec = {
+  kind: 'effort',
+  values: ['instant', 'low', 'medium', 'high'],
+  source: 'declared',
+};
 
 export interface DiscoveredServerTraits {
   readonly adapter:
@@ -18,7 +36,7 @@ export interface DiscoveredServerTraits {
     reasoning: boolean;
     multimodal: boolean;
   };
-  readonly reasoningEffort?: string[] | undefined;
+  readonly reasoningEffort?: ReasoningEffortSpec | undefined;
 }
 
 const DEFAULT_MODEL_CAPABILITIES = {
@@ -48,7 +66,7 @@ export function getDiscoveredTraits(serverType: ServerType): DiscoveredServerTra
           ...DEFAULT_MODEL_CAPABILITIES,
           reasoning: true,
         },
-        reasoningEffort: ['instant', 'low', 'medium', 'high'],
+        reasoningEffort: LOCAL_SERVER_EFFORT,
       };
     case 'ollama':
       return {
@@ -66,7 +84,7 @@ export function getDiscoveredTraits(serverType: ServerType): DiscoveredServerTra
           ...DEFAULT_MODEL_CAPABILITIES,
           reasoning: true,
         },
-        reasoningEffort: ['instant', 'low', 'medium', 'high'],
+        reasoningEffort: LOCAL_SERVER_EFFORT,
       };
     case 'vllm':
       return {
@@ -98,7 +116,7 @@ export function getDiscoveredTraits(serverType: ServerType): DiscoveredServerTra
           ...DEFAULT_MODEL_CAPABILITIES,
           reasoning: true,
         },
-        reasoningEffort: ['instant', 'low', 'medium', 'high'],
+        reasoningEffort: LOCAL_SERVER_EFFORT,
       };
     case 'tgi':
       return {

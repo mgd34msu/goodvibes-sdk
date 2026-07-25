@@ -3,6 +3,8 @@ import type { ModelLimitsService } from './model-limits.js';
 import type { MinimalModelDefinition, SyntheticModelInfo } from './model-catalog-synthetic.js';
 import { logger } from '../utils/logger.js';
 import { inferFallbackContextWindow } from './context-window-fallback.js';
+import { type ModelsDevReasoningOption, parseReasoningOptions } from './reasoning-effort.js';
+import { resolveReasoningEffortSpec } from './reasoning-effort-families.js';
 
 export interface CatalogProvider {
   id: string;
@@ -33,6 +35,12 @@ export interface CatalogModel {
   contextWindow?: number | undefined;
   maxOutputTokens?: number | undefined;
   reasoning?: boolean | undefined;
+  /**
+   * The feed's per-model `reasoning_options`, carried verbatim. Absent means
+   * the catalog said nothing (fall through to the curated family table); an
+   * empty array means the catalog said this model has no configurable levels.
+   */
+  reasoningOptions?: ModelsDevReasoningOption[] | undefined;
 }
 
 export interface PricingCatalog {
@@ -176,9 +184,21 @@ export function getCatalogModelDefinitionsFrom(models: readonly CatalogModel[]):
     const providerLower = model.provider.toLowerCase();
     const isFree = model.tier === 'free';
     const isGoogle = providerLower.includes('google') || providerLower.includes('gemini');
-    const isAnthropic = providerLower.includes('anthropic');
     const isOpenAI = providerLower.includes('openai');
-    const hasReasoning = model.reasoning === true || isAnthropic || isOpenAI || isGoogle;
+    // The catalog's own per-model answer decides, rather than the vendor the
+    // model happens to come from: OpenAI, Anthropic and Google all ship models
+    // with `reasoning: false`, and offering those an effort picker was a lie.
+    // A populated `reasoning_options` array also counts as proof, for entries
+    // that carry the options but not the boolean.
+    const catalogSpec = parseReasoningOptions(model.reasoningOptions);
+    const hasReasoning = model.reasoning === true
+      || (catalogSpec !== undefined && catalogSpec.kind !== 'unavailable');
+    const reasoningEffort = hasReasoning
+      ? resolveReasoningEffortSpec({
+        modelId: model.id,
+        ...(catalogSpec ? { spec: catalogSpec } : {}),
+      })
+      : undefined;
     const hasCatalogContextWindow = model.contextWindow != null && model.contextWindow > 0;
     return {
       id: model.id,
@@ -198,7 +218,7 @@ export function getCatalogModelDefinitionsFrom(models: readonly CatalogModel[]):
       ...(!hasCatalogContextWindow ? { contextWindowProvenance: 'fallback' as const } : {}),
       selectable: true,
       tier: model.tier === 'subscription' ? 'subscription' : isFree ? 'free' : (model.pricing?.input ?? 0) >= 3 ? 'premium' : 'standard',
-      ...(hasReasoning ? { reasoningEffort: ['instant', 'low', 'medium', 'high'] } : {}),
+      ...(reasoningEffort ? { reasoningEffort } : {}),
     };
   });
 }

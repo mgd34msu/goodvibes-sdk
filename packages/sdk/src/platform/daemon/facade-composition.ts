@@ -578,6 +578,11 @@ export function createDaemonFacadeCollaborators(
     providerRuntime,
     deliveryRouter: runtime.deliveryManager.getDeliveryRouter(),
     surfaceDeliveryEnabled: options.surfaceDeliveryEnabled,
+    // Surface-scoped, alongside the channel policy store: the Telegram poll
+    // cursor is per-surface state and must not leak across surface roots.
+    telegramOffsetPath: runtime.runtimeServices.shellPaths.resolveProjectPath(
+      'goodvibes', 'channels', 'telegram-offset.json',
+    ),
     buildSurfaceAdapterContext: () => surfaceActionHelper.buildSurfaceAdapterContext(),
     buildGenericWebhookAdapterContext: () => surfaceActionHelper.buildGenericWebhookAdapterContext(),
     deliverSurfaceProgress: (pending, progress) => surfaceDeliveryHelper.deliverSurfaceProgress(pending as PendingSurfaceReply, progress),

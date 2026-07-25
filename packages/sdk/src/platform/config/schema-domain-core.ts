@@ -1,4 +1,4 @@
-import { type ConfigSettingDefinition, intRange, numRange, port } from './schema-shared.js';
+import { type ConfigSettingDefinition, intRange, numRange, port, reasoningEffortSetting } from './schema-shared.js';
 
 export const coreConfigDefaults = {
   display: {
@@ -225,10 +225,10 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
   },
   {
     key: 'provider.reasoningEffort',
-    type: 'enum',
+    type: 'string',
     default: 'medium',
     description: 'Reasoning effort level for models that support it',
-    enumValues: ['instant', 'low', 'medium', 'high'],
+    ...reasoningEffortSetting(),
   },
   {
     key: 'provider.model',

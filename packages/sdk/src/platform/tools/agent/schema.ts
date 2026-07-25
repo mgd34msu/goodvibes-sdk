@@ -1,5 +1,6 @@
 import type { ToolDefinition } from '../../types/tools.js';
 import type { ExecutionIntent } from '../../runtime/execution-intents.js';
+import { REASONING_EFFORT_SEVERITY } from '../../providers/reasoning-effort.js';
 
 /**
  * JSON Schema for the agent tool's input.
@@ -93,8 +94,8 @@ export const AGENT_TOOL_SCHEMA: ToolDefinition = {
       },
       reasoningEffort: {
         type: 'string',
-        enum: ['instant', 'low', 'medium', 'high'],
-        description: 'Reasoning effort override for providers/models that support it (mode: spawn).',
+        enum: [...REASONING_EFFORT_SEVERITY],
+        description: 'Reasoning effort override for providers/models that support it (mode: spawn). Which levels the spawned agent\'s model actually accepts is per-model.',
       },
       tools: {
         type: 'array',
@@ -189,7 +190,7 @@ export const AGENT_TOOL_SCHEMA: ToolDefinition = {
               additionalProperties: false,
               description: 'Explicit execution-intent hints for downstream runtimes.',
             },
-            reasoningEffort: { type: 'string', enum: ['instant', 'low', 'medium', 'high'], description: 'Reasoning effort override.' },
+            reasoningEffort: { type: 'string', enum: [...REASONING_EFFORT_SEVERITY], description: 'Reasoning effort override.' },
             tools: { type: 'array', items: { type: 'string' }, description: 'Tool subset.' },
             restrictTools: { type: 'boolean', description: 'If true, use ONLY the specified tools (override mode). Default: false.' },
             context: { type: 'string', description: 'Additional context.' },
@@ -281,7 +282,7 @@ export interface AgentInput {
   fallbackModels?: string[] | undefined;
   routing?: AgentProviderRoutingPolicy | undefined;
   executionIntent?: ExecutionIntent | undefined;
-  reasoningEffort?: 'instant' | 'low' | 'medium' | 'high' | undefined;
+  reasoningEffort?: string | undefined;
   tools?: string[] | undefined;
   restrictTools?: boolean | undefined;
   context?: string | undefined;
@@ -322,7 +323,7 @@ export interface AgentInput {
     fallbackModels?: string[] | undefined;
     routing?: AgentProviderRoutingPolicy | undefined;
     executionIntent?: ExecutionIntent | undefined;
-    reasoningEffort?: 'instant' | 'low' | 'medium' | 'high' | undefined;
+    reasoningEffort?: string | undefined;
     tools?: string[] | undefined;
     restrictTools?: boolean | undefined;
     context?: string | undefined;

@@ -9,6 +9,7 @@ import type { FavoritesStore } from './favorites.js';
 import type { BenchmarkStore } from './model-benchmarks.js';
 import type { ModelLimitsService } from './model-limits.js';
 import type { ManualModelPrice } from './model-pricing.js';
+import type { ReasoningEffortSpec } from './reasoning-effort.js';
 
 /** Model capability tier — controls system prompt verbosity. */
 export type ModelTier = 'free' | 'standard' | 'premium' | 'subscription';
@@ -41,7 +42,12 @@ export interface ModelDefinition {
   contextWindow: number;
   contextWindowProvenance?: ContextWindowProvenance | undefined;
   selectable: boolean;
-  reasoningEffort?: string[] | undefined;
+  /**
+   * What this exact model accepts for reasoning effort, and which request
+   * field carries it. Absent means the model does not reason at all; a spec
+   * of kind `unavailable` means it reasons at a depth nobody can configure.
+   */
+  reasoningEffort?: ReasoningEffortSpec | undefined;
   tier?: ModelTier | undefined;
   tokenLimits?: TokenLimits | undefined;
   /**

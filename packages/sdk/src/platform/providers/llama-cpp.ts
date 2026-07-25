@@ -15,6 +15,8 @@ import type {
   ProviderRuntimeMetadataDeps,
 } from './interface.js';
 import { OpenAICompatProvider, type OpenAICompatOptions } from './openai-compat.js';
+import { LOCAL_SERVER_EFFORT } from './discovered-traits.js';
+import { reasoningEffortLevels } from './reasoning-effort.js';
 import { mapLlamaCppStopReason } from './stop-reason-maps.js';
 import { summarizeError } from '../utils/error-display.js';
 import { getErrorStatus, normalizeProviderError } from './provider-error.js';
@@ -141,7 +143,7 @@ export class LlamaCppProvider implements LLMProvider {
         local: true,
         streamProtocol: 'openai-chat-completions',
         reasoningMode: this.reasoningFormat ?? 'provider-default',
-        supportedReasoningEfforts: ['instant', 'low', 'medium', 'high'],
+        supportedReasoningEfforts: reasoningEffortLevels(LOCAL_SERVER_EFFORT),
         cacheStrategy: 'provider-managed',
       },
     };

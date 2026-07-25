@@ -5,8 +5,14 @@
  * fallback chain, token limits, and reasoning configuration.
  */
 
-/** Reasoning effort levels matching provider interface. */
-export type ReasoningEffort = 'instant' | 'low' | 'medium' | 'high';
+/**
+ * A reasoning-effort level as a plain string.
+ *
+ * Not a fixed union: the level a model accepts is per-model now (see
+ * providers/reasoning-effort.ts), so the store carries whatever the user
+ * configured and resolution against the serving model happens at request time.
+ */
+export type ReasoningEffort = string;
 
 /** Provider tier classification. */
 export type ProviderTier = 'local' | 'hosted' | 'hosted_reasoning' | 'diffusion';

@@ -8,7 +8,13 @@ export const TASK_TOOL_SCHEMA = {
       enum: ['create', 'list', 'show', 'status', 'depend', 'cancel', 'handoff', 'handoffs'],
     },
     view: { type: 'string', enum: ['summary', 'full'] },
-    sessionId: { type: 'string' },
+    sessionId: {
+      type: 'string',
+      description:
+        'READ-ONLY selector, used by list and show to view another session\'s task refs. Defaults to the current session. '
+        + 'It does NOT set ownership: refs created or modified by this tool are always owned by the current session, and '
+        + 'this field is ignored by create, status, depend, cancel and handoff.',
+    },
     taskId: { type: 'string' },
     title: { type: 'string' },
     label: { type: 'string' },

@@ -5,6 +5,7 @@ import type { CatalogModel } from './model-catalog.js';
 import { summarizeError } from '../utils/error-display.js';
 import { TTL_24H_MS, isTtlCacheStale, validateTtlCacheEnvelope } from './json-ttl-cache.js';
 import { instrumentedFetch, fetchWithTimeout } from '../utils/fetch-with-timeout.js';
+import type { ModelsDevReasoningOption } from './reasoning-effort.js';
 
 interface CatalogProviderShape {
   id: string;
@@ -40,6 +41,7 @@ interface ModelsDevModel {
   cost?: ModelsDevModelCost | undefined;
   limit?: ModelsDevModelLimit | undefined;
   reasoning?: boolean | undefined;
+  reasoning_options?: ModelsDevReasoningOption[] | undefined;
   tool_call?: boolean | undefined;
   structured_output?: boolean | undefined;
   open_weights?: boolean | undefined;
@@ -53,8 +55,13 @@ const CATALOG_FETCH_TIMEOUT_MS = 30_000;
  * Version 2: `pricing` became nullable — a model whose catalog entry carries
  * no cost is honestly unpriced instead of coerced to $0. Version-1 caches
  * (which baked in the $0 coercion) are discarded and refetched.
+ *
+ * Version 3: `reasoningOptions` carries the feed's per-model `reasoning_options`
+ * array, which decides what reasoning levels each model really accepts.
+ * Version-2 caches predate the field, so they are discarded and refetched
+ * rather than left to fall through to the curated family table for a day.
  */
-const CATALOG_CACHE_VERSION = 2;
+const CATALOG_CACHE_VERSION = 3;
 
 export function getCatalogCachePath(cacheDir: string): string {
   return join(cacheDir, 'model-catalog.json');
@@ -97,6 +104,35 @@ function getStringArray(value: unknown): string[] {
   return value.filter((entry): entry is string => typeof entry === 'string');
 }
 
+/**
+ * Sanitize the feed's `reasoning_options` array.
+ *
+ * Returns undefined when the field is absent — "the catalog says nothing",
+ * which falls through to the curated family table. An empty array is kept as
+ * an empty array, because the feed uses it to say something different and
+ * specific: this model reasons but exposes no configurable levels.
+ */
+function getReasoningOptions(value: unknown): ModelsDevReasoningOption[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const options: ModelsDevReasoningOption[] = [];
+  for (const entry of value) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue;
+    const record = entry as Record<string, unknown>;
+    const type = record['type'];
+    if (typeof type !== 'string' || !type) continue;
+    const values = record['values'];
+    const min = record['min'];
+    const max = record['max'];
+    options.push({
+      type,
+      ...(Array.isArray(values) ? { values: getStringArray(values) } : {}),
+      ...(typeof min === 'number' ? { min } : {}),
+      ...(typeof max === 'number' ? { max } : {}),
+    });
+  }
+  return options;
+}
+
 function transformModelsDevResponse(json: ModelsDevResponse): CatalogModel[] {
   const models: CatalogModel[] = [];
   let skippedProviders = 0;
@@ -133,6 +169,7 @@ function transformModelsDevResponse(json: ModelsDevResponse): CatalogModel[] {
       const cost = modelData.cost;
       const limit = modelData.limit;
       const supportsReasoning = modelData.reasoning === true;
+      const reasoningOptions = getReasoningOptions(modelData.reasoning_options);
 
       // Honest pricing: a missing cost stays null (unpriced). Coercing to $0
       // made absent-from-catalog models look free downstream.
@@ -169,6 +206,7 @@ function transformModelsDevResponse(json: ModelsDevResponse): CatalogModel[] {
         contextWindow,
         maxOutputTokens,
         ...(supportsReasoning ? { reasoning: true } : {}),
+        ...(reasoningOptions !== undefined ? { reasoningOptions } : {}),
       });
     }
   }

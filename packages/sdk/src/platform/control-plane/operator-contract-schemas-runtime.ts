@@ -13,6 +13,7 @@ import {
   nullableSchema,
   recordSchema,
 } from './operator-contract-schemas-shared.js';
+import { REASONING_EFFORT_SEVERITY } from '../providers/reasoning-effort.js';
 
 const TASK_KIND_SCHEMA = enumSchema(['exec', 'agent', 'acp', 'scheduler', 'daemon', 'mcp', 'plugin', 'integration']);
 const TASK_STATUS_SCHEMA = enumSchema(['queued', 'running', 'blocked', 'completed', 'failed', 'cancelled']);
@@ -198,7 +199,10 @@ export const SHARED_SESSION_ROUTING_INTENT_SCHEMA = objectSchema({
     filesystemPolicy: EXECUTION_FILESYSTEM_POLICY_SCHEMA,
   }),
   tools: STRING_LIST_SCHEMA,
-  reasoningEffort: enumSchema(['instant', 'low', 'medium', 'high']),
+  // Full severity ladder, not a fixed 4-value list: which levels a given model
+  // actually accepts is per-model (see providers/reasoning-effort.ts); this
+  // schema only rejects a typo, the real acceptance check happens at request time.
+  reasoningEffort: enumSchema([...REASONING_EFFORT_SEVERITY]),
 });
 
 export const SHARED_SESSION_INPUT_RECORD_SCHEMA = objectSchema({

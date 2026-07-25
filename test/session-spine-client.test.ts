@@ -487,15 +487,30 @@ describe('foldLegacySpineStore', () => {
     expect((JSON.parse(readFileSync(markerPath, 'utf-8')) as { count: number }).count).toBe(2);
   });
 
-  test('skips when the marker already exists (idempotent)', () => {
+  test('skips when the marker VALIDATES (idempotent)', () => {
+    // The marker must assert its own completion. The pre-2026-07 shape
+    // ({migratedAt, count} with no schemaVersion/completed) is indistinguishable
+    // from a torn write and deliberately no longer short-circuits — see
+    // test/session-spine-legacy-fold-marker.test.ts for the full contract.
+    const storePath = join(root, 'sessions.json');
+    const markerPath = join(root, 'sessions.json.spine-migrated');
+    writeFileSync(storePath, JSON.stringify({ sessions: { 'sess-1': { id: 'sess-1', status: 'active' } } }));
+    writeFileSync(markerPath, JSON.stringify({ schemaVersion: 1, completed: true, migratedAt: 1, count: 1 }));
+    let called = 0;
+    const result = foldLegacySpineStore({ foldLegacyRecords: () => { called += 1; } }, { storePath, markerPath, project: '/p', log: silent });
+    expect(result.skipped).toBe(true);
+    expect(called).toBe(0);
+  });
+
+  test('a marker that does not assert completion is not believed — the fold re-runs', () => {
     const storePath = join(root, 'sessions.json');
     const markerPath = join(root, 'sessions.json.spine-migrated');
     writeFileSync(storePath, JSON.stringify({ sessions: { 'sess-1': { id: 'sess-1', status: 'active' } } }));
     writeFileSync(markerPath, JSON.stringify({ migratedAt: 1, count: 1 }));
     let called = 0;
     const result = foldLegacySpineStore({ foldLegacyRecords: () => { called += 1; } }, { storePath, markerPath, project: '/p', log: silent });
-    expect(result.skipped).toBe(true);
-    expect(called).toBe(0);
+    expect(result).toEqual({ folded: 1, skipped: false });
+    expect(called).toBe(1);
   });
 
   test('a missing store folds nothing and writes no marker', () => {

@@ -44,7 +44,7 @@
  *    lastSeenAt fresh and never falls outside the daemon's freshness/reaper windows.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { logger } from '../../utils/logger.js';
 import type {
@@ -117,7 +117,21 @@ interface QueuedOp {
   readonly input?: RegisterSharedSessionInput;
 }
 
-type SpineLogger = Pick<typeof logger, 'debug' | 'info'>;
+/**
+ * The injected log sink. `warn` is OPTIONAL rather than required: surfaces
+ * outside this repo already construct `{ debug, info }` literals for this slot
+ * against a published SDK, and making `warn` mandatory would break every one of
+ * them at compile time for the sake of one disclosure line. Call it through
+ * {@link spineWarn}, which falls back to `info` when a caller supplied a
+ * two-method sink; the default sink (the real `logger`) always has `warn`.
+ */
+type SpineLogger = Pick<typeof logger, 'debug' | 'info'> & Partial<Pick<typeof logger, 'warn'>>;
+
+/** Disclose at warn level when the sink has one, otherwise at info — never silently. */
+function spineWarn(log: SpineLogger, message: string, data?: Record<string, unknown>): void {
+  if (log.warn) log.warn(message, data);
+  else log.info(message, data);
+}
 
 export interface SessionSpineClientOptions {
   /**
@@ -512,19 +526,147 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
+ * The fold marker's schema version. A marker written by an OLDER schema reads as
+ * "not folded" and the fold re-runs — the fold is an upsert-based register pass,
+ * so repeating it costs one file read, never data. A marker written by a NEWER
+ * schema is ACCEPTED: a later build already did at least this much work, and a
+ * downgrade must not re-fold on every single boot.
+ */
+const FOLD_MARKER_SCHEMA_VERSION = 1;
+
+/**
+ * Has this surface's legacy store already been folded? Answered by PARSING the
+ * marker, never by its existence.
+ *
+ * `existsSync(markerPath)` returns true for a zero-byte file, a truncated
+ * object, and a page of NULs left behind by a crash between creating the marker
+ * and finishing its write. Any of those used to suppress the fold forever,
+ * stranding the user's legacy sessions outside the daemon with no way back. So
+ * the marker must positively assert its own completion: a JSON object carrying a
+ * known schema version and `completed: true`. Unreadable, empty, unparseable, an
+ * array, a bare `true`, a missing flag, or an older schema all read as "not
+ * folded" and the (idempotent, upsert-based) fold runs again — disclosed, with
+ * the reason, rather than silently.
+ */
+function hasCompletedFold(markerPath: string, log: SpineLogger): boolean {
+  let raw: string;
+  try {
+    if (!existsSync(markerPath)) return false;
+    raw = readFileSync(markerPath, 'utf-8');
+  } catch (error) {
+    spineWarn(log, 'session spine legacy fold marker unreadable — folding again', {
+      marker: markerPath,
+      error: errorMessage(error),
+    });
+    return false;
+  }
+  if (raw.trim().length === 0) {
+    spineWarn(log, 'session spine legacy fold marker is empty (interrupted write) — folding again', { marker: markerPath });
+    return false;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw) as unknown;
+  } catch {
+    spineWarn(log, 'session spine legacy fold marker is not parseable JSON (torn write) — folding again', {
+      marker: markerPath,
+      bytes: raw.length,
+    });
+    return false;
+  }
+  if (!isRecord(parsed)) {
+    spineWarn(log, 'session spine legacy fold marker is not an object — folding again', { marker: markerPath });
+    return false;
+  }
+  if (parsed.completed !== true) {
+    spineWarn(log, 'session spine legacy fold marker does not assert completion — folding again', { marker: markerPath });
+    return false;
+  }
+  const version = parsed.schemaVersion;
+  if (typeof version !== 'number' || !Number.isFinite(version)) {
+    spineWarn(log, 'session spine legacy fold marker has no usable schema version — folding again', { marker: markerPath });
+    return false;
+  }
+  if (version < FOLD_MARKER_SCHEMA_VERSION) {
+    spineWarn(log, 'session spine legacy fold marker was written by an older schema — folding again', {
+      marker: markerPath,
+      markerSchemaVersion: version,
+      currentSchemaVersion: FOLD_MARKER_SCHEMA_VERSION,
+    });
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Write the fold marker with the content that makes it verifiable: schema
+ * version, an explicit completion flag, when it ran, how many records it folded,
+ * and which store they came from.
+ *
+ * Written to a sibling temp file and renamed into place, so an interruption
+ * leaves either no marker at all (the fold retries next boot) or the complete
+ * previous one — never a half-written file a later boot would trust. The temp
+ * name carries the pid so two processes folding the same surface at once cannot
+ * scribble over each other's partial file; `rename` onto the final path is
+ * atomic and both write the same completion assertion, so whichever lands last
+ * is equally correct. A failed write removes its own temp file and is logged,
+ * not thrown: the fold itself already succeeded, and a marker-less re-run is
+ * safe.
+ */
+function writeCompletedFoldMarker(
+  markerPath: string,
+  body: { readonly migratedAt: number; readonly count: number; readonly source: string },
+  log: SpineLogger,
+): void {
+  const temp = `${markerPath}.${process.pid}.tmp`;
+  try {
+    mkdirSync(dirname(markerPath), { recursive: true });
+    writeFileSync(
+      temp,
+      JSON.stringify(
+        {
+          schemaVersion: FOLD_MARKER_SCHEMA_VERSION,
+          completed: true,
+          migratedAt: body.migratedAt,
+          count: body.count,
+          source: body.source,
+        },
+        null,
+        2,
+      ) + '\n',
+      'utf-8',
+    );
+    renameSync(temp, markerPath);
+  } catch (err) {
+    try {
+      rmSync(temp, { force: true });
+    } catch {
+      // The temp file is inert; failing to clean it up is not worth a second error.
+    }
+    log.debug('session spine legacy fold marker write failed', { error: errorMessage(err) });
+  }
+}
+
+/**
  * Reads a surface's OWN project-scoped control-plane sessions.json and folds each
  * record into the daemon via the client (register upsert; closed records also
  * closed). Writes a marker file so subsequent runs are a no-op. Register is
  * idempotent, so even a marker-less re-run is safe. Only folds the store for the
  * project it is invoked from — the per-project discovery scope is documented, not
  * silently "complete" across every project a surface has ever run in.
+ *
+ * The marker is validated by CONTENT on every boot (see {@link hasCompletedFold})
+ * and written via temp-file-plus-rename (see {@link writeCompletedFoldMarker}), so
+ * a crash mid-write can no longer leave a carcass that suppresses the fold
+ * forever. An unreadable/absent legacy store still writes NO marker, so a later
+ * run with a real store folds it.
  */
 export function foldLegacySpineStore(
   client: Pick<SessionSpineClient, 'foldLegacyRecords'>,
   options: FoldLegacySpineStoreOptions,
 ): FoldLegacySpineStoreResult {
   const log = options.log ?? logger;
-  if (existsSync(options.markerPath)) return { folded: 0, skipped: true };
+  if (hasCompletedFold(options.markerPath, log)) return { folded: 0, skipped: true };
 
   let raw: unknown;
   try {
@@ -548,19 +690,11 @@ export function foldLegacySpineStore(
 
   client.foldLegacyRecords(records, closedIds);
 
-  try {
-    mkdirSync(dirname(options.markerPath), { recursive: true });
-    writeFileSync(
-      options.markerPath,
-      JSON.stringify(
-        { migratedAt: (options.now ?? Date.now)(), count: records.length, source: options.storePath },
-        null,
-        2,
-      ),
-    );
-  } catch (err) {
-    log.debug('session spine legacy fold marker write failed', { err });
-  }
+  writeCompletedFoldMarker(
+    options.markerPath,
+    { migratedAt: (options.now ?? Date.now)(), count: records.length, source: options.storePath },
+    log,
+  );
 
   return { folded: records.length, skipped: false };
 }

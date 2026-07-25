@@ -1,6 +1,7 @@
 import type { DaemonBatchManager } from '../../batch/index.js';
 import { DaemonBatchError } from '../../batch/index.js';
 import type { CreateDaemonBatchJobInput } from '../../batch/types.js';
+import { readReasoningEffortLevel } from '../../providers/reasoning-effort.js';
 import { readBoundedPositiveInteger } from './route-helpers.js';
 
 export interface DaemonBatchRouteContext {
@@ -78,6 +79,7 @@ function parseCreateJobInput(body: Record<string, unknown>): CreateDaemonBatchJo
   const request = toRecord(body['request']);
   const source = toRecord(body['source']);
   const metadata = toStringRecord(body['metadata']);
+  const reasoningEffort = readReasoningEffortLevel(request['reasoningEffort']);
   const input: CreateDaemonBatchJobInput = {
     ...(typeof body['provider'] === 'string' ? { provider: body['provider'] } : {}),
     ...(typeof body['model'] === 'string' ? { model: body['model'] } : {}),
@@ -86,9 +88,7 @@ function parseCreateJobInput(body: Record<string, unknown>): CreateDaemonBatchJo
       ...(Array.isArray(request['tools']) ? { tools: request['tools'] as CreateDaemonBatchJobInput['request']['tools'] } : {}),
       ...(typeof request['systemPrompt'] === 'string' ? { systemPrompt: request['systemPrompt'] } : {}),
       ...(typeof request['maxTokens'] === 'number' ? { maxTokens: request['maxTokens'] } : {}),
-      ...(request['reasoningEffort'] === 'instant' || request['reasoningEffort'] === 'low' || request['reasoningEffort'] === 'medium' || request['reasoningEffort'] === 'high'
-        ? { reasoningEffort: request['reasoningEffort'] }
-        : {}),
+      ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
       ...(typeof request['reasoningSummary'] === 'boolean' ? { reasoningSummary: request['reasoningSummary'] } : {}),
     },
     ...(body['executionMode'] === 'batch' || body['executionMode'] === 'live' ? { executionMode: body['executionMode'] } : {}),

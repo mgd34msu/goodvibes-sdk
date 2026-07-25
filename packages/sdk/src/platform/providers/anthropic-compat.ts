@@ -13,7 +13,8 @@ import {
   runLiveModelRefresh,
   type LiveModelDiscoveryResult,
 } from './live-model-discovery.js';
-import { applyAnthropicThinking } from './anthropic-stream.js';
+import { applyAnthropicReasoning, isAnthropicThinkingEnabled } from './anthropic-stream.js';
+import { describeReasoningRejection } from './reasoning-effort.js';
 import { ProviderError } from '../types/errors.js';
 import { withRetry, type RetryConfig } from '../utils/retry.js';
 import { instrumentedLlmCall } from '../runtime/llm-observability.js';
@@ -249,7 +250,11 @@ export class AnthropicCompatProvider implements LLMProvider {
         body['tools'] = toAnthropicTools(tools);
       }
 
-      applyAnthropicThinking(body, reasoningEffort, Infinity);
+      const resolvedEffort = applyAnthropicReasoning(
+        body,
+        { model: resolvedModel, reasoningEffort, ...(params.reasoningEffortSpec ? { reasoningEffortSpec: params.reasoningEffortSpec } : {}) },
+        Infinity,
+      );
 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -264,7 +269,7 @@ export class AnthropicCompatProvider implements LLMProvider {
         }
       }
 
-      if (body['thinking']) {
+      if (isAnthropicThinkingEnabled(body['thinking'])) {
         headers['anthropic-beta'] = 'interleaved-thinking-2025-05-14';
       }
 
@@ -287,7 +292,8 @@ export class AnthropicCompatProvider implements LLMProvider {
       if (!res.ok) {
         const text = await res.text().catch(() => 'unknown error');
         throw new ProviderError(
-          `AnthropicCompat(${this.name}) API error ${res.status}: ${text}`,
+          `AnthropicCompat(${this.name}) API error ${res.status}: ${text}`
+            + (describeReasoningRejection(res.status, text, resolvedEffort.value) ?? ''),
           {
             statusCode: res.status,
             provider: this.name,
@@ -366,8 +372,10 @@ export class AnthropicCompatProvider implements LLMProvider {
       policy: {
         local: false,
         streamProtocol: this.streamProtocol ?? 'anthropic-sse',
-        reasoningMode: 'thinking_budget',
-        supportedReasoningEfforts: ['instant', 'low', 'medium', 'high'],
+        // Per model, not per provider: current generations take
+        // output_config.effort, Claude 4.5 and earlier take a thinking budget,
+        // and the levels each accepts come from the resolved spec.
+        reasoningMode: 'per-model-effort-or-thinking-budget',
         cacheStrategy: 'anthropic-prompt-cache',
       },
     };

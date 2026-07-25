@@ -21,7 +21,7 @@ export interface SharedSessionRoutingIntent {
   } | undefined;
   readonly tools?: readonly string[] | undefined;
   readonly executionIntent?: ExecutionIntent | undefined;
-  readonly reasoningEffort?: 'instant' | 'low' | 'medium' | 'high' | undefined;
+  readonly reasoningEffort?: string | undefined;
 }
 interface AutomationRouteBinding {
   readonly id?: string | undefined;

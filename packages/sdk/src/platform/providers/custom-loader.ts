@@ -7,6 +7,7 @@ import { OpenAICompatProvider } from './openai-compat.js';
 import { AnthropicCompatProvider } from './anthropic-compat.js';
 import type { LLMProvider } from './interface.js';
 import type { ModelDefinition } from './registry.js';
+import { reasoningEffortSpecFromLevels } from './reasoning-effort.js';
 import { summarizeError } from '../utils/error-display.js';
 import {
   LocalContextIngestionService,
@@ -371,7 +372,9 @@ export async function loadCustomProviders(
           reasoning: m.capabilities.reasoning,
           multimodal: m.capabilities.multimodal,
         },
-        ...(m.reasoningEffort ? { reasoningEffort: m.reasoningEffort } : {}),
+        ...(m.reasoningEffort
+          ? { reasoningEffort: reasoningEffortSpecFromLevels(m.reasoningEffort) }
+          : {}),
         ...(m.tier ? { tier: m.tier } : {}),
         ...(m.pricing ? { pricing: m.pricing } : {}),
       };

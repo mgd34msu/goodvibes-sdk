@@ -1,9 +1,27 @@
 import type { Tool } from '../../types/tools.js';
 import type { CrossSessionTaskRef, CrossSessionTaskRegistry } from '../../sessions/orchestration/index.js';
+import { LEGACY_TASK_NAMESPACE } from '../../sessions/orchestration/types.js';
 import { TASK_TOOL_SCHEMA, type TaskToolInput } from './schema.js';
 import { toRecord } from '../../utils/record-coerce.js';
 
-const DEFAULT_SESSION_ID = 'local';
+/** Options for {@link createTaskTool}. */
+export interface TaskToolOptions {
+  /**
+   * Resolves the REAL runtime session identity, called fresh on every tool
+   * invocation.
+   *
+   * A getter, not a value: `runtime.sessionId` is reassigned in place when a
+   * crash-recovery snapshot is accepted, so an id captured at tool-registration
+   * time would keep writing refs under the boot session the user just left
+   * behind. Reading it per call is the only way the tool follows the session the
+   * user is actually in.
+   *
+   * When absent, the tool falls back to the legacy namespace and every ref it
+   * writes is unowned — see {@link LEGACY_TASK_NAMESPACE}. Hosts that care
+   * about owner-existence reaping must pass this.
+   */
+  readonly resolveSessionId?: (() => string) | undefined;
+}
 
 function summarizeRef(ref: CrossSessionTaskRef | null) {
   if (!ref) return null;
@@ -18,7 +36,28 @@ function summarizeRef(ref: CrossSessionTaskRef | null) {
   };
 }
 
-export function createTaskTool(registry: CrossSessionTaskRegistry): Tool {
+/**
+ * The `task` tool.
+ *
+ * OWNERSHIP IS NOT A TOOL INPUT. The owning `sessionId` on every ref this tool
+ * writes comes from `options.resolveSessionId` — the host's real runtime session
+ * identity — and the model's `input.sessionId` is IGNORED for all of them. It
+ * used to be the authority, defaulting to the literal `'local'`, which meant an
+ * ownership key the model could set to anything (or, overwhelmingly, forget to
+ * set at all). A field the caller can spoof cannot be the key a store reaps by:
+ * owner-existence housekeeping over a namespace the model chooses is not
+ * housekeeping, and one shared `'local'` bucket is not per-session ownership.
+ *
+ * `input.sessionId` still means something in exactly one place: READ modes
+ * (`list`, `show`), where it selects WHICH session's refs to display. Reading
+ * another session's graph is the point of a cross-session registry and asserts
+ * no ownership, so it stays available and simply defaults to the caller's own
+ * session. Naming another session as a dependency target
+ * (`dependsOnSessionId`) or a handoff destination (`toSessionId`) likewise
+ * still works — those are references to a counterparty, not a claim about who
+ * owns the record being written.
+ */
+export function createTaskTool(registry: CrossSessionTaskRegistry, options: TaskToolOptions = {}): Tool {
   return {
     definition: {
       name: 'task',
@@ -33,7 +72,11 @@ export function createTaskTool(registry: CrossSessionTaskRegistry): Tool {
         return { success: false, error: 'Invalid args: mode is required.' };
       }
       const input = args as TaskToolInput;
-      const sessionId = input.sessionId?.trim() || DEFAULT_SESSION_ID;
+      // The one authoritative identity. Every WRITE below keys on this and
+      // never on input.sessionId — see the createTaskTool doc comment.
+      const sessionId = options.resolveSessionId?.().trim() || LEGACY_TASK_NAMESPACE;
+      // Read-only selector: which session's refs to display. Defaults to ours.
+      const readSessionId = input.sessionId?.trim() || sessionId;
       const view = input.view ?? 'summary';
 
       if (input.mode === 'create') {
@@ -55,11 +98,11 @@ export function createTaskTool(registry: CrossSessionTaskRegistry): Tool {
       }
 
       if (input.mode === 'list') {
-        const refs = registry.getRefsBySession(sessionId);
+        const refs = registry.getRefsBySession(readSessionId);
         return {
           success: true,
           output: JSON.stringify({
-            sessionId,
+            sessionId: readSessionId,
             view,
             count: refs.length,
             refs: view === 'full' ? refs : refs.map((ref) => summarizeRef(ref)),
@@ -69,14 +112,14 @@ export function createTaskTool(registry: CrossSessionTaskRegistry): Tool {
 
       if (input.mode === 'show') {
         if (!input.taskId) return { success: false, error: 'show requires taskId.' };
-        const ref = registry.getRef(sessionId, input.taskId);
-        if (!ref) return { success: false, error: `Unknown task ref: ${sessionId}:${input.taskId}` };
+        const ref = registry.getRef(readSessionId, input.taskId);
+        if (!ref) return { success: false, error: `Unknown task ref: ${readSessionId}:${input.taskId}` };
         return {
           success: true,
           output: JSON.stringify({
             ref: view === 'full' ? ref : summarizeRef(ref),
-            dependencies: registry.getDependencies(sessionId, input.taskId),
-            dependents: registry.getDependents(sessionId, input.taskId),
+            dependencies: registry.getDependencies(readSessionId, input.taskId),
+            dependents: registry.getDependents(readSessionId, input.taskId),
           }),
         };
       }

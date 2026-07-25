@@ -71,13 +71,14 @@ import {
   mkdirSync,
   openSync,
   readFileSync,
+  readdirSync,
   renameSync,
   statSync,
   unlinkSync,
   writeSync,
 } from 'node:fs';
 import { randomBytes } from 'node:crypto';
-import { dirname } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { logger } from '../../utils/logger.js';
 import { summarizeError } from '../../utils/error-display.js';
 
@@ -195,6 +196,81 @@ function reclaimAbandonedTicket(ticketPath: string, staleMs: number): void {
 }
 
 /**
+ * The staging-file name prefix both populated-create paths use:
+ * `<lock>.new-<pid>-<hex>`. A staging file is meant to live for microseconds —
+ * it is created, written, and then either linked/renamed onto the lock path or
+ * unlinked — but a process killed between the `openSync(…,'wx')` and the
+ * `linkSync`/`unlinkSync` pair leaves one behind with nothing to clean it up.
+ */
+function stagingPrefix(lockPath: string): string {
+  return `${basename(lockPath)}.new-`;
+}
+
+/** A fresh, collision-proof staging path for `lockPath` (the only place this name is built). */
+function newStagingPath(lockPath: string): string {
+  return join(dirname(lockPath), `${stagingPrefix(lockPath)}${process.pid}-${randomBytes(6).toString('hex')}`);
+}
+
+/**
+ * Remember when each lock directory was last swept for staging litter, so an
+ * acquire-heavy workload does not pay a readdir per acquire. Bounded by the
+ * number of distinct lock paths a process touches (one per checkpoint store).
+ */
+const lastStagingSweepAt = new Map<string, number>();
+
+/**
+ * Reclaim orphaned staging files left by a process that died mid-create.
+ *
+ * Safety rests entirely on the age threshold: another process's IN-FLIGHT
+ * staging file is at most microseconds old, so reaping only files whose mtime
+ * is older than `staleMs` (the same threshold that judges an abandoned takeover
+ * ticket) can never delete a staging file someone is about to link. ENOENT is
+ * success — another sweep, or the owner itself, got there first. Best-effort
+ * throughout: this is litter collection, never a correctness requirement.
+ */
+function reclaimAbandonedStagingFiles(lockPath: string, staleMs: number): void {
+  const now = Date.now();
+  const lastSweep = lastStagingSweepAt.get(lockPath);
+  if (lastSweep !== undefined && now - lastSweep < staleMs) return;
+  lastStagingSweepAt.set(lockPath, now);
+
+  const dir = dirname(lockPath);
+  const prefix = stagingPrefix(lockPath);
+  let names: string[];
+  try {
+    names = readdirSync(dir);
+  } catch {
+    return; // directory gone or unreadable — nothing to sweep
+  }
+  let reclaimed = 0;
+  for (const name of names) {
+    if (!name.startsWith(prefix)) continue;
+    const path = join(dir, name);
+    try {
+      if (now - statSync(path).mtimeMs <= staleMs) continue; // possibly in flight — leave it
+    } catch {
+      continue; // vanished between listing and stat
+    }
+    try {
+      unlinkSync(path);
+      reclaimed += 1;
+    } catch (error) {
+      // ENOENT is success: another sweep already reclaimed it, and the
+      // post-state is the one we wanted — it is simply not ours to count.
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        logger.warn('cross-process-lock: could not reclaim an abandoned staging file', {
+          lockPath,
+          error: summarizeError(error),
+        });
+      }
+    }
+  }
+  if (reclaimed > 0) {
+    logger.debug('cross-process-lock: reclaimed abandoned staging files', { lockPath, reclaimed });
+  }
+}
+
+/**
  * Try to take over a lock judged stale (see rule 2 in the module header).
  * Returns the open descriptor of the lock file this process now owns, or null
  * when the takeover did not happen (another process is taking over, the lock
@@ -225,7 +301,7 @@ function tryTakeOverStaleLock(lockPath: string, staleMs: number, token: string):
     const verdict = inspectLock(lockPath, staleMs);
     if (!verdict || !verdict.stale) return null;
 
-    stagingPath = `${lockPath}.new-${process.pid}-${randomBytes(6).toString('hex')}`;
+    stagingPath = newStagingPath(lockPath);
     const fd = openSync(stagingPath, 'wx');
     try {
       writeLockPayload(fd, token);
@@ -282,7 +358,7 @@ let hardlinkUnsupported = false;
 function createLockAtomically(lockPath: string, token: string): number | null {
   if (hardlinkUnsupported) return createLockDirectly(lockPath, token);
 
-  const stagingPath = `${lockPath}.new-${process.pid}-${randomBytes(6).toString('hex')}`;
+  const stagingPath = newStagingPath(lockPath);
   let fd: number;
   try {
     fd = openSync(stagingPath, 'wx');
@@ -447,6 +523,11 @@ async function acquireFileLock(
   const refreshMs = Math.min(MAX_REFRESH_MS, Math.max(MIN_REFRESH_MS, Math.floor(staleMs / 3)));
 
   mkdirSync(dirname(lockPath), { recursive: true });
+  // Housekeeping on the way in: drop staging files abandoned by a process that
+  // died mid-create. Throttled to once per staleMs per lock path, and only ever
+  // touches files older than staleMs, so a concurrent acquire's in-flight
+  // staging file is never at risk.
+  reclaimAbandonedStagingFiles(lockPath, staleMs);
 
   const start = Date.now();
   const token = randomBytes(8).toString('hex');

@@ -58,7 +58,7 @@ export function createDefaultChannelDeliveryStrategies(
     createNtfyDeliveryStrategy(configManager, serviceRegistry, artifactStore),
     createWebControlPlaneDeliveryStrategy(configManager, artifactStore, getControlPlaneGateway),
     createHomeAssistantDeliveryStrategy(configManager, serviceRegistry, artifactStore, secretsManager),
-    createTelegramDeliveryStrategy(configManager, serviceRegistry, artifactStore),
+    createTelegramDeliveryStrategy(configManager, serviceRegistry, artifactStore, secretsManager),
     createGoogleChatDeliveryStrategy(configManager, serviceRegistry, artifactStore),
     createSignalDeliveryStrategy(configManager, serviceRegistry, artifactStore),
     createWhatsAppDeliveryStrategy(configManager, serviceRegistry, artifactStore),

@@ -60,7 +60,7 @@ export interface AutomationExecutionPolicy {
   readonly fallbackModels?: readonly string[] | undefined;
   readonly routing?: ProviderModelRoutingPolicy | undefined;
   readonly executionIntent?: ExecutionIntent | undefined;
-  readonly reasoningEffort?: 'instant' | 'low' | 'medium' | 'high' | undefined;
+  readonly reasoningEffort?: string | undefined;
   readonly thinking?: string | undefined;
   readonly wakeMode?: AutomationWakeMode | undefined;
   readonly timeoutMs?: number | undefined;

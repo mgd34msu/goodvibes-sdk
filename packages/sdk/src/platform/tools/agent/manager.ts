@@ -111,7 +111,7 @@ export interface AgentRecord {
   fallbackModels?: string[] | undefined;
   routing?: AgentInput['routing'] | undefined;
   executionIntent?: ExecutionIntent | undefined;
-  reasoningEffort?: 'instant' | 'low' | 'medium' | 'high' | undefined;
+  reasoningEffort?: string | undefined;
   context?: string | undefined;
   tools: string[];
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';

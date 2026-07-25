@@ -3,13 +3,19 @@ import type { ProviderCapability } from './capabilities.js';
 import type { SecretsManager } from '../config/secrets.js';
 import type { ServiceRegistry } from '../config/service-registry.js';
 import type { SubscriptionManager } from '../config/subscriptions.js';
+import { REASONING_EFFORT_BUDGET_TOKENS, type ReasoningEffortSpec } from './reasoning-effort.js';
 
-/** Shared budget token map for reasoning effort levels. */
+/**
+ * Shared budget token map for the four legacy reasoning effort levels.
+ * Values come from the full ladder in `reasoning-effort.ts` so the two tables
+ * cannot drift; prefer `budgetTokensForLevel` for new code, which respects the
+ * per-model minimum and maximum the catalog publishes.
+ */
 export const REASONING_BUDGET_MAP: Record<string, number> = {
-  instant: 0,
-  low: 2048,
-  medium: 8192,
-  high: 32768,
+  instant: REASONING_EFFORT_BUDGET_TOKENS['instant']!,
+  low: REASONING_EFFORT_BUDGET_TOKENS['low']!,
+  medium: REASONING_EFFORT_BUDGET_TOKENS['medium']!,
+  high: REASONING_EFFORT_BUDGET_TOKENS['high']!,
 };
 
 /** Runtime metadata emitted by providers for diagnostics and policy surfaces. */
@@ -73,6 +79,13 @@ export interface ProviderRuntimeMetadata {
     readonly dataRetention?: string | undefined;
     readonly streamProtocol?: string | undefined;
     readonly reasoningMode?: string | undefined;
+    /**
+     * Reasoning levels this provider's representative model resolved to, for
+     * diagnostics only. Which levels apply is per model, not per provider, so
+     * the request path resolves them again per request; a provider that sends
+     * no reasoning field at all omits this. Never read it to decide what to
+     * send — see `resolveEffortForModel`.
+     */
     readonly supportedReasoningEfforts?: readonly string[] | undefined;
     readonly cacheStrategy?: string | undefined;
     readonly notes?: readonly string[] | undefined;
@@ -292,8 +305,21 @@ export interface ChatRequest {
   maxTokens?: number | undefined;
   signal?: AbortSignal | undefined;
   systemPrompt?: string | undefined;
-  /** Controls reasoning depth for models that support it. Format varies by provider. */
-  reasoningEffort?: 'instant' | 'low' | 'medium' | 'high' | undefined;
+  /**
+   * Requested reasoning depth. Which levels a model really accepts is
+   * per-model, not a fixed union — see `reasoning-effort.ts`. Adapters resolve
+   * this against the model's own options before it reaches the wire, so a
+   * level the model does not offer snaps down rather than earning a 400.
+   */
+  reasoningEffort?: string | undefined;
+  /**
+   * The resolved options for this exact model, when the caller already has
+   * them (it holds the `ModelDefinition`). Adapters fall back to resolving
+   * from the model id alone when this is absent, so passing it is an accuracy
+   * improvement — live catalog data instead of the curated family table —
+   * rather than a requirement.
+   */
+  reasoningEffortSpec?: ReasoningEffortSpec | undefined;
   /** Mercury-2 specific: whether to include a reasoning summary in the response. */
   reasoningSummary?: boolean | undefined;
   /** Called per-chunk during streaming when streaming is enabled. */

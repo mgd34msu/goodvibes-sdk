@@ -13,7 +13,7 @@
  * and nothing is silently lost.
  */
 import { describe, expect, test } from 'bun:test';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -242,6 +242,226 @@ describe('session-migration: the marker only appears when every step completed',
     expect(existsSync(markerPathFor(workingDirectory, 'tui'))).toBe(true);
     expect(existsSync(join(surface.agentJournalsDir, 'agent-deadbeef.jsonl'))).toBe(true);
     expect(existsSync(journal)).toBe(false);
+  });
+});
+
+describe('session-migration: the marker is validated by content, never by existence', () => {
+  /** Seed the one piece of legacy data whose migration is easy to observe: a flat agent journal. */
+  function seedOneJournal(workingDirectory: string): string {
+    const scopedSessionsDir = join(workingDirectory, '.goodvibes', 'tui', 'sessions');
+    mkdirSync(scopedSessionsDir, { recursive: true });
+    const journal = join(scopedSessionsDir, 'agent-deadbeef.jsonl');
+    writeFileSync(journal, JSON.stringify({ type: 'meta', agentId: 'agent-deadbeef' }) + '\n', 'utf-8');
+    return journal;
+  }
+
+  /** Overwrite the marker with `contents`, standing in for what a crash left behind. */
+  function seedMarker(workingDirectory: string, contents: string): void {
+    const marker = markerPathFor(workingDirectory, 'tui');
+    mkdirSync(join(workingDirectory, '.goodvibes', 'tui'), { recursive: true });
+    writeFileSync(marker, contents, 'utf-8');
+  }
+
+  test('the marker records what was actually migrated, not just a timestamp', () => {
+    const { workingDirectory, homeDirectory } = tempRoot();
+    seedOneJournal(workingDirectory);
+    createSessionSurface({ surfaceRoot: 'tui', workingDirectory, homeDirectory });
+
+    const marker = JSON.parse(readFileSync(markerPathFor(workingDirectory, 'tui'), 'utf-8')) as {
+      schemaVersion?: unknown;
+      completed?: unknown;
+      migratedAt?: unknown;
+      surfaceRoot?: unknown;
+      moved?: { agentJournals?: unknown; checkpointsAdopted?: unknown };
+    };
+    expect(marker.schemaVersion).toBe(1);
+    expect(marker.completed).toBe(true);
+    expect(typeof marker.migratedAt).toBe('string');
+    expect(marker.surfaceRoot).toBe('tui');
+    expect(marker.moved?.agentJournals).toBe(1);
+    expect(marker.moved?.checkpointsAdopted).toBe(false);
+  });
+
+  test('a ZERO-BYTE marker (crash mid-write) forces the migration to run again instead of stranding the data', () => {
+    const { workingDirectory, homeDirectory } = tempRoot();
+    const journal = seedOneJournal(workingDirectory);
+    // The exact shape the old `existsSync(marker)` gate accepted forever: the
+    // file is there, and it says nothing at all.
+    seedMarker(workingDirectory, '');
+
+    const surface = createSessionSurface({ surfaceRoot: 'tui', workingDirectory, homeDirectory });
+
+    expect(existsSync(join(surface.agentJournalsDir, 'agent-deadbeef.jsonl'))).toBe(true);
+    expect(existsSync(journal)).toBe(false);
+    // ...and the marker is now real, so the NEXT boot is a clean no-op.
+    const rewritten = JSON.parse(readFileSync(markerPathFor(workingDirectory, 'tui'), 'utf-8')) as { completed?: unknown };
+    expect(rewritten.completed).toBe(true);
+  });
+
+  test('a NUL-filled marker (a recovered inode with no data) forces re-migration', () => {
+    const { workingDirectory, homeDirectory } = tempRoot();
+    const journal = seedOneJournal(workingDirectory);
+    seedMarker(workingDirectory, ' '.repeat(64));
+
+    const surface = createSessionSurface({ surfaceRoot: 'tui', workingDirectory, homeDirectory });
+    expect(existsSync(join(surface.agentJournalsDir, 'agent-deadbeef.jsonl'))).toBe(true);
+    expect(existsSync(journal)).toBe(false);
+  });
+
+  test('a TRUNCATED marker (torn write) forces re-migration', () => {
+    const { workingDirectory, homeDirectory } = tempRoot();
+    const journal = seedOneJournal(workingDirectory);
+    const complete = JSON.stringify({ schemaVersion: 1, completed: true, migratedAt: new Date().toISOString() });
+    seedMarker(workingDirectory, complete.slice(0, Math.floor(complete.length / 2)));
+
+    const surface = createSessionSurface({ surfaceRoot: 'tui', workingDirectory, homeDirectory });
+    expect(existsSync(join(surface.agentJournalsDir, 'agent-deadbeef.jsonl'))).toBe(true);
+    expect(existsSync(journal)).toBe(false);
+  });
+
+  test('a marker that parses but never claims completion forces re-migration', () => {
+    const { workingDirectory, homeDirectory } = tempRoot();
+    const journal = seedOneJournal(workingDirectory);
+    // Valid JSON, plausible-looking, no completion assertion — and the legacy
+    // pre-fix marker shape, which is exactly this.
+    seedMarker(workingDirectory, JSON.stringify({ migratedAt: new Date().toISOString() }) + '\n');
+
+    const surface = createSessionSurface({ surfaceRoot: 'tui', workingDirectory, homeDirectory });
+    expect(existsSync(join(surface.agentJournalsDir, 'agent-deadbeef.jsonl'))).toBe(true);
+    expect(existsSync(journal)).toBe(false);
+  });
+
+  test('a marker that is an array, or a bare literal, forces re-migration', () => {
+    for (const contents of ['[]', 'true', '"completed"', 'null', '123']) {
+      const { workingDirectory, homeDirectory } = tempRoot();
+      const journal = seedOneJournal(workingDirectory);
+      seedMarker(workingDirectory, contents);
+      const surface = createSessionSurface({ surfaceRoot: 'tui', workingDirectory, homeDirectory });
+      expect(existsSync(join(surface.agentJournalsDir, 'agent-deadbeef.jsonl'))).toBe(true);
+      expect(existsSync(journal)).toBe(false);
+    }
+  });
+
+  test('a valid marker still short-circuits: the migration does not run twice', () => {
+    const { workingDirectory, homeDirectory } = tempRoot();
+    const journal = seedOneJournal(workingDirectory);
+    seedMarker(workingDirectory, JSON.stringify({ schemaVersion: 1, completed: true, migratedAt: new Date().toISOString() }));
+
+    const surface = createSessionSurface({ surfaceRoot: 'tui', workingDirectory, homeDirectory });
+    // Untouched — the marker said the work was done, and it was believed.
+    expect(existsSync(journal)).toBe(true);
+    expect(existsSync(join(surface.agentJournalsDir, 'agent-deadbeef.jsonl'))).toBe(false);
+  });
+
+  test('a marker from a NEWER schema is accepted — a downgrade must not re-migrate every boot', () => {
+    const { workingDirectory, homeDirectory } = tempRoot();
+    const journal = seedOneJournal(workingDirectory);
+    seedMarker(workingDirectory, JSON.stringify({ schemaVersion: 99, completed: true, migratedAt: new Date().toISOString() }));
+
+    createSessionSurface({ surfaceRoot: 'tui', workingDirectory, homeDirectory });
+    expect(existsSync(journal)).toBe(true);
+  });
+
+  test('no half-written temp marker is left beside the real one', () => {
+    const { workingDirectory, homeDirectory } = tempRoot();
+    seedOneJournal(workingDirectory);
+    createSessionSurface({ surfaceRoot: 'tui', workingDirectory, homeDirectory });
+    const markerDir = join(workingDirectory, '.goodvibes', 'tui');
+    const leftovers = readdirSync(markerDir).filter((name) => name.startsWith('.migrated-v1') && name !== '.migrated-v1');
+    expect(leftovers).toEqual([]);
+  });
+
+  test('the migration discloses what it moved rather than relocating data in silence', () => {
+    const { workingDirectory, homeDirectory } = tempRoot();
+    seedOneJournal(workingDirectory);
+    const { infos } = withCapturedInfo(() => createSessionSurface({ surfaceRoot: 'tui', workingDirectory, homeDirectory }));
+    expect(infos.some((m) => m.includes('migrated legacy session data'))).toBe(true);
+    expect(capturedInfoData.some((d) => d?.agentJournalsMoved === 1)).toBe(true);
+  });
+
+  test('a boot with nothing to migrate stays quiet', () => {
+    const { workingDirectory, homeDirectory } = tempRoot();
+    const { infos } = withCapturedInfo(() => createSessionSurface({ surfaceRoot: 'tui', workingDirectory, homeDirectory }));
+    expect(infos.some((m) => m.includes('migrated legacy session data'))).toBe(false);
+  });
+});
+
+describe('session-migration: a crash-damaged destination is rejected, not served', () => {
+  function seedJournal(workingDirectory: string): string {
+    const scopedSessionsDir = join(workingDirectory, '.goodvibes', 'tui', 'sessions');
+    mkdirSync(scopedSessionsDir, { recursive: true });
+    const journal = join(scopedSessionsDir, 'agent-deadbeef.jsonl');
+    writeFileSync(journal, JSON.stringify({ type: 'meta', agentId: 'agent-deadbeef' }) + '\n', 'utf-8');
+    return journal;
+  }
+
+  test('a ZERO-BYTE destination journal does not strand the legacy source — the source is moved over it', () => {
+    const { workingDirectory, homeDirectory } = tempRoot();
+    const journal = seedJournal(workingDirectory);
+    // A previous interrupted run created the destination and died before
+    // writing a byte. `existsSync` says "already there" and the legacy journal
+    // would have been abandoned in sessions/ forever.
+    const agentsDir = join(workingDirectory, '.goodvibes', 'tui', 'sessions', 'agents');
+    mkdirSync(agentsDir, { recursive: true });
+    writeFileSync(join(agentsDir, 'agent-deadbeef.jsonl'), '', 'utf-8');
+
+    const surface = createSessionSurface({ surfaceRoot: 'tui', workingDirectory, homeDirectory });
+
+    const moved = readFileSync(join(surface.agentJournalsDir, 'agent-deadbeef.jsonl'), 'utf-8');
+    expect(moved).toContain('agent-deadbeef');
+    expect(existsSync(journal)).toBe(false);
+  });
+
+  test('a TRUNCATED destination journal is replaced by the complete legacy source', () => {
+    const { workingDirectory, homeDirectory } = tempRoot();
+    const journal = seedJournal(workingDirectory);
+    const agentsDir = join(workingDirectory, '.goodvibes', 'tui', 'sessions', 'agents');
+    mkdirSync(agentsDir, { recursive: true });
+    // A first line cut off partway through — nothing can parse it back.
+    writeFileSync(join(agentsDir, 'agent-deadbeef.jsonl'), '{"type":"meta","agen', 'utf-8');
+
+    const surface = createSessionSurface({ surfaceRoot: 'tui', workingDirectory, homeDirectory });
+
+    const moved = readFileSync(join(surface.agentJournalsDir, 'agent-deadbeef.jsonl'), 'utf-8');
+    expect(JSON.parse(moved.split('\n')[0]!)).toMatchObject({ type: 'meta', agentId: 'agent-deadbeef' });
+    expect(existsSync(journal)).toBe(false);
+  });
+
+  test('a READABLE destination journal is never clobbered, and the collision is disclosed', () => {
+    const { workingDirectory, homeDirectory } = tempRoot();
+    const journal = seedJournal(workingDirectory);
+    const agentsDir = join(workingDirectory, '.goodvibes', 'tui', 'sessions', 'agents');
+    mkdirSync(agentsDir, { recursive: true });
+    const destination = join(agentsDir, 'agent-deadbeef.jsonl');
+    writeFileSync(destination, JSON.stringify({ type: 'meta', agentId: 'agent-deadbeef', note: 'the real one' }) + '\n', 'utf-8');
+
+    const { infos } = withCapturedInfo(() => createSessionSurface({ surfaceRoot: 'tui', workingDirectory, homeDirectory }));
+
+    // Both survive: the destination is untouched and the legacy source stays
+    // where it was rather than being guessed at.
+    expect(readFileSync(destination, 'utf-8')).toContain('the real one');
+    expect(existsSync(journal)).toBe(true);
+    expect(infos.some((m) => m.includes('agent journal left in place'))).toBe(true);
+  });
+
+  test('a ZERO-BYTE canonical last-session pointer loses to the legacy one even though it is newer', () => {
+    const { workingDirectory, homeDirectory } = tempRoot();
+    // Legacy unscoped pointer with a real session id...
+    const legacySessionsDir = join(workingDirectory, '.goodvibes', 'sessions');
+    mkdirSync(legacySessionsDir, { recursive: true });
+    const legacyPointer = join(legacySessionsDir, 'last-session.json');
+    writeFileSync(legacyPointer, JSON.stringify({ sessionId: 'resume-me', timestamp: new Date().toISOString() }) + '\n', 'utf-8');
+    const past = new Date(Date.now() - 60_000);
+    utimesSync(legacyPointer, past, past);
+
+    // ...and a canonical pointer a crash left empty. It is NEWER, so the mtime
+    // rule alone would have kept it and resumed nothing.
+    const canonicalDir = join(workingDirectory, '.goodvibes', 'tui', 'sessions');
+    mkdirSync(canonicalDir, { recursive: true });
+    writeFileSync(join(canonicalDir, 'last-session.json'), '', 'utf-8');
+
+    const surface = createSessionSurface({ surfaceRoot: 'tui', workingDirectory, homeDirectory });
+    expect(readLastSessionPointer({ surface })).toBe('resume-me');
   });
 });
 

@@ -35,15 +35,72 @@ function initRepo(root: string): void {
   runGit(root, ['-c', 'user.email=a@b.c', '-c', 'user.name=test', 'commit', '--allow-empty', '-m', 'seed']);
 }
 
-/** Real-clock polling — worktree creation/merge/commit go through real `git` subprocesses, which resolve on macrotask boundaries, not microtasks (same reasoning as dirty-guard.ts's snapshotDirtyTree doc comment). */
-async function waitUntil(predicate: () => boolean, opts: { timeoutMs?: number; intervalMs?: number } = {}): Promise<void> {
-  const timeoutMs = opts.timeoutMs ?? 15_000;
-  const intervalMs = opts.intervalMs ?? 20;
-  const deadline = Date.now() + timeoutMs;
+/**
+ * Ceiling for a condition wait. Deliberately far above how long any of these
+ * predicates takes even on a badly loaded machine: the wait returns the instant
+ * the predicate holds, so headroom costs a fast host nothing, while a genuinely
+ * hung condition still fails the test — just later, and with a message that
+ * says what it was waiting for.
+ */
+const WAIT_CEILING_MS = 60_000;
+/** Poll cadence. Small enough that the wait tracks the predicate closely. */
+const WAIT_INTERVAL_MS = 20;
+/**
+ * Per-test budget for every test in this file, kept above WAIT_CEILING_MS so a
+ * stuck condition fails with waitUntil's labelled diagnostic instead of bun's
+ * opaque "test timed out" — and so a merely SLOW runner never trips it at all.
+ */
+const WAIT_TEST_TIMEOUT_MS = 90_000;
+
+/**
+ * Real-clock polling — worktree creation/merge/commit go through real `git`
+ * subprocesses, which resolve on macrotask boundaries, not microtasks (same
+ * reasoning as dirty-guard.ts's snapshotDirtyTree doc comment).
+ *
+ * Load tolerance: this used to impose a fixed 15s (locally: 20s) budget, which
+ * a loaded CI runner blew through while the git subprocesses were still making
+ * perfectly normal progress — the test failed for being slow, not for being
+ * wrong. There is no fixed sleep anywhere: the loop exits on the first true
+ * predicate, and only an unbounded wait is treated as a failure. The thrown
+ * message reports the label, the elapsed time and the worst observed scheduler
+ * lag, which separates "the runner was starved" from "this condition never
+ * happens".
+ */
+async function waitUntil(
+  predicate: () => boolean,
+  opts: { label?: string; ceilingMs?: number; intervalMs?: number } = {},
+): Promise<void> {
+  const ceilingMs = Math.max(opts.ceilingMs ?? WAIT_CEILING_MS, WAIT_CEILING_MS);
+  const intervalMs = opts.intervalMs ?? WAIT_INTERVAL_MS;
+  const startedAt = Date.now();
+  let worstLagMs = 0;
   while (!predicate()) {
-    if (Date.now() > deadline) throw new Error('waitUntil: timed out waiting for predicate');
+    const elapsedMs = Date.now() - startedAt;
+    if (elapsedMs > ceilingMs) {
+      throw new Error(
+        `waitUntil: condition never became true — ${opts.label ?? 'unlabelled predicate'}; ` +
+          `waited ${elapsedMs}ms (ceiling ${ceilingMs}ms), worst poll lag ${worstLagMs}ms`,
+      );
+    }
+    const sleptAt = Date.now();
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    worstLagMs = Math.max(worstLagMs, Date.now() - sleptAt - intervalMs);
+  }
+}
+
+/**
+ * Best-effort settle wait: polls until the predicate holds or `ceilingMs`
+ * elapses and reports which happened. Never throws — for the one call site
+ * whose predicate may legitimately never become true, where the real assertion
+ * comes afterwards.
+ */
+async function waitUpTo(predicate: () => boolean, ceilingMs: number, intervalMs = WAIT_INTERVAL_MS): Promise<boolean> {
+  const deadline = Date.now() + ceilingMs;
+  while (!predicate()) {
+    if (Date.now() > deadline) return false;
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
   }
+  return true;
 }
 
 interface WtHarness {
@@ -147,7 +204,7 @@ describe('WorktreeIsolationManager — claim-time creation + concurrent non-conf
     });
     engine.start(ws.id);
 
-    await waitUntil(() => h.spawnedIds.length === 2);
+    await waitUntil(() => h.spawnedIds.length === 2, { label: 'two agents spawned' });
     const top = ws.items.find((i) => i.id === 'item-top')!;
     const bottom = ws.items.find((i) => i.id === 'item-bottom')!;
     expect(top.worktreePath).toBeDefined();
@@ -175,7 +232,7 @@ describe('WorktreeIsolationManager — claim-time creation + concurrent non-conf
     // event lands.
     await waitUntil(
       () => events.filter((e) => e.type === 'item-worktree-removed' || e.type === 'item-worktree-kept').length === 2,
-      { timeoutMs: 20_000 },
+      { label: 'both items reported worktree removed/kept' },
     );
 
     const mergedEvents = events.filter((e): e is Extract<OrchestrationEvent, { type: 'item-merged' }> => e.type === 'item-merged');
@@ -202,7 +259,7 @@ describe('WorktreeIsolationManager — claim-time creation + concurrent non-conf
     expect(branches.trim()).toBe('');
 
     rmSync(root, { recursive: true, force: true });
-  }, 30_000);
+  }, WAIT_TEST_TIMEOUT_MS);
 
   test('a genuine conflict keeps the losing worktree + branch, records blockedReason, and lets the lane continue', async () => {
     root = freshRoot();
@@ -224,7 +281,7 @@ describe('WorktreeIsolationManager — claim-time creation + concurrent non-conf
     });
     engine.start(ws.id);
 
-    await waitUntil(() => h.spawnedIds.length === 2);
+    await waitUntil(() => h.spawnedIds.length === 2, { label: 'two agents spawned' });
     const first = ws.items.find((i) => i.id === 'item-first')!;
     const second = ws.items.find((i) => i.id === 'item-second')!;
 
@@ -238,10 +295,10 @@ describe('WorktreeIsolationManager — claim-time creation + concurrent non-conf
     const firstAgentId = h.spawnedIds.find((id) => h.workingDirByAgent.get(id) === first.worktreePath)!;
     const secondAgentId = h.spawnedIds.find((id) => h.workingDirByAgent.get(id) === second.worktreePath)!;
     h.completeAgent(firstAgentId, engineerReportOutput({ filesModified: ['shared.txt'] }));
-    await waitUntil(() => events.some((e) => e.type === 'item-merged' && e.itemId === 'item-first'), { timeoutMs: 20_000 });
+    await waitUntil(() => events.some((e) => e.type === 'item-merged' && e.itemId === 'item-first'), { label: 'item-first merged' });
 
     h.completeAgent(secondAgentId, engineerReportOutput({ filesModified: ['shared.txt'] }));
-    await waitUntil(() => events.some((e) => e.type === 'item-merge-conflict' && e.itemId === 'item-second'), { timeoutMs: 20_000 });
+    await waitUntil(() => events.some((e) => e.type === 'item-merge-conflict' && e.itemId === 'item-second'), { label: 'item-second merge conflict' });
 
     expect(first.mergeState).toBe('merged');
     expect(readFileSync(join(root, 'shared.txt'), 'utf-8')).toBe('first-wins\n');
@@ -291,7 +348,7 @@ describe('WorktreeIsolationManager — claim-time creation + concurrent non-conf
     expect(await engine.retryItemIntegration('item-first')).toBe('not-conflicted');
 
     rmSync(root, { recursive: true, force: true });
-  }, 30_000);
+  }, WAIT_TEST_TIMEOUT_MS);
 });
 
 describe('WorktreeIsolationManager — shared isolation (default) stays fully untouched', () => {
@@ -311,7 +368,7 @@ describe('WorktreeIsolationManager — shared isolation (default) stays fully un
     expect(ws.isolation).toBeUndefined();
     engine.start(ws.id);
 
-    await waitUntil(() => h.spawnedIds.length === 2);
+    await waitUntil(() => h.spawnedIds.length === 2, { label: 'two agents spawned' });
     expect(h.workingDirByAgent.get(h.spawnedIds[0]!)).toBeUndefined();
     expect(h.workingDirByAgent.get(h.spawnedIds[1]!)).toBeUndefined();
     expect(ws.items[0]!.worktreePath).toBeUndefined();
@@ -319,13 +376,13 @@ describe('WorktreeIsolationManager — shared isolation (default) stays fully un
 
     h.completeAgent(h.spawnedIds[0]!, engineerReportOutput({ filesModified: ['shared.txt'] }));
     h.completeAgent(h.spawnedIds[1]!, engineerReportOutput({ filesModified: ['shared.txt'] }));
-    await waitUntil(() => ws.items.every((i) => i.state === 'passed' || i.state === 'failed'), { timeoutMs: 20_000 });
+    await waitUntil(() => ws.items.every((i) => i.state === 'passed' || i.state === 'failed'), { label: 'every item reached a terminal state' });
 
     expect(existsSync(join(root, '.goodvibes', '.worktrees'))).toBe(false);
     expect(events.some((e) => e.type.startsWith('item-worktree') || e.type === 'item-merged' || e.type === 'item-merge-conflict')).toBe(false);
 
     rmSync(root, { recursive: true, force: true });
-  }, 30_000);
+  }, WAIT_TEST_TIMEOUT_MS);
 });
 
 describe('WorktreeIsolationManager — fail/kill cleanup rules', () => {
@@ -340,7 +397,7 @@ describe('WorktreeIsolationManager — fail/kill cleanup rules', () => {
     const ws = engine.createWorkstream({ id: 'ws-kill', title: 'kill', phases: [enginePhase(2)], items, isolation: 'worktree' });
     engine.start(ws.id);
 
-    await waitUntil(() => h.spawnedIds.length === 2);
+    await waitUntil(() => h.spawnedIds.length === 2, { label: 'two agents spawned' });
     const dirty = ws.items.find((i) => i.id === 'item-dirty')!;
     const clean = ws.items.find((i) => i.id === 'item-clean')!;
     expect(existsSync(dirty.worktreePath!)).toBe(true);
@@ -355,7 +412,7 @@ describe('WorktreeIsolationManager — fail/kill cleanup rules', () => {
     await waitUntil(
       () => events.some((e) => e.type === 'item-worktree-kept' && e.itemId === 'item-dirty')
         && events.some((e) => e.type === 'item-worktree-removed' && e.itemId === 'item-clean'),
-      { timeoutMs: 20_000 },
+      { label: 'dirty worktree kept and clean worktree removed' },
     );
 
     expect(dirty.state).toBe('failed');
@@ -369,7 +426,7 @@ describe('WorktreeIsolationManager — fail/kill cleanup rules', () => {
     expect(clean.worktreePath).toBeUndefined();
 
     rmSync(root, { recursive: true, force: true });
-  }, 30_000);
+  }, WAIT_TEST_TIMEOUT_MS);
 
   test('a failed agent (not killed) triggers the same clean-worktree removal rule', async () => {
     root = freshRoot();
@@ -382,19 +439,19 @@ describe('WorktreeIsolationManager — fail/kill cleanup rules', () => {
     const ws = engine.createWorkstream({ id: 'ws-agentfail', title: 'agentfail', phases: [enginePhase(1)], items, isolation: 'worktree' });
     engine.start(ws.id);
 
-    await waitUntil(() => h.spawnedIds.length === 1);
+    await waitUntil(() => h.spawnedIds.length === 1, { label: 'one agent spawned' });
     const item = ws.items[0]!;
     expect(existsSync(item.worktreePath!)).toBe(true);
 
     h.failAgent(h.spawnedIds[0]!, 'boom');
-    await waitUntil(() => item.state === 'failed', { timeoutMs: 20_000 });
-    await waitUntil(() => events.some((e) => e.type === 'item-worktree-removed' && e.itemId === 'item-x'), { timeoutMs: 20_000 });
+    await waitUntil(() => item.state === 'failed', { label: 'item reached failed' });
+    await waitUntil(() => events.some((e) => e.type === 'item-worktree-removed' && e.itemId === 'item-x'), { label: 'item-x worktree removed' });
 
     expect(item.worktreePath).toBeUndefined();
     expect(item.worktreeKept).toBeFalsy();
 
     rmSync(root, { recursive: true, force: true });
-  }, 30_000);
+  }, WAIT_TEST_TIMEOUT_MS);
 });
 
 describe('WorktreeIsolationManager — orphan reconciliation (adopt-or-report)', () => {
@@ -445,11 +502,13 @@ describe('WorktreeIsolationManager — orphan reconciliation (adopt-or-report)',
     // Reusing the adopted worktree at claim time must not attempt to re-create
     // it (which would throw — the path already exists).
     engineB.start(importedWs.id);
-    await waitUntil(() => existsSync(join(canonicalPath, '.git')), { timeoutMs: 5000 }).catch(() => undefined);
+    // Best-effort settle: this predicate MAY legitimately never hold, so its
+    // outcome is deliberately not asserted (the assertion below is).
+    await waitUpTo(() => existsSync(join(canonicalPath, '.git')), 5_000);
     expect(existsSync(canonicalPath)).toBe(true);
 
     rmSync(root, { recursive: true, force: true });
-  }, 30_000);
+  }, WAIT_TEST_TIMEOUT_MS);
 });
 
 describe('WorktreeIsolationManager — empty integration (no commits beyond base)', () => {
@@ -467,11 +526,11 @@ describe('WorktreeIsolationManager — empty integration (no commits beyond base
     const ws = engine.createWorkstream({ id: 'ws-empty', title: 'empty', phases: [offPhase], items, isolation: 'worktree' });
     engine.start(ws.id);
 
-    await waitUntil(() => h.spawnedIds.length === 1);
+    await waitUntil(() => h.spawnedIds.length === 1, { label: 'one agent spawned' });
     const item = ws.items[0]!;
     h.completeAgent(h.spawnedIds[0]!, engineerReportOutput({}));
 
-    await waitUntil(() => events.some((e) => e.type === 'item-worktree-removed' && e.itemId === 'item-noop'), { timeoutMs: 20_000 });
+    await waitUntil(() => events.some((e) => e.type === 'item-worktree-removed' && e.itemId === 'item-noop'), { label: 'item-noop worktree removed' });
 
     expect(item.state).toBe('passed');
     expect(item.mergeState).toBe('merged');
@@ -481,7 +540,7 @@ describe('WorktreeIsolationManager — empty integration (no commits beyond base
     expect(events.some((e) => e.type === 'item-merged' && e.itemId === 'item-noop')).toBe(false);
 
     rmSync(root, { recursive: true, force: true });
-  }, 20_000);
+  }, WAIT_TEST_TIMEOUT_MS);
 });
 
 describe('WorktreeIsolationManager — per-worktree dirty-guard', () => {
@@ -493,7 +552,7 @@ describe('WorktreeIsolationManager — per-worktree dirty-guard', () => {
     const ws = engine.createWorkstream({ id: 'ws-fresh', title: 'fresh', phases: [enginePhase(1)], items, isolation: 'worktree' });
     engine.start(ws.id);
 
-    await waitUntil(() => h.spawnedIds.length === 1);
+    await waitUntil(() => h.spawnedIds.length === 1, { label: 'one agent spawned' });
     const item = ws.items[0]!;
     expect(existsSync(item.worktreePath!)).toBe(true);
 
@@ -501,7 +560,7 @@ describe('WorktreeIsolationManager — per-worktree dirty-guard', () => {
     expect(snapshot.size).toBe(0);
 
     rmSync(root, { recursive: true, force: true });
-  }, 15_000);
+  }, WAIT_TEST_TIMEOUT_MS);
 });
 
 describe('WorktreeIsolationManager — bounded kept-worktree cap, oldest-first eviction', () => {
@@ -519,7 +578,7 @@ describe('WorktreeIsolationManager — bounded kept-worktree cap, oldest-first e
     const ws = engine.createWorkstream({ id: 'ws-cap', title: 'cap', phases: [enginePhase(2)], items, isolation: 'worktree' });
     engine.start(ws.id);
 
-    await waitUntil(() => h.spawnedIds.length === 2);
+    await waitUntil(() => h.spawnedIds.length === 2, { label: 'two agents spawned' });
     const one = ws.items.find((i) => i.id === 'item-one')!;
     const two = ws.items.find((i) => i.id === 'item-two')!;
 
@@ -532,13 +591,13 @@ describe('WorktreeIsolationManager — bounded kept-worktree cap, oldest-first e
     // Kill 'one' first (it becomes the OLDEST kept entry), then 'two' — the
     // cap of 1 means adding the second KEPT worktree must evict the first.
     engine.kill('item-one');
-    await waitUntil(() => events.some((e) => e.type === 'item-worktree-kept' && e.itemId === 'item-one'), { timeoutMs: 20_000 });
+    await waitUntil(() => events.some((e) => e.type === 'item-worktree-kept' && e.itemId === 'item-one'), { label: 'item-one worktree kept' });
 
     engine.kill('item-two');
     await waitUntil(
       () => events.some((e) => e.type === 'item-worktree-evicted' && e.itemId === 'item-one')
         && events.some((e) => e.type === 'item-worktree-kept' && e.itemId === 'item-two'),
-      { timeoutMs: 20_000 },
+      { label: 'item-one evicted and item-two kept' },
     );
 
     // 'one' was evicted — its worktree DIRECTORY is gone and bookkeeping cleared.
@@ -572,7 +631,7 @@ describe('WorktreeIsolationManager — bounded kept-worktree cap, oldest-first e
     expect(two.worktreePath).toBe(twoPath);
 
     rmSync(root, { recursive: true, force: true });
-  }, 30_000);
+  }, WAIT_TEST_TIMEOUT_MS);
 
   test('evicting a CONFLICTED kept worktree preserves both its commits and its dirty state on the kept branch', async () => {
     // Direct IsolatedWorktree-level proof (no engine): a branch with a real
@@ -602,7 +661,7 @@ describe('WorktreeIsolationManager — bounded kept-worktree cap, oldest-first e
     expect(runGit(root, ['show', 'ws/x/y~1:committed.txt'])).toBe('committed-work\n');
 
     rmSync(root, { recursive: true, force: true });
-  }, 15_000);
+  }, WAIT_TEST_TIMEOUT_MS);
 
   test('evict() on an already-clean kept worktree removes only the directory and keeps the branch', async () => {
     root = freshRoot();
@@ -617,7 +676,7 @@ describe('WorktreeIsolationManager — bounded kept-worktree cap, oldest-first e
     expect(existsSync(wtPath)).toBe(false);
     expect(runGit(root, ['branch', '--list', 'ws/c/d']).trim()).not.toBe('');
     rmSync(root, { recursive: true, force: true });
-  }, 15_000);
+  }, WAIT_TEST_TIMEOUT_MS);
 });
 
 describe('WorktreeIsolationManager — cold-start setup hook', () => {
@@ -639,12 +698,12 @@ describe('WorktreeIsolationManager — cold-start setup hook', () => {
     });
     engine.start(ws.id);
 
-    await waitUntil(() => h.spawnedIds.length === 1);
+    await waitUntil(() => h.spawnedIds.length === 1, { label: 'one agent spawned' });
     const solo = ws.items.find((i) => i.id === 'item-solo')!;
     expect(solo.worktreePath).toBeDefined();
-    await waitUntil(() => setupPaths.length === 1);
+    await waitUntil(() => setupPaths.length === 1, { label: 'worktree setup ran once' });
     expect(setupPaths[0]).toBe(solo.worktreePath);
 
     rmSync(root, { recursive: true, force: true });
-  }, 30_000);
+  }, WAIT_TEST_TIMEOUT_MS);
 });

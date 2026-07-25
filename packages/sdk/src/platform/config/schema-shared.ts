@@ -1,3 +1,4 @@
+import { isAcceptableReasoningEffortSetting } from '../providers/reasoning-effort.js';
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 export interface ConfigSettingDefinition {
@@ -13,6 +14,23 @@ export interface ConfigSettingDefinition {
    * e.g. `'finite number in [0.25, 4.0]'`.
    */
   validationHint?: string | undefined;
+}
+
+/**
+ * Returns validate + validationHint for `provider.reasoningEffort`.
+ *
+ * Not an enum: which reasoning levels exist is per model, and the former
+ * four-value list rejected `none`, `minimal`, `xhigh` and `max`, all real
+ * levels on models shipping today. Validation runs against the levels the
+ * CURRENT model resolved to once the runtime has published them, and against
+ * the known severity ladder before that, so a typo is still caught here rather
+ * than by a provider.
+ */
+export function reasoningEffortSetting(): Pick<ConfigSettingDefinition, 'validate' | 'validationHint'> {
+  return {
+    validate: isAcceptableReasoningEffortSetting,
+    validationHint: 'a reasoning level the current model supports — run /effort to list them',
+  };
 }
 
 /** Returns validate + validationHint for an integer in [min, max]. */
