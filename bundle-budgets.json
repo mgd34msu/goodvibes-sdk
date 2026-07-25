@@ -278,8 +278,8 @@
     "rationale": "DaemonAutoUpdater hourly self-update loop + defaultDownloadBaseUrl, exported for embedders that host the update lifecycle; measured 2767 B gzip at first export; headroom max(ceil(2767*1.2)=3321, 2767+50=2817) -> 3321 (1.2x dominates)"
   },
   "./platform/daemon/receipts": {
-    "gzip_bytes": 1787,
-    "rationale": "DaemonReceiptStore persisted update/crash receipts + formatReceiptTime, exported so embedders compose the same receipt lifecycle the facade uses; measured 1489 B gzip at first export; headroom max(ceil(1489*1.2)=1787, 1489+50=1539) -> 1787 (1.2x dominates)"
+    "gzip_bytes": 3076,
+    "rationale": "DaemonReceiptStore persisted update/crash receipts + formatReceiptTime, exported so embedders compose the same receipt lifecycle the facade uses; re-anchored after the recovery-housekeeping pass joined the store (reaping, bounding, content validation instead of existence checks, and the removal disclosure the caller reads back); measured 2563 B gzip @ v1.13.0 release verification; headroom max(ceil(2563*1.2)=3076, 2563+50=2613) -> 3076 (1.2x dominates); previously 1489 B at first export"
   },
   "./platform/discovery": {
     "gzip_bytes": 194,
@@ -370,8 +370,8 @@
     "rationale": "new public package export budget; measured 60 B gzip @ v0.33.0 release verification; headroom max(ceil(60*1.2)=72, 60+50=110) -> 110 (+50 B floor dominates)"
   },
   "./platform/providers": {
-    "gzip_bytes": 1500,
-    "rationale": "provider registry surface; measured 1250 B gzip after the model pricing resolver + bare-model-id resolver joined the barrel (resolveModelPricing/computeUsageCostUsd/resolveModelReference + types); headroom max(ceil(1250*1.2)=1500, 1250+50=1300) \u2192 1500 (1.2x dominates); previously 1005 B @ commit 4e5a5e2"
+    "gzip_bytes": 1815,
+    "rationale": "provider registry surface; re-anchored after the per-model reasoning-effort surface joined the barrel (the configured-vs-effective effort resolver and its provenance types); measured 1512 B gzip @ v1.13.0 release verification; headroom max(ceil(1512*1.2)=1815, 1512+50=1562) \u2192 1815 (1.2x dominates); previously 1250 B after the model pricing + bare-model-id resolvers, and 1005 B @ commit 4e5a5e2"
   },
   "./platform/runtime/feature-announcements": {
     "gzip_bytes": 3351,
