@@ -4,6 +4,52 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
+## [1.13.0] - 2026-07-25
+
+### Added
+
+- **Telegram inbound.** The Telegram adapter now receives messages instead of
+  only sending them. Polling mode keeps a persisted cursor, so a restart
+  resumes from the last update it handled rather than replaying or skipping.
+  Webhook mode registers and serves an endpoint instead. The two modes are
+  mutually exclusive by construction — configuring both is rejected rather
+  than silently running one of them. `/start`, `/help` and `/stop` are handled
+  as commands rather than forwarded into the conversation as chat text.
+- **Per-model reasoning effort.** Effort is now two distinct values: the level
+  held in configuration (what the operator asked for) and the effective level
+  the current model can actually deliver. The effective level carries
+  provenance, so a caller can tell whether it reflects the request or a model
+  ceiling.
+- **Persisted-state housekeeping.** Session and orchestration stores expose a
+  recovery-time housekeeping pass that reaps stale records, bounds growth, and
+  reports what it removed rather than silently discarding it.
+
+### Changed
+
+- **Reasoning effort no longer ratchets down permanently.** Selecting a model
+  that cannot honor the configured effort level no longer rewrites
+  configuration. The configured level is preserved and restored as soon as a
+  capable model is selected again. Previously a single low-capability model
+  permanently lowered the level for every later session.
+- **Persisted-state validation checks content, not existence.** Recovery
+  decisions are made from the record's actual contents; a present-but-unusable
+  file is no longer treated as valid state.
+
+### Fixed
+
+- **Telegram bot tokens resolve secret references.** A token configured as a
+  secret reference is now resolved before the API call. Previously the literal
+  reference string was sent to Telegram, so every request failed to
+  authenticate.
+- **Config writes during watcher startup are no longer lost.** A configuration
+  file change that landed in the window while the watcher was still starting
+  up was dropped. The change is now picked up.
+- **A torn migration marker no longer strands legacy session data.** An
+  interrupted migration left a marker that made the migration look complete
+  while the legacy data was still unmigrated, hiding those sessions. The
+  marker is now written so that an interruption leaves the migration
+  resumable.
+
 ## [1.12.1] - 2026-07-24
 
 ### Fixed
