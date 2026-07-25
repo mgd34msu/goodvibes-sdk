@@ -49,7 +49,7 @@ import { StoreSnapshotScheduler } from '../state/store-snapshots.js';
 import { MemoryConsolidationScheduler } from '../state/memory-consolidation-scheduler.js';
 import { PowerManager, wireRuntimePower, createUnavailablePowerSeam, type PowerPlatformSeam } from '../power/index.js';
 import { emitProviderVoiceUsage } from './emitters/providers.js';
-import { runStartupAppendOnlySweep } from './retention/append-only-registry.js';
+import { AppendOnlyRetentionScheduler, runStartupAppendOnlySweep } from './retention/append-only-registry.js';
 import { resolveMemoryVectorDbPath } from '../state/memory-vector-store.js';
 import type { RuntimeEventBus } from './events/index.js';
 import { createDomainDispatch } from './store/index.js';
@@ -208,6 +208,8 @@ export interface RuntimeServices {
   readonly codeIndexReindexScheduler: CodeIndexReindexScheduler;
   /** Daily snapshots of every SQLite store this runtime writes, with bounded retention; unref'd timers (same lifecycle posture as processRegistry — hosts that tear down a runtime stop() it themselves). */
   readonly storeSnapshotScheduler: StoreSnapshotScheduler;
+  /** Periodic re-sweep of every registered append-only store (startup alone never prunes a daemon that stays up for weeks); unref'd timers, stop() on teardown. */
+  readonly appendOnlyRetentionScheduler: AppendOnlyRetentionScheduler;
   /** Idle+schedule memory consolidation driver (this runtime is the store's single writer); unref'd timers, stop() on teardown. */
   readonly memoryConsolidationScheduler: MemoryConsolidationScheduler;
   /** Sleep ownership: work inhibition, keep-awake toggle, sleep-edge hooks (platform/power). */
@@ -365,7 +367,10 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const profileManager = new ProfileManager(shellPaths.resolveUserPath(surfaceRoot, 'profiles'));
   const bookmarkManager = new BookmarkManager(shellPaths.resolveUserPath(surfaceRoot, 'bookmarks'));
   const sessionManager = new SessionManager(workingDirectory, { surfaceRoot });
-  const sessionOrchestration = new CrossSessionTaskRegistry(shellPaths.resolveProjectPath(surfaceRoot, 'sessions', 'task-graph.json'));
+  // NOTE: sessionOrchestration is constructed AFTER sessionBroker (below), not
+  // here, because its constructor reaps immediately and its owner-existence
+  // predicate closes over the broker — building it here would hit a temporal
+  // dead zone on the very first sweep.
   const hookActivityTracker = new HookActivityTracker();
   const watcherRegistry = new WatcherRegistry({
     storePath: shellPaths.resolveProjectPath(surfaceRoot, 'watchers.json'),
@@ -420,6 +425,27 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     agentStatusProvider: agentManager,
     messageSender: agentMessageBus,
   });
+  // Built here, after the broker, so the owner-existence predicate below has a
+  // live broker to ask (see the note at sessionManager's construction).
+  //
+  // The broker is the authoritative register of session identity: every surface
+  // that opens a session registers it here, and the task tool now keys its refs
+  // on that same runtime session id rather than on a model-supplied argument.
+  // Before that binding this predicate could not have been written honestly —
+  // the graph was keyed by a free-form tool parameter that defaulted to the
+  // literal 'local', which no register could ever resolve.
+  //
+  // Reaping on a "no" is still not the same as reaping on a certainty, so it is
+  // deliberately not the only guard: the reaper additionally requires a record
+  // to be older than its ownerless grace floor, and it never applies this
+  // predicate to the legacy 'local' namespace at all. That way a broker that is
+  // merely late — starting up, mid-reconnect, a session registering in another
+  // process — costs nothing, and only a record that is both unowned AND stale
+  // is collected.
+  const sessionOrchestration = new CrossSessionTaskRegistry(
+    shellPaths.resolveProjectPath(surfaceRoot, 'sessions', 'task-graph.json'),
+    { sessionExists: (sessionId: string) => sessionBroker.getSession(sessionId) !== null },
+  );
   sessionBroker.setContinuationRunner(async ({ task, input }) => {
     const record = agentManager.spawn({
       mode: 'spawn',
@@ -479,13 +505,25 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // store (best-effort). Every root the composition knows is passed — omitting
   // logDir/telemetryDir/homeDirectory would silently skip the activity-log,
   // telemetry-ledger, and recovery-snapshot stores on every sweep.
-  runStartupAppendOnlySweep({
+  const appendOnlyRetentionRoots = {
     workingDirectory,
     surfaceRoot,
     homeDirectory,
     logDir: shellPaths.resolveUserPath('logs'),
     telemetryDir: shellPaths.resolveUserPath('telemetry'),
-  }, (k) => configManager.get(k as never));
+  };
+  const appendOnlyRetentionConfigGet = (k: string): unknown => configManager.get(k as never);
+  runStartupAppendOnlySweep(appendOnlyRetentionRoots, appendOnlyRetentionConfigGet);
+  // ...and again every few hours for as long as this runtime lives. A daemon
+  // that stays up for weeks would otherwise never sweep any of those six
+  // stores again after boot — which is precisely the window in which they
+  // grow. Unref'd timers; the host that tears a runtime down stop()s it, the
+  // same posture as storeSnapshotScheduler above.
+  const appendOnlyRetentionScheduler = new AppendOnlyRetentionScheduler({
+    roots: appendOnlyRetentionRoots,
+    configGet: appendOnlyRetentionConfigGet,
+  });
+  appendOnlyRetentionScheduler.start();
   // External config edits apply LIVE through the same subscribe() pipeline an
   // in-process set() uses — a hand-edited settings file needs no restart. The
   // underlying file watchers are unref'd, so this never pins the event loop.
@@ -996,6 +1034,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     codeIndexStore,
     codeIndexReindexScheduler,
     storeSnapshotScheduler,
+    appendOnlyRetentionScheduler,
     memoryConsolidationScheduler,
     powerManager,
     serviceRegistry,

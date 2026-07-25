@@ -58,6 +58,7 @@ release-history source.
 
 - [Channel surface details](./channel-surfaces.md)
 - [Home Assistant integration](./homeassistant-integration.md)
+- [Telegram integration](./telegram-integration.md)
 - [Daemon batch processing and Cloudflare](./daemon-batch-processing.md)
 - [Automation and watchers](./automation.md)
 

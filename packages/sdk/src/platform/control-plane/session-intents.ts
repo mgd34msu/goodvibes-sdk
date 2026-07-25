@@ -27,7 +27,7 @@ export interface SharedSessionRoutingIntent {
   readonly helperModel?: SharedSessionHelperModelOverride | undefined;
   readonly executionIntent?: ExecutionIntent | undefined;
   readonly tools?: readonly string[] | undefined;
-  readonly reasoningEffort?: 'instant' | 'low' | 'medium' | 'high' | undefined;
+  readonly reasoningEffort?: string | undefined;
 }
 
 export interface SharedSessionInputRecord {
@@ -79,7 +79,7 @@ export interface SharedSessionAgentSpawnRoutingInput {
     readonly fallbackModels?: string[] | undefined;
   } | undefined;
   readonly executionIntent?: ExecutionIntent | undefined;
-  readonly reasoningEffort?: 'instant' | 'low' | 'medium' | 'high' | undefined;
+  readonly reasoningEffort?: string | undefined;
 }
 
 /**

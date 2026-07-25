@@ -9,7 +9,8 @@ import type {
   ProviderRuntimeMetadata,
   ProviderRuntimeMetadataDeps,
 } from './interface.js';
-import { REASONING_BUDGET_MAP } from './interface.js';
+import { budgetTokensForLevel, describeReasoningRejection } from './reasoning-effort.js';
+import { resolveEffortForRequest } from './reasoning-effort-families.js';
 import {
   fetchGeminiModelIds,
   runLiveModelRefresh,
@@ -70,6 +71,44 @@ interface GeminiResponseBody {
     candidatesTokenCount?: number | undefined;
     cachedContentTokenCount?: number | undefined;
   };
+}
+
+/**
+ * Build Gemini's `thinking_config`, choosing the one field this model's
+ * generation accepts.
+ *
+ * Gemini 3-series takes `thinking_level` (a named level); Gemini 2.5-series
+ * takes `thinking_budget` (a token count). Returns undefined when the model
+ * exposes no reasoning control, or when the requested depth resolved to
+ * nothing to send.
+ */
+function buildGeminiThinkingConfig(
+  model: string,
+  params: Pick<ChatRequest, 'reasoningEffort' | 'reasoningEffortSpec'>,
+): { config: Record<string, unknown> | undefined; level: string | undefined } {
+  const { value, spec } = resolveEffortForRequest(params.reasoningEffort, {
+    modelId: model,
+    ...(params.reasoningEffortSpec ? { spec: params.reasoningEffortSpec } : {}),
+  });
+  // A `fallback`-sourced spec means nothing recognises this model, so there is
+  // no evidence it accepts a thinking config at all. Google serves
+  // non-thinking models on the same endpoint, so silence beats a guess.
+  if (value === undefined || spec.source === 'fallback') {
+    return { config: undefined, level: undefined };
+  }
+
+  if (spec.kind === 'budget_tokens') {
+    return { config: { thinking_budget: budgetTokensForLevel(value, spec) }, level: value };
+  }
+  if (spec.kind === 'effort') {
+    // 'none' is Gemini's own documented way to turn thinking off on the
+    // 3-series, so it goes on the wire as a level rather than being dropped.
+    return { config: { thinking_level: value }, level: value };
+  }
+  if (spec.kind === 'toggle') {
+    return { config: { thinking_level: value === 'none' ? 'none' : 'high' }, level: value };
+  }
+  return { config: undefined, level: undefined };
 }
 
 /**
@@ -244,7 +283,7 @@ export class GeminiProvider implements LLMProvider {
   }
 
   async chat(params: ChatRequest): Promise<ChatResponse> {
-    const { messages, tools, model, maxTokens, signal, systemPrompt, onDelta, onRetry, reasoningEffort } = params;
+    const { messages, tools, model, maxTokens, signal, systemPrompt, onDelta, onRetry } = params;
 
     return (await instrumentedLlmCall(() => withRetry(async () => {
       const { contents, systemInstruction } = toGeminiContents(messages, systemPrompt);
@@ -290,14 +329,16 @@ export class GeminiProvider implements LLMProvider {
         body['generationConfig'] = { maxOutputTokens: maxTokens };
       }
 
-      if (reasoningEffort) {
-        const budget = REASONING_BUDGET_MAP[reasoningEffort]!;
-        if (budget !== undefined) {
-          body['generationConfig'] = {
-            ...(body['generationConfig'] as Record<string, unknown> ?? {}),
-            thinking_config: { thinking_budget: budget },
-          };
-        }
+      // Gemini 3-series models take a named `thinking_level`; Gemini 2.5-series
+      // take a numeric `thinking_budget`. Google's thinking docs are explicit
+      // that a request specifying both is rejected, so the resolved spec picks
+      // exactly one and the other is never sent.
+      const thinking = buildGeminiThinkingConfig(model, params);
+      if (thinking.config) {
+        body['generationConfig'] = {
+          ...(body['generationConfig'] as Record<string, unknown> ?? {}),
+          thinking_config: thinking.config,
+        };
       }
 
       // Always use streaming endpoint; parse NDJSON chunks
@@ -324,7 +365,8 @@ export class GeminiProvider implements LLMProvider {
 
       if (!res.ok) {
         const text = await res.text().catch(() => 'unknown error');
-        throw new ProviderError(`Gemini API error ${res.status}: ${text}`, {
+        const effortHint = describeReasoningRejection(res.status, text, thinking.level) ?? '';
+        throw new ProviderError(`Gemini API error ${res.status}: ${text}${effortHint}`, {
           statusCode: res.status,
           provider: this.name,
           operation: 'chat',
@@ -534,8 +576,9 @@ export class GeminiProvider implements LLMProvider {
       policy: {
         local: false,
         streamProtocol: 'gemini-sse',
-        reasoningMode: 'thinking_budget',
-        supportedReasoningEfforts: ['instant', 'low', 'medium', 'high'],
+        // Gemini 3-series takes thinking_level, 2.5-series takes
+        // thinking_budget, and older generations take neither.
+        reasoningMode: 'per-model-thinking-level-or-budget',
         cacheStrategy: 'gemini-cached-content',
       },
     };

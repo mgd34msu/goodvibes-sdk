@@ -16,6 +16,8 @@ import type {
   ProviderRuntimeMetadataDeps,
 } from './interface.js';
 import { OpenAICompatProvider, type OpenAICompatOptions } from './openai-compat.js';
+import { LOCAL_SERVER_EFFORT } from './discovered-traits.js';
+import { reasoningEffortLevels } from './reasoning-effort.js';
 import { toOpenAITools } from './tool-formats.js';
 import { summarizeError } from '../utils/error-display.js';
 import { getErrorStatus, normalizeProviderError } from './provider-error.js';
@@ -176,7 +178,7 @@ export class OllamaProvider implements LLMProvider {
         local,
         streamProtocol: 'ollama-ndjson',
         reasoningMode: 'native-think-toggle',
-        supportedReasoningEfforts: ['instant', 'low', 'medium', 'high'],
+        supportedReasoningEfforts: reasoningEffortLevels(LOCAL_SERVER_EFFORT),
         cacheStrategy: 'provider-managed',
         notes: local ? ['Local-first embedding generation.'] : ['Remote Ollama Cloud usage is subject to service policy.'],
       },

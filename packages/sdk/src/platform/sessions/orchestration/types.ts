@@ -157,3 +157,35 @@ export interface SessionTaskGraphSnapshot {
 export function makeRefKey(sessionId: string, taskId: string): string {
   return `${sessionId}:${taskId}`;
 }
+
+/**
+ * The namespace every task ref was written under before the task tool was bound
+ * to real runtime session identity.
+ *
+ * The tool used to take its owning `sessionId` straight from the model's tool
+ * input and fall back to the literal `'local'` when it was absent — which it
+ * almost always was. So a store whose whole purpose is keying work by session
+ * ended up with most of its records under one shared, meaningless key.
+ *
+ * Those records are real user data and they stay readable. What cannot be done
+ * is guess which real session each one belonged to: that information was never
+ * written down and cannot be recovered. So this namespace is deliberately
+ * EXEMPT from owner-existence reaping — asking "does session `local` still
+ * exist?" is a question with no true answer, and answering it "no" would delete
+ * the user's task graph wholesale on the first sweep after upgrading. It is
+ * bounded by age and count like everything else, and what it loses is
+ * disclosed separately so the drain-down is visible rather than silent.
+ */
+export const LEGACY_TASK_NAMESPACE = 'local';
+
+/**
+ * True when `sessionId` belongs to the pre-binding legacy namespace and must
+ * therefore never be judged by an owner-existence predicate.
+ *
+ * Only the exact literal counts. A real session whose id happens to be typed by
+ * a user as something free-form is still a real session; this is specifically
+ * the default the old tool substituted when the model supplied nothing.
+ */
+export function isLegacyTaskNamespace(sessionId: string): boolean {
+  return sessionId === LEGACY_TASK_NAMESPACE;
+}

@@ -12,6 +12,7 @@ import {
   STRING_LIST_SCHEMA,
   enumSchema,
 } from './operator-contract-schemas-shared.js';
+import { REASONING_EFFORT_SEVERITY } from '../providers/reasoning-effort.js';
 
 export const LOCAL_AUTH_USER_SCHEMA = objectSchema({
   username: STRING_SCHEMA,
@@ -180,7 +181,9 @@ const AUTOMATION_DELIVERY_GUARANTEE_SCHEMA = enumSchema(['best-effort', 'at-leas
 const EXECUTION_RISK_CLASS_SCHEMA = enumSchema(['safe', 'elevated', 'dangerous']);
 const EXECUTION_NETWORK_POLICY_SCHEMA = enumSchema(['inherit', 'allow', 'deny', 'scoped']);
 const EXECUTION_FILESYSTEM_POLICY_SCHEMA = enumSchema(['inherit', 'workspace-write', 'read-only', 'isolated']);
-const AUTOMATION_REASONING_EFFORT_SCHEMA = enumSchema(['instant', 'low', 'medium', 'high']);
+// Full severity ladder, not a fixed 4-value list — see the matching comment
+// in operator-contract-schemas-runtime.ts.
+const AUTOMATION_REASONING_EFFORT_SCHEMA = enumSchema([...REASONING_EFFORT_SEVERITY]);
 const AUTOMATION_WAKE_MODE_SCHEMA = enumSchema(['next-heartbeat', 'now']);
 const AUTOMATION_SANDBOX_MODE_SCHEMA = enumSchema(['inherit', 'isolate', 'off']);
 const AUTOMATION_EXTERNAL_CONTENT_SOURCE_KIND_SCHEMA = enumSchema([

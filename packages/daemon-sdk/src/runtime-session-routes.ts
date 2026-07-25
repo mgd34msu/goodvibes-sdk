@@ -702,8 +702,18 @@ function readProviderFailurePolicy(value: unknown): SharedSessionRoutingIntent['
   return value === 'ordered-fallbacks' || value === 'fail' ? value : undefined;
 }
 
+// Mirrors the severity ladder in the sdk package's providers/reasoning-effort.ts
+// (REASONING_EFFORT_SEVERITY). Duplicated as a literal list rather than
+// imported: daemon-sdk is a lower-level package the sdk package depends on,
+// so importing the other way would be circular. Which levels a given model
+// actually accepts is per-model — this only rejects a typo, same as the
+// sdk-side schema and route validators for this field.
+const REASONING_EFFORT_LEVELS = new Set([
+  'none', 'instant', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max',
+]);
+
 function readReasoningEffort(value: unknown): SharedSessionRoutingIntent['reasoningEffort'] | undefined {
-  return value === 'instant' || value === 'low' || value === 'medium' || value === 'high' ? value : undefined;
+  return typeof value === 'string' && REASONING_EFFORT_LEVELS.has(value) ? value : undefined;
 }
 
 function readHelperModel(value: unknown): SharedSessionRoutingIntent['helperModel'] | undefined {

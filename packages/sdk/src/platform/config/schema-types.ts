@@ -313,7 +313,7 @@ export interface GoodVibesConfig {
     showToolPreview: boolean;   // default: false
   };
   provider: {
-    reasoningEffort: 'instant' | 'low' | 'medium' | 'high'; // default: 'medium'
+    reasoningEffort: string;    // default: 'medium' — per-model levels, see providers/reasoning-effort.ts
     model: string;              // default: 'openrouter:openrouter/free'
     embeddingProvider: string;  // default: 'hashed-local'
     systemPromptFile: string;   // default: ''
@@ -895,7 +895,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'display.showReasoningSummary' ? boolean :
   K extends 'display.showTokenSpeed' ? boolean :
   K extends 'display.showToolPreview' ? boolean :
-  K extends 'provider.reasoningEffort' ? 'instant' | 'low' | 'medium' | 'high' :
+  K extends 'provider.reasoningEffort' ? string :
   K extends 'provider.model' ? string :
   K extends 'provider.embeddingProvider' ? string :
   K extends 'provider.systemPromptFile' ? string :

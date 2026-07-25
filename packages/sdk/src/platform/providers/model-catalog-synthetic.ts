@@ -4,6 +4,8 @@ import type { BenchmarkEntry } from './model-benchmarks.js';
 import { compositeScore } from './model-benchmarks.js';
 import type { CatalogModel } from './model-catalog.js';
 import type { ContextWindowProvenance } from './registry-types.js';
+import { type ReasoningEffortSpec, parseReasoningOptions } from './reasoning-effort.js';
+import { resolveReasoningEffortSpec } from './reasoning-effort-families.js';
 import type { SyntheticBackend, CanonicalModel, SyntheticTier } from './synthetic.js';
 
 export interface MinimalModelDefinition {
@@ -22,7 +24,7 @@ export interface MinimalModelDefinition {
   contextWindowProvenance?: ContextWindowProvenance | undefined;
   selectable: boolean;
   tier: 'free' | 'standard' | 'premium' | 'subscription';
-  reasoningEffort?: string[] | undefined;
+  reasoningEffort?: ReasoningEffortSpec | undefined;
 }
 
 export interface SyntheticModelInfo {
@@ -176,7 +178,9 @@ export function getSyntheticModelDefinitions(
     );
     const catalogMatch = models.find((model) => canonical.backends.some((backend) => backend.modelId === model.id));
     const displayName = catalogMatch?.name ?? canonical.id;
-    const hasReasoning = catalogMatch?.reasoning === true;
+    const catalogSpec = parseReasoningOptions(catalogMatch?.reasoningOptions);
+    const hasReasoning = catalogMatch?.reasoning === true
+      || (catalogSpec !== undefined && catalogSpec.kind !== 'unavailable');
 
     const hasCatalogContextWindow = bestBackend?.contextWindow != null && bestBackend.contextWindow > 0;
     return {
@@ -195,7 +199,14 @@ export function getSyntheticModelDefinitions(
       ...(!hasCatalogContextWindow ? { contextWindowProvenance: 'fallback' as const } : {}),
       selectable: true,
       tier: canonical.tier === 'free' ? 'free' : canonical.tier === 'subscription' ? 'subscription' : 'standard',
-      ...(hasReasoning ? { reasoningEffort: ['instant', 'low', 'medium', 'high'] } : {}),
+      ...(hasReasoning
+        ? {
+          reasoningEffort: resolveReasoningEffortSpec({
+            modelId: bestBackend?.modelId ?? canonical.id,
+            ...(catalogSpec ? { spec: catalogSpec } : {}),
+          }),
+        }
+        : {}),
     };
   });
 

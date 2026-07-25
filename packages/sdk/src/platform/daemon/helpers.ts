@@ -1,5 +1,6 @@
 import type { AutomationExternalContentSource, AutomationWakeMode } from '../automation/index.js';
 import type { AutomationExecutionPolicy } from '../automation/index.js';
+import { readReasoningEffortLevel } from '../providers/reasoning-effort.js';
 import {
   isJsonRecord,
   missingScopes,
@@ -60,7 +61,7 @@ export function readAutomationWakeMode(value: unknown): AutomationWakeMode | und
 }
 
 export function readAutomationReasoningEffort(value: unknown): AutomationExecutionPolicy['reasoningEffort'] | undefined {
-  return value === 'instant' || value === 'low' || value === 'medium' || value === 'high' ? value : undefined;
+  return readReasoningEffortLevel(value);
 }
 
 export function readExternalContentSource(value: unknown): AutomationExternalContentSource | undefined {

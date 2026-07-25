@@ -7,7 +7,7 @@ import type {
   ProviderRuntimeMetadata,
   ProviderRuntimeMetadataDeps,
 } from './interface.js';
-import { applyAnthropicThinking } from './anthropic-stream.js';
+import { applyAnthropicReasoning } from './anthropic-stream.js';
 import type { AnthropicContentBlock } from './tool-formats.js';
 import { mapAnthropicStopReason } from './stop-reason-maps.js';
 import {
@@ -108,7 +108,11 @@ export class AnthropicSdkProvider implements LLMProvider {
         body['tools'] = toAnthropicTools(params.tools);
       }
 
-      applyAnthropicThinking(body, params.reasoningEffort, Infinity);
+      applyAnthropicReasoning(
+        body,
+        { model: params.model, reasoningEffort: params.reasoningEffort, ...(params.reasoningEffortSpec ? { reasoningEffortSpec: params.reasoningEffortSpec } : {}) },
+        Infinity,
+      );
 
       const toolBlocks = new Map<number, { id: string; name: string; args: string }>();
       let responseText = '';
@@ -222,8 +226,10 @@ export class AnthropicSdkProvider implements LLMProvider {
       policy: {
         local: false,
         streamProtocol: this.options.streamProtocol,
-        reasoningMode: 'thinking_budget',
-        supportedReasoningEfforts: ['instant', 'low', 'medium', 'high'],
+        // Per model, not per provider: current generations take
+        // output_config.effort, Claude 4.5 and earlier take a thinking budget,
+        // and the levels each accepts come from the resolved spec.
+        reasoningMode: 'per-model-effort-or-thinking-budget',
       },
     };
   }

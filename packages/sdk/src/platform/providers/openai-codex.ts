@@ -21,6 +21,8 @@ import { mapCodexStopReason } from './stop-reason-maps.js';
 import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 import { parseToolCallArguments } from './tool-formats.js';
 import { SseLineBuffer } from './sse-line-buffer.js';
+import { resolveReasoningEffortSpec } from './reasoning-effort-families.js';
+import { reasoningEffortLevels } from './reasoning-effort.js';
 
 const OPENAI_CODEX_BASE_URL = 'https://chatgpt.com/backend-api';
 const OPENAI_CODEX_PROVIDER_NAME = 'openai-subscriber';
@@ -490,7 +492,9 @@ export class OpenAICodexProvider implements LLMProvider {
         local: false,
         streamProtocol: 'openai-codex-responses-sse',
         reasoningMode: 'responses-reasoning',
-        supportedReasoningEfforts: ['instant', 'low', 'medium', 'high'],
+        supportedReasoningEfforts: reasoningEffortLevels(
+          resolveReasoningEffortSpec({ modelId: this.models[0] ?? '' }),
+        ),
         cacheStrategy: 'subscription-session-cache-key',
       },
     };

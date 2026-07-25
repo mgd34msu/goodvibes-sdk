@@ -37,6 +37,8 @@ import { logger } from '../utils/logger.js';
 import { summarizeError, toProviderError } from '../utils/error-display.js';
 
 import { mapOpenAIStopReason } from './stop-reason-maps.js';
+import { resolveEffortForRequest, resolveReasoningEffortSpec } from './reasoning-effort-families.js';
+import { describeReasoningRejection, reasoningEffortLevels } from './reasoning-effort.js';
 
 const NOOP_CACHE_HIT_TRACKER: Pick<CacheHitTracker, 'recordTurn'> = {
   recordTurn: () => {},
@@ -269,8 +271,15 @@ export interface OpenAICompatOptions {
   capabilities?: Partial<ProviderCapability> | undefined;
   /** Optional extra HTTP headers sent with every request to this provider. */
   defaultHeaders?: Record<string, string> | undefined;
-  /** How to send reasoning params. Default: 'none' (don't send). */
-  reasoningFormat?: 'mercury' | 'openrouter' | 'llamacpp' | 'none' | undefined;
+  /**
+   * Which request field carries reasoning depth. Named for the wire shape, not
+   * the vendor: `reasoning-effort` is the plain OpenAI-compatible
+   * `reasoning_effort` string, `mercury` is the same field plus Mercury-2's
+   * reasoning-summary extras, `openrouter` nests it under `reasoning.effort`,
+   * and `llamacpp` exposes only an `enable_thinking` toggle. Default: 'none'
+   * (send nothing), which is correct for backends that document no control.
+   */
+  reasoningFormat?: 'mercury' | 'openrouter' | 'llamacpp' | 'reasoning-effort' | 'none' | undefined;
   /** Optional env vars or secret keys that can satisfy API-key auth for this provider. */
   authEnvVars?: readonly string[] | undefined;
   /** Optional service names that expose service-owned OAuth for this provider. */
@@ -340,7 +349,7 @@ export class OpenAICompatProvider implements LLMProvider {
   private defaultModel: string;
   private embeddingModel: string;
   private readonly configured: boolean;
-  private reasoningFormat: 'mercury' | 'openrouter' | 'llamacpp' | 'none';
+  private reasoningFormat: NonNullable<OpenAICompatOptions['reasoningFormat']>;
   private cacheCapability: ProviderCacheCapability;
   private readonly authEnvVars: readonly string[];
   private readonly serviceNames: readonly string[];
@@ -502,15 +511,23 @@ export class OpenAICompatProvider implements LLMProvider {
       const openaiMessages = toOpenAIMessages(messages, systemPrompt);
       const openaiTools = tools && tools.length > 0 ? toOpenAITools(tools) : undefined;
 
-      // Provider-specific reasoning params
+      // Provider-specific reasoning params. The requested level is first mapped
+      // onto what this exact model accepts, so a level it does not offer snaps
+      // down instead of earning a provider-side 400.
+      const effortValue = resolveEffortForRequest(reasoningEffort, {
+        modelId: selectedModel,
+        ...(params.reasoningEffortSpec ? { spec: params.reasoningEffortSpec } : {}),
+      }).value;
       const extraBody: Record<string, unknown> = {};
-      if (reasoningEffort && this.reasoningFormat === 'mercury') {
-        extraBody['reasoning_effort'] = reasoningEffort;
-      } else if (reasoningEffort && this.reasoningFormat === 'openrouter') {
-        extraBody['reasoning'] = { effort: reasoningEffort };
+      if (effortValue && (this.reasoningFormat === 'mercury' || this.reasoningFormat === 'reasoning-effort')) {
+        extraBody['reasoning_effort'] = effortValue;
+      } else if (effortValue && this.reasoningFormat === 'openrouter') {
+        extraBody['reasoning'] = { effort: effortValue };
       } else if (this.reasoningFormat === 'llamacpp') {
         // llama.cpp auto-enables thinking for capable models; explicitly control it
-        extraBody['enable_thinking'] = reasoningEffort !== undefined && reasoningEffort !== 'instant';
+        extraBody['enable_thinking'] = effortValue !== undefined
+          && effortValue !== 'instant'
+          && effortValue !== 'none';
       }
       // reasoningFormat === 'none': don't send anything
 
@@ -615,8 +632,13 @@ export class OpenAICompatProvider implements LLMProvider {
         rawToolCalls = finalizeOpenAIToolCalls(accToolCalls);
       } catch (err: unknown) {
         const diagnostic = extractOpenAICompatErrorDiagnostic(err);
+        const effortHint = describeReasoningRejection(
+          diagnostic.status ?? 0,
+          `${diagnostic.detail ?? ''} ${diagnostic.rawMessage}`,
+          effortValue,
+        ) ?? '';
         const phase = streamOpened ? 'stream' : 'request';
-        const message = buildOpenAICompatErrorMessage(this.name, phase, diagnostic);
+        const message = buildOpenAICompatErrorMessage(this.name, phase, diagnostic) + effortHint;
         logger.error('OpenAICompatProvider.chat failed', {
           provider: this.name,
           endpointHost: this.endpointHost,
@@ -755,7 +777,16 @@ export class OpenAICompatProvider implements LLMProvider {
         local: false,
         streamProtocol: this.streamProtocol ?? 'openai-chat-completions',
         reasoningMode: this.reasoningFormat === 'none' ? 'provider-default' : this.reasoningFormat,
-        supportedReasoningEfforts: ['instant', 'low', 'medium', 'high'],
+        // Omitted when this backend sends no reasoning field at all; otherwise
+        // the default model's resolved levels, which is what a request for that
+        // model would actually be mapped onto.
+        ...(this.reasoningFormat === 'none'
+          ? {}
+          : {
+              supportedReasoningEfforts: reasoningEffortLevels(
+                resolveReasoningEffortSpec({ modelId: this.defaultModel }),
+              ),
+            }),
         cacheStrategy: this.cacheCapability.type,
       },
     };

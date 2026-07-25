@@ -12,6 +12,8 @@ import type {
 } from './interface.js';
 import type { ToolCall, ToolDefinition } from '../types/tools.js';
 import { OpenAICompatProvider, type OpenAICompatOptions } from './openai-compat.js';
+import { LOCAL_SERVER_EFFORT } from './discovered-traits.js';
+import { reasoningEffortLevels } from './reasoning-effort.js';
 import { ProviderError } from '../types/errors.js';
 import { withRetry } from '../utils/retry.js';
 import { instrumentedLlmCall } from '../runtime/llm-observability.js';
@@ -149,7 +151,7 @@ export class LMStudioProvider implements LLMProvider {
         local: true,
         streamProtocol: 'lmstudio-native-or-responses',
         reasoningMode: 'native-reasoning-events',
-        supportedReasoningEfforts: ['instant', 'low', 'medium', 'high'],
+        supportedReasoningEfforts: reasoningEffortLevels(LOCAL_SERVER_EFFORT),
         cacheStrategy: 'provider-managed',
       },
     };

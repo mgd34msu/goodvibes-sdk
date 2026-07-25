@@ -160,8 +160,8 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
   },
   // facade.ts (daemon) ~0.83k — daemon facade, pre-split, shrink-only
   'packages/sdk/src/platform/daemon/facade.ts': {
-    ceiling: 883,
-    justification: 'daemon facade, pre-split, shrink-only; +9 for the approvals broker accessor (embedder/test seam) + doc; +18 for the outbound relay reachability boot seam (start/stop lifecycle wiring + surface accessor; the heavy composition lives in ../relay/daemon-wiring.ts); +24 for two in-process embedder seams the ACP adapter needs: cancelAgent (a real cancellation of a running agent) + registerMcpServer (connect a client-declared MCP server into the live registry) with docs; +6 for releasing sleep-inhibitor holds on a real (non-restart) stop — an exited daemon must never leave systemd-inhibit children blocking host sleep',
+    ceiling: 886,
+    justification: 'daemon facade, pre-split, shrink-only; +9 for the approvals broker accessor (embedder/test seam) + doc; +18 for the outbound relay reachability boot seam (start/stop lifecycle wiring + surface accessor; the heavy composition lives in ../relay/daemon-wiring.ts); +24 for two in-process embedder seams the ACP adapter needs: cancelAgent (a real cancellation of a running agent) + registerMcpServer (connect a client-declared MCP server into the live registry) with docs; +6 for releasing sleep-inhibitor holds on a real (non-restart) stop — an exited daemon must never leave systemd-inhibit children blocking host sleep; +3 for surface ingress start/stop wiring — Telegram delivers nothing until the daemon calls setWebhook or getUpdates, so the route alone received no messages at all; the supervisor itself lives in ../channels/telegram/ingress.ts',
   },
   // gateway.ts (control-plane) ~0.83k — control-plane gateway, pre-split, shrink-only
   'packages/sdk/src/platform/control-plane/gateway.ts': {

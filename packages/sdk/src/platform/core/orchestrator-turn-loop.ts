@@ -9,7 +9,7 @@ import { formatProviderError } from '../utils/error-display.js';
 import type { ProviderRegistry } from '../providers/registry.js';
 import type { ToolRegistry } from '../tools/registry.js';
 import type { ToolCall, ToolResult } from '../types/tools.js';
-import type { ContentPart, LLMProvider, StreamDelta } from '../providers/interface.js';
+import type { ChatRequest, ContentPart, LLMProvider, StreamDelta } from '../providers/interface.js';
 import { isContextOverflowSignal } from '../providers/stop-reason-maps.js';
 import type { HookEvent, HookResult } from '../hooks/types.js';
 import {
@@ -29,6 +29,12 @@ import type { RuntimeEventBus } from '../runtime/events/index.js';
 import { computeUsageCostUsdCents, usageCostSource } from '../providers/model-pricing.js';
 import { HelperModel } from '../config/helper-model.js';
 import type { ModelDefinition } from '../providers/registry.js';
+import {
+  resolveEffortForModel,
+  setActiveReasoningEffortOptions,
+} from '../providers/reasoning-effort.js';
+import { resolveReasoningEffortSpec } from '../providers/reasoning-effort-families.js';
+
 import type { FavoritesStore } from '../providers/favorites.js';
 import { logger } from '../utils/logger.js';
 import type { AgentManager } from '../tools/agent/index.js';
@@ -49,6 +55,43 @@ import {
   type TurnKnowledgeRegistrySource,
   type TurnCodeIndexSource,
 } from '../agents/turn-knowledge-injection.js';
+
+/**
+ * Decide what reasoning depth this turn asks for, and hand the model's own
+ * resolved options down to the adapter so it can pick the right request field.
+ *
+ * A model that does not reason is sent nothing at all — the configured level
+ * has a default, so an unconditional pass-through used to hand a reasoning
+ * parameter to models that reject one. Publishing the resolved levels here is
+ * also what lets `provider.reasoningEffort` be validated at set-time against
+ * the model actually in use — published under this session's own id, so a
+ * daemon running several sessions on different models does not let the one that
+ * ran a turn most recently decide what is valid on the others.
+ */
+function resolveTurnReasoning(
+  model: ModelDefinition,
+  configured: string | undefined,
+  sessionId: string,
+): Pick<ChatRequest, 'reasoningEffort' | 'reasoningEffortSpec'> {
+  if (!model.capabilities.reasoning) {
+    setActiveReasoningEffortOptions(null, sessionId);
+    return {};
+  }
+  const spec = resolveReasoningEffortSpec({
+    modelId: model.id,
+    ...(model.reasoningEffort ? { spec: model.reasoningEffort } : {}),
+  });
+  setActiveReasoningEffortOptions(spec.values, sessionId);
+  const { value } = resolveEffortForModel(configured || 'medium', {
+    id: model.id,
+    displayName: model.displayName,
+    reasoningEffort: spec,
+  });
+  return {
+    reasoningEffortSpec: spec,
+    ...(value === undefined ? {} : { reasoningEffort: value }),
+  };
+}
 
 const AUTO_SPAWN_FALLBACK_DELAY_MS = 5_000;
 /**
@@ -424,11 +467,11 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
         tools: toolDefinitions.length > 0 ? toolDefinitions : undefined,
         systemPrompt: composeTurnSystemPrompt(composedBaseSystemPrompt),
         maxTokens: tokenLimits.maxOutputTokens,
-        reasoningEffort: (() => {
-          const configured = context.configManager.get('provider.reasoningEffort') as string | undefined;
-          if (configured) return configured as 'instant' | 'low' | 'medium' | 'high';
-          return model.capabilities.reasoning ? 'medium' : undefined;
-        })(),
+        ...resolveTurnReasoning(
+          model,
+          context.configManager.get('provider.reasoningEffort'),
+          context.sessionId,
+        ),
         signal: context.getAbortSignal(),
         onDelta,
         onRetry: (attempt, maxAttempts, delayMs, error) => {

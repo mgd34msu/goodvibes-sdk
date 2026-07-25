@@ -21,6 +21,7 @@ import { summarizeError } from '../utils/error-display.js';
 import { instrumentedFetch, fetchWithTimeout } from '../utils/fetch-with-timeout.js';
 import { TTL_24H_MS, isTtlCacheStale, validateTtlCacheEnvelope } from './json-ttl-cache.js';
 import { inferFallbackContextWindow } from './context-window-fallback.js';
+import { resolveReasoningEffortSpec } from './reasoning-effort-families.js';
 import type { ModelDefinition } from './registry-types.js';
 
 const LIVE_FETCH_TIMEOUT_MS = 15_000;
@@ -345,6 +346,9 @@ export function buildProviderNativeModelDefinition(providerId: string, modelId: 
     // Gateways mark no-cost models with a 'free' suffix (e.g. openrouter's
     // ':free' variants and its 'openrouter/free' router id).
     tier: /[:/-]free$/i.test(modelId) ? 'free' : 'standard',
-    reasoningEffort: ['instant', 'low', 'medium', 'high'],
+    // Gateways expose whatever upstream models they proxy, so the levels come
+    // from the curated family table keyed on the model id rather than a fixed
+    // list that was wrong for most of them.
+    reasoningEffort: resolveReasoningEffortSpec({ modelId }),
   };
 }

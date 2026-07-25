@@ -162,6 +162,44 @@ export type { BenchmarkEntry, BenchmarkStoreOptions, ModelBenchmarks, QualityTie
 export { CacheHitTracker } from './cache-strategy.js';
 export type { CacheBreakpoint, CacheContext, CacheHitMetrics, CacheStrategy } from './cache-strategy.js';
 export type { CustomProviderConfig } from './custom-loader.js';
+export {
+  budgetLevels,
+  budgetTokensForLevel,
+  describeReasoningWire,
+  getActiveReasoningEffortOptions,
+  isAcceptableReasoningEffortSetting,
+  parseReasoningOptions,
+  readReasoningEffortLevel,
+  reasoningEffortLevels,
+  reasoningEffortRank,
+  reasoningEffortSourceRank,
+  reasoningEffortSpecFromLevels,
+  resolveEffortForModel,
+  setActiveReasoningEffortOptions,
+  snapEffortDown,
+  FALLBACK_REASONING_EFFORT_SPEC,
+  REASONING_EFFORT_BUDGET_TOKENS,
+  REASONING_EFFORT_SEVERITY,
+} from './reasoning-effort.js';
+export type {
+  ModelsDevReasoningOption,
+  ReasoningEffortBudgetSpec,
+  ReasoningEffortLevelsSpec,
+  ReasoningEffortModel,
+  ReasoningEffortSource,
+  ReasoningEffortSpec,
+  ReasoningEffortToggleSpec,
+  ReasoningEffortUnavailableSpec,
+  ResolvedReasoningEffort,
+} from './reasoning-effort.js';
+export {
+  findFamilyReasoningEffortSpec,
+  normalizeReasoningModelId,
+  resolveEffortForRequest,
+  resolveReasoningEffortSpec,
+  REASONING_EFFORT_FAMILIES_AS_OF,
+} from './reasoning-effort-families.js';
+export type { ReasoningEffortSpecRequest } from './reasoning-effort-families.js';
 export { EFFORT_DESCRIPTIONS } from './effort-levels.js';
 export { FavoritesStore } from './favorites.js';
 export type { FavoriteEntry, FavoritesData, FavoritesStoreOptions, UsageEntry } from './favorites.js';

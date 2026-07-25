@@ -38,6 +38,13 @@ export interface BuiltinChannelRuntimeDeps {
   readonly providerRuntime?: ChannelProviderRuntimeManager | undefined;
   readonly deliveryRouter: ChannelDeliveryRouter;
   readonly surfaceDeliveryEnabled: (surface: ManagedSurface) => boolean;
+  /**
+   * Where the Telegram getUpdates cursor is persisted. Supplied by the
+   * composition root so it lands inside the host's surface-scoped storage
+   * rather than being guessed here. Omitted by embedders that do not run
+   * Telegram polling; the supervisor then reports why it cannot start.
+   */
+  readonly telegramOffsetPath?: string | undefined;
   readonly buildSurfaceAdapterContext: () => SurfaceAdapterContext;
   readonly buildGenericWebhookAdapterContext: () => GenericWebhookAdapterContext;
   readonly deliverSurfaceProgress: (pending: unknown, progress: string) => Promise<void>;

@@ -417,6 +417,8 @@ export class DaemonServer {
         this.distributedRuntime.start(),
       ]);
       await this.providerRuntime.startConfigured();
+      // Arm surface ingress now the listener is up; see BuiltinChannelRuntime.
+      await this.builtinChannels.startIngress();
       await this.companionChatManager.init();
       // Init the canonical memory store so the daemon is a live single-writer memory service on accept (memory.records.add would else throw "not initialized" on a cold store).
       await this.runtimeServices.memoryStore.init();
@@ -521,6 +523,7 @@ export class DaemonServer {
     // Stop services with async teardown in reverse start order (sessionBroker,
     // approvalBroker, channelPolicy, distributedRuntime end when the socket closes).
     this.providerRuntime.stopAll();
+    await this.builtinChannels.stopIngress();
     this.automationManager.stop();
     // Tear down the adapter bus subscription and session broker GC interval.
     this.agentTaskAdapterUnsub?.();

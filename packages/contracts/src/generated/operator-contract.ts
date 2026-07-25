@@ -4632,10 +4632,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "reasoningEffort": {
                         "type": "string",
                         "enum": [
+                          "none",
                           "instant",
+                          "minimal",
                           "low",
                           "medium",
-                          "high"
+                          "high",
+                          "xhigh",
+                          "max"
                         ]
                       },
                       "thinking": {
@@ -6242,10 +6246,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "reasoningEffort": {
                   "type": "string",
                   "enum": [
+                    "none",
                     "instant",
+                    "minimal",
                     "low",
                     "medium",
-                    "high"
+                    "high",
+                    "xhigh",
+                    "max"
                   ]
                 },
                 "thinking": {
@@ -7218,10 +7226,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "reasoningEffort": {
                         "type": "string",
                         "enum": [
+                          "none",
                           "instant",
+                          "minimal",
                           "low",
                           "medium",
-                          "high"
+                          "high",
+                          "xhigh",
+                          "max"
                         ]
                       },
                       "thinking": {
@@ -8582,10 +8594,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "reasoningEffort": {
                   "type": "string",
                   "enum": [
+                    "none",
                     "instant",
+                    "minimal",
                     "low",
                     "medium",
-                    "high"
+                    "high",
+                    "xhigh",
+                    "max"
                   ]
                 },
                 "thinking": {
@@ -9491,10 +9507,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "reasoningEffort": {
                       "type": "string",
                       "enum": [
+                        "none",
                         "instant",
+                        "minimal",
                         "low",
                         "medium",
-                        "high"
+                        "high",
+                        "xhigh",
+                        "max"
                       ]
                     },
                     "thinking": {
@@ -10482,10 +10502,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "reasoningEffort": {
                       "type": "string",
                       "enum": [
+                        "none",
                         "instant",
+                        "minimal",
                         "low",
                         "medium",
-                        "high"
+                        "high",
+                        "xhigh",
+                        "max"
                       ]
                     },
                     "thinking": {
@@ -11577,10 +11601,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "reasoningEffort": {
                         "type": "string",
                         "enum": [
+                          "none",
                           "instant",
+                          "minimal",
                           "low",
                           "medium",
-                          "high"
+                          "high",
+                          "xhigh",
+                          "max"
                         ]
                       },
                       "thinking": {
@@ -12569,10 +12597,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "reasoningEffort": {
                       "type": "string",
                       "enum": [
+                        "none",
                         "instant",
+                        "minimal",
                         "low",
                         "medium",
-                        "high"
+                        "high",
+                        "xhigh",
+                        "max"
                       ]
                     },
                     "thinking": {
@@ -13814,10 +13846,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "reasoningEffort": {
                   "type": "string",
                   "enum": [
+                    "none",
                     "instant",
+                    "minimal",
                     "low",
                     "medium",
-                    "high"
+                    "high",
+                    "xhigh",
+                    "max"
                   ]
                 },
                 "thinking": {
@@ -14771,10 +14807,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "reasoningEffort": {
                         "type": "string",
                         "enum": [
+                          "none",
                           "instant",
+                          "minimal",
                           "low",
                           "medium",
-                          "high"
+                          "high",
+                          "xhigh",
+                          "max"
                         ]
                       },
                       "thinking": {
@@ -15648,10 +15688,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "reasoningEffort": {
                         "type": "string",
                         "enum": [
+                          "none",
                           "instant",
+                          "minimal",
                           "low",
                           "medium",
-                          "high"
+                          "high",
+                          "xhigh",
+                          "max"
                         ]
                       },
                       "thinking": {
@@ -77899,10 +77943,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "reasoningEffort": {
                   "type": "string",
                   "enum": [
+                    "none",
                     "instant",
+                    "minimal",
                     "low",
                     "medium",
-                    "high"
+                    "high",
+                    "xhigh",
+                    "max"
                   ]
                 }
               },
@@ -78335,10 +78383,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "reasoningEffort": {
                       "type": "string",
                       "enum": [
+                        "none",
                         "instant",
+                        "minimal",
                         "low",
                         "medium",
-                        "high"
+                        "high",
+                        "xhigh",
+                        "max"
                       ]
                     }
                   },
@@ -78889,10 +78941,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "reasoningEffort": {
                       "type": "string",
                       "enum": [
+                        "none",
                         "instant",
+                        "minimal",
                         "low",
                         "medium",
-                        "high"
+                        "high",
+                        "xhigh",
+                        "max"
                       ]
                     }
                   },
@@ -79151,10 +79207,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "reasoningEffort": {
                       "type": "string",
                       "enum": [
+                        "none",
                         "instant",
+                        "minimal",
                         "low",
                         "medium",
-                        "high"
+                        "high",
+                        "xhigh",
+                        "max"
                       ]
                     }
                   },
@@ -79561,10 +79621,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "reasoningEffort": {
                         "type": "string",
                         "enum": [
+                          "none",
                           "instant",
+                          "minimal",
                           "low",
                           "medium",
-                          "high"
+                          "high",
+                          "xhigh",
+                          "max"
                         ]
                       }
                     },
@@ -80005,10 +80069,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "reasoningEffort": {
                   "type": "string",
                   "enum": [
+                    "none",
                     "instant",
+                    "minimal",
                     "low",
                     "medium",
-                    "high"
+                    "high",
+                    "xhigh",
+                    "max"
                   ]
                 }
               },
@@ -80463,10 +80531,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "reasoningEffort": {
                           "type": "string",
                           "enum": [
+                            "none",
                             "instant",
+                            "minimal",
                             "low",
                             "medium",
-                            "high"
+                            "high",
+                            "xhigh",
+                            "max"
                           ]
                         }
                       },
@@ -81917,10 +81989,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "reasoningEffort": {
                   "type": "string",
                   "enum": [
+                    "none",
                     "instant",
+                    "minimal",
                     "low",
                     "medium",
-                    "high"
+                    "high",
+                    "xhigh",
+                    "max"
                   ]
                 }
               },
@@ -82356,10 +82432,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "reasoningEffort": {
                       "type": "string",
                       "enum": [
+                        "none",
                         "instant",
+                        "minimal",
                         "low",
                         "medium",
-                        "high"
+                        "high",
+                        "xhigh",
+                        "max"
                       ]
                     }
                   },
@@ -83743,10 +83823,14 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "reasoningEffort": {
                   "type": "string",
                   "enum": [
+                    "none",
                     "instant",
+                    "minimal",
                     "low",
                     "medium",
-                    "high"
+                    "high",
+                    "xhigh",
+                    "max"
                   ]
                 }
               },

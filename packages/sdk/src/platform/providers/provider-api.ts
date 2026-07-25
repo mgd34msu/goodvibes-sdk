@@ -16,6 +16,7 @@ import type { LiveModelDiscoveryResult } from './live-model-discovery.js';
 import { resolveModelReference } from './model-id-resolution.js';
 import type { FavoritesData, FavoritesStore } from './favorites.js';
 import type { LLMProvider, ProviderRuntimeMetadata } from './interface.js';
+import { reasoningEffortLevels } from './reasoning-effort.js';
 import type { ModelDefinition } from './registry-types.js';
 import {
   getProviderRuntimeSnapshot,
@@ -87,6 +88,11 @@ export interface ProviderApiModelRecord extends ProviderApiModelReference {
   readonly capabilities: ModelDefinition['capabilities'];
   readonly contextWindow: number;
   readonly tier?: ModelDefinition['tier'] | undefined;
+  /**
+   * The selectable reasoning levels for this exact model. A plain list on this
+   * record on purpose: the wire-shape detail lives on `ModelDefinition`'s
+   * `ReasoningEffortSpec`, and consumers of this record only need the choices.
+   */
   readonly reasoningEffort?: readonly string[] | undefined;
   readonly favorite: ProviderApiFavoriteState;
   readonly benchmark?: ProviderApiBenchmarkRecord | undefined;
@@ -339,7 +345,7 @@ function buildModelRecord(
     capabilities: model.capabilities,
     contextWindow: model.contextWindow,
     ...(model.tier ? { tier: model.tier } : {}),
-    ...(model.reasoningEffort ? { reasoningEffort: model.reasoningEffort } : {}),
+    ...(model.reasoningEffort ? { reasoningEffort: reasoningEffortLevels(model.reasoningEffort) } : {}),
     favorite: {
       pinned: pinned != null,
       recent: recent != null,

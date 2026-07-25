@@ -5,8 +5,17 @@
  *
  * Idempotent: guarded by a marker file at
  * `<workingDirectory>/.goodvibes/<surfaceRoot>/.migrated-v1`. A surface whose
- * marker already exists returns immediately — the migration steps below never
- * run twice. Every step is copy-forward or move, never delete-only: a step
+ * marker VALIDATES returns immediately — the migration steps below never run
+ * twice. Validation is by CONTENT, never by existence: the marker holds a
+ * schema version, a completion flag, a timestamp and a per-step summary of what
+ * was moved and how many, and is re-read and parsed on every boot. A marker
+ * that is zero-byte, truncated, non-JSON, missing `completed: true`, or written
+ * by an older schema reads as "not migrated" and the whole (idempotent) pass
+ * runs again. A crash between `open` and the last byte of the write used to
+ * leave a file that `existsSync` happily accepted, stranding the user's legacy
+ * session data forever; the marker is now also written to a temp file and
+ * renamed into place, so an interrupted write leaves the previous state rather
+ * than a torn marker. Every step is copy-forward or move, never delete-only: a step
  * that cannot complete safely leaves the legacy data exactly where it was,
  * and a failure in one step never aborts the others (each is independently
  * try/caught) or this module's caller (createSessionSurface never throws
@@ -68,7 +77,7 @@
  *    reclaimed by the append-only retention sweep (legacy-event-store), not
  *    by migration — it has no live reader to migrate FOR.
  */
-import { copyFileSync, existsSync, mkdirSync, readdirSync, renameSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
@@ -83,8 +92,153 @@ import type { SessionSurface } from './session-surface.js';
  */
 type StepOutcome = 'done' | 'nothing' | 'failed';
 
+/**
+ * The marker's schema version. A marker written by an OLDER schema reads as
+ * "not migrated" and the pass re-runs — every step is existsSync/rename-guarded
+ * and safe to repeat, so re-running costs a directory listing, never data. A
+ * marker written by a NEWER schema is accepted: a later build already did at
+ * least this much work, and downgrading must not re-migrate on every boot.
+ */
+const MARKER_SCHEMA_VERSION = 1;
+
+/** What the migration actually did, recorded in the marker and disclosed in the log. */
+interface MigrationSummary {
+  /** Journals relocated from flat sessions/ into sessions/agents/. */
+  agentJournalsMoved: number;
+  /** Journals left where they were because a real file already held the destination name. */
+  agentJournalsLeftInPlace: number;
+  /** Zero-byte or unparseable destination files replaced by the legacy source. */
+  tornDestinationsReplaced: number;
+  /** The legacy unscoped last-session pointer was copied forward. */
+  lastSessionPointerAdopted: boolean;
+  /** The shared legacy checkpoint store was moved into this surface. */
+  checkpointsAdopted: boolean;
+}
+
+function emptySummary(): MigrationSummary {
+  return {
+    agentJournalsMoved: 0,
+    agentJournalsLeftInPlace: 0,
+    tornDestinationsReplaced: 0,
+    lastSessionPointerAdopted: false,
+    checkpointsAdopted: false,
+  };
+}
+
 function markerPath(surface: SessionSurface): string {
   return join(surface.workingDirectory, '.goodvibes', surface.surfaceRoot, '.migrated-v1');
+}
+
+/**
+ * Has this surface already been migrated? Answered by PARSING the marker, never
+ * by its existence.
+ *
+ * A crash mid-write leaves a file that exists and says nothing: zero bytes, a
+ * truncated object, a page of NULs restored by a filesystem that recovered the
+ * inode but not the data. `existsSync` returns true for every one of those, and
+ * the migration would then be skipped forever with the user's legacy sessions,
+ * journals and checkpoints stranded in the old layout. So the marker must
+ * positively assert its own completion: a JSON object with a known schema
+ * version and `completed: true`. Anything else — unreadable, unparseable, an
+ * array, a bare `true`, a missing flag, an older schema — is treated as "not
+ * migrated" and the idempotent pass runs again.
+ */
+function readCompletedMarker(surface: SessionSurface): { schemaVersion: number } | null {
+  const path = markerPath(surface);
+  let raw: string;
+  try {
+    if (!existsSync(path)) return null;
+    raw = readFileSync(path, 'utf-8');
+  } catch (error) {
+    logger.warn('session-migration: marker unreadable — treating this surface as unmigrated', {
+      marker: path,
+      error: summarizeError(error),
+    });
+    return null;
+  }
+  if (raw.trim().length === 0) {
+    logger.warn('session-migration: marker is empty (interrupted write) — re-running the migration', { marker: path });
+    return null;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    logger.warn('session-migration: marker is not parseable JSON (torn write) — re-running the migration', {
+      marker: path,
+      bytes: raw.length,
+    });
+    return null;
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    logger.warn('session-migration: marker is not an object — re-running the migration', { marker: path });
+    return null;
+  }
+  const record = parsed as { schemaVersion?: unknown; completed?: unknown };
+  if (record.completed !== true) {
+    logger.warn('session-migration: marker does not assert completion — re-running the migration', { marker: path });
+    return null;
+  }
+  if (typeof record.schemaVersion !== 'number' || !Number.isFinite(record.schemaVersion)) {
+    logger.warn('session-migration: marker has no usable schema version — re-running the migration', { marker: path });
+    return null;
+  }
+  if (record.schemaVersion < MARKER_SCHEMA_VERSION) {
+    logger.info('session-migration: marker was written by an older schema — re-running the migration', {
+      marker: path,
+      markerSchemaVersion: record.schemaVersion,
+      currentSchemaVersion: MARKER_SCHEMA_VERSION,
+    });
+    return null;
+  }
+  return { schemaVersion: record.schemaVersion };
+}
+
+/**
+ * Write the completion marker with the content that makes it verifiable:
+ * schema version, timestamp, surface, and exactly what was moved and how many.
+ *
+ * Written to a sibling temp file and renamed into place, so an interruption
+ * leaves either no marker at all (the pass retries) or the complete previous
+ * one — never a half-written file that a later boot would trust. The temp name
+ * carries the pid so two processes racing to migrate the same surface cannot
+ * scribble over each other's partial file; `rename` onto the final path is
+ * atomic, and both processes write the same "completed" assertion, so whichever
+ * lands last is equally correct.
+ */
+function writeCompletedMarker(surface: SessionSurface, summary: MigrationSummary): void {
+  const path = markerPath(surface);
+  const temp = `${path}.${process.pid}.tmp`;
+  const body = JSON.stringify(
+    {
+      schemaVersion: MARKER_SCHEMA_VERSION,
+      completed: true,
+      migratedAt: new Date().toISOString(),
+      surfaceRoot: surface.surfaceRoot,
+      workingDirectory: surface.workingDirectory,
+      moved: {
+        agentJournals: summary.agentJournalsMoved,
+        agentJournalsLeftInPlace: summary.agentJournalsLeftInPlace,
+        tornDestinationsReplaced: summary.tornDestinationsReplaced,
+        lastSessionPointerAdopted: summary.lastSessionPointerAdopted,
+        checkpointsAdopted: summary.checkpointsAdopted,
+      },
+    },
+    null,
+    2,
+  ) + '\n';
+  mkdirSync(dirname(path), { recursive: true });
+  try {
+    writeFileSync(temp, body, 'utf-8');
+    renameSync(temp, path);
+  } catch (error) {
+    try {
+      rmSync(temp, { force: true });
+    } catch {
+      // The temp file is inert; failing to clean it up is not worth a second error.
+    }
+    throw error;
+  }
 }
 
 /** Copy `from` forward to `to`, creating `to`'s parent directory if needed. Throws on failure — callers wrap this. */
@@ -93,27 +247,63 @@ function copyForward(from: string, to: string): void {
   copyFileSync(from, to);
 }
 
-function migrateLastSessionPointer(surface: SessionSurface): StepOutcome {
+/**
+ * Is the file at `path` genuinely absent of content — zero bytes, or bytes that
+ * do not begin a parseable JSON record?
+ *
+ * Used to tell "a real file already holds this name" from "a crash left a
+ * carcass here". A destination in either of those states holds nothing that can
+ * be read back, and the legacy source about to be moved onto it is by
+ * definition at least as complete, so replacing it loses no recoverable data.
+ * A file that DOES parse is real and is never overwritten.
+ */
+function isTornOrEmptyFile(path: string): boolean {
+  let size: number;
+  try {
+    size = statSync(path).size;
+  } catch {
+    // Unreadable stat: treat as real and leave it alone (when in doubt, keep).
+    return false;
+  }
+  if (size === 0) return true;
+  try {
+    const firstLine = readFileSync(path, 'utf-8').split('\n', 1)[0] ?? '';
+    if (firstLine.trim().length === 0) return true;
+    const parsed: unknown = JSON.parse(firstLine);
+    return typeof parsed !== 'object' || parsed === null;
+  } catch {
+    // Present, non-empty, and not a parseable opening record: a truncated
+    // half-write, not a file anything can read back.
+    return true;
+  }
+}
+
+function migrateLastSessionPointer(surface: SessionSurface, summary: MigrationSummary): StepOutcome {
   const canonicalPath = surface.lastSessionPointer;
   const legacyUnscopedPath = join(resolveSharedDirectory(surface.workingDirectory, 'sessions'), 'last-session.json');
   if (!existsSync(legacyUnscopedPath)) return 'nothing';
 
-  if (!existsSync(canonicalPath)) {
+  // Validate the destination by content, not existence: a canonical pointer
+  // left zero-byte or half-written by a crash names no session at all, so the
+  // legacy pointer is strictly better and wins regardless of mtime.
+  if (!existsSync(canonicalPath) || isTornOrEmptyFile(canonicalPath)) {
     copyForward(legacyUnscopedPath, canonicalPath);
+    summary.lastSessionPointerAdopted = true;
     return 'done';
   }
-  // Both exist: newest mtime wins, copied into the canonical path. The
-  // legacy unscoped file is left in place either way.
+  // Both exist and both are readable: newest mtime wins, copied into the
+  // canonical path. The legacy unscoped file is left in place either way.
   const canonicalMtime = statSync(canonicalPath).mtimeMs;
   const legacyMtime = statSync(legacyUnscopedPath).mtimeMs;
   if (legacyMtime > canonicalMtime) {
     copyForward(legacyUnscopedPath, canonicalPath);
+    summary.lastSessionPointerAdopted = true;
     return 'done';
   }
   return 'nothing';
 }
 
-function migrateAgentJournals(surface: SessionSurface): StepOutcome {
+function migrateAgentJournals(surface: SessionSurface, summary: MigrationSummary): StepOutcome {
   const sessionsDir = surface.sessionsDir;
   if (!existsSync(sessionsDir)) return 'nothing';
   let names: string[];
@@ -133,13 +323,33 @@ function migrateAgentJournals(surface: SessionSurface): StepOutcome {
   mkdirSync(surface.agentJournalsDir, { recursive: true });
   let moved = 0;
   let failures = 0;
+  let leftInPlace = 0;
+  let replacedTorn = 0;
   for (const name of toMove) {
     const from = join(sessionsDir, name);
     const to = join(surface.agentJournalsDir, name);
     try {
-      // Never clobber an existing agents/ file with the same name — leave
+      // Never clobber a REAL existing agents/ file with the same name — leave
       // the legacy copy in place rather than guess which one is authoritative.
-      if (existsSync(to)) continue;
+      // But "the destination exists" is not the same claim as "the destination
+      // holds data": a crash mid-copy leaves a zero-byte or truncated file that
+      // existsSync accepts and nothing can read back, and skipping on that
+      // strands the legacy journal permanently. Decide on content.
+      if (existsSync(to)) {
+        if (!isTornOrEmptyFile(to)) {
+          leftInPlace++;
+          logger.info('session-migration: agent journal left in place — a readable file already holds that name', {
+            file: name,
+            destination: to,
+          });
+          continue;
+        }
+        logger.warn('session-migration: replacing an empty/truncated destination journal with the legacy source', {
+          file: name,
+          destination: to,
+        });
+        replacedTorn++;
+      }
       renameSync(from, to);
       moved++;
     } catch (error) {
@@ -150,6 +360,9 @@ function migrateAgentJournals(surface: SessionSurface): StepOutcome {
       });
     }
   }
+  summary.agentJournalsMoved += moved;
+  summary.agentJournalsLeftInPlace += leftInPlace;
+  summary.tornDestinationsReplaced += replacedTorn;
   if (failures > 0) return 'failed';
   return moved > 0 ? 'done' : 'nothing';
 }
@@ -159,7 +372,7 @@ function checkpointsMovedMarkerPath(surface: SessionSurface): string {
   return join(surface.workingDirectory, '.goodvibes', 'checkpoints-moved.json');
 }
 
-function migrateCheckpointsDir(surface: SessionSurface): StepOutcome {
+function migrateCheckpointsDir(surface: SessionSurface, summary: MigrationSummary): StepOutcome {
   const legacyDir = join(surface.workingDirectory, '.goodvibes', 'checkpoints');
   if (!existsSync(legacyDir)) return 'nothing'; // nothing legacy to move
   if (existsSync(surface.checkpointsDir)) {
@@ -192,6 +405,7 @@ function migrateCheckpointsDir(surface: SessionSurface): StepOutcome {
   // directory used by two products, the first mover claims the history —
   // so leave a findable trace at the old location for the second one's user,
   // and say so in the log.
+  summary.checkpointsAdopted = true;
   logger.info('session-migration: adopted the shared legacy checkpoint store into this surface', {
     movedFrom: legacyDir,
     movedTo: surface.checkpointsDir,
@@ -244,18 +458,13 @@ function runStep(name: string, step: () => StepOutcome): StepOutcome {
  * existsSync/rename-guarded and therefore safe to repeat.
  */
 export function runSessionSurfaceMigration(surface: SessionSurface): void {
-  const marker = markerPath(surface);
-  try {
-    if (existsSync(marker)) return;
-  } catch (error) {
-    logger.warn('session-migration: marker check failed, skipping this pass', { error: summarizeError(error) });
-    return;
-  }
+  if (readCompletedMarker(surface) !== null) return;
 
+  const summary = emptySummary();
   const outcomes: StepOutcome[] = [
-    runStep('last-session pointer migration', () => migrateLastSessionPointer(surface)),
-    runStep('agent journal migration', () => migrateAgentJournals(surface)),
-    runStep('checkpoints migration', () => migrateCheckpointsDir(surface)),
+    runStep('last-session pointer migration', () => migrateLastSessionPointer(surface, summary)),
+    runStep('agent journal migration', () => migrateAgentJournals(surface, summary)),
+    runStep('checkpoints migration', () => migrateCheckpointsDir(surface, summary)),
   ];
 
   if (outcomes.includes('failed')) {
@@ -266,9 +475,29 @@ export function runSessionSurfaceMigration(surface: SessionSurface): void {
     return;
   }
 
+  // Disclosure: a migration that actually moved something says what it moved
+  // and how many, rather than relocating a user's data in silence. A pass that
+  // found nothing to do stays quiet — it is the common case on every boot after
+  // the first, and logging it would drown the lines that matter.
+  const movedAnything = summary.agentJournalsMoved > 0
+    || summary.lastSessionPointerAdopted
+    || summary.checkpointsAdopted
+    || summary.agentJournalsLeftInPlace > 0
+    || summary.tornDestinationsReplaced > 0;
+  if (movedAnything) {
+    logger.info('session-migration: migrated legacy session data into the surface-scoped layout', {
+      surfaceRoot: surface.surfaceRoot,
+      workingDirectory: surface.workingDirectory,
+      agentJournalsMoved: summary.agentJournalsMoved,
+      agentJournalsLeftInPlace: summary.agentJournalsLeftInPlace,
+      tornDestinationsReplaced: summary.tornDestinationsReplaced,
+      lastSessionPointerAdopted: summary.lastSessionPointerAdopted,
+      checkpointsAdopted: summary.checkpointsAdopted,
+    });
+  }
+
   try {
-    mkdirSync(dirname(marker), { recursive: true });
-    writeFileSync(marker, JSON.stringify({ migratedAt: new Date().toISOString() }) + '\n', 'utf-8');
+    writeCompletedMarker(surface, summary);
   } catch (error) {
     // If the marker itself cannot be written, the next createSessionSurface
     // call will simply retry the (idempotent — existsSync/rename-guarded)

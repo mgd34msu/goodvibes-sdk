@@ -16,6 +16,7 @@ import type { MediaProvider, MediaProviderRegistry } from '../media/index.js';
 import type { WebSearchProvider, WebSearchProviderRegistry } from '../web-search/index.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
+import { reasoningEffortSpecFromLevels } from '../providers/reasoning-effort.js';
 
 /**
  * PluginProviderConfig — minimal config for registering a custom LLM provider
@@ -230,7 +231,9 @@ export function createPluginAPI(ctx: PluginAPIContext): PluginAPI {
                 reasoning: config.capabilities?.reasoning ?? false,
                 multimodal: config.capabilities?.multimodal ?? false,
               },
-              ...(config.reasoningEffort ? { reasoningEffort: config.reasoningEffort } : {}),
+              ...(config.reasoningEffort
+                ? { reasoningEffort: reasoningEffortSpecFromLevels(config.reasoningEffort) }
+                : {}),
               ...(config.tier ? { tier: config.tier } : {}),
               ...(config.tokenLimits ? { tokenLimits: config.tokenLimits } : {}),
             })),
@@ -265,7 +268,9 @@ export function createPluginAPI(ctx: PluginAPIContext): PluginAPI {
             reasoning: model.capabilities?.reasoning ?? false,
             multimodal: model.capabilities?.multimodal ?? false,
           },
-          ...(model.reasoningEffort ? { reasoningEffort: model.reasoningEffort } : {}),
+          ...(model.reasoningEffort
+            ? { reasoningEffort: reasoningEffortSpecFromLevels(model.reasoningEffort) }
+            : {}),
           ...(model.tier ? { tier: model.tier } : {}),
           ...(model.tokenLimits ? { tokenLimits: model.tokenLimits } : {}),
         })),

@@ -4382,7 +4382,7 @@ export interface OperatorMethodInputMap {
                 filesystemPolicy?: "inherit" | "isolated" | "read-only" | "workspace-write";
             };
             tools?: readonly string[];
-            reasoningEffort?: "high" | "instant" | "low" | "medium";
+            reasoningEffort?: "high" | "instant" | "low" | "max" | "medium" | "minimal" | "none" | "xhigh";
         };
     } & {
         readonly [key: string]: unknown;
@@ -4428,7 +4428,7 @@ export interface OperatorMethodInputMap {
                 filesystemPolicy?: "inherit" | "isolated" | "read-only" | "workspace-write";
             };
             tools?: readonly string[];
-            reasoningEffort?: "high" | "instant" | "low" | "medium";
+            reasoningEffort?: "high" | "instant" | "low" | "max" | "medium" | "minimal" | "none" | "xhigh";
         };
     } & {
         readonly [key: string]: unknown;
@@ -4500,7 +4500,7 @@ export interface OperatorMethodInputMap {
                 filesystemPolicy?: "inherit" | "isolated" | "read-only" | "workspace-write";
             };
             tools?: readonly string[];
-            reasoningEffort?: "high" | "instant" | "low" | "medium";
+            reasoningEffort?: "high" | "instant" | "low" | "max" | "medium" | "minimal" | "none" | "xhigh";
         };
         allowSpawnFallback?: boolean;
     } & {
@@ -4594,7 +4594,7 @@ export interface OperatorMethodInputMap {
                 filesystemPolicy?: "inherit" | "isolated" | "read-only" | "workspace-write";
             };
             tools?: readonly string[];
-            reasoningEffort?: "high" | "instant" | "low" | "medium";
+            reasoningEffort?: "high" | "instant" | "low" | "max" | "medium" | "minimal" | "none" | "xhigh";
         };
         sessionId?: string;
         routeId?: string;
@@ -5586,7 +5586,7 @@ export interface OperatorMethodOutputMap {
                     networkPolicy?: "allow" | "deny" | "inherit" | "scoped";
                     filesystemPolicy?: "inherit" | "isolated" | "read-only" | "workspace-write";
                 };
-                reasoningEffort?: "high" | "instant" | "low" | "medium";
+                reasoningEffort?: "high" | "instant" | "low" | "max" | "medium" | "minimal" | "none" | "xhigh";
                 thinking?: string;
                 wakeMode?: "next-heartbeat" | "now";
                 timeoutMs?: number;
@@ -5816,7 +5816,7 @@ export interface OperatorMethodOutputMap {
                 networkPolicy?: "allow" | "deny" | "inherit" | "scoped";
                 filesystemPolicy?: "inherit" | "isolated" | "read-only" | "workspace-write";
             };
-            reasoningEffort?: "high" | "instant" | "low" | "medium";
+            reasoningEffort?: "high" | "instant" | "low" | "max" | "medium" | "minimal" | "none" | "xhigh";
             thinking?: string;
             wakeMode?: "next-heartbeat" | "now";
             timeoutMs?: number;
@@ -5983,7 +5983,7 @@ export interface OperatorMethodOutputMap {
                     networkPolicy?: "allow" | "deny" | "inherit" | "scoped";
                     filesystemPolicy?: "inherit" | "isolated" | "read-only" | "workspace-write";
                 };
-                reasoningEffort?: "high" | "instant" | "low" | "medium";
+                reasoningEffort?: "high" | "instant" | "low" | "max" | "medium" | "minimal" | "none" | "xhigh";
                 thinking?: string;
                 wakeMode?: "next-heartbeat" | "now";
                 timeoutMs?: number;
@@ -6138,7 +6138,7 @@ export interface OperatorMethodOutputMap {
                 networkPolicy?: "allow" | "deny" | "inherit" | "scoped";
                 filesystemPolicy?: "inherit" | "isolated" | "read-only" | "workspace-write";
             };
-            reasoningEffort?: "high" | "instant" | "low" | "medium";
+            reasoningEffort?: "high" | "instant" | "low" | "max" | "medium" | "minimal" | "none" | "xhigh";
             thinking?: string;
             wakeMode?: "next-heartbeat" | "now";
             timeoutMs?: number;
@@ -6299,7 +6299,7 @@ export interface OperatorMethodOutputMap {
                     networkPolicy?: "allow" | "deny" | "inherit" | "scoped";
                     filesystemPolicy?: "inherit" | "isolated" | "read-only" | "workspace-write";
                 };
-                reasoningEffort?: "high" | "instant" | "low" | "medium";
+                reasoningEffort?: "high" | "instant" | "low" | "max" | "medium" | "minimal" | "none" | "xhigh";
                 thinking?: string;
                 wakeMode?: "next-heartbeat" | "now";
                 timeoutMs?: number;
@@ -6484,7 +6484,7 @@ export interface OperatorMethodOutputMap {
                     networkPolicy?: "allow" | "deny" | "inherit" | "scoped";
                     filesystemPolicy?: "inherit" | "isolated" | "read-only" | "workspace-write";
                 };
-                reasoningEffort?: "high" | "instant" | "low" | "medium";
+                reasoningEffort?: "high" | "instant" | "low" | "max" | "medium" | "minimal" | "none" | "xhigh";
                 thinking?: string;
                 wakeMode?: "next-heartbeat" | "now";
                 timeoutMs?: number;
@@ -6688,7 +6688,7 @@ export interface OperatorMethodOutputMap {
                     networkPolicy?: "allow" | "deny" | "inherit" | "scoped";
                     filesystemPolicy?: "inherit" | "isolated" | "read-only" | "workspace-write";
                 };
-                reasoningEffort?: "high" | "instant" | "low" | "medium";
+                reasoningEffort?: "high" | "instant" | "low" | "max" | "medium" | "minimal" | "none" | "xhigh";
                 thinking?: string;
                 wakeMode?: "next-heartbeat" | "now";
                 timeoutMs?: number;
@@ -6873,7 +6873,7 @@ export interface OperatorMethodOutputMap {
                     networkPolicy?: "allow" | "deny" | "inherit" | "scoped";
                     filesystemPolicy?: "inherit" | "isolated" | "read-only" | "workspace-write";
                 };
-                reasoningEffort?: "high" | "instant" | "low" | "medium";
+                reasoningEffort?: "high" | "instant" | "low" | "max" | "medium" | "minimal" | "none" | "xhigh";
                 thinking?: string;
                 wakeMode?: "next-heartbeat" | "now";
                 timeoutMs?: number;
@@ -7042,7 +7042,7 @@ export interface OperatorMethodOutputMap {
                 networkPolicy?: "allow" | "deny" | "inherit" | "scoped";
                 filesystemPolicy?: "inherit" | "isolated" | "read-only" | "workspace-write";
             };
-            reasoningEffort?: "high" | "instant" | "low" | "medium";
+            reasoningEffort?: "high" | "instant" | "low" | "max" | "medium" | "minimal" | "none" | "xhigh";
             thinking?: string;
             wakeMode?: "next-heartbeat" | "now";
             timeoutMs?: number;
@@ -7209,7 +7209,7 @@ export interface OperatorMethodOutputMap {
                     networkPolicy?: "allow" | "deny" | "inherit" | "scoped";
                     filesystemPolicy?: "inherit" | "isolated" | "read-only" | "workspace-write";
                 };
-                reasoningEffort?: "high" | "instant" | "low" | "medium";
+                reasoningEffort?: "high" | "instant" | "low" | "max" | "medium" | "minimal" | "none" | "xhigh";
                 thinking?: string;
                 wakeMode?: "next-heartbeat" | "now";
                 timeoutMs?: number;
@@ -7368,7 +7368,7 @@ export interface OperatorMethodOutputMap {
                     networkPolicy?: "allow" | "deny" | "inherit" | "scoped";
                     filesystemPolicy?: "inherit" | "isolated" | "read-only" | "workspace-write";
                 };
-                reasoningEffort?: "high" | "instant" | "low" | "medium";
+                reasoningEffort?: "high" | "instant" | "low" | "max" | "medium" | "minimal" | "none" | "xhigh";
                 thinking?: string;
                 wakeMode?: "next-heartbeat" | "now";
                 timeoutMs?: number;
@@ -13755,7 +13755,7 @@ export interface OperatorMethodOutputMap {
                     filesystemPolicy?: "inherit" | "isolated" | "read-only" | "workspace-write";
                 };
                 tools?: readonly string[];
-                reasoningEffort?: "high" | "instant" | "low" | "medium";
+                reasoningEffort?: "high" | "instant" | "low" | "max" | "medium" | "minimal" | "none" | "xhigh";
             };
             error?: string;
         };
@@ -13857,7 +13857,7 @@ export interface OperatorMethodOutputMap {
                     filesystemPolicy?: "inherit" | "isolated" | "read-only" | "workspace-write";
                 };
                 tools?: readonly string[];
-                reasoningEffort?: "high" | "instant" | "low" | "medium";
+                reasoningEffort?: "high" | "instant" | "low" | "max" | "medium" | "minimal" | "none" | "xhigh";
             };
             error?: string;
         };
@@ -13936,7 +13936,7 @@ export interface OperatorMethodOutputMap {
                     filesystemPolicy?: "inherit" | "isolated" | "read-only" | "workspace-write";
                 };
                 tools?: readonly string[];
-                reasoningEffort?: "high" | "instant" | "low" | "medium";
+                reasoningEffort?: "high" | "instant" | "low" | "max" | "medium" | "minimal" | "none" | "xhigh";
             };
             error?: string;
         })[];
@@ -14086,7 +14086,7 @@ export interface OperatorMethodOutputMap {
                     filesystemPolicy?: "inherit" | "isolated" | "read-only" | "workspace-write";
                 };
                 tools?: readonly string[];
-                reasoningEffort?: "high" | "instant" | "low" | "medium";
+                reasoningEffort?: "high" | "instant" | "low" | "max" | "medium" | "minimal" | "none" | "xhigh";
             };
             error?: string;
         };
@@ -14346,7 +14346,7 @@ export interface OperatorMethodOutputMap {
                     filesystemPolicy?: "inherit" | "isolated" | "read-only" | "workspace-write";
                 };
                 tools?: readonly string[];
-                reasoningEffort?: "high" | "instant" | "low" | "medium";
+                reasoningEffort?: "high" | "instant" | "low" | "max" | "medium" | "minimal" | "none" | "xhigh";
             };
             error?: string;
         };

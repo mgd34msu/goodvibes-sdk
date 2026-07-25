@@ -35,6 +35,8 @@ import {
 } from './builtin/descriptors.js';
 import { runHomeAssistantOperatorAction } from './builtin/homeassistant.js';
 import { getBuiltinSetupSchema } from './builtin/setup-schema.js';
+import { TelegramIngressSupervisor, type TelegramIngressStatus } from './telegram/ingress.js';
+import { logger } from '../utils/logger.js';
 import { registerBuiltinChannelPlugins } from './builtin/plugins.js';
 import type { BuiltinChannelRuntimeDeps, ManagedSurface } from './builtin/shared.js';
 import {
@@ -64,6 +66,89 @@ import {
 
 export class BuiltinChannelRuntime {
   constructor(private readonly deps: BuiltinChannelRuntimeDeps) {}
+
+  private telegramIngress: TelegramIngressSupervisor | null = null;
+  private telegramConfigUnsubscribes: Array<() => void> = [];
+  private telegramRestartTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /**
+   * Arm the inbound paths that surfaces must actively establish.
+   *
+   * Registering an HTTP route is not enough for Telegram: it delivers nothing
+   * until told a webhook URL exists or asked for updates. Called on daemon
+   * start, after the HTTP listener is up so a registered webhook has somewhere
+   * to land.
+   */
+  async startIngress(): Promise<void> {
+    if (!this.deps.telegramOffsetPath) {
+      // No surface-scoped storage was supplied, so a polling cursor cannot be
+      // persisted. Say so rather than silently skipping inbound Telegram.
+      if (this.deps.configManager.get('surfaces.telegram.enabled')) {
+        logger.warn('Telegram ingress not started: the host supplied no offset storage path', {
+          detail: 'embedders must pass telegramOffsetPath to receive Telegram messages',
+        });
+      }
+      return;
+    }
+    this.telegramIngress ??= new TelegramIngressSupervisor({
+      configManager: this.deps.configManager,
+      secretsManager: this.deps.secretsManager,
+      serviceRegistry: this.deps.serviceRegistry,
+      buildSurfaceAdapterContext: this.deps.buildSurfaceAdapterContext,
+      offsetFilePath: this.deps.telegramOffsetPath,
+    });
+    this.watchTelegramConfig();
+    await this.telegramIngress.start();
+  }
+
+  /**
+   * Re-decide ingress when the surface is reconfigured, so edits apply without
+   * a restart — the same live-reload path an external settings edit takes.
+   * start() stops any running loop first, so a mode change swaps cleanly rather
+   * than leaving both a poll loop and a webhook armed.
+   */
+  private watchTelegramConfig(): void {
+    if (this.telegramConfigUnsubscribes.length > 0) return;
+    const keys = [
+      'surfaces.telegram.enabled',
+      'surfaces.telegram.mode',
+      'surfaces.telegram.botToken',
+      'surfaces.telegram.webhookSecret',
+      'web.publicBaseUrl',
+    ] as const;
+    const restart = (): void => {
+      // Coalesce: editing several keys in one save must re-decide once, not
+      // once per key, or the modes race each other during the transition.
+      if (this.telegramRestartTimer) clearTimeout(this.telegramRestartTimer);
+      this.telegramRestartTimer = setTimeout(() => {
+        this.telegramRestartTimer = null;
+        void this.telegramIngress?.start().catch((error: unknown) => {
+          logger.warn('Telegram ingress restart after a config change failed', {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        });
+      }, 250);
+      (this.telegramRestartTimer as unknown as { unref?: () => void }).unref?.();
+    };
+    for (const key of keys) {
+      this.telegramConfigUnsubscribes.push(this.deps.configManager.subscribe(key, restart));
+    }
+  }
+
+  /** Tear the inbound paths down; the poll loop must not outlive the daemon. */
+  async stopIngress(): Promise<void> {
+    if (this.telegramRestartTimer) {
+      clearTimeout(this.telegramRestartTimer);
+      this.telegramRestartTimer = null;
+    }
+    for (const unsubscribe of this.telegramConfigUnsubscribes.splice(0)) unsubscribe();
+    await this.telegramIngress?.stop();
+  }
+
+  /** Current inbound Telegram state, including why it is inactive. */
+  telegramIngressStatus(): TelegramIngressStatus | null {
+    return this.telegramIngress?.status ?? null;
+  }
 
   registerPlugins(): void {
     registerBuiltinChannelPlugins({

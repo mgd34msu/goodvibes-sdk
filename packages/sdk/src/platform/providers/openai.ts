@@ -37,6 +37,7 @@ import type { CacheHitTracker } from './cache-strategy.js';
 import { extractOpenAIStreamTextDelta } from './openai-stream-delta.js';
 import { summarizeError, toProviderError } from '../utils/error-display.js';
 import { resolveOpenAIClientApiKey } from './openai-compat.js';
+import { resolveEffortForRequest } from './reasoning-effort-families.js';
 
 const NOOP_CACHE_HIT_TRACKER: Pick<CacheHitTracker, 'recordTurn'> = {
   recordTurn: () => {},
@@ -113,8 +114,24 @@ export class OpenAIProvider implements LLMProvider {
   }
 
   async chat(params: ChatRequest): Promise<ChatResponse> {
-    const { messages, tools, model, maxTokens, signal, systemPrompt, onDelta, onRetry, reasoningEffort: _reasoningEffort } = params;
-    // Note: OpenAI GPT-5 does not expose reasoning effort as a configurable API parameter
+    const { messages, tools, model, maxTokens, signal, systemPrompt, onDelta, onRetry } = params;
+    // `reasoning_effort` is a documented top-level parameter of
+    // POST /v1/chat/completions (openai@6.46.0 types it as
+    // 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max'), so the
+    // endpoint this adapter already uses can carry the setting. It is resolved
+    // against the model's own options first, because OpenAI rejects a level the
+    // model does not support rather than coercing it.
+    // A `fallback`-sourced spec means neither the live catalog nor the curated
+    // family table recognises this model, so there is no evidence it reasons at
+    // all. OpenAI serves plenty of non-reasoning models on this same endpoint
+    // and rejects `reasoning_effort` on them, so silence beats a guess here.
+    const resolvedEffort = resolveEffortForRequest(params.reasoningEffort, {
+      modelId: model,
+      ...(params.reasoningEffortSpec ? { spec: params.reasoningEffortSpec } : {}),
+    });
+    const reasoningEffort = resolvedEffort.spec.source === 'fallback'
+      ? undefined
+      : resolvedEffort.value;
 
     return withRetry(async () => {
       let responseText = '';
@@ -138,6 +155,7 @@ export class OpenAIProvider implements LLMProvider {
             messages: openaiMessages as Parameters<typeof this.client.chat.completions.create>[0]['messages'],
             ...(openaiTools ? { tools: openaiTools as Parameters<typeof this.client.chat.completions.create>[0]['tools'] } : {}),
             ...(maxTokens ? { max_tokens: maxTokens } : {}),
+            ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
             stream: true,
             stream_options: { include_usage: true },
           } as Parameters<typeof this.client.chat.completions.create>[0],
@@ -317,7 +335,7 @@ export class OpenAIProvider implements LLMProvider {
       policy: {
         local: false,
         streamProtocol: 'openai-chat-completions',
-        reasoningMode: 'provider-default',
+        reasoningMode: 'reasoning_effort',
         cacheStrategy: 'implicit-openai-cache-observation',
         notes: ['OpenAI embedding usage is subject to OpenAI API terms.'],
       },

@@ -32,7 +32,11 @@ export interface SharedSessionRoutingIntent {
   } | undefined;
   readonly tools?: readonly string[] | undefined;
   readonly executionIntent?: unknown | undefined;
-  readonly reasoningEffort?: 'instant' | 'low' | 'medium' | 'high' | undefined;
+  // Boundary type kept intentionally wide, same reasoning as above: which
+  // levels a given model actually accepts is per-model (see the sdk package's
+  // providers/reasoning-effort.ts, which daemon-sdk must not depend on), so
+  // this stays a plain string rather than a fixed enum.
+  readonly reasoningEffort?: string | undefined;
 }
 interface AutomationRouteBinding {
   readonly id?: string | undefined;

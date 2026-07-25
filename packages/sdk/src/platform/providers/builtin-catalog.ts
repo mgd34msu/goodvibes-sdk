@@ -116,12 +116,26 @@ export function getBuiltinProviderEnvVars(providerId: string): readonly string[]
   return BUILTIN_PROVIDER_ENV_KEYS[providerId] ?? [];
 }
 
+/**
+ * Reasoning-format audit, 2026-07-25: every entry below without an explicit
+ * `reasoningFormat` sends no reasoning parameter at all. That is deliberate,
+ * not an oversight — a format is only declared for a backend whose own current
+ * documentation was read and cited at the entry. The rest stay silent because
+ * guessing a field name earns a provider-side 400 on every turn, which is worse
+ * than the setting having no effect. Re-audit an entry by reading its docs and
+ * adding a cited `reasoningFormat`.
+ */
 export const BUILTIN_COMPAT_PROVIDERS: readonly BuiltinCompatDefinition[] = [
   {
     kind: 'openai-compat',
     modelsAsOf: '2026-07-12',
     id: 'deepseek',
     label: 'DeepSeek',
+    // api-docs.deepseek.com/guides/thinking_mode documents `reasoning_effort`
+    // with only `high` (default) and `max`; deepseek-reasoner takes no level at
+    // all. Both facts live in the curated family table, so the format here only
+    // ever carries a value that model accepts.
+    reasoningFormat: 'reasoning-effort',
     envVars: getBuiltinProviderEnvVars('deepseek'),
     serviceNames: ['deepseek'],
     baseURL: 'https://api.deepseek.com',
@@ -292,6 +306,11 @@ export const BUILTIN_COMPAT_PROVIDERS: readonly BuiltinCompatDefinition[] = [
     modelsAsOf: '2026-07-12',
     id: 'xai',
     label: 'xAI',
+    // docs.x.ai/docs/guides/reasoning documents `reasoning_effort` on chat
+    // completions, with per-model value sets. The base grok-4 rejects the
+    // parameter outright, which the curated family table already encodes, so
+    // declaring the format here does not put it on a grok-4 request.
+    reasoningFormat: 'reasoning-effort',
     envVars: getBuiltinProviderEnvVars('xai'),
     serviceNames: ['xai'],
     baseURL: 'https://api.x.ai/v1',

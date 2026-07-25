@@ -240,6 +240,13 @@ export function registerAllTools(
     workflowServices: ReturnType<typeof createWorkflowServices>;
     mcpRegistry?: import('../mcp/registry.js').McpRegistry | undefined;
     sessionOrchestration?: CrossSessionTaskRegistry | undefined;
+    /**
+     * Resolves the host's real runtime session id, called fresh on each task-tool
+     * invocation. Without it the task tool writes every ref into the unowned
+     * legacy namespace and owner-existence reaping over the task graph cannot
+     * run — the bounds still apply, but nothing is keyed to a real session.
+     */
+    resolveSessionId?: (() => string) | undefined;
     sandboxSessionRegistry?: SandboxSessionRegistry | undefined;
     workingDirectory: string;
     surfaceRoot: string;
@@ -452,6 +459,12 @@ export function registerAllTools(
   // always the scoped form); dual-reads the old unscoped .goodvibes/state
   // for a pre-existing session_*.json exactly once, then copies it forward
   // into the scoped location — see KVStateOptions.legacyStateDir.
+  //
+  // This is also the store's retention point: KVState reaps stale
+  // session_*.json files from BOTH directories at its first load and then on a
+  // timer, so no call is needed here. Passing legacyStateDir is what lets the
+  // age-bounded sweep reach the old unscoped directory, whose copy-forward
+  // sources nothing else reclaims.
   const kvState = new KVState({
     stateDir: resolveScopedDirectory(workingDirectory, deps.surfaceRoot, 'state'),
     legacyStateDir: join(workingDirectory, '.goodvibes', 'state'),
@@ -482,7 +495,14 @@ export function registerAllTools(
     workingDirectory,
     homeDirectory: deps.configManager.getHomeDirectory() ?? undefined,
   }));
-  registerTool(createTaskTool(sessionOrchestration));
+  // The task registry keys refs by owning session, and that key is now the
+  // host's real runtime identity rather than a model-supplied tool argument.
+  // Resolved per call, not captured here: accepting a crash-recovery snapshot
+  // reassigns the runtime's sessionId in place, and a captured value would keep
+  // writing refs under the session the user just left.
+  registerTool(createTaskTool(sessionOrchestration, {
+    ...(deps.resolveSessionId ? { resolveSessionId: deps.resolveSessionId } : {}),
+  }));
   registerTool(createTeamTool({ surfaceRoot: deps.surfaceRoot }));
   registerTool(createWorklistTool({ surfaceRoot: deps.surfaceRoot }));
   if (mcpRegistry) {

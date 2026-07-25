@@ -828,7 +828,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
               "networkPolicy": "inherit",
               "filesystemPolicy": "inherit"
             },
-            "reasoningEffort": "instant",
+            "reasoningEffort": "none",
             "thinking": "sample",
             "wakeMode": "next-heartbeat",
             "timeoutMs": 0,
@@ -1042,7 +1042,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           "networkPolicy": "inherit",
           "filesystemPolicy": "inherit"
         },
-        "reasoningEffort": "instant",
+        "reasoningEffort": "none",
         "thinking": "sample",
         "wakeMode": "next-heartbeat",
         "timeoutMs": 0,
@@ -1212,7 +1212,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
               "networkPolicy": "inherit",
               "filesystemPolicy": "inherit"
             },
-            "reasoningEffort": "instant",
+            "reasoningEffort": "none",
             "thinking": "sample",
             "wakeMode": "next-heartbeat",
             "timeoutMs": 0,
@@ -1364,7 +1364,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           "networkPolicy": "inherit",
           "filesystemPolicy": "inherit"
         },
-        "reasoningEffort": "instant",
+        "reasoningEffort": "none",
         "thinking": "sample",
         "wakeMode": "next-heartbeat",
         "timeoutMs": 0,
@@ -1515,7 +1515,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
             "networkPolicy": "inherit",
             "filesystemPolicy": "inherit"
           },
-          "reasoningEffort": "instant",
+          "reasoningEffort": "none",
           "thinking": "sample",
           "wakeMode": "next-heartbeat",
           "timeoutMs": 0,
@@ -1684,7 +1684,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
             "networkPolicy": "inherit",
             "filesystemPolicy": "inherit"
           },
-          "reasoningEffort": "instant",
+          "reasoningEffort": "none",
           "thinking": "sample",
           "wakeMode": "next-heartbeat",
           "timeoutMs": 0,
@@ -1873,7 +1873,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
               "networkPolicy": "inherit",
               "filesystemPolicy": "inherit"
             },
-            "reasoningEffort": "instant",
+            "reasoningEffort": "none",
             "thinking": "sample",
             "wakeMode": "next-heartbeat",
             "timeoutMs": 0,
@@ -2043,7 +2043,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
             "networkPolicy": "inherit",
             "filesystemPolicy": "inherit"
           },
-          "reasoningEffort": "instant",
+          "reasoningEffort": "none",
           "thinking": "sample",
           "wakeMode": "next-heartbeat",
           "timeoutMs": 0,
@@ -2193,7 +2193,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           "networkPolicy": "inherit",
           "filesystemPolicy": "inherit"
         },
-        "reasoningEffort": "instant",
+        "reasoningEffort": "none",
         "thinking": "sample",
         "wakeMode": "next-heartbeat",
         "timeoutMs": 0,
@@ -2363,7 +2363,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
               "networkPolicy": "inherit",
               "filesystemPolicy": "inherit"
             },
-            "reasoningEffort": "instant",
+            "reasoningEffort": "none",
             "thinking": "sample",
             "wakeMode": "next-heartbeat",
             "timeoutMs": 0,
@@ -2507,7 +2507,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
               "networkPolicy": "inherit",
               "filesystemPolicy": "inherit"
             },
-            "reasoningEffort": "instant",
+            "reasoningEffort": "none",
             "thinking": "sample",
             "wakeMode": "next-heartbeat",
             "timeoutMs": 0,
@@ -15052,7 +15052,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           "tools": [
             "sample"
           ],
-          "reasoningEffort": "instant"
+          "reasoningEffort": "none"
         },
         "error": "sample"
       },
@@ -15170,7 +15170,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           "tools": [
             "sample"
           ],
-          "reasoningEffort": "instant"
+          "reasoningEffort": "none"
         },
         "error": "sample"
       }
@@ -15224,7 +15224,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           "tools": [
             "sample"
           ],
-          "reasoningEffort": "instant"
+          "reasoningEffort": "none"
         },
         "error": "sample"
       }
@@ -15315,7 +15315,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
             "tools": [
               "sample"
             ],
-            "reasoningEffort": "instant"
+            "reasoningEffort": "none"
           },
           "error": "sample"
         }
@@ -15782,7 +15782,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           "tools": [
             "sample"
           ],
-          "reasoningEffort": "instant"
+          "reasoningEffort": "none"
         },
         "error": "sample"
       },
