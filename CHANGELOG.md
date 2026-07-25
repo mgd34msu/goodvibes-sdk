@@ -4,6 +4,20 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
+## [1.12.1] - 2026-07-24
+
+### Fixed
+
+- **Recovery offers respect live writers.** A snapshot whose file was written
+  within the last 90 seconds is being actively maintained by a running
+  process — including one on an older build or another product — and is no
+  longer offered as an orphaned crash at boot. The explicit per-session probe
+  (`checkRecoveryForSession`) still answers honestly about live sessions.
+- **Snapshot retirement is exact.** `consumeRecovery` and `removeRecoveryPoint`
+  retire precisely the snapshot that was offered or loaded, in whichever
+  directory it lives (scoped or legacy shared), and never bulk-clear a
+  directory.
+
 ## [1.12.0] - 2026-07-24
 
 ### Added
