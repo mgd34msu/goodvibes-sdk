@@ -17,6 +17,8 @@ export { RetentionPolicy, DEFAULT_RETENTION_CONFIG } from './policy.js';
 export { SnapshotPruner } from './pruner.js';
 export {
   APPEND_ONLY_STORES,
+  APPEND_ONLY_SWEEP_INTERVAL_MS,
+  AppendOnlyRetentionScheduler,
   assertAppendOnlyStoreRegistered,
   isAppendOnlyStoreRegistered,
   runAppendOnlyRetentionSweep,
@@ -27,6 +29,7 @@ export type {
   AppendOnlyStoreDescriptor,
   AppendOnlyStoreTargets,
   AppendOnlyRetentionRoots,
+  AppendOnlyRetentionSchedulerOptions,
   AppendOnlySweepOutcome,
 } from './append-only-registry.js';
 export type {
