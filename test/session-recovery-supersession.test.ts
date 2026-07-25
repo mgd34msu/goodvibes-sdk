@@ -14,6 +14,12 @@
  * The rule under test now: offer a snapshot when it is strictly newer than its
  * own session's store file, or when that session has no store file at all.
  * Equal mtimes do not offer.
+ *
+ * Every snapshot in this file is deliberately aged past the boot offer's
+ * live-refresh window (see the last describe block). A snapshot written this
+ * instant is by definition being actively written, so leaving one at "now"
+ * would make these tests pass or fail for the liveness reason rather than the
+ * supersession reason they exist to pin.
  */
 import { afterEach, describe, expect, test } from 'bun:test';
 import { existsSync, mkdirSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
@@ -63,6 +69,16 @@ function setMtime(path: string, at: Date): void {
   utimesSync(path, at, at);
 }
 
+/**
+ * A time comfortably outside the boot offer's live-refresh window, so a
+ * snapshot stamped with it reads as abandoned rather than as one a running
+ * process is still rewriting. `msBefore` shifts further into the past for the
+ * cases that need two aged files ordered against each other.
+ */
+function longAgo(msBefore = 0): Date {
+  return new Date(Date.now() - 600_000 - msBefore);
+}
+
 afterEach(() => {
   for (const dir of roots.splice(0)) {
     try {
@@ -81,7 +97,7 @@ describe('recovery offer: supersession is per-session, not the global pointer', 
     const { surface } = tempSurface();
     writeRecoveryFile(snapshotOf('unsaved crash tail'), 'sess-kept', 'Kept Work', { surface });
     const keptSnapshot = surface.recoveryFile('sess-kept');
-    setMtime(keptSnapshot, new Date(Date.now() - 120_000));
+    setMtime(keptSnapshot, longAgo());
 
     // A different session persists a turn: its store is written and the
     // pointer moves to it, both strictly newer than the kept snapshot.
@@ -105,8 +121,8 @@ describe('recovery offer: supersession is per-session, not the global pointer', 
     writeRecoveryFile(snapshotOf('older tail'), 'sess-own', 'Own', { surface });
     saveSession('sess-own', snapshotOf('the saved conversation'), 'm', 'p', 'Own', { surface });
 
-    setMtime(surface.recoveryFile('sess-own'), new Date(Date.now() - 60_000));
-    setMtime(storePath(surface, 'sess-own'), new Date());
+    setMtime(surface.recoveryFile('sess-own'), longAgo(60_000));
+    setMtime(storePath(surface, 'sess-own'), longAgo());
 
     expect(checkRecoveryFile({ surface })).toBeNull();
   });
@@ -114,6 +130,7 @@ describe('recovery offer: supersession is per-session, not the global pointer', 
   test('no store file for the snapshot\'s session → offered', () => {
     const { surface } = tempSurface();
     writeRecoveryFile(snapshotOf('never saved'), 'sess-nostore', 'No Store', { surface });
+    setMtime(surface.recoveryFile('sess-nostore'), longAgo());
     expect(existsSync(storePath(surface, 'sess-nostore'))).toBe(false);
 
     expect(checkRecoveryFile({ surface })?.sessionId).toBe('sess-nostore');
@@ -124,7 +141,7 @@ describe('recovery offer: supersession is per-session, not the global pointer', 
     writeRecoveryFile(snapshotOf('same instant'), 'sess-tie', 'Tie', { surface });
     saveSession('sess-tie', snapshotOf('same instant'), 'm', 'p', 'Tie', { surface });
 
-    const sameInstant = new Date(Date.now() - 10_000);
+    const sameInstant = longAgo();
     setMtime(surface.recoveryFile('sess-tie'), sameInstant);
     setMtime(storePath(surface, 'sess-tie'), sameInstant);
     expect(statSync(surface.recoveryFile('sess-tie')).mtimeMs).toBe(statSync(storePath(surface, 'sess-tie')).mtimeMs);
@@ -137,8 +154,8 @@ describe('recovery offer: supersession is per-session, not the global pointer', 
     saveSession('sess-tail', snapshotOf('what the store has'), 'm', 'p', 'Tail', { surface });
     writeRecoveryFile(snapshotOf('what only the snapshot has'), 'sess-tail', 'Tail', { surface });
 
-    setMtime(storePath(surface, 'sess-tail'), new Date(Date.now() - 60_000));
-    setMtime(surface.recoveryFile('sess-tail'), new Date());
+    setMtime(storePath(surface, 'sess-tail'), longAgo(60_000));
+    setMtime(surface.recoveryFile('sess-tail'), longAgo());
 
     expect(checkRecoveryFile({ surface })?.sessionId).toBe('sess-tail');
   });
@@ -148,7 +165,7 @@ describe('recovery offer: supersession is per-session, not the global pointer', 
     writeRecoveryFile(snapshotOf('mine'), 'sess-mine', 'Mine', { surface });
     saveSession('sess-theirs', snapshotOf('theirs'), 'm', 'p', 'Theirs', { surface });
 
-    setMtime(surface.recoveryFile('sess-mine'), new Date(Date.now() - 60_000));
+    setMtime(surface.recoveryFile('sess-mine'), longAgo());
     setMtime(storePath(surface, 'sess-theirs'), new Date());
 
     expect(checkRecoveryFile({ surface })?.sessionId).toBe('sess-mine');
@@ -162,8 +179,8 @@ describe('recovery offer: supersession is per-session, not the global pointer', 
 
     // The superseded one is the NEWEST file on disk, so a scan that stopped at
     // the newest candidate would return it.
-    setMtime(surface.recoveryFile('sess-live'), new Date(Date.now() - 60_000));
-    setMtime(surface.recoveryFile('sess-dead'), new Date(Date.now() - 30_000));
+    setMtime(surface.recoveryFile('sess-live'), longAgo(60_000));
+    setMtime(surface.recoveryFile('sess-dead'), longAgo());
     setMtime(storePath(surface, 'sess-dead'), new Date());
 
     expect(checkRecoveryFile({ surface })?.sessionId).toBe('sess-live');
@@ -174,13 +191,15 @@ describe('recovery offer: supersession is per-session, not the global pointer', 
     const options = { workingDirectory, homeDirectory };
 
     writeRecoveryFile(snapshotOf('legacy tail'), 'legacyid', 'Legacy', options);
+    const legacyRecovery = join(resolveSharedDirectory(homeDirectory, 'recovery'), 'recovery-legacyid.jsonl');
+    setMtime(legacyRecovery, longAgo());
     // Nothing saved yet → offered.
     expect(checkRecoveryFile(options)?.sessionId).toBe('legacyid');
 
     saveSession('legacyid', snapshotOf('legacy saved'), 'm', 'p', 'Legacy', options);
     const legacyStore = join(resolveSharedDirectory(workingDirectory, 'sessions'), 'legacyid.jsonl');
     expect(existsSync(legacyStore)).toBe(true);
-    setMtime(join(resolveSharedDirectory(homeDirectory, 'recovery'), 'recovery-legacyid.jsonl'), new Date(Date.now() - 60_000));
+    setMtime(legacyRecovery, longAgo());
     setMtime(legacyStore, new Date());
 
     // Its own clean save superseded it.
@@ -206,7 +225,7 @@ describe('recovery offer: legacy shared directory under the per-session rule', (
 
   test('a legacy shared snapshot whose session has no store in this scope is offered', () => {
     const { surface } = tempSurface();
-    writeLegacySharedRecovery(surface, 'pre-upgrade', 'from before scoping', 'Pre-Upgrade');
+    setMtime(writeLegacySharedRecovery(surface, 'pre-upgrade', 'from before scoping', 'Pre-Upgrade'), longAgo());
     // Unrelated activity that used to advance the pointer past it.
     persistConversation('sess-current', snapshotOf('current work'), 'm', 'p', 'Current', { surface });
 
@@ -217,7 +236,7 @@ describe('recovery offer: legacy shared directory under the per-session rule', (
     const { surface } = tempSurface();
     const legacyPath = writeLegacySharedRecovery(surface, 'shared-id', 'stale legacy body', 'Stale');
     saveSession('shared-id', snapshotOf('saved under the surface'), 'm', 'p', 'Stale', { surface });
-    setMtime(legacyPath, new Date(Date.now() - 60_000));
+    setMtime(legacyPath, longAgo());
     setMtime(storePath(surface, 'shared-id'), new Date());
 
     expect(checkRecoveryFile({ surface })).toBeNull();
@@ -289,5 +308,102 @@ describe('checkRecoveryForSession: the --continue probe', () => {
     );
 
     expect(checkRecoveryForSession(surface, 'legacy-probe')?.title).toBe('Legacy Probe');
+  });
+});
+
+/**
+ * The nag defect this section pins: a session left running on an OLDER build
+ * rewrites its recovery snapshot every 60s and writes no liveness marker
+ * (markers are a later feature). A marker-based liveness check therefore reads
+ * that live file as an orphaned crash and offers it at every launch; removing
+ * it only makes the still-running writer recreate it a minute later. The rule
+ * under test is freshness — mtime, which every version has always written.
+ */
+describe('an actively-refreshed snapshot is not an orphaned crash', () => {
+  /** Age a snapshot well past the live-refresh window, so it reads as abandoned. */
+  function ageOut(path: string): void {
+    setMtime(path, new Date(Date.now() - 600_000));
+  }
+
+  test('a snapshot a live writer just touched is NOT offered at boot', () => {
+    const { surface } = tempSurface();
+    // A live writer rewrites its snapshot on a fixed cadence; the file is
+    // seconds old. No marker file exists (the writer may be an older build,
+    // or another product entirely) — freshness alone must suppress the offer.
+    writeRecoveryFile(snapshotOf('still running'), 'sess-live', 'Still Running', { surface });
+
+    expect(checkRecoveryFile({ surface })).toBeNull();
+    // Suppressed, never touched: the live process still owns this file.
+    expect(existsSync(surface.recoveryFile('sess-live'))).toBe(true);
+  });
+
+  test('the same snapshot IS offered once it stops being refreshed', () => {
+    const { surface } = tempSurface();
+    writeRecoveryFile(snapshotOf('crashed'), 'sess-crashed', 'Crashed', { surface });
+    ageOut(surface.recoveryFile('sess-crashed'));
+
+    // Suppression is temporary, not a tombstone — the writer stopped, so this
+    // really is a crash now.
+    expect(checkRecoveryFile({ surface })?.sessionId).toBe('sess-crashed');
+    expect(checkRecoveryFile({ surface })?.title).toBe('Crashed');
+  });
+
+  test('a live snapshot does not mask an older genuinely-orphaned one', () => {
+    const { surface } = tempSurface();
+    writeRecoveryFile(snapshotOf('orphan'), 'sess-orphan', 'Orphan', { surface });
+    ageOut(surface.recoveryFile('sess-orphan'));
+    // Newer, actively refreshed, and therefore skipped rather than returned —
+    // a scan that stopped at the newest file would report nothing at all here.
+    writeRecoveryFile(snapshotOf('live'), 'sess-live', 'Live', { surface });
+
+    expect(checkRecoveryFile({ surface })?.sessionId).toBe('sess-orphan');
+  });
+
+  test('a live snapshot in the LEGACY shared directory is not offered either', () => {
+    // The owner's exact shape: the pre-upgrade process writes to the legacy,
+    // home-anchored, cross-project directory that the current build dual-reads.
+    const { surface } = tempSurface();
+    const dir = resolveSharedDirectory(surface.homeDirectory, 'recovery');
+    mkdirSync(dir, { recursive: true });
+    const legacyPath = join(dir, 'recovery-user-old-build.jsonl');
+    writeFileSync(
+      legacyPath,
+      [
+        JSON.stringify({ type: 'meta', sessionId: 'user-old-build', title: 'Old Build', timestamp: Date.now() }),
+        JSON.stringify({ type: 'message', role: 'user', content: 'still being written' }),
+      ].join('\n') + '\n',
+      'utf-8',
+    );
+
+    expect(checkRecoveryFile({ surface })).toBeNull();
+
+    // ...and once that process finally exits, the file ages out and is offered.
+    ageOut(legacyPath);
+    expect(checkRecoveryFile({ surface })?.sessionId).toBe('user-old-build');
+  });
+
+  test('freshness suppresses the offer without overriding supersession', () => {
+    // An aged snapshot its own session already saved past stays unoffered:
+    // the freshness skip is an extra reason to stay quiet, never a reason to
+    // start offering something the store already holds.
+    const { surface } = tempSurface();
+    writeRecoveryFile(snapshotOf('already saved'), 'sess-both', 'Both', { surface });
+    saveSession('sess-both', snapshotOf('the store copy'), 'm', 'p', 'Both', { surface });
+    ageOut(surface.recoveryFile('sess-both'));
+    setMtime(storePath(surface, 'sess-both'), new Date());
+
+    expect(checkRecoveryFile({ surface })).toBeNull();
+  });
+
+  test('an explicit named-session probe still answers about a live session', () => {
+    // --continue asks a direct question about a session the user named; the
+    // honest answer is not suppressed the way an unsolicited offer is,
+    // because resuming that session's store copy alone would drop the tail of
+    // messages only the (freshly written) snapshot holds.
+    const { surface } = tempSurface();
+    writeRecoveryFile(snapshotOf('named'), 'sess-named', 'Named', { surface });
+
+    expect(checkRecoveryFile({ surface })).toBeNull();
+    expect(checkRecoveryForSession(surface, 'sess-named')?.sessionId).toBe('sess-named');
   });
 });

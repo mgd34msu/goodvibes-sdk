@@ -40,6 +40,17 @@ function snapshotOf(text: string): SessionSnapshot {
   return { messages: [{ role: 'user', content: text }], timestamp: Date.now() };
 }
 
+/**
+ * Stamp a snapshot far enough in the past that the boot offer stops reading it
+ * as one a running process is still rewriting. `secondsBefore` orders two aged
+ * snapshots against each other. Tests that assert a snapshot IS offered have to
+ * do this: a file written this instant genuinely does look like live state.
+ */
+function ageOut(path: string, secondsBefore = 0): void {
+  const at = new Date(Date.now() - 600_000 - secondsBefore * 1000);
+  execFileSync('touch', ['-d', at.toISOString(), path]);
+}
+
 afterEach(() => {
   for (const dir of roots.splice(0)) {
     try { rmSync(dir, { recursive: true, force: true }); } catch { /* best effort */ }
@@ -73,6 +84,7 @@ describe('per-session recovery snapshots', () => {
     const { workingDirectory, homeDirectory } = tempRoot();
     const opts = { workingDirectory, homeDirectory };
     writeRecoveryFile(snapshotOf('interrupted work'), 'cccc3333', 'My Task', opts);
+    ageOut(getRecoveryFilePath(homeDirectory, 'cccc3333'));
 
     const recorded: Array<{ id: string; text?: string }> = [];
     const sink = {
@@ -105,6 +117,7 @@ describe('per-session recovery snapshots', () => {
     const opts = { workingDirectory, homeDirectory };
     writeRecoveryFile(snapshotOf('bystander work'), 'dddd4444', 'Bystander', opts);
     const bystanderPath = getRecoveryFilePath(homeDirectory, 'dddd4444');
+    ageOut(bystanderPath, 60);
 
     // A snapshot with an empty session id, written later so it is the newest.
     const idlessPath = join(getRecoveryDir(homeDirectory), 'recovery-idless.jsonl');
@@ -116,8 +129,7 @@ describe('per-session recovery snapshots', () => {
       ].join('\n') + '\n',
       'utf-8',
     );
-    const later = new Date(Date.now() + 5000);
-    execFileSync('touch', ['-d', later.toISOString(), idlessPath]);
+    ageOut(idlessPath);
 
     const result = autoRestoreRecovery(opts);
     expect(result?.snapshot.messages[0]?.content).toBe('restore me');
@@ -130,11 +142,10 @@ describe('per-session recovery snapshots', () => {
     const { workingDirectory, homeDirectory } = tempRoot();
     const opts = { workingDirectory, homeDirectory };
     writeRecoveryFile(snapshotOf('older'), 'old00000', 'Older', opts);
-    // Ensure a distinct, later mtime for the second snapshot.
-    const secondPath = getRecoveryFilePath(homeDirectory, 'new11111');
     writeRecoveryFile(snapshotOf('newer'), 'new11111', 'Newer', opts);
-    const laterTime = new Date(Date.now() + 5000);
-    execFileSync('touch', ['-d', laterTime.toISOString(), secondPath]);
+    // Distinct mtimes, both old enough that no live writer is implied.
+    ageOut(getRecoveryFilePath(homeDirectory, 'old00000'), 60);
+    ageOut(getRecoveryFilePath(homeDirectory, 'new11111'));
 
     const offered = checkRecoveryFile(opts);
     expect(offered?.sessionId).toBe('new11111');

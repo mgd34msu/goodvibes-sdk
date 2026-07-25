@@ -117,6 +117,13 @@ export interface ContinuitySnapshot {
   readonly status: string;
   readonly recoveryState: string;
   readonly lastSessionPointer: string | null;
+  /**
+   * Whether a crash snapshot would be OFFERED right now — `checkRecoveryFile`'s
+   * answer, not a bare `existsSync`. A snapshot a live process is still
+   * rewriting, or one its own session already superseded with a clean save,
+   * reports false while its file sits on disk. That is the question worth
+   * asking here; "a file exists somewhere" is not.
+   */
   readonly recoveryFilePresent: boolean;
   readonly recoveryFile: RecoveryFileInfo | null;
 }

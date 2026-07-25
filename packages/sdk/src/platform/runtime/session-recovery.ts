@@ -20,6 +20,16 @@
  * session's activity cannot bury it, and a clean shutdown of the snapshot's
  * own session both writes the store AND deletes the snapshot, so the surviving
  * snapshot of a session whose store is older is a crash by definition.
+ *
+ * LIVENESS — is anything still writing it?
+ * The unsolicited boot offer additionally skips any snapshot whose file was
+ * touched within LIVE_REFRESH_WINDOW_MS: a file being rewritten right now
+ * belongs to a process that is still running, not to a crash. The signal is
+ * the file's own mtime rather than a marker file, because a marker only
+ * exists in versions that write one — see LIVE_REFRESH_WINDOW_MS. The
+ * explicit per-session probe (`checkRecoveryForSession`) does NOT apply this
+ * rule: it answers a direct question about a named session, and the honest
+ * answer there is what the caller asked for.
  */
 
 import {
@@ -261,6 +271,44 @@ function sessionStoreMtimeMs(sessionsDir: string, sessionId: string): number | n
 }
 
 /**
+ * How recently a snapshot must have been written to count as ACTIVELY
+ * REFRESHED — i.e. a live process is still maintaining it, so it is that
+ * process's working state and not an orphaned crash.
+ *
+ * Surfaces rewrite a live session's snapshot on a fixed cadence (60s in the
+ * shipping terminal app), so a file touched within a cadence and a half is
+ * being kept alive by something running right now. This is deliberately
+ * evidence-on-disk rather than a marker file a writer has to opt into:
+ * markers only exist in versions that know to write them, so a session
+ * running an older build — or any other product sharing this directory —
+ * looks abandoned to a marker check and gets offered as a crash forever. That
+ * is not hypothetical: an older build left running across an upgrade rewrites
+ * its snapshot every minute into the legacy shared directory the new build
+ * dual-reads, writing no marker, and the new build re-offers it on every
+ * launch of every project no matter how many times the user removes it.
+ * mtime is written by every version that has ever existed.
+ *
+ * The tradeoff, stated plainly: a genuine crash relaunched inside this window
+ * is not offered on that first immediate relaunch. The snapshot is untouched
+ * and is offered on the next one, once it stops looking live. Nagging a user
+ * about state they never lost is the worse failure.
+ */
+const LIVE_REFRESH_WINDOW_MS = 90_000;
+
+/**
+ * True when this snapshot is being actively refreshed by a live writer, and so
+ * is not an orphaned crash to offer.
+ *
+ * A snapshot mtime in the future (clock skew, a file copied off another
+ * machine) reads as fresh here and is left alone. That direction is the safe
+ * one: suppressing an offer never destroys anything, and the file stays on
+ * disk to be offered once the clock catches up.
+ */
+function isActivelyRefreshed(snapshotMtimeMs: number, nowMs: number, windowMs: number): boolean {
+  return nowMs - snapshotMtimeMs < windowMs;
+}
+
+/**
  * True when this snapshot was already superseded by a clean save of its OWN
  * session — the only thing that can make a snapshot stale.
  *
@@ -294,14 +342,11 @@ function isSupersededByOwnStore(sessionsDir: string, sessionId: string, snapshot
  * snapshot once is judged better than silently losing a genuinely-relevant
  * one forever.
  *
- * A session that is CURRENTLY RUNNING keeps refreshing its own snapshot, so
- * its snapshot is legitimately newer than its store and will be reported here.
- * That is the honest answer to the question this function asks, and it does
- * not self-offer after a clean exit: shutdown saves the store and deletes the
- * snapshot, leaving nothing to find. Suppressing a still-live process's own
- * snapshot needs process liveness, which this module has no view of — that
- * check belongs to the consuming surface, at the point where it decides to
- * show the offer.
+ * A snapshot a live process is still refreshing is NOT offered: this is an
+ * unsolicited boot-time question, and asking about state nobody lost is the
+ * defect this rule exists to prevent (see LIVE_REFRESH_WINDOW_MS for why
+ * freshness rather than a marker file is the signal). An explicit request
+ * about a named session still answers honestly — see checkRecoveryForSession.
  */
 export function checkRecoveryFile(options?: SessionPersistenceOptions): RecoveryFileInfo | null {
   return findLiveRecoveryCandidate(options)?.info ?? null;
@@ -351,9 +396,13 @@ function findLiveRecoveryCandidate(
 ): { path: string; info: RecoveryFileInfo } | null {
   try {
     const sessionsDir = resolveSessionsDirPath(options);
+    // One clock read for the whole scan, so two candidates a millisecond apart
+    // are not judged against two different "now"s.
+    const nowMs = Date.now();
     for (const entry of listRecoveryCandidates(options)) {
-      // Newest-first; the first snapshot its own session has not already
-      // superseded with a clean save is the one to offer.
+      // Newest-first; the first snapshot that no live writer is maintaining
+      // and its own session has not already superseded is the one to offer.
+      if (isActivelyRefreshed(entry.mtimeMs, nowMs, LIVE_REFRESH_WINDOW_MS)) continue;
       let info: RecoveryFileInfo | null;
       try {
         info = readRecoveryMeta(entry.path);
