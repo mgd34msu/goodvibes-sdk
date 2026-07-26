@@ -237,6 +237,7 @@ export class DaemonServer {
       platformServiceManager: this.platformServiceManager,
       isIdle: () => this.sessionBroker.countBusySessions() === 0,
       updateArtifact: this.config.updateArtifact, // absent = host-managed updates (see DaemonUpdateArtifact)
+      stopGracefully: () => this.stop(), // update/rollback restarts take the normal stop path, so shutdown hooks fire
     });
     // /status surfaces undelivered daemon receipts (updates, crash restarts).
     this.httpRouter.setDaemonReceiptsProvider(() => this.collectDaemonReceipts());
@@ -352,6 +353,10 @@ export class DaemonServer {
       logger.info('DaemonServer: already running');
       return;
     }
+    // Crash-loop guard, before anything that can fail: repeated boots that
+    // never reached a fully-started daemon restore the kept previous binary
+    // and hand over to it (facade-lifecycle.ts).
+    if (this.lifecycle?.onStarting()) return;
 
     new GlobalNetworkTransportInstaller().install(this.configManager);
     if (!this.approvalBrokerUnsubscribe) {
