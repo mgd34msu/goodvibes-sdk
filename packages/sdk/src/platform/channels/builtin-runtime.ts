@@ -93,6 +93,35 @@ export class BuiltinChannelRuntime {
    * start, after the HTTP listener is up so a registered webhook has somewhere
    * to land.
    */
+  /**
+   * The Telegram bot this node can actually read, or null when it cannot read
+   * any — no token resolves, or the host gave no cursor storage to persist a
+   * poll offset in.
+   *
+   * Read before the node contests the Telegram surface in the LAN election: a
+   * node that cannot serve it must never win it, because the loser of that
+   * election stands down and Telegram then goes unread by anybody.
+   */
+  async resolveServableTelegramBotId(): Promise<string | null> {
+    if (!this.deps.telegramOffsetPath) return null;
+    this.telegramIngress ??= this.buildTelegramIngress(this.deps.telegramOffsetPath);
+    return this.telegramIngress.resolveServableBotId();
+  }
+
+  private buildTelegramIngress(offsetFilePath: string): TelegramIngressSupervisor {
+    return new TelegramIngressSupervisor({
+      configManager: this.deps.configManager,
+      secretsManager: this.deps.secretsManager,
+      serviceRegistry: this.deps.serviceRegistry,
+      buildSurfaceAdapterContext: this.deps.buildSurfaceAdapterContext,
+      offsetFilePath,
+      onConcurrentConsumerConflict: (detail) => {
+        this.consumerConflictHandler?.(detail);
+        this.deps.onTelegramConsumerConflict?.(detail);
+      },
+    });
+  }
+
   async startIngress(): Promise<void> {
     if (!this.deps.telegramOffsetPath) {
       // No surface-scoped storage was supplied, so a polling cursor cannot be
@@ -106,17 +135,7 @@ export class BuiltinChannelRuntime {
       }
       return;
     }
-    this.telegramIngress ??= new TelegramIngressSupervisor({
-      configManager: this.deps.configManager,
-      secretsManager: this.deps.secretsManager,
-      serviceRegistry: this.deps.serviceRegistry,
-      buildSurfaceAdapterContext: this.deps.buildSurfaceAdapterContext,
-      offsetFilePath: this.deps.telegramOffsetPath,
-      onConcurrentConsumerConflict: (detail) => {
-        this.consumerConflictHandler?.(detail);
-        this.deps.onTelegramConsumerConflict?.(detail);
-      },
-    });
+    this.telegramIngress ??= this.buildTelegramIngress(this.deps.telegramOffsetPath);
     this.watchTelegramConfig();
     await this.telegramIngress.start();
   }

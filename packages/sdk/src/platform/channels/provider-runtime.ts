@@ -75,7 +75,18 @@ const DEFAULT_STATE: RuntimeState = {
 export class ChannelProviderRuntimeManager {
   private slackClient: SlackSocketModeClient | null = null;
   private discordClient: DiscordGatewayClient | null = null;
-  private ntfyAbort: AbortController | null = null;
+  /**
+   * One live subscription per TOPIC, not one stream carrying all of them.
+   *
+   * ntfy will happily serve `topic-a,topic-b` down a single connection, and
+   * that is what this used to do — but it makes the three topics one
+   * indivisible consumer. Under per-surface leadership each topic is its own
+   * surface with its own election, so this node can hold the agent topic while
+   * a second machine holds the chat topic, and starting or stopping either has
+   * to be possible without disturbing the other. A blanket consumer cannot
+   * express that; a map of independent streams can.
+   */
+  private readonly ntfyAborts = new Map<string, AbortController>();
   private readonly state: Record<ProviderRuntimeSurface, RuntimeState> = {
     slack: { ...DEFAULT_STATE, metadata: {} },
     discord: { ...DEFAULT_STATE, metadata: {} },
@@ -158,10 +169,92 @@ export class ChannelProviderRuntimeManager {
       this.markStopped('discord');
       return this.result('discord', true, 'Discord Gateway runtime stopped.');
     }
-    this.ntfyAbort?.abort();
-    this.ntfyAbort = null;
+    for (const topic of [...this.ntfyAborts.keys()]) this.abortNtfyTopic(topic);
     this.markStopped('ntfy');
     return this.result('ntfy', true, 'ntfy JSON stream runtime stopped.');
+  }
+
+  // ── per-topic ntfy control ────────────────────────────────────────────────
+
+  /**
+   * The ntfy server these topics live on.
+   *
+   * Part of a topic's surface identity: the same topic name on two different
+   * servers is two unrelated surfaces, and a node reading a self-hosted server
+   * must never stand down for a node reading ntfy.sh.
+   */
+  ntfyBaseUrl(): string {
+    return String(this.deps.configManager.get('surfaces.ntfy.baseUrl') || 'https://ntfy.sh');
+  }
+
+  /** Every ntfy topic this node is configured to read. */
+  ntfyTopics(): string[] {
+    return this.resolveNtfyTopics();
+  }
+
+  /** Topics with a live subscription on this node right now. */
+  runningNtfyTopics(): string[] {
+    return [...this.ntfyAborts.keys()].sort();
+  }
+
+  /**
+   * Subscribe to ONE topic. Idempotent per topic.
+   *
+   * `replayFromMs` is the last moment the previous holder of THIS topic was
+   * heard from. ntfy keeps no per-subscriber cursor, so a takeover that
+   * subscribed "from now" would silently lose everything published in the gap.
+   */
+  async startNtfyTopic(
+    topic: string,
+    options: ProviderRuntimeStartOptions = {},
+  ): Promise<ProviderRuntimeActionResult> {
+    if (this.ntfyAborts.has(topic)) {
+      return this.result('ntfy', true, `ntfy topic subscription is already running.`);
+    }
+    const abort = new AbortController();
+    this.ntfyAborts.set(topic, abort);
+    const ntfy = new NtfyIntegration(this.ntfyBaseUrl(), await this.resolveNtfyToken() ?? undefined);
+    const replayFromMs = options.replayFromMs ?? null;
+    const since = replayFromMs === null
+      ? createNtfyLiveSubscriptionSince()
+      : createNtfyLiveSubscriptionSince(replayFromMs);
+    this.markStarted('ntfy', {
+      topics: this.runningNtfyTopics(),
+      since,
+      replayCachedMessages: replayFromMs !== null,
+    });
+    void ntfy.subscribeJsonStream(topic, (message) => this.handleNtfyMessage(message), {
+      since,
+      signal: abort.signal,
+    }).catch((error: unknown) => {
+      if (abort.signal.aborted) return;
+      const message = summarizeError(error);
+      this.ntfyAborts.delete(topic);
+      this.markError('ntfy', message);
+      logger.warn('ChannelProviderRuntimeManager: ntfy stream failed', { error: message });
+    });
+    return this.result('ntfy', true, 'ntfy JSON stream runtime started.');
+  }
+
+  /**
+   * Drop ONE topic's subscription.
+   *
+   * Synchronous underneath — aborting the controller closes the stream before
+   * this returns — which is what lets the RESIGN that follows a handoff be an
+   * honest claim that this node has stopped reading the topic.
+   */
+  stopNtfyTopic(topic: string): ProviderRuntimeActionResult {
+    this.abortNtfyTopic(topic);
+    if (this.ntfyAborts.size === 0) this.markStopped('ntfy');
+    else this.markStarted('ntfy', { topics: this.runningNtfyTopics() });
+    return this.result('ntfy', true, 'ntfy topic subscription stopped.');
+  }
+
+  private abortNtfyTopic(topic: string): void {
+    const abort = this.ntfyAborts.get(topic);
+    if (!abort) return;
+    abort.abort();
+    this.ntfyAborts.delete(topic);
   }
 
   stopAll(): void {
@@ -250,43 +343,23 @@ export class ChannelProviderRuntimeManager {
     }
   }
 
+  /**
+   * Subscribe to every configured topic, each as its own stream.
+   *
+   * This is the path taken when leadership is switched off — the node reads
+   * everything it is configured for. Under leadership the facade registers one
+   * gate per topic instead, and each gate calls `startNtfyTopic` for the single
+   * topic it won.
+   */
   private async startNtfy(options: ProviderRuntimeStartOptions = {}): Promise<ProviderRuntimeActionResult> {
-    if (this.ntfyAbort) {
-      return this.result('ntfy', true, 'ntfy JSON stream runtime is already running.');
-    }
     const topics = this.resolveNtfyTopics();
     if (topics.length === 0) {
       this.markError('ntfy', 'ntfy topic is required for subscription runtime.');
       return this.result('ntfy', false, 'ntfy topic is required for subscription runtime.');
     }
-    const abort = new AbortController();
-    this.ntfyAbort = abort;
-    const ntfy = new NtfyIntegration(
-      String(this.deps.configManager.get('surfaces.ntfy.baseUrl') || 'https://ntfy.sh'),
-      await this.resolveNtfyToken() ?? undefined,
-    );
-    const topicList = topics.join(',');
-    // ntfy keeps no per-subscriber cursor, so a takeover that subscribed
-    // "from now" would silently lose every message published between the old
-    // master's last breath and this start. `replayFromMs` is that last breath
-    // — the moment the previous master was last heard from — so the gap is
-    // replayed rather than dropped. Telegram needs no equivalent: its backlog
-    // is server-side and the offset cursor already covers it.
-    const replayFromMs = options.replayFromMs ?? null;
-    const since = replayFromMs === null
-      ? createNtfyLiveSubscriptionSince()
-      : createNtfyLiveSubscriptionSince(replayFromMs);
-    this.markStarted('ntfy', { topics, since, replayCachedMessages: replayFromMs !== null });
-    void ntfy.subscribeJsonStream(topicList, (message) => this.handleNtfyMessage(message), {
-      since,
-      signal: abort.signal,
-    }).catch((error: unknown) => {
-      if (abort.signal.aborted) return;
-      const message = summarizeError(error);
-      this.ntfyAbort = null;
-      this.markError('ntfy', message);
-      logger.warn('ChannelProviderRuntimeManager: ntfy stream failed', { error: message });
-    });
+    for (const topic of topics) {
+      await this.startNtfyTopic(topic, options);
+    }
     return this.result('ntfy', true, 'ntfy JSON stream runtime started.');
   }
 
@@ -357,6 +430,20 @@ export class ChannelProviderRuntimeManager {
       agentTopic: String(this.deps.configManager.get('surfaces.ntfy.agentTopic') || ''),
       remoteTopic: String(this.deps.configManager.get('surfaces.ntfy.remoteTopic') || ''),
     }).all];
+  }
+
+  /**
+   * Does this node hold a usable credential for the surface RIGHT NOW?
+   *
+   * Asynchronous because a `goodvibes://secrets/...` reference resolves off
+   * disk, and the answer decides whether this node is allowed to contest the
+   * surface's election at all. A node that won a surface whose token does not
+   * resolve would read nothing while the node that could read it stood down.
+   */
+  async hasCredentialFor(surface: ProviderRuntimeSurface): Promise<boolean> {
+    if (surface === 'slack') return Boolean(await this.resolveSlackAppToken());
+    if (surface === 'discord') return Boolean(await this.resolveDiscordBotToken());
+    return this.resolveNtfyTopics().length > 0;
   }
 
   private isConfigured(surface: ProviderRuntimeSurface): boolean {

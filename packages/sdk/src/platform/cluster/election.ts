@@ -1,131 +1,149 @@
 /**
- * election.ts — the leader-election state machine.
+ * election.ts — the leader-election state machine for ONE surface.
  *
- * Everything this class touches is injected: the transport, the clock, the
- * randomness behind the CLAIM jitter, and the two callbacks that start and
- * stop inbound consumption. There is no socket and no wall-clock dependency in
- * here, which is what makes a 90-second watchdog takeover a test that runs in
- * microseconds.
+ * There is one instance of this per inbound surface the node can actually
+ * serve: one for each Telegram bot, one per ntfy topic, one per inbox account.
+ * They share a transport and a holdings ledger (both owned by the node manager
+ * in election-node.ts) and nothing else — separate roles, separate timers,
+ * separate transition queues. That separation is the point: a node configured
+ * for Telegram and ntfy and a node configured for ntfy alone contest ntfy and
+ * leave each other's other surfaces entirely alone, and losing the ntfy holder
+ * moves ntfy without disturbing Telegram.
  *
- * The one invariant everything else serves: AT MOST ONE node has consumers
- * running at any moment, and a handoff never starts the successor before the
- * predecessor has finished stopping.
+ * Everything this class touches is injected: the transport (through the host),
+ * the clock, the randomness behind the CLAIM jitter, and the callbacks that
+ * start and stop the surface's consumer. There is no socket and no wall-clock
+ * dependency in here, which is what makes a 90-second watchdog takeover a test
+ * that runs in microseconds.
  *
- * Every role transition runs through a single serialized queue. Consumer
- * start and stop are awaited, and datagrams keep arriving while they run, so
- * without serialization a HEARTBEAT landing mid-`start()` could interleave a
- * second transition into a half-applied one.
+ * The one invariant everything else serves: AT MOST ONE node has the consumer
+ * for a given surface running at any moment, and a handoff never starts the
+ * successor before the predecessor has finished stopping.
+ *
+ * Every role transition runs through a single serialized queue — per surface,
+ * so a wedged ntfy stop cannot block a Telegram transition. Consumer start and
+ * stop are awaited, and datagrams keep arriving while they run, so without
+ * serialization a HEARTBEAT landing mid-`start()` could interleave a second
+ * transition into a half-applied one.
  */
 import {
-  compareRank,
+  compareStableRank,
   isStrictlyNewerVersion,
-  outranks,
-  type ClusterRankable,
+  outranksForSurface,
+  shouldYieldSurface,
+  type ClusterSpreadRankable,
 } from './ranking.js';
-import { decodeMessage, encodeMessage } from './protocol.js';
-import { deriveClusterTiming, type ClusterTiming } from './timing.js';
+import type { ClusterHoldingsLedger } from './holdings.js';
+import type { ClusterTiming } from './timing.js';
 import type {
   ClusterConsumerStartContext,
   ClusterClock,
   ClusterLogger,
   ClusterMessage,
   ClusterMessageType,
-  ClusterPeerStatus,
   ClusterRole,
-  ClusterSettings,
-  ClusterStatus,
-  ClusterTransport,
+  ClusterSurfaceStatus,
 } from './types.js';
 
-/** How many peers are retained for /status before the oldest is dropped. */
-const MAX_TRACKED_PEERS = 64;
-
-export interface ClusterElectionOptions {
+/**
+ * What a surface election needs from the node it lives in.
+ *
+ * Everything shared across surfaces is here rather than duplicated per
+ * surface: one socket, one peer table, one holdings ledger, one node identity.
+ */
+export interface SurfaceElectionHost {
   readonly nodeId: string;
   readonly version: string;
-  readonly settings: ClusterSettings;
-  readonly transport: ClusterTransport;
-  readonly clock: ClusterClock;
   readonly logger: ClusterLogger;
+  readonly clock: ClusterClock;
+  readonly timing: ClusterTiming;
+  readonly ledger: ClusterHoldingsLedger;
+  /** Broadcast a datagram stamped with this surface's digest. */
+  send(type: ClusterMessageType, surfaceId: string): Promise<void>;
   /**
-   * Begin inbound consumption. Must not resolve until consumers are actually
-   * running; a rejection leaves this node master with consumers reported down.
+   * Can this node serve the surface RIGHT NOW — gate registered, credential
+   * present, surface enabled locally? Re-asked at every promotion rather than
+   * captured once, because a credential can be removed while the node runs.
    */
-  readonly onBecomeMaster: (context: ClusterConsumerStartContext) => Promise<void>;
+  canServe(surfaceId: string): boolean;
+  /** Start this surface's consumer. Must not resolve until it is running. */
+  startConsumer(surfaceId: string, context: ClusterConsumerStartContext): Promise<void>;
+  /** Stop it. Must not resolve until consumption has genuinely ceased. */
+  stopConsumer(surfaceId: string, reason: string): Promise<void>;
   /**
-   * Stop inbound consumption. Must not resolve until consumption has genuinely
-   * ceased — the ordered handoff sends RESIGN only after this settles.
+   * Claim this NODE's single rebalancing slot, or false if one was used too
+   * recently.
+   *
+   * Node-level, not per surface, and that is the second half of the
+   * anti-oscillation argument. Every surface a node holds runs its own yield
+   * check, and they all read the same holdings number: an overloaded node
+   * holding three surfaces would have all three conclude "I am two ahead, I
+   * should yield" in the same instant, hand over all three, and leave the
+   * other node overloaded by exactly as much. One slot per node per cooldown
+   * means one surface moves, everyone re-observes, and the next check sees the
+   * corrected numbers.
+   *
+   * Synchronous by contract: it is called with no await between the decision
+   * and the reservation, so two surfaces can never both win the slot.
    */
-  readonly onResignMaster: (reason: string) => Promise<void>;
+  tryReserveYield(mono: number): boolean;
+}
+
+export interface SurfaceElectionOptions {
+  readonly surfaceId: string;
+  /** Local, digest-derived label for logs. Never the topic or bot name. */
+  readonly label: string;
+  readonly kind: string;
+  readonly host: SurfaceElectionHost;
   /** Test seam for the CLAIM jitter draw. Defaults to Math.random. */
   readonly random?: (() => number) | undefined;
 }
 
-interface TrackedPeer extends ClusterPeerStatus {
-  readonly lastSeq: number;
-}
-
-export class ClusterElection {
-  private readonly timing: ClusterTiming;
+export class SurfaceElection {
+  private readonly surfaceId: string;
+  private readonly host: SurfaceElectionHost;
   private readonly random: () => number;
 
   private role: ClusterRole = 'stopped';
-  private seq = 0;
-  /**
-   * Monotonic reading at start(), or null before it. NOT a numeric sentinel:
-   * a monotonic clock legitimately reads 0, and treating that as "not started"
-   * pins this node's uptime at zero for its whole life — which silently loses
-   * it every uptime tiebreak it should have won.
-   */
-  private startMonotonic: number | null = null;
-  private consumersRunning = false;
+  private consumerRunning = false;
 
-  private masterNodeId: string | null = null;
-  private lastMasterHeartbeatAt: number | null = null;
-  private lastMasterHeartbeatMono: number | null = null;
-
-  private readonly peers = new Map<string, TrackedPeer>();
+  private holderNodeId: string | null = null;
+  private lastHolderHeartbeatAt: number | null = null;
+  private lastHolderHeartbeatMono: number | null = null;
 
   private cancelProbe: (() => void) | null = null;
   private cancelHeartbeat: (() => void) | null = null;
-  private cancelWatchdog: (() => void) | null = null;
   private cancelElection: (() => void) | null = null;
   private cancelSettle: (() => void) | null = null;
   private cancelHandoff: (() => void) | null = null;
+  private cancelCandidacy: (() => void) | null = null;
+  private cancelYieldCheck: (() => void) | null = null;
 
   private claimSentThisElection = false;
   private preemptTarget: string | null = null;
 
-  /** Wall/monotonic pair from the previous watchdog tick, for suspend detection. */
-  private lastTickWall = 0;
-  private lastTickMono = 0;
-
-  /** Serializes every role transition; see the file header. */
+  /** Serializes every role transition for THIS surface; see the file header. */
   private queue: Promise<void> = Promise.resolve();
 
-  constructor(private readonly options: ClusterElectionOptions) {
-    this.timing = deriveClusterTiming(options.settings);
+  constructor(private readonly options: SurfaceElectionOptions) {
+    this.surfaceId = options.surfaceId;
+    this.host = options.host;
     this.random = options.random ?? Math.random;
   }
 
   // ── lifecycle ─────────────────────────────────────────────────────────────
 
-  /** Join the cluster: open the transport and run the boot probe. */
+  /** Join this surface's election. */
   async start(): Promise<void> {
     if (this.role !== 'stopped') return;
-    this.startMonotonic = this.options.clock.monotonicNow();
-    this.lastTickWall = this.options.clock.now();
-    this.lastTickMono = this.startMonotonic ?? 0;
-    await this.options.transport.start((raw) => this.receive(raw));
-    this.armWatchdog();
     this.enqueue(() => this.beginProbe('boot'));
     await this.settled();
   }
 
   /**
-   * Leave the cluster cleanly.
+   * Leave this surface's election cleanly.
    *
-   * A master stops consumers and broadcasts RESIGN on the way out, which is
+   * A holder stops its consumer and broadcasts RESIGN on the way out, which is
    * what turns a restart from a 90-second outage into a sub-second one. The
    * watchdog exists for the case this path never runs — a crash, a kill -9, a
    * lost power cable — not for the ordinary case.
@@ -133,12 +151,11 @@ export class ClusterElection {
   async stop(reason = 'shutdown'): Promise<void> {
     if (this.role === 'stopped') return;
     this.enqueue(async () => {
-      if (this.role === 'master') await this.stopConsumersThenResign(reason, null);
+      if (this.role === 'master') await this.stopConsumerThenResign(reason, null);
       this.clearAllTimers();
       this.role = 'stopped';
     });
     await this.settled();
-    await this.options.transport.stop();
   }
 
   /** Resolves once every queued transition has finished. */
@@ -156,53 +173,50 @@ export class ClusterElection {
     return this.role === 'master';
   }
 
-  status(): ClusterStatus {
+  get id(): string {
+    return this.surfaceId;
+  }
+
+  status(): ClusterSurfaceStatus {
     return {
-      enabled: this.options.settings.enabled,
+      surfaceId: this.surfaceId,
+      label: this.options.label,
+      kind: this.options.kind,
       role: this.role,
-      nodeId: this.options.nodeId,
-      version: this.options.version,
-      uptimeMs: this.uptimeMs(),
-      masterNodeId: this.role === 'master' ? this.options.nodeId : this.masterNodeId,
-      lastMasterHeartbeatAt: this.lastMasterHeartbeatAt,
-      consumersRunning: this.consumersRunning,
-      signed: this.options.settings.secret.length > 0,
-      peers: [...this.peers.values()].map((peer) => ({
-        nodeId: peer.nodeId,
-        version: peer.version,
-        uptimeMs: peer.uptimeMs,
-        lastSeenAt: peer.lastSeenAt,
-        lastMessageType: peer.lastMessageType,
-      })),
-      transport: this.options.transport.describe(),
+      holderNodeId: this.role === 'master' ? this.host.nodeId : this.holderNodeId,
+      consuming: this.consumerRunning,
+      lastHolderHeartbeatAt: this.lastHolderHeartbeatAt,
     };
   }
 
   // ── external signals ──────────────────────────────────────────────────────
 
   /**
-   * A provider told us somebody else is already consuming — Telegram answers a
-   * concurrent getUpdates with 409.
+   * A provider told us somebody else is already consuming THIS surface —
+   * Telegram answers a concurrent getUpdates with 409.
    *
    * Never fight over it. The other consumer is real whether or not it speaks
    * this protocol, so stop, back off, and re-probe. Fighting produces two
    * processes that each keep terminating the other's long poll and a user
-   * whose messages arrive nowhere.
+   * whose messages arrive nowhere. Only this surface stands down; the node's
+   * other surfaces are unaffected, because the conflict is about one bot token
+   * or one topic and says nothing about the rest.
    */
   reportConsumerConflict(detail: string): void {
     if (this.role === 'stopped') return;
     this.enqueue(async () => {
       if (this.role !== 'master') return;
-      this.options.logger.warn('cluster: another consumer is already reading this surface; standing down', {
+      this.host.logger.warn('cluster: another consumer is already reading this surface; standing down', {
+        surface: this.options.label,
         detail,
-        backoffMs: this.timing.consumerConflictBackoffMs,
+        backoffMs: this.host.timing.consumerConflictBackoffMs,
       });
-      await this.stopConsumersThenResign(`consumer conflict: ${detail}`, null);
-      this.role = 'standby';
+      await this.stopConsumerThenResign(`consumer conflict: ${detail}`, null);
+      this.becomeStandby(null, 'a consumer conflict was reported');
       this.cancelProbe?.();
-      this.cancelProbe = this.options.clock.setTimer(() => {
+      this.cancelProbe = this.host.clock.setTimer(() => {
         this.enqueue(() => this.beginProbe('re-probe after a consumer conflict'));
-      }, this.timing.consumerConflictBackoffMs);
+      }, this.host.timing.consumerConflictBackoffMs);
     });
   }
 
@@ -212,15 +226,18 @@ export class ClusterElection {
     this.clearElectionTimers();
     this.role = 'probing';
     this.preemptTarget = null;
-    this.options.logger.debug('cluster: probing for a master', { reason });
+    this.host.logger.debug('cluster: probing for this surface\'s holder', {
+      surface: this.options.label,
+      reason,
+    });
     await this.send('PROBE');
     this.cancelProbe?.();
-    this.cancelProbe = this.options.clock.setTimer(() => {
+    this.cancelProbe = this.host.clock.setTimer(() => {
       this.enqueue(async () => {
         if (this.role !== 'probing') return;
-        await this.becomeMaster('no master answered the boot probe', 'ordered');
+        await this.becomeMaster('no node answered the boot probe for this surface', 'ordered');
       });
-    }, this.timing.bootProbeMs);
+    }, this.host.timing.bootProbeMs);
   }
 
   // ── election ──────────────────────────────────────────────────────────────
@@ -230,17 +247,21 @@ export class ClusterElection {
     this.role = 'electing';
     this.claimSentThisElection = false;
     const jitter = Math.floor(this.random() * windowMs);
-    this.options.logger.debug('cluster: starting an election', { reason, jitterMs: jitter });
-    this.cancelElection = this.options.clock.setTimer(() => {
+    this.host.logger.debug('cluster: starting an election for a surface', {
+      surface: this.options.label,
+      reason,
+      jitterMs: jitter,
+    });
+    this.cancelElection = this.host.clock.setTimer(() => {
       this.enqueue(async () => {
         if (this.role !== 'electing') return;
         await this.sendClaim();
-        this.cancelSettle = this.options.clock.setTimer(() => {
+        this.cancelSettle = this.host.clock.setTimer(() => {
           this.enqueue(async () => {
             if (this.role !== 'electing') return;
             await this.becomeMaster(reason, handoff);
           });
-        }, this.timing.claimSettleMs);
+        }, this.host.timing.claimSettleMs);
       });
     }, jitter);
   }
@@ -253,7 +274,7 @@ export class ClusterElection {
   // ── role transitions ──────────────────────────────────────────────────────
 
   /**
-   * Take the role and start consuming.
+   * Take the surface and start consuming it.
    *
    * `handoff` decides where consumption resumes from, and the distinction is
    * not cosmetic — it is the difference between losing messages and answering
@@ -267,144 +288,159 @@ export class ClusterElection {
    *
    *   'gap'      — the predecessor vanished (crash, kill -9, a handoff it never
    *                completed). The last moment it is KNOWN to have been alive
-   *                is its last heartbeat, so consumption resumes there. A
-   *                provider without a per-subscriber cursor may redeliver a
-   *                message or two from that window; a duplicate is a nuisance
-   *                and a lost message is not recoverable, so the window is
-   *                deliberately replayed rather than skipped.
+   *                is its last heartbeat for THIS surface, so consumption
+   *                resumes there. A provider without a per-subscriber cursor
+   *                may redeliver a message or two from that window; a duplicate
+   *                is a nuisance and a lost message is not recoverable, so the
+   *                window is deliberately replayed rather than skipped.
    */
   private async becomeMaster(reason: string, handoff: 'ordered' | 'gap'): Promise<void> {
+    // Winning something this node cannot serve is worse than losing it: the
+    // node that COULD have served it stands down, and the surface goes unread
+    // by anybody. Re-checked here, at the last possible moment, because a
+    // credential can be removed while an election is in flight.
+    if (!this.host.canServe(this.surfaceId)) {
+      this.host.logger.warn('cluster: declining a surface this node cannot serve', {
+        surface: this.options.label,
+        reason,
+      });
+      this.clearElectionTimers();
+      this.becomeStandby(null, 'this node cannot serve the surface');
+      return;
+    }
     this.clearElectionTimers();
     this.role = 'master';
     this.preemptTarget = null;
+    this.host.ledger.noteHolder(this.surfaceId, this.host.nodeId, this.host.clock.monotonicNow());
     // Announce before consuming: a strictly newer peer that disagrees gets its
     // chance to preempt through the ordered path rather than by racing us.
     await this.send('CLAIM');
     const context: ClusterConsumerStartContext = {
-      replayFromMs: handoff === 'gap' ? this.lastMasterHeartbeatAt : null,
+      replayFromMs: handoff === 'gap' ? this.lastHolderHeartbeatAt : null,
       reason,
     };
     try {
-      await this.options.onBecomeMaster(context);
-      this.consumersRunning = true;
-      this.options.logger.info('cluster: this node is now responsible for inbound channel consumption', {
-        nodeId: this.options.nodeId,
-        version: this.options.version,
+      await this.host.startConsumer(this.surfaceId, context);
+      this.consumerRunning = true;
+      this.host.logger.info('cluster: this node is now responsible for an inbound surface', {
+        surface: this.options.label,
+        nodeId: this.host.nodeId,
+        version: this.host.version,
         reason,
         replayFromMs: context.replayFromMs,
       });
     } catch (error) {
-      this.consumersRunning = false;
-      this.options.logger.error('cluster: became responsible but inbound consumers failed to start', {
+      this.consumerRunning = false;
+      this.host.logger.error('cluster: took a surface but its consumer failed to start', {
+        surface: this.options.label,
         reason,
         error: error instanceof Error ? error.message : String(error),
       });
     }
     this.armHeartbeat();
+    this.armYieldCheck();
     await this.send('HEARTBEAT');
   }
 
   /**
-   * The ordered half of every handoff: consumers stop FIRST, and only once
-   * they have genuinely stopped does RESIGN go out. The successor keys off
+   * The ordered half of every handoff: the consumer stops FIRST, and only once
+   * it has genuinely stopped does RESIGN go out. The successor keys off
    * RESIGN, so this ordering is the entire reason a handoff cannot
    * double-consume. Reversing these two lines would reintroduce the bug this
    * module exists to fix.
    */
-  private async stopConsumersThenResign(reason: string, nextMasterNodeId: string | null): Promise<void> {
+  private async stopConsumerThenResign(reason: string, nextHolderNodeId: string | null): Promise<void> {
     this.role = 'resigning';
     this.cancelHeartbeat?.();
     this.cancelHeartbeat = null;
-    if (this.consumersRunning) {
+    this.cancelYieldCheck?.();
+    this.cancelYieldCheck = null;
+    if (this.consumerRunning) {
       try {
-        await this.options.onResignMaster(reason);
+        await this.host.stopConsumer(this.surfaceId, reason);
       } catch (error) {
-        this.options.logger.error('cluster: inbound consumers did not stop cleanly before resigning', {
+        this.host.logger.error('cluster: an inbound consumer did not stop cleanly before resigning', {
+          surface: this.options.label,
           reason,
           error: error instanceof Error ? error.message : String(error),
         });
       }
-      this.consumersRunning = false;
+      this.consumerRunning = false;
     }
+    this.host.ledger.noteReleased(this.surfaceId, this.host.nodeId);
     await this.send('RESIGN');
-    this.masterNodeId = nextMasterNodeId;
-    this.options.logger.info('cluster: released responsibility for inbound channel consumption', {
+    this.holderNodeId = nextHolderNodeId;
+    // This node WAS the reader right up to this moment, so this moment is the
+    // surface's last known-alive time. Leaving a stale reading here would have
+    // the watchdog declare the surface abandoned the instant we stood down —
+    // and the node that just gave it up would immediately contest it again,
+    // against the successor it handed it to.
+    this.lastHolderHeartbeatAt = this.host.clock.now();
+    this.lastHolderHeartbeatMono = this.host.clock.monotonicNow();
+    this.host.logger.info('cluster: released responsibility for an inbound surface', {
+      surface: this.options.label,
       reason,
-      ...(nextMasterNodeId ? { successor: nextMasterNodeId } : {}),
+      ...(nextHolderNodeId ? { successor: nextHolderNodeId } : {}),
     });
   }
 
-  private becomeStandby(masterNodeId: string | null, reason: string): void {
+  private becomeStandby(holderNodeId: string | null, reason: string): void {
     this.clearElectionTimers();
     this.role = 'standby';
     this.preemptTarget = null;
-    if (masterNodeId) this.masterNodeId = masterNodeId;
-    this.options.logger.debug('cluster: standing by', { master: this.masterNodeId, reason });
+    if (holderNodeId) this.holderNodeId = holderNodeId;
+    // A node that just gave a surface up has no holder to time out against
+    // yet; start the clock now so an unclaimed surface comes back rather than
+    // sitting unread forever.
+    this.lastHolderHeartbeatMono ??= this.host.clock.monotonicNow();
+    this.armCandidacy();
+    this.host.logger.debug('cluster: standing by on a surface', {
+      surface: this.options.label,
+      holder: this.holderNodeId,
+      reason,
+    });
   }
 
   /**
-   * Take the role from a sitting master because this build is strictly newer.
+   * Take the surface from a sitting holder because this build is strictly
+   * newer.
    *
-   * We do NOT start consuming here. The old master owns the stop; we wait for
+   * We do NOT start consuming here. The old holder owns the stop; we wait for
    * its RESIGN, with a grace timer for the case it died mid-handoff.
    */
   private async beginPreemption(target: ClusterMessage): Promise<void> {
     this.clearElectionTimers();
     this.role = 'awaiting-handoff';
     this.preemptTarget = target.nodeId;
-    this.options.logger.info('cluster: preempting an older master and waiting for its handoff', {
-      master: target.nodeId,
-      masterVersion: target.version,
-      version: this.options.version,
+    this.host.logger.info('cluster: preempting an older holder and waiting for its handoff', {
+      surface: this.options.label,
+      holder: target.nodeId,
+      holderVersion: target.nodeVersion,
+      version: this.host.version,
     });
     await this.send('CLAIM');
-    this.cancelHandoff = this.options.clock.setTimer(() => {
+    this.cancelHandoff = this.host.clock.setTimer(() => {
       this.enqueue(async () => {
         if (this.role !== 'awaiting-handoff') return;
-        this.options.logger.warn('cluster: the preempted master did not resign in time; taking over', {
-          master: this.preemptTarget,
-          graceMs: this.timing.preemptGraceMs,
+        this.host.logger.warn('cluster: the preempted holder did not resign in time; taking over', {
+          surface: this.options.label,
+          holder: this.preemptTarget,
+          graceMs: this.host.timing.preemptGraceMs,
         });
         await this.becomeMaster('preemption grace elapsed', 'gap');
       });
-    }, this.timing.preemptGraceMs);
+    }, this.host.timing.preemptGraceMs);
   }
 
   // ── inbound datagrams ─────────────────────────────────────────────────────
 
-  private receive(raw: string): void {
-    const { message, rejected } = decodeMessage(raw, this.options.settings.secret);
-    if (!message) {
-      this.options.logger.debug('cluster: dropped a datagram', { reason: rejected });
-      return;
-    }
-    // Multicast loopback is deliberately ON so same-host processes coordinate
-    // through the identical mechanism, which means we also hear ourselves.
-    if (message.nodeId === this.options.nodeId) return;
-    if (!this.recordPeer(message)) return;
+  /**
+   * Handle a datagram already decoded, already authenticated, already
+   * deduplicated by sequence, and already confirmed to carry THIS surface's
+   * digest. Everything before that is the node manager's job.
+   */
+  deliver(message: ClusterMessage): void {
     this.enqueue(() => this.dispatch(message));
-  }
-
-  /** Track the peer; returns false for a duplicate or reordered datagram. */
-  private recordPeer(message: ClusterMessage): boolean {
-    const known = this.peers.get(message.nodeId);
-    // A restarted peer resets its counter, which shows up as uptime going
-    // backwards. Without this, its whole first session would be discarded.
-    const restarted = known !== undefined && message.uptimeMs < known.uptimeMs;
-    if (known && !restarted && message.seq <= known.lastSeq) return false;
-    if (!known && this.peers.size >= MAX_TRACKED_PEERS) {
-      const oldest = [...this.peers.values()].sort((a, b) => a.lastSeenAt - b.lastSeenAt)[0];
-      if (oldest) this.peers.delete(oldest.nodeId);
-    }
-    this.peers.set(message.nodeId, {
-      nodeId: message.nodeId,
-      version: message.version,
-      uptimeMs: message.uptimeMs,
-      lastSeenAt: this.options.clock.now(),
-      lastMessageType: message.type,
-      lastSeq: message.seq,
-    });
-    return true;
   }
 
   private async dispatch(message: ClusterMessage): Promise<void> {
@@ -417,53 +453,62 @@ export class ClusterElection {
     }
   }
 
-  /** A node is booting. Only the master answers, and it answers immediately. */
+  /** A node is probing this surface. Only its holder answers, immediately. */
   private async onProbe(): Promise<void> {
     if (this.role !== 'master') return;
     await this.send('HEARTBEAT');
   }
 
   private async onHeartbeat(message: ClusterMessage): Promise<void> {
-    this.noteMasterAlive(message.nodeId);
+    this.noteHolderAlive(message.nodeId);
     switch (this.role) {
       case 'probing':
-        if (isStrictlyNewerVersion(this.self(), message)) {
+        if (isStrictlyNewerVersion(this.selfRank(), this.peerRank(message))) {
           await this.beginPreemption(message);
           return;
         }
-        this.becomeStandby(message.nodeId, 'a master answered the boot probe');
+        this.becomeStandby(message.nodeId, 'a holder answered the boot probe');
         return;
       case 'electing':
-        this.becomeStandby(message.nodeId, 'a master spoke up during the election');
+        this.becomeStandby(message.nodeId, 'a holder spoke up during the election');
         return;
       case 'awaiting-handoff':
-        // A DIFFERENT node than the one we preempted is master: our premise is
+        // A DIFFERENT node than the one we preempted holds it: our premise is
         // stale, so abandon the preemption rather than take over behind it.
-        if (message.nodeId !== this.preemptTarget && !isStrictlyNewerVersion(this.self(), message)) {
-          this.becomeStandby(message.nodeId, 'a different master holds the role');
+        if (message.nodeId !== this.preemptTarget
+          && !isStrictlyNewerVersion(this.selfRank(), this.peerRank(message))) {
+          this.becomeStandby(message.nodeId, 'a different node holds the surface');
         }
         return;
       case 'master':
-        await this.reconcileWithPeerMaster(message);
+        await this.reconcileWithPeerHolder(message);
         return;
       default:
-        this.masterNodeId = message.nodeId;
+        this.holderNodeId = message.nodeId;
     }
   }
 
   /**
-   * Two masters can hear each other after a partition heals. Both sides run
-   * the same total ordering over the same two candidates, so they agree on the
-   * winner without negotiating; the loser performs the ordered stop-then-
-   * RESIGN and the winner — which never stopped — simply carries on.
+   * Two nodes can hold one surface after a partition heals. Both sides run the
+   * same ordering over the same two candidates, so they agree on the winner
+   * without negotiating; the loser performs the ordered stop-then-RESIGN and
+   * the winner — which never stopped — simply carries on.
+   *
+   * Decided on the STABLE order, which excludes holdings. Holdings are
+   * observed from traffic, and two nodes that were partitioned have by
+   * definition been observing different traffic — ranking a reconciliation on
+   * a number they disagree about could leave both sides believing they won.
+   * Version and the per-surface hash come out of the datagram itself and can
+   * never disagree.
    */
-  private async reconcileWithPeerMaster(message: ClusterMessage): Promise<void> {
-    if (compareRank(message, this.self()) < 0) {
-      this.options.logger.info('cluster: a better-ranked master appeared; handing the role over', {
+  private async reconcileWithPeerHolder(message: ClusterMessage): Promise<void> {
+    if (compareStableRank(this.peerRank(message), this.selfRank(), this.surfaceId) < 0) {
+      this.host.logger.info('cluster: a better-ranked node holds this surface; handing it over', {
+        surface: this.options.label,
         peer: message.nodeId,
-        peerVersion: message.version,
+        peerVersion: message.nodeVersion,
       });
-      await this.stopConsumersThenResign('a better-ranked master appeared', message.nodeId);
+      await this.stopConsumerThenResign('a better-ranked node claimed this surface', message.nodeId);
       this.becomeStandby(message.nodeId, 'lost the split-brain reconciliation');
       return;
     }
@@ -474,18 +519,18 @@ export class ClusterElection {
   private async onClaim(message: ClusterMessage): Promise<void> {
     switch (this.role) {
       case 'master':
-        if (isStrictlyNewerVersion(message, this.self())) {
-          await this.stopConsumersThenResign('preempted by a strictly newer build', message.nodeId);
+        if (isStrictlyNewerVersion(this.peerRank(message), this.selfRank())) {
+          await this.stopConsumerThenResign('preempted by a strictly newer build', message.nodeId);
           this.becomeStandby(message.nodeId, 'preempted by a strictly newer build');
           return;
         }
-        // Not newer: hold the role and assert it, which silences the claimer.
+        // Not newer: hold the surface and assert it, which silences the claimer.
         await this.send('HEARTBEAT');
         return;
       case 'electing':
       case 'probing':
-        if (outranks(message, this.self())) {
-          this.becomeStandby(message.nodeId, 'a better-ranked node claimed the role');
+        if (outranksForSurface(this.peerRank(message), this.selfRank(), this.surfaceId)) {
+          this.becomeStandby(message.nodeId, 'a better-ranked node claimed the surface');
           return;
         }
         // A worse claim: answer once so the claimer stands down promptly
@@ -493,7 +538,7 @@ export class ClusterElection {
         if (!this.claimSentThisElection) await this.sendClaim();
         return;
       case 'awaiting-handoff':
-        if (outranks(message, this.self())) {
+        if (outranksForSurface(this.peerRank(message), this.selfRank(), this.surfaceId)) {
           this.becomeStandby(message.nodeId, 'a better-ranked node claimed during our handoff');
         }
         return;
@@ -506,7 +551,7 @@ export class ClusterElection {
     if (this.role === 'awaiting-handoff' && message.nodeId === this.preemptTarget) {
       this.cancelHandoff?.();
       this.cancelHandoff = null;
-      await this.becomeMaster('the preempted master handed the role over', 'ordered');
+      await this.becomeMaster('the preempted holder handed the surface over', 'ordered');
       return;
     }
     // Only a STANDBY shortcuts to an election here. A probing node is already
@@ -514,19 +559,19 @@ export class ClusterElection {
     // and a node that has just woken from suspend is deliberately made to
     // re-probe rather than act on a farewell it may have received minutes ago.
     if (this.role === 'standby') {
-      if (this.masterNodeId !== null && message.nodeId !== this.masterNodeId) return;
-      this.masterNodeId = null;
-      // The master said goodbye, so there is nothing to wait out: run the
+      if (this.holderNodeId !== null && message.nodeId !== this.holderNodeId) return;
+      this.holderNodeId = null;
+      // The holder said goodbye, so there is nothing to wait out: run the
       // short election window instead of the crash-only watchdog timeout.
       // It stopped consuming before it said goodbye, so nothing was missed.
-      this.beginElection(this.timing.resignElectionWindowMs, 'the master resigned', 'ordered');
+      this.beginElection(this.host.timing.resignElectionWindowMs, 'the holder resigned', 'ordered');
     }
   }
 
-  private noteMasterAlive(nodeId: string): void {
-    this.lastMasterHeartbeatAt = this.options.clock.now();
-    this.lastMasterHeartbeatMono = this.options.clock.monotonicNow();
-    if (this.role !== 'master') this.masterNodeId = nodeId;
+  private noteHolderAlive(nodeId: string): void {
+    this.lastHolderHeartbeatAt = this.host.clock.now();
+    this.lastHolderHeartbeatMono = this.host.clock.monotonicNow();
+    if (this.role !== 'master') this.holderNodeId = nodeId;
   }
 
   // ── timers ────────────────────────────────────────────────────────────────
@@ -536,69 +581,118 @@ export class ClusterElection {
     const tick = (): void => {
       this.enqueue(async () => {
         if (this.role !== 'master') return;
+        this.host.ledger.noteHolder(this.surfaceId, this.host.nodeId, this.host.clock.monotonicNow());
         await this.send('HEARTBEAT');
-        this.cancelHeartbeat = this.options.clock.setTimer(tick, this.timing.heartbeatMs);
+        this.cancelHeartbeat = this.host.clock.setTimer(tick, this.host.timing.heartbeatMs);
       });
     };
-    this.cancelHeartbeat = this.options.clock.setTimer(tick, this.timing.heartbeatMs);
-  }
-
-  private armWatchdog(): void {
-    this.cancelWatchdog?.();
-    const tick = (): void => {
-      this.enqueue(() => this.onWatchdogTick());
-      if (this.role !== 'stopped') {
-        this.cancelWatchdog = this.options.clock.setTimer(tick, this.timing.watchdogTickMs);
-      }
-    };
-    this.cancelWatchdog = this.options.clock.setTimer(tick, this.timing.watchdogTickMs);
+    this.cancelHeartbeat = this.host.clock.setTimer(tick, this.host.timing.heartbeatMs);
   }
 
   /**
-   * One tick does two jobs: notice a master that stopped breathing, and notice
-   * that this host was asleep.
+   * A standby says, periodically, that it can serve this surface.
+   *
+   * Without it a standby is invisible: it sends nothing after losing, so the
+   * holder's ledger forgets it, and an overloaded holder concludes there is
+   * nobody to rebalance to. A PROBE is the right shape for the beat — the
+   * holder answers it with a HEARTBEAT, so the beat also re-confirms the
+   * holder is alive.
    */
-  private async onWatchdogTick(): Promise<void> {
-    if (this.role === 'stopped') return;
-    const wall = this.options.clock.now();
-    const mono = this.options.clock.monotonicNow();
-    const wallDelta = wall - this.lastTickWall;
-    const monoDelta = mono - this.lastTickMono;
-    this.lastTickWall = wall;
-    this.lastTickMono = mono;
+  private armCandidacy(): void {
+    this.cancelCandidacy?.();
+    const tick = (): void => {
+      this.enqueue(async () => {
+        if (this.role !== 'standby') return;
+        await this.send('PROBE');
+        this.cancelCandidacy = this.host.clock.setTimer(tick, this.host.timing.candidacyAnnounceMs);
+      });
+    };
+    this.cancelCandidacy = this.host.clock.setTimer(tick, this.host.timing.candidacyAnnounceMs);
+  }
 
-    // A suspend freezes the monotonic clock while the wall clock keeps going,
-    // and it also stops timers from firing. Either signal alone is enough.
-    const slept = wallDelta - monoDelta >= this.timing.suspendThresholdMs
-      || monoDelta - this.timing.watchdogTickMs >= this.timing.suspendThresholdMs;
-    if (slept) {
-      await this.onWakeFromSuspend(Math.max(wallDelta, monoDelta));
-      return;
-    }
-
-    if (this.role !== 'standby' || this.lastMasterHeartbeatMono === null) return;
-    if (mono - this.lastMasterHeartbeatMono < this.timing.masterTimeoutMs) return;
-    this.beginElection(this.timing.electionWindowMs, 'the master stopped heartbeating', 'gap');
+  private armYieldCheck(): void {
+    this.cancelYieldCheck?.();
+    const tick = (): void => {
+      this.enqueue(async () => {
+        if (this.role !== 'master') return;
+        await this.considerYield();
+        if (this.role === 'master') {
+          this.cancelYieldCheck = this.host.clock.setTimer(tick, this.host.timing.yieldCheckMs);
+        }
+      });
+    };
+    this.cancelYieldCheck = this.host.clock.setTimer(tick, this.host.timing.yieldCheckMs);
   }
 
   /**
-   * A woken node knows nothing about who is responsible now, and its own
-   * consumers were frozen mid-flight. Stop first, THEN re-probe — resuming a
-   * long poll that a successor has already taken over is precisely the double
+   * Rebalancing, as a voluntary yield rather than an outside preemption.
+   *
+   * The holder decides, and it only decides yes when it is at least
+   * SURFACE_YIELD_GAP surfaces ahead of a node that can serve this one. See
+   * shouldYieldSurface for why the threshold is two and not one. The release
+   * itself is the ordinary ordered stop-then-RESIGN, so consumption of the
+   * surface stops before anything anywhere starts it again — a rebalance never
+   * opens a window where two nodes read the same topic.
+   */
+  private async considerYield(): Promise<void> {
+    const mono = this.host.clock.monotonicNow();
+    const selfHoldings = this.host.ledger.holdingsOf(this.host.nodeId, mono);
+    let best: { nodeId: string; holdings: number } | null = null;
+    const liveWithinMs = this.host.timing.candidacyAnnounceMs * 2;
+    for (const nodeId of this.host.ledger.candidatesFor(this.surfaceId, mono, this.host.nodeId, liveWithinMs)) {
+      const holdings = this.host.ledger.holdingsOf(nodeId, mono);
+      if (!best || holdings < best.holdings) best = { nodeId, holdings };
+    }
+    if (!best || !shouldYieldSurface(selfHoldings, best.holdings)) return;
+    // Decide, then reserve, with no await in between — see tryReserveYield.
+    if (!this.host.tryReserveYield(mono)) return;
+    this.host.logger.info('cluster: yielding a surface to spread inbound work across the network', {
+      surface: this.options.label,
+      held: selfHoldings,
+      candidate: best.nodeId,
+      candidateHeld: best.holdings,
+    });
+    await this.stopConsumerThenResign('rebalancing: a peer on this network holds fewer surfaces', best.nodeId);
+    this.becomeStandby(null, 'yielded the surface to spread load');
+  }
+
+  /**
+   * Driven by the node manager's single watchdog: notice a holder that stopped
+   * breathing. Suspend detection is node-level and arrives through
+   * `onWakeFromSuspend` instead.
+   */
+  onWatchdogTick(mono: number): void {
+    if (this.role !== 'standby' || this.lastHolderHeartbeatMono === null) return;
+    if (mono - this.lastHolderHeartbeatMono < this.host.timing.masterTimeoutMs) return;
+    this.enqueue(async () => {
+      if (this.role !== 'standby') return;
+      this.beginElection(this.host.timing.electionWindowMs, 'the holder stopped heartbeating', 'gap');
+    });
+  }
+
+  /**
+   * A woken node knows nothing about who holds this surface now, and its own
+   * consumer was frozen mid-flight. Stop first, THEN re-probe — resuming a long
+   * poll that a successor has already taken over is precisely the double
    * consumption this module prevents.
    */
-  private async onWakeFromSuspend(gapMs: number): Promise<void> {
-    this.options.logger.info('cluster: the host was suspended; re-probing before consuming anything', {
-      gapMs,
-      roleBeforeSuspend: this.role,
+  onWakeFromSuspend(gapMs: number): void {
+    if (this.role === 'stopped') return;
+    this.enqueue(async () => {
+      if (this.role === 'stopped') return;
+      this.host.logger.info('cluster: the host was suspended; re-probing a surface before consuming it', {
+        surface: this.options.label,
+        gapMs,
+        roleBeforeSuspend: this.role,
+      });
+      if (this.role === 'master') {
+        await this.stopConsumerThenResign('the host was suspended', null);
+      }
+      this.lastHolderHeartbeatAt = null;
+      this.lastHolderHeartbeatMono = null;
+      this.holderNodeId = null;
+      await this.beginProbe('woke from suspend');
     });
-    if (this.role === 'master') {
-      await this.stopConsumersThenResign('the host was suspended', null);
-    }
-    this.lastMasterHeartbeatAt = null;
-    this.lastMasterHeartbeatMono = null;
-    this.masterNodeId = null;
-    await this.beginProbe('woke from suspend');
   }
 
   private clearElectionTimers(): void {
@@ -610,53 +704,44 @@ export class ClusterElection {
     this.cancelSettle = null;
     this.cancelHandoff?.();
     this.cancelHandoff = null;
+    this.cancelCandidacy?.();
+    this.cancelCandidacy = null;
   }
 
   private clearAllTimers(): void {
     this.clearElectionTimers();
     this.cancelHeartbeat?.();
     this.cancelHeartbeat = null;
-    this.cancelWatchdog?.();
-    this.cancelWatchdog = null;
+    this.cancelYieldCheck?.();
+    this.cancelYieldCheck = null;
   }
 
   // ── plumbing ──────────────────────────────────────────────────────────────
 
-  private self(): ClusterRankable {
+  private selfRank(): ClusterSpreadRankable {
     return {
-      nodeId: this.options.nodeId,
-      version: this.options.version,
-      uptimeMs: this.uptimeMs(),
+      nodeId: this.host.nodeId,
+      version: this.host.version,
+      holdings: this.host.ledger.holdingsOf(this.host.nodeId, this.host.clock.monotonicNow()),
     };
   }
 
-  private uptimeMs(): number {
-    if (this.startMonotonic === null) return 0;
-    return Math.max(0, this.options.clock.monotonicNow() - this.startMonotonic);
+  private peerRank(message: ClusterMessage): ClusterSpreadRankable {
+    return {
+      nodeId: message.nodeId,
+      version: message.nodeVersion,
+      holdings: this.host.ledger.holdingsOf(message.nodeId, this.host.clock.monotonicNow()),
+    };
   }
 
   private async send(type: ClusterMessageType): Promise<void> {
-    this.seq += 1;
-    const message: ClusterMessage = {
-      type,
-      nodeId: this.options.nodeId,
-      version: this.options.version,
-      uptimeMs: this.uptimeMs(),
-      seq: this.seq,
-    };
-    try {
-      await this.options.transport.send(encodeMessage(message, this.options.settings.secret));
-    } catch (error) {
-      this.options.logger.debug('cluster: datagram send failed', {
-        type,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
+    await this.host.send(type, this.surfaceId);
   }
 
   private enqueue(work: () => Promise<void>): void {
     this.queue = this.queue.then(work).catch((error: unknown) => {
-      this.options.logger.error('cluster: a state transition failed', {
+      this.host.logger.error('cluster: a surface state transition failed', {
+        surface: this.options.label,
         role: this.role,
         error: error instanceof Error ? error.message : String(error),
       });
