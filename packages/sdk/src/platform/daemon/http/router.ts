@@ -44,6 +44,8 @@ import { TelemetryApiService } from '../../runtime/telemetry/api.js';
 import { inspectInboundTls, inspectOutboundTls } from '../../runtime/network/index.js';
 import type { MemoryEmbeddingProviderRegistry, MemoryRegistry } from '../../state/index.js';
 import { dispatchDaemonApiRoutes } from '../../control-plane/routes/index.js';
+import { clusterGroupRouteExtension, type ClusterGroupVerbs } from './cluster-group-routes.js';
+import { buildRouterKnowledgeContext } from './router-knowledge-context.js';
 import { handleGitHubAutomationWebhook, handleSlackSurfaceWebhook, handleDiscordSurfaceWebhook, handleNtfySurfaceWebhook, handleGenericWebhookSurface } from '../../adapters/index.js';
 import { createDaemonKnowledgeRouteHandlers } from './knowledge-routes.js';
 import { createDaemonMediaRouteHandlers } from './media-routes.js';
@@ -207,11 +209,15 @@ export class DaemonHttpRouter {
   private projectPlanningRoutes: ProjectPlanningRoutes | null = null;
   /** Supplied by the daemon facade after construction; these feed /status. */
   private statusProviders: import('./router-route-contexts.js').DaemonStatusProviders = {};
+  private clusterGroupVerbs: ClusterGroupVerbs | null = null;
 
   /** Wire receipts (update/crash announcements) and the cluster role into /status. */
   setDaemonStatusProviders(providers: import('./router-route-contexts.js').DaemonStatusProviders): void {
     this.statusProviders = { ...this.statusProviders, ...providers };
   }
+
+  /** Wire the LAN group verbs (`/api/cluster/*`) — see cluster-group-routes.ts. */
+  setClusterGroupVerbs(verbs: ClusterGroupVerbs): void { this.clusterGroupVerbs = verbs; }
 
   constructor(private readonly context: DaemonHttpRouterContext) {
     this.telemetryApi = context.runtimeStore
@@ -623,26 +629,9 @@ export class DaemonHttpRouter {
         requireAuthenticatedSession: (request) => this.context.requireAuthenticatedSession(request),
         distributedRuntime: this.context.distributedRuntime,
       }),
-      ...createDaemonKnowledgeRouteHandlers({
-        ...buildKnowledgeRouteContext({
-          artifactStore: this.context.artifactStore,
-          configManager: this.context.configManager,
-          inspectGraphqlAccess: inspectKnowledgeGraphqlAccess,
-          normalizeAtSchedule,
-          normalizeEverySchedule,
-          normalizeCronSchedule,
-          parseJsonBody: (request) => this.parseJsonBody(request),
-          parseOptionalJsonBody: (request) => this.parseOptionalJsonBody(request),
-          parseJsonText: (raw) => this.parseJsonText(raw),
-          requireAdmin: (request) => this.context.requireAdmin(request),
-          resolveAuthenticatedPrincipal: (request) => {
-            const token = this.context.extractAuthToken(request);
-            return token ? this.context.describeAuthenticatedPrincipal(token) : null;
-          },
-          knowledgeService: this.context.knowledgeService,
-          knowledgeGraphqlService: this.context.knowledgeGraphqlService,
-        }),
-      }),
+      ...createDaemonKnowledgeRouteHandlers(
+        this.knowledgeRouteContext(this.context.knowledgeService, this.context.knowledgeGraphqlService),
+      ),
       ...createDaemonMediaRouteHandlers({
         ...buildMediaRouteContext({
           artifactStore: this.context.artifactStore,
@@ -658,30 +647,30 @@ export class DaemonHttpRouter {
     };
     const agentKnowledgeHandlers = {
       ...handlers,
-      ...createDaemonKnowledgeRouteHandlers({
-        ...buildKnowledgeRouteContext({
-          artifactStore: this.context.artifactStore,
-          configManager: this.context.configManager,
-          inspectGraphqlAccess: inspectKnowledgeGraphqlAccess,
-          normalizeAtSchedule,
-          normalizeEverySchedule,
-          normalizeCronSchedule,
-          parseJsonBody: (request) => this.parseJsonBody(request),
-          parseOptionalJsonBody: (request) => this.parseOptionalJsonBody(request),
-          parseJsonText: (raw) => this.parseJsonText(raw),
-          requireAdmin: (request) => this.context.requireAdmin(request),
-          resolveAuthenticatedPrincipal: (request) => {
-            const token = this.context.extractAuthToken(request);
-            return token ? this.context.describeAuthenticatedPrincipal(token) : null;
-          },
-          knowledgeService: this.context.agentKnowledgeService,
-          knowledgeGraphqlService: new KnowledgeGraphqlService(this.context.agentKnowledgeService),
-        }),
-      }),
+      ...createDaemonKnowledgeRouteHandlers(this.knowledgeRouteContext(
+        this.context.agentKnowledgeService,
+        new KnowledgeGraphqlService(this.context.agentKnowledgeService),
+      )),
     };
     return dispatchDaemonApiRoutes(req, handlers, [
       (candidate) => dispatchAliasedKnowledgeRoutes(candidate, '/api/goodvibes-agent/knowledge', agentKnowledgeHandlers),
+      clusterGroupRouteExtension(() => this.clusterGroupVerbs, {
+        requireAdmin: (candidate) => this.context.requireAdmin(candidate),
+        parseJsonBody: (candidate) => this.parseJsonBody(candidate),
+      }),
     ]);
+  }
+
+  /** Knowledge route context for one surface — see router-knowledge-context.ts. */
+  private knowledgeRouteContext(
+    knowledgeService: Parameters<typeof buildRouterKnowledgeContext>[2],
+    knowledgeGraphqlService: Parameters<typeof buildRouterKnowledgeContext>[3],
+  ): ReturnType<typeof buildRouterKnowledgeContext> {
+    return buildRouterKnowledgeContext(this.context, {
+      parseJsonBody: (request) => this.parseJsonBody(request),
+      parseOptionalJsonBody: (request) => this.parseOptionalJsonBody(request),
+      parseJsonText: (raw) => this.parseJsonText(raw),
+    }, knowledgeService, knowledgeGraphqlService);
   }
 
   private getHomeAssistantRoutes(): HomeAssistantConversationRoutes {

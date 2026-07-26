@@ -93,6 +93,10 @@ export function buildDaemonClusterCoordinator(
     stateDirectory: runtime.runtimeServices.shellPaths.resolveProjectPath('goodvibes', 'cluster'),
     logger,
   });
+  // The LAN group verbs (/api/cluster/*), when the host composed a group
+  // runtime. Wired here rather than in facade.ts because this is already the
+  // one place the daemon's cluster wiring lives.
+  if (config.clusterGroupVerbs) collaborators.httpRouter.setClusterGroupVerbs(config.clusterGroupVerbs);
   coordinator.register(providerRuntimeGate(collaborators.providerRuntime));
   coordinator.register(telegramIngressGate(collaborators.builtinChannels));
   // Late-bound because the runtime is built before the coordinator exists: a
