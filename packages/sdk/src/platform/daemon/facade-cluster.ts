@@ -147,6 +147,16 @@ export function buildDaemonClusterCoordinator(
     stateDirectory: runtime.runtimeServices.shellPaths.resolveProjectPath('goodvibes', 'cluster'),
     logger,
   });
+  // The LAN group verbs (/api/cluster/*), when the host composed a group
+  // runtime. Wired here rather than in facade.ts because this is already the
+  // one place the daemon's cluster wiring lives.
+  if (config.clusterGroupVerbs) collaborators.httpRouter.setClusterGroupVerbs(config.clusterGroupVerbs);
+  // Per-surface registration, which supersedes the whole-node gates: the
+  // provider runtime, Telegram ingress, and the consumer-conflict route are all
+  // registered per surface inside registerDaemonClusterSurfaces, so a conflict
+  // over one bot token no longer stands this node down from every other
+  // surface. It runs through onPrepare because deciding whether a surface is
+  // servable means resolving its credential, and this function is synchronous.
   coordinator.onPrepare(() => registerDaemonClusterSurfaces(coordinator, runtime, collaborators));
   return coordinator;
 }

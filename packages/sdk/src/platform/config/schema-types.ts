@@ -727,7 +727,11 @@ export type ConfigKey =
   | 'cluster.bootProbeSeconds'
   | 'cluster.port'
   | 'cluster.multicastGroup'
-  | 'cluster.secret';
+  | 'cluster.secret'
+  | 'cluster.keyRotationHours'
+  | 'cluster.keyRotationGraceMinutes'
+  | 'cluster.beaconSeconds'
+  | 'cluster.rosterGossipSeconds';
 
 /** Maps a ConfigKey to its value type. */
 export type ConfigValue<K extends ConfigKey> =
@@ -1193,4 +1197,8 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'cluster.port' ? number :
   K extends 'cluster.multicastGroup' ? string :
   K extends 'cluster.secret' ? string :
+  K extends 'cluster.keyRotationHours' ? number :
+  K extends 'cluster.keyRotationGraceMinutes' ? number :
+  K extends 'cluster.beaconSeconds' ? number :
+  K extends 'cluster.rosterGossipSeconds' ? number :
   never;

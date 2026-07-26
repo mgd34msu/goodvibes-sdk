@@ -194,6 +194,18 @@ export interface ClusterSurfaceStatus {
   readonly lastHolderHeartbeatAt: number | null;
 }
 
+/**
+ * One surface this node currently consumes, and why.
+ *
+ * Lives here rather than in the group layer because the per-surface election
+ * is what establishes the fact; the group layer only reports it. `surfaceId` is
+ * always a digest — a raw topic or chat id must never reach here.
+ */
+export interface ClusterSurfaceHolding {
+  readonly surfaceId: string;
+  readonly reason: string;
+}
+
 /** The `cluster` section of /status. Inspection only; never user-facing. */
 export interface ClusterStatus {
   readonly enabled: boolean;
