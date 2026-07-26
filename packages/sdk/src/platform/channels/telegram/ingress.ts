@@ -138,9 +138,11 @@ export class TelegramIngressSupervisor {
       if (token) await this.retractOwnWebhook(token);
       // A token with the surface switched off is a common half-finished setup;
       // say so rather than staying silent, because the user believes it is on.
-      return this.settle('inactive', token
-        ? 'a Telegram bot token is configured but surfaces.telegram.enabled is false; set it to true to receive messages'
-        : 'the Telegram surface is disabled (surfaces.telegram.enabled=false)');
+      return token
+        ? this.settle('inactive',
+            'a Telegram bot token is configured but surfaces.telegram.enabled is false; set it to true to receive messages',
+            false, 'warn')
+        : this.settle('inactive', 'the Telegram surface is disabled (surfaces.telegram.enabled=false)');
     }
     if (!token) {
       return this.settle('inactive',
@@ -543,14 +545,32 @@ export class TelegramIngressSupervisor {
     });
   }
 
-  private settle(mode: TelegramIngressMode, reason: string, running = false): TelegramIngressStatus {
+  private settle(
+    mode: TelegramIngressMode,
+    reason: string,
+    running = false,
+    severity?: 'warn',
+  ): TelegramIngressStatus {
     this.currentStatus = { mode, reason, running };
-    if (mode === 'inactive') {
-      // The whole point: never fail silently. A configured surface that cannot
-      // receive says so, at a level an operator will actually see.
-      logger.warn('Telegram ingress is not receiving messages', { reason });
+    if (mode !== 'inactive') {
+      logger.info('Telegram ingress active', { surface: 'telegram', mode, reason });
+      return this.currentStatus;
+    }
+    if (severity === 'warn') {
+      logger.warn('Telegram ingress is inactive', { surface: 'telegram', action: reason });
+      return this.currentStatus;
+    }
+    // Never fail silently — and the level has to match what the operator
+    // believes. An operator who switched the surface OFF and sees it inactive
+    // has no problem; an operator who switched it ON and has an inert surface
+    // has the most expensive failure in the system: the daemon looks healthy,
+    // the config looks right, and messages vanish. Those are different events
+    // and they get different levels.
+    const enabled = Boolean(this.deps.configManager.get('surfaces.telegram.enabled'));
+    if (enabled) {
+      logger.error('Telegram is enabled but is NOT receiving messages', { surface: 'telegram', action: reason });
     } else {
-      logger.info('Telegram ingress active', { mode, reason });
+      logger.info('Telegram ingress is inactive', { surface: 'telegram', reason });
     }
     return this.currentStatus;
   }

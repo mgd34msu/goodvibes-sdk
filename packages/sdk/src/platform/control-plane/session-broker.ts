@@ -5,6 +5,7 @@ import { PersistentStore } from '../state/persistent-store.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import { RouteBindingManager } from '../channels/index.js';
 import type { AutomationRouteBinding } from '../automation/routes.js';
+import type { ConversationGateConfigReader } from '../agents/conversation-gate.js';
 import type {
   SharedSessionCompletion,
   SharedSessionContinuationRunner,
@@ -85,6 +86,7 @@ export class SharedSessionBroker {
   private readonly routeBindings: RouteBindingManager;
   private readonly agentStatusProvider: SharedSessionAgentStatusProvider;
   private readonly messageSender: SharedSessionMessageSender;
+  private readonly conversationGateConfig: ConversationGateConfigReader | undefined;
   private readonly sessions = new Map<string, SharedSessionRecord>();
   private readonly messages = new Map<string, SharedSessionMessage[]>();
   private readonly inputs = new Map<string, SharedSessionInputRecord[]>();
@@ -113,6 +115,8 @@ export class SharedSessionBroker {
     readonly idleEmptyMs?: number | undefined;
     readonly idleLongMs?: number | undefined;
     readonly deletionRetentionMs?: number | undefined;
+    /** Reads `conversationGate.*` so an inbound channel message is not handed to a running agent behind the gate's back; absent falls back to the gate's defaults, which gate every channel surface. */
+    readonly conversationGateConfig?: ConversationGateConfigReader | undefined;
   }) {
     if (!config.store && !config.storePath) {
       throw new Error('SharedSessionBroker requires an explicit store or storePath.');
@@ -125,6 +129,7 @@ export class SharedSessionBroker {
     this._idleEmptyMs = config.idleEmptyMs ?? 10 * 60 * 1000;  // 10 min
     this._idleLongMs  = config.idleLongMs  ?? 24 * 60 * 60 * 1000; // 24 h
     this._deletionRetentionMs = config.deletionRetentionMs ?? SESSION_DELETION_RETENTION_MS;
+    this.conversationGateConfig = config.conversationGateConfig;
   }
 
   setEventPublisher(publisher: SharedSessionEventPublisher | null): void {
@@ -647,18 +652,10 @@ export class SharedSessionBroker {
   }
 
   private publishUpdate(event: string, payload: unknown): void {
-    this.eventPublisher?.('session-update', {
-      event,
-      payload,
-      createdAt: Date.now(),
-    });
+    this.eventPublisher?.('session-update', { event, payload, createdAt: Date.now() });
   }
 
-  private publishInputLifecycleEvent(
-    event: string,
-    input: SharedSessionInputRecord,
-    extra: Record<string, unknown> = {},
-  ): void {
+  private publishInputLifecycleEvent(event: string, input: SharedSessionInputRecord, extra: Record<string, unknown> = {}): void {
     this.publishUpdate(event, {
       sessionId: input.sessionId,
       inputId: input.id,
@@ -692,6 +689,7 @@ export class SharedSessionBroker {
         publishUpdate: (event, payload) => this.publishUpdate(event, payload),
         announceSurfaceReply: (binding) => this.announceSurfaceReply(binding),
         buildContinuationTask: (sessionId) => this.buildContinuationTask(sessionId),
+        ...(this.conversationGateConfig ? { conversationGateConfig: this.conversationGateConfig } : {}),
       },
       intent,
       input,

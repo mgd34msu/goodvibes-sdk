@@ -84,8 +84,10 @@ export class BuiltinChannelRuntime {
       // No surface-scoped storage was supplied, so a polling cursor cannot be
       // persisted. Say so rather than silently skipping inbound Telegram.
       if (this.deps.configManager.get('surfaces.telegram.enabled')) {
-        logger.warn('Telegram ingress not started: the host supplied no offset storage path', {
-          detail: 'embedders must pass telegramOffsetPath to receive Telegram messages',
+        logger.error('Telegram is enabled but is NOT receiving messages', {
+          surface: 'telegram',
+          reason: 'the host supplied no offset storage path, so the getUpdates cursor cannot be persisted',
+          action: 'the embedder must pass telegramOffsetPath to BuiltinChannelRuntime to receive Telegram messages',
         });
       }
       return;

@@ -1,3 +1,4 @@
+import { ensureDaemonActivityLog, migrateDaemonOwnedConfigOnBoot } from './facade-boot-guarantees.js';
 import { logger } from '../utils/logger.js';
 import { jsonErrorResponse } from './http/error-response.js';
 import { summarizeError } from '../utils/error-display.js';
@@ -69,6 +70,9 @@ interface UpgradeCapableServer {
 }
 
 type JsonBody = Record<string, unknown>;
+
+/** One connected control-plane websocket, as the three delegators below see it. */
+interface ControlPlaneWebSocketPeer { data: ControlPlaneWebSocketData; send(message: string): void }
 
 // --- DaemonServer ---
 
@@ -333,6 +337,10 @@ export class DaemonServer {
    * Start the daemon. Refuses to start if not explicitly enabled.
    */
   async start(): Promise<void> {
+    // Two guarantees the daemon refuses to inherit from its host; see
+    // facade-boot-guarantees.ts for why each one is owned here.
+    ensureDaemonActivityLog(this.runtimeServices.shellPaths.workingDirectory);
+    migrateDaemonOwnedConfigOnBoot(this.configManager, this.runtimeServices.shellPaths.homeDirectory);
     if (!this.enabled) {
       logger.info('Daemon mode is disabled (daemon.enabled=false). It is on by default.');
       return;
@@ -692,26 +700,18 @@ export class DaemonServer {
     return this.controlPlaneHelper.tryUpgradeControlPlaneWebSocket(req, server);
   }
 
-  private handleControlPlaneWebSocketOpen(ws: {
-    data: import('./control-plane.js').ControlPlaneWebSocketData;
-    send(message: string): void;
-  }): void {
+  private handleControlPlaneWebSocketOpen(ws: ControlPlaneWebSocketPeer): void {
     this.controlPlaneHelper.handleControlPlaneWebSocketOpen(ws);
   }
 
   private async handleControlPlaneWebSocketMessage(
-    ws: {
-      data: import('./control-plane.js').ControlPlaneWebSocketData;
-      send(message: string): void;
-    },
+    ws: ControlPlaneWebSocketPeer,
     message: string | Buffer | ArrayBuffer | Uint8Array,
   ): Promise<void> {
     await this.controlPlaneHelper.handleControlPlaneWebSocketMessage(ws, message);
   }
 
-  private handleControlPlaneWebSocketClose(ws: {
-    data: import('./control-plane.js').ControlPlaneWebSocketData;
-  }): void {
+  private handleControlPlaneWebSocketClose(ws: Pick<ControlPlaneWebSocketPeer, 'data'>): void {
     this.controlPlaneHelper.handleControlPlaneWebSocketClose(ws);
   }
 

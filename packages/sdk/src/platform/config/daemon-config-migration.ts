@@ -99,8 +99,15 @@ export function migrateDaemonOwnedConfig(
   const storePath = options.daemonStorePath ?? daemonConfigPath(options.homeDir);
   const markerPath = daemonConfigMovedPath(storePath);
 
+  const ownedKeys = listDaemonOwnedConfigKeys();
   const done = readDaemonConfigMovedMarker(markerPath);
-  if (done) return { migrated: false, marker: done, markerPath };
+  // "Complete" is only complete for the ownership set the marker covers. A key
+  // promoted to daemon-owned after that run has never been migrated, and its
+  // value is still sitting in a client store the daemon does not read — so a
+  // grown owned set means there is work to do, not that the job is finished.
+  if (done && ownedKeys.every((key) => done.coveredKeys.includes(key))) {
+    return { migrated: false, marker: done, markerPath };
+  }
 
   const primarySurface = options.primarySurface ?? DEFAULT_PRIMARY_DAEMON_SURFACE;
   const surfaces = options.surfaces ?? discoverSurfaceSettingsFiles(options.homeDir);
@@ -130,6 +137,7 @@ export function migrateDaemonOwnedConfig(
     sources: surfaceFiles.map((entry) => entry.path),
     moved,
     discarded,
+    coveredKeys: [...ownedKeys],
   };
 
   // 1. Announce the plan before touching anything.

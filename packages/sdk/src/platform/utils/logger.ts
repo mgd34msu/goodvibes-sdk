@@ -48,6 +48,18 @@ export class ActivityLogger {
   private liveBytes = 0;
   private maxBytes = LOG_ROTATION_MAX_BYTES;
 
+  /**
+   * True once a destination has been named. Until then every info/warn/error
+   * in the whole platform accumulates in memory and reaches no file, which is
+   * how a host that forgets `configure()` turns the entire platform mute — a
+   * shipped daemon did exactly that, and an inbound channel surface that
+   * refused to start produced no record anywhere. A host that cannot be sure
+   * it configured the logger asks this and supplies a destination.
+   */
+  get isConfigured(): boolean {
+    return this.logPath !== null;
+  }
+
   configure(logDir: string, options: ActivityLoggerOptions = {}): void {
     if (!existsSync(logDir)) {
       mkdirSync(logDir, { recursive: true });
@@ -136,6 +148,26 @@ export const logger = new ActivityLogger();
 
 export function configureActivityLogger(logDir: string, options?: ActivityLoggerOptions): void {
   logger.configure(logDir, options);
+}
+
+/**
+ * Name a destination only if the host has not already named one, and report
+ * whether this call was the one that did it.
+ *
+ * The platform's runtimes are embedded by several hosts, and a host that
+ * forgets `configureActivityLogger` does not get a degraded log — it gets no
+ * log at all, for every component in the process. That is not a defect the
+ * component can detect from the inside, so the long-lived runtimes call this
+ * at start with their own working directory as the fallback. A host that DID
+ * configure a destination keeps it; this never relocates an existing log.
+ */
+export function ensureActivityLoggerConfigured(
+  logDir: string,
+  options?: ActivityLoggerOptions,
+): boolean {
+  if (logger.isConfigured) return false;
+  logger.configure(logDir, options);
+  return true;
 }
 
 function redactLogData(value: unknown, seen = new WeakSet<object>()): unknown {
