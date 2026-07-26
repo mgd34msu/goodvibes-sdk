@@ -127,6 +127,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   so asking a long-running process what it has printed so far now answers with
   what it has printed so far instead of nothing until it finishes.
 
+- **A background command that timed out is now reported as finished even when
+  it left a child behind.** A process's output pipe is inherited by everything
+  it starts, so it signals end-of-output only when the last holder closes it. A
+  timeout kill reaches the command itself, not the descendants it spawned — so
+  for any command that left one running, the pipe stayed open and the process
+  was never reported as done at all: `bg_status` showed it still running
+  indefinitely and an on-exit trigger never fired. Whether a given command hit
+  this depended on something as incidental as which `/bin/sh` the machine has,
+  since some shells replace themselves with a single command and leave nothing
+  behind. Completion now follows the process exiting. Output already written is
+  still collected, and output that only a survivor is still producing no longer
+  holds the result open.
+
 - **A model's thinking no longer arrives as part of its answer.** An
   OpenAI-compatible endpoint's reasoning format describes which parameter it
   accepts on the REQUEST; it was also being applied to the RESPONSE, so an
