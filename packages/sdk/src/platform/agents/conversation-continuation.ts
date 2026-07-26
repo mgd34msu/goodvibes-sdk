@@ -116,10 +116,15 @@ export function decideContinuationEscalation(
 export function continuationChainOptions(
   input: ContinuationInputLike | undefined,
   options: ContinuationEscalationOptions = {},
-): { readonly dangerously_disable_wrfc?: true } {
+): { readonly dangerously_disable_wrfc?: true; readonly replyStyle?: 'conversational' } {
+  // `replyStyle` rides with the chain decision rather than being a second,
+  // separately-derived judgement: a continuation that is conversation gets a
+  // conversational REPLY, not a completion report addressed to nobody. The
+  // ingress gate (daemon/surface-conversation-gate.ts) pairs the same two
+  // fields for the first message of a conversation; this is the follow-up half.
   return decideContinuationEscalation(input, options).startsWorkChain
     ? {}
-    : { dangerously_disable_wrfc: true };
+    : { dangerously_disable_wrfc: true, replyStyle: 'conversational' };
 }
 
 /**

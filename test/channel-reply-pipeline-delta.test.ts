@@ -101,7 +101,10 @@ describe('ntfy delivers the answer, not just the duration', () => {
     await waitFor(() => h.published.length > 0);
     const body = h.bodies().join('\n');
     expect(body).toContain('The build is green and the tag is pushed.');
-    // The duration line may ride along; the answer may not be replaced by it.
+    // The duration line no longer rides along at all — the answer is the whole
+    // notification.
+    expect(body).not.toContain('Agent completed in');
+    expect(body.trim()).toBe('The build is green and the tag is pushed.');
     expect(h.published[0]?.phase).toBe('final');
   });
 
@@ -126,6 +129,8 @@ describe('the final body is a delta, not a replay', () => {
   test('a final with no explicit text does not repeat lines progress already sent', async () => {
     const h = harness('telegram');
     h.track('agent-tg');
+    // Past the floor below which no progress notification is warranted.
+    h.advance(45_000);
     await h.progress('agent-tg', 'reading the diff');
     h.advance(30_000);
     await h.progress('agent-tg', 'running the gates');
@@ -150,6 +155,7 @@ describe('the final body is a delta, not a replay', () => {
   test('progress lines and the answer each appear exactly once across notifications', async () => {
     const h = harness('telegram');
     h.track('agent-tg2');
+    h.advance(45_000);
     await h.progress('agent-tg2', 'reading the diff');
     h.advance(30_000);
     await h.complete('agent-tg2', 'The answer is 42.');
@@ -170,12 +176,17 @@ describe('the final body is a delta, not a replay', () => {
     const final = h.published[0]!;
     expect(final.phase).toBe('final');
     expect(final.text).toContain('Done: the flag now defaults to on.');
-    expect(final.text).toContain('Agent completed in 5ms');
+    // Owner ruling: how long the run took is operator telemetry and must not
+    // reach a channel user at all. It used to be appended under every answer,
+    // which is also where the duplicate completion line came from.
+    expect(final.text).not.toContain('Agent completed in');
+    expect(final.text.trim()).toBe('Done: the flag now defaults to on.');
   });
 
   test('a final delivered with nothing new at all still sends a terminal message', async () => {
     const h = harness('telegram');
     h.track('agent-empty');
+    h.advance(45_000);
     await h.progress('agent-empty', 'only line');
     h.advance(30_000);
     await h.pipeline.deliverFinal('agent-empty', '');
@@ -240,6 +251,124 @@ describe('internal completion-report JSON never reaches the channel body', () =>
   });
 });
 
+describe('the report reaches nobody in its prose form either', () => {
+  // What the owner actually received for "Hey, are you there?" — the JSON form
+  // was already stripped, so the agent filed the same report as prose and it
+  // shipped verbatim.
+  test('a filled-in report template is reduced to the answer it carries', async () => {
+    const h = harness('ntfy');
+    h.track('agent-prose');
+    await h.complete('agent-prose', [
+      '## Summary',
+      "Yes, I'm here. The daemon is running and the ntfy route is bound.",
+      '',
+      '## Changes',
+      'None.',
+      '',
+      '## Decisions',
+      '- No action taken: the message was a status check, not a work request.',
+      '',
+      '## Issues',
+      'None.',
+      '',
+      '## Uncertainties',
+      'None.',
+    ].join('\n'));
+
+    await waitFor(() => h.published.length > 0);
+    expect(h.bodies()).toEqual(["Yes, I'm here. The daemon is running and the ntfy route is bound."]);
+  });
+
+  test('the inline label form is stripped too', async () => {
+    const h = harness('ntfy');
+    h.track('agent-inline');
+    await h.complete('agent-inline', [
+      'Summary: The release is tagged and CI is green on every job.',
+      'Changes: None.',
+      'Decisions: None.',
+      'Issues: None.',
+      'Uncertainties: None.',
+    ].join('\n'));
+
+    await waitFor(() => h.published.length > 0);
+    expect(h.bodies()).toEqual(['The release is tagged and CI is green on every job.']);
+  });
+
+  test('the bulleted label form is stripped too', async () => {
+    const h = harness('telegram');
+    h.track('agent-bullets');
+    await h.complete('agent-bullets', [
+      '- Summary: Two files changed; the flag defaults to on.',
+      '- Changes: src/flags.ts, src/config.ts',
+      '- Issues: none',
+    ].join('\n'));
+
+    await waitFor(() => h.published.length > 0);
+    expect(h.bodies()).toEqual(['Two files changed; the flag defaults to on.']);
+  });
+
+  test('prose written before the report survives it', async () => {
+    const h = harness('telegram');
+    h.track('agent-preamble');
+    await h.complete('agent-preamble', [
+      'The parser was reading the header twice. Fixed.',
+      '',
+      '## Summary',
+      'Removed the duplicate header read in src/parse.ts.',
+      '',
+      '## Changes',
+      'src/parse.ts',
+    ].join('\n'));
+
+    await waitFor(() => h.published.length > 0);
+    const body = h.bodies().join('\n');
+    expect(body).toContain('The parser was reading the header twice. Fixed.');
+    expect(body).toContain('Removed the duplicate header read in src/parse.ts.');
+    expect(body).not.toContain('## Changes');
+    expect(body).not.toContain('Summary');
+  });
+
+  test('a report whose summary says nothing sends nothing at all', async () => {
+    const h = harness('ntfy');
+    h.track('agent-hollow');
+    await h.complete('agent-hollow', [
+      'Summary: None.',
+      'Changes: None.',
+      'Decisions: None.',
+      'Issues: None.',
+    ].join('\n'));
+
+    // An empty reply is honest; a reply made of paperwork is not.
+    await new Promise((resolve) => { setTimeout(resolve, 10); });
+    expect(h.published).toHaveLength(0);
+    expect(h.pipeline.has('agent-hollow')).toBe(false);
+  });
+
+  test('ordinary prose that merely mentions a section word is left alone', async () => {
+    const h = harness('telegram');
+    h.track('agent-prose-safe');
+    const answer = 'Summary: the API is down. I checked the health endpoint twice and it timed out both times.';
+    await h.complete('agent-prose-safe', answer);
+
+    await waitFor(() => h.published.length > 0);
+    // One heading is a sentence opener, not a form. Nothing is removed.
+    expect(h.bodies()).toEqual([answer]);
+  });
+
+  test('a heading-shaped sentence without a colon is not a section boundary', async () => {
+    const h = harness('telegram');
+    h.track('agent-prose-safe2');
+    const answer = [
+      'Summary: I rewrote the changelog entry.',
+      'Changes to the release process are still pending your call.',
+    ].join('\n');
+    await h.complete('agent-prose-safe2', answer);
+
+    await waitFor(() => h.published.length > 0);
+    expect(h.bodies()).toEqual([answer]);
+  });
+});
+
 describe('progress notifications carry a status line, never the answer', () => {
   // The defect: surface-delivery passed `record.progress` into deliverProgress,
   // and buildRenderedText discarded explicitText on the progress phase, so the
@@ -247,16 +376,23 @@ describe('progress notifications carry a status line, never the answer', () => {
   test.each(['ntfy', 'telegram', 'slack'])('the status line reaches the body on %s', async (surface) => {
     const h = harness(surface);
     h.track('agent-status');
+    // Long enough that a person would wonder whether the run died. Below that
+    // floor a progress notification is not warranted at all.
+    h.advance(45_000);
     await h.pipeline.deliverProgress('agent-status', 'Turn 3 · Read(src/parse.ts)', true);
 
     await waitFor(() => h.published.length > 0);
     expect(h.published[0]!.phase).toBe('progress');
-    expect(h.published[0]!.text).toContain('Turn 3 · Read(src/parse.ts)');
+    // The tool and the file are information. "Turn 3" is a fact about the
+    // machine that changes on every tick and that nobody can act on.
+    expect(h.published[0]!.text).toContain('Read(src/parse.ts)');
+    expect(h.published[0]!.text).not.toContain('Turn 3');
   });
 
   test('a status line is one bounded line, not a growing transcript', async () => {
     const h = harness('ntfy');
     h.track('agent-bounded');
+    h.advance(45_000);
     // Even a caller that wrongly hands over multi-line accumulating content
     // cannot produce a transcript: it collapses to one bounded line.
     const blob = `line one\nline two\nline three\n${'x'.repeat(500)}`;
@@ -271,18 +407,62 @@ describe('progress notifications carry a status line, never the answer', () => {
   test('the same status is never published twice', async () => {
     const h = harness('ntfy');
     h.track('agent-repeat');
-    await h.pipeline.deliverProgress('agent-repeat', 'Turn 1 · Thinking…', true);
+    h.advance(45_000);
+    await h.pipeline.deliverProgress('agent-repeat', 'Turn 1 · Read(src/parse.ts)', true);
     const after = h.published.length;
-    await h.pipeline.deliverProgress('agent-repeat', 'Turn 1 · Thinking…', true);
+    expect(after).toBe(1);
+    await h.pipeline.deliverProgress('agent-repeat', 'Turn 2 · Read(src/parse.ts)', true);
+    // Same work, a later turn. With the turn counter gone the two render
+    // identically, which is what the duplicate check is for.
     expect(h.published.length).toBe(after);
   });
 
   test('nothing to say publishes nothing', async () => {
     const h = harness('ntfy');
     h.track('agent-silent');
+    h.advance(45_000);
     expect(await h.pipeline.deliverProgress('agent-silent', '', true)).toBeNull();
     expect(await h.pipeline.deliverProgress('agent-silent', '   \n  ', true)).toBeNull();
     expect(h.published).toHaveLength(0);
+  });
+
+  test('a turn counter and a placeholder are never published, however long the run', async () => {
+    const h = harness('ntfy');
+    h.track('agent-placeholder');
+    h.advance(10 * 60_000);
+    // The single most-delivered notification body on the owner's phone.
+    expect(await h.pipeline.deliverProgress('agent-placeholder', 'Turn 1 · Thinking…', true)).toBeNull();
+    expect(await h.pipeline.deliverProgress('agent-placeholder', 'Turn 12 · Thinking...', true)).toBeNull();
+    expect(await h.pipeline.deliverProgress('agent-placeholder', 'Working…', true)).toBeNull();
+    expect(await h.pipeline.deliverProgress('agent-placeholder', 'Starting', true)).toBeNull();
+    expect(h.published).toHaveLength(0);
+  });
+
+  test('no progress notification interrupts anyone in the first seconds of a run', async () => {
+    const h = harness('ntfy');
+    h.track('agent-quick');
+    // A real, informative status — withheld purely because the run is young.
+    expect(await h.pipeline.deliverProgress('agent-quick', 'Turn 1 · Read(src/parse.ts)', true)).toBeNull();
+    h.advance(29_000);
+    expect(await h.pipeline.deliverProgress('agent-quick', 'Turn 2 · Edit(src/parse.ts)', true)).toBeNull();
+    expect(h.published).toHaveLength(0);
+    h.advance(2_000);
+    await h.pipeline.deliverProgress('agent-quick', 'Turn 3 · Edit(src/parse.ts)', true);
+    expect(h.bodies()).toEqual(['Edit(src/parse.ts)']);
+  });
+
+  test('a short conversational exchange produces exactly one notification: the answer', async () => {
+    const h = harness('ntfy');
+    h.track('agent-hello');
+    // What a real run does in its first seconds, in order.
+    await h.progress('agent-hello', 'Turn 1 · Thinking…');
+    h.advance(1_200);
+    await h.progress('agent-hello', 'Turn 2 · Thinking…');
+    h.advance(1_500);
+    await h.complete('agent-hello', "Yes — I'm here and the daemon is running.");
+
+    await waitFor(() => h.published.length > 0);
+    expect(h.bodies()).toEqual(["Yes — I'm here and the daemon is running."]);
   });
 
   test('a progress body never carries a fragment of the answer', async () => {

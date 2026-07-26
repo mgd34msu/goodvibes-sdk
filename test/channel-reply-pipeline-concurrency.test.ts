@@ -198,10 +198,12 @@ describe('concurrent progress deliveries with a slow dispatch', () => {
     const h = harness('ntfy');
     h.track('agent-a');
     h.track('agent-b');
+    // Both runs are old enough to warrant a progress notification at all.
+    h.advance(45_000);
     const started = Date.now();
     await Promise.all([
-      h.pipeline.deliverProgress('agent-a', 'Turn 1 · a', true),
-      h.pipeline.deliverProgress('agent-b', 'Turn 1 · b', true),
+      h.pipeline.deliverProgress('agent-a', 'Turn 1 · exec — build a', true),
+      h.pipeline.deliverProgress('agent-b', 'Turn 1 · exec — build b', true),
     ]);
     // Serialized, this would take two dispatch windows. Per-agent scope means
     // one slow surface cannot stall another agent's updates.

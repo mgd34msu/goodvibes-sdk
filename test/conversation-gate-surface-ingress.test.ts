@@ -25,6 +25,7 @@ const AGENT_TOPIC = 'goodvibes-agent';
 interface SpawnCall {
   readonly task: string;
   readonly wrfcDisabled: boolean;
+  readonly replyStyle?: string | undefined;
   readonly logLabel?: string | undefined;
 }
 
@@ -96,11 +97,12 @@ function buildHarness(
     companionChatManager: null,
     automationManager: { getRun: () => null },
     agentManager: { getStatus: () => null },
-    trySpawnAgent: (input: { task: string; dangerously_disable_wrfc?: boolean }, logLabel?: string) => {
+    trySpawnAgent: (input: { task: string; dangerously_disable_wrfc?: boolean; replyStyle?: string }, logLabel?: string) => {
       agentSeq += 1;
       spawns.push({
         task: input.task,
         wrfcDisabled: input.dangerously_disable_wrfc === true,
+        replyStyle: input.replyStyle,
         logLabel,
       });
       return { id: `agent-${agentSeq}`, task: input.task, status: 'running', tools: [] };
@@ -172,6 +174,29 @@ describe('conversation gate at the surface spawn boundary', () => {
       expect(harness.proposals.listPending()).toHaveLength(0);
     },
   );
+
+  test.each(['Hey, are you there?', 'hey', 'what is the status?', 'thanks!'])(
+    'conversation %p spawns asking for a reply, not a completion report',
+    async (message) => {
+      const harness = buildHarness();
+      await harness.send(message);
+      // The gate had already decided this was conversation and then spawned an
+      // agent still under orders to file a Summary/Changes/Decisions report,
+      // which is what the owner received on his phone. What the message IS and
+      // what the reply should LOOK like are one decision.
+      expect(harness.spawns[0]!.replyStyle).toBe('conversational');
+    },
+  );
+
+  test('an agreed workstream still reports as work', async () => {
+    const harness = buildHarness();
+    await harness.send('fix the parser in src/parse.ts');
+    expect(harness.spawns).toHaveLength(0);
+    await harness.send('yes');
+    expect(harness.spawns).toHaveLength(1);
+    // Real work keeps the completion report — the WRFC controller parses it.
+    expect(harness.spawns[0]!.replyStyle).toBeUndefined();
+  });
 
   test('a work request produces a proposal rather than a spawn', async () => {
     const harness = buildHarness();

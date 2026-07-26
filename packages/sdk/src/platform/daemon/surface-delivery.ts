@@ -670,25 +670,27 @@ export class DaemonSurfaceDeliveryHelper {
     pending: PendingSurfaceReply,
     record: import('../tools/agent/index.js').AgentRecord,
   ): string {
-    if (pending.surfaceKind === 'ntfy') {
-      if (record.status === 'completed') {
-        const wrfcId = typeof record.wrfcId === 'string' && record.wrfcId.trim()
-          ? record.wrfcId.trim()
-          : '';
-        return wrfcId
-          ? `Agent ${record.id} finished initial work. WRFC ${wrfcId} is continuing; review, fix, and gate updates will be posted here.`
-          : `Agent ${record.id} completed.`;
-      }
-      if (record.status === 'failed') {
-        return `Agent ${record.id} failed: ${record.error ?? 'failed'}`;
-      }
-      if (record.status === 'cancelled') {
-        return `Agent ${record.id} cancelled.`;
-      }
+    // ntfy used to take a branch of its own here that never looked at the
+    // agent's output at all: a completed run was announced as
+    // `Agent agent-1a2b3c completed.` — an id and a past-tense verb, on the
+    // owner's primary surface, in place of the answer he asked for. Every
+    // other surface was already handed `record.fullOutput`. There is no reason
+    // for the answer to depend on which app is displaying it, so the branch is
+    // gone and ntfy renders what everyone else renders.
+    //
+    // The one piece of ntfy-specific information worth keeping is the WRFC
+    // continuation notice, and only when the agent finished with nothing to
+    // say — otherwise it displaced the reply it was supposed to accompany.
+    if (record.status === 'completed') {
+      const answer = (record.fullOutput ?? record.streamingContent ?? '').trim();
+      if (answer) return answer;
+      const wrfcId = typeof record.wrfcId === 'string' ? record.wrfcId.trim() : '';
+      return wrfcId
+        ? 'Finished the first pass. Review, fix, and gate updates will follow here.'
+        : 'Done.';
     }
-    const body = record.status === 'completed'
-      ? (record.fullOutput ?? record.streamingContent ?? record.progress ?? 'Completed')
-      : record.error ?? record.status;
-    return String(body);
+    // `record.progress` is deliberately NOT a fallback: it is a status line
+    // ("Turn 3 · Read(src/parse.ts)"), and a status line is not an outcome.
+    return String(record.error ?? record.status);
   }
 }

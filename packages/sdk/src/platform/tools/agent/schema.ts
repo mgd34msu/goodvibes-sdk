@@ -304,6 +304,21 @@ export interface AgentInput {
   parentNodeId?: string | undefined;
   dangerously_disable_wrfc?: boolean | undefined;
   /**
+   * What the caller wants the agent's final message to LOOK like.
+   *
+   * - 'report'         (default) The structured completion report the WRFC
+   *                    controller parses, plus its prose Summary/Changes/
+   *                    Decisions/Issues/Uncertainties sections.
+   * - 'conversational' A reply to a person. No completion report, no section
+   *                    headings, no template — just the answer.
+   *
+   * Set by the conversation-first gate, which already knows an inbound channel
+   * message is conversation rather than work. Deliberately NOT in the agent
+   * tool's JSON schema: it is a decision the platform makes about a spawn, not
+   * a knob a model may turn to opt out of reporting on real work.
+   */
+  replyStyle?: 'report' | 'conversational' | undefined;
+  /**
    * Overrides this spawn's tool working directory (absolute path), e.g. an
    * orchestration-engine item's dedicated git worktree in `worktree`
    * isolation mode (see platform/orchestration/worktree-isolation.ts).
