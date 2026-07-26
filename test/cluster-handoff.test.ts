@@ -402,11 +402,22 @@ describe('cluster coordinator — the wiring contract', () => {
 });
 
 describe('cluster settings', () => {
+  test('a node with coordination off starts every consumer and opens no socket', async () => {
+    // The default. It must behave EXACTLY as the product did before the
+    // election existed: consume unconditionally, announce nothing, and never
+    // be discoverable by anyone else on the network.
+    const resolved = resolveClusterSettings({});
+    expect(resolved.enabled).toBe(false);
+  });
+
   test('defaults sit in the administratively-scoped multicast range and a private port', () => {
     expect(DEFAULT_CLUSTER_SETTINGS.multicastGroup.startsWith('239.')).toBe(true);
     expect(DEFAULT_CLUSTER_SETTINGS.port).toBeGreaterThan(60_999);
     expect(DEFAULT_CLUSTER_SETTINGS.port).toBeLessThan(65_536);
-    expect(DEFAULT_CLUSTER_SETTINGS.enabled).toBe(true);
+    // Off unless the operator asks for it: switching it on asserts that every
+    // goodvibes node on this network is theirs, and on a shared network a
+    // stranger's node joining the coordination would silently starve one side.
+    expect(DEFAULT_CLUSTER_SETTINGS.enabled).toBe(false);
     expect(DEFAULT_CLUSTER_SETTINGS.secret).toBe('');
     expect(DEFAULT_CLUSTER_SETTINGS.peers).toEqual([]);
   });
@@ -422,7 +433,8 @@ describe('cluster settings', () => {
       secret: 42,
       peers: ['10.0.0.5', '', 7, '10.0.0.6:61999'],
     });
-    expect(resolved.enabled).toBe(true);
+    // A non-boolean is not a way to switch coordination on by accident.
+    expect(resolved.enabled).toBe(false);
     expect(resolved.heartbeatSeconds).toBe(1);
     // Never below two heartbeats, or a healthy master is declared dead between beats.
     expect(resolved.masterTimeoutSeconds).toBe(2);
