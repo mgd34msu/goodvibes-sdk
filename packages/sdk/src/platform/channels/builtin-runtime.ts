@@ -70,6 +70,20 @@ export class BuiltinChannelRuntime {
   private telegramIngress: TelegramIngressSupervisor | null = null;
   private telegramConfigUnsubscribes: Array<() => void> = [];
   private telegramRestartTimer: ReturnType<typeof setTimeout> | null = null;
+  private consumerConflictHandler: ((detail: string) => void) | null = null;
+
+  /**
+   * Register who to tell when Telegram reports that ANOTHER process is already
+   * long-polling this bot token (409, "terminated by other getUpdates").
+   *
+   * Late-bound on purpose: the composition root builds this runtime before it
+   * builds the thing that decides which node consumes, and the report has to
+   * reach that decision rather than dead-ending in a log line. Set before
+   * startIngress() so the very first poll's conflict is routed.
+   */
+  setConsumerConflictHandler(handler: (detail: string) => void): void {
+    this.consumerConflictHandler = handler;
+  }
 
   /**
    * Arm the inbound paths that surfaces must actively establish.
@@ -98,6 +112,10 @@ export class BuiltinChannelRuntime {
       serviceRegistry: this.deps.serviceRegistry,
       buildSurfaceAdapterContext: this.deps.buildSurfaceAdapterContext,
       offsetFilePath: this.deps.telegramOffsetPath,
+      onConcurrentConsumerConflict: (detail) => {
+        this.consumerConflictHandler?.(detail);
+        this.deps.onTelegramConsumerConflict?.(detail);
+      },
     });
     this.watchTelegramConfig();
     await this.telegramIngress.start();

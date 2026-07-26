@@ -15,6 +15,7 @@ import { triggersConfigDefaults, triggersConfigSettings } from './schema-domain-
 import { deviceConfigDefaults, deviceConfigSettings } from './schema-domain-device.js';
 import { pushConfigDefaults, pushConfigSettings } from './schema-domain-push.js';
 import { fleetConfigDefaults, fleetConfigSettings } from './schema-domain-fleet.js';
+import { clusterConfigDefaults, clusterConfigSettings } from './schema-domain-cluster.js';
 import { surfaceConfigDefaults, surfaceConfigSettings } from './schema-domain-surfaces.js';
 import { featureConfigDefaults, featureConfigSettings } from './schema-domain-features.js';
 import { featureControlSettings } from './schema-domain-feature-controls.js';
@@ -60,6 +61,7 @@ export const DEFAULT_CONFIG = {
   device: deviceConfigDefaults.device,
   push: pushConfigDefaults.push,
   fleet: fleetConfigDefaults.fleet,
+  cluster: clusterConfigDefaults.cluster,
   batch: runtimeConfigDefaults.batch,
   cloudflare: runtimeConfigDefaults.cloudflare,
   daemon: coreConfigDefaults.daemon,
@@ -90,6 +92,7 @@ export const CONFIG_SCHEMA: ConfigSetting[] = [
   ...deviceConfigSettings,
   ...pushConfigSettings,
   ...fleetConfigSettings,
+  ...clusterConfigSettings,
   ...surfaceConfigSettings,
   ...runtimeSecondaryConfigSettings,
   ...triggersConfigSettings,

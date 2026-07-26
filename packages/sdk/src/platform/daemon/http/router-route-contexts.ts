@@ -19,6 +19,25 @@ import type { DaemonKnowledgeRouteContext } from './knowledge-route-types.js';
 import type { DaemonMediaRouteContext } from './media-route-types.js';
 import type { DaemonSystemRouteContext, WatcherRecord } from './system-route-types.js';
 
+/**
+ * The optional providers the daemon facade hands the router for /status.
+ *
+ * Both are late-bound: the router is constructed before the lifecycle sidecar
+ * and the cluster coordinator exist. Absent means the section is simply not in
+ * the payload, which is what an embedder without those subsystems should see —
+ * never a fabricated default.
+ */
+export interface DaemonStatusProviders {
+  /** Undelivered daemon receipts (update, crash-restart, migration notices). */
+  readonly collectReceipts?: (() => readonly { id: string; text: string; at: number }[]) | undefined;
+  /**
+   * Which node on this network currently consumes inbound channel messages,
+   * for on-request inspection. Elections are otherwise invisible: no
+   * notification, no transcript line, no message on any surface.
+   */
+  readonly collectClusterStatus?: (() => unknown) | undefined;
+}
+
 export function buildChannelRouteContext(input: {
   readonly channelPlugins: ChannelPluginRegistry;
   readonly channelPolicy: ChannelPolicyManager;
