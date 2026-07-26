@@ -92,7 +92,8 @@ interface DaemonSurfaceDeliveryContext {
   readonly pendingSurfaceReplies: Map<string, PendingSurfaceReply>;
   readonly channelReplyPipeline: ChannelReplyPipeline;
   readonly configManager: ConfigManager;
-  readonly secretsManager?: Pick<SecretsManager, 'get' | 'getGlobalHome'> | undefined;
+  /** Required: surface credentials that are `goodvibes://secrets/...` references resolve through this. */
+  readonly secretsManager: Pick<SecretsManager, 'get' | 'getGlobalHome'>;
   readonly serviceRegistry: ServiceRegistry;
   readonly agentManager: AgentManager;
   readonly sessionBroker: SharedSessionBroker;
@@ -659,10 +660,8 @@ export class DaemonSurfaceDeliveryHelper {
 
   private async resolveConfigSecret(value: unknown): Promise<string | null> {
     return resolveSecretInput(value, {
-      resolveLocalSecret: this.context.secretsManager
-        ? (key) => this.context.secretsManager!.get(key)
-        : undefined,
-      homeDirectory: this.context.secretsManager?.getGlobalHome?.() ?? undefined,
+      resolveLocalSecret: (key) => this.context.secretsManager.get(key),
+      homeDirectory: this.context.secretsManager.getGlobalHome?.() ?? undefined,
     });
   }
 

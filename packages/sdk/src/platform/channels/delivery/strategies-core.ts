@@ -65,7 +65,7 @@ export function createSlackDeliveryStrategy(
   serviceRegistry: ServiceRegistry,
   configManager: ConfigManager,
   artifactStore: ArtifactStore,
-  secretsManager?: Pick<SecretsManager, 'get' | 'getGlobalHome'>,
+  secretsManager: Pick<SecretsManager, 'get' | 'getGlobalHome'>,
 ): ChannelDeliveryStrategy {
   return {
     id: 'channel-delivery:slack',
@@ -81,8 +81,8 @@ export function createSlackDeliveryStrategy(
       const botToken =
         await serviceRegistry.resolveSecret('slack', 'primary')
         ?? await resolveSecretInput(configManager.get('surfaces.slack.botToken'), {
-          resolveLocalSecret: secretsManager ? (key) => secretsManager.get(key) : undefined,
-          homeDirectory: secretsManager?.getGlobalHome?.() ?? undefined,
+          resolveLocalSecret: (key) => secretsManager.get(key),
+          homeDirectory: secretsManager.getGlobalHome?.() ?? undefined,
         })
         ?? process.env.SLACK_BOT_TOKEN;
       const slack = new SlackIntegration(webhookUrl ?? undefined, botToken ?? undefined);
@@ -124,7 +124,7 @@ export function createDiscordDeliveryStrategy(
   serviceRegistry: ServiceRegistry,
   configManager: ConfigManager,
   artifactStore: ArtifactStore,
-  secretsManager?: Pick<SecretsManager, 'get' | 'getGlobalHome'>,
+  secretsManager: Pick<SecretsManager, 'get' | 'getGlobalHome'>,
 ): ChannelDeliveryStrategy {
   return {
     id: 'channel-delivery:discord',
@@ -143,8 +143,8 @@ export function createDiscordDeliveryStrategy(
         // as a raw string would send the literal "goodvibes://secrets/..." text
         // as the bot token, the same bug already fixed for telegram.
         ?? await resolveSecretInput(configManager.get('surfaces.discord.botToken'), {
-          resolveLocalSecret: secretsManager ? (key) => secretsManager.get(key) : undefined,
-          homeDirectory: secretsManager?.getGlobalHome?.() ?? undefined,
+          resolveLocalSecret: (key) => secretsManager.get(key),
+          homeDirectory: secretsManager.getGlobalHome?.() ?? undefined,
         })
         ?? process.env.DISCORD_BOT_TOKEN;
       const discord = new DiscordIntegration(webhookUrl ?? undefined, botToken ?? undefined);
@@ -259,7 +259,7 @@ export function createHomeAssistantDeliveryStrategy(
   configManager: ConfigManager,
   serviceRegistry: ServiceRegistry,
   artifactStore: ArtifactStore,
-  secretsManager?: Pick<SecretsManager, 'get' | 'getGlobalHome'>,
+  secretsManager: Pick<SecretsManager, 'get' | 'getGlobalHome'>,
 ): ChannelDeliveryStrategy {
   return {
     id: 'channel-delivery:homeassistant',
@@ -279,8 +279,8 @@ export function createHomeAssistantDeliveryStrategy(
       const token = firstNonEmpty(
         await serviceRegistry.resolveSecret('homeassistant', 'primary'),
         await resolveSecretInput(configManager.get('surfaces.homeassistant.accessToken'), {
-          resolveLocalSecret: secretsManager ? (key) => secretsManager.get(key) : undefined,
-          homeDirectory: secretsManager?.getGlobalHome?.() ?? undefined,
+          resolveLocalSecret: (key) => secretsManager.get(key),
+          homeDirectory: secretsManager.getGlobalHome?.() ?? undefined,
         }),
         process.env.HOMEASSISTANT_ACCESS_TOKEN,
         process.env.HOME_ASSISTANT_ACCESS_TOKEN,
@@ -336,7 +336,7 @@ export function createTelegramDeliveryStrategy(
   configManager: ConfigManager,
   serviceRegistry: ServiceRegistry,
   artifactStore: ArtifactStore,
-  secretsManager?: Pick<SecretsManager, 'get' | 'getGlobalHome'>,
+  secretsManager: Pick<SecretsManager, 'get' | 'getGlobalHome'>,
 ): ChannelDeliveryStrategy {
   return {
     id: 'channel-delivery:telegram',
@@ -351,8 +351,8 @@ export function createTelegramDeliveryStrategy(
         // as a raw string sent the literal "goodvibes://secrets/..." text as the
         // bot token, so a setup that could receive messages could not reply.
         await resolveSecretInput(configManager.get('surfaces.telegram.botToken'), {
-          resolveLocalSecret: secretsManager ? (key) => secretsManager.get(key) : undefined,
-          homeDirectory: secretsManager?.getGlobalHome?.() ?? undefined,
+          resolveLocalSecret: (key) => secretsManager.get(key),
+          homeDirectory: secretsManager.getGlobalHome?.() ?? undefined,
         }),
         process.env.TELEGRAM_BOT_TOKEN,
       );
