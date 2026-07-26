@@ -88,8 +88,26 @@ export interface ConversationGateConfigReader {
   /**
    * `gatedSurfaces` is an array, so it is not a scalar ConfigKey — it is read
    * through the category, mirroring how wrfc.gates is read.
+   *
+   * `string`, NOT the literal `'conversationGate'`. `ConfigManager.getCategory`
+   * is generic over `keyof GoodVibesConfig`, and `conversationGate` joins that
+   * union through a module augmentation declared in
+   * config/schema-domain-conversation-gate.ts. Inside this package that
+   * augmentation is always loaded, so the literal appeared to work — but a
+   * CONSUMER's program only loads the declaration files its own imports reach,
+   * and a consumer importing `ConfigManager` and `SharedSessionBroker` does not
+   * necessarily pull that schema domain in. There, `keyof GoodVibesConfig` has
+   * no `conversationGate` member and a plain ConfigManager is rejected by the
+   * very interface that exists to accept it:
+   *
+   *   Type '"conversationGate"' is not assignable to type 'keyof GoodVibesConfig'
+   *
+   * which is what stopped both consumers from passing `conversationGateConfig`
+   * at all. Typing the parameter as `string` makes the contract depend on no
+   * augmentation. test/types/conversation-gate-config-reader.ts pins it from a
+   * consumer's vantage point, resolving through the package name.
    */
-  getCategory?(name: 'conversationGate'): unknown;
+  getCategory?(name: string): unknown;
 }
 
 function clamp(value: number, min: number, max: number): number {
