@@ -684,10 +684,17 @@ export class DaemonSurfaceDeliveryHelper {
     if (record.status === 'completed') {
       const answer = (record.fullOutput ?? record.streamingContent ?? '').trim();
       if (answer) return answer;
+      // Nothing to report. Owner ruling: silence is the right outcome for work
+      // that produced nothing, so this returns an empty body and the pipeline
+      // closes the run out without notifying anyone. The WRFC continuation
+      // notice is the one exception — a chain that is still running is a fact
+      // the owner is owed, because more messages are coming.
+      //
+      // A run that owes a PERSON an answer cannot arrive here empty: the agent
+      // runtime regenerates the reply once and then substitutes a plain notice
+      // (agents/conversational-reply-recovery.ts), so `answer` is set above.
       const wrfcId = typeof record.wrfcId === 'string' ? record.wrfcId.trim() : '';
-      return wrfcId
-        ? 'Finished the first pass. Review, fix, and gate updates will follow here.'
-        : 'Done.';
+      return wrfcId ? 'Finished the first pass. Review, fix, and gate updates will follow here.' : '';
     }
     // `record.progress` is deliberately NOT a fallback: it is a status line
     // ("Turn 3 · Read(src/parse.ts)"), and a status line is not an outcome.
