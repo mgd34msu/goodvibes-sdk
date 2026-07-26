@@ -265,6 +265,10 @@
     "gzip_bytes": 1494,
     "rationale": "re-anchored when the device method catalog/routes and the client build-floor compatibility helper joined the barrel; measured 1245 B gzip @ 1.15.0 release preparation; headroom max(ceil(1245*1.2)=1494, 1245+50=1295) -> 1494 (1.2x dominates)"
   },
+  "./platform/cluster": {
+    "gzip_bytes": 2286,
+    "rationale": "new public package export budget; LAN leader election seam \u2014 ClusterCoordinator, the per-surface election and its surface-id/ranking/holdings helpers, the group runtime and its key/roster/replication types, and the datagram envelope codec; measured 1905 B gzip on the merged cluster branches; headroom max(ceil(1905*1.2)=2286, 1905+50=1955) -> 2286 (1.2x dominates)"
+  },
   "./platform/core": {
     "gzip_bytes": 342,
     "rationale": "public platform seam; measured 285 B gzip @ commit 4e5a5e2; headroom max(ceil(285*1.2)=342, 285+50=335) \u2192 342 (1.2x dominates by 7 B)"
@@ -274,8 +278,8 @@
     "rationale": "platform daemon facade; measured 345 B gzip @ commit 4e5a5e2; headroom max(ceil(345*1.2)=414, 345+50=395) \u2192 414 (1.2x dominates by 19 B)"
   },
   "./platform/daemon/auto-updater": {
-    "gzip_bytes": 3321,
-    "rationale": "DaemonAutoUpdater hourly self-update loop + defaultDownloadBaseUrl, exported for embedders that host the update lifecycle; measured 2767 B gzip at first export; headroom max(ceil(2767*1.2)=3321, 2767+50=2817) -> 3321 (1.2x dominates)"
+    "gzip_bytes": 4370,
+    "rationale": "DaemonAutoUpdater hourly self-update loop + defaultDownloadBaseUrl, exported for embedders that host the update lifecycle; re-anchored after the boot-settle catch-up check and the crash-loop rollback joined the updater (update-schedule, boot-rollback, and the widened lifecycle marker); measured 3641 B gzip on the merged update branch; headroom max(ceil(3641*1.2)=4370, 3641+50=3691) -> 4370 (1.2x dominates); previously 3321 B"
   },
   "./platform/daemon/receipts": {
     "gzip_bytes": 3076,
