@@ -30,16 +30,19 @@ import {
   surfaceState,
 } from './cluster-harness.js';
 
-const QUIET = { info: () => {}, debug: () => {} };
-
 /** A controllable stand-in for the daemon's registration and retry plumbing. */
 function harness(options: {
   readonly identities: (string | null)[];
   readonly running?: () => boolean;
+  readonly maxRetryMs?: number;
 }) {
   const registered: ClusterSurfaceKey[] = [];
   const withdrawn: ClusterSurfaceKey[] = [];
   const inert: { surface: string; action: string }[] = [];
+  const info: { message: string; meta?: Record<string, unknown> }[] = [];
+  const debug: { message: string; meta?: Record<string, unknown> }[] = [];
+  /** Every delay the supervisor asked to be woken after, in order. */
+  const delays: number[] = [];
   let pending: (() => void) | null = null;
   const queue = [...options.identities];
   const supervisor = new SocketSurfaceSupervisor({
@@ -51,15 +54,24 @@ function harness(options: {
     },
     isRunning: options.running ?? (() => true),
     reportInert: (surface, action) => { inert.push({ surface, action }); },
-    logger: QUIET,
-    setTimer: (fn) => { pending = fn; return () => { pending = null; }; },
+    logger: {
+      info: (message, meta) => { info.push({ message, meta }); },
+      debug: (message, meta) => { debug.push({ message, meta }); },
+    },
+    setTimer: (fn, ms) => { pending = fn; delays.push(ms); return () => { pending = null; }; },
     retryMs: 1_000,
+    ...(options.maxRetryMs === undefined ? {} : { maxRetryMs: options.maxRetryMs }),
+    // Pinned to the top of the jitter band so a delay is exactly its target.
+    random: () => 1,
   });
   return {
     supervisor,
     registered,
     withdrawn,
     inert,
+    info,
+    debug,
+    delays,
     /** Fire the pending retry, if one is scheduled. */
     async retry(): Promise<void> {
       const fire = pending;
@@ -141,6 +153,115 @@ describe('socket surfaces — the identity must be real', () => {
     rig.supervisor.onSocketLost('closed');
     await rig.retry();
     expect(rig.registered).toHaveLength(1);
+  });
+
+  test('a workspace that never resolves is reported ONCE, not once per retry', async () => {
+    // A revoked token nobody replaces: permanent, and the daemon keeps trying.
+    // Restating the same ERROR every retry buries the log rather than serving
+    // it, which is the same failure the activity logger was taught not to make.
+    const rig = harness({ identities: [null] });
+    await rig.supervisor.begin();
+    for (let attempt = 0; attempt < 8; attempt += 1) await rig.retry();
+
+    expect(rig.inert).toHaveLength(1);
+    // The repeats are still recorded — just as debug detail, with the count.
+    const repeats = rig.debug.filter((line) => line.message.includes('still cannot be identified'));
+    expect(repeats).toHaveLength(8);
+    expect(repeats.at(-1)?.meta?.attempts).toBe(9);
+  });
+
+  test('the retry interval backs off instead of hammering a provider that is down', async () => {
+    const rig = harness({ identities: [null] });
+    await rig.supervisor.begin();
+    for (let attempt = 0; attempt < 5; attempt += 1) await rig.retry();
+
+    // Base 1s doubling per consecutive failure. A flat timer here is what put
+    // one ERROR a minute in the log forever.
+    expect(rig.delays).toEqual([1_000, 2_000, 4_000, 8_000, 16_000, 32_000]);
+  });
+
+  test('the backoff stops at a ceiling, so a recovered provider is noticed', async () => {
+    const rig = harness({ identities: [null], maxRetryMs: 5_000 });
+    await rig.supervisor.begin();
+    for (let attempt = 0; attempt < 5; attempt += 1) await rig.retry();
+
+    expect(rig.delays).toEqual([1_000, 2_000, 4_000, 5_000, 5_000, 5_000]);
+  });
+
+  test('jitter keeps a group of nodes from re-asking the provider in one wave', async () => {
+    // Two nodes that lost the same provider at the same instant must not come
+    // back at it on the same tick, or the recovering provider gets the whole
+    // group at once.
+    const delaysFor = async (random: () => number): Promise<number[]> => {
+      const seen: number[] = [];
+      let pending: (() => void) | null = null;
+      const supervisor = new SocketSurfaceSupervisor({
+        kind: 'slack',
+        resolveIdentity: async () => null,
+        register: () => () => {},
+        isRunning: () => true,
+        reportInert: () => {},
+        logger: { info: () => {}, debug: () => {} },
+        setTimer: (fn, ms) => { pending = fn; seen.push(ms); return () => { pending = null; }; },
+        retryMs: 1_000,
+        random,
+      });
+      await supervisor.begin();
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const fire: (() => void) | null = pending;
+        pending = null;
+        fire?.();
+        await Promise.resolve();
+        await Promise.resolve();
+      }
+      return seen;
+    };
+
+    const earliest = await delaysFor(() => 0);
+    const latest = await delaysFor(() => 1);
+    // Equal jitter: never less than half the target, never more than it.
+    expect(earliest).toEqual([500, 1_000, 2_000, 4_000]);
+    expect(latest).toEqual([1_000, 2_000, 4_000, 8_000]);
+    // Which is to say two nodes at the same failure count wait different times.
+    expect(earliest[0]).not.toBe(latest[0]);
+  });
+
+  test('recovery closes out the error the operator was shown', async () => {
+    const rig = harness({ identities: [null, null, 'T0BACK555'] });
+    await rig.supervisor.begin();
+    await rig.retry();
+    expect(rig.inert).toHaveLength(1);
+
+    await rig.retry();
+    expect(rig.registered).toEqual([providerSurface('slack', 'T0BACK555')]);
+    const recovery = rig.info.find((line) => line.message.includes('now can be'));
+    expect(recovery).toBeDefined();
+    expect(recovery?.meta?.attempts).toBe(2);
+  });
+
+  test('a later failure run is reported again rather than swallowed', async () => {
+    // The report-once rule is per run of failures, not for the process
+    // lifetime: a token revoked a second time is news again.
+    const rig = harness({ identities: [null, 'T0ACME999', null] });
+    await rig.supervisor.begin();
+    expect(rig.inert).toHaveLength(1);
+    await rig.retry();
+    expect(rig.registered).toHaveLength(1);
+
+    // The socket drops, and this time the identity no longer resolves.
+    rig.supervisor.onSocketLost('closed');
+    await rig.retry();
+    expect(rig.inert).toHaveLength(2);
+  });
+
+  test('a lost socket retries promptly rather than inheriting the backoff', async () => {
+    const rig = harness({ identities: ['T0ACME999'] });
+    await rig.supervisor.begin();
+    rig.supervisor.onSocketLost('closed');
+    // A reconnect usually works at once, so the first attempt after a drop is
+    // at the base delay. A provider that really is down fails the identity
+    // lookup on that attempt and the backoff takes over from there.
+    expect(rig.delays).toEqual([1_000]);
   });
 
   test('disposing withdraws the surface and stops the retries', async () => {
