@@ -345,15 +345,7 @@ export class ChannelReplyPipeline {
     if (!state) return null;
     const policy = await this.resolvePolicy(state.pending.surfaceKind);
     const finalEvents = state.events.filter((event) => event.phase === 'final');
-    const statusEvent: ChannelRenderEvent = {
-      id: `final:${agentId}:${this.now()}`,
-      kind: 'status',
-      phase: 'final',
-      ts: this.now(),
-      text: 'Completed',
-      metadata: {},
-    };
-    // Delta with a floor, matching deliverProgress.
+    // Delta, no floor.
     //
     // Buffered events are rendered only if the reader has not already been sent
     // them. Rendering the lot made the final body a strict SUPERSET of every
@@ -361,23 +353,24 @@ export class ChannelReplyPipeline {
     // fire, and one trivial message arrived as three notifications, each
     // repeating the previous one plus a little more.
     //
-    // The floor is what guarantees a run never ends in silence: the explicit
-    // text always renders (buildRenderedText returns it verbatim on 'final'),
-    // and when every buffered event was already delivered the terminal status
-    // event renders in their place. A completion with nothing new to say still
-    // says "Completed" — it never sends nothing.
-    const candidateEvents = finalEvents.length > 0 ? finalEvents : [...state.events, statusEvent];
-    const freshEvents = selectUndeliveredEvents(state, candidateEvents);
-    const renderEvents = freshEvents.length > 0 ? freshEvents : [statusEvent];
+    // This used to end in a floor: when everything had already been delivered,
+    // a synthesised status event rendered "Completed" so that a run "never ends
+    // in silence". Owner ruling: it should. Work that produced nothing to
+    // report reports nothing, and a bare acknowledgement is not a message —
+    // it is a notification whose entire content is that a notification was
+    // possible. The guarantee that a CONVERSATION always gets an answer moved
+    // to where it belongs, upstream, where there is still a model to ask
+    // (agents/conversational-reply-recovery.ts).
+    const candidateEvents = finalEvents.length > 0 ? finalEvents : state.events;
+    const renderEvents = selectUndeliveredEvents(state, candidateEvents);
     const text = buildRenderedText(explicitText, renderEvents, policy, 'final');
-    // Nothing left to say, so say nothing.
+    // Nothing to say, so say nothing — but close the run out.
     //
-    // Reachable now that the renderer strips a completion report down to the
-    // summary it carries: an agent whose entire output WAS the report, with a
-    // summary that filled in the form and said nothing, renders to empty. An
-    // empty notification is honest about that; a notification made of the
-    // paperwork that produced it is not. The run is still closed out — marked
-    // delivered and untracked — so this cannot leave an agent tracked forever.
+    // Two ways here: a run that finished with no output at all, and a body that
+    // rendered to nothing after the completion report was stripped out of it.
+    // Either way the reader gets no notification, and the pipeline still marks
+    // the events delivered and untracks the agent, so this can never leave an
+    // agent tracked forever or make the poller re-deliver it.
     if (!text.trim()) {
       markEventsDelivered(state, renderEvents);
       if (!options.keepTracking) this.untrack(agentId);
@@ -410,7 +403,7 @@ export class ChannelReplyPipeline {
         policy,
         'final',
         text,
-        finalEvents.length > 0 ? finalEvents : [...state.events.slice(-policy.maxEventsPerUpdate + 1), statusEvent],
+        finalEvents.length > 0 ? finalEvents : state.events.slice(-policy.maxEventsPerUpdate),
       );
     } catch (error) {
       deliveryError = error;

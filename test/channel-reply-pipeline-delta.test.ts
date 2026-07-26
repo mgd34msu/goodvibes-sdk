@@ -139,17 +139,15 @@ describe('the final body is a delta, not a replay', () => {
     h.advance(30_000);
     await h.pipeline.deliverFinal('agent-tg', '');
 
-    expect(h.published).toHaveLength(3);
-    const final = h.published[2]!;
-    expect(final.phase).toBe('final');
-    // The defect: the final body was `[...state.events, statusEvent]` — every
-    // line the two progress updates had just delivered, plus "Completed".
-    expect(final.text).not.toContain('reading the diff');
-    expect(final.text).not.toContain('running the gates');
-    // A completion with nothing new still says something.
-    expect(final.text.trim().length).toBeGreaterThan(0);
+    // The defect this pins: the final body was `[...state.events, statusEvent]`
+    // — every line the two progress updates had just delivered, plus
+    // "Completed". Nothing here is new, so under the owner's ruling nothing is
+    // sent: the two progress notifications stand and no third arrives.
+    expect(h.published).toHaveLength(2);
     expect(occurrences(h.bodies(), 'reading the diff')).toBe(1);
     expect(occurrences(h.bodies(), 'running the gates')).toBe(1);
+    // The run is closed out even though nobody was notified.
+    expect(h.pipeline.has('agent-tg')).toBe(false);
   });
 
   test('progress lines and the answer each appear exactly once across notifications', async () => {
@@ -183,7 +181,7 @@ describe('the final body is a delta, not a replay', () => {
     expect(final.text.trim()).toBe('Done: the flag now defaults to on.');
   });
 
-  test('a final delivered with nothing new at all still sends a terminal message', async () => {
+  test('a final delivered with nothing new at all sends nothing and closes the run', async () => {
     const h = harness('telegram');
     h.track('agent-empty');
     h.advance(45_000);
@@ -192,8 +190,11 @@ describe('the final body is a delta, not a replay', () => {
     await h.pipeline.deliverFinal('agent-empty', '');
     h.advance(30_000);
 
-    expect(h.published).toHaveLength(2);
-    expect(h.published[1]?.text.trim().length).toBeGreaterThan(0);
+    // This used to send a synthesised "Completed". Owner ruling: a bare
+    // acknowledgement is not a message. Silence is the honest outcome, and the
+    // run still ends — the pipeline is not left waiting on this agent.
+    expect(h.bodies()).toEqual(['only line']);
+    expect(h.pipeline.has('agent-empty')).toBe(false);
   });
 });
 

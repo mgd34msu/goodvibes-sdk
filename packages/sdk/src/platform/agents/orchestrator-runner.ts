@@ -27,6 +27,7 @@ import type { RuntimeEventBus } from '../runtime/events/index.js';
 import { emitCommunicationConsumed } from '../runtime/emitters/index.js';
 import { maybeCompactAfterModelContextWarning, summarizeToolArgs } from './orchestrator-utils.js';
 import { buildLayeredOrchestratorSystemPrompt, buildOrchestratorSystemPrompt } from './orchestrator-prompts.js';
+import { completeOrRegenerate, recoverEmptyConversationalReply } from './conversational-reply-recovery.js';
 import {
   buildPerTurnKnowledgeInjection,
   defaultTurnKnowledgeBudgetTokens,
@@ -296,6 +297,7 @@ async function finalizeAgentRun(
     record.status = 'completed';
   }
   record.completedAt = Date.now();
+  recoverEmptyConversationalReply(record);
   cleanupLeakedProcesses(context.processManager, preAgentProcessIds);
 
   if (context.runtimeBus && record.status !== 'failed' && statusAfterLoop !== 'cancelled') {
@@ -896,10 +898,7 @@ export async function runAgentTask(
         }
         record.progress = `Turn ${turn} · Thinking…`;
       } else {
-        conversation.addAssistantMessage(response.content, { usage: response.usage });
-        record.fullOutput = response.content;
-        record.progress = response.content.slice(0, 200) || 'Done.';
-        continueLoop = false;
+        continueLoop = completeOrRegenerate(record, conversation, response);
       }
     }
 

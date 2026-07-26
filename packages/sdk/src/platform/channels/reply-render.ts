@@ -349,12 +349,18 @@ export function normalizeChannelRenderEventFromRuntime(
       // completion line under every answer. It stays in the activity log and
       // on operator surfaces, which read the runtime event directly.
       //
-      // A completion with no output still emits ONE final-phase event, because
-      // an empty event list would leave the pipeline never told the run ended
-      // and the reader in silence. It says the least it can.
+      // A completion with NO output still emits one final-phase event, and
+      // that event carries no text on purpose. Owner ruling: work with nothing
+      // to report reports nothing — silence is the correct outcome, not a
+      // bare "Done." A textless event renders to an empty body, which the
+      // pipeline closes the run out on WITHOUT notifying anyone; an empty
+      // event LIST would instead leave the pipeline never told the run ended.
+      // (A run that owes a person an answer never reaches here empty: the
+      // agent runtime regenerates it and, failing that, substitutes a plain
+      // notice — agents/conversational-reply-recovery.ts.)
       return payload.output?.trim()
         ? [renderEvent('assistant_text', 'final', envelope, { text: payload.output })]
-        : [renderEvent('status', 'final', envelope, { text: 'Done.' })];
+        : [renderEvent('status', 'final', envelope)];
     case 'AGENT_FAILED':
       return [renderEvent('error', 'final', envelope, { text: payload.error })];
     case 'AGENT_CANCELLED':
