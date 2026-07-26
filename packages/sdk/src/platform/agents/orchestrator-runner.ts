@@ -8,8 +8,6 @@ import { ConversationManager, type ConversationMessageSnapshot } from '../core/c
 import { ToolRegistry } from '../tools/registry.js';
 import { join } from 'node:path';
 import type { ProviderRegistry } from '../providers/registry.js';
-import type { ModelDefinition } from '../providers/registry-types.js';
-import { splitModelRegistryKey } from '../providers/registry-helpers.js';
 import { logger } from '../utils/logger.js';
 import { ConsecutiveErrorBreaker } from '../core/circuit-breaker.js';
 import { isBillingOrCreditError, isRateLimitOrQuotaError, isContextSizeExceededError, isNetworkTransportError } from '../types/errors.js';
@@ -44,23 +42,22 @@ import { appendGoodVibesRuntimeAwarenessPrompt } from '../tools/goodvibes-runtim
 import { gateBackgroundToolCall, type BackgroundPermissionManager } from './background-permission-gate.js';
 import { resolveTurnBudget, formatTurnLimitError, TURN_BUDGET_EXHAUSTED, type ResolvedTurnBudget } from './turn-budget.js';
 import { toolFormatTelemetry } from '../runtime/telemetry/tool-format-telemetry.js';
+import {
+  applyContextWindowAwareness,
+  providerQualifiedRouteLabel,
+  resolveContextCompactThreshold,
+  resolveContextWindowModelDefinition,
+} from './orchestrator-runner-context-window.js';
+
+// Model-definition resolution moved to orchestrator-runner-context-window.ts;
+// re-exported here so `agents/index.ts`'s `export *` surface is unchanged.
+export { resolveContextWindowModelDefinition } from './orchestrator-runner-context-window.js';
 
 const MAX_TURNS = 50; // fallback turn budget when no config source (mirrors agents.maxTurns default)
 const MAX_TURNS_CAP = 200; // fallback policy bound when no config source (mirrors agents.maxTurnsCap default)
 const NETWORK_RETRY_DELAYS_MS = [5_000, 10_000, 20_000, 40_000, 60_000]; // exponential back-off on transient network errors
 const RATE_LIMIT_RETRY_DELAY_MS = 60_000; // fixed pause on 429/quota responses
 const RATE_LIMIT_MAX_RETRIES = 3; // cap retries so a sustained quota violation terminates cleanly
-const CONTEXT_COMPACT_THRESHOLD = 0.85; // fraction of context window at which compaction is triggered (default fallback)
-const MIN_WINDOW_FOR_LLM_COMPACT = 12_000; // don't attempt LLM-driven compaction below this token floor
-
-/**
- * Fraction of the context window at which compaction is triggered — from config
- * (agents.contextCompactThreshold) when a config source is present, else the
- * module default (identical value, so behaviour is unchanged by default).
- */
-function resolveContextCompactThreshold(context: AgentOrchestratorRunContext): number {
-  return context.configManager?.get('agents.contextCompactThreshold') ?? CONTEXT_COMPACT_THRESHOLD;
-}
 
 /** The applied turn ceiling: agents.maxTurns default, a per-spawn override, clamped by the agents.maxTurnsCap bound. */
 function resolveRunTurnBudget(context: AgentOrchestratorRunContext, record: AgentRecord): ResolvedTurnBudget {
@@ -183,113 +180,6 @@ export interface AgentOrchestratorRunContext {
   ) => Array<{ provider: LLMProvider; modelId: string; requestedModelId: string }>;
 }
 
-type ActiveProviderRoute = {
-  readonly provider: Pick<LLMProvider, 'name'>;
-  readonly modelId: string;
-  readonly requestedModelId: string;
-};
-
-function parseProviderQualifiedRouteId(modelId: string | undefined): { providerId: string; registryKey: string } | null {
-  const trimmed = modelId?.trim();
-  if (!trimmed?.includes(':')) return null;
-  try {
-    const { providerId } = splitModelRegistryKey(trimmed);
-    return { providerId, registryKey: trimmed };
-  } catch {
-    return null;
-  }
-}
-
-function providerQualifiedRouteLabel(activeRoute: ActiveProviderRoute): string {
-  return (
-    parseProviderQualifiedRouteId(activeRoute.requestedModelId)?.registryKey
-    ?? parseProviderQualifiedRouteId(activeRoute.modelId)?.registryKey
-    ?? `${activeRoute.provider.name}:${activeRoute.requestedModelId || activeRoute.modelId}`
-  );
-}
-
-export function resolveContextWindowModelDefinition(
-  providerRegistry: Pick<ProviderRegistry, 'getCurrentModel' | 'listModels'>,
-  activeRoute: ActiveProviderRoute,
-): ModelDefinition {
-  const models = providerRegistry.listModels();
-  const providerQualifiedRouteIds = [
-    parseProviderQualifiedRouteId(activeRoute.requestedModelId),
-    parseProviderQualifiedRouteId(activeRoute.modelId),
-  ].filter((routeId): routeId is { providerId: string; registryKey: string } => routeId !== null);
-
-  for (const routeId of providerQualifiedRouteIds) {
-    const exactRegistryMatch = models.find(
-      (model) => model.provider === routeId.providerId && model.registryKey === routeId.registryKey,
-    );
-    if (exactRegistryMatch) return exactRegistryMatch;
-  }
-
-  const routeProviderId = providerQualifiedRouteIds[0]?.providerId ?? activeRoute.provider.name;
-  return models.find(
-    (model) =>
-      model.provider === routeProviderId &&
-      (
-        model.id === activeRoute.modelId ||
-        model.id === activeRoute.requestedModelId
-      ),
-  ) ?? providerRegistry.getCurrentModel();
-}
-
-function applyContextWindowAwareness(
-  context: AgentOrchestratorRunContext,
-  record: AgentRecord,
-  modelId: string,
-  modelWindow: number,
-  conversation: ConversationManager,
-  systemPrompt: string,
-  toolTokens: number,
-  turn: number,
-): string {
-  if (!(context.featureFlagManager?.isEnabled('agent-context-window-awareness') ?? true)) {
-    return systemPrompt;
-  }
-
-  if (modelWindow === 0) {
-    logger.debug(`[agent-context-window-awareness] Context window is 0/unknown for model ${modelId}, skipping context validation`);
-    return systemPrompt;
-  }
-
-  const compactThreshold = resolveContextCompactThreshold(context);
-  const messages = conversation.getMessagesForLLM();
-  const msgTokens = estimateConversationTokens(messages);
-  const sysTokens = estimateTokens(systemPrompt);
-  const totalEstimate = msgTokens + sysTokens + toolTokens;
-  const threshold = Math.floor(modelWindow * compactThreshold);
-
-  if (totalEstimate <= threshold) {
-    return systemPrompt;
-  }
-
-  logger.warn(
-    `[AgentOrchestrator] context-window awareness: estimated ${totalEstimate} tokens exceeds ${threshold} (${Math.round(compactThreshold * 100)}% of ${modelWindow}) - compacting`,
-    { agentId: record.id, turn, msgTokens, sysTokens, toolTokens, contextWindow: modelWindow },
-  );
-  record.progress = `Turn ${turn} · Compacting context…`;
-
-  if (modelWindow <= MIN_WINDOW_FOR_LLM_COMPACT) {
-    conversation.replaceMessagesForLLM(compactSmallWindow(messages));
-  } else {
-    conversation.replaceMessagesForLLM(compactSmallWindow(messages, Math.max(10, Math.floor(messages.length / 2))));
-  }
-
-  const remainingAfterMsgs = modelWindow - estimateConversationTokens(conversation.getMessagesForLLM()) - toolTokens;
-  const currentSysTokens = estimateTokens(systemPrompt);
-  if (currentSysTokens > remainingAfterMsgs * compactThreshold) {
-    logger.warn(
-      `[AgentOrchestrator] context-window awareness: system prompt (${currentSysTokens} tokens) too large for remaining window (${remainingAfterMsgs}) - applying layered trim`,
-      { agentId: record.id },
-    );
-    return buildLayeredOrchestratorSystemPrompt(record, remainingAfterMsgs, context);
-  }
-
-  return systemPrompt;
-}
 
 function cleanupLeakedProcesses(
   processManager: ProcessManager | undefined,
