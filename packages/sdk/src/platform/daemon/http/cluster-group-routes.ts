@@ -13,6 +13,7 @@
  * two code paths that drift.
  */
 import type {
+  RotateKeyResult,
   CreateGroupResult,
   ForgetNodeResult,
   GroupOperationResult,
@@ -32,6 +33,7 @@ export interface ClusterGroupVerbs {
   nodes(): Promise<GroupOperationResult<NodesResult>> | GroupOperationResult<NodesResult>;
   groups(): Promise<GroupOperationResult<readonly DiscoveredGroup[]>> | GroupOperationResult<readonly DiscoveredGroup[]>;
   forget(nodeId: string): Promise<GroupOperationResult<ForgetNodeResult>>;
+  rotate(input: { immediate?: boolean }): Promise<GroupOperationResult<RotateKeyResult>>;
   leave(): Promise<GroupOperationResult<{ groupId: string; groupName: string }>>;
   rename(name: string): Promise<GroupOperationResult<{ groupId: string; groupName: string }>>;
 }
@@ -177,6 +179,11 @@ export async function dispatchClusterGroupRoutes(
         );
       }
       return respond(await verbs.rename(name));
+    }
+    case '/api/cluster/rotate': {
+      const body = await context.parseJsonBody(request);
+      if (body instanceof Response) return body;
+      return respond(await verbs.rotate({ immediate: body['immediate'] === true }));
     }
     case '/api/cluster/leave':
       return respond(await verbs.leave());

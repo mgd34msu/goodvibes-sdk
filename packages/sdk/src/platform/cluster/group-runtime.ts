@@ -33,6 +33,7 @@ import {
   readGroupStateDocument,
   sweepGroupState,
   touchMember,
+  withGroupSigningKey,
   type GroupStateDocument,
 } from './group-state.js';
 import {
@@ -42,14 +43,29 @@ import {
   loadGroupState,
   readKeyRecord,
   rotateGroupKeyMaterial,
+  loadReplicaDocument,
   saveGroupKeyMaterial,
   saveGroupState,
+  saveReplicaDocument,
   sweepKeyHistory,
   type ClusterSecretStore,
   type GroupKeyMaterial,
   type GroupKeyRecord,
 } from './group-store.js';
 import { GroupWireRouter } from './group-transport.js';
+import {
+  CONFIG_MESSAGE_TYPES,
+  ConfigReplicationService,
+  type ConfigReplicationStatus,
+  type ReplicatedConfigStore,
+  type ReplicatedSecretStore,
+} from './config-replication.js';
+import {
+  createConfigReplicaDocument,
+  readConfigReplicaDocument,
+  type ConfigReplicaDocument,
+} from './config-replica.js';
+import { isReplicatedConfigPath } from './config-replication-policy.js';
 import { encodeEnvelope, type ClusterEnvelope, type ClusterKeyring } from './protocol-envelope.js';
 import type { ClusterClock, ClusterLogger, ClusterTransport } from './types.js';
 
@@ -93,6 +109,17 @@ export interface ClusterGroupRuntimeOptions {
    * than reporting an empty list as though the node held nothing.
    */
   readonly surfaceHoldings?: (() => readonly SurfaceHolding[]) | undefined;
+  /**
+   * Which machine issues config revisions.
+   *
+   * Supplied by the composition root as the leader election's own answer, so
+   * there is one notion of "master" in the process rather than two that can
+   * disagree. Absent means this machine never issues one, which is the safe
+   * reading for an embedder with no election.
+   */
+  readonly isMaster?: (() => boolean) | undefined;
+  /** The config this machine reads and writes. Absent disables replication. */
+  readonly config?: ReplicatedConfigStore | undefined;
 }
 
 /** Membership as `cluster status` reports it. */
@@ -111,6 +138,7 @@ export class ClusterGroupRuntime {
   private lastRotationCheckAt = 0;
   private unreadableMaterial = false;
   private housekeeping = false;
+  private replication: ConfigReplicationService | null = null;
 
   constructor(private readonly options: ClusterGroupRuntimeOptions) {
     // Built here, not in start(), because the composition root needs
@@ -136,6 +164,18 @@ export class ClusterGroupRuntime {
       onOutOfBandMessage: (raw, type) => void this.admissions.handle(raw, type),
       onForeignBeacon: (groupId, body, version) => this.recordDiscoveredGroup(groupId, body, version),
     });
+    this.replication = new ConfigReplicationService({
+      nodeId: options.nodeId,
+      logger: options.logger,
+      now: () => options.clock.now(),
+      isMaster: () => options.isMaster?.() ?? false,
+      groupState: () => this.state,
+      nodeKeys: () => this.material?.node ?? null,
+      config: () => options.config ?? null,
+      secrets: () => this.replicatedSecrets(),
+      send: (type, body) => this.sendGroupMessage(type, body),
+      persist: (document) => this.persistReplica(document),
+    }, '');
     this.admissions = new GroupAdmissionService({
       nodeId: options.nodeId,
       version: options.version,
@@ -267,6 +307,15 @@ export class ClusterGroupRuntime {
     this.state = material
       ? loadGroupState(this.options.stateDirectory, material.groupId, this.options.clock.now(), this.options.logger)
       : null;
+    if (material && this.replication) {
+      this.replication.adopt(
+        loadReplicaDocument(
+          this.options.stateDirectory,
+          (value) => readConfigReplicaDocument(value, isReplicatedConfigPath),
+          this.options.logger,
+        ) ?? createConfigReplicaDocument(material.groupId),
+      );
+    }
   }
 
   private async hasStoredMaterial(): Promise<boolean> {
@@ -284,6 +333,13 @@ export class ClusterGroupRuntime {
 
   /** Install new material and its roster, persisting both. */
   async adoptMembership(material: GroupKeyMaterial, state: GroupStateDocument): Promise<void> {
+    // Re-seed the replica with the group this machine has just joined. Without
+    // this it keeps the empty group id it was constructed with, and every
+    // incoming settings document is refused for belonging to a different group
+    // — which looks exactly like replication silently not working.
+    if (this.replication && this.replication.replica.groupId !== material.groupId) {
+      this.replication.adopt(createConfigReplicaDocument(material.groupId));
+    }
     this.material = material;
     this.unreadableMaterial = false;
     this.keyringInstance = new GroupKeyring(() => this.requireMaterial(), () => this.options.clock.now());
@@ -301,6 +357,7 @@ export class ClusterGroupRuntime {
    * machine has just left.
    */
   async forgetMembership(): Promise<void> {
+    this.replication?.adopt(createConfigReplicaDocument(''));
     this.material = null;
     this.keyringInstance = null;
     this.state = null;
@@ -313,6 +370,57 @@ export class ClusterGroupRuntime {
     this.state = state;
     saveGroupState(this.options.stateDirectory, state, this.options.logger);
     if (gossip) await this.sendRoster();
+  }
+
+  /** The replicated settings document, for `cluster status`. */
+  replicationStatus(): ConfigReplicationStatus | null {
+    return this.material ? (this.replication?.status() ?? null) : null;
+  }
+
+  /** The replicated settings document, for tests and for a snapshot on demand. */
+  replicaDocument(): ConfigReplicaDocument | null {
+    return this.replication?.replica ?? null;
+  }
+
+  /** Delete a setting across the group. */
+  async announceConfigDelete(path: string, secret = false): Promise<void> {
+    await this.replication?.announceLocalDelete(path, secret);
+  }
+
+  /** Ask the group for the settings this machine should be running. */
+  async requestConfigSnapshot(): Promise<void> {
+    await this.replication?.requestSnapshot();
+  }
+
+  /** Tell the group about a setting an operator just changed on this machine. */
+  async announceConfigChange(path: string): Promise<void> {
+    if (!isReplicatedConfigPath(path)) return;
+    await this.replication?.announceLocalChange(path);
+  }
+
+  /** Tell the group about a credential an operator just set on this machine. */
+  async announceSecretChange(configPath: string): Promise<void> {
+    await this.replication?.announceLocalSecret(configPath);
+  }
+
+  /**
+   * The secret store the replication layer may touch.
+   *
+   * Narrowed to the group's own store so a replicated credential is written
+   * through this machine's SecretsManager — encrypted under this machine's own
+   * keyfile — rather than stored as somebody else's ciphertext.
+   */
+  private replicatedSecrets(): ReplicatedSecretStore | null {
+    const secrets = this.options.secrets;
+    return {
+      get: (key) => secrets.get(key),
+      set: (key, value) => secrets.set(key, value),
+      delete: (key) => secrets.delete(key),
+    };
+  }
+
+  private persistReplica(document: ConfigReplicaDocument): void {
+    saveReplicaDocument(this.options.stateDirectory, document, this.options.logger);
   }
 
   /** Persist changed key material. */
@@ -375,7 +483,12 @@ export class ClusterGroupRuntime {
 
   private async sendRoster(): Promise<void> {
     if (!this.state) return;
-    await this.sendGroupMessage(GROUP_MESSAGE_TYPES.roster, { state: this.state });
+    // The replica revision rides along so a machine that missed a settings
+    // change while it was unreachable notices it is behind and asks.
+    await this.sendGroupMessage(GROUP_MESSAGE_TYPES.roster, {
+      state: this.state,
+      configRevision: this.replication?.replica.revision ?? 0,
+    });
   }
 
   // ── timers ────────────────────────────────────────────────────────────────
@@ -439,6 +552,11 @@ export class ClusterGroupRuntime {
       await this.sendRoster();
     }
     await this.rotateIfDue(now);
+    this.replication?.sweep(now);
+    await this.replication?.reconcileLocalConfig();
+    // A machine that has joined but holds nothing yet keeps asking until the
+    // master answers. Stops the instant anything arrives.
+    if (this.replication?.needsSnapshot) await this.replication.requestSnapshot();
   }
 
   // ── rotation ──────────────────────────────────────────────────────────────
@@ -514,6 +632,15 @@ export class ClusterGroupRuntime {
     });
 
     await this.commitMaterial(rotated);
+    // A removal also replaced the key the group signs with; publish its public
+    // half so every remaining member — and every member that joins later — can
+    // check a reply that claims to come from the group.
+    if (cause === 'revocation' && this.state) {
+      await this.commitState(withGroupSigningKey(this.state, {
+        publicKey: rotated.groupSigning.publicKey,
+        generation: rotated.groupSigning.generation,
+      }), true);
+    }
     this.options.logger.info('cluster: the group key was replaced', {
       generation: record.generation,
       cause,
@@ -536,6 +663,12 @@ export class ClusterGroupRuntime {
       case GROUP_MESSAGE_TYPES.rekey:
         void this.onRekey(envelope);
         return;
+      case CONFIG_MESSAGE_TYPES.snapshot:
+      case CONFIG_MESSAGE_TYPES.delta:
+      case CONFIG_MESSAGE_TYPES.propose:
+      case CONFIG_MESSAGE_TYPES.request:
+        void this.replication?.handle(envelope);
+        return;
       default:
         this.options.logger.debug('cluster: ignored an unrecognised group message', { type: envelope.type });
     }
@@ -555,6 +688,8 @@ export class ClusterGroupRuntime {
       this.options.logger.debug('cluster: a roster message did not parse and was ignored');
       return;
     }
+    const peerRevision = envelope.body['configRevision'];
+    if (typeof peerRevision === 'number') await this.replication?.notePeerRevision(peerRevision);
     const merged = touchMember(mergeGroupState(local, remote), envelope.nodeId, this.options.clock.now());
     if (JSON.stringify(merged) === JSON.stringify(local)) return;
     await this.commitState(merged, false);
@@ -572,6 +707,11 @@ export class ClusterGroupRuntime {
   private async onRekey(envelope: ClusterEnvelope): Promise<void> {
     const material = this.material;
     if (!material) return;
+    // Our own announcement, arriving back through loopback. It deliberately
+    // carries no wrap for this machine — we already hold the key we minted —
+    // so without this the minting node warns that it was left out of its own
+    // rotation, which is both wrong and alarming.
+    if (envelope.nodeId === this.options.nodeId) return;
     const wraps = envelope.body['wraps'];
     if (typeof wraps !== 'object' || wraps === null) return;
     const wrap = (wraps as Record<string, unknown>)[this.options.nodeId];

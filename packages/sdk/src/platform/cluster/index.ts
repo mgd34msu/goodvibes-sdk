@@ -122,6 +122,44 @@ export {
 } from './protocol-envelope.js';
 export { GroupWireRouter, type GroupWireCounters } from './group-transport.js';
 export {
+  classifyDaemonConfigPath,
+  isPortConfigKey,
+  isReplicatedConfigPath,
+  isReplicatedSecretKey,
+  listDaemonConfigClassifications,
+  listReplicatedConfigPaths,
+  NODE_LOCAL_CONFIG_DOMAINS,
+  replicatedSecretKeyFor,
+  replicatedSecretKeys,
+  REPLICATED_CONFIG_DOMAINS,
+  type ConfigPathClassification,
+  type ConfigReplicationClass,
+} from './config-replication-policy.js';
+export {
+  CONFIG_TOMBSTONE_MAX_AGE_MS,
+  createConfigReplicaDocument,
+  deleteReplicaEntry,
+  findReplicaEntry,
+  MAX_REPLICATED_ENTRIES,
+  MAX_REPLICATED_TOMBSTONES,
+  MAX_REPLICATED_VALUE_BYTES,
+  mergeConfigReplica,
+  putReplicaEntry,
+  readConfigReplicaDocument,
+  sweepConfigReplica,
+  type ConfigReplicaDocument,
+  type ConfigReplicaEntry,
+  type ConfigReplicaTombstone,
+} from './config-replica.js';
+export {
+  CONFIG_MESSAGE_TYPES,
+  ConfigReplicationService,
+  type ConfigReplicationHost,
+  type ConfigReplicationStatus,
+  type ReplicatedConfigStore,
+  type ReplicatedSecretStore,
+} from './config-replication.js';
+export {
   ClusterGroupRuntime,
   type ClusterGroupRuntimeOptions,
   type DiscoveredGroup,
@@ -141,6 +179,7 @@ export {
   leaveGroup,
   rejoinGroup,
   renameGroupTo,
+  rotateGroupKey,
   stillOnRoster,
   type CreateGroupResult,
   type ForgetNodeResult,
@@ -155,6 +194,7 @@ export {
   type NodesResult,
   type RemovedNodeReport,
   type RenameGroupResult,
+  type RotateKeyResult,
 } from './group-operations.js';
 export {
   DEFAULT_CLUSTER_GROUP_SETTINGS,

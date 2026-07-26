@@ -30,7 +30,6 @@ import {
 import {
   admitMember,
   findTombstone,
-  isCurrentMember,
   MAX_GROUP_MEMBERS,
   readmitMember,
   type GroupMember,
@@ -258,6 +257,7 @@ export class GroupAdmissionService {
         keys: material.keys,
         currentGeneration: material.currentGeneration,
         state,
+        groupSigning: material.groupSigning,
       },
       agreementKey,
       path,
@@ -272,7 +272,9 @@ export class GroupAdmissionService {
     };
     await this.host.send(path === 'join'
       ? encodeJoinClassMessage(draft, material.groupId, material.joinVerifier)
-      : encodeIdentityClassMessage(draft, material.groupId, material.node));
+      // Signed as the GROUP, not as this machine: the returning member's roster
+      // is stale and may not contain this machine at all.
+      : encodeIdentityClassMessage(draft, material.groupId, material.groupSigning));
   }
 
   // ── getting in ────────────────────────────────────────────────────────────
@@ -337,7 +339,7 @@ export class GroupAdmissionService {
           },
         },
         material.groupId,
-        material.node,
+        material.node.identity,
       ),
     ));
   }
@@ -362,27 +364,54 @@ export class GroupAdmissionService {
   /**
    * The reply to a REJOIN.
    *
-   * When the responder is on the roster THIS node still holds, its identity
-   * signature is checked and a bad one is dropped. When it is not — a machine
-   * admitted while this one was away — there is nothing local to check it
-   * against, so the grant is accepted on the strength of the seal alone: it was
-   * encrypted to this node's agreement key, and a wrong one simply produces a
-   * group key nobody accepts, which this node notices and retries. That
-   * residual is stated rather than hidden; closing it fully needs a group-level
-   * signing key, which is a larger change than this warrants.
+   * There is NO path here that accepts a reply on the strength of the seal
+   * alone. The seal gives confidentiality — only this machine can read the
+   * grant — and says nothing whatever about who sent it, so accepting on it
+   * would let anything on the network hand a returning machine a group key
+   * nobody accepts and keep it out of its own group indefinitely.
+   *
+   * Two authenticators are accepted, and both are things this machine held
+   * BEFORE it went away:
+   *
+   *   - the GROUP's signing key, which any current member can sign with. This
+   *     is the normal path and it works no matter who answers, including a
+   *     machine admitted while this one was switched off;
+   *
+   *   - failing that, the identity key of a responder that is still on the
+   *     roster this machine stored. This covers the one case the group signing
+   *     key cannot: a REMOVAL happened while this machine was away, so the
+   *     group signing key rotated and the copy here is a generation behind.
+   *
+   * When neither matches, the reply is dropped and the request times out with a
+   * message naming `cluster join`. That is the honest residual: a machine that
+   * was away across a removal AND no longer recognises any current member has
+   * nothing left to trust, and being told to re-join with the current key is
+   * the correct answer rather than trusting an unauthenticated reply.
    */
   private onRejoinReply(raw: string): void {
     const pending = this.pending;
     if (!pending || pending.kind !== 'rejoin') return;
     const peeked = peekIdentityClassMessage(raw);
     if (!peeked || peeked.body['forNodeId'] !== this.host.nodeId) return;
-    const state = this.host.state();
-    const responder = state?.members.find((entry) => entry.nodeId === peeked.nodeId);
-    if (responder && !checkIdentityClassMessage(raw, responder.identityKey)?.identityProved) return;
-    if (state && !responder && isCurrentMember(state, peeked.nodeId)) return;
+    if (!this.rejoinReplyIsAuthentic(raw, peeked.nodeId)) {
+      this.host.logger.debug('cluster: dropped a reply to this machine\'s return that it could not authenticate', {
+        from: peeked.nodeId,
+      });
+      return;
+    }
     const grant = openGrant(pending.node, peeked.body['sealed'], 'rejoin');
     if (!grant) return;
     this.settle({ ok: true, grant, node: pending.node });
+  }
+
+  /** Group signing key first, then a remembered member's identity key. Never neither. */
+  private rejoinReplyIsAuthentic(raw: string, responderNodeId: string): boolean {
+    const groupSigningKey = this.host.material()?.groupSigning.publicKey
+      ?? this.host.state()?.groupSigning.publicKey;
+    if (groupSigningKey && checkIdentityClassMessage(raw, groupSigningKey)?.identityProved) return true;
+    const responder = this.host.state()?.members.find((entry) => entry.nodeId === responderNodeId);
+    if (!responder) return false;
+    return checkIdentityClassMessage(raw, responder.identityKey)?.identityProved ?? false;
   }
 
   private await(

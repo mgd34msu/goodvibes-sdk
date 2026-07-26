@@ -24,6 +24,7 @@ import {
   signWithIdentity,
   verifyWithIdentity,
   type NodeKeyMaterial,
+  type NodeKeyPairMaterial,
   type WrappedKeyEnvelope,
 } from './group-crypto.js';
 import {
@@ -32,7 +33,12 @@ import {
   readGroupStateDocument,
   type GroupStateDocument,
 } from './group-state.js';
-import { readKeyRecord, type GroupKeyRecord } from './group-store.js';
+import {
+  readGroupSigningMaterial,
+  readKeyRecord,
+  type GroupKeyRecord,
+  type GroupSigningMaterial,
+} from './group-store.js';
 import {
   canonicalizeEnvelope,
   encodeEnvelopeWith,
@@ -228,6 +234,12 @@ export interface AdmissionGrant {
   readonly keys: readonly GroupKeyRecord[];
   readonly currentGeneration: number;
   readonly state: GroupStateDocument;
+  /**
+   * The group's signing key pair. Handed over so this machine can answer a
+   * returning member AS THE GROUP, and so it holds the public half to check
+   * such an answer with if it is ever the one coming back.
+   */
+  readonly groupSigning: GroupSigningMaterial;
 }
 
 function readJoinRequestBody(body: Record<string, unknown>): JoinRequestBody | null {
@@ -279,6 +291,8 @@ export function readAdmissionGrant(value: unknown): AdmissionGrant | null {
   if (!state) return null;
   const keys = readKeyRecords(candidate['keys']);
   if (!keys.some((entry) => entry.generation === Math.trunc(currentGeneration))) return null;
+  const groupSigning = readGroupSigningMaterial(candidate['groupSigning']);
+  if (!groupSigning) return null;
   return {
     joinKey: candidate['joinKey'],
     joinSalt: candidate['joinSalt'],
@@ -286,6 +300,7 @@ export function readAdmissionGrant(value: unknown): AdmissionGrant | null {
     keys,
     currentGeneration: Math.trunc(currentGeneration),
     state,
+    groupSigning,
   };
 }
 
@@ -296,13 +311,20 @@ export function encodeJoinClassMessage(draft: EnvelopeDraft, groupId: string, jo
   return encodeEnvelopeWith(draft, groupId, (canonical) => authenticateWithSharedKey(canonical, joinVerifier));
 }
 
-/** Build a REJOIN / REJOIN_ACCEPT datagram, signed with this node's identity key. */
+/**
+ * Build a REJOIN / REJOIN_ACCEPT datagram, signed with an ed25519 key pair.
+ *
+ * A REJOIN is signed with the requesting node's own identity key, because the
+ * roster is where the group looks it up. A REJOIN_ACCEPT is signed with the
+ * GROUP's signing key, because the returning machine's roster is stale and the
+ * only thing it can be sure of is what the group looked like when it left.
+ */
 export function encodeIdentityClassMessage(
   draft: EnvelopeDraft,
   groupId: string,
-  node: NodeKeyMaterial,
+  signer: NodeKeyPairMaterial,
 ): string {
-  return encodeEnvelopeWith(draft, groupId, (canonical) => signWithIdentity(node.identity, canonical));
+  return encodeEnvelopeWith(draft, groupId, (canonical) => signWithIdentity(signer, canonical));
 }
 
 // ── verifying out-of-band datagrams ────────────────────────────────────────

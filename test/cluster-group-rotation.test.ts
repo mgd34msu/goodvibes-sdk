@@ -19,6 +19,7 @@ import {
   type GroupTestWorld,
 } from './cluster-group-harness.js';
 import { createGroup, joinGroup } from '../packages/sdk/src/platform/cluster/group-operations.js';
+import { advance } from './cluster-group-harness.js';
 import { ClusterCoordinator } from '../packages/sdk/src/platform/cluster/coordinator.js';
 import {
   adoptGroupKeys,
@@ -182,6 +183,34 @@ describe('rotation under continuous traffic', () => {
   });
 });
 
+describe('the machine that mints a rotation', () => {
+  test('does not warn that its own rotation left it out', async () => {
+    const created = createGroupWorld();
+    world = created;
+    const warnings: string[] = [];
+    const noisy = {
+      debug: () => {},
+      info: () => {},
+      warn: (message: string) => { warnings.push(message); },
+      error: (message: string) => { warnings.push(message); },
+    };
+    const a = await addGroupNode(created, 'node-a', { logger: noisy });
+    const b = await addGroupNode(created, 'node-b');
+    const group = await createGroup(a.context, { displayName: 'workshop' });
+    if (!group.ok) return;
+    await joinGroup(b.context, { groupId: group.data.groupId, joinKey: group.data.joinKey });
+    await settle();
+
+    await a.runtime.rotate('scheduled', 'test rotation');
+    await advance(created, 5_000);
+
+    // Its own announcement comes back through loopback carrying no wrap for it.
+    expect(warnings.filter((line) => line.includes('did not include this machine'))).toEqual([]);
+    // And the other machine did get one.
+    expect(b.runtime.keyMaterial?.currentGeneration).toBe(a.runtime.keyMaterial?.currentGeneration);
+  });
+});
+
 describe('the dual-generation acceptance window', () => {
   function materialWith(generations: readonly number[], now: number): GroupKeyMaterial {
     return {
@@ -203,6 +232,7 @@ describe('the dual-generation acceptance window', () => {
         identity: { publicKey: 'p'.repeat(43), privateKey: 'q'.repeat(43) },
         agreement: { publicKey: 'r'.repeat(43), privateKey: 's'.repeat(43) },
       },
+      groupSigning: { publicKey: 'g'.repeat(43), privateKey: 'h'.repeat(43), generation: 0 },
     };
   }
 
@@ -263,6 +293,7 @@ describe('two rotations at once', () => {
         identity: { publicKey: 'p'.repeat(43), privateKey: 'q'.repeat(43) },
         agreement: { publicKey: 'r'.repeat(43), privateKey: 's'.repeat(43) },
       },
+      groupSigning: { publicKey: 'g'.repeat(43), privateKey: 'h'.repeat(43), generation: 0 },
     };
 
     // Whichever order the two announcements arrive in, both sides land on the
@@ -313,6 +344,7 @@ describe('key history bounds', () => {
         identity: { publicKey: 'p'.repeat(43), privateKey: 'q'.repeat(43) },
         agreement: { publicKey: 'r'.repeat(43), privateKey: 's'.repeat(43) },
       },
+      groupSigning: { publicKey: 'g'.repeat(43), privateKey: 'h'.repeat(43), generation: 0 },
     };
     let now = 5_000_000;
     for (let index = 0; index < 100; index += 1) {
