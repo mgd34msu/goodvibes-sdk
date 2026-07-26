@@ -130,6 +130,16 @@ export interface SlackSocketModeClientOptions {
   readonly integration: SlackIntegration;
   readonly onEnvelope: (envelope: SlackSocketModeEnvelope, client: SlackSocketModeClient) => void | Promise<void>;
   readonly WebSocketImpl?: typeof WebSocket | undefined;
+  /**
+   * The socket closed on its own — not because `stop()` was called.
+   *
+   * A node under LAN leadership has to know: it holds the Slack surface on the
+   * strength of being able to read it, and a dropped socket means it cannot.
+   * Staying nominally responsible while reading nothing is the starvation this
+   * whole design exists to avoid, so the holder stands down and lets another
+   * machine take the workspace.
+   */
+  readonly onClosed?: ((reason: string) => void) | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -489,6 +499,8 @@ export class SlackIntegration {
 export class SlackSocketModeClient {
   private socket: WebSocket | null = null;
   private started = false;
+  /** True while `stop()` is closing the socket, so its close is not a loss. */
+  private stopping = false;
   private readonly WebSocketImpl: typeof WebSocket;
 
   constructor(private readonly options: SlackSocketModeClientOptions) {
@@ -512,16 +524,20 @@ export class SlackSocketModeClient {
       });
     });
     socket.addEventListener('close', () => {
+      const wasDeliberate = this.stopping;
       this.started = false;
       this.socket = null;
+      if (!wasDeliberate) this.options.onClosed?.('the Slack Socket Mode connection closed');
     });
     return connection;
   }
 
   stop(): void {
+    this.stopping = true;
     this.started = false;
     this.socket?.close();
     this.socket = null;
+    this.stopping = false;
   }
 
   ack(envelopeId: string, payload?: Record<string, unknown>): void {
