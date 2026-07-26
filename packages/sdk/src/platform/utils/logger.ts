@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
-import { appendFile, mkdirSync, existsSync, statSync, renameSync } from 'fs';
-import { join } from 'path';
+import { appendFileSync, mkdirSync, existsSync, statSync, renameSync } from 'fs';
+import { dirname, join } from 'path';
 
 /** Maximum buffered entries before a flush is triggered. */
 const LOG_BUFFER_MAX = 10;
@@ -16,6 +16,24 @@ const LOG_FLUSH_INTERVAL_MS = 100;
  * disk, older history is reclaimed).
  */
 const LOG_ROTATION_MAX_BYTES = 10 * 1024 * 1024;
+/**
+ * Hard ceiling on entries held in memory.
+ *
+ * Two states buffer without writing: before a host has named a destination,
+ * and while a flush is failing. Both used to grow without limit, which turns a
+ * logger into a memory leak in exactly the situation (a broken destination)
+ * where the process is already in trouble. Past the cap the OLDEST entries are
+ * dropped and counted, and the count is written into the log the moment one
+ * lands — a gap that says how big it is beats a silent one.
+ */
+const MAX_BUFFERED_ENTRIES = 1_000;
+/**
+ * Consecutive failed flushes tolerated before the destination is declared
+ * unwritable. Above one so a transient error (a directory being replaced, a
+ * momentarily full disk) does not mute the log; small enough that a
+ * permanently broken destination is recognised within a second.
+ */
+const MAX_CONSECUTIVE_FLUSH_FAILURES = 3;
 const REDACTED = '[REDACTED]';
 const SENSITIVE_KEY_PATTERN = /(authorization|api[-_]?key|token|password|passwd|secret|credential|cookie|set-cookie)/i;
 
@@ -23,15 +41,59 @@ const SENSITIVE_KEY_PATTERN = /(authorization|api[-_]?key|token|password|passwd|
 export interface ActivityLoggerOptions {
   /** Rotation threshold in bytes; the live file rotates to `.1` once it reaches this size. */
   readonly maxBytes?: number | undefined;
+  /**
+   * Where the logger reports its own failure, exactly once, when it gives up on
+   * a destination. Defaults to `process.stderr`. Injected by tests, which
+   * cannot assert "reported once" against a global stream.
+   */
+  readonly report?: ((line: string) => void) | undefined;
+}
+
+/** Every logger with a destination, so one process-exit hook can flush them all. */
+const liveLoggers = new Set<ActivityLogger>();
+let exitHookInstalled = false;
+
+/**
+ * Flush every configured logger synchronously.
+ *
+ * Installed on `process.exit`, which is what makes the guarantee hold for exit
+ * paths the SDK does not own the call site of. `process.exit()` runs 'exit'
+ * listeners before terminating, and only synchronous work in them completes —
+ * which is the reason the flush path is synchronous at all.
+ */
+function flushAllLoggers(): void {
+  for (const instance of liveLoggers) {
+    // One logger with a broken destination must not stop the others from
+    // landing. An exit hook that throws is also an exit hook that changes how
+    // the process ends, which is never this module's business.
+    try { instance.flushSync(); } catch { /* nothing left to log it with */ }
+  }
+}
+
+function installExitHook(): void {
+  if (exitHookInstalled) return;
+  if (typeof process?.on !== 'function') return;
+  exitHookInstalled = true;
+  process.on('exit', flushAllLoggers);
+}
+
+function errorCode(error: unknown): string {
+  const code = (error as { code?: unknown } | null)?.code;
+  return typeof code === 'string' ? code : '';
 }
 
 /**
  * ActivityLogger — Persistent debug logger for GoodVibes.
  * Writes to .goodvibes/logs/activity.md
  *
- * Uses a buffered async writer to avoid blocking the event loop on every
- * log entry. Entries are flushed when the buffer reaches LOG_BUFFER_MAX
- * or after LOG_FLUSH_INTERVAL_MS, whichever comes first.
+ * Entries are batched — flushed when the buffer reaches LOG_BUFFER_MAX or after
+ * LOG_FLUSH_INTERVAL_MS, whichever comes first — so a busy process does not
+ * touch the disk per line. The batched write itself is SYNCHRONOUS. It used to
+ * be `appendFile` with a callback, which meant a write could still be in flight
+ * when the process ended: a daemon handing over or shutting down took its last
+ * lines with it, and the moments a log is dropped are exactly the moments it is
+ * needed. A batch is at most LOG_BUFFER_MAX entries, so the blocking cost is
+ * bounded and paid at most ten times a second.
  *
  * Rotation: the live file is size-capped at `maxBytes` (default
  * LOG_ROTATION_MAX_BYTES). When a flush would carry the file past the cap it
@@ -39,6 +101,12 @@ export interface ActivityLoggerOptions {
  * and a fresh file is started. The size is tracked with an in-memory byte
  * counter — seeded once from the existing file at configure() and incremented
  * per flush — so the hot write path never stats the file per entry.
+ *
+ * Destination loss: a log directory that disappears under a running process
+ * (a temp dir reclaimed at teardown, a workspace moved) is recreated and the
+ * write retried. A destination that cannot be written at all is reported ONCE
+ * and then abandoned — the logger stops accepting entries rather than emitting
+ * `flush error: ENOENT` on a loop into a stream nobody is reading.
  */
 export class ActivityLogger {
   private logPath: string | null = null;
@@ -47,6 +115,12 @@ export class ActivityLogger {
   /** Bytes in the live file since the last rotation; drives the cheap size check. */
   private liveBytes = 0;
   private maxBytes = LOG_ROTATION_MAX_BYTES;
+  private report: (line: string) => void = (line) => { process.stderr.write(line); };
+  /** True once the destination has been declared unwritable and reported. */
+  private degraded = false;
+  private consecutiveFailures = 0;
+  /** Entries lost to the buffer cap, reported in the log once one lands. */
+  private droppedEntries = 0;
 
   /**
    * True once a destination has been named. Until then every info/warn/error
@@ -60,6 +134,15 @@ export class ActivityLogger {
     return this.logPath !== null;
   }
 
+  /**
+   * True once the logger has given up on its destination. A host that wants to
+   * know whether its log is real can ask; nothing in the platform is required
+   * to.
+   */
+  get isDegraded(): boolean {
+    return this.degraded;
+  }
+
   configure(logDir: string, options: ActivityLoggerOptions = {}): void {
     if (!existsSync(logDir)) {
       mkdirSync(logDir, { recursive: true });
@@ -68,6 +151,11 @@ export class ActivityLogger {
     if (options.maxBytes !== undefined && options.maxBytes > 0) {
       this.maxBytes = options.maxBytes;
     }
+    if (options.report) this.report = options.report;
+    // Naming a destination is a host saying "log here now", so it clears a
+    // previous destination's verdict: the new one has not failed yet.
+    this.degraded = false;
+    this.consecutiveFailures = 0;
     // Seed the byte counter from the existing file once, so rotation accounts
     // for history written by earlier processes without stat-ing on every write.
     try {
@@ -75,22 +163,44 @@ export class ActivityLogger {
     } catch {
       this.liveBytes = 0;
     }
+    liveLoggers.add(this);
+    installExitHook();
     if (this.buffer.length > 0) {
-      this.flush();
+      this.flushSync();
     }
+  }
+
+  /**
+   * Stop tracking this logger for the process-exit flush. For hosts and tests
+   * that create their own instances; the shared singleton lives for the life of
+   * the process.
+   */
+  dispose(): void {
+    this.flushSync();
+    if (this.flushTimer !== null) {
+      clearTimeout(this.flushTimer);
+      this.flushTimer = null;
+    }
+    liveLoggers.delete(this);
   }
 
   private scheduleFlush(): void {
     if (this.flushTimer !== null) return;
-    this.flushTimer = setTimeout(() => this.flush(), LOG_FLUSH_INTERVAL_MS);
+    this.flushTimer = setTimeout(() => this.flushSync(), LOG_FLUSH_INTERVAL_MS);
     this.flushTimer.unref?.();
   }
 
   /**
    * Rotate the live file to `.1` (one backup, overwritten) when it has reached
    * the size cap. Cheap: acts only on the in-memory byte counter, never stats
-   * per entry. A rotation failure leaves the current file in place — an
-   * append that cannot rotate is never dropped.
+   * per entry.
+   *
+   * A rotation that cannot happen is never reported here. A missing file or
+   * directory is the destination-loss case the append path already handles, and
+   * any other rotation failure simply leaves the current file in place — an
+   * append that cannot rotate is never dropped, so there is nothing a reader
+   * could do with a message about it beyond the one the append path will send
+   * if the write itself then fails.
    */
   private rotateIfNeeded(): void {
     if (!this.logPath) return;
@@ -98,41 +208,127 @@ export class ActivityLogger {
     try {
       renameSync(this.logPath, `${this.logPath}.1`);
       this.liveBytes = 0;
-    } catch (err) {
-      // Cannot log the logger's own error without recursion.
-      process.stderr.write(`[ActivityLogger] rotation error: ${(err as Error).message}\n`);
+    } catch (error) {
+      // The live file is gone: whatever it held is not this process's to keep,
+      // and the byte counter must not stay above the cap or every subsequent
+      // flush would retry the same rename.
+      if (errorCode(error) === 'ENOENT') this.liveBytes = 0;
     }
   }
 
-  private flush(): void {
-    this.flushTimer = null;
+  /**
+   * Write everything buffered, now, on this thread.
+   *
+   * Public because a host with a controlled exit path (a clean stop, a signal
+   * handler, an update handover that hands the port to a new process) must be
+   * able to make its final lines land at a point it chooses rather than trust
+   * that the process happens to stay alive long enough.
+   */
+  flushSync(): void {
+    if (this.flushTimer !== null) {
+      clearTimeout(this.flushTimer);
+      this.flushTimer = null;
+    }
+    if (this.degraded) return;
     if (this.buffer.length === 0) return;
     if (!this.logPath) return;
     this.rotateIfNeeded();
-    const chunk = this.buffer.splice(0).join('');
-    this.liveBytes += Buffer.byteLength(chunk, 'utf-8');
-    appendFile(this.logPath, chunk, (err) => {
-      if (err) {
-        // Cannot log the logger's own error without recursion.
-        process.stderr.write(`[ActivityLogger] flush error: ${err.message}\n`);
+    const notice = this.takeDropNotice();
+    const chunk = notice + this.buffer.join('');
+    this.buffer.length = 0;
+    if (this.append(chunk)) {
+      this.liveBytes += Buffer.byteLength(chunk, 'utf-8');
+      this.consecutiveFailures = 0;
+      return;
+    }
+    this.recordFailedFlush(chunk);
+  }
+
+  /**
+   * One append attempt, with the destination recreated once if it vanished.
+   *
+   * Recreating is the honest response to the case actually observed: the
+   * directory existed when the host named it and was removed underneath a
+   * running process. Recreating restores exactly what the host asked for. It is
+   * attempted once per flush, never in a loop — if the path cannot be a
+   * directory at all, the retry fails and the caller degrades.
+   */
+  private append(chunk: string): boolean {
+    const path = this.logPath;
+    if (!path) return false;
+    try {
+      appendFileSync(path, chunk, 'utf-8');
+      return true;
+    } catch (error) {
+      if (errorCode(error) !== 'ENOENT') return false;
+      try {
+        mkdirSync(dirname(path), { recursive: true });
+        appendFileSync(path, chunk, 'utf-8');
+        // The file is new, whatever it was before.
+        this.liveBytes = 0;
+        return true;
+      } catch {
+        return false;
       }
-    });
+    }
+  }
+
+  /**
+   * Hold a failed batch for the next attempt, and give up once a destination
+   * has failed MAX_CONSECUTIVE_FLUSH_FAILURES times in a row.
+   *
+   * Giving up is the point. The prior behaviour wrote `[ActivityLogger] flush
+   * error: ENOENT` to stderr on every single flush — once per 100ms for as long
+   * as the process lived — while continuing to accept entries as though they
+   * were being recorded. One report, then stop accepting, is what a reader can
+   * actually act on.
+   */
+  private recordFailedFlush(chunk: string): void {
+    this.consecutiveFailures += 1;
+    if (this.consecutiveFailures < MAX_CONSECUTIVE_FLUSH_FAILURES) {
+      this.buffer.unshift(chunk);
+      this.enforceBufferCap();
+      this.scheduleFlush();
+      return;
+    }
+    this.degraded = true;
+    this.buffer.length = 0;
+    this.droppedEntries = 0;
+    this.report(
+      `[ActivityLogger] ${this.logPath} is not writable after ${MAX_CONSECUTIVE_FLUSH_FAILURES} attempts; `
+      + 'activity logging is stopped for this destination.\n',
+    );
+  }
+
+  /** Drop oldest entries past the cap, remembering how many were lost. */
+  private enforceBufferCap(): void {
+    if (this.buffer.length <= MAX_BUFFERED_ENTRIES) return;
+    this.droppedEntries += this.buffer.length - MAX_BUFFERED_ENTRIES;
+    this.buffer.splice(0, this.buffer.length - MAX_BUFFERED_ENTRIES);
+  }
+
+  private takeDropNotice(): string {
+    if (this.droppedEntries === 0) return '';
+    const dropped = this.droppedEntries;
+    this.droppedEntries = 0;
+    return `[${new Date().toISOString()}] [WARN] ActivityLogger dropped ${dropped} buffered entries before this point (in-memory buffer cap ${MAX_BUFFERED_ENTRIES})\n`;
   }
 
   private write(level: string, message: string, data?: Record<string, unknown>) {
+    // Abandoned destination: entries are dropped deliberately and silently.
+    // The one report has already been made; counting them here would only grow
+    // a number nobody will ever read.
+    if (this.degraded) return;
     const timestamp = new Date().toISOString();
     let entry = `[${timestamp}] [${level}] ${message}\n`;
     if (data) {
       entry += '```json\n' + JSON.stringify(redactLogData(data), null, 2) + '\n```\n';
     }
     this.buffer.push(entry);
+    this.enforceBufferCap();
     if (this.buffer.length >= LOG_BUFFER_MAX) {
       // Buffer full — flush immediately without waiting for the timer
-      if (this.flushTimer !== null) {
-        clearTimeout(this.flushTimer);
-        this.flushTimer = null;
-      }
-      this.flush();
+      this.flushSync();
     } else {
       this.scheduleFlush();
     }
@@ -148,6 +344,17 @@ export const logger = new ActivityLogger();
 
 export function configureActivityLogger(logDir: string, options?: ActivityLoggerOptions): void {
   logger.configure(logDir, options);
+}
+
+/**
+ * Make everything the shared logger holds land on disk, now.
+ *
+ * Called by hosts at the exit paths they control. The process-exit hook covers
+ * the ones they do not, but a host that is deliberately handing over should not
+ * depend on a backstop to record why.
+ */
+export function flushActivityLogSync(): void {
+  logger.flushSync();
 }
 
 /**
