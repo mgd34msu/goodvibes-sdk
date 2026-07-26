@@ -8,6 +8,7 @@ import type { ExecInput, ExecCommandInput, ExecCommandResult, ExecVerbosity } fr
 import { ProcessManager } from '../shared/process-manager.js';
 import { guardExecCommand, formatDenialResponse } from './ast-guard.js';
 import { executeFileOperations } from './file-ops.js';
+import { formatResult } from './result-format.js';
 import type { FeatureFlagManager } from '../../runtime/feature-flags/index.js';
 import { ALL_COMMAND_CLASSES } from '../../runtime/permissions/normalization/verdict.js';
 import { mapWithConcurrency, sleep } from '../../utils/concurrency.js';
@@ -276,7 +277,7 @@ async function runCommand(
       success: false,
       denied: true,
       denial_detail: denial,
-    } as ExecCommandResult;
+    };
   }
 
   checkDangerous(cmdStr);
@@ -829,62 +830,6 @@ async function executeResolvedCommands(
   }
 
   return results;
-}
-
-function formatResult(result: ExecCommandResult, verbosity: ExecVerbosity): Record<string, unknown> {
-  if (result.skipped) {
-    return { cmd: result.cmd, success: false, skipped: true };
-  }
-
-  switch (verbosity) {
-    case 'count_only':
-      return { cmd: result.cmd, exit_code: result.exit_code, success: result.success };
-    case 'minimal': {
-      const firstStdout = result.stdout.split('\n')[0] ?? '';
-      const firstStderr = result.stderr.split('\n')[0] ?? '';
-      return {
-        cmd: result.cmd,
-        exit_code: result.exit_code,
-        success: result.success,
-        stdout: firstStdout,
-        stderr: firstStderr,
-        ...(result.expectation_error && { expectation_error: result.expectation_error }),
-        ...(result.timed_out && { timed_out: true }),
-        ...(result.cancelled && { cancelled: true }),
-        ...(result.process_id && { process_id: result.process_id, pid: result.pid }),
-        ...(result.progress_file && { progress_file: result.progress_file }),
-        ...(result.warnings && { warnings: result.warnings }),
-        ...(result.withheld_env && result.withheld_env.length > 0 && { withheld_env: result.withheld_env }),
-        ...(result.pending_prompt && { pending_prompt: result.pending_prompt }),
-        ...(result.prompt_declined && { prompt_declined: true }),
-      };
-    }
-    case 'verbose':
-      return { ...result };
-    case 'standard':
-    default:
-      return {
-        cmd: result.cmd,
-        exit_code: result.exit_code,
-        success: result.success,
-        stdout: result.stdout,
-        stderr: result.stderr,
-        ...(result.expectation_error && { expectation_error: result.expectation_error }),
-        ...(result.timed_out && { timed_out: true }),
-        ...(result.cancelled && { cancelled: true }),
-        ...(result.process_id && { process_id: result.process_id, pid: result.pid }),
-        ...(result.stdout_truncated && { stdout_truncated: true }),
-        ...(result.stderr_truncated && { stderr_truncated: true }),
-        ...(result.retries !== undefined && { retries: result.retries }),
-        ...(result.progress_file && { progress_file: result.progress_file }),
-        ...(result.warnings && { warnings: result.warnings }),
-        ...(result.withheld_env && result.withheld_env.length > 0 && { withheld_env: result.withheld_env }),
-        ...(result.pty && { pty: true }),
-        ...(result.prompts_answered !== undefined && { prompts_answered: result.prompts_answered }),
-        ...(result.pending_prompt && { pending_prompt: result.pending_prompt }),
-        ...(result.prompt_declined && { prompt_declined: true }),
-      };
-  }
 }
 
 export function createExecTool(

@@ -103,9 +103,34 @@ export interface CompoundVerdict {
  * Patterns that indicate potential obfuscation or bypass attempts.
  * Each entry provides a description and a predicate.
  */
+/**
+ * A `%` followed by two hex-ish characters is grammatically identical in a
+ * printf/strftime specifier (`%4d`, `%02d`, `%2f`, `date +%ad`) and in a URL
+ * escape (`%2F`, `%20`). Testing every argument against `/%[0-9a-fA-F]{2}/`
+ * therefore reported ordinary formatting commands as obfuscation. Percent
+ * encoding now only counts when the argument carries it the way a URI does —
+ * an explicit `scheme://`, or an encoded path separator (`%2F`, `%5C`), which
+ * is the evasion this check exists to catch — and the printf family, which
+ * legitimately emits `%2f` (float, width 2), is exempt.
+ *
+ * This narrows an existing detector; it adds no new denial class. An encoded
+ * NUL keeps its own dedicated 'null-byte injection attempt' check below.
+ */
+const PERCENT_ESCAPE = /%[0-9a-fA-F]{2}/;
+const URI_SCHEME = /[A-Za-z][A-Za-z0-9+.-]*:\/\//;
+/** Encoded `/` and `\` — separators that change path meaning once decoded. */
+const ENCODED_PATH_SEPARATOR = /%(?:2[fF]|5[cC])/;
+const FORMAT_SPECIFIER_COMMANDS = new Set(['printf', 'awk', 'gawk', 'mawk', 'nawk', 'seq']);
+
+function isPercentEncoded(arg: string, command: string): boolean {
+  if (FORMAT_SPECIFIER_COMMANDS.has(command.toLowerCase())) return false;
+  if (!PERCENT_ESCAPE.test(arg)) return false;
+  return URI_SCHEME.test(arg) || ENCODED_PATH_SEPARATOR.test(arg);
+}
+
 const OBFUSCATION_CHECKS: Array<{
   description: string;
-  test: (raw: string, args: string[], flags: string[]) => boolean;
+  test: (raw: string, args: string[], flags: string[], command: string) => boolean;
 }> = [
   {
     /**
@@ -125,7 +150,7 @@ const OBFUSCATION_CHECKS: Array<{
   },
   {
     description: 'URL-encoded content in argument',
-    test: (_raw, args) => args.some((a) => /%[0-9a-fA-F]{2}/.test(a)),
+    test: (_raw, args, _flags, command) => args.some((a) => isPercentEncoded(a, command)),
   },
   {
     description: 'variable expansion in critical position',
@@ -164,7 +189,7 @@ const OBFUSCATION_CHECKS: Array<{
 function detectObfuscation(node: CommandNode): string[] {
   const found: string[] = [];
   for (const check of OBFUSCATION_CHECKS) {
-    if (check.test(node.raw, node.args, node.flags)) {
+    if (check.test(node.raw, node.args, node.flags, node.command)) {
       found.push(check.description);
     }
   }
@@ -313,17 +338,37 @@ export function evaluateSegmentNode(
  * @param verdicts - All segment verdicts.
  * @returns A multi-line denial explanation string.
  */
+/** Longest echoed command kept in a denial header before it is elided. */
+const MAX_ECHOED_COMMAND_LENGTH = 500;
+
+/**
+ * Collapses whitespace runs so an echoed command occupies exactly one line.
+ *
+ * The header used to interpolate `original` verbatim. A multi-line command — a
+ * heredoc above all — therefore put its own newline inside what reads as line
+ * one, so every consumer that summarizes a denial by its first line (for
+ * example exec's `minimal` verbosity, which does `stderr.split('\n')[0]`)
+ * showed `Command denied: "… <<'EOF'` and silently dropped the segment
+ * breakdown, classification and reason. Collapsing here keeps the first line a
+ * real first line, so a denial always names what was denied and why.
+ */
+export function asSingleLine(text: string): string {
+  const collapsed = text.replace(/\s+/g, ' ').trim();
+  return collapsed.length > MAX_ECHOED_COMMAND_LENGTH
+    ? `${collapsed.slice(0, MAX_ECHOED_COMMAND_LENGTH)}…`
+    : collapsed;
+}
 export function buildDenialExplanation(original: string, verdicts: SegmentVerdict[]): string {
   const denied = verdicts.filter((v) => !v.allowed);
   const lines: string[] = [
-    `Command denied: "${original}"`,
+    `Command denied: "${asSingleLine(original)}"`,
     ``,
     `Segment analysis (${verdicts.length} segment${verdicts.length !== 1 ? 's' : ''}):`,
   ];
 
   for (const [i, v] of verdicts.entries()) {
     const status = v.allowed ? '✓ allowed' : '✗ denied';
-    lines.push(`  [${i + 1}] ${status}  ${v.raw}`);
+    lines.push(`  [${i + 1}] ${status}  ${asSingleLine(v.raw)}`);
     lines.push(`       classification: ${v.classification}`);
     lines.push(`       reason: ${v.reason}`);
     if (v.hasObfuscation) {
@@ -363,7 +408,7 @@ export function evaluateCommandAST(
       allowed: false,
       highestClassification: 'write',
       segments: [],
-      denialExplanation: `Command denied: "${original}"\n\nNo parseable command segments found. Denied as a precaution.`,
+      denialExplanation: `Command denied: "${asSingleLine(original)}"\n\nNo parseable command segments found. Denied as a precaution.`,
       hasObfuscation: false,
     };
     return verdict;
