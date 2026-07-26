@@ -4,7 +4,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
-## [1.15.0] - 2026-07-25
+## [1.15.0] - 2026-07-26
 
 ### Added
 
@@ -81,6 +81,34 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   configure models, thresholds, capture, restart policy and per-surface
   enablement.
 
+- **A setting is now stored by the runtime that acts on it.** Every product used
+  to write every key into its own file (`~/.goodvibes/agent/settings.json`,
+  `~/.goodvibes/tui/settings.json`, …), but the daemon reads exactly one of
+  them — so a Telegram bot username set from the agent reported success, landed
+  in the agent's file, and configured nothing, because Telegram runs in the
+  daemon. Keys now carry an owner. Anything the daemon executes unattended
+  (chat surfaces, control-plane binding, watchers and triggers, device pairing
+  and grants, local voice provisioning, delivery, at-rest retention) has one
+  home in the daemon tier no matter which client edits it. Presentation and
+  per-installation lifecycle stay local to each client, and that is the default,
+  so adding a schema key never silently relocates an existing value. Setting a
+  key reports back where it was actually persisted, which tier that is, and
+  whether the daemon owns it, so a client can no longer claim success for a
+  write that changed nothing.
+
+- **Push registration refuses a subscription that could never receive a push.**
+  Registration and delivery now judge endpoints and key material with one shared
+  set of rules and one shared set of words. Previously registration only checked
+  that the strings were non-empty while delivery checked the actual byte
+  lengths, so a malformed key was accepted with a 200 and surfaced weeks later
+  as a delivery failure; it is refused at the moment it is offered, with the
+  reason, and never written to disk. Housekeeping removes only provably-dead
+  records — a 404 or 410, repeated hard refusals, unusable key material, a torn
+  record — and age alone expires nothing, so a device that still works is never
+  reaped. The VAPID contact address is held to the same rule by the config gate
+  and the signer, rather than an invalid one being signed into every message the
+  daemon sends.
+
 ### Fixed
 
 - **A conversation that had already written to you could get no reply.** Every
@@ -98,6 +126,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   process output is collected as it is produced rather than assembled at exit,
   so asking a long-running process what it has printed so far now answers with
   what it has printed so far instead of nothing until it finishes.
+
+- **A model's thinking no longer arrives as part of its answer.** An
+  OpenAI-compatible endpoint's reasoning format describes which parameter it
+  accepts on the REQUEST; it was also being applied to the RESPONSE, so an
+  endpoint registered as taking no reasoning parameter had any returned
+  reasoning folded into ordinary content. Cerebras returns reasoning on exactly
+  that field, so its thinking became answer text — interleaved with the answer
+  and past every visibility setting meant to control it. Reasoning returned on
+  its own field is now carried on the reasoning channel, and reasoning wrapped
+  in a tag inside the content stream is split out incrementally, so a tag that
+  spans two chunks is not missed and no partial tag is shown. The split can
+  never empty a reply: a model that writes nothing outside its reasoning still
+  yields an answer.
+
+- **A spent account is reported as a billing problem instead of retried as a
+  rate limit.** Providers report an exhausted balance with wording, and often a
+  status code, that the rate-limit path keyed off — so a condition that never
+  clears by waiting was announced as "rate limited, retrying in 60s" three times
+  over before failing. Both the retry decision and the error classifier now read
+  the message, so an exhausted balance is reported once, in its own category,
+  with guidance about credit rather than a countdown.
 
 ## [1.14.0] - 2026-07-25
 
