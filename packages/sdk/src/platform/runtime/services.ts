@@ -426,19 +426,18 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   agentManager.setWrfcController(wrfcController);
   const hookDispatcher = new HookDispatcher({ agentManager, toolLLM, projectRoot: workingDirectory }, hookActivityTracker);
   configManager.attachHookDispatcher(hookDispatcher);
-  const hookWorkbench = createHookWorkbench({
-    hookDispatcher,
-    configManager,
-  });
+  const hookWorkbench = createHookWorkbench({ hookDispatcher, configManager });
   const approvalBroker = new ApprovalBroker({
     storePath: shellPaths.resolveProjectPath(surfaceRoot, 'control-plane', 'approvals.json'),
   });
   // ONE home-scoped durable session store; project is DATA on each record.
+  // `conversationGateConfig` keeps the live-agent handover behind the gate.
   const sessionBroker = new SharedSessionBroker({
     storePath: options.sessionStorePath ?? shellPaths.resolveUserPath('control-plane', 'sessions.json'),
     routeBindings,
     agentStatusProvider: agentManager,
     messageSender: agentMessageBus,
+    conversationGateConfig: configManager,
   });
   // Built here, after the broker, so the owner-existence predicate below has a
   // live broker to ask (see the note at sessionManager's construction).

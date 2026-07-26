@@ -48,6 +48,22 @@ export interface DaemonConfigMovedMarker {
   readonly sources: readonly string[];
   readonly moved: readonly MovedConfigKey[];
   readonly discarded: readonly DiscardedConfigKey[];
+  /**
+   * Every key that was daemon-owned when this marker was written — not just the
+   * ones that had a value to move.
+   *
+   * This is what makes the migration RE-RUNNABLE as ownership grows. A key
+   * promoted to daemon-owned in a later release (conversationGate.* was exactly
+   * this case) would otherwise never migrate: the marker said "complete" and
+   * short-circuited the whole run, leaving the operator's existing value
+   * stranded in a client file that the daemon does not read. The marker now
+   * records the covered set, and a run whose owned set has grown migrates the
+   * newcomers instead of declaring victory.
+   *
+   * Absent on a marker written before this field existed, which is treated as
+   * "covers nothing" so those installations get one corrective pass.
+   */
+  readonly coveredKeys: readonly string[];
 }
 
 /** Absolute path of the disclosure marker for a daemon config store. */
@@ -89,6 +105,11 @@ export function readDaemonConfigMovedMarker(path: string): DaemonConfigMovedMark
     sources: record['sources'] as readonly string[],
     moved: record['moved'] as readonly MovedConfigKey[],
     discarded: record['discarded'] as readonly DiscardedConfigKey[],
+    // A marker written before this field existed covers nothing, so the next
+    // run migrates the full owned set rather than trusting an unknown scope.
+    coveredKeys: Array.isArray(record['coveredKeys'])
+      ? (record['coveredKeys'] as readonly unknown[]).filter((entry): entry is string => typeof entry === 'string')
+      : [],
   };
 }
 

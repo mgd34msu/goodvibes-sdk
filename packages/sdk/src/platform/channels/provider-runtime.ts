@@ -75,18 +75,56 @@ export class ChannelProviderRuntimeManager {
 
   constructor(private readonly deps: ProviderRuntimeManagerDeps) {}
 
+  /**
+   * Start every surface the operator switched on, and account for every one of
+   * them out loud.
+   *
+   * The previous shape skipped a surface whose precondition was unmet by simply
+   * not entering the branch — an enabled Slack with no app token, an enabled
+   * ntfy with no topic — and returned a result array the caller discards. The
+   * operator's config said "on", the runtime did nothing, and no line anywhere
+   * said why. An enabled surface that does not come up is now an ERROR naming
+   * the surface, the reason, and the setting to change.
+   */
   async startConfigured(): Promise<ProviderRuntimeActionResult[]> {
     const results: ProviderRuntimeActionResult[] = [];
-    if (this.deps.configManager.get('surfaces.slack.enabled') && await this.resolveSlackAppToken()) {
-      results.push(await this.start('slack'));
-    }
-    if (this.deps.configManager.get('surfaces.discord.enabled') && await this.resolveDiscordBotToken()) {
-      results.push(await this.start('discord'));
-    }
-    if (this.deps.configManager.get('surfaces.ntfy.enabled') && this.resolveNtfyTopics().length > 0) {
-      results.push(await this.start('ntfy'));
-    }
+    const attempt = async (
+      surface: ProviderRuntimeSurface,
+      precondition: () => Promise<string | null> | string | null,
+    ): Promise<void> => {
+      if (!this.deps.configManager.get(`surfaces.${surface}.enabled` as Parameters<ConfigManager['get']>[0])) return;
+      const missing = await precondition();
+      if (missing) {
+        this.markError(surface, missing);
+        this.reportInert(surface, missing);
+        return;
+      }
+      const result = await this.start(surface);
+      results.push(result);
+      if (!result.ok) this.reportInert(surface, result.message);
+    };
+
+    await attempt('slack', async () => (await this.resolveSlackAppToken())
+      ? null
+      : 'no Slack app-level token resolved; set surfaces.slack.appToken (a goodvibes://secrets/... reference is fine) or the SLACK_APP_TOKEN environment variable');
+    await attempt('discord', async () => (await this.resolveDiscordBotToken())
+      ? null
+      : 'no Discord bot token resolved; set surfaces.discord.botToken (a goodvibes://secrets/... reference is fine) or the DISCORD_BOT_TOKEN environment variable');
+    await attempt('ntfy', () => this.resolveNtfyTopics().length > 0
+      ? null
+      : 'no ntfy topic resolved; set surfaces.ntfy.agentTopic (and optionally chatTopic / remoteTopic)');
     return results;
+  }
+
+  /**
+   * One inbound surface the operator enabled is not up. This is the single most
+   * expensive state the daemon can be in — the config reads correct, the
+   * process is healthy, and messages disappear — so it is stated at ERROR with
+   * the operator's next action in it, not left to a status endpoint nobody
+   * queries.
+   */
+  private reportInert(surface: ProviderRuntimeSurface, reason: string): void {
+    logger.error(`${surface} is enabled but is NOT receiving messages`, { surface, action: reason });
   }
 
   async start(surface: ProviderRuntimeSurface): Promise<ProviderRuntimeActionResult> {

@@ -66,6 +66,13 @@ export const DAEMON_OWNED_CONFIG_PREFIXES: readonly string[] = [
   'integrations.',
   'atRest.',
   'voice.local.',
+  // The daemon is the process that receives inbound channel messages, so it is
+  // the process that decides whether one becomes a conversation or a
+  // workstream. Left client-owned, the setting lived in whichever client the
+  // operator happened to edit and the daemon never read it: a `mode` set from
+  // the TUI or the agent reported success, landed in that client's file, and
+  // changed nothing about what an inbound Telegram or ntfy message did.
+  'conversationGate.',
 ];
 
 /** Individual daemon-owned keys that do not sit under a daemon-owned domain. */

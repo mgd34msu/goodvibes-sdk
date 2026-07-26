@@ -22,6 +22,9 @@ import {
   type SharedSessionInputStore,
 } from './session-broker-inputs.js';
 import { SURFACE_ROUTE_FRESHNESS_MS, shouldRouteInputToSurface } from './session-broker-sessions.js';
+import { decideContinuationEscalation } from '../agents/conversation-continuation.js';
+import type { ConversationGateConfigReader } from '../agents/conversation-gate.js';
+import { logger } from '../utils/logger.js';
 
 /** Max inputs retained per session bucket (moved here with handleIntent — see
  * session-broker.ts's MAX_PERSISTED_INPUTS for its former home). */
@@ -53,6 +56,13 @@ export interface HandleSharedSessionIntentDeps {
   publishUpdate(event: string, payload: unknown): void;
   announceSurfaceReply(binding: SharedSessionSurfaceReplyBinding): void;
   buildContinuationTask(sessionId: string): string;
+  /**
+   * Reads `conversationGate.*` for the live-agent handover decision below.
+   * Optional: absent means the defaults in conversation-gate.ts, which gate
+   * every channel surface and exempt local ones — the safe direction, since
+   * the failure mode of gating is an answer instead of a chain.
+   */
+  readonly conversationGateConfig?: ConversationGateConfigReader | undefined;
 }
 
 export async function handleSharedSessionIntent(
@@ -118,8 +128,48 @@ export async function handleSharedSessionIntent(
   });
 
   const activeAgentId = deps.resolveActiveAgentId(updatedSession);
+
+  // THE LIVE-AGENT HANDOVER, and the third door into starting work.
+  //
+  // When a session already has a running agent, this branch hands the inbound
+  // body straight to it as a `directive`. That is right for the operator typing
+  // in their terminal. It was NOT right for a message arriving over a chat
+  // surface: every channel adapter converges here through submitMessage, the
+  // branch returns `continued-live`, and each adapter early-returns on it —
+  // BEFORE the conversation gate that guards their spawn path. So a message
+  // that would have been proposed if no agent were running was instead injected
+  // as a directive into whatever chain was already running. On a machine with a
+  // live terminal session that is every inbound message, which is precisely how
+  // "a note over ntfy" turned into a write-review-fix-confirm chain nobody
+  // agreed to.
+  //
+  // The rule is not invented here: `decideContinuationEscalation` already owns
+  // it for the sibling continuation runner. Pre-authorized work (an agreed
+  // proposal, a schedule, a trigger) and local surfaces hand over; a gated
+  // channel surface does not, and falls through to the adapter's gated spawn
+  // where the message is answered or proposed.
+  const handover = decideContinuationEscalation(
+    {
+      ...(input.metadata ? { metadata: input.metadata } : {}),
+      ...(input.surfaceKind ? { surfaceKind: input.surfaceKind } : {}),
+      body: input.body,
+    },
+    deps.conversationGateConfig ? { configReader: deps.conversationGateConfig } : {},
+  );
   if (intent !== 'follow-up' && activeAgentId) {
-    const sent = deps.messageSender.send('orchestrator', activeAgentId, input.body, { kind: 'directive' });
+    if (!handover.startsWorkChain) {
+      logger.info('Inbound channel message was not handed to the running agent', {
+        sessionId: updatedSession.id,
+        surfaceKind: input.surfaceKind ?? 'unknown',
+        agentId: activeAgentId,
+        reason: handover.reason,
+        detail: 'the conversation gate decides whether it is answered or proposed',
+      });
+    }
+    // Only the handover is withheld. Every other decision in this block —
+    // notably the steer rejection below — keeps its exact previous behavior.
+    const sent = handover.startsWorkChain
+      && deps.messageSender.send('orchestrator', activeAgentId, input.body, { kind: 'directive' });
     if (sent) {
       const delivered = updateSharedSessionInput(deps.sessionInputStore(), updatedSession.id, queuedInput.id, (entry) => ({
         ...entry,
