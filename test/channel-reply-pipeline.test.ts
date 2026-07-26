@@ -63,7 +63,8 @@ describe('ChannelReplyPipeline', () => {
 
       await waitFor(() => delivered.length === 1);
       expect(delivered[0]).toContain('Agent completed in 5ms');
-      expect(delivered[0]).not.toContain('child done');
+      // The answer is the point of the notification, on ntfy as anywhere else.
+      expect(delivered[0]).toContain('child done');
       expect(pipeline.has('agent-child')).toBe(false);
       expect(pipeline.has('agent-parent')).toBe(true);
     } finally {
@@ -113,12 +114,12 @@ describe('ChannelReplyPipeline', () => {
       }, {
         agentId: 'agent-root',
         durationMs: 5,
-        output: 'raw root output that should not be sent to ntfy',
+        output: 'root output the owner asked for',
       });
 
       await waitFor(() => delivered.some((entry) => entry.kind === 'reply'));
       expect(delivered[0]?.message).toContain('Agent completed in 5ms');
-      expect(delivered[0]?.message).not.toContain('raw root output');
+      expect(delivered[0]?.message).toContain('root output the owner asked for');
       expect(pipeline.has('agent-root')).toBe(true);
 
       emitWorkflowReviewCompleted(runtimeBus, {

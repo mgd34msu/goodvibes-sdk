@@ -109,6 +109,8 @@ export class DaemonServer {
   private readonly providerRuntime: ChannelProviderRuntimeManager;
   private readonly builtinChannels: BuiltinChannelRuntime;
   private readonly watcherRegistry: WatcherRegistry;
+  /** Trigger family supervisor; started/stopped with the daemon so an on-exit trigger outlives the turn that created it. Undefined when the host composed its own services without one — that means no triggers, not a failure. */
+  private readonly triggerManager: RuntimeServices['triggerManager'] | undefined;
   private readonly platformServiceManager: PlatformServiceManager;
   private readonly distributedRuntime: RuntimeServices['distributedRuntime'];
   private readonly voiceService: RuntimeServices['voiceService'];
@@ -167,6 +169,7 @@ export class DaemonServer {
     this.channelPolicy = resolved.channelPolicy;
     this.channelPlugins = resolved.channelPlugins;
     this.watcherRegistry = resolved.watcherRegistry;
+    this.triggerManager = resolved.triggerManager;
     this.platformServiceManager = resolved.platformServiceManager;
     this.distributedRuntime = resolved.distributedRuntime;
     this.voiceService = resolved.voiceService;
@@ -244,6 +247,9 @@ export class DaemonServer {
       trySpawnAgent: (input, logLabel, sessionId) => this.trySpawnAgent(input, logLabel, sessionId),
       queueSurfaceReplyFromBinding: (binding, input) => this.surfaceDeliveryHelper.queueSurfaceReplyFromBinding(binding, input),
       modelCandidates: () => this.runtimeServices.providerRegistry.listModels(),
+      // The continuation reaches the same gate the inbound message did.
+      surfaceActionHelper: this.surfaceActionHelper,
+      configReader: this.configManager,
     });
 
     this.distributedRuntime.attachRuntime({
@@ -290,6 +296,8 @@ export class DaemonServer {
 
   /** The daemon's canonical single-writer memory registry — the SAME store the HTTP memory routes serve. Exposed so embedders and boot-factory proof tests can read back a wire write as a direct canonical-store read. */
   get memory(): RuntimeServices['memoryRegistry'] { return this.runtimeServices.memoryRegistry; }
+  /** The daemon's trigger-family supervisor — the same instance the fleet registry and the supervision tick use. */
+  get triggers(): RuntimeServices['triggerManager'] | undefined { return this.runtimeServices.triggerManager; }
 
   /** The daemon's runtime event bus — the SAME bus every service emits on. Exposed so an in-process embedder (see the `/embed` subpath) can subscribe to typed runtime events without going over the wire. */
   get eventBus(): RuntimeEventBus { return this.runtimeBus; }
@@ -437,6 +445,20 @@ export class DaemonServer {
       if (this.configManager.get('watchers.enabled')) {
         registerDaemonHeartbeatWatcher(this.watcherRegistry, this.configManager, () => this.automationManager.reconcileSchedules());
       }
+      // Trigger family. start() always runs: it recovers persisted state (so an on-exit trigger from a
+      // previous boot fires its honest unknown/daemon-restart payload) and arms the supervision tick,
+      // whose body no-ops while watchers.triggers.enabled is false — the flag takes effect without a restart.
+      // A host that composed its own RuntimeServices without one simply gets no triggers.
+      try {
+        const r = this.triggerManager?.start();
+        if (!r) {
+          logger.debug('No trigger family on this runtime; skipping trigger startup.');
+        } else if (r.triggersLoaded > 0 || r.triggersReaped > 0 || r.quarantined) {
+          logger.info('Trigger family recovered', { loaded: r.triggersLoaded, reaped: r.triggersReaped, orphanedProcesses: r.orphanedProcesses.length, ...(r.quarantined ? { quarantined: r.quarantined } : {}) });
+        }
+      } catch (error) {
+        logger.warn('Trigger family failed to start; the daemon continues without it', { error: summarizeError(error) });
+      }
       this.controlPlaneGateway.setServerState({ enabled: true, host: this.host, port: this.port });
       this._attachControlPlaneConfigWatcher();
       this.transportEventsHelper.emitTransportConnected();
@@ -508,6 +530,8 @@ export class DaemonServer {
 
     // Synchronous pre-stop teardown. Only stop the heartbeat watcher when start() engaged it (registered solely behind `watchers.enabled`); stopWatcher() runs requireFeatureGate('watcher-framework') and THROWS when that gate is off, which would break a clean shutdown of a watchers-disabled daemon.
     if (this.configManager.get('watchers.enabled')) this.watcherRegistry.stopWatcher('daemon-heartbeat', 'daemon-stopped');
+    // Optional-chained: a host that composed its own RuntimeServices without a trigger family must shut down cleanly, not throw. When present, shutdown() is safe even if start() never ran or the family is disabled.
+    this.triggerManager?.shutdown();
     if (this.replyPoller !== null) {
       clearInterval(this.replyPoller);
       this.replyPoller = null;

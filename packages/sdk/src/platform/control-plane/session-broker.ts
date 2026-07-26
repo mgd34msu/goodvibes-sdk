@@ -1,5 +1,5 @@
-import { SDKErrorCodes } from '@pellux/goodvibes-errors';
 import { logger } from '../utils/logger.js';
+import { summarizeError } from '../utils/error-display.js';
 import { sessionsActive } from '../runtime/metrics.js';
 import { PersistentStore } from '../state/persistent-store.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
@@ -10,6 +10,8 @@ import type {
   SharedSessionContinuationRunner,
   SharedSessionInputIntent,
   SharedSessionInputRecord,
+  SharedSessionSurfaceReplyBinder,
+  SharedSessionSurfaceReplyBinding,
 } from './session-intents.js';
 import type {
   CreateSharedSessionInput,
@@ -19,7 +21,6 @@ import type {
   ParticipantRouteAttachInput,
   RegisterSharedSessionInput,
   SharedSessionMessage,
-  SharedSessionParticipant,
   SharedSessionRecord,
   SharedSessionRegisterResult,
   SharedSessionSubmission,
@@ -43,7 +44,6 @@ import {
   filterSessionInputsSince,
   finalizeAgentSessionInputs,
   markSurfaceInputDelivered,
-  recordSharedSessionInput,
   refreshPendingInputCount,
   touchSharedSession,
   updateSharedSessionInput,
@@ -56,7 +56,6 @@ import {
 } from './session-broker-messages.js';
 import {
   SESSION_SURFACE_MANAGED_METADATA_KEY,
-  SURFACE_ROUTE_FRESHNESS_MS,
   attachSharedSessionParticipantAndRoute,
   bindSharedSessionAgent,
   closeSharedSessionRecord,
@@ -65,15 +64,13 @@ import {
   participantToAttachInput,
   registerSharedSession,
   reopenSharedSessionRecord,
-  shouldRouteInputToSurface,
 } from './session-broker-sessions.js';
 import { sweepSharedSessions } from './session-broker-gc.js';
 import { SharedSessionRuntimeBusBridge } from './session-broker-runtime-bus.js';
+import { handleSharedSessionIntent } from './session-broker-intent.js';
 
 const MAX_PERSISTED_MESSAGES = 2_000;
 const MAX_CONTINUATION_MESSAGES = 16;
-/** Max inputs retained per session bucket. */
-const MAX_PERSISTED_INPUTS = 500;
 /**
  * Default retention for CLOSED sessions (HISTORY): `POSITIVE_INFINITY` = retain
  * indefinitely, so the GC sweep NEVER deletes a closed session. A finite value
@@ -94,6 +91,7 @@ export class SharedSessionBroker {
   private readonly runtimeBusBridge = new SharedSessionRuntimeBusBridge();
   private eventPublisher: SharedSessionEventPublisher | null = null;
   private continuationRunner: SharedSessionContinuationRunner | null = null;
+  private surfaceReplyBinder: SharedSessionSurfaceReplyBinder | null = null;
   private loaded = false;
   private _gcInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -183,6 +181,36 @@ export class SharedSessionBroker {
 
   setContinuationRunner(runner: SharedSessionContinuationRunner | null): void {
     this.continuationRunner = runner;
+  }
+
+  /**
+   * Install the hook that routes an agent's answer back to the channel the
+   * message arrived on. See SharedSessionSurfaceReplyBinder — the broker
+   * announces every (agent, surface-originated input) pairing through it, so a
+   * host wires the reply path once instead of per adapter.
+   */
+  setSurfaceReplyBinder(binder: SharedSessionSurfaceReplyBinder | null): void {
+    this.surfaceReplyBinder = binder;
+  }
+
+  private announceSurfaceReply(binding: SharedSessionSurfaceReplyBinding): void {
+    if (!this.surfaceReplyBinder) return;
+    // A local surface (a terminal the operator is sitting at) has no route
+    // binding and needs no delivery; only announce something a channel could
+    // actually carry.
+    if (!binding.routeId && !binding.surfaceKind) return;
+    try {
+      this.surfaceReplyBinder(binding);
+    } catch (error) {
+      logger.error('Surface reply binding failed — an answer may not reach its conversation', {
+        sessionId: binding.sessionId,
+        agentId: binding.agentId,
+        bindingId: binding.routeId ?? null,
+        surface: binding.surfaceKind ?? null,
+        reason: binding.reason,
+        error: summarizeError(error),
+      });
+    }
   }
 
   async start(): Promise<void> {
@@ -407,6 +435,16 @@ export class SharedSessionBroker {
     if (claimed) {
       this.publishInputLifecycleEvent('session-input-spawned', claimed, {
         agentId,
+      });
+      // The claimed input is the message this agent was started for. When it
+      // arrived over a channel, that channel is where the answer belongs.
+      this.announceSurfaceReply({
+        sessionId,
+        agentId,
+        ...(claimed.routeId ? { routeId: claimed.routeId } : {}),
+        ...(claimed.surfaceKind ? { surfaceKind: claimed.surfaceKind } : {}),
+        task: claimed.body,
+        reason: 'spawn-claimed-input',
       });
     }
     return updated;
@@ -638,173 +676,27 @@ export class SharedSessionBroker {
     input: SubmitSharedSessionMessageInput,
     allowSpawnFallback: boolean,
   ): Promise<SharedSessionSubmission> {
-    await this.start();
-
-    const binding = await this.resolveBinding(input);
-    let session = input.sessionId ? this.sessions.get(input.sessionId) ?? undefined : undefined;
-    let created = false;
-    if (!session && binding?.sessionId) {
-      session = this.sessions.get(binding.sessionId) ?? undefined;
-    }
-    if (!session) {
-      const participant: SharedSessionParticipant = {
-        surfaceKind: input.surfaceKind,
-        surfaceId: input.surfaceId,
-        externalId: input.externalId,
-        userId: input.userId,
-        displayName: input.displayName,
-        routeId: binding?.id,
-        lastSeenAt: Date.now(),
-      };
-      session = await this.createSession({
-        title: input.title,
-        metadata: input.metadata,
-        routeBinding: binding ?? undefined,
-        participant,
-      });
-      created = true;
-    }
-
-    // Closed sessions are history: steer/follow-up/submit against an EXISTING
-    // closed record are rejected before mutation; auto-create for a missing session is untouched.
-    if (session.status === 'closed') throw Object.assign(new Error('Session is closed'), { code: SDKErrorCodes.SESSION_CLOSED, status: 409 });
-    const updatedSession = await this.attachParticipantAndRoute(session, input, binding ?? undefined);
-    const userMessage = await this.appendMessage(updatedSession.id, {
-      role: 'user',
-      body: input.body,
-      surfaceKind: input.surfaceKind,
-      surfaceId: input.surfaceId,
-      routeId: binding?.id,
-      userId: input.userId,
-      displayName: input.displayName,
-      metadata: {
-        ...(input.metadata ?? {}),
-        sessionIntent: intent,
+    return handleSharedSessionIntent(
+      {
+        sessions: this.sessions,
+        messageSender: this.messageSender,
+        start: () => this.start(),
+        resolveBinding: (i) => this.resolveBinding(i),
+        createSession: (i) => this.createSession(i),
+        attachParticipantAndRoute: (session, i, binding) => this.attachParticipantAndRoute(session, i, binding),
+        appendMessage: (sessionId, i) => this.appendMessage(sessionId, i),
+        sessionInputStore: () => this.sessionInputStore(),
+        publishInputLifecycleEvent: (event, i, extra) => this.publishInputLifecycleEvent(event, i, extra),
+        resolveActiveAgentId: (session) => this.resolveActiveAgentId(session),
+        persist: () => this.persist(),
+        publishUpdate: (event, payload) => this.publishUpdate(event, payload),
+        announceSurfaceReply: (binding) => this.announceSurfaceReply(binding),
+        buildContinuationTask: (sessionId) => this.buildContinuationTask(sessionId),
       },
-    });
-    const queuedInput = recordSharedSessionInput(this.sessionInputStore(), {
-      sessionId: updatedSession.id,
       intent,
-      message: input,
-      routeId: binding?.id,
-      causationId: userMessage.id,
-      maxPersistedInputs: MAX_PERSISTED_INPUTS,
-    });
-    this.publishInputLifecycleEvent('session-input-queued', queuedInput, {
-      messageId: userMessage.id,
-    });
-
-    const activeAgentId = this.resolveActiveAgentId(updatedSession);
-    if (intent !== 'follow-up' && activeAgentId) {
-      const sent = this.messageSender.send('orchestrator', activeAgentId, input.body, { kind: 'directive' });
-      if (sent) {
-        const delivered = updateSharedSessionInput(this.sessionInputStore(), updatedSession.id, queuedInput.id, (entry) => ({
-          ...entry,
-          state: 'delivered',
-          activeAgentId,
-          updatedAt: Date.now(),
-        })) ?? queuedInput;
-        await this.persist();
-        this.publishInputLifecycleEvent('session-input-delivered', delivered, {
-          agentId: activeAgentId,
-          messageId: userMessage.id,
-        });
-        this.publishUpdate('session-message-forwarded', {
-          sessionId: updatedSession.id,
-          agentId: activeAgentId,
-          messageId: userMessage.id,
-          inputId: delivered.id,
-          intent,
-        });
-        return {
-          session: this.sessions.get(updatedSession.id)!,
-          userMessage,
-          routeBinding: binding ?? undefined,
-          input: delivered,
-          intent,
-          mode: 'continued-live',
-          state: delivered.state,
-          activeAgentId,
-          created,
-        };
-      }
-      if (intent === 'steer' && !allowSpawnFallback) {
-        const rejected = updateSharedSessionInput(this.sessionInputStore(), updatedSession.id, queuedInput.id, (entry) => ({
-          ...entry,
-          state: 'rejected',
-          updatedAt: Date.now(),
-          error: 'No active agent accepted the steer request.',
-        })) ?? queuedInput;
-        await this.persist();
-        this.publishInputLifecycleEvent('session-input-rejected', rejected, {
-          messageId: userMessage.id,
-        });
-        return {
-          session: this.sessions.get(updatedSession.id)!,
-          userMessage,
-          routeBinding: binding ?? undefined,
-          input: rejected,
-          intent,
-          mode: 'rejected',
-          state: rejected.state,
-          created,
-        };
-      }
-    }
-
-    if (intent === 'follow-up' && activeAgentId) {
-      await this.persist();
-      this.publishInputLifecycleEvent('session-follow-up-queued', queuedInput, {
-        agentId: activeAgentId,
-        messageId: userMessage.id,
-      });
-      return {
-        session: this.sessions.get(updatedSession.id)!,
-        userMessage,
-        routeBinding: binding ?? undefined,
-        input: queuedInput,
-        intent,
-        mode: 'queued-follow-up',
-        state: queuedInput.state,
-        activeAgentId,
-        created,
-      };
-    }
-
-    // Surface routing: a steer/follow-up with a LIVE surface participant (other than the
-    // sender) queues for that surface (sessions.inputs.list/deliver); no live surface keeps the executor path below.
-    if (
-      (intent === 'steer' || intent === 'follow-up') &&
-      shouldRouteInputToSurface(updatedSession, Date.now(), SURFACE_ROUTE_FRESHNESS_MS, { surfaceId: input.surfaceId })
-    ) {
-      await this.persist();
-      this.publishInputLifecycleEvent('session-input-queued-for-surface', queuedInput, {
-        messageId: userMessage.id,
-      });
-      return {
-        session: this.sessions.get(updatedSession.id)!,
-        userMessage,
-        routeBinding: binding ?? undefined,
-        input: queuedInput,
-        intent,
-        mode: 'queued-for-surface',
-        state: queuedInput.state,
-        created,
-      };
-    }
-
-    await this.persist();
-    return {
-      session: this.sessions.get(updatedSession.id)!,
-      userMessage,
-      routeBinding: binding ?? undefined,
-      input: queuedInput,
-      intent,
-      mode: 'spawn',
-      state: queuedInput.state,
-      task: this.buildContinuationTask(updatedSession.id),
-      created,
-    };
+      input,
+      allowSpawnFallback,
+    );
   }
 
   /** Collection read for a live surface (see the module helper `filterSessionInputsSince`). */
@@ -835,10 +727,23 @@ export class SharedSessionBroker {
 
 
   private async runQueuedFollowUp(sessionId: string): Promise<{ input: SharedSessionInputRecord; agentId: string } | null> {
-    if (!this.continuationRunner) return null;
     const bucket = this.inputs.get(sessionId) ?? [];
     const next = bucket.find((entry) => entry.intent === 'follow-up' && entry.state === 'queued');
     if (!next) return null;
+    if (!this.continuationRunner) {
+      // A queued follow-up with nobody to run it is a message that will never
+      // be answered. Harmless for a local caller that polls its own inputs;
+      // for one that arrived over a channel it is silence, so say so.
+      if (next.routeId ?? next.surfaceKind) {
+        logger.error('A channel follow-up is queued but no continuation runner is installed — it will not be answered', {
+          sessionId,
+          inputId: next.id,
+          bindingId: next.routeId ?? null,
+          surface: next.surfaceKind ?? null,
+        });
+      }
+      return null;
+    }
     const routeBinding = next.routeId ? this.routeBindings.getBinding(next.routeId) : undefined;
     const task = this.buildContinuationTask(sessionId);
     const spawned = await this.continuationRunner({

@@ -345,3 +345,54 @@ export function migrateFleetMaxSizeRename(parsed: Record<string, unknown>): Flee
   config.fleet = fleet;
   return { config, migrated: true, movedValue: legacy };
 }
+
+/** Outcome of dropping the stored `controlPlane.baseUrl` mirror. */
+export interface ControlPlaneBaseUrlMigrationResult {
+  readonly config: Record<string, unknown>;
+  /** True when a stored `controlPlane.baseUrl` was actually present and removed. */
+  readonly migrated: boolean;
+  /** The value that was on disk, so the receipt can quote it back. */
+  readonly removedValue?: string | undefined;
+}
+
+/**
+ * Remove the stored `controlPlane.baseUrl`.
+ *
+ * The key had no writers: every site that configured the daemon set
+ * `hostMode`/`host`/`port` and left this string untouched, so it drifted from
+ * the real bind on three axes at once — the port, the scheme (TLS on, stored
+ * value still http), and a host typed in once and passed through verbatim
+ * afterwards. The URL is now DERIVED from the bind (see
+ * `control-plane-base-url.ts`), so there is nothing left for a stored copy to
+ * be right about.
+ *
+ * The old value is deliberately NOT carried over to `controlPlane.publicBaseUrl`.
+ * That key means "an external address the bind cannot describe", and silently
+ * promoting a stale mirror into an explicit declaration would preserve exactly
+ * the drift this removes — the owner's own loopback string would have become a
+ * declared external address. The removed value is quoted in the receipt instead,
+ * so anyone who genuinely meant a tunnel or proxy address can re-declare it.
+ *
+ * Idempotent; a file with no legacy key is returned untouched.
+ */
+export function migrateControlPlaneBaseUrlRemoval(
+  parsed: Record<string, unknown>,
+): ControlPlaneBaseUrlMigrationResult {
+  const controlPlane = parsed.controlPlane;
+  if (controlPlane === null || typeof controlPlane !== 'object' || Array.isArray(controlPlane)) {
+    return { config: parsed, migrated: false };
+  }
+  if (!('baseUrl' in (controlPlane as Record<string, unknown>))) {
+    return { config: parsed, migrated: false };
+  }
+  const legacy = (controlPlane as Record<string, unknown>).baseUrl;
+  const config = structuredClone(parsed);
+  const cp = config.controlPlane as Record<string, unknown>;
+  delete cp.baseUrl;
+  if (Object.keys(cp).length === 0) delete config.controlPlane;
+  return {
+    config,
+    migrated: true,
+    ...(typeof legacy === 'string' ? { removedValue: legacy } : {}),
+  };
+}

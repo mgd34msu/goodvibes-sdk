@@ -70,7 +70,7 @@ describe('Home Assistant channel surface', () => {
     const config = {
       get(key: string): unknown {
         const values: Record<string, unknown> = {
-          'controlPlane.baseUrl': 'http://daemon.local:8877',
+          'controlPlane.publicBaseUrl': 'http://daemon.local:8877',
           'web.publicBaseUrl': '',
           'surfaces.homeassistant.eventType': 'goodvibes_message',
           'surfaces.homeassistant.deviceId': 'daemon-main',
@@ -108,7 +108,7 @@ describe('Home Assistant channel surface', () => {
           'surfaces.homeassistant.instanceUrl': 'http://ha.local:8123',
           'surfaces.homeassistant.accessToken': 'ha-token',
           'surfaces.homeassistant.eventType': 'goodvibes_message',
-          'controlPlane.baseUrl': '',
+          'controlPlane.publicBaseUrl': '',
           'web.publicBaseUrl': '',
         };
         return values[key];

@@ -110,6 +110,15 @@ function cleanMessage(msg: string, fallbackMessage?: string): string {
   return fallbackMessage ?? 'Unexpected error';
 }
 
+/**
+ * "This account cannot pay for the call", in the wording providers actually
+ * use. Anthropic returns it with a 400, OpenAI with a 429 `insufficient_quota`
+ * — so the status code alone cannot tell a spent account from a malformed
+ * request or a throughput limit. Keep in sync with the twin in
+ * types/errors.ts.
+ */
+const BILLING_MESSAGE_PATTERN = /credit balance|insufficient[_\s-](?:credit|credits|quota|balance|funds)|out of credits|purchase credits|no credits|payment required|plans?[_\s&-]+billing|billing details/;
+
 function inferCategory(message: string, statusCode?: number): PlatformErrorCategory {
   const msg = message.toLowerCase();
   if (statusCode === 401) return 'authentication';
@@ -117,8 +126,8 @@ function inferCategory(message: string, statusCode?: number): PlatformErrorCateg
   if (statusCode === 403) return 'authorization';
   if (statusCode === 404) return 'not_found';
   if (statusCode === 408 || statusCode === 504) return 'timeout';
-  if (statusCode === 429) return 'rate_limit';
-  if (statusCode === 400) return 'bad_request';
+  if (statusCode === 429) return BILLING_MESSAGE_PATTERN.test(msg) ? 'billing' : 'rate_limit';
+  if (statusCode === 400) return BILLING_MESSAGE_PATTERN.test(msg) ? 'billing' : 'bad_request';
   if (statusCode !== undefined && statusCode >= 500) return 'service';
 
   // Word boundaries avoid false positives on "authorization"/"author"/"authority" (matches the daemon-sdk twin).

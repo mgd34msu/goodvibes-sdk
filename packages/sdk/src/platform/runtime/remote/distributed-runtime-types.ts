@@ -6,7 +6,7 @@ export type DistributedPairRequestStatus = 'pending' | 'approved' | 'verified' |
 export type DistributedPeerStatus = 'paired' | 'connected' | 'idle' | 'disconnected' | 'revoked';
 export type DistributedWorkPriority = 'default' | 'normal' | 'high';
 export type DistributedWorkStatus = 'queued' | 'claimed' | 'completed' | 'failed' | 'cancelled' | 'expired';
-export type DistributedWorkType = 'invoke' | 'status.request' | 'location.request' | 'session.message' | 'automation.run';
+export type DistributedWorkType = 'invoke' | 'status.request' | 'location.request' | 'session.message' | 'automation.run' | 'device.capability';
 
 export interface DistributedSessionBridge {
   appendSystemMessage(sessionId: string, body: string, metadata?: Record<string, unknown>): Promise<unknown>;

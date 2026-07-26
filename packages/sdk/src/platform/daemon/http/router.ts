@@ -17,6 +17,7 @@ import {
 import type { ApprovalBroker, ControlPlaneGateway, SharedSessionBroker } from '../../control-plane/index.js';
 import type { GatewayMethodCatalog } from '../../control-plane/index.js';
 import { buildOperatorContract } from '../../control-plane/operator-contract.js';
+import { CLIENT_COMPATIBILITY_FLOOR, CLIENT_COMPATIBILITY_FLOOR_HEADER } from '../../control-plane/client-compatibility.js';
 import type { ProviderRegistry } from '../../providers/registry.js';
 import {
   getProviderRuntimeSnapshot,
@@ -455,6 +456,10 @@ export class DaemonHttpRouter {
         authToken: this.context.authToken(),
         version: VERSION,
         ...(this.daemonReceiptsProvider ? { collectReceipts: this.daemonReceiptsProvider } : {}),
+        // Read by every client on the probe it already makes: below this
+        // build it stops taking shared-session work and asks to be restarted.
+        clientCompatibilityFloor: CLIENT_COMPATIBILITY_FLOOR,
+        clientCompatibilityFloorHeader: CLIENT_COMPATIBILITY_FLOOR_HEADER,
         sessionCookieName: OPERATOR_SESSION_COOKIE_NAME,
         controlPlaneGateway: this.context.controlPlaneGateway,
         extractAuthToken: this.context.extractAuthToken,

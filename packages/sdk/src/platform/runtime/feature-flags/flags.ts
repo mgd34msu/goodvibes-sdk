@@ -15,6 +15,7 @@
  * Ids follow the kebab-case naming convention used throughout the runtime.
  */
 import type { FeatureFlag } from './types.js';
+import { VOICE_FEATURE_FLAGS } from './flags-voice.js';
 
 /**
  * The canonical list of platform capabilities across all implementation tiers.
@@ -72,6 +73,16 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     defaultState: 'disabled',
     tier: 3,
     runtimeToggleable: false,
+  },
+
+  {
+    id: 'watcher-triggers',
+    name: 'Trigger Family',
+    description:
+      'Enables three unattended watcher kinds over one supervision spine: stream watchers that regex-filter and batch a long-lived command\'s output; model-free condition checks running a declarative probe/extract/rule pipeline with no LLM in the loop; and one-shot on-exit triggers where GoodVibes launches a command and fires exactly one payload when it terminates (daemon-owned, so a six-hour build does not hold an agent turn open). A firing trigger runs an agent turn or a pre-registered digest-pinned action grant — never a command composed at fire time. Off by default: a trigger launches and supervises real processes with nobody watching, so turning it on is a deliberate choice; with it on and no triggers defined the supervisor idles and consumes nothing. Tune the backoff ladder, strike breaker, retention bounds, batching and process caps via the watchers.triggers.* settings.',
+    defaultState: 'disabled',
+    tier: 3,
+    runtimeToggleable: true,
   },
 
   // ── Tier 4 ───────────────────────────────────────────────────────────────
@@ -779,6 +790,30 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     tier: 11,
     runtimeToggleable: true,
   },
+  // ── Paired devices ─────────────────────────────────────────────────────────
+  {
+    id: 'paired-device-capabilities',
+    name: 'Paired Phone Capabilities',
+    description:
+      'Lets the agent use a PAIRED phone as a tool: either camera, its screen, its location, its '
+      + 'clipboard, and a small set of device commands (notification, link, buzz). It rides the '
+      + 'existing peer transport as a native contract — never an MCP server — so a web app node and '
+      + 'a native app node are the same kind of peer. Every capture and every effect asks the person '
+      + 'first; choosing "always allow" on that prompt writes ONE durable grant for that one '
+      + 'capability on that one phone, listed and revocable in the grants surface, with an age TTL '
+      + 'and a count cap so nothing is granted forever. Pictures the phone takes are kept for 24 '
+      + 'hours by default and then deleted, and every housekeeping sweep discloses exactly what it '
+      + 'removed and why. Configure the whole posture through device.* — device.capabilities.mode '
+      + 'chooses between off, ask-every-time, and honouring grants; device.capabilities.allowAlwaysOffer '
+      + 'chooses which capabilities may be granted durably; device.capture.retentionHours sets how '
+      + 'long a picture lives.',
+    defaultState: 'enabled',
+    tier: 11,
+    runtimeToggleable: true,
+  },
+
+  // Voice capabilities live in flags-voice.js; flags.ts is at its line cap.
+  ...VOICE_FEATURE_FLAGS,
 ];
 
 /**

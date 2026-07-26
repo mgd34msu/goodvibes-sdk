@@ -43,7 +43,8 @@ import {
 } from './registry-models.js';
 import { assertProviderModelSource } from './model-source-contract.js';
 import { assertProviderCredentialAuthority } from './credential-authority-contract.js';
-import { resolveConfiguredModelKey, resolveModelReference } from './model-id-resolution.js';
+import { resolveModelReference } from './model-id-resolution.js';
+import { ConfiguredModelFollower } from './registry-configured-model.js';
 import type { LiveModelDiscoveryResult } from './live-model-discovery.js';
 import {
   applyProviderNativeModelBaseline, removeProviderNativeModels, sweepLiveModelDiscovery,
@@ -62,6 +63,7 @@ export type {
 export class ProviderRegistry {
   private providers: Map<string, LLMProvider> = new Map();
   private currentModelRegistryKey: string;
+  private readonly configuredModel: ConfiguredModelFollower; // live `provider.model` view, re-read at use time
   private discoveredProviderNames: Set<string> = new Set();
   private runtimeProviderNames: Set<string> = new Set();
   private customModels: ModelDefinition[] = [];
@@ -108,15 +110,12 @@ export class ProviderRegistry {
     this.featureFlags = options.featureFlags ?? null;
     this.runtimeBus = options.runtimeBus ?? null;
     this.registerBuiltins(); // builtins register BEFORE the configured model is read: a bare id resolves against the real registry
-    this.currentModelRegistryKey = this.readConfiguredModelRegistryKey();
-  }
-
-  private readConfiguredModelRegistryKey(): string {
-    const rawConfiguredModel = getConfiguredModelId(this.configManager);
-    const configuredModel = typeof rawConfiguredModel === 'string' ? rawConfiguredModel.trim() : '';
-    if (!configuredModel) return 'openrouter:openrouter/free';
-    if (configuredModel.includes(':')) return configuredModel;
-    return resolveConfiguredModelKey(configuredModel, this.listModels().map((m) => ({ id: m.id, provider: m.provider, registryKey: m.registryKey })));
+    this.configuredModel = new ConfiguredModelFollower({
+      readConfiguredModel: () => getConfiguredModelId(this.configManager),
+      listModelCandidates: () => this.listModels().map((m) => ({ id: m.id, provider: m.provider, registryKey: m.registryKey })),
+      runtimeBus: this.runtimeBus,
+    });
+    this.currentModelRegistryKey = this.configuredModel.initialRegistryKey();
   }
 
   private registerBuiltins(resolvedKeys?: Record<string, string>): void {
@@ -513,8 +512,9 @@ export class ProviderRegistry {
     return this.getModelRegistry().filter((m) => m.selectable);
   }
 
-  /** Currently active model definition. */
+  /** Currently active model definition. Follows a `provider.model` write made after startup. */
   getCurrentModel(): ModelDefinition {
+    this.currentModelRegistryKey = this.configuredModel.adopt(this.currentModelRegistryKey);
     const registry = this.getModelRegistry();
     const def = findModelDefinition(this.currentModelRegistryKey, registry);
     if (def) return def;

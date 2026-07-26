@@ -16,7 +16,7 @@
  */
 
 import { logger } from '../utils/logger.js';
-import { deliverToAll, deliverToSubscription, type PushTransport } from './delivery.js';
+import { deliverToAll, deliverToSubscription, type DeliveryDeps, type PushTransport } from './delivery.js';
 import { PushSubscriptionStore, toPublicSubscription } from './subscription-store.js';
 import { VapidManager } from './vapid.js';
 import type {
@@ -155,6 +155,13 @@ export interface PushServiceDeps {
    * Absent ⇒ {@link DEFAULT_PUSH_ESCALATION}.
    */
   readonly escalation?: (() => PushEscalationConfig) | undefined;
+  /**
+   * Consecutive refused deliveries after which an endpoint is treated as dead,
+   * read LIVE per delivery (the composition root wires it to
+   * `push.subscriptions.failureThreshold` — the same key the subscription sweep
+   * reads). Absent ⇒ the delivery module's own bound.
+   */
+  readonly failureThreshold?: (() => number) | undefined;
   /** Timer seam for escalation; absent ⇒ real `setTimeout`-based scheduler. */
   readonly scheduler?: EscalationScheduler | undefined;
   /** Clock seam so "how long has it waited" is deterministic under test. */
@@ -179,6 +186,7 @@ export class PushService {
   private readonly vapid: VapidManager;
   private readonly store: PushSubscriptionStore;
   private readonly transport?: PushTransport | undefined;
+  private readonly failureThreshold?: (() => number) | undefined;
   /** Approval ids already pushed, so re-publishes (claim/approve) don't re-notify. */
   private readonly notifiedApprovals = new Set<string>();
   /** Fleet node ids already pushed as needs-input, cleared when they unblock/finish. */
@@ -196,6 +204,7 @@ export class PushService {
     this.vapid = deps.vapid;
     this.store = deps.store;
     this.transport = deps.transport;
+    this.failureThreshold = deps.failureThreshold;
     this.isCategoryEnabled = deps.isCategoryEnabled ?? ((): boolean => true);
     this.escalationConfig = deps.escalation ?? ((): PushEscalationConfig => DEFAULT_PUSH_ESCALATION);
     this.scheduler = deps.scheduler ?? defaultEscalationScheduler();
@@ -246,13 +255,24 @@ export class PushService {
         body: 'Browser push is wired up and working.',
         urgency: 'normal',
       },
-      { vapid: this.vapid, store: this.store, transport: this.transport },
+      this.deliveryDeps(),
     );
   }
 
   /** Fan a message out to every stored subscription. */
   deliver(message: PushMessage): Promise<PushDeliveryReceipt[]> {
-    return deliverToAll(message, { vapid: this.vapid, store: this.store, transport: this.transport });
+    return deliverToAll(message, this.deliveryDeps());
+  }
+
+  /** Delivery dependencies with the bounded-failure threshold read live. */
+  private deliveryDeps(): DeliveryDeps {
+    const threshold = this.failureThreshold?.();
+    return {
+      vapid: this.vapid,
+      store: this.store,
+      transport: this.transport,
+      ...(typeof threshold === 'number' ? { failureThreshold: threshold } : {}),
+    };
   }
 
   /**

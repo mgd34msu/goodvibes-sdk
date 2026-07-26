@@ -8,12 +8,25 @@
  * a real GatewayMethodCatalog with the handlers attached the daemon's way.
  */
 import { describe, expect, test } from 'bun:test';
+import { createECDH, randomBytes } from 'node:crypto';
 import { GatewayMethodCatalog } from '../packages/sdk/src/platform/control-plane/method-catalog.ts';
 import { registerPairingHandoffGatewayMethods } from '../packages/sdk/src/platform/control-plane/routes/pairing-handoff.ts';
 import {
   buildPairingHandoffLink,
   parsePairingHandoffLink,
 } from '../packages/sdk/src/platform/pairing/pairing-handoff.ts';
+
+/**
+ * Real subscription key material. The hand-off registers a push subscription
+ * through the same content validation `push.subscriptions.create` applies, so
+ * placeholder strings are refused at 400 — as they should be, since they could
+ * never receive a push.
+ */
+const pushKeys = ((): { p256dh: string; auth: string } => {
+  const ecdh = createECDH('prime256v1');
+  ecdh.generateKeys();
+  return { p256dh: ecdh.getPublicKey().toString('base64url'), auth: randomBytes(16).toString('base64url') };
+})();
 
 describe('pairing hand-off deep link (the #pair= shape the web app consumes)', () => {
   test('build -> parse round-trips token + offers; the web app can read `pair`', () => {
@@ -101,7 +114,7 @@ describe('pairing.handoff.* over the catalog', () => {
       ...ctx,
       body: {
         accept: {
-          notifications: { endpoint: 'https://push/device', keys: { p256dh: 'p', auth: 'a' }, deviceId: 'dev-1' },
+          notifications: { endpoint: 'https://push/device', keys: pushKeys, deviceId: 'dev-1' },
           relay: true,
           // passkey omitted -> declined
         },
@@ -121,7 +134,7 @@ describe('pairing.handoff.* over the catalog', () => {
       ...ctx,
       body: {
         accept: {
-          notifications: { endpoint: 'https://push/d', keys: { p256dh: 'p', auth: 'a' } },
+          notifications: { endpoint: 'https://push/d', keys: pushKeys },
           relay: false, // explicitly declined
           passkey: { rpId: 'app.example', origin: 'https://app.example', credentialId: 'cred-1', publicKeyCose: 'cose' },
         },
@@ -131,6 +144,35 @@ describe('pairing.handoff.* over the catalog', () => {
     const byKind = Object.fromEntries(done.results.map((r) => [r.kind, r.status]));
     expect(byKind).toEqual({ notifications: 'completed', relay: 'declined', passkey: 'completed' });
     expect(captured.credentials).toEqual([{ credentialId: 'cred-1' }]);
+  });
+
+  test('a notifications offer with unusable key material is refused, not stored', async () => {
+    const { catalog, captured } = makeCatalog();
+    // A malformed request is a 400 here, the same as every other bad argument
+    // in this verb — and nothing reaches the push service, so a record that
+    // could never receive a push is never registered.
+    await expect(catalog.invoke('pairing.handoff.complete', {
+      ...ctx,
+      body: {
+        accept: {
+          notifications: { endpoint: 'https://push/device', keys: { p256dh: 'not-base64!!!!', auth: 'x' } },
+        },
+      },
+    })).rejects.toThrow('Push subscription p256dh key is not a 65-byte uncompressed P-256 point');
+    expect(captured.subscribed).toHaveLength(0);
+  });
+
+  test('a notifications offer with an oversized endpoint is refused', async () => {
+    const { catalog, captured } = makeCatalog();
+    await expect(catalog.invoke('pairing.handoff.complete', {
+      ...ctx,
+      body: {
+        accept: {
+          notifications: { endpoint: `https://push/${'d'.repeat(50_000)}`, keys: pushKeys },
+        },
+      },
+    })).rejects.toThrow('longer than 2048 characters');
+    expect(captured.subscribed).toHaveLength(0);
   });
 
   test('an offer the daemon does not support is reported unavailable, not faked', async () => {

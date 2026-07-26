@@ -4,9 +4,23 @@ The pinned wake-word classifier, its measured behavior, and the attribution it
 ships with. The pin itself lives in
 `packages/sdk/src/platform/voice/provisioning/wake-word-manifest.ts`.
 
-The wake-word **engine, config surface, provisioning flow and UI are not built
-yet**. This page and the manifest describe the published artifact only. The
-manifest ships ahead of the integration deliberately, as the pin it will read.
+The wake-word **engine, config surface, provisioning flow and recovery
+housekeeping are built** and live under
+`packages/sdk/src/platform/voice/wake/`. Audio capture and the per-surface UI
+are not: capture is genuinely per-surface (a recorder subprocess on a host,
+`getUserMedia` in a browser), so the engine takes 16 kHz frames and returns
+detections rather than owning a device.
+
+> **Detection does not run yet, and the platform says so rather than implying
+> otherwise.** No surface captures audio or supplies the engine an inference
+> session, so the `wake-word-detection` registry entry carries a `notOperable`
+> declaration. That makes `isFeatureGateEnabled` refuse the feature whatever
+> `voice.wake.enabled` is set to, keeps `deriveFeatureState` from ever
+> reporting an enabled gate, and gives every settings surface a written reason
+> to render in place of a switch that would flip cleanly and do nothing. The
+> user's setting is preserved for the release that adds capture. **Remove the
+> `notOperable` field in the same change that wires capture and a session
+> loader up — not before, and not separately.**
 
 ## What is published
 
@@ -21,6 +35,13 @@ voice engine bundles, each with a `<asset>.sha256` sidecar.
 
 The `.onnx` and `.tflite` twins are bit-identical in every decision on every
 evaluation clip — they are the same classifier in two runtime formats.
+
+**The `.tflite` twin is pinned but not currently exercised.** The engine runs
+onnxruntime-web everywhere, including in the browser, so it consumes the
+`.onnx` artifact only. The TFLite file is published and checksummed for a
+mobile runtime that does not exist here yet; nothing in this repository loads
+it, and no test scores against it. Its bit-identical claim rests on the
+training-time comparison recorded above, not on continuous verification.
 
 ## Swapping in a newer model
 
@@ -87,6 +108,78 @@ A runtime must therefore also provide the two front-end models:
 **Source both from Google's own Apache-2.0 TFHub distribution rather than
 redistributing openWakeWord's copies.** The provenance then traces to that
 Apache-2.0 grant directly and unambiguously.
+
+### What that produced, and the measured divergence
+
+The classifier was TRAINED against openWakeWord's front end, so re-sourcing it
+is only safe if the replacement reproduces it. Both stages were rebuilt and
+both were measured against the originals.
+
+**Melspectrogram — computed in code, not downloaded.** It is a fixed STFT and
+mel filterbank with no learned parameters, so
+`platform/voice/wake/melspectrogram.ts` computes it directly, removing a
+runtime download entirely. Its constants were not chosen and were not taken
+from a library's defaults: they were recovered numerically from openWakeWord's
+own `melspectrogram.onnx` initializers (a `torchlibrosa` export). Recovered
+values, with the residual against those weights:
+
+| parameter | value | residual vs the reference weights |
+|---|---|---|
+| window | periodic Hann, 400 taps, centred in 512 | 2.8e-8 |
+| Fourier basis | `w[n]·cos(2πkn/512)` / `−w[n]·sin(2πkn/512)` | 5.6e-8 over all 257×512 taps |
+| n_fft / hop | 512 / 160 | exact (graph attributes) |
+| padding | none (`center=False`) | exact (`pads=[0,0]`) |
+| filterbank | 32 bands, Slaney scale, Slaney norm, 60–3800 Hz | 8.1e-10 against a 1.4e-2 peak weight |
+| decibels | power spectrogram, amin 1e-10, ref 1.0, top_db 80 | exact |
+
+**Speech embedding — Google's weights, rebuilt.** Google's TF1 SavedModel was
+read directly (GraphDef for topology, checkpoint for all 332,088 parameters)
+and emitted as ONNX, with each batch normalisation folded into the convolution
+ahead of it. Folding those 19 batch norms reproduces openWakeWord's ONNX
+initializers with a maximum absolute difference of **exactly 0.0 on all 20
+weight tensors and all 19 bias tensors** — openWakeWord's file is Google's
+checkpoint unmodified, which is the strongest possible provenance check.
+
+One graph note, recorded rather than glossed: Google's graph applies a ReLU
+between the first convolution and its batch normalisation, and openWakeWord's
+re-implementation omits it. The shipped build omits it too, because that is the
+embedding function the classifier was trained against. A faithful Relu-keeping
+build reproduces Google's own TF module to 5.1e-05, and differs from the
+shipped one by up to 13.1 — the ReLU is materially active, so switching to it
+would require retraining the classifier.
+
+### Measured end-to-end divergence
+
+Running the re-sourced front end instead of openWakeWord's, through the same
+published classifier:
+
+| comparison | n | max abs difference | mean abs difference |
+|---|---|---|---|
+| mel values (dB) | 4,713,216 | 4.292e-5 | 7.481e-7 |
+| embedding elements | 2,464 inputs | **0.0** (bit-exact) | **0.0** |
+| classifier scores | 11,061 frames | 8.464e-6 | 6.002e-8 |
+| per-clip peak score | 240 clips | 5.305e-6 | — |
+
+**Zero detection decisions changed**, at threshold 0.5 and at 0.9, across all
+11,061 frame decisions, with identical detection counts on every evaluation
+set. The measured figures in this document therefore still describe the running
+detector. `test/wake-word-front-end-parity.test.ts` pins this against committed
+reference frames so a regression fails a test rather than degrading detection
+quality silently.
+
+### The re-sourced embedding artifact
+
+Hosted at the same append-only `voice-runtimes-v1` tag, with a `.sha256`
+sidecar and its own NOTICE:
+
+| artifact | bytes | sha256 |
+|---|---|---|
+| `goodvibes-speech-embedding-1.0.0.onnx` | 1,319,365 | `463e5c778f7f623bb1ee52e82daad200f36a947738fe191c247ba1fbc5eed28a` |
+| `goodvibes-speech-embedding-1.0.0.NOTICE.txt` | 3,434 | `2e9426d943fdd65fbf881c7ecc3bd1c68fda30a1334cce4de2787e607c48d6f3` |
+
+Source of record, and where its Apache-2.0 grant was read on 2026-07-25:
+`https://www.kaggle.com/api/v1/models/google/speech-embedding/tensorFlow1/speech-embedding/1/download`
+(Google's distribution; `licenseName: "Apache 2.0"`, `author: "Google"`).
 
 openWakeWord's README carries a blanket sentence licensing "all of the included
 pre-trained models" CC BY-NC-SA 4.0, giving its own reason: "due to the

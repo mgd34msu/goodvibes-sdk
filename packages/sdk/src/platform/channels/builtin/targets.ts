@@ -10,10 +10,14 @@ import type {
 } from '../types.js';
 import type { BuiltinChannelRuntimeDeps, ManagedSurface } from './shared.js';
 import { resolveDiscordBotToken, resolveSlackBotToken } from './surfaces.js';
+// One rule applied identically on every surface: a conversation that has
+// already written to us is a target with no configuration at all.
+import { directoryEntriesFromBindings } from './directory-bindings.js';
 
 interface BuiltinTargetContext {
   readonly deps: BuiltinChannelRuntimeDeps;
 }
+
 
 export async function resolveBuiltinTarget(
   context: BuiltinTargetContext,
@@ -210,7 +214,10 @@ export async function lookupBuiltinProviderDirectory(
   const scope = options?.scope ?? 'all';
   if (surface === 'slack') {
     const token = await resolveSlackBotToken(context.deps);
-    if (!token) return [];
+    // A conversation that has already written to us is a real target with no
+    // configuration at all (see directoryEntriesFromBindings); the optional
+    // fields below only matter for INITIATING contact.
+    if (!token) return filterProviderDirectory(directoryEntriesFromBindings(context, surface, 'slack'), needle, limit);
     const slack = new SlackIntegration(undefined, token);
     const entries: ChannelDirectoryEntry[] = [];
     if (scope === 'all' || scope === 'channels' || scope === 'groups' || scope === 'peers') {
@@ -259,7 +266,10 @@ export async function lookupBuiltinProviderDirectory(
   if (surface === 'discord') {
     const token = await resolveDiscordBotToken(context.deps);
     const guildId = String(context.deps.configManager.get('surfaces.discord.guildId') || '');
-    if (!token || !guildId) return [];
+    // A conversation that has already written to us is a real target with no
+    // configuration at all (see directoryEntriesFromBindings); the optional
+    // fields below only matter for INITIATING contact.
+    if (!token || !guildId) return filterProviderDirectory(directoryEntriesFromBindings(context, surface, 'discord'), needle, limit);
     const discord = new DiscordIntegration(undefined, token);
     const entries: ChannelDirectoryEntry[] = [];
     if (scope === 'all' || scope === 'channels' || scope === 'groups' || scope === 'peers') {
@@ -312,7 +322,10 @@ export async function lookupBuiltinProviderDirectory(
 
   if (surface === 'ntfy') {
     const topic = String(context.deps.configManager.get('surfaces.ntfy.topic') || '');
-    if (!topic) return [];
+    // A conversation that has already written to us is a real target with no
+    // configuration at all (see directoryEntriesFromBindings); the optional
+    // fields below only matter for INITIATING contact.
+    if (!topic) return filterProviderDirectory(directoryEntriesFromBindings(context, surface, 'ntfy'), needle, limit);
     return filterProviderDirectory([{
       id: topic,
       surface,
@@ -353,6 +366,12 @@ export async function lookupBuiltinProviderDirectory(
 
   if (surface === 'telegram') {
     const candidates: ChannelDirectoryEntry[] = [];
+    // Every known conversation is a real target, whether or not the operator
+    // ever filled in `defaultChatId`. Those fields exist to INITIATE contact;
+    // a chat the bot has already talked to needs no configuration at all, and
+    // gating the directory on them is what left a fresh install able to
+    // receive messages but unable to answer them.
+    candidates.push(...directoryEntriesFromBindings(context, surface, 'telegram'));
     if (surfaces.telegram.defaultChatId) {
       candidates.push({
         id: surfaces.telegram.defaultChatId,
@@ -381,7 +400,10 @@ export async function lookupBuiltinProviderDirectory(
   }
 
   if (surface === 'google-chat') {
-    if (!surfaces.googleChat.spaceId && !surfaces.googleChat.appId) return [];
+    // A conversation that has already written to us is a real target with no
+    // configuration at all (see directoryEntriesFromBindings); the optional
+    // fields below only matter for INITIATING contact.
+    if (!surfaces.googleChat.spaceId && !surfaces.googleChat.appId) return filterProviderDirectory(directoryEntriesFromBindings(context, surface, 'google-chat'), needle, limit);
     return filterProviderDirectory([{
       id: surfaces.googleChat.spaceId || surfaces.googleChat.appId,
       surface,
@@ -396,7 +418,10 @@ export async function lookupBuiltinProviderDirectory(
   }
 
   if (surface === 'signal') {
-    if (!surfaces.signal.defaultRecipient && !surfaces.signal.account) return [];
+    // A conversation that has already written to us is a real target with no
+    // configuration at all (see directoryEntriesFromBindings); the optional
+    // fields below only matter for INITIATING contact.
+    if (!surfaces.signal.defaultRecipient && !surfaces.signal.account) return filterProviderDirectory(directoryEntriesFromBindings(context, surface, 'signal'), needle, limit);
     return filterProviderDirectory([{
       id: surfaces.signal.defaultRecipient || surfaces.signal.account,
       surface,
@@ -410,7 +435,10 @@ export async function lookupBuiltinProviderDirectory(
   }
 
   if (surface === 'whatsapp') {
-    if (!surfaces.whatsapp.defaultRecipient && !surfaces.whatsapp.phoneNumberId) return [];
+    // A conversation that has already written to us is a real target with no
+    // configuration at all (see directoryEntriesFromBindings); the optional
+    // fields below only matter for INITIATING contact.
+    if (!surfaces.whatsapp.defaultRecipient && !surfaces.whatsapp.phoneNumberId) return filterProviderDirectory(directoryEntriesFromBindings(context, surface, 'whatsapp'), needle, limit);
     return filterProviderDirectory([{
       id: surfaces.whatsapp.defaultRecipient || surfaces.whatsapp.phoneNumberId,
       surface,
@@ -428,7 +456,10 @@ export async function lookupBuiltinProviderDirectory(
   }
 
   if (surface === 'telephony') {
-    if (!surfaces.telephony.defaultRecipient && !surfaces.telephony.fromNumber && !surfaces.telephony.accountSid) return [];
+    // A conversation that has already written to us is a real target with no
+    // configuration at all (see directoryEntriesFromBindings); the optional
+    // fields below only matter for INITIATING contact.
+    if (!surfaces.telephony.defaultRecipient && !surfaces.telephony.fromNumber && !surfaces.telephony.accountSid) return filterProviderDirectory(directoryEntriesFromBindings(context, surface, 'telephony'), needle, limit);
     return filterProviderDirectory([{
       id: surfaces.telephony.defaultRecipient || surfaces.telephony.fromNumber || surfaces.telephony.accountSid,
       surface,
@@ -446,7 +477,10 @@ export async function lookupBuiltinProviderDirectory(
   }
 
   if (surface === 'imessage') {
-    if (!surfaces.imessage.defaultChatId && !surfaces.imessage.account) return [];
+    // A conversation that has already written to us is a real target with no
+    // configuration at all (see directoryEntriesFromBindings); the optional
+    // fields below only matter for INITIATING contact.
+    if (!surfaces.imessage.defaultChatId && !surfaces.imessage.account) return filterProviderDirectory(directoryEntriesFromBindings(context, surface, 'imessage'), needle, limit);
     return filterProviderDirectory([{
       id: surfaces.imessage.defaultChatId || surfaces.imessage.account,
       surface,
@@ -461,6 +495,9 @@ export async function lookupBuiltinProviderDirectory(
 
   if (surface === 'msteams') {
     const candidates: ChannelDirectoryEntry[] = [];
+    // Same rule as every other surface: a conversation that has written to us
+    // is a target with no configuration at all.
+    candidates.push(...directoryEntriesFromBindings(context, surface, 'msteams'));
     if (surfaces.msteams.defaultConversationId) {
       candidates.push({
         id: surfaces.msteams.defaultConversationId,
@@ -493,7 +530,10 @@ export async function lookupBuiltinProviderDirectory(
   }
 
   if (surface === 'bluebubbles') {
-    if (!surfaces.bluebubbles.defaultChatGuid && !surfaces.bluebubbles.account) return [];
+    // A conversation that has already written to us is a real target with no
+    // configuration at all (see directoryEntriesFromBindings); the optional
+    // fields below only matter for INITIATING contact.
+    if (!surfaces.bluebubbles.defaultChatGuid && !surfaces.bluebubbles.account) return filterProviderDirectory(directoryEntriesFromBindings(context, surface, 'bluebubbles'), needle, limit);
     return filterProviderDirectory([{
       id: surfaces.bluebubbles.defaultChatGuid || surfaces.bluebubbles.account,
       surface,
@@ -507,7 +547,10 @@ export async function lookupBuiltinProviderDirectory(
   }
 
   if (surface === 'mattermost') {
-    if (!surfaces.mattermost.defaultChannelId && !surfaces.mattermost.teamId) return [];
+    // A conversation that has already written to us is a real target with no
+    // configuration at all (see directoryEntriesFromBindings); the optional
+    // fields below only matter for INITIATING contact.
+    if (!surfaces.mattermost.defaultChannelId && !surfaces.mattermost.teamId) return filterProviderDirectory(directoryEntriesFromBindings(context, surface, 'mattermost'), needle, limit);
     return filterProviderDirectory([{
       id: surfaces.mattermost.defaultChannelId || surfaces.mattermost.teamId,
       surface,
@@ -522,7 +565,10 @@ export async function lookupBuiltinProviderDirectory(
   }
 
   if (surface === 'matrix') {
-    if (!surfaces.matrix.defaultRoomId && !surfaces.matrix.userId) return [];
+    // A conversation that has already written to us is a real target with no
+    // configuration at all (see directoryEntriesFromBindings); the optional
+    // fields below only matter for INITIATING contact.
+    if (!surfaces.matrix.defaultRoomId && !surfaces.matrix.userId) return filterProviderDirectory(directoryEntriesFromBindings(context, surface, 'matrix'), needle, limit);
     return filterProviderDirectory([{
       id: surfaces.matrix.defaultRoomId || surfaces.matrix.userId,
       surface,

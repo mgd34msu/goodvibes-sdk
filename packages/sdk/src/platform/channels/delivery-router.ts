@@ -26,6 +26,8 @@ import {
   createMatrixDeliveryStrategy,
 } from './delivery/strategies-enterprise.js';
 import { resolveChannelDeliverySurfaceKind } from './delivery/shared.js';
+import { logger } from '../utils/logger.js';
+import { summarizeError } from '../utils/error-display.js';
 import type {
   ChannelDeliveryRequest,
   ChannelDeliveryRouterConfig,
@@ -54,7 +56,7 @@ export function createDefaultChannelDeliveryStrategies(
   return [
     createWebhookDeliveryStrategy(configManager, artifactStore),
     createSlackDeliveryStrategy(serviceRegistry, configManager, artifactStore, secretsManager),
-    createDiscordDeliveryStrategy(serviceRegistry, configManager, artifactStore),
+    createDiscordDeliveryStrategy(serviceRegistry, configManager, artifactStore, secretsManager),
     createNtfyDeliveryStrategy(configManager, serviceRegistry, artifactStore),
     createWebControlPlaneDeliveryStrategy(configManager, artifactStore, getControlPlaneGateway),
     createHomeAssistantDeliveryStrategy(configManager, serviceRegistry, artifactStore, secretsManager),
@@ -123,12 +125,37 @@ export class ChannelDeliveryRouter {
   }
 
   async deliver(request: ChannelDeliveryRequest): Promise<string | undefined> {
+    const surfaceKind = resolveChannelDeliverySurfaceKind(request.target);
     const strategy = this.strategies.find((entry) => entry.canHandle(request));
     if (!strategy) {
-      const surfaceKind = resolveChannelDeliverySurfaceKind(request.target);
+      // Silence is the worst failure mode a reply can have: the owner sends a
+      // message, the agent answers, and nothing arrives with no trace anywhere.
+      // Every unroutable delivery says which surface, which binding, and why.
+      logger.error('Channel delivery could not resolve a strategy — the reply was dropped', {
+        surface: surfaceKind ?? 'unknown',
+        targetKind: request.target.kind,
+        bindingId: request.binding?.id ?? null,
+        channelId: request.binding?.channelId ?? request.binding?.externalId ?? null,
+        reason: 'no-strategy-handles-this-target',
+      });
       throw new Error(`Unsupported channel delivery target: ${request.target.kind}:${surfaceKind ?? 'unknown'}`);
     }
-    const result = await strategy.deliver(request);
-    return result.responseId;
+    try {
+      const result = await strategy.deliver(request);
+      return result.responseId;
+    } catch (error) {
+      // A strategy throwing "Missing <surface> chat id" is the same silence
+      // wearing a different hat — it is normally caught and dropped upstream.
+      // Name it here, where the binding is still in hand, then rethrow.
+      logger.error('Channel delivery failed — the reply did not reach its conversation', {
+        surface: surfaceKind ?? 'unknown',
+        strategy: strategy.id,
+        bindingId: request.binding?.id ?? null,
+        channelId: request.binding?.channelId ?? request.binding?.externalId ?? null,
+        address: request.target.address ?? null,
+        reason: summarizeError(error),
+      });
+      throw error;
+    }
   }
 }

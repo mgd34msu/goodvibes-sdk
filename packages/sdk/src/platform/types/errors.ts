@@ -53,6 +53,21 @@ export interface ProviderErrorOptions extends AppErrorOptions {
   readonly statusCode?: number | undefined;
 }
 
+/**
+ * Wording that means "this account cannot pay for the call", as opposed to
+ * "you are going too fast". Providers do NOT agree on a status code for it:
+ * Anthropic returns 400 with "Your credit balance is too low to access the
+ * Anthropic API", and OpenAI returns 429 with `insufficient_quota`. Both are
+ * permanent until someone tops up the account, so both must stay out of the
+ * rate-limit bucket that retries on a fixed backoff.
+ *
+ * Deliberately narrow. A bare "quota" or "limit" is not here, because those
+ * genuinely do appear on per-minute limits that a retry does clear.
+ *
+ * Keep in sync with the twin in utils/error-display.ts.
+ */
+const BILLING_MESSAGE_PATTERN = /credit balance|insufficient[_\s-](?:credit|credits|quota|balance|funds)|out of credits|purchase credits|no credits|payment required|plans?[_\s&-]+billing|billing details/;
+
 function inferErrorCategory(message: string, statusCode?: number): PlatformErrorCategory {
   const msg = message.toLowerCase();
 
@@ -61,8 +76,12 @@ function inferErrorCategory(message: string, statusCode?: number): PlatformError
   if (statusCode === 403) return 'authorization';
   if (statusCode === 404) return 'not_found';
   if (statusCode === 408) return 'timeout';
-  if (statusCode === 429) return 'rate_limit';
-  if (statusCode === 400) return 'bad_request';
+  // 429 and 400 are both overloaded buckets: providers put a spent account
+  // behind each of them. Reading the wording first is what stops "your credit
+  // balance is too low" from being reported (and retried) as a rate limit or
+  // as a malformed request.
+  if (statusCode === 429) return BILLING_MESSAGE_PATTERN.test(msg) ? 'billing' : 'rate_limit';
+  if (statusCode === 400) return BILLING_MESSAGE_PATTERN.test(msg) ? 'billing' : 'bad_request';
   if (statusCode !== undefined && statusCode >= 500) return 'service';
 
   if (/api[_\s-]?key|auth|token|credential|jwt|unauthoriz/.test(msg)) return 'authentication';
@@ -237,9 +256,38 @@ export class RenderError extends AppError {
 }
 
 /**
+ * Returns true when the provider rejected the call because the account cannot
+ * pay for it — credits exhausted, balance too low, plan quota spent.
+ *
+ * This is NOT a rate limit and must never be retried on one. An Anthropic 400
+ * carrying "Your credit balance is too low" was being reported as
+ * "rate limited on turn 1, retrying in 60s" and retried three times: three
+ * minutes burned per agent, and a message that sent the reader looking for a
+ * throughput problem that did not exist.
+ *
+ * Checked in this order so a structured classification always beats text:
+ * an explicit `billing` category (which {@link inferErrorCategory} now derives
+ * from a 400/429 whose wording says so), then 402, then the message.
+ */
+export function isBillingOrCreditError(err: unknown): boolean {
+  if (err instanceof AppError) {
+    if (err.category === 'billing') return true;
+    if (err.statusCode === 402) return true;
+  }
+  if (!(err instanceof Error)) return false;
+  return BILLING_MESSAGE_PATTERN.test(err.message.toLowerCase());
+}
+
+/**
  * Returns true when the error indicates a rate limit or quota exhaustion.
  * Used by SyntheticProvider and AgentOrchestrator to decide whether to
  * back-off and retry vs. escalate the error.
+ *
+ * Callers that decide whether to WAIT AND RETRY the same endpoint must check
+ * {@link isBillingOrCreditError} first — a spent account matches the quota
+ * wording here, and waiting does not fix it. Callers that decide whether to
+ * ROTATE to another backend (SyntheticProvider) are right to treat both the
+ * same way, since a different account may well have credit.
  */
 export function isRateLimitOrQuotaError(err: unknown): boolean {
   if (err instanceof ProviderError) {

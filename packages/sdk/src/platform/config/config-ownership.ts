@@ -1,0 +1,162 @@
+/**
+ * config-ownership.ts — which runtime OWNS a config key.
+ *
+ * Ownership follows the runtime that ACTS on a setting, not the client that
+ * happens to edit it. Before this module existed, every product wrote every key
+ * into its own surface silo (`~/.goodvibes/agent/settings.json`,
+ * `~/.goodvibes/tui/settings.json`, ...). The daemon reads exactly one of those
+ * files, so a Telegram bot username set from the agent reported success, landed
+ * in the agent's file, and configured nothing: Telegram runs in the daemon.
+ *
+ * Three scopes:
+ *
+ * - `daemon` — the daemon executes it unattended, so it has exactly one home:
+ *   the daemon tier (`~/.goodvibes/daemon/settings.json`). Chat surfaces,
+ *   control-plane binding, watchers and triggers, device pairing and grants,
+ *   local voice provisioning, delivery, at-rest retention.
+ *
+ * - `client` — presentation and per-installation lifecycle. Genuinely local and
+ *   genuinely different between the TUI, the agent and the web UI: rendering,
+ *   theme, transcript display, keybindings, and the "do I run/embed a daemon at
+ *   all" switches (`daemon.*`, `service.*`) which are a property of THIS
+ *   installation, not of the daemon's behavior. This is the DEFAULT scope — a
+ *   key is client-owned unless it is listed below, so adding a schema key never
+ *   silently relocates a user's existing value.
+ *
+ * - `user` — cross-client defaults that ride the surface-root-independent
+ *   shared tier (`~/.goodvibes/shared/settings.json`).
+ *
+ * Two user-level precedences exist and the difference is deliberate:
+ *   - `shared-wins` (the voice/tts keys, unchanged since the shared tier
+ *     shipped): the shared value overlays the surface value, so every surface
+ *     speaks with one voice.
+ *   - `local-override` (model / reasoning effort): the shared value is a
+ *     DEFAULT that applies only where the surface has not set the key itself,
+ *     which is what "a client may override locally" means.
+ */
+
+import type { ConfigKey } from './schema.js';
+import { CONFIG_SCHEMA } from './schema.js';
+
+/** Which runtime owns — and therefore writes — a config key. */
+export type ConfigScope = 'daemon' | 'client' | 'user';
+
+/**
+ * Whole config domains the daemon executes unattended. A key is daemon-owned
+ * when it starts with one of these prefixes.
+ *
+ * Deliberately NOT here, and why:
+ *   - `daemon.*`   — "does THIS installation run/embed a daemon"; the agent
+ *                    answers no and the TUI answers yes, and neither answer is
+ *                    the daemon's to give. Making it daemon-owned would make
+ *                    the agent start a daemon because the TUI runs one.
+ *   - `service.*`  — same shape: per-installation platform-service lifecycle.
+ *   - `voice.wake.*` — the wake word listens inside each client process.
+ */
+export const DAEMON_OWNED_CONFIG_PREFIXES: readonly string[] = [
+  'surfaces.',
+  'controlPlane.',
+  'httpListener.',
+  'web.',
+  'relay.',
+  'watchers.',
+  'device.',
+  'automation.',
+  'checkin.',
+  'integrations.',
+  'atRest.',
+  'voice.local.',
+];
+
+/** Individual daemon-owned keys that do not sit under a daemon-owned domain. */
+export const DAEMON_OWNED_CONFIG_KEYS: readonly string[] = [
+  'danger.httpListener',
+];
+
+/**
+ * User-level keys whose shared value OVERLAYS the surface value. This is the
+ * original shared tier (see shared-config-tier.ts) and its behavior is
+ * unchanged: one voice on every surface.
+ */
+export const USER_SHARED_WINS_CONFIG_KEYS: readonly string[] = [
+  'tts.provider',
+  'tts.voice',
+  'tts.speed',
+  'tts.llmProvider',
+  'tts.llmModel',
+];
+
+/**
+ * User-level keys whose shared value is only a DEFAULT: a surface that carries
+ * its own explicit value keeps it. Set through `ConfigManager.setUserDefault`;
+ * an ordinary `set` on one of these writes the surface-local override, which is
+ * the behavior every existing installation already has.
+ */
+export const USER_LOCAL_OVERRIDE_CONFIG_KEYS: readonly string[] = [
+  'provider.model',
+  'provider.reasoningEffort',
+];
+
+const DAEMON_KEY_SET = new Set<string>(DAEMON_OWNED_CONFIG_KEYS);
+const USER_SHARED_WINS_SET = new Set<string>(USER_SHARED_WINS_CONFIG_KEYS);
+const USER_LOCAL_OVERRIDE_SET = new Set<string>(USER_LOCAL_OVERRIDE_CONFIG_KEYS);
+
+/** True when the daemon is the single writer and reader-of-record for `key`. */
+export function isDaemonOwnedConfigKey(key: string): boolean {
+  if (DAEMON_KEY_SET.has(key)) return true;
+  return DAEMON_OWNED_CONFIG_PREFIXES.some((prefix) => key.startsWith(prefix));
+}
+
+/** True when `key` rides the cross-client user tier (either precedence). */
+export function isUserLevelConfigKey(key: string): boolean {
+  return USER_SHARED_WINS_SET.has(key) || USER_LOCAL_OVERRIDE_SET.has(key);
+}
+
+/** True when a user-level key's shared value overlays the surface value. */
+export function userTierOverlaysSurface(key: string): boolean {
+  return USER_SHARED_WINS_SET.has(key);
+}
+
+/** True when `key` is presentation/per-installation state owned by each client. */
+export function isClientOwnedConfigKey(key: string): boolean {
+  return configKeyScope(key) === 'client';
+}
+
+/**
+ * The owning runtime for `key`. `client` is the default, so an unclassified or
+ * brand-new key keeps writing to the surface silo it already writes to.
+ */
+export function configKeyScope(key: string): ConfigScope {
+  if (isDaemonOwnedConfigKey(key)) return 'daemon';
+  if (isUserLevelConfigKey(key)) return 'user';
+  return 'client';
+}
+
+let daemonOwnedKeyCache: readonly ConfigKey[] | null = null;
+
+/**
+ * Every schema key the daemon owns, in schema order. Memoized: the load and
+ * migration paths walk this list per settings file, and CONFIG_SCHEMA is a
+ * frozen module constant.
+ */
+export function listDaemonOwnedConfigKeys(): readonly ConfigKey[] {
+  daemonOwnedKeyCache ??= CONFIG_SCHEMA
+    .map((setting) => setting.key)
+    .filter((key) => isDaemonOwnedConfigKey(key));
+  return daemonOwnedKeyCache;
+}
+
+/**
+ * Human-readable reason a client may not be the writer for `key` — used by the
+ * routing layer's failure text so "this went somewhere else" is never silent.
+ */
+export function describeConfigOwnership(key: string): string {
+  switch (configKeyScope(key)) {
+    case 'daemon':
+      return `${key} is daemon-owned: the daemon executes it, so the daemon's config is its only home.`;
+    case 'user':
+      return `${key} is a user-level default shared across clients.`;
+    default:
+      return `${key} is client-owned and stays in this client's own settings.`;
+  }
+}

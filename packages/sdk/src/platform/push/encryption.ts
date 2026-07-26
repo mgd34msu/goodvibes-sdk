@@ -19,6 +19,7 @@
  */
 
 import { createCipheriv, createECDH, createHmac, randomBytes } from 'node:crypto';
+import { describeAuthSecretProblem, describeP256dhProblem } from './subscription-validation.js';
 
 /** The subscription's own key material, base64url-encoded (browser PushSubscription shape). */
 export interface SubscriptionKeyMaterial {
@@ -69,14 +70,15 @@ export function encryptPushPayload(
   keys: SubscriptionKeyMaterial,
   plaintext: Buffer,
 ): EncryptedPushPayload {
+  // The SAME predicates registration refuses junk with, so a record that got
+  // past registration can never fail here for a reason registration would have
+  // accepted, and the failure wording is identical on both paths.
+  const p256dhProblem = describeP256dhProblem(keys.p256dh);
+  if (p256dhProblem) throw new Error(p256dhProblem);
+  const authProblem = describeAuthSecretProblem(keys.auth);
+  if (authProblem) throw new Error(authProblem);
   const receiverPublic = base64UrlToBuffer(keys.p256dh);
   const authSecret = base64UrlToBuffer(keys.auth);
-  if (receiverPublic.length !== 65) {
-    throw new Error('Push subscription p256dh key is not a 65-byte uncompressed P-256 point');
-  }
-  if (authSecret.length !== 16) {
-    throw new Error('Push subscription auth secret is not 16 bytes');
-  }
 
   // Ephemeral sender (application-server) keypair for this one message.
   const sender = createECDH('prime256v1');

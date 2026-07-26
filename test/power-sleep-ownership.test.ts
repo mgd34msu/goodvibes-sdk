@@ -70,11 +70,13 @@ describe('automatic work inhibition', () => {
     const { seam, log } = fixtureSeam();
     const { manager } = makeManager(seam);
 
-    // A fake runtime bus delivering the real event shapes bindPowerWorkSignals reads.
-    const handlers = new Map<string, (env: { event: Record<string, unknown> }) => void>();
+    // A fake runtime bus delivering the REAL envelope shape (type/ts/payload —
+    // never `event`) so this proves the actual bug: bindPowerWorkSignals used
+    // to read envelope.event, which is undefined on a real EventEnvelope.
+    const handlers = new Map<string, (env: { payload: Record<string, unknown>; turnId?: string; agentId?: string }) => void>();
     bindPowerWorkSignals({ on: (type, cb) => { handlers.set(type, cb); return () => {}; } }, manager);
 
-    handlers.get('TURN_SUBMITTED')!({ event: { turnId: 't-1' } });
+    handlers.get('TURN_SUBMITTED')!({ payload: { type: 'TURN_SUBMITTED', turnId: 't-1', prompt: 'hi' } });
     await settle();
     let state = manager.getState();
     expect(state.work.held).toBe(true);
@@ -83,15 +85,15 @@ describe('automatic work inhibition', () => {
     expect(state.work.capExpiresAt).not.toBeNull();
 
     // A second piece of work overlaps; the inhibitor survives the first drain.
-    handlers.get('AGENT_RUNNING')!({ event: { agentId: 'a-9' } });
-    handlers.get('TURN_COMPLETED')!({ event: { turnId: 't-1' } });
+    handlers.get('AGENT_RUNNING')!({ payload: { type: 'AGENT_RUNNING', agentId: 'a-9' } });
+    handlers.get('TURN_COMPLETED')!({ payload: { type: 'TURN_COMPLETED', turnId: 't-1', response: '', stopReason: 'completed' } });
     await settle();
     state = manager.getState();
     expect(state.work.held).toBe(true);
     expect(state.work.reasons).toEqual(['agent a-9 is active']);
 
     // Last work drains: released.
-    handlers.get('AGENT_COMPLETED')!({ event: { agentId: 'a-9' } });
+    handlers.get('AGENT_COMPLETED')!({ payload: { type: 'AGENT_COMPLETED', agentId: 'a-9', durationMs: 1 } });
     await settle();
     expect(manager.getState().work.held).toBe(false);
     expect(log).toEqual([

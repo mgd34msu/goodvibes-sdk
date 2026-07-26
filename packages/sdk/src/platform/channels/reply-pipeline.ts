@@ -5,7 +5,6 @@ import type {
   ChannelRenderPolicy,
   ChannelRenderRequest,
   ChannelRenderResult,
-  ChannelReasoningVisibility,
   ChannelSurface,
 } from './types.js';
 import type { ChannelPluginRegistry } from './plugin-registry.js';
@@ -14,6 +13,10 @@ import { summarizeError } from '../utils/error-display.js';
 import { logger } from '../utils/logger.js';
 
 import { markEventsDelivered, selectUndeliveredEvents } from './reply-delta.js';
+import { buildRenderedText, normalizeChannelRenderEventFromRuntime } from './reply-render.js';
+
+export { normalizeChannelRenderEventFromRuntime } from './reply-render.js';
+
 const MAX_BUFFERED_EVENTS = 64;
 const DEFAULT_PROGRESS_INTERVAL_MS = 7_500;
 
@@ -29,11 +32,45 @@ export interface TrackedChannelReply {
   readonly [key: string]: unknown;
 }
 
+/**
+ * A reply that was produced for a conversation but never reached it.
+ *
+ * Handed to the host so the miss lands in the same delivery ledger automation
+ * deliveries use. Without this, "the agent answered and the answer was lost"
+ * and "no message ever arrived" read identically: zero attempts, no record.
+ */
+export interface UndeliveredChannelReply {
+  readonly surfaceKind: ChannelSurface;
+  readonly agentId: string;
+  readonly sessionId?: string | undefined;
+  readonly routeId?: string | undefined;
+  readonly phase: ChannelRenderPhase;
+  readonly body: string;
+  readonly reason: string;
+}
+
+export type UndeliveredChannelReplyReporter = (reply: UndeliveredChannelReply) => void;
+
+/** A reply that did reach its conversation, for the same ledger. */
+export interface DeliveredChannelReply {
+  readonly surfaceKind: ChannelSurface;
+  readonly agentId: string;
+  readonly sessionId?: string | undefined;
+  readonly routeId?: string | undefined;
+  readonly responseId?: string | undefined;
+}
+
+export type DeliveredChannelReplyReporter = (reply: DeliveredChannelReply) => void;
+
 interface ReplyPipelineDeps {
   readonly channelPlugins: ChannelPluginRegistry;
   readonly routeBindings: RouteBindingManager;
   readonly runtimeBus?: RuntimeEventBus | null | undefined;
   readonly now?: (() => number) | undefined;
+  /** Records a produced-but-undelivered reply in the delivery ledger. */
+  readonly onUndelivered?: UndeliveredChannelReplyReporter | undefined;
+  /** Records a reply that reached its conversation in the delivery ledger. */
+  readonly onDelivered?: DeliveredChannelReplyReporter | undefined;
 }
 
 interface ReplyBufferState {
@@ -206,95 +243,6 @@ const DEFAULT_POLICY: Record<ChannelSurface, ChannelRenderPolicy> = {
   },
 };
 
-function trimText(value: string, limit: number): string {
-  const normalized = value.replace(/\r\n/g, '\n').trim();
-  if (normalized.length <= limit) return normalized;
-  return `${normalized.slice(0, Math.max(0, limit - 3)).trimEnd()}...`;
-}
-
-function baseMetadata(envelope: RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>): Record<string, unknown> {
-  return {
-    runtimeType: envelope.type,
-    traceId: envelope.traceId,
-    source: envelope.source,
-    ...(envelope.turnId ? { turnId: envelope.turnId } : {}),
-    ...(envelope.taskId ? { taskId: envelope.taskId } : {}),
-  };
-}
-
-function eventLine(event: ChannelRenderEvent, reasoningVisibility: ChannelReasoningVisibility): string | null {
-  switch (event.kind) {
-    case 'assistant_text':
-      return event.text?.trim() ? event.text.trim() : null;
-    case 'reasoning':
-      if (reasoningVisibility === 'suppress') return null;
-      if (!event.text?.trim()) return null;
-      return reasoningVisibility === 'summary'
-        ? `Reasoning: ${trimText(event.text, 220)}`
-        : `Reasoning: ${event.text.trim()}`;
-    case 'tool_start':
-      return event.toolName ? `Tool started: ${event.toolName}` : event.text ?? null;
-    case 'tool_result':
-      return event.toolName
-        ? `${event.text?.startsWith('Failed') ? 'Tool failed' : 'Tool finished'}: ${event.toolName}${event.summary ? ` (${event.summary})` : ''}`
-        : event.text ?? null;
-    case 'plan':
-      return event.text ? `Plan: ${event.text}` : null;
-    case 'approval':
-      return event.text ? `Approval: ${event.text}` : null;
-    case 'command_output':
-      return event.text ? `Command output: ${event.text}` : null;
-    case 'patch':
-      return event.text ? `Patch: ${event.text}` : null;
-    case 'compaction':
-      return event.text ? `Compaction: ${event.text}` : null;
-    case 'model':
-      return event.provider || event.model
-        ? `Model: ${[event.provider, event.model].filter(Boolean).join(' / ')}`
-        : event.text ?? null;
-    case 'status':
-      return event.text ?? null;
-    case 'error':
-      return event.text ? `Error: ${event.text}` : null;
-  }
-}
-
-function buildRenderedText(
-  explicitText: string,
-  events: readonly ChannelRenderEvent[],
-  policy: ChannelRenderPolicy,
-  phase: ChannelRenderPhase,
-): string {
-  if (phase === 'final' && explicitText.trim().length > 0) {
-    return trimText(explicitText, policy.maxChunkChars);
-  }
-  const renderableEvents = policy.surface === 'ntfy'
-    ? events.filter((event) => event.kind !== 'assistant_text' && event.kind !== 'reasoning')
-    : events;
-  const lines = renderableEvents
-    .slice(-policy.maxEventsPerUpdate)
-    .map((event) => eventLine(event, policy.reasoningVisibility))
-    .filter((line): line is string => Boolean(line && line.trim().length > 0));
-  const deduped = lines.filter((line, index) => lines.indexOf(line) === index);
-  return trimText(deduped.join('\n'), policy.maxChunkChars);
-}
-
-function renderEvent(
-  kind: ChannelRenderEvent['kind'],
-  phase: ChannelRenderPhase,
-  envelope: RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>,
-  extras: Partial<ChannelRenderEvent> = {},
-): ChannelRenderEvent {
-  return {
-    id: `${envelope.traceId}:${kind}:${envelope.ts}`,
-    kind,
-    phase,
-    ts: envelope.ts,
-    metadata: baseMetadata(envelope),
-    ...extras,
-  };
-}
-
 function resolveEnvelopeAgentId(envelope: RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>): string | null {
   if (envelope.agentId) return envelope.agentId;
   const payload = envelope.payload as { readonly agentId?: unknown };
@@ -314,164 +262,46 @@ function isAgentFinalEvent(type: AnyRuntimeEvent['type']): boolean {
   return type === 'AGENT_COMPLETED' || type === 'AGENT_FAILED' || type === 'AGENT_CANCELLED';
 }
 
-export function normalizeChannelRenderEventFromRuntime(
-  envelope: RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>,
-): ChannelRenderEvent[] {
-  const payload = envelope.payload;
-  switch (payload.type) {
-    case 'AGENT_STREAM_DELTA':
-      return payload.content.trim().length > 0
-        ? [renderEvent('assistant_text', 'progress', envelope, { text: payload.content })]
-        : [];
-    case 'AGENT_PROGRESS':
-      return payload.progress.trim().length > 0
-        ? [renderEvent('status', 'progress', envelope, { text: payload.progress })]
-        : [];
-    case 'AGENT_COMPLETED':
-      return [
-        ...(payload.output?.trim()
-          ? [renderEvent('assistant_text', 'final', envelope, { text: payload.output })]
-          : []),
-        renderEvent('status', 'final', envelope, { text: `Agent completed in ${payload.durationMs}ms` }),
-      ];
-    case 'AGENT_FAILED':
-      return [renderEvent('error', 'final', envelope, { text: payload.error })];
-    case 'AGENT_CANCELLED':
-      return [renderEvent('status', 'final', envelope, { text: payload.reason ? `Cancelled: ${payload.reason}` : 'Cancelled' })];
-    case 'STREAM_DELTA': {
-      const events: ChannelRenderEvent[] = [];
-      if (payload.content.trim().length > 0) {
-        events.push(renderEvent('assistant_text', 'progress', envelope, { text: payload.content }));
-      }
-      if (payload.reasoning?.trim()) {
-        events.push(renderEvent('reasoning', 'progress', envelope, { text: payload.reasoning }));
-      }
-      return events;
-    }
-    case 'TOOL_EXECUTING':
-      return [renderEvent('tool_start', 'progress', envelope, { toolName: payload.tool, text: payload.tool })];
-    case 'TOOL_SUCCEEDED':
-      return [renderEvent('tool_result', 'progress', envelope, {
-        toolName: payload.tool,
-        text: 'Succeeded',
-        summary: `${payload.durationMs}ms`,
-      })];
-    case 'TOOL_FAILED':
-      return [renderEvent('tool_result', 'progress', envelope, {
-        toolName: payload.tool,
-        text: 'Failed',
-        summary: payload.error,
-      })];
-    case 'PLAN_STRATEGY_SELECTED':
-      return [renderEvent('plan', 'progress', envelope, {
-        text: `Selected ${payload.selected} (${payload.reasonCode})${payload.inputs.taskDescription ? ` for ${payload.inputs.taskDescription}` : ''}`,
-      })];
-    case 'PLAN_STRATEGY_OVERRIDDEN':
-      return [renderEvent('plan', 'progress', envelope, {
-        text: payload.strategy ? `Overridden to ${payload.strategy}` : 'Planner override cleared',
-      })];
-    case 'PERMISSION_REQUESTED':
-      return [renderEvent('approval', 'progress', envelope, {
-        text: payload.summary ?? `Permission requested for ${payload.tool}`,
-      })];
-    case 'DECISION_EMITTED':
-      return [renderEvent('approval', 'progress', envelope, {
-        text: `${payload.approved ? 'Approved' : 'Denied'} ${payload.tool}`,
-      })];
-    case 'MODEL_FALLBACK':
-      return [renderEvent('model', 'progress', envelope, {
-        provider: payload.provider,
-        model: `${payload.from} -> ${payload.to}`,
-      })];
-    case 'COMPACTION_RECEIPT':
-      return [renderEvent(payload.outcome === 'applied' ? 'compaction' : 'error', 'progress', envelope, {
-        text: `compaction ${payload.outcome}: ${payload.tokensBefore}->${payload.tokensAfter} tokens, quality ${payload.qualityGrade}${payload.detail ? ` — ${payload.detail}` : ''}`,
-      })];
-    case 'COMPACTION_CHECK':
-    case 'COMPACTION_MICROCOMPACT':
-    case 'COMPACTION_COLLAPSE':
-    case 'COMPACTION_AUTOCOMPACT':
-    case 'COMPACTION_REACTIVE':
-    case 'COMPACTION_DONE':
-    case 'COMPACTION_FAILED':
-    case 'COMPACTION_RESUME_REPAIR':
-    case 'COMPACTION_QUALITY_SCORE':
-    case 'COMPACTION_STRATEGY_SWITCH':
-      return [renderEvent(payload.type === 'COMPACTION_FAILED' ? 'error' : 'compaction', 'progress', envelope, {
-        text: payload.type.replace(/^COMPACTION_/, '').toLowerCase().replace(/_/g, ' '),
-      })];
-    case 'WORKFLOW_CHAIN_CREATED':
-      return [renderEvent('status', 'progress', envelope, {
-        text: `WRFC chain ${payload.chainId.slice(0, 12)} started: ${trimText(payload.task, 180)}`,
-      })];
-    case 'WORKFLOW_STATE_CHANGED':
-      return [renderEvent('status', 'progress', envelope, {
-        text: `WRFC chain ${payload.chainId.slice(0, 12)} moved from ${payload.from} to ${payload.to}`,
-      })];
-    case 'WORKFLOW_REVIEW_COMPLETED': {
-      const constraintSummary = typeof payload.constraintsSatisfied === 'number' && typeof payload.constraintsTotal === 'number'
-        ? `, constraints ${payload.constraintsSatisfied}/${payload.constraintsTotal}`
-        : '';
-      return [renderEvent(payload.passed ? 'status' : 'error', 'progress', envelope, {
-        text: `WRFC review ${payload.passed ? 'passed' : 'needs fixes'}: score ${payload.score}/10${constraintSummary}`,
-      })];
-    }
-    case 'WORKFLOW_FIX_ATTEMPTED':
-      return [renderEvent('status', 'progress', envelope, {
-        text: `WRFC fix attempt ${payload.attempt}/${payload.maxAttempts} started`,
-      })];
-    case 'WORKFLOW_GATE_RESULT':
-      return [renderEvent(payload.passed ? 'status' : 'error', 'progress', envelope, {
-        text: `WRFC gate ${payload.gate} ${payload.passed ? 'passed' : 'failed'}`,
-      })];
-    case 'WORKFLOW_AUTO_COMMITTED':
-      return [renderEvent('status', 'progress', envelope, {
-        text: `WRFC changes committed${payload.commitHash ? `: ${payload.commitHash}` : ''}`,
-      })];
-    case 'WORKFLOW_SCORE_REGRESSION':
-      return [renderEvent('status', 'progress', envelope, {
-        text: `WRFC score regression warning: ${payload.reason}`,
-      })];
-    case 'WORKFLOW_CASCADE_ABORTED':
-      return [renderEvent('error', 'progress', envelope, {
-        text: `WRFC cascade warning: ${payload.reason}`,
-      })];
-    case 'WORKFLOW_CONSTRAINTS_ENUMERATED':
-      return [renderEvent('status', 'progress', envelope, {
-        text: `WRFC constraints enumerated: ${payload.constraints.length}`,
-      })];
-    case 'WORKFLOW_CHAIN_PASSED':
-      return [renderEvent('status', 'final', envelope, {
-        text: `WRFC chain ${payload.chainId.slice(0, 12)} passed`,
-      })];
-    case 'WORKFLOW_CHAIN_FAILED':
-      return [renderEvent('error', 'final', envelope, {
-        text: `WRFC chain ${payload.chainId.slice(0, 12)} failed: ${payload.reason}`,
-      })];
-    case 'TURN_COMPLETED':
-      return payload.response.trim().length > 0
-        ? [renderEvent('assistant_text', 'final', envelope, { text: payload.response })]
-        : [];
-    case 'TURN_ERROR':
-      return [renderEvent('error', 'final', envelope, { text: payload.error })];
-    default:
-      return [];
-  }
-}
-
 export class ChannelReplyPipeline {
   private readonly channelPlugins: ChannelPluginRegistry;
   private readonly routeBindings: RouteBindingManager;
   private readonly now: () => number;
   private readonly buffers = new Map<string, ReplyBufferState>();
+  /**
+   * Tail of the in-flight delivery chain for each agent — the serialization
+   * point that makes "read the watermark, publish, mark delivered" atomic.
+   *
+   * Two callers reach this concurrently by design: `handleEnvelope` fires on
+   * every bus event, and the daemon's pending-reply poller calls
+   * `deliverProgress(..., force)` on its own 2s tick. Both used to read the
+   * same unmarked watermark while a publish was still in flight, so each one
+   * selected the same events plus whatever had arrived since — the reader got
+   * a ladder of notifications where each body was a strict SUPERSET of the one
+   * before it. The single-call delta was already correct; the interleaving was
+   * not.
+   */
+  private readonly deliveryChains = new Map<string, Promise<void>>();
   private readonly workflowChains = new Map<string, string>();
   private readonly unsubscribers: Array<() => void> = [];
+  private undeliveredReporter: UndeliveredChannelReplyReporter | null;
+  private deliveredReporter: DeliveredChannelReplyReporter | null;
 
   constructor(deps: ReplyPipelineDeps) {
     this.channelPlugins = deps.channelPlugins;
     this.routeBindings = deps.routeBindings;
     this.now = deps.now ?? (() => Date.now());
+    this.undeliveredReporter = deps.onUndelivered ?? null;
+    this.deliveredReporter = deps.onDelivered ?? null;
     this.attachRuntimeBus(deps.runtimeBus ?? null);
+  }
+
+  /** Install (or replace) the ledger reporters after construction. */
+  setUndeliveredReporter(reporter: UndeliveredChannelReplyReporter | null): void {
+    this.undeliveredReporter = reporter;
+  }
+
+  setDeliveredReporter(reporter: DeliveredChannelReplyReporter | null): void {
+    this.deliveredReporter = reporter;
   }
 
   attachRuntimeBus(runtimeBus: RuntimeEventBus | null): void {
@@ -504,6 +334,39 @@ export class ChannelReplyPipeline {
     this.disposeSubscriptions();
     this.buffers.clear();
     this.workflowChains.clear();
+    this.deliveryChains.clear();
+  }
+
+  /**
+   * Run `task` with no other delivery for the same agent in flight.
+   *
+   * Serializing the whole read-decide-publish-mark body — rather than only
+   * reserving the watermark before the await — is deliberate. Reserving the
+   * watermark alone stops the superset ladder, but it leaves the two OTHER
+   * pieces of state this method reads before the await and writes after it
+   * racing: `lastDeliveredText` (the identical-body suppression) and
+   * `lastDeliveredAt` (the pacing interval). Under a reserve-only fix two
+   * callers still both pass the pacing check and both publish, so one message
+   * still arrives as two notifications — disjoint instead of nested, which is
+   * a smaller bug of the same kind. With the section serialized, the second
+   * caller observes the first one's marks and correctly suppresses itself.
+   *
+   * Scope is per agent id, so a slow surface can only delay that agent's own
+   * updates, never another agent's. Rejections are absorbed into the chain
+   * tail (callers still see their own), so one failed send cannot poison the
+   * next one.
+   */
+  private runExclusive<T>(agentId: string, task: () => Promise<T>): Promise<T> {
+    const previous = this.deliveryChains.get(agentId);
+    const started = previous ? previous.then(task, task) : task();
+    const settled = started.then(() => undefined, () => undefined);
+    this.deliveryChains.set(agentId, settled);
+    void settled.then(() => {
+      if (this.deliveryChains.get(agentId) === settled) {
+        this.deliveryChains.delete(agentId);
+      }
+    });
+    return started;
   }
 
   trackPending(pending: TrackedChannelReply): void {
@@ -535,14 +398,34 @@ export class ChannelReplyPipeline {
   }
 
   async deliverProgress(agentId: string, explicitText?: string, force = false): Promise<ChannelRenderResult | null> {
+    return await this.runExclusive(agentId, async () => await this.deliverProgressExclusive(agentId, explicitText, force));
+  }
+
+  private async deliverProgressExclusive(
+    agentId: string,
+    explicitText: string | undefined,
+    force: boolean,
+  ): Promise<ChannelRenderResult | null> {
     const state = this.buffers.get(agentId);
     if (!state) return null;
     const policy = await this.resolvePolicy(state.pending.surfaceKind);
-    const explicit = policy.surface === 'ntfy' ? '' : explicitText ?? '';
+    // Every surface gets the status line, ntfy included. Blanking it for ntfy
+    // made the owner's primary channel the only one with no "what is happening
+    // now" at all — and it was inert anyway, because the progress phase used to
+    // discard explicitText entirely. buildRenderedText bounds it to one line.
+    const explicit = explicitText ?? '';
     // Delta only. Rendering the whole accumulated buffer on every tick is what
     // made each notification re-send everything that came before it, so line
     // counts climbed 3 -> 10 -> 13 while the reader learned nothing new.
-    const freshEvents = selectUndeliveredEvents(state, state.events);
+    //
+    // Progress-phase events ONLY. The buffer is appended to by the bus while
+    // this call is queued, so by the time a tick actually runs the agent may
+    // already have completed and pushed its final events. Rendering the whole
+    // buffer let a progress notification carry "Agent completed in 5ms" — and,
+    // worse, consume the watermark for a final-phase event, which would then
+    // be missing from the final body. What the agent is DOING is progress;
+    // what it SAID is the final's to deliver.
+    const freshEvents = selectUndeliveredEvents(state, state.events.filter((event) => event.phase !== 'final'));
     if (freshEvents.length === 0 && explicit.trim().length === 0) return null;
     const text = buildRenderedText(explicit, freshEvents, policy, 'progress');
     if (!text) return null;
@@ -555,7 +438,22 @@ export class ChannelReplyPipeline {
       return null;
     }
     const delivered = freshEvents.slice(-policy.maxEventsPerUpdate);
-    const result = await this.dispatch(state, policy, 'progress', text, delivered);
+    // A failed progress update must not abort the turn or unwind the delta
+    // watermark: the final reply is the one that has to arrive, and replaying
+    // the same events on the next tick would only repeat the same failure.
+    let result: ChannelRenderResult | null = null;
+    try {
+      result = await this.dispatch(state, policy, 'progress', text, delivered);
+    } catch (error) {
+      logger.warn('Agent progress update could not be delivered to its surface', {
+        surface: state.pending.surfaceKind,
+        agentId,
+        sessionId: state.pending.sessionId ?? null,
+        bindingId: state.pending.routeId ?? null,
+        reason: summarizeError(error),
+      });
+      this.reportUndelivered(state, 'progress', text, summarizeError(error));
+    }
     markEventsDelivered(state, freshEvents);
     state.lastDeliveredText = text;
     state.lastDeliveredAt = this.now();
@@ -566,6 +464,14 @@ export class ChannelReplyPipeline {
     agentId: string,
     explicitText: string,
     options: { readonly keepTracking?: boolean } = {},
+  ): Promise<ChannelRenderResult | null> {
+    return await this.runExclusive(agentId, async () => await this.deliverFinalExclusive(agentId, explicitText, options));
+  }
+
+  private async deliverFinalExclusive(
+    agentId: string,
+    explicitText: string,
+    options: { readonly keepTracking?: boolean },
   ): Promise<ChannelRenderResult | null> {
     const state = this.buffers.get(agentId);
     if (!state) return null;
@@ -579,7 +485,22 @@ export class ChannelReplyPipeline {
       text: 'Completed',
       metadata: {},
     };
-    const renderEvents = finalEvents.length > 0 ? finalEvents : [...state.events, statusEvent];
+    // Delta with a floor, matching deliverProgress.
+    //
+    // Buffered events are rendered only if the reader has not already been sent
+    // them. Rendering the lot made the final body a strict SUPERSET of every
+    // progress update before it — so the exact-body check below could never
+    // fire, and one trivial message arrived as three notifications, each
+    // repeating the previous one plus a little more.
+    //
+    // The floor is what guarantees a run never ends in silence: the explicit
+    // text always renders (buildRenderedText returns it verbatim on 'final'),
+    // and when every buffered event was already delivered the terminal status
+    // event renders in their place. A completion with nothing new to say still
+    // says "Completed" — it never sends nothing.
+    const candidateEvents = finalEvents.length > 0 ? finalEvents : [...state.events, statusEvent];
+    const freshEvents = selectUndeliveredEvents(state, candidateEvents);
+    const renderEvents = freshEvents.length > 0 ? freshEvents : [statusEvent];
     const text = buildRenderedText(explicitText, renderEvents, policy, 'final');
     // A chain that keeps tracking (ntfy workflow chains) can reach this more
     // than once. An identical final body is a duplicate notification, not a
@@ -588,20 +509,86 @@ export class ChannelReplyPipeline {
       if (!options.keepTracking) this.untrack(agentId);
       return null;
     }
-    const result = await this.dispatch(
-      state,
-      policy,
-      'final',
-      text,
-      finalEvents.length > 0 ? finalEvents : [...state.events.slice(-policy.maxEventsPerUpdate + 1), statusEvent],
-    );
+    // A final reply is delivered ONCE, whether or not the surface accepted it.
+    //
+    // Letting a throwing dispatch escape used to skip the untrack below, which
+    // left the agent still tracked; the pending-reply poller then treated the
+    // completed agent as unhandled, re-appended its answer to the shared
+    // session, and retried the same failing send. The observable symptom was
+    // every Telegram answer stored twice with nothing delivered. The send is
+    // still allowed to fail — it just fails once, loudly, and stops.
+    let result: ChannelRenderResult | null = null;
+    let deliveryError: unknown = null;
+    try {
+      // The body is the delta; the event list handed to the renderer is not.
+      // Renderers classify an outcome from it (an `error` event is what marks a
+      // notification failed), and that verdict must not flip just because the
+      // error line was already delivered by a progress tick.
+      result = await this.dispatch(
+        state,
+        policy,
+        'final',
+        text,
+        finalEvents.length > 0 ? finalEvents : [...state.events.slice(-policy.maxEventsPerUpdate + 1), statusEvent],
+      );
+    } catch (error) {
+      deliveryError = error;
+      logger.error('Agent reply could not be delivered to the surface it came from', {
+        surface: state.pending.surfaceKind,
+        agentId,
+        sessionId: state.pending.sessionId ?? null,
+        bindingId: state.pending.routeId ?? null,
+        phase: 'final',
+        reason: summarizeError(error),
+      });
+      this.reportUndelivered(state, 'final', text, summarizeError(error));
+    }
+    // Mark exactly what this body was built from, so a later leg of a chain
+    // that keeps tracking renders its own news and not this one again.
     markEventsDelivered(state, renderEvents);
     state.lastDeliveredText = text;
     state.lastDeliveredAt = this.now();
     if (!options.keepTracking) {
       this.untrack(agentId);
     }
+    if (deliveryError) return null;
+    if (result?.delivered) {
+      // Close the ledger entry this reply opened when it was queued. Without
+      // this the ledger shows every surface reply stuck at "pending" forever,
+      // which is only marginally more useful than showing nothing.
+      this.deliveredReporter?.({
+        surfaceKind: state.pending.surfaceKind,
+        agentId: state.pending.agentId,
+        sessionId: state.pending.sessionId,
+        routeId: state.pending.routeId,
+        ...(result.responseId ? { responseId: result.responseId } : {}),
+      });
+    }
     return result;
+  }
+
+  /**
+   * Report a reply that was produced but never reached its conversation.
+   *
+   * Routed through the SAME delivery ledger the automation deliveries use, so
+   * a "should have sent, did not" is a visible failed attempt rather than an
+   * absence indistinguishable from "nothing happened".
+   */
+  private reportUndelivered(
+    state: ReplyBufferState,
+    phase: ChannelRenderPhase,
+    text: string,
+    reason: string,
+  ): void {
+    this.undeliveredReporter?.({
+      surfaceKind: state.pending.surfaceKind,
+      agentId: state.pending.agentId,
+      sessionId: state.pending.sessionId,
+      routeId: state.pending.routeId,
+      phase,
+      body: text,
+      reason,
+    });
   }
 
   private async handleEnvelope(
@@ -634,9 +621,12 @@ export class ChannelReplyPipeline {
     }
     const hasFinal = events.some((event) => event.phase === 'final');
     if (hasFinal) {
-      const finalKinds = state.pending.surfaceKind === 'ntfy'
-        ? new Set<ChannelRenderEvent['kind']>(['error', 'status'])
-        : new Set<ChannelRenderEvent['kind']>(['assistant_text', 'error', 'status']);
+      // The same set for every surface, ntfy included. ntfy used to drop
+      // `assistant_text` here, which meant the one notification the owner
+      // actually waits for carried "Agent completed in Nms" and never the
+      // reply that produced it. Length is a rendering concern, and it is
+      // already handled: the ntfy policy trims the body to maxChunkChars.
+      const finalKinds = new Set<ChannelRenderEvent['kind']>(['assistant_text', 'error', 'status']);
       const text = events
         .filter((event) => finalKinds.has(event.kind))
         .map((event) => event.text ?? '')
@@ -767,14 +757,27 @@ export class ChannelReplyPipeline {
     };
     const result = await this.channelPlugins.render(state.pending.surfaceKind, request);
     if (!result || !result.delivered) {
-      logger.warn('ChannelReplyPipeline: channel render did not report delivery', {
+      // Not an exception, but the reply still did not reach anyone. A final
+      // answer that silently reports "not delivered" is the exact failure this
+      // module exists to make visible, so it is an error with the binding in
+      // hand and a ledger entry, not a warn nobody reads.
+      const reason = !result
+        ? 'no-renderer-or-delivery-handler'
+        : String(result.metadata.reason ?? 'renderer-reported-not-delivered');
+      const describe = {
         surface: state.pending.surfaceKind,
         phase,
         agentId: state.pending.agentId,
-        sessionId: state.pending.sessionId,
-        routeId: state.pending.routeId,
-        reason: !result ? 'no-renderer-or-delivery-handler' : result.metadata.reason,
-      });
+        sessionId: state.pending.sessionId ?? null,
+        bindingId: state.pending.routeId ?? null,
+        reason,
+      };
+      if (phase === 'final') {
+        logger.error('Agent reply was produced but no channel delivered it', describe);
+        this.reportUndelivered(state, phase, text, reason);
+      } else {
+        logger.warn('ChannelReplyPipeline: channel render did not report delivery', describe);
+      }
     }
     if (result?.responseId && state.pending.routeId) {
       await this.routeBindings.captureReplyTarget(

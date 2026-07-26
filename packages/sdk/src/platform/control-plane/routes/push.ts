@@ -15,6 +15,11 @@ import type { GatewayMethodCatalog } from '../method-catalog.js';
 import type { GatewayMethodHandler, GatewayMethodInvocation } from '../method-catalog-shared.js';
 import type { PushService } from '../../push/index.js';
 import type { SubscriptionKeyMaterial } from '../../push/index.js';
+import {
+  describeAuthSecretProblem,
+  describeEndpointProblem,
+  describeP256dhProblem,
+} from '../../push/index.js';
 import { GatewayVerbError } from './gateway-verb-error.js';
 import { readInvocationParams } from './invocation-params.js';
 
@@ -39,29 +44,36 @@ function requireString(value: unknown, field: string): string {
   return value;
 }
 
+/**
+ * The endpoint must be a bounded http(s) URL. Checked here rather than only at
+ * delivery time so a junk or oversized endpoint is refused with a reason the
+ * client can act on, instead of being stored and failing silently later.
+ */
 function requireHttpsEndpoint(value: unknown): string {
   const endpoint = requireString(value, 'endpoint');
-  let parsed: URL;
-  try {
-    parsed = new URL(endpoint);
-  } catch {
-    throw new GatewayVerbError('endpoint is not a valid URL', 'INVALID_ARGUMENT', 400);
-  }
-  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
-    throw new GatewayVerbError('endpoint must be an http(s) URL', 'INVALID_ARGUMENT', 400);
-  }
+  const problem = describeEndpointProblem(endpoint);
+  if (problem) throw new GatewayVerbError(problem, 'INVALID_ARGUMENT', 400);
   return endpoint;
 }
 
+/**
+ * Key material is validated by CONTENT, not existence: `p256dh` must decode to
+ * a 65-byte uncompressed P-256 point and `auth` to a 16-byte secret — the same
+ * predicates push/encryption.ts enforces at delivery, so the two cannot
+ * disagree about what is storable.
+ */
 function requireKeys(value: unknown): SubscriptionKeyMaterial {
   if (value === null || typeof value !== 'object') {
     throw new GatewayVerbError('Missing subscription keys', 'INVALID_ARGUMENT', 400);
   }
   const keys = value as Record<string, unknown>;
-  return {
-    p256dh: requireString(keys.p256dh, 'keys.p256dh'),
-    auth: requireString(keys.auth, 'keys.auth'),
-  };
+  const p256dh = requireString(keys.p256dh, 'keys.p256dh');
+  const auth = requireString(keys.auth, 'keys.auth');
+  const p256dhProblem = describeP256dhProblem(p256dh);
+  if (p256dhProblem) throw new GatewayVerbError(p256dhProblem, 'INVALID_ARGUMENT', 400);
+  const authProblem = describeAuthSecretProblem(auth);
+  if (authProblem) throw new GatewayVerbError(authProblem, 'INVALID_ARGUMENT', 400);
+  return { p256dh, auth };
 }
 
 function createVapidGetHandler(service: PushGatewayService): GatewayMethodHandler {

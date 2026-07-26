@@ -10,6 +10,10 @@ import { learningConfigDefaults, learningConfigSettings } from './schema-domain-
 import { powerConfigDefaults, powerConfigSettings } from './schema-domain-power.js';
 import { memoryConfigDefaults, memoryConfigSettings } from './schema-domain-memory.js';
 import { voiceLocalConfigDefaults, voiceLocalConfigSettings } from './schema-domain-voice-local.js';
+import { voiceWakeConfigDefaults, voiceWakeConfigSettings } from './schema-domain-voice-wake.js';
+import { triggersConfigDefaults, triggersConfigSettings } from './schema-domain-triggers.js';
+import { deviceConfigDefaults, deviceConfigSettings } from './schema-domain-device.js';
+import { pushConfigDefaults, pushConfigSettings } from './schema-domain-push.js';
 import { fleetConfigDefaults, fleetConfigSettings } from './schema-domain-fleet.js';
 import { surfaceConfigDefaults, surfaceConfigSettings } from './schema-domain-surfaces.js';
 import { featureConfigDefaults, featureConfigSettings } from './schema-domain-features.js';
@@ -39,7 +43,7 @@ export const DEFAULT_CONFIG = {
   httpListener: runtimeConfigDefaults.httpListener,
   web: runtimeConfigDefaults.web,
   surfaces: surfaceConfigDefaults as SurfacesConfig,
-  watchers: runtimeConfigDefaults.watchers,
+  watchers: { ...runtimeConfigDefaults.watchers, ...triggersConfigDefaults },
   service: runtimeConfigDefaults.service,
   update: updateConfigDefaults.update,
   network: runtimeConfigDefaults.network,
@@ -52,7 +56,9 @@ export const DEFAULT_CONFIG = {
   learning: learningConfigDefaults.learning,
   power: powerConfigDefaults.power,
   memory: memoryConfigDefaults.memory,
-  voice: voiceLocalConfigDefaults.voice,
+  voice: { ...voiceLocalConfigDefaults.voice, ...voiceWakeConfigDefaults.voice },
+  device: deviceConfigDefaults.device,
+  push: pushConfigDefaults.push,
   fleet: fleetConfigDefaults.fleet,
   batch: runtimeConfigDefaults.batch,
   cloudflare: runtimeConfigDefaults.cloudflare,
@@ -80,9 +86,13 @@ export const CONFIG_SCHEMA: ConfigSetting[] = [
   ...powerConfigSettings,
   ...memoryConfigSettings,
   ...voiceLocalConfigSettings,
+  ...voiceWakeConfigSettings,
+  ...deviceConfigSettings,
+  ...pushConfigSettings,
   ...fleetConfigSettings,
   ...surfaceConfigSettings,
   ...runtimeSecondaryConfigSettings,
+  ...triggersConfigSettings,
   ...updateConfigSettings,
   ...coreTailConfigSettings,
   ...featureConfigSettings,

@@ -29,6 +29,29 @@ export interface ConfigManagerLike {
   get(key: string): unknown;
   getAll(): Record<string, unknown>;
   setDynamic(key: string, value: unknown): void;
+  /**
+   * Absolute path of the settings file this manager writes to.
+   *
+   * Reported back on every config write. A caller and the host it is talking to
+   * routinely own DIFFERENT surface-scoped stores (`~/.goodvibes/agent/` versus
+   * `~/.goodvibes/tui/`), so "the setting was saved" is ambiguous until the file
+   * is named: a value written to the connected host is invisible to the caller's
+   * own store and vice versa, and reading it back locally shows the old value.
+   */
+  getConfigPath?(): string;
+  /**
+   * Which store the key resolves from and whether the DAEMON owns it.
+   *
+   * Ownership, not the caller's identity, decides where a value belongs: a
+   * daemon-owned key (chat surfaces, control-plane binding, watchers, device
+   * grants, retention) has exactly one home regardless of which client asked.
+   * Reported on every write so a caller never has to infer it from a path.
+   */
+  describeConfigKeySource?(key: string): {
+    readonly tier: string;
+    readonly daemonOwned: boolean;
+    readonly daemonTierPath: string | null;
+  };
 }
 
 export interface IntegrationApprovalSnapshotSourceLike {

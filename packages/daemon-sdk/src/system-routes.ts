@@ -239,7 +239,42 @@ export function createDaemonSystemRouteHandlers(
       } catch (error: unknown) {
         return jsonErrorResponse(error, { status: 400, fallbackMessage: 'Failed to set config' });
       }
-      return Response.json({ success: true, key, value });
+      // Report what the host now HOLDS, not what the caller asked for.
+      //
+      // Echoing the request back made this route say "success" for any write —
+      // it could not distinguish a value that took from one that was coerced,
+      // dropped, or overridden. It also never named the store, and the store is
+      // the whole question here: an agent writes over the control plane into the
+      // DAEMON's surface-scoped settings file, then reads the same key back from
+      // its OWN settings file and sees the old value. Both are correct; nothing
+      // said they were different files.
+      const current = context.configManager.get(key);
+      const source = context.configManager.describeConfigKeySource?.(key);
+      // A daemon-owned key does NOT live in the host's surface settings file —
+      // it lives in the daemon's own store. Reporting the surface path for it
+      // would name the wrong file, which is the confusion this replaces.
+      const persistedTo = (source?.daemonOwned ? source.daemonTierPath : null)
+        ?? context.configManager.getConfigPath?.();
+      if (!configValuesMatch(current, value)) {
+        return jsonErrorResponse(
+          {
+            error: `Config key ${key} did not take the requested value`
+              + `${persistedTo ? ` in ${persistedTo}` : ''}. The host now reports ${JSON.stringify(current)}.`,
+            code: 'CONFIG_SET_NOT_APPLIED',
+          },
+          { status: 409 },
+        );
+      }
+      // Name the OWNER as well as the file. "Saved" is only meaningful once a
+      // caller knows whether the value landed where the runtime that acts on it
+      // will read it — the whole point of daemon-owned config scope.
+      return Response.json({
+        success: true,
+        key,
+        value: current,
+        ...(persistedTo ? { persistedTo } : {}),
+        ...(source ? { tier: source.tier, daemonOwned: source.daemonOwned } : {}),
+      });
     },
   };
 }
@@ -474,6 +509,22 @@ async function handleApprovalAction(
   return approval
     ? context.recordApiResponse(req, `/api/approvals/${approvalId}/${action}`, Response.json({ approval, recorded: recordedDecision(approval) }))
     : context.recordApiResponse(req, `/api/approvals/${approvalId}/${action}`, jsonErrorResponse({ error: 'Unknown approval' }, { status: 404 }));
+}
+
+/**
+ * Compare a requested config value against what the host holds afterwards.
+ *
+ * Structural, because settings hold objects and arrays as well as scalars, and
+ * a config manager legitimately normalizes on the way in (trimming, filling a
+ * default sibling). Equal-by-value is the honest test of "did the write take".
+ */
+function configValuesMatch(current: unknown, requested: unknown): boolean {
+  if (Object.is(current, requested)) return true;
+  try {
+    return JSON.stringify(current) === JSON.stringify(requested);
+  } catch {
+    return false;
+  }
 }
 
 /**

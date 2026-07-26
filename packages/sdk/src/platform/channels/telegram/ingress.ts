@@ -31,7 +31,7 @@ import { processTelegramUpdate } from '../../adapters/telegram/index.js';
 import { resolveSecretInput } from '../../config/secret-refs.js';
 import { logger } from '../../utils/logger.js';
 import { summarizeError } from '../../utils/error-display.js';
-import { TelegramApiError, TelegramBotApi, type TelegramUpdate } from './api.js';
+import { TelegramApiError, TelegramBotApi, type TelegramBotIdentity, type TelegramUpdate } from './api.js';
 import { TelegramOffsetStore } from './offset-store.js';
 
 /** Telegram holds the request open this long when there is nothing to report. */
@@ -100,6 +100,8 @@ export class TelegramIngressSupervisor {
   private stopped = true;
   private abort: AbortController | null = null;
   private loop: Promise<void> | null = null;
+  /** Who this bot is, per getMe — see resolveBotIdentity. */
+  private botIdentity: TelegramBotIdentity | null = null;
   private currentStatus: TelegramIngressStatus = {
     mode: 'inactive',
     reason: 'not started',
@@ -110,6 +112,11 @@ export class TelegramIngressSupervisor {
 
   get status(): TelegramIngressStatus {
     return this.currentStatus;
+  }
+
+  /** The resolved bot identity, or null when getMe has not succeeded yet. */
+  get identity(): TelegramBotIdentity | null {
+    return this.botIdentity;
   }
 
   /**
@@ -143,6 +150,10 @@ export class TelegramIngressSupervisor {
 
     const mode = String(config.get('surfaces.telegram.mode') ?? 'webhook');
     const api = this.deps.createApi?.(token) ?? new TelegramBotApi(token);
+
+    // Learn who this bot is before arming ingress, so the very first message is
+    // matched against a real handle rather than an empty string.
+    await this.resolveBotIdentity(api, token);
 
     if (mode === 'polling') return this.startPolling(api);
     if (mode === 'webhook') return this.startWebhook(api);
@@ -363,6 +374,91 @@ export class TelegramIngressSupervisor {
       if (updateId !== null) offset = Math.max(offset ?? 0, updateId + 1);
     }
     return offset;
+  }
+
+  /**
+   * Resolve the bot's own identity from its token and cache it in config.
+   *
+   * `surfaces.telegram.botUsername` being blank does NOT mean the bot has no
+   * username — it means nobody typed one in. Telegram's getMe returns the
+   * handle, id and display name for any valid token, so the daemon asks instead
+   * of degrading: without a handle, @mentions in groups are not recognised,
+   * `/goodvibes@thebot` is not stripped correctly, `/start@someotherbot` in a
+   * shared group is answered as if it were ours, and route bindings from two
+   * different bots collide on the literal surfaceId 'telegram'.
+   *
+   * Rules:
+   * - An explicitly configured username WINS. A discovered value never
+   *   overwrites an operator's choice; it only fills a blank.
+   * - The discovery is keyed to the token, so rotating the token re-discovers
+   *   rather than serving a stale handle.
+   * - A failure never blocks startup. Ingress still arms — receiving messages
+   *   matters more than perfect mention matching — but it says at warn level
+   *   exactly what will not work until the call succeeds, and the next start()
+   *   retries.
+   */
+  private async resolveBotIdentity(api: TelegramBotApi, token: string): Promise<void> {
+    const config = this.deps.configManager;
+    const configured = String(config.get('surfaces.telegram.botUsername') ?? '').replace(/^@/, '').trim();
+    const cachedFor = String(config.get('surfaces.telegram.discoveredBotTokenId') ?? '');
+    if (configured && cachedFor === api.botId) {
+      this.botIdentity = { id: api.botId, username: configured, displayName: '' };
+      return;
+    }
+    if (configured && cachedFor !== api.botId && cachedFor !== '') {
+      // The handle on file belongs to a different token. Re-discover rather
+      // than run a new bot under the previous bot's identity.
+      logger.info('Telegram ingress: bot token changed; re-resolving the bot identity', { botId: api.botId });
+    } else if (configured) {
+      // Operator-supplied and never discovered — honour it, but still record
+      // which token it belongs to so a later rotation is detected.
+      this.botIdentity = { id: api.botId, username: configured, displayName: '' };
+      this.rememberDiscoveredToken(api.botId);
+      return;
+    }
+
+    let identity: TelegramBotIdentity;
+    try {
+      identity = await api.getMe();
+    } catch (error) {
+      logger.warn('Telegram ingress: could not resolve the bot username from its token', {
+        botId: api.botId,
+        error: summarizeError(error),
+        impact: '@mentions in groups will not be recognised, /goodvibes@botname will not be stripped, '
+          + 'and a /start addressed to another bot in a shared group may be answered as if it were ours',
+        detail: 'set surfaces.telegram.botUsername manually, or restart the surface to retry getMe',
+      });
+      return;
+    }
+    if (!identity.username) {
+      logger.warn('Telegram ingress: getMe returned no username for this bot', { botId: identity.id });
+      return;
+    }
+    this.botIdentity = identity;
+    try {
+      if (!configured) config.set('surfaces.telegram.botUsername', identity.username);
+      this.rememberDiscoveredToken(identity.id);
+      logger.info('Telegram ingress: resolved the bot identity from its token', {
+        botId: identity.id,
+        botUsername: identity.username,
+        displayName: identity.displayName,
+      });
+    } catch (error) {
+      // Discovery still succeeded in memory; only the cache write failed.
+      logger.warn('Telegram ingress: could not persist the discovered bot username', {
+        botUsername: identity.username,
+        error: summarizeError(error),
+      });
+    }
+    void token;
+  }
+
+  private rememberDiscoveredToken(botId: string): void {
+    try {
+      this.deps.configManager.set('surfaces.telegram.discoveredBotTokenId', botId);
+    } catch {
+      // A host without this key in its schema simply re-discovers next start.
+    }
   }
 
   /**

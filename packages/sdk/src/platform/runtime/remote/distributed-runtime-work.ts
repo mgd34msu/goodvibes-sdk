@@ -85,6 +85,12 @@ export async function invokeDistributedPeer(
   state: DistributedRuntimeManagerState,
   input: {
     readonly peerId: string;
+    /**
+     * Work type. Defaults to 'invoke'; a caller with a typed family of its own
+     * (e.g. 'device.capability') names it so the peer can route on type rather
+     * than on the command string.
+     */
+    readonly type?: DistributedWorkType | undefined;
     readonly command: string;
     readonly payload?: unknown | undefined;
     readonly priority?: DistributedWorkPriority | undefined;
@@ -101,6 +107,7 @@ export async function invokeDistributedPeer(
 ): Promise<{ work: DistributedPendingWork; completed: boolean }> {
   const work = await enqueueDistributedWork(state, {
     peerId: input.peerId,
+    type: input.type,
     command: input.command,
     payload: input.payload,
     priority: input.priority,

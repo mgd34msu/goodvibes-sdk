@@ -67,6 +67,19 @@ interface ControlRouteContext {
    * version poll) neither receives nor consumes receipts.
    */
   readonly collectReceipts?: (() => readonly { id: string; text: string; at: number }[]) | undefined;
+  /**
+   * The minimum CLIENT build this daemon accepts as a full participant,
+   * announced on /status as a response header (the body has a closed schema,
+   * and a header is additive and ignorable by older clients).
+   *
+   * A daemon update does not restart the clients attached to it, so without
+   * this a process started days ago keeps executing shared-session work under
+   * whatever rules its build shipped with. Supplying it lets every client
+   * check itself on the liveness probe it already performs.
+   */
+  readonly clientCompatibilityFloor?: string | undefined;
+  /** Header name carrying {@link clientCompatibilityFloor}. */
+  readonly clientCompatibilityFloorHeader?: string | undefined;
 }
 
 type GatewayInvokeBody = {
@@ -108,11 +121,14 @@ export function createDaemonControlRouteHandlers(
       // receipt-neutral, so an identity probe or keepalive that parses only
       // status/version can never eat a receipt before a rendering surface.
       const consumeReceipts = new URL(req.url).searchParams.get('receipts') === 'consume';
+      const floorHeader = context.clientCompatibilityFloor && context.clientCompatibilityFloorHeader
+        ? { [context.clientCompatibilityFloorHeader]: context.clientCompatibilityFloor }
+        : undefined;
       return Response.json({
         status: 'running',
         version: context.version,
         ...(consumeReceipts && context.collectReceipts ? { receipts: context.collectReceipts() } : {}),
-      });
+      }, floorHeader ? { headers: floorHeader } : undefined);
     },
     getCurrentAuth: (req) => {
       const token = context.extractAuthToken(req).trim();

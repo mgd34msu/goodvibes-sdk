@@ -90,23 +90,22 @@ function parseChannelDeliveryTarget(channel: string): ChannelDeliveryTarget {
 
 import { createSessionRuntimeControls, registerSessionRuntimeGatewayMethods, type SessionLiveTurnControlsHolder } from './session-runtime.js';
 import { registerPowerGatewayMethods, type PowerGatewayService } from './power.js';
+import { registerDevicesGatewayMethods, type DevicesGatewayService } from './devices.js';
 import { registerMemoryGatewayMethods, type MemoryGatewayService } from './memory.js';
 import { registerVoiceSetupGatewayMethods, type VoiceSetupGatewayService } from './voice-setup.js';
 import { bindCostAttributionIngest } from './attribution-ingest.js';
 import type { ConfigManager } from '../../config/manager.js';
+import type { ConfigKey } from '../../config/schema.js';
 import type { RuntimeStore } from '../../runtime/store/index.js';
 import { FileSystemSkillStore, SkillService } from '../../skills/index.js';
-import {
-  DEFAULT_PUSH_ESCALATION,
-  PushService,
-  PushSubscriptionStore,
-  VapidManager,
-  type ApprovalSource,
-  type FleetNotice,
-  type FleetNoticeSource,
-  type NeedsInputPresence,
-  type VapidSecretStore,
+import type {
+  ApprovalSource,
+  FleetNotice,
+  FleetNoticeSource,
+  NeedsInputPresence,
+  VapidSecretStore,
 } from '../../push/index.js';
+import { createPushService } from './push-composition.js';
 import type { RuntimeEventBus } from '../../runtime/events/index.js';
 import type { FleetEvent } from '../../../events/fleet.js';
 
@@ -146,7 +145,11 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
   readonly userPermissionRuleStore?: Pick<UserPermissionRuleStore, 'list' | 'delete'> | undefined;
   /** Home-scoped path service; the subscription store file resolves under it. */
   readonly shellPaths: { resolveUserPath(...segments: string[]): string };
-  /** Optional VAPID JWT `sub` contact. */
+  /**
+   * Optional explicit VAPID JWT `sub` contact, overriding the `push.vapidSubject`
+   * config key. Absent (the normal case) ⇒ the config key is read; empty or
+   * invalid there ⇒ the documented localhost fallback.
+   */
   readonly vapidSubject?: string | undefined;
   /**
    * Optional: the runtime event bus. When present, a fleet node that becomes
@@ -203,6 +206,8 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
   readonly sessionLiveTurnControls?: SessionLiveTurnControlsHolder | undefined;
   /** Optional: the live PowerManager. When present, power.status.get / power.keepAwake.set serve real state; absent they stay cataloged-but-unhandled. */
   readonly powerManager?: PowerGatewayService | undefined;
+  /** Optional: the paired-device capability service. When present, devices.nodes.list / devices.grants.* / devices.housekeeping.run serve real state; absent they stay cataloged-but-unhandled. */
+  readonly deviceCapabilities?: DevicesGatewayService | undefined;
   /** Optional: the live MemoryGovernor. When present, ops.memory.get serves the real governance snapshot; absent it stays cataloged-but-unhandled. */
   readonly memoryGovernor?: MemoryGatewayService | undefined;
   /** Optional: managed local-voice provisioning. When present, voice.local.status/install serve real state; absent they stay cataloged-but-unhandled. */
@@ -469,8 +474,7 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   // manual ci.watches.run verb still works, so nothing is silently faked.
   // Defensive config access: some conformance/composition callers pass a
   // partial deps object at runtime (see terminal-shell's ws-only attachment).
-  const readConfig = (key: string): unknown =>
-    (deps.configManager?.get as unknown as ((k: string) => unknown) | undefined)?.(key);
+  const readConfig = (key: string): unknown => deps.configManager?.get(key as ConfigKey);
   const watchersEnabled = readConfig('watchers.enabled') !== false;
   if (deps.watcherRegistry && watchersEnabled) {
     const configuredCadence = readConfig('watchers.ciPollIntervalMs');
@@ -505,7 +509,7 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
       sourceRoot,
       // Derived-by-default setup (lockfile → install command, .env carry-over);
       // user config overrides the derivation per field, never merely enables it.
-      resolveConfig: () => resolveEffectiveWorktreeSetup((key) => (deps.configManager.get as unknown as (k: string) => unknown)(key), deps.workingDirectory!),
+      resolveConfig: () => resolveEffectiveWorktreeSetup((key) => deps.configManager.get(key as ConfigKey), deps.workingDirectory!),
     });
   }
 
@@ -524,9 +528,8 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
     // the check-in's string-keyed config surface.
     const configManager = deps.configManager;
     const checkinConfig = {
-      get: (key: string): unknown => (configManager.get as unknown as (k: string) => unknown)(key),
-      set: (key: string, value: string | boolean): void =>
-        (configManager.set as unknown as (k: string, v: string | boolean) => void)(key, value),
+      get: (key: string): unknown => configManager.get(key as ConfigKey),
+      set: (key: string, value: string | boolean): void => configManager.set(key as ConfigKey, value as never),
     };
     const checkinService = new CheckinService({
       config: checkinConfig,
@@ -570,6 +573,7 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   // runtime). Constructed here rather than threaded through the runtime-
   // services composition root, exactly like the skill/push groups above.
   if (deps.powerManager) registerPowerGatewayMethods(catalog, deps.powerManager);
+  if (deps.deviceCapabilities) registerDevicesGatewayMethods(catalog, deps.deviceCapabilities);
   if (deps.memoryGovernor) registerMemoryGatewayMethods(catalog, deps.memoryGovernor);
   if (deps.voiceSetup) registerVoiceSetupGatewayMethods(catalog, deps.voiceSetup);
   registerSessionRuntimeGatewayMethods(
@@ -581,37 +585,10 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
     }),
   );
 
-  const pushService = new PushService({
-    vapid: new VapidManager(deps.secretsManager, { subject: deps.vapidSubject }),
-    store: new PushSubscriptionStore(
-      deps.shellPaths.resolveUserPath('control-plane', 'push-subscriptions.json'),
-    ),
-    // Per-class silencing toggles (notifications.push*), read live per event.
-    // Every class defaults ON — the toggles only ever turn a class OFF.
-    isCategoryEnabled: (category) => {
-      const key = category === 'approval'
-        ? 'notifications.pushApproval'
-        : category === 'needs-input'
-          ? 'notifications.pushNeedsInput'
-          : 'notifications.pushCompletion';
-      return (deps.configManager?.get as unknown as ((k: string) => unknown) | undefined)?.(key) !== false;
-    },
-    // Blocked-too-long escalation policy, read LIVE at each block so a config
-    // change takes effect for the next block without a restart. An escalated
-    // push fires regardless of an attached surface once the grace elapses.
-    escalation: () => {
-      const read = deps.configManager?.get as unknown as ((k: string) => unknown) | undefined;
-      const num = (key: string, fallback: number): number => {
-        const value = read?.(key);
-        return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
-      };
-      return {
-        blockedGraceMs: num('notifications.blockedEscalationGraceMs', DEFAULT_PUSH_ESCALATION.blockedGraceMs),
-        followUpIntervalMs: num('notifications.blockedEscalationFollowUpMs', DEFAULT_PUSH_ESCALATION.followUpIntervalMs),
-        maxFollowUps: num('notifications.blockedEscalationMaxFollowUps', DEFAULT_PUSH_ESCALATION.maxFollowUps),
-      };
-    },
-  });
+  // The daemon's one PushService: VAPID custody, the subscription store with
+  // its housekeeping running, and every policy read wired live to config.
+  // See routes/push-composition.ts.
+  const pushService = createPushService(deps);
   // Relay WebAuthn step-up ceremony verbs (register a credential, mint a
   // challenge). Registered only when the composition root threads the shared
   // service (the one whose verifier the relay gate installs).
@@ -650,9 +627,9 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   registerTailscaleGatewayMethods(catalog, {
     runner: deps.tailscaleRunner ?? defaultTailscaleRunner(),
     receipts: new TailscaleServeReceiptStore(deps.shellPaths.resolveUserPath('control-plane', 'tailscale-serve-receipts.json')),
-    resolveWebPort: () => resolveWebPort((deps.configManager.get as (k: string) => unknown)('web.port')),
+    resolveWebPort: () => resolveWebPort(deps.configManager.get('web.port')),
     setPublicBaseUrl: (url) => {
-      (deps.configManager.set as (k: string, v: unknown) => unknown)('web.publicBaseUrl', url);
+      deps.configManager.set('web.publicBaseUrl', url);
     },
   });
   // Real event source: approvals-needed -> push to every registered device.

@@ -74,6 +74,22 @@ export interface DeliveryDeps {
   readonly vapid: VapidManager;
   readonly store: PushSubscriptionStore;
   readonly transport?: PushTransport | undefined;
+  /**
+   * Consecutive refused deliveries after which the endpoint is treated as dead.
+   * Absent ⇒ {@link DELIVERY_FAILURE_PRUNE_THRESHOLD}. The composition root
+   * wires it to `push.subscriptions.failureThreshold`, the same key the
+   * subscription sweep reads, so delivery and housekeeping cannot disagree
+   * about when a push service has proved an endpoint gone.
+   */
+  readonly failureThreshold?: number | undefined;
+}
+
+/** The effective bound: the configured value when sane, else the module default. */
+function failureBound(deps: DeliveryDeps): number {
+  const configured = deps.failureThreshold;
+  return typeof configured === 'number' && Number.isFinite(configured) && configured >= 1
+    ? Math.floor(configured)
+    : DELIVERY_FAILURE_PRUNE_THRESHOLD;
 }
 
 /**
@@ -146,7 +162,8 @@ async function prunedOrFailed(
   reason: string,
   httpStatus?: number,
 ): Promise<PushDeliveryReceipt> {
-  if (failures >= DELIVERY_FAILURE_PRUNE_THRESHOLD) {
+  const bound = failureBound(deps);
+  if (failures >= bound) {
     await deps.store.remove(subscription.id);
     return {
       subscriptionId: subscription.id,
@@ -161,7 +178,7 @@ async function prunedOrFailed(
     endpointOrigin: origin,
     outcome: 'failed',
     ...(httpStatus !== undefined ? { httpStatus } : {}),
-    detail: `${reason} (failure ${failures} of ${DELIVERY_FAILURE_PRUNE_THRESHOLD} before prune)`,
+    detail: `${reason} (failure ${failures} of ${bound} before prune)`,
   };
 }
 

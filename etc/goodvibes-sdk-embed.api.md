@@ -159,6 +159,7 @@ export class DaemonServer {
     start(): Promise<void>;
     // (undocumented)
     stop(): Promise<void>;
+    get triggers(): RuntimeServices['triggerManager'] | undefined;
     waitForRestart(): Promise<void>;
 }
 
@@ -351,6 +352,8 @@ export class SharedSessionBroker {
     //
     // (undocumented)
     setEventPublisher(publisher: SharedSessionEventPublisher | null): void;
+    // Warning: (ae-forgotten-export) The symbol "SharedSessionSurfaceReplyBinder" needs to be exported by the entry point embed.d.ts
+    setSurfaceReplyBinder(binder: SharedSessionSurfaceReplyBinder | null): void;
     // (undocumented)
     start(): Promise<void>;
     // Warning: (ae-forgotten-export) The symbol "SteerSharedSessionMessageInput" needs to be exported by the entry point embed.d.ts
@@ -425,9 +428,9 @@ export interface SubmitSharedSessionMessageInput {
 //
 // packages/sdk/src/platform/control-plane/approval-broker.ts:246:7 - (ae-forgotten-export) The symbol "PersistentStore" needs to be exported by the entry point embed.d.ts
 // packages/sdk/src/platform/control-plane/approval-broker.ts:246:7 - (ae-forgotten-export) The symbol "SharedApprovalStoreSnapshot" needs to be exported by the entry point embed.d.ts
-// packages/sdk/src/platform/control-plane/session-broker.ts:110:5 - (ae-forgotten-export) The symbol "SharedSessionStoreSnapshot" needs to be exported by the entry point embed.d.ts
-// packages/sdk/src/platform/control-plane/session-broker.ts:112:5 - (ae-forgotten-export) The symbol "RouteBindingManager" needs to be exported by the entry point embed.d.ts
-// packages/sdk/src/platform/control-plane/session-broker.ts:113:5 - (ae-forgotten-export) The symbol "SharedSessionAgentStatusProvider" needs to be exported by the entry point embed.d.ts
-// packages/sdk/src/platform/control-plane/session-broker.ts:114:5 - (ae-forgotten-export) The symbol "SharedSessionMessageSender" needs to be exported by the entry point embed.d.ts
+// packages/sdk/src/platform/control-plane/session-broker.ts:114:5 - (ae-forgotten-export) The symbol "SharedSessionStoreSnapshot" needs to be exported by the entry point embed.d.ts
+// packages/sdk/src/platform/control-plane/session-broker.ts:116:5 - (ae-forgotten-export) The symbol "RouteBindingManager" needs to be exported by the entry point embed.d.ts
+// packages/sdk/src/platform/control-plane/session-broker.ts:117:5 - (ae-forgotten-export) The symbol "SharedSessionAgentStatusProvider" needs to be exported by the entry point embed.d.ts
+// packages/sdk/src/platform/control-plane/session-broker.ts:118:5 - (ae-forgotten-export) The symbol "SharedSessionMessageSender" needs to be exported by the entry point embed.d.ts
 
 ```

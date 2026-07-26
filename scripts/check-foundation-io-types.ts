@@ -53,6 +53,7 @@ import { builtinGatewayPermissionRuleMethodDescriptors } from '../packages/sdk/s
 import { builtinGatewayControlCoreMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-core.ts';
 import { builtinGatewayControlLiveTurnMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-live-turn.ts';
 import { builtinGatewayPowerMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-power.ts';
+import { builtinGatewayDeviceMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-devices.ts';
 import { builtinGatewayMemoryMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-memory.ts';
 import { builtinGatewayVoiceSetupMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-voice-setup.ts';
 import { builtinGatewayFleetMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-fleet.ts';
@@ -222,6 +223,7 @@ const CATALOG_DESCRIPTORS = [
   ...builtinGatewayControlCoreMethodDescriptors,
   ...builtinGatewayControlLiveTurnMethodDescriptors,
   ...builtinGatewayPowerMethodDescriptors,
+  ...builtinGatewayDeviceMethodDescriptors,
   ...builtinGatewayMemoryMethodDescriptors,
   ...builtinGatewayVoiceSetupMethodDescriptors,
   ...builtinGatewayFleetMethodDescriptors,
@@ -366,6 +368,11 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   // Sleep-ownership verbs (power.*):
   { methodId: 'power.status.get', ...descriptorSchemas('power.status.get') },
   { methodId: 'power.keepAwake.set', ...descriptorSchemas('power.keepAwake.set') },
+  // Paired-device capability verbs (devices.*):
+  { methodId: 'devices.nodes.list', ...descriptorSchemas('devices.nodes.list') },
+  { methodId: 'devices.grants.list', ...descriptorSchemas('devices.grants.list') },
+  { methodId: 'devices.grants.revoke', ...descriptorSchemas('devices.grants.revoke') },
+  { methodId: 'devices.housekeeping.run', ...descriptorSchemas('devices.housekeeping.run') },
   // Memory governance observability:
   { methodId: 'ops.memory.get', ...descriptorSchemas('ops.memory.get') },
   // Managed local-voice provisioning:

@@ -37,3 +37,9 @@ export type {
   AudioSink,
   AudioSinkPlaybackOptions,
 } from './spoken-turn/index.js';
+
+// Wake-word detection — SDK-owned and isomorphic: the engine takes an inference
+// session from the host rather than importing a runtime, and its front end is
+// computed in code, so the same detector runs in a daemon child process and in
+// a browser tab. See ./wake.
+export * from './wake/index.js';

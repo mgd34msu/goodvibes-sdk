@@ -295,7 +295,7 @@ export function buildHomeAssistantManifest(deps: Pick<BuiltinChannelRuntimeDeps,
   // A wildcard bind address is not a destination — resolveReachableBaseUrl
   // substitutes this host's LAN address, or yields nothing so the manifest
   // advertises no URL rather than an unreachable one.
-  const baseUrl = resolveReachableBaseUrl(deps.configManager) ?? '';
+  const baseUrl = resolveReachableBaseUrl(deps.configManager, 'off-host') ?? '';
   const eventType = String(deps.configManager.get('surfaces.homeassistant.eventType') ?? HOME_ASSISTANT_DEFAULT_EVENT_TYPE);
   const deviceId = String(deps.configManager.get('surfaces.homeassistant.deviceId') ?? 'goodvibes-daemon') || 'goodvibes-daemon';
   return {

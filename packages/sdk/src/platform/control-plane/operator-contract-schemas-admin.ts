@@ -92,10 +92,23 @@ export const SURFACE_RECORD_SCHEMA = objectSchema({
   metadata: METADATA_SCHEMA,
 }, ['id', 'kind', 'label', 'enabled', 'state', 'configuredAt', 'capabilities', 'metadata']);
 
+/**
+ * The result of a config write, told from the HOST's point of view.
+ *
+ * `persistedTo` names the file the value actually landed in, and `tier` /
+ * `daemonOwned` name the OWNER. Both matter: a daemon-owned key (chat surfaces,
+ * control-plane binding, watchers, device grants, retention) lives in the
+ * daemon's own store no matter which client wrote it, and a caller that only
+ * sees "success" cannot tell an applied setting from one that went into a store
+ * the acting runtime never reads.
+ */
 export const CONFIG_SET_OUTPUT_SCHEMA = objectSchema({
   success: BOOLEAN_SCHEMA,
   key: STRING_SCHEMA,
   value: JSON_VALUE_SCHEMA,
+  persistedTo: STRING_SCHEMA,
+  tier: STRING_SCHEMA,
+  daemonOwned: BOOLEAN_SCHEMA,
 }, ['success', 'key'], { additionalProperties: true });
 
 /**

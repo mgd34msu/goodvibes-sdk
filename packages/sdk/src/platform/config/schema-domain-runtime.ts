@@ -106,7 +106,7 @@ export const runtimeConfigDefaults = {
     hostMode: 'local',
     host: '127.0.0.1',
     port: 3421,
-    baseUrl: 'http://127.0.0.1:3421',
+    publicBaseUrl: '',
     streamMode: 'sse',
     allowRemote: false,
     trustProxy: false,
@@ -293,10 +293,13 @@ export const runtimePrimaryConfigSettings: ConfigSettingDefinition[] = [
     ...port(),
   },
   {
-    key: 'controlPlane.baseUrl',
+    key: 'controlPlane.publicBaseUrl',
     type: 'string',
-    default: 'http://127.0.0.1:3421',
-    description: 'Public base URL used by route bindings and link generation',
+    default: '',
+    description:
+      'Override for a genuinely external control-plane address (tunnel or reverse proxy). '
+      + 'Leave empty — the everyday base URL is derived from hostMode/host/port/tls.mode, '
+      + 'so it cannot drift. Set this only when an off-box address differs from the bind.',
   },
   {
     key: 'controlPlane.streamMode',

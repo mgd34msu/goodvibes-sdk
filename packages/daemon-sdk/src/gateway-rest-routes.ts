@@ -122,6 +122,12 @@ export const GATEWAY_REST_ROUTES: readonly GatewayRestRoute[] = [
   // power.* — sleep ownership: the chip state + the owner keep-awake toggle.
   route('GET', '/api/power/status', 'power.status.get'),
   route('POST', '/api/power/keep-awake', 'power.keepAwake.set'),
+  // devices.* — paired-phone capability nodes, the durable "always allow"
+  // grants surface, and the housekeeping sweep with its disclosure.
+  route('GET', '/api/devices/nodes', 'devices.nodes.list'),
+  route('GET', '/api/devices/grants', 'devices.grants.list'),
+  route('POST', '/api/devices/grants/revoke', 'devices.grants.revoke'),
+  route('POST', '/api/devices/housekeeping', 'devices.housekeeping.run'),
   // ops.memory.get — the MemoryGovernor snapshot (tier, budget, RSS/heap,
   // per-cache footprints, paused jobs, tripwire state).
   route('GET', '/api/ops/memory', 'ops.memory.get'),

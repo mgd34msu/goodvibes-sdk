@@ -30,7 +30,8 @@ function buildArtifactContentPath(artifactId: string): string {
 }
 
 function buildArtifactContentUrl(configManager: ConfigManager, artifactId: string): string | undefined {
-  const baseUrl = resolveReachableBaseUrl(configManager);
+  // The URL is posted INTO a chat message, so it is read off this host.
+  const baseUrl = resolveReachableBaseUrl(configManager, 'off-host');
   if (!baseUrl) return undefined;
   return new URL(buildArtifactContentPath(artifactId), `${baseUrl}/`).toString();
 }

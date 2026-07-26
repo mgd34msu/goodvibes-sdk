@@ -31,11 +31,13 @@ export {
   WAKE_WORD_MODELS,
   DEFAULT_WAKE_WORD_MODEL_VERSION,
   WAKE_WORD_FRONT_END_SOURCING,
+  WAKE_WORD_FRONT_END,
   OPENWAKEWORD_UPSTREAM_DEFAULT_THRESHOLD,
   resolveWakeWordModel,
   wakeWordProvisionBytes,
   type WakeWordModelManifest,
   type WakeWordModelMeasurements,
+  type WakeWordFrontEndManifest,
 } from './wake-word-manifest.js';
 
 export {

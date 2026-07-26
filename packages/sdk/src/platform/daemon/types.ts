@@ -131,6 +131,32 @@ export interface PendingSurfaceReply {
   lastProgress?: string | undefined;
 }
 
+/**
+ * Why a one-off surface notice was not delivered.
+ *
+ * Each name is one guard in `DaemonSurfaceDeliveryHelper.deliverSurfaceNotice`.
+ * They exist because those guards used to be four bare `return false`s: the
+ * caller could not tell "sent" from "silently refused", so the conversation
+ * gate held an answerable proposal that the owner had never been shown.
+ */
+export type SurfaceNoticeRefusal =
+  | 'no-route-binding'
+  | 'empty-text'
+  | 'unsupported-delivery-surface'
+  | 'surface-delivery-disabled'
+  | 'no-deliverable-target'
+  | 'delivery-failed';
+
+/** The outcome of one surface notice. Never a bare boolean — see above. */
+export type SurfaceNoticeDelivery =
+  | { readonly delivered: true }
+  | {
+    readonly delivered: false;
+    readonly reason: SurfaceNoticeRefusal;
+    /** Present only for 'delivery-failed': the transport's own message. */
+    readonly error?: string | undefined;
+  };
+
 export interface DaemonRouteContext {
   readonly configManager: ConfigManager;
   readonly serviceRegistry: ServiceRegistry;

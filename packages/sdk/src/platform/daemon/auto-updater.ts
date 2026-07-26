@@ -41,6 +41,7 @@ import {
   type UpdateTarget,
 } from '../runtime/self-update.js';
 import { formatReceiptTime, type DaemonReceiptStore } from './receipts.js';
+import { CLIENT_COMPATIBILITY_FLOOR } from '../control-plane/client-compatibility.js';
 
 export interface AutoUpdateServiceActions {
   /** Whether the daemon currently runs under the platform service manager. */
@@ -194,7 +195,18 @@ export class DaemonAutoUpdater {
     const now = this.options.now ?? Date.now;
     const from = normalizeVersion(this.options.currentVersion);
     const to = normalizeVersion(tag);
-    this.options.receipts.record(`updated from ${from} to ${to} at ${formatReceiptTime(now())}`);
+    // One update, one receipt. The second sentence is here because a swap
+    // replaces the DAEMON binary and nothing else: every terminal UI and agent
+    // process already attached keeps running the build it started with, so the
+    // owner would otherwise have to infer the restart from behavior that did
+    // not change. Clients below CLIENT_COMPATIBILITY_FLOOR additionally stop
+    // taking shared-session work (control-plane/client-compatibility.ts)
+    // rather than only being asked to restart.
+    this.options.receipts.record(
+      `updated from ${from} to ${to} at ${formatReceiptTime(now())}`
+      + ` — already-running goodvibes clients keep their old build until restarted;`
+      + ` anything older than ${CLIENT_COMPATIBILITY_FLOOR} has stopped taking shared-session work`,
+    );
 
     this.restartIntoNewBinary();
   }

@@ -29,6 +29,22 @@ function ingress(overrides: Partial<ChannelIngressPolicyInput> = {}): ChannelIng
   } as ChannelIngressPolicyInput;
 }
 
+/**
+ * Create a proposal the owner was actually SHOWN.
+ *
+ * listPending only returns delivery-confirmed proposals, so a fixture that
+ * skips markDelivered models a proposal whose notice never reached the
+ * channel — which is deliberately unanswerable. See the dedicated test for
+ * that case; every other fixture here goes through this helper.
+ */
+function propose(
+  store: WorkProposalStore,
+  input: Parameters<WorkProposalStore['create']>[0],
+): WorkProposalRecord {
+  const record = store.create(input);
+  return store.markDelivered(record.id) ?? record;
+}
+
 function harness(options: { now?: () => number } = {}) {
   const store = new WorkProposalStore(options.now ? { now: options.now } : {});
   const started: Array<{ proposal: WorkProposalRecord; note?: string | undefined }> = [];
@@ -48,7 +64,7 @@ function harness(options: { now?: () => number } = {}) {
 describe('tryResolveWorkProposalReplyFromChannel', () => {
   test('agreement over the originating channel starts the work', async () => {
     const { store, started, deps } = harness();
-    const proposal = store.create({
+    const proposal = propose(store, {
       surfaceKind: 'ntfy', task: 'fix the login bug', summary: 'fix the login bug',
       ttlMs: 30 * 60_000, channelId: 'goodvibes-agent', userId: 'owner',
     });
@@ -64,7 +80,7 @@ describe('tryResolveWorkProposalReplyFromChannel', () => {
 
   test('steering text on the agreement rides along', async () => {
     const { store, started, deps } = harness();
-    store.create({ surfaceKind: 'ntfy', task: 't', summary: 's', ttlMs: 60_000 });
+    propose(store, { surfaceKind: 'ntfy', task: 't', summary: 's', ttlMs: 60_000 });
     await tryResolveWorkProposalReplyFromChannel(ingress({ text: 'yes but only the adapter' }), deps);
     expect(started[0]!.note).toBe('but only the adapter');
     store.dispose();
@@ -72,7 +88,7 @@ describe('tryResolveWorkProposalReplyFromChannel', () => {
 
   test('a refusal starts nothing and says so on the channel', async () => {
     const { store, started, replies, deps } = harness();
-    store.create({ surfaceKind: 'ntfy', task: 't', summary: 'fix the login bug', ttlMs: 60_000 });
+    propose(store, { surfaceKind: 'ntfy', task: 't', summary: 'fix the login bug', ttlMs: 60_000 });
 
     const outcome = await tryResolveWorkProposalReplyFromChannel(ingress({ text: 'nah, not now' }), deps);
 
@@ -86,7 +102,7 @@ describe('tryResolveWorkProposalReplyFromChannel', () => {
 
   test('an answer on a different surface does not resolve this surface proposal', async () => {
     const { store, started, deps } = harness();
-    store.create({ surfaceKind: 'ntfy', task: 't', summary: 's', ttlMs: 60_000 });
+    propose(store, { surfaceKind: 'ntfy', task: 't', summary: 's', ttlMs: 60_000 });
 
     const outcome = await tryResolveWorkProposalReplyFromChannel(ingress({ surface: 'telegram' }), deps);
 
@@ -106,7 +122,7 @@ describe('tryResolveWorkProposalReplyFromChannel', () => {
 
   test('an unrelated message is never consumed as an answer', async () => {
     const { store, started, deps } = harness();
-    store.create({ surfaceKind: 'ntfy', task: 't', summary: 's', ttlMs: 60_000 });
+    propose(store, { surfaceKind: 'ntfy', task: 't', summary: 's', ttlMs: 60_000 });
     const outcome = await tryResolveWorkProposalReplyFromChannel(ingress({ text: 'what is the status' }), deps);
     expect(outcome.consumed).toBe(false);
     expect(started).toHaveLength(0);
@@ -117,7 +133,7 @@ describe('tryResolveWorkProposalReplyFromChannel', () => {
   test('agreeing to an expired proposal starts nothing', async () => {
     let now = 1_000_000;
     const { store, started, deps } = harness({ now: () => now });
-    store.create({ surfaceKind: 'ntfy', task: 't', summary: 's', ttlMs: 60_000 });
+    propose(store, { surfaceKind: 'ntfy', task: 't', summary: 's', ttlMs: 60_000 });
 
     now += 60_001;
     const outcome = await tryResolveWorkProposalReplyFromChannel(ingress({ text: 'yes' }), deps);
@@ -138,7 +154,7 @@ describe('tryResolveWorkProposalReplyFromChannel', () => {
 
   test('a second "yes" behind the first does not start the work twice', async () => {
     const { store, started, deps } = harness();
-    store.create({ surfaceKind: 'ntfy', task: 't', summary: 's', ttlMs: 60_000 });
+    propose(store, { surfaceKind: 'ntfy', task: 't', summary: 's', ttlMs: 60_000 });
     await tryResolveWorkProposalReplyFromChannel(ingress({ text: 'yes' }), deps);
     await tryResolveWorkProposalReplyFromChannel(ingress({ text: 'yes' }), deps);
     expect(started).toHaveLength(1);

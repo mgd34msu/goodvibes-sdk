@@ -55,13 +55,43 @@ interface NpmPackResult {
   readonly unpackedSize?: number;
 }
 
-/** Parse `npm pack --json` output into a file list and unpacked size. */
+function looksLikePackResult(value: unknown): value is NpmPackResult {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as NpmPackResult;
+  return Array.isArray(candidate.files)
+    || typeof candidate.unpackedSize === 'number'
+    || typeof candidate.size === 'number';
+}
+
+/**
+ * npm has emitted `npm pack --json` in more than one shape:
+ * - npm 10/11 emit an ARRAY: `[{ files, unpackedSize, ... }]`
+ * - npm 12 emits an OBJECT keyed by package name: `{ "<name>": { files, ... } }`
+ *
+ * Reading `[0]` off the object form yields undefined, which then presents as an
+ * EMPTY file list — so every required tarball path is reported missing and the
+ * package looks catastrophically broken when nothing is wrong with it. Accept
+ * both shapes, and throw on a shape that carries no pack result at all rather
+ * than silently returning nothing.
+ */
 export function parseNpmPack(output: string): { files: string[]; unpackedBytes: number } {
-  const parsed = JSON.parse(output) as readonly NpmPackResult[];
-  const first = parsed[0];
+  const parsed: unknown = JSON.parse(output);
+  const result = Array.isArray(parsed)
+    ? parsed.find(looksLikePackResult)
+    : looksLikePackResult(parsed)
+      ? parsed
+      : parsed && typeof parsed === 'object'
+        ? Object.values(parsed as Record<string, unknown>).find(looksLikePackResult)
+        : undefined;
+  if (!result) {
+    throw new Error(
+      'npm pack --json returned an unrecognized JSON shape; expected an array of pack results or an object '
+      + `keyed by package name, but npm emitted: ${output.trim().slice(0, 400)}`,
+    );
+  }
   return {
-    files: (first?.files ?? []).map((f) => f.path),
-    unpackedBytes: first?.unpackedSize ?? first?.size ?? 0,
+    files: (result.files ?? []).map((f) => f.path),
+    unpackedBytes: result.unpackedSize ?? result.size ?? 0,
   };
 }
 

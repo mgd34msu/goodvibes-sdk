@@ -157,7 +157,11 @@ describe('DaemonAutoUpdater', () => {
       expect(h.exits).toEqual([]);
       const receipts = h.receipts.list();
       expect(receipts).toHaveLength(1);
-      expect(receipts[0]!.text).toBe('updated from 1.0.0 to 2.0.0 at 14:30');
+      // One update, one receipt — and it names the client restart, because a
+      // swap replaces the daemon binary only: every client already attached
+      // keeps its old build until it is restarted.
+      expect(receipts[0]!.text).toStartWith('updated from 1.0.0 to 2.0.0 at 14:30');
+      expect(receipts[0]!.text).toContain('keep their old build until restarted');
     } finally {
       rmSync(h.scratch, { recursive: true, force: true });
     }

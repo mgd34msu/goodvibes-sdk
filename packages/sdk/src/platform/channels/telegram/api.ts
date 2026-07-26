@@ -61,6 +61,14 @@ export interface TelegramWebhookInfo {
   readonly lastErrorMessage: string | undefined;
 }
 
+/** Who the configured bot token belongs to, per Telegram's own getMe. */
+export interface TelegramBotIdentity {
+  readonly id: string;
+  /** The @handle, WITHOUT the leading '@'. */
+  readonly username: string;
+  readonly displayName: string;
+}
+
 function readNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
@@ -169,6 +177,27 @@ export class TelegramBotApi {
    */
   async deleteWebhook(dropPendingUpdates = false): Promise<void> {
     await this.call('deleteWebhook', { drop_pending_updates: dropPendingUpdates });
+  }
+
+  /**
+   * Ask Telegram who this token belongs to.
+   *
+   * The bot's username is not a fact only the operator knows — the token
+   * identifies the bot and Telegram hands back the handle for free. Making the
+   * user type it, and degrading silently when they do not, is the product
+   * declining to answer a question it can answer itself. An empty handle breaks
+   * @mention matching in groups, mis-strips `/goodvibes@thebot`, answers
+   * `/start@someotherbot` as if addressed to us, and collapses every bot's route
+   * bindings onto the literal surfaceId 'telegram'.
+   */
+  async getMe(): Promise<TelegramBotIdentity> {
+    const result = readRecord(await this.call('getMe', {}));
+    const id = readNumber(result?.id);
+    return {
+      id: id === null ? this.botId : String(id),
+      username: typeof result?.username === 'string' ? result.username.replace(/^@/, '').trim() : '',
+      displayName: typeof result?.first_name === 'string' ? result.first_name : '',
+    };
   }
 
   async getWebhookInfo(): Promise<TelegramWebhookInfo> {

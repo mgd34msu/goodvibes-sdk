@@ -10,6 +10,7 @@
  * for TTS).
  */
 import type { ConfigSettingDefinition } from './schema-shared.js';
+import type { VoiceWakeConfig } from './schema-domain-voice-wake.js';
 
 /** Local voice engine configuration (`voice.local.*`). */
 export interface VoiceLocalConfig {
@@ -22,9 +23,15 @@ export interface VoiceLocalConfig {
     ttsModelPath: string;
   };
 }
+/**
+ * This file owns the `voice` key. Two domains live under it — the local
+ * STT/TTS engine paths declared above, and the wake-word rows in
+ * schema-domain-voice-wake.ts — and TypeScript's interface merging requires a
+ * single declaration site, so the widened type is assembled here.
+ */
 declare module './schema-types.js' {
   interface GoodVibesConfig {
-    voice: VoiceLocalConfig;
+    voice: VoiceLocalConfig & VoiceWakeConfig;
   }
 }
 

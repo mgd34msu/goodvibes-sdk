@@ -74,13 +74,18 @@ function writeDotPath(root: Record<string, unknown>, key: string, value: unknown
  * not exist yet). Throws when the file exists but is not a JSON object — an honest
  * loud failure rather than a silent reset, matching the surface-settings loader.
  */
-export function readSharedTierFile(path: string): Record<string, unknown> {
+export function readSharedTierFile(path: string, label = 'shared tier'): Record<string, unknown> {
   if (!existsSync(path)) return {};
   const parsed = JSON.parse(readFileSync(path, 'utf-8')) as unknown;
   if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new Error('shared tier settings file is not a JSON object');
+    throw new Error(`${label} settings file is not a JSON object`);
   }
   return parsed as Record<string, unknown>;
+}
+
+/** Write a dot-path into a plain object, creating intermediate objects. */
+export function writeTierDotPath(root: Record<string, unknown>, key: string, value: unknown): void {
+  writeDotPath(root, key, value);
 }
 
 /**

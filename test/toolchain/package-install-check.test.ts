@@ -45,6 +45,35 @@ describe('parseNpmPack + full run', () => {
     const out = JSON.stringify([{ files: [{ path: 'package.json' }, { path: 'bin/goodvibes' }], unpackedSize: 2048 }]);
     expect(parseNpmPack(out)).toEqual({ files: ['package.json', 'bin/goodvibes'], unpackedBytes: 2048 });
   });
+  // npm 12 emits an object keyed by package name. Reading [0] off it yields an
+  // empty file list, which reported EVERY required path as missing — a healthy
+  // package failing its own install gate. Both shapes must parse identically.
+  test('parses the npm 12 object-keyed shape identically to the array shape', () => {
+    const out = JSON.stringify({
+      '@pellux/goodvibes-tui': { files: [{ path: 'package.json' }, { path: 'bin/goodvibes' }], unpackedSize: 2048 },
+    });
+    expect(parseNpmPack(out)).toEqual({ files: ['package.json', 'bin/goodvibes'], unpackedBytes: 2048 });
+  });
+  test('falls back to size when unpackedSize is absent', () => {
+    const out = JSON.stringify([{ files: [{ path: 'package.json' }], size: 512 }]);
+    expect(parseNpmPack(out)).toEqual({ files: ['package.json'], unpackedBytes: 512 });
+  });
+  test('throws on a shape carrying no pack result rather than reporting an empty package', () => {
+    expect(() => parseNpmPack(JSON.stringify({ warning: 'nothing to pack' }))).toThrow(/unrecognized JSON shape/);
+  });
+  test('a run against the object-keyed shape passes the same policy the array shape passes', () => {
+    const exec = scriptedExec(() => ({
+      status: 0,
+      stdout: JSON.stringify({
+        '@pellux/goodvibes-tui': {
+          files: [{ path: 'package.json' }, { path: 'README.md' }, { path: 'bin/goodvibes' }],
+          unpackedSize: 10,
+        },
+      }),
+    }));
+    const result = runPackageInstallCheck({ cwd: '/repo', config, exec, logger: captureLogger() });
+    expect(result.issues.filter((issue) => issue.includes('missing required tarball path'))).toEqual([]);
+  });
   test('run reports issues from a bad tarball', () => {
     const exec = scriptedExec(() => ({ status: 0, stdout: JSON.stringify([{ files: [{ path: 'package.json' }, { path: '.github/x' }], unpackedSize: 10 }]) }));
     const result = runPackageInstallCheck({ cwd: '/repo', config, exec, logger: captureLogger() });

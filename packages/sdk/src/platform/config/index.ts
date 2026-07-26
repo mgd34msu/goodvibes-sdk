@@ -9,6 +9,84 @@
 export { ConfigManager } from './manager.js';
 export type { DeepReadonly, ConfigKeyTier, ConfigKeySource } from './manager.js';
 export { SHARED_CONFIG_KEYS, isSharedConfigKey } from './shared-config-tier.js';
+export {
+  DAEMON_OWNED_CONFIG_KEYS,
+  DAEMON_OWNED_CONFIG_PREFIXES,
+  USER_LOCAL_OVERRIDE_CONFIG_KEYS,
+  USER_SHARED_WINS_CONFIG_KEYS,
+  configKeyScope,
+  describeConfigOwnership,
+  isClientOwnedConfigKey,
+  isDaemonOwnedConfigKey,
+  isUserLevelConfigKey,
+  listDaemonOwnedConfigKeys,
+  userTierOverlaysSurface,
+} from './config-ownership.js';
+export type { ConfigScope } from './config-ownership.js';
+export {
+  DEFAULT_CONTROL_PLANE_PORT,
+  controlPlaneScheme,
+  deriveControlPlaneBaseUrl,
+  describeBaseUrlDrift,
+  describeDerivedBindMismatch,
+  readControlPlaneBinding,
+} from './control-plane-base-url.js';
+export type { BaseUrlAudience, ControlPlaneBinding } from './control-plane-base-url.js';
+export { readDotPath } from './shared-config-tier.js';
+export {
+  DAEMON_CONFIG_ROOT,
+  DAEMON_SETTINGS_FILE,
+  daemonConfigPath,
+  daemonConfigPathForHome,
+  readDaemonTierFile,
+} from './daemon-config-tier.js';
+export {
+  DEFAULT_PRIMARY_DAEMON_SURFACE,
+  describeDaemonConfigMigration,
+  migrateDaemonOwnedConfig,
+} from './daemon-config-migration.js';
+export type {
+  DaemonConfigMigrationOptions,
+  DaemonConfigMigrationResult,
+  DaemonConfigMovedMarker,
+  DiscardedConfigKey,
+  MovedConfigKey,
+} from './daemon-config-migration.js';
+export {
+  DAEMON_CONFIG_MOVED_FILE,
+  daemonConfigMovedPath,
+  readDaemonConfigMovedMarker,
+} from './daemon-config-migration-io.js';
+export {
+  DaemonConfigRejectedError,
+  DaemonConfigUnreachableError,
+  applyConfigWrite,
+  discoverDaemonEndpoint,
+  readDaemonConfig,
+  resolveConfigWriteRoute,
+  resolveLiveConfigWriteRoute,
+} from './daemon-config-route.js';
+export type {
+  ConfigWriteOutcome,
+  ConfigWriteRoute,
+  DaemonConfigEndpoint,
+  DaemonConfigRouterDeps,
+  LocalConfigWriter,
+} from './daemon-config-route.js';
+export {
+  createEffectiveConfigView,
+  loadDaemonConfigSnapshot,
+  readConfigValue,
+  readEffectiveConfig,
+  resolveConfigReadRoute,
+} from './daemon-config-read.js';
+export type {
+  ConfigReadRoute,
+  DaemonConfigSnapshot,
+  EffectiveConfigView,
+  EffectiveConfigEntry,
+  LocalConfigReader,
+} from './daemon-config-read.js';
 export type { GoodVibesConfig, ConfigKey, ConfigValue, ConfigSetting, PermissionMode, PermissionAction, PermissionsToolConfig, NotificationsConfig } from './schema.js';
 export { DEFAULT_CONFIG, CONFIG_KEYS, CONFIG_SCHEMA, isValidConfigKey } from './schema.js';
 export { ConfigError } from '../types/errors.js';

@@ -3,7 +3,7 @@
   "info": {
     "title": "GoodVibes Operator API",
     "version": "1.14.0",
-    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 415 cataloged methods: 364 with dedicated REST bindings, 51 reachable only through the generic invoke endpoint. 97 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
+    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 419 cataloged methods: 368 with dedicated REST bindings, 51 reachable only through the generic invoke endpoint. 97 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
   },
   "servers": [
     {
@@ -26622,6 +26622,15 @@
                           "items": {}
                         }
                       ]
+                    },
+                    "persistedTo": {
+                      "type": "string"
+                    },
+                    "tier": {
+                      "type": "string"
+                    },
+                    "daemonOwned": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
@@ -68977,7 +68986,8 @@
                               "status.request",
                               "location.request",
                               "session.message",
-                              "automation.run"
+                              "automation.run",
+                              "device.capability"
                             ]
                           }
                         },
@@ -70259,7 +70269,8 @@
                             "status.request",
                             "location.request",
                             "session.message",
-                            "automation.run"
+                            "automation.run",
+                            "device.capability"
                           ]
                         },
                         "command": {
@@ -71967,7 +71978,8 @@
                                   "status.request",
                                   "location.request",
                                   "session.message",
-                                  "automation.run"
+                                  "automation.run",
+                                  "device.capability"
                                 ]
                               },
                               "command": {
@@ -72349,7 +72361,8 @@
                             "status.request",
                             "location.request",
                             "session.message",
-                            "automation.run"
+                            "automation.run",
+                            "device.capability"
                           ]
                         },
                         "command": {
@@ -72667,7 +72680,8 @@
                               "status.request",
                               "location.request",
                               "session.message",
-                              "automation.run"
+                              "automation.run",
+                              "device.capability"
                             ]
                           },
                           "command": {
@@ -74023,6 +74037,588 @@
         ],
         "x-scopes": [
           "read:routes"
+        ]
+      }
+    },
+    "/api/devices/grants": {
+      "get": {
+        "operationId": "devices.grants.list",
+        "summary": "List Device Capability Grants",
+        "description": "The durable \"always allow\" grants a person gave, per capability and per device, with when each was granted, when it expires, and how often it has been used — plus the recent ledger of grants given, used, revoked, and expired.",
+        "tags": [
+          "runtime"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "grants": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "grantId": {
+                            "type": "string"
+                          },
+                          "nodeId": {
+                            "type": "string"
+                          },
+                          "nodeKind": {
+                            "type": "string"
+                          },
+                          "capabilityId": {
+                            "type": "string"
+                          },
+                          "capabilityTitle": {
+                            "type": "string"
+                          },
+                          "scope": {
+                            "type": "string"
+                          },
+                          "grantedAt": {
+                            "type": "number"
+                          },
+                          "expiresAt": {
+                            "type": "number"
+                          },
+                          "lastUsedAt": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "useCount": {
+                            "type": "number"
+                          },
+                          "grantedBy": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "grantId",
+                          "nodeId",
+                          "nodeKind",
+                          "capabilityId",
+                          "capabilityTitle",
+                          "scope",
+                          "grantedAt",
+                          "expiresAt",
+                          "lastUsedAt",
+                          "useCount",
+                          "grantedBy"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "audit": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "action": {
+                            "type": "string"
+                          },
+                          "grantId": {
+                            "type": "string"
+                          },
+                          "nodeId": {
+                            "type": "string"
+                          },
+                          "capabilityId": {
+                            "type": "string"
+                          },
+                          "at": {
+                            "type": "number"
+                          },
+                          "actor": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "action",
+                          "grantId",
+                          "nodeId",
+                          "capabilityId",
+                          "at",
+                          "actor",
+                          "reason"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "grants",
+                    "audit"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "read:remote"
+        ],
+        "parameters": [
+          {
+            "name": "nodeId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number"
+            }
+          }
+        ]
+      }
+    },
+    "/api/devices/grants/revoke": {
+      "post": {
+        "operationId": "devices.grants.revoke",
+        "summary": "Revoke a Device Capability Grant",
+        "description": "Delete durable grants by grant id, by device, by capability, or any combination. Revoked grants are removed rather than flagged, so the next request for that capability asks the person again. Returns exactly what was removed.",
+        "tags": [
+          "runtime"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "revoked": {
+                      "type": "number"
+                    },
+                    "removals": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "grantId": {
+                            "type": "string"
+                          },
+                          "nodeId": {
+                            "type": "string"
+                          },
+                          "capabilityId": {
+                            "type": "string"
+                          },
+                          "scope": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "removedAt": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "grantId",
+                          "nodeId",
+                          "capabilityId",
+                          "scope",
+                          "reason",
+                          "removedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "revoked",
+                    "removals"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "write:config"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "grantId": {
+                    "type": "string"
+                  },
+                  "nodeId": {
+                    "type": "string"
+                  },
+                  "capabilityId": {
+                    "type": "string"
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/devices/housekeeping": {
+      "post": {
+        "operationId": "devices.housekeeping.run",
+        "summary": "Run Device Housekeeping",
+        "description": "Sweep the device grants ledger and the retained captures now: expired and orphaned grants removed, captures past their retention window deleted, torn or missing capture files reaped. Returns the itemised disclosure of everything removed and why.",
+        "tags": [
+          "runtime"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "summary": {
+                      "type": "string"
+                    },
+                    "sweptAt": {
+                      "type": "number"
+                    },
+                    "grantsRemoved": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "grantId": {
+                            "type": "string"
+                          },
+                          "nodeId": {
+                            "type": "string"
+                          },
+                          "capabilityId": {
+                            "type": "string"
+                          },
+                          "scope": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "removedAt": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "grantId",
+                          "nodeId",
+                          "capabilityId",
+                          "scope",
+                          "reason",
+                          "removedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "grantsRetained": {
+                      "type": "number"
+                    },
+                    "capturesRemoved": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "artifactId": {
+                            "type": "string"
+                          },
+                          "nodeId": {
+                            "type": "string"
+                          },
+                          "capabilityId": {
+                            "type": "string"
+                          },
+                          "fileName": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "removedAt": {
+                            "type": "number"
+                          },
+                          "byteLength": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "artifactId",
+                          "nodeId",
+                          "capabilityId",
+                          "fileName",
+                          "reason",
+                          "removedAt",
+                          "byteLength"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "capturesRetained": {
+                      "type": "number"
+                    },
+                    "bytesReclaimed": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "summary",
+                    "sweptAt",
+                    "grantsRemoved",
+                    "grantsRetained",
+                    "capturesRemoved",
+                    "capturesRetained",
+                    "bytesReclaimed"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "write:config"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/devices/nodes": {
+      "get": {
+        "operationId": "devices.nodes.list",
+        "summary": "List Paired Device Nodes",
+        "description": "Every phone paired as a device node, with the capabilities it announced, the ones it did not offer, and the ones it announced but cannot currently serve because its connection is not a secure context. Node-kind neutral: a web app node and a native app node are described identically.",
+        "tags": [
+          "runtime"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "nodes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "nodeId": {
+                            "type": "string"
+                          },
+                          "nodeKind": {
+                            "type": "string"
+                          },
+                          "nodeKindLabel": {
+                            "type": "string"
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "platform": {
+                            "type": "string"
+                          },
+                          "appVersion": {
+                            "type": "string"
+                          },
+                          "contractVersion": {
+                            "type": "number"
+                          },
+                          "contractCompatible": {
+                            "type": "boolean"
+                          },
+                          "supported": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "undeclared": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "gatedBySecureContext": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "unknownDeclared": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "nodeId",
+                          "nodeKind",
+                          "nodeKindLabel",
+                          "label",
+                          "platform",
+                          "appVersion",
+                          "contractVersion",
+                          "contractCompatible",
+                          "supported",
+                          "undeclared",
+                          "gatedBySecureContext",
+                          "unknownDeclared"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "capabilities": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "family": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "purpose": {
+                            "type": "string"
+                          },
+                          "effect": {
+                            "type": "string"
+                          },
+                          "sensitivity": {
+                            "type": "string"
+                          },
+                          "producesArtifact": {
+                            "type": "boolean"
+                          },
+                          "allowAlwaysOffered": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "family",
+                          "title",
+                          "purpose",
+                          "effect",
+                          "sensitivity",
+                          "producesArtifact",
+                          "allowAlwaysOffered"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "mode": {
+                      "type": "string"
+                    },
+                    "allowAlwaysOffer": {
+                      "type": "string"
+                    },
+                    "captureRetentionHours": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "nodes",
+                    "capabilities",
+                    "mode",
+                    "allowAlwaysOffer",
+                    "captureRetentionHours"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "read:remote"
         ]
       }
     },
@@ -94056,6 +94652,42 @@
       "category": "routes",
       "access": "authenticated",
       "rest": "GET /api/surfaces",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "devices.grants.list",
+      "category": "runtime",
+      "access": "authenticated",
+      "rest": "GET /api/devices/grants",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "devices.grants.revoke",
+      "category": "runtime",
+      "access": "authenticated",
+      "rest": "POST /api/devices/grants/revoke",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "devices.housekeeping.run",
+      "category": "runtime",
+      "access": "authenticated",
+      "rest": "POST /api/devices/housekeeping",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "devices.nodes.list",
+      "category": "runtime",
+      "access": "authenticated",
+      "rest": "GET /api/devices/nodes",
       "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"

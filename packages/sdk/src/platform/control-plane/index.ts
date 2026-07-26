@@ -9,6 +9,14 @@ export type { ControlPlaneGatewayConfig, ControlPlaneEventStreamOptions, Control
 export { ControlPlaneGateway } from './gateway.js';
 export { SSE_HEARTBEAT_INTERVAL_MS, sseIdleTimeoutSeconds } from './sse-timing.js';
 export {
+  CLIENT_COMPATIBILITY_FLOOR,
+  CLIENT_COMPATIBILITY_FLOOR_HEADER,
+  compareBuildVersions,
+  evaluateClientCompatibility,
+  readClientCompatibilityFloor,
+} from './client-compatibility.js';
+export type { ClientCompatibilityStatus, ClientCompatibilityVerdict } from './client-compatibility.js';
+export {
   GatewayMethodCatalog,
 } from './method-catalog.js';
 export type {
@@ -119,5 +127,7 @@ export type { GatewayVerbGroupDeps } from './routes/register-gateway-verb-groups
 export { SessionLiveTurnControlsHolder } from './routes/session-runtime.js';
 export type { SessionLiveTurnControls } from './routes/session-runtime.js';
 // skills.* CRUD verb registration over the canonical SkillService (see routes/skills.ts).
+export { registerDevicesGatewayMethods } from './routes/devices.js';
+export type { DevicesGatewayService } from './routes/devices.js';
 export { registerSkillsGatewayMethods } from './routes/skills.js';
 export type { SkillsGatewayService } from './routes/skills.js';

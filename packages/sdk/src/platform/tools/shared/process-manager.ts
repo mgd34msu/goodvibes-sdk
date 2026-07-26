@@ -19,6 +19,12 @@ export interface BackgroundProcess {
   pid: number;
   cmd: string;
   startTime: number;
+  /**
+   * Output chunks collected so far. Appended AS THE PROCESS RUNS, not only at
+   * exit, so `bg_output` on a still-running process returns what it has printed
+   * up to now. This is also what supplies the output tail an on-exit trigger
+   * payload carries.
+   */
   stdout: string[];
   stderr: string[];
   exitCode: number | null;
@@ -29,6 +35,10 @@ export interface BackgroundProcess {
    */
   killDeadline: number | null;
   completedAt?: number | undefined;
+  /** POSIX signal name that terminated the process, or null if it exited. */
+  signal?: string | null | undefined;
+  /** True when the watchdog terminated the process at its timeout. */
+  timedOut?: boolean | undefined;
 }
 
 const MAX_PROCESS_OUTPUT_BYTES = 256 * 1024;
@@ -48,6 +58,11 @@ export interface SpawnOptions {
    * background process is protected even when a caller does not thread config.
    */
   credentialEnvScrub?: ResolvedCredentialEnvScrub | undefined;
+  /**
+   * Child stdin. Defaults to 'ignore' (closed): a background process has
+   * nobody at the keyboard, so a prompt must EOF rather than hang.
+   */
+  stdin?: 'ignore' | 'pipe' | undefined;
 }
 
 // ─── ExecCommandResult subset (for command handler return values) ─────────────
@@ -94,6 +109,36 @@ export class ProcessManager {
     env: Record<string, string> | undefined,
     opts?: SpawnOptions,
   ): Promise<BgCommandResult> {
+    return this.launch(['/bin/sh', '-c', cmd], cmd, cwd, env, opts);
+  }
+
+  /**
+   * Spawn a background process from argv, with NO shell in between.
+   *
+   * Same tracking, credential-env scrub, live output collection and timeout
+   * watchdog as `spawn` — the only difference is that nothing is handed to
+   * /bin/sh, so no argument can be reinterpreted as a shell metacharacter.
+   * On-exit triggers use this: their command is pre-registered and
+   * digest-pinned, and keeping it argv-shaped means the pin covers exactly
+   * what runs.
+   */
+  async spawnArgv(
+    command: string,
+    args: readonly string[],
+    cwd: string | undefined,
+    env: Record<string, string> | undefined,
+    opts?: SpawnOptions,
+  ): Promise<BgCommandResult> {
+    return this.launch([command, ...args], [command, ...args].join(' '), cwd, env, opts);
+  }
+
+  private async launch(
+    argv: readonly string[],
+    cmd: string,
+    cwd: string | undefined,
+    env: Record<string, string> | undefined,
+    opts?: SpawnOptions,
+  ): Promise<BgCommandResult> {
     const timeoutMs = opts?.timeout_ms ?? 60_000;
     const sigtermGraceMs = opts?.sigterm_grace_ms ?? 5_000;
 
@@ -124,9 +169,12 @@ export class ProcessManager {
 
     let proc: ReturnType<typeof Bun.spawn>;
     try {
-      proc = Bun.spawn(['/bin/sh', '-c', cmd], {
+      proc = Bun.spawn([...argv], {
         ...(cwd !== undefined ? { cwd } : {}),
         env: mergedEnv,
+        // Closed by default. An unattended command that stops to ask for a
+        // password gets EOF and fails instead of blocking forever.
+        stdin: opts?.stdin ?? 'ignore',
         stdout: 'pipe',
         stderr: 'pipe',
       } as Parameters<typeof Bun.spawn>[1]);
@@ -143,14 +191,16 @@ export class ProcessManager {
     // Cast stdout/stderr to ReadableStream — Bun guarantees these are ReadableStream
     // when stdout/stderr is set to 'pipe', but the return type is a union.
     const collectionPromise = (async () => {
-      const [stdoutText, stderrText, exitCode] = await Promise.all([
-        readProcessStream(proc.stdout as ReadableStream<Uint8Array>),
-        readProcessStream(proc.stderr as ReadableStream<Uint8Array>),
+      const [, , exitCode] = await Promise.all([
+        readProcessStream(proc.stdout as ReadableStream<Uint8Array>, entry.stdout),
+        readProcessStream(proc.stderr as ReadableStream<Uint8Array>, entry.stderr),
         proc.exited,
       ]);
-      entry.stdout.push(stdoutText);
-      entry.stderr.push(stderrText);
       entry.exitCode = exitCode;
+      // Bun reports the terminating signal on the handle; capture it so a
+      // caller can tell "exited 1" from "killed by SIGKILL", which an on-exit
+      // trigger payload has to distinguish.
+      entry.signal = readSignalCode(proc);
       entry.done = true;
       entry.completedAt = Date.now();
       this._procs.delete(id);
@@ -160,6 +210,7 @@ export class ProcessManager {
     // Timeout watchdog: SIGTERM → wait grace → SIGKILL
     const timeoutHandle = setTimeout(async () => {
       if (entry.done) return;
+      entry.timedOut = true;
       killTrackedProcess(proc, 'SIGTERM', id);
       entry.killDeadline = Date.now() + sigtermGraceMs;
       await sleep(sigtermGraceMs);
@@ -247,7 +298,7 @@ export class ProcessManager {
       id: e.id,
       pid: e.pid,
       cmd: e.cmd,
-      status: e.done ? `done (exit ${e.exitCode})` : 'running',
+      status: describeProcessStatus(e),
     }));
   }
 
@@ -264,11 +315,20 @@ export class ProcessManager {
       if (!entry) {
         return { cmd, exit_code: 1, stdout: '', stderr: `Unknown process: ${statusMatch[1]!}`, success: false };
       }
-      const status = entry.done ? `done (exit ${entry.exitCode})` : 'running';
+      const status = describeProcessStatus(entry);
       return {
         cmd,
         exit_code: 0,
-        stdout: JSON.stringify({ id: entry.id, pid: entry.pid, cmd: entry.cmd, status }),
+        stdout: JSON.stringify({
+          id: entry.id,
+          pid: entry.pid,
+          cmd: entry.cmd,
+          status,
+          exit_code: entry.exitCode,
+          signal: entry.signal ?? null,
+          timed_out: entry.timedOut === true,
+          duration_ms: (entry.completedAt ?? Date.now()) - entry.startTime,
+        }),
         stderr: '',
         success: true,
       };
@@ -321,6 +381,26 @@ export class ProcessManager {
   }
 }
 
+/**
+ * One status line that never claims success it cannot prove: a timed-out or
+ * signalled process reads as such rather than as "done (exit null)".
+ */
+export function describeProcessStatus(entry: BackgroundProcess): string {
+  if (!entry.done) return 'running';
+  if (entry.timedOut === true) return `timed out (signal ${entry.signal ?? 'SIGKILL'})`;
+  if (entry.signal) return `killed by ${entry.signal}`;
+  return `done (exit ${entry.exitCode})`;
+}
+
+/**
+ * Reads the terminating signal off a finished Bun subprocess handle without
+ * asserting a shape the runtime does not guarantee.
+ */
+function readSignalCode(proc: ReturnType<typeof Bun.spawn>): string | null {
+  const candidate = (proc as unknown as { signalCode?: unknown }).signalCode;
+  return typeof candidate === 'string' && candidate.length > 0 ? candidate : null;
+}
+
 function killTrackedProcess(proc: ReturnType<typeof Bun.spawn>, signal: Parameters<ReturnType<typeof Bun.spawn>['kill']>[0], id: string): void {
   try {
     proc.kill(signal);
@@ -333,11 +413,25 @@ function killTrackedProcess(proc: ReturnType<typeof Bun.spawn>, signal: Paramete
   }
 }
 
-async function readProcessStream(stream: ReadableStream<Uint8Array>): Promise<string> {
+/**
+ * Drains a child stream into `sink` as chunks arrive.
+ *
+ * The defect this replaces: the previous implementation accumulated the whole
+ * stream into a local string and returned it only when the stream closed, and
+ * the caller pushed that single string into `entry.stdout` after `proc.exited`
+ * resolved. Until the process ended, `entry.stdout` was empty — so `bg_output`
+ * on a running process reported nothing, which is exactly the case a person
+ * runs it in. Pushing each decoded chunk into the live array as it is read
+ * makes `bg_output` reflect the process's output up to that moment, and gives
+ * an on-exit trigger a real output tail to put in its payload.
+ *
+ * The byte cap is unchanged and is still enforced across the whole stream; the
+ * truncation notice is appended once, at the point the cap is first crossed.
+ */
+async function readProcessStream(stream: ReadableStream<Uint8Array>, sink: string[]): Promise<void> {
   const reader = stream.getReader();
   const decoder = new TextDecoder();
   let total = 0;
-  let output = '';
   let truncated = false;
 
   try {
@@ -347,17 +441,17 @@ async function readProcessStream(stream: ReadableStream<Uint8Array>): Promise<st
       const remaining = MAX_PROCESS_OUTPUT_BYTES - total;
       if (remaining > 0) {
         const chunk = value.byteLength > remaining ? value.subarray(0, remaining) : value;
-        output += decoder.decode(chunk, { stream: true });
+        const decoded = decoder.decode(chunk, { stream: true });
+        if (decoded.length > 0) sink.push(decoded);
         total += chunk.byteLength;
       }
-      if (value.byteLength > remaining) {
+      if (value.byteLength > remaining && !truncated) {
         truncated = true;
+        sink.push(`\n[goodvibes: output truncated after ${MAX_PROCESS_OUTPUT_BYTES} bytes]\n`);
       }
     }
-    output += decoder.decode();
-    return truncated
-      ? `${output}\n[goodvibes: output truncated after ${MAX_PROCESS_OUTPUT_BYTES} bytes]\n`
-      : output;
+    const tail = decoder.decode();
+    if (tail.length > 0) sink.push(tail);
   } finally {
     reader.releaseLock();
   }

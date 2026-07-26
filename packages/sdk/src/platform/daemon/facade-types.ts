@@ -60,6 +60,8 @@ export interface ResolvedDaemonFacadeRuntime {
   readonly channelPolicy: ChannelPolicyManager;
   readonly channelPlugins: ChannelPluginRegistry;
   readonly watcherRegistry: WatcherRegistry;
+  /** Trigger family supervisor — the facade starts and stops it with the daemon. Optional: a host that composes its own services without one simply gets no triggers. */
+  readonly triggerManager?: RuntimeServices['triggerManager'];
   readonly platformServiceManager: PlatformServiceManager;
   readonly distributedRuntime: RuntimeServices['distributedRuntime'];
   readonly voiceService: RuntimeServices['voiceService'];

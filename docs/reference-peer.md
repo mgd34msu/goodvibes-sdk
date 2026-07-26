@@ -8,7 +8,7 @@ Generated from the synced GoodVibes peer contract artifact.
 - Transport: `http-json`
 - Base path: `/api/remote`
 - Peer kinds: `node`, `device`
-- Work types: `invoke`, `status.request`, `location.request`, `session.message`, `automation.run`
+- Work types: `invoke`, `status.request`, `location.request`, `session.message`, `automation.run`, `device.capability`
 - Work completion statuses: `completed`, `failed`, `cancelled`
 - Peer scopes: `remote:heartbeat`, `remote:pull`, `remote:complete`
 - Recommended heartbeat ms: `30000`
@@ -638,7 +638,8 @@ none
                   "status.request",
                   "location.request",
                   "session.message",
-                  "automation.run"
+                  "automation.run",
+                  "device.capability"
                 ]
               },
               "command": {
@@ -1892,7 +1893,8 @@ Complete, fail, or cancel a claimed work item.
             "status.request",
             "location.request",
             "session.message",
-            "automation.run"
+            "automation.run",
+            "device.capability"
           ]
         },
         "command": {
@@ -2189,7 +2191,8 @@ Claim queued work for the authenticated peer.
               "status.request",
               "location.request",
               "session.message",
-              "automation.run"
+              "automation.run",
+              "device.capability"
             ]
           },
           "command": {
