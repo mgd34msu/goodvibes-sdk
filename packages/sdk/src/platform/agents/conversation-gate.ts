@@ -287,35 +287,142 @@ export type WorkProposalReply =
   | { readonly decision: 'affirmative'; readonly note?: string | undefined }
   | { readonly decision: 'negative'; readonly note?: string | undefined };
 
-const AFFIRMATIVE = /^(?:y|ya|yah|yea|yeah|yep|yup|yes|ok|okay|k|kk|sure|please|pls|go|go\s+ahead|goahead|do\s+it|doit|start|begin|proceed|run\s+it|runit|approved?|confirm(?:ed)?|affirmative|sounds?\s+good|works?\s+for\s+me|lets?\s+go|let'?s\s+do\s+it|make\s+it\s+so|ship\s+it|yes\s+please)\b/i;
+/**
+ * Openers that answer a yes/no question and mean nothing else in English.
+ * "yeah", "do it", "ship it" are not the start of a new instruction, so a
+ * short qualifier is allowed to follow one ("yes, but only the ntfy adapter").
+ *
+ * Longest alternatives come first: `go\s+ahead` must be tried before the bare
+ * `go` in {@link STANDALONE_AFFIRMATIVE}, and `no\s+thank\s+you` before `no`.
+ */
+const UNAMBIGUOUS_AFFIRMATIVE = /^(?:yes\s+please|go\s+ahead|goahead|go\s+for\s+it|do\s+it|doit|run\s+it|runit|sounds?\s+good|works?\s+for\s+me|let'?s\s+go|lets\s+go|let'?s\s+do\s+it|make\s+it\s+so|ship\s+it|affirmative|approved?|confirm(?:ed)?|yeah|yep|yup|yes|yea|yah|ya|okay|ok|kk|sure|y|k)\b/i;
 
-const NEGATIVE = /^(?:n|no|nope|nah|naw|negative|don'?t|dont|do\s+not|stop|cancel|skip|abort|never\s?mind|nevermind|nm|not\s+now|later|hold\s+off|holdoff|drop\s+it|forget\s+it|no\s+thanks?|no\s+thank\s+you)\b/i;
+/**
+ * Openers that answer a yes/no question ONLY when they are the whole answer.
+ *
+ * Every word here is also an ordinary English word that opens a brand-new
+ * request — "Please refactor the parser in src/parse.ts", "start the daemon",
+ * "go look at the logs". Treating one of these as agreement to whatever was
+ * proposed earlier is how a fresh request got accepted as "yes" to an
+ * unrelated proposal and launched a chain on the OLD task, with the new
+ * sentence demoted to "Additional direction from the owner".
+ *
+ * So these are answers only with nothing after them (or nothing after them but
+ * a closing particle or a second affirmative: "go ahead", "start it", "ok go").
+ */
+const STANDALONE_AFFIRMATIVE = /^(?:proceed|please|begin|start|plz|pls|go)\b/i;
+
+/** Refusals that mean nothing but "no". */
+const UNAMBIGUOUS_NEGATIVE = /^(?:no\s+thank\s+you|no\s+thanks?|never\s?mind|nevermind|not\s+now|hold\s+off|holdoff|drop\s+it|forget\s+it|negative|nope|nah|naw|no|nm|n)\b/i;
+
+/**
+ * Refusals that are also verbs taking an object — "stop the daemon", "cancel
+ * the release", "skip the slow tests", "don't forget the changelog". Same rule
+ * as {@link STANDALONE_AFFIRMATIVE}: only an answer when it is the whole answer.
+ */
+const STANDALONE_NEGATIVE = /^(?:do\s+not|don'?t|dont|cancel|abort|later|stop|skip)\b/i;
+
+/**
+ * Closing words that add nothing to a bare answer, so they do not turn one
+ * into a sentence: "go for it", "start it", "ok then", "sure thing".
+ */
+const ANSWER_PARTICLES: ReadonlySet<string> = new Set([
+  'it', 'that', 'this', 'them', 'then', 'now', 'ahead', 'on', 'for it', 'with it',
+  'thing', 'please', 'pls', 'plz', 'thanks', 'thank you', 'thx', 'ty', 'sir',
+]);
+
+/**
+ * The whole reply must be an ANSWER. A longer message is conversation that
+ * happens to open with an answer-shaped word.
+ */
+const MAX_REPLY_LENGTH = 200;
+/** A qualifier riding along with an unambiguous yes/no ("but skip the tests"). */
+const MAX_QUALIFIER_LENGTH = 80;
+const MAX_QUALIFIER_WORDS = 12;
+/** "ok go ahead" is two layers; nothing legitimate is deeper. */
+const MAX_ANSWER_DEPTH = 2;
+
+/** The text after the matched opener, with joining punctuation removed. */
+function remainderAfter(text: string, pattern: RegExp): string {
+  const match = pattern.exec(text);
+  if (!match) return text;
+  return text.slice(match[0].length).replace(/^[\s:,.!?–—-]+/, '').trim();
+}
+
+/**
+ * Conjunctions that join a second instruction onto an answer — "go ahead AND
+ * rename the config key". They are not preambles (classifyInboundIntent does
+ * not peel them), so they are stripped here before the note is classified;
+ * otherwise the work verb behind them hides and the instruction gets filed as
+ * a note on somebody else's task.
+ */
+const NOTE_CONJUNCTIONS = /^(?:and\s+also|but\s+also|and\s+then|and|also|plus|then)\b[\s,]*/i;
+
+/**
+ * May this trail an unambiguous answer as steering, or is it a request of its
+ * own? A qualifier is short, names no code, and does not classify as work —
+ * "but only touch the ntfy adapter" steers; "refactor the parser in
+ * src/parse.ts" is a new job and must not be swallowed as a note.
+ */
+function isSteeringQualifier(note: string): boolean {
+  if (!note) return true;
+  if (note.length > MAX_QUALIFIER_LENGTH) return false;
+  if ((note.match(/\S+/g) ?? []).length > MAX_QUALIFIER_WORDS) return false;
+  if (CODE_REFERENCE.test(note)) return false;
+  return classifyInboundIntent(note.replace(NOTE_CONJUNCTIONS, '')).kind !== 'work';
+}
+
+function isAnswerParticle(note: string): boolean {
+  if (!note) return true;
+  const cleaned = note.toLowerCase().replace(/[\s.!,?–—-]+$/, '').replace(/\s+/g, ' ').trim();
+  return ANSWER_PARTICLES.has(cleaned);
+}
+
+function parseAnswer(text: string, depth: number): WorkProposalReply | null {
+  for (const [pattern, decision] of [
+    [UNAMBIGUOUS_AFFIRMATIVE, 'affirmative'],
+    [UNAMBIGUOUS_NEGATIVE, 'negative'],
+  ] as const) {
+    if (!pattern.test(text)) continue;
+    const note = remainderAfter(text, pattern);
+    if (!isSteeringQualifier(note)) return null;
+    return { decision, ...(note ? { note } : {}) };
+  }
+
+  for (const [pattern, decision] of [
+    [STANDALONE_AFFIRMATIVE, 'affirmative'],
+    [STANDALONE_NEGATIVE, 'negative'],
+  ] as const) {
+    if (!pattern.test(text)) continue;
+    const note = remainderAfter(text, pattern);
+    if (isAnswerParticle(note)) return { decision };
+    if (depth >= MAX_ANSWER_DEPTH) return null;
+    // "ok go", "please go ahead" — a second answer word, not a new request.
+    const inner = parseAnswer(note, depth + 1);
+    if (!inner || inner.decision !== decision) return null;
+    return inner;
+  }
+
+  return null;
+}
 
 /**
  * Parse a channel reply as agreement or refusal for a pending proposal.
  *
- * Deliberately forgiving of natural phrasing — the owner should be able to
- * type "yeah go for it" from a phone, not a magic token. Anything that is not
- * recognizably an answer returns null and flows through as a normal message,
- * so a proposal never swallows unrelated conversation.
+ * Forgiving of natural phrasing — the owner should be able to type "yeah go
+ * for it" from a phone, not a magic token — but the reply must be ONLY an
+ * answer. A message that carries its own request is that request, never a
+ * "yes" to something proposed earlier, no matter how politely it opens.
+ * Anything unrecognized returns null and flows through as a normal message,
+ * so a pending proposal cannot swallow unrelated conversation.
  */
 export function parseWorkProposalReply(rawText: string | undefined): WorkProposalReply | null {
   const text = (rawText ?? '').trim();
   if (!text) return null;
   // Bound the input: a long paragraph that happens to start with "no" is
   // conversation, not an answer to a yes/no proposal.
-  if (text.length > 200) return null;
-
-  const normalized = text.replace(/^[\s"'`*_>-]+/, '');
-  if (AFFIRMATIVE.test(normalized)) {
-    const note = normalized.replace(AFFIRMATIVE, '').replace(/^[\s:,.!–—-]+/, '').trim();
-    return { decision: 'affirmative', ...(note ? { note } : {}) };
-  }
-  if (NEGATIVE.test(normalized)) {
-    const note = normalized.replace(NEGATIVE, '').replace(/^[\s:,.!–—-]+/, '').trim();
-    return { decision: 'negative', ...(note ? { note } : {}) };
-  }
-  return null;
+  if (text.length > MAX_REPLY_LENGTH) return null;
+  return parseAnswer(text.replace(/^[\s"'`*_>-]+/, ''), 0);
 }
 
 // ---------------------------------------------------------------------------

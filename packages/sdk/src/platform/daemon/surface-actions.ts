@@ -98,8 +98,12 @@ interface DaemonSurfaceActionContext {
    * what isolated contexts and older embedders get.
    */
   readonly workProposals?: WorkProposalStore | undefined;
-  /** Put one short line on the channel a binding points at. */
-  readonly deliverSurfaceNotice?: ((binding: import('../automation/routes.js').AutomationRouteBinding | undefined, text: string) => Promise<boolean>) | undefined;
+  /**
+   * Put one short line on the channel a binding points at, and say whether it
+   * got there. The outcome is discriminated rather than boolean so a caller
+   * can log WHICH guard refused — see SurfaceNoticeRefusal.
+   */
+  readonly deliverSurfaceNotice?: ((binding: import('../automation/routes.js').AutomationRouteBinding | undefined, text: string) => Promise<import('./types.js').SurfaceNoticeDelivery>) | undefined;
 }
 
 export class DaemonSurfaceActionHelper {
@@ -158,8 +162,9 @@ export class DaemonSurfaceActionHelper {
     };
   }
 
-  /** The slice of this helper's context the conversation gate consults. */
-  private conversationGateDeps() {
+  /** The slice of this helper's context the conversation gate consults. Public
+   * so the shared-session continuation runner gates through the SAME deps. */
+  conversationGateDeps() {
     return {
       configManager: this.context.configManager,
       routeBindings: this.context.routeBindings,

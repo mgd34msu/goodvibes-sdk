@@ -104,9 +104,15 @@ export function createSlackDeliveryStrategy(
         await slack.postWebhook(bodyWithAttachments, undefined, request.target.address);
         return success(request.target.address);
       }
-      if (request.target.address) {
-        await slack.postMessage(request.target.address, bodyWithAttachments);
-        return success(request.target.address);
+      const channelId = firstNonEmpty(
+        request.target.address,
+        request.binding?.channelId,
+        request.binding?.externalId,
+        String(configManager.get('surfaces.slack.defaultChannel') ?? ''),
+      );
+      if (channelId) {
+        await slack.postMessage(channelId, bodyWithAttachments);
+        return success(channelId);
       }
       await slack.postWebhook(bodyWithAttachments);
       return success(webhookUrl ?? undefined);
@@ -118,6 +124,7 @@ export function createDiscordDeliveryStrategy(
   serviceRegistry: ServiceRegistry,
   configManager: ConfigManager,
   artifactStore: ArtifactStore,
+  secretsManager?: Pick<SecretsManager, 'get' | 'getGlobalHome'>,
 ): ChannelDeliveryStrategy {
   return {
     id: 'channel-delivery:discord',
@@ -132,6 +139,13 @@ export function createDiscordDeliveryStrategy(
         ?? process.env.DISCORD_WEBHOOK_URL;
       const botToken =
         await serviceRegistry.resolveSecret('discord', 'primary')
+        // Resolve secret references the same way ingress does. Reading this key
+        // as a raw string would send the literal "goodvibes://secrets/..." text
+        // as the bot token, the same bug already fixed for telegram.
+        ?? await resolveSecretInput(configManager.get('surfaces.discord.botToken'), {
+          resolveLocalSecret: secretsManager ? (key) => secretsManager.get(key) : undefined,
+          homeDirectory: secretsManager?.getGlobalHome?.() ?? undefined,
+        })
         ?? process.env.DISCORD_BOT_TOKEN;
       const discord = new DiscordIntegration(webhookUrl ?? undefined, botToken ?? undefined);
       const applicationId = typeof request.binding?.metadata.applicationId === 'string'
@@ -153,9 +167,15 @@ export function createDiscordDeliveryStrategy(
         await discord.postWebhook(bodyWithAttachments, undefined, request.target.address);
         return success(request.target.address);
       }
-      if (request.target.address) {
-        await discord.postMessage(request.target.address, bodyWithAttachments);
-        return success(request.target.address);
+      const channelId = firstNonEmpty(
+        request.target.address,
+        request.binding?.channelId,
+        request.binding?.externalId,
+        String(configManager.get('surfaces.discord.defaultChannelId') ?? ''),
+      );
+      if (channelId) {
+        await discord.postMessage(channelId, bodyWithAttachments);
+        return success(channelId);
       }
       await discord.postWebhook(bodyWithAttachments);
       return success(webhookUrl ?? undefined);
@@ -177,12 +197,17 @@ export function createNtfyDeliveryStrategy(
       const attachments = await resolveAttachments(request, artifactStore, configManager);
       const baseUrl = String(configManager.get('surfaces.ntfy.baseUrl') ?? 'https://ntfy.sh');
       const token = await serviceRegistry.resolveSecret('ntfy', 'primary') ?? process.env.NTFY_ACCESS_TOKEN;
-      const topic = request.target.address ?? String(configManager.get('surfaces.ntfy.topic') ?? '');
+      const topic = firstNonEmpty(
+        request.target.address,
+        request.binding?.channelId,
+        request.binding?.externalId,
+        String(configManager.get('surfaces.ntfy.topic') ?? ''),
+      );
       if (!topic) throw new Error('Missing ntfy topic');
       const ntfy = new NtfyIntegration(baseUrl, token ?? undefined);
       // undefined here means nothing configured resolves to a reachable
       // address — omit the click target rather than shipping a dead link.
-      const baseUrlHint = resolveReachableBaseUrl(configManager);
+      const baseUrlHint = resolveReachableBaseUrl(configManager, 'off-host');
       const primaryAttachment = attachments[0]!;
       await ntfy.publish(topic, appendAttachmentSummary(request.body, attachments), {
         title: request.target.label ?? titleFromBody(request.body),
@@ -371,6 +396,13 @@ export function createGoogleChatDeliveryStrategy(
       const attachments = await resolveAttachments(request, artifactStore, configManager);
       const webhookUrl = firstNonEmpty(
         request.target.address?.startsWith('https://') ? request.target.address : undefined,
+        // The route binding upserted on ingress is a valid source for the
+        // destination, exactly as it already is for webhook
+        // (metadata.callbackUrl) and slack (metadata.responseUrl) above. This
+        // strategy read the binding only for `threadKey`, so a conversation
+        // bound purely by binding — no target.address, no configured webhook —
+        // threw "Missing Google Chat webhook URL" and the reply went nowhere.
+        readString(request.binding?.metadata.webhookUrl),
         await serviceRegistry.resolveSecret('google-chat', 'webhookUrl'),
         serviceRegistry.get('google-chat')?.baseUrl,
         String(configManager.get('surfaces.googleChat.webhookUrl') ?? ''),

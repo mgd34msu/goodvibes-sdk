@@ -71,6 +71,7 @@ export const FEATURE_SETTINGS_BINDINGS: readonly FeatureSettingsBinding[] = [
   // blocking of private IPs and metadata endpoints is absolute, so the
   // capability itself has no off switch.
   { featureId: 'fetch-sanitization', key: 'fetch.sanitizeMode', kind: 'constant' },
+  { featureId: 'wake-word-detection', key: 'voice.wake.enabled', kind: 'boolean' },
   { featureId: 'token-scope-rotation-audit', key: 'security.tokenAudit.enabled', kind: 'boolean' },
   { featureId: 'adaptive-notification-suppression', key: 'notifications.adaptiveSuppression', kind: 'boolean' },
   { featureId: 'integration-delivery-slo', key: 'integrations.delivery.sloEnforced', kind: 'boolean' },
@@ -98,11 +99,13 @@ export const FEATURE_SETTINGS_BINDINGS: readonly FeatureSettingsBinding[] = [
   { featureId: 'telephony-surface', key: 'surfaces.telephony.enabled', kind: 'constant' },
   { featureId: 'web-surface', key: 'web.enabled', kind: 'boolean' },
   { featureId: 'watcher-framework', key: 'watchers.enabled', kind: 'boolean' },
+  { featureId: 'watcher-triggers', key: 'watchers.triggers.enabled', kind: 'boolean' },
   { featureId: 'service-management', key: 'service.enabled', kind: 'boolean' },
   { featureId: 'daemon-auto-update', key: 'update.auto', kind: 'boolean' },
   { featureId: 'exec-sandbox', key: 'sandbox.enabled', kind: 'boolean' },
   { featureId: 'sandbox-model-judgment', key: 'sandbox.judgment', kind: 'enum', enabledValues: ['annotate', 'auto-approve'] },
   { featureId: 'relay-connect', key: 'relay.enabled', kind: 'boolean' },
+  { featureId: 'paired-device-capabilities', key: 'device.capabilities.mode', kind: 'enum', enabledValues: ['ask-every-time', 'honor-grants'] },
 ];
 
 const BINDINGS_BY_ID: ReadonlyMap<string, FeatureSettingsBinding> = new Map(
@@ -132,6 +135,13 @@ export function assertFeatureGateIdRegistered(flagId: string, context: string): 
 
 /** Derive one feature's state from a settings value per its binding. */
 export function deriveFeatureState(binding: FeatureSettingsBinding, value: unknown): FlagState {
+  // A capability that cannot operate never derives to 'enabled', so the gate
+  // manager, the gate itself, and any state readout all agree it is not
+  // running. The user's CONFIG value is left untouched — their intent is kept
+  // for the release that wires the capability up — and the surface explains
+  // the gap with FeatureSetting.inoperableDetail rather than showing "on" for
+  // something that is doing nothing.
+  if (FEATURE_FLAG_MAP.get(binding.featureId)?.notOperable !== undefined) return 'disabled';
   switch (binding.kind) {
     case 'constant':
       return 'enabled';
@@ -220,6 +230,17 @@ export interface FeatureSetting {
   readonly restartRequired: boolean;
   /** Whether a stock configuration has the feature active. */
   readonly defaultEnabled: boolean;
+  /**
+   * False when the capability cannot operate in this build at all — the gate
+   * refuses it regardless of its settings key.
+   *
+   * A surface rendering `operable: false` must SAY SO where the control is,
+   * rather than drawing a switch that flips cleanly and does nothing. The
+   * reason to show is {@link inoperableDetail}.
+   */
+  readonly operable: boolean;
+  /** Why it cannot operate, written for a user; null when it can. */
+  readonly inoperableDetail: string | null;
 }
 
 function buildFeatureSetting(binding: FeatureSettingsBinding): FeatureSetting {
@@ -245,6 +266,8 @@ function buildFeatureSetting(binding: FeatureSettingsBinding): FeatureSetting {
     settings,
     restartRequired: !flag.runtimeToggleable,
     defaultEnabled: flag.defaultState === 'enabled',
+    operable: flag.notOperable === undefined,
+    inoperableDetail: flag.notOperable?.detail ?? null,
   };
 }
 

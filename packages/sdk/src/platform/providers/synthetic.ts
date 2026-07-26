@@ -1,5 +1,5 @@
 import type { LLMProvider, ChatRequest, ChatResponse, ProviderModelSource } from './interface.js';
-import { ProviderError, isRateLimitOrQuotaError } from '../types/errors.js';
+import { ProviderError, isBillingOrCreditError, isRateLimitOrQuotaError } from '../types/errors.js';
 import { logger } from '../utils/logger.js';
 import type { BenchmarkEntry } from './model-benchmarks.js';
 import { compositeScore } from './model-benchmarks.js';
@@ -371,7 +371,14 @@ export class SyntheticProvider implements LLMProvider {
         logger.info(`[Synthetic] ${syntheticId} served by ${backend.providerName} (${backend.modelId})`);
         return response;
       } catch (err) {
-        if (isRateLimitOrQuotaError(err)) {
+        // Rotating to the next backend is the right response to BOTH a rate
+        // limit and a spent account — a different key may well have credit —
+        // so they share this branch. They are still named apart in the log,
+        // and billing is tested first so a credit failure that arrives as a
+        // 400 (Anthropic's shape) rotates here instead of falling into the
+        // "malformed request, stop trying" branch below.
+        const outOfCredit = isBillingOrCreditError(err);
+        if (outOfCredit || isRateLimitOrQuotaError(err)) {
           // Record cooldown
           const cooldownMs = (err instanceof ProviderError && err.retryAfterMs)
             ? err.retryAfterMs
@@ -380,7 +387,7 @@ export class SyntheticProvider implements LLMProvider {
           this.cooldowns.set(syntheticId, cooldownArr);
           if (cooldownMs < shortestCooldown) shortestCooldown = cooldownMs;
 
-          logger.info(`[Synthetic] ${backend.providerName} rate-limited for ${syntheticId}, cooldown ${Math.round(cooldownMs / 1000)}s`);
+          logger.info(`[Synthetic] ${backend.providerName} ${outOfCredit ? 'out of credit' : 'rate-limited'} for ${syntheticId}, cooldown ${Math.round(cooldownMs / 1000)}s`);
           errors.push({ backend, error: err as Error });
           continue;
         }

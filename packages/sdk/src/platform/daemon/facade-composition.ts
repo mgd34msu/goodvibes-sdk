@@ -2,7 +2,9 @@ import { join } from 'node:path';
 import { AgentManager } from '../tools/agent/index.js';
 import { resolveHostBinding } from './host-resolver.js';
 import { WorkProposalStore } from '../agents/work-proposal-store.js';
-import { readConversationGateConfig } from '../agents/conversation-gate.js';
+import { readConversationGateConfig, type ConversationGateConfigReader } from '../agents/conversation-gate.js';
+import { continuationChainOptions, decideContinuationEscalation } from '../agents/conversation-continuation.js';
+import { gateSurfaceSpawn, type SurfaceIngressOrigin } from './surface-conversation-gate.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 import type { ConfigManager } from '../config/manager.js';
@@ -27,7 +29,14 @@ import {
   createWebKnowledgeGapRepairer,
 } from '../knowledge/index.js';
 import { DaemonControlPlaneHelper } from './control-plane.js';
-import { DaemonSurfaceDeliveryHelper } from './surface-delivery.js';
+import { DaemonSurfaceDeliveryHelper, type SurfaceDeliveryLedgerEntry } from './surface-delivery.js';
+import { ROUTE_SURFACE_KINDS, type RouteSurfaceKind } from '../../events/routes.js';
+import {
+  emitDeliveryFailed,
+  emitDeliveryQueued,
+  emitDeliveryStarted,
+  emitDeliverySucceeded,
+} from '../runtime/emitters/deliveries.js';
 import { DaemonSurfaceActionHelper } from './surface-actions.js';
 import { DaemonTransportEventsHelper } from './transport-events.js';
 import { DaemonHttpRouter } from './http/router.js';
@@ -403,6 +412,7 @@ export function resolveDaemonFacadeRuntime(config: DaemonConfig): ResolvedDaemon
     channelPolicy: runtimeServices.channelPolicy,
     channelPlugins: runtimeServices.channelPlugins,
     watcherRegistry: runtimeServices.watcherRegistry,
+    triggerManager: runtimeServices.triggerManager,
     platformServiceManager: new PlatformServiceManager(resolvedConfigManager, {
       workingDirectory: runtimeServices.workingDirectory,
       homeDirectory: runtimeServices.homeDirectory,
@@ -428,6 +438,77 @@ export function resolveDaemonFacadeRuntime(config: DaemonConfig): ResolvedDaemon
     githubWebhookSecret: config.githubWebhookSecret ?? process.env.GITHUB_WEBHOOK_SECRET ?? null,
     companionChatManager,
   };
+}
+
+/**
+ * Put a surface reply into the SAME delivery ledger automation deliveries use.
+ *
+ * Before this, the ledger observed automation deliveries only, so a channel
+ * conversation could exchange messages all evening and the ledger still read
+ * "0 queued, 0 started, 0 succeeded, 0 failed, 0 attempts". A dropped reply and
+ * an idle daemon produced byte-identical evidence, which is how a real delivery
+ * failure stayed invisible.
+ */
+function recordSurfaceDeliveryAttempt(
+  runtime: ResolvedDaemonFacadeRuntime,
+  entry: SurfaceDeliveryLedgerEntry,
+): void {
+  const surfaceKind = (ROUTE_SURFACE_KINDS as readonly string[]).includes(entry.surfaceKind)
+    ? entry.surfaceKind as RouteSurfaceKind
+    : 'webhook';
+  const now = Date.now();
+  runtime.runtimeDispatch?.syncDeliveryAttempt({
+    id: entry.deliveryId,
+    runId: entry.sessionId ?? entry.agentId,
+    jobId: entry.routeId ?? `surface:${surfaceKind}`,
+    target: {
+      kind: 'surface',
+      surfaceKind: surfaceKind as never,
+      ...(entry.routeId ? { routeId: entry.routeId } : {}),
+      address: entry.targetId,
+      label: `agent ${entry.agentId}`,
+    },
+    status: entry.phase === 'queued'
+      ? 'pending'
+      : entry.phase === 'started'
+        ? 'sending'
+        : entry.phase === 'succeeded' ? 'sent' : 'failed',
+    ...(entry.phase === 'queued' ? {} : { startedAt: now }),
+    ...(entry.phase === 'succeeded' || entry.phase === 'failed' ? { endedAt: now } : {}),
+    ...(entry.error ? { error: entry.error } : {}),
+  }, `deliveries.${entry.phase}`);
+  const bus = runtime.runtimeBus;
+  if (!bus) return;
+  const ctx = {
+    sessionId: entry.sessionId ?? 'surface-reply',
+    source: 'daemon-surface-delivery',
+    traceId: entry.deliveryId,
+  } as const;
+  const common = {
+    deliveryId: entry.deliveryId,
+    jobId: entry.routeId ?? `surface:${surfaceKind}`,
+    runId: entry.sessionId ?? entry.agentId,
+    surfaceKind,
+    targetId: entry.targetId,
+  };
+  if (entry.phase === 'queued') {
+    emitDeliveryQueued(bus, ctx, { ...common, deliveryKind: 'reply' });
+    return;
+  }
+  if (entry.phase === 'started') {
+    emitDeliveryStarted(bus, ctx, { ...common, startedAt: now });
+    return;
+  }
+  if (entry.phase === 'succeeded') {
+    emitDeliverySucceeded(bus, ctx, { ...common, completedAt: now, durationMs: 0, statusCode: 200 });
+    return;
+  }
+  emitDeliveryFailed(bus, ctx, {
+    ...common,
+    failedAt: now,
+    error: entry.error ?? 'surface reply was not delivered',
+    retryable: false,
+  });
 }
 
 export function createDaemonFacadeCollaborators(
@@ -459,6 +540,18 @@ export function createDaemonFacadeCollaborators(
     channelPlugins: runtime.channelPlugins,
     authToken: options.authToken,
     surfaceDeliveryEnabled: options.surfaceDeliveryEnabled,
+    recordDeliveryAttempt: (entry) => recordSurfaceDeliveryAttempt(runtime, entry),
+  });
+  // Every reply the pipeline could not put on a channel becomes a visible
+  // failed delivery rather than an absence.
+  channelReplyPipeline.setUndeliveredReporter((reply) => surfaceDeliveryHelper.recordUndeliveredReply(reply));
+  channelReplyPipeline.setDeliveredReporter((reply) => surfaceDeliveryHelper.recordDeliveredReply(reply));
+  // THE shared reply-routing point. The broker announces "this agent will
+  // answer this channel message" from inside itself, so every ingress — a fresh
+  // spawn, a message that landed in an existing live session, a shared-session
+  // continuation — routes its answer back to the conversation it came from.
+  runtime.sessionBroker.setSurfaceReplyBinder((binding) => {
+    surfaceDeliveryHelper.ensureSurfaceReply(binding);
   });
   // Pending work proposals for the conversation-first spawn gate. Persisted
   // beside the other control-plane state so a proposal survives a daemon
@@ -643,14 +736,54 @@ export function configureDaemonSessionContinuation(options: {
   }) => void;
   /** The live registry's model candidates — enables bare model id resolution in routing overrides. */
   readonly modelCandidates?: (() => readonly ModelIdCandidate[]) | undefined;
+  /**
+   * The surface helper holding the conversation-first gate's dependencies. A
+   * follow-up in a shared session is the SAME message class the ingress gate
+   * guards, so it gets the same treatment: conversation is answered with the
+   * chain suppressed, and a work-shaped follow-up is PROPOSED over the channel
+   * it arrived on (a Response, reported here as "no agent started").
+   *
+   * Absent — an embedder that has not wired the gate — still fails closed via
+   * `continuationChainOptions` below. A continuation never opens a chain just
+   * because nobody installed a gate.
+   */
+  readonly surfaceActionHelper?: Pick<DaemonSurfaceActionHelper, 'conversationGateDeps'> | undefined;
+  /** Reads `conversationGate.*` so both halves of the gate obey one configuration. */
+  readonly configReader?: ConversationGateConfigReader | undefined;
 }): void {
   options.sessionBroker.setContinuationRunner(async ({ sessionId, input, task, routeBinding }) => {
-    const spawned = options.trySpawnAgent({
-      mode: 'spawn',
+    const spawnInput = {
+      mode: 'spawn' as const,
       task,
       ...buildSharedSessionAgentSpawnRoutingInput(input.routing, { modelCandidates: options.modelCandidates?.() }),
       context: `shared-session:${sessionId}`,
-    }, 'DaemonServer.sharedSessionFollowUp', sessionId);
+    };
+    // Classify the OWNER's words (`input.body`), never the enriched
+    // continuation task the broker builds from the transcript — that framing
+    // reads as work no matter what the owner actually said.
+    const origin: SurfaceIngressOrigin | null = input.surfaceKind
+      ? {
+          surface: input.surfaceKind,
+          text: input.body,
+          ...(input.userId ? { userId: input.userId } : {}),
+          ...(input.externalId ?? input.threadId ? { channelId: input.externalId ?? input.threadId } : {}),
+          ...(input.threadId ? { threadId: input.threadId } : {}),
+        }
+      : null;
+    // Work the owner already confirmed (an agreed proposal, a schedule, a
+    // trigger, an on-exit chain) carries the marker and must not be re-asked;
+    // a follow-up typed on a local surface keeps its chain. Everything else is
+    // conversation and goes through the gate.
+    const escalation = decideContinuationEscalation(input, {
+      ...(options.configReader ? { configReader: options.configReader } : {}),
+    });
+    const label = 'DaemonServer.sharedSessionFollowUp';
+    const gateDeps = options.surfaceActionHelper?.conversationGateDeps();
+    const spawned = escalation.startsWorkChain
+      ? options.trySpawnAgent(spawnInput, label, sessionId)
+      : gateDeps
+        ? gateSurfaceSpawn(gateDeps, origin, spawnInput, label, sessionId)
+        : options.trySpawnAgent({ ...spawnInput, ...continuationChainOptions(input) }, label, sessionId);
     if (spawned instanceof Response) {
       return null;
     }

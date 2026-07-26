@@ -45,6 +45,8 @@ import { adaptWorkflow } from './adapters/workflow.js';
 import { adaptTrigger } from './adapters/trigger.js';
 import { adaptSchedule } from './adapters/schedule.js';
 import { adaptWatcher } from './adapters/watcher.js';
+import { adaptWatcherTrigger, isWatcherTriggerRaw } from './adapters/watcher-trigger.js';
+import type { TriggerManager as WatcherTriggerManager } from '../../triggers/manager.js';
 import { adaptBackgroundProcess } from './adapters/background-process.js';
 import { adaptAutomationJob, isAutomationJobRaw } from './adapters/automation.js';
 import {
@@ -120,6 +122,16 @@ export interface ProcessRegistryDeps {
     readonly triggerManager: Pick<TriggerManager, 'list' | 'remove' | 'disable' | 'enable'>;
     readonly scheduleManager: Pick<ScheduleManager, 'list' | 'remove' | 'disable' | 'enable'>;
   };
+  /**
+   * Optional: the trigger family's supervisor (stream watchers, condition
+   * checks, on-exit process triggers). When present its records fold in as
+   * 'trigger' nodes alongside the workflow tool's event triggers — the two are
+   * told apart by `isWatcherTriggerRaw`, never by kind alone, so a control verb
+   * can never be routed to the wrong manager. Absent (the default, and the
+   * case whenever watchers.triggers.enabled is false) ⇒ exactly today's
+   * behavior: zero extra nodes, no new capability.
+   */
+  readonly triggerSupervisor?: Pick<WatcherTriggerManager, 'list' | 'cancel' | 'reset'> | undefined;
   /** Optional: awaiting-approval derivation. Non-control-plane runtimes still build a fleet. */
   readonly approvalBroker?: Pick<ApprovalBroker, 'listApprovals'> | undefined;
   /** Optional: populates ProcessNode.sessionRef.sessionId (tab attach point). */
@@ -440,6 +452,11 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
     for (const trigger of deps.workflow.triggerManager.list()) {
       nodes.push(adaptTrigger(trigger));
     }
+    if (deps.triggerSupervisor) {
+      for (const record of deps.triggerSupervisor.list()) {
+        nodes.push(adaptWatcherTrigger(record, capturedAt));
+      }
+    }
     for (const schedule of deps.workflow.scheduleManager.list()) {
       nodes.push(adaptSchedule(schedule));
     }
@@ -589,6 +606,13 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
       case 'workflow':
         return deps.workflow.workflowManager.cancel(node.id) ? [node.id] : [];
       case 'trigger':
+        // Two managers share this kind. Ask the raw payload which one owns the
+        // node rather than assuming — routing to the wrong manager would
+        // silently no-op and leave a supervised child process running.
+        if (isWatcherTriggerRaw(node.raw)) {
+          if (!deps.triggerSupervisor) return [];
+          return deps.triggerSupervisor.cancel(node.id) !== null ? [node.id] : [];
+        }
         return deps.workflow.triggerManager.remove(node.id) ? [node.id] : [];
       case 'schedule': {
         if (isAutomationJobRaw(node.raw)) {
@@ -695,6 +719,10 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
       case 'agent':
         return deps.agentManager.cancel(target.id, 'interrupt');
       case 'trigger':
+        // The trigger family has no disable/enable pause cycle — its records
+        // are either armed, walking the backoff ladder, or parked by the
+        // breaker. Refuse honestly instead of pretending to pause one.
+        if (isWatcherTriggerRaw(target.raw)) return false;
         return deps.workflow.triggerManager.disable(target.id);
       case 'schedule': {
         if (isAutomationJobRaw(target.raw)) {
@@ -731,6 +759,12 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
     if (!target || !target.capabilities.resumable) return false;
     switch (target.kind) {
       case 'trigger':
+        // For a trigger-family node, resumable means "the breaker is open".
+        // Resuming it IS the explicit operator reset the breaker waits for.
+        if (isWatcherTriggerRaw(target.raw)) {
+          if (!deps.triggerSupervisor) return false;
+          return deps.triggerSupervisor.reset(target.id) !== null;
+        }
         return deps.workflow.triggerManager.enable(target.id);
       case 'schedule': {
         if (isAutomationJobRaw(target.raw)) {

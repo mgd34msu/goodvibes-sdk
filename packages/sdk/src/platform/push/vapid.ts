@@ -18,6 +18,7 @@
  */
 
 import { createPrivateKey, generateKeyPairSync, sign as cryptoSign, type JsonWebKey } from 'node:crypto';
+import { DEFAULT_VAPID_SUBJECT, VAPID_SUBJECT_HINT, isValidVapidSubject } from './vapid-subject.js';
 
 /** The narrow slice of SecretsManager this module needs — get/set one secret. */
 export interface VapidSecretStore {
@@ -35,7 +36,7 @@ interface StoredVapidKeypair {
 export interface VapidManagerOptions {
   /**
    * The `sub` claim of the VAPID JWT — a `mailto:` or `https:` contact the push
-   * service can reach. Defaults to a local mailto when unset.
+   * service can reach. Defaults to {@link DEFAULT_VAPID_SUBJECT} when unset.
    */
   readonly subject?: string | undefined;
 }
@@ -43,7 +44,9 @@ export interface VapidManagerOptions {
 /** The secret key under which the keypair is stored (a secrets-store key, not a config key). */
 export const VAPID_SECRET_KEY = 'push.vapid.keypair';
 
-const DEFAULT_SUBJECT = 'mailto:goodvibes-push@localhost';
+const DEFAULT_SUBJECT = DEFAULT_VAPID_SUBJECT;
+
+export { DEFAULT_VAPID_SUBJECT, VAPID_SUBJECT_HINT, isValidVapidSubject } from './vapid-subject.js';
 /** VAPID JWTs are short-lived; RFC 8292 caps `exp` at 24h. Use 12h. */
 const JWT_LIFETIME_SECONDS = 12 * 60 * 60;
 
@@ -71,7 +74,16 @@ export class VapidManager {
   private inflight: Promise<StoredVapidKeypair> | null = null;
 
   constructor(private readonly store: VapidSecretStore, options: VapidManagerOptions = {}) {
-    this.subject = options.subject && options.subject.length > 0 ? options.subject : DEFAULT_SUBJECT;
+    const configured = options.subject?.trim() ?? '';
+    if (configured.length > 0 && !isValidVapidSubject(configured)) {
+      throw new Error(`VAPID subject must be ${VAPID_SUBJECT_HINT} (got "${configured}")`);
+    }
+    this.subject = configured.length > 0 ? configured : DEFAULT_SUBJECT;
+  }
+
+  /** The `sub` claim every JWT this manager signs will carry. */
+  getSubject(): string {
+    return this.subject;
   }
 
   /** The public application-server key clients subscribe with. Generates on first call. */

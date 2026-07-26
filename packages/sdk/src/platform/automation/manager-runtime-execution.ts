@@ -14,6 +14,7 @@ import {
   buildAutomationExecutionContext,
 } from './manager-runtime-helpers.js';
 import { executeCheckinJob, type AutomationCheckinEvaluator } from './checkin-execution.js';
+import { markWorkAuthorized } from '../agents/conversation-continuation.js';
 
 export interface AutomationManagerExecutionContext {
   readonly configManager: ConfigManager;
@@ -470,11 +471,16 @@ export async function resolveSharedSessionExecution(
     displayName: `Automation: ${job.name}`,
     title: job.name,
     body: prompt,
-    metadata: {
+    // A schedule, trigger, or on-exit chain was authorized when it was
+    // CREATED and must not be re-asked at execution time. The marker is what
+    // tells the shared-session continuation runner that this input is
+    // confirmed work rather than a message to answer — see
+    // agents/conversation-continuation.ts.
+    metadata: markWorkAuthorized({
       automationJobId: job.id,
       trigger,
       targetKind: input.target.kind,
-    },
+    }),
   });
   return toResolvedExecution(job, input.target, submission, input.updatedJob);
 }

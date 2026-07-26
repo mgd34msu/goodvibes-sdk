@@ -4570,7 +4570,10 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
     "body": {
       "success": false,
       "key": "sample",
-      "value": "sample"
+      "value": "sample",
+      "persistedTo": "sample",
+      "tier": "sample",
+      "daemonOwned": false
     }
   },
   "credentials.get": {
@@ -14268,6 +14271,149 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           "metadata": {}
         }
       ]
+    }
+  },
+  "devices.grants.list": {
+    "methodId": "devices.grants.list",
+    "http": {
+      "method": "GET",
+      "path": "/api/devices/grants"
+    },
+    "status": 200,
+    "body": {
+      "grants": [
+        {
+          "grantId": "sample",
+          "nodeId": "sample",
+          "nodeKind": "sample",
+          "capabilityId": "sample",
+          "capabilityTitle": "sample",
+          "scope": "sample",
+          "grantedAt": 0,
+          "expiresAt": 0,
+          "lastUsedAt": 0,
+          "useCount": 0,
+          "grantedBy": "sample"
+        }
+      ],
+      "audit": [
+        {
+          "id": "sample",
+          "action": "sample",
+          "grantId": "sample",
+          "nodeId": "sample",
+          "capabilityId": "sample",
+          "at": 0,
+          "actor": "sample",
+          "reason": "sample"
+        }
+      ]
+    }
+  },
+  "devices.grants.revoke": {
+    "methodId": "devices.grants.revoke",
+    "http": {
+      "method": "POST",
+      "path": "/api/devices/grants/revoke"
+    },
+    "status": 200,
+    "body": {
+      "revoked": 0,
+      "removals": [
+        {
+          "grantId": "sample",
+          "nodeId": "sample",
+          "capabilityId": "sample",
+          "scope": "sample",
+          "reason": "sample",
+          "removedAt": 0
+        }
+      ]
+    }
+  },
+  "devices.housekeeping.run": {
+    "methodId": "devices.housekeeping.run",
+    "http": {
+      "method": "POST",
+      "path": "/api/devices/housekeeping"
+    },
+    "status": 200,
+    "body": {
+      "summary": "sample",
+      "sweptAt": 0,
+      "grantsRemoved": [
+        {
+          "grantId": "sample",
+          "nodeId": "sample",
+          "capabilityId": "sample",
+          "scope": "sample",
+          "reason": "sample",
+          "removedAt": 0
+        }
+      ],
+      "grantsRetained": 0,
+      "capturesRemoved": [
+        {
+          "artifactId": "sample",
+          "nodeId": "sample",
+          "capabilityId": "sample",
+          "fileName": "sample",
+          "reason": "sample",
+          "removedAt": 0,
+          "byteLength": 0
+        }
+      ],
+      "capturesRetained": 0,
+      "bytesReclaimed": 0
+    }
+  },
+  "devices.nodes.list": {
+    "methodId": "devices.nodes.list",
+    "http": {
+      "method": "GET",
+      "path": "/api/devices/nodes"
+    },
+    "status": 200,
+    "body": {
+      "nodes": [
+        {
+          "nodeId": "sample",
+          "nodeKind": "sample",
+          "nodeKindLabel": "sample",
+          "label": "sample",
+          "platform": "sample",
+          "appVersion": "sample",
+          "contractVersion": 0,
+          "contractCompatible": false,
+          "supported": [
+            "sample"
+          ],
+          "undeclared": [
+            "sample"
+          ],
+          "gatedBySecureContext": [
+            "sample"
+          ],
+          "unknownDeclared": [
+            "sample"
+          ]
+        }
+      ],
+      "capabilities": [
+        {
+          "id": "sample",
+          "family": "sample",
+          "title": "sample",
+          "purpose": "sample",
+          "effect": "sample",
+          "sensitivity": "sample",
+          "producesArtifact": false,
+          "allowAlwaysOffered": false
+        }
+      ],
+      "mode": "sample",
+      "allowAlwaysOffer": "sample",
+      "captureRetentionHours": 0
     }
   },
   "runtime.metrics.get": {

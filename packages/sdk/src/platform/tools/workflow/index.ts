@@ -153,6 +153,20 @@ export class WorkflowManager {
 // TriggerManager
 // ---------------------------------------------------------------------------
 
+/**
+ * The WORKFLOW tool's event->action trigger: `on <event> do <action>` inside a
+ * workflow FSM.
+ *
+ * NOTE — there is a second, unrelated `TriggerDefinition` in
+ * platform/triggers/types.ts: the trigger FAMILY's definition (stream watchers,
+ * model-free condition checks, on-exit process triggers), owned by
+ * platform/triggers/manager.ts and gated by `watchers.triggers.enabled`. The
+ * two live in separate export subpaths and never meet in one import, but BOTH
+ * publish fleet nodes under the 'trigger' kind — which is why every fleet
+ * control path routes on `isWatcherTriggerRaw` (adapters/watcher-trigger.ts)
+ * rather than on the kind alone. If you are looking for backoff ladders,
+ * breakers or termination metadata, you want the other one.
+ */
 export interface TriggerDefinition {
   id: string;
   event: string;

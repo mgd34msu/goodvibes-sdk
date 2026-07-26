@@ -70,6 +70,22 @@ import {
   createGoodVibesSettingsTool,
 } from './goodvibes-runtime/index.js';
 
+export {
+  applyRoutedConfigWrite,
+  localStorePathForKey,
+  readRoutedConfigValue,
+  readRoutedConfigValues,
+  resolveRouterDeps,
+} from './goodvibes-runtime/config-routing.js';
+export type {
+  ConfigReadResult,
+  ConfigRoutingOptions,
+  ConfigValueOrigin,
+  RoutedConfigRead,
+  RoutedConfigWrite,
+  UnavailableConfigRead,
+} from './goodvibes-runtime/config-routing.js';
+
 export { ToolRegistry } from './registry.js';
 export { ProcessManager } from './shared/process-manager.js';
 export type { BackgroundProcess, BgCommandResult, SpawnOptions } from './shared/process-manager.js';
@@ -250,6 +266,13 @@ export function registerAllTools(
     sandboxSessionRegistry?: SandboxSessionRegistry | undefined;
     workingDirectory: string;
     surfaceRoot: string;
+    /**
+     * How the settings tools reach the runtime that OWNS a given key. Without
+     * it a client writes daemon-owned settings into its own store, where they
+     * configure nothing, and reads them back from that same store, where they
+     * look unset. Hosts that embed or can reach a daemon should supply this.
+     */
+    configRouting?: import('./goodvibes-runtime/config-routing.js').ConfigRoutingOptions | undefined;
     archetypeLoader?: Pick<ArchetypeLoader, 'loadArchetype'> | undefined;
     configManager?: ConfigManager | undefined;
     providerRegistry?: ProviderRegistry | undefined;
@@ -380,9 +403,11 @@ export function registerAllTools(
     workingDirectory,
     homeDirectory: deps.configManager.getHomeDirectory() ?? undefined,
     surfaceRoot: deps.surfaceRoot,
+    configRouting: deps.configRouting,
   }));
   registerTool(createGoodVibesSettingsTool({
     configManager: deps.configManager,
+    configRouting: deps.configRouting,
   }));
   registerTool(new ReadTool(projectIndex, fileCache));
   // One post-edit diagnostics provider shared by write and edit. Default: the

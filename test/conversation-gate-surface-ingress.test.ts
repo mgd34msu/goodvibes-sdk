@@ -28,7 +28,15 @@ interface SpawnCall {
   readonly logLabel?: string | undefined;
 }
 
-function buildHarness(configOverrides: Record<string, unknown> = {}, clock?: { now: number }) {
+type NoticeOutcome =
+  | { readonly delivered: true }
+  | { readonly delivered: false; readonly reason: string };
+
+function buildHarness(
+  configOverrides: Record<string, unknown> = {},
+  clock?: { now: number },
+  noticeOutcome: NoticeOutcome = { delivered: true },
+) {
   const spawns: SpawnCall[] = [];
   const notices: Array<{ routeId: string | undefined; text: string }> = [];
   const queuedReplies: Array<{ agentId: string }> = [];
@@ -107,7 +115,7 @@ function buildHarness(configOverrides: Record<string, unknown> = {}, clock?: { n
     workProposals: proposals,
     deliverSurfaceNotice: async (b: { id: string } | undefined, text: string) => {
       notices.push({ routeId: b?.id, text });
-      return true;
+      return noticeOutcome;
     },
   };
 
@@ -174,6 +182,30 @@ describe('conversation gate at the surface spawn boundary', () => {
     expect(body.outcome).toBe('work-proposed');
     expect(typeof body.proposalId).toBe('string');
     expect(harness.proposals.listPending()).toHaveLength(1);
+  });
+
+  // Observed live: the notice was refused by one of four silent guards, so the
+  // owner saw nothing while the system held a pending, answerable proposal.
+  // The next thing they typed could then be matched against it.
+  test('a proposal whose notice was refused is not answerable', async () => {
+    const harness = buildHarness({}, undefined, { delivered: false, reason: 'surface-delivery-disabled' });
+    const response = await harness.send('fix the login bug');
+    expect((await response.json() as Record<string, unknown>).outcome).toBe('work-proposed');
+
+    expect(harness.proposals.listPending()).toHaveLength(0);
+    expect(harness.proposals.disclose().reaped.undelivered).toBe(1);
+
+    // ...and a later "yes" therefore starts nothing.
+    await harness.send('yes');
+    expect(harness.spawns.filter((spawn) => !spawn.wrfcDisabled)).toHaveLength(0);
+  });
+
+  test('a work request is answerable only after its notice is confirmed', async () => {
+    const harness = buildHarness();
+    await harness.send('fix the login bug');
+    const pending = harness.proposals.listPending();
+    expect(pending).toHaveLength(1);
+    expect(pending[0]!.delivered).toBe(true);
   });
 
   test('the proposal goes out on the channel the message arrived on', async () => {

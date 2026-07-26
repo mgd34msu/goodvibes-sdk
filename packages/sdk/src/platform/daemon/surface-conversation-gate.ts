@@ -35,6 +35,7 @@ import {
   type ConversationGateConfigReader,
 } from '../agents/conversation-gate.js';
 import type { WorkProposalRecord, WorkProposalStore } from '../agents/work-proposal-store.js';
+import type { SurfaceNoticeDelivery } from './types.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 
@@ -74,7 +75,7 @@ export interface ConversationGateDeps {
   ) => void;
   readonly workProposals?: WorkProposalStore | undefined;
   readonly deliverSurfaceNotice?:
-    | ((binding: AutomationRouteBinding | undefined, text: string) => Promise<boolean>)
+    | ((binding: AutomationRouteBinding | undefined, text: string) => Promise<SurfaceNoticeDelivery>)
     | undefined;
 }
 
@@ -129,7 +130,18 @@ export function gateSurfaceSpawn(
     ...(sessionId ? { sessionId } : {}),
   });
 
-  void deliverProposalNotice(deps, binding, renderWorkProposalMessage({ summary, expiresInMs: config.proposalTtlMs }));
+  // A proposal becomes answerable only once its notice is confirmed on the
+  // wire. Until then listPending excludes it, so a message arriving in the
+  // meantime is treated as what it is rather than as an answer to something
+  // the owner was never shown. Fails closed: any refusal drops the proposal.
+  void deliverProposalNotice(deps, binding, renderWorkProposalMessage({ summary, expiresInMs: config.proposalTtlMs }))
+    .then((outcome) => {
+      if (outcome.delivered) {
+        store.markDelivered(proposal.id);
+        return;
+      }
+      store.markUndeliverable(proposal.id, outcome.reason);
+    });
 
   logger.info('Conversation gate proposed a workstream instead of starting one', {
     surface: origin?.surface ?? 'unknown',
@@ -174,17 +186,39 @@ export function resolveOriginBinding(
   );
 }
 
+/**
+ * Put the proposal on the owner's channel and report whether it got there.
+ *
+ * The result is the caller's business, not this function's: a proposal whose
+ * notice never arrived must not stay answerable, because the owner has not
+ * seen it and their NEXT message — whatever it is about — would otherwise be
+ * matchable against it. Discarding this outcome is exactly the defect that
+ * let an unseen proposal be "accepted".
+ */
 export async function deliverProposalNotice(
   deps: Pick<ConversationGateDeps, 'deliverSurfaceNotice'>,
   binding: AutomationRouteBinding | undefined,
   message: string,
-): Promise<void> {
+): Promise<SurfaceNoticeDelivery> {
   const deliver = deps.deliverSurfaceNotice;
-  if (!deliver) return;
-  await deliver(binding, message).catch((error: unknown) => {
-    logger.warn('Conversation gate could not deliver the proposal', { error: summarizeError(error) });
-    return false;
-  });
+  if (!deliver) {
+    logger.error('Conversation gate has no surface delivery function; the proposal cannot be shown', {
+      surface: binding?.surfaceKind ?? null,
+      routeId: binding?.id ?? null,
+    });
+    return { delivered: false, reason: 'no-deliverable-target' };
+  }
+  try {
+    return await deliver(binding, message);
+  } catch (error) {
+    const summary = summarizeError(error);
+    logger.error('Conversation gate could not deliver the proposal', {
+      surface: binding?.surfaceKind ?? null,
+      routeId: binding?.id ?? null,
+      error: summary,
+    });
+    return { delivered: false, reason: 'delivery-failed', error: summary };
+  }
 }
 
 /**

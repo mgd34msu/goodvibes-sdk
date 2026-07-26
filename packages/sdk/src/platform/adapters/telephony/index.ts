@@ -26,7 +26,7 @@ function signatureCandidateUrls(req: Request, context: SurfaceAdapterContext): r
   const candidates = [requestUrl.toString()];
   const publicBaseUrl =
     readString(context.configManager.get('web.publicBaseUrl'))
-    ?? readString(context.configManager.get('controlPlane.baseUrl'));
+    ?? readString(context.configManager.get('controlPlane.publicBaseUrl'));
   if (publicBaseUrl) {
     candidates.push(new URL(`${requestUrl.pathname}${requestUrl.search}`, publicBaseUrl.endsWith('/') ? publicBaseUrl : `${publicBaseUrl}/`).toString());
   }

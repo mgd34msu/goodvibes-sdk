@@ -11,11 +11,19 @@
  * Every hold is keyed by its work id, so overlapping work refcounts naturally
  * and the inhibitor releases exactly when the last piece drains.
  */
+import type { EventEnvelope } from '@pellux/goodvibes-transport-core';
 import type { PowerManager } from './manager.js';
 
-/** Structural bus slice (RuntimeEventBus.on satisfies it). */
+/**
+ * Structural bus slice, typed against the REAL envelope shape
+ * (packages/transport-core/src/event-envelope.ts: `type`/`ts`/optional
+ * trace-and-id fields/`payload` — never `event`). RuntimeEventBus.on is
+ * generic (`on<T extends AnyRuntimeEvent>(eventType: T['type'], callback:
+ * EnvelopeListener<T>)`), so it structurally satisfies this non-generic
+ * signature without a cast at the call site.
+ */
 export interface PowerWorkSignalBus {
-  on(eventType: string, callback: (envelope: { readonly event: Record<string, unknown> }) => void): () => void;
+  on(eventType: string, callback: (envelope: EventEnvelope<string, Record<string, unknown>>) => void): () => void;
 }
 
 const HOLDS: ReadonlyArray<{ type: string; key: string; reason: (id: string) => string }> = [
@@ -39,9 +47,21 @@ const RELEASES: ReadonlyArray<{ type: string; key: string }> = [
   { type: 'AUTOMATION_RUN_CANCELLED', key: 'runId' },
 ];
 
-function workId(key: string, event: Record<string, unknown>): string | null {
-  const value = event[key];
-  return typeof value === 'string' && value ? `${key}:${value}` : null;
+/**
+ * Read a work id off an envelope for the given key ('turnId' | 'agentId' |
+ * 'runId'). The PAYLOAD is the primary source: every event type listed above
+ * declares its id directly on the payload (verified against events/turn.ts,
+ * events/agents.ts, events/automation.ts), so it is always present there.
+ * The envelope's own top-level turnId/agentId optionals are checked only as a
+ * fallback — callers do not consistently populate them (e.g. TURN_SUBMITTED's
+ * emitter context never sets a top-level turnId), and the envelope has no
+ * top-level `runId` field at all, so that fallback never fires for 'runId'.
+ */
+function extractId(key: string, envelope: EventEnvelope<string, Record<string, unknown>>): string | null {
+  const fromPayload = envelope.payload[key];
+  if (typeof fromPayload === 'string' && fromPayload) return fromPayload;
+  const fromEnvelope = key === 'turnId' ? envelope.turnId : key === 'agentId' ? envelope.agentId : undefined;
+  return typeof fromEnvelope === 'string' && fromEnvelope ? fromEnvelope : null;
 }
 
 /** Subscribe the manager's work holds to the bus; returns an unbind. */
@@ -52,14 +72,14 @@ export function bindPowerWorkSignals(
   const unsubscribes: Array<() => void> = [];
   for (const { type, key, reason } of HOLDS) {
     unsubscribes.push(bus.on(type, (envelope) => {
-      const id = workId(key, envelope.event);
-      if (id) manager.holdWork(id, reason(String(envelope.event[key])));
+      const id = extractId(key, envelope);
+      if (id) manager.holdWork(`${key}:${id}`, reason(id));
     }));
   }
   for (const { type, key } of RELEASES) {
     unsubscribes.push(bus.on(type, (envelope) => {
-      const id = workId(key, envelope.event);
-      if (id) manager.releaseWork(id);
+      const id = extractId(key, envelope);
+      if (id) manager.releaseWork(`${key}:${id}`);
     }));
   }
   return () => {

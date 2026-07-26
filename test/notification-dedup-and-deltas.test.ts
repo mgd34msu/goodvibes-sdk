@@ -189,49 +189,61 @@ describe('findRoutableHostAddress', () => {
 
 describe('normalizeReachableBaseUrl', () => {
   test('the reported bad URL is rewritten to this host LAN address', () => {
-    expect(normalizeReachableBaseUrl('http://0.0.0.0:3421', LAN)).toBe('http://192.168.1.42:3421');
+    expect(normalizeReachableBaseUrl('http://0.0.0.0:3421', 'off-host', LAN)).toBe('http://192.168.1.42:3421');
   });
 
   test('a wildcard with no LAN address yields null so the click target is omitted', () => {
-    expect(normalizeReachableBaseUrl('http://0.0.0.0:3421', NO_LAN)).toBeNull();
+    expect(normalizeReachableBaseUrl('http://0.0.0.0:3421', 'off-host', NO_LAN)).toBeNull();
   });
 
-  test('loopback is left alone — it is correct for a click on the host itself', () => {
-    expect(normalizeReachableBaseUrl('http://127.0.0.1:3421', LAN)).toBe('http://127.0.0.1:3421');
+  test('loopback is left alone for a link opened on the host itself', () => {
+    expect(normalizeReachableBaseUrl('http://127.0.0.1:3421', 'local', LAN)).toBe('http://127.0.0.1:3421');
   });
 
   test('a real hostname passes through with the trailing slash trimmed', () => {
-    expect(normalizeReachableBaseUrl('https://gv.example.com/', LAN)).toBe('https://gv.example.com');
+    expect(normalizeReachableBaseUrl('https://gv.example.com/', 'off-host', LAN)).toBe('https://gv.example.com');
   });
 
   test.each(['', '   ', 'not a url', undefined])('unusable input yields null: %p', (raw) => {
-    expect(normalizeReachableBaseUrl(raw, LAN)).toBeNull();
+    expect(normalizeReachableBaseUrl(raw, 'off-host', LAN)).toBeNull();
   });
 });
 
 describe('resolveReachableBaseUrl', () => {
+  // The control-plane candidate is DERIVED from the bind now, not read from a
+  // stored `controlPlane.baseUrl`. A wildcard network bind therefore yields a
+  // loopback dial target, which is unusable off-host without a LAN address.
+  const wildcardBind = (key: string): unknown => {
+    if (key === 'controlPlane.hostMode') return 'network';
+    if (key === 'controlPlane.host') return '0.0.0.0';
+    if (key === 'controlPlane.port') return 3421;
+    return undefined;
+  };
+
   test('falls through to web.publicBaseUrl when the control-plane URL is unusable', () => {
     const reader = {
-      get: (key: string) => key === 'controlPlane.baseUrl' ? 'http://0.0.0.0:3421' : 'https://gv.example.com',
+      get: (key: string) => wildcardBind(key) ?? (key === 'web.publicBaseUrl' ? 'https://gv.example.com' : undefined),
     };
-    expect(resolveReachableBaseUrl(reader, NO_LAN)).toBe('https://gv.example.com');
+    expect(resolveReachableBaseUrl(reader, 'off-host', NO_LAN)).toBe('https://gv.example.com');
   });
 
   test('returns undefined when nothing configured is reachable — callers omit the link', () => {
     const reader = {
-      get: (key: string) => key === 'controlPlane.baseUrl' ? 'http://0.0.0.0:3421' : 'http://0.0.0.0:3423',
+      get: (key: string) => wildcardBind(key) ?? (key === 'web.publicBaseUrl' ? 'http://0.0.0.0:3423' : undefined),
     };
-    expect(resolveReachableBaseUrl(reader, NO_LAN)).toBeUndefined();
+    expect(resolveReachableBaseUrl(reader, 'off-host', NO_LAN)).toBeUndefined();
   });
 
-  test('prefers the control-plane URL when it is already reachable', () => {
+  test('prefers the declared external control-plane URL when it is already reachable', () => {
     const reader = {
-      get: (key: string) => key === 'controlPlane.baseUrl' ? 'https://primary.example.com' : 'https://secondary.example.com',
+      get: (key: string) => key === 'controlPlane.publicBaseUrl'
+        ? 'https://primary.example.com'
+        : key === 'web.publicBaseUrl' ? 'https://secondary.example.com' : undefined,
     };
-    expect(resolveReachableBaseUrl(reader, LAN)).toBe('https://primary.example.com');
+    expect(resolveReachableBaseUrl(reader, 'off-host', LAN)).toBe('https://primary.example.com');
   });
 
   test('non-string config values are ignored', () => {
-    expect(resolveReachableBaseUrl({ get: () => 42 }, LAN)).toBeUndefined();
+    expect(resolveReachableBaseUrl({ get: () => 42 }, 'off-host', LAN)).toBeUndefined();
   });
 });

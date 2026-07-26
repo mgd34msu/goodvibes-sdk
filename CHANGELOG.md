@@ -4,6 +4,101 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
+## [1.15.0] - 2026-07-25
+
+### Added
+
+- **Triggers: watch something, and act when it changes.** `platform/triggers`
+  adds three shapes over one supervision spine. An on-exit trigger watches a
+  long-running command and runs the follow-up work when it finishes, with the
+  command's exit status, signal and output tail carried into that work. A
+  stream trigger watches a running command's output as it is produced and acts
+  on the first line that matches, batching by line count and interval so a
+  chatty process cannot flood a turn. A condition trigger runs a cheap check on
+  a schedule with no model in the loop at all, keeps a small ring of past
+  observations, and starts work only when the answer actually changes rather
+  than on every poll.
+
+  Everything a trigger runs is registered up front and pinned by digest, and
+  on-exit commands are spawned from argv with no shell in between, so nothing
+  in a watched command's output can become part of what runs next. Failing
+  probes back off along a ladder and a repeatedly failing trigger is broken
+  open with a stated reason instead of retrying forever.
+
+  Off by default: `watchers.triggers.enabled` ships `false`, and nothing
+  watches anything until it is turned on. Nineteen `watchers.triggers.*` keys
+  configure supervision, batching, history retention and the failure ladder.
+
+- **A paired phone is now a set of agent capabilities.** `platform/devices`
+  defines the contract: either camera, the phone's screen, its location, its
+  clipboard, and a small set of device commands (notification, link, buzz),
+  carried over the existing peer transport as a new `device.capability` work
+  type. It is a native contract, not an MCP server, and it is node-kind
+  neutral by construction — a node announces which capability ids it
+  implements, and nothing in the catalog branches on what KIND of node it is,
+  so a native app node pairs and serves through the same code path as the web
+  app node shipping first.
+
+  Every capture and every effect asks the person before it runs. Choosing
+  "always allow" on that prompt writes ONE durable grant for that one
+  capability on that one phone — offered on every capability, front camera,
+  screen capture, precise location and clipboard read included — listed and
+  revocable through `devices.grants.list` / `devices.grants.revoke`. A revoked
+  grant is deleted rather than flagged, and grants are re-read from disk on
+  every request, so revoking one takes effect on the very next request from
+  any surface.
+
+  Both persisted stores do real recovery-time housekeeping: grants carry an
+  age TTL and per-node/total count caps and are reaped when their node is gone
+  or their record fails content validation; captures are kept 24 hours by
+  default and are validated by re-hashing their bytes, so a torn or truncated
+  file is reaped instead of served. Sweeps run at recovery AND on an interval,
+  and every sweep writes an itemised disclosure of what it removed and why
+  (`devices.housekeeping.run` returns the same report).
+
+  Configured through the twelve `device.*` keys, each a shaped choice with a
+  written purpose rather than an on/off toggle: `device.capabilities.mode`,
+  `device.capabilities.allowAlwaysOffer`, `device.location.precision`,
+  `device.clipboard.readMode`, `device.capture.retentionHours`, and the grant
+  and node bounds.
+
+- **Wake-word detection has platform support — and says plainly that it does
+  not run yet.** `platform/voice/wake` carries the whole surface-independent
+  half: the audio front end computed in code rather than downloaded, the
+  buffering the published classifier was trained against, the patience and
+  cooldown rules, checksum-pinned provisioning with its own recovery
+  housekeeping, and a supervisor that latches off with a written reason after
+  repeated crashes instead of restarting forever. The same engine runs in a
+  daemon child process and in a browser tab, because it takes an inference
+  session from its host rather than importing a runtime.
+
+  Audio capture is deliberately not here — it is genuinely per-surface — and no
+  surface supplies it yet. So `voice.wake.enabled` is off by default and its
+  own description opens by saying that turning it on does nothing in this
+  build, the setting is remembered for the release that adds capture, and the
+  feature reports itself unavailable rather than pretending to listen. The
+  classifier it will use shipped in 1.14.0. Twenty-five `voice.wake.*` keys
+  configure models, thresholds, capture, restart policy and per-surface
+  enablement.
+
+### Fixed
+
+- **A conversation that had already written to you could get no reply.** Every
+  channel surface built its reply directory only from optional configuration —
+  a default chat id, a bot username, and their per-surface equivalents — so on
+  an install where those were left blank the directory was empty, and an
+  incoming message from a real conversation had no target to answer on. The
+  directory is now built from the route bindings each adapter already writes on
+  ingress, so any conversation that has ever sent a message is answerable with
+  no configuration at all. The optional fields keep their real job: starting a
+  conversation somewhere nobody has written from. One rule, applied identically
+  across all fourteen surfaces.
+
+- **`bg_output` returns output while a process is still running.** Background
+  process output is collected as it is produced rather than assembled at exit,
+  so asking a long-running process what it has printed so far now answers with
+  what it has printed so far instead of nothing until it finishes.
+
 ## [1.14.0] - 2026-07-25
 
 ### Added

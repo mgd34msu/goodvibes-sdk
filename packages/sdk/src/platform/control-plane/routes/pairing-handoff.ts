@@ -19,7 +19,8 @@
  */
 import type { GatewayMethodCatalog } from '../method-catalog.js';
 import type { GatewayMethodHandler, GatewayMethodInvocation } from '../method-catalog-shared.js';
-import type { PairingTokenManager } from '../../pairing/pairing-token-store.js';
+import type { MintedPairingToken, PairingTokenManager } from '../../pairing/pairing-token-store.js';
+import { PairingLimitReachedError } from '../../pairing/pairing-token-store.js';
 import type { StepUpGatewayService } from './stepup.js';
 import type { PushGatewayService } from './push.js';
 import {
@@ -30,6 +31,11 @@ import {
   type PairingHandoffOfferKind,
 } from '../../pairing/pairing-handoff.js';
 import { describeOriginPosture } from '../../pairing/origin-posture.js';
+import {
+  describeAuthSecretProblem,
+  describeEndpointProblem,
+  describeP256dhProblem,
+} from '../../push/index.js';
 import { GatewayVerbError } from './gateway-verb-error.js';
 import { readInvocationParams } from './invocation-params.js';
 
@@ -85,7 +91,20 @@ function createHandoffCreateHandler(deps: PairingHandoffDeps): GatewayMethodHand
     const available = availableOffers(deps);
     const offers = requestedOffers(params.offers).filter((kind) => available.has(kind));
 
-    const minted = deps.tokens.mint({ name });
+    // The QR path is where a phone actually pairs, so this is where
+    // `device.nodes.maxPaired` has to hold. The refusal names the setting and
+    // the live count (see PairingLimitReachedError) — 409, because the request
+    // is fine and the state is what refuses it.
+    const minted: MintedPairingToken = ((): MintedPairingToken => {
+      try {
+        return deps.tokens.mint({ name });
+      } catch (error) {
+        if (error instanceof PairingLimitReachedError) {
+          throw new GatewayVerbError(error.message, error.code, 409);
+        }
+        throw error;
+      }
+    })();
     const offerDetails = await Promise.all(offers.map(async (kind) => {
       if (kind === 'notifications') {
         return { kind, available: true, vapidPublicKey: await deps.push.getPublicKey() };
@@ -134,12 +153,31 @@ interface OfferResult {
   readonly detail?: string;
 }
 
+/**
+ * The same content validation `push.subscriptions.create` applies: a hand-off
+ * is a registration too, so junk key material is refused here rather than
+ * stored and left to fail at delivery time.
+ */
 function readKeys(value: unknown): { p256dh: string; auth: string } {
   if (value === null || typeof value !== 'object') {
     throw new GatewayVerbError('notifications.keys is required', 'INVALID_ARGUMENT', 400);
   }
   const keys = value as Record<string, unknown>;
-  return { p256dh: requireString(keys.p256dh, 'notifications.keys.p256dh'), auth: requireString(keys.auth, 'notifications.keys.auth') };
+  const p256dh = requireString(keys.p256dh, 'notifications.keys.p256dh');
+  const auth = requireString(keys.auth, 'notifications.keys.auth');
+  const p256dhProblem = describeP256dhProblem(p256dh);
+  if (p256dhProblem) throw new GatewayVerbError(p256dhProblem, 'INVALID_ARGUMENT', 400);
+  const authProblem = describeAuthSecretProblem(auth);
+  if (authProblem) throw new GatewayVerbError(authProblem, 'INVALID_ARGUMENT', 400);
+  return { p256dh, auth };
+}
+
+/** The endpoint must be a bounded http(s) URL, same rule as push.subscriptions.create. */
+function readEndpoint(value: unknown): string {
+  const endpoint = requireString(value, 'notifications.endpoint');
+  const problem = describeEndpointProblem(endpoint);
+  if (problem) throw new GatewayVerbError(problem, 'INVALID_ARGUMENT', 400);
+  return endpoint;
 }
 
 function createHandoffCompleteHandler(deps: PairingHandoffDeps): GatewayMethodHandler {
@@ -164,7 +202,7 @@ function createHandoffCompleteHandler(deps: PairingHandoffDeps): GatewayMethodHa
       try {
         if (kind === 'notifications') {
           const offer = offered as Record<string, unknown>;
-          const endpoint = requireString(offer.endpoint, 'notifications.endpoint');
+          const endpoint = readEndpoint(offer.endpoint);
           const keys = readKeys(offer.keys);
           const deviceId = typeof offer.deviceId === 'string' ? offer.deviceId : undefined;
           await deps.push.subscribe({ principalId, endpoint, keys, ...(deviceId ? { deviceId } : {}) });

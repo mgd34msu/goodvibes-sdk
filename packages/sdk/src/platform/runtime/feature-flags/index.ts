@@ -22,7 +22,10 @@
  * ```
  */
 
-export type { FlagState, FeatureFlag, FlagConfig, FlagTransition } from './types.js';
+export type {
+  FlagState, FeatureFlag, FlagConfig, FlagTransition,
+  FeatureInoperability, FeatureInoperableReason,
+} from './types.js';
 export type { FlagSubscriber } from './manager.js';
 export { FeatureFlagManager, createFeatureFlagManager } from './manager.js';
 export type {
@@ -41,6 +44,7 @@ export {
 } from './feature-settings.js';
 export type { FeatureFlagReader } from './gates.js';
 export {
+  featureInoperability,
   isFeatureGateEnabled,
   isSurfaceFeatureGateEnabled,
   requireFeatureGate,

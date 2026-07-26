@@ -68,6 +68,36 @@ export type SharedSessionContinuationRunner = (
   input: SharedSessionContinuationRequest,
 ) => SharedSessionContinuationResult | Promise<SharedSessionContinuationResult | null> | null;
 
+/**
+ * "This agent is going to answer THIS message, and the message came in over a
+ * channel."
+ *
+ * The broker is the one place every route into a shared session converges on —
+ * a webhook adapter, a polled surface, an HTTP route, a gateway method, and the
+ * shared-session continuation runner all end up here. Announcing the pairing
+ * from the broker is therefore the only way to guarantee the answer is routed
+ * back to the conversation it came from on EVERY path; binding it per adapter
+ * covered the fresh-spawn branch only, so a message that landed in an existing
+ * live session was answered into the void.
+ *
+ * Implementations must be idempotent: several paths legitimately announce the
+ * same (agent, input) pairing, and the reply must be sent once.
+ */
+export interface SharedSessionSurfaceReplyBinding {
+  readonly sessionId: string;
+  /** The agent whose completion carries the answer. */
+  readonly agentId: string;
+  /** The route binding id for the originating conversation, when known. */
+  readonly routeId?: string | undefined;
+  readonly surfaceKind?: AutomationSurfaceKind | undefined;
+  /** The owner's own words, for the reply header. */
+  readonly task: string;
+  /** How this pairing came about — carried into logs when nothing can be sent. */
+  readonly reason: 'spawn-claimed-input' | 'continued-live' | 'continuation-runner';
+}
+
+export type SharedSessionSurfaceReplyBinder = (binding: SharedSessionSurfaceReplyBinding) => void;
+
 export interface SharedSessionAgentSpawnRoutingInput {
   readonly model?: string | undefined;
   readonly provider?: string | undefined;

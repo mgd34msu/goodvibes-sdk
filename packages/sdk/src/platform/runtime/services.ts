@@ -13,6 +13,8 @@ import { StepUpService } from '../relay/step-up-service.js';
 import { hasFreshSurfaceParticipant, SURFACE_ROUTE_FRESHNESS_MS } from '../control-plane/session-broker-sessions.js';
 import { buildSharedSessionAgentSpawnRoutingInput } from '../control-plane/session-intents.js';
 import { WatcherRegistry } from '../watchers/index.js';
+import { TriggerManager } from '../triggers/manager.js';
+import { createBunStreamHost, createProcessManagerTriggerHost, createTriggerActionExecutor } from '../triggers/hosts.js';
 import { ArtifactStore } from '../artifacts/index.js';
 import {
   HomeGraphService,
@@ -37,6 +39,7 @@ import { AgentMessageBus } from '../agents/message-bus.js';
 import { WrfcController } from '../agents/wrfc-controller.js';
 import { AgentOrchestrator } from '../agents/orchestrator.js';
 import { ArchetypeLoader } from '../agents/archetypes.js';
+import { continuationChainOptions } from '../agents/conversation-continuation.js';
 import { ProcessManager } from '../tools/shared/process-manager.js';
 import { ModeManager } from '../state/mode-manager.js';
 import { FileUndoManager } from '../state/file-undo.js';
@@ -189,6 +192,18 @@ export interface RuntimeServices {
   readonly channelPlugins: ChannelPluginRegistry;
   readonly channelDeliveryRouter: ChannelDeliveryRouter;
   readonly watcherRegistry: WatcherRegistry;
+  /**
+   * The trigger family's supervisor (stream watchers, model-free condition
+   * checks, on-exit process triggers). This factory always constructs one, and
+   * it does no work while `watchers.triggers.enabled` is false.
+   *
+   * OPTIONAL because hosts hand-compose RuntimeServices: goodvibes-agent builds
+   * its own object literal, and a required field here turned "this host has no
+   * trigger family" into a TypeError on daemon shutdown. Absence must mean no
+   * triggers, never a crash — the same contract the fleet registry's
+   * `triggerSupervisor` dep already honours.
+   */
+  readonly triggerManager?: TriggerManager | undefined;
   readonly approvalBroker: ApprovalBroker;
   readonly userPermissionRuleStore: UserPermissionRuleStore; // durable user-origin permission rules (remembered approvals); permissions.rules.* surface
   readonly sessionBroker: SharedSessionBroker;
@@ -362,8 +377,8 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     runtimeBus: options.runtimeBus,
   });
   const localUserAuthManager = new UserAuthManager({ bootstrapFilePath: shellPaths.resolveUserPath(surfaceRoot, 'auth-users.json'), bootstrapCredentialPath: shellPaths.resolveUserPath(surfaceRoot, 'auth-bootstrap.txt') });
-  // Per-pairing named revocable operator tokens (device-scoped); consulted by the operator-auth path.
-  const pairingTokens = new PairingTokenManager(shellPaths.resolveUserPath('control-plane', 'pairing-tokens.json'));
+  // Per-pairing named revocable operator tokens (device-scoped); consulted by the operator-auth path. The cap is read per mint, so a `device.nodes.maxPaired` change applies to the next pairing without a restart.
+  const pairingTokens = new PairingTokenManager(shellPaths.resolveUserPath('control-plane', 'pairing-tokens.json'), { maxPaired: () => configManager.get('device.nodes.maxPaired') });
   const profileManager = new ProfileManager(shellPaths.resolveUserPath(surfaceRoot, 'profiles'));
   const bookmarkManager = new BookmarkManager(shellPaths.resolveUserPath(surfaceRoot, 'bookmarks'));
   const sessionManager = new SessionManager(workingDirectory, { surfaceRoot });
@@ -450,6 +465,9 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     const record = agentManager.spawn({
       mode: 'spawn',
       task,
+      // Conversation first: a follow-up gets an answer, not a review chain —
+      // only the authorization marker or a local surface opens one.
+      ...continuationChainOptions(input, { configReader: configManager }),
       ...buildSharedSessionAgentSpawnRoutingInput(input.routing, { restrictTools: true, modelCandidates: providerRegistry.listModels() }),
       context: `shared-session:${input.sessionId}`,
     });
@@ -920,12 +938,48 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // generic factory never scans the host process table by default; absence (or
   // opt-out) is a quiet empty set.
   const observedAgents = options.observeExternalAgents ? new ObservedAgentSource() : undefined;
+  // The trigger family. Constructed unconditionally so `watchers.triggers.enabled`
+  // is a real runtime toggle rather than a restart-only one: the manager reads
+  // its config live on every access and does no work while the flag is off.
+  // Its process host is ProcessManager-backed, so a supervised on-exit child
+  // inherits the same credential-env scrub, live output collection and
+  // SIGTERM→SIGKILL watchdog as any other background command.
+  const triggerManager = new TriggerManager({
+    storePath: shellPaths.resolveProjectPath(surfaceRoot, 'triggers.json'),
+    config: () => ({
+      enabled: configManager.get('watchers.triggers.enabled'),
+      backoffLadderMs: configManager.get('watchers.triggers.backoffLadderMs'),
+      breakerStrikes: configManager.get('watchers.triggers.breakerStrikes'),
+      defaultCheckIntervalMs: configManager.get('watchers.triggers.defaultCheckIntervalMs'),
+      probeTimeoutMs: configManager.get('watchers.triggers.probeTimeoutMs'),
+      maxConcurrentChecks: configManager.get('watchers.triggers.maxConcurrentChecks'),
+      observationRingSize: configManager.get('watchers.triggers.observationRingSize'),
+      runHistoryLimit: configManager.get('watchers.triggers.runHistoryLimit'),
+      runHistoryTtlHours: configManager.get('watchers.triggers.runHistoryTtlHours'),
+      eventLogLimit: configManager.get('watchers.triggers.eventLogLimit'),
+      eventLogTtlHours: configManager.get('watchers.triggers.eventLogTtlHours'),
+      sweepIntervalMs: configManager.get('watchers.triggers.sweepIntervalMs'),
+      supervisionTickMs: configManager.get('watchers.triggers.supervisionTickMs'),
+      streamQueueLimit: configManager.get('watchers.triggers.streamQueueLimit'),
+      streamBatchLines: configManager.get('watchers.triggers.streamBatchLines'),
+      streamBatchIntervalMs: configManager.get('watchers.triggers.streamBatchIntervalMs'),
+      onExitMaxDurationMs: configManager.get('watchers.triggers.onExitMaxDurationMs'),
+      onExitStdin: configManager.get('watchers.triggers.onExitStdin'),
+      outputTailBytes: configManager.get('watchers.triggers.outputTailBytes'),
+    }),
+    actions: createTriggerActionExecutor({ agents: agentManager, processManager }),
+    processHost: createProcessManagerTriggerHost(processManager),
+    streamHost: createBunStreamHost(),
+    sessionIsLive: (sessionId: string) => sessionBroker.getSession(sessionId) !== null,
+  });
+
   const processRegistry = withFleetArchive(createProcessRegistry({
     agentManager,
     wrfcController,
     orchestrationEngine,
     processManager,
     watcherRegistry,
+    triggerSupervisor: triggerManager,
     workflow: {
       workflowManager: workflow.workflowManager,
       triggerManager: workflow.triggerManager,
@@ -1018,6 +1072,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     channelPlugins,
     channelDeliveryRouter,
     watcherRegistry,
+    triggerManager,
     approvalBroker,
     userPermissionRuleStore,
     sessionBroker,

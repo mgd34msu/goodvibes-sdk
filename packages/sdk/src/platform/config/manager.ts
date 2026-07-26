@@ -10,7 +10,7 @@ import { getManagedSettingLock } from '../runtime/settings/control-plane.js';
 import { requireSurfaceRoot, resolveSharedDirectory, resolveSurfaceDirectory, resolveSurfaceSharedFile } from '../runtime/surface-root.js';
 import { summarizeError } from '../utils/error-display.js';
 import { FeatureAnnouncementStore, featureAnnouncementsPath } from '../runtime/feature-announcements.js';
-import { applyDangerDaemonMigrationPass, applyDefaultStripMigrationPass, applyFleetMaxSizeMigrationPass, applyLegacySettingsMigrationPass } from './manager-migration-passes.js';
+import { applyControlPlaneBaseUrlMigrationPass, applyDangerDaemonMigrationPass, applyDefaultStripMigrationPass, applyFleetMaxSizeMigrationPass, applyLegacySettingsMigrationPass } from './manager-migration-passes.js';
 import {
   SHARED_CONFIG_KEYS,
   isSharedConfigKey,
@@ -27,6 +27,10 @@ import {
   writeRawDotPath,
 } from './settings-io.js';
 import { watchConfigFiles, reloadAndNotifyChanges, type ConfigFileWatchHandle } from './config-file-watcher.js';
+import { isDaemonOwnedConfigKey, listDaemonOwnedConfigKeys } from './config-ownership.js';
+import { daemonConfigPath, overlayDaemonTier, persistDaemonKey, removeDaemonKey } from './daemon-config-tier.js';
+import { describeKeySource, type ConfigKeySource } from './manager-key-source.js';
+import { persistCategoryKeyRemoval, persistCategoryPatch, type CategoryIoDeps } from './manager-category-io.js';
 
 /** Deep immutable type — prevents mutation of nested objects returned from getAll(). */
 export type DeepReadonly<T> = {
@@ -48,12 +52,14 @@ export type ConfigOverrides = ConfigCliOverrides & (
     homeDir?: string | undefined;
     sharedConfigPath?: string | undefined;
     sharedTierPath?: string | undefined;
+    daemonTierPath?: string | undefined;
   }
   | {
     homeDir: string;
     configDir?: string | undefined;
     sharedConfigPath?: string | undefined;
     sharedTierPath?: string | undefined;
+    daemonTierPath?: string | undefined;
   }
 );
 
@@ -62,22 +68,18 @@ interface ConfigRoots {
   homeDir?: string | undefined;
   sharedConfigPath?: string | undefined;
   sharedTierPath?: string | undefined;
+  daemonTierPath?: string | undefined;
   surfaceRoot?: string | undefined;
 }
 
-/** The tier a resolved config value came from — inspectable via describeConfigKeySource. */
-export type ConfigKeyTier = 'shared' | 'project' | 'global' | 'default';
-
-/** Where a config key's live value resolves from, and whether it rides the shared tier. */
-export interface ConfigKeySource {
-  readonly key: ConfigKey;
-  readonly value: unknown;
-  readonly tier: ConfigKeyTier;
-  /** True when this key resolves from/writes to the surface-root-independent shared tier. */
-  readonly shareable: boolean;
-  /** The shared-tier settings file path, or null when no shared tier is configured. */
-  readonly sharedTierPath: string | null;
-}
+/**
+ * The tier a value resolved from, and the full source report. `daemon` is the
+ * daemon's own store — the single home of every daemon-owned key (see
+ * config-ownership.ts), overlaid last so a value left behind in a surface silo
+ * can never shadow it. Defined in manager-key-source.ts; re-exported here so
+ * existing importers keep working.
+ */
+export type { ConfigKeyTier, ConfigKeySource } from './manager-key-source.js';
 
 export interface ConfigSetOptions {
   bypassManagedLock?: boolean | undefined;
@@ -141,8 +143,12 @@ export class ConfigManager {
   private readonly homeDirectory: string | null;
   /** Surface-root-independent shared settings file (~/.goodvibes/shared/settings.json), or null. */
   private readonly sharedTierPath: string | null;
+  /** The daemon's own settings store (`~/.goodvibes/daemon/settings.json`), or null. */
+  private readonly daemonTierPath: string | null;
   /** Shared keys whose value the last load actually sourced from the shared tier file. */
   private readonly sharedKeysPresent = new Set<ConfigKey>();
+  /** Daemon-owned keys the last load sourced from the daemon store. */
+  private readonly daemonKeysPresent = new Set<ConfigKey>();
   private hookDispatcher: Pick<HookDispatcher, 'fire'> | null = null;
   private readonly _listeners = new Map<string, Set<(newVal: unknown, oldVal: unknown) => void>>();
   /** Active config-file watch handle (external-edit live reload), or null. */
@@ -181,6 +187,15 @@ export class ConfigManager {
     const sharedTierPath = requireAbsoluteOwnedPath(roots.sharedTierPath, 'sharedTierPath');
     this.sharedTierPath = sharedTierPath ?? (
       this.homeDirectory ? resolveSharedDirectory(this.homeDirectory, 'shared', 'settings.json') : null
+    );
+
+    // The daemon tier: every daemon-owned key's single home, shared by every
+    // product on this machine. Surface-root-independent, exactly like the
+    // shared tier — the daemon is a peer runtime, not a guest in the TUI's
+    // storage root. A configDir-only construction (no homeDir) has none.
+    const daemonTierPath = requireAbsoluteOwnedPath(roots.daemonTierPath, 'daemonTierPath');
+    this.daemonTierPath = daemonTierPath ?? (
+      this.homeDirectory ? daemonConfigPath(this.homeDirectory) : null
     );
 
     this.load();
@@ -280,11 +295,16 @@ export class ConfigManager {
     const { parent, field } = this.resolvePath(key);
     const previousValue = parent[field]!;
     parent[field] = value;
-    // Shared keys persist to the surface-root-independent shared tier so every
-    // surface sees the same value; everything else stays in the surface silo.
-    const useSharedTier = this.sharedTierPath !== null && isSharedConfigKey(key);
+    // Ownership decides the store. A daemon-owned key persists to the daemon's
+    // own settings file — never the surface silo — so the runtime that acts on
+    // it reads the value that was just written. Shared keys persist to the
+    // surface-root-independent shared tier; everything else stays local.
+    const useDaemonTier = this.daemonTierPath !== null && isDaemonOwnedConfigKey(key);
+    const useSharedTier = !useDaemonTier && this.sharedTierPath !== null && isSharedConfigKey(key);
     try {
-      if (useSharedTier) {
+      if (useDaemonTier) {
+        persistDaemonKey(this.daemonTierPath!, key, value);
+      } else if (useSharedTier) {
         persistSharedKey(this.sharedTierPath!, key, value);
       } else {
         this.persistGlobalKey(key, value);
@@ -293,6 +313,7 @@ export class ConfigManager {
       parent[field] = previousValue;
       throw error;
     }
+    if (useDaemonTier) this.daemonKeysPresent.add(key);
     if (useSharedTier) this.sharedKeysPresent.add(key);
     this.notifyListeners(key, previousValue, value);
     this.emitConfigHook(key, previousValue, value);
@@ -374,7 +395,7 @@ export class ConfigManager {
    */
   watchConfigFiles(options: { intervalMs?: number } = {}): () => void {
     this.stopWatchingConfigFiles();
-    const paths = [this.configPath, this.projectConfigPath, this.sharedTierPath].filter(
+    const paths = [this.configPath, this.projectConfigPath, this.sharedTierPath, this.daemonTierPath].filter(
       (p): p is string => typeof p === 'string' && p.length > 0,
     );
     this._fileWatch = watchConfigFiles(paths, () => this.reloadFromDiskAndNotify(), options.intervalMs);
@@ -495,7 +516,19 @@ export class ConfigManager {
     const { config: minimal } = stripFrozenDefaults(
       structuredClone(this.config) as unknown as Record<string, unknown>,
     );
-    this.writeRawGlobal(minimal);
+    this.writeRawGlobal(this.withoutDaemonOwned(minimal));
+  }
+
+  /**
+   * Drop every daemon-owned key from a whole-config dump. A surface file must
+   * never carry a daemon-owned value again — one writer per key means a
+   * whole-config save cannot quietly re-seed the duplication the daemon config
+   * migration just removed.
+   */
+  private withoutDaemonOwned(raw: Record<string, unknown>): Record<string, unknown> {
+    if (!this.daemonTierPath) return raw;
+    for (const key of listDaemonOwnedConfigKeys()) deleteRawDotPath(raw, key);
+    return raw;
   }
 
   /** Persist current config to the project-level surface settings file. */
@@ -507,7 +540,7 @@ export class ConfigManager {
       structuredClone(this.config) as unknown as Record<string, unknown>,
     );
     mkdirSync(dirname(this.projectConfigPath), { recursive: true });
-    writeFileSync(this.projectConfigPath, JSON.stringify(minimal, null, 2) + '\n', 'utf-8');
+    writeFileSync(this.projectConfigPath, JSON.stringify(this.withoutDaemonOwned(minimal), null, 2) + '\n', 'utf-8');
   }
 
   /** Load config from disk: global then project (project wins). Deep-merges with defaults. */
@@ -518,9 +551,12 @@ export class ConfigManager {
         const raw = readFileSync(this.configPath, 'utf-8');
         const parsed = JSON.parse(raw) as Record<string, unknown>;
         const migrated = this.applyDefaultStripMigration(
-          this.applyFleetMaxSizeMigration(
-            this.applyLegacySettingsMigration(
-              this.applyDangerDaemonMigration(parsed, this.configPath),
+          this.applyControlPlaneBaseUrlMigration(
+            this.applyFleetMaxSizeMigration(
+              this.applyLegacySettingsMigration(
+                this.applyDangerDaemonMigration(parsed, this.configPath),
+                this.configPath,
+              ),
               this.configPath,
             ),
             this.configPath,
@@ -540,9 +576,12 @@ export class ConfigManager {
         const raw = readFileSync(this.projectConfigPath, 'utf-8');
         const parsed = JSON.parse(raw) as Record<string, unknown>;
         const migrated = this.applyDefaultStripMigration(
-          this.applyFleetMaxSizeMigration(
-            this.applyLegacySettingsMigration(
-              this.applyDangerDaemonMigration(parsed, this.projectConfigPath),
+          this.applyControlPlaneBaseUrlMigration(
+            this.applyFleetMaxSizeMigration(
+              this.applyLegacySettingsMigration(
+                this.applyDangerDaemonMigration(parsed, this.projectConfigPath),
+                this.projectConfigPath,
+              ),
               this.projectConfigPath,
             ),
             this.projectConfigPath,
@@ -555,9 +594,36 @@ export class ConfigManager {
       }
     }
 
-    // Overlay the shared tier LAST (it wins over the surface silo) for the
-    // shared keys only; an absent shared key falls back to the local value.
+    // Overlay the shared tier (it wins over the surface silo) for the shared
+    // keys only; an absent shared key falls back to the local value.
     this.loadSharedTier();
+    // Then the daemon tier, LAST of all: a daemon-owned key's value in the
+    // daemon store is the only one that describes what the daemon will do, so
+    // no surface-local leftover may shadow it.
+    this.loadDaemonTier();
+  }
+
+  /**
+   * Overlay the daemon store's daemon-owned keys onto the resolved config,
+   * recording which keys came from there so describeConfigKeySource is honest.
+   */
+  private loadDaemonTier(): void {
+    this.daemonKeysPresent.clear();
+    if (!this.daemonTierPath) return;
+    try {
+      const applied = overlayDaemonTier(this.daemonTierPath, (key, value) => {
+        const { parent, field } = this.resolvePath(key);
+        parent[field] = value;
+      });
+      for (const key of applied) this.daemonKeysPresent.add(key);
+    } catch (err) {
+      throw new ConfigError(`Daemon config load failed for ${this.daemonTierPath}: ${summarizeError(err)}`);
+    }
+  }
+
+  /** The daemon store path, or null when no daemon tier is configured. */
+  getDaemonTierPath(): string | null {
+    return this.daemonTierPath;
   }
 
   /**
@@ -590,34 +656,23 @@ export class ConfigManager {
   }
 
   /**
-   * Report which tier a key's live value resolves from (shared / project /
-   * global / default) and whether it rides the shared tier. Reads the on-disk
-   * layers on demand so the resolution order is inspectable.
+   * Report which tier a key's live value resolves from (daemon / shared /
+   * project / global / default). Reads the on-disk layers on demand so the
+   * resolution order is inspectable — see manager-key-source.ts.
    */
   describeConfigKeySource(key: ConfigKey): ConfigKeySource {
-    const value = this.get(key);
-    const shareable = isSharedConfigKey(key);
-    if (shareable && this.sharedKeysPresent.has(key)) {
-      return { key, value, tier: 'shared', shareable, sharedTierPath: this.sharedTierPath };
-    }
-    if (this.projectConfigPath && this.fileHasKey(this.projectConfigPath, key)) {
-      return { key, value, tier: 'project', shareable, sharedTierPath: this.sharedTierPath };
-    }
-    if (this.fileHasKey(this.configPath, key)) {
-      return { key, value, tier: 'global', shareable, sharedTierPath: this.sharedTierPath };
-    }
-    return { key, value, tier: 'default', shareable, sharedTierPath: this.sharedTierPath };
-  }
-
-  /** True when the JSON settings file at `path` carries an explicit value for `key`. */
-  private fileHasKey(path: string, key: ConfigKey): boolean {
-    if (!existsSync(path)) return false;
-    try {
-      const parsed = JSON.parse(readFileSync(path, 'utf-8')) as unknown;
-      return readDotPath(parsed, key).present;
-    } catch {
-      return false;
-    }
+    return describeKeySource({
+      key,
+      value: this.get(key),
+      shareable: isSharedConfigKey(key),
+      daemonOwned: isDaemonOwnedConfigKey(key),
+      sharedTierPath: this.sharedTierPath,
+      daemonTierPath: this.daemonTierPath,
+      projectConfigPath: this.projectConfigPath,
+      configPath: this.configPath,
+      sharedKeysPresent: this.sharedKeysPresent,
+      daemonKeysPresent: this.daemonKeysPresent,
+    });
   }
 
   /** Load-time migration passes (see manager-migration-passes.ts). */
@@ -633,6 +688,9 @@ export class ConfigManager {
   private applyFleetMaxSizeMigration(parsed: Record<string, unknown>, sourcePath: string): Record<string, unknown> {
     return applyFleetMaxSizeMigrationPass(parsed, sourcePath, (id, text) => this.migrationReceipt(id, text));
   }
+  private applyControlPlaneBaseUrlMigration(parsed: Record<string, unknown>, sourcePath: string): Record<string, unknown> {
+    return applyControlPlaneBaseUrlMigrationPass(parsed, sourcePath, (id, text) => this.migrationReceipt(id, text));
+  }
   private applyDefaultStripMigration(parsed: Record<string, unknown>, sourcePath: string): Record<string, unknown> {
     return applyDefaultStripMigrationPass(parsed, sourcePath, (id, text) => this.migrationReceipt(id, text));
   }
@@ -643,25 +701,12 @@ export class ConfigManager {
    * dot-path key (e.g. notifications.webhookUrls). Shallow-merged.
    */
   mergeCategory<C extends keyof GoodVibesConfig>(category: C, patch: Partial<GoodVibesConfig[C]>): void {
-    const current = this.config[category]! as Record<string, unknown>;
-    const patchObj = patch as Record<string, unknown>;
-    const raw = readRawSettingsFile(this.configPath);
-    const categoryName = String(category);
-    let rawCategory = raw[categoryName];
-    if (rawCategory === null || typeof rawCategory !== 'object' || Array.isArray(rawCategory)) {
-      rawCategory = {};
-      raw[categoryName] = rawCategory;
-    }
-    const rawCat = rawCategory as Record<string, unknown>;
-    // Only the patched keys reach disk — the category's defaults are never frozen in.
-    for (const key of Object.keys(patchObj)) {
-      if (patchObj[key] !== undefined) {
-        current[key] = patchObj[key];
-        rawCat[key] = patchObj[key];
-      }
-    }
-    if (Object.keys(rawCat).length === 0) delete raw[categoryName];
-    this.writeRawGlobal(raw);
+    persistCategoryPatch(
+      String(category),
+      patch as Record<string, unknown>,
+      this.config[category]! as Record<string, unknown>,
+      this.categoryIoDeps(),
+    );
   }
 
   /**
@@ -673,15 +718,19 @@ export class ConfigManager {
     const current = this.config[category]! as Record<string, unknown>;
     if (!(key in current)) return;
     delete current[key];
-    const raw = readRawSettingsFile(this.configPath);
-    const categoryName = String(category);
-    const rawCategory = raw[categoryName];
-    if (rawCategory !== null && typeof rawCategory === 'object' && !Array.isArray(rawCategory)) {
-      const rawCat = rawCategory as Record<string, unknown>;
-      delete rawCat[key];
-      if (Object.keys(rawCat).length === 0) delete raw[categoryName];
-    }
-    this.writeRawGlobal(raw);
+    persistCategoryKeyRemoval(String(category), key, this.categoryIoDeps());
+  }
+
+  private categoryIoDeps(): CategoryIoDeps {
+    return {
+      configPath: this.configPath,
+      daemonTierPath: this.daemonTierPath,
+      writeRawGlobal: (raw) => this.writeRawGlobal(raw),
+      markDaemonKey: (key, present) => {
+        if (present) this.daemonKeysPresent.add(key as ConfigKey);
+        else this.daemonKeysPresent.delete(key as ConfigKey);
+      },
+    };
   }
 
   /**
@@ -702,6 +751,15 @@ export class ConfigManager {
       const raw = readRawSettingsFile(this.configPath);
       deleteRawDotPath(raw, key);
       this.writeRawGlobal(raw);
+    }
+    // Reset removes the daemon-store value too, else the daemon tier would
+    // re-overlay on the next load and defeat the reset.
+    if (this.daemonTierPath) {
+      const daemonKeys = key === undefined ? listDaemonOwnedConfigKeys() : (isDaemonOwnedConfigKey(key) ? [key] : []);
+      for (const daemonKey of daemonKeys) {
+        removeDaemonKey(this.daemonTierPath, daemonKey);
+        this.daemonKeysPresent.delete(daemonKey);
+      }
     }
     // Reset removes the shared-tier OVERRIDE for any shared key, else a stale
     // shared value would re-overlay on the next load and defeat the reset.

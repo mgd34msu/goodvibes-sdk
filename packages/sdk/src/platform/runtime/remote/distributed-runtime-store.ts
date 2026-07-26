@@ -44,6 +44,7 @@ const WORK_TYPES = new Set<DistributedPendingWork['type']>([
   'location.request',
   'session.message',
   'automation.run',
+  'device.capability',
 ]);
 const WORK_PRIORITIES = new Set<DistributedPendingWork['priority']>(['default', 'normal', 'high']);
 const WORK_STATUSES = new Set<DistributedPendingWork['status']>(['queued', 'claimed', 'completed', 'failed', 'cancelled', 'expired']);

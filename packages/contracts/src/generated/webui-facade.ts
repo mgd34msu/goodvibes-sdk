@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.14.0
- * Methods: 415 total, 364 REST-routed, 51 ws-only invoke.
+ * Methods: 419 total, 368 REST-routed, 51 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -1196,6 +1196,22 @@ export const WEBUI_METHOD_ROUTES: Readonly<Record<string, WebuiRouteDefinition>>
     "method": "GET",
     "path": "/api/surfaces"
   },
+  "devices.grants.list": {
+    "method": "GET",
+    "path": "/api/devices/grants"
+  },
+  "devices.grants.revoke": {
+    "method": "POST",
+    "path": "/api/devices/grants/revoke"
+  },
+  "devices.housekeeping.run": {
+    "method": "POST",
+    "path": "/api/devices/housekeeping"
+  },
+  "devices.nodes.list": {
+    "method": "GET",
+    "path": "/api/devices/nodes"
+  },
   "runtime.metrics.get": {
     "method": "GET",
     "path": "/api/runtime/metrics"
@@ -1892,6 +1908,10 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "routes.bindings.update": "rest",
   "routes.snapshot": "rest",
   "surfaces.list": "rest",
+  "devices.grants.list": "rest",
+  "devices.grants.revoke": "rest",
+  "devices.housekeeping.run": "rest",
+  "devices.nodes.list": "rest",
   "runtime.metrics.get": "rest",
   "scheduler.capacity": "rest",
   "services.install": "rest",
@@ -6672,7 +6692,10 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
     "output": {
       "success": false,
       "key": "sample",
-      "value": "sample"
+      "value": "sample",
+      "persistedTo": "sample",
+      "tier": "sample",
+      "daemonOwned": false
     }
   },
   "credentials.get": {
@@ -16641,6 +16664,137 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "metadata": {}
         }
       ]
+    }
+  },
+  "devices.grants.list": {
+    "input": {
+      "nodeId": "sample",
+      "limit": 0
+    },
+    "output": {
+      "grants": [
+        {
+          "grantId": "sample",
+          "nodeId": "sample",
+          "nodeKind": "sample",
+          "capabilityId": "sample",
+          "capabilityTitle": "sample",
+          "scope": "sample",
+          "grantedAt": 0,
+          "expiresAt": 0,
+          "lastUsedAt": 0,
+          "useCount": 0,
+          "grantedBy": "sample"
+        }
+      ],
+      "audit": [
+        {
+          "id": "sample",
+          "action": "sample",
+          "grantId": "sample",
+          "nodeId": "sample",
+          "capabilityId": "sample",
+          "at": 0,
+          "actor": "sample",
+          "reason": "sample"
+        }
+      ]
+    }
+  },
+  "devices.grants.revoke": {
+    "input": {
+      "grantId": "sample",
+      "nodeId": "sample",
+      "capabilityId": "sample",
+      "note": "sample"
+    },
+    "output": {
+      "revoked": 0,
+      "removals": [
+        {
+          "grantId": "sample",
+          "nodeId": "sample",
+          "capabilityId": "sample",
+          "scope": "sample",
+          "reason": "sample",
+          "removedAt": 0
+        }
+      ]
+    }
+  },
+  "devices.housekeeping.run": {
+    "input": {},
+    "output": {
+      "summary": "sample",
+      "sweptAt": 0,
+      "grantsRemoved": [
+        {
+          "grantId": "sample",
+          "nodeId": "sample",
+          "capabilityId": "sample",
+          "scope": "sample",
+          "reason": "sample",
+          "removedAt": 0
+        }
+      ],
+      "grantsRetained": 0,
+      "capturesRemoved": [
+        {
+          "artifactId": "sample",
+          "nodeId": "sample",
+          "capabilityId": "sample",
+          "fileName": "sample",
+          "reason": "sample",
+          "removedAt": 0,
+          "byteLength": 0
+        }
+      ],
+      "capturesRetained": 0,
+      "bytesReclaimed": 0
+    }
+  },
+  "devices.nodes.list": {
+    "input": {},
+    "output": {
+      "nodes": [
+        {
+          "nodeId": "sample",
+          "nodeKind": "sample",
+          "nodeKindLabel": "sample",
+          "label": "sample",
+          "platform": "sample",
+          "appVersion": "sample",
+          "contractVersion": 0,
+          "contractCompatible": false,
+          "supported": [
+            "sample"
+          ],
+          "undeclared": [
+            "sample"
+          ],
+          "gatedBySecureContext": [
+            "sample"
+          ],
+          "unknownDeclared": [
+            "sample"
+          ]
+        }
+      ],
+      "capabilities": [
+        {
+          "id": "sample",
+          "family": "sample",
+          "title": "sample",
+          "purpose": "sample",
+          "effect": "sample",
+          "sensitivity": "sample",
+          "producesArtifact": false,
+          "allowAlwaysOffered": false
+        }
+      ],
+      "mode": "sample",
+      "allowAlwaysOffer": "sample",
+      "captureRetentionHours": 0
     }
   },
   "runtime.metrics.get": {

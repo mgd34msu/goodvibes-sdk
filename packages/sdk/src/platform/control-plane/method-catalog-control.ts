@@ -4,6 +4,7 @@ import { builtinGatewayControlCompanionMethodDescriptors } from './method-catalo
 import { builtinGatewayControlCoreMethodDescriptors } from './method-catalog-control-core.js';
 import { builtinGatewayControlLiveTurnMethodDescriptors } from './method-catalog-control-live-turn.js';
 import { builtinGatewayPowerMethodDescriptors } from './method-catalog-power.js';
+import { builtinGatewayDeviceMethodDescriptors } from './method-catalog-devices.js';
 import { builtinGatewayMemoryMethodDescriptors } from './method-catalog-memory.js';
 import { builtinGatewayVoiceSetupMethodDescriptors } from './method-catalog-voice-setup.js';
 import { builtinGatewayFleetMethodDescriptors } from './method-catalog-fleet.js';
@@ -12,6 +13,7 @@ export const builtinGatewayControlMethodDescriptors: readonly GatewayMethodDescr
   ...builtinGatewayControlCoreMethodDescriptors,
   ...builtinGatewayControlLiveTurnMethodDescriptors,
   ...builtinGatewayPowerMethodDescriptors,
+  ...builtinGatewayDeviceMethodDescriptors,
   ...builtinGatewayMemoryMethodDescriptors,
   ...builtinGatewayVoiceSetupMethodDescriptors,
   ...builtinGatewayControlCompanionMethodDescriptors,

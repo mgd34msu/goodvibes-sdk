@@ -45,6 +45,18 @@ export interface WorkProposalRecord {
   readonly task: string;
   /** One short line naming the work, for the proposal message. */
   readonly summary: string;
+  /**
+   * Whether the proposal message actually reached the owner's channel.
+   *
+   * A proposal is created before it is sent, and the send can fail (no route
+   * binding, delivery disabled for the surface, no deliverable target, the
+   * transport threw). Until delivery is confirmed the owner has not SEEN this
+   * proposal, so it must not be answerable: {@link WorkProposalStore.listPending}
+   * excludes it, which is what stops an unrelated message from being read as
+   * "yes" to a proposal that was never shown. Fails closed — a record
+   * persisted without the field loads as undelivered.
+   */
+  readonly delivered: boolean;
 }
 
 export interface WorkProposalReapSummary {
@@ -52,6 +64,8 @@ export interface WorkProposalReapSummary {
   readonly overCap: number;
   readonly malformed: number;
   readonly resolved: number;
+  /** Dropped because the proposal message never reached the owner's channel. */
+  readonly undelivered: number;
   readonly total: number;
 }
 
@@ -60,6 +74,7 @@ export const EMPTY_WORK_PROPOSAL_REAP_SUMMARY: WorkProposalReapSummary = {
   overCap: 0,
   malformed: 0,
   resolved: 0,
+  undelivered: 0,
   total: 0,
 };
 
@@ -109,6 +124,9 @@ export function validateWorkProposal(value: unknown): WorkProposalRecord | null 
     surfaceKind,
     task,
     summary: summary.slice(0, MAX_SUMMARY_LENGTH),
+    // Fails closed: a record written before this field existed, or one whose
+    // delivery was never confirmed, loads as unseen and stays unanswerable.
+    delivered: value.delivered === true,
     ...(optionalString(value.surfaceId) ? { surfaceId: optionalString(value.surfaceId) } : {}),
     ...(optionalString(value.routeId) ? { routeId: optionalString(value.routeId) } : {}),
     ...(optionalString(value.externalId) ? { externalId: optionalString(value.externalId) } : {}),
@@ -240,6 +258,8 @@ export class WorkProposalStore {
       surfaceKind: input.surfaceKind,
       task: input.task.slice(0, MAX_TASK_LENGTH),
       summary: input.summary.slice(0, MAX_SUMMARY_LENGTH),
+      // Not answerable until the send is confirmed — see markDelivered.
+      delivered: false,
       ...(input.surfaceId ? { surfaceId: input.surfaceId } : {}),
       ...(input.routeId ? { routeId: input.routeId } : {}),
       ...(input.externalId ? { externalId: input.externalId } : {}),
@@ -270,13 +290,53 @@ export class WorkProposalStore {
   }
 
   /**
-   * Pending proposals, newest first, optionally narrowed to one surface. The
-   * reap runs first so an expired proposal is never returned as answerable.
+   * Confirm that the proposal message reached the owner's channel. Only after
+   * this does the proposal become answerable.
+   */
+  markDelivered(id: string): WorkProposalRecord | null {
+    const record = this.proposals.get(id);
+    if (!record || record.status !== 'pending' || record.delivered) return null;
+    const delivered: WorkProposalRecord = { ...record, delivered: true };
+    this.proposals.set(id, delivered);
+    void this.persist();
+    return delivered;
+  }
+
+  /**
+   * The proposal never reached the owner. Drop it rather than leaving a
+   * proposal pending that nobody can answer — and, more importantly, that a
+   * later unrelated message could be matched against.
+   */
+  markUndeliverable(id: string, reason: string): void {
+    const record = this.proposals.get(id);
+    if (!record) return;
+    this.proposals.delete(id);
+    this.lastReap = {
+      ...this.lastReap,
+      undelivered: this.lastReap.undelivered + 1,
+      total: this.lastReap.total + 1,
+    };
+    logger.error('Work proposal dropped: the owner was never shown it', {
+      proposalId: id,
+      surface: record.surfaceKind,
+      routeId: record.routeId ?? null,
+      summary: record.summary,
+      reason,
+    });
+    void this.persist();
+  }
+
+  /**
+   * Pending proposals, newest first, optionally narrowed to one surface.
+   *
+   * The reap runs first so an expired proposal is never returned as
+   * answerable, and undelivered proposals are excluded: a proposal the owner
+   * was never shown cannot be the thing their next message was answering.
    */
   listPending(filter: { readonly surfaceKind?: string | undefined; readonly userId?: string | undefined } = {}): WorkProposalRecord[] {
     this.reap();
     return [...this.proposals.values()]
-      .filter((record) => record.status === 'pending')
+      .filter((record) => record.status === 'pending' && record.delivered)
       .filter((record) => !filter.surfaceKind || record.surfaceKind === filter.surfaceKind)
       .filter((record) => !filter.userId || !record.userId || record.userId === filter.userId)
       .sort((a, b) => b.createdAt - a.createdAt);
@@ -326,6 +386,10 @@ export class WorkProposalStore {
       overCap,
       malformed: this.loadMalformed,
       resolved,
+      // Undelivered records are dropped eagerly by markUndeliverable, not by
+      // the sweep, so the per-reap count is always zero; the cumulative
+      // disclosure below is where they show up.
+      undelivered: 0,
       total: expired + overCap + this.loadMalformed + resolved,
     };
     this.loadMalformed = 0;
@@ -335,6 +399,7 @@ export class WorkProposalStore {
         overCap: this.lastReap.overCap + summary.overCap,
         malformed: this.lastReap.malformed + summary.malformed,
         resolved: this.lastReap.resolved + summary.resolved,
+        undelivered: this.lastReap.undelivered,
         total: this.lastReap.total + summary.total,
       };
     }
@@ -342,9 +407,17 @@ export class WorkProposalStore {
   }
 
   /** Cumulative housekeeping disclosure — what was dropped and why. */
-  disclose(): { readonly pending: number; readonly tracked: number; readonly reaped: WorkProposalReapSummary } {
+  disclose(): {
+    readonly pending: number;
+    readonly awaitingDelivery: number;
+    readonly tracked: number;
+    readonly reaped: WorkProposalReapSummary;
+  } {
+    const pending = [...this.proposals.values()].filter((record) => record.status === 'pending');
     return {
-      pending: [...this.proposals.values()].filter((record) => record.status === 'pending').length,
+      pending: pending.length,
+      // Created but not yet confirmed on the wire, so not answerable yet.
+      awaitingDelivery: pending.filter((record) => !record.delivered).length,
       tracked: this.proposals.size,
       reaped: this.lastReap,
     };

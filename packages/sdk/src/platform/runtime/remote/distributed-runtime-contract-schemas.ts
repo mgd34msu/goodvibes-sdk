@@ -18,7 +18,7 @@ export const DISTRIBUTED_PEER_KIND_SCHEMA = enumSchema(['node', 'device']);
 export const DISTRIBUTED_PEER_STATUS_SCHEMA = enumSchema(['paired', 'connected', 'idle', 'disconnected', 'revoked']);
 export const DISTRIBUTED_WORK_PRIORITY_SCHEMA = enumSchema(['default', 'normal', 'high']);
 export const DISTRIBUTED_WORK_STATUS_SCHEMA = enumSchema(['queued', 'claimed', 'completed', 'failed', 'cancelled', 'expired']);
-export const DISTRIBUTED_WORK_TYPE_SCHEMA = enumSchema(['invoke', 'status.request', 'location.request', 'session.message', 'automation.run']);
+export const DISTRIBUTED_WORK_TYPE_SCHEMA = enumSchema(['invoke', 'status.request', 'location.request', 'session.message', 'automation.run', 'device.capability']);
 export const DISTRIBUTED_AUDIT_ACTION_SCHEMA = enumSchema([
   'pair-requested',
   'pair-approved',

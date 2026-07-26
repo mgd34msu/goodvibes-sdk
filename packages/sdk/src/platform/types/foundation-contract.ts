@@ -22,5 +22,6 @@ export type DistributedWorkType =
   | 'status.request'
   | 'location.request'
   | 'session.message'
-  | 'automation.run';
+  | 'automation.run'
+  | 'device.capability';
 export type DistributedWorkStatus = 'queued' | 'claimed' | 'completed' | 'failed' | 'cancelled' | 'expired';

@@ -208,6 +208,7 @@ export class DistributedRuntimeManager implements DistributedRuntimeManagerState
 
   async invokePeer(input: {
     readonly peerId: string;
+    readonly type?: DistributedWorkType | undefined;
     readonly command: string;
     readonly payload?: unknown | undefined;
     readonly priority?: DistributedWorkPriority | undefined;

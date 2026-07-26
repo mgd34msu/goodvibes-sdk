@@ -207,7 +207,11 @@ describe('telegram adapter — standard bot commands', () => {
   test('/start@botname in a group onboards with group addressing guidance', async () => {
     const { calls, sent } = await sendText('/start@goodvibes_bot', 'supergroup');
     expect(calls.some((call) => call.kind === 'trySpawnAgent')).toBe(false);
-    expect(sent[0]?.text).toContain('/goodvibes <task>');
+    // Assert the guidance's SHAPE, not its prose: a group reader must be told
+    // the command prefix and that unaddressed chatter is ignored. Pinning the
+    // exact sentence means every copy edit reads as a behaviour regression.
+    expect(sent[0]?.text).toContain('/goodvibes');
+    expect(sent[0]?.text).toContain('address me directly');
   });
 
   test('/help and /stop are answered rather than dispatched', async () => {

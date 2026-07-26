@@ -137,6 +137,65 @@ describe('parseWorkProposalReply', () => {
     const paragraph = `no ${'context '.repeat(40)}`;
     expect(parseWorkProposalReply(paragraph)).toBeNull();
   });
+
+  // The severe one, observed live: a brand-new request opening with an
+  // ordinary polite word was read as "yes" to an unrelated pending proposal,
+  // which was accepted and launched a chain on the OLD task with the new
+  // sentence demoted to "Additional direction from the owner". The owner had
+  // never even seen the proposal. A reply must be ONLY an answer.
+  test.each([
+    'Please refactor the parser in src/parse.ts',
+    'please add a test for the login flow',
+    'pls fix the changelog',
+    'go look at the deploy logs',
+    'go ahead and rename the config key',
+    'start the daemon on port 9000',
+    'begin the migration in packages/sdk',
+    'proceed with rewriting the release script',
+    'sure, can you fix the login bug',
+    'ok now deploy the web app',
+    'yes update packages/sdk/src/index.ts',
+    'yeah, write the migration guide',
+    'k, ship the release notes',
+  ])('a request that merely opens like an answer is not an answer: %p', (text) => {
+    expect(parseWorkProposalReply(text)).toBeNull();
+  });
+
+  // The same rule on the refusal side: these are verbs taking an object.
+  test.each([
+    'stop the daemon',
+    'cancel the release and ship the hotfix',
+    'skip the slow tests in test/integration',
+    "don't forget to bump the changelog",
+    'later today, migrate the store',
+  ])('a request that merely opens like a refusal is not an answer: %p', (text) => {
+    expect(parseWorkProposalReply(text)).toBeNull();
+  });
+
+  // The words above are still answers when they are the WHOLE answer — the
+  // owner types these from a phone and must not be forced to a magic token.
+  test.each([
+    'please', 'pls', 'go', 'start', 'begin', 'proceed',
+    'go ahead', 'go for it', 'start it', 'ok go', 'please go ahead',
+    'ok then', 'sure thing', 'yeah go for it', 'approved', 'confirmed',
+  ])('a bare answer still reads as agreement: %p', (text) => {
+    expect(parseWorkProposalReply(text)?.decision).toBe('affirmative');
+  });
+
+  test.each(['stop', 'cancel', 'skip', 'abort', 'later', "don't", 'do not', 'drop it', 'forget it'])(
+    'a bare refusal still reads as refusal: %p',
+    (text) => {
+      expect(parseWorkProposalReply(text)?.decision).toBe('negative');
+    },
+  );
+
+  test('a short qualifier still rides along, a second instruction does not', () => {
+    expect(parseWorkProposalReply('yes but only touch the ntfy adapter')?.note)
+      .toBe('but only touch the ntfy adapter');
+    // Same opener, but the trailer is its own job — the whole message is a
+    // request and must flow through rather than steer somebody else's task.
+    expect(parseWorkProposalReply('yes and also rewrite the telegram adapter')).toBeNull();
+  });
 });
 
 describe('readConversationGateConfig', () => {

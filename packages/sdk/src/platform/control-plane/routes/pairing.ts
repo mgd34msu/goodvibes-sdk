@@ -14,6 +14,7 @@
 import type { GatewayMethodCatalog } from '../method-catalog.js';
 import type { GatewayMethodHandler, GatewayMethodInvocation } from '../method-catalog-shared.js';
 import type { PairingTokenManager } from '../../pairing/pairing-token-store.js';
+import { PairingLimitReachedError } from '../../pairing/pairing-token-store.js';
 import { GatewayVerbError } from './gateway-verb-error.js';
 import { readInvocationParams } from './invocation-params.js';
 
@@ -43,12 +44,29 @@ function createListHandler(service: PairingGatewayService): GatewayMethodHandler
   };
 }
 
+/**
+ * Turn a paired-node cap refusal into a wire error that names the setting and
+ * the count. 409, because the request is well-formed and the state is what
+ * refuses it — and it becomes satisfiable by unpairing a device or raising
+ * `device.nodes.maxPaired`, with no change to the request.
+ */
+function rethrowAsVerbError(error: unknown): never {
+  if (error instanceof PairingLimitReachedError) {
+    throw new GatewayVerbError(error.message, error.code, 409);
+  }
+  throw error;
+}
+
 function createMintHandler(service: PairingGatewayService): GatewayMethodHandler {
   return async (invocation) => {
     requirePrincipal(invocation);
     const params = readInvocationParams(invocation);
     const name = requireString(params.name, 'name');
-    return { token: service.mint({ name }) };
+    try {
+      return { token: service.mint({ name }) };
+    } catch (error) {
+      rethrowAsVerbError(error);
+    }
   };
 }
 
@@ -57,7 +75,15 @@ function createMigrateHandler(service: PairingGatewayService): GatewayMethodHand
     requirePrincipal(invocation);
     const params = readInvocationParams(invocation);
     const name = requireString(params.name, 'name');
-    return { token: service.mintForMigration({ name }) };
+    try {
+      // A device moving off the legacy shared token is not a NEW node — it is a
+      // node that is already using this daemon. Refusing it at the cap would
+      // strand a working device on a token that is about to be revoked, so the
+      // migration mint is exempt from the cap.
+      return { token: service.mintForMigration({ name }) };
+    } catch (error) {
+      rethrowAsVerbError(error);
+    }
   };
 }
 

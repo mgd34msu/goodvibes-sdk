@@ -7,6 +7,7 @@ export {
   AcpError,
   AppError,
   ConfigError,
+  isBillingOrCreditError,
   isContextSizeExceededError,
   isNonTransientProviderFailure,
   isRateLimitOrQuotaError,

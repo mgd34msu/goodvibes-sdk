@@ -55,6 +55,7 @@ export const surfaceConfigDefaults = {
     webhookSecret: '',
     defaultChatId: '',
     botUsername: '',
+    discoveredBotTokenId: '',
     mode: 'webhook',
     setupVersion: 0,
   },
@@ -374,7 +375,15 @@ export const surfaceConfigSettings: ConfigSettingDefinition[] = [
     key: 'surfaces.telegram.botUsername',
     type: 'string',
     default: '',
-    description: 'Telegram bot username used for targeting and setup hints',
+    description: 'Telegram bot username (@handle) used for mention matching, command stripping, and targeting. '
+      + 'Discovered automatically from the bot token via getMe when left blank; setting it explicitly wins over discovery.',
+  },
+  {
+    key: 'surfaces.telegram.discoveredBotTokenId',
+    type: 'string',
+    default: '',
+    description: 'Bot id the cached botUsername was discovered for. Managed automatically so a rotated bot token '
+      + 're-resolves its identity instead of running under the previous bot’s handle.',
   },
   {
     key: 'surfaces.telegram.mode',

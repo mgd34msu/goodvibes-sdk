@@ -6,7 +6,12 @@
  * file keeps the in-memory result (idempotent re-run next start).
  */
 import { writeFileSync } from 'fs';
-import { migrateDangerDaemonAlias, migrateFleetMaxSizeRename, migrateLegacyFeatureToggles } from './migrations.js';
+import {
+  migrateControlPlaneBaseUrlRemoval,
+  migrateDangerDaemonAlias,
+  migrateFleetMaxSizeRename,
+  migrateLegacyFeatureToggles,
+} from './migrations.js';
 import { isFrozenDefaultDump, stripFrozenDefaults } from './settings-io.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
@@ -72,6 +77,30 @@ export function applyFleetMaxSizeMigrationPass(
     receipt(`settings-migration-fleet-max-size:${sourcePath}`, receiptText);
   } catch (err) {
     logger.warn(`fleet.maxSize migration receipt could not be queued: ${summarizeError(err)}`);
+  }
+  return result.config;
+}
+
+/** controlPlane.baseUrl (a stored mirror of a derivable URL) is dropped, with a receipt. */
+export function applyControlPlaneBaseUrlMigrationPass(
+  parsed: Record<string, unknown>,
+  sourcePath: string,
+  receipt: MigrationReceiptSink,
+): Record<string, unknown> {
+  const result = migrateControlPlaneBaseUrlRemoval(parsed);
+  if (!result.migrated) return parsed;
+  persistMigratedFile(sourcePath, result.config, 'controlPlane.baseUrl removal');
+  const quoted = result.removedValue ? ` (it was ${result.removedValue})` : '';
+  const receiptText =
+    `Setting removed: controlPlane.baseUrl${quoted} is gone from ${sourcePath}. `
+    + 'The control-plane URL is now derived from hostMode/host/port/tls.mode, so it always matches '
+    + 'the real bind. If you meant a tunnel or reverse-proxy address, declare it in '
+    + 'controlPlane.publicBaseUrl.';
+  logger.info(receiptText);
+  try {
+    receipt(`settings-migration-control-plane-base-url:${sourcePath}`, receiptText);
+  } catch (err) {
+    logger.warn(`controlPlane.baseUrl removal receipt could not be queued: ${summarizeError(err)}`);
   }
   return result.config;
 }

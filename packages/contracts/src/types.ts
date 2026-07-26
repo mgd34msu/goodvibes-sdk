@@ -12,6 +12,7 @@ export const DISTRIBUTED_WORK_TYPES = [
   'location.request',
   'session.message',
   'automation.run',
+  'device.capability',
 ] as const;
 export type DistributedWorkType = (typeof DISTRIBUTED_WORK_TYPES)[number];
 export type DistributedWorkStatus = 'queued' | 'claimed' | 'completed' | 'failed' | 'cancelled' | 'expired';

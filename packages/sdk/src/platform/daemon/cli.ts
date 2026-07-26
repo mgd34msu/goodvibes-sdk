@@ -1,4 +1,5 @@
 import { homedir } from 'node:os';
+import { join } from 'node:path';
 import { ConfigManager } from '../config/manager.js';
 import { resolveDaemonEnabled } from '../config/index.js';
 import { RuntimeEventBus } from '../runtime/events/index.js';
@@ -9,7 +10,7 @@ import { DaemonServer } from './server.js';
 import { HttpListener } from './http-listener.js';
 import { PlatformServiceManager } from './service-manager.js';
 import { VERSION } from '../version.js';
-import { logger } from '../utils/logger.js';
+import { configureActivityLogger, logger } from '../utils/logger.js';
 import { GlobalNetworkTransportInstaller } from '../runtime/network/index.js';
 import { summarizeError } from '../utils/error-display.js';
 import { resolveDaemonHomeDir, ensureDaemonHome, readDaemonSetting } from '../workspace/daemon-home.js';
@@ -104,6 +105,15 @@ function installServiceAndExit(config: ConfigManager, workingDir: string, homeDi
 
 async function main(): Promise<void> {
   const { workingDirectory: workingDir, homeDirectory, daemonHomeDir } = resolveDaemonCliPaths(process.env);
+  // Give the shared logger a destination before anything else runs.
+  //
+  // `logger` buffers into a file only once `configure()` has named one; until
+  // then every info/warn/error in the whole platform is dropped on the floor.
+  // The TUI and agent entrypoints both do this at startup, so the standalone
+  // daemon was the ONE host where a delivery failure, a rejected bot token, or
+  // an unroutable reply produced no record anywhere — which is precisely how a
+  // dropped surface reply looked identical to a message that never arrived.
+  configureActivityLogger(join(workingDir, '.goodvibes', 'logs'));
   const config = new ConfigManager({ workingDir, homeDir: homeDirectory, surfaceRoot: 'goodvibes' });
   if (process.argv.includes('--install-service')) {
     installServiceAndExit(config, workingDir, homeDirectory);
@@ -182,5 +192,11 @@ void main().catch(async (error) => {
   logger.error('goodvibes daemon host failed', {
     error: summarizeError(error),
   });
+  // The activity log buffers and flushes asynchronously, so process.exit()
+  // discards whatever has not been written yet — a daemon that dies during
+  // startup was leaving NO record of why, in the log or on the console. The
+  // reason goes to stderr synchronously before exiting.
+  process.stderr.write(`goodvibes daemon host failed: ${summarizeError(error)}\n`);
+  if (error instanceof Error && error.stack) process.stderr.write(`${error.stack}\n`);
   process.exit(1);
 });

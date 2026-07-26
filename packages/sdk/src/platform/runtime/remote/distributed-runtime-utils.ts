@@ -249,6 +249,7 @@ export function normalizeWork(record: unknown): DistributedPendingWork | null {
       || candidate.type === 'location.request'
       || candidate.type === 'session.message'
       || candidate.type === 'automation.run'
+      || candidate.type === 'device.capability'
       ? candidate.type
       : 'invoke',
     command: candidate.command,

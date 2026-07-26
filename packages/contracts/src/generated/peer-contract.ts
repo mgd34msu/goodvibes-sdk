@@ -13,7 +13,8 @@ export const PEER_CONTRACT: PeerContractManifest = {
     "status.request",
     "location.request",
     "session.message",
-    "automation.run"
+    "automation.run",
+    "device.capability"
   ],
   "scopes": [
     "remote:heartbeat",
@@ -825,7 +826,8 @@ export const PEER_CONTRACT: PeerContractManifest = {
                     "status.request",
                     "location.request",
                     "session.message",
-                    "automation.run"
+                    "automation.run",
+                    "device.capability"
                   ]
                 },
                 "command": {
@@ -1181,7 +1183,8 @@ export const PEER_CONTRACT: PeerContractManifest = {
                   "status.request",
                   "location.request",
                   "session.message",
-                  "automation.run"
+                  "automation.run",
+                  "device.capability"
                 ]
               },
               "command": {
@@ -2032,7 +2035,8 @@ export const PEER_CONTRACT: PeerContractManifest = {
                         "status.request",
                         "location.request",
                         "session.message",
-                        "automation.run"
+                        "automation.run",
+                        "device.capability"
                       ]
                     },
                     "command": {

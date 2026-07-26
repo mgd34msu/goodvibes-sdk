@@ -15,6 +15,7 @@ import {
   WORK_PROPOSAL_SCHEMA_VERSION,
   WorkProposalStore,
   validateWorkProposal,
+  type WorkProposalRecord,
 } from '../packages/sdk/src/platform/agents/work-proposal-store.ts';
 
 function makeInput(overrides: Record<string, unknown> = {}) {
@@ -27,6 +28,22 @@ function makeInput(overrides: Record<string, unknown> = {}) {
   } as Parameters<WorkProposalStore['create']>[0];
 }
 
+/**
+ * Create a proposal the owner was actually SHOWN.
+ *
+ * listPending only returns delivery-confirmed proposals, so a fixture that
+ * skips markDelivered models a proposal whose notice never reached the
+ * channel — which is deliberately unanswerable. See the dedicated test for
+ * that case; every other fixture here goes through this helper.
+ */
+function propose(
+  store: WorkProposalStore,
+  input: Parameters<WorkProposalStore['create']>[0],
+): WorkProposalRecord {
+  const record = store.create(input);
+  return store.markDelivered(record.id) ?? record;
+}
+
 async function tempStorePath(): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), 'gv-work-proposals-'));
   return join(dir, 'work-proposals.json');
@@ -35,7 +52,7 @@ async function tempStorePath(): Promise<string> {
 describe('WorkProposalStore lifecycle', () => {
   test('a created proposal is pending and answerable', () => {
     const store = new WorkProposalStore();
-    const proposal = store.create(makeInput());
+    const proposal = propose(store, makeInput());
     expect(proposal.status).toBe('pending');
     expect(store.listPending({ surfaceKind: 'ntfy' })).toHaveLength(1);
     expect(store.resolve(proposal.id, 'accepted')?.status).toBe('accepted');
@@ -44,7 +61,7 @@ describe('WorkProposalStore lifecycle', () => {
 
   test('a proposal can only be answered once', () => {
     const store = new WorkProposalStore();
-    const proposal = store.create(makeInput());
+    const proposal = propose(store, makeInput());
     expect(store.resolve(proposal.id, 'accepted')).not.toBeNull();
     expect(store.resolve(proposal.id, 'accepted')).toBeNull();
     expect(store.resolve(proposal.id, 'declined')).toBeNull();
@@ -58,11 +75,58 @@ describe('WorkProposalStore lifecycle', () => {
   });
 });
 
+describe('WorkProposalStore delivery confirmation', () => {
+  // The owner cannot answer a proposal they were never shown. Delivery used to
+  // be a discarded boolean, so a proposal whose notice was silently refused
+  // stayed pending and answerable — and the next unrelated message could be
+  // matched against it.
+  test('a proposal is not answerable until its notice is confirmed', () => {
+    const store = new WorkProposalStore();
+    const proposal = store.create(makeInput());
+    expect(proposal.delivered).toBe(false);
+    expect(store.listPending()).toHaveLength(0);
+    expect(store.disclose().awaitingDelivery).toBe(1);
+
+    expect(store.markDelivered(proposal.id)?.delivered).toBe(true);
+    expect(store.listPending()).toHaveLength(1);
+    expect(store.disclose().awaitingDelivery).toBe(0);
+    store.dispose();
+  });
+
+  test('a proposal whose notice never arrived is dropped and disclosed', () => {
+    const store = new WorkProposalStore();
+    const proposal = store.create(makeInput());
+    store.markUndeliverable(proposal.id, 'surface-delivery-disabled');
+
+    expect(store.listPending()).toHaveLength(0);
+    expect(store.get(proposal.id)).toBeNull();
+    expect(store.resolve(proposal.id, 'accepted')).toBeNull();
+    expect(store.disclose().reaped.undelivered).toBe(1);
+    store.dispose();
+  });
+
+  test('confirming delivery twice is a no-op rather than a second proposal', () => {
+    const store = new WorkProposalStore();
+    const proposal = store.create(makeInput());
+    expect(store.markDelivered(proposal.id)).not.toBeNull();
+    expect(store.markDelivered(proposal.id)).toBeNull();
+    expect(store.listPending()).toHaveLength(1);
+    store.dispose();
+  });
+
+  test('a persisted record without the field loads as unseen, not as answerable', () => {
+    const record = validateWorkProposal({
+      id: 'wp_1', task: 't', surfaceKind: 'ntfy', createdAt: 1, expiresAt: 2, status: 'pending',
+    });
+    expect(record?.delivered).toBe(false);
+  });
+});
+
 describe('WorkProposalStore expiry', () => {
   test('an expired proposal is unanswerable and no longer listed', () => {
     let now = 1_000_000;
     const store = new WorkProposalStore({ now: () => now });
-    const proposal = store.create(makeInput({ ttlMs: 60_000 }));
+    const proposal = propose(store, makeInput({ ttlMs: 60_000 }));
     expect(store.listPending()).toHaveLength(1);
 
     now += 60_001;
@@ -76,7 +140,7 @@ describe('WorkProposalStore expiry', () => {
   test('expiry is disclosed, not silent', () => {
     let now = 1_000_000;
     const store = new WorkProposalStore({ now: () => now });
-    store.create(makeInput({ ttlMs: 60_000 }));
+    propose(store, makeInput({ ttlMs: 60_000 }));
     now += 60_001;
     store.reap();
     expect(store.disclose().reaped.expired).toBe(1);
@@ -92,7 +156,7 @@ describe('WorkProposalStore bounds', () => {
     const created = [];
     for (let index = 0; index < 6; index += 1) {
       now += 1_000;
-      created.push(store.create(makeInput({ summary: `job ${index}` })));
+      created.push(propose(store, makeInput({ summary: `job ${index}` })));
     }
     const pending = store.listPending();
     expect(pending).toHaveLength(3);
@@ -105,7 +169,7 @@ describe('WorkProposalStore bounds', () => {
 
   test('oversized task and summary text is truncated on the way in', () => {
     const store = new WorkProposalStore();
-    const proposal = store.create(makeInput({ task: 'x'.repeat(50_000), summary: 'y'.repeat(5_000) }));
+    const proposal = propose(store, makeInput({ task: 'x'.repeat(50_000), summary: 'y'.repeat(5_000) }));
     expect(proposal.task.length).toBeLessThanOrEqual(8_000);
     expect(proposal.summary.length).toBeLessThanOrEqual(200);
     store.dispose();
@@ -140,7 +204,7 @@ describe('WorkProposalStore persistence and recovery', () => {
     const path = await tempStorePath();
     const first = new WorkProposalStore({ storePath: path });
     await first.init();
-    const proposal = first.create(makeInput());
+    const proposal = propose(first, makeInput());
     await first.flush();
     first.dispose();
 
@@ -180,7 +244,7 @@ describe('WorkProposalStore persistence and recovery', () => {
     await writeFile(path, JSON.stringify({
       version: WORK_PROPOSAL_SCHEMA_VERSION,
       proposals: [
-        { id: 'wp_good', createdAt: Date.now(), expiresAt: future, status: 'pending', surfaceKind: 'ntfy', task: 't', summary: 's' },
+        { id: 'wp_good', createdAt: Date.now(), expiresAt: future, status: 'pending', surfaceKind: 'ntfy', task: 't', summary: 's', delivered: true },
         { garbage: true },
         'not even an object',
       ],
@@ -225,7 +289,7 @@ describe('WorkProposalStore persistence and recovery', () => {
     const path = await tempStorePath();
     const store = new WorkProposalStore({ storePath: path });
     await store.init();
-    store.create(makeInput());
+    propose(store, makeInput());
     await store.flush();
     const parsed = JSON.parse(await readFile(path, 'utf-8')) as { version: number };
     expect(parsed.version).toBe(WORK_PROPOSAL_SCHEMA_VERSION);

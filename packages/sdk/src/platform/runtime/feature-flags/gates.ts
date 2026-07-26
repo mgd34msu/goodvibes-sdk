@@ -1,7 +1,18 @@
 import type { FeatureFlagManager } from './manager.js';
 import { assertFeatureGateIdRegistered, getFeatureSettingsBinding } from './feature-settings.js';
+import { FEATURE_FLAG_MAP } from './flags.js';
+import type { FeatureInoperability } from './types.js';
 
 export type FeatureFlagReader = Pick<FeatureFlagManager, 'isEnabled'> | null | undefined;
+
+/**
+ * The declared reason a capability cannot operate in this build, or null when
+ * it can. Surfaces read this to explain a control instead of offering one that
+ * does nothing.
+ */
+export function featureInoperability(flagId: string): FeatureInoperability | null {
+  return FEATURE_FLAG_MAP.get(flagId)?.notOperable ?? null;
+}
 
 export function isFeatureGateEnabled(
   featureFlags: FeatureFlagReader,
@@ -11,6 +22,11 @@ export function isFeatureGateEnabled(
   // FEATURE_SETTINGS could never be enabled by any setting — fail loudly at
   // the composition site instead of shipping the capability dead.
   assertFeatureGateIdRegistered(flagId, 'isFeatureGateEnabled');
+  // A capability that cannot operate is OFF, whatever its settings key says
+  // and even with no manager wired (the branch below defaults to permissive).
+  // Without this, a user flips the switch, the config accepts it, and nothing
+  // happens — which is the exact failure this field exists to prevent.
+  if (featureInoperability(flagId) !== null) return false;
   if (!featureFlags) return true;
   return featureFlags.isEnabled(flagId);
 }
@@ -21,6 +37,12 @@ export function requireFeatureGate(
   operation: string,
 ): void {
   if (isFeatureGateEnabled(featureFlags, flagId)) return;
+  // Distinguish "you turned it off" from "it cannot work yet": pointing a user
+  // at a settings key that will not help is worse than saying nothing.
+  const inoperable = featureInoperability(flagId);
+  if (inoperable !== null) {
+    throw new Error(`the ${flagId} feature is not available in this build; cannot ${operation}. ${inoperable.detail}`);
+  }
   const binding = getFeatureSettingsBinding(flagId);
   const hint = binding ? ` (see the ${binding.key} setting)` : '';
   throw new Error(`the ${flagId} feature is turned off${hint}; cannot ${operation}`);

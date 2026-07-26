@@ -62,8 +62,8 @@ export function telegramBotCommandReply(
 ): string {
   const handle = options.botUsername ? `@${options.botUsername.replace(/^@/, '')}` : '@yourbot';
   const addressing = options.isPrivateChat
-    ? 'In this direct chat, just send a message — every message you send is the task.'
-    : `In a group, address me directly: "/goodvibes <task>" or "${handle} <task>". I ignore everything else so I do not interrupt the conversation.`;
+    ? 'In this direct chat, just talk to me. Messages are a conversation, not orders — if something looks like real work, I ask before starting it.'
+    : `In a group, address me directly: "/goodvibes <message>" or "${handle} <message>". I ignore everything else so I do not interrupt the conversation. If something looks like real work, I ask before starting it.`;
 
   if (command === 'stop') {
     return [
@@ -75,7 +75,7 @@ export function telegramBotCommandReply(
   }
 
   const header = command === 'start'
-    ? 'GoodVibes is connected. I run tasks on your machine and report back here.'
+    ? 'GoodVibes is connected. Talk to me here, and I can run work on your machine when you ask me to.'
     : 'GoodVibes — how to talk to me:';
 
   return [
@@ -83,7 +83,9 @@ export function telegramBotCommandReply(
     '',
     addressing,
     '',
-    'While a task runs:',
+    'When I propose work, reply "yes" (or "go ahead") to start it, or say no and I drop it.',
+    '',
+    'Once work is running:',
     '  status <id>  — where it has got to',
     '  cancel <id>  — stop it',
     '  retry <id>   — run it again after a failure',

@@ -358,13 +358,20 @@ describe('orchestrator-turn-loop — main-session per-turn passive knowledge inj
     ]);
 
     // A context window sized so the block (measured at 221 tokens for this fixture) fits
-    // comfortably against the SHORT iteration-1 conversation (7 tokens of user text + 240
-    // tokens of base+awareness system prompt, leaving ~263 tokens of headroom under a 510
-    // token threshold), but the tool result appended after iteration 1 (1500 tokens of
-    // padding) pushes live tokens far past that same threshold by the time iteration 2's
-    // call is composed. The budget override (800) is generous on purpose so the headroom
-    // clamp — not the budget — is what this test exercises.
-    const contextWindow = 600;
+    // against the SHORT iteration-1 conversation, but the tool result appended after
+    // iteration 1 (1500 tokens of padding) pushes live tokens far past the same threshold
+    // by the time iteration 2's call is composed. The budget override (800) is generous on
+    // purpose so the headroom clamp — not the budget — is what this test exercises.
+    //
+    // DERIVED, not hard-coded: the base+awareness system prompt is real product text that
+    // grows when the awareness instructions change, and a literal here silently turns any
+    // such edit into a failure of this unrelated test. estimateTokens is ~chars/4 and the
+    // threshold is 85% of the window.
+    const BLOCK_TOKENS = 221;
+    const USER_TEXT_TOKENS = 7;
+    const HEADROOM_TOKENS = 40;
+    const basePromptTokens = Math.ceil(EXPECTED_BASE_PROMPT.length / 4);
+    const contextWindow = Math.ceil((basePromptTokens + USER_TEXT_TOKENS + BLOCK_TOKENS + HEADROOM_TOKENS) / 0.85);
 
     let chatCallCount = 0;
     const provider: LLMProvider = {

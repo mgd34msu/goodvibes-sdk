@@ -34,272 +34,39 @@ export interface PermissionsToolConfig {
   mcp?: PermissionAction;         // default: 'prompt'
 }
 
-export interface NotificationsConfig {
-  webhookUrls: string[];
-  /**
-   * Adaptive suppression of operational churn: quiet/minimal-mode filtering and
-   * burst collapse into panel-only groups with reason codes. Default true.
-   */
-  adaptiveSuppression: boolean;
-  /** Burst-detection observation window (ms) for adaptive suppression. */
-  burstWindowMs: number;
-  /** Event count within the burst window that trips collapse to panel_only. */
-  burstThreshold: number;
-  /** Cooldown (ms) after a burst before a domain:level group can trip again. */
-  burstCooldownMs: number;
-  /** Device-push fan-out for pending approvals. ON by default; a toggle to silence, never a working prerequisite. */
-  pushApproval: boolean;
-  /** Device-push fan-out for fleet nodes blocked on the operator. ON by default. */
-  pushNeedsInput: boolean;
-  /** Device-push fan-out for finished tracked runs (task/turn completion). ON by default. */
-  pushCompletion: boolean;
-  /** Grace (ms) a block waits for a human before a device push escalates past an attached surface. */
-  blockedEscalationGraceMs: number;
-  /** Interval (ms) between bounded follow-up reminders after the first blocked-too-long escalation. */
-  blockedEscalationFollowUpMs: number;
-  /** Upper bound on follow-up reminders after the first escalation (0 = escalate once). */
-  blockedEscalationMaxFollowUps: number;
-}
-
-export interface TtsConfig {
-  provider: string;
-  voice: string;
-  llmProvider: string;
-  llmModel: string;
-  /** Playback speed multiplier (0.25–4.0); 1.0 = normal speed. */
-  speed: number;
-}
-
-export interface AutomationConfig {
-  enabled: boolean;
-  maxConcurrentRuns: number;
-  runHistoryLimit: number;
-  defaultTimeoutMs: number;
-  catchUpWindowMinutes: number;
-  failureCooldownMs: number;
-  deleteAfterRun: boolean;
-}
-
-export interface ControlPlaneConfig {
-  enabled: boolean;
-  /**
-   * The shared gateway/control-plane host (state snapshots, live streams,
-   * authenticated control APIs). Default true: a stock daemon can stream
-   * companion chat; turn off for a request/response-only daemon.
-   */
-  gateway: boolean;
-  hostMode: 'local' | 'network' | 'custom';
-  host: string;
-  port: number;
-  baseUrl: string;
-  streamMode: 'sse' | 'websocket' | 'both';
-  allowRemote: boolean;
-  trustProxy: boolean;
-  openaiCompatible: {
-    enabled: boolean;
-    pathPrefix: string;
-  };
-  webui: {
-    serve: boolean;
-    bundleDir: string;
-  };
-  cors: {
-    enabled: boolean;
-    allowedOrigins: string;
-  };
-  tls: {
-    mode: 'off' | 'proxy' | 'direct';
-    certFile: string;
-    keyFile: string;
-  };
-}
-
-export interface HttpListenerRuntimeConfig {
-  hostMode: 'local' | 'network' | 'custom';
-  host: string;
-  port: number;
-  trustProxy: boolean;
-  tls: {
-    mode: 'off' | 'proxy' | 'direct';
-    certFile: string;
-    keyFile: string;
-  };
-}
-
-export interface WebConfig {
-  enabled: boolean;
-  hostMode: 'local' | 'network' | 'custom';
-  host: string;
-  port: number;
-  publicBaseUrl: string;
-  staticAssetsDir: string;
-}
-
 export * from "./schema-types-surfaces.js";
 import type { SurfacesConfig } from "./schema-types-surfaces.js";
 
+export * from "./schema-types-network.js";
+import type {
+  ControlPlaneConfig,
+  HttpListenerRuntimeConfig,
+  NetworkConfig,
+  RelayConfig,
+  WebConfig,
+} from "./schema-types-network.js";
 
-export interface WatchersConfig {
-  enabled: boolean;
-  pollIntervalMs: number;
-  heartbeatIntervalMs: number;
-  recoveryWindowMinutes: number;
-  /** Cadence (ms) for the daemon's recurring CI-watch poll (floor 15s at the poller). */
-  ciPollIntervalMs: number;
-}
+export * from "./schema-types-platform.js";
+import type {
+  AtRestConfig,
+  BatchConfig,
+  BatchFallbackMode,
+  BatchMode,
+  BatchQueueBackend,
+  CloudflareConfig,
+  TelemetryConfig,
+} from "./schema-types-platform.js";
 
-export interface ServiceConfig {
-  enabled: boolean;
-  autostart: boolean;
-  restartOnFailure: boolean;
-  platform: 'auto' | 'systemd' | 'launchd' | 'windows' | 'manual';
-  serviceName: string;
-  logPath: string;
-}
+export * from "./schema-types-daemon.js";
+import type {
+  AutomationConfig,
+  NotificationsConfig,
+  RuntimeConfig,
+  ServiceConfig,
+  TtsConfig,
+  WatchersConfig,
+} from "./schema-types-daemon.js";
 
-export interface NetworkConfig {
-  outboundTls: {
-    mode: 'bundled' | 'bundled+custom' | 'custom';
-    customCaFile: string;
-    customCaDir: string;
-    allowInsecureLocalhost: boolean;
-  };
-  remoteFetch: {
-    allowPrivateHosts: boolean;
-  };
-}
-
-export interface RuntimeConfig {
-  companionChatLimiter: {
-    perSessionLimit: number;
-  };
-  eventBus: {
-    maxListeners: number;
-  };
-  /** Unified RuntimeTask tracking across subsystems (restart to apply). Default false. */
-  unifiedTasks: boolean;
-  /** Structured plugin init/teardown lifecycle with health integration (restart to apply). Default false. */
-  pluginLifecycle: boolean;
-  /** Structured MCP server connect/disconnect lifecycle with health integration (restart to apply). Default false. */
-  mcpLifecycle: boolean;
-  /**
-   * Default per-phase tool-execution budget limits. `enforced` turns hard
-   * budget enforcement on; a limit value of 0 means "unlimited" for that
-   * dimension; per-call ToolRuntimeContext.budget still overrides.
-   */
-  toolBudget: {
-    enforced: boolean;
-    maxMs: number;
-    maxTokens: number;
-    maxCostUsd: number;
-  };
-}
-
-export type BatchMode = 'off' | 'explicit' | 'eligible-by-default';
-export type BatchFallbackMode = 'live' | 'fail';
-export type BatchQueueBackend = 'local' | 'cloudflare';
-
-export interface BatchConfig {
-  mode: BatchMode;
-  fallback: BatchFallbackMode;
-  queueBackend: BatchQueueBackend;
-  tickIntervalMs: number;
-  maxDelayMs: number;
-  maxJobsPerProviderBatch: number;
-  maxQueuePayloadBytes: number;
-  maxQueueMessagesPerDay: number;
-}
-
-export interface CloudflareConfig {
-  enabled: boolean;
-  freeTierMode: boolean;
-  accountId: string;
-  apiTokenRef: string;
-  zoneId: string;
-  zoneName: string;
-  workerName: string;
-  workerSubdomain: string;
-  workerHostname: string;
-  workerBaseUrl: string;
-  daemonBaseUrl: string;
-  daemonHostname: string;
-  workerTokenRef: string;
-  workerClientTokenRef: string;
-  workerCron: string;
-  queueName: string;
-  deadLetterQueueName: string;
-  tunnelName: string;
-  tunnelId: string;
-  tunnelTokenRef: string;
-  accessAppId: string;
-  accessServiceTokenId: string;
-  accessServiceTokenRef: string;
-  kvNamespaceName: string;
-  kvNamespaceId: string;
-  durableObjectNamespaceName: string;
-  durableObjectNamespaceId: string;
-  r2BucketName: string;
-  secretsStoreName: string;
-  secretsStoreId: string;
-  maxQueueOpsPerDay: number;
-}
-
-export interface TelemetryConfig {
-  /**
-   * When true, raw prompt/response content remains visible in telemetry events
-   * (and view='raw' is permitted for operators). Default false: those fields are
-   * redacted via the standard sanitizer at safe-view egress. Set true only in
-   * non-production environments; a startup WARN is logged.
-   */
-  includeRawPrompts: boolean;
-  /**
-   * Export permission/policy decision-log records to an OTLP endpoint. Off by default (export-only, no
-   * ingestion). When enabled with an endpoint, each decision is mapped to OTLP span and/or log semantics
-   * and POSTed as OTLP/HTTP JSON. See `decisionOtlpSignal` for which record shape is emitted.
-   */
-  decisionOtlpEnabled: boolean;
-  /** OTLP/HTTP JSON endpoint base for decision-log export (empty = disabled). */
-  decisionOtlpEndpoint: string;
-  /** Which OTLP record shape to emit for each decision: span, log, or both. */
-  decisionOtlpSignal: 'span' | 'log' | 'both';
-  /**
-   * OpenTelemetry instrumentation mode: off (no OTel SDK init), in-process
-   * (spans created and exported in-process only), or remote-export (spans
-   * additionally exported over OTLP/gRPC to the configured collector).
-   * Switching away from off requires a restart. Default off.
-   */
-  otelMode: 'off' | 'in-process' | 'remote-export';
-}
-
-/** At-rest redaction + retention policy for the transcript journal and execution ledger. */
-export interface AtRestConfig {
-  /** Redact secret/credential patterns at write time (default true). */
-  redactionEnabled: boolean;
-  /** Age cap (days) for on-disk journal/ledger files (default 30). */
-  retentionMaxAgeDays: number;
-  /** Total-size cap (MB) across the on-disk journal/ledger file set (default 512). */
-  retentionMaxTotalMb: number;
-}
-
-/**
- * Outbound relay reachability. When enabled, the daemon connects OUTBOUND to a
- * self-hostable, zero-knowledge relay and registers under an unguessable
- * rendezvous id so surfaces can reach it from outside the LAN. The relay never
- * sees plaintext — an end-to-end channel terminates inside the daemon.
- * `relay.enabled` defaults ON, but no connection is ever made without an
- * explicitly configured `relay.url` — leave it empty to stay LAN-only.
- */
-export interface RelayConfig {
-  enabled: boolean;
-  /** Relay URL to dial (wss://…). Empty disables the outbound connection. */
-  url: string;
-  /** Stable unguessable rendezvous id; generated on first enable when empty. */
-  rendezvousId: string;
-  /** Human-facing daemon label carried in pairing payloads. */
-  label: string;
-  /** Require a recent WebAuthn step-up assertion on mutating relay calls (fails closed until a verifier is wired). */
-  requireStepUpForMutations: boolean;
-}
 
 export interface GoodVibesConfig {
   display: {
@@ -607,7 +374,7 @@ export type ConfigKey =
   | 'controlPlane.hostMode'
   | 'controlPlane.host'
   | 'controlPlane.port'
-  | 'controlPlane.baseUrl' | 'conversationGate.mode' | 'conversationGate.proposalTtlMs' | 'conversationGate.maxPendingProposals'
+  | 'controlPlane.publicBaseUrl' | 'conversationGate.mode' | 'conversationGate.proposalTtlMs' | 'conversationGate.maxPendingProposals'
   | 'controlPlane.streamMode'
   | 'controlPlane.allowRemote'
   | 'controlPlane.trustProxy'
@@ -671,6 +438,7 @@ export type ConfigKey =
   | 'surfaces.telegram.webhookSecret'
   | 'surfaces.telegram.defaultChatId'
   | 'surfaces.telegram.botUsername'
+  | 'surfaces.telegram.discoveredBotTokenId'
   | 'surfaces.telegram.mode'
   | 'surfaces.googleChat.enabled'
   | 'surfaces.googleChat.webhookUrl'
@@ -734,6 +502,26 @@ export type ConfigKey =
   | 'watchers.heartbeatIntervalMs'
   | 'watchers.recoveryWindowMinutes'
   | 'watchers.ciPollIntervalMs'
+  // Trigger family — shapes and descriptions live in schema-domain-triggers.ts
+  | 'watchers.triggers.enabled'
+  | 'watchers.triggers.backoffLadderMs'
+  | 'watchers.triggers.breakerStrikes'
+  | 'watchers.triggers.defaultCheckIntervalMs'
+  | 'watchers.triggers.probeTimeoutMs'
+  | 'watchers.triggers.maxConcurrentChecks'
+  | 'watchers.triggers.observationRingSize'
+  | 'watchers.triggers.runHistoryLimit'
+  | 'watchers.triggers.runHistoryTtlHours'
+  | 'watchers.triggers.eventLogLimit'
+  | 'watchers.triggers.eventLogTtlHours'
+  | 'watchers.triggers.sweepIntervalMs'
+  | 'watchers.triggers.supervisionTickMs'
+  | 'watchers.triggers.streamQueueLimit'
+  | 'watchers.triggers.streamBatchLines'
+  | 'watchers.triggers.streamBatchIntervalMs'
+  | 'watchers.triggers.onExitMaxDurationMs'
+  | 'watchers.triggers.onExitStdin'
+  | 'watchers.triggers.outputTailBytes'
   | 'service.enabled'
   | 'service.autostart'
   | 'service.restartOnFailure'
@@ -882,6 +670,50 @@ export type ConfigKey =
   | 'voice.local.ttsEngine'
   | 'voice.local.ttsBinary'
   | 'voice.local.ttsModelPath'
+  // Wake-word detection. Interface, defaults and row metadata live in
+  // schema-domain-voice-wake.ts, so only the union entries land here.
+  | 'voice.wake.enabled'
+  | 'voice.wake.models'
+  | 'voice.wake.threshold'
+  | 'voice.wake.patienceFrames'
+  | 'voice.wake.cooldownMs'
+  | 'voice.wake.vadThreshold'
+  | 'voice.wake.noiseSuppression'
+  | 'voice.wake.inputDevice'
+  | 'voice.wake.captureCommand'
+  | 'voice.wake.surfaces.tui'
+  | 'voice.wake.surfaces.agent'
+  | 'voice.wake.surfaces.webui'
+  | 'voice.wake.activationSound'
+  | 'voice.wake.activationSoundPath'
+  | 'voice.wake.indicator'
+  | 'voice.wake.preRollMs'
+  | 'voice.wake.captureMaxSeconds'
+  | 'voice.wake.silenceStopMs'
+  | 'voice.wake.autoSubmit'
+  | 'voice.wake.retainAudio'
+  | 'voice.wake.customModelDir'
+  | 'voice.wake.maxRestarts'
+  | 'voice.wake.restartBackoffMs'
+  | 'voice.wake.crashWindowSeconds'
+  | 'voice.wake.browserBackend'
+  | 'device.capabilities.mode'
+  | 'device.capabilities.allowAlwaysOffer'
+  | 'device.capabilities.requestTimeoutSeconds'
+  | 'device.location.precision'
+  | 'device.clipboard.readMode'
+  | 'device.capture.retentionHours'
+  | 'device.capture.maxArtifacts'
+  | 'device.capture.sweepIntervalMinutes'
+  | 'device.grants.expiryDays'
+  | 'device.grants.maxPerNode'
+  | 'device.grants.auditRetentionDays'
+  | 'device.nodes.maxPaired'
+  // Browser-push subscription custody (schema-domain-push.ts).
+  | 'push.vapidSubject'
+  | 'push.subscriptions.warnAbovePerPrincipal'
+  | 'push.subscriptions.failureThreshold'
+  | 'push.subscriptions.sweepIntervalMinutes'
   // The one fleet ceiling (schema-domain-fleet.ts).
   | 'fleet.maxSize';
 
@@ -1008,7 +840,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'controlPlane.hostMode' ? 'local' | 'network' | 'custom' :
   K extends 'controlPlane.host' ? string :
   K extends 'controlPlane.port' ? number :
-  K extends 'controlPlane.baseUrl' ? string : K extends 'conversationGate.mode' ? 'propose' | 'confirm-all' | 'off' : K extends 'conversationGate.proposalTtlMs' ? number : K extends 'conversationGate.maxPendingProposals' ? number :
+  K extends 'controlPlane.publicBaseUrl' ? string : K extends 'conversationGate.mode' ? 'propose' | 'confirm-all' | 'off' : K extends 'conversationGate.proposalTtlMs' ? number : K extends 'conversationGate.maxPendingProposals' ? number :
   K extends 'controlPlane.streamMode' ? 'sse' | 'websocket' | 'both' :
   K extends 'controlPlane.allowRemote' ? boolean :
   K extends 'controlPlane.trustProxy' ? boolean :
@@ -1072,6 +904,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'surfaces.telegram.webhookSecret' ? string :
   K extends 'surfaces.telegram.defaultChatId' ? string :
   K extends 'surfaces.telegram.botUsername' ? string :
+  K extends 'surfaces.telegram.discoveredBotTokenId' ? string :
   K extends 'surfaces.telegram.mode' ? 'webhook' | 'polling' :
   K extends 'surfaces.googleChat.enabled' ? boolean :
   K extends 'surfaces.googleChat.webhookUrl' ? string :
@@ -1135,6 +968,25 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'watchers.heartbeatIntervalMs' ? number :
   K extends 'watchers.recoveryWindowMinutes' ? number :
   K extends 'watchers.ciPollIntervalMs' ? number :
+  K extends 'watchers.triggers.enabled' ? boolean :
+  K extends 'watchers.triggers.backoffLadderMs' ? string :
+  K extends 'watchers.triggers.breakerStrikes' ? number :
+  K extends 'watchers.triggers.defaultCheckIntervalMs' ? number :
+  K extends 'watchers.triggers.probeTimeoutMs' ? number :
+  K extends 'watchers.triggers.maxConcurrentChecks' ? number :
+  K extends 'watchers.triggers.observationRingSize' ? number :
+  K extends 'watchers.triggers.runHistoryLimit' ? number :
+  K extends 'watchers.triggers.runHistoryTtlHours' ? number :
+  K extends 'watchers.triggers.eventLogLimit' ? number :
+  K extends 'watchers.triggers.eventLogTtlHours' ? number :
+  K extends 'watchers.triggers.sweepIntervalMs' ? number :
+  K extends 'watchers.triggers.supervisionTickMs' ? number :
+  K extends 'watchers.triggers.streamQueueLimit' ? number :
+  K extends 'watchers.triggers.streamBatchLines' ? number :
+  K extends 'watchers.triggers.streamBatchIntervalMs' ? number :
+  K extends 'watchers.triggers.onExitMaxDurationMs' ? number :
+  K extends 'watchers.triggers.onExitStdin' ? string :
+  K extends 'watchers.triggers.outputTailBytes' ? number :
   K extends 'service.enabled' ? boolean :
   K extends 'service.autostart' ? boolean :
   K extends 'service.restartOnFailure' ? boolean :
@@ -1278,5 +1130,46 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'voice.local.ttsEngine' ? '' | 'piper' | 'kokoro' :
   K extends 'voice.local.ttsBinary' ? string :
   K extends 'voice.local.ttsModelPath' ? string :
+  K extends 'voice.wake.enabled' ? boolean :
+  K extends 'voice.wake.models' ? string :
+  K extends 'voice.wake.threshold' ? number :
+  K extends 'voice.wake.patienceFrames' ? number :
+  K extends 'voice.wake.cooldownMs' ? number :
+  K extends 'voice.wake.vadThreshold' ? number :
+  K extends 'voice.wake.noiseSuppression' ? 'none' | 'speex' :
+  K extends 'voice.wake.inputDevice' ? string :
+  K extends 'voice.wake.captureCommand' ? 'auto' | 'pw-record' | 'parecord' | 'arecord' | 'ffmpeg' | 'sox' :
+  K extends 'voice.wake.surfaces.tui' ? boolean :
+  K extends 'voice.wake.surfaces.agent' ? boolean :
+  K extends 'voice.wake.surfaces.webui' ? boolean :
+  K extends 'voice.wake.activationSound' ? 'none' | 'chime' | 'custom' :
+  K extends 'voice.wake.activationSoundPath' ? string :
+  K extends 'voice.wake.indicator' ? 'off' | 'statusline' | 'banner' :
+  K extends 'voice.wake.preRollMs' ? number :
+  K extends 'voice.wake.captureMaxSeconds' ? number :
+  K extends 'voice.wake.silenceStopMs' ? number :
+  K extends 'voice.wake.autoSubmit' ? boolean :
+  K extends 'voice.wake.retainAudio' ? 'none' | 'session-temp' :
+  K extends 'voice.wake.customModelDir' ? string :
+  K extends 'voice.wake.maxRestarts' ? number :
+  K extends 'voice.wake.restartBackoffMs' ? number :
+  K extends 'voice.wake.crashWindowSeconds' ? number :
+  K extends 'voice.wake.browserBackend' ? 'wasm' | 'webgpu' :
+  K extends 'device.capabilities.mode' ? 'off' | 'ask-every-time' | 'honor-grants' :
+  K extends 'device.capabilities.allowAlwaysOffer' ? 'every-capability' | 'standard-only' | 'never' :
+  K extends 'device.capabilities.requestTimeoutSeconds' ? number :
+  K extends 'device.location.precision' ? 'coarse-only' | 'ask-precise' | 'precise-grantable' :
+  K extends 'device.clipboard.readMode' ? 'off' | 'ask-only' | 'grantable' :
+  K extends 'device.capture.retentionHours' ? number :
+  K extends 'device.capture.maxArtifacts' ? number :
+  K extends 'device.capture.sweepIntervalMinutes' ? number :
+  K extends 'device.grants.expiryDays' ? number :
+  K extends 'device.grants.maxPerNode' ? number :
+  K extends 'device.grants.auditRetentionDays' ? number :
+  K extends 'device.nodes.maxPaired' ? number :
+  K extends 'push.vapidSubject' ? string :
+  K extends 'push.subscriptions.warnAbovePerPrincipal' ? number :
+  K extends 'push.subscriptions.failureThreshold' ? number :
+  K extends 'push.subscriptions.sweepIntervalMinutes' ? number :
   K extends 'fleet.maxSize' ? number :
   never;

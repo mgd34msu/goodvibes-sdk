@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `415`
+- Methods: `419`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -70961,7 +70961,8 @@ Return the distributed node/device host API contract.
               "status.request",
               "location.request",
               "session.message",
-              "automation.run"
+              "automation.run",
+              "device.capability"
             ]
           }
         },
@@ -72258,7 +72259,8 @@ Invoke a method on a connected remote peer.
             "status.request",
             "location.request",
             "session.message",
-            "automation.run"
+            "automation.run",
+            "device.capability"
           ]
         },
         "command": {
@@ -73801,7 +73803,8 @@ Return distributed node/device runtime state.
                   "status.request",
                   "location.request",
                   "session.message",
-                  "automation.run"
+                  "automation.run",
+                  "device.capability"
                 ]
               },
               "command": {
@@ -74191,7 +74194,8 @@ Cancel a remote work item.
             "status.request",
             "location.request",
             "session.message",
-            "automation.run"
+            "automation.run",
+            "device.capability"
           ]
         },
         "command": {
@@ -74475,7 +74479,8 @@ Return queued and leased remote work items.
               "status.request",
               "location.request",
               "session.message",
-              "automation.run"
+              "automation.run",
+              "device.capability"
             ]
           },
           "command": {
@@ -76373,6 +76378,545 @@ Return registered channel and control surfaces.
 ```
 
 ### runtime
+
+#### `devices.grants.list`
+
+The durable "always allow" grants a person gave, per capability and per device, with when each was granted, when it expires, and how often it has been used — plus the recent ledger of grants given, used, revoked, and expired.
+
+- Title: `List Device Capability Grants`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/devices/grants`
+- Scopes: `read:remote`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "nodeId": {
+      "type": "string"
+    },
+    "limit": {
+      "type": "number"
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "grants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "grantId": {
+            "type": "string"
+          },
+          "nodeId": {
+            "type": "string"
+          },
+          "nodeKind": {
+            "type": "string"
+          },
+          "capabilityId": {
+            "type": "string"
+          },
+          "capabilityTitle": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "grantedAt": {
+            "type": "number"
+          },
+          "expiresAt": {
+            "type": "number"
+          },
+          "lastUsedAt": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "useCount": {
+            "type": "number"
+          },
+          "grantedBy": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "grantId",
+          "nodeId",
+          "nodeKind",
+          "capabilityId",
+          "capabilityTitle",
+          "scope",
+          "grantedAt",
+          "expiresAt",
+          "lastUsedAt",
+          "useCount",
+          "grantedBy"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "audit": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "grantId": {
+            "type": "string"
+          },
+          "nodeId": {
+            "type": "string"
+          },
+          "capabilityId": {
+            "type": "string"
+          },
+          "at": {
+            "type": "number"
+          },
+          "actor": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "action",
+          "grantId",
+          "nodeId",
+          "capabilityId",
+          "at",
+          "actor",
+          "reason"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "grants",
+    "audit"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `devices.grants.revoke`
+
+Delete durable grants by grant id, by device, by capability, or any combination. Revoked grants are removed rather than flagged, so the next request for that capability asks the person again. Returns exactly what was removed.
+
+- Title: `Revoke a Device Capability Grant`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/devices/grants/revoke`
+- Scopes: `write:config`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "grantId": {
+      "type": "string"
+    },
+    "nodeId": {
+      "type": "string"
+    },
+    "capabilityId": {
+      "type": "string"
+    },
+    "note": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "revoked": {
+      "type": "number"
+    },
+    "removals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "grantId": {
+            "type": "string"
+          },
+          "nodeId": {
+            "type": "string"
+          },
+          "capabilityId": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "removedAt": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "grantId",
+          "nodeId",
+          "capabilityId",
+          "scope",
+          "reason",
+          "removedAt"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "revoked",
+    "removals"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `devices.housekeeping.run`
+
+Sweep the device grants ledger and the retained captures now: expired and orphaned grants removed, captures past their retention window deleted, torn or missing capture files reaped. Returns the itemised disclosure of everything removed and why.
+
+- Title: `Run Device Housekeeping`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/devices/housekeeping`
+- Scopes: `write:config`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "summary": {
+      "type": "string"
+    },
+    "sweptAt": {
+      "type": "number"
+    },
+    "grantsRemoved": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "grantId": {
+            "type": "string"
+          },
+          "nodeId": {
+            "type": "string"
+          },
+          "capabilityId": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "removedAt": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "grantId",
+          "nodeId",
+          "capabilityId",
+          "scope",
+          "reason",
+          "removedAt"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "grantsRetained": {
+      "type": "number"
+    },
+    "capturesRemoved": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "artifactId": {
+            "type": "string"
+          },
+          "nodeId": {
+            "type": "string"
+          },
+          "capabilityId": {
+            "type": "string"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "removedAt": {
+            "type": "number"
+          },
+          "byteLength": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "artifactId",
+          "nodeId",
+          "capabilityId",
+          "fileName",
+          "reason",
+          "removedAt",
+          "byteLength"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "capturesRetained": {
+      "type": "number"
+    },
+    "bytesReclaimed": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "summary",
+    "sweptAt",
+    "grantsRemoved",
+    "grantsRetained",
+    "capturesRemoved",
+    "capturesRetained",
+    "bytesReclaimed"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `devices.nodes.list`
+
+Every phone paired as a device node, with the capabilities it announced, the ones it did not offer, and the ones it announced but cannot currently serve because its connection is not a secure context. Node-kind neutral: a web app node and a native app node are described identically.
+
+- Title: `List Paired Device Nodes`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/devices/nodes`
+- Scopes: `read:remote`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "nodeId": {
+            "type": "string"
+          },
+          "nodeKind": {
+            "type": "string"
+          },
+          "nodeKindLabel": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "platform": {
+            "type": "string"
+          },
+          "appVersion": {
+            "type": "string"
+          },
+          "contractVersion": {
+            "type": "number"
+          },
+          "contractCompatible": {
+            "type": "boolean"
+          },
+          "supported": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "undeclared": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "gatedBySecureContext": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "unknownDeclared": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "nodeId",
+          "nodeKind",
+          "nodeKindLabel",
+          "label",
+          "platform",
+          "appVersion",
+          "contractVersion",
+          "contractCompatible",
+          "supported",
+          "undeclared",
+          "gatedBySecureContext",
+          "unknownDeclared"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "family": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "effect": {
+            "type": "string"
+          },
+          "sensitivity": {
+            "type": "string"
+          },
+          "producesArtifact": {
+            "type": "boolean"
+          },
+          "allowAlwaysOffered": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "family",
+          "title",
+          "purpose",
+          "effect",
+          "sensitivity",
+          "producesArtifact",
+          "allowAlwaysOffered"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "mode": {
+      "type": "string"
+    },
+    "allowAlwaysOffer": {
+      "type": "string"
+    },
+    "captureRetentionHours": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "nodes",
+    "capabilities",
+    "mode",
+    "allowAlwaysOffer",
+    "captureRetentionHours"
+  ],
+  "additionalProperties": false
+}
+```
 
 #### `runtime.metrics.get`
 
