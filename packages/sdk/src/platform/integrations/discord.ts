@@ -85,6 +85,15 @@ export interface DiscordGatewayClientOptions {
   readonly gatewayUrl?: string | undefined;
   readonly onDispatch: (dispatch: DiscordGatewayDispatch, client: DiscordGatewayClient) => void | Promise<void>;
   readonly WebSocketImpl?: typeof WebSocket | undefined;
+  /**
+   * The gateway closed on its own — not because `stop()` was called.
+   *
+   * A node under LAN leadership holds the Discord surface on the strength of
+   * being able to read it, and a dropped gateway means it cannot. Staying
+   * nominally responsible while reading nothing is the starvation this design
+   * exists to avoid, so the holder stands down and another machine takes it.
+   */
+  readonly onClosed?: ((reason: string) => void) | undefined;
 }
 
 export const DiscordGatewayOpcode = {
@@ -500,6 +509,8 @@ export class DiscordGatewayClient {
   private heartbeat: ReturnType<typeof setInterval> | null = null;
   private sequence: number | null = null;
   private started = false;
+  /** True while `stop()` is closing the socket, so its close is not a loss. */
+  private stopping = false;
   private readonly WebSocketImpl: typeof WebSocket;
 
   constructor(private readonly options: DiscordGatewayClientOptions) {
@@ -525,14 +536,20 @@ export class DiscordGatewayClient {
         logger.warn('[discord] gateway message handling failed', { error: summarizeError(error) });
       });
     });
-    socket.addEventListener('close', () => this.cleanup());
+    socket.addEventListener('close', () => {
+      const wasDeliberate = this.stopping;
+      this.cleanup();
+      if (!wasDeliberate) this.options.onClosed?.('the Discord gateway connection closed');
+    });
     return gateway;
   }
 
   stop(): void {
+    this.stopping = true;
     this.cleanup();
     this.socket?.close();
     this.socket = null;
+    this.stopping = false;
   }
 
   send(op: number, d: unknown): void {
