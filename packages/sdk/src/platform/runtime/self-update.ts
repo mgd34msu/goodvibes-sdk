@@ -22,6 +22,20 @@ import { createHash } from 'node:crypto';
 import { chmodSync, existsSync, mkdirSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
+/**
+ * The cadence half of the same mechanism, re-exported here so every consumer
+ * reaches "when to look" and "what to do when something is found" through one
+ * module instead of two competing update stories. See update-schedule.ts.
+ */
+export {
+  BOOT_SETTLE_CHECK_DELAY_MS,
+  DEFAULT_UPDATE_BUSY_RETRY_MS,
+  DEFAULT_UPDATE_CHECK_INTERVAL_MS,
+  PeriodicUpdateLoop,
+  type PeriodicCheckOutcome,
+  type PeriodicUpdateLoopOptions,
+} from './update-schedule.js';
+
 // ---------------------------------------------------------------------------
 // Version + release-tag logic
 // ---------------------------------------------------------------------------

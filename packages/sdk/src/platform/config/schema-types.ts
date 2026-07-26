@@ -530,7 +530,9 @@ export type ConfigKey =
   | 'service.logPath'
   | 'update.auto'
   | 'update.intervalMinutes'
+  | 'update.firstCheckSeconds'
   | 'update.releasesUrl'
+  | 'update.rollbackAfterFailedStarts'
   | 'network.outboundTls.mode'
   | 'network.outboundTls.customCaFile'
   | 'network.outboundTls.customCaDir'
@@ -995,7 +997,9 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'service.logPath' ? string :
   K extends 'update.auto' ? boolean :
   K extends 'update.intervalMinutes' ? number :
+  K extends 'update.firstCheckSeconds' ? number :
   K extends 'update.releasesUrl' ? string :
+  K extends 'update.rollbackAfterFailedStarts' ? number :
   K extends 'network.outboundTls.mode' ? 'bundled' | 'bundled+custom' | 'custom' :
   K extends 'network.outboundTls.customCaFile' ? string :
   K extends 'network.outboundTls.customCaDir' ? string :

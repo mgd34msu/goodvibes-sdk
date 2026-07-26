@@ -1,11 +1,11 @@
 /**
- * DaemonAutoUpdater — the daemon's hourly self-update loop.
+ * DaemonAutoUpdater — the daemon's self-update loop.
  *
- * Owner-directed behavior: the daemon looks for updates hourly, updates when
- * found, and auto-restarts. It shares the platform's ONE update mechanism
- * (runtime/self-update.ts): download all artifacts, checksum-verify all of
- * them, then atomically swap each with the outgoing file kept at
- * `<path>.previous` for one-command rollback.
+ * Owner-directed behavior: the daemon looks for updates shortly after it
+ * starts and hourly after that, updates when one is found, and auto-restarts.
+ * It shares the platform's ONE update mechanism: runtime/self-update.ts for
+ * the download/verify/swap and runtime/update-schedule.ts for the cadence
+ * (boot-settle first check, hourly steady state, short retry while busy).
  *
  * Safety contract: a swap only ever happens at a no-active-work moment. The
  * activity probe (the daemon's real busy signal — sessions with pending
@@ -13,11 +13,13 @@
  * busy, the verified update is held in memory and re-attempted on a short
  * retry cadence until an idle moment arrives. A mid-turn daemon never swaps.
  *
- * Restart: when the daemon runs under the service manager, the swap is
- * followed by a non-blocking service restart. When it runs unsupervised, the
- * service manager first ADOPTS it — installs the unit and enqueues a service
- * start — and the old process exits so the supervised instance (already the
- * new binary on disk) takes over.
+ * Restart: the swap is followed by the daemon's OWN orderly stop — the same
+ * stop path a SIGTERM takes, so every shutdown hook fires on an update restart
+ * instead of being skipped by a bare exit. Only then does the process hand
+ * over: when the daemon runs under the service manager, a non-blocking service
+ * restart; when it runs unsupervised, the service manager first ADOPTS it —
+ * installs the unit and enqueues a service start — and the old process exits
+ * so the supervised instance (already the new binary on disk) takes over.
  *
  * Every applied update leaves a receipt ("updated from X to Y at HH:MM") in
  * the daemon log and in the receipt store surfaced on next surface connect.
@@ -40,6 +42,7 @@ import {
   type UpdateFileIo,
   type UpdateTarget,
 } from '../runtime/self-update.js';
+import { PeriodicUpdateLoop, type PeriodicCheckOutcome } from '../runtime/update-schedule.js';
 import { formatReceiptTime, type DaemonReceiptStore } from './receipts.js';
 import { CLIENT_COMPATIBILITY_FLOOR } from '../control-plane/client-compatibility.js';
 
@@ -50,6 +53,57 @@ export interface AutoUpdateServiceActions {
   adoptIntoService(): void;
   /** Enqueue a non-blocking service restart. */
   restartService(): void;
+}
+
+export interface DaemonUpdateInstallLocation {
+  readonly execPath: string;
+  readonly platform: NodeJS.Platform;
+  readonly arch: string;
+  readonly io?: UpdateFileIo | undefined;
+}
+
+/**
+ * One installed file an update replaces (and a rollback restores).
+ * `assetName` is null when this platform/arch publishes no release asset for
+ * it — such a file can still be rolled back, it just cannot be downloaded.
+ */
+export interface DaemonInstalledFile {
+  readonly label: string;
+  readonly path: string;
+  readonly executable: boolean;
+  readonly assetName: string | null;
+}
+
+/**
+ * The set of files a daemon update owns: the daemon binary, plus the app
+ * binary and the sqlite-vec addon when they are installed beside it — they
+ * travel with the daemon, so an update refreshes any that are present in the
+ * same verified pass and never leaves a mismatched pair installed.
+ *
+ * One source of truth, shared by the update swap and the crash-loop rollback,
+ * so the files a bad update replaced are exactly the files a rollback
+ * restores.
+ */
+export function resolveDaemonInstalledFiles(location: DaemonUpdateInstallLocation): DaemonInstalledFile[] {
+  const io = location.io;
+  const exists = io ? io.exists.bind(io) : existsSync;
+  const execDir = dirname(location.execPath);
+  const artifacts = resolveArtifactNames(location.platform, location.arch);
+  const files: DaemonInstalledFile[] = [
+    { label: 'daemon binary', path: location.execPath, assetName: artifacts?.daemon ?? null, executable: true },
+  ];
+  const appPath = join(execDir, 'goodvibes');
+  if (exists(appPath)) {
+    files.push({ label: 'app binary', path: appPath, assetName: artifacts?.app ?? null, executable: true });
+  }
+  const addon = resolveSqliteVecAsset(location.platform, location.arch);
+  if (addon) {
+    const addonPath = join(execDir, 'lib', addon.dirName, addon.fileName);
+    if (exists(addonPath)) {
+      files.push({ label: 'vector addon', path: addonPath, assetName: addon.assetName, executable: false });
+    }
+  }
+  return files;
 }
 
 export interface DaemonAutoUpdaterOptions {
@@ -63,6 +117,8 @@ export interface DaemonAutoUpdaterOptions {
   readonly downloadBaseUrl?: ((tag: string) => string) | undefined;
   /** Hourly by default. */
   readonly checkIntervalMs?: number | undefined;
+  /** Delay before the FIRST check after start. Default 30s (boot settle). */
+  readonly firstCheckDelayMs?: number | undefined;
   /** How often to re-try a verified-but-deferred swap while the daemon is busy. */
   readonly busyRetryMs?: number | undefined;
   /** The daemon's real activity signal: true only when NO work is in flight. */
@@ -71,6 +127,12 @@ export interface DaemonAutoUpdaterOptions {
   readonly receipts: DaemonReceiptStore;
   readonly fetchImpl?: UpdateFetchLike | undefined;
   readonly io?: UpdateFileIo | undefined;
+  /**
+   * The daemon's own orderly stop, run BEFORE the process hands over to the
+   * restarted instance, so shutdown hooks fire on an update restart instead of
+   * being skipped by a bare exit. Absent = nothing to wind down.
+   */
+  readonly stopGracefully?: (() => Promise<void> | void) | undefined;
   /** Exits the current process after an unsupervised daemon is adopted. */
   readonly exitProcess?: ((code: number) => void) | undefined;
   readonly now?: (() => number) | undefined;
@@ -78,72 +140,58 @@ export interface DaemonAutoUpdaterOptions {
   readonly clearTimer?: ((timer: ReturnType<typeof setTimeout>) => void) | undefined;
 }
 
-const DEFAULT_CHECK_INTERVAL_MS = 60 * 60 * 1000;
-const DEFAULT_BUSY_RETRY_MS = 60 * 1000;
-
 interface PendingSwap {
   readonly tag: string;
   readonly targets: readonly UpdateTarget[];
 }
 
 export class DaemonAutoUpdater {
-  private timer: ReturnType<typeof setTimeout> | null = null;
-  private stopped = false;
-  private checking = false;
+  private readonly loop: PeriodicUpdateLoop;
   /** A downloaded-and-verified update waiting for an idle moment. */
   private pendingSwap: PendingSwap | null = null;
 
-  constructor(private readonly options: DaemonAutoUpdaterOptions) {}
-
-  private get checkIntervalMs(): number {
-    return this.options.checkIntervalMs ?? DEFAULT_CHECK_INTERVAL_MS;
+  constructor(private readonly options: DaemonAutoUpdaterOptions) {
+    this.loop = new PeriodicUpdateLoop({
+      checkIntervalMs: options.checkIntervalMs,
+      firstCheckDelayMs: options.firstCheckDelayMs,
+      busyRetryMs: options.busyRetryMs,
+      runCheck: async (): Promise<PeriodicCheckOutcome> => {
+        await this.checkAndApply();
+        return this.pendingSwap ? 'deferred' : 'settled';
+      },
+      onError: (error) => {
+        logger.warn('DaemonAutoUpdater: update check failed; will retry on the next interval', {
+          error: summarizeError(error),
+        });
+        this.pendingSwap = null;
+      },
+      setTimer: options.setTimer,
+      clearTimer: options.clearTimer,
+    });
   }
 
-  private get busyRetryMs(): number {
-    return this.options.busyRetryMs ?? DEFAULT_BUSY_RETRY_MS;
+  /** The delay before the first check, so callers can log the schedule they got. */
+  get firstCheckDelayMs(): number {
+    return this.loop.firstCheckDelayMs;
   }
 
-  /** Begin the hourly loop. The first check runs one full interval out. */
+  /** The steady-state cadence, so callers can log the schedule they got. */
+  get checkIntervalMs(): number {
+    return this.loop.checkIntervalMs;
+  }
+
+  /** Begin the loop. The first check runs after a short boot-settle delay. */
   start(): void {
-    this.stopped = false;
-    this.scheduleNext(this.checkIntervalMs);
+    this.loop.start();
   }
 
   stop(): void {
-    this.stopped = true;
-    if (this.timer) {
-      (this.options.clearTimer ?? clearTimeout)(this.timer);
-      this.timer = null;
-    }
-  }
-
-  private scheduleNext(delayMs: number): void {
-    if (this.stopped) return;
-    const setTimer = this.options.setTimer ?? setTimeout;
-    if (this.timer) (this.options.clearTimer ?? clearTimeout)(this.timer);
-    this.timer = setTimer(() => {
-      void this.tick();
-    }, delayMs);
-    (this.timer as { unref?: () => void }).unref?.();
+    this.loop.stop();
   }
 
   /** One loop iteration; exposed for tests driving mocked time. */
   async tick(): Promise<void> {
-    if (this.stopped || this.checking) return;
-    this.checking = true;
-    try {
-      await this.checkAndApply();
-    } catch (err) {
-      logger.warn('DaemonAutoUpdater: update check failed; will retry on the next interval', {
-        error: summarizeError(err),
-      });
-      this.pendingSwap = null;
-    } finally {
-      this.checking = false;
-      // While a verified update waits for an idle moment, retry on the short
-      // cadence; otherwise the next full interval.
-      this.scheduleNext(this.pendingSwap ? this.busyRetryMs : this.checkIntervalMs);
-    }
+    await this.loop.tick();
   }
 
   private async checkAndApply(): Promise<void> {
@@ -154,15 +202,15 @@ export class DaemonAutoUpdater {
       if (compareVersions(this.options.currentVersion, latestTag) >= 0) {
         return; // already current
       }
-      const artifacts = resolveArtifactNames(this.options.platform, this.options.arch);
-      if (!artifacts) {
+      const targets = this.resolveTargets();
+      if (!targets) {
         logger.info('DaemonAutoUpdater: no prebuilt binaries for this platform; not self-updating', {
           platform: this.options.platform,
           arch: this.options.arch,
         });
         return;
       }
-      this.pendingSwap = { tag: latestTag, targets: this.resolveTargets(artifacts.daemon, artifacts.app) };
+      this.pendingSwap = { tag: latestTag, targets };
       logger.info('DaemonAutoUpdater: update found', {
         from: normalizeVersion(this.options.currentVersion),
         to: this.pendingSwap.tag,
@@ -208,34 +256,29 @@ export class DaemonAutoUpdater {
       + ` anything older than ${CLIENT_COMPATIBILITY_FLOOR} has stopped taking shared-session work`,
     );
 
-    this.restartIntoNewBinary();
+    await this.restartIntoNewBinary();
   }
 
-  private resolveTargets(daemonAsset: string, appAsset: string): UpdateTarget[] {
-    const io = this.options.io;
-    const exists = io ? io.exists.bind(io) : existsSync;
-    const execDir = dirname(this.options.execPath);
-    const targets: UpdateTarget[] = [
-      { label: 'daemon binary', path: this.options.execPath, assetName: daemonAsset, executable: true },
-    ];
-    // The app binary and the sqlite-vec addon travel with the daemon: refresh
-    // any that are present in the same verified pass, so an update never
-    // leaves a mismatched pair installed.
-    const appPath = join(execDir, 'goodvibes');
-    if (exists(appPath)) {
-      targets.push({ label: 'app binary', path: appPath, assetName: appAsset, executable: true });
-    }
-    const addon = resolveSqliteVecAsset(this.options.platform, this.options.arch);
-    if (addon) {
-      const addonPath = join(execDir, 'lib', addon.dirName, addon.fileName);
-      if (exists(addonPath)) {
-        targets.push({ label: 'vector addon', path: addonPath, assetName: addon.assetName, executable: false });
-      }
-    }
-    return targets;
+  /** The update targets, or null when this platform/arch publishes no assets. */
+  private resolveTargets(): UpdateTarget[] | null {
+    const files = resolveDaemonInstalledFiles({
+      execPath: this.options.execPath,
+      platform: this.options.platform,
+      arch: this.options.arch,
+      io: this.options.io,
+    });
+    const targets = files.flatMap((file) =>
+      file.assetName === null
+        ? []
+        : [{ label: file.label, path: file.path, assetName: file.assetName, executable: file.executable }],
+    );
+    // The daemon binary itself must be downloadable; without it there is no
+    // update to apply on this platform.
+    return targets.some((target) => target.path === this.options.execPath) ? targets : null;
   }
 
-  private restartIntoNewBinary(): void {
+  private async restartIntoNewBinary(): Promise<void> {
+    await this.stopGracefully();
     const actions = this.options.serviceActions;
     if (actions.isSupervised()) {
       logger.info('DaemonAutoUpdater: restarting via the service manager');
@@ -251,6 +294,23 @@ export class DaemonAutoUpdater {
     // that simply vanished mid-sentence.
     flushActivityLogSync();
     (this.options.exitProcess ?? ((code: number) => process.exit(code)))(0);
+  }
+
+  /**
+   * The daemon's own orderly stop before handing over. A hook that throws must
+   * never strand the process on the old binary, so a failure is logged and the
+   * handover continues.
+   */
+  private async stopGracefully(): Promise<void> {
+    const stop = this.options.stopGracefully;
+    if (!stop) return;
+    try {
+      await stop();
+    } catch (error) {
+      logger.warn('DaemonAutoUpdater: orderly stop before the update restart failed; handing over anyway', {
+        error: summarizeError(error),
+      });
+    }
   }
 }
 

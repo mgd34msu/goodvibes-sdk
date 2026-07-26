@@ -18,7 +18,9 @@ import { type ConfigSettingDefinition, intRange } from './schema-shared.js';
 export interface UpdateConfig {
   auto: boolean;
   intervalMinutes: number;
+  firstCheckSeconds: number;
   releasesUrl: string;
+  rollbackAfterFailedStarts: number;
 }
 
 declare module './schema-types.js' {
@@ -31,7 +33,9 @@ export const updateConfigDefaults = {
   update: {
     auto: true,
     intervalMinutes: 60,
+    firstCheckSeconds: 30,
     releasesUrl: 'https://github.com/mgd34msu/goodvibes-tui/releases/latest',
+    rollbackAfterFailedStarts: 3,
   },
 } as const;
 
@@ -50,9 +54,23 @@ export const updateConfigSettings: ConfigSettingDefinition[] = [
     ...intRange(5, 24 * 60),
   },
   {
+    key: 'update.firstCheckSeconds',
+    type: 'number',
+    default: 30,
+    description: 'Seconds after daemon start before the FIRST update check (a boot-settle delay, so a daemon that was down while releases shipped does not stay stale for a whole interval). Capped at one check interval',
+    ...intRange(0, 60 * 60),
+  },
+  {
     key: 'update.releasesUrl',
     type: 'string',
     default: 'https://github.com/mgd34msu/goodvibes-tui/releases/latest',
     description: 'GitHub releases/latest URL the daemon resolves update tags and artifacts from',
+  },
+  {
+    key: 'update.rollbackAfterFailedStarts',
+    type: 'number',
+    default: 3,
+    description: 'Consecutive rapid boots that fail to reach a fully-started daemon before the startup path automatically restores the kept previous binary and restarts onto it. 0 leaves a bad update in place for a hand-run rollback',
+    ...intRange(0, 10),
   },
 ];
