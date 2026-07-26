@@ -19,6 +19,7 @@ import { randomUUID } from 'node:crypto';
 import { ActivityLogger } from '../packages/sdk/src/platform/utils/logger.ts';
 
 const dirs: string[] = [];
+const loggers: ActivityLogger[] = [];
 
 function tempLogDir(): string {
   const dir = join(tmpdir(), `gv-logger-${randomUUID()}`);
@@ -33,6 +34,9 @@ async function settle(): Promise<void> {
 }
 
 afterEach(() => {
+  // Configured loggers are tracked for the process-exit flush; drop them so a
+  // test instance does not outlive its temp directory.
+  for (const logger of loggers.splice(0)) logger.dispose();
   for (const dir of dirs.splice(0)) {
     try { rmSync(dir, { recursive: true, force: true }); } catch { /* best effort */ }
   }
@@ -48,6 +52,7 @@ describe('ActivityLogger rotation', () => {
 
     // Isolated logger configured with a tiny cap so the seeded file is over-limit.
     const logger = new ActivityLogger();
+    loggers.push(logger);
     logger.configure(dir, { maxBytes: 1024 });
     logger.info('first message after configure');
     await settle();
@@ -65,6 +70,7 @@ describe('ActivityLogger rotation', () => {
     const dir = tempLogDir();
     const activity = join(dir, 'activity.md');
     const logger = new ActivityLogger();
+    loggers.push(logger);
     logger.configure(dir, { maxBytes: 512 });
 
     // Drive enough volume to cross the cap at least twice.
@@ -87,6 +93,7 @@ describe('ActivityLogger rotation', () => {
     const dir = tempLogDir();
     const activity = join(dir, 'activity.md');
     const logger = new ActivityLogger();
+    loggers.push(logger);
     logger.configure(dir, { maxBytes: 10 * 1024 * 1024 });
     logger.info('a modest line');
     await settle();
