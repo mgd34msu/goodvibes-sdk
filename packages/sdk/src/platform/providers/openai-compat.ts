@@ -33,7 +33,7 @@ import { getCacheCapability } from './cache-capability.js';
 import type { ProviderCacheCapability } from './cache-capability.js';
 import type { CacheHitTracker } from './cache-strategy.js';
 import { extractOpenAIStreamTextDelta } from './openai-stream-delta.js';
-import { InlineReasoningStreamSplitter } from './inline-reasoning.js';
+import { StreamTextAccumulator } from './inline-reasoning.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError, toProviderError } from '../utils/error-display.js';
 
@@ -496,30 +496,10 @@ export class OpenAICompatProvider implements LLMProvider {
     this.assertConfiguredForChat(model);
 
     return (await instrumentedLlmCall(() => withRetry(async () => {
-      // `reasoningFormat` says which reasoning PARAMETER this endpoint accepts
-      // on the REQUEST. It used to double as the response rule too, via
-      // `allowReasoning: this.reasoningFormat !== 'none'` on the extractor
-      // below — and 'none' told the extractor to FOLD a returned `reasoning` /
-      // `reasoning_content` field into `content`.
-      //
-      // That is the actual cause of reasoning reaching a surface whose policy
-      // is `reasoningVisibility: 'suppress'`. Cerebras is registered
-      // 'none' and returns reasoning on its own `reasoning` delta field;
-      // folding it in made it ordinary answer text before any policy could see
-      // it — and interleaved it with the answer, so the body read as garbled
-      // prose. What a response CARRIES is not a function of what the request
-      // ASKED FOR: a reasoning field is reasoning on every endpoint.
-      const allowReasoningStream = true;
-      // Reasoning wrapped in a TAG inside the content stream, as opposed to
-      // the structured fields above — the other shape this arrives in.
-      // Routed onto the same `onDelta({ reasoning })` channel, which is where
-      // the orchestrator accumulates the turn's reasoning
-      // (orchestrator-turn-loop.ts), so it reaches the transcript, the session
-      // export and the channel `reasoning` render event, and every consumer's
-      // reasoning-visibility policy applies to it.
-      const inlineReasoning = new InlineReasoningStreamSplitter();
-      /** Every reasoning fragment, structured or tagged — the empty-reply floor. */
-      let reasoningText = '';
+      // Keeps returned reasoning out of the answer, in both shapes it arrives
+      // in — see the module doc in providers/inline-reasoning.ts for why.
+      const streamText = new StreamTextAccumulator();
+      let streamedText: { content: string; reasoning: string } = { content: '', reasoning: '' };
       let responseText = '';
       let inputTokens = 0;
       let outputTokens = 0;
@@ -620,25 +600,10 @@ export class OpenAICompatProvider implements LLMProvider {
           };
 
           const delta = raw.choices[0]?.delta;
-          const textDelta = extractOpenAIStreamTextDelta(raw, { allowReasoning: allowReasoningStream });
-          for (const contentDelta of textDelta.content) {
-            const split = inlineReasoning.push(contentDelta);
-            if (split.content) {
-              responseText += split.content;
-              if (onDelta) onDelta({ content: split.content });
-            }
-            if (split.reasoning) {
-              reasoningText += split.reasoning;
-              if (onDelta) onDelta({ reasoning: split.reasoning });
-            }
-          }
-          for (const reasoningDelta of textDelta.reasoning) {
-            reasoningText += reasoningDelta;
-            if (onDelta) onDelta({ reasoning: reasoningDelta });
-          }
+          streamText.push(extractOpenAIStreamTextDelta(raw, { allowReasoning: true }), onDelta);
 
           // Mercury-2: reasoning_summary may appear on any chunk — capture and emit
-          if (allowReasoningStream && raw.reasoning_summary) {
+          if (raw.reasoning_summary) {
             reasoningSummaryText = raw.reasoning_summary;
           }
 
@@ -661,19 +626,8 @@ export class OpenAICompatProvider implements LLMProvider {
           ));
         }
 
-        // Release whatever the splitter is still holding back (a trailing
-        // fragment that could have been the start of a tag, or the tail of an
-        // unterminated one) so no text is lost when the stream ends.
-        const tail = inlineReasoning.flush();
-        if (tail.content) {
-          responseText += tail.content;
-          if (onDelta) onDelta({ content: tail.content });
-        }
-        if (tail.reasoning) {
-          reasoningText += tail.reasoning;
-          if (onDelta) onDelta({ reasoning: tail.reasoning });
-        }
-
+        streamedText = streamText.finish(onDelta);
+        responseText = streamedText.content;
         rawToolCalls = finalizeOpenAIToolCalls(accToolCalls);
       } catch (err: unknown) {
         const diagnostic = extractOpenAICompatErrorDiagnostic(err);
@@ -720,19 +674,11 @@ export class OpenAICompatProvider implements LLMProvider {
       stopReason = resolved.stopReason;
       rawStopReason = resolved.rawStopReason;
 
-      // Classifying reasoning as reasoning must never empty a reply. Some
-      // models put everything in the reasoning field (or inside the tag) and
-      // write nothing after it: there is no answer outside it, so the
-      // reasoning IS the answer. Without this floor such a turn would complete
-      // carrying nothing but "Agent completed in Nms" — which is precisely the
-      // failure the folding behaviour was avoiding, kept here without also
-      // mislabelling every reasoning field as answer text.
-      //
-      // Restricted to a turn with NO tool calls, where empty content is normal
-      // and means the work is in the calls. Promoting there would inject
-      // chain-of-thought into the conversation as an assistant answer.
-      if (toolCalls.length === 0 && responseText.trim().length === 0 && reasoningText.trim().length > 0) {
-        responseText = reasoningText.trim();
+      // The floor: classifying reasoning as reasoning must never EMPTY a reply
+      // (see inline-reasoning.ts). Skipped on a tool-call turn, where empty
+      // content is normal and means the work is in the calls.
+      if (toolCalls.length === 0 && !responseText.trim() && streamedText.reasoning.trim()) {
+        responseText = streamedText.reasoning.trim();
       }
 
       const response: ChatResponse = {

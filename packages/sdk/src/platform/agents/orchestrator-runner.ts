@@ -862,24 +862,10 @@ export async function runAgentTask(
               if ((record as { status: string }).status === 'cancelled') {
                 throw new Error('Agent cancelled during network retry');
               }
-            } else if (isBillingOrCreditError(chatErr)) {
-              // A spent account is not a rate limit and does not clear by
-              // waiting. This used to fall into the branch below and be
-              // reported as "rate limited on turn 1, retrying in 60s" three
-              // times over — three minutes per agent, and a message that sent
-              // the reader hunting a throughput problem that did not exist.
-              // Model fallback is still attempted first (the branch above),
-              // because another provider may have credit; once the routes are
-              // exhausted this fails immediately with the provider's own words.
-              logger.error(
-                `Agent ${record.id}: provider rejected turn ${turn} for a billing/credit reason — not retrying`,
-                { error: chatErr instanceof Error ? chatErr.message : String(chatErr) },
-              );
-              record.progress = `Turn ${turn} · Provider credit/billing problem`;
-              context.emitAgentProgress(record.id, record.progress);
-              context.emitOrchestrationProgress(record, record.progress);
-              throw chatErr;
-            } else if (isRateLimitOrQuotaError(chatErr) && rateLimitAttempt < RATE_LIMIT_MAX_RETRIES) {
+            // A spent account matches the quota wording here but never clears by
+            // waiting: excluded, it falls to `throw` with its own `billing`
+            // category, not "rate limited, retrying in 60s" three times over.
+            } else if (isRateLimitOrQuotaError(chatErr) && !isBillingOrCreditError(chatErr) && rateLimitAttempt < RATE_LIMIT_MAX_RETRIES) {
               const delaySec = Math.round(RATE_LIMIT_RETRY_DELAY_MS / 1000);
               logger.warn(
                 `Agent ${record.id}: rate limited on turn ${turn}, retrying in ${delaySec}s (attempt ${rateLimitAttempt + 1}/${RATE_LIMIT_MAX_RETRIES})`,

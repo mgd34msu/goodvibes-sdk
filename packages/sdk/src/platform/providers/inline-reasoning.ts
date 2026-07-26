@@ -1,25 +1,41 @@
 /**
- * Inline reasoning delimiters in OpenAI-compatible assistant content.
+ * Keeping a model's reasoning out of its answer, at the provider boundary.
  *
- * Some endpoints put the model's reasoning in a structured field
- * (`reasoning`, `reasoning_content`) — openai-stream-delta.ts already routes
- * those onto the reasoning channel. Others put it INSIDE the assistant
- * message, wrapped in a tag, and send it as ordinary content: cerebras serving
- * qwen-3 / gpt-oss is the case that surfaced this.
+ * A cerebras reply put reasoning into an ntfy notification whose surface
+ * policy is `reasoningVisibility: 'suppress'`. The suppression was never at
+ * fault — the reasoning never reached the reasoning channel at all, so nothing
+ * downstream could tell it apart from the answer. It reached the transcript,
+ * the session export and every channel body as plain assistant text.
  *
- * When that happens the reasoning is not reasoning as far as the rest of the
- * platform is concerned — it is the answer. It reaches the transcript, the
- * session export, and every channel body as `assistant_text`, so
- * `reasoningVisibility` never gets a chance to act on it. That is how a
- * cerebras reply put reasoning into an ntfy notification whose surface policy
- * is `reasoningVisibility: 'suppress'`.
+ * Reasoning arrives in two shapes, and BOTH were landing in `content`:
  *
- * The split belongs here, at the provider boundary, for the same reason the
- * structured fields are handled here: the wire format is the provider's
- * concern, and doing it once means every consumer — TUI transcript, webui,
- * session export, channel surfaces — receives the same correct
- * content/reasoning split without re-solving it. A filter at any single render
- * site would fix that site and leave the raw tag in every other one.
+ * 1. A structured field (`reasoning`, `reasoning_content`).
+ *    openai-stream-delta.ts knows how to route these, but only when its
+ *    `allowReasoning` option is set — and openai-compat derived that from the
+ *    provider's `reasoningFormat`, which is a REQUEST-side setting naming
+ *    which reasoning PARAMETER an endpoint accepts. Cerebras, groq and mistral
+ *    are all registered `reasoningFormat: 'none'`, which told the extractor to
+ *    FOLD a returned reasoning field into `content`. Cerebras returns
+ *    reasoning on exactly that field, so its chain-of-thought became ordinary
+ *    answer text, interleaved with the real answer. What a response CARRIES is
+ *    not a function of what the request ASKED FOR: a reasoning field is
+ *    reasoning on every endpoint, so openai-compat now always classifies it.
+ *
+ * 2. A tag inside the content stream (`<think>…</think>`), which some models
+ *    emit with no structured field at all. {@link splitInlineReasoning} and
+ *    {@link InlineReasoningStreamSplitter} below handle that shape.
+ *
+ * Both belong here rather than at a render site: the wire format is the
+ * provider's concern, and splitting once means every consumer — TUI
+ * transcript, webui, session export, channel surfaces — gets the same correct
+ * content/reasoning split and applies its own visibility policy to it. A
+ * filter at any single render site would fix that site and leave every other
+ * one reading reasoning as the answer.
+ *
+ * One invariant governs all of it: the split must never EMPTY a reply. A model
+ * that writes nothing outside its reasoning has no answer beside it, so the
+ * reasoning IS the answer — see the floor in openai-compat.ts, which is what
+ * the old folding behaviour was really protecting.
  */
 
 /**
@@ -163,5 +179,58 @@ export class InlineReasoningStreamSplitter {
       return { content: '', reasoning: remainder };
     }
     return { content: remainder, reasoning: '' };
+  }
+}
+
+/** What a stream-delta extractor produced for one chunk. */
+export interface StreamTextFragments {
+  readonly content: readonly string[];
+  readonly reasoning: readonly string[];
+}
+
+/** Forwards a classified fragment to the caller's live delta handler. */
+export type StreamTextEmit = (delta: { content?: string; reasoning?: string }) => void;
+
+/**
+ * Accumulates one streamed turn, keeping reasoning out of the answer.
+ *
+ * Owns both shapes reasoning arrives in — a structured `reasoning` /
+ * `reasoning_content` field, and a tag inside the content stream — and keeps
+ * the running answer and the running reasoning apart, forwarding each fragment
+ * as it is classified so a live view is never shown reasoning as answer text
+ * and then made to retract it.
+ */
+export class StreamTextAccumulator {
+  private readonly splitter = new InlineReasoningStreamSplitter();
+  private contentText = '';
+  private reasoningText = '';
+
+  push(fragments: StreamTextFragments, emit?: StreamTextEmit): void {
+    for (const fragment of fragments.content) {
+      const split = this.splitter.push(fragment);
+      if (split.content) this.take(split.content, 'content', emit);
+      if (split.reasoning) this.take(split.reasoning, 'reasoning', emit);
+    }
+    for (const fragment of fragments.reasoning) this.take(fragment, 'reasoning', emit);
+  }
+
+  /**
+   * Release whatever the splitter still holds back and report the turn.
+   *
+   * `content` is empty when the model wrote nothing outside its reasoning —
+   * the caller decides what that means, since an empty answer is normal on a
+   * tool-call turn and a lost reply on any other.
+   */
+  finish(emit?: StreamTextEmit): InlineReasoningSplit {
+    const tail = this.splitter.flush();
+    if (tail.content) this.take(tail.content, 'content', emit);
+    if (tail.reasoning) this.take(tail.reasoning, 'reasoning', emit);
+    return { content: this.contentText, reasoning: this.reasoningText };
+  }
+
+  private take(text: string, kind: 'content' | 'reasoning', emit?: StreamTextEmit): void {
+    if (kind === 'content') this.contentText += text;
+    else this.reasoningText += text;
+    emit?.({ [kind]: text });
   }
 }
