@@ -33,6 +33,7 @@ import type {
   ClusterLogger,
   ClusterSettings,
   ClusterStatus,
+  ClusterSurfaceHolding,
   ClusterSurfaceStatus,
   ClusterTransport,
 } from './types.js';
@@ -104,6 +105,39 @@ export class ClusterCoordinator {
   holdsSurface(surface: ClusterSurfaceKey): boolean {
     if (!this.options.settings.enabled) return this.ungatedRunning;
     return this.election?.surfaceRole(surfaceIdFor(surface)) === 'master';
+  }
+
+  /**
+   * The surfaces this node is currently consuming, and why — the answer
+   * `ClusterGroupRuntimeOptions.surfaceHoldings` asks for.
+   *
+   * The per-surface election owns this fact, so the group layer is handed a
+   * reader for it rather than keeping a second copy that could disagree with
+   * the elections actually running. `null` — not an empty array — when there is
+   * no election to ask, because "this node holds nothing" and "nobody can say
+   * what this node holds" are different answers and `cluster status` prints
+   * them differently.
+   *
+   * Every `surfaceId` here is already the digest the election routes on, never
+   * a topic or chat id; the group layer digests again on the way out, which is
+   * a no-op for a value of this shape and a backstop for one that is not.
+   */
+  surfaceHoldings(): readonly ClusterSurfaceHolding[] | null {
+    // Clustering off means this node consumes everything it can, ungated. That
+    // is a real and reportable state, but it is not an election result, and
+    // presenting it as one would put surfaces in `cluster status` that no
+    // election ever awarded.
+    if (!this.options.settings.enabled) return null;
+    const election = this.election;
+    if (!election) return null;
+    return election.status().surfaces
+      .filter((surface) => surface.role === 'master')
+      .map((surface) => ({
+        surfaceId: surface.surfaceId,
+        reason: surface.consuming
+          ? `elected for ${surface.kind} (${surface.label})`
+          : `elected for ${surface.kind} (${surface.label}), consumer not yet running`,
+      }));
   }
 
   /**

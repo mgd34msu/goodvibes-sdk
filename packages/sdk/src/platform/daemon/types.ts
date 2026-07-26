@@ -83,6 +83,16 @@ export interface DaemonConfig {
    * Passing one that is ALREADY started is fine: start() is idempotent.
    */
   clusterCoordinator?: import('../cluster/index.js').ClusterCoordinator | undefined;
+  /**
+   * The LAN group verbs to serve on `/api/cluster/*`.
+   *
+   * These are the single implementation behind the `cluster` CLI subcommands,
+   * the TUI's `/cluster` command and any web UI — which is what makes a command
+   * run against a REMOTE daemon behave exactly like one run on that machine.
+   * Absent means those paths are simply unrouted, which is the honest answer
+   * for an embedder that composes no group runtime.
+   */
+  clusterGroupVerbs?: import('./http/cluster-group-routes.js').ClusterGroupVerbs | undefined;
 }
 
 export interface DaemonDangerConfig {
