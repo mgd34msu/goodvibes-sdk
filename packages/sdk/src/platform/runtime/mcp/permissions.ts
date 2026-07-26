@@ -235,18 +235,53 @@ export class McpPermissionManager {
   // ── Registration ─────────────────────────────────────────────────────────
 
   /**
-   * Register a new server with default trust level `standard`.
-   * Idempotent — calling again for an already-registered server is a no-op.
+   * Register a server with default trust level `standard`.
+   *
+   * Called on every transition to configured/connecting, so it also runs when
+   * a server is reconnected after its config was edited in place. When a
+   * `profile` is supplied it is treated as the current config and replaces the
+   * stored config-derived fields; without one the call stays a no-op for an
+   * already-registered server.
+   *
+   * This used to return early for any known name, which meant an in-place edit
+   * (re-adding the same server with new `allowedPaths`/`allowedHosts`) never
+   * reached the stored record: `listServerSecurity()` kept reporting the first
+   * insert's values, so a reload that correctly counted the server as changed
+   * still looked like it had done nothing.
+   *
+   * Runtime state is not config-derived and is preserved across a refresh: a
+   * trust level set through {@link setTrustLevel} and per-tool overrides set
+   * through {@link allowTool}/{@link denyTool} both survive.
    *
    * @param serverName - Server identifier
-   * @param trustLevel - Initial trust level (defaults to `standard`)
+   * @param trustLevel - Initial trust level (defaults to `standard`); ignored
+   *                     when the server is already registered
+   * @param profile    - Current config-derived profile, if known
    */
   registerServer(
     serverName: string,
     trustLevel: McpTrustLevel = DEFAULT_TRUST_LEVEL,
     profile?: Partial<McpServerPermissions['profile']>,
   ): void {
-    if (this.permissions.has(serverName)) return;
+    const existing = this.permissions.get(serverName);
+    if (existing) {
+      if (!profile) return;
+      const previous = existing.profile;
+      const notes = profile.notes ?? previous.notes;
+      existing.profile = {
+        serverName,
+        role: profile.role ?? previous.role,
+        mode: profile.mode ?? previous.mode,
+        allowedPaths: profile.allowedPaths ?? previous.allowedPaths,
+        allowedHosts: profile.allowedHosts ?? previous.allowedHosts,
+        allowedCapabilities: profile.allowedCapabilities ?? previous.allowedCapabilities,
+        ...(notes ? { notes } : {}),
+        lastModifiedAt: Date.now(),
+      };
+      existing.lastModifiedAt = Date.now();
+      logger.debug('McpPermissionManager: server profile refreshed from config', { serverName });
+      return;
+    }
     this.permissions.set(serverName, {
       serverName,
       trustLevel,

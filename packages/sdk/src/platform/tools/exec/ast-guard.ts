@@ -16,7 +16,7 @@
 
 import { parseCommandAST } from '../../runtime/permissions/normalization/parser.js';
 import { collectCommandNodes } from '../../runtime/permissions/normalization/ast.js';
-import { evaluateCommandAST, DEFAULT_ALLOWED_CLASSES } from '../../runtime/permissions/normalization/verdict.js';
+import { evaluateCommandAST, asSingleLine, DEFAULT_ALLOWED_CLASSES } from '../../runtime/permissions/normalization/verdict.js';
 import { normalizeCommand } from '../../runtime/permissions/normalization/index.js';
 import { catastrophicReason } from '../../runtime/permissions/normalization/classifier.js';
 import type { CompoundVerdict } from '../../runtime/permissions/normalization/verdict.js';
@@ -82,7 +82,7 @@ function baselineGuard(
       return {
         allowed: false,
         denialMessage:
-          `Command denied (safety block): "${command}"\n` +
+          `Command denied (safety block): "${asSingleLine(command)}"\n` +
           `Unconditionally blocked destructive command — ${reason}.\n` +
           `This block is not affected by permission settings.`,
         astModeActive: false,
@@ -95,7 +95,7 @@ function baselineGuard(
     return {
       allowed: false,
       denialMessage:
-        `Command denied (command-class policy): "${command}"\n` +
+        `Command denied (command-class policy): "${asSingleLine(command)}"\n` +
         `Classification: ${cls}\n` +
         `Classification "${cls}" is not in the caller's allowed set [${[...allowedClasses].join(', ')}].`,
       astModeActive: false,
