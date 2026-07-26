@@ -36,11 +36,38 @@
  * ends, a network comes back — and a node that gave up permanently on a
  * transient failure would leave a surface unread the moment the last other
  * node went away.
+ *
+ * Retrying forever is not the same as complaining forever. A workspace whose
+ * token was revoked and never replaced is a permanent condition, and a fixed
+ * retry timer that restates the same ERROR every minute buries the log it is
+ * trying to make legible — the same failure the activity logger has already
+ * been taught not to commit. So two things are separated here:
+ *
+ *   - The RETRY interval backs off, base delay doubling up to a ceiling, with
+ *     equal jitter so a group of nodes that all lost the same provider do not
+ *     re-ask it in lockstep.
+ *
+ *   - The ERROR is stated ONCE per unbroken run of failures. Later attempts in
+ *     the same run go to debug with the attempt count, and the run is closed
+ *     out by an info line when the identity finally resolves — so the operator
+ *     sees both the onset and the recovery, and nothing in between.
+ *
+ * A socket that drops is deliberately NOT put behind the same backoff: the
+ * first attempt after a lost socket is prompt, because a reconnect usually
+ * succeeds immediately. If the provider really is down, that prompt attempt
+ * fails to resolve the identity and the identity backoff takes over from
+ * there, which is the escalation the situation actually calls for.
  */
 import { providerSurface, type ClusterSurfaceKey } from '../cluster/index.js';
 
-/** How long before a node that could not identify a surface tries again. */
+/** Base delay before a node that could not identify a surface tries again. */
 const DEFAULT_RETRY_MS = 60_000;
+/**
+ * The ceiling the backoff climbs to. Long enough that a permanently broken
+ * token costs almost nothing, short enough that a surface left unread comes
+ * back within a coffee break of the provider recovering.
+ */
+const DEFAULT_MAX_RETRY_MS = 15 * 60_000;
 
 export interface SocketSurfaceSupervisorOptions {
   readonly kind: 'slack' | 'discord';
@@ -60,7 +87,12 @@ export interface SocketSurfaceSupervisorOptions {
   };
   /** Injected so tests need no real timers. Returns its own cancel function. */
   readonly setTimer?: ((fn: () => void, ms: number) => () => void) | undefined;
+  /** Base retry delay; the first retry of a failure run waits about this long. */
   readonly retryMs?: number | undefined;
+  /** Ceiling the backoff climbs to. */
+  readonly maxRetryMs?: number | undefined;
+  /** Jitter source in [0, 1). Injected so a test can pin the delay exactly. */
+  readonly random?: (() => number) | undefined;
 }
 
 const MISSING_IDENTITY_ACTION: Record<'slack' | 'discord', string> = {
@@ -77,6 +109,10 @@ export class SocketSurfaceSupervisor {
   private cancelRetry: (() => void) | null = null;
   private identity: string | null = null;
   private disposed = false;
+  /** Identity lookups that have failed in a row; 0 once one succeeds. */
+  private identityFailures = 0;
+  /** True once the current run of failures has been stated at ERROR. */
+  private reportedInert = false;
 
   constructor(private readonly options: SocketSurfaceSupervisorOptions) {}
 
@@ -98,10 +134,34 @@ export class SocketSurfaceSupervisor {
     if (this.disposed || !this.options.isRunning()) return;
     if (!identity) {
       this.identity = null;
-      this.options.reportInert(this.options.kind, MISSING_IDENTITY_ACTION[this.options.kind]);
-      this.scheduleRetry();
+      this.identityFailures += 1;
+      const retryMs = this.nextRetryMs();
+      if (!this.reportedInert) {
+        // First failure of this run: the operator needs the action, at ERROR.
+        this.reportedInert = true;
+        this.options.reportInert(this.options.kind, MISSING_IDENTITY_ACTION[this.options.kind]);
+      } else {
+        // Still the same failure. Restating it at ERROR every retry would bury
+        // the one line that mattered, so the repeats are debug-level detail.
+        this.options.logger.debug('cluster: a socket surface still cannot be identified', {
+          surface: this.options.kind,
+          attempts: this.identityFailures,
+          retryMs,
+        });
+      }
+      this.scheduleRetry(retryMs);
       return;
     }
+    if (this.reportedInert) {
+      // Close out the ERROR: an operator who saw the onset gets to see it end,
+      // rather than being left to infer recovery from the absence of a repeat.
+      this.options.logger.info('cluster: a socket surface that could not be identified now can be', {
+        surface: this.options.kind,
+        attempts: this.identityFailures,
+      });
+    }
+    this.identityFailures = 0;
+    this.reportedInert = false;
     this.identity = identity;
     const surface = providerSurface(this.options.kind, identity);
     this.withdraw = this.options.register(surface);
@@ -141,17 +201,38 @@ export class SocketSurfaceSupervisor {
     this.withdraw = null;
   }
 
-  private scheduleRetry(): void {
+  /**
+   * The delay for the next identity attempt: the base doubling per consecutive
+   * failure up to the ceiling, then equal jitter so that a group of nodes which
+   * all lost the same provider do not come back at it in one wave.
+   */
+  private nextRetryMs(): number {
+    const base = this.options.retryMs ?? DEFAULT_RETRY_MS;
+    const ceiling = Math.max(base, this.options.maxRetryMs ?? DEFAULT_MAX_RETRY_MS);
+    // Cap the exponent before it is used, so a long outage cannot overflow it.
+    const steps = Math.min(Math.max(this.identityFailures - 1, 0), 30);
+    const target = Math.min(base * 2 ** steps, ceiling);
+    const random = this.options.random ?? Math.random;
+    // Equal jitter: never less than half the target, never more than it.
+    return Math.round(target / 2 + random() * (target / 2));
+  }
+
+  /**
+   * @param retryMs Delay to use. Omitted after a lost socket, which retries at
+   *   the base delay: a reconnect usually works at once, and if the provider is
+   *   genuinely down the identity lookup will fail and start the backoff itself.
+   */
+  private scheduleRetry(retryMs?: number): void {
     this.cancelRetry?.();
-    const retryMs = this.options.retryMs ?? DEFAULT_RETRY_MS;
+    const delay = retryMs ?? this.options.retryMs ?? DEFAULT_RETRY_MS;
     const schedule = this.options.setTimer ?? defaultTimer;
     this.cancelRetry = schedule(() => {
       this.cancelRetry = null;
       void this.begin();
-    }, retryMs);
+    }, delay);
     this.options.logger.debug('cluster: will try to identify a socket surface again', {
       surface: this.options.kind,
-      retryMs,
+      retryMs: delay,
     });
   }
 }
