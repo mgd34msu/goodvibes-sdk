@@ -4,6 +4,96 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
+## [1.16.0] - 2026-07-26
+
+### Added
+
+- **A work proposal is deliverable on every surface the conversation gate
+  covers.** The gate answers an inbound channel message conversationally and,
+  when the message reads as a work request, proposes the work over the channel
+  it arrived on. Delivering that proposal went through a direct per-surface
+  push implemented for Slack, Discord and ntfy only — so on Telegram, Google
+  Chat, Signal, WhatsApp, telephony, iMessage, Microsoft Teams, BlueBubbles,
+  Mattermost, Matrix and Home Assistant the proposal existed and could never
+  be shown. The owner was asked nothing, saw nothing, and the work sat waiting
+  for an answer to a question that was never posed.
+
+  The notice now travels the same path a conversational reply already
+  travels — the surface's channel plugin, its `renderEvent`, and the channel
+  delivery router — so any surface the platform can talk to can carry a
+  proposal. There is no second, gate-only delivery path to keep in sync. A
+  channel that reports non-delivery and a transport that throws are both
+  refusals, named in the log and in the returned outcome; neither is reported
+  as a delivery. The direct per-surface push remains as the fallback for a
+  surface with no registered plugin, and still throws by name for a surface it
+  does not implement.
+
+- `listDaemonOwnedConfigPaths()` and `DAEMON_OWNED_NON_SCHEMA_CONFIG_PATHS`
+  from `platform/config`: the set of daemon-owned config paths including those
+  that have no scalar schema entry. `listDaemonOwnedConfigKeys()` is unchanged
+  and still returns schema keys only.
+
+### Fixed
+
+- **A live agent could take over an inbound channel message and skip the
+  conversation gate.** The handover path (`continued-live`) reached the spawn
+  boundary without the gate's configuration in hand, so on all sixteen surface
+  adapters a message landing in an already-running session started work
+  immediately regardless of `conversationGate.mode`. The gate config now
+  travels with the intent through the shared session broker.
+
+- **A surface notice that was never sent reported itself delivered.** Eleven
+  surfaces had no notice implementation at all, and the send path read a clean
+  return as proof of delivery. A proposal was marked deliverable and left
+  answerable while nothing had been sent — so the owner's next message, about
+  anything, was matchable against a proposal they had never seen. Unsent now
+  refuses at error level, naming the surface, the binding and the reason, and
+  the proposal is dropped rather than left answerable.
+
+- **The shipped daemon discarded every log line it produced.** The daemon
+  entrypoint never called `configureActivityLogger`, so the logger had no sink
+  and `~/.goodvibes/logs/` stayed empty — every failure above was invisible on
+  a real machine for exactly this reason. The logger sink is now established as
+  a boot guarantee during facade construction rather than by each entrypoint
+  remembering.
+
+- **An enabled channel surface that could not start did so silently.** A
+  surface configured on but unstartable now reports at error with the surface,
+  the reason it cannot start, and the action that would fix it.
+
+- **`conversationGate.gatedSurfaces` was stored where the daemon never read
+  it.** The key is an array, so it has no scalar `CONFIG_SCHEMA` entry and was
+  invisible to every walk of the daemon-owned set: `set` routed it to the
+  daemon store by prefix, while the config migration never moved it, the
+  daemon-tier overlay never read it back, and a whole-config save never
+  stripped it from the surface file. A machine could hold the gate's mode in
+  the daemon store with its surface list stranded in a client silo. All four
+  paths now walk `listDaemonOwnedConfigPaths()`.
+
+- **A completed migration marker no longer hides a key promoted later.** The
+  marker records the ownership set it covered, and a grown set re-runs the
+  migration once — which is what carries `conversationGate.*` across on
+  machines that migrated before it was daemon-owned.
+
+### Changed
+
+- `conversationGate.*` is daemon-owned. The daemon is the process that receives
+  inbound channel messages, so it is the process that decides whether one
+  becomes a conversation or a workstream. Left client-owned, a `mode` set from
+  the TUI or the agent reported success, landed in that client's settings file,
+  and changed nothing about what an inbound message did. Existing values are
+  moved into `~/.goodvibes/daemon/settings.json` by the migration, which
+  discloses every value it moved and every duplicate it discarded.
+
+### Migration
+
+No action required. Daemon-owned `conversationGate.*` values are relocated on
+first start and the move is disclosed in the migration record next to the
+daemon store. Consumers constructing `SharedSessionBroker` directly should pass
+`conversationGateConfig` (their `ConfigManager`) so the gate's configuration is
+honored on the live-agent handover path; without it the gate falls back to its
+defaults.
+
 ## [1.15.0] - 2026-07-26
 
 ### Added
