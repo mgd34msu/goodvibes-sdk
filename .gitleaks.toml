@@ -1,0 +1,30 @@
+# gitleaks configuration
+#
+# Starts from the stock ruleset and narrows exactly one class of false match.
+#
+# The Web Push subscription shape (RFC 8291) names the receiver's public P-256
+# point `p256dh` and the receiver's authentication secret `auth`. Code that
+# handles a subscription therefore reads and writes property paths ending in
+# `keys.p256dh` and `keys.auth`, and passes those same dotted paths as FIELD
+# LABELS into argument validation so a refusal can name the field it refused:
+#
+#     const keysChanged = prior.keys.p256dh !== input.keys.p256dh;
+#     const p256dh = requireString(keys.p256dh, 'notifications.keys.p256dh');
+#
+# The generic-api-key rule scores those dotted paths as high-entropy strings and
+# reports the FIELD NAME as though it were a credential value. The names cannot
+# change — they are the wire format every push service expects.
+#
+# The allowlist below matches only a dotted path that ENDS in `keys.p256dh` or
+# `keys.auth`. Key material itself never has that shape, so a real subscription
+# key pasted into the tree is still reported.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Web Push subscription field names (RFC 8291), not key material"
+regexes = [
+  '''^(?:[A-Za-z_$][A-Za-z0-9_$]*\.)*keys\.p256dh$''',
+  '''^(?:[A-Za-z_$][A-Za-z0-9_$]*\.)*keys\.auth$''',
+]
