@@ -38,6 +38,34 @@ export interface ClusterTiming {
   readonly suspendThresholdMs: number;
   /** Backoff after a provider told us someone else is already consuming. */
   readonly consumerConflictBackoffMs: number;
+  /**
+   * How often a STANDBY re-announces that it can serve a surface.
+   *
+   * A standby is silent by design, and a silent node is invisible to the
+   * holdings ledger. Without this beat an overloaded holder would believe it
+   * had nobody to hand a surface to and would never rebalance. One small
+   * datagram per surface per period, and it doubles as a liveness check: the
+   * holder answers a PROBE with a HEARTBEAT.
+   */
+  readonly candidacyAnnounceMs: number;
+  /**
+   * How long a node stays a believed candidate after its last datagram.
+   *
+   * Three announce periods, so two lost datagrams in a row do not make a
+   * healthy standby vanish from the ledger and freeze rebalancing.
+   */
+  readonly candidateTtlMs: number;
+  /** How often a holder re-examines whether it should yield a surface. */
+  readonly yieldCheckMs: number;
+  /**
+   * The shortest interval between two voluntary yields by one node.
+   *
+   * A yield is an ordered handoff: the consumer stops, then restarts
+   * elsewhere. Doing several in quick succession would take more surfaces
+   * briefly offline than the imbalance costs, so a node gives the cluster time
+   * to re-converge and re-observe before it gives up anything else.
+   */
+  readonly yieldCooldownMs: number;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -60,5 +88,9 @@ export function deriveClusterTiming(settings: ClusterSettings): ClusterTiming {
     watchdogTickMs: clamp(Math.min(heartbeatMs, masterTimeoutMs / 3), 50, 30_000),
     suspendThresholdMs: Math.max(masterTimeoutMs / 2, 1_000),
     consumerConflictBackoffMs: clamp(masterTimeoutMs / 6, 250, 15_000),
+    candidacyAnnounceMs: masterTimeoutMs,
+    candidateTtlMs: masterTimeoutMs * 3,
+    yieldCheckMs: masterTimeoutMs,
+    yieldCooldownMs: masterTimeoutMs * 2,
   };
 }

@@ -511,6 +511,24 @@ export class TelegramIngressSupervisor {
   // ── helpers ───────────────────────────────────────────────────────────────
 
   /**
+   * The public numeric id of the bot this node can ACTUALLY read, or null when
+   * no token resolves.
+   *
+   * Asked before the node is allowed to contest the Telegram surface in the
+   * LAN election. Winning a surface with no token would starve the machine
+   * that does have one: the loser stands down and the winner reads nothing.
+   *
+   * Only the id half of the token is returned — the secret half is never
+   * returned, logged, or hashed.
+   */
+  async resolveServableBotId(): Promise<string | null> {
+    const token = await this.resolveBotToken();
+    if (!token) return null;
+    const separator = token.indexOf(':');
+    return separator === -1 ? token : token.slice(0, separator);
+  }
+
+  /**
    * Resolve the bot token through the secret-reference path, so config can hold
    * `goodvibes://secrets/...` rather than a literal token in a settings file.
    */
