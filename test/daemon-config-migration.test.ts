@@ -229,6 +229,58 @@ describe('daemon-owned config migration', () => {
       expect(config.describeConfigKeySource('surfaces.telegram.enabled').tier).toBe('daemon');
     }
   });
+
+  test('the gate surface list migrates too, and the daemon reads it back', () => {
+    // `conversationGate.gatedSurfaces` is an array, so it has no scalar
+    // CONFIG_SCHEMA entry and was invisible to every walk of the owned set:
+    // `conversationGate.mode` moved into the daemon store while the list of
+    // surfaces the gate applies to stayed behind in the client silo, where the
+    // daemon never looks. Both must land in the daemon store, and the overlay
+    // must put the list back on the resolved config.
+    const h = home();
+    writeSurface(h, 'tui', {
+      conversationGate: { mode: 'confirm-all', gatedSurfaces: ['telegram', 'ntfy'] },
+    });
+
+    const { marker } = migrateDaemonOwnedConfig({ homeDir: h });
+
+    const store = readJson(daemonStore(h));
+    expect(store['conversationGate']).toEqual({ mode: 'confirm-all', gatedSurfaces: ['telegram', 'ntfy'] });
+    const tui = readJson(join(h, '.goodvibes', 'tui', 'settings.json'));
+    expect(tui['conversationGate']).toBeUndefined();
+    expect(marker.coveredKeys).toContain('conversationGate.gatedSurfaces');
+
+    const config = new ConfigManager({ homeDir: h, surfaceRoot: 'tui' });
+    expect(config.getCategory('conversationGate').gatedSurfaces).toEqual(['telegram', 'ntfy']);
+    expect(config.get('conversationGate.mode')).toBe('confirm-all');
+  });
+
+  test('a marker written before the gate list was owned makes the migration re-run', () => {
+    const h = home();
+    writeSurface(h, 'tui', {
+      conversationGate: { gatedSurfaces: ['telegram'] },
+    });
+    // Simulate the marker a previous release wrote: complete, but covering an
+    // ownership set that did not yet include the array path.
+    mkdirSync(join(h, '.goodvibes', 'daemon'), { recursive: true });
+    writeFileSync(daemonStore(h), '{}\n', 'utf-8');
+    writeFileSync(daemonConfigMovedPath(daemonStore(h)), `${JSON.stringify({
+      version: 1,
+      status: 'complete',
+      movedTo: daemonStore(h),
+      primarySurface: 'tui',
+      date: new Date().toISOString(),
+      sources: [],
+      moved: [],
+      discarded: [],
+      coveredKeys: ['conversationGate.mode'],
+    }, null, 2)}\n`, 'utf-8');
+
+    const result = migrateDaemonOwnedConfig({ homeDir: h });
+
+    expect(result.migrated).toBe(true);
+    expect(readJson(daemonStore(h))['conversationGate']).toEqual({ gatedSurfaces: ['telegram'] });
+  });
 });
 
 describe('migration against the live machine layout that motivated this change', () => {

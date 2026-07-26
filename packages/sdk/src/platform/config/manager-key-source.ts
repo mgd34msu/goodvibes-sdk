@@ -12,6 +12,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { readDotPath } from './shared-config-tier.js';
 import type { ConfigKey } from './schema.js';
+import type { DaemonOwnedConfigPath } from './config-ownership.js';
 
 /** The tier a resolved config value came from. */
 export type ConfigKeyTier = 'daemon' | 'shared' | 'project' | 'global' | 'default';
@@ -43,7 +44,7 @@ export interface ConfigKeySourceInput {
   /** Keys the last load sourced from the shared tier. */
   readonly sharedKeysPresent: ReadonlySet<ConfigKey>;
   /** Keys the last load sourced from the daemon store. */
-  readonly daemonKeysPresent: ReadonlySet<ConfigKey>;
+  readonly daemonKeysPresent: ReadonlySet<DaemonOwnedConfigPath>;
 }
 
 /** True when the JSON settings file at `path` carries an explicit value for `key`. */
