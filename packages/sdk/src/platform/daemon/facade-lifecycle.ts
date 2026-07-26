@@ -11,7 +11,7 @@
  */
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
-import { logger } from '../utils/logger.js';
+import { flushActivityLogSync, logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 import type { ConfigManager } from '../config/manager.js';
 import type { PlatformServiceManager } from './service-manager.js';
@@ -302,7 +302,10 @@ export class DaemonLifecycleRuntime {
           return;
         }
         // launchd (KeepAlive=true) and manual supervision both respawn the
-        // (already-swapped) binary when this process exits cleanly.
+        // (already-swapped) binary when this process exits cleanly. The log
+        // lands first: an exit taken as a handover has to be distinguishable
+        // in the record from an exit nobody chose.
+        flushActivityLogSync();
         process.exit(0);
       },
     };
@@ -342,6 +345,7 @@ export class DaemonLifecycleRuntime {
       if (!this.options.isIdle()) return false;
       logger.info('DaemonServer: unsupervised daemon — installing the service unit and handing over (boot promotion)');
       actions.adoptIntoService();
+      flushActivityLogSync();
       exitProcess(0);
       return true;
     };
