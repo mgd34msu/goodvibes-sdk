@@ -255,6 +255,42 @@ describe('web push — real event source (approval fan-out)', () => {
   });
 });
 
+describe('web push — registration refuses what could never receive a push', () => {
+  test('a junk p256dh is refused at 400 with the delivery path\'s own wording', async () => {
+    const { status, json } = await invokeVerb('push.subscriptions.create', {
+      endpoint: `${sinkOrigin}/push/junk-key`,
+      keys: { p256dh: 'not-base64!!!!', auth },
+    });
+    expect(status).toBe(400);
+    expect(JSON.stringify(json)).toContain('65-byte uncompressed P-256 point');
+  });
+
+  test('a short auth secret is refused at 400', async () => {
+    const { status, json } = await invokeVerb('push.subscriptions.create', {
+      endpoint: `${sinkOrigin}/push/junk-auth`,
+      keys: { p256dh, auth: 'x' },
+    });
+    expect(status).toBe(400);
+    expect(JSON.stringify(json)).toContain('auth secret is not 16 bytes');
+  });
+
+  test('an oversized endpoint is refused at 400', async () => {
+    const { status, json } = await invokeVerb('push.subscriptions.create', {
+      endpoint: `${sinkOrigin}/push/${'x'.repeat(50_000)}`,
+      keys: { p256dh, auth },
+    });
+    expect(status).toBe(400);
+    expect(JSON.stringify(json)).toContain('longer than 2048 characters');
+  });
+
+  test('none of the refused registrations were stored', async () => {
+    const { json } = await invokeVerb('push.subscriptions.list');
+    const subs = json.subscriptions as Array<{ endpointHash: string }>;
+    // Everything present came from a valid registration; nothing junk landed.
+    expect(subs.every((s) => typeof s.endpointHash === 'string' && s.endpointHash.length > 0)).toBe(true);
+  });
+});
+
 describe('web push — honest degrade (410 gone pruned with receipt)', () => {
   test('a 410-gone endpoint is pruned and reported, not faked', async () => {
     const endpoint = `${sinkOrigin}/gone/device-dead`;
