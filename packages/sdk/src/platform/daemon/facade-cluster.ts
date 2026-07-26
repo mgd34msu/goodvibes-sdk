@@ -36,10 +36,10 @@
 import {
   ClusterCoordinator,
   ntfySurface,
-  providerSurface,
   readClusterSettings,
   telegramSurface,
 } from '../cluster/index.js';
+import { SocketSurfaceSupervisor } from './facade-cluster-sockets.js';
 import type { ClusterConsumerGate, ClusterSurfaceKey } from '../cluster/index.js';
 import type { BuiltinChannelRuntime, ChannelProviderRuntimeManager } from '../channels/index.js';
 import type { ConfigManager } from '../config/manager.js';
@@ -77,23 +77,21 @@ function ntfyTopicGate(
 }
 
 /**
- * Slack Socket Mode and the Discord Gateway as gates.
+ * Slack Socket Mode and the Discord Gateway as gates, under the surface
+ * identity the provider itself reported.
  *
- * Their surface discriminator is a constant rather than a workspace or
- * application id, because neither is knowable before the socket connects and
- * an election has to be decided before anything connects. Every node
- * configured for Slack therefore contests one Slack election — correct for the
- * case this exists for (the same install running in two places), and the
- * conservative answer for the rare case of two genuinely different workspaces
- * on one LAN, which coordinate as if they were one rather than double-reading.
+ * The discriminator is the real workspace or application id, resolved before
+ * anything is contested — see facade-cluster-sockets.ts for why a placeholder
+ * would starve one of two differently-configured workspaces.
  */
 function socketProviderGate(
   providerRuntime: ChannelProviderRuntimeManager,
   kind: 'slack' | 'discord',
+  surface: ClusterSurfaceKey,
 ): ClusterConsumerGate {
   return {
     id: `${kind}-socket`,
-    surface: providerSurface(kind, kind === 'slack' ? 'socket-mode' : 'gateway'),
+    surface,
     start: async () => {
       await providerRuntime.start(kind);
     },
@@ -153,13 +151,6 @@ export function buildDaemonClusterCoordinator(
   return coordinator;
 }
 
-const MISSING_CREDENTIAL_ACTION: Record<'slack' | 'discord', string> = {
-  slack: 'no Slack app-level token resolved; set surfaces.slack.appToken '
-    + '(a goodvibes://secrets/... reference is fine) or the SLACK_APP_TOKEN environment variable',
-  discord: 'no Discord bot token resolved; set surfaces.discord.botToken '
-    + '(a goodvibes://secrets/... reference is fine) or the DISCORD_BOT_TOKEN environment variable',
-};
-
 /**
  * One inbound surface the operator enabled cannot be served, so this node will
  * not contest it and will not read it.
@@ -195,13 +186,29 @@ export async function registerDaemonClusterSurfaces(
     }
   }
 
+  // Slack and Discord are contested under the identity the provider reports,
+  // never under a placeholder — a placeholder would put two different
+  // workspaces into one election and starve whichever lost.
+  const supervisors = new Map<'slack' | 'discord', SocketSurfaceSupervisor>();
   for (const kind of ['slack', 'discord'] as const) {
     if (!config.get(`surfaces.${kind}.enabled` as Parameters<ConfigManager['get']>[0])) continue;
-    if (!await providerRuntime.hasCredentialFor(kind)) {
-      reportInert(kind, MISSING_CREDENTIAL_ACTION[kind]);
-      continue;
-    }
-    coordinator.register(socketProviderGate(providerRuntime, kind));
+    const supervisor = new SocketSurfaceSupervisor({
+      kind,
+      resolveIdentity: () => providerRuntime.resolveSocketSurfaceIdentity(kind),
+      register: (surface) => coordinator.register(socketProviderGate(providerRuntime, kind, surface)),
+      isRunning: () => coordinator.running,
+      reportInert,
+      logger,
+    });
+    supervisors.set(kind, supervisor);
+    await supervisor.begin();
+  }
+  if (supervisors.size > 0) {
+    // A dropped socket means this node can no longer read that workspace, so
+    // it stands down rather than holding a surface it is not serving.
+    providerRuntime.setSocketLostHandler((kind, reason) => {
+      supervisors.get(kind)?.onSocketLost(reason);
+    });
   }
 
   if (config.get('surfaces.telegram.enabled')) {

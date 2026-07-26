@@ -82,6 +82,18 @@ export class ClusterCoordinator {
     return this.options.settings.enabled;
   }
 
+  /**
+   * True between `start()` and `stop()`.
+   *
+   * Read by anything that retries registering a surface in the background — a
+   * Slack workspace whose identity would not resolve the first time — so it
+   * stops retrying once the daemon is shutting down instead of registering
+   * consumers into a coordinator that has already left the group.
+   */
+  get running(): boolean {
+    return this.started;
+  }
+
   /** True when this node holds at least one inbound surface. */
   get isMaster(): boolean {
     if (!this.options.settings.enabled) return this.started;

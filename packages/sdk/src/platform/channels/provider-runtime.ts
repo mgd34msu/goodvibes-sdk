@@ -87,6 +87,7 @@ export class ChannelProviderRuntimeManager {
    * express that; a map of independent streams can.
    */
   private readonly ntfyAborts = new Map<string, AbortController>();
+  private socketLostHandler: ((kind: 'slack' | 'discord', reason: string) => void) | null = null;
   private readonly state: Record<ProviderRuntimeSurface, RuntimeState> = {
     slack: { ...DEFAULT_STATE, metadata: {} },
     discord: { ...DEFAULT_STATE, metadata: {} },
@@ -295,6 +296,7 @@ export class ChannelProviderRuntimeManager {
       appToken,
       integration: slack,
       onEnvelope: (envelope) => this.handleSlackEnvelope(envelope, slack),
+      onClosed: (reason) => this.reportSocketLost('slack', reason),
     });
     try {
       const connection = await client.start();
@@ -330,6 +332,7 @@ export class ChannelProviderRuntimeManager {
       token: botToken,
       integration: discord,
       onDispatch: (dispatch) => this.handleDiscordDispatch(dispatch, discord),
+      onClosed: (reason) => this.reportSocketLost('discord', reason),
     });
     try {
       const gateway = await client.start();
@@ -433,17 +436,72 @@ export class ChannelProviderRuntimeManager {
   }
 
   /**
-   * Does this node hold a usable credential for the surface RIGHT NOW?
+   * Which Slack WORKSPACE this node reads — its team id — or null when that
+   * cannot be established.
    *
-   * Asynchronous because a `goodvibes://secrets/...` reference resolves off
-   * disk, and the answer decides whether this node is allowed to contest the
-   * surface's election at all. A node that won a surface whose token does not
-   * resolve would read nothing while the node that could read it stood down.
+   * The identity has to be real. Contesting Slack under a fixed placeholder
+   * would make two nodes configured for two DIFFERENT workspaces fight over
+   * one election, and the loser's workspace would go unanswered with nothing
+   * to say why — the exact silent starvation per-surface elections exist to
+   * remove.
+   *
+   * `auth.test` is a plain authenticated REST call: it opens no socket and
+   * consumes no events, so the identity is settled BEFORE anything is
+   * contested and there is never a window in which this node is reading
+   * without having won. It doubles as the credential check — a token that
+   * cannot identify its own workspace cannot read it either.
    */
-  async hasCredentialFor(surface: ProviderRuntimeSurface): Promise<boolean> {
-    if (surface === 'slack') return Boolean(await this.resolveSlackAppToken());
-    if (surface === 'discord') return Boolean(await this.resolveDiscordBotToken());
-    return this.resolveNtfyTopics().length > 0;
+  async resolveSlackWorkspaceId(): Promise<string | null> {
+    const botToken = await this.resolveSlackBotToken();
+    if (!botToken) return null;
+    try {
+      const identity = await new SlackIntegration(undefined, botToken).authTest(botToken);
+      if (!identity.ok) return null;
+      const teamId = typeof identity.team_id === 'string' ? identity.team_id.trim() : '';
+      return teamId.length > 0 ? teamId : null;
+    } catch (error) {
+      logger.warn('ChannelProviderRuntimeManager: could not identify the Slack workspace', {
+        error: summarizeError(error),
+      });
+      return null;
+    }
+  }
+
+  /**
+   * Which Discord APPLICATION this node reads — its bot user id — or null when
+   * that cannot be established. Same argument as the Slack workspace above;
+   * `/users/@me` opens no gateway and consumes no events.
+   */
+  async resolveDiscordApplicationId(): Promise<string | null> {
+    const botToken = await this.resolveDiscordBotToken();
+    if (!botToken) return null;
+    try {
+      const identity = await new DiscordIntegration(undefined, botToken).getCurrentBotUser(botToken);
+      const id = typeof identity['id'] === 'string' ? identity['id'].trim() : '';
+      return id.length > 0 ? id : null;
+    } catch (error) {
+      logger.warn('ChannelProviderRuntimeManager: could not identify the Discord application', {
+        error: summarizeError(error),
+      });
+      return null;
+    }
+  }
+
+  /** The identity of whichever socket surface this is, or null. */
+  async resolveSocketSurfaceIdentity(kind: 'slack' | 'discord'): Promise<string | null> {
+    return kind === 'slack' ? this.resolveSlackWorkspaceId() : this.resolveDiscordApplicationId();
+  }
+
+  /**
+   * Learn that a socket dropped on its own.
+   *
+   * Late-bound because leadership is composed after the runtime: a node that
+   * loses its Slack connection is a node that can no longer serve the Slack
+   * surface, and it has to stand down rather than hold a workspace it is not
+   * reading.
+   */
+  setSocketLostHandler(handler: (kind: 'slack' | 'discord', reason: string) => void): void {
+    this.socketLostHandler = handler;
   }
 
   private isConfigured(surface: ProviderRuntimeSurface): boolean {
@@ -460,6 +518,23 @@ export class ChannelProviderRuntimeManager {
       return Boolean(this.deps.configManager.get('surfaces.discord.botToken') || process.env.DISCORD_BOT_TOKEN);
     }
     return this.resolveNtfyTopics().length > 0;
+  }
+
+  /**
+   * A socket dropped without being asked to. Record it and tell leadership.
+   *
+   * The state is marked stopped first so a `/status` read during the stand-down
+   * says what is true: this node is not reading that surface.
+   */
+  private reportSocketLost(kind: 'slack' | 'discord', reason: string): void {
+    if (kind === 'slack') this.slackClient = null;
+    else this.discordClient = null;
+    this.markStopped(kind);
+    logger.warn(`${kind} connection dropped; this node can no longer read that surface`, {
+      surface: kind,
+      reason,
+    });
+    this.socketLostHandler?.(kind, reason);
   }
 
   private markStarted(surface: ProviderRuntimeSurface, metadata: Record<string, unknown>): void {

@@ -56,6 +56,11 @@ const TEST_NTFY_BASE = 'https://ntfy.test';
 function keyFor(name: string): ClusterSurfaceKey {
   if (name.startsWith('telegram')) return telegramSurface(`${name}:REDACTED-SECRET-HALF`);
   if (name.startsWith('ntfy')) return ntfySurface(TEST_NTFY_BASE, name);
+  // `slack-T0ACME999` becomes the real shape a resolved workspace identity
+  // produces, so the socket-surface tests exercise the same digest derivation
+  // the daemon uses rather than a look-alike.
+  if (name.startsWith('slack-')) return providerSurface('slack', name.slice('slack-'.length));
+  if (name.startsWith('discord-')) return providerSurface('discord', name.slice('discord-'.length));
   return providerSurface('custom', name);
 }
 
