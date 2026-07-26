@@ -81,6 +81,35 @@ export const DAEMON_OWNED_CONFIG_KEYS: readonly string[] = [
 ];
 
 /**
+ * Daemon-owned config paths that are NOT scalar schema keys.
+ *
+ * `listDaemonOwnedConfigKeys()` is derived from CONFIG_SCHEMA, and CONFIG_SCHEMA
+ * only describes scalars. An array-valued daemon setting therefore has real
+ * ownership (`isDaemonOwnedConfigKey` matches it by prefix, so `set` routes it
+ * to the daemon store) but was invisible to everything that WALKS the owned set:
+ * the migration never moved it, the daemon-tier overlay never read it back, and
+ * a whole-config save never stripped it from the surface file. The result is a
+ * value that looks daemon-owned, is written to the daemon store when set through
+ * the API, and is silently ignored when it already exists in a client silo.
+ *
+ * `conversationGate.gatedSurfaces` is the live case: `conversationGate.mode`
+ * migrated and this list did not, so a machine could have the gate's mode in the
+ * daemon store and its surface list stranded in `~/.goodvibes/tui/settings.json`.
+ *
+ * Adding a path here grows the covered set, which is what makes the migration
+ * re-run on the next start and pick the stranded value up.
+ */
+export const DAEMON_OWNED_NON_SCHEMA_CONFIG_PATHS = [
+  'conversationGate.gatedSurfaces',
+] as const;
+
+/** A daemon-owned path that has no scalar CONFIG_SCHEMA entry. */
+export type DaemonOwnedNonSchemaConfigPath = (typeof DAEMON_OWNED_NON_SCHEMA_CONFIG_PATHS)[number];
+
+/** Any path the daemon owns: a schema key, or a non-scalar path listed above. */
+export type DaemonOwnedConfigPath = ConfigKey | DaemonOwnedNonSchemaConfigPath;
+
+/**
  * User-level keys whose shared value OVERLAYS the surface value. This is the
  * original shared tier (see shared-config-tier.ts) and its behavior is
  * unchanged: one voice on every surface.
@@ -151,6 +180,23 @@ export function listDaemonOwnedConfigKeys(): readonly ConfigKey[] {
     .map((setting) => setting.key)
     .filter((key) => isDaemonOwnedConfigKey(key));
   return daemonOwnedKeyCache;
+}
+
+let daemonOwnedPathCache: readonly DaemonOwnedConfigPath[] | null = null;
+
+/**
+ * Every path the daemon owns — schema keys PLUS the non-scalar paths above.
+ *
+ * This is the list every owned-set walk should use: migration, the daemon-tier
+ * overlay, whole-config strip, and reset. `listDaemonOwnedConfigKeys` remains
+ * for callers that genuinely need schema keys only (typed `get`/`set` surfaces).
+ */
+export function listDaemonOwnedConfigPaths(): readonly DaemonOwnedConfigPath[] {
+  daemonOwnedPathCache ??= [
+    ...listDaemonOwnedConfigKeys(),
+    ...DAEMON_OWNED_NON_SCHEMA_CONFIG_PATHS,
+  ];
+  return daemonOwnedPathCache;
 }
 
 /**

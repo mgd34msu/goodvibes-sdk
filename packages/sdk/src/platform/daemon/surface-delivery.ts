@@ -8,15 +8,20 @@ import type { ChannelPluginRegistry, ChannelReplyPipeline, RouteBindingManager }
 import type { ChannelSurface } from '../channels/index.js';
 import type { DeliveredChannelReply, UndeliveredChannelReply } from '../channels/reply-pipeline.js';
 import type { SharedSessionSurfaceReplyBinding } from '../control-plane/session-intents.js';
-import { SlackIntegration, DiscordIntegration, NtfyIntegration } from '../integrations/index.js';
 import { logger } from '../utils/logger.js';
-import { validatePublicWebhookUrl } from '../utils/url-safety.js';
 import { resolveReachableBaseUrl } from '../utils/reachable-base-url.js';
 import type { SharedApprovalRecord } from '../control-plane/index.js';
 import type { PendingSurfaceReply, SurfaceNoticeDelivery, SurfaceNoticeRefusal } from './types.js';
 import { summarizeError } from '../utils/error-display.js';
-import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 import { resolveSecretInput } from '../config/secret-refs.js';
+import {
+  deliverDiscordAgentReply,
+  deliverNtfyAgentReply,
+  deliverSlackAgentReply,
+  deliverSurfaceProgress,
+  deliverWebhookAgentReply,
+  type SurfaceDirectDeliveryDeps,
+} from './surface-direct-delivery.js';
 import {
   deliverDiscordApprovalUpdate,
   deliverNtfyApprovalUpdate,
@@ -43,6 +48,12 @@ type DeliverySurface =
   | 'matrix';
 
 type RouteBinding = import('../automation/routes.js').AutomationRouteBinding;
+
+/**
+ * Title carried on a gate notice. Surfaces that render a heading (ntfy, Slack
+ * blocks) show this; chat surfaces that only take a body ignore it.
+ */
+const NOTICE_TITLE = 'goodvibes';
 
 function isSupportedDeliverySurface(surface: string): surface is DeliverySurface {
   return surface === 'slack'
@@ -271,9 +282,19 @@ export class DaemonSurfaceDeliveryHelper {
    *
    * This is what the conversation-first gate uses to put a work proposal (and
    * its accept/decline acknowledgement) on the channel the message arrived on.
-   * It deliberately reuses the existing per-surface fan-out, so a proposal is
-   * deliverable on every surface the platform can already talk to — there is
-   * no second, gate-only delivery path to keep in sync.
+   *
+   * It sends through the SAME channel render path a conversational reply takes
+   * — `channelPlugins.render` -> the surface's renderEvent -> the channel
+   * delivery router — which is why a proposal is deliverable on every surface
+   * the platform can already talk to. Telegram is the case that proves it: the
+   * bot could always answer a chat message, because that answer went through
+   * the router's `sendMessage` strategy, while the gate's notice went through
+   * `deliverSurfaceProgress`, which is implemented for slack/discord/ntfy only.
+   * A gated surface with no notice path is a black hole — the owner is asked
+   * nothing and the daemon waits for an answer to a question never posed.
+   *
+   * `deliverSurfaceProgress` remains only as the fallback for a surface whose
+   * plugin is not registered at all (an embedder with its own registry).
    */
   async deliverSurfaceNotice(binding: RouteBinding | undefined, text: string): Promise<SurfaceNoticeDelivery> {
     const refuse = (reason: SurfaceNoticeRefusal, error?: string): SurfaceNoticeDelivery => {
@@ -299,6 +320,27 @@ export class DaemonSurfaceDeliveryHelper {
     });
     if (!pending) return refuse('no-deliverable-target');
     try {
+      const rendered = await this.context.channelPlugins.render(binding.surfaceKind as ChannelSurface, {
+        surface: binding.surfaceKind as ChannelSurface,
+        // 'progress' rather than 'final': a notice is not an agent's answer, and
+        // the final phase decorates the message with control-plane links and
+        // completion framing that do not belong on a question.
+        phase: 'progress',
+        agentId: pending.agentId,
+        routeId: binding.id,
+        title: NOTICE_TITLE,
+        text,
+        events: [],
+        pending: pending as unknown as Record<string, unknown>,
+        metadata: { notice: true },
+      });
+      if (rendered?.delivered) return { delivered: true };
+      if (rendered) {
+        return refuse('delivery-failed', String(rendered.metadata.reason ?? 'channel-reported-not-delivered'));
+      }
+      // No plugin is registered for this surface, so there is no render path to
+      // use. Fall back to the direct per-surface push, which throws by name for
+      // any surface it does not implement.
       await this.deliverSurfaceProgress(pending, text);
       return { delivered: true };
     } catch (error) {
@@ -399,180 +441,45 @@ export class DaemonSurfaceDeliveryHelper {
   }
 
   /**
-   * Push a one-line status to a surface directly.
-   *
-   * Implemented for slack, discord and ntfy only — see the throw at the end.
-   * That list is SMALLER than `isSupportedDeliverySurface`, which admits
-   * fourteen surfaces, and the gap used to be silent: the function simply ran
-   * off the end and returned. `deliverSurfaceNotice` reads a clean return as
-   * proof of delivery, so on Telegram (and nine other surfaces) a work
-   * proposal was marked delivered and left answerable while nothing was ever
-   * sent — the owner messaged the bot, saw nothing come back, and the daemon
-   * believed it had replied. An unimplemented surface now says so.
+   * Collaborators for the direct per-surface senders in
+   * surface-direct-delivery.ts (this file was over the line cap). These stay as
+   * methods because facade-composition wires them by name into the daemon route
+   * context and the builtin channel plugins.
+   */
+  private directDeliveryDeps(): SurfaceDirectDeliveryDeps {
+    return {
+      serviceRegistry: this.context.serviceRegistry,
+      configManager: this.context.configManager,
+      agentManager: this.context.agentManager,
+      resolveSlackWebhookUrl: () => this.resolveSlackWebhookUrl(),
+      resolveSlackBotToken: () => this.resolveSlackBotToken(),
+      signWebhookPayload: (body, secret) => this.signWebhookPayload(body, secret),
+    };
+  }
+
+  /**
+   * Push a one-line status to a surface directly. slack/discord/ntfy only —
+   * every other surface throws by name. This is the FALLBACK; the general path
+   * is the channel delivery router. See surface-direct-delivery.ts.
    */
   async deliverSurfaceProgress(pending: PendingSurfaceReply, progress: string): Promise<void> {
-    if (pending.surfaceKind === 'slack') {
-      const webhookUrl = await this.resolveSlackWebhookUrl();
-      const botToken = await this.resolveSlackBotToken();
-      const slack = new SlackIntegration(webhookUrl ?? undefined, botToken ?? undefined);
-      if (pending.responseUrl) {
-        await instrumentedFetch(pending.responseUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            response_type: 'in_channel',
-            text: `Progress for ${pending.agentId}: ${progress.slice(0, 180)}`,
-          }),
-        });
-        return;
-      }
-      if (pending.channelId) {
-        await slack.postMessage(pending.channelId, `Progress for ${pending.agentId}: ${progress.slice(0, 180)}`);
-      }
-      return;
-    }
-    if (pending.surfaceKind === 'discord') {
-      const webhookUrl =
-        await this.context.serviceRegistry.resolveSecret('discord', 'webhookUrl')
-        ?? process.env.DISCORD_WEBHOOK_URL;
-      const botToken =
-        await this.context.serviceRegistry.resolveSecret('discord', 'primary')
-        ?? process.env.DISCORD_BOT_TOKEN;
-      const discord = new DiscordIntegration(webhookUrl ?? undefined, botToken ?? undefined);
-      if (pending.applicationId && pending.interactionToken) {
-        await discord.editOriginalResponse(pending.applicationId, pending.interactionToken, `Progress: ${progress.slice(0, 180)}`);
-        return;
-      }
-      if (pending.channelId) {
-        await discord.postMessage(pending.channelId, `Progress for ${pending.agentId}: ${progress.slice(0, 180)}`);
-      }
-      return;
-    }
-    if (pending.surfaceKind === 'ntfy') {
-      const topic = pending.topic ?? String(this.context.configManager.get('surfaces.ntfy.topic') ?? '');
-      if (!topic) return;
-      const ntfy = new NtfyIntegration(
-        String(this.context.configManager.get('surfaces.ntfy.baseUrl') ?? 'https://ntfy.sh'),
-        await this.context.serviceRegistry.resolveSecret('ntfy', 'primary') ?? process.env.NTFY_ACCESS_TOKEN ?? undefined,
-      );
-      await ntfy.publish(topic, progress.slice(0, 300), {
-        title: `Agent ${pending.agentId}`,
-        markGoodVibesOrigin: true,
-      });
-      return;
-    }
-    // Not a no-op. Returning here is what let a caller treat "this surface has
-    // no direct-progress implementation" as "the message went out".
-    throw new Error(
-      `Direct surface progress is not implemented for ${pending.surfaceKind}; `
-      + 'this surface delivers through the channel reply pipeline, so nothing was sent',
-    );
+    await deliverSurfaceProgress(this.directDeliveryDeps(), pending, progress);
   }
 
   async deliverSlackAgentReply(pending: PendingSurfaceReply, message: string): Promise<void> {
-    const webhookUrl = await this.resolveSlackWebhookUrl();
-    const botToken = await this.resolveSlackBotToken();
-    const slack = new SlackIntegration(webhookUrl ?? undefined, botToken ?? undefined);
-    if (pending.responseUrl) {
-      await instrumentedFetch(pending.responseUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          response_type: 'in_channel',
-          blocks: slack.formatAgentResult(pending.agentId, pending.task, message),
-        }),
-      });
-      return;
-    }
-    if (pending.channelId) {
-      await slack.postMessage(pending.channelId, message, slack.formatAgentResult(pending.agentId, pending.task, message));
-    }
+    await deliverSlackAgentReply(this.directDeliveryDeps(), pending, message);
   }
 
   async deliverDiscordAgentReply(pending: PendingSurfaceReply, message: string): Promise<void> {
-    const webhookUrl =
-      await this.context.serviceRegistry.resolveSecret('discord', 'webhookUrl')
-      ?? process.env.DISCORD_WEBHOOK_URL;
-    const botToken =
-      await this.context.serviceRegistry.resolveSecret('discord', 'primary')
-      ?? process.env.DISCORD_BOT_TOKEN;
-    const discord = new DiscordIntegration(webhookUrl ?? undefined, botToken ?? undefined);
-    if (pending.applicationId && pending.interactionToken) {
-      await discord.editOriginalResponse(
-        pending.applicationId,
-        pending.interactionToken,
-        '',
-        [discord.formatAgentResult(pending.agentId, pending.task, message)],
-      );
-      return;
-    }
-    if (pending.channelId) {
-      await discord.postMessage(pending.channelId, message, [discord.formatAgentResult(pending.agentId, pending.task, message)]);
-    }
+    await deliverDiscordAgentReply(this.directDeliveryDeps(), pending, message);
   }
 
   async deliverNtfyAgentReply(pending: PendingSurfaceReply, message: string): Promise<void> {
-    const baseUrl = String(this.context.configManager.get('surfaces.ntfy.baseUrl') ?? 'https://ntfy.sh');
-    const token = await this.context.serviceRegistry.resolveSecret('ntfy', 'primary') ?? process.env.NTFY_ACCESS_TOKEN;
-    const topic = pending.topic ?? String(this.context.configManager.get('surfaces.ntfy.topic') ?? '');
-    if (!topic) return;
-    const ntfy = new NtfyIntegration(baseUrl, token ?? undefined);
-    // undefined = nothing configured resolves to an address a phone could
-    // reach; publish without a click target rather than with a dead one.
-    const baseAction = resolveReachableBaseUrl(this.context.configManager, 'off-host');
-    await ntfy.publish(topic, message, {
-      title: `Agent ${pending.agentId}`,
-      ...(baseAction
-        ? {
-            click: `${baseAction}/api/control-plane/web`,
-            actions: [
-              `${pending.sessionId ? `view,Session,${baseAction}/api/control-plane/web?session=${encodeURIComponent(pending.sessionId)}` : `view,Control Plane,${baseAction}/api/control-plane/web`}`,
-            ],
-          }
-        : {}),
-      markGoodVibesOrigin: true,
-    });
+    await deliverNtfyAgentReply(this.directDeliveryDeps(), pending, message);
   }
 
   async deliverWebhookAgentReply(pending: PendingSurfaceReply, message: string): Promise<void> {
-    const callbackUrl = pending.callbackUrl ?? String(this.context.configManager.get('surfaces.webhook.defaultTarget') ?? '');
-    if (!callbackUrl) return;
-    const validation = validatePublicWebhookUrl(callbackUrl);
-    if (!validation.ok) {
-      logger.warn('DaemonServer: refusing unsafe webhook callback URL', {
-        agentId: pending.agentId,
-        reason: validation.error,
-      });
-      return;
-    }
-    const timeoutMs = Number(this.context.configManager.get('surfaces.webhook.timeoutMs') ?? 15_000);
-    const payload = {
-      agentId: pending.agentId,
-      sessionId: pending.sessionId ?? null,
-      routeId: pending.routeId ?? null,
-      task: pending.task,
-      message,
-      status: this.context.agentManager.getStatus(pending.agentId)?.status ?? 'completed',
-      correlationId: pending.callbackCorrelationId ?? null,
-      completedAt: Date.now(),
-    };
-    const body = JSON.stringify(payload);
-    const headers = new Headers({ 'Content-Type': 'application/json' });
-    if (pending.callbackCorrelationId) {
-      headers.set('X-Goodvibes-Correlation-Id', pending.callbackCorrelationId);
-    }
-    const secret = String(this.context.configManager.get('surfaces.webhook.secret') ?? '');
-    if (secret && pending.callbackSignature === 'hmac-sha256') {
-      headers.set('X-Goodvibes-Signature', this.signWebhookPayload(body, secret));
-    } else if (secret && pending.callbackSignature === 'shared-secret') {
-      headers.set('X-Goodvibes-Webhook-Secret', secret);
-    }
-    await instrumentedFetch(validation.url, {
-      method: 'POST',
-      headers,
-      signal: AbortSignal.timeout(timeoutMs),
-      body,
-    });
+    await deliverWebhookAgentReply(this.directDeliveryDeps(), pending, message);
   }
 
   async notifyApprovalUpdate(approval: SharedApprovalRecord): Promise<void> {

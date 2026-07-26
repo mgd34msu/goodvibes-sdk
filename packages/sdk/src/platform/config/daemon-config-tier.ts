@@ -23,8 +23,11 @@ import {
   readSharedTierFile,
   removeSharedKey,
 } from './shared-config-tier.js';
-import { isDaemonOwnedConfigKey, listDaemonOwnedConfigKeys } from './config-ownership.js';
-import type { ConfigKey } from './schema.js';
+import {
+  isDaemonOwnedConfigKey,
+  listDaemonOwnedConfigPaths,
+  type DaemonOwnedConfigPath,
+} from './config-ownership.js';
 
 /** Directory name of the daemon's own state root under `~/.goodvibes/`. */
 export const DAEMON_CONFIG_ROOT = 'daemon';
@@ -64,18 +67,22 @@ export function removeDaemonKey(path: string, key: string): void {
 
 /** A daemon-owned key found in a settings object, with its stored value. */
 export interface DaemonTierEntry {
-  readonly key: ConfigKey;
+  readonly key: DaemonOwnedConfigPath;
   readonly value: unknown;
 }
 
 /**
- * Every daemon-owned key explicitly present in a parsed settings object. Used
+ * Every daemon-owned path explicitly present in a parsed settings object. Used
  * both to overlay the daemon tier at load and to find what a surface silo is
  * still holding that should have moved.
+ *
+ * Walks `listDaemonOwnedConfigPaths`, not the schema-key list: an array-valued
+ * daemon setting stored here would otherwise be written by `set` and then never
+ * read back, so the daemon would keep running on the default.
  */
 export function collectDaemonOwnedEntries(parsed: unknown): readonly DaemonTierEntry[] {
   const found: DaemonTierEntry[] = [];
-  for (const key of listDaemonOwnedConfigKeys()) {
+  for (const key of listDaemonOwnedConfigPaths()) {
     const hit = readDotPath(parsed, key);
     if (hit.present) found.push({ key, value: hit.value });
   }
@@ -92,15 +99,33 @@ export function collectDaemonOwnedEntries(parsed: unknown): readonly DaemonTierE
  */
 export function overlayDaemonTier(
   path: string,
-  assign: (key: ConfigKey, value: unknown) => void,
-): readonly ConfigKey[] {
+  assign: (key: DaemonOwnedConfigPath, value: unknown) => void,
+): readonly DaemonOwnedConfigPath[] {
   const stored = readDaemonTierFile(path);
-  const applied: ConfigKey[] = [];
+  const applied: DaemonOwnedConfigPath[] = [];
   for (const entry of collectDaemonOwnedEntries(stored)) {
     assign(entry.key, entry.value);
     applied.push(entry.key);
   }
   return applied;
+}
+
+/**
+ * Drop daemon-store values as part of a config reset, returning the paths
+ * cleared so the caller can forget them as a source.
+ *
+ * `key === undefined` means a full reset. Without this the daemon tier would
+ * re-overlay on the next load and quietly defeat the reset.
+ */
+export function clearDaemonTierForReset(
+  path: string,
+  key: string | undefined,
+): readonly DaemonOwnedConfigPath[] {
+  const paths: readonly DaemonOwnedConfigPath[] = key === undefined
+    ? listDaemonOwnedConfigPaths()
+    : (isDaemonOwnedConfigKey(key) ? [key as DaemonOwnedConfigPath] : []);
+  for (const entry of paths) removeDaemonKey(path, entry);
+  return paths;
 }
 
 /** Re-exported for callers that hold a raw key string rather than a ConfigKey. */

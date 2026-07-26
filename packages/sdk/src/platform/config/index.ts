@@ -12,6 +12,7 @@ export { SHARED_CONFIG_KEYS, isSharedConfigKey } from './shared-config-tier.js';
 export {
   DAEMON_OWNED_CONFIG_KEYS,
   DAEMON_OWNED_CONFIG_PREFIXES,
+  DAEMON_OWNED_NON_SCHEMA_CONFIG_PATHS,
   USER_LOCAL_OVERRIDE_CONFIG_KEYS,
   USER_SHARED_WINS_CONFIG_KEYS,
   configKeyScope,
@@ -20,9 +21,14 @@ export {
   isDaemonOwnedConfigKey,
   isUserLevelConfigKey,
   listDaemonOwnedConfigKeys,
+  listDaemonOwnedConfigPaths,
   userTierOverlaysSurface,
 } from './config-ownership.js';
-export type { ConfigScope } from './config-ownership.js';
+export type {
+  ConfigScope,
+  DaemonOwnedConfigPath,
+  DaemonOwnedNonSchemaConfigPath,
+} from './config-ownership.js';
 export {
   DEFAULT_CONTROL_PLANE_PORT,
   controlPlaneScheme,

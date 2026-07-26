@@ -33,7 +33,7 @@
 import { existsSync } from 'node:fs';
 import { readDotPath } from './shared-config-tier.js';
 import { deleteRawDotPath } from './settings-io.js';
-import { listDaemonOwnedConfigKeys } from './config-ownership.js';
+import { listDaemonOwnedConfigPaths } from './config-ownership.js';
 import {
   DAEMON_CONFIG_MOVED_VERSION,
   daemonConfigMovedPath,
@@ -99,7 +99,7 @@ export function migrateDaemonOwnedConfig(
   const storePath = options.daemonStorePath ?? daemonConfigPath(options.homeDir);
   const markerPath = daemonConfigMovedPath(storePath);
 
-  const ownedKeys = listDaemonOwnedConfigKeys();
+  const ownedKeys = listDaemonOwnedConfigPaths();
   const done = readDaemonConfigMovedMarker(markerPath);
   // "Complete" is only complete for the ownership set the marker covers. A key
   // promoted to daemon-owned after that run has never been migrated, and its
@@ -180,7 +180,7 @@ function planMove(input: PlanInput): Plan {
   const discarded: DiscardedConfigKey[] = [];
   let storeChanged = false;
 
-  for (const key of listDaemonOwnedConfigKeys()) {
+  for (const key of listDaemonOwnedConfigPaths()) {
     const candidates = collectCandidates(input.surfaceFiles, key);
     const existing = readDotPath(store, key);
 

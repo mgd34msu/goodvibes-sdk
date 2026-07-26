@@ -27,8 +27,8 @@ import {
   writeRawDotPath,
 } from './settings-io.js';
 import { watchConfigFiles, reloadAndNotifyChanges, type ConfigFileWatchHandle } from './config-file-watcher.js';
-import { isDaemonOwnedConfigKey, listDaemonOwnedConfigKeys } from './config-ownership.js';
-import { daemonConfigPath, overlayDaemonTier, persistDaemonKey, removeDaemonKey } from './daemon-config-tier.js';
+import { isDaemonOwnedConfigKey, listDaemonOwnedConfigPaths, type DaemonOwnedConfigPath } from './config-ownership.js';
+import { clearDaemonTierForReset, daemonConfigPath, overlayDaemonTier, persistDaemonKey } from './daemon-config-tier.js';
 import { describeKeySource, type ConfigKeySource } from './manager-key-source.js';
 import { persistCategoryKeyRemoval, persistCategoryPatch, type CategoryIoDeps } from './manager-category-io.js';
 
@@ -148,7 +148,7 @@ export class ConfigManager {
   /** Shared keys whose value the last load actually sourced from the shared tier file. */
   private readonly sharedKeysPresent = new Set<ConfigKey>();
   /** Daemon-owned keys the last load sourced from the daemon store. */
-  private readonly daemonKeysPresent = new Set<ConfigKey>();
+  private readonly daemonKeysPresent = new Set<DaemonOwnedConfigPath>();
   private hookDispatcher: Pick<HookDispatcher, 'fire'> | null = null;
   private readonly _listeners = new Map<string, Set<(newVal: unknown, oldVal: unknown) => void>>();
   /** Active config-file watch handle (external-edit live reload), or null. */
@@ -246,7 +246,7 @@ export class ConfigManager {
   }
 
   private resolvePath(
-    key: ConfigKey,
+    key: DaemonOwnedConfigPath,
   ): { parent: Record<string, unknown>; field: string } {
     const parts = key.split('.');
     let cursor: unknown = this.config;
@@ -527,7 +527,7 @@ export class ConfigManager {
    */
   private withoutDaemonOwned(raw: Record<string, unknown>): Record<string, unknown> {
     if (!this.daemonTierPath) return raw;
-    for (const key of listDaemonOwnedConfigKeys()) deleteRawDotPath(raw, key);
+    for (const key of listDaemonOwnedConfigPaths()) deleteRawDotPath(raw, key);
     return raw;
   }
 
@@ -755,9 +755,7 @@ export class ConfigManager {
     // Reset removes the daemon-store value too, else the daemon tier would
     // re-overlay on the next load and defeat the reset.
     if (this.daemonTierPath) {
-      const daemonKeys = key === undefined ? listDaemonOwnedConfigKeys() : (isDaemonOwnedConfigKey(key) ? [key] : []);
-      for (const daemonKey of daemonKeys) {
-        removeDaemonKey(this.daemonTierPath, daemonKey);
+      for (const daemonKey of clearDaemonTierForReset(this.daemonTierPath, key)) {
         this.daemonKeysPresent.delete(daemonKey);
       }
     }
