@@ -102,66 +102,20 @@ function loadConventions(workingDirectory: string): string | null {
   }
 }
 
+const AUTONOMOUS_OPENING = 'You are an autonomous agent in GoodVibes. Complete your task fully. No human is monitoring you — never ask questions, never wait for guidance. If something is ambiguous, make the best choice and continue.';
+
 /**
- * Build a layered system prompt from base instructions, archetype, project
- * context, conventions, knowledge injections, and task text.
+ * The opening for a reply to a person.
+ *
+ * The autonomous opening is false here in a way that shows: a human IS
+ * monitoring this run — they sent a message and are waiting on their phone for
+ * the answer. Telling the model otherwise is part of what produced a filed
+ * report instead of a reply.
  */
-export function buildOrchestratorSystemPrompt(
-  record: AgentRecord,
-  skipLayers?: Set<string>,
-  deps?: PromptContextDeps,
-): string {
-  const parts: string[] = [];
+const CONVERSATIONAL_OPENING = 'You are GoodVibes, replying to a person who just messaged you. They are waiting for your answer, so answer them directly. If you need something from them to answer well, ask for it — this is a conversation, not a job.';
 
-  // --- Layer 1: Base instructions ---
-  // Build tool descriptions for only the tools this agent has
-  const toolDescriptions: Record<string, string> = {
-    read: 'read files (supports extract modes: content, outline, symbols, lines)',
-    write: 'create new files (auto-creates parent directories)',
-    edit: 'find-and-replace in existing files (supports exact, fuzzy, regex matching)',
-    find: 'search files by glob pattern, content regex, or symbol extraction',
-    exec: 'run shell commands (build, test, lint, install)',
-    analyze: 'code analysis (impact, dependencies, dead code, security, coverage)',
-    inspect: 'project structure, API routes, database schema, components',
-    state: 'read/write session state and persistent memory',
-    fetch: 'HTTP requests with extraction modes (json, markdown, text, code blocks)',
-    workflow: 'manage workflow state machines, triggers, and scheduled tasks',
-    registry: 'discover and inspect available skills, agents, and tools',
-  };
-
-  const toolLines = record.tools
-    .filter(t => t !== 'agent')
-    .map(t => toolDescriptions[t] ? `- ${t} — ${toolDescriptions[t]}` : `- ${t}`)
-    .join('\n');
-
-  const toolNames = record.tools.filter(t => t !== 'agent').join(', ');
-  parts.push(`You are an autonomous agent in GoodVibes. Complete your task fully. No human is monitoring you — never ask questions, never wait for guidance. If something is ambiguous, make the best choice and continue.
-
-## Tools
-You have access to: ${toolNames}
-${toolLines}
-
-If MCP tools are available (e.g., context7 for library documentation), use them for research before guessing at API usage.
-
-## Rules
-1. Understand before editing. Never modify a file without first reading or searching its content to know what you're changing.
-2. Write-local, read-global. Only create/modify files within the working directory. Read anything for context.
-3. Validate after changes. Run typecheck/lint/test when the project supports them.
-4. No mocks, no placeholders. Every implementation must be production-ready with proper error handling and types.
-5. No narration. Don't explain your process or repeat the task.
-
-## Recovery
-When something fails or you need to learn how a library/framework works:
-1. Try with your own knowledge
-2. Search for documentation via the context7 MCP tool (resolve-library-id then query-docs) if available
-3. Read relevant source files, configs, or local docs for context
-4. Try an alternative approach
-If repeated attempts fail, report the failure clearly and move on. Do not loop indefinitely.
-
-## Logging
-Use the state tool (mode: memory) to record decisions and failures to .goodvibes/memory/ when you make significant choices or encounter errors worth preventing in future runs.
-
-## Output
+/** The completion-report contract every working agent owes the WRFC controller. */
+const REPORT_OUTPUT_SECTION = `## Output
 When complete, report only:
 - Summary: 1-2 sentences
 - Changes: files created/modified
@@ -230,7 +184,93 @@ The report format depends on your role:
   "summary": "what was accomplished",
   "result": "detailed result"
 }
-\`\`\``);
+\`\`\``;
+
+/**
+ * What a conversational spawn is asked for instead.
+ *
+ * The completion report is a contract with the WRFC controller, and a
+ * conversational run has no controller to hand it to — so asking for one
+ * produced pure paperwork. "Hey, are you there?" came back to the owner's
+ * phone as a filled-in form: a Summary heading, `Changes: None`, `Decisions:`,
+ * `Issues:`, `Uncertainties:`. The channel boundary strips that shape as a
+ * backstop (channels/completion-report-prose.ts); this is the source, and the
+ * source is the half that stops it being generated at all.
+ */
+const CONVERSATIONAL_OUTPUT_SECTION = `## Output
+You are writing a message to a person, most likely read on a phone.
+
+- Answer in plain sentences. Lead with the answer.
+- No completion report, no JSON block, and no report sections — no "Summary:",
+  no "Changes:", no "Decisions:", no "Issues:", no "Uncertainties:". Those are
+  internal machinery and mean nothing to the person reading this.
+- No headings, no status lines, no restating the question, no sign-off.
+- Say what is true, at whatever length that takes — usually a sentence or two.
+  Brevity is not the goal; not padding is.
+- If you have genuinely nothing to say, say so in a sentence rather than
+  filling in a form.`;
+
+/**
+ * Build a layered system prompt from base instructions, archetype, project
+ * context, conventions, knowledge injections, and task text.
+ */
+export function buildOrchestratorSystemPrompt(
+  record: AgentRecord,
+  skipLayers?: Set<string>,
+  deps?: PromptContextDeps,
+): string {
+  const parts: string[] = [];
+
+  // --- Layer 1: Base instructions ---
+  // Build tool descriptions for only the tools this agent has
+  const toolDescriptions: Record<string, string> = {
+    read: 'read files (supports extract modes: content, outline, symbols, lines)',
+    write: 'create new files (auto-creates parent directories)',
+    edit: 'find-and-replace in existing files (supports exact, fuzzy, regex matching)',
+    find: 'search files by glob pattern, content regex, or symbol extraction',
+    exec: 'run shell commands (build, test, lint, install)',
+    analyze: 'code analysis (impact, dependencies, dead code, security, coverage)',
+    inspect: 'project structure, API routes, database schema, components',
+    state: 'read/write session state and persistent memory',
+    fetch: 'HTTP requests with extraction modes (json, markdown, text, code blocks)',
+    workflow: 'manage workflow state machines, triggers, and scheduled tasks',
+    registry: 'discover and inspect available skills, agents, and tools',
+  };
+
+  const toolLines = record.tools
+    .filter(t => t !== 'agent')
+    .map(t => toolDescriptions[t] ? `- ${t} — ${toolDescriptions[t]}` : `- ${t}`)
+    .join('\n');
+
+  const toolNames = record.tools.filter(t => t !== 'agent').join(', ');
+  const conversational = record.replyStyle === 'conversational';
+  parts.push(`${conversational ? CONVERSATIONAL_OPENING : AUTONOMOUS_OPENING}
+
+## Tools
+You have access to: ${toolNames}
+${toolLines}
+
+If MCP tools are available (e.g., context7 for library documentation), use them for research before guessing at API usage.
+
+## Rules
+1. Understand before editing. Never modify a file without first reading or searching its content to know what you're changing.
+2. Write-local, read-global. Only create/modify files within the working directory. Read anything for context.
+3. Validate after changes. Run typecheck/lint/test when the project supports them.
+4. No mocks, no placeholders. Every implementation must be production-ready with proper error handling and types.
+5. No narration. Don't explain your process or repeat the task.
+
+## Recovery
+When something fails or you need to learn how a library/framework works:
+1. Try with your own knowledge
+2. Search for documentation via the context7 MCP tool (resolve-library-id then query-docs) if available
+3. Read relevant source files, configs, or local docs for context
+4. Try an alternative approach
+If repeated attempts fail, report the failure clearly and move on. Do not loop indefinitely.
+
+## Logging
+Use the state tool (mode: memory) to record decisions and failures to .goodvibes/memory/ when you make significant choices or encounter errors worth preventing in future runs.
+
+${conversational ? CONVERSATIONAL_OUTPUT_SECTION : REPORT_OUTPUT_SECTION}`);
 
   // --- Layer 2: Archetype overlay ---
   const archetype = deps?.archetypeLoader?.loadArchetype(record.template) ?? null;
@@ -249,6 +289,16 @@ The report format depends on your role:
     };
     const roleDesc = roleDescriptions[record.template] ?? roleDescriptions.general;
     parts.push(roleDesc!);
+  }
+
+  // The archetype overlay is written for working agents, and both the built-in
+  // role descriptions above and a project's own archetype file can end with
+  // "Your final message MUST include a structured EngineerReport JSON block".
+  // On a conversational run that instruction is the one thing that must not be
+  // followed, and it arrives AFTER the output section — so the override goes
+  // after it too, where it is the last word on the subject.
+  if (conversational) {
+    parts.push('## Reply style\nThis run is a reply to a person, not a work deliverable. Any instruction above to produce a completion report, a JSON report block, or Summary/Changes/Decisions/Issues/Uncertainties sections does not apply here. Write the answer as an ordinary message.');
   }
 
   // --- Layer 3: Project context ---

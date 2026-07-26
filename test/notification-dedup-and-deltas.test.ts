@@ -90,6 +90,9 @@ describe('reply pipeline progress', () => {
   test('an identical body is never republished, even when forced', async () => {
     const harness = pipelineHarness();
     harness.track('agent-1');
+    // Past the floor below which no progress notification is warranted at all;
+    // what this test is about is what happens once one IS warranted.
+    harness.advance(45_000);
     await harness.progress('agent-1', 'engineering');
     const afterFirst = harness.published.length;
     expect(afterFirst).toBe(1);

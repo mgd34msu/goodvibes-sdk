@@ -7,6 +7,7 @@
  */
 import type { RuntimeEventEnvelope, AnyRuntimeEvent } from '../runtime/events/index.js';
 import { splitInlineReasoning } from '../providers/inline-reasoning.js';
+import { stripProseCompletionReport } from './completion-report-prose.js';
 import type {
   ChannelRenderEvent,
   ChannelRenderPhase,
@@ -96,12 +97,21 @@ function findCompletionReportSpan(text: string): CompletionReportSpan | null {
 const MAX_COMPLETION_REPORT_REWRITES = 4;
 
 /**
- * Replace any agent completion-report payload with the summary it carries.
+ * Replace any agent completion report with the summary it carries.
  *
  * The report is an internal contract between an agent and the WRFC controller.
- * It reached a phone lock screen verbatim as
- * `{"version":1,"archetype":"engineer",...}`. It belongs in the transcript, so
- * only the report SPAN is rewritten — prose written around it survives intact.
+ * It belongs in the transcript, so only the report SPAN is rewritten — prose
+ * written around it survives intact.
+ *
+ * BOTH forms are handled, because the report reached the owner's phone in both:
+ * once as `{"version":1,"archetype":"engineer",...}`, and again — after that
+ * was fixed — as the prose form the base agent prompt asks for, a filled-in
+ * `Summary: / Changes: / Decisions:` template with `Changes: None` under a
+ * greeting. The prose half lives in completion-report-prose.ts.
+ *
+ * The JSON pass runs first: a report can carry BOTH (prose sections above, a
+ * fenced JSON block below), and the JSON pass would otherwise be handed text
+ * the prose pass had already truncated.
  */
 export function renderWithoutCompletionReport(text: string): string {
   let out = text;
@@ -110,7 +120,7 @@ export function renderWithoutCompletionReport(text: string): string {
     if (!span) break;
     out = `${out.slice(0, span.start)}${span.summary}${out.slice(span.end)}`;
   }
-  return out.replace(/\n{3,}/g, '\n\n').trim();
+  return stripProseCompletionReport(out).replace(/\n{3,}/g, '\n\n').trim();
 }
 
 /**
@@ -141,6 +151,13 @@ function assistantTextForVisibility(text: string, reasoningVisibility: ChannelRe
   }
   return split.content;
 }
+
+/**
+ * Ceiling for a status arriving as a render EVENT rather than as an explicit
+ * progress line. Looser than the progress ceiling because WRFC chain lines
+ * legitimately quote a task summary; the surface policy trims the final body.
+ */
+const MAX_EVENT_STATUS_CHARS = 400;
 
 export function eventLine(event: ChannelRenderEvent, reasoningVisibility: ChannelReasoningVisibility): string | null {
   switch (event.kind) {
@@ -178,7 +195,12 @@ export function eventLine(event: ChannelRenderEvent, reasoningVisibility: Channe
         ? `Model: ${[event.provider, event.model].filter(Boolean).join(' / ')}`
         : event.text ?? null;
     case 'status':
-      return event.text ?? null;
+      // Same placeholder rule as an explicit progress line. `AgentRecord.progress`
+      // reaches a surface by BOTH routes — handed to deliverProgress by the
+      // daemon's poller, and republished as an AGENT_PROGRESS runtime event —
+      // so filtering only the first route would leave the second one shipping
+      // "Turn 1 · Thinking…" exactly as before.
+      return event.text ? channelStatusLine(event.text, MAX_EVENT_STATUS_CHARS) : null;
     case 'error':
       return event.text ? `Error: ${event.text}` : null;
   }
@@ -186,13 +208,36 @@ export function eventLine(event: ChannelRenderEvent, reasoningVisibility: Channe
 
 /**
  * The hard ceiling on a progress status line. A status line is one short
- * phrase — "Turn 3 · Read(src/parse.ts)", "Network error, retrying in 5s…" —
- * so this is a backstop, not a budget to fill.
+ * phrase — "Read(src/parse.ts)", "Network error, retrying in 5s…" — so this is
+ * a backstop, not a budget to fill.
  */
 const MAX_PROGRESS_STATUS_CHARS = 160;
 
 /**
- * Reduce whatever the caller passed as progress to ONE bounded line.
+ * The turn counter the orchestrator prefixes to every progress line
+ * ("Turn 3 · Read(src/parse.ts)").
+ *
+ * Kept for operator surfaces, removed here. Which turn an agent is on is a
+ * fact about the machine, not about the work: nobody reading a phone can do
+ * anything with it, and it changes on every tick, which is exactly what
+ * defeats the identical-body suppression and turns one exchange into a stack
+ * of notifications.
+ */
+const TURN_COUNTER_PREFIX = /^turn\s+\d+\s*(?:[·:•\-–—]\s*)?/i;
+
+/**
+ * Status text that says only that the machine is running.
+ *
+ * Owner ruling: never emit a placeholder that carries no information a person
+ * can act on — if the only thing you have to say is that a turn started, say
+ * nothing. `Turn 1 · Thinking…` is both halves of that at once, and it was the
+ * single most-delivered notification body on the owner's phone.
+ */
+const CONTENTLESS_STATUS = /^(?:thinking|working|processing|starting|started|running|in progress|please wait|waiting|busy)\b[\s.…!]*$/i;
+
+/**
+ * Reduce whatever the caller passed as progress to ONE bounded line a person
+ * can act on, or null when it says nothing.
  *
  * Newlines are collapsed rather than kept, which is what makes this safe by
  * construction: a caller who wrongly hands over accumulating content cannot
@@ -203,10 +248,15 @@ const MAX_PROGRESS_STATUS_CHARS = 160;
  * Callers must still pass a STATUS ("what is happening now"), never content:
  * `AgentRecord.progress` is exactly that, and `streamingContent` is not.
  */
-function progressStatusLine(explicitText: string, policy: ChannelRenderPolicy): string | null {
-  const collapsed = explicitText.replace(/\s+/g, ' ').trim();
+export function channelStatusLine(rawText: string, maxChars = MAX_PROGRESS_STATUS_CHARS): string | null {
+  const collapsed = rawText.replace(/\s+/g, ' ').trim().replace(TURN_COUNTER_PREFIX, '').trim();
   if (!collapsed) return null;
-  return trimText(collapsed, Math.min(MAX_PROGRESS_STATUS_CHARS, policy.maxChunkChars));
+  if (CONTENTLESS_STATUS.test(collapsed)) return null;
+  return trimText(collapsed, maxChars);
+}
+
+function progressStatusLine(explicitText: string, policy: ChannelRenderPolicy): string | null {
+  return channelStatusLine(explicitText, Math.min(MAX_PROGRESS_STATUS_CHARS, policy.maxChunkChars));
 }
 
 export function buildRenderedText(
@@ -291,12 +341,20 @@ export function normalizeChannelRenderEventFromRuntime(
         ? [renderEvent('status', 'progress', envelope, { text: payload.progress })]
         : [];
     case 'AGENT_COMPLETED':
-      return [
-        ...(payload.output?.trim()
-          ? [renderEvent('assistant_text', 'final', envelope, { text: payload.output })]
-          : []),
-        renderEvent('status', 'final', envelope, { text: `Agent completed in ${payload.durationMs}ms` }),
-      ];
+      // The answer, and nothing else.
+      //
+      // This used to ALSO emit `Agent completed in ${durationMs}ms`, which the
+      // pipeline appended under the reply on every completion — operator
+      // telemetry pushed to a phone, and the source of the duplicate
+      // completion line under every answer. It stays in the activity log and
+      // on operator surfaces, which read the runtime event directly.
+      //
+      // A completion with no output still emits ONE final-phase event, because
+      // an empty event list would leave the pipeline never told the run ended
+      // and the reader in silence. It says the least it can.
+      return payload.output?.trim()
+        ? [renderEvent('assistant_text', 'final', envelope, { text: payload.output })]
+        : [renderEvent('status', 'final', envelope, { text: 'Done.' })];
     case 'AGENT_FAILED':
       return [renderEvent('error', 'final', envelope, { text: payload.error })];
     case 'AGENT_CANCELLED':

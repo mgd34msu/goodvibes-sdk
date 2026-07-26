@@ -111,7 +111,18 @@ export function gateSurfaceSpawn(
     // Conversation still gets a real reply — it just must not become a
     // workstream. Disabling WRFC here is the difference between answering
     // "Testing" and running engineer -> reviewer -> gates against it.
-    return deps.trySpawnAgent({ ...input, dangerously_disable_wrfc: true }, logLabel, sessionId);
+    //
+    // `replyStyle` carries the SAME decision through to the system prompt. The
+    // gate had already classified this as conversation and then spawned an
+    // agent still under instructions to file a completion report, so "Hey, are
+    // you there?" was answered with a Summary/Changes/Decisions form. What the
+    // message IS and what the reply should LOOK like are one decision, made
+    // here, once.
+    return deps.trySpawnAgent(
+      { ...input, dangerously_disable_wrfc: true, replyStyle: 'conversational' },
+      logLabel,
+      sessionId,
+    );
   }
 
   const summary = intent.kind === 'work' ? intent.summary : summarizeWorkRequest(inboundText ?? '');

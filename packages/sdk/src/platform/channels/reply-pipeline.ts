@@ -14,11 +14,32 @@ import { logger } from '../utils/logger.js';
 
 import { markEventsDelivered, selectUndeliveredEvents } from './reply-delta.js';
 import { buildRenderedText, normalizeChannelRenderEventFromRuntime } from './reply-render.js';
+import { DEFAULT_POLICY } from './reply-policy.js';
 
 export { normalizeChannelRenderEventFromRuntime } from './reply-render.js';
 
 const MAX_BUFFERED_EVENTS = 64;
 const DEFAULT_PROGRESS_INTERVAL_MS = 7_500;
+
+/**
+ * How long a run must have been going before it may interrupt anyone with a
+ * progress notification.
+ *
+ * Owner ruling: a progress notification is warranted only when silence would
+ * be worse — when the work has been running long enough that a person would
+ * reasonably wonder whether it died. Below this floor an exchange produces
+ * exactly ONE notification, the answer, which is what asking a question is
+ * supposed to feel like.
+ *
+ * Measured from `pending.createdAt` (when the reply was queued for this
+ * agent), so it bounds the WHOLE run rather than the gap between ticks — the
+ * pacing interval already does the latter, and pacing alone still let a
+ * three-second conversational turn produce a "starting" push before its
+ * answer. Applied ahead of `force`, because forcing exists to bypass pacing
+ * for something worth interrupting for, and nothing in the first few seconds
+ * of a run qualifies.
+ */
+const MIN_PROGRESS_NOTIFICATION_AGE_MS = 30_000;
 
 export interface TrackedChannelReply {
   readonly agentId: string;
@@ -86,162 +107,6 @@ interface ReplyBufferState {
   lastDeliveredText?: string | undefined;
   lastDeliveredAt?: number | undefined;
 }
-
-const DEFAULT_POLICY: Record<ChannelSurface, ChannelRenderPolicy> = {
-  tui: {
-    surface: 'tui',
-    reasoningVisibility: 'public',
-    format: 'markdown',
-    supportsThreads: true,
-    maxChunkChars: 8_000,
-    maxEventsPerUpdate: 24,
-    metadata: {},
-  },
-  web: {
-    surface: 'web',
-    reasoningVisibility: 'summary',
-    format: 'markdown',
-    supportsThreads: true,
-    maxChunkChars: 8_000,
-    maxEventsPerUpdate: 24,
-    metadata: {},
-  },
-  slack: {
-    surface: 'slack',
-    reasoningVisibility: 'summary',
-    format: 'markdown',
-    supportsThreads: true,
-    maxChunkChars: 2_500,
-    maxEventsPerUpdate: 12,
-    metadata: {},
-  },
-  discord: {
-    surface: 'discord',
-    reasoningVisibility: 'summary',
-    format: 'markdown',
-    supportsThreads: true,
-    maxChunkChars: 2_500,
-    maxEventsPerUpdate: 12,
-    metadata: {},
-  },
-  ntfy: {
-    surface: 'ntfy',
-    reasoningVisibility: 'suppress',
-    format: 'plain',
-    supportsThreads: false,
-    maxChunkChars: 1_600,
-    maxEventsPerUpdate: 6,
-    metadata: {},
-  },
-  webhook: {
-    surface: 'webhook',
-    reasoningVisibility: 'private',
-    format: 'json',
-    supportsThreads: false,
-    maxChunkChars: 12_000,
-    maxEventsPerUpdate: 24,
-    metadata: {},
-  },
-  homeassistant: {
-    surface: 'homeassistant',
-    reasoningVisibility: 'summary',
-    format: 'json',
-    supportsThreads: true,
-    maxChunkChars: 8_000,
-    maxEventsPerUpdate: 16,
-    metadata: {},
-  },
-  telegram: {
-    surface: 'telegram',
-    reasoningVisibility: 'summary',
-    format: 'markdown',
-    supportsThreads: false,
-    maxChunkChars: 3_500,
-    maxEventsPerUpdate: 10,
-    metadata: {},
-  },
-  'google-chat': {
-    surface: 'google-chat',
-    reasoningVisibility: 'summary',
-    format: 'markdown',
-    supportsThreads: true,
-    maxChunkChars: 3_500,
-    maxEventsPerUpdate: 10,
-    metadata: {},
-  },
-  signal: {
-    surface: 'signal',
-    reasoningVisibility: 'summary',
-    format: 'plain',
-    supportsThreads: false,
-    maxChunkChars: 3_500,
-    maxEventsPerUpdate: 10,
-    metadata: {},
-  },
-  whatsapp: {
-    surface: 'whatsapp',
-    reasoningVisibility: 'summary',
-    format: 'plain',
-    supportsThreads: false,
-    maxChunkChars: 3_500,
-    maxEventsPerUpdate: 10,
-    metadata: {},
-  },
-  telephony: {
-    surface: 'telephony',
-    reasoningVisibility: 'suppress',
-    format: 'plain',
-    supportsThreads: false,
-    maxChunkChars: 1_400,
-    maxEventsPerUpdate: 6,
-    metadata: {},
-  },
-  imessage: {
-    surface: 'imessage',
-    reasoningVisibility: 'summary',
-    format: 'plain',
-    supportsThreads: false,
-    maxChunkChars: 3_500,
-    maxEventsPerUpdate: 10,
-    metadata: {},
-  },
-  msteams: {
-    surface: 'msteams',
-    reasoningVisibility: 'summary',
-    format: 'markdown',
-    supportsThreads: true,
-    maxChunkChars: 3_500,
-    maxEventsPerUpdate: 10,
-    metadata: {},
-  },
-  bluebubbles: {
-    surface: 'bluebubbles',
-    reasoningVisibility: 'summary',
-    format: 'plain',
-    supportsThreads: false,
-    maxChunkChars: 3_500,
-    maxEventsPerUpdate: 10,
-    metadata: {},
-  },
-  mattermost: {
-    surface: 'mattermost',
-    reasoningVisibility: 'summary',
-    format: 'markdown',
-    supportsThreads: true,
-    maxChunkChars: 3_500,
-    maxEventsPerUpdate: 10,
-    metadata: {},
-  },
-  matrix: {
-    surface: 'matrix',
-    reasoningVisibility: 'summary',
-    format: 'markdown',
-    supportsThreads: true,
-    maxChunkChars: 3_500,
-    maxEventsPerUpdate: 10,
-    metadata: {},
-  },
-};
 
 function resolveEnvelopeAgentId(envelope: RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>): string | null {
   if (envelope.agentId) return envelope.agentId;
@@ -408,6 +273,9 @@ export class ChannelReplyPipeline {
   ): Promise<ChannelRenderResult | null> {
     const state = this.buffers.get(agentId);
     if (!state) return null;
+    // Nothing is worth interrupting for yet. See MIN_PROGRESS_NOTIFICATION_AGE_MS:
+    // this is what makes a conversational exchange exactly one notification.
+    if (this.now() - state.pending.createdAt < MIN_PROGRESS_NOTIFICATION_AGE_MS) return null;
     const policy = await this.resolvePolicy(state.pending.surfaceKind);
     // Every surface gets the status line, ntfy included. Blanking it for ntfy
     // made the owner's primary channel the only one with no "what is happening
@@ -502,6 +370,19 @@ export class ChannelReplyPipeline {
     const freshEvents = selectUndeliveredEvents(state, candidateEvents);
     const renderEvents = freshEvents.length > 0 ? freshEvents : [statusEvent];
     const text = buildRenderedText(explicitText, renderEvents, policy, 'final');
+    // Nothing left to say, so say nothing.
+    //
+    // Reachable now that the renderer strips a completion report down to the
+    // summary it carries: an agent whose entire output WAS the report, with a
+    // summary that filled in the form and said nothing, renders to empty. An
+    // empty notification is honest about that; a notification made of the
+    // paperwork that produced it is not. The run is still closed out — marked
+    // delivered and untracked — so this cannot leave an agent tracked forever.
+    if (!text.trim()) {
+      markEventsDelivered(state, renderEvents);
+      if (!options.keepTracking) this.untrack(agentId);
+      return null;
+    }
     // A chain that keeps tracking (ntfy workflow chains) can reach this more
     // than once. An identical final body is a duplicate notification, not a
     // second outcome — publish it once.

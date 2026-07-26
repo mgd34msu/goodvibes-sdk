@@ -157,6 +157,8 @@ export interface AgentRecord {
   /** Set when this owner agent's chain was created by collapsing a requested fan-out (schema.ts FanoutCollapseInfo). */
   fanoutCollapse?: AgentInput['fanoutCollapse'] | undefined;
   dangerously_disable_wrfc?: boolean | undefined;
+  /** Completion report, or reply to a person; see AgentInput.replyStyle. Absent ⇒ 'report'. */
+  replyStyle?: 'report' | 'conversational' | undefined;
   /**
    * Orchestration engine tag: set by phase-runner.ts when it
    * spawns an agent to run one WorkItem through one Phase. Mirrors
@@ -526,6 +528,7 @@ export class AgentManager {
         reasoningSummaryCount: 0,
       },
       dangerously_disable_wrfc: input.dangerously_disable_wrfc,
+      ...(input.replyStyle ? { replyStyle: input.replyStyle } : {}),
       workingDirectory: input.workingDirectory,
       cohort: input.cohort,
 
