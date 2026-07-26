@@ -36,6 +36,15 @@ export interface ProviderRuntimeStatus {
   readonly metadata: Record<string, unknown>;
 }
 
+/** Options that apply when a surface is (re)started. */
+export interface ProviderRuntimeStartOptions {
+  /**
+   * Wall-clock ms to replay ntfy from — the last moment the previous
+   * responsible node was heard from. Null or absent subscribes live.
+   */
+  readonly replayFromMs?: number | null | undefined;
+}
+
 export interface ProviderRuntimeActionResult {
   readonly ok: boolean;
   readonly surface: ProviderRuntimeSurface;
@@ -86,7 +95,7 @@ export class ChannelProviderRuntimeManager {
    * said why. An enabled surface that does not come up is now an ERROR naming
    * the surface, the reason, and the setting to change.
    */
-  async startConfigured(): Promise<ProviderRuntimeActionResult[]> {
+  async startConfigured(options: ProviderRuntimeStartOptions = {}): Promise<ProviderRuntimeActionResult[]> {
     const results: ProviderRuntimeActionResult[] = [];
     const attempt = async (
       surface: ProviderRuntimeSurface,
@@ -99,7 +108,7 @@ export class ChannelProviderRuntimeManager {
         this.reportInert(surface, missing);
         return;
       }
-      const result = await this.start(surface);
+      const result = await this.start(surface, options);
       results.push(result);
       if (!result.ok) this.reportInert(surface, result.message);
     };
@@ -127,10 +136,13 @@ export class ChannelProviderRuntimeManager {
     logger.error(`${surface} is enabled but is NOT receiving messages`, { surface, action: reason });
   }
 
-  async start(surface: ProviderRuntimeSurface): Promise<ProviderRuntimeActionResult> {
+  async start(
+    surface: ProviderRuntimeSurface,
+    options: ProviderRuntimeStartOptions = {},
+  ): Promise<ProviderRuntimeActionResult> {
     if (surface === 'slack') return this.startSlack();
     if (surface === 'discord') return this.startDiscord();
-    return this.startNtfy();
+    return this.startNtfy(options);
   }
 
   stop(surface: ProviderRuntimeSurface): ProviderRuntimeActionResult {
@@ -238,7 +250,7 @@ export class ChannelProviderRuntimeManager {
     }
   }
 
-  private async startNtfy(): Promise<ProviderRuntimeActionResult> {
+  private async startNtfy(options: ProviderRuntimeStartOptions = {}): Promise<ProviderRuntimeActionResult> {
     if (this.ntfyAbort) {
       return this.result('ntfy', true, 'ntfy JSON stream runtime is already running.');
     }
@@ -254,8 +266,17 @@ export class ChannelProviderRuntimeManager {
       await this.resolveNtfyToken() ?? undefined,
     );
     const topicList = topics.join(',');
-    const since = createNtfyLiveSubscriptionSince();
-    this.markStarted('ntfy', { topics, since, replayCachedMessages: false });
+    // ntfy keeps no per-subscriber cursor, so a takeover that subscribed
+    // "from now" would silently lose every message published between the old
+    // master's last breath and this start. `replayFromMs` is that last breath
+    // — the moment the previous master was last heard from — so the gap is
+    // replayed rather than dropped. Telegram needs no equivalent: its backlog
+    // is server-side and the offset cursor already covers it.
+    const replayFromMs = options.replayFromMs ?? null;
+    const since = replayFromMs === null
+      ? createNtfyLiveSubscriptionSince()
+      : createNtfyLiveSubscriptionSince(replayFromMs);
+    this.markStarted('ntfy', { topics, since, replayCachedMessages: replayFromMs !== null });
     void ntfy.subscribeJsonStream(topicList, (message) => this.handleNtfyMessage(message), {
       since,
       signal: abort.signal,

@@ -68,6 +68,17 @@ interface ControlRouteContext {
    */
   readonly collectReceipts?: (() => readonly { id: string; text: string; at: number }[]) | undefined;
   /**
+   * Which node on the local network currently consumes inbound channel
+   * messages, and how it got there.
+   *
+   * Inspection ONLY, and unconditional on every /status read (unlike receipts,
+   * reading it consumes nothing). Leader election is otherwise invisible by
+   * design: it produces no notification, no transcript line and no message on
+   * any surface, so a `/status` read is the one place an operator can see who
+   * holds the role. Absent on a host with no coordinator.
+   */
+  readonly collectClusterStatus?: (() => unknown) | undefined;
+  /**
    * The minimum CLIENT build this daemon accepts as a full participant,
    * announced on /status as a response header (the body has a closed schema,
    * and a header is additive and ignorable by older clients).
@@ -128,6 +139,7 @@ export function createDaemonControlRouteHandlers(
         status: 'running',
         version: context.version,
         ...(consumeReceipts && context.collectReceipts ? { receipts: context.collectReceipts() } : {}),
+        ...(context.collectClusterStatus ? { cluster: context.collectClusterStatus() } : {}),
       }, floorHeader ? { headers: floorHeader } : undefined);
     },
     getCurrentAuth: (req) => {
