@@ -4,6 +4,31 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
+## [1.16.1] - 2026-07-26
+
+### Fixed
+
+- **A consumer could not pass `conversationGateConfig` to `SharedSessionBroker`
+  at all.** `ConversationGateConfigReader.getCategory` was typed with the
+  literal `'conversationGate'`, and `ConfigManager.getCategory` is generic over
+  `keyof GoodVibesConfig` — a union `conversationGate` only joins through the
+  module augmentation in `config/schema-domain-conversation-gate.ts`. Inside
+  this package that augmentation is always loaded, so the SDK's own composition
+  root compiled and the defect was invisible. A consumer's program loads only
+  the declarations its own imports reach, so there a plain `ConfigManager` was
+  rejected by the very interface written to accept it:
+
+      Type '"conversationGate"' is not assignable to type 'keyof GoodVibesConfig'
+
+  Which meant the one line that makes the daemon honor `conversationGate.mode`
+  and `gatedSurfaces` on the live-agent handover path could not be written in
+  `goodvibes-tui` or `goodvibes-agent` — the gate silently ran on defaults in
+  both. The parameter is now `string`, so the contract depends on no
+  augmentation, and `test/types/conversation-gate-config-reader.ts` pins the
+  assignment from a consumer's vantage point by resolving through the package
+  name rather than a relative path (which is the only vantage point from which
+  the failure was visible).
+
 ## [1.16.0] - 2026-07-26
 
 ### Added
