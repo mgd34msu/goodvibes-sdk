@@ -1,10 +1,41 @@
+import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SDK_ROOT = resolve(__dirname, '..');
-const TMP_ROOT = resolve(SDK_ROOT, '.tmp');
+
+/**
+ * Where the lock lives — the SHARED git directory, not this checkout.
+ *
+ * A linked worktree has its own `.tmp`, so keying the lock off the checkout
+ * gave every worktree a private lock and two builds ran at once. They then
+ * raced over one output tree: `build.ts` deletes the `dist` directory of every
+ * workspace package before `tsc -b --force` regenerates it, so a second builder
+ * could be reading a tree the first had just removed, and any consumer
+ * dev-linked at that tree saw no SDK at all for the length of a rebuild.
+ *
+ * `git rev-parse --git-common-dir` resolves to the SAME directory from the main
+ * checkout and from every worktree of it, which is exactly the scope the build
+ * output has. A checkout that is not a git repository at all falls back to its
+ * own `.tmp`, which is the old behaviour and still correct for a lone tree.
+ */
+function lockRoot(): string {
+  try {
+    const commonDir = execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], {
+      cwd: SDK_ROOT,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    if (commonDir) return resolve(commonDir, 'goodvibes-workspace');
+  } catch {
+    // Not a git checkout, or no git on PATH.
+  }
+  return resolve(SDK_ROOT, '.tmp');
+}
+
+const TMP_ROOT = lockRoot();
 const LOCK_DIR = resolve(TMP_ROOT, 'workspace.lock');
 const LOCK_INFO_PATH = resolve(LOCK_DIR, 'owner.json');
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000;

@@ -353,11 +353,19 @@ describe('housekeeping discloses and repeats', () => {
     await store.register({ principalId: 'op-1', endpoint: 'https://push.example/live', keys: realKeys() });
     // A record goes dead AFTER the recovery sweep already ran.
     seed([...readStored(), record({ id: 'push-dead-later', consecutiveFailures: 8 })]);
+    // A sweep publishes two effects, strictly in order: the store file first,
+    // the disclosure record after it. Waiting on the store alone returned while
+    // the disclosure write was still in flight, and the assertion below then
+    // read an empty disclosure file. Unloaded that gap is microseconds, so the
+    // test passed; under load it widened past the poll and the test failed for
+    // a reason that had nothing to do with sweeping. Wait for BOTH effects.
     store.startPeriodicSweep(15);
     try {
-      const deadline = Date.now() + 5000;
+      const deadline = Date.now() + 30_000;
       while (Date.now() < deadline) {
-        if (readStored().length === 1) break;
+        const swept = readStored().length === 1
+          && readDisclosures().some((entry) => entry.trigger === 'periodic');
+        if (swept) break;
         await new Promise((resolve) => setTimeout(resolve, 10));
       }
     } finally {
@@ -367,7 +375,7 @@ describe('housekeeping discloses and repeats', () => {
     const periodic = readDisclosures().filter((r) => r.trigger === 'periodic');
     expect(periodic.length).toBeGreaterThan(0);
     expect(periodic[0]?.removed[0]?.subscriptionId).toBe('push-dead-later');
-  });
+  }, 60_000);
 
   test('a read never serves a record that is provably dead', async () => {
     seed([record({ id: 'push-junk', keys: { p256dh: 'p', auth: 'a' } }), record({ id: 'push-ok' })]);

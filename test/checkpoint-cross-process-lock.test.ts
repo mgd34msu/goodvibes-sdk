@@ -378,7 +378,12 @@ describe('WorkspaceCheckpointManager: two instances sharing one directory (simul
     const gitDir = join(root, '.goodvibes', 'checkpoints', 'git');
     const fsck = runGit(root, ['--git-dir', gitDir, 'fsck', '--no-dangling']);
     expect(fsck.exitCode).toBe(0);
-  });
+    // This drives eight or so real git subprocesses. It finishes in about a
+    // second on an idle host, which left only 5x headroom under bun's default
+    // 5s budget — enough that a loaded host blew through it and reported a
+    // timeout as a locking failure. The budget is a hang detector, not a
+    // performance assertion: the test still returns the moment the work is done.
+  }, 60_000);
 
   test('concurrent restore() and create() from two instances never corrupt the shared repo', async () => {
     const root = tempDir('gv-lock-two-mgrs-restore-');
@@ -410,7 +415,9 @@ describe('WorkspaceCheckpointManager: two instances sharing one directory (simul
     const managerC = new WorkspaceCheckpointManager({ workspaceRoot: root, autoRetention: false });
     const all = await managerC.list();
     expect(all.length).toBeGreaterThan(0);
-  });
+    // Same reason as the sibling above: real git subprocesses, ~1.6s idle,
+    // against a default budget that a loaded host overruns.
+  }, 60_000);
 });
 
 describe('WorkspaceCheckpointManager: real subprocess separation', () => {
