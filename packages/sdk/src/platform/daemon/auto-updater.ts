@@ -27,7 +27,7 @@
  */
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { logger } from '../utils/logger.js';
+import { flushActivityLogSync, logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 import {
   applyVerifiedUpdate,
@@ -246,6 +246,10 @@ export class DaemonAutoUpdater {
     // supervised instance starts from the already-swapped new binary.
     logger.info('DaemonAutoUpdater: unsupervised daemon; adopting into the service manager and handing over');
     actions.adoptIntoService();
+    // The handover record has to be on disk before this process stops being
+    // one. Without it an update that goes wrong reads, in the log, as a daemon
+    // that simply vanished mid-sentence.
+    flushActivityLogSync();
     (this.options.exitProcess ?? ((code: number) => process.exit(code)))(0);
   }
 }

@@ -10,7 +10,7 @@ import { DaemonServer } from './server.js';
 import { HttpListener } from './http-listener.js';
 import { PlatformServiceManager } from './service-manager.js';
 import { VERSION } from '../version.js';
-import { configureActivityLogger, logger } from '../utils/logger.js';
+import { configureActivityLogger, flushActivityLogSync, logger } from '../utils/logger.js';
 import { GlobalNetworkTransportInstaller } from '../runtime/network/index.js';
 import { summarizeError } from '../utils/error-display.js';
 import { resolveDaemonHomeDir, ensureDaemonHome, readDaemonSetting } from '../workspace/daemon-home.js';
@@ -170,10 +170,13 @@ async function main(): Promise<void> {
   ]);
 
   const shutdown = async (): Promise<void> => {
+    logger.info('goodvibes daemon host stopping');
     await Promise.allSettled([listener.stop(), daemon.stop()]);
-    // Set exitCode rather than calling process.exit(0) so that any
-    // already-queued I/O (log flushes, connection drains) can complete
-    // before the process terminates naturally.
+    // Set exitCode rather than calling process.exit(0) so that connection
+    // drains can complete before the process terminates naturally. The log is
+    // not left to that: it is written here, on this thread, because a shutdown
+    // that then dies to a signal or a hung socket must still have said so.
+    flushActivityLogSync();
     process.exitCode = 0;
   };
 
@@ -192,10 +195,11 @@ void main().catch(async (error) => {
   logger.error('goodvibes daemon host failed', {
     error: summarizeError(error),
   });
-  // The activity log buffers and flushes asynchronously, so process.exit()
-  // discards whatever has not been written yet — a daemon that dies during
-  // startup was leaving NO record of why, in the log or on the console. The
-  // reason goes to stderr synchronously before exiting.
+  // A daemon that dies during startup must leave the reason in BOTH places:
+  // on the console for whoever ran it, and in the activity log for whoever
+  // finds the host later. The log flush is synchronous and happens before the
+  // exit, so process.exit() can no longer discard it.
+  flushActivityLogSync();
   process.stderr.write(`goodvibes daemon host failed: ${summarizeError(error)}\n`);
   if (error instanceof Error && error.stack) process.stderr.write(`${error.stack}\n`);
   process.exit(1);
