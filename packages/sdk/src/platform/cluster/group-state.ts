@@ -62,6 +62,21 @@ export interface GroupStateDocument {
   readonly displayNameGen: number;
   readonly members: readonly GroupMember[];
   readonly tombstones: readonly GroupTombstone[];
+  /**
+   * The public half of the GROUP's signing key, and its generation.
+   *
+   * Replicated because a machine that has been away has to be able to check a
+   * reply against the group rather than against whichever member answered — and
+   * its own copy of this is the one it stored the day it joined. Higher
+   * generation wins, exactly like every other record here.
+   */
+  readonly groupSigning: GroupSigningPublicKey;
+}
+
+/** The group's signing public key at one generation. */
+export interface GroupSigningPublicKey {
+  readonly publicKey: string;
+  readonly generation: number;
 }
 
 /** The neutral name a group gets when the operator does not choose one. */
@@ -118,6 +133,14 @@ function readMember(value: unknown): GroupMember | null {
   };
 }
 
+function readGroupSigningPublicKey(value: unknown): GroupSigningPublicKey | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const candidate = value as Record<string, unknown>;
+  if (!isNonEmptyString(candidate['publicKey'], 128)) return null;
+  if (!isFiniteNumber(candidate['generation']) || candidate['generation'] < 0) return null;
+  return { publicKey: candidate['publicKey'], generation: Math.trunc(candidate['generation']) };
+}
+
 function readTombstone(value: unknown): GroupTombstone | null {
   if (typeof value !== 'object' || value === null) return null;
   const candidate = value as Record<string, unknown>;
@@ -160,11 +183,16 @@ export function readGroupStateDocument(value: unknown): GroupStateDocument | nul
       : 0,
     members,
     tombstones,
+    groupSigning: readGroupSigningPublicKey(candidate['groupSigning']) ?? { publicKey: '', generation: -1 },
   });
 }
 
 /** An empty document for a group that has just been created. */
-export function createGroupStateDocument(groupId: string, displayName: string): GroupStateDocument {
+export function createGroupStateDocument(
+  groupId: string,
+  displayName: string,
+  groupSigning: GroupSigningPublicKey = { publicKey: '', generation: -1 },
+): GroupStateDocument {
   return {
     version: 1,
     groupId,
@@ -172,7 +200,17 @@ export function createGroupStateDocument(groupId: string, displayName: string): 
     displayNameGen: 1,
     members: [],
     tombstones: [],
+    groupSigning,
   };
+}
+
+/** Publish a newly minted group signing public key into the replicated document. */
+export function withGroupSigningKey(
+  state: GroupStateDocument,
+  groupSigning: GroupSigningPublicKey,
+): GroupStateDocument {
+  if (groupSigning.generation <= state.groupSigning.generation) return state;
+  return { ...state, groupSigning };
 }
 
 // ── merge ───────────────────────────────────────────────────────────────────
@@ -260,6 +298,11 @@ export function mergeGroupState(local: GroupStateDocument, remote: GroupStateDoc
     displayNameGen: Math.max(local.displayNameGen, remote.displayNameGen),
     members: [...members.values()],
     tombstones: [...tombstones.values()],
+    // The signing key rotates only on a removal, so the higher generation is by
+    // construction the one written after the more recent removal.
+    groupSigning: remote.groupSigning.generation > local.groupSigning.generation
+      ? remote.groupSigning
+      : local.groupSigning,
   });
 }
 

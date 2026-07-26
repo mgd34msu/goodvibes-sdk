@@ -85,6 +85,16 @@ export interface GroupStatusReport {
   readonly acceptedGenerations: readonly number[];
   readonly removedNodeCount: number;
   readonly rotationHours: number;
+  /** Replicated settings: counts and provenance only, never a value. */
+  readonly replication: {
+    readonly revision: number;
+    readonly entries: number;
+    readonly secrets: number;
+    readonly tombstones: number;
+    readonly lastAppliedFrom: string | null;
+    readonly lastAppliedAt: number | null;
+    readonly pendingProposals: number;
+  } | null;
   readonly wire: {
     readonly sent: number;
     readonly received: number;
@@ -144,6 +154,7 @@ export function groupStatus(context: GroupOperationsContext): GroupOperationResu
       acceptedGenerations: runtime.keyring().acceptedGenerations(),
       removedNodeCount: state?.tombstones.length ?? 0,
       rotationHours: context.settings.keyRotationHours,
+      replication: runtime.replicationStatus(),
       wire: runtime.wireCounters ? { ...runtime.wireCounters } : null,
       advice,
     },
@@ -204,7 +215,13 @@ export async function createGroup(
     now,
   });
   const displayName = normalizeDisplayName(input.displayName, DEFAULT_GROUP_DISPLAY_NAME);
-  const admitted = admitMember(createGroupStateDocument(groupId, displayName), {
+  // The group's signing public key goes into the replicated document from the
+  // very first write, so every member that ever joins holds it.
+  const document = createGroupStateDocument(groupId, displayName, {
+    publicKey: material.groupSigning.publicKey,
+    generation: material.groupSigning.generation,
+  });
+  const admitted = admitMember(document, {
     nodeId: context.nodeId,
     displayName: context.nodeDisplayName,
     identityKey: material.node.identity.publicKey,
@@ -299,10 +316,14 @@ export async function joinGroup(
     keys: grant.keys,
     currentGeneration: grant.currentGeneration,
     node: outcome.node,
+    groupSigning: grant.groupSigning,
     now,
     graceMs: keyRotationGraceMs(context.settings),
   });
   await context.runtime.adoptMembership(material, grant.state);
+  // Ask for the group's settings straight away: a machine that has joined but
+  // holds none of them cannot serve a surface it might win in a few seconds.
+  await context.runtime.requestConfigSnapshot();
   return {
     ok: true,
     data: {
@@ -441,6 +462,63 @@ export async function forgetNode(
   };
 }
 
+export interface RotateKeyResult {
+  readonly groupId: string;
+  readonly keyGeneration: number;
+  readonly memberCount: number;
+  readonly immediate: boolean;
+  readonly acceptedGenerations: readonly number[];
+}
+
+/**
+ * Replace the group key now, because the operator said so.
+ *
+ * Two shapes, and the difference is what happens to the key being retired:
+ *
+ *   default — the outgoing generation stays accepted for the usual few minutes,
+ *     so machines that have not yet picked up the new key keep being heard and
+ *     nothing is interrupted. This is the right answer for routine hygiene.
+ *
+ *   --now — the outgoing generation stops being accepted immediately, and the
+ *     group's SIGNING key is replaced as well. This is the answer when a key is
+ *     believed to have leaked: whatever was taken stops working the moment each
+ *     machine adopts the replacement, and the cost is that a machine which is
+ *     asleep right now has to ask to come back when it wakes.
+ */
+export async function rotateGroupKey(
+  context: GroupOperationsContext,
+  input: { readonly immediate?: boolean | undefined } = {},
+): Promise<GroupOperationResult<RotateKeyResult>> {
+  const material = context.runtime.keyMaterial;
+  if (!material) {
+    return failed(
+      'this machine is not in a group, so there is no group key to replace',
+      'create a group with `cluster create`, or join one with `cluster join`',
+    );
+  }
+  if (!context.settings.enabled) {
+    return failed(
+      'sharing inbound work with your other machines is switched off on this machine',
+      'turn it on first: `config set cluster.enabled true`, then restart the daemon',
+    );
+  }
+  const immediate = input.immediate === true;
+  const rotated = await context.runtime.rotate(
+    immediate ? 'revocation' : 'scheduled',
+    immediate ? 'replaced immediately by the operator' : 'replaced by the operator',
+  );
+  return {
+    ok: true,
+    data: {
+      groupId: material.groupId,
+      keyGeneration: rotated.currentGeneration,
+      memberCount: context.runtime.groupState?.members.length ?? 0,
+      immediate,
+      acceptedGenerations: context.runtime.keyring().acceptedGenerations(),
+    },
+  };
+}
+
 export interface LeaveGroupResult {
   readonly groupId: string;
   readonly groupName: string;
@@ -532,6 +610,7 @@ export async function rejoinGroup(
       keys: outcome.grant.keys,
       currentGeneration: outcome.grant.currentGeneration,
       node: material.node,
+      groupSigning: outcome.grant.groupSigning,
       now,
       graceMs: keyRotationGraceMs(context.settings),
     }),
@@ -561,6 +640,7 @@ export interface ClusterGroupVerbSurface {
   nodes(): GroupOperationResult<NodesResult>;
   groups(): GroupOperationResult<readonly DiscoveredGroup[]>;
   forget(nodeId: string): Promise<GroupOperationResult<ForgetNodeResult>>;
+  rotate(input: { immediate?: boolean }): Promise<GroupOperationResult<RotateKeyResult>>;
   leave(): Promise<GroupOperationResult<LeaveGroupResult>>;
   rename(name: string): Promise<GroupOperationResult<RenameGroupResult>>;
 }
@@ -584,6 +664,7 @@ export function createClusterGroupVerbs(context: GroupOperationsContext): Cluste
     nodes: () => groupNodes(context),
     groups: () => groupsOnTheNetwork(context),
     forget: (nodeId) => forgetNode(context, nodeId),
+    rotate: (input) => rotateGroupKey(context, input),
     leave: () => leaveGroup(context),
     rename: (name) => renameGroupTo(context, name),
   };

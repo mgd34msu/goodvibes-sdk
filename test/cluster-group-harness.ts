@@ -56,11 +56,41 @@ export class MemorySecretStore implements ClusterSecretStore {
   }
 }
 
+/**
+ * A config store standing in for a ConfigManager.
+ *
+ * Seeded with a DIFFERENT `controlPlane.port` per node, because "the port did
+ * not follow the settings across" is one of the properties under test and it
+ * cannot be shown with a store where every node reads the same value anyway.
+ */
+export class MemoryConfigStore {
+  private readonly values = new Map<string, unknown>();
+
+  constructor(seed: Readonly<Record<string, unknown>> = {}) {
+    for (const [key, value] of Object.entries(seed)) this.values.set(key, value);
+  }
+
+  get(path: string): unknown {
+    return this.values.get(path);
+  }
+
+  set(path: string, value: unknown): void {
+    this.values.set(path, value);
+  }
+
+  reset(path: string): void {
+    this.values.delete(path);
+  }
+}
+
 export interface GroupTestNode {
   readonly id: string;
   readonly runtime: ClusterGroupRuntime;
   readonly context: GroupOperationsContext;
   readonly secrets: MemorySecretStore;
+  readonly config: MemoryConfigStore;
+  /** This machine's own control-plane port, which must never replicate. */
+  readonly localPort: number;
   readonly transport: MemoryClusterTransport;
   readonly stateDirectory: string;
 }
@@ -123,6 +153,10 @@ export interface AddNodeOptions {
    * needing a fresh bus label, because the stopped transport is still attached.
    */
   readonly nodeId?: string | undefined;
+  /** Whether this node issues config revisions. */
+  readonly isMaster?: boolean | undefined;
+  /** A logger to capture lines from; silent by default. */
+  readonly logger?: ClusterLogger | undefined;
 }
 
 /** Build a node and start its runtime. */
@@ -138,6 +172,8 @@ export async function addGroupNode(
   const settings = testGroupSettings(options.settings);
   const version = options.version ?? '1.0.0';
   const displayName = options.displayName ?? id;
+  const localPort = 4300 + world.nodes.length;
+  const config = options.reuse?.config ?? new MemoryConfigStore({ 'controlPlane.port': localPort });
 
   const runtime = new ClusterGroupRuntime({
     settings,
@@ -148,7 +184,9 @@ export async function addGroupNode(
     nodeDisplayName: displayName,
     version,
     clock: world.clock,
-    logger: SILENT_LOGGER,
+    logger: options.logger ?? SILENT_LOGGER,
+    isMaster: () => options.isMaster === true,
+    config,
     ...(options.surfaceHoldings ? { surfaceHoldings: options.surfaceHoldings } : {}),
   });
   await runtime.start();
@@ -157,6 +195,8 @@ export async function addGroupNode(
     id,
     runtime,
     secrets,
+    config,
+    localPort: options.reuse?.localPort ?? localPort,
     transport,
     stateDirectory,
     context: {

@@ -32,7 +32,13 @@ import {
 import type { ClusterLogger, ClusterTransport, ClusterTransportDescription } from './types.js';
 
 /** Envelope types the group layer handles itself rather than passing down. */
-const GROUP_OWNED_TYPES: ReadonlySet<string> = new Set(['BEACON', 'ROSTER', 'REKEY']);
+const GROUP_OWNED_TYPES: ReadonlySet<string> = new Set([
+  'BEACON', 'ROSTER', 'REKEY',
+  // Config replication rides the same signed channel. Anything not listed here
+  // is handed to the election, so a type added to the group layer and forgotten
+  // here arrives at the wrong state machine and is silently ignored.
+  'CONFIG_SNAPSHOT', 'CONFIG_DELTA', 'CONFIG_PROPOSE', 'CONFIG_REQUEST',
+]);
 
 /** Fields lifted out of an election message onto the envelope, and put back on arrival. */
 const LIFTED_FIELDS = ['type', 'nodeId', 'version', 'seq'] as const;

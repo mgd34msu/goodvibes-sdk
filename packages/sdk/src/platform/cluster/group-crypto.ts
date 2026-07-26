@@ -267,6 +267,28 @@ export function generateNodeKeyMaterial(): NodeKeyMaterial {
   };
 }
 
+/**
+ * Mint the GROUP's own signing key pair.
+ *
+ * Distinct from any node's identity key, and that distinction is the point.
+ * When a machine that has been away asks to come back, the reply has to be
+ * authenticated against something the returning machine ALREADY HELD when it
+ * left. Its stored roster is stale by definition, so a reply signed by whichever
+ * member happened to answer may be signed by a machine it has never heard of —
+ * which previously left the seal as the only thing standing behind that reply.
+ *
+ * The group signing key fixes that: every member can sign as the GROUP, and the
+ * returning machine verifies against the group public key it has held since the
+ * day it joined. It is carried in the roster (public half) and handed out in
+ * every admission grant (private half), and it rotates on removal alongside the
+ * group key, so an ejected machine's copy stops being able to speak for the
+ * group.
+ */
+export function generateGroupSigningKeyPair(): NodeKeyPairMaterial {
+  const pair = generateKeyPairSync('ed25519');
+  return exportPair(pair.publicKey, pair.privateKey);
+}
+
 /** True when `value` is a plausible raw 32-byte OKP public key. */
 export function isValidPublicKey(value: unknown): value is string {
   return typeof value === 'string' && decodeKeyBytes(value) !== null;

@@ -313,6 +313,77 @@ describe('coming back after being away', () => {
   });
 });
 
+describe('the reply to a returning machine', () => {
+  test('is signed as the GROUP, so a member admitted while it was away can answer it', async () => {
+    const { world: w, first, groupId, joinKey } = await makeGroupOfOne();
+    const second = await addGroupNode(w, 'node-b');
+    await joinGroup(second.context, { groupId, joinKey });
+    await settle();
+    await second.runtime.stop();
+
+    // A THIRD machine joins while the second is switched off, so it is not on
+    // the roster the second machine has stored.
+    const third = await addGroupNode(w, 'node-c');
+    await joinGroup(third.context, { groupId, joinKey });
+    await settle();
+
+    // Now the only machine that can answer is the one it has never heard of.
+    await first.runtime.stop();
+    const returned = await addGroupNode(w, 'node-b-restarted', { reuse: second });
+    expect(returned.runtime.groupState?.members.map((m) => m.nodeId)).not.toContain('node-c');
+
+    const rejoined = await resolveWithClock(w, rejoinGroup(returned.context));
+    expect(rejoined.ok).toBe(true);
+    expect(returned.runtime.keyMaterial?.currentGeneration)
+      .toBe(third.runtime.keyMaterial?.currentGeneration);
+  });
+
+  test('is refused when it is signed by neither the group nor a remembered member', async () => {
+    const { world: w, first, groupId, joinKey } = await makeGroupOfOne();
+    const second = await addGroupNode(w, 'node-b');
+    await joinGroup(second.context, { groupId, joinKey });
+    await settle();
+    await second.runtime.stop();
+
+    // A stranger on the same network that holds NEITHER the group signing key
+    // nor any identity on the returning machine's roster. Before the group
+    // signing key existed, a sealed reply from something like this was accepted
+    // on the seal alone and could keep a machine out of its own group.
+    const stranger = await addGroupNode(w, 'stranger');
+    const strangerGroup = await createGroup(stranger.context, { displayName: 'not yours' });
+    expect(strangerGroup.ok).toBe(true);
+
+    await first.runtime.stop();
+    const returned = await addGroupNode(w, 'node-b-restarted', { reuse: second });
+    const rejoined = await resolveWithClock(w, rejoinGroup(returned.context));
+
+    expect(rejoined.ok).toBe(false);
+    if (!rejoined.ok) expect(rejoined.fix).toContain('cluster join');
+    // It kept the key material it already had rather than adopting anything.
+    expect(returned.runtime.keyMaterial?.currentGeneration)
+      .toBe(second.runtime.keyMaterial?.currentGeneration);
+  });
+
+  test('the group signing key rotates on a removal and not on a scheduled rotation', async () => {
+    const { world: w, first, groupId, joinKey } = await makeGroupOfOne();
+    const second = await addGroupNode(w, 'node-b');
+    await joinGroup(second.context, { groupId, joinKey });
+    await settle();
+
+    const before = first.runtime.keyMaterial?.groupSigning.publicKey;
+    await first.runtime.rotate('scheduled', 'test rotation');
+    await settle();
+    expect(first.runtime.keyMaterial?.groupSigning.publicKey).toBe(before);
+
+    await forgetNode(first.context, 'node-b');
+    await settle();
+    expect(first.runtime.keyMaterial?.groupSigning.publicKey).not.toBe(before);
+    // And the new public half is published to the group.
+    expect(first.runtime.groupState?.groupSigning.publicKey)
+      .toBe(first.runtime.keyMaterial?.groupSigning.publicKey ?? '');
+  });
+});
+
 describe('removal', () => {
   test('forget writes a tombstone, rotates the key, and refuses the machine afterwards', async () => {
     const { world: w, first, groupId, joinKey } = await makeGroupOfOne();

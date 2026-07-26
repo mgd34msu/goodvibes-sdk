@@ -22,9 +22,11 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import {
   generateGroupKey,
+  generateGroupSigningKeyPair,
   generateNodeKeyMaterial,
   isValidPublicKey,
   type NodeKeyMaterial,
+  type NodeKeyPairMaterial,
 } from './group-crypto.js';
 import {
   createGroupStateDocument,
@@ -38,6 +40,8 @@ import type { ClusterLogger } from './types.js';
 
 /** The roster file, relative to the cluster state directory. */
 export const GROUP_STATE_FILENAME = 'group-state.json';
+/** The replicated settings file, alongside the roster. Public to the group, like it. */
+export const GROUP_REPLICA_FILENAME = 'group-config.json';
 /** The single secrets-store key holding every piece of group key material. */
 export const GROUP_MATERIAL_SECRET_KEY = 'cluster.groupMaterial';
 
@@ -107,6 +111,23 @@ export interface GroupKeyMaterial {
    */
   readonly previousAcceptedUntil: number;
   readonly node: NodeKeyMaterial;
+  /**
+   * The GROUP's signing key pair, and which generation of it this is.
+   *
+   * Every member holds the private half, so any member can answer a returning
+   * machine as the group rather than as itself. It rotates only on REMOVAL —
+   * not on a scheduled rotation — because its whole job is to be verifiable by
+   * a machine holding a public key from months ago, and rotating it daily would
+   * make that impossible for no gain.
+   */
+  readonly groupSigning: GroupSigningMaterial;
+}
+
+/** The group's signing key pair at one generation. */
+export interface GroupSigningMaterial {
+  readonly publicKey: string;
+  readonly privateKey: string;
+  readonly generation: number;
 }
 
 function isFiniteNumber(value: unknown): value is number {
@@ -125,6 +146,20 @@ export function readKeyRecord(value: unknown): GroupKeyRecord | null {
     key: candidate['key'],
     createdAt: Math.trunc(candidate['createdAt']),
     mintedBy: typeof candidate['mintedBy'] === 'string' ? candidate['mintedBy'] : '',
+  };
+}
+
+/** Validate a stored group signing key pair. */
+export function readGroupSigningMaterial(value: unknown): GroupSigningMaterial | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const candidate = value as Record<string, unknown>;
+  if (!isValidPublicKey(candidate['publicKey'])) return null;
+  if (typeof candidate['privateKey'] !== 'string' || candidate['privateKey'].length === 0) return null;
+  if (!isFiniteNumber(candidate['generation']) || candidate['generation'] < 0) return null;
+  return {
+    publicKey: candidate['publicKey'],
+    privateKey: candidate['privateKey'],
+    generation: Math.trunc(candidate['generation']),
   };
 }
 
@@ -159,6 +194,8 @@ export function readGroupKeyMaterial(value: unknown): GroupKeyMaterial | null {
   if (typeof candidate['joinSalt'] !== 'string' || typeof candidate['joinVerifier'] !== 'string') return null;
   const node = readNodeKeyMaterial(candidate['node']);
   if (!node) return null;
+  const groupSigning = readGroupSigningMaterial(candidate['groupSigning']);
+  if (!groupSigning) return null;
   const keys = (Array.isArray(candidate['keys']) ? candidate['keys'] : [])
     .map(readKeyRecord)
     .filter((entry): entry is GroupKeyRecord => entry !== null)
@@ -181,6 +218,7 @@ export function readGroupKeyMaterial(value: unknown): GroupKeyMaterial | null {
       ? Math.trunc(candidate['previousAcceptedUntil'])
       : 0,
     node,
+    groupSigning,
   };
 }
 
@@ -349,6 +387,7 @@ export function createGroupKeyMaterial(input: {
     currentGeneration: 0,
     previousAcceptedUntil: 0,
     node: generateNodeKeyMaterial(),
+    groupSigning: { ...generateGroupSigningKeyPair(), generation: 0 },
   };
 }
 
@@ -361,6 +400,7 @@ export function joiningGroupKeyMaterial(input: {
   readonly keys: readonly GroupKeyRecord[];
   readonly currentGeneration: number;
   readonly node: NodeKeyMaterial;
+  readonly groupSigning: GroupSigningMaterial;
   readonly now: number;
   readonly graceMs: number;
 }): GroupKeyMaterial {
@@ -375,6 +415,7 @@ export function joiningGroupKeyMaterial(input: {
     currentGeneration: input.currentGeneration,
     previousAcceptedUntil: Math.trunc(input.now + input.graceMs),
     node: input.node,
+    groupSigning: input.groupSigning,
   };
 }
 
@@ -409,6 +450,13 @@ export function rotateGroupKeyMaterial(
     keys: swept.keys,
     currentGeneration: generation,
     previousAcceptedUntil: cause === 'scheduled' ? Math.trunc(now + graceMs) : 0,
+    // A REMOVAL also replaces the key the group signs with, so the machine that
+    // was just ejected can no longer speak as the group to anyone. A scheduled
+    // rotation leaves it alone: it exists to be verifiable by a machine holding
+    // a copy from months ago, and churning it would defeat that for no gain.
+    groupSigning: cause === 'revocation'
+      ? { ...generateGroupSigningKeyPair(), generation: material.groupSigning.generation + 1 }
+      : material.groupSigning,
   };
 }
 
@@ -482,6 +530,55 @@ export function loadGroupState(
     }
   }
   return createGroupStateDocument(groupId, DEFAULT_GROUP_DISPLAY_NAME);
+}
+
+/**
+ * Read the replicated settings document.
+ *
+ * Content-validated through the caller's policy filter, so a file edited by
+ * hand — or written by an older build with a wider policy — cannot smuggle a
+ * node-local key into this machine's config on the next start.
+ */
+export function loadReplicaDocument<T>(
+  stateDirectory: string,
+  parse: (value: unknown) => T | null,
+  logger?: ClusterLogger,
+): T | null {
+  const filePath = join(stateDirectory, GROUP_REPLICA_FILENAME);
+  try {
+    const parsed = parse(JSON.parse(readFileSync(filePath, 'utf8')));
+    if (parsed) return parsed;
+    logger?.warn('cluster: the stored replicated settings were not readable; starting from an empty set', {
+      filePath,
+    });
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException | null)?.code;
+    if (code !== 'ENOENT') {
+      logger?.warn('cluster: the replicated settings file could not be read; starting from an empty set', {
+        filePath,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+  return null;
+}
+
+/** Persist the replicated settings document. Never throws: it re-converges by gossip. */
+export function saveReplicaDocument(
+  stateDirectory: string,
+  document: unknown,
+  logger?: ClusterLogger,
+): void {
+  const filePath = join(stateDirectory, GROUP_REPLICA_FILENAME);
+  try {
+    mkdirSync(dirname(filePath), { recursive: true });
+    writeFileSync(filePath, `${JSON.stringify(document, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 });
+  } catch (error) {
+    logger?.warn('cluster: the replicated settings could not be written; they will be re-sent by the group', {
+      filePath,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
 }
 
 /** Persist the roster. Failure is logged, never thrown: it re-converges by gossip. */
