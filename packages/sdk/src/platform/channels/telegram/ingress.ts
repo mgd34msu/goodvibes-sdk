@@ -62,6 +62,16 @@ export interface TelegramIngressDeps {
   readonly offsetFilePath: string;
   /** Test seam: swap in a client with an injected fetch. */
   readonly createApi?: ((token: string) => TelegramBotApi) | undefined;
+  /**
+   * Telegram told us another process is already long-polling this bot token.
+   *
+   * The poll loop stops itself and reports it here rather than retrying,
+   * because retrying is fighting: each side's getUpdates terminates the
+   * other's, and the user's messages land in whichever process happened to win
+   * the last round. The cluster coordinator listens on this to stand down and
+   * re-run the election.
+   */
+  readonly onConcurrentConsumerConflict?: ((detail: string) => void) | undefined;
 }
 
 /**
@@ -286,6 +296,17 @@ export class TelegramIngressSupervisor {
     api: TelegramBotApi,
     countConflict: () => number,
   ): Promise<string | null> {
+    if (error instanceof TelegramApiError && error.isConcurrentConsumerConflict) {
+      const reason = 'Telegram polling stopped: another process is already long-polling this bot token '
+        + `(${error.description || 'terminated by other getUpdates request'}). `
+        + 'Two consumers cannot share one token, so this one stands down rather than fighting for it.';
+      logger.warn('Telegram ingress: another consumer holds this bot token; standing down', {
+        detail: error.description,
+      });
+      this.deps.onConcurrentConsumerConflict?.(reason);
+      return reason;
+    }
+
     if (error instanceof TelegramApiError && error.isWebhookConflict) {
       const attempt = countConflict();
       if (attempt > MAX_WEBHOOK_CONFLICT_RECOVERIES) {

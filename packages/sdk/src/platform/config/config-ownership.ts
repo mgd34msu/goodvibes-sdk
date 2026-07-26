@@ -73,6 +73,14 @@ export const DAEMON_OWNED_CONFIG_PREFIXES: readonly string[] = [
   // the TUI or the agent reported success, landed in that client's file, and
   // changed nothing about what an inbound Telegram or ntfy message did.
   'conversationGate.',
+  // Leader election decides which node CONSUMES inbound channel messages, and
+  // the daemon is the process that does that consuming. Left client-owned, the
+  // group, port and shared phrase would live in whichever client the operator
+  // happened to edit, while the daemon kept coordinating on the defaults —
+  // producing the exact failure the election exists to prevent (two nodes each
+  // certain they are alone) with a settings file that reads as if it were
+  // configured.
+  'cluster.',
 ];
 
 /** Individual daemon-owned keys that do not sit under a daemon-owned domain. */
@@ -101,6 +109,12 @@ export const DAEMON_OWNED_CONFIG_KEYS: readonly string[] = [
  */
 export const DAEMON_OWNED_NON_SCHEMA_CONFIG_PATHS = [
   'conversationGate.gatedSurfaces',
+  // Same shape as gatedSurfaces: an array-valued daemon setting that the
+  // prefix match already routes to the daemon store, but that every owned-set
+  // WALK would miss without an entry here — so a static peer list set before
+  // this shipped would strand in a client silo and the daemon would keep
+  // coordinating over multicast alone on a network that drops it.
+  'cluster.peers',
 ] as const;
 
 /** A daemon-owned path that has no scalar CONFIG_SCHEMA entry. */

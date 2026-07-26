@@ -205,12 +205,12 @@ export class DaemonHttpRouter {
   private homeAssistantRoutes: HomeAssistantConversationRoutes | null = null;
   private homeGraphRoutes: HomeGraphRoutes | null = null;
   private projectPlanningRoutes: ProjectPlanningRoutes | null = null;
-  /** Supplied by the daemon facade after construction; feeds /status receipts. */
-  private daemonReceiptsProvider: (() => readonly { id: string; text: string; at: number }[]) | null = null;
+  /** Supplied by the daemon facade after construction; these feed /status. */
+  private statusProviders: import('./router-route-contexts.js').DaemonStatusProviders = {};
 
-  /** Wire the facade's receipt store into /status (update/crash announcements). */
-  setDaemonReceiptsProvider(provider: () => readonly { id: string; text: string; at: number }[]): void {
-    this.daemonReceiptsProvider = provider;
+  /** Wire receipts (update/crash announcements) and the cluster role into /status. */
+  setDaemonStatusProviders(providers: import('./router-route-contexts.js').DaemonStatusProviders): void {
+    this.statusProviders = { ...this.statusProviders, ...providers };
   }
 
   constructor(private readonly context: DaemonHttpRouterContext) {
@@ -455,7 +455,7 @@ export class DaemonHttpRouter {
       ...createDaemonControlRouteHandlers({
         authToken: this.context.authToken(),
         version: VERSION,
-        ...(this.daemonReceiptsProvider ? { collectReceipts: this.daemonReceiptsProvider } : {}),
+        ...this.statusProviders,
         // Read by every client on the probe it already makes: below this
         // build it stops taking shared-session work and asks to be restarted.
         clientCompatibilityFloor: CLIENT_COMPATIBILITY_FLOOR,

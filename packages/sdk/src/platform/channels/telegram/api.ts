@@ -22,6 +22,8 @@ export class TelegramApiError extends Error {
   readonly retryAfterSeconds: number | null;
   /** HTTP status, for transport-level failures with no Telegram body. */
   readonly httpStatus: number | null;
+  /** Telegram's own `description`, verbatim — two different 409s share a code. */
+  readonly description: string;
 
   constructor(
     message: string,
@@ -29,6 +31,7 @@ export class TelegramApiError extends Error {
       readonly errorCode?: number | null;
       readonly retryAfterSeconds?: number | null;
       readonly httpStatus?: number | null;
+      readonly description?: string | undefined;
     } = {},
   ) {
     super(message);
@@ -36,14 +39,33 @@ export class TelegramApiError extends Error {
     this.errorCode = options.errorCode ?? null;
     this.retryAfterSeconds = options.retryAfterSeconds ?? null;
     this.httpStatus = options.httpStatus ?? null;
+    this.description = options.description ?? '';
+  }
+
+  /**
+   * True when ANOTHER PROCESS is already long-polling this same bot token.
+   *
+   * Telegram answers the second getUpdates with 409 and the description
+   * "terminated by other getUpdates request" — the SAME status code it uses
+   * for a registered webhook, and a completely different situation. A webhook
+   * conflict is ours to clear; this one is not, because the other consumer is
+   * a real process that is genuinely receiving the user's messages. Treating
+   * it as a webhook conflict is what produces two daemons that each keep
+   * terminating the other's long poll while messages arrive nowhere.
+   */
+  get isConcurrentConsumerConflict(): boolean {
+    if (this.errorCode !== 409) return false;
+    return /terminated by other getupdates/i.test(this.description);
   }
 
   /**
    * True when a webhook is registered and therefore getUpdates cannot run.
-   * Telegram reports this as 409 Conflict.
+   * Telegram reports this as 409 Conflict — but so does a concurrent consumer,
+   * which is a different problem with a different remedy, so it is excluded
+   * here rather than swept into the same branch.
    */
   get isWebhookConflict(): boolean {
-    return this.errorCode === 409;
+    return this.errorCode === 409 && !this.isConcurrentConsumerConflict;
   }
 
   /** True when the bot token is missing, revoked, or wrong — never retryable. */
@@ -136,6 +158,7 @@ export class TelegramBotApi {
       errorCode: readNumber(payload?.error_code) ?? response.status,
       retryAfterSeconds: readNumber(parameters?.retry_after),
       httpStatus: response.status,
+      description,
     });
   }
 
