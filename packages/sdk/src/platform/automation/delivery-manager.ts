@@ -119,9 +119,11 @@ export class AutomationDeliveryManager {
     if (config.deliveryRouter) {
       this.deliveryRouter = config.deliveryRouter;
     } else {
-      if (!config.serviceRegistry || !config.configManager || !config.artifactStore) {
+      if (!config.serviceRegistry || !config.configManager || !config.artifactStore || !config.secretsManager) {
         throw new Error(
-          'AutomationDeliveryManager requires serviceRegistry, configManager, and artifactStore when no deliveryRouter is provided.',
+          'AutomationDeliveryManager requires serviceRegistry, configManager, artifactStore, and secretsManager '
+          + 'when no deliveryRouter is provided. Without secretsManager the router it builds cannot resolve '
+          + 'goodvibes://secrets/... credentials, so those surfaces accept replies and never send them.',
         );
       }
       this.deliveryRouter = new ChannelDeliveryRouter({

@@ -46,12 +46,27 @@ export type {
 
 export { resolveChannelDeliverySurfaceKind } from './delivery/shared.js';
 
+/**
+ * `secretsManager` is REQUIRED, not optional, and that is the whole point.
+ *
+ * Half the surfaces here read their credential from a `goodvibes://secrets/...`
+ * reference, which only resolves when a local secret resolver is supplied.
+ * While this parameter was optional, a composition root that forgot it still
+ * type-checked, still constructed, still delivered on every surface whose
+ * credential happens to live in config or the environment — and failed ONLY on
+ * the surfaces that use a secret reference, at send time, as
+ * "Missing Telegram bot token". Two shipped composition roots (goodvibes-tui
+ * and goodvibes-agent) drifted into exactly that state while the SDK's own
+ * composition passed it, so the defect was invisible from inside the SDK and
+ * its tests. Required here means a fork that forgets fails to compile instead
+ * of failing to answer someone.
+ */
 export function createDefaultChannelDeliveryStrategies(
   configManager: ConfigManager,
   serviceRegistry: ServiceRegistry,
   artifactStore: ArtifactStore,
   getControlPlaneGateway: () => ControlPlaneGateway | null,
-  secretsManager?: Pick<SecretsManager, 'get' | 'getGlobalHome'>,
+  secretsManager: Pick<SecretsManager, 'get' | 'getGlobalHome'>,
 ): ChannelDeliveryStrategy[] {
   return [
     createWebhookDeliveryStrategy(configManager, artifactStore),
@@ -83,9 +98,11 @@ export class ChannelDeliveryRouter {
       this.strategies = [...config.strategies];
       return;
     }
-    if (!config.configManager || !config.serviceRegistry || !config.artifactStore) {
+    if (!config.configManager || !config.serviceRegistry || !config.artifactStore || !config.secretsManager) {
       throw new Error(
-        'ChannelDeliveryRouter requires configManager, serviceRegistry, and artifactStore when using builtin delivery strategies.',
+        'ChannelDeliveryRouter requires configManager, serviceRegistry, artifactStore, and secretsManager '
+        + 'when using builtin delivery strategies. Without secretsManager every surface whose credential is a '
+        + 'goodvibes://secrets/... reference silently fails to send.',
       );
     }
     this.strategies = createDefaultChannelDeliveryStrategies(
