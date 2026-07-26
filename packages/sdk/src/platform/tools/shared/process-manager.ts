@@ -42,6 +42,24 @@ export interface BackgroundProcess {
 }
 
 const MAX_PROCESS_OUTPUT_BYTES = 256 * 1024;
+/**
+ * How long to keep draining stdout/stderr AFTER the spawned process has exited.
+ *
+ * The pipe's write end is inherited by every descendant, so it reaches EOF only
+ * once the LAST holder closes it. A command that leaves a child behind — which
+ * is any `/bin/sh -c` whose shell did not exec-optimize into a single command —
+ * keeps that write end open after the process we spawned is gone, and after a
+ * timeout kill that reached only the shell. Waiting for EOF in that case means
+ * waiting for the survivor, so the process is never reported finished at all.
+ *
+ * Exit is therefore what completes a process; this is only the window in which
+ * output already in flight is still collected. Normal exits close their pipes
+ * at once and never approach it, and output a process wrote before exiting is
+ * already in the pipe buffer, so draining it costs microseconds — this bound
+ * only decides how long a process whose pipe a survivor holds is delayed
+ * before it is reported finished.
+ */
+const OUTPUT_DRAIN_GRACE_MS = 500;
 const MAX_COMPLETED_PROCESSES = 100;
 const COMPLETED_PROCESS_TTL_MS = 30 * 60 * 1000;
 
@@ -190,12 +208,26 @@ export class ProcessManager {
     // Async collection with timeout escalation — SIGTERM then SIGKILL
     // Cast stdout/stderr to ReadableStream — Bun guarantees these are ReadableStream
     // when stdout/stderr is set to 'pipe', but the return type is a union.
+    const drain = new AbortController();
+    const streams = Promise.all([
+      readProcessStream(proc.stdout as ReadableStream<Uint8Array>, entry.stdout, drain.signal),
+      readProcessStream(proc.stderr as ReadableStream<Uint8Array>, entry.stderr, drain.signal),
+    ]).catch((error: unknown) => {
+      // A cancelled or broken pipe ends collection early; the exit code still
+      // decides the outcome, so this is reported rather than thrown.
+      logger.debug('Background process output collection ended early', {
+        processId: id,
+        error: summarizeError(error),
+      });
+    });
     const collectionPromise = (async () => {
-      const [, , exitCode] = await Promise.all([
-        readProcessStream(proc.stdout as ReadableStream<Uint8Array>, entry.stdout),
-        readProcessStream(proc.stderr as ReadableStream<Uint8Array>, entry.stderr),
-        proc.exited,
-      ]);
+      const exitCode = await proc.exited;
+      // The process we spawned is gone. Collect whatever its pipes still hold,
+      // but never block completion on them: a surviving descendant holds the
+      // same write end, so EOF may never come. Cancelling the readers releases
+      // them instead of leaving a task pending on a pipe nobody will close.
+      await Promise.race([streams, sleep(OUTPUT_DRAIN_GRACE_MS)]);
+      drain.abort();
       entry.exitCode = exitCode;
       // Bun reports the terminating signal on the handle; capture it so a
       // caller can tell "exited 1" from "killed by SIGKILL", which an on-exit
@@ -428,11 +460,25 @@ function killTrackedProcess(proc: ReturnType<typeof Bun.spawn>, signal: Paramete
  * The byte cap is unchanged and is still enforced across the whole stream; the
  * truncation notice is appended once, at the point the cap is first crossed.
  */
-async function readProcessStream(stream: ReadableStream<Uint8Array>, sink: string[]): Promise<void> {
+async function readProcessStream(
+  stream: ReadableStream<Uint8Array>,
+  sink: string[],
+  cancelSignal?: AbortSignal,
+): Promise<void> {
   const reader = stream.getReader();
   const decoder = new TextDecoder();
   let total = 0;
   let truncated = false;
+
+  // Abort releases the read loop for a pipe whose write end a surviving
+  // descendant still holds; without it the pending read outlives the process.
+  const onAbort = (): void => {
+    void reader.cancel().catch(() => {
+      /* the stream is already gone; nothing to release */
+    });
+  };
+  if (cancelSignal?.aborted === true) onAbort();
+  else cancelSignal?.addEventListener('abort', onAbort, { once: true });
 
   try {
     for (;;) {
@@ -453,6 +499,7 @@ async function readProcessStream(stream: ReadableStream<Uint8Array>, sink: strin
     const tail = decoder.decode();
     if (tail.length > 0) sink.push(tail);
   } finally {
+    cancelSignal?.removeEventListener('abort', onAbort);
     reader.releaseLock();
   }
 }

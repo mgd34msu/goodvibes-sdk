@@ -532,6 +532,60 @@ describe('ProcessManager live output', () => {
     expect(manager.getOutput(id)?.stdout).toContain('done');
   }, 15_000);
 
+  test('a timed-out process whose child still holds the output pipe is still reported finished', async () => {
+    const manager = new ProcessManager();
+    // `; :` denies the shell its exec optimization, so the shell really forks
+    // and the timeout kill reaches only the shell — the `sleep` survives it
+    // holding the same stdout pipe. Whether a bare `sleep 30` takes this path
+    // depends on which /bin/sh is installed, so it is forced here rather than
+    // left to the platform: completion must key off the process exiting, not
+    // off an EOF that a survivor can withhold indefinitely.
+    const spawned = await manager.spawn('sleep 30; :', undefined, undefined, {
+      timeout_ms: 150,
+      sigterm_grace_ms: 50,
+    });
+    const id = spawned.process_id!;
+    try {
+      for (let attempt = 0; attempt < 150; attempt += 1) {
+        await Bun.sleep(20);
+        if (manager.getStatus(id)?.done) break;
+      }
+      const entry = manager.getStatus(id);
+      expect(entry?.done).toBe(true);
+      expect(entry?.timedOut).toBe(true);
+      const status = JSON.parse(manager.handleCommand(`bg_status ${id}`)?.stdout ?? '{}') as {
+        status: string;
+        timed_out: boolean;
+      };
+      expect(status.timed_out).toBe(true);
+      expect(status.status).toContain('timed out');
+    } finally {
+      manager.stop(id);
+    }
+  }, 15_000);
+
+  test('output a process wrote before it was killed still survives the drain cutoff', async () => {
+    const manager = new ProcessManager();
+    // Same surviving-child shape, but the shell prints first. What it wrote is
+    // already in the pipe buffer when the kill lands, so bounding the drain
+    // must not cost that output.
+    const spawned = await manager.spawn('printf "before the kill\\n"; sleep 30; :', undefined, undefined, {
+      timeout_ms: 150,
+      sigterm_grace_ms: 50,
+    });
+    const id = spawned.process_id!;
+    try {
+      for (let attempt = 0; attempt < 150; attempt += 1) {
+        await Bun.sleep(20);
+        if (manager.getStatus(id)?.done) break;
+      }
+      expect(manager.getStatus(id)?.done).toBe(true);
+      expect(manager.getOutput(id)?.stdout).toContain('before the kill');
+    } finally {
+      manager.stop(id);
+    }
+  }, 15_000);
+
   test('a timed-out background process is reported as timed out, not as a clean exit', async () => {
     const manager = new ProcessManager();
     const spawned = await manager.spawn('sleep 30', undefined, undefined, { timeout_ms: 150, sigterm_grace_ms: 50 });
