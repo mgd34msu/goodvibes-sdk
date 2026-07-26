@@ -42,6 +42,20 @@ function fakeServiceRegistry(secrets: Record<string, string | undefined> = {}): 
 
 const fakeArtifactStore = {} as unknown as ArtifactStore;
 
+/**
+ * A resolver that holds no secrets. Every strategy that can read a
+ * `goodvibes://secrets/...` credential now requires one — a composition that
+ * omits it fails at construction rather than silently dropping replies on the
+ * surfaces that use secret references. Cases below that supply a real value
+ * build their own.
+ */
+function emptySecretsManager(): Pick<SecretsManager, 'get' | 'getGlobalHome'> {
+  return {
+    get: async () => null,
+    getGlobalHome: () => '/home/test',
+  } as unknown as Pick<SecretsManager, 'get' | 'getGlobalHome'>;
+}
+
 function baseRequest(overrides: Partial<ChannelDeliveryRequest>): ChannelDeliveryRequest {
   return {
     target: { kind: 'surface' },
@@ -157,6 +171,7 @@ describe('slack delivery resolves the channel from the binding (item 2)', () => 
       fakeServiceRegistry(),
       fakeConfigManager({ 'surfaces.slack.botToken': 'xoxb-fake-token' }),
       fakeArtifactStore,
+      emptySecretsManager(),
     );
     const request = baseRequest({
       target: { kind: 'surface', surfaceKind: 'slack' },
@@ -194,6 +209,7 @@ describe('slack delivery resolves the channel from the binding (item 2)', () => 
         'surfaces.slack.defaultChannel': 'C-configured-default',
       }),
       fakeArtifactStore,
+      emptySecretsManager(),
     );
     const request = baseRequest({ target: { kind: 'surface', surfaceKind: 'slack' } });
 
@@ -220,6 +236,7 @@ describe('discord delivery resolves the channel from the binding (item 3)', () =
       fakeServiceRegistry(),
       fakeConfigManager({ 'surfaces.discord.botToken': 'discord-fake-token' }),
       fakeArtifactStore,
+      emptySecretsManager(),
     );
     const request = baseRequest({
       target: { kind: 'surface', surfaceKind: 'discord' },
@@ -253,6 +270,7 @@ describe('discord delivery resolves the channel from the binding (item 3)', () =
         'surfaces.discord.defaultChannelId': SNOWFLAKE,
       }),
       fakeArtifactStore,
+      emptySecretsManager(),
     );
     const request = baseRequest({ target: { kind: 'surface', surfaceKind: 'discord' } });
 
