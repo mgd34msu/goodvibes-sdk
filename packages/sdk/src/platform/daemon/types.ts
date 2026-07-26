@@ -71,6 +71,18 @@ export interface DaemonConfig {
    * SDK package version is never assumed to be the shipped artifact).
    */
   updateArtifact?: import('./facade-lifecycle.js').DaemonUpdateArtifact | undefined;
+  /**
+   * An already-composed LAN leader-election coordinator to REUSE.
+   *
+   * A process has exactly one. A host that gates its own inbound consumers
+   * (goodvibes-tui's daemon gates its inbox poller) builds the coordinator
+   * itself, registers its gates, and passes it here so the daemon's Telegram
+   * and ntfy consumers ride the same leadership. Absent — the embedded
+   * default — means the daemon composes its own from `cluster.*` config.
+   *
+   * Passing one that is ALREADY started is fine: start() is idempotent.
+   */
+  clusterCoordinator?: import('../cluster/index.js').ClusterCoordinator | undefined;
 }
 
 export interface DaemonDangerConfig {

@@ -717,7 +717,17 @@ export type ConfigKey =
   | 'push.subscriptions.failureThreshold'
   | 'push.subscriptions.sweepIntervalMinutes'
   // The one fleet ceiling (schema-domain-fleet.ts).
-  | 'fleet.maxSize';
+  | 'fleet.maxSize'
+  // Which node on this network consumes inbound channels (schema-domain-cluster.ts).
+  // The peers list is an array and therefore not a scalar ConfigKey, so it is
+  // read through the cluster category, like conversationGate.gatedSurfaces.
+  | 'cluster.enabled'
+  | 'cluster.heartbeatSeconds'
+  | 'cluster.masterTimeoutSeconds'
+  | 'cluster.bootProbeSeconds'
+  | 'cluster.port'
+  | 'cluster.multicastGroup'
+  | 'cluster.secret';
 
 /** Maps a ConfigKey to its value type. */
 export type ConfigValue<K extends ConfigKey> =
@@ -1176,4 +1186,11 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'push.subscriptions.failureThreshold' ? number :
   K extends 'push.subscriptions.sweepIntervalMinutes' ? number :
   K extends 'fleet.maxSize' ? number :
+  K extends 'cluster.enabled' ? boolean :
+  K extends 'cluster.heartbeatSeconds' ? number :
+  K extends 'cluster.masterTimeoutSeconds' ? number :
+  K extends 'cluster.bootProbeSeconds' ? number :
+  K extends 'cluster.port' ? number :
+  K extends 'cluster.multicastGroup' ? string :
+  K extends 'cluster.secret' ? string :
   never;

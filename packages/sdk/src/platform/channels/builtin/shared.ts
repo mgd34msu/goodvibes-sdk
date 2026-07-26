@@ -45,6 +45,12 @@ export interface BuiltinChannelRuntimeDeps {
    * Telegram polling; the supervisor then reports why it cannot start.
    */
   readonly telegramOffsetPath?: string | undefined;
+  /**
+   * Telegram answered getUpdates with a 409 naming another consumer. Reported
+   * up to the composition root so leadership can stand down; see
+   * TelegramIngressDeps.onConcurrentConsumerConflict.
+   */
+  readonly onTelegramConsumerConflict?: ((detail: string) => void) | undefined;
   readonly buildSurfaceAdapterContext: () => SurfaceAdapterContext;
   readonly buildGenericWebhookAdapterContext: () => GenericWebhookAdapterContext;
   readonly deliverSurfaceProgress: (pending: unknown, progress: string) => Promise<void>;

@@ -237,6 +237,10 @@
       "types": "./dist/platform/channels/index.d.ts",
       "import": "./dist/platform/channels/index.js"
     },
+    "./platform/cluster": {
+      "types": "./dist/platform/cluster/index.d.ts",
+      "import": "./dist/platform/cluster/index.js"
+    },
     "./platform/cloudflare": {
       "types": "./dist/platform/cloudflare/index.d.ts",
       "import": "./dist/platform/cloudflare/index.js"

@@ -16,15 +16,14 @@ import type { ApprovalBroker, ControlPlaneGateway, SharedSessionBroker } from '.
 import type { GatewayMethodCatalog } from '../control-plane/index.js';
 import { sseIdleTimeoutSeconds } from '../control-plane/index.js';
 import type {
-  BuiltinChannelRuntime,
   ChannelReplyPipeline,
-  ChannelProviderRuntimeManager,
   ChannelPluginRegistry,
   ChannelPolicyManager,
   RouteBindingManager,
   SurfaceRegistry,
   ChannelSurface,
 } from '../channels/index.js';
+import { buildDaemonClusterCoordinator, type ClusterCoordinator } from './facade-cluster.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import type { PlatformServiceManager } from './service-manager.js';
 import type { WatcherRegistry } from '../watchers/index.js';
@@ -110,8 +109,8 @@ export class DaemonServer {
   private readonly channelPolicy: ChannelPolicyManager;
   private readonly channelPlugins: ChannelPluginRegistry;
   private readonly channelReplyPipeline: ChannelReplyPipeline;
-  private readonly providerRuntime: ChannelProviderRuntimeManager;
-  private readonly builtinChannels: BuiltinChannelRuntime;
+  /** Decides whether THIS node is the one consuming inbound channels; see facade-cluster.ts. */
+  private readonly clusterCoordinator: ClusterCoordinator;
   private readonly watcherRegistry: WatcherRegistry;
   /** Trigger family supervisor; started/stopped with the daemon so an on-exit trigger outlives the turn that created it. Undefined when the host composed its own services without one — that means no triggers, not a failure. */
   private readonly triggerManager: RuntimeServices['triggerManager'] | undefined;
@@ -227,8 +226,7 @@ export class DaemonServer {
     this.surfaceActionHelper = collaborators.surfaceActionHelper;
     this.transportEventsHelper = collaborators.transportEventsHelper;
     this.httpRouter = collaborators.httpRouter;
-    this.providerRuntime = collaborators.providerRuntime;
-    this.builtinChannels = collaborators.builtinChannels;
+    this.clusterCoordinator = buildDaemonClusterCoordinator(config, resolved, collaborators);
 
     // Lifecycle sidecar: clean-shutdown marker, update/crash receipts, and
     // the hourly auto-updater gated on the real busy signal.
@@ -239,8 +237,11 @@ export class DaemonServer {
       updateArtifact: this.config.updateArtifact, // absent = host-managed updates (see DaemonUpdateArtifact)
       stopGracefully: () => this.stop(), // update/rollback restarts take the normal stop path, so shutdown hooks fire
     });
-    // /status surfaces undelivered daemon receipts (updates, crash restarts).
-    this.httpRouter.setDaemonReceiptsProvider(() => this.collectDaemonReceipts());
+    this.httpRouter.setDaemonStatusProviders({
+      // Update/crash receipts, and which node currently reads the inbox.
+      collectReceipts: () => this.collectDaemonReceipts(),
+      collectClusterStatus: () => this.clusterCoordinator.status(),
+    });
 
     // Wire AgentTaskAdapter to the RuntimeEventBus so task records reach terminal states on agent finish.
     this.agentTaskAdapter = new AgentTaskAdapter(this.runtimeStore);
@@ -437,9 +438,7 @@ export class DaemonServer {
         this.automationManager.start(),
         this.distributedRuntime.start(),
       ]);
-      await this.providerRuntime.startConfigured();
-      // Arm surface ingress now the listener is up; see BuiltinChannelRuntime.
-      await this.builtinChannels.startIngress();
+      await this.clusterCoordinator.start();
       await this.companionChatManager.init();
       // Init the canonical memory store so the daemon is a live single-writer memory service on accept (memory.records.add would else throw "not initialized" on a cold store).
       await this.runtimeServices.memoryStore.init();
@@ -498,7 +497,7 @@ export class DaemonServer {
       }
       this.pendingSurfaceReplies.clear();
       this.automationManager.stop();
-      this.providerRuntime.stopAll();
+      void this.clusterCoordinator.stop('daemon start failed');
       try {
         this.watcherRegistry.stopWatcher('daemon-heartbeat', 'daemon-start-failed');
       } catch (cleanupError) {
@@ -559,8 +558,9 @@ export class DaemonServer {
 
     // Stop services with async teardown in reverse start order (sessionBroker,
     // approvalBroker, channelPolicy, distributedRuntime end when the socket closes).
-    this.providerRuntime.stopAll();
-    await this.builtinChannels.stopIngress();
+    // Inbound consumers stop through the cluster gate so a clean shutdown hands the
+    // role over in ~1s instead of making the next node wait out the crash timeout.
+    await this.clusterCoordinator.stop('daemon stop');
     this.automationManager.stop();
     // Tear down the adapter bus subscription and session broker GC interval.
     this.agentTaskAdapterUnsub?.();
