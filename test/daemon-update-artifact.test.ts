@@ -8,11 +8,12 @@
  * - With a host-provided artifact identity, the loop compares the HOST's
  *   version (and swaps the host-named executable), not the SDK's VERSION.
  */
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, spyOn, test, type Mock } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DaemonLifecycleRuntime, type DaemonLifecycleRuntimeOptions } from '../packages/sdk/src/platform/daemon/facade-lifecycle.ts';
+import { logger } from '../packages/sdk/src/platform/utils/logger.ts';
 import { VERSION } from '../packages/sdk/src/platform/version.ts';
 
 const scratchDirs: string[] = [];
@@ -113,6 +114,40 @@ describe('daemon update artifact identity', () => {
     } finally {
       runtime.onStopping(false);
     }
+  });
+});
+
+describe('no silent gates: every reason the update loop stays off is logged', () => {
+  function infoLinesFor(overrides: Parameters<typeof lifecycleWith>[1], artifact?: DaemonLifecycleRuntimeOptions['updateArtifact']): string[] {
+    const spy = spyOn(logger, 'info') as Mock<typeof logger.info>;
+    const { runtime } = lifecycleWith(artifact, overrides);
+    try {
+      runtime.onStarted();
+      return spy.mock.calls.map((call) => String(call[0]));
+    } finally {
+      runtime.onStopping(false);
+      spy.mockRestore();
+    }
+  }
+
+  test('update.auto not true says so, instead of returning in silence', () => {
+    const lines = infoLinesFor({ configOverrides: { 'update.auto': false } }, { version: '1.0.0' });
+    expect(lines.some((line) => line.includes('auto-update loop off') && line.includes('update.auto'))).toBe(true);
+  });
+
+  test('an empty releasesUrl says so, instead of returning in silence', () => {
+    const lines = infoLinesFor({ configOverrides: { 'update.releasesUrl': '   ' } }, { version: '1.0.0' });
+    expect(lines.some((line) => line.includes('auto-update loop off') && line.includes('update.releasesUrl'))).toBe(true);
+  });
+
+  test('no artifact identity says so', () => {
+    const lines = infoLinesFor({});
+    expect(lines.some((line) => line.includes('auto-update loop off') && line.includes('host-managed'))).toBe(true);
+  });
+
+  test('an armed loop announces its schedule, so "nothing updated" is never a guess', () => {
+    const lines = infoLinesFor({}, { version: '1.0.0' });
+    expect(lines.some((line) => line.includes('auto-update loop armed'))).toBe(true);
   });
 });
 

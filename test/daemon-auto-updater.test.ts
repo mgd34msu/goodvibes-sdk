@@ -15,7 +15,9 @@ import {
 } from '../packages/sdk/src/platform/daemon/auto-updater.js';
 import { DaemonReceiptStore } from '../packages/sdk/src/platform/daemon/receipts.js';
 import {
+  BOOT_SETTLE_CHECK_DELAY_MS,
   PREVIOUS_FILE_SUFFIX,
+  PeriodicUpdateLoop,
   sha256,
   type UpdateFetchLike,
   type UpdateFileIo,
@@ -82,6 +84,8 @@ interface Harness {
   exits: number[];
   timers: Array<{ fn: () => void; ms: number }>;
   requests: string[];
+  /** Handover steps in the order they happened, so "stop first" is provable. */
+  sequence: string[];
   scratch: string;
 }
 
@@ -96,10 +100,11 @@ function makeHarness(options: {
   const { fetchImpl, requests } = releaseFetch({ ...(options.latestTag ? { latestTag: options.latestTag } : {}) });
   const receipts = new DaemonReceiptStore(join(scratch, 'receipts.json'), { now: () => new Date(2026, 6, 12, 14, 30).getTime() });
   const actions = { supervised: options.supervised ?? true, adopted: 0, restarted: 0 };
+  const sequence: string[] = [];
   const serviceActions: AutoUpdateServiceActions = {
     isSupervised: () => actions.supervised,
-    adoptIntoService: () => { actions.adopted += 1; },
-    restartService: () => { actions.restarted += 1; },
+    adoptIntoService: () => { actions.adopted += 1; sequence.push('adopt'); },
+    restartService: () => { actions.restarted += 1; sequence.push('restart'); },
   };
   const exits: number[] = [];
   const timers: Array<{ fn: () => void; ms: number }> = [];
@@ -116,7 +121,8 @@ function makeHarness(options: {
     receipts,
     fetchImpl,
     io,
-    exitProcess: (code) => void exits.push(code),
+    exitProcess: (code) => { exits.push(code); sequence.push('exit'); },
+    stopGracefully: () => { sequence.push('stop'); },
     now: () => new Date(2026, 6, 12, 14, 30).getTime(),
     setTimer: (fn, ms) => {
       timers.push({ fn, ms });
@@ -124,16 +130,20 @@ function makeHarness(options: {
     },
     clearTimer: () => {},
   });
-  return { updater, files, receipts, actions, exits, timers, requests, scratch };
+  return { updater, files, receipts, actions, exits, timers, requests, sequence, scratch };
 }
 
 describe('DaemonAutoUpdater', () => {
-  test('hourly cadence: start schedules a check one interval out, and a current daemon does nothing', async () => {
+  test('boot-settle first check, then the hourly cadence; a current daemon does nothing', async () => {
     const h = makeHarness({ idle: () => true, latestTag: 'v1.0.0' });
     try {
       h.updater.start();
       expect(h.timers).toHaveLength(1);
-      expect(h.timers[0]!.ms).toBe(60 * 60 * 1000);
+      // The first check runs shortly after start — a daemon that was down
+      // while releases shipped must not stay stale for another whole hour.
+      expect(h.timers[0]!.ms).toBe(BOOT_SETTLE_CHECK_DELAY_MS);
+      expect(h.updater.firstCheckDelayMs).toBe(BOOT_SETTLE_CHECK_DELAY_MS);
+      expect(h.updater.checkIntervalMs).toBe(60 * 60 * 1000);
 
       await h.updater.tick();
       expect(h.files.get('/opt/gv/goodvibes-daemon')?.toString()).toBe('daemon-v1');
@@ -204,6 +214,23 @@ describe('DaemonAutoUpdater', () => {
     }
   });
 
+  test('the restart runs the daemon\'s orderly stop FIRST, so shutdown hooks fire on an update', async () => {
+    const supervised = makeHarness({ idle: () => true });
+    try {
+      await supervised.updater.tick();
+      expect(supervised.sequence).toEqual(['stop', 'restart']);
+    } finally {
+      rmSync(supervised.scratch, { recursive: true, force: true });
+    }
+    const unsupervised = makeHarness({ idle: () => true, supervised: false });
+    try {
+      await unsupervised.updater.tick();
+      expect(unsupervised.sequence).toEqual(['stop', 'adopt', 'exit']);
+    } finally {
+      rmSync(unsupervised.scratch, { recursive: true, force: true });
+    }
+  });
+
   test('stop() halts the loop', async () => {
     const h = makeHarness({ idle: () => true });
     try {
@@ -216,5 +243,73 @@ describe('DaemonAutoUpdater', () => {
     } finally {
       rmSync(h.scratch, { recursive: true, force: true });
     }
+  });
+});
+
+describe('PeriodicUpdateLoop cadence', () => {
+  function loopHarness(options: {
+    outcome: () => 'settled' | 'deferred';
+    firstCheckDelayMs?: number;
+    checkIntervalMs?: number;
+    busyRetryMs?: number;
+    throws?: boolean;
+  }) {
+    const timers: Array<{ fn: () => void; ms: number }> = [];
+    const errors: unknown[] = [];
+    const loop = new PeriodicUpdateLoop({
+      ...(options.firstCheckDelayMs !== undefined ? { firstCheckDelayMs: options.firstCheckDelayMs } : {}),
+      ...(options.checkIntervalMs !== undefined ? { checkIntervalMs: options.checkIntervalMs } : {}),
+      ...(options.busyRetryMs !== undefined ? { busyRetryMs: options.busyRetryMs } : {}),
+      runCheck: async () => {
+        if (options.throws) throw new Error('check failed');
+        return options.outcome();
+      },
+      onError: (error) => void errors.push(error),
+      setTimer: (fn, ms) => {
+        timers.push({ fn, ms });
+        return 0 as unknown as ReturnType<typeof setTimeout>;
+      },
+      clearTimer: () => {},
+    });
+    return { loop, timers, errors };
+  }
+
+  test('first check is the boot-settle delay; every check after it is the cadence', async () => {
+    const h = loopHarness({ outcome: () => 'settled', checkIntervalMs: 60 * 60 * 1000 });
+    h.loop.start();
+    expect(h.timers[0]!.ms).toBe(BOOT_SETTLE_CHECK_DELAY_MS);
+    await h.loop.tick();
+    expect(h.timers[h.timers.length - 1]!.ms).toBe(60 * 60 * 1000);
+  });
+
+  test('the boot-settle delay never exceeds one cadence', () => {
+    const h = loopHarness({ outcome: () => 'settled', checkIntervalMs: 10_000 });
+    h.loop.start();
+    expect(h.timers[0]!.ms).toBe(10_000);
+  });
+
+  test('an explicit first-check delay is honored', () => {
+    const h = loopHarness({ outcome: () => 'settled', firstCheckDelayMs: 2_000, checkIntervalMs: 60_000 });
+    h.loop.start();
+    expect(h.timers[0]!.ms).toBe(2_000);
+  });
+
+  test('a deferred check comes back on the short retry cadence', async () => {
+    const h = loopHarness({ outcome: () => 'deferred', checkIntervalMs: 60 * 60 * 1000, busyRetryMs: 45_000 });
+    await h.loop.tick();
+    expect(h.timers[h.timers.length - 1]!.ms).toBe(45_000);
+  });
+
+  test('a check that throws is reported and keeps the steady cadence', async () => {
+    const h = loopHarness({ outcome: () => 'settled', throws: true, checkIntervalMs: 60 * 60 * 1000 });
+    await h.loop.tick();
+    expect(h.errors).toHaveLength(1);
+    expect(h.timers[h.timers.length - 1]!.ms).toBe(60 * 60 * 1000);
+  });
+
+  test('delays are floored so a misconfigured cadence never spins', () => {
+    const h = loopHarness({ outcome: () => 'settled', checkIntervalMs: 0, busyRetryMs: -5 });
+    expect(h.loop.checkIntervalMs).toBe(1_000);
+    expect(h.loop.busyRetryMs).toBe(1_000);
   });
 });
