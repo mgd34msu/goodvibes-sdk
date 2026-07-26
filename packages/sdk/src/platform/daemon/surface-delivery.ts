@@ -398,6 +398,18 @@ export class DaemonSurfaceDeliveryHelper {
     }
   }
 
+  /**
+   * Push a one-line status to a surface directly.
+   *
+   * Implemented for slack, discord and ntfy only — see the throw at the end.
+   * That list is SMALLER than `isSupportedDeliverySurface`, which admits
+   * fourteen surfaces, and the gap used to be silent: the function simply ran
+   * off the end and returned. `deliverSurfaceNotice` reads a clean return as
+   * proof of delivery, so on Telegram (and nine other surfaces) a work
+   * proposal was marked delivered and left answerable while nothing was ever
+   * sent — the owner messaged the bot, saw nothing come back, and the daemon
+   * believed it had replied. An unimplemented surface now says so.
+   */
   async deliverSurfaceProgress(pending: PendingSurfaceReply, progress: string): Promise<void> {
     if (pending.surfaceKind === 'slack') {
       const webhookUrl = await this.resolveSlackWebhookUrl();
@@ -447,7 +459,14 @@ export class DaemonSurfaceDeliveryHelper {
         title: `Agent ${pending.agentId}`,
         markGoodVibesOrigin: true,
       });
+      return;
     }
+    // Not a no-op. Returning here is what let a caller treat "this surface has
+    // no direct-progress implementation" as "the message went out".
+    throw new Error(
+      `Direct surface progress is not implemented for ${pending.surfaceKind}; `
+      + 'this surface delivers through the channel reply pipeline, so nothing was sent',
+    );
   }
 
   async deliverSlackAgentReply(pending: PendingSurfaceReply, message: string): Promise<void> {
