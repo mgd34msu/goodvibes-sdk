@@ -286,19 +286,28 @@ describe('daemon receipts surfaced on next surface connect', () => {
     const scratch = mkdtempSync(join(tmpdir(), 'daemon-receipts-'));
     try {
       const path = join(scratch, 'daemon-receipts.json');
-      const at = new Date(2026, 6, 12, 9, 05).getTime();
-      const store = new DaemonReceiptStore(path, { now: () => at });
+      // The clock is PINNED for every store in this test, including the
+      // reloads. What is under test is delivery-once across a restart, not
+      // retention — and an absolute fixture date read against the real clock
+      // tests retention by accident: this file previously wrote a receipt at a
+      // fixed 2026-07-12 09:05 and passed only until that moment fell outside
+      // the 14-day retention window, at which point the reload legitimately
+      // expired the receipt and the assertion failed on a date rather than on
+      // a behavior. Every store below therefore shares one clock.
+      const at = new Date(2026, 6, 12, 9, 5).getTime();
+      const clock = { now: () => at };
+      const store = new DaemonReceiptStore(path, clock);
       store.record(`restarted after a crash at ${formatReceiptTime(at)}`);
 
       // A fresh store instance (daemon restart) still has the receipt pending.
-      const reloaded = new DaemonReceiptStore(path);
+      const reloaded = new DaemonReceiptStore(path, clock);
       const delivered = reloaded.consumeUndelivered();
       expect(delivered).toHaveLength(1);
-      expect(delivered[0]!.text).toBe('restarted after a crash at 09:05');
+      expect(delivered[0]!.text).toBe(`restarted after a crash at ${formatReceiptTime(at)}`);
 
       // Second surface connect: nothing left to surface.
       expect(reloaded.consumeUndelivered()).toEqual([]);
-      const again = new DaemonReceiptStore(path);
+      const again = new DaemonReceiptStore(path, clock);
       expect(again.consumeUndelivered()).toEqual([]);
       expect(again.list()).toHaveLength(1);
     } finally {
