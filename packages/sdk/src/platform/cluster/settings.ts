@@ -23,7 +23,8 @@ export const DEFAULT_CLUSTER_MULTICAST_GROUP = '239.255.71.86';
 export const DEFAULT_CLUSTER_PORT = 61860;
 
 export const DEFAULT_CLUSTER_SETTINGS: ClusterSettings = {
-  enabled: true,
+  // Off unless the operator turns it on; see schema-domain-cluster.ts.
+  enabled: false,
   heartbeatSeconds: 30,
   masterTimeoutSeconds: 90,
   bootProbeSeconds: 3,
@@ -52,7 +53,7 @@ export function resolveClusterSettings(raw: unknown): ClusterSettings {
   const source = raw as Record<string, unknown>;
   const heartbeatSeconds = numberOf(source['heartbeatSeconds'], 30, 1, 3_600);
   return {
-    enabled: boolOf(source['enabled'], true),
+    enabled: boolOf(source['enabled'], false),
     heartbeatSeconds,
     // A master timeout below two heartbeats would declare a healthy master
     // dead between its own beats.

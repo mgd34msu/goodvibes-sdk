@@ -40,7 +40,10 @@ declare module './schema-types.js' {
 
 export const clusterConfigDefaults: { cluster: ClusterConfig } = {
   cluster: {
-    enabled: true,
+    // OFF by default, deliberately. See the setting's description: switching
+    // it on is the operator asserting that every goodvibes node on this network
+    // is theirs, and that assertion is the whole trust boundary.
+    enabled: false,
     heartbeatSeconds: 30,
     masterTimeoutSeconds: 90,
     bootProbeSeconds: 3,
@@ -59,9 +62,9 @@ export const clusterConfigSettings: ConfigSettingDefinition[] = [
   {
     key: 'cluster.enabled',
     type: 'boolean',
-    default: true,
+    default: false,
     description:
-      'Coordinate with other goodvibes nodes on this network so exactly one of them consumes inbound channel messages (Telegram polling, ntfy subscriptions, inbox pollers). Prevents one message being answered twice when the same install runs on two machines, or twice on one machine. Outbound sends, sessions and the control plane run on every node either way. Turn this off and every node consumes independently.',
+      'Let this machine share inbound channel work with your OTHER goodvibes machines on this network, so exactly one of them reads each inbox (Telegram polling, ntfy subscriptions, inbox pollers) instead of all of them answering the same message. For a homelab where you run goodvibes on several machines that are all yours and configured with the same surfaces: switch it on everywhere and they sort it out between themselves, including taking over within about a second when one is shut down or crashes. Off by default because switching it on asserts that every goodvibes node on this network belongs to you — on a shared network (an office, a shared house) a stranger\'s node would join the same coordination and one of you would stop receiving messages with nothing to indicate why. Outbound sends, sessions and the control plane are unaffected either way.',
   },
   {
     key: 'cluster.heartbeatSeconds',
