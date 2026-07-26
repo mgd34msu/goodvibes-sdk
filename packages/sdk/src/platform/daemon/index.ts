@@ -19,3 +19,8 @@ export { createDaemonMediaRouteHandlers } from './http/media-routes.js';
 export { createDaemonSystemRouteHandlers } from './http/system-routes.js';
 export { createDaemonTelemetryRouteHandlers } from './http/telemetry-routes.js';
 export { jsonErrorResponse } from '@pellux/goodvibes-daemon-sdk';
+export {
+  dispatchClusterGroupRoutes,
+  type ClusterGroupRouteContext,
+  type ClusterGroupVerbs,
+} from './http/cluster-group-routes.js';
