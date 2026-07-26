@@ -125,14 +125,37 @@ function readMessage(error: unknown, fallbackMessage?: string): string {
   return fallbackMessage ?? 'Unexpected error';
 }
 
-function inferCategory(status?: number, code?: string): DaemonErrorCategory {
+/**
+ * Wording a spent account is reported with. Kept identical to the platform's
+ * own copies (`platform/types/errors.ts`, `platform/utils/error-display.ts`) so
+ * the daemon wire body and the platform agree on what "out of credit" is.
+ */
+const BILLING_MESSAGE_PATTERN = /credit balance|insufficient[_\s-](?:credit|credits|quota|balance|funds)|out of credits|purchase credits|no credits|payment required|plans?[_\s&-]+billing|billing details/;
+
+/**
+ * Category implied by the transport, refined by what the response SAID.
+ *
+ * 400 and 429 are deliberately not decided on the status alone. Providers
+ * report a spent account under both — Anthropic returns 400 with "credit
+ * balance is too low", and several return 429 for exhausted credit rather than
+ * throughput — so a status-only rule labels a billing failure `bad_request` or
+ * `rate_limit`. That matters beyond the wording: `rate_limit` reads as
+ * retryable, so a caller waits out a condition that never clears.
+ *
+ * The message is consulted only for those two statuses; every other status is
+ * unambiguous on its own.
+ */
+function inferCategory(message: string, status?: number, code?: string): DaemonErrorCategory {
+  const msg = (message.length > MAX_INFER_MESSAGE_LENGTH
+    ? message.slice(0, MAX_INFER_MESSAGE_LENGTH)
+    : message).toLowerCase();
   if (status === 401) return DaemonErrorCategory.AUTHENTICATION;
   if (status === 402) return DaemonErrorCategory.BILLING;
   if (status === 403) return DaemonErrorCategory.AUTHORIZATION;
   if (status === 404) return DaemonErrorCategory.NOT_FOUND;
   if (status === 408 || status === 504) return DaemonErrorCategory.TIMEOUT;
-  if (status === 429) return DaemonErrorCategory.RATE_LIMIT;
-  if (status === 400) return DaemonErrorCategory.BAD_REQUEST;
+  if (status === 429) return BILLING_MESSAGE_PATTERN.test(msg) ? DaemonErrorCategory.BILLING : DaemonErrorCategory.RATE_LIMIT;
+  if (status === 400) return BILLING_MESSAGE_PATTERN.test(msg) ? DaemonErrorCategory.BILLING : DaemonErrorCategory.BAD_REQUEST;
   if (status !== undefined && status >= 500) return DaemonErrorCategory.SERVICE;
 
   const normalizedCode = code?.toUpperCase();
@@ -321,7 +344,7 @@ export function buildErrorResponseBody(
     const phase = error.phase;
     const requestId = error.requestId;
     const network = getNetworkErrorMessage(message, provider);
-    const inferred = inferCategory(status, error.code ?? providerCode);
+    const inferred = inferCategory(message, status, error.code ?? providerCode);
     const messageCategory = inferred === DaemonErrorCategory.UNKNOWN
       ? inferCategoryFromMessage(message)
       : inferred;
@@ -367,7 +390,7 @@ export function buildErrorResponseBody(
     const retryAfterMs = readNumberProperty(error.retryAfterMs);
     const message = error.error.trim() || options.fallbackMessage || 'Unexpected error';
     const network = getNetworkErrorMessage(message, provider);
-    const inferred = inferCategory(status, code ?? providerCode);
+    const inferred = inferCategory(message, status, code ?? providerCode);
     const messageCategory = inferred === DaemonErrorCategory.UNKNOWN
       ? inferCategoryFromMessage(message)
       : inferred;
@@ -393,7 +416,7 @@ export function buildErrorResponseBody(
   }
   const message = readMessage(error, options.fallbackMessage);
   const network = getNetworkErrorMessage(message);
-  const inferred = inferCategory(options.status);
+  const inferred = inferCategory(message, options.status);
   const messageCategory = inferred === DaemonErrorCategory.UNKNOWN
     ? inferCategoryFromMessage(message)
     : inferred;

@@ -26474,6 +26474,15 @@ Set a config value through the daemon API.
           "items": {}
         }
       ]
+    },
+    "persistedTo": {
+      "type": "string"
+    },
+    "tier": {
+      "type": "string"
+    },
+    "daemonOwned": {
+      "type": "boolean"
     }
   },
   "required": [
