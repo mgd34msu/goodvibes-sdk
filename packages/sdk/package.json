@@ -281,6 +281,14 @@
       "types": "./dist/platform/discovery/index.d.ts",
       "import": "./dist/platform/discovery/index.js"
     },
+    "./platform/email": {
+      "types": "./dist/platform/email/index.d.ts",
+      "import": "./dist/platform/email/index.js"
+    },
+    "./platform/email/node": {
+      "types": "./dist/platform/email/node.d.ts",
+      "import": "./dist/platform/email/node.js"
+    },
     "./platform/export": {
       "types": "./dist/platform/export/index.d.ts",
       "import": "./dist/platform/export/index.js"
