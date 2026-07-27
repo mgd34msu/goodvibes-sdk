@@ -118,6 +118,26 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     'linkHomeGraphKnowledge', 'listHomeGraphIssues', 'map', 'refreshDevicePassport',
     'reset', 'reviewHomeGraphFact', 'syncHomeGraph', 'unlinkHomeGraphKnowledge',
   ],
+  'browser-page-control': [
+    // Driving a real browser. These are the operations a page and a browser
+    // process actually have, and renaming them to CRUD words would describe
+    // something other than what happens: `navigate` is not `update`, and
+    // `press` is not `set`.
+    //
+    // The session verbs are the ownership vocabulary the engine enforces, so
+    // they are kept distinct on purpose: `launch` starts a browser this daemon
+    // owns and may therefore close, `attach` connects to one it did not start
+    // and may never close, and `release` lets go of an attached browser while
+    // leaving it running. Collapsing `release` into `close` would name two
+    // different acts the same word, and `close` — the one that really does end
+    // a process — is already a CORE_VERB.
+    //
+    // `browser.tabs.create` is deliberately NOT here: opening a tab is
+    // creating one, and it uses the core verb.
+    'attach', 'back', 'click', 'extract', 'forward', 'launch', 'navigate',
+    'press', 'provision', 'readText', 'release', 'screenshot', 'scroll',
+    'select', 'switch', 'type', 'waitFor',
+  ],
   'media-and-voice-io': [
     // Single-purpose media/voice operations named for what they produce, not
     // a generic CRUD shape.

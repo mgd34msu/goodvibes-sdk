@@ -3021,15 +3021,17 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       ]
     }
   },
-  "browser.tabs.list": {
-    "methodId": "browser.tabs.list",
+  "browser.tabs.create": {
+    "methodId": "browser.tabs.create",
     "http": {
-      "method": "GET",
+      "method": "POST",
       "path": "/api/browser/tabs"
     },
     "status": 200,
     "body": {
       "sessionId": "sample",
+      "pageId": "sample",
+      "url": "sample",
       "pages": [
         {
           "pageId": "sample",
@@ -3040,17 +3042,15 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       ]
     }
   },
-  "browser.tabs.new": {
-    "methodId": "browser.tabs.new",
+  "browser.tabs.list": {
+    "methodId": "browser.tabs.list",
     "http": {
-      "method": "POST",
-      "path": "/api/browser/tabs/new"
+      "method": "GET",
+      "path": "/api/browser/tabs"
     },
     "status": 200,
     "body": {
       "sessionId": "sample",
-      "pageId": "sample",
-      "url": "sample",
       "pages": [
         {
           "pageId": "sample",

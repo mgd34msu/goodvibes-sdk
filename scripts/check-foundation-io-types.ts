@@ -508,7 +508,7 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   { methodId: 'browser.extract', ...descriptorSchemas('browser.extract') },
   { methodId: 'browser.screenshot', ...descriptorSchemas('browser.screenshot') },
   { methodId: 'browser.tabs.list', ...descriptorSchemas('browser.tabs.list') },
-  { methodId: 'browser.tabs.new', ...descriptorSchemas('browser.tabs.new') },
+  { methodId: 'browser.tabs.create', ...descriptorSchemas('browser.tabs.create') },
   { methodId: 'browser.tabs.switch', ...descriptorSchemas('browser.tabs.switch') },
   { methodId: 'browser.tabs.close', ...descriptorSchemas('browser.tabs.close') },
   { methodId: 'browser.history.back', ...descriptorSchemas('browser.history.back') },

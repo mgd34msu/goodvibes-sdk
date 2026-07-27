@@ -347,7 +347,7 @@ export function createBrowserGatewayHandlers(
       path: readOptionalString(params.path),
     }))],
     ['browser.tabs.list', handler(async (params) => service.tabs(readTarget(params)))],
-    ['browser.tabs.new', handler(async (params) => service.newTab(readTarget(params), {
+    ['browser.tabs.create', handler(async (params) => service.newTab(readTarget(params), {
       url: readOptionalString(params.url),
       launch: readLaunchArgs(params),
     }))],

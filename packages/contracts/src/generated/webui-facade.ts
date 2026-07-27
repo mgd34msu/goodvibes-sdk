@@ -256,13 +256,13 @@ export const WEBUI_METHOD_ROUTES: Readonly<Record<string, WebuiRouteDefinition>>
     "method": "POST",
     "path": "/api/browser/tabs/close"
   },
+  "browser.tabs.create": {
+    "method": "POST",
+    "path": "/api/browser/tabs"
+  },
   "browser.tabs.list": {
     "method": "GET",
     "path": "/api/browser/tabs"
-  },
-  "browser.tabs.new": {
-    "method": "POST",
-    "path": "/api/browser/tabs/new"
   },
   "browser.tabs.switch": {
     "method": "POST",
@@ -1724,8 +1724,8 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "browser.snapshot": "rest",
   "browser.status": "rest",
   "browser.tabs.close": "rest",
+  "browser.tabs.create": "rest",
   "browser.tabs.list": "rest",
-  "browser.tabs.new": "rest",
   "browser.tabs.switch": "rest",
   "browser.type": "rest",
   "browser.waitFor": "rest",
@@ -5266,23 +5266,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
       ]
     }
   },
-  "browser.tabs.list": {
-    "input": {
-      "sessionId": "sample"
-    },
-    "output": {
-      "sessionId": "sample",
-      "pages": [
-        {
-          "pageId": "sample",
-          "url": "sample",
-          "title": "sample",
-          "active": false
-        }
-      ]
-    }
-  },
-  "browser.tabs.new": {
+  "browser.tabs.create": {
     "input": {
       "sessionId": "sample",
       "pageId": "sample",
@@ -5294,6 +5278,22 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
       "sessionId": "sample",
       "pageId": "sample",
       "url": "sample",
+      "pages": [
+        {
+          "pageId": "sample",
+          "url": "sample",
+          "title": "sample",
+          "active": false
+        }
+      ]
+    }
+  },
+  "browser.tabs.list": {
+    "input": {
+      "sessionId": "sample"
+    },
+    "output": {
+      "sessionId": "sample",
       "pages": [
         {
           "pageId": "sample",
