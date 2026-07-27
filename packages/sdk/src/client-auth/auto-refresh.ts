@@ -40,6 +40,16 @@ export interface AutoRefreshOptions {
   readonly refreshLeewayMs?: number | undefined;
 
   /**
+   * Clock used for the expiry comparisons. Defaults to `Date.now`.
+   *
+   * Exists so a caller — in practice a test — can drive the leeway and
+   * expired-token branches deterministically instead of constructing tokens
+   * whose real timestamps happen to straddle the window. Not a behaviour knob:
+   * anything other than a monotonic wall clock makes expiry meaningless.
+   */
+  readonly now?: (() => number) | undefined;
+
+  /**
    * Consumer-provided callback invoked to obtain a new token when the current
    * token is near expiry (pre-flight leeway check) or a 401 is received
    * (reactive retry path).
@@ -75,6 +85,8 @@ export interface AutoRefreshCoordinatorOptions {
   readonly tokenStore: GoodVibesTokenStore;
   readonly autoRefresh: boolean;
   readonly refreshLeewayMs: number;
+  /** Clock for expiry comparisons; defaults to `Date.now`. See AutoRefreshOptions.now. */
+  readonly now?: (() => number) | undefined;
   /**
    * Optional refresh function. Called to acquire a new token when the current
    * one is near expiry or a 401 was received.
@@ -102,12 +114,15 @@ export class AutoRefreshCoordinator {
   /** Promise shared across all waiters during an active refresh. */
   #refreshingPromise: Promise<void> | null = null;
 
+  readonly #now: () => number;
+
   constructor(options: AutoRefreshCoordinatorOptions) {
     this.#tokenStore = options.tokenStore;
     this.#autoRefresh = options.autoRefresh;
     this.#refreshLeewayMs = options.refreshLeewayMs;
     this.#refresh = options.refresh;
     this.#observer = options.observer;
+    this.#now = options.now ?? Date.now;
   }
 
   // ---------------------------------------------------------------------------
@@ -131,14 +146,14 @@ export class AutoRefreshCoordinator {
   async #isNearExpiry(): Promise<boolean> {
     const { expiresAt } = await this.#readEntry();
     if (expiresAt === undefined) return false;
-    return Date.now() + this.#refreshLeewayMs >= expiresAt;
+    return this.#now() + this.#refreshLeewayMs >= expiresAt;
   }
 
   /** Return true if the token is definitively expired (past expiresAt). */
   async #isExpired(): Promise<boolean> {
     const { expiresAt } = await this.#readEntry();
     if (expiresAt === undefined) return false;
-    return Date.now() >= expiresAt;
+    return this.#now() >= expiresAt;
   }
 
   // ---------------------------------------------------------------------------

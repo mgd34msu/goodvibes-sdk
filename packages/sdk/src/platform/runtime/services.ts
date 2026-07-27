@@ -53,6 +53,7 @@ import { MemoryConsolidationScheduler } from '../state/memory-consolidation-sche
 import { PowerManager, wireRuntimePower, createUnavailablePowerSeam, type PowerPlatformSeam } from '../power/index.js';
 import { emitProviderVoiceUsage } from './emitters/providers.js';
 import { AppendOnlyRetentionScheduler, runStartupAppendOnlySweep } from './retention/append-only-registry.js';
+import { createDisposalScope, registerRuntimePollers } from './disposal.js';
 import { resolveMemoryVectorDbPath } from '../state/memory-vector-store.js';
 import type { RuntimeEventBus } from './events/index.js';
 import { createDomainDispatch } from './store/index.js';
@@ -300,6 +301,16 @@ export interface RuntimeServices {
   readonly integrationHelpers: IntegrationHelperService;
   /** Re-root path-bound services to a new working directory (WorkspaceSwapManager). MemoryStore + ProjectIndex re-root in-process; others warn and keep their path until restart. @throws INVALID_PATH on failure. */
   rerootStores(newWorkingDir: string): Promise<void>;
+  /**
+   * Stop every poller this graph started (config watch, fleet tick, memory
+   * governor, watcher registry, cross-session sweep, orchestration writer, push
+   * sweep, knowledge scheduler, retention schedulers) and release their handles.
+   *
+   * Best-effort, total and idempotent: an owner that throws is logged and the
+   * rest still come down. Dispose only a graph you constructed — a DaemonServer
+   * handed runtime services by its caller does not own them.
+   */
+  dispose(): void;
 }
 
 export {
@@ -308,6 +319,7 @@ export {
 } from './provider-optimizer-wiring.js';
 
 export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeServices {
+  const disposalScope = createDisposalScope('RuntimeServices'); // see ./disposal.ts
   const workingDirectory = options.workingDir;
   const homeDirectory = options.homeDirectory;
   const surfaceRoot = requireSurfaceRoot(options.surfaceRoot, 'RuntimeServicesOptions surfaceRoot');
@@ -544,7 +556,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // External config edits apply LIVE through the same subscribe() pipeline an
   // in-process set() uses — a hand-edited settings file needs no restart. The
   // underlying file watchers are unref'd, so this never pins the event loop.
-  configManager.watchConfigFiles();
+  const stopConfigWatch = configManager.watchConfigFiles(); // handle kept: dropping it is what left a 250ms poll running forever
   // Memory consolidation runs HERE — this runtime is the memory store's single
   // writer. Idle trigger (no busy broker sessions) + slow schedule fallback;
   // reversible outcomes only, receipts retained, learning.consolidation.* tunes it.
@@ -1051,7 +1063,15 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     resetLocalEngineFailureState: () => voiceProviders.get('local')?.resetEngineFailureState?.(),
     admitExpensiveWork: (label) => admitExpensiveWork(label),
   });
-  registerGatewayVerbGroups(gatewayMethods, { processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, requestApproval: (input) => approvalBroker.requestApproval(input), stampFixSessionOnApproval: (offerCallId, outcome) => approvalBroker.stampFixSession(offerCallId, outcome), watcherRegistry, userPermissionRuleStore, shellPaths, runtimeBus: options.runtimeBus, sessionPresence: { isAttached }, configManager, runtimeStore: options.runtimeStore, channelDeliveryRouter, providerRegistry, automationManager, sessionLister: sessionBroker, sessionIntake: sessionBroker, workingDirectory, attemptsController: orchestrationEngine, stepUpService, memoryRegistry, pairingTokens, acpHost, sessionLiveTurnControls, powerManager, memoryGovernor, voiceSetup, onCiAutoWatch: (observer) => { ciAutoWatchObserver = observer; } }); // see routes/register-gateway-verb-groups.ts
+  registerGatewayVerbGroups(gatewayMethods, { processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, requestApproval: (input) => approvalBroker.requestApproval(input), stampFixSessionOnApproval: (offerCallId, outcome) => approvalBroker.stampFixSession(offerCallId, outcome), watcherRegistry, userPermissionRuleStore, shellPaths, runtimeBus: options.runtimeBus, sessionPresence: { isAttached }, configManager, runtimeStore: options.runtimeStore, channelDeliveryRouter, providerRegistry, automationManager, sessionLister: sessionBroker, sessionIntake: sessionBroker, workingDirectory, attemptsController: orchestrationEngine, stepUpService, memoryRegistry, pairingTokens, acpHost, sessionLiveTurnControls, powerManager, memoryGovernor, voiceSetup, disposal: disposalScope.registry, onCiAutoWatch: (observer) => { ciAutoWatchObserver = observer; } }); // see routes/register-gateway-verb-groups.ts
+  // Teardown for every poller started above. RuntimePollerOwners is all-required,
+  // so a poller added to this graph later cannot compile without being named here.
+  registerRuntimePollers(disposalScope.registry, {
+    stopConfigWatch, watcherRegistry, storeSnapshotScheduler, appendOnlyRetentionScheduler,
+    memoryConsolidationScheduler, codeIndexReindexScheduler, sessionOrchestration,
+    knowledgeService, agentKnowledgeService, wrfcController, orchestrationEngine,
+    processRegistry, memoryGovernor, triggerManager,
+  });
   return {
     workingDirectory,
     homeDirectory,
@@ -1154,6 +1174,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     fileUndoManager,
     workspaceCheckpointManager,
     integrationHelpers,
+    dispose: (): void => disposalScope.dispose(),
     async rerootStores(newWorkingDir: string): Promise<void> {
       // Step 1: Re-root MemoryStore — close existing SQLite/vector handles, reopen at new path.
       const newMemoryDbPath = join(newWorkingDir, '.goodvibes', surfaceRoot, 'memory.sqlite');

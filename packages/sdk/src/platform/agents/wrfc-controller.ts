@@ -151,6 +151,8 @@ export class WrfcController {
   private readonly agentLastSeen = new Map<string, number>();
   /** Active watchdog timer handle, if any. */
   private watchdogTimer: ReturnType<typeof setInterval> | null = null;
+  /** Pending one-shot chain-reaper timers, so dispose() can cancel them (scheduleChainCleanup). */
+  private readonly chainCleanupTimers = new Set<ReturnType<typeof setTimeout>>();
 
   constructor(
     runtimeBus: RuntimeEventBus,
@@ -484,6 +486,8 @@ export class WrfcController {
       clearInterval(this.watchdogTimer);
       this.watchdogTimer = null;
     }
+    for (const timer of this.chainCleanupTimers) clearTimeout(timer);
+    this.chainCleanupTimers.clear();
   }
 
   private transition(chain: WrfcChain, to: WrfcState): void {
@@ -1379,12 +1383,17 @@ export class WrfcController {
   }
 
   private scheduleChainCleanup(chain: WrfcChain): void {
-    const timer = setTimeout(() => {
+    // Held on the instance, not in a local: a timer only a local can name is
+    // one dispose() cannot cancel. Removes itself on fire.
+    let timer: ReturnType<typeof setTimeout>;
+    timer = setTimeout(() => {
+      this.chainCleanupTimers.delete(timer);
       if (isChainTerminal(chain.state)) {
         this.chains.delete(chain.id);
       }
     }, CHAIN_CLEANUP_DELAY_MS);
     timer.unref?.();
+    this.chainCleanupTimers.add(timer);
   }
 
   private async checkAndRunGatesForAll(): Promise<void> {

@@ -274,10 +274,23 @@ export async function cancelActiveTurn(
     turn.cancelRequested = true;
     turn.controller.abort();
   }
-  const settled = await Promise.race([
-    turn.settled,
-    new Promise<null>((resolve) => setTimeout(resolve, CANCEL_SETTLE_TIMEOUT_MS)),
-  ]);
+  // The settle deadline is cancelled once the race is decided. Left uncleared,
+  // a turn that settles promptly — the normal case — still strands a
+  // CANCEL_SETTLE_TIMEOUT_MS handle holding this closure, once per cancel.
+  let cancelSettleDeadline: (() => void) | undefined;
+  let settled: Awaited<typeof turn.settled> | null;
+  try {
+    settled = await Promise.race([
+      turn.settled,
+      new Promise<null>((resolve) => {
+        const handle = setTimeout(resolve, CANCEL_SETTLE_TIMEOUT_MS);
+        (handle as { unref?: () => void }).unref?.();
+        cancelSettleDeadline = () => clearTimeout(handle);
+      }),
+    ]);
+  } finally {
+    cancelSettleDeadline?.();
+  }
   return {
     sessionId,
     turnId: turn.turnId,
