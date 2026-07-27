@@ -94,7 +94,7 @@ export interface InboundMailContext {
   readonly configManager: { get(key: string): unknown };
   readonly secretsManager?: Pick<SecretsManager, 'get' | 'getGlobalHome'> | undefined;
   readonly transport: EmailTransportPort;
-  readonly expectations: VerificationExpectationBook;
+  readonly expectations: ExpectationMatcher;   // NOT the book — see below
   readonly records: InboundMailStore;
   readonly cursors: MailboxCursorStore;
   readonly deliverOwnerNotice: (text: string) => Promise<SurfaceNoticeDelivery>;
@@ -104,7 +104,31 @@ export interface InboundMailContext {
 
 There is no `trySpawnAgent` to call, no `sessionBroker` to submit to, and no
 `queueSurfaceReplyFromBinding` to reply through. The compiler rejects the call,
-not a reviewer. Three tests hold the line: a runtime own-property assertion (so
+not a reviewer.
+
+**The same narrowing applies to expectations, and my first draft got it wrong.**
+It handed the inbound path the whole `VerificationExpectationBook`. That book
+carries `openExpectation`, and now also `hydrateExpectation` — two methods that
+insert. Holding it would make inbound code structurally able to register an
+expectation, which is precisely what §2 forbids and precisely the mistake this
+section refuses to allow for `trySpawnAgent`. Same principle, and it nearly went
+through on the very rule the round exists to enforce.
+
+So the inbound path holds a match-only view:
+
+```ts
+export interface ExpectationMatcher {
+  matchCandidate(input: VerificationMatchInput): VerificationMatchResult;
+  // deliberately absent: openExpectation, hydrateExpectation,
+  // and every other method that inserts, widens or extends.
+}
+```
+
+`VerificationExpectationBook` satisfies this structurally, so nothing is
+wrapped or duplicated — the watcher simply cannot name what it does not hold.
+`hydrateExpectation` is boot-only: the wiring calls it from the store's recovery
+sweep, never the watcher. Enforced by a type-level test and by a source-level
+test that no file under `platform/email/inbound/` mentions either method. Three tests hold the line: a runtime own-property assertion (so
 a later widening is caught even if it type-checks), a type-level test asserting
 `InboundMailContext` is not assignable from anything carrying a spawn field, and
 a source-level test asserting no file under `platform/email/inbound/` references
@@ -341,6 +365,97 @@ Correctness details that are easy to get wrong and are therefore specified:
   refreshed) and then stops, reports `failed` with the reason, and waits for a
   configuration change. Retrying a bad password on a backoff loop is how an
   account gets locked.
+
+### 3.4a Capability sufficiency is a precondition, not a Gmail detail
+
+A defect caught in review generalizes into a rule for the whole inbound path,
+so it is stated here rather than left in one module.
+
+The Gmail delta path originally gated on scopes that authorize
+`users.history.list` — a set that includes `gmail.metadata`. Google's scope
+documentation describes that scope as *"View your email message metadata such as
+labels and headers, but not the email body."* So a metadata-only token passed
+the gate, the call succeeded, and the result was `ok: true` with every body
+empty. **A success indistinguishable from a real one is the worst shape a defect
+can take in a delivery path**, and it is worse here than almost anywhere,
+because the mailbox going quiet is exactly what a working mailbox looks like on
+a slow day.
+
+The rule:
+
+> A connection that authenticates but cannot deliver what the caller needs
+> fails **loudly, at connect time, with a named reason and the exact step to
+> fix it**. It never returns empty-looking success.
+
+This is a **precondition of the inbound path**, evaluated before the watcher
+reports healthy, not a per-provider check:
+
+- **Gmail API path** — two scope tiers, checked separately. Scopes that
+  authorize the history call, and scopes that authorize bodies
+  (`gmail.readonly`, `gmail.modify`, `https://mail.google.com/` — *not*
+  `gmail.metadata`). History-capable but not body-capable refuses **before**
+  making the call.
+- **IMAP path** — `open()` reports a typed capability record rather than
+  returning `void` and letting "connected" stand in for "can read this mailbox":
+  whether `IDLE` is advertised (which decides push vs poll), whether
+  `EXAMINE <mailbox>` actually succeeded, the `UIDVALIDITY` it reported, and a
+  clear distinction between *authentication rejected*, *mailbox does not exist*,
+  and *connected and readable*. The server's own wording is carried into the
+  failure reason where it gave one.
+
+### 3.4b What happens when capability is insufficient at runtime
+
+Setup-time validation is not enough. Scopes get revoked, app passwords get
+rotated, mailboxes get renamed, and all of that happens long after setup while
+the daemon is running unattended.
+
+Three runtime states, all distinct and all surfaced in health:
+
+| State | Meaning | Watcher |
+|---|---|---|
+| `healthy` | Full capability | Running, IDLE or polling |
+| `degraded` | Reduced but still serving its purpose — e.g. no `IDLE`, so polling | **Running.** Expectations still work |
+| `insufficient` | Cannot read the mailbox, or cannot fetch bodies | **Not running** |
+
+**Ruling: `insufficient` refuses and notifies. It does not silently degrade.**
+`surfaces.email.inbound.onInsufficientCapability` defaults to
+`'refuse-and-notify'`; `'notice-only'` exists as a deliberate, configured
+downgrade and is never entered automatically.
+
+The reasoning, since this rejects the more accommodating option:
+
+1. **An expectation that can never be satisfied is worse than no expectation.**
+   The signup workstream would wait out its entire window and then report "no
+   verification mail arrived" — which is false. It would send the owner to check
+   his mailbox when the problem is his grant, and the mailbox will look fine.
+2. **Automatic degradation reintroduces the exact defect one level up.** We just
+   removed a silent partial capability from the Gmail gate; adding a silent
+   partial capability to the surface that consumes it would be the same bug with
+   a wider blast radius.
+3. **Least friction is not "keep running in a broken mode."** It is one message
+   naming what is missing and the step that fixes it. A daemon that quietly
+   half-works costs more of the owner's time than one that says
+   "this grant is metadata-only; inbound email needs `gmail.readonly`."
+
+Consequences that make the refusal honest rather than merely safe:
+
+- **Opening an expectation against an `insufficient` mailbox is refused at open
+  time**, with that reason. The signup workstream learns immediately instead of
+  after fifteen minutes of silence.
+- **Expectations already open when capability is lost are failed with a named
+  reason**, not left to expire. This is the "cannot silently sit unsatisfied"
+  requirement, and expiry is not an acceptable substitute for it: expiry means
+  *nothing came*, and this is *we can no longer look*.
+- **"Cannot" and "not yet" are different.** A watcher in backoff after a dropped
+  connection is **not** insufficient — recovery fetches everything above the
+  cursor, so the expectation is still satisfiable and must not be failed.
+  Only a capability verdict fails an expectation.
+- **Re-probed on a timer** (`capabilityRecheckMinutes`, default 60) and on
+  config change, so the owner fixing his scopes does not require a restart to
+  take effect. Not a tight retry loop.
+- **Notified once per transition**, not once per probe. A recurring alarm about
+  a condition the owner already knows about trains him to ignore the channel
+  this capability depends on.
 
 ### 3.5 Where it plugs in — the supervisor model, not the webhook model
 
@@ -589,8 +704,11 @@ wearing a feature's clothes.
 | `surfaces.email.inbound.dedupTtlMinutes` | number | **`60`** | Must exceed a restart cycle, or a crash re-delivers as a duplicate. An hour covers the auto-update restart. |
 | `surfaces.email.inbound.retentionDays` | number | **`30`** | How long inbound records are kept before reaping. Long enough to explain "why did I get that message", short enough to bound the store. |
 | `surfaces.email.inbound.maxRecords` | number | **`5000`** | The hard bound. Whichever of age or count binds first, wins. |
+| `surfaces.email.inbound.capabilityRecheckMinutes` | number | **`60`** | How often a mailbox reporting insufficient capability is re-probed (§3.4b). Fixing a scope must not require a daemon restart, and must not produce a tight retry loop. Range 5–1440. |
+| `surfaces.email.inbound.onInsufficientCapability` | `'refuse-and-notify' \| 'notice-only'` | **`'refuse-and-notify'`** | §3.4b. `notice-only` is a deliberate downgrade in which expectations can never be satisfied — so signup and order confirmation stop working — and is never entered automatically. |
 
 **Every default above is mine, not the owner's, and needs his confirmation** —
+fourteen of them now, counting the two capability settings —
 `flags-are-features` requires an explicit per-flag ruling. They are listed here
 rather than buried in a schema file so he can rule on them as a set. The two
 most likely to be argued: `enabled: false` (the alternative is a daemon that
@@ -659,7 +777,7 @@ storage mechanism, not a hand-built path.
 |---|---|
 | Reaps | Cursors for accounts no longer in config are dropped on load. |
 | Bounds | One record per (account, mailbox); the file cannot grow with traffic. |
-| Validates by content | On load every field is re-validated: `uidValidity` and `lastSeenUid` must be positive integers, `updatedAt` a parseable ISO date, `mailbox` a non-empty string. A record failing any check is **discarded, not repaired** — a corrupt cursor silently coerced to `0` would replay the entire mailbox. Discarded cursors re-establish at the high-water mark and are disclosed. |
+| Validates by content | On load every field is re-validated: `uidValidity` must be a positive integer, `lastSeenUid` a **non-negative** integer (zero is the honest value for a first run against an empty mailbox, and requiring positivity would make a freshly-established cursor fail its own validation on the very next load), `updatedAt` a parseable ISO date, `mailbox` a non-empty string. A record failing any check is **discarded, not repaired** — a corrupt cursor silently coerced to `0` would replay the entire mailbox. Discarded cursors re-establish at the high-water mark and are disclosed. |
 | Sweeps | On load, and on config change. |
 | Discloses | `email.inbound.status` reports every cursor with its mailbox, position and age. |
 
@@ -778,6 +896,13 @@ before the fix lands.
 | 26 | Only one cluster node consumes a mailbox | Two supervisors, one gate |
 | 27 | The cursor advances only after processing completes | Failure injected between fetch and notice; message redelivered, not skipped |
 | 28 | Settings appear in TUI, agent and webui | Per-surface assertion, including the webui snapshot check |
+| 29 | A body-incapable grant refuses before calling, and never returns empty-bodied success | Metadata-only token; assert refusal, not an empty delta |
+| 30 | A missing mailbox, a rejected credential and a readable mailbox are three distinct outcomes | Fake IMAP server, three scripts |
+| 31 | Opening an expectation against an insufficient mailbox is refused at open time | Not left to expire fifteen minutes later |
+| 32 | Capability lost mid-window fails open expectations with a named reason | Distinct from expiry, which means "nothing came" |
+| 33 | A watcher in reconnect backoff does NOT fail expectations | "Not yet" is not "cannot" |
+| 34 | Insufficient capability notifies once per transition, not once per probe | Repeated probes, one notice |
+| 35 | The inbound path cannot register or hydrate an expectation | Type-level + source-level assertion (§2.1) |
 
 ---
 
@@ -796,7 +921,10 @@ overturn any of them.
 4. **The spawn capability is removed by type, not guarded by check.** §2.1.
 5. **Arrival is not ingest.** §5.1. The single most consequential decision here.
 6. **Dedup identity is `UIDVALIDITY:UID`, not `Message-ID`.** §6.
-7. **All twelve defaults in §8.** Listed together for a single ruling.
+7. **All fourteen defaults in §8.** Listed together for a single ruling.
+8. **Insufficient capability refuses and notifies; it never silently
+   degrades.** §3.4b. `notice-only` exists but is only ever entered by
+   configuration.
 
 ## 14. Related
 
