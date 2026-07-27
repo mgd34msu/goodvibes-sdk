@@ -57,12 +57,44 @@ paraphrase is not caught and no non-classifier could catch it. The remaining
 defences are that untrusted content carries no authority at all, and that
 outward actions still require confirmation.
 
+## The one exemption: a send to the owner himself
+
+Owner ruling. He is the trust root, not a third party, and telling him what
+arrived is the point of an assistant reading his mail — "what came in
+overnight" is a summary that necessarily reuses the words of what came in, so
+without an exemption the feature is refused in its most ordinary use.
+
+Deliberately narrow, and each narrowing is tested:
+
+- His configured addresses only. **Not a domain** (that would exempt every
+  colleague, and a forward to a colleague is a third-party disclosure), **not a
+  pattern** (no plus-address folding), **not "internal"** (there is no such
+  tier).
+- **Not partial.** A send to the owner AND anyone else is refused, because
+  naming him first and slipping a second recipient in beside him is exactly how
+  this would be abused.
+- Identity comes from configuration — `email.fromAddress`, `email.username`,
+  `surfaces.email.from`/`.user`/`.username` — and never from a `From:` header,
+  `Reply-To:`, delivery evidence, the ledger, or the body. A recipient the
+  content chose is the attack, so content is not consulted.
+- Nothing configured means no identity, so the exemption cannot fire and the
+  refusal stays. That is the correct failure direction.
+
+**To spoof it** an attacker must change the owner's stored mail configuration:
+either an authenticated write to the daemon config API, or inducing the agent
+to call a config-setting tool. Both are strictly stronger capabilities than
+sending mail — anything able to rewrite daemon config can disable this guard
+outright, repoint SMTP, or read the credential store. The exemption sits behind
+a capability that already implies compromise.
+
+**It exempts the taint rule and nothing else.** Link validation, the
+confirmation gate and the explicit-user-request rule all still apply to a send
+to the owner.
+
 ## Legitimate shapes that are still refused
 
 Listed so they are ruled on rather than discovered:
 
-- Summarizing a message back to the owner in the same turn, when the summary
-  reuses eight or more consecutive words from it.
 - Forwarding a message body verbatim.
 - Pasting a long identifier read from a page into a message.
 

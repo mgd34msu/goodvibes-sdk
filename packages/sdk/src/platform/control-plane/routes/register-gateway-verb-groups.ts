@@ -98,7 +98,7 @@ import { createDaemonBrowserGatewayService, type BrowserCompositionDeps } from '
 import { registerCalendarGatewayMethods, type CalendarGatewayService } from './calendar.js';
 import { createDaemonCalendarGatewayService } from './calendar-composition.js';
 import { registerEmailGatewayMethods, type EmailGatewayService } from './email.js';
-import { createDaemonEmailGatewayService, type EmailCompositionDeps } from './email-composition.js';
+import { registerDaemonEmailVerbs, type EmailCompositionDeps } from './email-composition.js';
 import { bindCostAttributionIngest } from './attribution-ingest.js';
 import type { ConfigManager } from '../../config/manager.js';
 import type { DisposalRegistry } from '../../runtime/disposal.js';
@@ -624,8 +624,7 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   if (deps.voiceSetup) registerVoiceSetupGatewayMethods(catalog, deps.voiceSetup);
   const calendarGateway = createDaemonCalendarGatewayService(deps);
   if (calendarGateway) registerCalendarGatewayMethods(catalog, calendarGateway);
-  const emailGateway = createDaemonEmailGatewayService(deps);
-  if (emailGateway) registerEmailGatewayMethods(catalog, emailGateway);
+  registerDaemonEmailVerbs(catalog, { ...deps, configManager: deps.configManager });
   const browserGateway = createDaemonBrowserGatewayService(deps);
   if (browserGateway) registerBrowserGatewayMethods(catalog, browserGateway);
   if (browserGateway) deps.disposal?.add('browser sessions', () => void browserGateway.shutdown());

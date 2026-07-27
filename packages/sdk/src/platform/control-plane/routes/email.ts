@@ -41,6 +41,7 @@ import {
 } from '../../security/untrusted-content.js';
 import { GatewayVerbError } from './gateway-verb-error.js';
 import { evaluateOutwardEffect } from '../../security/untrusted-content.js';
+import { isSendToOwnerOnly } from '../../security/owner-identity.js';
 import { refuseNonUserRequest } from './explicit-user-request.js';
 import { readInvocationParams } from './invocation-params.js';
 
@@ -266,7 +267,25 @@ function refuseTaintedSend(
   fields: Readonly<Record<string, string | undefined>>,
   description: string,
   replyToEnvelopeSenders: readonly string[] = [],
+  ownerAddresses: ReadonlySet<string> = new Set(),
 ): void {
+  // The one exemption: a send whose EVERY recipient is the owner himself.
+  //
+  // He is the trust root, not a third party, and telling him what arrived is
+  // the point of an assistant reading his mail. "What came in overnight" is a
+  // summary that necessarily reuses the words of what came in, so without this
+  // the feature is refused in its most ordinary use.
+  //
+  // Deliberately narrow: his configured addresses only — not a domain, not a
+  // pattern, and not partial. A send to the owner AND anyone else is not
+  // exempt, because naming him first and slipping a second recipient in beside
+  // him is exactly how this would be abused. Identity comes from configuration
+  // and never from anything a message can influence; see
+  // security/owner-identity.ts for what an attacker would have to control.
+  //
+  // Note what is NOT exempted: link validation, the confirmation gate, and the
+  // explicit-user-request rule all still apply to a send to the owner.
+  if (isSendToOwnerOnly(fields.to, ownerAddresses)) return;
   const decision = evaluateOutwardEffect({
     request: { toolName: 'email', action: 'email.send', description },
     ledger,
@@ -298,6 +317,12 @@ export function createEmailSendHandler(
    * pass their own so one case's page read cannot colour the next case's send.
    */
   ledger: UntrustedContentLedger = getProcessUntrustedContentLedger(),
+  /**
+   * The owner's own addresses, from configuration. Empty disables the
+   * owner-destination exemption rather than widening it — see
+   * security/owner-identity.ts.
+   */
+  ownerAddresses: ReadonlySet<string> = new Set(),
 ): GatewayMethodHandler {
   return async (invocation) => {
     const params = readInvocationParams(invocation);
@@ -315,7 +340,7 @@ export function createEmailSendHandler(
     // Before anything leaves the machine: does what is about to leave derive
     // from what was read? Recipient included — a redirected reply is as much
     // an injection outcome as a rewritten body.
-    refuseTaintedSend(ledger, { to, subject, body }, `sending mail to ${to}`);
+    refuseTaintedSend(ledger, { to, subject, body }, `sending mail to ${to}`, [], ownerAddresses);
     const sent = await service.send({
       to,
       subject,
@@ -331,6 +356,8 @@ export function registerEmailGatewayMethods(
   catalog: GatewayMethodCatalog,
   service: EmailGatewayService,
   ledger: UntrustedContentLedger = getProcessUntrustedContentLedger(),
+  /** See createEmailSendHandler. Empty means the exemption cannot fire. */
+  ownerAddresses: ReadonlySet<string> = new Set(),
 ): void {
   const attach = (id: string, handler: GatewayMethodHandler): void => {
     const descriptor = catalog.get(id);
@@ -339,5 +366,5 @@ export function registerEmailGatewayMethods(
   attach('email.inbox.list', createEmailInboxListHandler(service));
   attach('email.inbox.read', createEmailInboxReadHandler(service));
   attach('email.draft.create', createEmailDraftCreateHandler(service));
-  attach('email.send', createEmailSendHandler(service, ledger));
+  attach('email.send', createEmailSendHandler(service, ledger, ownerAddresses));
 }
