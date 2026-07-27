@@ -11,6 +11,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { SharedSessionBroker } from '../packages/sdk/src/platform/control-plane/session-broker.ts';
+import { trackDisposables } from './_helpers/disposables.ts';
 import { ApprovalBroker } from '../packages/sdk/src/platform/control-plane/approval-broker.ts';
 import {
   buildModifiedEditArgs,
@@ -22,6 +23,8 @@ import { PersistentStore } from '../packages/sdk/src/platform/state/persistent-s
 import { RouteBindingManager } from '../packages/sdk/src/platform/channels/index.ts';
 import type { PermissionPromptRequest } from '../packages/sdk/src/platform/permissions/prompt.ts';
 import type { SharedSessionRecord } from '../packages/sdk/src/platform/control-plane/session-types.ts';
+
+const disposables = trackDisposables();
 
 function makeBroker(): SharedSessionBroker {
   const store = new PersistentStore<never>(':memory:' as string);
@@ -36,12 +39,16 @@ function makeBroker(): SharedSessionBroker {
     patchBinding: async () => null,
     getBinding: () => null,
   } as unknown as RouteBindingManager;
-  return new SharedSessionBroker({
-    store,
-    routeBindings,
-    agentStatusProvider: { getStatus: () => null },
-    messageSender: { send: async () => {} },
-  } as unknown as ConstructorParameters<typeof SharedSessionBroker>[0]);
+  // register()/createSession() call the broker's start(), which begins a GC
+  // setInterval; without stop() it keeps firing inside every later test file.
+  return disposables.add(
+    new SharedSessionBroker({
+      store,
+      routeBindings,
+      agentStatusProvider: { getStatus: () => null },
+      messageSender: { send: async () => {} },
+    } as unknown as ConstructorParameters<typeof SharedSessionBroker>[0]),
+  );
 }
 
 function participant(surfaceId: string, surfaceKind = 'tui') {

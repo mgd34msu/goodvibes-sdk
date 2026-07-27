@@ -17,11 +17,14 @@
 
 import { describe, expect, test } from 'bun:test';
 import { settleEvents } from './_helpers/test-timeout.js';
+import { trackDisposables } from './_helpers/disposables.ts';
 import { CompanionChatManager } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
 import type {
   CompanionLLMProvider,
   CompanionProviderChunk,
 } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
+
+const disposables = trackDisposables();
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -61,15 +64,17 @@ function makeGatedProvider(
 }
 
 function makeManager(provider: CompanionLLMProvider, events: CapturedEvent[]): CompanionChatManager {
-  return new CompanionChatManager({
-    provider,
-    eventPublisher: {
-      publishEvent(name: string, payload: unknown) {
-        events.push({ name, payload: payload as Record<string, unknown> });
+  return disposables.add(
+    new CompanionChatManager({
+      provider,
+      eventPublisher: {
+        publishEvent(name: string, payload: unknown) {
+          events.push({ name, payload: payload as Record<string, unknown> });
+        },
       },
-    },
-    gcIntervalMs: 999_999,
-  });
+      gcIntervalMs: 999_999,
+    }),
+  );
 }
 
 function eventTypes(events: CapturedEvent[]): string[] {

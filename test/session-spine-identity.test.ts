@@ -27,6 +27,9 @@ import type { SharedSessionKind, SharedSessionParticipant } from '../packages/sd
 // Cross-package import: the daemon-sdk route validators are ALSO kind-declaration
 // sites and must stay in lockstep with the type / broker / wire schema.
 import { SHARED_SESSION_KINDS } from '../packages/daemon-sdk/src/runtime-session-routes.ts';
+import { trackDisposables } from './_helpers/disposables.ts';
+
+const disposables = trackDisposables();
 
 const ALL_KINDS: readonly SharedSessionKind[] = [
   'tui', 'agent', 'webui', 'companion-task', 'companion-chat', 'automation', 'acp',
@@ -48,12 +51,12 @@ function makeRouteBindings(): RouteBindingManager {
 }
 
 function makeBroker(storePath: string): SharedSessionBroker {
-  return new SharedSessionBroker({
+  return disposables.add(new SharedSessionBroker({
     storePath,
     routeBindings: makeRouteBindings(),
     agentStatusProvider: { getStatus: () => null },
     messageSender: { send: () => true },
-  } as unknown as ConstructorParameters<typeof SharedSessionBroker>[0]);
+  } as unknown as ConstructorParameters<typeof SharedSessionBroker>[0]));
 }
 
 function participant(surfaceKind: string, surfaceId: string, userId?: string): SharedSessionParticipant {

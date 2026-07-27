@@ -9,6 +9,7 @@ import { ProjectIndex } from '../packages/sdk/src/platform/state/project-index.t
 import { FileStateCache } from '../packages/sdk/src/platform/state/file-cache.ts';
 import { TelemetryDB } from '../packages/sdk/src/platform/state/telemetry.ts';
 import { KVState } from '../packages/sdk/src/platform/state/kv-state.ts';
+import { trackDisposables } from './_helpers/disposables.ts';
 import { SQLiteStore } from '../packages/sdk/src/platform/state/sqlite-store.ts';
 import { AutomationJobStore } from '../packages/sdk/src/platform/automation/store/jobs.ts';
 import { AutomationRunStore } from '../packages/sdk/src/platform/automation/store/runs.ts';
@@ -31,6 +32,8 @@ import type { ProviderRegistry } from '../packages/sdk/src/platform/providers/re
 function tempDir(label: string): string {
   return join(tmpdir(), `gv-${label}-${randomUUID()}`);
 }
+
+const disposables = trackDisposables();
 
 describe('state persistence failures', () => {
   test('PersistentStore rejects invalid JSON instead of returning an empty store', async () => {
@@ -148,7 +151,10 @@ describe('state persistence failures', () => {
     mkdirSync(stateDir, { recursive: true });
     writeFileSync(join(stateDir, 'session_1234abcd.json'), '{bad', 'utf-8');
 
-    await expect(new KVState({ stateDir, sessionId: '1234abcd' }).load()).rejects.toThrow('JsonFileStore failed to load');
+    // load() starts a housekeeping interval before it rejects, so the instance
+    // has to be reachable for teardown rather than constructed inline.
+    const kv = disposables.add(new KVState({ stateDir, sessionId: '1234abcd' }));
+    await expect(kv.load()).rejects.toThrow('JsonFileStore failed to load');
   });
 
   test('KVState treats a corrupt LEGACY file as absent — the fallback may only recover data, never fail a clean session', async () => {
@@ -162,7 +168,7 @@ describe('state persistence failures', () => {
     mkdirSync(legacyStateDir, { recursive: true });
     writeFileSync(join(legacyStateDir, 'session_1234abcd.json'), '{bad', 'utf-8');
 
-    const kv = new KVState({ stateDir, legacyStateDir, sessionId: '1234abcd' });
+    const kv = disposables.add(new KVState({ stateDir, legacyStateDir, sessionId: '1234abcd' }));
     await kv.load();
     const all = await kv.list();
     expect(all.id).toBe('1234abcd');

@@ -18,6 +18,14 @@ import { UserAuthManager } from '../packages/sdk/src/platform/security/user-auth
 import { ConfigManager } from '../packages/sdk/src/platform/config/manager.ts';
 import { HttpListener } from '../packages/sdk/src/platform/daemon/http-listener.ts';
 import { installFrozenNow } from './_helpers/test-timeout.ts';
+import { trackDisposables } from './_helpers/disposables.ts';
+import { stopListenerTimers } from './_helpers/listener-teardown.ts';
+
+// Each HttpListener here is constructed but never start()ed, so HttpListener.stop()
+// never reaches the code that clears its two RateLimiter sweep intervals (it
+// early-returns while this.server === null). stopListenerTimers() reaches those
+// sweeps directly.
+const disposables = trackDisposables();
 
 function tempDir(suffix: string): string {
   const d = join(tmpdir(), `gv-perf02-${suffix}-${randomUUID()}`);
@@ -51,14 +59,14 @@ function makeRateLimiter(limit: number): { rl: RateLimiterInternal; cleanup: () 
     bootstrapCredentialPath: join(dir, 'auth-bootstrap.txt'),
   });
   const configManager = new ConfigManager({ configDir: dir });
-  const listener = new HttpListener({
+  const listener = disposables.add(new HttpListener({
     port: 0,
     userAuth,
     configManager,
     rateLimit: limit,
-  }) as unknown as { rateLimiter: RateLimiterInternal };
+  }), stopListenerTimers);
   return {
-    rl: listener.rateLimiter,
+    rl: (listener as unknown as { rateLimiter: RateLimiterInternal }).rateLimiter,
     cleanup: () => rmSync(dir, { recursive: true, force: true }),
   };
 }

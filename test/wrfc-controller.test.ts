@@ -18,6 +18,13 @@ import type { CommitWorkingTreeResult } from '../packages/sdk/src/platform/agent
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { trackDisposables } from './_helpers/disposables.ts';
+
+// Every WrfcController starts a watchdog setInterval at construction (see
+// resetWatchdog() in wrfc-controller.ts); registering here — inside
+// createHarness() — disposes it after each test regardless of whether the
+// test body remembers to call controller.dispose() itself.
+const disposables = trackDisposables();
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -265,7 +272,7 @@ function createHarness(overrides?: {
     registerAgent: (_opts: unknown) => {},
   };
 
-  const controller = new WrfcController(bus, messageBus, {
+  const controller = disposables.add(new WrfcController(bus, messageBus, {
     agentManager,
     configManager,
     projectRoot,
@@ -288,7 +295,7 @@ function createHarness(overrides?: {
         return 'merged-head-hash';
       },
     }),
-  });
+  }));
   controller.setWorkPlanService({
     async createWorkPlanTask(input) {
       workPlanCalls.push({ type: 'create', input: input as unknown as Record<string, unknown> });

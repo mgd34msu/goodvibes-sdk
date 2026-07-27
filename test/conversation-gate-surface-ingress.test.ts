@@ -19,6 +19,9 @@ import { DaemonSurfaceActionHelper } from '../packages/sdk/src/platform/daemon/s
 import { handleNtfySurfacePayload } from '../packages/sdk/src/platform/adapters/ntfy/index.ts';
 import { WorkProposalStore } from '../packages/sdk/src/platform/agents/work-proposal-store.ts';
 import { ntfyInboundDedup } from '../packages/sdk/src/platform/adapters/inbound-dedup.ts';
+import { trackDisposables } from './_helpers/disposables.ts';
+
+const disposables = trackDisposables();
 
 const AGENT_TOPIC = 'goodvibes-agent';
 
@@ -41,7 +44,12 @@ function buildHarness(
   const spawns: SpawnCall[] = [];
   const notices: Array<{ routeId: string | undefined; text: string }> = [];
   const queuedReplies: Array<{ agentId: string }> = [];
-  const proposals = clock ? new WorkProposalStore({ now: () => clock.now }) : new WorkProposalStore();
+  // The store starts a sweep interval as soon as a proposal is pending, and it
+  // only self-clears once the last one resolves — a test that leaves one open
+  // otherwise leaves the sweep running for the rest of the shared process.
+  const proposals = disposables.add(
+    clock ? new WorkProposalStore({ now: () => clock.now }) : new WorkProposalStore(),
+  );
 
   const config: Record<string, unknown> = {
     'surfaces.ntfy.enabled': true,
