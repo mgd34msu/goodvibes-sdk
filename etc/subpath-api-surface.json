@@ -7791,6 +7791,458 @@
       "kind": "class"
     }
   ],
+  "./platform/browser": [
+    {
+      "name": "BrowserAttachOptions",
+      "kind": "interface",
+      "required": [
+        "cdpEndpoint"
+      ]
+    },
+    {
+      "name": "BrowserBinarySource",
+      "kind": "type"
+    },
+    {
+      "name": "BrowserDriverInstallKind",
+      "kind": "type"
+    },
+    {
+      "name": "BrowserDriverInstallProfile",
+      "kind": "interface",
+      "required": [
+        "archiveName",
+        "detectInstallKind",
+        "directoryName",
+        "globalPackageCommand",
+        "installerCommand",
+        "releasesUrl",
+        "sourceInstallCommand"
+      ]
+    },
+    {
+      "name": "BrowserDriverLocation",
+      "kind": "interface",
+      "required": [
+        "surfaceRoot"
+      ]
+    },
+    {
+      "name": "BrowserDriverResolution",
+      "kind": "interface",
+      "required": [
+        "available",
+        "cliPath",
+        "error",
+        "packageDirectory",
+        "version"
+      ]
+    },
+    {
+      "name": "BrowserElementRef",
+      "kind": "interface",
+      "required": [
+        "depth",
+        "frameChain",
+        "name",
+        "ref",
+        "role",
+        "selector",
+        "submits",
+        "tag"
+      ]
+    },
+    {
+      "name": "BrowserEngine",
+      "kind": "class"
+    },
+    {
+      "name": "BrowserEngineOptions",
+      "kind": "interface",
+      "required": [
+        "screenshotDirectory",
+        "untrusted"
+      ]
+    },
+    {
+      "name": "BrowserExtractField",
+      "kind": "type"
+    },
+    {
+      "name": "BrowserHostClient",
+      "kind": "class"
+    },
+    {
+      "name": "BrowserHostError",
+      "kind": "class"
+    },
+    {
+      "name": "BrowserHostOptions",
+      "kind": "interface"
+    },
+    {
+      "name": "BrowserLaunchOptions",
+      "kind": "interface"
+    },
+    {
+      "name": "BrowserPageInfo",
+      "kind": "interface",
+      "required": [
+        "active",
+        "pageId",
+        "title",
+        "url"
+      ]
+    },
+    {
+      "name": "BrowserProvisionFailure",
+      "kind": "type"
+    },
+    {
+      "name": "BrowserProvisionIo",
+      "kind": "interface",
+      "required": [
+        "browsersPath",
+        "directoryWritable",
+        "expectedExecutablePath",
+        "isExecutableFile",
+        "now",
+        "pathExists",
+        "removePath",
+        "resolveDriver",
+        "runCommand",
+        "systemBrowserCandidates"
+      ]
+    },
+    {
+      "name": "BrowserProvisionIoOptions",
+      "kind": "interface",
+      "required": [
+        "homeDirectory",
+        "surfaceRoot"
+      ]
+    },
+    {
+      "name": "BrowserProvisionReport",
+      "kind": "interface",
+      "required": [
+        "browsersPath",
+        "driverVersion",
+        "executablePath",
+        "failure",
+        "fix",
+        "ok",
+        "problem",
+        "source",
+        "steps"
+      ]
+    },
+    {
+      "name": "BrowserProvisionStep",
+      "kind": "interface",
+      "required": [
+        "detail",
+        "elapsedMs",
+        "ok",
+        "step"
+      ]
+    },
+    {
+      "name": "BrowserSessionError",
+      "kind": "class"
+    },
+    {
+      "name": "BrowserSessionInfo",
+      "kind": "interface",
+      "required": [
+        "activePageId",
+        "cdpEndpoint",
+        "closableByAgent",
+        "executablePath",
+        "headless",
+        "origin",
+        "pageCount",
+        "profileDirectory",
+        "sessionId",
+        "source",
+        "startedAt"
+      ]
+    },
+    {
+      "name": "BrowserSessionManager",
+      "kind": "class"
+    },
+    {
+      "name": "BrowserSessionManagerDeps",
+      "kind": "interface",
+      "required": [
+        "profileRoot",
+        "surfaceRoot"
+      ]
+    },
+    {
+      "name": "BrowserSessionOrigin",
+      "kind": "type"
+    },
+    {
+      "name": "BrowserSnapshot",
+      "kind": "interface",
+      "required": [
+        "elements",
+        "pageId",
+        "sessionId",
+        "snapshotId",
+        "title",
+        "truncated",
+        "url"
+      ]
+    },
+    {
+      "name": "BrowserTarget",
+      "kind": "interface"
+    },
+    {
+      "name": "CommandOutcome",
+      "kind": "interface",
+      "required": [
+        "code",
+        "spawnError",
+        "stderr",
+        "stdout",
+        "timedOut"
+      ]
+    },
+    {
+      "name": "DRIVER_REQUIRED_FILES",
+      "kind": "const"
+    },
+    {
+      "name": "DRIVER_VERSION",
+      "kind": "const"
+    },
+    {
+      "name": "DriverRemediationOptions",
+      "kind": "interface"
+    },
+    {
+      "name": "EnsureBrowserOptions",
+      "kind": "interface"
+    },
+    {
+      "name": "ExtractTarGzTreeOptions",
+      "kind": "interface"
+    },
+    {
+      "name": "ExtractTarGzTreeResult",
+      "kind": "interface",
+      "required": [
+        "bytes",
+        "directories",
+        "files"
+      ]
+    },
+    {
+      "name": "InstallRuntimeCandidate",
+      "kind": "interface",
+      "required": [
+        "command",
+        "env"
+      ]
+    },
+    {
+      "name": "OutwardEffectDecision",
+      "kind": "interface",
+      "required": [
+        "allowed",
+        "fix",
+        "reason",
+        "untrustedOrigins"
+      ]
+    },
+    {
+      "name": "OwnerApproval",
+      "kind": "interface",
+      "required": [
+        "action",
+        "grantedAt",
+        "surface"
+      ]
+    },
+    {
+      "name": "ReachableCdpEndpoint",
+      "kind": "interface",
+      "required": [
+        "endpoint",
+        "webSocketDebuggerUrl"
+      ]
+    },
+    {
+      "name": "RemoteContextHandle",
+      "kind": "interface",
+      "required": [
+        "context",
+        "refresh"
+      ]
+    },
+    {
+      "name": "SnapshotStore",
+      "kind": "class"
+    },
+    {
+      "name": "StaleElementError",
+      "kind": "class"
+    },
+    {
+      "name": "TarEntry",
+      "kind": "interface",
+      "required": [
+        "data",
+        "kind",
+        "mode",
+        "path"
+      ]
+    },
+    {
+      "name": "TarEntryKind",
+      "kind": "type"
+    },
+    {
+      "name": "UntrustedContentEnvelope",
+      "kind": "interface",
+      "required": [
+        "origin",
+        "retrievedAt",
+        "rule",
+        "surface",
+        "text",
+        "truncated",
+        "trust"
+      ]
+    },
+    {
+      "name": "UntrustedContentPort",
+      "kind": "interface",
+      "required": [
+        "evaluateOutwardEffect",
+        "label",
+        "originOf",
+        "recordIngest",
+        "rule"
+      ]
+    },
+    {
+      "name": "UntrustedEffectError",
+      "kind": "class"
+    },
+    {
+      "name": "browserHostScriptPath",
+      "kind": "function"
+    },
+    {
+      "name": "browserProfileRoot",
+      "kind": "function"
+    },
+    {
+      "name": "browserScreenshotRoot",
+      "kind": "function"
+    },
+    {
+      "name": "cdpEndpointCandidates",
+      "kind": "function"
+    },
+    {
+      "name": "createBrowserProvisionIo",
+      "kind": "function"
+    },
+    {
+      "name": "defaultBrowsersPath",
+      "kind": "function"
+    },
+    {
+      "name": "describeProvisionWork",
+      "kind": "function"
+    },
+    {
+      "name": "driverRemediation",
+      "kind": "function"
+    },
+    {
+      "name": "driverSearchDirectories",
+      "kind": "function"
+    },
+    {
+      "name": "driverTarballUrl",
+      "kind": "function"
+    },
+    {
+      "name": "ensureBrowserBinary",
+      "kind": "function"
+    },
+    {
+      "name": "extractTarGzEntry",
+      "kind": "function"
+    },
+    {
+      "name": "extractTarGzTree",
+      "kind": "function"
+    },
+    {
+      "name": "findDriverDirectory",
+      "kind": "function"
+    },
+    {
+      "name": "hasDisplay",
+      "kind": "function"
+    },
+    {
+      "name": "installRuntimeCandidates",
+      "kind": "function"
+    },
+    {
+      "name": "installRuntimeCandidatesFor",
+      "kind": "function"
+    },
+    {
+      "name": "loadDriverModule",
+      "kind": "function"
+    },
+    {
+      "name": "managedDriverRoot",
+      "kind": "function"
+    },
+    {
+      "name": "readTarGzEntries",
+      "kind": "function"
+    },
+    {
+      "name": "remoteContext",
+      "kind": "function"
+    },
+    {
+      "name": "remotePage",
+      "kind": "function"
+    },
+    {
+      "name": "resolveDriver",
+      "kind": "function"
+    },
+    {
+      "name": "resolveRef",
+      "kind": "function"
+    },
+    {
+      "name": "runCommand",
+      "kind": "function"
+    },
+    {
+      "name": "shippedDriverPath",
+      "kind": "function"
+    },
+    {
+      "name": "takeSnapshot",
+      "kind": "function"
+    }
+  ],
   "./platform/calendar": [
     {
       "name": "AddResult",
