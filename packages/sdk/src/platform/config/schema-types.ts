@@ -3,36 +3,7 @@
  */
 
 export type PermissionMode = 'prompt' | 'allow-all' | 'custom' | 'plan' | 'accept-edits';
-export type PermissionAction = 'allow' | 'prompt' | 'deny';
-/**
- * How background/subagent tool execution consults the permission layer.
- * - 'inherit' (default): background tool calls run through the SAME session
- *   permission mode as the foreground turn loop — allow-all changes nothing,
- *   prompt/plan/accept-edits/custom apply their matrices, and any ask brokers
- *   through the same blocked-on-user machinery with subagent attribution.
- * - 'allow-all': background agents are deliberately exempt — their tool calls
- *   auto-approve regardless of the session mode (the escape hatch for fully
- *   autonomous runs that never want a background ask).
- */
-export type BackgroundAgentsMode = 'inherit' | 'allow-all';
 export type LineNumberMode = 'all' | 'code' | 'off';
-
-export interface PermissionsToolConfig {
-  read?: PermissionAction;        // default: 'allow'
-  write?: PermissionAction;       // default: 'prompt'
-  edit?: PermissionAction;        // default: 'prompt'
-  exec?: PermissionAction;        // default: 'prompt'
-  find?: PermissionAction;        // default: 'allow'
-  fetch?: PermissionAction;       // default: 'prompt'
-  analyze?: PermissionAction;     // default: 'allow'
-  inspect?: PermissionAction;     // default: 'allow'
-  agent?: PermissionAction;       // default: 'prompt'
-  state?: PermissionAction;       // default: 'allow'
-  workflow?: PermissionAction;    // default: 'prompt'
-  registry?: PermissionAction;    // default: 'allow'
-  delegate?: PermissionAction;    // default: 'prompt'
-  mcp?: PermissionAction;         // default: 'prompt'
-}
 
 export * from "./schema-types-surfaces.js";
 import type { SurfacesConfig } from "./schema-types-surfaces.js";
@@ -57,6 +28,11 @@ import type {
   TelemetryConfig,
 } from "./schema-types-platform.js";
 
+export * from "./schema-types-permissions.js";
+import type { BackgroundAgentsMode, PermissionAction, PermissionsToolConfig } from "./schema-types-permissions.js";
+export * from "./schema-types-payments.js";
+import type { PaymentsConfig, PaymentsConfigKey, PaymentsConfigValueMap } from "./schema-types-payments.js";
+
 export * from "./schema-types-daemon.js";
 import type {
   AutomationConfig,
@@ -65,6 +41,9 @@ import type {
   ServiceConfig,
   TtsConfig,
   WatchersConfig,
+  DaemonProcessConfig,
+  DaemonProcessConfigKey,
+  DaemonProcessConfigValueMap,
 } from "./schema-types-daemon.js";
 
 
@@ -177,7 +156,9 @@ export interface GoodVibesConfig {
   service: ServiceConfig;
   network: NetworkConfig;
   relay: RelayConfig;
-  daemon: { enabled: boolean; embedInProcess: boolean };     // default: enabled true — run the local session daemon (loopback only); embedInProcess false — daemon runs as a detached process, not inside this surface
+  daemon: { enabled: boolean; embedInProcess: boolean; timezone: string };
+  payments: PaymentsConfig;
+    // default: enabled true — run the local session daemon (loopback only); embedInProcess false — daemon runs as a detached process, not inside this surface; timezone '' — IANA name the daemon reckons calendar days in, empty means UTC
   danger: {
     httpListener: boolean;          // default: false — enable HTTP webhook listener
   };
@@ -336,8 +317,8 @@ export type ConfigKey =
   | 'tts.llmModel'
   | 'tts.speed'
   | 'release.channel'
-  | 'daemon.enabled'
-  | 'daemon.embedInProcess'
+  | PaymentsConfigKey
+  | DaemonProcessConfigKey
   | 'danger.httpListener'
   | 'tools.llmEnabled'
   | 'tools.llmProvider'
@@ -844,8 +825,8 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'tts.llmModel' ? string :
   K extends 'tts.speed' ? number :
   K extends 'release.channel' ? 'stable' | 'preview' :
-  K extends 'daemon.enabled' ? boolean :
-  K extends 'daemon.embedInProcess' ? boolean :
+  K extends keyof PaymentsConfigValueMap ? PaymentsConfigValueMap[K] :
+  K extends keyof DaemonProcessConfigValueMap ? DaemonProcessConfigValueMap[K] :
   K extends 'danger.httpListener' ? boolean :
   K extends 'tools.llmEnabled' ? boolean :
   K extends 'tools.llmProvider' ? string :

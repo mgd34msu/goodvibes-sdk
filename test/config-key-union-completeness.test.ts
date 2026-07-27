@@ -20,7 +20,7 @@
  * union/mapping entry no schema domain defines).
  */
 import { describe, expect, test } from 'bun:test';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { CONFIG_SCHEMA } from '../packages/sdk/src/platform/config/schema.js';
 
@@ -42,22 +42,72 @@ function withoutComments(body: string): string {
   return body.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
 }
 
-/** Extract the ConfigKey union's string-literal members from source text. */
-export function extractUnionMembers(source: string): Set<string> {
+/**
+ * The sibling `schema-types-*.ts` files, concatenated.
+ *
+ * `ConfigKey` and `ConfigValue` are partly COMPOSED rather than wholly
+ * literal: a domain whose keys would push schema-types.ts past its
+ * grandfathered line ceiling declares them as a named union plus a value map
+ * in its own split file (`PaymentsConfigKey`, `DaemonProcessConfigKey`), and
+ * schema-types.ts references the name. A purely textual scan of schema-types.ts
+ * would therefore see zero keys for those domains and report them missing —
+ * the gate failing on the file LAYOUT rather than on drift, which is not what
+ * it is for. Resolving the references keeps the check on completeness, where
+ * it belongs, and it still fails closed: an unresolvable reference contributes
+ * nothing and the domain's keys read as missing.
+ */
+function splitTypeSources(): string {
+  const dir = join(import.meta.dir, '..', 'packages', 'sdk', 'src', 'platform', 'config');
+  return readdirSync(dir)
+    .filter((name) => /^schema-types-.*\.ts$/.test(name))
+    .map((name) => readFileSync(join(dir, name), 'utf8'))
+    .join('\n');
+}
+
+/** The string-literal members of a named union declared in a split file. */
+function membersOfNamedUnion(name: string, sources: string): string[] {
+  const start = sources.indexOf(`export type ${name} =`);
+  if (start < 0) return [];
+  const end = sources.indexOf(';', start);
+  return [...withoutComments(sources.slice(start, end)).matchAll(/'([^']+)'/g)].map((m) => m[1]!);
+}
+
+/** The property keys of a named interface declared in a split file. */
+function keysOfNamedMap(name: string, sources: string): string[] {
+  const start = sources.indexOf(`export interface ${name} {`);
+  if (start < 0) return [];
+  const end = sources.indexOf('\n}', start);
+  return [...withoutComments(sources.slice(start, end)).matchAll(/'([^']+)'\s*:/g)].map((m) => m[1]!);
+}
+
+/** Extract the ConfigKey union's members, following composed named unions. */
+export function extractUnionMembers(source: string, splitSources = splitTypeSources()): Set<string> {
   const start = source.indexOf('export type ConfigKey =');
   if (start < 0) throw new Error('ConfigKey union not found in schema-types.ts');
   const end = source.indexOf(';', start);
   const body = withoutComments(source.slice(start, end));
-  return new Set([...body.matchAll(/'([^']+)'/g)].map((m) => m[1]!));
+  const literals = [...body.matchAll(/'([^']+)'/g)].map((m) => m[1]!);
+  const referenced = [...body.matchAll(/\|\s*(\w+ConfigKey)\b/g)].map((m) => m[1]!);
+  const composed = referenced.flatMap((name) => membersOfNamedUnion(name, splitSources));
+  return new Set([...literals, ...composed]);
 }
 
-/** Extract the keys the ConfigValue<K> mapping has `K extends '<key>'` clauses for. */
-export function extractMappingKeys(source: string): Set<string> {
+/**
+ * Extract the keys ConfigValue<K> resolves, following composed value maps.
+ *
+ * Two shapes count: a literal `K extends '<key>' ?` clause, and a
+ * `K extends keyof SomeConfigValueMap ? SomeConfigValueMap[K] :` clause whose
+ * map is declared in a split file. See splitTypeSources for why both exist.
+ */
+export function extractMappingKeys(source: string, splitSources = splitTypeSources()): Set<string> {
   const start = source.indexOf('export type ConfigValue<K extends ConfigKey>');
   if (start < 0) throw new Error('ConfigValue mapping not found in schema-types.ts');
   const end = source.indexOf('never;', start);
   const body = withoutComments(source.slice(start, end));
-  return new Set([...body.matchAll(/K extends '([^']+)'/g)].map((m) => m[1]!));
+  const literals = [...body.matchAll(/K extends '([^']+)'/g)].map((m) => m[1]!);
+  const referenced = [...body.matchAll(/K extends keyof (\w+ConfigValueMap)\b/g)].map((m) => m[1]!);
+  const composed = referenced.flatMap((name) => keysOfNamedMap(name, splitSources));
+  return new Set([...literals, ...composed]);
 }
 
 /**

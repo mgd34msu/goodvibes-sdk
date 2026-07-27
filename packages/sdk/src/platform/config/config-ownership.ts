@@ -65,6 +65,12 @@ export const DAEMON_OWNED_CONFIG_PREFIXES: readonly string[] = [
   'checkin.',
   'integrations.',
   'atRest.',
+  // The daemon is the process that holds the card and charges it, with every
+  // surface closed and across restarts. Card material and budgets left
+  // client-owned would live in whichever surface happened to enter them and the
+  // daemon would charge against defaults — the failure mode the budget exists to
+  // prevent. See docs/payments.md §3.
+  'payments.',
   'voice.local.',
   // The daemon is the process that receives inbound channel messages, so it is
   // the process that decides whether one becomes a conversation or a

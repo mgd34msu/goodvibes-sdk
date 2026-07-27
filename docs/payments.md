@@ -1,9 +1,9 @@
 # Payments — design
 
-**Status:** design, Phase 1. Nothing in this document is implemented yet.
-**Owner rulings recorded here are settled.** Where this document makes a choice
-the owner has not ruled on, it says so in **Open items** rather than presenting
-the choice as settled.
+**Status:** implemented. This document is the design of record.
+**Owner rulings recorded here are settled.** Choices made under zero-deferrals
+where the owner had not ruled are listed in §12.1 as rulings taken, with their
+reasoning, so they can be overturned deliberately rather than discovered.
 
 A card turns a successful prompt injection from "sends an email" into "buys
 something". The platform has just spent a round hardening against exactly that
@@ -145,13 +145,13 @@ interface PaymentsConfig {
     /** Within budget. Silence PROCEEDS. */
     vetoMinutes: number;                    // default 10 (owner ruling)
     /** Above budget. Silence DENIES. */
-    approvalMinutes: number;                // default 30 — see Open items
+    approvalMinutes: number;                // default 60 (ruled)
   };
 
   /** Ordered. Email is not expressible here; see §8.2. */
   notifyChannels: readonly CommandAuthorityChannel[];   // default []
 
-  cvvHandling: 'stored' | 'prompt-each-time';           // see §9.5 and Open items
+  cvvHandling: 'stored' | 'prompt';         // default 'stored' (ruled) — see §9.5
 }
 ```
 
@@ -400,7 +400,13 @@ They are **deliberately opposite and must stay that way.**
 | Undeliverable means | **REFUSE** | **PROCEED** |
 | Explicit "yes" | Required to proceed | Short-circuits the wait |
 | Explicit "no" | Denies | Cancels and reports |
-| Default duration | `windows.approvalMinutes` | `windows.vetoMinutes` = 10 |
+| Default duration | `windows.approvalMinutes` = 60 | `windows.vetoMinutes` = 10 |
+
+**Why the approval window is an hour.** Denial is the recoverable outcome — he
+re-asks and it goes through — so the cost of too-short is friction and the cost
+of too-long is a cart holding a price that may drift. An hour survives a meeting
+or a commute. It is configurable, and someone who is away for long stretches
+should raise it.
 
 Owner's reasoning for the approval side:
 
@@ -445,8 +451,13 @@ Terminal: `approved`, `denied-explicit`, `denied-timeout`,
                      acknowledgement ───┼──▶ proceeding-acknowledged  (commit, immediately)
                      deadline reached ──┼──▶ proceeding-silent        (commit)
                      objection ─────────┼──▶ cancelled                (release + report, §8.5)
-                     restart across the ┤
-                     whole window ──────┴──▶ open (fresh full duration, disclosed, §8.6)
+                     restart, delivered,┤
+                     backfill clean ────┼──▶ proceeding-silent        (commit, §8.6.1)
+                     restart, delivered,┤
+                     objection in       │
+                     backfill ──────────┼──▶ cancelled                (release + report)
+                     restart, channel   ┤
+                     un-backfillable ───┴──▶ open (that channel only, §8.6.1)
                      total changed ─────────▶ void → re-enter §6 step 1
 ```
 
@@ -605,13 +616,34 @@ automation job — `AutomationAtSchedule` (`{ kind: 'at', at }`) with
 (`platform/automation/schedules.ts`, `manager-runtime.ts`) — which is persisted
 and reloaded.
 
-**A veto window that elapsed entirely while the daemon was down does not
-auto-proceed.** The automation layer already records that case as a `missed` run
-(`recordAutomationMissedRun`, `manager-runtime-missed.ts`) with a failure notice
-rather than firing it, and that is the right behaviour here: time passing with no
-possibility of an objection reaching him is not the same thing as silence. The
-window is re-opened for a fresh full duration with the restart disclosed in the
-message. This is a deliberate reading of the ruling — flagged in Open items.
+### 8.6.1 A window interrupted by downtime is keyed on DELIVERY, not on uptime
+
+**Silence means "he had the chance to object and did not."** Whether our process
+was alive is irrelevant to whether he had that chance. An earlier draft of this
+design keyed the restart rule on daemon uptime; that was wrong, and re-opening a
+window unconditionally is wrong for a specific reason — it re-pings him about
+something he deliberately ignored, and a system that repeats itself is one he
+stops reading.
+
+So the rule is keyed on whether the notification reached him:
+
+| On restart | Rule |
+|---|---|
+| Notification **was delivered**, window expired during downtime | **The expiry stands.** Before charging, **backfill each live channel** for messages received while we were down and honour any objection found there. No objection → proceed. **Do not re-notify** — he already saw it. |
+| Notification **was never delivered** | §6 governs unchanged: in-budget proceeds, above-budget refuses, and the shipping ladder is attempted before any overage refusal. |
+| Channel **cannot be backfilled** for the downtime span | **Re-open the window on that channel only.** For that channel we cannot distinguish silence from an objection we dropped, and only that channel is ambiguous. |
+
+Backfill uses each channel's existing history read. A channel that supports it
+(Telegram) is queried for the downtime span before the reservation commits; a
+channel with no readable history is treated as un-backfillable and re-opened.
+The audit record names which channels were backfilled, which were re-opened, and
+what was found.
+
+The same reasoning applies to the approval gate, and lands in the same place by a
+different route: an approval that expired resolves **denied** regardless, so a
+dropped objection cannot cost money there. Backfill still runs, because an
+explicit *approve* found in the backfill is worth honouring rather than making
+him ask twice — but only inside the original window, never past it.
 
 The pending state is bounded, content-validated, swept on a timer, and its
 recoveries are disclosed rather than silent.
@@ -760,45 +792,70 @@ interface PurchaseAuditRecord {
 It never contains a PAN, a CVV, an expiry, or a full authorization code. A test
 asserts the serialized record does not contain any configured card material.
 
-### 9.5 CVV handling — stated plainly
+### 9.5 The CVV is stored
 
-No legitimate system stores a card verification value after authorization. PCI
-DSS forbids it. Browser checkout needs it at fill time. Both of those are true
-and this design does not pretend otherwise.
+**Settled by the owner, directly:**
 
-**The conflict is with the veto window, not with convenience.** The ruling is
-that an in-budget purchase proceeds on silence — which means it must complete
-with nobody present. A design that requires the owner to type a CVV per purchase
-turns every veto window back into an approval and contradicts the ruling.
+> "we save the cvv, full stop. it is 100% needed for autonomous action."
 
-So the design supports both, and the choice is `payments.cvvHandling`:
+This is not an open question and the code, the tests and this document do not
+treat it as one. What follows is the plain statement of what is kept and what
+that exposes — he is entitled to know that — not a hedge on the decision.
 
-- **`'stored'`** — the CVV is written to the daemon secret store beside the PAN,
-  AES-256-GCM at rest, `require_secure` enforced for the payment namespace
-  regardless of the global `storage.secretPolicy`, held in memory only for the
-  duration of a fill and overwritten after. This is a **deliberate deviation from
-  PCI DSS 3.2**, recorded here rather than buried.
+Autonomous action is the entire point of the capability. The veto window rules
+that an in-budget purchase proceeds on silence, which means it completes with
+nobody present. A purchase that pauses to ask a human for a verification code is
+an attended purchase; removing the stored CVV would not make the feature safer,
+it would make it not exist. See
+`docs/decisions/2026-07-27-the-cvv-is-stored.md`.
 
-  **The exposure, stated without softening:** anyone who can read
-  `~/.goodvibes/daemon/secrets.enc` *and* `~/.goodvibes/secrets.key` has the PAN,
-  the expiry, the CVV and the billing address — everything a card-not-present
-  transaction needs, at any merchant, with no further access to this machine.
-  Filesystem permissions (0600/0700) and the encryption at rest defend against a
-  different user on the same host; neither defends against a process running as
-  the owner. Backups of the home directory carry the whole kit.
+**How it is held.** The CVV is written to the daemon secret store beside the card
+number, AES-256-GCM at rest under `~/.goodvibes/secrets.key`, with
+`require_secure` enforced for the payment namespace regardless of the global
+`storage.secretPolicy`. It is held in memory only for the duration of a checkout
+fill and overwritten after.
 
-  Mitigations that actually reduce it: a **virtual card with a hard issuer cap**
-  (the leak is then one killable number with a ceiling the attacker cannot
-  raise), never returning the value over any wire, never logging it, and the
-  audit ledger making use visible.
+**What that exposes, without softening.** This is card verification data at rest,
+which PCI DSS 3.2 prohibits storing after authorization for entities in its
+scope. A personal daemon holding the owner's own CVV in his own encrypted store
+is out of that scope, but not out of danger: anyone who can read
+`~/.goodvibes/daemon/secrets.enc` **and** `~/.goodvibes/secrets.key` has the card
+number, the expiry, the CVV and the billing address — everything a
+card-not-present transaction needs, at any merchant, with no further access to
+this machine. Filesystem permissions (0600/0700) and the encryption at rest
+defend against a different user on the same host; neither defends against a
+process running as the owner. Backups of the home directory carry the whole kit.
 
-- **`'prompt-each-time'`** — no CVV is stored; each purchase pauses and asks for
-  it over a command-authority channel, the same pause mechanism as 3-D Secure.
-  Strictly safer, and it means unattended purchases do not complete.
+**A virtual card bounds that loss and a real card number does not.** This is
+guidance about which instrument to provision, not a qualification of the ruling.
+With a virtual card the worst case is one number carrying an issuer-enforced
+ceiling, killable from an app in a minute. With the real card the worst case is
+the card the rent comes out of, and nothing in this software can cap it — the
+cap has to live at the issuer. §2.1 is the same argument and this is why it
+matters most here.
 
-**No default is chosen here.** The safest value contradicts a ruling and the
-value that satisfies the ruling stores a CVV; that is an owner call, not mine.
-See Open items.
+**The containment requirements are the actual work**, and each is asserted by a
+test rather than asserted in prose:
+
+| Requirement | Test |
+|---|---|
+| Daemon secret tier, never the config file | the write goes through `resolveSecretWriteScope` and lands in the daemon scope |
+| Encrypted at rest | the on-disk bytes do not contain the value |
+| Never logged | every logger call site in the payments module is checked against the value |
+| Never rendered on any surface | no operator method response contains it; `payments.cards.*` returns metadata only |
+| Never echoed mid-edit | the settings editor masks it while typing, not only at rest (§10.2) |
+| Excluded from every export, diagnostic dump and support bundle | a test that walks a real export payload and a real diagnostic dump and fails if the value appears anywhere in either |
+
+That last row is the one that makes this decision safe to live with, so it is a
+real test over real payloads rather than a smoke test.
+
+**`payments.cvvHandling` still ships as a real setting**, defaulting to
+`'stored'`. The alternative value `'prompt'` stores nothing and asks on every
+purchase. Choosing it **disables unattended purchasing**, and the surface says so
+at the moment of selection — `CVV_PROMPT_TRADEOFF_WARNING` in
+`platform/payments/index.ts` is the shared string every surface renders — because
+a trade-off that large belongs in front of whoever flips the switch, not buried
+in a document.
 
 ### 9.6 3-D Secure, SCA and CAPTCHA pause cleanly
 
@@ -843,6 +900,61 @@ means "safe to call again", never "safe to submit again".
 - Every purchase carries an idempotency key. Payment submission is never blindly
   retried; before any resubmission the daemon re-reads order state at the
   merchant. A half-complete order is reported, never "fixed" by trying again.
+
+---
+
+## 9.7 Three things this capability refuses on purpose
+
+These are refusals by design, not gaps left for later. Each is implemented as an
+explicit, named refusal with its own message — never a silent pass and never an
+unhandled case that falls through to "proceed".
+
+### 9.7.1 A checkout quoted in another currency
+
+The budget is denominated in one currency. A merchant quoting another one is
+**refused**, with a message naming both currencies.
+
+The alternative is converting, and converting means picking a rate. Any rate we
+pick is stale by the time the card is charged, because the issuer converts at
+its own rate on its own date and adds its own fee. So a converted number shown
+in an approval would be a number he did not approve — the exact defect §9.3
+exists to prevent — and a budget check against it would be arithmetic on a
+guess. Refusing is honest; converting is confident and wrong.
+
+`CurrencyMismatch` carries the budget currency, the quoted currency, and the
+suggestion to buy from a merchant that quotes in his currency or to raise it as
+a purchase he makes himself.
+
+### 9.7.2 A checkout that enrols a subscription or recurring charge
+
+**Refused.** A daily budget cannot describe a charge that renews unattended next
+month. Everything in this design — the pools, the reset, the veto window — is
+built around one purchase happening once, and there is no mechanism here that
+would notice a renewal, let alone stop one. Enrolling him in something that
+charges again later, on a capability whose entire safety story is a daily limit,
+would be the most expensive kind of silent hole.
+
+Detection is deliberately conservative and errs toward refusing: recurring-billing
+language in the order summary, a subscription line item, a trial-then-charge
+term, or a stored-payment-method consent checkbox. A checkout it cannot classify
+with confidence is refused rather than attempted — a false refusal costs him a
+manual purchase, a false accept costs him a recurring charge nobody is watching.
+
+### 9.7.3 Money coming back does not credit a pool
+
+Refunds, cancellations and chargebacks are **recorded in the audit ledger and do
+not credit any pool.**
+
+Crediting would be surprising in the direction that spends money: a refund
+landing on day 5 for something bought on day 1 would silently hand back day 5's
+budget, so a returned item becomes permission to buy another one that day
+without him deciding that. The pools are a rate limit on outward spending, not a
+running balance of net worth.
+
+They are still recorded, with the original `purchaseId`, because the ledger's job
+is to reconcile against a card statement and a statement contains refunds. A
+purchase whose money came back is marked as such and shown that way in the
+purchase list.
 
 ---
 
@@ -997,60 +1109,54 @@ These are requirements on Phase 2, not suggestions:
 
 ---
 
-## 12. Open items
+## 12. Rulings taken here, and what remains open
 
-Named rather than guessed at.
+### 12.1 Ruled
 
-1. **`payments.cvvHandling` default (§9.5).** The safest value
-   (`prompt-each-time`) contradicts the veto-window ruling that an in-budget
-   purchase proceeds on silence; the value that satisfies the ruling
-   (`stored`) keeps a CVV on disk against PCI DSS. Owner call.
-2. **`windows.approvalMinutes` default.** The veto window's 10 minutes is ruled.
-   The approval window's duration is not. 30 minutes is written above as a
-   placeholder: short enough that an unanswered approval fails safe soon, long
-   enough to survive a meeting. Needs a ruling.
-3. **Veto window interrupted by a daemon restart (§8.6).** Elapsed-while-down is
-   read here as "not silence" and the window is re-opened. The opposite reading
-   (time passed, proceed) is defensible. Ruled as re-open because it is the
-   direction that cannot spend money nobody could have stopped.
-4. **Exhausted overage pool with a deliverable notification (§6 step 2).**
-   Implemented as a refusal per the ruling. Whether it should instead escalate to
-   an approval is a question the ruling answers "no" to; recorded so it is not
-   re-opened by accident.
-5. **Money defaults of 0 (§3.2).** Derived from "default to most safe" rather
-   than ruled directly. The consequence is that a freshly configured capability
-   refuses everything until amounts are set — intended, but worth confirming.
-6. **Multi-currency.** The budget is a single currency. A merchant quoting
-   another one is currently a refusal. Whether to convert, and at whose rate,
-   is unspecified.
-7. **Subscriptions and recurring charges.** A daily budget does not describe a
-   monthly charge that renews unattended. Out of scope here, and the capability
-   should refuse a checkout it detects as recurring rather than silently
-   enrolling him.
-8. **Refunds, cancellations and chargebacks.** The ledger records outward
-   spending. Money coming back does not currently credit a pool, and probably
-   should not (a refund on day 5 refilling day 5's budget is surprising), but it
-   should at least be recorded for reconciliation.
-9. **`daemon.timezone` ownership.** Written here as a general daemon setting
+Recorded so they are not re-litigated. Item 1 is the owner's own ruling and is
+closed. The rest were taken under zero-deferrals where he had not ruled, and he
+can overturn any of them; none is a coin toss left in the code.
+
+1. **The CVV is stored (§9.5).** Owner ruling, stated directly: *"we save the
+   cvv, full stop. it is 100% needed for autonomous action."* Settled and closed
+   — see `docs/decisions/2026-07-27-the-cvv-is-stored.md`. `payments.cvvHandling`
+   still ships as a real setting defaulting to `'stored'`; selecting `'prompt'`
+   disables unattended purchasing and the surface says so at the moment of
+   selection.
+2. **`windows.approvalMinutes` defaults to 60 (§8).** Denial is the recoverable
+   outcome, so too-short costs friction and too-long costs price drift on a held
+   cart. An hour survives a meeting or a commute.
+3. **A window interrupted by downtime is keyed on DELIVERY, not uptime
+   (§8.6.1).** Silence means he had the chance to object and did not; whether our
+   process was alive has nothing to do with it. Delivered-then-expired stands,
+   with a backfill for objections we might have missed and no re-notification.
+   Only an un-backfillable channel re-opens.
+4. **Exhausted overage pool refuses rather than escalating to an approval
+   (§6 step 2).** The ruling is explicit. Recorded so it is not re-opened by
+   accident.
+5. **Money defaults are 0 and `enabled` is false (§3.2).** Derived from "default
+   to most safe". A freshly configured capability refuses everything until he
+   sets amounts.
+6. **Another currency, a subscription, and a refund credit are refusals by
+   design (§9.7)** — each with its own named refusal and its own reasoning,
+   not an unhandled case.
+7. **Any configured command-authority channel may answer; first answer wins**,
+   and the audit record names which one did. `notifyChannels` orders delivery,
+   not the right to reply.
+
+### 12.2 Still open
+
+8. **`daemon.timezone` ownership (§4.1).** Built as a general daemon setting
    because payments should not own the platform's only clock. If another domain
-   wants a different zone, this becomes a default rather than the answer.
-10. **Which channel answers when several are configured.** `notifyChannels` is
-    ordered; whether an answer on a lower-priority channel is accepted after a
-    higher one was tried is unspecified. Recommended: any configured
-    command-authority channel may answer, first answer wins, and the audit record
-    names which one did.
-11. **The agent terminal's broker wiring (§10.3).** The ruling names the agent
-    terminal as a place an approval arrives, and the agent cannot receive a
-    broker approval today. Phase 2 must port
-    `broker-approval-card.ts` into the agent. Flagged here because it is real
-    work in a second repo, not a line of config.
-12. **Whether `ApprovalBroker`'s restart gap should be fixed for everyone.**
-     §8.6 fixes it for payment approvals with a sweep. The same gap affects every
-     other consumer of the broker — a pending tool-permission ask across a
-     restart also sits forever. Fixing it in the broker itself is the better
-     answer and is out of this capability's scope; recorded so it is not lost.
-
----
+   later wants its own zone, this becomes a default rather than the answer.
+9. **Subscription detection is heuristic (§9.7.2).** It reads order-summary
+   language and errs toward refusing. It will refuse some one-off purchases that
+   merely mention a renewal elsewhere on the page. That trade is deliberate, but
+   the false-refusal rate is unknown until it meets real merchants.
+10. **Backfill coverage varies by channel (§8.6.1).** Telegram has a readable
+    history; a channel without one is always treated as un-backfillable and
+    re-opens. The set of channels that can be backfilled will shape how often he
+    sees a re-opened window, and that is only measurable in use.
 
 ## 13. Related
 
