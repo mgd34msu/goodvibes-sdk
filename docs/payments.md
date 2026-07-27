@@ -288,7 +288,16 @@ interface BudgetReservation {
 
 Taken when the decision order reaches step 3, held across the window, and either
 **committed** (charge succeeded) or **released** (vetoed, denied, refused,
-charge failed, expired). Reservations are persisted so a daemon restart does not
+charge failed, expired). **On a cluster, exactly one node may act.** `payments.*` config replicates to
+every opted-in node (`cluster/config-replication-policy.ts`) so a node that takes
+over a handover has the owner's real limits rather than defaults. Today's SPEND
+does not replicate — it lives in the payments spend ledger, which is not config —
+so a second node acting would start from a clean daily budget and could spend the
+day twice. Until the ledger itself replicates, `checkPaymentGates` refuses on any
+node that is not the elected payments leader, and `isPaymentsLeader` is a
+required input with no default so a caller cannot omit it into a pass.
+
+Reservations are persisted so a daemon restart does not
 release money that is mid-flight, and — per the platform rule that anything
 persisted across restarts reaps, bounds, validates by content, sweeps
 periodically and discloses — they are swept on a timer, capped in count, dropped

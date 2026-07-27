@@ -81,6 +81,9 @@ export {
 } from './message.js';
 export type { PurchaseFacts } from './message.js';
 
+export { checkPaymentGates } from './gates.js';
+export type { GateInput, GateRefusal } from './gates.js';
+
 export { decidePurchase } from './decide.js';
 export type { DecisionInput, DecisionOutcome, BudgetDraw, QuotedTotals } from './decide.js';
 
