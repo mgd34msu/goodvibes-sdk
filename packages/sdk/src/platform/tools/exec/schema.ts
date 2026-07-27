@@ -336,6 +336,14 @@ export interface ExecCommandResult {
   retries?: number | undefined;
   /** Set when this command was not executed due to fail_fast/stop_on_error. */
   skipped?: boolean | undefined;
+  /**
+   * Set when the guard refused the command before execution. Nothing ran, so
+   * the reason is the whole result and reporting must not be shortened by
+   * verbosity — see formatResult in exec/runtime.ts.
+   */
+  denied?: boolean | undefined;
+  /** Structured denial: full reason plus the per-segment classification breakdown. */
+  denial_detail?: Record<string, unknown> | undefined;
   /** Path to the pollable progress file when progress tracking is enabled. */
   progress_file?: string | undefined;
   /** Tool-level warnings for degraded command collection or side effects. */

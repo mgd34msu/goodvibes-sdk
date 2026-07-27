@@ -71,6 +71,16 @@ export interface SpawnOptions {
   /** Grace period (ms) between SIGTERM and SIGKILL after timeout. Default: 5000. */
   sigterm_grace_ms?: number | undefined;
   /**
+   * Whether the timeout watchdog may terminate the process. Default: true.
+   *
+   * Set false for a process whose lifetime is not the caller's to end — a
+   * browser, an editor, a long-running server. `timeout_ms` then bounds only
+   * how long a caller waits, and the process keeps running until it is stopped
+   * explicitly. Killing such a process on a routine timeout destroys a
+   * user-facing application as the default outcome of a normal parameter.
+   */
+  kill_on_timeout?: boolean | undefined;
+  /**
    * Credential-bearing env-var scrub applied to the inherited base environment
    * before spawning. Defaults to enabled with an empty allowlist, so a
    * background process is protected even when a caller does not thread config.
@@ -159,6 +169,7 @@ export class ProcessManager {
   ): Promise<BgCommandResult> {
     const timeoutMs = opts?.timeout_ms ?? 60_000;
     const sigtermGraceMs = opts?.sigterm_grace_ms ?? 5_000;
+    const killOnTimeout = opts?.kill_on_timeout ?? true;
 
     const id = this.newId();
     const entry: BackgroundProcess = {
@@ -239,14 +250,44 @@ export class ProcessManager {
       this.pruneCompletedProcesses();
     })();
 
-    // Timeout watchdog: SIGTERM → wait grace → SIGKILL
+    // Timeout watchdog: SIGTERM → wait grace → SIGKILL.
+    //
+    // A termination here is always announced. It used to be silent: a routine
+    // timeout would kill a tracked process and log nothing, so the only trace
+    // was an exitCode of null that read as an ordinary cancellation. When
+    // kill_on_timeout is false the deadline is still recorded and reported, but
+    // the process is left running.
     const timeoutHandle = setTimeout(async () => {
       if (entry.done) return;
       entry.timedOut = true;
+      if (!killOnTimeout) {
+        logger.info('Background process passed its timeout and was left running', {
+          processId: id,
+          pid: entry.pid,
+          cmd,
+          timeoutMs,
+        });
+        return;
+      }
+      logger.warn('Background process timed out — terminating', {
+        processId: id,
+        pid: entry.pid,
+        cmd,
+        timeoutMs,
+        signal: 'SIGTERM',
+        sigtermGraceMs,
+      });
       killTrackedProcess(proc, 'SIGTERM', id);
       entry.killDeadline = Date.now() + sigtermGraceMs;
       await sleep(sigtermGraceMs);
       if (!entry.done) {
+        logger.warn('Background process did not exit after SIGTERM — killing', {
+          processId: id,
+          pid: entry.pid,
+          cmd,
+          timeoutMs,
+          signal: 'SIGKILL',
+        });
         killTrackedProcess(proc, 'SIGKILL', id);
       }
     }, timeoutMs);
