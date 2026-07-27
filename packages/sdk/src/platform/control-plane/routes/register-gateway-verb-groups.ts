@@ -93,6 +93,8 @@ import { registerPowerGatewayMethods, type PowerGatewayService } from './power.j
 import { registerDevicesGatewayMethods, type DevicesGatewayService } from './devices.js';
 import { registerMemoryGatewayMethods, type MemoryGatewayService } from './memory.js';
 import { registerVoiceSetupGatewayMethods, type VoiceSetupGatewayService } from './voice-setup.js';
+import { registerBrowserGatewayMethods } from './browser.js';
+import { createDaemonBrowserGatewayService, type BrowserCompositionDeps } from './browser-composition.js';
 import { registerCalendarGatewayMethods, type CalendarGatewayService } from './calendar.js';
 import { createDaemonCalendarGatewayService } from './calendar-composition.js';
 import { registerEmailGatewayMethods, type EmailGatewayService } from './email.js';
@@ -234,6 +236,10 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
    * route — is what made those five methods `invokable: false` for so long.
    */
   readonly calendarGateway?: CalendarGatewayService | undefined;
+  /** Optional browser backend; absent ⇒ composed over the daemon's own storage root (routes/browser-composition.ts). */
+  readonly browserGateway?: BrowserCompositionDeps['browserGateway'];
+  /** Test seam: the untrusted-content port the browser engine records page reads into. */
+  readonly browserUntrusted?: BrowserCompositionDeps['browserUntrusted'];
   /** The daemon's home directory; the credential-adoption probe needs a real one. */
   readonly homeDirectory?: string | undefined;
   /**
@@ -613,6 +619,9 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   if (calendarGateway) registerCalendarGatewayMethods(catalog, calendarGateway);
   const emailGateway = createDaemonEmailGatewayService(deps);
   if (emailGateway) registerEmailGatewayMethods(catalog, emailGateway);
+  const browserGateway = createDaemonBrowserGatewayService(deps);
+  if (browserGateway) registerBrowserGatewayMethods(catalog, browserGateway);
+  if (browserGateway) deps.disposal?.add('browser sessions', () => void browserGateway.shutdown());
   registerSessionRuntimeGatewayMethods(
     catalog,
     createSessionRuntimeControls({

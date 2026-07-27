@@ -23,6 +23,9 @@ import {
   builtinGatewayCalendarMethodDescriptors,
 } from './method-catalog-calendar.js';
 import {
+  builtinGatewayBrowserMethodDescriptors,
+} from './method-catalog-browser.js';
+import {
   builtinGatewayEventDescriptors,
 } from './method-catalog-events.js';
 import {
@@ -118,6 +121,7 @@ const BUILTIN_GATEWAY_METHODS: readonly GatewayMethodDescriptor[] = [
   ...builtinGatewayPermissionRuleMethodDescriptors,
   ...builtinGatewayEmailMethodDescriptors,
   ...builtinGatewayCalendarMethodDescriptors,
+  ...builtinGatewayBrowserMethodDescriptors,
   ...builtinGatewayRuntimeMethodDescriptors,
   ...builtinGatewayKnowledgeMethodDescriptors,
   ...builtinGatewayMediaMethodDescriptors,

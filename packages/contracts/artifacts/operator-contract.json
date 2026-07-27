@@ -16358,6 +16358,2112 @@
         "invokable": true
       },
       {
+        "id": "browser.click",
+        "title": "Click Element",
+        "description": "Click an element resolved from the latest snapshot of this page. Activating a control that submits a form is an outward effect and is refused when this turn has read untrusted page content.",
+        "category": "browser",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:browser"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/browser/click"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "pageId": {
+              "type": "string"
+            },
+            "ref": {
+              "type": "string"
+            },
+            "button": {
+              "type": "string"
+            },
+            "clickCount": {
+              "type": "number"
+            },
+            "timeoutMs": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "ref"
+          ],
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "pageId": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            },
+            "clicked": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {},
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            },
+            "urlBefore": {
+              "type": "string"
+            },
+            "navigated": {
+              "type": "boolean"
+            },
+            "next": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId",
+            "pageId"
+          ],
+          "additionalProperties": true
+        },
+        "dangerous": true,
+        "invokable": true
+      },
+      {
+        "id": "browser.extract",
+        "title": "Extract Page Data",
+        "description": "Read named fields out of elements matched by a snapshot ref or a CSS selector. The function that runs in the page is fixed and ships in the engine; there is no way to express code here. Password input values are never returned.",
+        "category": "browser",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:browser"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/browser/extract"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "pageId": {
+              "type": "string"
+            },
+            "ref": {
+              "type": "string"
+            },
+            "selector": {
+              "type": "string"
+            },
+            "fields": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "all": {
+              "type": "boolean"
+            },
+            "limit": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "pageId": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            },
+            "matched": {
+              "type": "number"
+            },
+            "returned": {
+              "type": "number"
+            },
+            "note": {
+              "type": "string"
+            },
+            "data": {
+              "type": "object",
+              "properties": {
+                "trust": {
+                  "type": "string"
+                },
+                "surface": {
+                  "type": "string"
+                },
+                "origin": {
+                  "type": "string"
+                },
+                "retrievedAt": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "truncated": {
+                  "type": "boolean"
+                },
+                "rule": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "trust",
+                "surface",
+                "origin",
+                "retrievedAt",
+                "text",
+                "truncated",
+                "rule"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "sessionId",
+            "pageId"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "browser.history.back",
+        "title": "Go Back",
+        "description": "Move the page back one entry in its history.",
+        "category": "browser",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:browser"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/browser/history/back"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "pageId": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "pageId": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            },
+            "moved": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "sessionId",
+            "pageId"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "browser.history.forward",
+        "title": "Go Forward",
+        "description": "Move the page forward one entry in its history.",
+        "category": "browser",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:browser"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/browser/history/forward"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "pageId": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "pageId": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            },
+            "moved": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "sessionId",
+            "pageId"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "browser.navigate",
+        "title": "Navigate",
+        "description": "Load a URL, opening a session first if none is open. http, https, file and about schemes only; a javascript: URL is refused because it runs script against whatever page is already loaded.",
+        "category": "browser",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:browser"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/browser/navigate"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "pageId": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            },
+            "waitUntil": {
+              "type": "string"
+            },
+            "timeoutMs": {
+              "type": "number"
+            },
+            "profileName": {
+              "type": "string"
+            },
+            "headless": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "url"
+          ],
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "pageId": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "httpStatus": {
+              "type": "number"
+            },
+            "setup": {
+              "type": "string"
+            },
+            "next": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId",
+            "pageId"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "browser.press",
+        "title": "Press Key",
+        "description": "Send one key to an element resolved from the latest snapshot. Enter is treated as a form submission and is an outward effect.",
+        "category": "browser",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:browser"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/browser/press"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "pageId": {
+              "type": "string"
+            },
+            "ref": {
+              "type": "string"
+            },
+            "key": {
+              "type": "string"
+            },
+            "timeoutMs": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "ref",
+            "key"
+          ],
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "pageId": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            },
+            "pressed": {
+              "type": "string"
+            },
+            "on": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {},
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            }
+          },
+          "required": [
+            "sessionId",
+            "pageId"
+          ],
+          "additionalProperties": true
+        },
+        "dangerous": true,
+        "invokable": true
+      },
+      {
+        "id": "browser.provision",
+        "title": "Provision Browser",
+        "description": "Install the browser driver and binary this machine needs, reporting each step it actually ran. Slow on a clean machine; every other verb provisions on demand.",
+        "category": "browser",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:browser"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/browser/provision"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "repair": {
+              "type": "boolean"
+            },
+            "allowDownload": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "provision": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {},
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            }
+          },
+          "required": [
+            "provision"
+          ],
+          "additionalProperties": true
+        },
+        "dangerous": true,
+        "invokable": true
+      },
+      {
+        "id": "browser.readText",
+        "title": "Read Page Text",
+        "description": "Read the page as text, including open shadow roots and embedded frames, each frame origin recorded separately. Returns the text inside an untrusted-content envelope.",
+        "category": "browser",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:browser"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/browser/read-text"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "pageId": {
+              "type": "string"
+            },
+            "maxChars": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "pageId": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "content": {
+              "type": "object",
+              "properties": {
+                "trust": {
+                  "type": "string"
+                },
+                "surface": {
+                  "type": "string"
+                },
+                "origin": {
+                  "type": "string"
+                },
+                "retrievedAt": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "truncated": {
+                  "type": "boolean"
+                },
+                "rule": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "trust",
+                "surface",
+                "origin",
+                "retrievedAt",
+                "text",
+                "truncated",
+                "rule"
+              ],
+              "additionalProperties": false
+            },
+            "truncated": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "sessionId",
+            "pageId"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "browser.screenshot",
+        "title": "Screenshot Page",
+        "description": "Write a PNG of the visible area or the whole scrollable page and report the exact path written.",
+        "category": "browser",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:browser"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/browser/screenshot"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "pageId": {
+              "type": "string"
+            },
+            "fullPage": {
+              "type": "boolean"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "pageId": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            },
+            "bytes": {
+              "type": "number"
+            },
+            "next": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId",
+            "pageId"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "browser.scroll",
+        "title": "Scroll Page",
+        "description": "Scroll the page by an amount, or bring a snapshot element into view.",
+        "category": "browser",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:browser"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/browser/scroll"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "pageId": {
+              "type": "string"
+            },
+            "ref": {
+              "type": "string"
+            },
+            "direction": {
+              "type": "string"
+            },
+            "amount": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "pageId": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            },
+            "scrolledBy": {
+              "type": "number"
+            },
+            "scrolledTo": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {},
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            },
+            "scrollY": {
+              "type": "number"
+            },
+            "scrollHeight": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "sessionId",
+            "pageId"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "browser.select",
+        "title": "Select Options",
+        "description": "Choose option values in a select element resolved from the latest snapshot.",
+        "category": "browser",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:browser"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/browser/select"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "pageId": {
+              "type": "string"
+            },
+            "ref": {
+              "type": "string"
+            },
+            "values": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "timeoutMs": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "ref",
+            "values"
+          ],
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "pageId": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            },
+            "selectedIn": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {},
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            },
+            "selected": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "sessionId",
+            "pageId"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "browser.sessions.attach",
+        "title": "Attach To Running Browser",
+        "description": "Connect to a browser already running at a remote debugging endpoint. The daemon can drive it but can never close it.",
+        "category": "browser",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:browser"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/browser/sessions/attach"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "cdpEndpoint": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "cdpEndpoint"
+          ],
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "session": {
+              "type": "object",
+              "properties": {
+                "sessionId": {
+                  "type": "string"
+                },
+                "origin": {
+                  "type": "string"
+                },
+                "profileDirectory": {
+                  "type": "string"
+                },
+                "cdpEndpoint": {
+                  "type": "string"
+                },
+                "executablePath": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "headless": {
+                  "type": "boolean"
+                },
+                "startedAt": {
+                  "type": "string"
+                },
+                "pageCount": {
+                  "type": "number"
+                },
+                "activePageId": {
+                  "type": "string"
+                },
+                "closableByAgent": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "sessionId",
+                "origin",
+                "headless",
+                "startedAt",
+                "pageCount",
+                "closableByAgent"
+              ],
+              "additionalProperties": false
+            },
+            "pages": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "pageId": {
+                    "type": "string"
+                  },
+                  "url": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "active": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "pageId",
+                  "url",
+                  "title",
+                  "active"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "note": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "session"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "browser.sessions.close",
+        "title": "Close Browser Session",
+        "description": "End a browser the daemon started. A session attached to a browser the daemon did not start is refused; release it instead.",
+        "category": "browser",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:browser"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/browser/sessions/close"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId"
+          ],
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "closed": {
+              "type": "object",
+              "properties": {
+                "sessionId": {
+                  "type": "string"
+                },
+                "origin": {
+                  "type": "string"
+                },
+                "profileDirectory": {
+                  "type": "string"
+                },
+                "cdpEndpoint": {
+                  "type": "string"
+                },
+                "executablePath": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "headless": {
+                  "type": "boolean"
+                },
+                "startedAt": {
+                  "type": "string"
+                },
+                "pageCount": {
+                  "type": "number"
+                },
+                "activePageId": {
+                  "type": "string"
+                },
+                "closableByAgent": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "sessionId",
+                "origin",
+                "headless",
+                "startedAt",
+                "pageCount",
+                "closableByAgent"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "closed"
+          ],
+          "additionalProperties": true
+        },
+        "dangerous": true,
+        "invokable": true
+      },
+      {
+        "id": "browser.sessions.launch",
+        "title": "Launch Browser Session",
+        "description": "Start a browser the daemon owns. Pass a profileName to keep sign-ins across runs; headless defaults to true where no display exists.",
+        "category": "browser",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:browser"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/browser/sessions/launch"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "profileName": {
+              "type": "string"
+            },
+            "headless": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "session": {
+              "type": "object",
+              "properties": {
+                "sessionId": {
+                  "type": "string"
+                },
+                "origin": {
+                  "type": "string"
+                },
+                "profileDirectory": {
+                  "type": "string"
+                },
+                "cdpEndpoint": {
+                  "type": "string"
+                },
+                "executablePath": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "headless": {
+                  "type": "boolean"
+                },
+                "startedAt": {
+                  "type": "string"
+                },
+                "pageCount": {
+                  "type": "number"
+                },
+                "activePageId": {
+                  "type": "string"
+                },
+                "closableByAgent": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "sessionId",
+                "origin",
+                "headless",
+                "startedAt",
+                "pageCount",
+                "closableByAgent"
+              ],
+              "additionalProperties": false
+            },
+            "setup": {
+              "type": "string"
+            },
+            "note": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "session"
+          ],
+          "additionalProperties": true
+        },
+        "dangerous": true,
+        "invokable": true
+      },
+      {
+        "id": "browser.sessions.list",
+        "title": "List Browser Sessions",
+        "description": "Return every open browser session, including whether the daemon started it and may therefore close it.",
+        "category": "browser",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:browser"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/browser/sessions"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "sessionId": {
+                    "type": "string"
+                  },
+                  "origin": {
+                    "type": "string"
+                  },
+                  "profileDirectory": {
+                    "type": "string"
+                  },
+                  "cdpEndpoint": {
+                    "type": "string"
+                  },
+                  "executablePath": {
+                    "type": "string"
+                  },
+                  "source": {
+                    "type": "string"
+                  },
+                  "headless": {
+                    "type": "boolean"
+                  },
+                  "startedAt": {
+                    "type": "string"
+                  },
+                  "pageCount": {
+                    "type": "number"
+                  },
+                  "activePageId": {
+                    "type": "string"
+                  },
+                  "closableByAgent": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "sessionId",
+                  "origin",
+                  "headless",
+                  "startedAt",
+                  "pageCount",
+                  "closableByAgent"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "sessions"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "browser.sessions.release",
+        "title": "Release Browser Session",
+        "description": "Disconnect from a session and leave the browser running. This is how an attached browser is let go of.",
+        "category": "browser",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:browser"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/browser/sessions/release"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId"
+          ],
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "released": {
+              "type": "object",
+              "properties": {
+                "sessionId": {
+                  "type": "string"
+                },
+                "origin": {
+                  "type": "string"
+                },
+                "profileDirectory": {
+                  "type": "string"
+                },
+                "cdpEndpoint": {
+                  "type": "string"
+                },
+                "executablePath": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "headless": {
+                  "type": "boolean"
+                },
+                "startedAt": {
+                  "type": "string"
+                },
+                "pageCount": {
+                  "type": "number"
+                },
+                "activePageId": {
+                  "type": "string"
+                },
+                "closableByAgent": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "sessionId",
+                "origin",
+                "headless",
+                "startedAt",
+                "pageCount",
+                "closableByAgent"
+              ],
+              "additionalProperties": false
+            },
+            "note": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "released"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "browser.snapshot",
+        "title": "Snapshot Page",
+        "description": "Return addressable element refs for the current page. Element names come from the page, so the result is untrusted content and is labelled as such.",
+        "category": "browser",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:browser"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/browser/snapshot"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "pageId": {
+              "type": "string"
+            },
+            "limit": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "pageId": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "contentTrust": {
+              "type": "string"
+            },
+            "origin": {
+              "type": "string"
+            },
+            "rule": {
+              "type": "string"
+            },
+            "snapshotId": {
+              "type": "string"
+            },
+            "elementCount": {
+              "type": "number"
+            },
+            "truncated": {
+              "type": "boolean"
+            },
+            "elements": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "ref": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "string"
+                  },
+                  "disabled": {
+                    "type": "boolean"
+                  },
+                  "checked": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "ref",
+                  "role",
+                  "name"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "sessionId",
+            "pageId"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "browser.status",
+        "title": "Browser Status",
+        "description": "Report whether a browser is available on this machine, where its binary came from, whether a display exists, and which sessions are open.",
+        "category": "browser",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:browser"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/browser/status"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "browserAvailable": {
+              "type": "boolean"
+            },
+            "binarySource": {
+              "type": "string"
+            },
+            "executablePath": {
+              "type": "string"
+            },
+            "driverVersion": {
+              "type": "string"
+            },
+            "browsersPath": {
+              "type": "string"
+            },
+            "displayAvailable": {
+              "type": "boolean"
+            },
+            "defaultMode": {
+              "type": "string"
+            },
+            "sessions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "sessionId": {
+                    "type": "string"
+                  },
+                  "origin": {
+                    "type": "string"
+                  },
+                  "profileDirectory": {
+                    "type": "string"
+                  },
+                  "cdpEndpoint": {
+                    "type": "string"
+                  },
+                  "executablePath": {
+                    "type": "string"
+                  },
+                  "source": {
+                    "type": "string"
+                  },
+                  "headless": {
+                    "type": "boolean"
+                  },
+                  "startedAt": {
+                    "type": "string"
+                  },
+                  "pageCount": {
+                    "type": "number"
+                  },
+                  "activePageId": {
+                    "type": "string"
+                  },
+                  "closableByAgent": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "sessionId",
+                  "origin",
+                  "headless",
+                  "startedAt",
+                  "pageCount",
+                  "closableByAgent"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "provisionSteps": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    },
+                    {},
+                    {
+                      "type": "array",
+                      "items": {}
+                    }
+                  ]
+                }
+              }
+            },
+            "problem": {
+              "type": "string"
+            },
+            "fix": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "browserAvailable"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "browser.tabs.close",
+        "title": "Close Tab",
+        "description": "Close one tab. The browser itself keeps running.",
+        "category": "browser",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:browser"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/browser/tabs/close"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "pageId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "pageId"
+          ],
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "closedPageId": {
+              "type": "string"
+            },
+            "pages": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "pageId": {
+                    "type": "string"
+                  },
+                  "url": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "active": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "pageId",
+                  "url",
+                  "title",
+                  "active"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "sessionId",
+            "closedPageId",
+            "pages"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "browser.tabs.list",
+        "title": "List Tabs",
+        "description": "Return every open page in a session, with which one is active.",
+        "category": "browser",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:browser"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/browser/tabs"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "pages": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "pageId": {
+                    "type": "string"
+                  },
+                  "url": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "active": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "pageId",
+                  "url",
+                  "title",
+                  "active"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "sessionId",
+            "pages"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "browser.tabs.new",
+        "title": "Open Tab",
+        "description": "Open a new tab, optionally at a URL, opening a session first if none is open.",
+        "category": "browser",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:browser"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/browser/tabs/new"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "pageId": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            },
+            "profileName": {
+              "type": "string"
+            },
+            "headless": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "pageId": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            },
+            "pages": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "pageId": {
+                    "type": "string"
+                  },
+                  "url": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "active": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "pageId",
+                  "url",
+                  "title",
+                  "active"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "sessionId",
+            "pageId"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "browser.tabs.switch",
+        "title": "Switch Tab",
+        "description": "Make another open tab the active one for later page verbs.",
+        "category": "browser",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:browser"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/browser/tabs/switch"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "pageId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "pageId"
+          ],
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "activePageId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId",
+            "activePageId"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "browser.type",
+        "title": "Type Into Element",
+        "description": "Type into an element resolved from the latest snapshot. There is no variant that types into whatever window has focus. submit:true presses Enter afterwards and is an outward effect.",
+        "category": "browser",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:browser"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/browser/type"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "pageId": {
+              "type": "string"
+            },
+            "ref": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            },
+            "submit": {
+              "type": "boolean"
+            },
+            "replace": {
+              "type": "boolean"
+            },
+            "timeoutMs": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "ref",
+            "text"
+          ],
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "pageId": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            },
+            "typedInto": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {},
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            },
+            "submitted": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "sessionId",
+            "pageId"
+          ],
+          "additionalProperties": true
+        },
+        "dangerous": true,
+        "invokable": true
+      },
+      {
+        "id": "browser.waitFor",
+        "title": "Wait For Page State",
+        "description": "Wait for text to become visible, for the URL to match, or for the network to settle. The timeout bounds this call only and never ends the browser.",
+        "category": "browser",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:browser"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/browser/wait-for"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "pageId": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            },
+            "timeoutMs": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "pageId": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            },
+            "waitedFor": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {},
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            },
+            "found": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "sessionId",
+            "pageId"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
         "id": "calendar.events.create",
         "title": "Create Calendar Event",
         "description": "Create an event on the configured CalDAV calendar. Requires explicit confirmation.",
@@ -92693,10 +94799,10 @@
       }
     ],
     "schemaCoverage": {
-      "methods": 419,
-      "typedInputs": 419,
+      "methods": 443,
+      "typedInputs": 443,
       "genericInputs": 0,
-      "typedOutputs": 419,
+      "typedOutputs": 443,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -92705,8 +94811,8 @@
       "withWireEvents": 32
     },
     "validationCoverage": {
-      "methods": 419,
-      "validated": 412,
+      "methods": 443,
+      "validated": 436,
       "skippedGeneric": 0,
       "skippedUntyped": 7
     }

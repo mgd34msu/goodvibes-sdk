@@ -17,6 +17,10 @@
  * report the operator's own unfinished setup as a server fault.
  */
 import { EmailService, type EmailServiceDeps } from '../../email/index.js';
+import {
+  getProcessUntrustedContentLedger,
+  type UntrustedContentLedger,
+} from '../../security/untrusted-content.js';
 import { GatewayVerbError } from './gateway-verb-error.js';
 import type {
   EmailGatewayDraftInput,
@@ -35,6 +39,16 @@ export interface EmailCompositionDeps {
   readonly emailGateway?: EmailGatewayService | undefined;
   /** Everything `EmailService` needs. Absent in narrow compositions. */
   readonly emailServiceDeps?: EmailServiceDeps | undefined;
+  /**
+   * The ledger a mailbox read is recorded into.
+   *
+   * Defaults to the process-wide one — the SAME ledger the daemon's browser
+   * engine records page reads into (routes/browser-composition.ts). Sharing it
+   * is the point: reading a stranger's page and reading a stranger's mail are
+   * the same kind of exposure, and a send made afterwards discloses both from
+   * one record rather than from two that cannot see each other.
+   */
+  readonly untrustedContentLedger?: UntrustedContentLedger | undefined;
 }
 
 /**
@@ -73,7 +87,16 @@ export function createDaemonEmailGatewayService(
 ): EmailGatewayService | null {
   if (deps.emailGateway) return deps.emailGateway;
   if (!deps.emailServiceDeps) return null;
-  const service = new EmailService(deps.emailServiceDeps);
+  const ledger = deps.untrustedContentLedger ?? getProcessUntrustedContentLedger();
+  const service = new EmailService({
+    ...deps.emailServiceDeps,
+    // Bound here rather than left to the caller: a composition that forgot it
+    // would read strangers' mail into nothing, and the exposure a later send
+    // discloses would be missing exactly the half that mattered. A caller that
+    // supplies its own recorder still wins.
+    recordUntrustedIngest: deps.emailServiceDeps.recordUntrustedIngest
+      ?? ((ingest) => { ledger.record(ingest); }),
+  });
 
   return {
     async listInbox(input: EmailGatewayListInput): Promise<EmailGatewayListResult> {

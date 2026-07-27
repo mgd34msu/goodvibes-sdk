@@ -153,6 +153,37 @@ export const GATEWAY_REST_ROUTES: readonly GatewayRestRoute[] = [
   route('GET', '/api/email/inbox/{uid}', 'email.inbox.read'),
   route('POST', '/api/email/drafts', 'email.draft.create'),
   route('POST', '/api/email/send', 'email.send'),
+  // browser.* — real browser control over the platform engine. The engine was
+  // hoisted into the SDK and the daemon could link it, but no verb and no path
+  // existed, so a daemon-only caller had nothing to invoke: with no surface
+  // process attached, a schedule, a trigger or a channel reply could not open
+  // a page at all. The whole surface is routed rather than a convenient
+  // subset, because a daemon that can navigate but cannot select an option is
+  // still a daemon an operator has to open a surface for.
+  route('GET', '/api/browser/status', 'browser.status'),
+  route('POST', '/api/browser/provision', 'browser.provision'),
+  route('GET', '/api/browser/sessions', 'browser.sessions.list'),
+  route('POST', '/api/browser/sessions/launch', 'browser.sessions.launch'),
+  route('POST', '/api/browser/sessions/attach', 'browser.sessions.attach'),
+  route('POST', '/api/browser/sessions/release', 'browser.sessions.release'),
+  route('POST', '/api/browser/sessions/close', 'browser.sessions.close'),
+  route('POST', '/api/browser/navigate', 'browser.navigate'),
+  route('POST', '/api/browser/snapshot', 'browser.snapshot'),
+  route('POST', '/api/browser/click', 'browser.click'),
+  route('POST', '/api/browser/type', 'browser.type'),
+  route('POST', '/api/browser/select', 'browser.select'),
+  route('POST', '/api/browser/press', 'browser.press'),
+  route('POST', '/api/browser/scroll', 'browser.scroll'),
+  route('POST', '/api/browser/wait-for', 'browser.waitFor'),
+  route('POST', '/api/browser/read-text', 'browser.readText'),
+  route('POST', '/api/browser/extract', 'browser.extract'),
+  route('POST', '/api/browser/screenshot', 'browser.screenshot'),
+  route('GET', '/api/browser/tabs', 'browser.tabs.list'),
+  route('POST', '/api/browser/tabs/new', 'browser.tabs.new'),
+  route('POST', '/api/browser/tabs/switch', 'browser.tabs.switch'),
+  route('POST', '/api/browser/tabs/close', 'browser.tabs.close'),
+  route('POST', '/api/browser/history/back', 'browser.history.back'),
+  route('POST', '/api/browser/history/forward', 'browser.history.forward'),
 ];
 
 /**

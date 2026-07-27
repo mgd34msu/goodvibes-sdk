@@ -108,6 +108,59 @@ describe('capability-advertisement honesty: route reconcile', () => {
     }
   });
 
+  test('every browser.* method resolves to a route and none is marked unavailable', async () => {
+    // The browser engine was hoisted into the SDK and the daemon could link
+    // it, but no verb and no path existed, so nothing the daemon did on its
+    // own could open a page. Serving the WHOLE surface is the point: a count
+    // check here fails if a later change quietly drops one back out of the
+    // route table while leaving its advertisement standing.
+    const probe = createDaemonSdkRouteProbe();
+    const descriptors = liveCatalogDescriptors().filter((d) => d.category === 'browser');
+    expect(descriptors).toHaveLength(24);
+
+    for (const descriptor of descriptors) {
+      const result = await reconcileHttpDescriptor(descriptor, probe);
+      expect(result.status, `${descriptor.id} advertises ${descriptor.http?.method ?? '?'} ${descriptor.http?.path ?? '?'} but no route resolves it`).toBe('live');
+      expect(descriptor.invokable).not.toBe(false);
+    }
+  });
+
+  test('the browser surface covers every action the agent browser tool exposes', () => {
+    // The daemon must not be a smaller browser than a surface is. Each entry
+    // is one action of the agent's `browser` tool mapped to the verb that
+    // serves it; a daemon missing one is a daemon an operator has to open a
+    // surface for.
+    const perToolAction: Readonly<Record<string, string>> = {
+      status: 'browser.status',
+      provision: 'browser.provision',
+      launch: 'browser.sessions.launch',
+      attach: 'browser.sessions.attach',
+      release: 'browser.sessions.release',
+      close: 'browser.sessions.close',
+      navigate: 'browser.navigate',
+      snapshot: 'browser.snapshot',
+      click: 'browser.click',
+      type: 'browser.type',
+      select: 'browser.select',
+      press: 'browser.press',
+      scroll: 'browser.scroll',
+      wait_for: 'browser.waitFor',
+      read_text: 'browser.readText',
+      screenshot: 'browser.screenshot',
+      tabs: 'browser.tabs.list',
+      new_tab: 'browser.tabs.new',
+      switch_tab: 'browser.tabs.switch',
+      close_tab: 'browser.tabs.close',
+      back: 'browser.history.back',
+      forward: 'browser.history.forward',
+      extract: 'browser.extract',
+    };
+    const served = new Set(liveCatalogDescriptors().map((d) => d.id));
+    for (const [action, methodId] of Object.entries(perToolAction)) {
+      expect(served.has(methodId), `browser tool action "${action}" has no daemon verb (${methodId})`).toBe(true);
+    }
+  });
+
   test('build/boot gate: no advertise-without-route method is unmarked, beyond known pre-existing debt', async () => {
     const probe = createDaemonSdkRouteProbe();
     const descriptors = liveCatalogDescriptors();

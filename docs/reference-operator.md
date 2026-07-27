@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `419`
+- Methods: `443`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -16269,6 +16269,2204 @@ Trigger a schedule immediately.
     "jobId",
     "runId",
     "status"
+  ],
+  "additionalProperties": true
+}
+```
+
+### browser
+
+#### `browser.click`
+
+Click an element resolved from the latest snapshot of this page. Activating a control that submits a form is an outward effect and is refused when this turn has read untrusted page content.
+
+- Title: `Click Element`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/browser/click`
+- Scopes: `write:browser`
+- Emits events: none
+- Dangerous: `yes`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "pageId": {
+      "type": "string"
+    },
+    "ref": {
+      "type": "string"
+    },
+    "button": {
+      "type": "string"
+    },
+    "clickCount": {
+      "type": "number"
+    },
+    "timeoutMs": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "ref"
+  ],
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "pageId": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    },
+    "clicked": {
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {},
+          {
+            "type": "array",
+            "items": {}
+          }
+        ]
+      }
+    },
+    "urlBefore": {
+      "type": "string"
+    },
+    "navigated": {
+      "type": "boolean"
+    },
+    "next": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId",
+    "pageId"
+  ],
+  "additionalProperties": true
+}
+```
+
+#### `browser.extract`
+
+Read named fields out of elements matched by a snapshot ref or a CSS selector. The function that runs in the page is fixed and ships in the engine; there is no way to express code here. Password input values are never returned.
+
+- Title: `Extract Page Data`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/browser/extract`
+- Scopes: `read:browser`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "pageId": {
+      "type": "string"
+    },
+    "ref": {
+      "type": "string"
+    },
+    "selector": {
+      "type": "string"
+    },
+    "fields": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "all": {
+      "type": "boolean"
+    },
+    "limit": {
+      "type": "number"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "pageId": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    },
+    "matched": {
+      "type": "number"
+    },
+    "returned": {
+      "type": "number"
+    },
+    "note": {
+      "type": "string"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "trust": {
+          "type": "string"
+        },
+        "surface": {
+          "type": "string"
+        },
+        "origin": {
+          "type": "string"
+        },
+        "retrievedAt": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "rule": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "trust",
+        "surface",
+        "origin",
+        "retrievedAt",
+        "text",
+        "truncated",
+        "rule"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "sessionId",
+    "pageId"
+  ],
+  "additionalProperties": true
+}
+```
+
+#### `browser.history.back`
+
+Move the page back one entry in its history.
+
+- Title: `Go Back`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/browser/history/back`
+- Scopes: `write:browser`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "pageId": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "pageId": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    },
+    "moved": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "sessionId",
+    "pageId"
+  ],
+  "additionalProperties": true
+}
+```
+
+#### `browser.history.forward`
+
+Move the page forward one entry in its history.
+
+- Title: `Go Forward`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/browser/history/forward`
+- Scopes: `write:browser`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "pageId": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "pageId": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    },
+    "moved": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "sessionId",
+    "pageId"
+  ],
+  "additionalProperties": true
+}
+```
+
+#### `browser.navigate`
+
+Load a URL, opening a session first if none is open. http, https, file and about schemes only; a javascript: URL is refused because it runs script against whatever page is already loaded.
+
+- Title: `Navigate`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/browser/navigate`
+- Scopes: `write:browser`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "pageId": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    },
+    "waitUntil": {
+      "type": "string"
+    },
+    "timeoutMs": {
+      "type": "number"
+    },
+    "profileName": {
+      "type": "string"
+    },
+    "headless": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "url"
+  ],
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "pageId": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "httpStatus": {
+      "type": "number"
+    },
+    "setup": {
+      "type": "string"
+    },
+    "next": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId",
+    "pageId"
+  ],
+  "additionalProperties": true
+}
+```
+
+#### `browser.press`
+
+Send one key to an element resolved from the latest snapshot. Enter is treated as a form submission and is an outward effect.
+
+- Title: `Press Key`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/browser/press`
+- Scopes: `write:browser`
+- Emits events: none
+- Dangerous: `yes`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "pageId": {
+      "type": "string"
+    },
+    "ref": {
+      "type": "string"
+    },
+    "key": {
+      "type": "string"
+    },
+    "timeoutMs": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "ref",
+    "key"
+  ],
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "pageId": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    },
+    "pressed": {
+      "type": "string"
+    },
+    "on": {
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {},
+          {
+            "type": "array",
+            "items": {}
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "sessionId",
+    "pageId"
+  ],
+  "additionalProperties": true
+}
+```
+
+#### `browser.provision`
+
+Install the browser driver and binary this machine needs, reporting each step it actually ran. Slow on a clean machine; every other verb provisions on demand.
+
+- Title: `Provision Browser`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/browser/provision`
+- Scopes: `write:browser`
+- Emits events: none
+- Dangerous: `yes`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "repair": {
+      "type": "boolean"
+    },
+    "allowDownload": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "provision": {
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {},
+          {
+            "type": "array",
+            "items": {}
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "provision"
+  ],
+  "additionalProperties": true
+}
+```
+
+#### `browser.readText`
+
+Read the page as text, including open shadow roots and embedded frames, each frame origin recorded separately. Returns the text inside an untrusted-content envelope.
+
+- Title: `Read Page Text`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/browser/read-text`
+- Scopes: `read:browser`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "pageId": {
+      "type": "string"
+    },
+    "maxChars": {
+      "type": "number"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "pageId": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "content": {
+      "type": "object",
+      "properties": {
+        "trust": {
+          "type": "string"
+        },
+        "surface": {
+          "type": "string"
+        },
+        "origin": {
+          "type": "string"
+        },
+        "retrievedAt": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "rule": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "trust",
+        "surface",
+        "origin",
+        "retrievedAt",
+        "text",
+        "truncated",
+        "rule"
+      ],
+      "additionalProperties": false
+    },
+    "truncated": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "sessionId",
+    "pageId"
+  ],
+  "additionalProperties": true
+}
+```
+
+#### `browser.screenshot`
+
+Write a PNG of the visible area or the whole scrollable page and report the exact path written.
+
+- Title: `Screenshot Page`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/browser/screenshot`
+- Scopes: `read:browser`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "pageId": {
+      "type": "string"
+    },
+    "fullPage": {
+      "type": "boolean"
+    },
+    "path": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "pageId": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    },
+    "path": {
+      "type": "string"
+    },
+    "bytes": {
+      "type": "number"
+    },
+    "next": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId",
+    "pageId"
+  ],
+  "additionalProperties": true
+}
+```
+
+#### `browser.scroll`
+
+Scroll the page by an amount, or bring a snapshot element into view.
+
+- Title: `Scroll Page`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/browser/scroll`
+- Scopes: `write:browser`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "pageId": {
+      "type": "string"
+    },
+    "ref": {
+      "type": "string"
+    },
+    "direction": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "number"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "pageId": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    },
+    "scrolledBy": {
+      "type": "number"
+    },
+    "scrolledTo": {
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {},
+          {
+            "type": "array",
+            "items": {}
+          }
+        ]
+      }
+    },
+    "scrollY": {
+      "type": "number"
+    },
+    "scrollHeight": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "sessionId",
+    "pageId"
+  ],
+  "additionalProperties": true
+}
+```
+
+#### `browser.select`
+
+Choose option values in a select element resolved from the latest snapshot.
+
+- Title: `Select Options`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/browser/select`
+- Scopes: `write:browser`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "pageId": {
+      "type": "string"
+    },
+    "ref": {
+      "type": "string"
+    },
+    "values": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "timeoutMs": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "ref",
+    "values"
+  ],
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "pageId": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    },
+    "selectedIn": {
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {},
+          {
+            "type": "array",
+            "items": {}
+          }
+        ]
+      }
+    },
+    "selected": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "sessionId",
+    "pageId"
+  ],
+  "additionalProperties": true
+}
+```
+
+#### `browser.sessions.attach`
+
+Connect to a browser already running at a remote debugging endpoint. The daemon can drive it but can never close it.
+
+- Title: `Attach To Running Browser`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/browser/sessions/attach`
+- Scopes: `write:browser`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "cdpEndpoint": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "cdpEndpoint"
+  ],
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "session": {
+      "type": "object",
+      "properties": {
+        "sessionId": {
+          "type": "string"
+        },
+        "origin": {
+          "type": "string"
+        },
+        "profileDirectory": {
+          "type": "string"
+        },
+        "cdpEndpoint": {
+          "type": "string"
+        },
+        "executablePath": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "headless": {
+          "type": "boolean"
+        },
+        "startedAt": {
+          "type": "string"
+        },
+        "pageCount": {
+          "type": "number"
+        },
+        "activePageId": {
+          "type": "string"
+        },
+        "closableByAgent": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "sessionId",
+        "origin",
+        "headless",
+        "startedAt",
+        "pageCount",
+        "closableByAgent"
+      ],
+      "additionalProperties": false
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pageId": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "pageId",
+          "url",
+          "title",
+          "active"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "note": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "session"
+  ],
+  "additionalProperties": true
+}
+```
+
+#### `browser.sessions.close`
+
+End a browser the daemon started. A session attached to a browser the daemon did not start is refused; release it instead.
+
+- Title: `Close Browser Session`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/browser/sessions/close`
+- Scopes: `write:browser`
+- Emits events: none
+- Dangerous: `yes`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId"
+  ],
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "closed": {
+      "type": "object",
+      "properties": {
+        "sessionId": {
+          "type": "string"
+        },
+        "origin": {
+          "type": "string"
+        },
+        "profileDirectory": {
+          "type": "string"
+        },
+        "cdpEndpoint": {
+          "type": "string"
+        },
+        "executablePath": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "headless": {
+          "type": "boolean"
+        },
+        "startedAt": {
+          "type": "string"
+        },
+        "pageCount": {
+          "type": "number"
+        },
+        "activePageId": {
+          "type": "string"
+        },
+        "closableByAgent": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "sessionId",
+        "origin",
+        "headless",
+        "startedAt",
+        "pageCount",
+        "closableByAgent"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "closed"
+  ],
+  "additionalProperties": true
+}
+```
+
+#### `browser.sessions.launch`
+
+Start a browser the daemon owns. Pass a profileName to keep sign-ins across runs; headless defaults to true where no display exists.
+
+- Title: `Launch Browser Session`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/browser/sessions/launch`
+- Scopes: `write:browser`
+- Emits events: none
+- Dangerous: `yes`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "profileName": {
+      "type": "string"
+    },
+    "headless": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "session": {
+      "type": "object",
+      "properties": {
+        "sessionId": {
+          "type": "string"
+        },
+        "origin": {
+          "type": "string"
+        },
+        "profileDirectory": {
+          "type": "string"
+        },
+        "cdpEndpoint": {
+          "type": "string"
+        },
+        "executablePath": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "headless": {
+          "type": "boolean"
+        },
+        "startedAt": {
+          "type": "string"
+        },
+        "pageCount": {
+          "type": "number"
+        },
+        "activePageId": {
+          "type": "string"
+        },
+        "closableByAgent": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "sessionId",
+        "origin",
+        "headless",
+        "startedAt",
+        "pageCount",
+        "closableByAgent"
+      ],
+      "additionalProperties": false
+    },
+    "setup": {
+      "type": "string"
+    },
+    "note": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "session"
+  ],
+  "additionalProperties": true
+}
+```
+
+#### `browser.sessions.list`
+
+Return every open browser session, including whether the daemon started it and may therefore close it.
+
+- Title: `List Browser Sessions`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/browser/sessions`
+- Scopes: `read:browser`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          },
+          "origin": {
+            "type": "string"
+          },
+          "profileDirectory": {
+            "type": "string"
+          },
+          "cdpEndpoint": {
+            "type": "string"
+          },
+          "executablePath": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "headless": {
+            "type": "boolean"
+          },
+          "startedAt": {
+            "type": "string"
+          },
+          "pageCount": {
+            "type": "number"
+          },
+          "activePageId": {
+            "type": "string"
+          },
+          "closableByAgent": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "sessionId",
+          "origin",
+          "headless",
+          "startedAt",
+          "pageCount",
+          "closableByAgent"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "sessions"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `browser.sessions.release`
+
+Disconnect from a session and leave the browser running. This is how an attached browser is let go of.
+
+- Title: `Release Browser Session`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/browser/sessions/release`
+- Scopes: `write:browser`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId"
+  ],
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "released": {
+      "type": "object",
+      "properties": {
+        "sessionId": {
+          "type": "string"
+        },
+        "origin": {
+          "type": "string"
+        },
+        "profileDirectory": {
+          "type": "string"
+        },
+        "cdpEndpoint": {
+          "type": "string"
+        },
+        "executablePath": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "headless": {
+          "type": "boolean"
+        },
+        "startedAt": {
+          "type": "string"
+        },
+        "pageCount": {
+          "type": "number"
+        },
+        "activePageId": {
+          "type": "string"
+        },
+        "closableByAgent": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "sessionId",
+        "origin",
+        "headless",
+        "startedAt",
+        "pageCount",
+        "closableByAgent"
+      ],
+      "additionalProperties": false
+    },
+    "note": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "released"
+  ],
+  "additionalProperties": true
+}
+```
+
+#### `browser.snapshot`
+
+Return addressable element refs for the current page. Element names come from the page, so the result is untrusted content and is labelled as such.
+
+- Title: `Snapshot Page`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/browser/snapshot`
+- Scopes: `read:browser`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "pageId": {
+      "type": "string"
+    },
+    "limit": {
+      "type": "number"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "pageId": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "contentTrust": {
+      "type": "string"
+    },
+    "origin": {
+      "type": "string"
+    },
+    "rule": {
+      "type": "string"
+    },
+    "snapshotId": {
+      "type": "string"
+    },
+    "elementCount": {
+      "type": "number"
+    },
+    "truncated": {
+      "type": "boolean"
+    },
+    "elements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "ref": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "disabled": {
+            "type": "boolean"
+          },
+          "checked": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ref",
+          "role",
+          "name"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "sessionId",
+    "pageId"
+  ],
+  "additionalProperties": true
+}
+```
+
+#### `browser.status`
+
+Report whether a browser is available on this machine, where its binary came from, whether a display exists, and which sessions are open.
+
+- Title: `Browser Status`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/browser/status`
+- Scopes: `read:browser`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "browserAvailable": {
+      "type": "boolean"
+    },
+    "binarySource": {
+      "type": "string"
+    },
+    "executablePath": {
+      "type": "string"
+    },
+    "driverVersion": {
+      "type": "string"
+    },
+    "browsersPath": {
+      "type": "string"
+    },
+    "displayAvailable": {
+      "type": "boolean"
+    },
+    "defaultMode": {
+      "type": "string"
+    },
+    "sessions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          },
+          "origin": {
+            "type": "string"
+          },
+          "profileDirectory": {
+            "type": "string"
+          },
+          "cdpEndpoint": {
+            "type": "string"
+          },
+          "executablePath": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "headless": {
+            "type": "boolean"
+          },
+          "startedAt": {
+            "type": "string"
+          },
+          "pageCount": {
+            "type": "number"
+          },
+          "activePageId": {
+            "type": "string"
+          },
+          "closableByAgent": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "sessionId",
+          "origin",
+          "headless",
+          "startedAt",
+          "pageCount",
+          "closableByAgent"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "provisionSteps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            },
+            {},
+            {
+              "type": "array",
+              "items": {}
+            }
+          ]
+        }
+      }
+    },
+    "problem": {
+      "type": "string"
+    },
+    "fix": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "browserAvailable"
+  ],
+  "additionalProperties": true
+}
+```
+
+#### `browser.tabs.close`
+
+Close one tab. The browser itself keeps running.
+
+- Title: `Close Tab`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/browser/tabs/close`
+- Scopes: `write:browser`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "pageId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "pageId"
+  ],
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "closedPageId": {
+      "type": "string"
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pageId": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "pageId",
+          "url",
+          "title",
+          "active"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "sessionId",
+    "closedPageId",
+    "pages"
+  ],
+  "additionalProperties": true
+}
+```
+
+#### `browser.tabs.list`
+
+Return every open page in a session, with which one is active.
+
+- Title: `List Tabs`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/browser/tabs`
+- Scopes: `read:browser`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pageId": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "pageId",
+          "url",
+          "title",
+          "active"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "sessionId",
+    "pages"
+  ],
+  "additionalProperties": true
+}
+```
+
+#### `browser.tabs.new`
+
+Open a new tab, optionally at a URL, opening a session first if none is open.
+
+- Title: `Open Tab`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/browser/tabs/new`
+- Scopes: `write:browser`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "pageId": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    },
+    "profileName": {
+      "type": "string"
+    },
+    "headless": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "pageId": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pageId": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "pageId",
+          "url",
+          "title",
+          "active"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "sessionId",
+    "pageId"
+  ],
+  "additionalProperties": true
+}
+```
+
+#### `browser.tabs.switch`
+
+Make another open tab the active one for later page verbs.
+
+- Title: `Switch Tab`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/browser/tabs/switch`
+- Scopes: `write:browser`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "pageId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "pageId"
+  ],
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "activePageId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId",
+    "activePageId"
+  ],
+  "additionalProperties": true
+}
+```
+
+#### `browser.type`
+
+Type into an element resolved from the latest snapshot. There is no variant that types into whatever window has focus. submit:true presses Enter afterwards and is an outward effect.
+
+- Title: `Type Into Element`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/browser/type`
+- Scopes: `write:browser`
+- Emits events: none
+- Dangerous: `yes`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "pageId": {
+      "type": "string"
+    },
+    "ref": {
+      "type": "string"
+    },
+    "text": {
+      "type": "string"
+    },
+    "submit": {
+      "type": "boolean"
+    },
+    "replace": {
+      "type": "boolean"
+    },
+    "timeoutMs": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "ref",
+    "text"
+  ],
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "pageId": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    },
+    "typedInto": {
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {},
+          {
+            "type": "array",
+            "items": {}
+          }
+        ]
+      }
+    },
+    "submitted": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "sessionId",
+    "pageId"
+  ],
+  "additionalProperties": true
+}
+```
+
+#### `browser.waitFor`
+
+Wait for text to become visible, for the URL to match, or for the network to settle. The timeout bounds this call only and never ends the browser.
+
+- Title: `Wait For Page State`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/browser/wait-for`
+- Scopes: `read:browser`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "pageId": {
+      "type": "string"
+    },
+    "text": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    },
+    "timeoutMs": {
+      "type": "number"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "pageId": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    },
+    "waitedFor": {
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {},
+          {
+            "type": "array",
+            "items": {}
+          }
+        ]
+      }
+    },
+    "found": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "sessionId",
+    "pageId"
   ],
   "additionalProperties": true
 }

@@ -34,6 +34,11 @@
  */
 import type { GatewayMethodCatalog } from '../method-catalog.js';
 import type { GatewayMethodHandler } from '../method-catalog-shared.js';
+import {
+  UNTRUSTED_CONTENT_RULE,
+  getProcessUntrustedContentLedger,
+  type UntrustedContentLedger,
+} from '../../security/untrusted-content.js';
 import { GatewayVerbError } from './gateway-verb-error.js';
 import { readInvocationParams } from './invocation-params.js';
 
@@ -205,7 +210,49 @@ export function createEmailDraftCreateHandler(service: EmailGatewayService): Gat
   };
 }
 
-export function createEmailSendHandler(service: EmailGatewayService): GatewayMethodHandler {
+/**
+ * Why a send DISCLOSES its untrusted exposure rather than refusing on it.
+ *
+ * The daemon's browser verbs and its mail verbs record into one ledger (see
+ * routes/browser-composition.ts), so "read a page, then send mail" is one
+ * composition rather than two unrelated acts. In the agent, that composition
+ * is REFUSED: an owner turn has a start, so exposure has a scope, and the
+ * refusal's fix — take it to the owner — has someone to take it to.
+ *
+ * An unattended daemon has neither. Nothing marks a turn boundary, so a single
+ * page read would silently disable outbound mail for the life of the process;
+ * and "ask the owner" is not available to a job running at 3am, which is the
+ * work this capability exists for. Refusing here would break the exact
+ * scheduled-work path the browser and mail verbs were served for.
+ *
+ * So the daemon reports instead of hiding: every send made while the ledger
+ * holds untrusted exposure carries the origins that produced it and the
+ * standing rule, on the send receipt, where a reader and an audit both see it.
+ * The engine's own refusals are untouched — a page this daemon read still
+ * cannot cause a form submission, which is the effect page content can reach
+ * on its own.
+ */
+function untrustedExposureDisclosure(ledger: UntrustedContentLedger): Record<string, unknown> {
+  const origins = ledger.originsThisTurn();
+  if (origins.length === 0) return {};
+  return {
+    untrustedContent: {
+      originsInScope: [...origins],
+      rule: UNTRUSTED_CONTENT_RULE,
+      note: 'This process has read content from these sources. The message was sent as asked; the provenance travels with the receipt so a reader can weigh it.',
+    },
+  };
+}
+
+export function createEmailSendHandler(
+  service: EmailGatewayService,
+  /**
+   * The ledger the daemon's page reads and mailbox reads both record into.
+   * Defaults to the process-wide one, which is what production wants; tests
+   * pass their own so one case's page read cannot colour the next case's send.
+   */
+  ledger: UntrustedContentLedger = getProcessUntrustedContentLedger(),
+): GatewayMethodHandler {
   return async (invocation) => {
     const params = readInvocationParams(invocation);
     if (params.confirm !== true) {
@@ -215,12 +262,13 @@ export function createEmailSendHandler(service: EmailGatewayService): GatewayMet
         400,
       );
     }
-    return service.send({
+    const sent = await service.send({
       to: readRequiredString(params.to, 'to'),
       subject: readRequiredString(params.subject, 'subject'),
       body: readRequiredString(params.body, 'body'),
       inReplyTo: readOptionalString(params.inReplyTo),
     });
+    return { ...sent, ...untrustedExposureDisclosure(ledger) };
   };
 }
 
@@ -228,6 +276,7 @@ export function createEmailSendHandler(service: EmailGatewayService): GatewayMet
 export function registerEmailGatewayMethods(
   catalog: GatewayMethodCatalog,
   service: EmailGatewayService,
+  ledger: UntrustedContentLedger = getProcessUntrustedContentLedger(),
 ): void {
   const attach = (id: string, handler: GatewayMethodHandler): void => {
     const descriptor = catalog.get(id);
@@ -236,5 +285,5 @@ export function registerEmailGatewayMethods(
   attach('email.inbox.list', createEmailInboxListHandler(service));
   attach('email.inbox.read', createEmailInboxReadHandler(service));
   attach('email.draft.create', createEmailDraftCreateHandler(service));
-  attach('email.send', createEmailSendHandler(service));
+  attach('email.send', createEmailSendHandler(service, ledger));
 }

@@ -32766,6 +32766,10 @@
       ]
     },
     {
+      "name": "AuthoritySurface",
+      "kind": "type"
+    },
+    {
       "name": "DEFAULT_ROTATION_CADENCE_MS",
       "kind": "const"
     },
@@ -32798,6 +32802,34 @@
         "maxActiveAgents",
         "maxDepth",
         "recursionEnabled"
+      ]
+    },
+    {
+      "name": "OutwardEffectDecision",
+      "kind": "interface",
+      "required": [
+        "allowed",
+        "fix",
+        "reason",
+        "untrustedOrigins"
+      ]
+    },
+    {
+      "name": "OutwardEffectRequest",
+      "kind": "interface",
+      "required": [
+        "action",
+        "description",
+        "toolName"
+      ]
+    },
+    {
+      "name": "OwnerApproval",
+      "kind": "interface",
+      "required": [
+        "action",
+        "grantedAt",
+        "surface"
       ]
     },
     {
@@ -32889,6 +32921,48 @@
       ]
     },
     {
+      "name": "UNTRUSTED_CONTENT_RULE",
+      "kind": "const"
+    },
+    {
+      "name": "UntrustedContentEnvelope",
+      "kind": "interface",
+      "required": [
+        "origin",
+        "retrievedAt",
+        "rule",
+        "surface",
+        "text",
+        "truncated",
+        "trust"
+      ]
+    },
+    {
+      "name": "UntrustedContentLedger",
+      "kind": "class"
+    },
+    {
+      "name": "UntrustedContentPortOptions",
+      "kind": "interface",
+      "required": [
+        "surface",
+        "toolName"
+      ]
+    },
+    {
+      "name": "UntrustedIngest",
+      "kind": "interface",
+      "required": [
+        "at",
+        "origin",
+        "surface"
+      ]
+    },
+    {
+      "name": "UntrustedSurface",
+      "kind": "type"
+    },
+    {
       "name": "UserAuthManager",
       "kind": "class"
     },
@@ -32901,11 +32975,43 @@
       "kind": "function"
     },
     {
+      "name": "createUntrustedContentPort",
+      "kind": "function"
+    },
+    {
+      "name": "evaluateOutwardEffect",
+      "kind": "function"
+    },
+    {
       "name": "extractOperatorAuthToken",
       "kind": "function"
     },
     {
+      "name": "getProcessUntrustedContentLedger",
+      "kind": "function"
+    },
+    {
+      "name": "grantOwnerApproval",
+      "kind": "function"
+    },
+    {
       "name": "isOperatorAdmin",
+      "kind": "function"
+    },
+    {
+      "name": "labelUntrustedContent",
+      "kind": "function"
+    },
+    {
+      "name": "originOf",
+      "kind": "function"
+    },
+    {
+      "name": "resetProcessUntrustedContentLedgerForTests",
+      "kind": "function"
+    },
+    {
+      "name": "surfaceHasCommandAuthority",
       "kind": "function"
     }
   ],
