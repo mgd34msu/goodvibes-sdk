@@ -317,6 +317,23 @@ export class WatcherRegistry {
     return started;
   }
 
+  /**
+   * Stop every interval this registry started, without touching persisted state.
+   *
+   * Deliberately NOT `stopWatcher()` in a loop: that call runs
+   * `requireEnabled()`, which throws when the watcher-framework gate is off, and
+   * it rewrites each record to `state: 'stopped'`. Neither is wanted at
+   * shutdown — a daemon whose watchers were running must find them running
+   * again when it restarts, and a clean shutdown must not depend on a feature
+   * gate being on. This releases process resources and nothing else.
+   *
+   * Idempotent.
+   */
+  dispose(): void {
+    for (const timer of this.timers.values()) clearInterval(timer);
+    this.timers.clear();
+  }
+
   stopWatcher(id: string, reason = 'stopped'): WatcherRecord | null {
     this.requireEnabled('stop watcher');
     this.ensureLoaded();

@@ -417,6 +417,7 @@ export function createGoodVibesSdk(
         autoRefresh: true,
         refreshLeewayMs: options.autoRefresh?.refreshLeewayMs ?? 60_000,
         refresh: options.autoRefresh?.refresh,
+        ...(options.autoRefresh?.now !== undefined ? { now: options.autoRefresh.now } : {}),
         observer,
       })
     : null;

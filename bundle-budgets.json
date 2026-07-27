@@ -381,6 +381,10 @@
     "gzip_bytes": 1815,
     "rationale": "provider registry surface; re-anchored after the per-model reasoning-effort surface joined the barrel (the configured-vs-effective effort resolver and its provenance types); measured 1512 B gzip @ v1.13.0 release verification; headroom max(ceil(1512*1.2)=1815, 1512+50=1562) \u2192 1815 (1.2x dominates); previously 1250 B after the model pricing + bare-model-id resolvers, and 1005 B @ commit 4e5a5e2"
   },
+  "./platform/runtime/disposal": {
+    "gzip_bytes": 1700,
+    "rationale": "runtime-graph shutdown seam: the disposal scope (best-effort ordered teardown) plus the all-required RuntimePollerOwners registration helper the consumer forks call; measured 1416 B gzip; headroom max(ceil(1416*1.2)=1700, 1416+50=1466) -> 1700 (1.2x dominates)"
+  },
   "./platform/runtime/feature-announcements": {
     "gzip_bytes": 3351,
     "rationale": "one-time feature announcement store + startup announcement collection, now with the persisted pending-delivery queue (drainPending + legacy-format read) that carries fired lines to the consuming status receipts read; measured 2792 B gzip after the queue landed; headroom max(ceil(2792*1.2)=3351, 2792+50=2842) -> 3351 (1.2x dominates)"
