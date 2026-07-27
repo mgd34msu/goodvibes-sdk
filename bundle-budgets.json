@@ -502,8 +502,8 @@
     "rationale": "new public package export budget; measured 50 B gzip @ v0.33.0 release verification; headroom max(ceil(50*1.2)=60, 50+50=100) -> 100 (+50 B floor dominates)"
   },
   "./platform/tools": {
-    "gzip_bytes": 4209,
-    "rationale": "tool registry surface; re-measured 3507 B gzip after the exec PTY prompt-answer path landed (interactive.ts runner + detection reachable from runtime.ts, detectPtyAvailability/probePtyHost wired in registerAllTools); headroom max(ceil(3507*1.2)=4209, 3507+50=3557) -> 4209 (1.2x dominates); previously dominated by registerAllTools (~1400 B), the exec sandbox runner (~500 B), registerToolWithContractGate + tool registration logic (~600 B)"
+    "gzip_bytes": 5186,
+    "rationale": "tool registry surface; re-anchored after cancelAllAgentRuns was published here so consumers can satisfy the required RuntimePollerOwners.cancelHostedAgentRuns; measured 4321 B gzip @ 1.17.2; headroom max(ceil(4321*1.2)=5186, 4321+50=4371) -> 5186 (1.2x dominates); previously 4209 B, re-measured 3507 B gzip after the exec PTY prompt-answer path landed (interactive.ts runner + detection reachable from runtime.ts, detectPtyAvailability/probePtyHost wired in registerAllTools); headroom max(ceil(3507*1.2)=4209, 3507+50=3557) -> 4209 (1.2x dominates); previously dominated by registerAllTools (~1400 B), the exec sandbox runner (~500 B), registerToolWithContractGate + tool registration logic (~600 B)"
   },
   "./platform/tools/exec/sandbox": {
     "gzip_bytes": 4294,
