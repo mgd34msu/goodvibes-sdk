@@ -322,6 +322,7 @@ export class AutoRefreshCoordinator {
 export interface AutoRefreshCoordinatorOptions {
     // (undocumented)
     readonly autoRefresh: boolean;
+    readonly now?: (() => number) | undefined;
     // (undocumented)
     readonly observer?: SDKObserver | undefined;
     readonly refresh?: (() => Promise<{
@@ -337,6 +338,7 @@ export interface AutoRefreshCoordinatorOptions {
 // @public (undocumented)
 export interface AutoRefreshOptions {
     readonly autoRefresh?: boolean | undefined;
+    readonly now?: (() => number) | undefined;
     readonly refresh?: (() => Promise<{
         token: string;
         expiresAt?: number;
