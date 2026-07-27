@@ -976,19 +976,25 @@ the core-verb spec (`packages/contracts/src/core-verbs.ts`); `approve` and `deny
 are already in the `approval-and-routing` exempt category and `cancel` is a core
 verb.
 
-| Method | Access | Returns |
-|---|---|---|
-| `payments.settings.get` | admin, `read:payments` | Config only. Never card material. |
-| `payments.settings.update` | admin, `write:payments` | |
-| `payments.cards.list` | admin, `read:payments` | Metadata only: id, label, brand, last4, kind, expiry, cap. |
-| `payments.cards.create` | admin, `write:payments` | Accepts card material; **returns metadata only**. |
-| `payments.cards.delete` | admin, `write:payments` | Deletes config metadata and every derived secret. |
-| `payments.cards.status` | admin, `read:payments` | Per-field `configured`/`usable`, never a value. |
-| `payments.budget.status` | `read:payments` | Today's pools, remaining, `dayKey`, timezone, reservations. |
-| `payments.purchases.list` / `.get` | `read:payments` | Audit records. |
-| `payments.purchase.approve` / `.deny` | command-authority principal | Answers an above-budget gate. |
-| `payments.purchase.cancel` | command-authority principal | Vetoes an in-budget purchase. |
-| `payments.purchase.status` | `read:payments` | Live state machine position. |
+| Method | Access | Returns | Built |
+|---|---|---|---|
+| `payments.budget.status` | `read:payments` | Today's pools, remaining, `dayKey`, timezone, reservation count, whether this node may spend. | yes |
+| `payments.cards.list` | `read:payments` | Metadata only: id, label, brand, last4, kind, expiry, declared issuer cap, `materialComplete`. | yes |
+| `payments.cards.create` | admin, `write:payments` | Accepts card material; **returns metadata only**. | yes |
+| `payments.cards.delete` | admin, `write:payments` | Deletes config metadata and every derived secret, reporting how many were cleared. | yes |
+| `payments.purchases.list` | `read:payments` | Audit records. | yes |
+| `payments.purchase.approve` / `.deny` | command-authority principal | Answers an above-budget gate. | not yet — the gate runs on `ApprovalBroker` today |
+| `payments.purchase.cancel` | command-authority principal | Vetoes an in-budget purchase. | not yet |
+| `payments.purchase.status` | `read:payments` | Live state machine position. | not yet |
+
+Settings are not in this list on purpose: they are ordinary daemon-owned config
+and travel the existing `config.get`/`config.set` path, which is what makes a
+value entered in any surface apply to the daemon (§10.1).
+
+The approve/deny/cancel verbs are the remaining wire work. The state machines,
+the settlement rules and the recovery rules they will drive are built and tested
+(`platform/payments/windows.ts`); what is missing is the operator methods that
+let a surface answer over HTTP rather than through the broker directly.
 
 Plus a `payments.purchase_update` gateway event so surfaces render a live window
 rather than polling.
