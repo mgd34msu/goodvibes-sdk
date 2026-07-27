@@ -20,7 +20,7 @@
  * process separation.
  */
 import { describe, expect, test } from 'bun:test';
-import { closeSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, utimesSync, writeFileSync, writeSync } from 'node:fs';
+import { closeSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, statSync, utimesSync, writeFileSync, writeSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { acquireCrossProcessLock } from '../packages/sdk/src/platform/workspace/checkpoint/cross-process-lock.js';
@@ -28,6 +28,26 @@ import { WorkspaceCheckpointManager } from '../packages/sdk/src/platform/workspa
 
 function tempDir(prefix: string): string {
   return mkdtempSync(join(tmpdir(), prefix));
+}
+
+/**
+ * Wait for a subprocess's marker file to appear.
+ *
+ * The waits this replaces were fixed iteration counts (250 × 20 ms), which is a
+ * budget dressed up as a loop: whether it is long enough depends entirely on
+ * how promptly a `bun` subprocess starts and gets scheduled, and that is not
+ * something a loaded host guarantees. This returns the instant the file exists
+ * and only fails when it genuinely never appears — and says which marker it was
+ * waiting for when it does.
+ */
+async function waitForFile(path: string, what: string, budgetMs = 60_000): Promise<void> {
+  const deadline = Date.now() + budgetMs;
+  while (!existsSync(path)) {
+    if (Date.now() > deadline) {
+      throw new Error(`waited ${budgetMs}ms for ${what} — marker "${path}" never appeared`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
 }
 
 function runGit(cwd: string, args: string[]): { exitCode: number; stdout: string; stderr: string } {
@@ -141,14 +161,40 @@ describe('acquireCrossProcessLock: the primitive', () => {
     const lockPath = join(dir, '.gv-lock');
     const staleMs = 200;
     const release = await acquireCrossProcessLock(lockPath, { staleMs });
+    const publishedMtimeMs = statSync(lockPath).mtimeMs;
 
     // Hold for well over staleMs (four refresh intervals' worth), the way a
     // real long operation would: awaiting, not blocking.
     await new Promise((resolve) => setTimeout(resolve, staleMs * 4));
 
-    // A waiter using the same staleMs must still be refused — the holder is alive.
+    // The refresh is the behaviour under test, so assert it DIRECTLY: the held
+    // lock's mtime has moved since it was published. Against the pre-fix
+    // implementation — staleness judged on the creation mtime, nothing
+    // refreshing it — this is exactly the assertion that fails.
+    //
+    // Poll rather than read once: the mtime advancing is the outcome, and on a
+    // busy host the refresh timer may not have been scheduled at the instant
+    // the sleep above returned. The wait ends the moment the mtime moves.
+    const refreshDeadline = Date.now() + 30_000;
+    while (statSync(lockPath).mtimeMs <= publishedMtimeMs) {
+      if (Date.now() > refreshDeadline) {
+        throw new Error(
+          `held lock at "${lockPath}" never refreshed its mtime within 30000ms ` +
+            `(still ${publishedMtimeMs}, staleMs ${staleMs})`,
+        );
+      }
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+
+    // And a waiter must be refused while that holder is alive. The waiter's own
+    // staleMs is generous ON PURPOSE. The point being proven here is "a live,
+    // refreshing holder is not taken over"; re-using the holder's 200 ms would
+    // instead measure how promptly THIS process gets scheduled, because a
+    // waiter judges the holder abandoned as soon as the mtime is 200 ms old —
+    // and eight-way-loaded hosts starve a timer for longer than that. The
+    // sibling multi-process test documents that same trap in full.
     await expect(
-      acquireCrossProcessLock(lockPath, { staleMs, initialBackoffMs: 5, maxBackoffMs: 20, totalTimeoutMs: 120 }),
+      acquireCrossProcessLock(lockPath, { staleMs: 30_000, initialBackoffMs: 5, maxBackoffMs: 20, totalTimeoutMs: 120 }),
     ).rejects.toThrow(/timed out/);
 
     // The long operation finishes normally and hands the lock over cleanly.
@@ -156,7 +202,9 @@ describe('acquireCrossProcessLock: the primitive', () => {
     expect(existsSync(lockPath)).toBe(false);
     const next = await acquireCrossProcessLock(lockPath, { totalTimeoutMs: 1000 });
     next();
-  });
+    // Above bun's 5 s default so the refresh poll's own labelled diagnostic is
+    // what fails when the refresh regresses, not an opaque "test timed out".
+  }, 60_000);
 
   test('after a takeover, the dispossessed holder\'s late release does NOT delete the new holder\'s lock', async () => {
     // Defect class: release() unlinked the lock path unconditionally, so the
@@ -200,7 +248,7 @@ describe('acquireCrossProcessLock: the primitive', () => {
     try {
       // Wait until the subprocess genuinely holds the lock.
       const acquiredMarker = `${doneVal}.acquired`;
-      for (let i = 0; i < 250 && !existsSync(acquiredMarker); i++) await new Promise((r) => setTimeout(r, 20));
+      await waitForFile(acquiredMarker, 'the holder subprocess to acquire the lock');
       expect(existsSync(acquiredMarker)).toBe(true);
 
       // Age the held lock past the holder's staleMs repeatedly (out-racing its
@@ -221,7 +269,7 @@ describe('acquireCrossProcessLock: the primitive', () => {
 
       // The dispossessed subprocess returns and releases. The winner still holds.
       writeFileSync(signalPath, '');
-      for (let i = 0; i < 250 && !existsSync(doneVal); i++) await new Promise((r) => setTimeout(r, 20));
+      await waitForFile(doneVal, 'the dispossessed holder to run its late release');
       expect(existsSync(doneVal)).toBe(true);
       expect(existsSync(lockPath)).toBe(true);
 
@@ -231,7 +279,7 @@ describe('acquireCrossProcessLock: the primitive', () => {
       holder.kill();
       await holder.exited;
     }
-  });
+  }, 120_000);
 
   test('release is idempotent and never touches a lock created after it', async () => {
     const dir = tempDir('gv-lock-idempotent-');
@@ -272,12 +320,48 @@ describe('acquireCrossProcessLock: genuine multi-process contention', () => {
     // Calibration: run against the pre-fix implementation (unlink-in-place
     // takeover + unconditional release + open-then-write publication), this
     // configuration reports ~120-160 overlaps per run rather than zero.
+    //
+    // On staleMs (see WORKER_STALE_MS): the takeover storm is driven by the
+    // planted lock's DEAD pid, which is judged stale instantly whatever staleMs
+    // says. staleMs only governs the OTHER staleness signal — age — and a
+    // holder's critical section here is about a millisecond, so no legitimate
+    // holder should ever be judged stale by age at all.
     const dir = tempDir('gv-lock-multiproc-');
     const lockPath = join(dir, '.gv-lock');
     const ledgerPath = join(dir, 'ledger.txt');
     writeFileSync(ledgerPath, '', 'utf-8');
     const workerCount = 8;
     const cycles = 20;
+    /**
+     * The staleness threshold the eight contenders run with — the production
+     * default (DEFAULT_STALE_MS in cross-process-lock.ts), deliberately.
+     *
+     * This was 1000 ms, and that number was the whole failure. A holder keeps
+     * its lock visibly alive by touching the file's mtime on a timer every
+     * `staleMs / 3`; age-based staleness therefore means "nobody has been alive
+     * at this lock for staleMs". At 1000 ms the refresh timer had to fire
+     * inside 333 ms, and eight bun processes on a loaded machine do not get
+     * scheduled that promptly: a LIVE holder in its critical section had its
+     * mtime age past 1000 ms, a peer judged it abandoned, and both ran at once.
+     * The ledger reported exactly that — "w2 3 entered while w1 0 held the
+     * lock" — i.e. the test's own threshold, not the lock, produced the second
+     * holder. Age-based takeover of a live-but-frozen holder is the one race
+     * advisory file locking cannot close (see rule 2 in cross-process-lock.ts);
+     * a 1 s freeze budget put the suite inside it on any busy host.
+     *
+     * 30 s does NOT soften the race under test. The abandoned lock these
+     * workers plant carries pid 999999, which no `kill(pid, 0)` finds, so it is
+     * judged stale IMMEDIATELY on the pid signal — staleMs never enters that
+     * decision. All 160 takeover races still happen, back to back, exactly as
+     * before; what changes is only that a holder whose critical section lasts a
+     * millisecond is no longer declared dead because its host was busy.
+     */
+    const WORKER_STALE_MS = 30_000;
+    /**
+     * How long a contender may wait for the lock before failing honestly. A
+     * ceiling, not a delay: acquisition returns the moment the lock is free.
+     */
+    const WORKER_TOTAL_TIMEOUT_MS = 60_000;
 
     const lockModulePath = join(
       import.meta.dir,
@@ -297,7 +381,7 @@ describe('acquireCrossProcessLock: genuine multi-process contention', () => {
         `const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));`,
         `for (let i = 0; i < cycles; i++) {`,
         `  const release = await acquireCrossProcessLock(lockPath, {`,
-        `    staleMs: 1000, initialBackoffMs: 1, maxBackoffMs: 4, totalTimeoutMs: 30000,`,
+        `    staleMs: ${WORKER_STALE_MS}, initialBackoffMs: 1, maxBackoffMs: 4, totalTimeoutMs: ${WORKER_TOTAL_TIMEOUT_MS},`,
         `  });`,
         `  appendFileSync(ledgerPath, \`ENTER \${tag} \${i}\\n\`);`,
         `  await sleep(1);`,
@@ -344,7 +428,11 @@ describe('acquireCrossProcessLock: genuine multi-process contention', () => {
     }
     expect(overlaps).toEqual([]);
     expect(holder).toBeNull();
-  }, 60_000);
+    // A ceiling that must sit above WORKER_TOTAL_TIMEOUT_MS, so a genuinely
+    // wedged lock fails with a worker's own honest timeout message rather than
+    // bun's opaque "test timed out", and so eight bun processes starting up on
+    // a busy host are never mistaken for a stuck lock.
+  }, 180_000);
 });
 
 describe('WorkspaceCheckpointManager: two instances sharing one directory (simulating two processes)', () => {

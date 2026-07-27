@@ -38,6 +38,27 @@ const settle = async (): Promise<void> => {
   for (let i = 0; i < 5; i += 1) await new Promise<void>((r) => setTimeout(r, 0));
 };
 
+/**
+ * Poll until `predicate` holds, then return.
+ *
+ * Replaces "sleep a fixed 70 ms and then assert a keepalive beat has landed".
+ * The keepalive's cadence is 15 ms here, so on an idle machine 70 ms is four
+ * beats of headroom — but the beat has to travel through the adapter and be
+ * recorded, and how long that takes on a machine running the rest of this suite
+ * concurrently is not something a fixed sleep can know. The poll returns on the
+ * first beat, so a fast host is no slower than before, and the ceiling is large
+ * enough that only a keepalive that never fires at all fails it.
+ */
+async function waitUntil(predicate: () => boolean, what: string, budgetMs = 30_000): Promise<void> {
+  const deadline = Date.now() + budgetMs;
+  while (!predicate()) {
+    if (Date.now() > deadline) {
+      throw new Error(`waitUntil: ${what} never became true — waited ${budgetMs}ms`);
+    }
+    await new Promise<void>((r) => setTimeout(r, 5));
+  }
+}
+
 interface CapturedCall {
   readonly kind: 'register' | 'close';
   readonly sessionId: string;
@@ -254,15 +275,25 @@ for (const makeAdapter of adapters) {
       expect(client.keepaliveSessionId).toBe('keepalive-1');
       const afterRegister = fix.calls.filter((c) => c.kind === 'register').length;
 
-      await new Promise((r) => setTimeout(r, 70));
+      await waitUntil(
+        () => fix.calls.filter((c) => c.kind === 'register').length > afterRegister,
+        'the keepalive timer produces a further heartbeat with no activity',
+      );
       await settle();
       const afterIdle = fix.calls.filter((c) => c.kind === 'register').length;
       expect(afterIdle).toBeGreaterThan(afterRegister);
       expect(fix.calls.every((c) => c.sessionId === 'keepalive-1')).toBe(true);
 
       client.dispose();
+      // Settle first so a beat already in flight when dispose() ran is recorded
+      // BEFORE the baseline is taken — otherwise a busy machine could make a
+      // pre-dispose beat look like a post-dispose one.
+      await settle();
       const afterDispose = fix.calls.length;
-      await new Promise((r) => setTimeout(r, 70));
+      // A genuine negative: there is no condition to poll for, so this waits out
+      // several keepalive periods (15 ms cadence) and asserts nothing arrived.
+      // Load only ever produces FEWER beats, so this direction is not fragile.
+      await new Promise((r) => setTimeout(r, 200));
       expect(fix.calls.length).toBe(afterDispose);
     });
 
