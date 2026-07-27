@@ -32,6 +32,7 @@ import {
 import { BudgetLedger, type BudgetLimits } from '../packages/sdk/src/platform/payments/budget.js';
 import { decidePurchase } from '../packages/sdk/src/platform/payments/decide.js';
 import { walkShippingLadder } from '../packages/sdk/src/platform/payments/shipping.js';
+import { checkPaymentGates } from '../packages/sdk/src/platform/payments/gates.js';
 import { assertCartMatchesRequest, detectRecurringCharge } from '../packages/sdk/src/platform/payments/cart.js';
 import { dayKey } from '../packages/sdk/src/platform/payments/day.js';
 import {
@@ -779,5 +780,55 @@ describe('recurring charges are refused', () => {
   test('an ordinary one-off order summary is not flagged', () => {
     const check = detectRecurringCharge('1 x Burr coffee grinder — USD 120.00. Standard delivery.');
     expect(check.recurring).toBe(false);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// The terminal gates
+// ───────────────────────────────────────────────────────────────────────────
+
+describe('the step-0 gates are terminal', () => {
+  const passing = {
+    enabled: true,
+    hasUsableCard: true,
+    hasShippingAddress: true,
+    isOwnerDirectRequest: true,
+    isPaymentsLeader: true,
+  };
+
+  test('all gates passing returns no refusal', () => {
+    expect(checkPaymentGates(passing)).toBeNull();
+  });
+
+  test('automated work cannot authorize spending', () => {
+    // A schedule, a trigger or a channel message is not an instruction to spend
+    // money — those surfaces carry no command authority at all.
+    const refusal = checkPaymentGates({ ...passing, isOwnerDirectRequest: false });
+    expect(refusal?.code).toBe('not-owner-request');
+  });
+
+  test('a node that is not the payments leader refuses', () => {
+    // Config replication carries the limits to every opted-in node but not
+    // today's spend, so a second node acting would spend the day twice.
+    const refusal = checkPaymentGates({ ...passing, isPaymentsLeader: false });
+    expect(refusal).not.toBeNull();
+    expect(refusal?.reason).toContain('clean daily budget');
+  });
+
+  test('payments off beats every other reason', () => {
+    const refusal = checkPaymentGates({
+      enabled: false,
+      hasUsableCard: false,
+      hasShippingAddress: false,
+      isOwnerDirectRequest: false,
+      isPaymentsLeader: false,
+    });
+    expect(refusal?.code).toBe('disabled');
+  });
+
+  test('a missing card and a missing address each refuse by name', () => {
+    expect(checkPaymentGates({ ...passing, hasUsableCard: false })?.code).toBe('no-card');
+    expect(checkPaymentGates({ ...passing, hasShippingAddress: false })?.code)
+      .toBe('no-shipping-address');
   });
 });
