@@ -167,6 +167,18 @@ export class AgentOrchestrator {
    * same channel-version invalidation, same object identity once built.
    */
   private fullRegistries = new Map<string, ToolRegistry>();
+  /**
+   * The ProjectIndex instances this orchestrator OWNS, keyed by the same cwd.
+   *
+   * A non-default cwd is given no index to share, so `registerAllTools` builds
+   * one for it. Every reference to that index then lives inside the tool
+   * closures of a registry we are about to drop, and it holds a debounced flush
+   * timer — so nothing could flush or release it and it went out with the
+   * garbage collector at best. The shared index for the DEFAULT cwd is never
+   * in here: that one belongs to the composition root, and disposing a
+   * borrowed object is how a live session loses its index.
+   */
+  private ownedProjectIndexes = new Map<string, ProjectIndex>();
   private fullRegistryChannelVersion = -2;
   private toolDeps: AgentOrchestratorToolDeps | null = null;
   private featureFlagManager: FeatureFlagManager | null = null;
@@ -321,8 +333,41 @@ export class AgentOrchestrator {
    */
   setDependencies(toolDeps: AgentOrchestratorToolDeps): void {
     this.toolDeps = toolDeps;
+    this.releaseOwnedProjectIndexes();
     this.fullRegistries = new Map();
     this.fullRegistryChannelVersion = -2;
+  }
+
+  /**
+   * Release everything this orchestrator started that outlives a turn: today
+   * that is the ProjectIndex it builds for each non-default working directory,
+   * each holding a debounced 5s flush timer. Called by the runtime graph's
+   * disposal scope. Idempotent.
+   */
+  dispose(): void {
+    this.releaseOwnedProjectIndexes();
+    this.fullRegistries.clear();
+  }
+
+  /**
+   * Cancel each owned index's pending flush and write out what it holds.
+   *
+   * Fire-and-forget on purpose: the disposal scope is synchronous, and one
+   * index whose final write fails must not strand the owners queued behind it.
+   * The timer — the part that leaks — is cancelled synchronously inside
+   * `ProjectIndex.dispose()` before the flush it awaits, so the leak is closed
+   * whether or not the write lands.
+   */
+  private releaseOwnedProjectIndexes(): void {
+    for (const [cwd, index] of this.ownedProjectIndexes) {
+      void index.dispose().catch((error: unknown) => {
+        logger.warn('AgentOrchestrator: project index teardown failed', {
+          workingDirectory: cwd,
+          error: summarizeError(error),
+        });
+      });
+    }
+    this.ownedProjectIndexes.clear();
   }
 
   /**
@@ -348,6 +393,10 @@ export class AgentOrchestrator {
   private getFullRegistry(workingDirectory?: string): ToolRegistry {
     const channelVersion = this.channelRegistry?.getVersion() ?? -1;
     if (this.fullRegistryChannelVersion !== channelVersion) {
+      // Dropping the registries drops the only references to the indexes built
+      // for them, so release those first — a channel plugin being installed or
+      // removed must not be a way to accumulate orphaned flush timers.
+      this.releaseOwnedProjectIndexes();
       this.fullRegistries.clear();
       this.fullRegistryChannelVersion = channelVersion;
     }
@@ -369,13 +418,17 @@ export class AgentOrchestrator {
       const readAccessFilter = permissionManager
         ? (absolutePath: string): boolean => permissionManager.previewReadAccess(absolutePath) === 'allow'
         : undefined;
-      registerAllTools(registry, {
+      const registered = registerAllTools(registry, {
         ...this.toolDeps,
         workingDirectory: cwd,
         fileCache: isDefaultCwd ? this.toolDeps.fileCache : undefined,
         projectIndex: isDefaultCwd ? this.toolDeps.projectIndex : undefined,
         readAccessFilter,
       });
+      // Keep the index registerAllTools built for us. Only for a non-default
+      // cwd: for the default one it hands back the very object the composition
+      // root passed in, which this class borrows and must not dispose.
+      if (!isDefaultCwd) this.ownedProjectIndexes.set(cwd, registered.projectIndex);
       registerChannelAgentTools(registry, this.toolDeps?.channelRegistry ?? this.channelRegistry);
       this.fullRegistries.set(cwd, registry);
     }

@@ -18,6 +18,7 @@ import {
 export type { AgentExecutor, AgentRecord } from './manager.js';
 export { AGENT_TEMPLATES, AgentManager } from './manager.js';
 export { isActiveAgent } from './predicates.js';
+export { cancelAllAgentRuns, type CancellableAgentRuns } from './cancel-all.js';
 
 // ---------------------------------------------------------------------------
 // Tool implementation

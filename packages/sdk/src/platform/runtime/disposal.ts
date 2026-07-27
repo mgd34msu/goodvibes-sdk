@@ -15,6 +15,12 @@
  * owners behind it, mirroring the `Promise.allSettled` stance the daemon CLI
  * already takes on shutdown: a subsystem refusing to stop cannot be allowed to
  * leave the caller unable to shut anything down.
+ *
+ * Not every owner here holds a literal timer. The list is what the graph must
+ * put down before it can honestly call itself stopped, which also covers the
+ * agent runs it was hosting: an agent whose registry, engine and bus are gone
+ * has nowhere to report to, and its in-flight provider call is only reachable
+ * through its cancellation signal.
  */
 
 import { logger } from '../utils/logger.js';
@@ -96,11 +102,33 @@ export interface RuntimePollerOwners {
   readonly sessionOrchestration: { dispose(): void };
   readonly knowledgeService: { dispose(): void };
   readonly agentKnowledgeService: { dispose(): void };
+  /**
+   * Cancels the Home Graph post-sync self-improvement pump — a rescheduling
+   * loop with a 5s start delay and a 5-15s sleep between as many as ten rounds.
+   * It had a dispose() from the day it was written and simply was not named
+   * here, which is the whole reason this list is all-required.
+   */
+  readonly homeGraphService: { dispose(): void };
   readonly wrfcController: { dispose(): void };
   /** Disposing the engine also detaches the orchestration snapshot writer's hourly reap. */
   readonly orchestrationEngine: { dispose(): void };
   readonly processRegistry: { dispose(): void };
   readonly memoryGovernor: { stop(): void };
+  /**
+   * Releases the ProjectIndex the orchestrator builds for each non-default
+   * agent working directory (a worktree an agent was spawned into). Each holds
+   * a debounced flush timer and is referenced only from the tool closures of a
+   * cached registry, so nothing else can reach it.
+   */
+  readonly agentOrchestrator: { dispose(): void };
+  /**
+   * Cancels the agent runs this graph was hosting, returning how many. Not a
+   * poller, but the same kind of thing left ticking: an agent whose registry,
+   * engine and bus have been disposed keeps its provider call in flight and
+   * keeps sleeping out its retry backoff, with nothing left to report to.
+   * See tools/agent/cancel-all.ts for the implementation both roots pass in.
+   */
+  readonly cancelHostedAgentRuns: () => number;
   /** Absent in compositions that build no trigger family. */
   readonly triggerManager?: { shutdown(): void } | undefined;
 }
@@ -121,10 +149,21 @@ export function registerRuntimePollers(registry: DisposalRegistry, owners: Runti
   registry.add('cross-session task registry', () => owners.sessionOrchestration.dispose());
   registry.add('knowledge service', () => owners.knowledgeService.dispose());
   registry.add('agent knowledge service', () => owners.agentKnowledgeService.dispose());
+  registry.add('home graph service', () => owners.homeGraphService.dispose());
   registry.add('wrfc controller', () => owners.wrfcController.dispose());
   registry.add('orchestration engine', () => owners.orchestrationEngine.dispose());
   registry.add('fleet process registry', () => owners.processRegistry.dispose());
   registry.add('memory governor', () => owners.memoryGovernor.stop());
+  registry.add('agent orchestrator tool registries', () => owners.agentOrchestrator.dispose());
   const triggers = owners.triggerManager;
   if (triggers) registry.add('trigger manager', () => triggers.shutdown());
+  // Registered LAST so it runs FIRST (the scope unwinds in reverse). A running
+  // agent keeps making tool calls into the fleet registry, orchestration engine
+  // and process registry, so it has to be told to stop BEFORE those are taken
+  // out from under it — otherwise the window between is spent driving half-torn-
+  // down subsystems.
+  registry.add('hosted agent runs', () => {
+    const cancelled = owners.cancelHostedAgentRuns();
+    if (cancelled > 0) logger.info('Runtime disposal cancelled in-flight agent runs', { cancelled });
+  });
 }

@@ -6,12 +6,24 @@
  * suppression and per-node de-dup. These tests drive the source with hand-built
  * notices and capture the composed PushMessage by overriding deliver().
  */
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 import { PushService } from '../packages/sdk/src/platform/push/index.js';
 import type { FleetNotice, PushMessage, VapidManager, PushSubscriptionStore } from '../packages/sdk/src/platform/push/index.js';
 
+/**
+ * Every block these tests push arms a real ~5-minute escalation timer. They ran
+ * to the end of the shared test process with nothing able to cancel them until
+ * PushService.dispose() existed; now each service is registered here and put
+ * down after the test that made it.
+ */
+const built: PushService[] = [];
+afterEach(() => {
+  for (const service of built.splice(0)) service.dispose();
+});
+
 function makeService(): { service: PushService; delivered: PushMessage[] } {
   const service = new PushService({ vapid: {} as VapidManager, store: {} as PushSubscriptionStore });
+  built.push(service);
   const delivered: PushMessage[] = [];
   // Override the fan-out to capture the composed message without touching the
   // encryption/transport path (covered elsewhere).
@@ -114,5 +126,60 @@ describe('PushService.attachFleetNeedsInputSource', () => {
     push({ type: 'FLEET_NODE_STATE_CHANGED', nodeId: 'n1' });
     await Promise.resolve();
     expect(delivered).toHaveLength(0);
+  });
+});
+
+describe('PushService.dispose', () => {
+  /**
+   * Every outstanding block holds one armed escalation timer, and until dispose()
+   * existed the only ways to cancel one were to answer the ask or to inject the
+   * scheduler seam. A daemon shutting down with blocked asks outstanding could
+   * not put them down at all — so this measures the real scheduler's handles,
+   * not a stand-in.
+   */
+  function makeRealTimerService(): { service: PushService; armed: number; cancelled: () => number } {
+    const cancels: (() => void)[] = [];
+    let armedCount = 0;
+    let cancelledCount = 0;
+    const service = new PushService({
+      vapid: {} as VapidManager,
+      store: {} as PushSubscriptionStore,
+      scheduler: {
+        schedule: (fn, delayMs) => {
+          armedCount += 1;
+          const handle = setTimeout(fn, delayMs);
+          const cancel = (): void => { cancelledCount += 1; clearTimeout(handle); };
+          cancels.push(cancel);
+          return cancel;
+        },
+      },
+    });
+    (service as unknown as { deliver: () => Promise<unknown[]> }).deliver = async () => [];
+    return { service, get armed() { return armedCount; }, cancelled: () => cancelledCount };
+  }
+
+  test('dispose() cancels every armed escalation timer and forgets the blocks', () => {
+    const { service, cancelled } = makeRealTimerService();
+    const { source, push } = fakeSource();
+    service.attachFleetNeedsInputSource(source);
+
+    push(blocked('n1', 's1'));
+    push(blocked('n2', 's2'));
+    push(blocked('n3', 's3'));
+    expect(cancelled()).toBe(0);
+
+    service.dispose();
+    expect(cancelled()).toBe(3);
+  });
+
+  test('dispose() is idempotent and a disposed service tracks nothing new to leave behind', () => {
+    const { service, cancelled } = makeRealTimerService();
+    const { source, push } = fakeSource();
+    service.attachFleetNeedsInputSource(source);
+
+    push(blocked('n1', 's1'));
+    service.dispose();
+    service.dispose();
+    expect(cancelled()).toBe(1);
   });
 });

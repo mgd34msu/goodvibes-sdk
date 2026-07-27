@@ -1,13 +1,16 @@
 /**
- * Quiesce an `HttpListener` that a test constructed but never started.
+ * Quiesce an `HttpListener` without going through its async `stop()`.
  *
  * `HttpListener`'s constructor builds two `RateLimiter`s, and each one starts a
- * sweep `setInterval` immediately (packages/sdk/src/platform/daemon/http/rate-limiter.ts:29).
- * `HttpListener.stop()` does clear them — but only after
- * `if (this.server === null) return;` (http-listener.ts:371), so a listener that
- * was constructed for a constructor-behaviour assertion and never `start()`ed
- * never reaches that code and leaves both sweeps running for the rest of the
- * shared test process.
+ * sweep `setInterval` immediately (packages/sdk/src/platform/daemon/http/rate-limiter.ts:29),
+ * so a listener that was constructed for a constructor-behaviour assertion and
+ * never started still has two sweeps running.
+ *
+ * `stop()` now releases those whether or not a socket was ever bound — it is
+ * gated on "already torn down", not on `server === null` — so `disposeListener`
+ * below is the complete answer and this helper is no longer the only one. It
+ * stays because it is SYNCHRONOUS: a `trackDisposables()` registration that
+ * cannot await still needs a way to put those two sweeps down.
  *
  * The limiters expose `stop()` publicly, so a test can shut them down directly.
  * This helper is the single documented place that reaches for those fields, so
@@ -36,10 +39,10 @@ export function stopListenerTimers(listener: unknown): void {
 /**
  * Full teardown for a listener that may or may not have been started.
  *
- * `stop()` closes the server and clears the sweeps when the listener was
- * started, and is a harmless early-return when it was not; `stopListenerTimers`
- * then covers the never-started case. Both are idempotent, so this is correct
- * either way and safe to call twice.
+ * `stop()` closes the server when one was bound and clears the sweeps either
+ * way; `stopListenerTimers` afterwards is belt-and-braces for a listener whose
+ * stop() threw partway. Both are idempotent, so this is correct either way and
+ * safe to call twice.
  */
 export async function disposeListener(listener: unknown): Promise<void> {
   if (listener === null || typeof listener !== 'object') return;
