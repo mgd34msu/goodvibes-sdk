@@ -3,6 +3,7 @@ import type {
   ChannelConversationKind,
   ChannelDirectoryScope,
 } from '../types.js';
+import type { SecretScope } from '../../config/secrets-store-paths.js';
 
 export function readLifecycleAction(value: unknown): ChannelAccountLifecycleAction | null {
   return value === 'inspect'
@@ -54,6 +55,23 @@ export function readStringList(value: unknown): string[] | undefined {
   return undefined;
 }
 
-export function readSecretScope(value: unknown): 'project' | 'user' {
-  return value === 'user' ? 'user' : 'project';
+/**
+ * Read a caller-supplied secret scope, defaulting to `project` as it always has.
+ *
+ * `daemon` is accepted because these actions store CHANNEL credentials, and a
+ * channel is served by the daemon: an operator setting up Slack or Discord for
+ * a machine that may hand the surface over at failover needs to say "this
+ * belongs to the daemon, not to this checkout". Refusing the value here would
+ * have silently downgraded such a request to `project` — the setup would report
+ * success and put the token somewhere the daemon does not read back.
+ *
+ * The default stays `project` rather than following the key's ownership: these
+ * are bare operator-chosen names (`SLACK_BOT_TOKEN`), not names derived from a
+ * daemon-owned config path, so nothing here can tell which runtime consumes
+ * them without being told.
+ */
+export function readSecretScope(value: unknown): SecretScope {
+  if (value === 'user') return 'user';
+  if (value === 'daemon') return 'daemon';
+  return 'project';
 }
