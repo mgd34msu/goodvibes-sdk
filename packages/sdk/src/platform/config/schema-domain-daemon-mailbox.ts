@@ -44,7 +44,7 @@
  * rather than on the non-scalar list in `config-ownership.ts`.
  */
 
-import type { ConfigSettingDefinition } from './schema-shared.js';
+import { type ConfigSettingDefinition, intRange } from './schema-shared.js';
 
 /** Defaults for the daemon's own mail account and calendar. */
 export const daemonMailboxConfigDefaults = {
@@ -72,6 +72,29 @@ export const daemonMailboxConfigDefaults = {
       port: 465,
       password: '',
       secure: true,
+    },
+    // The inbound-mail watcher's own settings — the inbound section of
+    // surfaces.email. See docs/inbound-email.md §8 for the ruled defaults;
+    // every one of them is the owner's to confirm or overturn.
+    inbound: {
+      enabled: false,
+      accounts: '[]',
+      mode: 'auto',
+      pollIntervalSeconds: 120,
+      idleReissueMinutes: 27,
+      reconnect: {
+        maxBackoffSeconds: 300,
+      },
+      notice: {
+        route: 'default',
+        mode: 'all',
+      },
+      expectationWindowMinutes: 15,
+      dedupTtlMinutes: 60,
+      retentionDays: 30,
+      maxRecords: 5000,
+      capabilityRecheckMinutes: 60,
+      onInsufficientCapability: 'refuse-and-notify',
     },
   },
   calendar: {
@@ -205,6 +228,140 @@ export const daemonMailboxConfigSettings: ConfigSettingDefinition[] = [
     default: true,
     description: 'Connect to SMTP over TLS',
   },
+
+  // ── Inbound-mail watcher — the inbound section of surfaces.email ──────────
+  // See docs/inbound-email.md §8 for the ruled defaults and the rationale
+  // behind each one; every default here is the owner's to confirm.
+  {
+    key: 'surfaces.email.inbound.enabled',
+    type: 'boolean',
+    default: false,
+    description: 'Turns on continuous IMAP watching of the configured inbound accounts below. Off by default — '
+      + 'reading the owner\'s mail continuously is not a thing to start doing without being asked. Turn on after '
+      + 'configuring at least one account in surfaces.email.inbound.accounts.',
+  },
+  {
+    key: 'surfaces.email.inbound.accounts',
+    type: 'string',
+    default: '[]',
+    description: 'JSON array of configured mailbox account identifiers to watch for inbound mail, e.g. '
+      + '["primary"]. Empty means no mailbox is watched even when enabled is true. A list rather than a single '
+      + 'switch because one address for signups and another for the owner\'s real mail is the expected shape.',
+  },
+  {
+    key: 'surfaces.email.inbound.mode',
+    type: 'enum',
+    default: 'auto',
+    description: 'How the watcher receives new mail: "idle" holds a persistent IMAP IDLE connection, "poll" '
+      + 'checks on a timer, "auto" uses IDLE when the server advertises it and falls back to polling when it '
+      + 'does not. Leave at auto unless a specific provider needs to be forced one way.',
+    enumValues: ['idle', 'poll', 'auto'],
+  },
+  {
+    key: 'surfaces.email.inbound.pollIntervalSeconds',
+    type: 'number',
+    default: 120,
+    description: 'How often the fallback poller checks the mailbox when IDLE is unavailable. Lower is more '
+      + 'responsive but closer to a provider\'s rate limit; higher delays notice of new mail by up to this many '
+      + 'seconds. Only applies when the connection is not using IDLE.',
+    ...intRange(30, 3600),
+  },
+  {
+    key: 'surfaces.email.inbound.idleReissueMinutes',
+    type: 'number',
+    default: 27,
+    description: 'How often an open IDLE connection is torn down and re-issued. RFC 2177 advises re-issuing at '
+      + 'least every 29 minutes, or the server may silently log the connection off; raising this toward 29 trims '
+      + 'reconnect churn but leaves less margin against a slow round trip.',
+    ...intRange(5, 29),
+  },
+  {
+    key: 'surfaces.email.inbound.reconnect.maxBackoffSeconds',
+    type: 'number',
+    default: 300,
+    description: 'Ceiling on the exponential reconnect backoff after a dropped connection or provider error. '
+      + 'Raising it tolerates a longer provider outage without hammering it; lowering it shortens the '
+      + 'worst-case silence after a disconnect at the cost of retrying a still-down server more often.',
+    ...intRange(10, 3600),
+  },
+  {
+    key: 'surfaces.email.inbound.notice.route',
+    type: 'string',
+    default: 'default',
+    description: 'Where the owner is told about inbound mail: the literal "default" inherits the owner\'s '
+      + 'existing notice route binding; a specific route binding id sends inbound-mail notices somewhere else. '
+      + 'A second place to configure "where to reach me" is a second place to get it wrong, so most '
+      + 'installations should leave this at default.',
+  },
+  {
+    key: 'surfaces.email.inbound.notice.mode',
+    type: 'enum',
+    default: 'all',
+    description: 'How much inbound mail generates an owner notice: "all" announces every message, '
+      + '"expected-only" announces only mail matching a registered expectation (quieter for a high-volume '
+      + 'mailbox), "none" announces nothing. Choosing "none" means mail can arrive with no notice at all — a '
+      + 'deliberate but silent choice.',
+    enumValues: ['all', 'expected-only', 'none'],
+  },
+  {
+    key: 'surfaces.email.inbound.expectationWindowMinutes',
+    type: 'number',
+    default: 15,
+    description: 'Default lifetime, in minutes, of a verification expectation opened for inbound-mail matching '
+      + '(for example an account signup awaiting its confirmation email). Raising it gives a slower-to-arrive '
+      + 'confirmation more time to match; lowering it shrinks how long a stale expectation can be satisfied by a '
+      + 'late message. Hard-capped at 60 to match MAX_VERIFICATION_WINDOW_MS.',
+    ...intRange(1, 60),
+  },
+  {
+    key: 'surfaces.email.inbound.dedupTtlMinutes',
+    type: 'number',
+    default: 60,
+    description: 'How long an inbound message\'s identity is remembered to suppress a duplicate delivery from a '
+      + 'reconnect or an overlapping poll. Must exceed how long a restart cycle takes, or a crash-restart '
+      + 're-announces mail that was already handled; too long wastes memory on identities that can never recur.',
+    ...intRange(5, 1440),
+  },
+  {
+    key: 'surfaces.email.inbound.retentionDays',
+    type: 'number',
+    default: 30,
+    description: 'How many days an inbound mail record (sender, subject, delivery evidence, link verdicts — '
+      + 'never the full body) is kept before it is reaped. Longer keeps a longer history to explain "why did I '
+      + 'get that message"; shorter bounds how much of the owner\'s mail metadata the daemon retains.',
+    ...intRange(1, 365),
+  },
+  {
+    key: 'surfaces.email.inbound.maxRecords',
+    type: 'number',
+    default: 5000,
+    description: 'Hard cap on the number of inbound mail records kept regardless of age. Whichever of this and '
+      + 'retentionDays is reached first wins, so this bounds worst-case storage even under a burst of mail.',
+    ...intRange(100, 100_000),
+  },
+  {
+    key: 'surfaces.email.inbound.capabilityRecheckMinutes',
+    type: 'number',
+    default: 60,
+    description: 'How often a mailbox that reported it cannot do what inbound mail requires (for example a '
+      + 'Gmail grant that authorizes listing but not reading message bodies, or a mailbox that does not exist) is '
+      + 're-probed. Long enough that a refused account is not hammered in a tight loop; short enough that fixing '
+      + 'the underlying scope or account problem is noticed without a daemon restart.',
+    ...intRange(5, 1440),
+  },
+  {
+    key: 'surfaces.email.inbound.onInsufficientCapability',
+    type: 'enum',
+    default: 'refuse-and-notify',
+    description: '"refuse-and-notify" stops the watcher for that account and tells the owner once, naming what '
+      + 'is missing and the exact step to fix it — the account is not watched again until the recheck above '
+      + 'finds it fixed. "notice-only" is a deliberate downgrade: it keeps announcing that mail arrived using '
+      + 'envelope fields alone (sender, subject, delivery evidence), stating plainly in every notice that bodies '
+      + 'are unavailable, and it can never satisfy a verification expectation while degraded — an account signup '
+      + 'or order confirmation will not work under it.',
+    enumValues: ['refuse-and-notify', 'notice-only'],
+  },
+
   {
     key: 'surfaces.calendar.caldavUrl',
     type: 'string',

@@ -2,40 +2,11 @@
  * Shared config schema types for goodvibes-sdk.
  */
 
-export type PermissionMode = 'prompt' | 'allow-all' | 'custom' | 'plan' | 'accept-edits';
-export type PermissionAction = 'allow' | 'prompt' | 'deny';
-/**
- * How background/subagent tool execution consults the permission layer.
- * - 'inherit' (default): background tool calls run through the SAME session
- *   permission mode as the foreground turn loop — allow-all changes nothing,
- *   prompt/plan/accept-edits/custom apply their matrices, and any ask brokers
- *   through the same blocked-on-user machinery with subagent attribution.
- * - 'allow-all': background agents are deliberately exempt — their tool calls
- *   auto-approve regardless of the session mode (the escape hatch for fully
- *   autonomous runs that never want a background ask).
- */
-export type BackgroundAgentsMode = 'inherit' | 'allow-all';
-export type LineNumberMode = 'all' | 'code' | 'off';
-
-export interface PermissionsToolConfig {
-  read?: PermissionAction;        // default: 'allow'
-  write?: PermissionAction;       // default: 'prompt'
-  edit?: PermissionAction;        // default: 'prompt'
-  exec?: PermissionAction;        // default: 'prompt'
-  find?: PermissionAction;        // default: 'allow'
-  fetch?: PermissionAction;       // default: 'prompt'
-  analyze?: PermissionAction;     // default: 'allow'
-  inspect?: PermissionAction;     // default: 'allow'
-  agent?: PermissionAction;       // default: 'prompt'
-  state?: PermissionAction;       // default: 'allow'
-  workflow?: PermissionAction;    // default: 'prompt'
-  registry?: PermissionAction;    // default: 'allow'
-  delegate?: PermissionAction;    // default: 'prompt'
-  mcp?: PermissionAction;         // default: 'prompt'
-}
+export * from "./schema-types-permissions.js";
+import type { BackgroundAgentsMode, LineNumberMode, PermissionAction, PermissionMode, PermissionsToolConfig } from "./schema-types-permissions.js";
 
 export * from "./schema-types-surfaces.js";
-import type { SurfacesConfig } from "./schema-types-surfaces.js";
+import type { InboundEmailCapabilityPolicy, InboundEmailMode, InboundEmailNoticeMode, SurfacesConfig } from "./schema-types-surfaces.js";
 
 export * from "./schema-types-network.js";
 import type {
@@ -518,6 +489,21 @@ export type ConfigKey =
   | 'surfaces.email.smtp.port'
   | 'surfaces.email.smtp.password'
   | 'surfaces.email.smtp.secure'
+  // The inbound-mail watcher (schema-domain-daemon-mailbox.ts, docs/inbound-email.md §8)
+  | 'surfaces.email.inbound.enabled'
+  | 'surfaces.email.inbound.accounts'
+  | 'surfaces.email.inbound.mode'
+  | 'surfaces.email.inbound.pollIntervalSeconds'
+  | 'surfaces.email.inbound.idleReissueMinutes'
+  | 'surfaces.email.inbound.reconnect.maxBackoffSeconds'
+  | 'surfaces.email.inbound.notice.route'
+  | 'surfaces.email.inbound.notice.mode'
+  | 'surfaces.email.inbound.expectationWindowMinutes'
+  | 'surfaces.email.inbound.dedupTtlMinutes'
+  | 'surfaces.email.inbound.retentionDays'
+  | 'surfaces.email.inbound.maxRecords'
+  | 'surfaces.email.inbound.capabilityRecheckMinutes'
+  | 'surfaces.email.inbound.onInsufficientCapability'
   | 'surfaces.calendar.caldavUrl'
   | 'surfaces.calendar.caldavUser'
   | 'surfaces.calendar.caldavPassword'
@@ -1025,6 +1011,20 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'surfaces.email.smtp.port' ? number :
   K extends 'surfaces.email.smtp.password' ? string :
   K extends 'surfaces.email.smtp.secure' ? boolean :
+  K extends 'surfaces.email.inbound.enabled' ? boolean :
+  K extends 'surfaces.email.inbound.accounts' ? string :
+  K extends 'surfaces.email.inbound.mode' ? InboundEmailMode :
+  K extends 'surfaces.email.inbound.pollIntervalSeconds' ? number :
+  K extends 'surfaces.email.inbound.idleReissueMinutes' ? number :
+  K extends 'surfaces.email.inbound.reconnect.maxBackoffSeconds' ? number :
+  K extends 'surfaces.email.inbound.notice.route' ? string :
+  K extends 'surfaces.email.inbound.notice.mode' ? InboundEmailNoticeMode :
+  K extends 'surfaces.email.inbound.expectationWindowMinutes' ? number :
+  K extends 'surfaces.email.inbound.dedupTtlMinutes' ? number :
+  K extends 'surfaces.email.inbound.retentionDays' ? number :
+  K extends 'surfaces.email.inbound.maxRecords' ? number :
+  K extends 'surfaces.email.inbound.capabilityRecheckMinutes' ? number :
+  K extends 'surfaces.email.inbound.onInsufficientCapability' ? InboundEmailCapabilityPolicy :
   K extends 'surfaces.calendar.caldavUrl' ? string :
   K extends 'surfaces.calendar.caldavUser' ? string :
   K extends 'surfaces.calendar.caldavPassword' ? string :
