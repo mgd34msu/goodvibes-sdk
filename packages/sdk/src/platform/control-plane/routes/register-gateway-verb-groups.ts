@@ -96,6 +96,7 @@ import { registerVoiceSetupGatewayMethods, type VoiceSetupGatewayService } from 
 import { registerCalendarGatewayMethods, type CalendarGatewayService } from './calendar.js';
 import { createDaemonCalendarGatewayService } from './calendar-composition.js';
 import { registerEmailGatewayMethods, type EmailGatewayService } from './email.js';
+import { createDaemonEmailGatewayService, type EmailCompositionDeps } from './email-composition.js';
 import { bindCostAttributionIngest } from './attribution-ingest.js';
 import type { ConfigManager } from '../../config/manager.js';
 import type { DisposalRegistry } from '../../runtime/disposal.js';
@@ -242,6 +243,8 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
    * Its absence is why nothing the daemon did on its own could send a message.
    */
   readonly emailGateway?: EmailGatewayService | undefined;
+  /** Everything platform/email needs; absent in narrow compositions. */
+  readonly emailServiceDeps?: EmailCompositionDeps['emailServiceDeps'];
   /**
    * The following three are wired only by the full runtime-services composition
    * root; when any is absent (e.g. the terminal-shell embed) the proactive
@@ -608,7 +611,8 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   if (deps.voiceSetup) registerVoiceSetupGatewayMethods(catalog, deps.voiceSetup);
   const calendarGateway = createDaemonCalendarGatewayService(deps);
   if (calendarGateway) registerCalendarGatewayMethods(catalog, calendarGateway);
-  if (deps.emailGateway) registerEmailGatewayMethods(catalog, deps.emailGateway);
+  const emailGateway = createDaemonEmailGatewayService(deps);
+  if (emailGateway) registerEmailGatewayMethods(catalog, emailGateway);
   registerSessionRuntimeGatewayMethods(
     catalog,
     createSessionRuntimeControls({

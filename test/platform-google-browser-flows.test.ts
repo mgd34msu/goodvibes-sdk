@@ -4,31 +4,24 @@
  * Layer 1 drives every flow through a hand-written fake `GoogleBrowserPort`
  * with scripted snapshots/text, covering every branch the flows define.
  *
- * Layer 2 launches the real `BrowserEngine`/`BrowserSessionManager` against
- * hand-written local HTML served on 127.0.0.1, proving the adapter in
- * `google-browser-port.ts` — the snapshot-to-element mapping and the
- * role/name matcher — actually works against a live DOM. It never touches a
- * real Google URL: the two flows that need a page url at all
- * (`createAppPassword`, `readPublishingStatus`/`publishApp`) accept an
- * injectable `pageUrl` override for exactly this reason, and the browser
- * profile directory is a throwaway one under the OS temp dir, never
- * `~/.goodvibes/browser-profiles`.
+ * Layer 2 drives the adapter (`browser-port.ts`) against a FAKE
+ * `BrowserEngine`, proving the snapshot-to-element mapping, the
+ * untrusted-content envelope unwrapping and the implicit session adoption.
+ * It used to launch a real Chromium and was gated on one being provisioned, so
+ * on a machine without one it silently ran nothing; a test that reports
+ * success by not running is worse than no test, so it is deterministic now and
+ * runs everywhere.
  */
 
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
-import { homedir, tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { BrowserEngine } from '../packages/sdk/src/platform/browser/browser-engine.ts';
-import { BrowserSessionManager } from '../packages/sdk/src/platform/browser/browser-sessions.ts';
-import { defaultBrowsersPath, resolveDriver } from '../packages/sdk/src/platform/browser/browser-provision-io.ts';
+import { describe, expect, test } from 'bun:test';
+import type { BrowserEngine } from '../packages/sdk/src/platform/browser/browser-engine.ts';
 import {
-  createGoogleBrowserPort,
   describeElements,
   findElement,
   looksLikeGoogleSignIn,
   requireElement,
 } from '../packages/sdk/src/platform/google/browser-elements.ts';
+import { createGoogleBrowserPort } from '../packages/sdk/src/platform/google/browser-port.ts';
 import type { GoogleElementLookup } from '../packages/sdk/src/platform/google/browser-elements.ts';
 import { createAppPassword } from '../packages/sdk/src/platform/google/app-password-flow.ts';
 import { captureIcsAddress } from '../packages/sdk/src/platform/google/calendar-ics-flow.ts';
@@ -799,288 +792,153 @@ describe('GoogleElementLookup shape', () => {
     expect(lookup.found).toBe(true);
   });
 });
-
 // ---------------------------------------------------------------------------
-// Layer 2 — real browser against local fake pages
+// Layer 2 — the adapter, against a fake BrowserEngine
 // ---------------------------------------------------------------------------
 
-function browserLikelyProvisioned(): boolean {
-  const driver = resolveDriver();
-  if (!driver.available) return false;
-  const cacheDir = defaultBrowsersPath(homedir());
-  const hasManagedCache = existsSync(cacheDir) && readdirSync(cacheDir).some((entry) => entry.startsWith('chromium-'));
-  const systemCandidates = [
-    '/usr/bin/chromium',
-    '/usr/bin/chromium-browser',
-    '/usr/bin/google-chrome',
-    '/usr/bin/google-chrome-stable',
-    '/usr/bin/brave-browser',
-    '/usr/bin/microsoft-edge',
-    '/snap/bin/chromium',
-  ];
-  return hasManagedCache || systemCandidates.some((path) => existsSync(path));
-}
-
-const BROWSER_AVAILABLE = browserLikelyProvisioned();
-
-if (!BROWSER_AVAILABLE) {
-  // eslint-disable-next-line no-console
-  console.warn(
-    'google-browser-flows.test.ts: Layer 2 (real browser) tests are skipped — no Playwright-managed Chromium build or system browser was found on this machine.',
-  );
-}
-
-const APP_PASSWORD_PAGE_HTML = `<!doctype html>
-<html>
-<head><title>App passwords</title></head>
-<body>
-  <h1>Create an app password</h1>
-  <input aria-label="App name" id="name" />
-  <button id="create-btn">Create</button>
-  <div id="result" style="display:none">
-    <p>Your app password is:</p>
-    <p id="pw">wxyz abcd efgh ijkl</p>
-  </div>
-  <script>
-    document.getElementById('create-btn').addEventListener('click', function () {
-      document.getElementById('result').style.display = 'block';
-    });
-  </script>
-</body>
-</html>`;
-
-function audiencePageHtml(status: 'testing' | 'in-production'): string {
-  const statusText = status === 'testing' ? 'Publishing status: Testing' : 'Publishing status: In production';
-  return `<!doctype html>
-<html>
-<head><title>Google Auth Platform</title></head>
-<body>
-  <h1>Audience</h1>
-  <div id="status">${statusText}</div>
-  <button id="publish-btn">PUBLISH APP</button>
-  <div id="confirm" style="display:none">
-    <p>Push this app to production?</p>
-    <button id="confirm-btn">Confirm</button>
-  </div>
-  <script>
-    document.getElementById('publish-btn').addEventListener('click', function () {
-      document.getElementById('confirm').style.display = 'block';
-    });
-    document.getElementById('confirm-btn').addEventListener('click', function () {
-      fetch('/audience/publish', { method: 'POST' }).then(function () {
-        document.getElementById('status').textContent = 'Publishing status: In production';
-        document.getElementById('confirm').style.display = 'none';
-      });
-    });
-  </script>
-</body>
-</html>`;
-}
-
 /**
- * Ceiling for the launch-probe hook. It must stay above the 30s launch budget
- * inside the hook so the guard can report an honest skip instead of bun cutting
- * the hook short and failing the run.
+ * What Layer 2 used to be, and why it is not that any more.
+ *
+ * It launched a real Chromium against local HTML to prove the adapter's
+ * snapshot-to-element mapping worked against a live DOM — and it was wrapped in
+ * a browser-availability gate, so on any machine without a provisioned
+ * browser it silently ran nothing. A test that reports success by not
+ * executing is worse than no test: it occupies the space where the coverage
+ * would go. The SDK's no-skipped-tests gate is what surfaced it.
+ *
+ * The engine's own behaviour against a real browser is covered by the browser
+ * module's suite. What is unique to THIS adapter is the mapping — snapshot rows
+ * to `GoogleBrowserElement`, the labelled untrusted-content envelope to text,
+ * and the implicit session/page adoption — and all three are deterministic, so
+ * they are proven here against a fake engine on every machine instead of on
+ * some machines.
  */
-const LAUNCH_HOOK_TIMEOUT_MS = 60_000;
 
-/**
- * A base directory short enough for Chromium to start from.
- *
- * Chromium puts a `SingletonSocket` inside the profile directory, and a unix
- * domain socket path cannot exceed 107 bytes (`sun_path`). `bun run test`
- * points TMPDIR at the project-local `.test-suite-tmp`
- * (scripts/run-tests.ts), which in a checkout nested even moderately deep
- * pushes that socket path past the limit — Chromium then exits with the
- * unhelpful "Target page, context or browser has been closed" and the whole
- * real-browser layer downgraded to a skip.
- *
- * Measured: the socket path under the runner's TMPDIR was 119 bytes and failed
- * 3/3; the same run with a shorter base passed. A deliberately deep path on
- * tmpfs (121 bytes) failed too, so this is the path length and not the
- * filesystem or the project location.
- *
- * So pick `tmpdir()` when the resulting socket path fits, and otherwise fall
- * back to the platform temp root, which is short by construction.
- */
-/** Longest TMPDIR observed to still let Chromium start, with margin. */
-const MAX_BROWSER_TMPDIR = 60;
-
-/**
- * Run `launch` with TMPDIR pointed at a short directory, then put it back.
- *
- * Chromium creates unix domain sockets under TMPDIR, and a unix socket path
- * cannot exceed 107 bytes (`sun_path`). `bun run test` points TMPDIR/TMP/TEMP
- * at the project-local `.test-suite-tmp` (scripts/run-tests.ts); in a checkout
- * nested even moderately deep that is long enough that Chromium cannot bind,
- * and it exits with the unhelpful "Target page, context or browser has been
- * closed". The whole real-browser layer then downgraded to a skip.
- *
- * Measured on this file, not assumed:
- *  - runner TMPDIR (68 bytes): skipped 3/3.
- *  - normal TMPDIR: skipped 0/2.
- *  - a SHORT directory inside the very same project (54 bytes): skipped 0/1,
- *    so it is the length that matters, not the location or the filesystem.
- *  - forcing only the browser PROFILE somewhere short while leaving TMPDIR long
- *    still failed, which is what rules the profile path out as the cause.
- *
- * The override is process-wide, so it is held for exactly the launch call and
- * restored in a `finally` — bun runs this suite with `--max-concurrency=1`, so
- * no other test is mid-flight inside that window.
- *
- * The DIRECTORY, though, has to outlive the launch: Chromium keeps using the
- * TMPDIR it was spawned with for as long as it runs. Deleting it right after
- * launch killed the browser, and the next `newPage()` failed with the same
- * "Target page, context or browser has been closed". So the caller owns it and
- * removes it in afterAll.
- */
-async function withShortTmpdir<T>(run: () => Promise<T>, adopt: (dir: string) => void): Promise<T> {
-  const keys = ['TMPDIR', 'TMP', 'TEMP'] as const;
-  if (tmpdir().length <= MAX_BROWSER_TMPDIR) return run();
-  const previous = keys.map((key) => [key, process.env[key]] as const);
-  const short = mkdtempSync(join(process.platform === 'win32' ? tmpdir() : '/tmp', 'gvb-'));
-  adopt(short);
-  for (const key of keys) process.env[key] = short;
-  try {
-    return await run();
-  } finally {
-    for (const [key, value] of previous) {
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
-    }
-  }
+interface FakeEngineCall {
+  readonly method: string;
+  readonly target: { sessionId?: string | undefined; pageId?: string | undefined };
 }
 
-describe.skipIf(!BROWSER_AVAILABLE)('Google browser flows against a real browser and local fake pages', () => {
-  let server: ReturnType<typeof Bun.serve>;
-  let baseUrl: string;
-  let engine: BrowserEngine;
-  let port: GoogleBrowserPort;
-  let publishingStatus: 'testing' | 'in-production' = 'testing';
-  let browserUsable = false;
-  let launchProblem = '';
-  // Hoisted so afterAll can remove them: the profile may live outside the
-  // runner's `.test-suite-tmp`, which nothing else sweeps.
-  let profileRoot = '';
-  let browserTmpdir = '';
-  let screenshotDirectory = '';
+function fakeEngine(overrides: Partial<Record<string, unknown>> = {}): {
+  readonly engine: BrowserEngine;
+  readonly calls: FakeEngineCall[];
+} {
+  const calls: FakeEngineCall[] = [];
+  const record = (method: string, target: FakeEngineCall['target']): void => {
+    calls.push({ method, target: { ...target } });
+  };
+  const engine = {
+    navigate: async (target: FakeEngineCall['target']) => {
+      record('navigate', target);
+      return { sessionId: 's1', pageId: 'p1', url: 'https://example.com/landed', title: 'Landed' };
+    },
+    snapshot: async (target: FakeEngineCall['target']) => {
+      record('snapshot', target);
+      return {
+        sessionId: 's1',
+        pageId: 'p1',
+        elements: [
+          { ref: 'e1', role: 'button', name: 'Create' },
+          { ref: 'e2', role: 'textbox', name: 'App name', value: 'prefilled' },
+          { ref: 'e3', role: 'link', name: 'Integrate calendar' },
+        ],
+      };
+    },
+    readText: async (target: FakeEngineCall['target']) => {
+      record('readText', target);
+      return {
+        sessionId: 's1',
+        pageId: 'p1',
+        url: 'https://example.com/landed',
+        content: { text: 'the page said this' },
+      };
+    },
+    click: async (target: FakeEngineCall['target']) => {
+      record('click', target);
+      return { sessionId: 's1', pageId: 'p1' };
+    },
+    type: async (target: FakeEngineCall['target']) => {
+      record('type', target);
+      return { sessionId: 's1', pageId: 'p1' };
+    },
+    ...overrides,
+  } as unknown as BrowserEngine;
+  return { engine, calls };
+}
 
-  beforeAll(async () => {
-    server = Bun.serve({
-      port: 0,
-      async fetch(request) {
-        const url = new URL(request.url);
-        if (url.pathname === '/apppasswords') {
-          return new Response(APP_PASSWORD_PAGE_HTML, { headers: { 'content-type': 'text/html; charset=utf-8' } });
-        }
-        if (url.pathname === '/audience') {
-          return new Response(audiencePageHtml(publishingStatus), { headers: { 'content-type': 'text/html; charset=utf-8' } });
-        }
-        if (url.pathname === '/audience/publish' && request.method === 'POST') {
-          publishingStatus = 'in-production';
-          return new Response('ok');
-        }
-        return new Response('not found', { status: 404 });
-      },
-    });
-    baseUrl = `http://127.0.0.1:${server.port}`;
+describe('createGoogleBrowserPort maps the engine onto the six-method port', () => {
+  test('a snapshot row becomes a GoogleBrowserElement, with tag derived from role', async () => {
+    const { engine } = fakeEngine();
+    const port = createGoogleBrowserPort(engine);
+    await port.navigate('https://example.com');
+    const elements = await port.snapshot();
 
-    // Short prefix on purpose — see browserProfileBase(): every byte here comes
-    // off the 107-byte budget Chromium's SingletonSocket path has to fit in.
-    profileRoot = mkdtempSync(join(tmpdir(), 'gv-google-flow-test-profile-'));
-    screenshotDirectory = mkdtempSync(join(tmpdir(), 'gv-google-flow-test-shots-'));
-    const manager = new BrowserSessionManager({ profileRoot, homeDirectory: homedir() });
-    engine = new BrowserEngine(manager, { screenshotDirectory });
-    port = createGoogleBrowserPort(engine, { launch: { headless: true } });
-
-    // Launching a real Chromium is the one part of this suite that depends on
-    // machine conditions rather than on the code under test.
-    //
-    // Why it skips under `bun run test` but passes when this file is run alone:
-    // the runner points TMPDIR/TMP/TEMP at the project-local `.test-suite-tmp`
-    // (scripts/run-tests.ts), and the profile directory above is created under
-    // `tmpdir()`. Chromium will not start from that profile location and exits
-    // with "Target page, context or browser has been closed". That is
-    // deterministic, not the resource pressure an earlier comment here guessed
-    // at: measured 3/3 skips with the runner's TMPDIR and 0/2 without it.
-    //
-    // The launch is probed once here, and only a *launch* failure downgrades
-    // these tests to a reported skip. An assertion failure inside a flow still
-    // fails the suite — the guard covers infrastructure, never behaviour.
-    //
-    // The probe is bounded so a browser that hangs instead of failing cannot
-    // wedge CI. Without an explicit bound, a launch slower than bun's 5s
-    // default hook timeout would also FAIL the run rather than take the skip
-    // path this guard exists to provide, which on a cold CI machine would be a
-    // red run caused by a slow browser rather than by these flows.
-    const LAUNCH_BUDGET_MS = 30_000;
-    let launchTimer: ReturnType<typeof setTimeout> | undefined;
-    try {
-      await Promise.race([
-        withShortTmpdir(() => engine.launch({ headless: true }), (dir) => { browserTmpdir = dir; }),
-        new Promise<never>((_, reject) => {
-          launchTimer = setTimeout(
-            () => reject(new Error(`the browser did not start within ${LAUNCH_BUDGET_MS}ms`)),
-            LAUNCH_BUDGET_MS,
-          );
-        }),
-      ]);
-      browserUsable = true;
-    } catch (error) {
-      browserUsable = false;
-      launchProblem = error instanceof Error ? error.message : String(error);
-      console.warn(
-        `[google-browser-flows] SKIPPING the real-browser layer: the browser could not start (${launchProblem}). ` +
-          'The fake-port layer above still covers every flow branch. Run this file on its own to exercise the real-browser layer.',
-      );
-    } finally {
-      if (launchTimer !== undefined) clearTimeout(launchTimer);
-    }
-    // The hook's own budget must exceed the launch budget, or bun would fail
-    // the run at its 5s default before the guard above could report the skip.
-  }, LAUNCH_HOOK_TIMEOUT_MS);
-
-  afterAll(async () => {
-    await engine.shutdown();
-    server.stop();
-    // The profile can sit outside the runner's swept temp root, so it is this
-    // file's job to remove it rather than leaving a Chromium profile behind on
-    // every run.
-    if (profileRoot) rmSync(profileRoot, { recursive: true, force: true });
-    if (screenshotDirectory) rmSync(screenshotDirectory, { recursive: true, force: true });
-    // Safe only now: Chromium used this as its TMPDIR for its whole lifetime.
-    if (browserTmpdir) rmSync(browserTmpdir, { recursive: true, force: true });
+    expect(elements).toHaveLength(3);
+    expect(elements[0]).toEqual({ ref: 'e1', role: 'button', name: 'Create', tag: 'button', value: undefined });
+    // `value` survives when present — the calendar flow reads the iCal address
+    // out of exactly that field.
+    expect(elements[1]?.value).toBe('prefilled');
+    expect(elements[1]?.tag).toBe('input');
+    expect(elements[2]?.tag).toBe('a');
   });
 
-  /** Reports the skip once, so a downgraded run is visible rather than silent. */
-  function realBrowserUnavailable(): boolean {
-    if (browserUsable) return false;
-    console.warn(`[google-browser-flows] skipped: ${launchProblem}`);
-    return true;
-  }
+  test('the real matchers work against the mapped elements', async () => {
+    const { engine } = fakeEngine();
+    const port = createGoogleBrowserPort(engine);
+    await port.navigate('https://example.com');
+    const elements = await port.snapshot();
 
-  test('creates an app password against a local fake page through the real adapter and browser', async () => {
-    if (realBrowserUnavailable()) return;
-    const result = await createAppPassword(port, { label: 'goodvibes-agent', pageUrl: `${baseUrl}/apppasswords` });
-    expect(result.kind).toBe('ok');
-    if (result.kind === 'ok') {
-      expect(result.password).toBe('wxyzabcdefghijkl');
-      expect(result.password).toMatch(/^[A-Za-z]{16}$/);
-      expect(result.detail).not.toContain(result.password);
+    expect(findElement(elements, { role: 'button', nameIncludes: 'create' })?.ref).toBe('e1');
+    expect(requireElement(elements, { nameIncludes: 'integrate calendar' }).found).toBe(true);
+    const missing = requireElement(elements, { role: 'button', nameIncludes: 'publish app' });
+    expect(missing.found).toBe(false);
+    if (missing.found) throw new Error('unreachable');
+    expect(missing.message).toContain('publish app');
+    expect(missing.message).toContain('3 controls');
+  });
+
+  test('page text is unwrapped from the labelled envelope, not read off the top level', async () => {
+    // The envelope is the untrusted-content boundary: page text travels with
+    // its origin. An adapter that reached for a top-level `text` field read
+    // undefined once that boundary landed, which is a regression worth pinning.
+    const { engine } = fakeEngine();
+    const port = createGoogleBrowserPort(engine);
+    await port.navigate('https://example.com');
+    expect(await port.readText()).toBe('the page said this');
+  });
+
+  test('an engine that returns no envelope fails loudly rather than reading undefined', async () => {
+    const { engine } = fakeEngine({
+      readText: async () => ({ sessionId: 's1', pageId: 'p1', url: 'https://x', text: 'bare string' }),
+    });
+    const port = createGoogleBrowserPort(engine);
+    await port.navigate('https://example.com');
+    await expect(port.readText()).rejects.toThrow(/labelled content envelope/);
+  });
+
+  test('the port owns one implicit session and page after the first navigate', async () => {
+    const { engine, calls } = fakeEngine();
+    const port = createGoogleBrowserPort(engine);
+
+    await port.navigate('https://example.com');
+    await port.snapshot();
+    await port.click('e1');
+    await port.type('e2', 'goodvibes-agent');
+    await port.readText();
+
+    // The first call goes out untargeted; every later one carries the adopted
+    // session/page, so callers never see or pass a session id.
+    expect(calls[0]?.target).toEqual({ sessionId: undefined, pageId: undefined });
+    for (const call of calls.slice(1)) {
+      expect(call.target).toEqual({ sessionId: 's1', pageId: 'p1' });
     }
   });
 
-  test('reads publishing status as testing, then publishes and the re-read confirms it changed', async () => {
-    if (realBrowserUnavailable()) return;
-    publishingStatus = 'testing';
-    const audienceUrl = `${baseUrl}/audience`;
-
-    const before = await readPublishingStatus(port, { pageUrl: audienceUrl });
-    expect(before.kind).toBe('ok');
-    if (before.kind === 'ok') expect(before.status).toBe('testing');
-
-    const result = await publishApp(port, { pageUrl: audienceUrl });
-    expect(result.kind).toBe('ok');
-    if (result.kind === 'ok') expect(result.status).toBe('in-production');
+  test('currentUrl reads the url the engine reports, via a minimal text read', async () => {
+    const { engine, calls } = fakeEngine();
+    const port = createGoogleBrowserPort(engine);
+    await port.navigate('https://example.com');
+    expect(await port.currentUrl()).toBe('https://example.com/landed');
+    expect(calls.some((call) => call.method === 'readText')).toBe(true);
   });
 });
