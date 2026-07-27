@@ -11,9 +11,10 @@
  *    address etc) in the tui too"
  *   "and in the agent - basically ui should expose it in both."
  *
- * He named the TUI and the agent. He did NOT name the webui. Whether a card may
- * be typed into a browser page is an open question in front of him, so the
- * webui is NOT an entry surface and these tests assert that it is refused.
+ * Asked directly afterwards about the webui, he ruled for full parity across
+ * all three — choosing it with the exposure stated in front of him, over a
+ * settings-only alternative, and attaching the six browser-side conditions
+ * asserted here. Those conditions are part of his ruling.
  *
  * COORDINATOR ruling — the refusal of card details on remote messaging
  * surfaces, and the reasoning that a card number typed into a hosted chat is
@@ -34,6 +35,7 @@ import {
   mayOfferCardEntryFlow,
   scanForCardDetails,
   describeCardEntryRefusal,
+  WEBUI_CARD_ENTRY_CONDITIONS,
 } from '../packages/sdk/src/platform/payments/entry-surface.js';
 import { parseCommandAuthorityChannel } from '../packages/sdk/src/platform/payments/types.js';
 
@@ -46,13 +48,25 @@ describe('entering and approving are different questions', () => {
     expect(mayEnterCardDetails('agent-terminal')).toBe(true);
   });
 
-  test('the webui may NOT, pending an owner ruling', () => {
-    // He named the TUI and the agent. He did not name the webui, and typing a
-    // card into a browser page is a materially different exposure from typing
-    // it at a terminal. Absent his answer, this stays closed — the safe
-    // direction, and a one-line change once he rules.
-    expect(mayEnterCardDetails('webui')).toBe(false);
-    expect(mayOfferCardEntryFlow('webui')).toBe(false);
+  test('the webui may too, by the owner\'s direct ruling', () => {
+    // Asked directly after he named only the TUI and the agent, he ruled for
+    // full parity — with the exposure stated in front of him, and with the
+    // browser-side conditions attached as part of the ruling.
+    expect(mayEnterCardDetails('webui')).toBe(true);
+    expect(mayOfferCardEntryFlow('webui')).toBe(true);
+  });
+
+  test('the conditions he attached to webui entry are carried with it', () => {
+    // Exported so a surface cannot quietly implement a weaker version, and so
+    // a reviewer has the list without going back to a transcript.
+    const joined = WEBUI_CARD_ENTRY_CONDITIONS.join(' | ').toLowerCase();
+    expect(joined).toContain('authenticated daemon channel');
+    expect(joined).toContain('never appear in a url');
+    expect(joined).toContain('never rendered back');
+    expect(joined).toContain('autocomplete="off"');
+    expect(joined).toContain('password manager');
+    expect(joined).toContain('dom state');
+    expect(WEBUI_CARD_ENTRY_CONDITIONS).toHaveLength(6);
   });
 
   test.each(['telegram', 'ntfy', 'discord', 'slack', 'whatsapp', 'signal', 'webhook', 'email', 'sms'])(
@@ -112,8 +126,7 @@ describe('card details arriving on a remote channel are refused', () => {
     expect(reply).not.toMatch(/\d{4}/);
     expect(reply).toContain('telegram');
     expect(reply).toContain('terminal');
-    // It must not point him at a surface that cannot take the card either.
-    expect(reply).not.toContain('web UI');
+
   });
 
   test('the scan reports shapes, never the matching text', () => {

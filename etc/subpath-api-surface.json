@@ -22026,6 +22026,10 @@
       "kind": "type"
     },
     {
+      "name": "WEBUI_CARD_ENTRY_CONDITIONS",
+      "kind": "const"
+    },
+    {
       "name": "WindowRecovery",
       "kind": "interface",
       "required": [
