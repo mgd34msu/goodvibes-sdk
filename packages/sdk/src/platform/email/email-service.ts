@@ -39,7 +39,12 @@
 import { readSenderAuthentication } from '../google/sender-authentication.js';
 import { ImapClient } from './imap-client.js';
 import { SmtpClient, validateSmtpAddress, validateSmtpSubject } from './smtp-client.js';
-import type { ImapEnvelope } from './imap-client.js';
+import type {
+  ImapAppendDraftResult,
+  ImapEnvelope,
+  ImapMessageDetail,
+} from './imap-client.js';
+import type { SmtpSendResult } from './smtp-client.js';
 import type { EmailSenderClaim, EmailSenderClaimDescriber } from './sender-claim.js';
 import type { Socket } from 'node:net';
 
@@ -105,6 +110,14 @@ export interface EmailConfig {
 }
 
 export interface EmailSummary {
+  /**
+   * The IMAP identifier this message is read back by. Carried through from the
+   * envelope because a listing whose entries cannot be opened is a listing
+   * nobody can act on.
+   */
+  readonly uid: number;
+  /** The `Message-ID` header, for threading and correlation. '' when absent. */
+  readonly messageId: string;
   readonly from: string;
   readonly subject: string;
   readonly date: string;
@@ -158,6 +171,49 @@ export interface SendMailOptions {
   readonly body: string;
   /** Must be true at the call site; the service rejects sends without it. */
   readonly confirm: boolean;
+}
+
+/** What to list, for `listInbox`. Every field is optional. */
+export interface EmailInboxListInput {
+  /** Maximum messages to return. Default: 10. */
+  readonly limit?: number | undefined;
+  /** Restrict to messages the server dates on or after this day. */
+  readonly since?: Date | undefined;
+  /**
+   * Unread messages only. Default: true — the historical behaviour of
+   * `checkInbox`. Setting it false lists everything, which is a different
+   * SEARCH, not the same one filtered afterwards.
+   */
+  readonly unreadOnly?: boolean | undefined;
+}
+
+export interface EmailInboxListResult {
+  readonly messages: readonly EmailSummary[];
+  /**
+   * How many messages MATCHED, before `limit` truncated the list.
+   *
+   * Deliberately not `messages.length`: a caller needs to be able to tell "that
+   * is all of them" from "that is the first ten", and a total that always
+   * equalled the page size would say there is never any more mail.
+   */
+  readonly total: number;
+}
+
+/**
+ * The fields a draft is composed from. `from` is the only optional one —
+ * omitting it uses the configured `email.fromAddress`, which is what a caller
+ * that is not choosing an identity should do.
+ */
+export interface EmailDraftInput {
+  readonly to: string;
+  readonly subject: string;
+  readonly body: string;
+  /** Defaults to `email.fromAddress`. */
+  readonly from?: string | undefined;
+  readonly inReplyTo?: string | undefined;
+  readonly references?: string | undefined;
+  /** Overrides Drafts-folder discovery. */
+  readonly mailbox?: string | undefined;
 }
 
 /** Opens one transport connection to a mail host. */
@@ -329,10 +385,27 @@ export class EmailService {
   }
 
   /**
-   * Fetch up to `limit` inbox summaries.
+   * Fetch up to `limit` unread inbox summaries.
    * Messages are read via EXAMINE (read-only); unread flag is never modified.
+   *
+   * The unread-only listing, unchanged. `listInbox` is the general form.
    */
   async checkInbox(limit = 10): Promise<EmailSummary[]> {
+    const { messages } = await this.listInbox({ limit });
+    return [...messages];
+  }
+
+  /**
+   * List the inbox: unread only by default, everything when `unreadOnly` is
+   * false, optionally bounded by a date.
+   *
+   * Read-only throughout — the mailbox is EXAMINEd and every fetch peeks, so
+   * listing mail never marks it read. Returns the matched `total` alongside
+   * the truncated page.
+   */
+  async listInbox(input: EmailInboxListInput = {}): Promise<EmailInboxListResult> {
+    const limit = input.limit ?? 10;
+    const unreadOnly = input.unreadOnly ?? true;
     const config = this.getValidatedConfig();
     const password = await resolveEmailPassword(config.passwordRef, this.deps.secretsManager);
 
@@ -347,7 +420,9 @@ export class EmailService {
 
     try {
       await client.open();
-      const seqNums = await client.searchUnseen();
+      const seqNums = unreadOnly
+        ? await client.searchUnseen(input.since)
+        : await client.searchAll(input.since);
       const envelopes: ImapEnvelope[] = await client.fetchEnvelopes(seqNums, limit);
 
       // Fetch body preview for the newest message only (read-only; BODY.PEEK).
@@ -362,38 +437,27 @@ export class EmailService {
         }
       }
 
+      // Which of these are actually unread. When the search was UNSEEN they
+      // all are; when it was ALL, saying so would be a fabricated flag, so the
+      // unseen set is asked for separately rather than assumed.
+      const unseen = unreadOnly
+        ? null
+        : new Set<number>(await client.searchUnseen(input.since));
+
       await client.logout();
 
       // Delivery evidence is carried through deliberately. Dropping it here
       // would leave correlation with nothing but the sender-authored `To:`
       // header, which is the exact hole the evidence exists to close.
-      // Reading a mailbox is an untrusted ingest, exactly as loading a web page
-      // is: the text was written by whoever chose to send it. The outward-effect
-      // guard can only weigh exposure it has been told about, so it is told here
-      // rather than after something has already been sent.
-      const recordIngest = this.deps.recordUntrustedIngest;
-      if (recordIngest) {
-        const at = new Date().toISOString();
-        for (const env of envelopes) {
-          // Origin is the CLAIMED sender domain, and is labelled as claimed
-          // wherever it surfaces. It is a useful label for the owner, never an
-          // identity check — the claim is why the content is untrusted, not a
-          // reason to trust it.
-          const claimed = this.deps.describeSenderClaim(env.from).claimedAddress;
-          const domain = claimed.includes('@') ? claimed.slice(claimed.lastIndexOf('@') + 1) : '';
-          recordIngest({
-            surface: 'email',
-            origin: domain.length > 0 ? `email:${domain} (claimed)` : 'email:unknown sender',
-            at,
-          });
-        }
-      }
+      this.recordIngest(envelopes.map((env) => env.from));
 
-      return envelopes.map((env, idx) => ({
+      const messages = envelopes.map((env, idx) => ({
+        uid: env.uid,
+        messageId: env.messageId,
         from: env.from,
         subject: env.subject,
         date: env.date,
-        unread: true,
+        unread: unseen === null ? true : unseen.has(env.uid),
         bodyPreview: idx === 0 ? newestBodyPreview : '',
         mailbox: env.mailbox,
         deliveredTo: env.deliveredTo,
@@ -403,9 +467,102 @@ export class EmailService {
           readSenderAuthentication(env.authenticationResults),
         ),
       }));
+      return { messages, total: seqNums.length };
     } catch (err) {
       try { await client.logout(); } catch { /* best-effort */ }
       throw err;
+    }
+  }
+
+  /**
+   * Read one whole message by UID, or null when it is no longer there.
+   *
+   * Read-only (BODY.PEEK throughout) and attachment-metadata only. The full
+   * body is MORE attacker-controlled text than a preview, not less, so it
+   * records the same untrusted ingest the listing does — one path into the
+   * product, one labelling.
+   */
+  async readMessage(uid: number): Promise<ImapMessageDetail | null> {
+    const config = this.getValidatedConfig();
+    const password = await resolveEmailPassword(config.passwordRef, this.deps.secretsManager);
+
+    const socketFactory = this.deps.imapSocketFactory ?? this.deps.transport.connectImapTls;
+    const socket = await socketFactory(config.imapHost, config.imapPort);
+    const client = new ImapClient({ socket, username: config.username, password });
+
+    try {
+      await client.open();
+      const detail = await client.fetchMessage(uid);
+      await client.logout();
+      if (detail !== null) this.recordIngest([detail.from]);
+      return detail;
+    } catch (err) {
+      try { await client.logout(); } catch { /* best-effort */ }
+      throw err;
+    }
+  }
+
+  /**
+   * Save a draft to the Drafts folder. Nothing is sent: a draft is the outcome
+   * that leaves the decision to send with the owner.
+   *
+   * `from` defaults to the configured `email.fromAddress`. The folder is
+   * discovered from the server's own `\Drafts` flag rather than guessed.
+   */
+  async createDraft(input: EmailDraftInput): Promise<ImapAppendDraftResult> {
+    const config = this.getValidatedConfig();
+    const password = await resolveEmailPassword(config.passwordRef, this.deps.secretsManager);
+    const from = input.from !== undefined && input.from.trim().length > 0
+      ? input.from
+      : config.fromAddress;
+
+    const socketFactory = this.deps.imapSocketFactory ?? this.deps.transport.connectImapTls;
+    const socket = await socketFactory(config.imapHost, config.imapPort);
+    const client = new ImapClient({ socket, username: config.username, password });
+
+    try {
+      await client.open();
+      const result = await client.appendDraft({
+        to: input.to,
+        subject: input.subject,
+        body: input.body,
+        from,
+        inReplyTo: input.inReplyTo,
+        references: input.references,
+        mailbox: input.mailbox,
+      });
+      await client.logout();
+      return result;
+    } catch (err) {
+      try { await client.logout(); } catch { /* best-effort */ }
+      throw err;
+    }
+  }
+
+  /**
+   * Record that mail text entered the conversation.
+   *
+   * Reading a mailbox is an untrusted ingest, exactly as loading a web page is:
+   * the text was written by whoever chose to send it. The outward-effect guard
+   * can only weigh exposure it has been told about, so it is told here rather
+   * than after something has already been sent.
+   *
+   * Origin is the CLAIMED sender domain, and is labelled as claimed wherever it
+   * surfaces. It is a useful label for the owner, never an identity check — the
+   * claim is why the content is untrusted, not a reason to trust it.
+   */
+  private recordIngest(fromHeaders: readonly string[]): void {
+    const recordIngest = this.deps.recordUntrustedIngest;
+    if (!recordIngest) return;
+    const at = new Date().toISOString();
+    for (const fromHeader of fromHeaders) {
+      const claimed = this.deps.describeSenderClaim(fromHeader).claimedAddress;
+      const domain = claimed.includes('@') ? claimed.slice(claimed.lastIndexOf('@') + 1) : '';
+      recordIngest({
+        surface: 'email',
+        origin: domain.length > 0 ? `email:${domain} (claimed)` : 'email:unknown sender',
+        at,
+      });
     }
   }
 
@@ -457,8 +614,13 @@ export class EmailService {
   /**
    * Send a plain-text email.
    * Requires `confirm: true` at the call site — throws without it.
+   *
+   * Returns the `Message-ID` the sent message carried and the instant the
+   * server accepted it, both taken from the send itself. A caller that needs
+   * to say what it sent gets the real values rather than inventing an id that
+   * matches nothing in the owner's mailbox.
    */
-  async sendMail(opts: SendMailOptions): Promise<void> {
+  async sendMail(opts: SendMailOptions): Promise<SmtpSendResult> {
     if (!opts.confirm) {
       throw new Error('sendMail requires confirm: true at the call site');
     }
@@ -482,7 +644,7 @@ export class EmailService {
     validateSmtpAddress(opts.to, 'to');
     validateSmtpSubject(opts.subject);
 
-    await client.sendMail({
+    return client.sendMail({
       from: config.fromAddress,
       to: opts.to,
       subject: opts.subject,

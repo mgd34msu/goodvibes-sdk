@@ -14344,6 +14344,10 @@
   ],
   "./platform/email": [
     {
+      "name": "DEFAULT_DRAFTS_MAILBOX",
+      "kind": "const"
+    },
+    {
       "name": "DeliveryEvidence",
       "kind": "interface",
       "required": [
@@ -14387,6 +14391,27 @@
       "kind": "interface",
       "required": [
         "ok"
+      ]
+    },
+    {
+      "name": "EmailDraftInput",
+      "kind": "interface",
+      "required": [
+        "body",
+        "subject",
+        "to"
+      ]
+    },
+    {
+      "name": "EmailInboxListInput",
+      "kind": "interface"
+    },
+    {
+      "name": "EmailInboxListResult",
+      "kind": "interface",
+      "required": [
+        "messages",
+        "total"
       ]
     },
     {
@@ -14435,8 +14460,10 @@
         "deliveredTo",
         "from",
         "mailbox",
+        "messageId",
         "senderClaim",
         "subject",
+        "uid",
         "unread",
         "unverifiedToHeaderClaim"
       ]
@@ -14453,6 +14480,47 @@
     {
       "name": "IMAP_DEFAULT_TIMEOUT_MS",
       "kind": "const"
+    },
+    {
+      "name": "ImapAppendDraftInput",
+      "kind": "interface",
+      "required": [
+        "body",
+        "from",
+        "subject",
+        "to"
+      ]
+    },
+    {
+      "name": "ImapAppendDraftResult",
+      "kind": "interface",
+      "required": [
+        "mailbox",
+        "uid"
+      ]
+    },
+    {
+      "name": "ImapAttachmentInfo",
+      "kind": "interface",
+      "required": [
+        "contentType",
+        "filename",
+        "sizeBytes"
+      ]
+    },
+    {
+      "name": "ImapBodyPart",
+      "kind": "interface",
+      "required": [
+        "charset",
+        "encoding",
+        "filename",
+        "isAttachment",
+        "section",
+        "sizeBytes",
+        "subtype",
+        "type"
+      ]
     },
     {
       "name": "ImapClient",
@@ -14488,6 +14556,15 @@
       "kind": "interface",
       "required": [
         "bodyPreview"
+      ]
+    },
+    {
+      "name": "ImapMessageDetail",
+      "kind": "interface",
+      "required": [
+        "attachments",
+        "bodyHtml",
+        "bodyText"
       ]
     },
     {
@@ -14533,6 +14610,14 @@
       ]
     },
     {
+      "name": "SmtpSendResult",
+      "kind": "interface",
+      "required": [
+        "messageId",
+        "sentAt"
+      ]
+    },
+    {
       "name": "StyleProfile",
       "kind": "interface",
       "required": [
@@ -14552,6 +14637,14 @@
       ]
     },
     {
+      "name": "attachmentsFromParts",
+      "kind": "function"
+    },
+    {
+      "name": "buildDraftMessage",
+      "kind": "function"
+    },
+    {
       "name": "buildStyleReplyLaneAdditions",
       "kind": "function"
     },
@@ -14565,6 +14658,10 @@
     },
     {
       "name": "countSentences",
+      "kind": "function"
+    },
+    {
+      "name": "decodeTextPart",
       "kind": "function"
     },
     {
@@ -14608,6 +14705,14 @@
       "kind": "function"
     },
     {
+      "name": "parseAppendUid",
+      "kind": "function"
+    },
+    {
+      "name": "parseBodyStructure",
+      "kind": "function"
+    },
+    {
       "name": "readEmailConfig",
       "kind": "function"
     },
@@ -14620,6 +14725,14 @@
       "kind": "function"
     },
     {
+      "name": "selectBodyPart",
+      "kind": "function"
+    },
+    {
+      "name": "selectDraftsMailbox",
+      "kind": "function"
+    },
+    {
       "name": "styleReplyLiveRecord",
       "kind": "function"
     },
@@ -14629,6 +14742,14 @@
     },
     {
       "name": "styleReplyWorkflowStatus",
+      "kind": "function"
+    },
+    {
+      "name": "validateDraftHeaderValue",
+      "kind": "function"
+    },
+    {
+      "name": "validateDraftInput",
       "kind": "function"
     },
     {
