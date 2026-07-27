@@ -13105,6 +13105,141 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       "pane": "top"
     }
   },
+  "payments.budget.status": {
+    "methodId": "payments.budget.status",
+    "http": {
+      "method": "GET",
+      "path": "/api/payments/budget"
+    },
+    "status": 200,
+    "body": {
+      "enabled": false,
+      "dayKey": "sample",
+      "timezone": "sample",
+      "currency": "sample",
+      "item": {
+        "limit": 0,
+        "spent": 0,
+        "reserved": 0,
+        "remaining": 0
+      },
+      "overage": {
+        "limit": 0,
+        "spent": 0,
+        "reserved": 0,
+        "remaining": 0
+      },
+      "tolerance": {
+        "limit": 0,
+        "spent": 0,
+        "reserved": 0,
+        "remaining": 0
+      },
+      "reservationCount": 0,
+      "isPaymentsLeader": false
+    }
+  },
+  "payments.cards.create": {
+    "methodId": "payments.cards.create",
+    "http": {
+      "method": "POST",
+      "path": "/api/payments/cards"
+    },
+    "status": 200,
+    "body": {
+      "card": {
+        "id": "sample",
+        "label": "sample",
+        "brand": "sample",
+        "last4": "sample",
+        "kind": "virtual",
+        "expiryMonth": 0,
+        "expiryYear": 0,
+        "issuerCapMinorUnits": 0,
+        "addedAt": "sample",
+        "materialComplete": false
+      }
+    }
+  },
+  "payments.cards.delete": {
+    "methodId": "payments.cards.delete",
+    "http": {
+      "method": "DELETE",
+      "path": "/api/payments/cards/{id}"
+    },
+    "status": 200,
+    "body": {
+      "id": "sample",
+      "deleted": false,
+      "secretsCleared": 0
+    }
+  },
+  "payments.cards.list": {
+    "methodId": "payments.cards.list",
+    "http": {
+      "method": "GET",
+      "path": "/api/payments/cards"
+    },
+    "status": 200,
+    "body": {
+      "cards": [
+        {
+          "id": "sample",
+          "label": "sample",
+          "brand": "sample",
+          "last4": "sample",
+          "kind": "virtual",
+          "expiryMonth": 0,
+          "expiryYear": 0,
+          "issuerCapMinorUnits": 0,
+          "addedAt": "sample",
+          "materialComplete": false
+        }
+      ],
+      "defaultCardId": "sample"
+    }
+  },
+  "payments.purchases.list": {
+    "methodId": "payments.purchases.list",
+    "http": {
+      "method": "GET",
+      "path": "/api/payments/purchases"
+    },
+    "status": 200,
+    "body": {
+      "purchases": [
+        {
+          "purchaseId": "sample",
+          "atUtc": "sample",
+          "dayKey": "sample",
+          "timezone": "sample",
+          "merchantDomain": "sample",
+          "item": "sample",
+          "currency": "sample",
+          "itemMinorUnits": 0,
+          "taxMinorUnits": 0,
+          "feesMinorUnits": 0,
+          "shippingMinorUnits": 0,
+          "totalMinorUnits": 0,
+          "shippingTierRequested": "sample",
+          "shippingTierUsed": "sample",
+          "steppedDown": false,
+          "itemPoolDraw": 0,
+          "overagePoolDraw": 0,
+          "tolerancePoolDraw": 0,
+          "cardLast4": "sample",
+          "windowKind": "sample",
+          "windowOutcome": "sample",
+          "answeredBy": "sample",
+          "outcome": "sample",
+          "refusalReason": "sample",
+          "merchantOrderId": "sample",
+          "refundedAt": "sample"
+        }
+      ],
+      "total": 0
+    }
+  },
   "permissions.rules.delete": {
     "methodId": "permissions.rules.delete",
     "http": null,
