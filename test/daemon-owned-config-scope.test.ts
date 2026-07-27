@@ -21,9 +21,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 import {
+  DAEMON_OWNED_NON_SCHEMA_CONFIG_PATHS,
   configKeyScope,
   isClientOwnedConfigKey,
   isDaemonOwnedConfigKey,
+  listDaemonOwnedConfigPaths,
 } from '../packages/sdk/src/platform/config/config-ownership.js';
 import {
   DaemonConfigRejectedError,
@@ -410,5 +412,27 @@ describe('the control-plane base URL is derived, never a stored mirror', () => {
     expect(describeBaseUrlDrift('http://127.0.0.1:3421', {
       hostMode: 'local', host: '127.0.0.1', port: 3421, tlsMode: 'off',
     })).toBeNull();
+  });
+});
+
+describe('one answer about who owns a path', () => {
+  test('every non-schema daemon path is daemon-owned by the predicate too', () => {
+    // These two answers used to be able to disagree, and when they did the key
+    // was stored NOWHERE: the manager routes daemon-owned keys to the daemon
+    // tier and everything else to the surface tier, so a path the walk called
+    // daemon-owned and the predicate called client-owned was accepted, reported
+    // as saved, and written to neither file. It reached a password reference
+    // before anything caught it.
+    for (const path of DAEMON_OWNED_NON_SCHEMA_CONFIG_PATHS) {
+      expect(isDaemonOwnedConfigKey(path)).toBe(true);
+      expect(isClientOwnedConfigKey(path)).toBe(false);
+      expect(configKeyScope(path)).toBe('daemon');
+    }
+  });
+
+  test('the owned-path walk and the predicate describe the same set', () => {
+    for (const path of listDaemonOwnedConfigPaths()) {
+      expect(isDaemonOwnedConfigKey(path)).toBe(true);
+    }
   });
 });
