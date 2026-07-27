@@ -33,14 +33,18 @@ import { logger } from '../../utils/logger.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { TelegramApiError, TelegramBotApi, type TelegramBotIdentity, type TelegramUpdate } from './api.js';
 import { TelegramOffsetStore } from './offset-store.js';
+import { CONFLICT_ESCALATION_ATTEMPTS, classifyTelegramConflict } from './conflict-policy.js';
 
 /** Telegram holds the request open this long when there is nothing to report. */
 const POLL_TIMEOUT_SECONDS = 25;
 /** Backoff floor and ceiling for transient failures. */
 const BACKOFF_MIN_MS = 1_000;
 const BACKOFF_MAX_MS = 60_000;
-/** How many times to clear a conflicting webhook before declaring it stuck. */
-const MAX_WEBHOOK_CONFLICT_RECOVERIES = 3;
+/**
+ * Extra random delay added to a conflict retry, so two consumers of one token
+ * do not fall into lockstep and terminate each other's long poll forever.
+ */
+const CONFLICT_JITTER_MS = 5_000;
 /** The route registered by the builtin channel plugin. */
 const TELEGRAM_WEBHOOK_PATH = '/webhook/telegram';
 
@@ -65,11 +69,11 @@ export interface TelegramIngressDeps {
   /**
    * Telegram told us another process is already long-polling this bot token.
    *
-   * The poll loop stops itself and reports it here rather than retrying,
-   * because retrying is fighting: each side's getUpdates terminates the
-   * other's, and the user's messages land in whichever process happened to win
-   * the last round. The cluster coordinator listens on this to stand down and
-   * re-run the election.
+   * The cluster coordinator listens on this to stand this node down and re-run
+   * its election. The poll loop reports it and then KEEPS POLLING on a jittered
+   * backoff: standing down permanently is what made inbound Telegram go dead on
+   * a live machine, because with `cluster.enabled` off there is no election to
+   * stand down to, and the competing consumer is frequently transient anyway.
    */
   readonly onConcurrentConsumerConflict?: ((detail: string) => void) | undefined;
 }
@@ -261,6 +265,21 @@ export class TelegramIngressSupervisor {
         });
         backoffMs = BACKOFF_MIN_MS;
         conflictRecoveries = 0;
+        // A poll that came back is the only proof the surface recovered, so it
+        // is the only thing that clears a blocked status. Recovery is
+        // announced, because an operator who was told this surface was dead is
+        // owed the other half of that sentence.
+        if (!this.currentStatus.reason.startsWith('long-polling')) {
+          logger.info('Telegram ingress: polling recovered and is receiving messages again', {
+            surface: 'telegram',
+            previous: this.currentStatus.reason,
+          });
+          this.currentStatus = {
+            mode: 'polling',
+            reason: `long-polling Telegram getUpdates for bot ${api.botId} (no public URL required)`,
+            running: true,
+          };
+        }
         if (updates.length > 0) {
           offset = await this.dispatchBatch(updates, api, offset);
           if (offset !== undefined) store.save(offset);
@@ -279,7 +298,13 @@ export class TelegramIngressSupervisor {
         const dictated = error instanceof TelegramApiError && error.retryAfterSeconds !== null
           ? error.retryAfterSeconds * 1_000
           : null;
-        await this.delay(dictated ?? backoffMs);
+        // Jitter, so two consumers of the same token do not settle into
+        // lockstep and spend the rest of the day terminating each other's long
+        // poll at the same instant. Only ever adds delay, never removes it.
+        const jitter = error instanceof TelegramApiError && error.errorCode === 409
+          ? Math.floor(Math.random() * CONFLICT_JITTER_MS)
+          : 0;
+        await this.delay((dictated ?? backoffMs) + jitter);
         backoffMs = Math.min(backoffMs * 2, BACKOFF_MAX_MS);
       }
     }
@@ -296,38 +321,9 @@ export class TelegramIngressSupervisor {
     api: TelegramBotApi,
     countConflict: () => number,
   ): Promise<string | null> {
-    if (error instanceof TelegramApiError && error.isConcurrentConsumerConflict) {
-      const reason = 'Telegram polling stopped: another process is already long-polling this bot token '
-        + `(${error.description || 'terminated by other getUpdates request'}). `
-        + 'Two consumers cannot share one token, so this one stands down rather than fighting for it.';
-      logger.warn('Telegram ingress: another consumer holds this bot token; standing down', {
-        detail: error.description,
-      });
-      this.deps.onConcurrentConsumerConflict?.(reason);
-      return reason;
-    }
-
-    if (error instanceof TelegramApiError && error.isWebhookConflict) {
-      const attempt = countConflict();
-      if (attempt > MAX_WEBHOOK_CONFLICT_RECOVERIES) {
-        const reason = 'Telegram polling stopped: a webhook is still registered for this bot, and '
-          + `${MAX_WEBHOOK_CONFLICT_RECOVERIES} attempts to remove it did not succeed. `
-          + 'getUpdates and a registered webhook cannot both be active. Remove the webhook '
-          + '(deleteWebhook) or set surfaces.telegram.mode=webhook.';
-        logger.error('Telegram ingress: unrecoverable webhook conflict', { detail: reason });
-        return reason;
-      }
-      logger.warn('Telegram ingress: a webhook is registered, so polling is blocked (409)', {
-        attempt,
-        action: 'removing the webhook and retrying',
-      });
-      try {
-        await api.deleteWebhook(false);
-      } catch (deleteError) {
-        logger.warn('Telegram ingress: deleteWebhook failed while clearing a conflict', {
-          error: summarizeError(deleteError),
-        });
-      }
+    if (error instanceof TelegramApiError && error.errorCode === 409) {
+      await this.handleConflict(error, api, countConflict());
+      // NEVER terminal. See handleConflict.
       return null;
     }
 
@@ -341,6 +337,150 @@ export class TelegramIngressSupervisor {
 
     logger.warn('Telegram ingress: poll failed; backing off', { error: summarizeError(error) });
     return null;
+  }
+
+  /**
+   * A 409 Conflict, handled so that it can never end the loop.
+   *
+   * ── What went wrong before ────────────────────────────────────────────────
+   *
+   * A 409 was terminal down both of its branches, and inbound Telegram went
+   * permanently dead on a live machine because of it: polling stopped at
+   * 12:24 and stayed stopped until a human restarted the daemon, with every
+   * message in between unread and nothing but a log line to say so.
+   *
+   * Worse, it died down the WRONG branch. Telegram uses 409 for two unrelated
+   * situations — a registered webhook, and another process long-polling the
+   * same token — and they were told apart by matching the error description
+   * against "terminated by other getUpdates". Anything that did not match that
+   * string fell through to the webhook branch, because `isWebhookConflict` was
+   * defined as "409 and not concurrent". So webhook was the DEFAULT for every
+   * 409 whose description was missing, reworded, or replaced by an
+   * intermediary's own error body. A string that has to be exhaustive to be
+   * safe is not a classification, it is a guess.
+   *
+   * The evidence on that machine settles which case it actually was: no
+   * webhook was ever registered (`getWebhookInfo` reported none, and the logs
+   * contain no `setWebhook` call), and deleteWebhook was called three times
+   * without the 409 ever clearing. A 409 that survives a successful
+   * deleteWebhook is, by construction, not a webhook conflict.
+   *
+   * ── What it does now ──────────────────────────────────────────────────────
+   *
+   * The cause is ESTABLISHED rather than guessed: `getWebhookInfo` is the
+   * authority, because it answers the actual question. The description is used
+   * only to enrich the message a person reads.
+   *
+   * And neither cause is fatal:
+   *
+   *  - **A webhook really is registered.** Clear it and retry. If repeated
+   *    clears do not take, that is operator-actionable — so it is escalated to
+   *    an error that names the fix, and the loop KEEPS RETRYING on the backoff.
+   *    A registered webhook can be removed by a person at any moment, and when
+   *    it is, polling must resume by itself.
+   *
+   *  - **Another consumer holds the token.** Report it, so a cluster
+   *    coordinator can stand this node down and re-run its election, then back
+   *    off and keep retrying. The other consumer is frequently transient — a
+   *    test daemon, a second checkout, a stale process — and standing down
+   *    forever means the owner's messages are lost until somebody notices.
+   *    With `cluster.enabled` off there is no election to stand down TO, which
+   *    is exactly how the live failure became permanent.
+   *
+   * Retrying is bounded and jittered rather than tight, so two consumers do
+   * not spin terminating each other's long poll.
+   */
+  private async handleConflict(
+    error: TelegramApiError,
+    api: TelegramBotApi,
+    attempt: number,
+  ): Promise<void> {
+    const action = classifyTelegramConflict({
+      description: error.description || `HTTP ${String(error.errorCode)}`,
+      webhookUrl: await this.registeredWebhookUrl(api),
+      clustered: Boolean(this.deps.configManager.get('cluster.enabled')),
+      attempt,
+    });
+
+    if (action.kind === 'clear-webhook') {
+      try {
+        await api.deleteWebhook(false);
+      } catch (deleteError) {
+        logger.warn('Telegram ingress: deleteWebhook failed while clearing a conflict', {
+          surface: 'telegram',
+          error: summarizeError(deleteError),
+        });
+      }
+      if (action.escalate && action.reason !== null) {
+        this.markBlocked(action.reason);
+      } else {
+        logger.warn('Telegram ingress: a webhook may be registered, so polling is blocked (409)', {
+          surface: 'telegram',
+          attempt,
+          webhookUrl: action.webhookUrl ?? '(none reported by getWebhookInfo)',
+          action: 'removing the webhook and retrying',
+        });
+      }
+      return;
+    }
+
+    if (action.escalate) {
+      this.markBlocked(action.reason);
+    } else {
+      logger.warn('Telegram ingress: another consumer holds this bot token', {
+        surface: 'telegram',
+        attempt,
+        detail: action.reason,
+      });
+    }
+    // Told on every occurrence: a coordinator that wants to stand this node
+    // down can, and one that is not running simply has no listener.
+    this.deps.onConcurrentConsumerConflict?.(action.reason);
+  }
+
+  /**
+   * Ask Telegram whether a webhook is actually registered.
+   *
+   * This is the authority for classifying a 409, replacing a regex over an
+   * error description that only worked when the description said what we
+   * expected. A failure to answer is reported as "no webhook": the alternative
+   * default sent every unclassifiable conflict down the webhook path, which is
+   * the branch that used to give up.
+   */
+  private async registeredWebhookUrl(api: TelegramBotApi): Promise<string | null> {
+    try {
+      const info = await api.getWebhookInfo();
+      const url = typeof info.url === 'string' ? info.url.trim() : '';
+      return url.length > 0 ? url : null;
+    } catch (error) {
+      logger.warn('Telegram ingress: could not read webhook status while classifying a conflict', {
+        surface: 'telegram',
+        error: summarizeError(error),
+        detail: 'treating the conflict as a competing consumer, which is the recoverable reading',
+      });
+      return null;
+    }
+  }
+
+  /**
+   * A surface that is up but not consuming has to say so where someone will
+   * see it, not only in a log line nobody reads.
+   *
+   * `running` stays true on purpose: the loop is alive and still trying, and
+   * reporting it as stopped would be the same lie in the other direction.
+   * `reason` carries what is wrong and what to do about it, and the level is
+   * `error` because an operator who switched this surface ON and is receiving
+   * nothing has the most expensive failure in the system.
+   */
+  private markBlocked(reason: string): void {
+    const full = `Telegram polling is blocked: ${reason}`;
+    if (this.currentStatus.reason !== full) {
+      logger.error('Telegram is enabled but is NOT receiving messages', {
+        surface: 'telegram',
+        action: full,
+      });
+    }
+    this.currentStatus = { mode: 'polling', reason: full, running: true };
   }
 
   /**
