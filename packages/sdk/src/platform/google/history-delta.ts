@@ -24,7 +24,20 @@
  *   - Authorization: the method requires one of `https://mail.google.com/`,
  *     `https://www.googleapis.com/auth/gmail.modify`,
  *     `https://www.googleapis.com/auth/gmail.readonly`, or
- *     `https://www.googleapis.com/auth/gmail.metadata`.
+ *     `https://www.googleapis.com/auth/gmail.metadata`. **`gmail.metadata`
+ *     authorizes the call but does not authorize what this module needs the
+ *     call for.** Per Google's scope reference
+ *     (https://developers.google.com/workspace/gmail/api/auth/scopes,
+ *     verified live): `gmail.metadata` is "View your email message metadata
+ *     such as labels and headers, but not the email body" — verbatim, its
+ *     own description excludes the body. `gmail.readonly` is "View your
+ *     email messages and settings," `gmail.modify` adds compose/send, and
+ *     `https://mail.google.com/` is full access; all three include the body.
+ *     So a token holding only `gmail.metadata` can list what changed but
+ *     this module cannot do anything useful with that: the whole point of a
+ *     delta here is new message bodies to match against verification
+ *     expectations, and metadata-only can never produce one. See the
+ *     `metadata-scope-only` outcome below.
  *   - **The too-old case, verbatim from the docs**: "Supplying an invalid or
  *     out of date startHistoryId typically returns an HTTP 404 error code. A
  *     historyId is typically valid for at least a week, but in some rare
@@ -55,20 +68,45 @@
  *      `unavailable: 'resync-required'` outcome that tells the caller to
  *      fall back to a full mailbox listing and re-establish the cursor from
  *      a fresh `historyId`, rather than degrading into "no new messages".
+ *
+ *   3. **A metadata-only grant is gated too, and gated separately from "no
+ *      scope at all".** A body-less delta and a delta with bodies are
+ *      opposite facts in exactly the same way an empty delta and "not
+ *      allowed to look" are: a caller that mistook one for the other would
+ *      believe a verification email's link was checked when the body it
+ *      lived in was never fetched. So `historyListDelta` never calls
+ *      `history.list` at all for a metadata-only token — there is nothing
+ *      useful it could do with the result — and instead returns
+ *      `unavailable: 'metadata-scope-only'`, a third reason distinct from
+ *      both `no-gmail-scope` and `resync-required` and from an `ok: true`
+ *      success.
  */
 
 import type { GoogleApiFailure, GoogleApiResult, GmailMessageBody } from './api-client.js';
 
 /**
- * Scopes that authorize `users.history.list`, per Google's live
+ * Scopes that authorize `users.history.list` itself, per Google's live
  * "Authorization scopes" listing for the method (see module header).
- * `gmail.metadata` is the narrowest of the four and still authorizes it.
+ * Includes `gmail.metadata`, which authorizes the call but not what this
+ * module needs the call for — see `GMAIL_BODY_SCOPES`.
  */
 export const GMAIL_HISTORY_SCOPES: readonly string[] = [
   'https://mail.google.com/',
   'https://www.googleapis.com/auth/gmail.modify',
   'https://www.googleapis.com/auth/gmail.readonly',
   'https://www.googleapis.com/auth/gmail.metadata',
+];
+
+/**
+ * Scopes that authorize reading the message **body**, per Google's live
+ * scope reference (https://developers.google.com/workspace/gmail/api/auth/scopes,
+ * verified live). Deliberately excludes `gmail.metadata`, whose own
+ * description reads "but not the email body" — verbatim.
+ */
+export const GMAIL_BODY_SCOPES: readonly string[] = [
+  'https://mail.google.com/',
+  'https://www.googleapis.com/auth/gmail.modify',
+  'https://www.googleapis.com/auth/gmail.readonly',
 ];
 
 /** `historyTypes[]` values, singular form, exactly as Gmail's API expects them. */
@@ -91,12 +129,15 @@ export interface GmailHistoryDelta {
   readonly messages: readonly GmailMessageBody[];
 }
 
-export type HistoryUnavailableReason = 'no-gmail-scope' | 'resync-required';
+export type HistoryUnavailableReason = 'no-gmail-scope' | 'metadata-scope-only' | 'resync-required';
 
 /**
  * A failure with an explicit reason a caller can switch on, distinguishing
- * "the capability is off" (`no-gmail-scope`) and "the cursor aged out"
- * (`resync-required`) from an ordinary transient `GoogleApiFailure`.
+ * "the capability is off" (`no-gmail-scope`), "readable but bodies are not"
+ * (`metadata-scope-only`), and "the cursor aged out" (`resync-required`) from
+ * an ordinary transient `GoogleApiFailure`. A caller can never mistake any of
+ * these three for a full delta, because a full delta is the sole `ok: true`
+ * shape and none of these three carry one.
  */
 export interface HistoryDeltaUnavailable extends GoogleApiFailure {
   readonly unavailable: HistoryUnavailableReason;
@@ -125,9 +166,9 @@ function readString(value: unknown, fallback = ''): string {
   return typeof value === 'string' ? value : fallback;
 }
 
-function hasHistoryScope(granted: readonly string[]): boolean {
+function hasAnyScope(granted: readonly string[], wanted: readonly string[]): boolean {
   const set = new Set(granted);
-  return GMAIL_HISTORY_SCOPES.some((scope) => set.has(scope));
+  return wanted.some((scope) => set.has(scope));
 }
 
 function buildHistoryPageParams(options: HistoryDeltaOptions, pageToken: string | undefined): URLSearchParams {
@@ -204,7 +245,9 @@ export async function collectHistoryDelta(
   deps: HistoryDeltaDeps,
   options: HistoryDeltaOptions,
 ): Promise<HistoryListDeltaResult> {
-  if (!hasHistoryScope(deps.scopes())) {
+  const granted = deps.scopes();
+
+  if (!hasAnyScope(granted, GMAIL_HISTORY_SCOPES)) {
     return {
       ok: false,
       unavailable: 'no-gmail-scope',
@@ -212,6 +255,22 @@ export async function collectHistoryDelta(
       problem:
         'The granted Google credential carries no Gmail read scope (readonly, modify, metadata, or full mail), so users.history.list cannot be called.',
       fix: 'This mailbox is served over IMAP IDLE instead, which needs no Gmail OAuth scope. Granting a Gmail scope is a restricted-scope decision that requires explicit, separate authorization.',
+    };
+  }
+
+  if (!hasAnyScope(granted, GMAIL_BODY_SCOPES)) {
+    // Only `gmail.metadata` is present. It authorizes the history.list call
+    // itself, but its own scope description excludes the message body, and a
+    // body-less delta cannot match a verification expectation or serve any
+    // other purpose this module exists for. Refuse before making the call at
+    // all, rather than making it and returning a delta with empty bodies.
+    return {
+      ok: false,
+      unavailable: 'metadata-scope-only',
+      status: null,
+      problem:
+        'The granted Google credential carries only the gmail.metadata scope, which authorizes users.history.list but explicitly excludes the message body ("but not the email body" — Google\'s own scope description). This module cannot produce a usable delta without bodies.',
+      fix: 'Grant a body-capable Gmail scope (gmail.readonly, gmail.modify, or https://mail.google.com/) to enable history-based delta sync, or rely on the IMAP IDLE watcher instead.',
     };
   }
 

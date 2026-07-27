@@ -15815,6 +15815,10 @@
       "kind": "const"
     },
     {
+      "name": "GMAIL_BODY_SCOPES",
+      "kind": "const"
+    },
+    {
       "name": "GMAIL_HISTORY_SCOPES",
       "kind": "const"
     },
