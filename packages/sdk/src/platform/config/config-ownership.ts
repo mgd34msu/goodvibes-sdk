@@ -174,12 +174,31 @@ export const USER_LOCAL_OVERRIDE_CONFIG_KEYS: readonly string[] = [
 ];
 
 const DAEMON_KEY_SET = new Set<string>(DAEMON_OWNED_CONFIG_KEYS);
+const DAEMON_NON_SCHEMA_PATH_SET = new Set<string>(DAEMON_OWNED_NON_SCHEMA_CONFIG_PATHS);
 const USER_SHARED_WINS_SET = new Set<string>(USER_SHARED_WINS_CONFIG_KEYS);
 const USER_LOCAL_OVERRIDE_SET = new Set<string>(USER_LOCAL_OVERRIDE_CONFIG_KEYS);
 
-/** True when the daemon is the single writer and reader-of-record for `key`. */
+/**
+ * True when the daemon is the single writer and reader-of-record for `key`.
+ *
+ * The non-schema list is consulted HERE and not only by the owned-set walk.
+ * When that list held nothing but `conversationGate.gatedSurfaces` and
+ * `cluster.peers` the distinction did not matter: both sit under a daemon-owned
+ * PREFIX, so this predicate already answered yes and the list existed purely so
+ * a walk over owned paths would not miss a non-scalar. Credential paths added
+ * since — `email.passwordRef`, the calendar client secrets, the Google refresh
+ * token — have no such prefix, and for those the two answers disagreed: the
+ * walk called them daemon-owned while this predicate called them client-owned.
+ *
+ * A key nobody claims is not stored twice, it is stored NOWHERE. The manager
+ * routes daemon-owned keys to the daemon tier and everything else to the
+ * surface tier, and a dynamic key that failed both tests was accepted, reported
+ * as saved, and written to neither file. That is the exact silence config
+ * ownership exists to prevent, applied to a password reference.
+ */
 export function isDaemonOwnedConfigKey(key: string): boolean {
   if (DAEMON_KEY_SET.has(key)) return true;
+  if (DAEMON_NON_SCHEMA_PATH_SET.has(key)) return true;
   return DAEMON_OWNED_CONFIG_PREFIXES.some((prefix) => key.startsWith(prefix));
 }
 
