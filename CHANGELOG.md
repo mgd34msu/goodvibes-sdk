@@ -4,6 +4,76 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
+## [1.18.1] - 2026-07-27
+
+### Fixed
+
+- **A mail route on a daemon without mail deps dispatched into itself 256 times
+  and then blamed load.** 1.18.0 made `email.*` served and invokable, and its
+  REST paths reachable — but only on a composition that hands the mail verbs
+  their dependencies. On one that does not (a bare `bootDaemon`, an embed, a
+  test harness), the handler is absent, and that turned out to be a cycle rather
+  than an answer.
+
+  `invokeGatewayMethodCall` has two arms: run the attached handler in process,
+  or — no handler, but the descriptor advertises an `http` binding — synthesize
+  a request to that path and feed it back into the real router. The second arm
+  exists for verbs whose implementation is a genuine HTTP route elsewhere in the
+  chain. It stopped being safe when the gateway REST table gained rows for the
+  handler-backed families, because those rows map the advertised path straight
+  back to the SAME methodId. The synthesized request re-entered the same arm and
+  synthesized again. Before those rows existed the synthesized request 404'd and
+  the loop ended in one hop — the "plain 404" the route-reconcile module
+  documents. Adding them closed the cycle.
+
+  Measured on a 1.18.0 daemon: one `GET /api/email/inbox` produced **256 nested
+  dispatches**, then answered
+  `503 ws-call-overloaded — Daemon is at its concurrent WS-call cap (256)`.
+
+  Both halves of that were wrong. The capability was not wired, which is a fixed
+  and terminal condition, not a transient capacity problem that might clear on
+  retry — anyone reading that message would have gone looking at load, and load
+  was never involved. And a single request consumed the daemon's entire
+  concurrent WS-call budget, so a handful of them would have starved every other
+  caller on the daemon.
+
+  Two guards, deliberately independent:
+
+  - An advertised binding that routes back to its own methodId is no longer
+    dispatched at all. There is no other implementation to reach, so "no
+    handler" is terminal, and the caller is told exactly that: **501** with
+    `code: NOT_INVOKABLE` and a message naming the capability and saying it is
+    not wired up in this composition — a supported configuration, described as
+    one rather than as a fault.
+  - A synthesized request now carries its dispatch depth, and one that re-enters
+    the dispatcher is refused as a **loop** (500, `INTERNAL_ERROR`) rather than
+    reported as capacity. Depth travels with the request rather than being
+    tracked per path, because two clients legitimately asking for the same path
+    at the same moment are not a cycle and a path-keyed set would call them one.
+
+  Verified against a real daemon the same way the defect was found, counting
+  dispatches: `/api/email/inbox`, `/api/email/inbox/{uid}` and
+  `/api/email/drafts` go from **256 dispatches and a 503** to **0 dispatches and
+  a 501**, while `calendar.events.list` — whose handlers do attach from
+  `homeDirectory` alone — still returns its real `CALENDAR_NOT_CONFIGURED`, and
+  `/status` is untouched.
+
+- **The gate that should have caught it.** `test/gateway-self-dispatch-loop.test.ts`
+  reads the self-routed method ids out of the real REST table rather than a
+  hand-kept list, so a family added later is covered without anyone remembering
+  to add it. For each one it asserts the two invariants that matter — never a
+  `ws-call-overloaded` answer, and never a re-entry into the router — plus the
+  honest 501 for the verbs that reach the dispatch arm unobstructed. Checked by
+  reverting the guard: 41 of its 68 assertions fail without the fix and all 68
+  pass with it, so it is a gate rather than decoration.
+
+### Changed
+
+- `readBodyBounded` moved from `platform/daemon/control-plane.ts` to its sibling
+  `platform/daemon/helpers.ts`. No behaviour change; the guards above pushed
+  control-plane.ts over the 800-line cap, and an unrelated helper was the honest
+  thing to move rather than trimming comments off the file until it fit.
+
 ## [1.18.0] - 2026-07-27
 
 Mail, calendar and a browser stop being things a surface implements and become

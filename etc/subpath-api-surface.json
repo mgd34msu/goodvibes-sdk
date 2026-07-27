@@ -4145,6 +4145,10 @@
       "kind": "const"
     },
     {
+      "name": "SYNTHESIZED_DISPATCH_HEADER",
+      "kind": "const"
+    },
+    {
       "name": "StepUpAssertionVerifier",
       "kind": "type"
     },
@@ -4529,6 +4533,10 @@
     },
     {
       "name": "readStringArrayField",
+      "kind": "function"
+    },
+    {
+      "name": "readSynthesizedDispatchDepth",
       "kind": "function"
     },
     {

@@ -28,7 +28,12 @@ export { dispatchOperatorRoutes } from './operator.js';
 export { dispatchRemoteRoutes } from './remote.js';
 export { dispatchDaemonApiRoutes } from './api-router.js';
 export type { DaemonApiRouteExtension } from './api-router.js';
-export { dispatchGatewayRestRoutes, GATEWAY_REST_ROUTES } from './gateway-rest-routes.js';
+export {
+  dispatchGatewayRestRoutes,
+  GATEWAY_REST_ROUTES,
+  SYNTHESIZED_DISPATCH_HEADER,
+  readSynthesizedDispatchDepth,
+} from './gateway-rest-routes.js';
 export {
   buildMissingScopeBody,
   resolveAuthenticatedPrincipal,

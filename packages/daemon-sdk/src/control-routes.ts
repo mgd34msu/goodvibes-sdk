@@ -2,6 +2,7 @@ import type { DaemonControlRouteHandlers, GatewayRestVerbInvocation } from './co
 import { isRuntimeEventDomain, type RuntimeEventDomain } from '@pellux/goodvibes-contracts';
 import { SDKErrorCodes } from '@pellux/goodvibes-errors';
 import { jsonErrorResponse } from './error-response.js';
+import { readSynthesizedDispatchDepth } from './gateway-rest-routes.js';
 import type { AuthenticatedPrincipal } from './http-policy.js';
 import {
   createRouteBodySchema,
@@ -53,6 +54,12 @@ interface ControlRouteContext {
       readonly scopes?: readonly string[] | undefined;
       readonly clientKind?: string | undefined;
     };
+    /**
+     * How many synthesized dispatches already produced this call. Passed on so
+     * a request that re-enters the dispatcher is refused as a loop instead of
+     * consuming the concurrent-call budget one nesting level at a time.
+     */
+    readonly synthesizedDepth?: number | undefined;
   }) => Promise<{ status: number; ok: boolean; body: unknown }>;
   readonly parseOptionalJsonBody: (req: Request) => Promise<JsonRecord | null | Response>;
   readonly requireAdmin: (req: Request) => Response | null;
@@ -294,6 +301,9 @@ export function createDaemonControlRouteHandlers(
         methodId,
         query,
         body: { ...params, ...bodyRecord },
+        // Carry the depth forward. This route IS the far side of a synthesized
+        // dispatch, so a marked request arriving here is the loop itself.
+        synthesizedDepth: readSynthesizedDispatchDepth(req),
         context: {
           principalId: principal?.principalId,
           principalKind: principal?.principalKind,

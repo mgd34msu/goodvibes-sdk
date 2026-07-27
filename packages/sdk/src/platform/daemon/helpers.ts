@@ -73,3 +73,35 @@ export function readExternalContentSource(value: unknown): AutomationExternalCon
   }
   return undefined;
 }
+
+/**
+ * Read a response body to text with a hard byte ceiling. Returns
+ * `{ ok:false }` (and cancels the body) when the ceiling is exceeded — the
+ * caller aborts and reports a structured error instead of buffering forever.
+ */
+export async function readBodyBounded(response: Response, maxBytes: number): Promise<{ ok: true; text: string } | { ok: false; bytesRead: number }> {
+  const body = response.body;
+  if (!body) return { ok: true, text: '' };
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (value) {
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel().catch(() => {});
+        return { ok: false, bytesRead: total };
+      }
+      chunks.push(value);
+    }
+  }
+  const merged = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    merged.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return { ok: true, text: new TextDecoder().decode(merged) };
+}

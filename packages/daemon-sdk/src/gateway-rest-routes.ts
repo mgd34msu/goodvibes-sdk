@@ -195,6 +195,25 @@ export const GATEWAY_REST_ROUTES: readonly GatewayRestRoute[] = [
  * minimal embed), a matching path returns `null` rather than throwing — it
  * degrades to the same 404 the caller saw before these routes existed.
  */
+/**
+ * Header carrying how many synthesized dispatches a request is already deep.
+ *
+ * Lives here rather than beside the guard that reads it because this module
+ * owns the table that made a cycle possible: these rows map an advertised path
+ * back to its own methodId, so a verb reaching the synthesizing arm of
+ * `invokeGatewayMethodCall` lands right back here. Absent on a request from a
+ * real client; `1` on the first synthesis.
+ */
+export const SYNTHESIZED_DISPATCH_HEADER = 'x-goodvibes-synthesized-dispatch';
+
+/** Read the synthesized-dispatch depth off a request. 0 when unmarked. */
+export function readSynthesizedDispatchDepth(req: Request): number {
+  const raw = req.headers.get(SYNTHESIZED_DISPATCH_HEADER);
+  if (raw === null) return 0;
+  const depth = Number.parseInt(raw, 10);
+  return Number.isFinite(depth) && depth > 0 ? depth : 0;
+}
+
 export async function dispatchGatewayRestRoutes(
   req: Request,
   handlers: Partial<DaemonGatewayRestRouteHandlers>,
