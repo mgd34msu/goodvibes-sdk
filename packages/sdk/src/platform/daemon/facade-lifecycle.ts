@@ -138,6 +138,24 @@ export interface DaemonLifecycleRuntimeOptions {
   /** Boot-promotion idle recheck cadence. Default 60s; floored at 1s. */
   readonly promotionRetryMs?: number | undefined;
   /**
+   * True when this process was told to run out of a home that is NOT the
+   * machine's default — `--daemon-home`, `GOODVIBES_DAEMON_HOME`, a test
+   * harness's temp tree.
+   *
+   * Such a daemon must NEVER adopt the machine's service unit. It happened:
+   * a daemon started from a scratchpad directory found the owner's unit not
+   * running, wrote its own scratchpad `ExecStart` into
+   * `~/.config/systemd/user/goodvibes.service`, and exited. systemd then
+   * supervised the throwaway daemon as the machine's daemon — which is how it
+   * came to be reading the owner's real credentials and long-polling his real
+   * Telegram bot, producing the 409 that killed inbound messages.
+   *
+   * Promotion means "this process should be the machine's daemon forever".
+   * A process running from a directory that may not exist tomorrow cannot
+   * honestly claim that, so the claim is refused rather than merely discouraged.
+   */
+  readonly hasOverriddenHome?: boolean | undefined;
+  /**
    * Whether this process is a compiled single-file binary. Only a compiled
    * binary self-promotes to a supervised service — a source/dev run would write
    * a unit whose ExecStart is a dev command line that fails on the next boot.
@@ -529,6 +547,21 @@ export class DaemonLifecycleRuntime {
    */
   private promoteToServiceAtBoot(): void {
     if (!this.options.updateArtifact) return;
+    // A daemon running out of an overridden home is a throwaway by definition,
+    // and a throwaway must not become the machine's daemon. See
+    // `hasOverriddenHome` — this exact promotion put a scratchpad daemon in
+    // charge of the owner's machine and his real Telegram bot.
+    //
+    // Checked BEFORE `service.enabled`, deliberately: that key is client-owned
+    // and therefore read from the REAL home, so a test tree's own opt-out was
+    // written and never read. Isolation that depends on the isolated process
+    // reading its own settings file is not isolation.
+    if (this.options.hasOverriddenHome === true) {
+      logger.info('DaemonServer: home was overridden — skipping boot promotion', {
+        detail: 'a daemon running from a non-default home never adopts the machine service unit',
+      });
+      return;
+    }
     if (this.options.configManager.get('service.enabled') === false) return;
     // Only a compiled binary may self-promote: a source/dev run would install a
     // unit whose ExecStart reconstructs a dev command line for a binary and fail
