@@ -72,6 +72,14 @@ export interface DaemonConfig {
    */
   updateArtifact?: import('./facade-lifecycle.js').DaemonUpdateArtifact | undefined;
   /**
+   * True when this process was told to run out of a home that is NOT the
+   * machine's default (`--daemon-home`, `GOODVIBES_DAEMON_HOME`, a test
+   * harness's temp tree). Such a daemon never adopts the machine's service
+   * unit — see DaemonLifecycleRuntimeOptions.hasOverriddenHome for the
+   * incident that made this necessary.
+   */
+  hasOverriddenHome?: boolean | undefined;
+  /**
    * An already-composed LAN leader-election coordinator to REUSE.
    *
    * A process has exactly one. A host that gates its own inbound consumers

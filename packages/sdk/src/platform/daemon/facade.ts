@@ -239,6 +239,10 @@ export class DaemonServer {
       platformServiceManager: this.platformServiceManager,
       isIdle: () => this.sessionBroker.countBusySessions() === 0,
       updateArtifact: this.config.updateArtifact, // absent = host-managed updates (see DaemonUpdateArtifact)
+      // Forwarded so a daemon on an overridden home cannot seize the machine's
+      // service unit. Absent = the machine default, which is the only case that
+      // may promote.
+      ...(this.config.hasOverriddenHome === undefined ? {} : { hasOverriddenHome: this.config.hasOverriddenHome }),
       stopGracefully: () => this.stop(), // update/rollback restarts take the normal stop path, so shutdown hooks fire
     });
     this.httpRouter.setDaemonStatusProviders({

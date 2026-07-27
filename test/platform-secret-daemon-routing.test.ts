@@ -39,6 +39,11 @@ import {
   secretWriteScopeWasOverridden,
 } from '../packages/sdk/src/platform/config/secrets.ts';
 import { classifyDaemonConfigPath } from '../packages/sdk/src/platform/cluster/config-replication-policy.ts';
+import { CONFIG_SCHEMA } from '../packages/sdk/src/platform/config/schema.ts';
+import {
+  isDaemonOwnedConfigKey,
+  listDaemonOwnedConfigPaths,
+} from '../packages/sdk/src/platform/config/config-ownership.ts';
 
 /**
  * Every credential the daemon's own mail and calendar handlers read.
@@ -195,5 +200,66 @@ describe('the real SecretsManager', () => {
     await manager.set(key, 'caldav-pass', { scope: 'project', medium: 'plaintext' });
     await manager.delete(key, { scope: 'project' });
     expect(await manager.get(key)).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Reachable through the UI that tells you to set them
+// ---------------------------------------------------------------------------
+
+/**
+ * Ownership decides WHERE a value is stored. The schema decides whether an
+ * operator can ever set it.
+ *
+ * These were read by the daemon's mail and calendar handlers long before they
+ * were declared anywhere, and the settings modal renders from `CONFIG_SCHEMA`.
+ * So the handlers' own error messages named keys the UI could not show:
+ * "CalDAV is not configured. Set surfaces.calendar.caldavUrl and
+ * surfaces.calendar.caldavUser." pointed at nothing an operator could reach.
+ *
+ * The list below is exactly the keys those messages name, so a message that
+ * starts pointing somewhere new fails here rather than in front of a person
+ * trying to follow it.
+ */
+describe('the keys the handlers tell operators to set are declared', () => {
+  const OPERATOR_FACING_KEYS: readonly string[] = [
+    // "CalDAV is not configured. Set surfaces.calendar.caldavUrl and surfaces.calendar.caldavUser."
+    'surfaces.calendar.caldavUrl',
+    'surfaces.calendar.caldavUser',
+    'surfaces.calendar.caldavPassword',
+    // "Email is not configured. Set surfaces.email.host, surfaces.email.user, and the email password secret."
+    'surfaces.email.host',
+    'surfaces.email.user',
+    'surfaces.email.password',
+    // The inbox provider's own documented keys.
+    'surfaces.email.imapHost',
+    'surfaces.email.imapPort',
+    'surfaces.email.imapUser',
+    'surfaces.email.imapPassword',
+  ];
+
+  const schemaKeys = new Set(CONFIG_SCHEMA.map((setting) => setting.key));
+
+  test.each(OPERATOR_FACING_KEYS)('%s is in CONFIG_SCHEMA, so the settings modal can show it', (key) => {
+    expect(
+      schemaKeys.has(key),
+      `${key} is named in an operator-facing message but is not in CONFIG_SCHEMA, so the settings modal cannot render it and the instruction points nowhere`,
+    ).toBe(true);
+  });
+
+  test('being in the schema also makes them daemon-owned, so both halves hold at once', () => {
+    for (const key of OPERATOR_FACING_KEYS) {
+      expect(isDaemonOwnedConfigKey(key), `${key} is declared but not daemon-owned`).toBe(true);
+    }
+  });
+
+  test('no path is counted twice now that the schema owns them', () => {
+    // They were listed in DAEMON_OWNED_NON_SCHEMA_CONFIG_PATHS before they were
+    // real schema keys. Leaving them in both double-counted them in every
+    // owned-set walk; that list is for paths the schema does NOT describe.
+    const owned = listDaemonOwnedConfigPaths().filter(
+      (path) => path.startsWith('surfaces.email') || path.startsWith('surfaces.calendar'),
+    );
+    expect(new Set(owned).size).toBe(owned.length);
   });
 });

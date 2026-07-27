@@ -1,4 +1,8 @@
 import { type ConfigSettingDefinition, intRange } from './schema-shared.js';
+import {
+  daemonMailboxConfigDefaults,
+  daemonMailboxConfigSettings,
+} from './schema-domain-daemon-mailbox.js';
 
 export const surfaceConfigDefaults = {
   slack: {
@@ -143,6 +147,9 @@ export const surfaceConfigDefaults = {
     defaultRoomId: '',
     setupVersion: 0,
   },
+  // The daemon's own mail account and calendar. Not chat adapters, so they
+  // live in schema-domain-daemon-mailbox.ts; see that file's header.
+  ...daemonMailboxConfigDefaults,
 };
 
 export const surfaceConfigSettings: ConfigSettingDefinition[] = [
@@ -737,4 +744,8 @@ export const surfaceConfigSettings: ConfigSettingDefinition[] = [
     default: '',
     description: 'Default Matrix room id for routing',
   },
+
+  // The daemon's own mail account and calendar; see
+  // schema-domain-daemon-mailbox.ts for why both key spellings are declared.
+  ...daemonMailboxConfigSettings,
 ];

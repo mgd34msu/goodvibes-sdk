@@ -497,6 +497,32 @@ export type ConfigKey =
   | 'surfaces.matrix.accessToken'
   | 'surfaces.matrix.userId'
   | 'surfaces.matrix.defaultRoomId'
+  // The daemon's own mailbox and calendar (schema-domain-daemon-mailbox.ts).
+  | 'surfaces.email.host'
+  | 'surfaces.email.user'
+  | 'surfaces.email.username'
+  | 'surfaces.email.from'
+  | 'surfaces.email.password'
+  | 'surfaces.email.imapHost'
+  | 'surfaces.email.imapPort'
+  | 'surfaces.email.imapUser'
+  | 'surfaces.email.imapPassword'
+  | 'surfaces.email.imap.host'
+  | 'surfaces.email.imap.port'
+  | 'surfaces.email.imap.user'
+  | 'surfaces.email.imap.password'
+  | 'surfaces.email.imap.secure'
+  | 'surfaces.email.imap.mailbox'
+  | 'surfaces.email.imap.draftsMailbox'
+  | 'surfaces.email.smtp.host'
+  | 'surfaces.email.smtp.port'
+  | 'surfaces.email.smtp.password'
+  | 'surfaces.email.smtp.secure'
+  | 'surfaces.calendar.caldavUrl'
+  | 'surfaces.calendar.caldavUser'
+  | 'surfaces.calendar.caldavPassword'
+  | 'surfaces.calendar.defaultCalendarId'
+  | 'surfaces.calendar.calendars'
   | 'watchers.enabled'
   | 'watchers.pollIntervalMs'
   | 'watchers.heartbeatIntervalMs'
@@ -979,6 +1005,31 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'surfaces.matrix.accessToken' ? string :
   K extends 'surfaces.matrix.userId' ? string :
   K extends 'surfaces.matrix.defaultRoomId' ? string :
+  K extends 'surfaces.email.host' ? string :
+  K extends 'surfaces.email.user' ? string :
+  K extends 'surfaces.email.username' ? string :
+  K extends 'surfaces.email.from' ? string :
+  K extends 'surfaces.email.password' ? string :
+  K extends 'surfaces.email.imapHost' ? string :
+  K extends 'surfaces.email.imapPort' ? number :
+  K extends 'surfaces.email.imapUser' ? string :
+  K extends 'surfaces.email.imapPassword' ? string :
+  K extends 'surfaces.email.imap.host' ? string :
+  K extends 'surfaces.email.imap.port' ? number :
+  K extends 'surfaces.email.imap.user' ? string :
+  K extends 'surfaces.email.imap.password' ? string :
+  K extends 'surfaces.email.imap.secure' ? boolean :
+  K extends 'surfaces.email.imap.mailbox' ? string :
+  K extends 'surfaces.email.imap.draftsMailbox' ? string :
+  K extends 'surfaces.email.smtp.host' ? string :
+  K extends 'surfaces.email.smtp.port' ? number :
+  K extends 'surfaces.email.smtp.password' ? string :
+  K extends 'surfaces.email.smtp.secure' ? boolean :
+  K extends 'surfaces.calendar.caldavUrl' ? string :
+  K extends 'surfaces.calendar.caldavUser' ? string :
+  K extends 'surfaces.calendar.caldavPassword' ? string :
+  K extends 'surfaces.calendar.defaultCalendarId' ? string :
+  K extends 'surfaces.calendar.calendars' ? string :
   K extends 'watchers.enabled' ? boolean :
   K extends 'watchers.pollIntervalMs' ? number :
   K extends 'watchers.heartbeatIntervalMs' ? number :
