@@ -246,6 +246,60 @@ describe('cluster spread — three surfaces across two machines', () => {
     await advance(world, 120_000);
     expect(totalStarts(world)).toBe(startsAfterTakeover);
   });
+
+  test('a surface rescued from a dead machine is not handed straight back to it', async () => {
+    // The regression this pins down is a TRANSIENT one, which is why the test
+    // above could not see it: that test samples only after the dust settles,
+    // and by then the survivor has already taken the surface back.
+    //
+    // Two liveness questions disagreed. A holder is declared gone after
+    // masterTimeoutMs of silence; a yield TARGET was believed alive for twice
+    // candidacyAnnounceMs, and candidacyAnnounceMs is masterTimeoutMs — so for
+    // one further timeout the survivor still counted the dead machine as
+    // somebody it could hand work to. It completed the failover, then
+    // immediately yielded one of the rescued surfaces back to the corpse, and
+    // that surface had no consumer at all until the watchdog re-elected it.
+    // Observed live on a two-node LAN before the fix: failover finished 4.6s
+    // after the kill, the yield landed 0.8s later, and the surface was dark
+    // for a further 5.3s.
+    const world = createWorld();
+    const staying = addNode(world, { id: 'node-a', surfaces: [...THREE] });
+    const leaving = addNode(world, { id: 'node-b', surfaces: [...THREE] });
+    await startNode(world, staying);
+    await startNode(world, leaving);
+    await advance(world, 40_000);
+    expect(heldCount(leaving)).toBeGreaterThanOrEqual(1);
+
+    world.bus.partition(leaving.transport, 'switched-off');
+
+    // Step to the exact moment the survivor holds everything, rather than
+    // fast-forwarding past the window the defect lives in.
+    let guard = 0;
+    while (heldCount(staying) < THREE.length && guard < 400) {
+      await advance(world, 250);
+      guard += 1;
+    }
+    expect(heldCount(staying)).toBe(THREE.length);
+
+    const stopsAtTakeover = THREE.reduce(
+      (sum, name) => sum + surfaceState(staying, name).stopCount,
+      0,
+    );
+
+    // One further master timeout is precisely the window that used to be open.
+    await advance(world, 30_000);
+
+    const stopsAfterwards = THREE.reduce(
+      (sum, name) => sum + surfaceState(staying, name).stopCount,
+      0,
+    );
+    expect(stopsAfterwards).toBe(stopsAtTakeover);
+    expect(heldCount(staying)).toBe(THREE.length);
+    // Deliberately NOT expectExactlyOneReaderEach: the partitioned node still
+    // believes it holds what it held when the link dropped, which is ordinary
+    // split-brain on the far side of a partition and not what this test is
+    // about. The claim here is only about the survivor's own behaviour.
+  });
 });
 
 describe('cluster spread — partial overlap still spreads', () => {
