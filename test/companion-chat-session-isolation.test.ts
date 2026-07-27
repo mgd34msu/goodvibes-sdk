@@ -9,12 +9,15 @@
 
 import { describe, expect, test, beforeEach } from 'bun:test';
 import { settleEvents } from './_helpers/test-timeout.js';
+import { trackDisposables } from './_helpers/disposables.ts';
 import { CompanionChatManager } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
 import type {
   CompanionChatEventPublisher,
   CompanionLLMProvider,
   CompanionProviderChunk,
 } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
+
+const disposables = trackDisposables();
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -63,11 +66,13 @@ describe('I1: session-scoped event isolation', () => {
 
   beforeEach(() => {
     publisher = makeTrackingPublisher();
-    manager = new CompanionChatManager({
-      provider: makeMockProvider('reply'),
-      eventPublisher: publisher,
-      gcIntervalMs: 999_999,
-    });
+    manager = disposables.add(
+      new CompanionChatManager({
+        provider: makeMockProvider('reply'),
+        eventPublisher: publisher,
+        gcIntervalMs: 999_999,
+      }),
+    );
   });
 
   test('events for session A carry session A clientId, not session B clientId', async () => {
@@ -159,11 +164,13 @@ describe('I1: session-scoped event isolation', () => {
 describe('I2: no leak into global control-plane feed', () => {
   test('all published events carry a clientId filter (never broadcast to all clients)', async () => {
     const publisher = makeTrackingPublisher();
-    const manager = new CompanionChatManager({
-      provider: makeMockProvider('response text'),
-      eventPublisher: publisher,
-      gcIntervalMs: 999_999,
-    });
+    const manager = disposables.add(
+      new CompanionChatManager({
+        provider: makeMockProvider('response text'),
+        eventPublisher: publisher,
+        gcIntervalMs: 999_999,
+      }),
+    );
 
     const session = manager.createSession();
     manager.registerSubscriber(session.id, `companion-chat:${session.id}`);
@@ -185,11 +192,13 @@ describe('I2: no leak into global control-plane feed', () => {
     // Events should NOT be broadcast globally; they are just lost (acceptable in v1).
     // The guarantee is that publishEvent is NEVER called without a filter.
     const publisher = makeTrackingPublisher();
-    const manager = new CompanionChatManager({
-      provider: makeMockProvider('ignored'),
-      eventPublisher: publisher,
-      gcIntervalMs: 999_999,
-    });
+    const manager = disposables.add(
+      new CompanionChatManager({
+        provider: makeMockProvider('ignored'),
+        eventPublisher: publisher,
+        gcIntervalMs: 999_999,
+      }),
+    );
 
     const session = manager.createSession();
     // Deliberately do NOT call registerSubscriber
@@ -216,11 +225,13 @@ describe('I2: no leak into global control-plane feed', () => {
 describe('I3: conversation history isolation', () => {
   test('session A conversation does not share messages with session B', async () => {
     const publisher = makeTrackingPublisher();
-    const manager = new CompanionChatManager({
-      provider: makeMockProvider('fine'),
-      eventPublisher: publisher,
-      gcIntervalMs: 999_999,
-    });
+    const manager = disposables.add(
+      new CompanionChatManager({
+        provider: makeMockProvider('fine'),
+        eventPublisher: publisher,
+        gcIntervalMs: 999_999,
+      }),
+    );
 
     const sessionA = manager.createSession();
     const sessionB = manager.createSession();

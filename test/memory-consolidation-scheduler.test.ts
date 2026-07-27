@@ -11,6 +11,7 @@
  */
 import { describe, expect, test } from 'bun:test';
 import { MemoryConsolidationScheduler } from '../packages/sdk/src/platform/state/memory-consolidation-scheduler.ts';
+import { trackDisposables } from './_helpers/disposables.ts';
 import type {
   MemoryConsolidationRegistry,
   MemoryRecord,
@@ -20,6 +21,26 @@ import type {
 const NOW = 1_700_000_000_000;
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
+
+const disposables = trackDisposables();
+
+/**
+ * A timer for the scheduler's `setTimer` seam that never fires during a test.
+ *
+ * `scheduleNext()` assigns `this.timer` without clearing the handle it replaces.
+ * In production that is harmless, because `tick()` only ever runs from the timer
+ * that just fired and so consumed itself. These tests drive `tick()` by hand
+ * while a handle is still pending, so every manual tick strands the previous
+ * one — and `stop()` only clears the last. Registering each handle means the
+ * suite clears them all, instead of leaving 1000-second timers behind in a
+ * process that every other test file shares.
+ */
+function inertTimer(): ReturnType<typeof setTimeout> {
+  const handle = setTimeout(() => {}, 1_000_000);
+  (handle as { unref?: () => void }).unref?.();
+  disposables.defer(() => clearTimeout(handle));
+  return handle;
+}
 
 function rec(overrides: Partial<MemoryRecord> = {}): MemoryRecord {
   return {
@@ -85,7 +106,7 @@ function makeScheduler(input: {
     isIdle: () => idle,
     now: input.now ?? (() => NOW),
     // Timers never fire in tests — ticks are driven manually.
-    setTimer: () => setTimeout(() => {}, 1_000_000),
+    setTimer: inertTimer,
     onReceipt: (receipt) => receipts.push(receipt),
   });
   return { scheduler, receipts, setIdle: (value: boolean) => { idle = value; } };
@@ -176,7 +197,7 @@ describe('memory consolidation scheduler — the daemon runs the engine', () => 
       configSource: { getRaw: () => ({ learning: { consolidation: { enabled: false } } }) },
       isIdle: () => true,
       now: () => NOW,
-      setTimer: () => setTimeout(() => {}, 1_000_000),
+      setTimer: inertTimer,
       onReceipt: (r) => receipts.push(r),
     });
     scheduler.tick();
