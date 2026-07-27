@@ -16559,6 +16559,7 @@
         "authority",
         "expiresAt",
         "id",
+        "kind",
         "openedAt",
         "purpose",
         "recipientAddress",
@@ -32842,6 +32843,7 @@
         "allowed",
         "fix",
         "reason",
+        "taint",
         "untrustedOrigins"
       ]
     },

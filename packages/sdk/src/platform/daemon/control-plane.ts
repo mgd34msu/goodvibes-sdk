@@ -487,6 +487,11 @@ export class DaemonControlPlaneHelper {
               admin: ws.data.admin,
               scopes: ws.data.scopes,
               clientKind: ws.data.clientKind,
+              // The client says whether a person asked for this right now. Only
+              // a literal `true` counts: an absent or malformed field means
+              // "cannot claim it", which is the honest default for scheduled
+              // work, triggers and channel-driven calls.
+              ...(frame.explicitUserRequest === true ? { explicitUserRequest: true } : {}),
             },
           })
         : await this.invokeWebSocketControlPlaneCall({
@@ -632,6 +637,23 @@ export class DaemonControlPlaneHelper {
       readonly admin?: boolean | undefined;
       readonly scopes?: readonly string[] | undefined;
       readonly clientKind?: string | undefined;
+      /**
+       * True when this call is a direct human action right now — a person
+       * typed a command, pressed a button, or asked an agent for this in a
+       * live turn.
+       *
+       * Set ONLY by transports that can honestly claim it. Scheduled work,
+       * triggers and channel-driven work deliberately leave it unset, because
+       * they cannot: the whole point of the distinction is telling work the
+       * owner authorized apart from work initiated by content.
+       *
+       * Nothing new is gated on it. It is enforced where it was already
+       * meaningful (a supplied `false` is refused), and `confirm: true`
+       * carries the guarantee otherwise. A field nothing ever sets is
+       * vestigial, and a vestigial security field is worse than none because
+       * it reads as protection in review — so it is set for real.
+       */
+      readonly explicitUserRequest?: boolean | undefined;
     };
   }): Promise<{ status: number; ok: boolean; body: unknown }> {
     const descriptor = this.context.gatewayMethods.get(input.methodId);
@@ -690,6 +712,9 @@ export class DaemonControlPlaneHelper {
             admin: input.context?.admin,
             scopes: input.context?.scopes,
             clientKind: input.context?.clientKind,
+            ...(input.context?.explicitUserRequest === undefined
+              ? {}
+              : { metadata: { explicitUserRequest: input.context.explicitUserRequest } }),
           },
         });
         return { status: 200, ok: true, body };

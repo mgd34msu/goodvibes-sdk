@@ -35,8 +35,37 @@ import { describeDeliveryEvidence, type DeliveredRecipient } from './delivery-ev
 // Types
 // ──────────────────────────────────────────────────────────────────
 
+/**
+ * What the agent is doing right now that makes this mail expected.
+ *
+ * Owner's distinction, and the whole point of the book: "there's a big
+ * difference between using a link in a verification email for an account we're
+ * creating vs a fake verification email for a service we're already signed up
+ * for or didn't request a login."
+ *
+ *  - `signup` — the agent is creating an account. Correlation is strongest
+ *    here: the alias was minted for this one service, so mail arriving at it is
+ *    almost certainly from that service.
+ *  - `login`  — the agent is authenticating to an account that already exists,
+ *    and the service is sending a code or magic link. Correlation is WEAKER,
+ *    because the address is the one already registered with that service and
+ *    tells you much less. The compensations are elsewhere in this module:
+ *    an exact-domain link check rather than a subdomain-tolerant one, a window
+ *    measured from the submission rather than a generous default, and a hard
+ *    stop on ambiguity.
+ *
+ * There is no third kind, deliberately. Everything else that looks like
+ * verification mail — a password reset nobody asked for, a security alert, an
+ * MFA prompt for an unrelated login, account recovery, an invoice — is
+ * human-only, permanently. No agent-initiated flow needs it, and it is exactly
+ * what a phisher sends.
+ */
+export type VerificationExpectationKind = 'signup' | 'login';
+
 export interface VerificationExpectation {
   readonly id: string;
+  /** Which agent-initiated action opened this. See VerificationExpectationKind. */
+  readonly kind: VerificationExpectationKind;
   /** The domain the agent actually signed up at. Link hosts are validated against this. */
   readonly serviceDomain: string;
   /** The exact alias the agent handed to the signup form. */
@@ -52,6 +81,8 @@ export interface VerificationExpectation {
 }
 
 export interface OpenExpectationInput {
+  /** Defaults to `signup`, the original and stricter-correlating case. */
+  readonly kind?: VerificationExpectationKind | undefined;
   readonly serviceDomain: string;
   readonly recipientAddress: string;
   readonly purpose: string;
@@ -122,6 +153,19 @@ export type VerificationMatch =
       readonly actualRecipient: string;
     }
   | { readonly kind: 'expired'; readonly reason: string; readonly expectation: VerificationExpectation }
+  | {
+      /**
+       * More than one message matched the same open expectation.
+       *
+       * A phisher racing a genuine login is exactly the case that produces
+       * two, and choosing between them is a coin flip on a security decision.
+       * Neither is acted on and both are surfaced.
+       */
+      readonly kind: 'ambiguous';
+      readonly reason: string;
+      readonly expectation: VerificationExpectation;
+      readonly candidateMessageIds: readonly string[];
+    }
   | {
       /**
        * The message carried nothing proving which address it arrived at. Its
@@ -266,7 +310,13 @@ export function extractVerification(
 ): VerificationExtraction {
   const untrustedBody = untrustedBodyOf(email);
   const links = collectLinks(email.body);
-  const matching = links.find((link) => hostMatchesServiceDomain(link.host, expectation.serviceDomain));
+  // A signup alias was minted for one service, so a subdomain of that service
+  // is still that service. A login address is one the owner already gave out,
+  // so the weaker correlation is compensated by demanding the EXACT domain the
+  // agent is authenticating against — no parent, no sibling subdomain.
+  const matching = expectation.kind === 'login'
+    ? links.find((link) => normalizeDomain(link.host) === normalizeDomain(expectation.serviceDomain))
+    : links.find((link) => hostMatchesServiceDomain(link.host, expectation.serviceDomain));
 
   if (matching) {
     return { artifact: { kind: 'link', url: matching.url, linkHost: matching.host }, untrustedBody };
@@ -364,6 +414,7 @@ export class VerificationExpectationBook {
       purpose,
       openedAt: now.toISOString(),
       expiresAt: new Date(now.getTime() + clampWindow(input.windowMs)).toISOString(),
+      kind: input.kind ?? 'signup',
       authority: 'evidence-only',
     };
     this.open.set(expectation.id, expectation);
@@ -395,6 +446,61 @@ export class VerificationExpectationBook {
    * expired (a late arrival, refused), an unknown recipient is reported as a mismatch,
    * and an empty book is reported as no-expectation. None of the three extract anything.
    */
+  /**
+   * Decide across a SET of candidate messages, refusing when more than one
+   * matches the same expectation.
+   *
+   * `matchCandidate` answers about one message and cannot see a race. A
+   * phisher who times a mail to arrive alongside a genuine login code produces
+   * two messages that both correlate, and a single-message API would act on
+   * whichever was passed first — a coin flip deciding whether the agent
+   * follows the attacker's link. Callers that can see the mailbox should use
+   * this instead.
+   *
+   * Nothing is consumed when the answer is ambiguous: the expectation stays
+   * open so the owner can finish by hand.
+   */
+  public matchCandidates(
+    emails: readonly CandidateEmail[],
+    now: Date,
+    options?: MatchOptions,
+  ): VerificationMatch {
+    const matched: { email: CandidateEmail; expectation: VerificationExpectation }[] = [];
+    for (const email of emails) {
+      const result = this.matchCandidate(email, now, { consume: false });
+      if (result.kind === 'matched') matched.push({ email, expectation: result.expectation });
+    }
+
+    if (matched.length === 0) {
+      const first = emails[0];
+      return first === undefined
+        ? { kind: 'no-expectation', reason: 'No messages were offered, so nothing was matched.' }
+        : this.matchCandidate(first, now, { consume: false });
+    }
+
+    const distinct = new Set(matched.map((entry) => entry.expectation.id));
+    if (matched.length > 1 && distinct.size === 1) {
+      const expectation = matched[0]!.expectation;
+      return {
+        kind: 'ambiguous',
+        expectation,
+        candidateMessageIds: matched.map((entry) => entry.email.messageId),
+        reason:
+          `${String(matched.length)} messages match the open expectation for "${expectation.recipientAddress}". `
+          + 'One of them may be a forgery timed to arrive alongside the real one, and choosing between them '
+          + 'would be a guess, so none is acted on. The expectation stays open — complete it by hand.',
+      };
+    }
+
+    // Derive the answer BEFORE consuming: closing first makes the re-run see an
+    // empty book and report no-expectation, which would turn every successful
+    // single match into a refusal.
+    const chosen = matched[0]!;
+    const decision = this.matchCandidate(chosen.email, now, { consume: false });
+    if (options?.consume !== false) this.closeExpectation(chosen.expectation.id);
+    return decision;
+  }
+
   public matchCandidate(email: CandidateEmail, now: Date, options?: MatchOptions): VerificationMatch {
     // Correlation runs on delivery evidence and nothing else. A message whose
     // `To:` header names an open expectation but which carries no proof of
