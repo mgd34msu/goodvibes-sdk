@@ -152,3 +152,48 @@ describe('an approval survives a restart with its deadline intact', () => {
     }
   });
 });
+
+describe('the audit trail names the surface that actually answered', () => {
+  test('a local prompt records the calling surface, not a hardcoded tui', async () => {
+    const store = makeStorePath();
+    try {
+      const broker = new ApprovalBroker({ storePath: store.path });
+      await broker.start();
+      await broker.requestApproval({
+        request: request('call-5'),
+        localPrompt: async () => ({ approved: true, remember: false }),
+        localPromptSurface: 'agent-terminal',
+        localPromptActor: 'agent-local',
+      });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      const record = broker.listApprovals().find((entry) => entry.callId === 'call-5');
+      expect(record?.status).toBe('approved');
+      expect(record?.resolvedBy).toBe('agent-local');
+      // "Which surface approved this purchase" is a question the payment audit
+      // record has to answer truthfully; a hardcoded 'tui' made it a lie for
+      // every product that is not the TUI.
+      const approvedEntry = record?.audit.find((entry) => entry.action === 'approved');
+      expect(approvedEntry?.actorSurface).toBe('agent-terminal');
+    } finally {
+      store.cleanup();
+    }
+  });
+
+  test('a caller that says nothing keeps the historical tui labelling', async () => {
+    const store = makeStorePath();
+    try {
+      const broker = new ApprovalBroker({ storePath: store.path });
+      await broker.start();
+      await broker.requestApproval({
+        request: request('call-6'),
+        localPrompt: async () => ({ approved: true, remember: false }),
+      });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      const record = broker.listApprovals().find((entry) => entry.callId === 'call-6');
+      expect(record?.resolvedBy).toBe('tui-local');
+    } finally {
+      store.cleanup();
+    }
+  });
+});
