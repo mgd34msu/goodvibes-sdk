@@ -26,6 +26,10 @@
  */
 
 import { describe, expect, test } from 'bun:test';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { SecretsManager } from '../packages/sdk/src/platform/config/secrets.ts';
 import {
   daemonSecretKeyFor,
   isDaemonOwnedSecretKey,
@@ -122,5 +126,74 @@ describe('an explicit scope cannot move a daemon-owned credential', () => {
     const undeclared = daemonSecretKeyFor('surfaces.email.notARealSetting');
     expect(isDaemonOwnedSecretKey(undeclared)).toBe(false);
     expect(resolveSecretWriteScope(undeclared, 'user')).toBe('user');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Against the real store, not just the predicate
+// ---------------------------------------------------------------------------
+
+/**
+ * The predicate tests above prove the RULE. These prove the store obeys it,
+ * and — just as importantly — that obeying it does not break the callers that
+ * were already passing an explicit scope.
+ *
+ * The onboarding wizard is the concrete caller: it writes
+ * `GOODVIBES_SURFACES_SLACK_BOT_TOKEN` with `scope: 'project'` and then reads
+ * it straight back to verify. That read must still find the value after the
+ * write is relocated to the daemon tier, or fixing the storage bug would break
+ * first-run setup — a strictly worse outcome than the bug.
+ */
+describe('the real SecretsManager', () => {
+  function makeManager(): { manager: SecretsManager; root: string } {
+    const root = mkdtempSync(join(tmpdir(), 'goodvibes-secret-routing-'));
+    return {
+      manager: new SecretsManager({
+        projectRoot: join(root, 'project'),
+        globalHome: join(root, 'home'),
+        surfaceRoot: 'goodvibes',
+        policy: 'plaintext_allowed',
+      }),
+      root,
+    };
+  }
+
+  async function storedScope(manager: SecretsManager, key: string): Promise<string | undefined> {
+    const records = await manager.listDetailed();
+    return records.find((record) => record.key === key && record.source !== 'env')?.scope;
+  }
+
+  test('a daemon-owned credential written with scope "project" lands in the daemon tier', async () => {
+    const { manager } = makeManager();
+    const key = daemonSecretKeyFor('surfaces.email.password');
+    await manager.set(key, 'app-password-shaped-value', { scope: 'project', medium: 'plaintext' });
+    expect(await storedScope(manager, key)).toBe('daemon');
+  });
+
+  test('and reading it back still finds it — the onboarding wizard\'s own assertion', async () => {
+    const { manager } = makeManager();
+    const key = daemonSecretKeyFor('surfaces.slack.botToken');
+    await manager.set(key, 'xoxb-secret', { scope: 'project', medium: 'plaintext' });
+    // This is the line the wizard test runs. `get` reads across every store in
+    // read order, so relocating the write does not hide the value from it.
+    expect(await manager.get(key)).toBe('xoxb-secret');
+    expect(await storedScope(manager, key)).toBe('daemon');
+  });
+
+  test('a credential nobody declared still lands where its caller asked', async () => {
+    const { manager } = makeManager();
+    await manager.set('GOODVIBES_POLICY_ORDER_SECRET', 'secret-value', { scope: 'project', medium: 'plaintext' });
+    expect(await storedScope(manager, 'GOODVIBES_POLICY_ORDER_SECRET')).toBe('project');
+    expect(await manager.get('GOODVIBES_POLICY_ORDER_SECRET')).toBe('secret-value');
+  });
+
+  test('deleting a daemon-owned credential with the wrong scope still revokes it', async () => {
+    // The mirror of the write bug: a revoke narrowed to a scope the credential
+    // does not live in would report success and leave it working.
+    const { manager } = makeManager();
+    const key = daemonSecretKeyFor('surfaces.calendar.caldavPassword');
+    await manager.set(key, 'caldav-pass', { scope: 'project', medium: 'plaintext' });
+    await manager.delete(key, { scope: 'project' });
+    expect(await manager.get(key)).toBeNull();
   });
 });
