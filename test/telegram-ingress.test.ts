@@ -86,6 +86,8 @@ interface Harness {
   readonly supervisor: TelegramIngressSupervisor;
   readonly telegram: FakeTelegram;
   readonly spawned: string[];
+  /** Every reason handed to onConcurrentConsumerConflict, in order. */
+  readonly conflicts: string[];
   readonly offsetPath: string;
   /** Live settings, so a test can change config and re-decide the mode. */
   readonly config: Record<string, unknown>;
@@ -101,6 +103,7 @@ function makeHarness(options: {
   const offsetPath = join(dir, 'telegram-offset.json');
   const telegram = new FakeTelegram();
   const spawned: string[] = [];
+  const conflicts: string[] = [];
 
   const config: Record<string, unknown> = {
     'surfaces.telegram.enabled': true,
@@ -120,6 +123,7 @@ function makeHarness(options: {
     serviceRegistry: { resolveSecret: async () => options.registrySecret ?? null } as never,
     offsetFilePath: offsetPath,
     createApi: (token) => new TelegramBotApi(token, telegram.fetch),
+    onConcurrentConsumerConflict: (detail) => { conflicts.push(detail); },
     buildSurfaceAdapterContext: () => ({
       serviceRegistry: { resolveSecret: async () => null },
       configManager: { get: (key: string) => config[key] },
@@ -143,6 +147,7 @@ function makeHarness(options: {
     supervisor,
     telegram,
     spawned,
+    conflicts,
     offsetPath,
     config,
     cleanup(): void { rmSync(dir, { recursive: true, force: true }); },
@@ -383,21 +388,107 @@ describe('telegram ingress — errors are classified, not blindly retried', () =
     } finally { await h.supervisor.stop(); h.cleanup(); }
   });
 
-  test('a webhook conflict that will not clear stops with an actionable message', async () => {
+  test('a webhook that will not clear says so loudly and KEEPS RETRYING', async () => {
     const h = makeHarness();
-    for (let i = 0; i < 8; i += 1) {
+    for (let i = 0; i < 12; i += 1) {
       h.telegram.queue('getUpdates', () => apiError(409, 'Conflict: webhook is active'));
+      // Telegram genuinely reports one, so this is the proven-webhook case.
+      h.telegram.queue('getWebhookInfo', () => ok({ url: 'https://stuck.example.com/hook' }));
     }
     try {
       await h.supervisor.start();
-      await waitFor(() => h.supervisor.status.mode === 'inactive', 'the loop giving up on a stuck webhook', 30_000);
-      const reason = h.supervisor.status.reason;
-      // Backing off forever against a condition only the operator can fix is
-      // the failure mode being prevented here.
-      expect(reason).toContain('webhook is still registered');
-      expect(reason).toContain('surfaces.telegram.mode=webhook');
+      await waitFor(
+        () => h.supervisor.status.reason.includes('a webhook is registered for this bot'),
+        'the blocked-on-webhook report',
+        30_000,
+      );
+      const status = h.supervisor.status;
+      // The operator gets the fix...
+      expect(status.reason).toContain('surfaces.telegram.mode=webhook');
+      expect(status.reason).toContain('will resume by itself');
+      // ...and the loop is STILL ALIVE. This is the regression: it used to go
+      // inactive here and stay dead until a human restarted the daemon.
+      expect(status.mode).toBe('polling');
+      expect(status.running).toBe(true);
+      const pollsWhenBlocked = h.telegram.countOf('getUpdates');
+      await waitFor(
+        () => h.telegram.countOf('getUpdates') > pollsWhenBlocked,
+        'polling to continue after the surface was reported blocked',
+        30_000,
+      );
     } finally { await h.supervisor.stop(); h.cleanup(); }
-  }, 40_000);
+  }, 60_000);
+
+  test('the live repro: a 409 blaming a webhook when none is registered is a competing consumer, not a dead end', async () => {
+    // Exactly what happened on the owner's machine: 409s that logged as a
+    // webhook conflict, getWebhookInfo reporting NO webhook, deleteWebhook
+    // running and changing nothing, and the loop then stopping forever.
+    const h = makeHarness();
+    for (let i = 0; i < 12; i += 1) {
+      h.telegram.queue('getUpdates', () => apiError(409, "Conflict: can't use getUpdates method while webhook is active"));
+      h.telegram.queue('getWebhookInfo', () => ok({ url: '' }));
+    }
+    try {
+      await h.supervisor.start();
+      await waitFor(() => h.conflicts.length > 0, 'the competing-consumer report', 30_000);
+      // Classified from evidence, not from the description string.
+      expect(h.conflicts[0]).toContain('another process is already long-polling this bot token');
+      expect(h.conflicts[0]).toContain('no webhook registered');
+      // Never terminal.
+      expect(h.supervisor.status.mode).toBe('polling');
+      expect(h.supervisor.status.running).toBe(true);
+      const polls = h.telegram.countOf('getUpdates');
+      await waitFor(() => h.telegram.countOf('getUpdates') > polls, 'polling to keep going', 30_000);
+    } finally { await h.supervisor.stop(); h.cleanup(); }
+  }, 60_000);
+
+  test('with clustering OFF a competing consumer is retried, because there is no election to stand down to', async () => {
+    const h = makeHarness({ config: { 'cluster.enabled': false } });
+    for (let i = 0; i < 12; i += 1) {
+      h.telegram.queue('getUpdates', () => apiError(409, 'Conflict: terminated by other getUpdates request'));
+    }
+    try {
+      await h.supervisor.start();
+      await waitFor(() => h.conflicts.length > 0, 'the competing-consumer report', 30_000);
+      expect(h.conflicts[0]).toContain('Clustering is off');
+      expect(h.conflicts[0]).toContain('backing off and retrying');
+      expect(h.supervisor.status.running).toBe(true);
+      // A webhook was never implicated, so nothing pointless was deleted.
+      expect(h.telegram.countOf('deleteWebhook')).toBe(1); // the startup clear only
+    } finally { await h.supervisor.stop(); h.cleanup(); }
+  }, 60_000);
+
+  test('with clustering ON the node stands down for the election, and still retries', async () => {
+    const h = makeHarness({ config: { 'cluster.enabled': true } });
+    for (let i = 0; i < 12; i += 1) {
+      h.telegram.queue('getUpdates', () => apiError(409, 'Conflict: terminated by other getUpdates request'));
+    }
+    try {
+      await h.supervisor.start();
+      await waitFor(() => h.conflicts.length > 0, 'the stand-down report', 30_000);
+      expect(h.conflicts[0]).toContain('leader election');
+      expect(h.supervisor.status.running).toBe(true);
+    } finally { await h.supervisor.stop(); h.cleanup(); }
+  }, 60_000);
+
+  test('a poll that succeeds after a conflict clears the blocked status and delivers the message', async () => {
+    const h = makeHarness();
+    // Three conflicts, so the exponential backoff (1s, 2s, 4s) plus jitter
+    // stays well inside the ceiling below — the point of this test is the
+    // recovery, not the wait.
+    for (let i = 0; i < 3; i += 1) {
+      h.telegram.queue('getUpdates', () => apiError(409, 'Conflict: terminated by other getUpdates request'));
+    }
+    h.telegram.queue('getUpdates', () => ok([textUpdate(777, 'the message that was nearly lost')]));
+    try {
+      await h.supervisor.start();
+      await waitFor(() => h.spawned.length > 0, 'recovery after the other consumer went away', 30_000);
+      // Recovery is real: the status goes back to the healthy sentence, so an
+      // operator who was told the surface was dead is told it came back.
+      expect(h.supervisor.status.reason).toContain('long-polling Telegram getUpdates');
+      expect(h.supervisor.status.running).toBe(true);
+    } finally { await h.supervisor.stop(); h.cleanup(); }
+  }, 60_000);
 
   test('a rejected bot token stops immediately instead of retrying forever', async () => {
     const h = makeHarness();

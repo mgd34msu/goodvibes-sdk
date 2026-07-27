@@ -19,9 +19,9 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { BrowserEngine } from '../../../browser/browser-engine.ts';
-import { BrowserSessionManager } from '../../../browser/browser-sessions.ts';
-import { defaultBrowsersPath, resolveDriver } from '../../../browser/browser-provision-io.ts';
+import { BrowserEngine } from '../packages/sdk/src/platform/browser/browser-engine.ts';
+import { BrowserSessionManager } from '../packages/sdk/src/platform/browser/browser-sessions.ts';
+import { defaultBrowsersPath, resolveDriver } from '../packages/sdk/src/platform/browser/browser-provision-io.ts';
 import {
   createGoogleBrowserPort,
   describeElements,

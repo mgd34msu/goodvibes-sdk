@@ -241,6 +241,11 @@ export {
 // ---------------------------------------------------------------------------
 
 export {
+  createGoogleBrowserPort,
+  type GoogleBrowserPortOptions,
+} from './browser-port.js';
+
+export {
   findElement,
   requireElement,
   describeElements,
