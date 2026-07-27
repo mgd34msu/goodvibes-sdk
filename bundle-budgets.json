@@ -465,6 +465,10 @@
     "gzip_bytes": 270,
     "rationale": "new public package export budget; measured 220 B gzip @ v0.33.0 release verification; headroom max(ceil(220*1.2)=264, 220+50=270) -> 270 (+50 B floor dominates)"
   },
+  "./platform/runtime/path-shadow": {
+    "gzip_bytes": 5060,
+    "rationale": "PATH-shadowing policy (scanCommandShadows + ownership classification + plain-words reporting) exported so every client surface decides 'is the maintained install the copy the shell runs' the same way the installer does; measured 4216 B gzip at first export; headroom max(ceil(4216*1.2)=5060, 4216+50=4266) -> 5060 (1.2x dominates); pure logic with injected I/O, so it pulls in no dependencies"
+  },
   "./platform/runtime/self-update": {
     "gzip_bytes": 4541,
     "rationale": "release artifact resolution + checksum verification + version banding helpers (compareVersions, resolveLatestReleaseTag, resolveArtifactNames, verifyChecksum) for hosts that manage their own update swap; measured 3784 B gzip at first export; headroom max(ceil(3784*1.2)=4541, 3784+50=3834) -> 4541 (1.2x dominates)"
