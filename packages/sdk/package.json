@@ -449,6 +449,10 @@
       "types": "./dist/platform/runtime/settings.d.ts",
       "import": "./dist/platform/runtime/settings.js"
     },
+    "./platform/runtime/path-shadow": {
+      "types": "./dist/platform/runtime/path-shadow.d.ts",
+      "import": "./dist/platform/runtime/path-shadow.js"
+    },
     "./platform/runtime/self-update": {
       "types": "./dist/platform/runtime/self-update.d.ts",
       "import": "./dist/platform/runtime/self-update.js"
