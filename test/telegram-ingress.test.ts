@@ -154,6 +154,19 @@ function makeHarness(options: {
   };
 }
 
+/**
+ * Per-test budget for this file.
+ *
+ * Every test here drives a real supervisor through polling intervals and waits
+ * on `waitFor`, whose own ceiling is 10s (30s for the blocked-webhook case).
+ * Bun's default per-test timeout is 5s, so those ceilings could never be
+ * reached: under parallel full-suite load the runner killed the test before its
+ * own deadline, and the failure read as a product bug rather than as the budget
+ * mismatch it was. The budget is set above the largest ceiling so a failure here
+ * means the behaviour did not happen, not that the machine was busy.
+ */
+const TEST_BUDGET_MS = 45_000;
+
 async function waitFor(predicate: () => boolean, label: string, ceilingMs = 10_000): Promise<void> {
   const startedAt = Date.now();
   while (!predicate()) {
@@ -187,7 +200,7 @@ describe('telegram ingress — mode selection is explicit and exclusive', () => 
       await h.supervisor.stop();
       h.cleanup();
     }
-  });
+  }, TEST_BUDGET_MS);
 
   test('webhook mode registers the URL with the secret token and never polls', async () => {
     const h = makeHarness({
@@ -210,7 +223,7 @@ describe('telegram ingress — mode selection is explicit and exclusive', () => 
       await h.supervisor.stop();
       h.cleanup();
     }
-  });
+  }, TEST_BUDGET_MS);
 
   test('webhook mode refuses a URL Telegram cannot reach, and says what to do', async () => {
     const h = makeHarness({
@@ -227,7 +240,7 @@ describe('telegram ingress — mode selection is explicit and exclusive', () => 
       await h.supervisor.stop();
       h.cleanup();
     }
-  });
+  }, TEST_BUDGET_MS);
 
   test('rejects loopback, private, and plain-HTTP base URLs', () => {
     expect(describeWebhookUrlProblem('https://daemon.example.com')).toBeNull();
@@ -236,7 +249,7 @@ describe('telegram ingress — mode selection is explicit and exclusive', () => 
     expect(describeWebhookUrlProblem('https://127.0.0.1:3423')).toContain('cannot reach');
     expect(describeWebhookUrlProblem('https://192.168.1.10')).toContain('cannot reach');
     expect(describeWebhookUrlProblem('https://box.local')).toContain('cannot reach');
-  });
+  }, TEST_BUDGET_MS);
 });
 
 // ── reconfiguration ─────────────────────────────────────────────────────────
@@ -259,7 +272,7 @@ describe('telegram ingress — reconfiguration leaves no state behind', () => {
       expect(h.telegram.countOf('setWebhook')).toBe(1);
       await waitFor(() => h.telegram.countOf('getUpdates') > 0, 'polling after the switch');
     } finally { await h.supervisor.stop(); h.cleanup(); }
-  });
+  }, TEST_BUDGET_MS);
 
   test('disabling the surface retracts the webhook this deployment registered', async () => {
     const h = makeHarness({ config: { 'surfaces.telegram.mode': 'webhook' } });
@@ -274,7 +287,7 @@ describe('telegram ingress — reconfiguration leaves no state behind', () => {
       // Telegram keeps pushing to a registered URL forever otherwise.
       expect(h.telegram.countOf('deleteWebhook')).toBe(1);
     } finally { await h.supervisor.stop(); h.cleanup(); }
-  });
+  }, TEST_BUDGET_MS);
 
   test('disabling never tears down a webhook belonging to another deployment', async () => {
     const h = makeHarness({ config: { 'surfaces.telegram.mode': 'webhook' } });
@@ -288,7 +301,7 @@ describe('telegram ingress — reconfiguration leaves no state behind', () => {
 
       expect(h.telegram.countOf('deleteWebhook')).toBe(0);
     } finally { await h.supervisor.stop(); h.cleanup(); }
-  });
+  }, TEST_BUDGET_MS);
 });
 
 // ── diagnostics instead of silence ──────────────────────────────────────────
@@ -301,7 +314,7 @@ describe('telegram ingress — a configured surface that cannot receive says so'
       expect(status.mode).toBe('inactive');
       expect(status.reason).toContain('surfaces.telegram.enabled is false');
     } finally { await h.supervisor.stop(); h.cleanup(); }
-  });
+  }, TEST_BUDGET_MS);
 
   test('enabled with no resolvable token names the settings to fix', async () => {
     const h = makeHarness({ config: { 'surfaces.telegram.botToken': '' } });
@@ -311,7 +324,7 @@ describe('telegram ingress — a configured surface that cannot receive says so'
       expect(status.reason).toContain('surfaces.telegram.botToken');
       expect(status.reason).toContain('TELEGRAM_BOT_TOKEN');
     } finally { await h.supervisor.stop(); h.cleanup(); }
-  });
+  }, TEST_BUDGET_MS);
 
   test('the bot token resolves through a secret reference, not only a literal', async () => {
     const h = makeHarness({
@@ -323,7 +336,7 @@ describe('telegram ingress — a configured surface that cannot receive says so'
       expect(status.mode).toBe('polling');
       await waitFor(() => h.telegram.countOf('getUpdates') > 0, 'a first poll');
     } finally { await h.supervisor.stop(); h.cleanup(); }
-  });
+  }, TEST_BUDGET_MS);
 });
 
 // ── the poll loop ───────────────────────────────────────────────────────────
@@ -337,7 +350,7 @@ describe('telegram ingress — polled updates reach the shared handler', () => {
       await waitFor(() => h.spawned.length > 0, 'a polled update spawning an agent');
       expect(h.spawned).toHaveLength(1);
     } finally { await h.supervisor.stop(); h.cleanup(); }
-  });
+  }, TEST_BUDGET_MS);
 
   test('a polled /start onboards and does not spawn an agent', async () => {
     const h = makeHarness();
@@ -349,7 +362,7 @@ describe('telegram ingress — polled updates reach the shared handler', () => {
       const sent = h.telegram.calls.find((call) => call.method === 'sendMessage');
       expect(String(sent?.text ?? sent?.body.text)).toContain('GoodVibes is connected');
     } finally { await h.supervisor.stop(); h.cleanup(); }
-  });
+  }, TEST_BUDGET_MS);
 
   test('stop() ends the loop promptly and aborts the in-flight long poll', async () => {
     const h = makeHarness();
@@ -367,7 +380,7 @@ describe('telegram ingress — polled updates reach the shared handler', () => {
       await new Promise((resolve) => setTimeout(resolve, 150));
       expect(h.telegram.countOf('getUpdates')).toBe(pollsAtStop);
     } finally { h.cleanup(); }
-  });
+  }, TEST_BUDGET_MS);
 });
 
 // ── failure handling ────────────────────────────────────────────────────────
@@ -386,7 +399,7 @@ describe('telegram ingress — errors are classified, not blindly retried', () =
       // plus one conflict recovery.
       expect(h.telegram.countOf('deleteWebhook')).toBeGreaterThanOrEqual(2);
     } finally { await h.supervisor.stop(); h.cleanup(); }
-  });
+  }, TEST_BUDGET_MS);
 
   test('a webhook that will not clear says so loudly and KEEPS RETRYING', async () => {
     const h = makeHarness();
@@ -498,7 +511,7 @@ describe('telegram ingress — errors are classified, not blindly retried', () =
       await waitFor(() => h.supervisor.status.mode === 'inactive', 'the loop giving up on a bad token');
       expect(h.supervisor.status.reason).toContain('surfaces.telegram.botToken');
     } finally { await h.supervisor.stop(); h.cleanup(); }
-  });
+  }, TEST_BUDGET_MS);
 
   test('stop() interrupts a long server-dictated backoff instead of waiting it out', async () => {
     const h = makeHarness();
@@ -530,7 +543,7 @@ describe('telegram ingress — errors are classified, not blindly retried', () =
         try { return JSON.parse(readFileSync(h.offsetPath, 'utf-8')).offset === 303; } catch { return false; }
       }, 'the cursor advancing past both updates');
     } finally { await h.supervisor.stop(); h.cleanup(); }
-  });
+  }, TEST_BUDGET_MS);
 });
 
 // ── offset persistence ──────────────────────────────────────────────────────
@@ -559,7 +572,7 @@ describe('telegram offset store — the cursor survives restarts', () => {
       const poll = second.telegram.calls.find((call) => call.method === 'getUpdates');
       expect(poll?.body.offset).toBe(501);
     } finally { await second.supervisor.stop(); second.cleanup(); }
-  });
+  }, TEST_BUDGET_MS);
 
   test('a first run with no cursor asks for the retained backlog', async () => {
     const h = makeHarness();
@@ -571,7 +584,7 @@ describe('telegram offset store — the cursor survives restarts', () => {
       // before the daemon was running is still answered.
       expect(poll?.body.offset).toBeUndefined();
     } finally { await h.supervisor.stop(); h.cleanup(); }
-  });
+  }, TEST_BUDGET_MS);
 
   test('a torn cursor is swept and the poller skips ahead rather than replaying', async () => {
     const h = makeHarness();
@@ -589,7 +602,7 @@ describe('telegram offset store — the cursor survives restarts', () => {
         try { return JSON.parse(readFileSync(h.offsetPath, 'utf-8')).offset === 901; } catch { return false; }
       }, 'the cursor being rebuilt');
     } finally { await h.supervisor.stop(); h.cleanup(); }
-  });
+  }, TEST_BUDGET_MS);
 
   test('the store validates by content, not by the file merely existing', () => {
     const dir = mkdtempSync(join(tmpdir(), 'gv-tg-store-'));
@@ -618,5 +631,5 @@ describe('telegram offset store — the cursor survives restarts', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
-  });
+  }, TEST_BUDGET_MS);
 });

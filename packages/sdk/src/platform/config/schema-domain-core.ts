@@ -117,6 +117,7 @@ export const coreConfigDefaults = {
   daemon: {
     enabled: true,
     embedInProcess: false,
+    timezone: '',
   },
   danger: {
     httpListener: false,

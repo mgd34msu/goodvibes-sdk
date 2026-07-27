@@ -21,6 +21,8 @@ import { featureConfigDefaults, featureConfigSettings } from './schema-domain-fe
 import { featureControlSettings } from './schema-domain-feature-controls.js';
 import { updateConfigDefaults, updateConfigSettings } from './schema-domain-update.js';
 import { pricingConfigDefaults, pricingConfigSettings } from './schema-domain-pricing.js';
+import { paymentsConfigDefaults, paymentsConfigSettings } from './schema-domain-payments.js';
+import { daemonLocationConfigSettings } from './schema-domain-daemon-location.js';
 import type { ConfigKey, ConfigSetting, GoodVibesConfig, SurfacesConfig } from './schema-types.js';
 
 export * from './schema-types.js';
@@ -77,6 +79,7 @@ export const DEFAULT_CONFIG = {
   policy: featureConfigDefaults.policy,
   agents: featureConfigDefaults.agents,
   pricing: pricingConfigDefaults.pricing,
+  payments: paymentsConfigDefaults.payments,
 } as GoodVibesConfig;
 
 export const CONFIG_SCHEMA: ConfigSetting[] = [
@@ -84,6 +87,8 @@ export const CONFIG_SCHEMA: ConfigSetting[] = [
   ...runtimePrimaryConfigSettings,
   ...conversationGateConfigSettings,
   ...atRestConfigSettings,
+  ...paymentsConfigSettings,
+  ...daemonLocationConfigSettings,
   ...learningConfigSettings,
   ...powerConfigSettings,
   ...memoryConfigSettings,
