@@ -1,4 +1,5 @@
 import { dispatchDaemonApiRoutes } from '@pellux/goodvibes-daemon-sdk';
+import { GATEWAY_REST_ROUTES } from '@pellux/goodvibes-daemon-sdk';
 import type { DaemonApiRouteHandlers } from '@pellux/goodvibes-daemon-sdk';
 import type { GatewayMethodDescriptor } from './method-catalog-shared.js';
 
@@ -42,7 +43,7 @@ import type { GatewayMethodDescriptor } from './method-catalog-shared.js';
  * dishonesty this module exists to catch.
  */
 
-export type RouteReconcileStatus = 'live' | 'unavailable' | 'unchecked';
+export type RouteReconcileStatus = 'live' | 'unavailable' | 'unhandled' | 'unchecked';
 
 export interface RouteReconcileResult {
   readonly methodId: string;
@@ -52,6 +53,22 @@ export interface RouteReconcileResult {
 }
 
 export type RouteProbe = (method: string, path: string) => boolean | Promise<boolean>;
+
+/**
+ * "Is a handler registered for this method id?" — `GatewayMethodCatalog.hasHandler`.
+ *
+ * This closes a hole the route probe alone cannot see. A path in
+ * `GATEWAY_REST_ROUTES` dispatches through `invokeGatewayRestVerb` into
+ * `catalog.invoke(methodId)`, so the ROUTE matching and the HANDLER existing
+ * are two separate facts. Checking only the first reports `live` for a method
+ * whose every call would fail.
+ *
+ * That is not hypothetical: `calendar.*` and `email.*` reconciled `live` while
+ * a product's own handlers were the ones answering, because the table matched
+ * and nobody asked whose handler it reached. A gate reporting green while
+ * checking something other than the property it claims is worse than no gate.
+ */
+export type HandlerProbe = (methodId: string) => boolean;
 
 /**
  * Path prefixes served by a specialized sub-router that router.ts dispatches
@@ -68,6 +85,21 @@ export const SPECIALIZED_SUB_ROUTER_PREFIXES: readonly string[] = [
   '/api/companion/chat',
   '/api/projects/planning',
 ];
+
+/**
+ * The method ids whose advertised path is served by the gateway REST table.
+ *
+ * These are the ones that dispatch into `catalog.invoke(methodId)`, so these
+ * are the ones for which a registered handler is a REQUIREMENT rather than an
+ * implementation detail. Every other served method reaches its own route
+ * module's handler function and legitimately has none in the catalog.
+ */
+let gatewayRestMethodIdCache: ReadonlySet<string> | null = null;
+
+function gatewayRestMethodIds(): ReadonlySet<string> {
+  gatewayRestMethodIdCache ??= new Set(GATEWAY_REST_ROUTES.map((route) => route.methodId));
+  return gatewayRestMethodIdCache;
+}
 
 const RECONCILE_PROBE_MARKER = { reconcileProbeMarker: true };
 
@@ -111,6 +143,7 @@ export function createDaemonSdkRouteProbe(): RouteProbe {
 export async function reconcileHttpDescriptor(
   descriptor: GatewayMethodDescriptor,
   probe: RouteProbe,
+  hasHandler?: HandlerProbe,
 ): Promise<RouteReconcileResult> {
   if (!descriptor.http) {
     return { methodId: descriptor.id, status: 'unchecked', http: null, reason: 'no http binding to reconcile' };
@@ -126,24 +159,41 @@ export async function reconcileHttpDescriptor(
   }
   const probePath = resolveTemplatePath(descriptor.http.path);
   const resolved = await probe(descriptor.http.method, probePath);
-  return resolved
-    ? { methodId: descriptor.id, status: 'live', http, reason: 'route resolved via dispatchDaemonApiRoutes' }
-    : {
-        methodId: descriptor.id,
-        status: 'unavailable',
-        http,
-        reason: `no registered route serves ${descriptor.http.method} ${descriptor.http.path}`,
-      };
+  if (!resolved) {
+    return {
+      methodId: descriptor.id,
+      status: 'unavailable',
+      http,
+      reason: `no registered route serves ${descriptor.http.method} ${descriptor.http.path}`,
+    };
+  }
+  // A gateway-REST path reaches `catalog.invoke(methodId)`, so a matching route
+  // with no registered handler resolves to a call that cannot succeed. Only
+  // these paths are checked: a method served by its own dedicated route module
+  // legitimately has no catalog handler, and demanding one would redden a route
+  // that genuinely works.
+  if (hasHandler && gatewayRestMethodIds().has(descriptor.id) && !hasHandler(descriptor.id)) {
+    return {
+      methodId: descriptor.id,
+      status: 'unhandled',
+      http,
+      reason:
+        `${descriptor.http.method} ${descriptor.http.path} resolves to a route, but no handler is `
+        + `registered for ${descriptor.id}, so the dispatch reaches catalog.invoke and fails`,
+    };
+  }
+  return { methodId: descriptor.id, status: 'live', http, reason: 'route resolved via dispatchDaemonApiRoutes' };
 }
 
 /** Reconciles a full descriptor list against a probe, in catalog order. */
 export async function reconcileCatalogRoutes(
   descriptors: readonly GatewayMethodDescriptor[],
   probe: RouteProbe,
+  hasHandler?: HandlerProbe,
 ): Promise<RouteReconcileResult[]> {
   const results: RouteReconcileResult[] = [];
   for (const descriptor of descriptors) {
-    results.push(await reconcileHttpDescriptor(descriptor, probe));
+    results.push(await reconcileHttpDescriptor(descriptor, probe, hasHandler));
   }
   return results;
 }
@@ -166,6 +216,14 @@ export function findUnreconciledAdvertisements(
   const descriptorsById = new Map(descriptors.map((descriptor) => [descriptor.id, descriptor] as const));
   const violations: string[] = [];
   for (const result of results) {
+    // `unhandled` is a violation whatever the flag says: `invokable: false`
+    // means "cataloged, not callable", and a method that IS marked callable
+    // while reaching no handler is the advertise-without-substance case this
+    // gate exists to catch — one level deeper than a missing route.
+    if (result.status === 'unhandled') {
+      violations.push(result.methodId);
+      continue;
+    }
     if (result.status !== 'unavailable') continue;
     const descriptor = descriptorsById.get(result.methodId);
     if (descriptor && descriptor.invokable !== false) {

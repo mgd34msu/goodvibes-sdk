@@ -116,6 +116,24 @@ const controlBodySchemas = createRouteBodySchemaRegistry({
   }),
 });
 
+
+/**
+ * The HTTP form of "a person asked for this right now".
+ *
+ * A header rather than a body field, so it applies uniformly to the
+ * GET-shaped REST verbs and the POST invoke envelope without either schema
+ * having to carry it. Only the literal `true` counts: absent, malformed, or
+ * anything else means the caller cannot claim it, which is the honest default
+ * for scheduled work, triggers and channel-driven calls.
+ */
+export const EXPLICIT_USER_REQUEST_HEADER = 'x-goodvibes-explicit-user-request';
+
+function readExplicitUserRequest(req: Request): boolean | undefined {
+  const raw = req.headers.get(EXPLICIT_USER_REQUEST_HEADER);
+  if (raw === null) return undefined;
+  return raw.trim().toLowerCase() === 'true' ? true : false;
+}
+
 export function createDaemonControlRouteHandlers(
   context: ControlRouteContext,
 ): DaemonControlRouteHandlers {
@@ -239,6 +257,9 @@ export function createDaemonControlRouteHandlers(
           admin: principal?.admin,
           scopes: principal?.scopes,
           clientKind: 'web',
+          ...(readExplicitUserRequest(req) === undefined
+            ? {}
+            : { explicitUserRequest: readExplicitUserRequest(req) }),
         },
       });
       return Response.json(response.body, { status: response.status });
@@ -279,6 +300,9 @@ export function createDaemonControlRouteHandlers(
           admin: principal?.admin,
           scopes: principal?.scopes,
           clientKind: 'web',
+          ...(readExplicitUserRequest(req) === undefined
+            ? {}
+            : { explicitUserRequest: readExplicitUserRequest(req) }),
         },
       });
       return Response.json(response.body, { status: response.status });

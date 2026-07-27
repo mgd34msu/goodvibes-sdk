@@ -40,6 +40,7 @@ import {
   type UntrustedContentLedger,
 } from '../../security/untrusted-content.js';
 import { GatewayVerbError } from './gateway-verb-error.js';
+import { evaluateOutwardEffect } from '../../security/untrusted-content.js';
 import { refuseNonUserRequest } from './explicit-user-request.js';
 import { readInvocationParams } from './invocation-params.js';
 
@@ -240,9 +241,42 @@ function untrustedExposureDisclosure(ledger: UntrustedContentLedger): Record<str
     untrustedContent: {
       originsInScope: [...origins],
       rule: UNTRUSTED_CONTENT_RULE,
-      note: 'This process has read content from these sources. The message was sent as asked; the provenance travels with the receipt so a reader can weigh it.',
+      note: 'This process has read content from these sources. The send passed the derivation check — none of its recipient, subject or body repeats what was read — and the provenance travels with the receipt so a reader can still weigh it.',
     },
   };
+}
+
+/**
+ * Refuse a send whose content derives from something a stranger wrote.
+ *
+ * The daemon used to only DISCLOSE this, on the reasoning that an unattended
+ * process has nobody to take a refusal to. That is backwards for this threat:
+ * a disclosure is a note in a receipt nobody reads, on the one surface with no
+ * human watching, and an unattended daemon is precisely where a prompt
+ * injection pays off. The daemon is the STRICTEST surface now, not the most
+ * permissive.
+ *
+ * The check is on derivation, not exposure, which is what makes strictness
+ * affordable: a scheduled report that queries a database and mails a summary
+ * derives from nothing anyone wrote at it and proceeds. Disclosure is kept for
+ * the sends that do proceed — it stops being the only protection.
+ */
+function refuseTaintedSend(
+  ledger: UntrustedContentLedger,
+  fields: Readonly<Record<string, string | undefined>>,
+  description: string,
+): void {
+  const decision = evaluateOutwardEffect({
+    request: { toolName: 'email', action: 'email.send', description },
+    ledger,
+    content: fields,
+  });
+  if (decision.allowed) return;
+  throw new GatewayVerbError(
+    `${decision.reason ?? 'Refused.'} ${decision.fix ?? ''}`.trim(),
+    'UNTRUSTED_CONTENT_DERIVED',
+    403,
+  );
 }
 
 export function createEmailSendHandler(
@@ -264,10 +298,17 @@ export function createEmailSendHandler(
       );
     }
     refuseNonUserRequest(invocation, 'email.send');
+    const to = readRequiredString(params.to, 'to');
+    const subject = readRequiredString(params.subject, 'subject');
+    const body = readRequiredString(params.body, 'body');
+    // Before anything leaves the machine: does what is about to leave derive
+    // from what was read? Recipient included — a redirected reply is as much
+    // an injection outcome as a rewritten body.
+    refuseTaintedSend(ledger, { to, subject, body }, `sending mail to ${to}`);
     const sent = await service.send({
-      to: readRequiredString(params.to, 'to'),
-      subject: readRequiredString(params.subject, 'subject'),
-      body: readRequiredString(params.body, 'body'),
+      to,
+      subject,
+      body,
       inReplyTo: readOptionalString(params.inReplyTo),
     });
     return { ...sent, ...untrustedExposureDisclosure(ledger) };
