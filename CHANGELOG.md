@@ -4,6 +4,110 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
+## [1.17.0] - 2026-07-27
+
+### Added
+
+- **LAN leader election, so one network runs one reader of your inbox.** When
+  the same install runs on more than one machine, every copy independently
+  polled the shared inbox and one message was answered twice. Nodes now elect
+  exactly one consumer, PER SURFACE: a laptop can hold the work Slack account
+  while a desktop holds the mailbox, and losing a machine moves only the
+  surfaces it was reading. Off by default (`cluster.enabled`) — sharing inbound
+  work is something you switch on.
+
+  A surface's identity never reaches the network in the clear. It travels as a
+  domain-separated digest, so what a neighbour can capture names no topic, chat
+  or account. Slack and Discord are contested under the workspace the provider
+  reports rather than a placeholder, because a placeholder would put two
+  different workspaces into one election and starve whichever lost.
+
+- **Group membership with real keys** (`platform/cluster`). Which machines are
+  "us" is a roster you state, not whoever happens to be on the subnet. Every
+  datagram is signed under a group key, rotation runs with a dual-generation
+  acceptance window so a rotation does not look like a dead leader, and a
+  removed machine stops being heard on the same tick. Group key material is
+  daemon-owned and deliberately NOT replicated: a node without it is a node
+  outside the group, and replicating it over the group bus would let anyone who
+  can hear traffic gain membership.
+
+- **A daemon secret tier** (`<daemonHome>/secrets.enc`). Daemon ownership of a
+  credential is derived from daemon ownership of the config path that names it,
+  so a secret cannot drift out of step with the setting it serves, and mail
+  credentials follow a handover to whichever node takes over.
+
+- **A runtime disposal seam** (`platform/runtime/disposal`). `RuntimeServices`
+  now disposes, and `DaemonServer.stop()` calls it, so a daemon told to stop
+  stops what it started instead of leaving timers and pollers running.
+
+- **Config replication across the group**, fail-closed: a key replicates only
+  if it is daemon-owned AND a replicated path names it, and a daemon-owned
+  domain nobody has ruled on stays local.
+
+### Changed
+
+- **Updates catch up after downtime, and a bad one rolls itself back.** A
+  daemon that was off while releases shipped now settles and checks on boot
+  rather than waiting out a full interval, and repeated failed starts restore
+  the kept previous version and hand over to it.
+
+- **`agent_harness` catalogs disclose a shortened page.** A populated page used
+  to carry no note, on the reasoning that it speaks for itself. "Showing 20 of
+  300" read as a complete answer is the same failure as an empty page read as
+  "no such capability", only slower.
+
+### Fixed
+
+- **A path the daemon owns is now stored somewhere.** `isDaemonOwnedConfigKey`
+  consulted the schema keys and the daemon-owned prefixes but not
+  `DAEMON_OWNED_NON_SCHEMA_CONFIG_PATHS`. That list previously held only paths
+  that also matched a daemon prefix, so the gap was invisible — until this
+  round added five credential paths with no such prefix. A key nobody claims is
+  not stored twice, it is stored NOWHERE: setting `email.passwordRef` was
+  accepted, returned a `goodvibes://` reference, wrote the secret, and
+  persisted the reference to neither tier. The password was gone on next start.
+
+- **A stale-lock takeover could hand out two holders.**
+  `acquireCrossProcessLock` judged a lock stale, then built a staging file,
+  wrote a payload, and renamed it over the lock path — without re-checking that
+  the lock was still the file it had judged. The takeover ticket serializes
+  takeovers against each other but not against the plain-create path, so a
+  stale holder could release, another waiter's `open(…,'wx')` could land a
+  fresh live lock, and the rename replaced it. The winner now re-checks the
+  lock's inode identity immediately before the rename.
+
+- **A machine refused re-entry to its group was told nobody answered.** A
+  refused `REJOIN` got no reply at all, so the machine waited out its full
+  admission timeout and reported that the group was unreachable — when the
+  group had heard it and decided against it. There is now an explicit
+  `REJOIN_REFUSE`, signed with the refuser's identity key, which a returning
+  machine can verify against the roster it stored before it left. Only an
+  AUTHENTICATED refusal is final; unverifiable replies are reported as such and
+  never treated as proof, so nothing on the network can evict a machine by
+  shouting at it.
+
+- **The activity log keeps what it said it wrote.** A line logged immediately
+  before an exit could be lost with the process. Every handover, rollback and
+  orderly exit now flushes first, so an update that goes wrong no longer reads
+  as a daemon that vanished mid-sentence.
+
+- **`McpPermissionManager.registerServer` skipped the security refresh** when a
+  server was re-registered, and the URL-encoding detector read ordinary format
+  strings as obfuscation.
+
+- **A surface rescued from a dead machine is not handed straight back to it**,
+  and a surface that keeps being refused is retried less and less often.
+
+### Internal
+
+- The build no longer deletes the output tree before rebuilding it. For the
+  length of a rebuild the compiled SDK did not exist, and a dev-linked consumer
+  could resolve none of its imports — the mechanism behind a run of test
+  failures that only appeared under concurrent load. Orphans are now swept
+  after the build from tsc's own emitted-file list. The workspace lock also
+  moved to the shared git directory, so worktrees of one checkout serialize
+  instead of racing.
+
 ## [1.16.1] - 2026-07-26
 
 ### Fixed
