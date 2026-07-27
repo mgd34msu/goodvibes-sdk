@@ -289,6 +289,14 @@
       "types": "./dist/platform/git/index.d.ts",
       "import": "./dist/platform/git/index.js"
     },
+    "./platform/google": {
+      "types": "./dist/platform/google/index.d.ts",
+      "import": "./dist/platform/google/index.js"
+    },
+    "./platform/google/node": {
+      "types": "./dist/platform/google/node.d.ts",
+      "import": "./dist/platform/google/node.js"
+    },
     "./platform/hooks": {
       "types": "./dist/platform/hooks/index.d.ts",
       "import": "./dist/platform/hooks/index.js"

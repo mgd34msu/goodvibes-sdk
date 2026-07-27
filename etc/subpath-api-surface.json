@@ -14451,6 +14451,1507 @@
       "kind": "function"
     }
   ],
+  "./platform/google": [
+    {
+      "name": "ACCOUNT_REGISTRY_PATH_SEGMENTS",
+      "kind": "const"
+    },
+    {
+      "name": "APP_PASSWORD_LABEL",
+      "kind": "const"
+    },
+    {
+      "name": "APP_PASSWORD_URL",
+      "kind": "const"
+    },
+    {
+      "name": "AUTH_AUDIENCE_URL",
+      "kind": "const"
+    },
+    {
+      "name": "AUTH_BRANDING_URL",
+      "kind": "const"
+    },
+    {
+      "name": "AUTH_CLIENTS_URL",
+      "kind": "const"
+    },
+    {
+      "name": "AgentAccountCreateInput",
+      "kind": "interface",
+      "required": [
+        "aliasAddress",
+        "credentialSecretKey",
+        "purpose",
+        "serviceDomain",
+        "serviceUrl"
+      ]
+    },
+    {
+      "name": "AgentAccountRecord",
+      "kind": "interface",
+      "required": [
+        "aliasAddress",
+        "createdAt",
+        "credentialSecretKey",
+        "id",
+        "purpose",
+        "serviceDomain",
+        "serviceUrl"
+      ]
+    },
+    {
+      "name": "AgentAccountRegistry",
+      "kind": "class"
+    },
+    {
+      "name": "AgentAccountRegistryOptions",
+      "kind": "interface",
+      "required": [
+        "containsSecretLikeText",
+        "storePath"
+      ]
+    },
+    {
+      "name": "AgentAccountSnapshot",
+      "kind": "interface",
+      "required": [
+        "accounts",
+        "droppedOnRead",
+        "path"
+      ]
+    },
+    {
+      "name": "AgentAccountSweepInput",
+      "kind": "interface"
+    },
+    {
+      "name": "AgentAccountSweepResult",
+      "kind": "interface",
+      "required": [
+        "remaining",
+        "removed"
+      ]
+    },
+    {
+      "name": "AppPasswordFailed",
+      "kind": "interface",
+      "required": [
+        "fix",
+        "kind",
+        "problem",
+        "reason"
+      ]
+    },
+    {
+      "name": "AppPasswordNeedsHuman",
+      "kind": "interface",
+      "required": [
+        "fix",
+        "kind",
+        "problem",
+        "reason"
+      ]
+    },
+    {
+      "name": "AppPasswordOk",
+      "kind": "interface",
+      "required": [
+        "detail",
+        "kind",
+        "password"
+      ]
+    },
+    {
+      "name": "AppPasswordReason",
+      "kind": "type"
+    },
+    {
+      "name": "AuthAccount",
+      "kind": "interface",
+      "required": [
+        "account",
+        "ok"
+      ]
+    },
+    {
+      "name": "AuthCheckResult",
+      "kind": "type"
+    },
+    {
+      "name": "AuthorizationUrlOptions",
+      "kind": "interface",
+      "required": [
+        "clientId",
+        "codeChallenge",
+        "redirectUri",
+        "scopes",
+        "state"
+      ]
+    },
+    {
+      "name": "CALENDAR_SETTINGS_URL",
+      "kind": "const"
+    },
+    {
+      "name": "CalDavAuth",
+      "kind": "type"
+    },
+    {
+      "name": "CalDavCalendar",
+      "kind": "interface",
+      "required": [
+        "displayName",
+        "href"
+      ]
+    },
+    {
+      "name": "CalDavClient",
+      "kind": "class"
+    },
+    {
+      "name": "CalDavClientOptions",
+      "kind": "interface",
+      "required": [
+        "auth",
+        "http"
+      ]
+    },
+    {
+      "name": "CalDavEventRecord",
+      "kind": "interface",
+      "required": [
+        "allDay",
+        "dtend",
+        "dtstart",
+        "summary",
+        "uid"
+      ]
+    },
+    {
+      "name": "CalDavHttpPort",
+      "kind": "interface",
+      "required": [
+        "request"
+      ]
+    },
+    {
+      "name": "CalDavHttpRequest",
+      "kind": "interface",
+      "required": [
+        "headers",
+        "method",
+        "url"
+      ]
+    },
+    {
+      "name": "CalDavHttpResponse",
+      "kind": "interface",
+      "required": [
+        "body",
+        "headers",
+        "status"
+      ]
+    },
+    {
+      "name": "CalDavListedEvent",
+      "kind": "interface",
+      "required": [
+        "href"
+      ]
+    },
+    {
+      "name": "CalDavProblem",
+      "kind": "interface",
+      "required": [
+        "fix",
+        "problem"
+      ]
+    },
+    {
+      "name": "CalDavResult",
+      "kind": "type"
+    },
+    {
+      "name": "CalendarEventRecord",
+      "kind": "interface",
+      "required": [
+        "allDay",
+        "description",
+        "end",
+        "htmlLink",
+        "id",
+        "location",
+        "start",
+        "summary"
+      ]
+    },
+    {
+      "name": "CalendarIcsFailed",
+      "kind": "interface",
+      "required": [
+        "fix",
+        "kind",
+        "problem",
+        "reason"
+      ]
+    },
+    {
+      "name": "CalendarIcsNeedsHuman",
+      "kind": "interface",
+      "required": [
+        "fix",
+        "kind",
+        "problem",
+        "reason"
+      ]
+    },
+    {
+      "name": "CalendarIcsOk",
+      "kind": "interface",
+      "required": [
+        "detail",
+        "icsUrl",
+        "kind"
+      ]
+    },
+    {
+      "name": "CalendarIcsReason",
+      "kind": "type"
+    },
+    {
+      "name": "CandidateEmail",
+      "kind": "interface",
+      "required": [
+        "body",
+        "deliveredTo",
+        "from",
+        "messageId",
+        "subject",
+        "toHeaderClaim"
+      ]
+    },
+    {
+      "name": "CaptureIcsAddressOptions",
+      "kind": "interface"
+    },
+    {
+      "name": "CaptureIcsAddressResult",
+      "kind": "type"
+    },
+    {
+      "name": "CollectClientFileResult",
+      "kind": "type"
+    },
+    {
+      "name": "CollectedClientFile",
+      "kind": "interface",
+      "required": [
+        "contents",
+        "path"
+      ]
+    },
+    {
+      "name": "ConsoleFailed",
+      "kind": "interface",
+      "required": [
+        "fix",
+        "kind",
+        "problem",
+        "reason"
+      ]
+    },
+    {
+      "name": "ConsoleNeedsHuman",
+      "kind": "interface",
+      "required": [
+        "fix",
+        "kind",
+        "problem",
+        "reason"
+      ]
+    },
+    {
+      "name": "ConsoleReason",
+      "kind": "type"
+    },
+    {
+      "name": "CreateAppPasswordOptions",
+      "kind": "interface"
+    },
+    {
+      "name": "CreateAppPasswordResult",
+      "kind": "type"
+    },
+    {
+      "name": "CreateDesktopOAuthClientOptions",
+      "kind": "interface",
+      "required": [
+        "name"
+      ]
+    },
+    {
+      "name": "CreateDesktopOAuthClientResult",
+      "kind": "type"
+    },
+    {
+      "name": "CreateEventInput",
+      "kind": "interface",
+      "required": [
+        "end",
+        "start",
+        "summary"
+      ]
+    },
+    {
+      "name": "CreateOAuthClientOk",
+      "kind": "interface",
+      "required": [
+        "clientId",
+        "clientSecret",
+        "detail",
+        "kind"
+      ]
+    },
+    {
+      "name": "DEFAULT_VERIFICATION_WINDOW_MS",
+      "kind": "const"
+    },
+    {
+      "name": "DavMultistatusEntry",
+      "kind": "interface",
+      "required": [
+        "href",
+        "props",
+        "status"
+      ]
+    },
+    {
+      "name": "DeliveredRecipient",
+      "kind": "interface",
+      "required": [
+        "address",
+        "source"
+      ]
+    },
+    {
+      "name": "DeliveryEvidenceSource",
+      "kind": "type"
+    },
+    {
+      "name": "DownloadScanPort",
+      "kind": "interface",
+      "required": [
+        "listFiles",
+        "modifiedAtMs",
+        "readText"
+      ]
+    },
+    {
+      "name": "EnableServicesResult",
+      "kind": "type"
+    },
+    {
+      "name": "EnabledServicesResult",
+      "kind": "type"
+    },
+    {
+      "name": "ExchangeCodeOptions",
+      "kind": "interface",
+      "required": [
+        "clientId",
+        "clientSecret",
+        "code",
+        "codeVerifier",
+        "redirectUri"
+      ]
+    },
+    {
+      "name": "GCLOUD_DEFAULT_DOWNLOAD_URL",
+      "kind": "const"
+    },
+    {
+      "name": "GCLOUD_DEFAULT_TIMEOUT_MS",
+      "kind": "const"
+    },
+    {
+      "name": "GMAIL_IMAP_HOST",
+      "kind": "const"
+    },
+    {
+      "name": "GMAIL_IMAP_PORT",
+      "kind": "const"
+    },
+    {
+      "name": "GMAIL_SMTP_HOST",
+      "kind": "const"
+    },
+    {
+      "name": "GMAIL_SMTP_PORT",
+      "kind": "const"
+    },
+    {
+      "name": "GOOGLE_CONFIG_KEYS",
+      "kind": "const"
+    },
+    {
+      "name": "GOOGLE_SECRET_KEYS",
+      "kind": "const"
+    },
+    {
+      "name": "GOOGLE_SETUP_STEPS",
+      "kind": "const"
+    },
+    {
+      "name": "GcloudDetected",
+      "kind": "interface",
+      "required": [
+        "ok",
+        "path",
+        "version"
+      ]
+    },
+    {
+      "name": "GcloudDetection",
+      "kind": "type"
+    },
+    {
+      "name": "GcloudNotFound",
+      "kind": "interface",
+      "required": [
+        "fix",
+        "ok",
+        "problem"
+      ]
+    },
+    {
+      "name": "GcloudProject",
+      "kind": "interface",
+      "required": [
+        "projectId"
+      ]
+    },
+    {
+      "name": "GmailMcpLayout",
+      "kind": "interface",
+      "required": [
+        "clientFile",
+        "tokenFiles"
+      ]
+    },
+    {
+      "name": "GmailMessageBody",
+      "kind": "interface",
+      "required": [
+        "body",
+        "deliveredTo"
+      ]
+    },
+    {
+      "name": "GmailMessageSummary",
+      "kind": "interface",
+      "required": [
+        "date",
+        "from",
+        "id",
+        "provenance",
+        "snippet",
+        "subject",
+        "threadId",
+        "to",
+        "unread"
+      ]
+    },
+    {
+      "name": "GoogleAccessToken",
+      "kind": "interface",
+      "required": [
+        "accessToken",
+        "expiresAtMs",
+        "refreshed"
+      ]
+    },
+    {
+      "name": "GoogleAccessTokenOutcome",
+      "kind": "type"
+    },
+    {
+      "name": "GoogleAdoptionOutcome",
+      "kind": "interface",
+      "required": [
+        "adopted",
+        "detail",
+        "location",
+        "scopes"
+      ]
+    },
+    {
+      "name": "GoogleApiClient",
+      "kind": "class"
+    },
+    {
+      "name": "GoogleApiFailure",
+      "kind": "interface",
+      "required": [
+        "fix",
+        "ok",
+        "problem",
+        "status"
+      ]
+    },
+    {
+      "name": "GoogleApiFetchPort",
+      "kind": "interface",
+      "required": [
+        "fetch"
+      ]
+    },
+    {
+      "name": "GoogleApiResult",
+      "kind": "type"
+    },
+    {
+      "name": "GoogleBootCheckResult",
+      "kind": "interface",
+      "required": [
+        "detail",
+        "needsReauthorization",
+        "scopes",
+        "usable"
+      ]
+    },
+    {
+      "name": "GoogleBrowserElement",
+      "kind": "interface",
+      "required": [
+        "name",
+        "ref",
+        "role",
+        "tag"
+      ]
+    },
+    {
+      "name": "GoogleBrowserPort",
+      "kind": "interface",
+      "required": [
+        "click",
+        "currentUrl",
+        "navigate",
+        "readText",
+        "snapshot",
+        "type"
+      ]
+    },
+    {
+      "name": "GoogleClientCredentials",
+      "kind": "interface",
+      "required": [
+        "authUri",
+        "clientId",
+        "clientSecret",
+        "tokenUri"
+      ]
+    },
+    {
+      "name": "GoogleClientIntakeChoice",
+      "kind": "type"
+    },
+    {
+      "name": "GoogleClientIntakeResult",
+      "kind": "type"
+    },
+    {
+      "name": "GoogleClientIntakeRoute",
+      "kind": "type"
+    },
+    {
+      "name": "GoogleCommandPort",
+      "kind": "interface",
+      "required": [
+        "run"
+      ]
+    },
+    {
+      "name": "GoogleCommandResult",
+      "kind": "interface",
+      "required": [
+        "code",
+        "spawnError",
+        "stderr",
+        "stdout",
+        "timedOut"
+      ]
+    },
+    {
+      "name": "GoogleConfigPort",
+      "kind": "interface",
+      "required": [
+        "get",
+        "set"
+      ]
+    },
+    {
+      "name": "GoogleConnection",
+      "kind": "interface",
+      "required": [
+        "client",
+        "credentials",
+        "summary"
+      ]
+    },
+    {
+      "name": "GoogleConnectionSources",
+      "kind": "interface",
+      "required": [
+        "configGet",
+        "files",
+        "homeDirectory",
+        "secretGet"
+      ]
+    },
+    {
+      "name": "GoogleCredentialOrigin",
+      "kind": "type"
+    },
+    {
+      "name": "GoogleCredentialSummary",
+      "kind": "interface",
+      "required": [
+        "accessTokenExpired",
+        "canReadCalendar",
+        "canReadMail",
+        "canSendMail",
+        "canWriteCalendar",
+        "detail",
+        "found",
+        "hasAccessToken",
+        "hasRefreshToken",
+        "location",
+        "origin",
+        "scopes"
+      ]
+    },
+    {
+      "name": "GoogleElementFound",
+      "kind": "interface",
+      "required": [
+        "element",
+        "found"
+      ]
+    },
+    {
+      "name": "GoogleElementLookup",
+      "kind": "type"
+    },
+    {
+      "name": "GoogleElementNotFound",
+      "kind": "interface",
+      "required": [
+        "candidateCount",
+        "found",
+        "message",
+        "query"
+      ]
+    },
+    {
+      "name": "GoogleElementQuery",
+      "kind": "interface"
+    },
+    {
+      "name": "GoogleFetchPort",
+      "kind": "interface",
+      "required": [
+        "fetch"
+      ]
+    },
+    {
+      "name": "GoogleFilePort",
+      "kind": "interface",
+      "required": [
+        "exists",
+        "readText"
+      ]
+    },
+    {
+      "name": "GoogleLoopbackListenerFactory",
+      "kind": "type"
+    },
+    {
+      "name": "GoogleOAuthCredentials",
+      "kind": "interface",
+      "required": [
+        "accessToken",
+        "clientId",
+        "clientSecret",
+        "expiresAtMs",
+        "location",
+        "origin",
+        "refreshToken",
+        "scopes",
+        "tokenUri"
+      ]
+    },
+    {
+      "name": "GooglePersistFn",
+      "kind": "type"
+    },
+    {
+      "name": "GoogleProgressPort",
+      "kind": "interface",
+      "required": [
+        "humanActionNeeded",
+        "note",
+        "stepFinished",
+        "stepStarted"
+      ]
+    },
+    {
+      "name": "GoogleRefreshFailure",
+      "kind": "type"
+    },
+    {
+      "name": "GoogleRefreshFn",
+      "kind": "type"
+    },
+    {
+      "name": "GoogleRefreshOutcome",
+      "kind": "type"
+    },
+    {
+      "name": "GoogleRefreshResult",
+      "kind": "interface",
+      "required": [
+        "accessToken",
+        "expiresInSeconds",
+        "scopes"
+      ]
+    },
+    {
+      "name": "GoogleSecretPort",
+      "kind": "interface",
+      "required": [
+        "get",
+        "set"
+      ]
+    },
+    {
+      "name": "GoogleSetupActionDeps",
+      "kind": "interface",
+      "required": [
+        "browser",
+        "commands",
+        "config",
+        "fetchPort",
+        "files",
+        "homeDirectory",
+        "loopback",
+        "secrets"
+      ]
+    },
+    {
+      "name": "GoogleSetupFlowDeps",
+      "kind": "interface",
+      "required": [
+        "progress",
+        "runners"
+      ]
+    },
+    {
+      "name": "GoogleSetupPath",
+      "kind": "type"
+    },
+    {
+      "name": "GoogleSetupReport",
+      "kind": "interface",
+      "required": [
+        "ok",
+        "path",
+        "steps",
+        "summary",
+        "waitingOn",
+        "warnings"
+      ]
+    },
+    {
+      "name": "GoogleSetupState",
+      "kind": "interface",
+      "required": [
+        "gmailEnabled",
+        "gmailUsername",
+        "hasAppPassword",
+        "hasCalendarAddress",
+        "hasGmailConfig",
+        "hasOAuthClientSecret",
+        "hasRefreshToken",
+        "oauthClientId",
+        "projectId",
+        "publishingStatus"
+      ]
+    },
+    {
+      "name": "GoogleSetupStepSpec",
+      "kind": "interface",
+      "required": [
+        "actor",
+        "id",
+        "manualSteps",
+        "path",
+        "purpose",
+        "title"
+      ]
+    },
+    {
+      "name": "GoogleStepActor",
+      "kind": "type"
+    },
+    {
+      "name": "GoogleStepId",
+      "kind": "type"
+    },
+    {
+      "name": "GoogleStepOutcome",
+      "kind": "type"
+    },
+    {
+      "name": "GoogleStepResult",
+      "kind": "interface",
+      "required": [
+        "detail",
+        "elapsedMs",
+        "id",
+        "outcome"
+      ]
+    },
+    {
+      "name": "GoogleStepRunner",
+      "kind": "type"
+    },
+    {
+      "name": "GoogleStepRunnerResult",
+      "kind": "interface",
+      "required": [
+        "detail",
+        "outcome"
+      ]
+    },
+    {
+      "name": "GoogleTokenManager",
+      "kind": "class"
+    },
+    {
+      "name": "GoogleTokenManagerDeps",
+      "kind": "interface",
+      "required": [
+        "refresh"
+      ]
+    },
+    {
+      "name": "InstallOptions",
+      "kind": "interface",
+      "required": [
+        "homeDirectory"
+      ]
+    },
+    {
+      "name": "InstallResult",
+      "kind": "type"
+    },
+    {
+      "name": "LEGACY_MIGRATION_CONFIG_KEY",
+      "kind": "const"
+    },
+    {
+      "name": "LegacyCredentialLocation",
+      "kind": "interface",
+      "required": [
+        "clientFile",
+        "label",
+        "tokenFiles"
+      ]
+    },
+    {
+      "name": "LegacyMigrationOutcome",
+      "kind": "interface",
+      "required": [
+        "detail",
+        "migrated",
+        "route"
+      ]
+    },
+    {
+      "name": "ListProjectsResult",
+      "kind": "type"
+    },
+    {
+      "name": "LoopbackCodeResult",
+      "kind": "interface",
+      "required": [
+        "code",
+        "state"
+      ]
+    },
+    {
+      "name": "LoopbackListener",
+      "kind": "interface",
+      "required": [
+        "close",
+        "redirectUri",
+        "waitForCode"
+      ]
+    },
+    {
+      "name": "LoopbackRedirectOutcome",
+      "kind": "type"
+    },
+    {
+      "name": "MAIL_CONTENT_PROVENANCE",
+      "kind": "const"
+    },
+    {
+      "name": "MAX_ACCOUNT_RECORDS",
+      "kind": "const"
+    },
+    {
+      "name": "MAX_OPEN_EXPECTATIONS",
+      "kind": "const"
+    },
+    {
+      "name": "MAX_VERIFICATION_WINDOW_MS",
+      "kind": "const"
+    },
+    {
+      "name": "MIN_VERIFICATION_WINDOW_MS",
+      "kind": "const"
+    },
+    {
+      "name": "MatchOptions",
+      "kind": "interface"
+    },
+    {
+      "name": "MintAddressOptions",
+      "kind": "interface"
+    },
+    {
+      "name": "NO_ALIAS_MAILBOXES",
+      "kind": "const"
+    },
+    {
+      "name": "OAUTH_SCOPES",
+      "kind": "const"
+    },
+    {
+      "name": "OpenExpectationInput",
+      "kind": "interface",
+      "required": [
+        "purpose",
+        "recipientAddress",
+        "serviceDomain"
+      ]
+    },
+    {
+      "name": "ParsedSignupAlias",
+      "kind": "interface",
+      "required": [
+        "baseAddress",
+        "encodedService",
+        "nonce",
+        "serviceDomain",
+        "truncated"
+      ]
+    },
+    {
+      "name": "PkcePair",
+      "kind": "interface",
+      "required": [
+        "codeChallenge",
+        "codeVerifier"
+      ]
+    },
+    {
+      "name": "PublishAppOk",
+      "kind": "interface",
+      "required": [
+        "detail",
+        "kind",
+        "status"
+      ]
+    },
+    {
+      "name": "PublishAppResult",
+      "kind": "type"
+    },
+    {
+      "name": "PublishingStatus",
+      "kind": "type"
+    },
+    {
+      "name": "REQUIRED_SERVICES",
+      "kind": "const"
+    },
+    {
+      "name": "RUNBOOK_RELATIVE_PATH",
+      "kind": "const"
+    },
+    {
+      "name": "ReadPublishingStatusOk",
+      "kind": "interface",
+      "required": [
+        "detail",
+        "kind",
+        "status"
+      ]
+    },
+    {
+      "name": "ReadPublishingStatusOptions",
+      "kind": "interface"
+    },
+    {
+      "name": "ReadPublishingStatusResult",
+      "kind": "type"
+    },
+    {
+      "name": "RefreshTokenOptions",
+      "kind": "interface",
+      "required": [
+        "clientId",
+        "clientSecret",
+        "refreshToken"
+      ]
+    },
+    {
+      "name": "SecretLikeTextPredicate",
+      "kind": "type"
+    },
+    {
+      "name": "SelectOrCreateOptions",
+      "kind": "interface",
+      "required": [
+        "preferredPrefix"
+      ]
+    },
+    {
+      "name": "SelectOrCreateResult",
+      "kind": "type"
+    },
+    {
+      "name": "SendMailInput",
+      "kind": "interface",
+      "required": [
+        "body",
+        "subject",
+        "to"
+      ]
+    },
+    {
+      "name": "SenderAuthenticationChecks",
+      "kind": "interface"
+    },
+    {
+      "name": "SenderProtocolResult",
+      "kind": "type"
+    },
+    {
+      "name": "SignupAlias",
+      "kind": "interface",
+      "required": [
+        "address",
+        "baseAddress",
+        "nonce",
+        "serviceDomain",
+        "truncated"
+      ]
+    },
+    {
+      "name": "StartLoopbackListenerOptions",
+      "kind": "interface",
+      "required": [
+        "expectedState"
+      ]
+    },
+    {
+      "name": "SurfaceAuthorityProbe",
+      "kind": "interface",
+      "required": [
+        "surfaceHasCommandAuthority"
+      ]
+    },
+    {
+      "name": "TWO_STEP_URL",
+      "kind": "const"
+    },
+    {
+      "name": "TokenResponse",
+      "kind": "type"
+    },
+    {
+      "name": "TokenResponseFailed",
+      "kind": "interface",
+      "required": [
+        "fix",
+        "ok",
+        "problem"
+      ]
+    },
+    {
+      "name": "TokenResponseOk",
+      "kind": "interface",
+      "required": [
+        "accessToken",
+        "expiresInSeconds",
+        "ok",
+        "scope",
+        "tokenType"
+      ]
+    },
+    {
+      "name": "UntrustedDisplayText",
+      "kind": "interface",
+      "required": [
+        "label",
+        "text",
+        "untrusted"
+      ]
+    },
+    {
+      "name": "VerificationArtifact",
+      "kind": "type"
+    },
+    {
+      "name": "VerificationExpectation",
+      "kind": "interface",
+      "required": [
+        "authority",
+        "expiresAt",
+        "id",
+        "openedAt",
+        "purpose",
+        "recipientAddress",
+        "serviceDomain"
+      ]
+    },
+    {
+      "name": "VerificationExpectationBook",
+      "kind": "class"
+    },
+    {
+      "name": "VerificationExtraction",
+      "kind": "interface",
+      "required": [
+        "artifact",
+        "untrustedBody"
+      ]
+    },
+    {
+      "name": "VerificationMatch",
+      "kind": "type"
+    },
+    {
+      "name": "adoptExistingGoogleCredentials",
+      "kind": "function"
+    },
+    {
+      "name": "adoptGmailMcpCredentials",
+      "kind": "function"
+    },
+    {
+      "name": "appPasswordPathComplete",
+      "kind": "function"
+    },
+    {
+      "name": "bestDeliveryEvidence",
+      "kind": "function"
+    },
+    {
+      "name": "buildAuthorizationUrl",
+      "kind": "function"
+    },
+    {
+      "name": "buildGoogleSetupRunners",
+      "kind": "function"
+    },
+    {
+      "name": "captureIcsAddress",
+      "kind": "function"
+    },
+    {
+      "name": "checkAuthenticated",
+      "kind": "function"
+    },
+    {
+      "name": "checkGoogleCredentialsAtBoot",
+      "kind": "function"
+    },
+    {
+      "name": "classifyLoopbackRedirect",
+      "kind": "function"
+    },
+    {
+      "name": "clientCredentialsFromInput",
+      "kind": "function"
+    },
+    {
+      "name": "collectDownloadedClientFile",
+      "kind": "function"
+    },
+    {
+      "name": "createAppPassword",
+      "kind": "function"
+    },
+    {
+      "name": "createDesktopOAuthClient",
+      "kind": "function"
+    },
+    {
+      "name": "deliveredRecipientFromAliasMailbox",
+      "kind": "function"
+    },
+    {
+      "name": "deliveredRecipientFromDeliveryHeaders",
+      "kind": "function"
+    },
+    {
+      "name": "deliveryEvidenceFromMessage",
+      "kind": "function"
+    },
+    {
+      "name": "deriveTagFromRole",
+      "kind": "function"
+    },
+    {
+      "name": "describeDeliveryEvidence",
+      "kind": "function"
+    },
+    {
+      "name": "describeElements",
+      "kind": "function"
+    },
+    {
+      "name": "describeGoogleConnection",
+      "kind": "function"
+    },
+    {
+      "name": "describeGoogleSetupState",
+      "kind": "function"
+    },
+    {
+      "name": "detectGcloud",
+      "kind": "function"
+    },
+    {
+      "name": "detectGoogleSetupState",
+      "kind": "function"
+    },
+    {
+      "name": "enableServices",
+      "kind": "function"
+    },
+    {
+      "name": "enabledServices",
+      "kind": "function"
+    },
+    {
+      "name": "ensureGoogleConfigDefaults",
+      "kind": "function"
+    },
+    {
+      "name": "exchangeCodeForTokens",
+      "kind": "function"
+    },
+    {
+      "name": "extractVerification",
+      "kind": "function"
+    },
+    {
+      "name": "findElement",
+      "kind": "function"
+    },
+    {
+      "name": "generatePkcePair",
+      "kind": "function"
+    },
+    {
+      "name": "gmailMcpLayout",
+      "kind": "function"
+    },
+    {
+      "name": "googleCredentialPaths",
+      "kind": "function"
+    },
+    {
+      "name": "hasAnySenderVerdict",
+      "kind": "function"
+    },
+    {
+      "name": "hostMatchesServiceDomain",
+      "kind": "function"
+    },
+    {
+      "name": "installGcloud",
+      "kind": "function"
+    },
+    {
+      "name": "isCalendarResourceType",
+      "kind": "function"
+    },
+    {
+      "name": "listProjects",
+      "kind": "function"
+    },
+    {
+      "name": "looksLikeDesktopClientJson",
+      "kind": "function"
+    },
+    {
+      "name": "looksLikeGoogleSignIn",
+      "kind": "function"
+    },
+    {
+      "name": "mintAddressFor",
+      "kind": "function"
+    },
+    {
+      "name": "mintCatchAllAddressFor",
+      "kind": "function"
+    },
+    {
+      "name": "normalizeDeliveryAddress",
+      "kind": "function"
+    },
+    {
+      "name": "normalizeDomain",
+      "kind": "function"
+    },
+    {
+      "name": "normalizeEmailAddress",
+      "kind": "function"
+    },
+    {
+      "name": "oauthPathComplete",
+      "kind": "function"
+    },
+    {
+      "name": "openGoogleConnection",
+      "kind": "function"
+    },
+    {
+      "name": "parseAlias",
+      "kind": "function"
+    },
+    {
+      "name": "parseAuthenticationResults",
+      "kind": "function"
+    },
+    {
+      "name": "parseCalendarDataEvents",
+      "kind": "function"
+    },
+    {
+      "name": "parseMultistatus",
+      "kind": "function"
+    },
+    {
+      "name": "publishApp",
+      "kind": "function"
+    },
+    {
+      "name": "readClientCredentialsFromJson",
+      "kind": "function"
+    },
+    {
+      "name": "readPublishingStatus",
+      "kind": "function"
+    },
+    {
+      "name": "readSenderAuthentication",
+      "kind": "function"
+    },
+    {
+      "name": "redactSecretsFromMessage",
+      "kind": "function"
+    },
+    {
+      "name": "refreshAccessToken",
+      "kind": "function"
+    },
+    {
+      "name": "renderGoogleSetupReport",
+      "kind": "function"
+    },
+    {
+      "name": "renderGoogleSetupRunbook",
+      "kind": "function"
+    },
+    {
+      "name": "renderLoopbackErrorPage",
+      "kind": "function"
+    },
+    {
+      "name": "renderLoopbackSuccessPage",
+      "kind": "function"
+    },
+    {
+      "name": "requireElement",
+      "kind": "function"
+    },
+    {
+      "name": "resolveGoogleCredentials",
+      "kind": "function"
+    },
+    {
+      "name": "runGoogleSetupFlow",
+      "kind": "function"
+    },
+    {
+      "name": "runbookAnchor",
+      "kind": "function"
+    },
+    {
+      "name": "selectOrCreateProject",
+      "kind": "function"
+    },
+    {
+      "name": "shouldMigrateLegacyCredentials",
+      "kind": "function"
+    },
+    {
+      "name": "splitAddress",
+      "kind": "function"
+    },
+    {
+      "name": "stepSpec",
+      "kind": "function"
+    },
+    {
+      "name": "stepsForPath",
+      "kind": "function"
+    },
+    {
+      "name": "summarizeCredentials",
+      "kind": "function"
+    },
+    {
+      "name": "unfoldIcsLines",
+      "kind": "function"
+    }
+  ],
+  "./platform/google/node": [
+    {
+      "name": "createFetchCalDavHttpPort",
+      "kind": "function"
+    },
+    {
+      "name": "createProcessCommandPort",
+      "kind": "function"
+    },
+    {
+      "name": "nodeGoogleFilePort",
+      "kind": "const"
+    },
+    {
+      "name": "startLoopbackListener",
+      "kind": "function"
+    }
+  ],
   "./platform/hooks": [
     {
       "name": "ChainEngine",
