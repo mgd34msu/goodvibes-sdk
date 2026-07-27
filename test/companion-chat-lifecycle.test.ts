@@ -12,11 +12,14 @@
 
 import { describe, expect, test } from 'bun:test';
 import { settleEvents } from './_helpers/test-timeout.js';
+import { trackDisposables } from './_helpers/disposables.ts';
 import { CompanionChatManager } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
 import type {
   CompanionLLMProvider,
   CompanionProviderChunk,
 } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
+
+const disposables = trackDisposables();
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -32,13 +35,15 @@ function makeMockProvider(reply = 'response'): CompanionLLMProvider {
 }
 
 function makeManager(overrides: { idleActiveMs?: number; idleEmptyMs?: number } = {}): CompanionChatManager {
-  return new CompanionChatManager({
-    provider: makeMockProvider(),
-    eventPublisher: { publishEvent() {} },
-    gcIntervalMs: 999_999, // disable automatic GC; we call _gcSweep() manually
-    idleActiveMs: overrides.idleActiveMs ?? 30 * 60_000,
-    idleEmptyMs: overrides.idleEmptyMs ?? 5 * 60_000,
-  });
+  return disposables.add(
+    new CompanionChatManager({
+      provider: makeMockProvider(),
+      eventPublisher: { publishEvent() {} },
+      gcIntervalMs: 999_999, // disable automatic GC; we call _gcSweep() manually
+      idleActiveMs: overrides.idleActiveMs ?? 30 * 60_000,
+      idleEmptyMs: overrides.idleEmptyMs ?? 5 * 60_000,
+    }),
+  );
 }
 
 // ---------------------------------------------------------------------------

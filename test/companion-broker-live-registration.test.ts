@@ -21,18 +21,21 @@ import { dispatchCompanionChatRoutes } from '../packages/sdk/src/platform/compan
 import type { CompanionChatRouteContext } from '../packages/sdk/src/platform/companion/companion-chat-route-types.ts';
 import { SharedSessionBroker } from '../packages/sdk/src/platform/control-plane/session-broker.ts';
 import { RouteBindingManager } from '../packages/sdk/src/platform/channels/index.ts';
+import { trackDisposables } from './_helpers/disposables.ts';
+
+const disposables = trackDisposables();
 
 function mockProvider(): CompanionLLMProvider {
   return { async *chatStream() { yield { type: 'done' } satisfies CompanionProviderChunk; } };
 }
 
 function makeBroker(storePath: string): SharedSessionBroker {
-  return new SharedSessionBroker({
+  return disposables.add(new SharedSessionBroker({
     storePath,
     routeBindings: { start: async () => {}, patchBinding: async () => null, getBinding: () => null } as unknown as RouteBindingManager,
     agentStatusProvider: { getStatus: () => null },
     messageSender: { send: () => true },
-  } as unknown as ConstructorParameters<typeof SharedSessionBroker>[0]);
+  } as unknown as ConstructorParameters<typeof SharedSessionBroker>[0]));
 }
 
 describe('R3 — companion registers into the broker live (same-process)', () => {

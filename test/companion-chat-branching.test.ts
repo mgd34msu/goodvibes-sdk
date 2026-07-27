@@ -15,12 +15,15 @@
 
 import { describe, expect, test } from 'bun:test';
 import { settleEvents } from './_helpers/test-timeout.js';
+import { trackDisposables } from './_helpers/disposables.ts';
 import { CompanionChatManager } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
 import type {
   CompanionLLMProvider,
   CompanionProviderChunk,
   CompanionProviderMessage,
 } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
+
+const disposables = trackDisposables();
 
 /**
  * A provider that replies with a caller-controlled sequence of texts (one per
@@ -45,12 +48,14 @@ function makeScriptedProvider(replies: string[]): CompanionLLMProvider & {
 }
 
 function makeManager(provider: CompanionLLMProvider): CompanionChatManager {
-  return new CompanionChatManager({
-    provider,
-    eventPublisher: { publishEvent() {} },
-    gcIntervalMs: 999_999,
-    rateLimiter: false,
-  });
+  return disposables.add(
+    new CompanionChatManager({
+      provider,
+      eventPublisher: { publishEvent() {} },
+      gcIntervalMs: 999_999,
+      rateLimiter: false,
+    }),
+  );
 }
 
 const activeOnly = (

@@ -24,6 +24,9 @@ import type { RuntimeStore } from '../packages/sdk/src/platform/runtime/store/in
 import { createEventEnvelope } from '../packages/sdk/src/platform/runtime/events/index.js';
 import type { AgentEvent } from '../packages/sdk/src/events/agents.js';
 import { settleEvents } from './_helpers/test-timeout.js';
+import { trackDisposables } from './_helpers/disposables.ts';
+
+const disposables = trackDisposables();
 
 // ---------------------------------------------------------------------------
 // Real Zustand store for AgentTaskAdapter (required — createDomainDispatch uses store.setState)
@@ -154,14 +157,14 @@ function makeBroker(idleEmptyMs = 10 * 60 * 1000, idleLongMs = 24 * 60 * 60 * 10
   const routeBindings = makeRouteBindingStub();
   const agentStatusProvider = { getStatus: () => null };
   const messageSender = { send: () => false };
-  return new SharedSessionBroker({
+  return disposables.add(new SharedSessionBroker({
     store,
     routeBindings,
     agentStatusProvider,
     messageSender,
     idleEmptyMs,
     idleLongMs,
-  });
+  }));
 }
 
 function emitAgentOnBus(
@@ -401,12 +404,12 @@ describe('SharedSessionBroker.start() reconciles startup state', () => {
     const routeBindings = makeRouteBindingStub();
 
     // First broker: create session, record spawned inputs, persist
-    const broker1 = new SharedSessionBroker({
+    const broker1 = disposables.add(new SharedSessionBroker({
       store: storeStub,
       routeBindings,
       agentStatusProvider: { getStatus: () => null },
       messageSender: { send: () => false },
-    });
+    }));
     const sess = await broker1.createSession({ title: 'Restart Test' });
     // Inject 3 spawned inputs directly into broker helper state.
     const inputs = (broker1 as unknown as { inputs: Map<string, SharedSessionInputRecord[]> }).inputs;
@@ -422,12 +425,12 @@ describe('SharedSessionBroker.start() reconciles startup state', () => {
     await (broker1 as unknown as { persist(): Promise<void> }).persist();
 
     // Second broker (simulates daemon restart): loads from same persistent store
-    const broker2 = new SharedSessionBroker({
+    const broker2 = disposables.add(new SharedSessionBroker({
       store: storeStub,
       routeBindings: makeRouteBindingStub(),
       agentStatusProvider: { getStatus: () => null },
       messageSender: { send: () => false },
-    });
+    }));
     await broker2.start();
 
     const inputsAfter = broker2.getInputs(sess.id, 100);

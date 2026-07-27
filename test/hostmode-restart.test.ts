@@ -26,6 +26,12 @@ import { tmpdir } from 'os';
 import { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 import { HttpListener } from '../packages/sdk/src/platform/daemon/http-listener.js';
 import { UserAuthManager } from '../packages/sdk/src/platform/security/user-auth.js';
+import { trackDisposables } from './_helpers/disposables.ts';
+import { disposeListener } from './_helpers/listener-teardown.ts';
+
+// Some of these listeners are start()ed and some are not; `disposeListener`
+// handles both and clears the constructor-started rate-limiter sweeps either way.
+const disposables = trackDisposables();
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -76,11 +82,11 @@ function makeServeMock() {
 }
 
 function makeHttpListener(cm: ConfigManager, serveMock: ReturnType<typeof makeServeMock>) {
-  return new HttpListener({
+  return disposables.add(new HttpListener({
     configManager: cm,
     userAuth: makeUserAuth(),
     serveFactory: serveMock.factory,
-  } as unknown as Parameters<InstanceType<typeof import('../packages/sdk/src/platform/daemon/http-listener.js').HttpListener>['start']>[0] extends never ? never : ConstructorParameters<typeof import('../packages/sdk/src/platform/daemon/http-listener.js').HttpListener>[0]);
+  } as unknown as Parameters<InstanceType<typeof import('../packages/sdk/src/platform/daemon/http-listener.js').HttpListener>['start']>[0] extends never ? never : ConstructorParameters<typeof import('../packages/sdk/src/platform/daemon/http-listener.js').HttpListener>[0]), disposeListener);
 }
 
 async function startListener(listener: HttpListener) {

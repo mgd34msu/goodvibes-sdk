@@ -28,6 +28,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { AgentOrchestrator } from '../packages/sdk/src/platform/agents/orchestrator.js';
+import { trackDisposables } from './_helpers/disposables.ts';
 import { AgentMessageBus } from '../packages/sdk/src/platform/agents/message-bus.js';
 import type { AgentOrchestratorRunContext } from '../packages/sdk/src/platform/agents/orchestrator-runner.js';
 import { AgentManager } from '../packages/sdk/src/platform/tools/agent/manager.js';
@@ -78,6 +79,8 @@ describe('AgentOrchestrator — createRunContext cwd threading (wiring)', () => 
 });
 
 /** Real (not stubbed) AgentOrchestratorToolDeps, minimal enough to satisfy registerAllTools's registration-time requirements without a full production wiring (runtime/services.ts). Scoped to `defaultDir` — matches `toolDeps.workingDirectory` exactly like real startup wiring. */
+const disposables = trackDisposables();
+
 function makeRealToolDeps(defaultDir: string, scratchRoot: string): Record<string, unknown> {
   return {
     fileCache: new FileStateCache(),
@@ -88,7 +91,11 @@ function makeRealToolDeps(defaultDir: string, scratchRoot: string): Record<strin
     modeManager: new ModeManager(),
     processManager: new ProcessManager(),
     agentMessageBus: new AgentMessageBus(),
-    sessionOrchestration: new CrossSessionTaskRegistry(join(scratchRoot, 'session-tasks.json')),
+    // CrossSessionTaskRegistry starts an hourly sweep interval in its
+    // constructor; dispose() clears it.
+    sessionOrchestration: disposables.add(
+      new CrossSessionTaskRegistry(join(scratchRoot, 'session-tasks.json')),
+    ),
     sandboxSessionRegistry: new SandboxSessionRegistry(scratchRoot),
     workflowServices: createWorkflowServices(),
     overflowHandler: new OverflowHandler({ baseDir: scratchRoot }),

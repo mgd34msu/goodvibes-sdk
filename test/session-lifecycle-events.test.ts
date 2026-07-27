@@ -27,6 +27,9 @@ import {
   SESSION_UPDATE_WIRE_EVENTS,
   SESSION_UPDATE_INTENT_MAP,
 } from '../packages/sdk/src/platform/control-plane/method-catalog-events.js';
+import { trackDisposables } from './_helpers/disposables.ts';
+
+const disposables = trackDisposables();
 
 // ---------------------------------------------------------------------------
 // Harness
@@ -45,12 +48,12 @@ function makeBroker(): SharedSessionBroker {
     patchBinding: async () => null,
     getBinding: () => null,
   } as unknown as RouteBindingManager;
-  return new SharedSessionBroker({
+  return disposables.add(new SharedSessionBroker({
     store,
     routeBindings,
     agentStatusProvider: { getStatus: () => null },
     messageSender: { send: async () => {} },
-  } as unknown as ConstructorParameters<typeof SharedSessionBroker>[0]);
+  } as unknown as ConstructorParameters<typeof SharedSessionBroker>[0]));
 }
 
 function makeGateway(enabled = true): ControlPlaneGateway {
@@ -77,12 +80,21 @@ async function readUntil(
   let buffer = '';
   try {
     while (Date.now() < deadline) {
+      // The deadline side of this race is re-armed on every iteration. When the
+      // read wins — the normal path — an uncleared handle would be stranded per
+      // loop, and this whole suite shares one process, so they accumulate.
+      let deadlineTimer: ReturnType<typeof setTimeout> | undefined;
       const chunk = await Promise.race([
         reader.read(),
-        new Promise<{ done: true; value: undefined }>((resolve) =>
-          setTimeout(() => resolve({ done: true, value: undefined }), Math.max(1, deadline - Date.now())),
-        ),
-      ]);
+        new Promise<{ done: true; value: undefined }>((resolve) => {
+          deadlineTimer = setTimeout(
+            () => resolve({ done: true, value: undefined }),
+            Math.max(1, deadline - Date.now()),
+          );
+        }),
+      ]).finally(() => {
+        if (deadlineTimer !== undefined) clearTimeout(deadlineTimer);
+      });
       if (chunk.done) break;
       buffer += decoder.decode(chunk.value, { stream: true });
       let sep: number;
