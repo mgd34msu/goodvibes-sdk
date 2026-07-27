@@ -190,5 +190,27 @@
       "letting every opted-in node spend"
     ],
     "agent": "engineer"
+  },
+  {
+    "title": "Card entry is terminal-only; approving and entering are different axes",
+    "date": "2026-07-27",
+    "rationale": "Owner ruling: card details are accepted ONLY at a local terminal (TUI, agent terminal) plus the webui (his own browser client on his own LAN) \u2014 never Telegram, ntfy, Discord, Slack, WhatsApp, Signal, or any webhook. Reason is concrete: a number typed into a hosted chat is stored on that provider's servers, in history we cannot erase, and it traversed their infrastructure before reaching us; encryption at rest cannot undo a value already copied elsewhere. Remote channels DO retain authority to approve and veto purchases \u2014 the two axes must never be merged. The prompt is itself the harm, so no card-entry flow may be OFFERED on a non-entry surface. Refusals never echo the value, even masked, because the refusal travels over the same channel that already stored it. platform/payments/entry-surface.ts; docs/payments.md 8.2.2.",
+    "alternatives": [
+      "one channel allowlist serving both approvals and card entry",
+      "masking the echoed value in the refusal",
+      "relying on nobody trying it"
+    ],
+    "agent": "engineer"
+  },
+  {
+    "title": "daemon.timezone is daemon-owned and replicated, against its own prefix",
+    "date": "2026-07-27",
+    "rationale": "The daemon.* prefix is deliberately client-owned because it answers 'does THIS installation run a daemon'. daemon.timezone answers where the daemon IS, and anything resetting on a calendar day reads it. Left client-owned, an operator picks a zone, is shown that zone, and has his daily budgets reset in UTC because the process that rolls them over never saw the setting. Ruled per-key in DAEMON_OWNED_CONFIG_KEYS and per-key in REPLICATED_CONFIG_KEYS rather than widening daemon.*, which would drag the per-installation switches across the network. Caught by the webui sub-round, not by me.",
+    "alternatives": [
+      "widening the daemon. prefix",
+      "renaming the key under an already-owned prefix",
+      "leaving it client-owned"
+    ],
+    "agent": "engineer"
   }
 ]
