@@ -40,9 +40,16 @@
  *     process performs a takeover at a time — and (b) performed as an ATOMIC
  *     REPLACE: the winner writes its payload into a staging file and
  *     `rename()`s it over the stale lock, so the lock path is never, at any
- *     instant, absent. Under the ticket, a lock whose holder is dead (the
- *     case takeover exists for) cannot change identity underneath the winner,
- *     because only a takeover could have changed it.
+ *     instant, absent. The winner also re-checks the lock's INODE IDENTITY
+ *     immediately before the rename and abandons the takeover if it changed.
+ *
+ *     That check is load-bearing, and its absence was a real defect. The
+ *     ticket serializes takeovers against each other but NOT against the
+ *     plain-create path: a stale holder can release between the verdict and
+ *     the rename, another waiter's `open(…,'wx')` lands a fresh live lock, and
+ *     the rename replaces it — two processes then hold. It reproduced as a
+ *     millisecond-scale overlap between two different pids in the
+ *     eight-process contention test, on a loaded host.
  *
  *     Residual, documented: taking over by AGE from a holder that is still
  *     alive but frozen (see rule 1 — a running holder refreshes and is never
@@ -305,6 +312,28 @@ function tryTakeOverStaleLock(lockPath: string, staleMs: number, token: string):
     const fd = openSync(stagingPath, 'wx');
     try {
       writeLockPayload(fd, token);
+      // Prove the lock is STILL the file we judged, immediately before
+      // replacing it.
+      //
+      // The ticket serializes takeovers against each other, but not against
+      // the plain-create path: between the verdict above and this rename, the
+      // stale holder can release and another waiter's `open(…,'wx')` can land a
+      // fresh, live lock. Renaming over that hands out a second holder, and
+      // both processes then believe they hold it — which is exactly what the
+      // eight-process contention test caught, as a genuine millisecond-scale
+      // overlap between two different pids.
+      //
+      // inspectLock already returns the inode identity for this purpose. The
+      // check simply was not made, so the window spanned a staging create and a
+      // payload write; it is now a stat immediately followed by the rename.
+      const current = inspectLock(lockPath, staleMs);
+      if (!current || current.ino !== verdict.ino || current.dev !== verdict.dev) {
+        // Someone replaced it. Not ours to take: retry the ordinary path.
+        try {
+          closeSync(fd);
+        } catch { /* best effort */ }
+        return null;
+      }
       // Atomic replace: the lock path goes straight from the stale file to
       // ours, never through "absent". No third waiter can slip a create in.
       renameSync(stagingPath, lockPath);

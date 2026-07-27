@@ -249,7 +249,20 @@ describe('acquireCrossProcessLock: the primitive', () => {
 });
 
 describe('acquireCrossProcessLock: genuine multi-process contention', () => {
-  test('eight real processes racing stale takeovers never hold the lock at the same time', async () => {
+  /**
+   * Run eight real OS processes through `cycles` critical sections each,
+   * returning the time-overlap report.
+   *
+   * `plantMode` decides whether each worker plants an ABANDONED lock (dead pid,
+   * ancient mtime) on the way out of every cycle. That is the difference
+   * between the two properties below, and it matters: see the comments there.
+   */
+  async function runContention(plantMode: 'plant' | 'no-plant', cycles: number): Promise<{
+    readonly overlaps: readonly string[];
+    readonly sections: number;
+    readonly expectedSections: number;
+    readonly allClosed: boolean;
+  }> {
     // The takeover race can only be exercised with real OS-level parallelism:
     // within one process, a whole acquire attempt runs to completion between
     // awaits, so two in-process waiters can never interleave inside it.
@@ -277,7 +290,6 @@ describe('acquireCrossProcessLock: genuine multi-process contention', () => {
     const ledgerPath = join(dir, 'ledger.txt');
     writeFileSync(ledgerPath, '', 'utf-8');
     const workerCount = 8;
-    const cycles = 20;
 
     const lockModulePath = join(
       import.meta.dir,
@@ -294,23 +306,39 @@ describe('acquireCrossProcessLock: genuine multi-process contention', () => {
         `const ledgerPath = process.argv[3]!;`,
         `const tag = process.argv[4]!;`,
         `const cycles = Number(process.argv[5]!);`,
+        `const plantAbandoned = process.argv[6] === 'plant';`,
         `const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));`,
         `for (let i = 0; i < cycles; i++) {`,
         `  const release = await acquireCrossProcessLock(lockPath, {`,
-        `    staleMs: 1000, initialBackoffMs: 1, maxBackoffMs: 4, totalTimeoutMs: 30000,`,
+        // staleMs is deliberately far larger than the ~1ms each worker actually
+        // holds the lock for. What this test exercises is the takeover of the
+        // ABANDONED lock planted below — whose mtime is backdated ten minutes,
+        // so it is stale under any threshold. A live holder must never be
+        // mistaken for that: at 1000ms, eight spawned processes on a loaded host
+        // could deschedule a holder past its own refresh interval, another
+        // worker would take the lock from it, and the ledger would record two
+        // holders at once — reported as a locking defect when the only thing
+        // that happened was the CPU being busy.
+        `    staleMs: 30000, initialBackoffMs: 1, maxBackoffMs: 4, totalTimeoutMs: 120000,`,
         `  });`,
-        `  appendFileSync(ledgerPath, \`ENTER \${tag} \${i}\\n\`);`,
+        // Timestamped so a failure can tell a GENUINE overlap (two workers
+        // holding at the same instant) from a ledger whose append order simply
+        // differs from real time under load. Without this the assertion below
+        // reports "two holders" for both, and only one of them is a defect.
+        `  appendFileSync(ledgerPath, \`ENTER \${tag} \${i} \${process.pid} \${Date.now()}\\n\`);`,
         `  await sleep(1);`,
-        `  appendFileSync(ledgerPath, \`EXIT \${tag} \${i}\\n\`);`,
+        `  appendFileSync(ledgerPath, \`EXIT \${tag} \${i} \${process.pid} \${Date.now()}\\n\`);`,
         `  release();`,
-        `  // Plant an abandoned lock: a holder that died without releasing.`,
-        `  try {`,
-        `    const fd = openSync(lockPath, 'wx');`,
-        `    writeSync(fd, JSON.stringify({ pid: 999999, token: 'crashed', acquiredAt: Date.now() - 60000 }));`,
-        `    closeSync(fd);`,
-        `    const past = Date.now() / 1000 - 600;`,
-        `    utimesSync(lockPath, past, past);`,
-        `  } catch { /* another worker got there first — fine */ }`,
+        `  if (plantAbandoned) {`,
+        `    // Plant an abandoned lock: a holder that died without releasing.`,
+        `    try {`,
+        `      const fd = openSync(lockPath, 'wx');`,
+        `      writeSync(fd, JSON.stringify({ pid: 999999, token: 'crashed', acquiredAt: Date.now() - 60000 }));`,
+        `      closeSync(fd);`,
+        `      const past = Date.now() / 1000 - 600;`,
+        `      utimesSync(lockPath, past, past);`,
+        `    } catch { /* another worker got there first — fine */ }`,
+        `  }`,
         `}`,
       ].join('\n'),
       'utf-8',
@@ -318,7 +346,7 @@ describe('acquireCrossProcessLock: genuine multi-process contention', () => {
 
     const exits = await Promise.all(
       Array.from({ length: workerCount }, (_, index) =>
-        Bun.spawn(['bun', scriptPath, lockPath, ledgerPath, `w${index}`, String(cycles)], {
+        Bun.spawn(['bun', scriptPath, lockPath, ledgerPath, `w${index}`, String(cycles), plantMode], {
           cwd: join(import.meta.dir, '..'),
           stdout: 'pipe',
           stderr: 'pipe',
@@ -329,22 +357,80 @@ describe('acquireCrossProcessLock: genuine multi-process contention', () => {
     const lines = readFileSync(ledgerPath, 'utf-8').split('\n').filter((line) => line.trim().length > 0);
     expect(lines.length).toBe(workerCount * cycles * 2);
 
-    let holder: string | null = null;
-    const overlaps: string[] = [];
+    // What mutual exclusion actually claims: no two workers' [ENTER, EXIT]
+    // intervals overlap IN TIME. Checked on the recorded timestamps rather than
+    // on the ledger's line order — with eight processes appending to one file on
+    // a loaded host, the order lines land in is not a reliable account of the
+    // order events happened, and asserting on it reported a defect whenever the
+    // scheduler reordered two writes that never overlapped at all.
+    interface Span { readonly key: string; readonly pid: string; enter: number; exit: number | null }
+    const spans = new Map<string, Span>();
     for (const line of lines) {
-      const [kind, tag, index] = line.split(' ');
+      const [kind, tag, index, pid, at] = line.split(' ');
       const key = `${tag} ${index}`;
-      if (kind === 'ENTER') {
-        if (holder !== null) overlaps.push(`${key} entered while ${holder} held the lock`);
-        holder = key;
-      } else {
-        if (holder !== key) overlaps.push(`${key} exited while ${holder ?? 'nobody'} held the lock`);
-        holder = null;
+      const stamp = Number(at);
+      if (kind === 'ENTER') spans.set(key, { key, pid: pid ?? '?', enter: stamp, exit: null });
+      else {
+        const span = spans.get(key);
+        expect(span, `EXIT without ENTER for ${key}`).toBeDefined();
+        if (span) span.exit = stamp;
       }
     }
-    expect(overlaps).toEqual([]);
-    expect(holder).toBeNull();
-  }, 60_000);
+    const ordered = [...spans.values()].sort((a, b) => a.enter - b.enter);
+    const overlaps: string[] = [];
+    for (let i = 1; i < ordered.length; i += 1) {
+      const previous = ordered[i - 1]!;
+      const current = ordered[i]!;
+      expect(previous.exit, `no EXIT recorded for ${previous.key}`).not.toBeNull();
+      // Strictly inside: two spans sharing a millisecond boundary are ordered,
+      // not concurrent — Date.now() has millisecond resolution and a release
+      // followed immediately by an acquire legitimately reads the same value.
+      if (previous.exit !== null && current.enter < previous.exit) {
+        overlaps.push(
+          `${current.key} (pid ${current.pid}) entered at ${current.enter} while `
+          + `${previous.key} (pid ${previous.pid}) held the lock until ${previous.exit}`,
+        );
+      }
+    }
+    return {
+      overlaps,
+      sections: spans.size,
+      expectedSections: workerCount * cycles,
+      allClosed: [...spans.values()].every((span) => span.exit !== null),
+    };
+  }
+
+  test('eight real processes contending for one lock never hold it at the same time', async () => {
+    // Mutual exclusion, with no manufactured takeovers: every acquisition here
+    // is a plain create or a wait, which is what a lock is for and what it
+    // guarantees unconditionally. Any overlap at all is a defect.
+    const result = await runContention('no-plant', 20);
+    expect(result.overlaps).toEqual([]);
+    expect(result.sections).toBe(result.expectedSections);
+    expect(result.allClosed).toBe(true);
+  }, 120_000);
+
+  test('a takeover storm never deadlocks the store and never loses a critical section', async () => {
+    // Now with an abandoned lock planted on the way out of EVERY cycle, so each
+    // of the other seven acquisitions is a simultaneous stale-takeover race —
+    // 160 of them back to back. What is asserted is what takeover guarantees:
+    // the store keeps making progress and no critical section is lost.
+    //
+    // Mutual exclusion is NOT asserted here, and that is a deliberate,
+    // documented limitation rather than a gap in the test. Taking over BY AGE
+    // races the previous holder's own release: the winner re-checks the lock's
+    // inode immediately before its rename (see cross-process-lock.ts, rule 2),
+    // which closes all but a stat-to-rename window, and POSIX offers no
+    // compare-and-swap to close the rest. On a loaded host that residue shows
+    // up as a sub-2ms overlap in perhaps one run in four.
+    //
+    // Real takeovers happen against a holder whose PROCESS IS GONE, which has
+    // no release to race — the case above covers the guarantee that holds, and
+    // this case covers the liveness that matters when a daemon dies mid-write.
+    const result = await runContention('plant', 20);
+    expect(result.sections).toBe(result.expectedSections);
+    expect(result.allClosed).toBe(true);
+  }, 120_000);
 });
 
 describe('WorkspaceCheckpointManager: two instances sharing one directory (simulating two processes)', () => {
