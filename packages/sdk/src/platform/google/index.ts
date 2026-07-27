@@ -238,6 +238,7 @@ export {
 
 export {
   GMAIL_HISTORY_SCOPES,
+  GMAIL_BODY_SCOPES,
   collectHistoryDelta,
   type GmailHistoryType,
   type HistoryDeltaOptions,
