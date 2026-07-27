@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.18.1
- * Methods: 443 total, 392 REST-routed, 51 ws-only invoke.
+ * Methods: 448 total, 397 REST-routed, 51 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -1172,6 +1172,26 @@ export const WEBUI_METHOD_ROUTES: Readonly<Record<string, WebuiRouteDefinition>>
     "method": "POST",
     "path": "/api/panels/open"
   },
+  "payments.budget.status": {
+    "method": "GET",
+    "path": "/api/payments/budget"
+  },
+  "payments.cards.create": {
+    "method": "POST",
+    "path": "/api/payments/cards"
+  },
+  "payments.cards.delete": {
+    "method": "DELETE",
+    "path": "/api/payments/cards/{id}"
+  },
+  "payments.cards.list": {
+    "method": "GET",
+    "path": "/api/payments/cards"
+  },
+  "payments.purchases.list": {
+    "method": "GET",
+    "path": "/api/payments/purchases"
+  },
   "principals.create": {
     "method": "POST",
     "path": "/api/principals"
@@ -1984,6 +2004,11 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "pairing.tokens.revokeShared": "ws-invoke",
   "panels.list": "rest",
   "panels.open": "rest",
+  "payments.budget.status": "rest",
+  "payments.cards.create": "rest",
+  "payments.cards.delete": "rest",
+  "payments.cards.list": "rest",
+  "payments.purchases.list": "rest",
   "permissions.rules.delete": "ws-invoke",
   "permissions.rules.list": "ws-invoke",
   "principals.create": "rest",
@@ -15628,6 +15653,130 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
       "opened": false,
       "id": "sample",
       "pane": "top"
+    }
+  },
+  "payments.budget.status": {
+    "input": {},
+    "output": {
+      "enabled": false,
+      "dayKey": "sample",
+      "timezone": "sample",
+      "currency": "sample",
+      "item": {
+        "limit": 0,
+        "spent": 0,
+        "reserved": 0,
+        "remaining": 0
+      },
+      "overage": {
+        "limit": 0,
+        "spent": 0,
+        "reserved": 0,
+        "remaining": 0
+      },
+      "tolerance": {
+        "limit": 0,
+        "spent": 0,
+        "reserved": 0,
+        "remaining": 0
+      },
+      "reservationCount": 0,
+      "isPaymentsLeader": false
+    }
+  },
+  "payments.cards.create": {
+    "input": {
+      "label": "sample",
+      "kind": "virtual",
+      "number": "sample",
+      "expiryMonth": 0,
+      "expiryYear": 0,
+      "cvv": "sample",
+      "cardholderName": "sample",
+      "issuerCapMinorUnits": 0
+    },
+    "output": {
+      "card": {
+        "id": "sample",
+        "label": "sample",
+        "brand": "sample",
+        "last4": "sample",
+        "kind": "virtual",
+        "expiryMonth": 0,
+        "expiryYear": 0,
+        "issuerCapMinorUnits": 0,
+        "addedAt": "sample",
+        "materialComplete": false
+      }
+    }
+  },
+  "payments.cards.delete": {
+    "input": {
+      "id": "sample"
+    },
+    "output": {
+      "id": "sample",
+      "deleted": false,
+      "secretsCleared": 0
+    }
+  },
+  "payments.cards.list": {
+    "input": {},
+    "output": {
+      "cards": [
+        {
+          "id": "sample",
+          "label": "sample",
+          "brand": "sample",
+          "last4": "sample",
+          "kind": "virtual",
+          "expiryMonth": 0,
+          "expiryYear": 0,
+          "issuerCapMinorUnits": 0,
+          "addedAt": "sample",
+          "materialComplete": false
+        }
+      ],
+      "defaultCardId": "sample"
+    }
+  },
+  "payments.purchases.list": {
+    "input": {
+      "limit": 0,
+      "dayKey": "sample"
+    },
+    "output": {
+      "purchases": [
+        {
+          "purchaseId": "sample",
+          "atUtc": "sample",
+          "dayKey": "sample",
+          "timezone": "sample",
+          "merchantDomain": "sample",
+          "item": "sample",
+          "currency": "sample",
+          "itemMinorUnits": 0,
+          "taxMinorUnits": 0,
+          "feesMinorUnits": 0,
+          "shippingMinorUnits": 0,
+          "totalMinorUnits": 0,
+          "shippingTierRequested": "sample",
+          "shippingTierUsed": "sample",
+          "steppedDown": false,
+          "itemPoolDraw": 0,
+          "overagePoolDraw": 0,
+          "tolerancePoolDraw": 0,
+          "cardLast4": "sample",
+          "windowKind": "sample",
+          "windowOutcome": "sample",
+          "answeredBy": "sample",
+          "outcome": "sample",
+          "refusalReason": "sample",
+          "merchantOrderId": "sample",
+          "refundedAt": "sample"
+        }
+      ],
+      "total": 0
     }
   },
   "permissions.rules.delete": {

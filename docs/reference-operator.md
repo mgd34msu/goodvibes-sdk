@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `443`
+- Methods: `448`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -70480,6 +70480,638 @@ Request that a panel be opened in the current TUI session.
     "opened",
     "id",
     "pane"
+  ],
+  "additionalProperties": false
+}
+```
+
+### payments
+
+#### `payments.budget.status`
+
+Today's spending pools: the daily item budget, the separate overage budget that covers only unavoidable charges (tax, mandatory fees, and the delivery option actually used), and the tolerance allowance. Each reports its limit, what today has spent, what purchases in flight are holding, and what is left. Includes the calendar day and the timezone it was computed in — the day resets at midnight in daemon.timezone, UTC when unset — and whether this node is the one currently allowed to spend. Totals are recomputed from each spend record's UTC instant rather than counted, so changing the timezone cannot hand back a spent budget.
+
+- Title: `Payment Budget Status`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/payments/budget`
+- Scopes: `read:payments`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "enabled": {
+      "type": "boolean"
+    },
+    "dayKey": {
+      "type": "string"
+    },
+    "timezone": {
+      "type": "string"
+    },
+    "currency": {
+      "type": "string"
+    },
+    "item": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": "number"
+        },
+        "spent": {
+          "type": "number"
+        },
+        "reserved": {
+          "type": "number"
+        },
+        "remaining": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "limit",
+        "spent",
+        "reserved",
+        "remaining"
+      ],
+      "additionalProperties": false
+    },
+    "overage": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": "number"
+        },
+        "spent": {
+          "type": "number"
+        },
+        "reserved": {
+          "type": "number"
+        },
+        "remaining": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "limit",
+        "spent",
+        "reserved",
+        "remaining"
+      ],
+      "additionalProperties": false
+    },
+    "tolerance": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": "number"
+        },
+        "spent": {
+          "type": "number"
+        },
+        "reserved": {
+          "type": "number"
+        },
+        "remaining": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "limit",
+        "spent",
+        "reserved",
+        "remaining"
+      ],
+      "additionalProperties": false
+    },
+    "reservationCount": {
+      "type": "number"
+    },
+    "isPaymentsLeader": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "enabled",
+    "dayKey",
+    "timezone",
+    "currency",
+    "item",
+    "overage",
+    "tolerance",
+    "reservationCount",
+    "isPaymentsLeader"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `payments.cards.create`
+
+Store a card. The number, expiry, CVV and cardholder name go to the daemon secret store, encrypted at rest, under keys derived from the config path; only the label, brand, last four digits, kind and declared issuer cap are kept as config. The response carries the metadata record and never echoes what was submitted, because an echo would be a read path and no read path exists. A virtual card with a hard issuer cap is the recommended configuration: it bounds what any leak could cost to one killable number, which a real card number does not.
+
+- Title: `Add a Payment Card`
+- Source: `builtin`
+- Access: `admin`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/payments/cards`
+- Scopes: `write:payments`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "label": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "virtual",
+        "real"
+      ]
+    },
+    "number": {
+      "type": "string"
+    },
+    "expiryMonth": {
+      "type": "number"
+    },
+    "expiryYear": {
+      "type": "number"
+    },
+    "cvv": {
+      "type": "string"
+    },
+    "cardholderName": {
+      "type": "string"
+    },
+    "issuerCapMinorUnits": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "label",
+    "kind",
+    "number",
+    "expiryMonth",
+    "expiryYear",
+    "cvv",
+    "cardholderName"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "card": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "brand": {
+          "type": "string"
+        },
+        "last4": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "virtual",
+            "real"
+          ]
+        },
+        "expiryMonth": {
+          "type": "number"
+        },
+        "expiryYear": {
+          "type": "number"
+        },
+        "issuerCapMinorUnits": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "addedAt": {
+          "type": "string"
+        },
+        "materialComplete": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "brand",
+        "last4",
+        "kind",
+        "expiryMonth",
+        "expiryYear",
+        "issuerCapMinorUnits",
+        "addedAt",
+        "materialComplete"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "card"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `payments.cards.delete`
+
+Delete a card: its config metadata and every secret derived from its config path, reporting how many secret entries were cleared so a partial deletion is visible rather than silent. Deleting the default card leaves payments.defaultCardId empty, which refuses purchases until another card is chosen — the safe direction.
+
+- Title: `Remove a Payment Card`
+- Source: `builtin`
+- Access: `admin`
+- Transport: `http`, `ws`
+- HTTP: `DELETE /api/payments/cards/{id}`
+- Scopes: `write:payments`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "deleted": {
+      "type": "boolean"
+    },
+    "secretsCleared": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "id",
+    "deleted",
+    "secretsCleared"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `payments.cards.list`
+
+Configured cards, as METADATA ONLY: id, label, brand, last four digits, whether it is a virtual or a real card, expiry month and year, and the issuer spend cap the owner declared for a virtual card (declared, unverifiable by us, and never treated as an enforcement layer of ours). materialComplete reports whether every required secret field is present without revealing any of them. The card number, expiry, CVV and cardholder name live in the daemon secret store and there is no method that returns them.
+
+- Title: `List Payment Cards`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/payments/cards`
+- Scopes: `read:payments`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "cards": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "brand": {
+            "type": "string"
+          },
+          "last4": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "virtual",
+              "real"
+            ]
+          },
+          "expiryMonth": {
+            "type": "number"
+          },
+          "expiryYear": {
+            "type": "number"
+          },
+          "issuerCapMinorUnits": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "addedAt": {
+            "type": "string"
+          },
+          "materialComplete": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "brand",
+          "last4",
+          "kind",
+          "expiryMonth",
+          "expiryYear",
+          "issuerCapMinorUnits",
+          "addedAt",
+          "materialComplete"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "defaultCardId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "cards",
+    "defaultCardId"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `payments.purchases.list`
+
+The purchase audit ledger: what was bought, from which merchant registrable domain, how much (item, tax, fees and delivery separately), which budget pool each part drew on, which delivery tier was requested and which was actually used, whether the shipping ladder stepped it down, which window ran and how it ended, which command-authority channel answered, and the outcome. Reconcilable against a card statement. Never contains a card number, expiry or CVV. A refund is recorded here for reconciliation and credits no pool — a refund on day five refilling day five would be permission to buy again that nobody granted.
+
+- Title: `List Purchases`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/payments/purchases`
+- Scopes: `read:payments`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "limit": {
+      "type": "number"
+    },
+    "dayKey": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "purchases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "purchaseId": {
+            "type": "string"
+          },
+          "atUtc": {
+            "type": "string"
+          },
+          "dayKey": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "merchantDomain": {
+            "type": "string"
+          },
+          "item": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "itemMinorUnits": {
+            "type": "number"
+          },
+          "taxMinorUnits": {
+            "type": "number"
+          },
+          "feesMinorUnits": {
+            "type": "number"
+          },
+          "shippingMinorUnits": {
+            "type": "number"
+          },
+          "totalMinorUnits": {
+            "type": "number"
+          },
+          "shippingTierRequested": {
+            "type": "string"
+          },
+          "shippingTierUsed": {
+            "type": "string"
+          },
+          "steppedDown": {
+            "type": "boolean"
+          },
+          "itemPoolDraw": {
+            "type": "number"
+          },
+          "overagePoolDraw": {
+            "type": "number"
+          },
+          "tolerancePoolDraw": {
+            "type": "number"
+          },
+          "cardLast4": {
+            "type": "string"
+          },
+          "windowKind": {
+            "type": "string"
+          },
+          "windowOutcome": {
+            "type": "string"
+          },
+          "answeredBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "outcome": {
+            "type": "string"
+          },
+          "refusalReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "merchantOrderId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "refundedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "purchaseId",
+          "atUtc",
+          "dayKey",
+          "timezone",
+          "merchantDomain",
+          "item",
+          "currency",
+          "itemMinorUnits",
+          "taxMinorUnits",
+          "feesMinorUnits",
+          "shippingMinorUnits",
+          "totalMinorUnits",
+          "shippingTierRequested",
+          "shippingTierUsed",
+          "steppedDown",
+          "itemPoolDraw",
+          "overagePoolDraw",
+          "tolerancePoolDraw",
+          "cardLast4",
+          "windowKind",
+          "windowOutcome",
+          "answeredBy",
+          "outcome",
+          "refusalReason",
+          "merchantOrderId",
+          "refundedAt"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "total": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "purchases",
+    "total"
   ],
   "additionalProperties": false
 }
