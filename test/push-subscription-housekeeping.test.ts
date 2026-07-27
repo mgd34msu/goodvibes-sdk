@@ -52,6 +52,30 @@ function realKeys(): { p256dh: string; auth: string } {
   };
 }
 
+/**
+ * Per-test ceiling for the tests below that do real work — real ECDH keygen,
+ * real VAPID JWT signing, a real HTTP delivery to a real local socket, and real
+ * file writes. A ceiling, not a target: nothing waits it out, so a fast host is
+ * unaffected. bun's implicit 5 s default is an idle machine's number for that
+ * mix, and this suite runs all 645 of its files in ONE process alongside
+ * everything else.
+ */
+const REAL_WORK_BUDGET_MS = 60_000;
+
+/**
+ * A sweep interval no test run can outlive.
+ *
+ * `createPushService` builds its own subscription store internally and starts
+ * that store's periodic sweep; the store is private, so a caller has no way to
+ * stop it. In a suite that runs every file in one process, a sweeper left
+ * running on a directory a later `afterEach` deletes is a cross-file hazard
+ * that only shows up when the machine is slow enough for the timer to land in
+ * the wrong place. Configuring the interval past any plausible run removes the
+ * hazard from these tests without pretending the underlying lifecycle gap is
+ * fixed.
+ */
+const SWEEP_NEVER_MINUTES = 24 * 60;
+
 let dir: string;
 let storePath: string;
 let disclosurePath: string;
@@ -480,8 +504,10 @@ describe('push.vapidSubject reaches a real delivery', () => {
     const secrets = new Map<string, string>();
     const config: Partial<Record<ConfigKey, unknown>> = {
       'push.vapidSubject': 'mailto:ops@example.test',
-      // Keep the periodic sweep out of this test's way.
-      'push.subscriptions.sweepIntervalMinutes': 1440,
+      // Keep the periodic sweep out of this test's way — and out of every
+      // later file's way, since the service's own store is private and its
+      // sweeper cannot be stopped from here.
+      'push.subscriptions.sweepIntervalMinutes': SWEEP_NEVER_MINUTES,
     };
     const deps = {
       secretsManager: {
@@ -515,10 +541,17 @@ describe('push.vapidSubject reaches a real delivery', () => {
     } finally {
       sink.stop(true);
     }
-  });
+  }, REAL_WORK_BUDGET_MS);
 
   test('an invalid configured contact falls back rather than crashing construction', () => {
-    const config: Partial<Record<ConfigKey, unknown>> = { 'push.vapidSubject': 'ops@example.test' };
+    const config: Partial<Record<ConfigKey, unknown>> = {
+      'push.vapidSubject': 'ops@example.test',
+      // Same reason as the test above: createPushService starts a sweeper on a
+      // store it does not hand back, and this test's directory is removed by
+      // afterEach. Without this the default 60-minute interval is armed against
+      // a path that will not exist.
+      'push.subscriptions.sweepIntervalMinutes': SWEEP_NEVER_MINUTES,
+    };
     const deps = {
       secretsManager: {
         get: async (): Promise<string | null> => null,
