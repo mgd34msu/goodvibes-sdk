@@ -16434,7 +16434,7 @@
           ],
           "additionalProperties": false
         },
-        "invokable": false
+        "invokable": true
       },
       {
         "id": "calendar.events.get",
@@ -16511,7 +16511,7 @@
           ],
           "additionalProperties": false
         },
-        "invokable": false
+        "invokable": true
       },
       {
         "id": "calendar.events.list",
@@ -16597,7 +16597,7 @@
           ],
           "additionalProperties": false
         },
-        "invokable": false
+        "invokable": true
       },
       {
         "id": "calendar.ics.export",
@@ -16648,7 +16648,7 @@
           ],
           "additionalProperties": false
         },
-        "invokable": false
+        "invokable": true
       },
       {
         "id": "calendar.ics.import",
@@ -16713,7 +16713,7 @@
           ],
           "additionalProperties": false
         },
-        "invokable": false
+        "invokable": true
       },
       {
         "id": "channels.accounts.action.default",

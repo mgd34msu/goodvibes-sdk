@@ -93,6 +93,8 @@ import { registerPowerGatewayMethods, type PowerGatewayService } from './power.j
 import { registerDevicesGatewayMethods, type DevicesGatewayService } from './devices.js';
 import { registerMemoryGatewayMethods, type MemoryGatewayService } from './memory.js';
 import { registerVoiceSetupGatewayMethods, type VoiceSetupGatewayService } from './voice-setup.js';
+import { registerCalendarGatewayMethods, type CalendarGatewayService } from './calendar.js';
+import { createDaemonCalendarGatewayService } from './calendar-composition.js';
 import { bindCostAttributionIngest } from './attribution-ingest.js';
 import type { ConfigManager } from '../../config/manager.js';
 import type { DisposalRegistry } from '../../runtime/disposal.js';
@@ -220,6 +222,18 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
   readonly memoryGovernor?: MemoryGatewayService | undefined;
   /** Optional: managed local-voice provisioning. When present, voice.local.status/install serve real state; absent they stay cataloged-but-unhandled. */
   readonly voiceSetup?: VoiceSetupGatewayService | undefined;
+  /**
+   * Optional override for the calendar backend. Absent in the real daemon,
+   * which composes the Google-backed one from its own daemon-tier config and
+   * secrets (see routes/calendar-composition.ts); present in tests that serve
+   * calendar.events.* / calendar.ics.* from a fake with no store behind it.
+   *
+   * A missing calendar implementation the daemon could reach — not a missing
+   * route — is what made those five methods `invokable: false` for so long.
+   */
+  readonly calendarGateway?: CalendarGatewayService | undefined;
+  /** The daemon's home directory; the credential-adoption probe needs a real one. */
+  readonly homeDirectory?: string | undefined;
   /**
    * The following three are wired only by the full runtime-services composition
    * root; when any is absent (e.g. the terminal-shell embed) the proactive
@@ -584,6 +598,8 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   if (deps.deviceCapabilities) registerDevicesGatewayMethods(catalog, deps.deviceCapabilities);
   if (deps.memoryGovernor) registerMemoryGatewayMethods(catalog, deps.memoryGovernor);
   if (deps.voiceSetup) registerVoiceSetupGatewayMethods(catalog, deps.voiceSetup);
+  const calendarGateway = createDaemonCalendarGatewayService(deps);
+  if (calendarGateway) registerCalendarGatewayMethods(catalog, calendarGateway);
   registerSessionRuntimeGatewayMethods(
     catalog,
     createSessionRuntimeControls({

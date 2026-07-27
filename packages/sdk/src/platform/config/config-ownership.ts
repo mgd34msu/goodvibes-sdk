@@ -141,6 +141,33 @@ export const DAEMON_OWNED_NON_SCHEMA_CONFIG_PATHS = [
   // grants read access to the operator's calendar to anyone holding it, so it
   // is treated as a credential and follows the same handover rules.
   'calendar.google.icsUrl',
+  // The rest of the mail and calendar connection — everything that is not
+  // itself a credential.
+  //
+  // The credentials above were daemon-owned before these were, and that split
+  // does not survive contact with how the connector actually works. Resolving
+  // a Google credential needs the client id as well as the client secret: with
+  // the refresh token filed in the daemon tier and the client id stranded in
+  // whichever surface the operator happened to run setup from, the daemon
+  // holds half a credential and reports "no Google account connected" the
+  // moment that surface is closed. Same for mail: the app password is useless
+  // without the host, port and username that say where to send it.
+  //
+  // So the whole connection is daemon-owned. Setup performed in any surface
+  // writes here, the daemon keeps working with no surface process running, and
+  // every surface reads the same answer back.
+  'email.enabled',
+  'email.imapHost',
+  'email.imapPort',
+  'email.smtpHost',
+  'email.smtpPort',
+  'email.smtpSecurity',
+  'email.username',
+  'email.fromAddress',
+  'calendar.google.clientId',
+  'google.oauth.projectId',
+  'google.oauth.publishingStatus',
+  'google.credentials.migratedFrom',
 ] as const;
 
 /** A daemon-owned path that has no scalar CONFIG_SCHEMA entry. */

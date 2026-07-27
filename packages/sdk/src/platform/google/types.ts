@@ -175,13 +175,31 @@ export interface GoogleCommandPort {
   ): Promise<GoogleCommandResult>;
 }
 
-/** Config read/write restricted to what the Google flows touch. */
+/**
+ * Config read/write restricted to what the Google flows touch.
+ *
+ * An implementation MUST NOT pin these writes to its own surface's silo. Every
+ * path in `GOOGLE_CONFIG_KEYS` is daemon-owned, and the ownership machinery
+ * routes an unqualified write to the daemon tier by itself — so the correct
+ * implementation is a plain `set`, and an explicitly surface-scoped one is the
+ * bug. A connection stranded in one surface's file stops existing the moment
+ * that surface is closed, which is precisely when the daemon still has to
+ * answer mail. See `platform/config/config-ownership.ts`.
+ */
 export interface GoogleConfigPort {
   get(key: string): unknown;
   set(key: string, value: unknown): void;
 }
 
-/** Encrypted secret storage. Values never leave this boundary. */
+/**
+ * Encrypted secret storage. Values never leave this boundary.
+ *
+ * Same rule as `GoogleConfigPort`, and it bites harder here: every name in
+ * `GOOGLE_SECRET_KEYS` derives from a daemon-owned config path, so the secret
+ * store files it in the daemon tier when no scope is forced. Passing an
+ * explicit surface scope overrides that and hides the credential from the
+ * daemon — and from any node that later takes over. Do not pass one.
+ */
 export interface GoogleSecretPort {
   get(key: string): Promise<string | null>;
   set(key: string, value: string): Promise<void>;
