@@ -32,6 +32,7 @@
 import type { GatewayMethodCatalog } from '../method-catalog.js';
 import type { GatewayMethodHandler } from '../method-catalog-shared.js';
 import { GatewayVerbError } from './gateway-verb-error.js';
+import { refuseNonUserRequest } from './explicit-user-request.js';
 import { readInvocationParams } from './invocation-params.js';
 
 /** One event, in the shape `calendar.events.list` advertises. */
@@ -170,6 +171,7 @@ export function createCalendarEventsCreateHandler(service: CalendarGatewayServic
   return async (invocation) => {
     const params = readInvocationParams(invocation);
     requireConfirmation(params, 'calendar.events.create');
+    refuseNonUserRequest(invocation, 'calendar.events.create');
     return service.createEvent({
       title: readRequiredString(params.title, 'title'),
       start: readRequiredString(params.start, 'start'),
@@ -190,6 +192,7 @@ export function createCalendarIcsImportHandler(service: CalendarGatewayService):
   return async (invocation) => {
     const params = readInvocationParams(invocation);
     requireConfirmation(params, 'calendar.ics.import');
+    refuseNonUserRequest(invocation, 'calendar.ics.import');
     return service.importIcs(
       readRequiredString(params.icsContent, 'icsContent'),
       readOptionalString(params.calendarId),
