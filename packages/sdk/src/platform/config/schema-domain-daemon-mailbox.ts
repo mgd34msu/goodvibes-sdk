@@ -233,6 +233,6 @@ export const daemonMailboxConfigSettings: ConfigSettingDefinition[] = [
     key: 'surfaces.calendar.calendars',
     type: 'string',
     default: '',
-    description: 'Comma-separated calendar ids the daemon may read',
+    description: 'JSON object mapping a calendar id to its collection path, e.g. {"work":"/dav/calendars/work/"}. Empty means the CalDAV URL is the one calendar',
   },
 ];

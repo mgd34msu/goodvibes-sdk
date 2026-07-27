@@ -35,6 +35,7 @@
 import type { GatewayMethodCatalog } from '../method-catalog.js';
 import type { GatewayMethodHandler } from '../method-catalog-shared.js';
 import { GatewayVerbError } from './gateway-verb-error.js';
+import { refuseNonUserRequest } from './explicit-user-request.js';
 import { readInvocationParams } from './invocation-params.js';
 
 /** One inbox message, in the shape `email.inbox.list` advertises. */
@@ -215,6 +216,7 @@ export function createEmailSendHandler(service: EmailGatewayService): GatewayMet
         400,
       );
     }
+    refuseNonUserRequest(invocation, 'email.send');
     return service.send({
       to: readRequiredString(params.to, 'to'),
       subject: readRequiredString(params.subject, 'subject'),
