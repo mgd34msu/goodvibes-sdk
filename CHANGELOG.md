@@ -4,6 +4,28 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
+## [1.17.2] - 2026-07-27
+
+### Fixed
+
+- **1.17.1 asked consumers for something it did not hand out.**
+  `RuntimePollerOwners.cancelHostedAgentRuns` shipped as a REQUIRED member, and
+  the shared implementation it names — `cancelAllAgentRuns` — was reachable from
+  no published subpath at all. Every fork that composes its own runtime graph
+  (goodvibes-tui, goodvibes-agent) therefore had a contract it could satisfy
+  only by re-writing the cancel loop by hand. It is now exported from
+  `./platform/tools`, alongside the `AgentManager` those forks already import
+  from there.
+
+  Worth stating because it bears on the gate added in 1.17.1: the subpath
+  surface check did NOT catch this, and could not. It records what a subpath
+  exports, so it sees a required member being added and it sees an export being
+  removed — but "a required member that nothing published can satisfy" is a
+  different shape, and it took a consumer failing to compile to find it. There
+  is now a test that builds the owners object the way a fork builds it, from the
+  published barrel, so the contract cannot again demand what the package does
+  not offer.
+
 ## [1.17.1] - 2026-07-27
 
 ### Fixed

@@ -31940,6 +31940,14 @@
       ]
     },
     {
+      "name": "CancellableAgentRuns",
+      "kind": "interface",
+      "required": [
+        "cancel",
+        "list"
+      ]
+    },
+    {
       "name": "ConfigReadResult",
       "kind": "type"
     },
@@ -32291,6 +32299,10 @@
     },
     {
       "name": "applySanitizer",
+      "kind": "function"
+    },
+    {
+      "name": "cancelAllAgentRuns",
       "kind": "function"
     },
     {

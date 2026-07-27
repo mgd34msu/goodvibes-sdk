@@ -176,6 +176,11 @@ export { formatDenialResponse, guardExecCommand } from './exec/ast-guard.js';
 export { createAnalyzeTool } from './analyze/index.js';
 export { InspectTool } from './inspect/index.js';
 export { createAgentTool } from './agent/index.js';
+// Consumers MUST be able to reach this: RuntimePollerOwners.cancelHostedAgentRuns
+// is required, and every fork that composes its own runtime graph has to supply
+// it. Without a published route to the shared implementation the contract asks
+// for something it does not hand out, and each fork re-writes the cancel loop.
+export { cancelAllAgentRuns, type CancellableAgentRuns } from './agent/index.js';
 export { createChannelTool } from './channel/index.js';
 export { registerChannelAgentTools } from './channel/agent-tools.js';
 export { controlTool } from './control/index.js';
