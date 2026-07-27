@@ -21664,6 +21664,469 @@
       "kind": "function"
     }
   ],
+  "./platform/payments": [
+    {
+      "name": "APPROVAL_GATE",
+      "kind": "const"
+    },
+    {
+      "name": "ApprovalEvent",
+      "kind": "type"
+    },
+    {
+      "name": "ApprovalState",
+      "kind": "type"
+    },
+    {
+      "name": "BudgetDraw",
+      "kind": "interface",
+      "required": [
+        "itemMinorUnits",
+        "overageMinorUnits",
+        "toleranceMinorUnits",
+        "totalMinorUnits"
+      ]
+    },
+    {
+      "name": "BudgetLedger",
+      "kind": "class"
+    },
+    {
+      "name": "BudgetLimits",
+      "kind": "interface",
+      "required": [
+        "dailyItemMinorUnits",
+        "dailyOverageMinorUnits",
+        "overageTolerance",
+        "perPurchaseCeiling"
+      ]
+    },
+    {
+      "name": "BudgetPool",
+      "kind": "type"
+    },
+    {
+      "name": "BudgetReservation",
+      "kind": "interface",
+      "required": [
+        "createdAtMs",
+        "dayKey",
+        "expiresAtMs",
+        "id",
+        "itemMinorUnits",
+        "overageMinorUnits",
+        "toleranceMinorUnits"
+      ]
+    },
+    {
+      "name": "BudgetStateSnapshot",
+      "kind": "interface",
+      "required": [
+        "reservations",
+        "spend"
+      ]
+    },
+    {
+      "name": "CVV_PROMPT_TRADEOFF_WARNING",
+      "kind": "const"
+    },
+    {
+      "name": "CardMetadata",
+      "kind": "interface",
+      "required": [
+        "addedAt",
+        "brand",
+        "expiryMonth",
+        "expiryYear",
+        "id",
+        "issuerCapMinorUnits",
+        "kind",
+        "label",
+        "last4"
+      ]
+    },
+    {
+      "name": "CartCheck",
+      "kind": "interface",
+      "required": [
+        "missing",
+        "ok",
+        "reason",
+        "unexpected"
+      ]
+    },
+    {
+      "name": "CartLine",
+      "kind": "interface",
+      "required": [
+        "label",
+        "quantity",
+        "unitMinorUnits"
+      ]
+    },
+    {
+      "name": "ChannelDelivery",
+      "kind": "interface",
+      "required": [
+        "backfillable",
+        "channel",
+        "delivered"
+      ]
+    },
+    {
+      "name": "CommandAuthorityChannel",
+      "kind": "type"
+    },
+    {
+      "name": "CurrencyCode",
+      "kind": "type"
+    },
+    {
+      "name": "DayKey",
+      "kind": "type"
+    },
+    {
+      "name": "DecisionInput",
+      "kind": "interface",
+      "required": [
+        "budgetCurrency",
+        "limits",
+        "pools",
+        "preferredTier",
+        "quoted"
+      ]
+    },
+    {
+      "name": "DecisionOutcome",
+      "kind": "type"
+    },
+    {
+      "name": "GateInput",
+      "kind": "interface",
+      "required": [
+        "enabled",
+        "hasShippingAddress",
+        "hasUsableCard",
+        "isOwnerDirectRequest",
+        "isPaymentsLeader"
+      ]
+    },
+    {
+      "name": "GateRefusal",
+      "kind": "interface",
+      "required": [
+        "code",
+        "reason"
+      ]
+    },
+    {
+      "name": "MAX_RESERVATIONS",
+      "kind": "const"
+    },
+    {
+      "name": "MinorUnits",
+      "kind": "type"
+    },
+    {
+      "name": "OwnerSuppliedText",
+      "kind": "type"
+    },
+    {
+      "name": "PaymentIntentFields",
+      "kind": "interface",
+      "required": [
+        "checkoutUrl",
+        "item",
+        "merchant",
+        "requestedMax"
+      ]
+    },
+    {
+      "name": "PaymentTaintDecision",
+      "kind": "interface",
+      "required": [
+        "allowed",
+        "findings",
+        "reason"
+      ]
+    },
+    {
+      "name": "PoolSnapshot",
+      "kind": "interface",
+      "required": [
+        "dayKey",
+        "item",
+        "overage",
+        "timezone",
+        "tolerance"
+      ]
+    },
+    {
+      "name": "PostalAddress",
+      "kind": "interface",
+      "required": [
+        "city",
+        "country",
+        "line1",
+        "line2",
+        "name",
+        "postalCode",
+        "region"
+      ]
+    },
+    {
+      "name": "PurchaseFacts",
+      "kind": "interface",
+      "required": [
+        "cardLast4",
+        "currency",
+        "feesMinorUnits",
+        "item",
+        "itemMinorUnits",
+        "merchantDomain",
+        "poolsAfter",
+        "shippingMinorUnits",
+        "shippingTier",
+        "stepDown",
+        "taxMinorUnits",
+        "totalMinorUnits"
+      ]
+    },
+    {
+      "name": "QuotedTotals",
+      "kind": "interface",
+      "required": [
+        "currency",
+        "itemMinorUnits",
+        "mandatoryFeesMinorUnits",
+        "shippingOptions",
+        "taxMinorUnits"
+      ]
+    },
+    {
+      "name": "RESERVATION_TTL_MS",
+      "kind": "const"
+    },
+    {
+      "name": "RankedShipping",
+      "kind": "interface",
+      "required": [
+        "ranked",
+        "tierToOption"
+      ]
+    },
+    {
+      "name": "RecurringCheck",
+      "kind": "interface",
+      "required": [
+        "matched",
+        "reason",
+        "recurring"
+      ]
+    },
+    {
+      "name": "RefusalCode",
+      "kind": "type"
+    },
+    {
+      "name": "RequestedLine",
+      "kind": "interface",
+      "required": [
+        "label",
+        "quantity"
+      ]
+    },
+    {
+      "name": "SHIPPING_TIERS",
+      "kind": "const"
+    },
+    {
+      "name": "Settlement",
+      "kind": "type"
+    },
+    {
+      "name": "ShippingLadderResult",
+      "kind": "interface",
+      "required": [
+        "costMinorUnits",
+        "option",
+        "rungsTried",
+        "stepDown",
+        "tier"
+      ]
+    },
+    {
+      "name": "ShippingOption",
+      "kind": "interface",
+      "required": [
+        "costMinorUnits",
+        "rawLabel"
+      ]
+    },
+    {
+      "name": "ShippingStepDown",
+      "kind": "interface",
+      "required": [
+        "from",
+        "reason",
+        "savedMinorUnits",
+        "to"
+      ]
+    },
+    {
+      "name": "ShippingTier",
+      "kind": "type"
+    },
+    {
+      "name": "SilenceMeaning",
+      "kind": "type"
+    },
+    {
+      "name": "SpendRecord",
+      "kind": "interface",
+      "required": [
+        "atMs",
+        "itemMinorUnits",
+        "overageMinorUnits",
+        "purchaseId",
+        "toleranceMinorUnits"
+      ]
+    },
+    {
+      "name": "VETO_WINDOW",
+      "kind": "const"
+    },
+    {
+      "name": "VetoEvent",
+      "kind": "type"
+    },
+    {
+      "name": "VetoState",
+      "kind": "type"
+    },
+    {
+      "name": "WindowRecovery",
+      "kind": "interface",
+      "required": [
+        "backfillChannels",
+        "outcome",
+        "reason",
+        "reopenChannels"
+      ]
+    },
+    {
+      "name": "advanceApproval",
+      "kind": "function"
+    },
+    {
+      "name": "advanceVeto",
+      "kind": "function"
+    },
+    {
+      "name": "approvalSettlement",
+      "kind": "function"
+    },
+    {
+      "name": "assertCartMatchesRequest",
+      "kind": "function"
+    },
+    {
+      "name": "cheapestOption",
+      "kind": "function"
+    },
+    {
+      "name": "checkPaymentGates",
+      "kind": "function"
+    },
+    {
+      "name": "dayKey",
+      "kind": "function"
+    },
+    {
+      "name": "decidePurchase",
+      "kind": "function"
+    },
+    {
+      "name": "describePaymentTaint",
+      "kind": "function"
+    },
+    {
+      "name": "detectRecurringCharge",
+      "kind": "function"
+    },
+    {
+      "name": "evaluatePaymentTaint",
+      "kind": "function"
+    },
+    {
+      "name": "formatMinorUnits",
+      "kind": "function"
+    },
+    {
+      "name": "isTerminalApproval",
+      "kind": "function"
+    },
+    {
+      "name": "isTerminalVeto",
+      "kind": "function"
+    },
+    {
+      "name": "isValidTimezone",
+      "kind": "function"
+    },
+    {
+      "name": "ownerSuppliedText",
+      "kind": "function"
+    },
+    {
+      "name": "parseCommandAuthorityChannel",
+      "kind": "function"
+    },
+    {
+      "name": "parseCurrencyCode",
+      "kind": "function"
+    },
+    {
+      "name": "rankShippingOptions",
+      "kind": "function"
+    },
+    {
+      "name": "recoverInterruptedWindow",
+      "kind": "function"
+    },
+    {
+      "name": "renderApprovalMessage",
+      "kind": "function"
+    },
+    {
+      "name": "renderCancellationReport",
+      "kind": "function"
+    },
+    {
+      "name": "renderVetoMessage",
+      "kind": "function"
+    },
+    {
+      "name": "resolveTimezone",
+      "kind": "function"
+    },
+    {
+      "name": "sameDay",
+      "kind": "function"
+    },
+    {
+      "name": "vetoSettlement",
+      "kind": "function"
+    },
+    {
+      "name": "walkShippingLadder",
+      "kind": "function"
+    },
+    {
+      "name": "windowDeadlineMs",
+      "kind": "function"
+    }
+  ],
   "./platform/permissions": [
     {
       "name": "BackgroundAgentAttribution",
