@@ -110,7 +110,7 @@ describe('SDKObserver — auth wire-up', () => {
       observer,
     );
 
-    const capture = captureConsole('warn');
+    const capture = captureConsole('warn', /observer callback failed: onAuthTransition/);
     try {
       // Should NOT throw despite the observer throwing
       await expect(auth.login({ username: 'alice', password: 'secret' })).resolves.not.toBeNull(); // presence-only: login resolves
@@ -151,7 +151,7 @@ describe('SDKObserver — TransportObserver callbacks', () => {
     const observer: SDKObserver = {
       onTransportActivity(_a) { throw new Error('transport observer broken'); },
     };
-    const capture = captureConsole('warn');
+    const capture = captureConsole('warn', /onTransportActivity/);
     try {
       const result = invokeObserver(
         () => observer.onTransportActivity?.({ direction: 'send', url: 'http://x', kind: 'http' }),
@@ -169,7 +169,7 @@ describe('SDKObserver — TransportObserver callbacks', () => {
     const observer: SDKObserver = {
       onError(_e) { throw new Error('error observer broken'); },
     };
-    const capture = captureConsole('warn');
+    const capture = captureConsole('warn', /onError/);
     try {
       const result = invokeObserver(
         () => (observer as { onError?: (e: Error) => void }).onError?.(new Error('sdk error')),
@@ -187,7 +187,7 @@ describe('SDKObserver — TransportObserver callbacks', () => {
     const observer: SDKObserver = {
       onEvent(_e) { throw new Error('event observer broken'); },
     };
-    const capture = captureConsole('warn');
+    const capture = captureConsole('warn', /onEvent/);
     try {
       const result = invokeObserver(
         () => (observer as { onEvent?: (e: unknown) => void }).onEvent?.({ type: 'UNKNOWN' }),

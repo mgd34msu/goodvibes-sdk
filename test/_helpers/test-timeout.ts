@@ -79,10 +79,33 @@ export function installFrozenNow(nowMs: number): () => void {
 
 type ConsoleCaptureMethod = 'debug' | 'error' | 'log' | 'warn';
 
-export function captureConsole(method: ConsoleCaptureMethod): { readonly messages: unknown[][]; restore(): void } {
+/**
+ * Capture what a piece of code writes to one console method.
+ *
+ * `console` is process-wide, and this suite runs every file in ONE process, so
+ * an unfiltered collector collects whatever else in the process happens to log
+ * while it is installed — and other files demonstrably leave background work
+ * running (a sibling counter in this suite once recorded 4962 requests where 2
+ * were expected). Every `toHaveLength` assertion over a console capture is
+ * therefore a measurement of the whole process, not of the code under test.
+ *
+ * Pass `match` to collect only the lines this test is about. Anything else is
+ * forwarded to the real console untouched — filtering must never swallow
+ * someone else's output — and simply is not counted. Omitting `match` keeps the
+ * original collect-everything behaviour, which is fine for a capture whose
+ * assertions do not depend on a count.
+ */
+export function captureConsole(
+  method: ConsoleCaptureMethod,
+  match?: RegExp,
+): { readonly messages: unknown[][]; restore(): void } {
   const original = console[method];
   const messages: unknown[][] = [];
   console[method] = ((...args: unknown[]) => {
+    if (match && !match.test(args.map((arg) => String(arg)).join(' '))) {
+      original.call(console, ...args);
+      return;
+    }
     messages.push(args);
   }) as typeof console[typeof method];
   return {
