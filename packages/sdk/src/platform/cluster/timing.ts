@@ -39,6 +39,24 @@ export interface ClusterTiming {
   /** Backoff after a provider told us someone else is already consuming. */
   readonly consumerConflictBackoffMs: number;
   /**
+   * Ceiling for the consumer-conflict backoff as it doubles.
+   *
+   * A consumer conflict is not a transient network fault that clears itself —
+   * it means a DIFFERENT process holds the credential, and only a human can
+   * decide which one should. Retrying at a constant rate forever is therefore
+   * a hot loop against somebody else's API: on a node with no peer to hand the
+   * surface to, every retry resigns, re-probes, wins its own election again,
+   * restarts the consumer and is refused again. Measured on a two-node group
+   * before this cap existed, with a 4s master timeout: 44 getUpdates calls in
+   * 40 seconds, all of them refused.
+   *
+   * Proportional like everything else here, so a test rig that shortens the
+   * timeouts shortens this too, with a fifteen-minute ceiling for a real
+   * install — long enough to stop hammering, short enough that fixing the
+   * other process is noticed without a restart.
+   */
+  readonly consumerConflictBackoffMaxMs: number;
+  /**
    * How often a STANDBY re-announces that it can serve a surface.
    *
    * A standby is silent by design, and a silent node is invisible to the
@@ -88,6 +106,7 @@ export function deriveClusterTiming(settings: ClusterSettings): ClusterTiming {
     watchdogTickMs: clamp(Math.min(heartbeatMs, masterTimeoutMs / 3), 50, 30_000),
     suspendThresholdMs: Math.max(masterTimeoutMs / 2, 1_000),
     consumerConflictBackoffMs: clamp(masterTimeoutMs / 6, 250, 15_000),
+    consumerConflictBackoffMaxMs: clamp(masterTimeoutMs * 10, 1_000, 900_000),
     candidacyAnnounceMs: masterTimeoutMs,
     candidateTtlMs: masterTimeoutMs * 3,
     yieldCheckMs: masterTimeoutMs,

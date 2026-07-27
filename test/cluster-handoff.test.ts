@@ -15,6 +15,11 @@ import { decodeMessage, encodeMessage, signMessage } from '../packages/sdk/src/p
 import { compareStableRank } from '../packages/sdk/src/platform/cluster/ranking.js';
 import { DEFAULT_CLUSTER_SETTINGS, resolveClusterSettings } from '../packages/sdk/src/platform/cluster/settings.js';
 import { ntfySurface, providerSurface, surfaceIdFor } from '../packages/sdk/src/platform/cluster/surface-id.js';
+import {
+  INITIAL_CONSUMER_CONFLICT_STATE,
+  nextConsumerConflictBackoff,
+} from '../packages/sdk/src/platform/cluster/consumer-conflict-backoff.js';
+import { deriveClusterTiming } from '../packages/sdk/src/platform/cluster/timing.js';
 import { parsePeers } from '../packages/sdk/src/platform/cluster/udp-transport.js';
 import {
   CLUSTER_PROTOCOL_VERSION,
@@ -328,6 +333,76 @@ describe('cluster handoff — the provider-conflict backstop', () => {
     expect(surfaceState(node, 'telegram-bot').running).toBe(false);
     expect(surfaceState(node, SURFACE).running).toBe(true);
     expect(surfaceState(node, SURFACE).stopCount).toBe(0);
+  });
+
+  test('the backoff doubles to a ceiling, and resets only after the consumer really served', () => {
+    const limits = { floorMs: 500, ceilingMs: 4_000, servedLongEnoughMs: 3_000 };
+    // Refused immediately every time: the interval doubles and then stops.
+    let state = INITIAL_CONSUMER_CONFLICT_STATE;
+    const delays: number[] = [];
+    for (let i = 0; i < 6; i += 1) {
+      state = nextConsumerConflictBackoff(state, { servedForMs: 0, ...limits });
+      delays.push(state.lastDelayMs);
+    }
+    expect(delays).toEqual([500, 1_000, 2_000, 4_000, 4_000, 4_000]);
+
+    // Having served well past the threshold, the next refusal starts over —
+    // this is a new incident, not a continuation of the old one.
+    const afterServing = nextConsumerConflictBackoff(state, { servedForMs: 60_000, ...limits });
+    expect(afterServing.streak).toBe(1);
+    expect(afterServing.lastDelayMs).toBe(500);
+
+    // Serving for less than the threshold does NOT reset it: a consumer that
+    // starts and is refused straight away is exactly the loop being damped.
+    const afterBlink = nextConsumerConflictBackoff(state, { servedForMs: 10, ...limits });
+    expect(afterBlink.streak).toBe(state.streak + 1);
+  });
+
+  test('a surface refused over and over is retried less and less often, not at a fixed rate', async () => {
+    // A consumer conflict is not a transient fault: another PROCESS holds the
+    // credential, and no amount of retrying decides which one should. With a
+    // flat backoff a node with no peer to hand the surface to resigns,
+    // re-probes, wins its own election again, restarts the consumer and is
+    // refused again — forever, at a constant rate, against a third party's
+    // API. Measured live on a two-node group with a 4s master timeout before
+    // this existed: 44 getUpdates calls in 40 seconds, every one refused.
+    const world = createWorld();
+    const node = addNode(world, { id: 'node-a', surfaces: [SURFACE] });
+    await startNode(world, node);
+    await advance(world, 1_100);
+    expect(surfaceState(node, SURFACE).running).toBe(true);
+
+    // Refuse it every single time it manages to start.
+    const gapsMs: number[] = [];
+    for (let round = 0; round < 4; round += 1) {
+      expect(roleOf(node, SURFACE)).toBe('master');
+      node.election.reportConsumerConflict('terminated by other getUpdates request');
+      await flush(world);
+      expect(roleOf(node, SURFACE)).toBe('standby');
+
+      // Step until it contests again, and record how long that took.
+      let waited = 0;
+      while (roleOf(node, SURFACE) !== 'master' && waited < 600_000) {
+        await advance(world, 100);
+        waited += 100;
+      }
+      gapsMs.push(waited);
+    }
+
+    // Each wait is longer than the one before it.
+    for (let i = 1; i < gapsMs.length; i += 1) {
+      expect(gapsMs[i]!).toBeGreaterThan(gapsMs[i - 1]!);
+    }
+    // And it is bounded, not unbounded growth. The harness runs a 3s master
+    // timeout, so the ceiling is 30s; a real install's 90s timeout gives the
+    // fifteen-minute cap.
+    const timing = deriveClusterTiming(resolveClusterSettings({
+      enabled: true, heartbeatSeconds: 1, masterTimeoutSeconds: 3, bootProbeSeconds: 1,
+    }));
+    expect(timing.consumerConflictBackoffMaxMs).toBe(30_000);
+    expect(gapsMs[gapsMs.length - 1]!).toBeLessThanOrEqual(
+      timing.consumerConflictBackoffMaxMs + 2_000,
+    );
   });
 
   test('a conflict reported to a standby changes nothing', async () => {
