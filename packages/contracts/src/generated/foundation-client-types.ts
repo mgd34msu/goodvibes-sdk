@@ -357,7 +357,7 @@ export interface OperatorMethodInputMap {
   "browser.extract": ({ sessionId?: string; pageId?: string; ref?: string; selector?: string; fields?: readonly string[]; all?: boolean; limit?: number; } & { readonly [key: string]: unknown });
   "browser.screenshot": ({ sessionId?: string; pageId?: string; fullPage?: boolean; path?: string; } & { readonly [key: string]: unknown });
   "browser.tabs.list": { sessionId?: string; };
-  "browser.tabs.new": ({ sessionId?: string; pageId?: string; url?: string; profileName?: string; headless?: boolean; } & { readonly [key: string]: unknown });
+  "browser.tabs.create": ({ sessionId?: string; pageId?: string; url?: string; profileName?: string; headless?: boolean; } & { readonly [key: string]: unknown });
   "browser.tabs.switch": ({ sessionId?: string; pageId: string; } & { readonly [key: string]: unknown });
   "browser.tabs.close": ({ sessionId?: string; pageId: string; } & { readonly [key: string]: unknown });
   "browser.history.back": ({ sessionId?: string; pageId?: string; } & { readonly [key: string]: unknown });
@@ -708,7 +708,7 @@ export interface OperatorMethodOutputMap {
   "browser.extract": ({ sessionId: string; pageId: string; url?: string; matched?: number; returned?: number; note?: string; data?: { trust: string; surface: string; origin: string; retrievedAt: string; text: string; truncated: boolean; rule: string; }; } & { readonly [key: string]: unknown });
   "browser.screenshot": ({ sessionId: string; pageId: string; url?: string; path?: string; bytes?: number; next?: string; } & { readonly [key: string]: unknown });
   "browser.tabs.list": ({ sessionId: string; pages: readonly ({ pageId: string; url: string; title: string; active: boolean; })[]; } & { readonly [key: string]: unknown });
-  "browser.tabs.new": ({ sessionId: string; pageId: string; url?: string; pages?: readonly ({ pageId: string; url: string; title: string; active: boolean; })[]; } & { readonly [key: string]: unknown });
+  "browser.tabs.create": ({ sessionId: string; pageId: string; url?: string; pages?: readonly ({ pageId: string; url: string; title: string; active: boolean; })[]; } & { readonly [key: string]: unknown });
   "browser.tabs.switch": ({ sessionId: string; activePageId: string; } & { readonly [key: string]: unknown });
   "browser.tabs.close": ({ sessionId: string; closedPageId: string; pages: readonly ({ pageId: string; url: string; title: string; active: boolean; })[]; } & { readonly [key: string]: unknown });
   "browser.history.back": ({ sessionId: string; pageId: string; url?: string; moved?: boolean; } & { readonly [key: string]: unknown });

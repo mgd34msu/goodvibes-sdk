@@ -18570,89 +18570,8 @@
       }
     },
     "/api/browser/tabs": {
-      "get": {
-        "operationId": "browser.tabs.list",
-        "summary": "List Tabs",
-        "description": "Return every open page in a session, with which one is active.",
-        "tags": [
-          "browser"
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "sessionId": {
-                      "type": "string"
-                    },
-                    "pages": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "pageId": {
-                            "type": "string"
-                          },
-                          "url": {
-                            "type": "string"
-                          },
-                          "title": {
-                            "type": "string"
-                          },
-                          "active": {
-                            "type": "boolean"
-                          }
-                        },
-                        "required": [
-                          "pageId",
-                          "url",
-                          "title",
-                          "active"
-                        ],
-                        "additionalProperties": false
-                      }
-                    }
-                  },
-                  "required": [
-                    "sessionId",
-                    "pages"
-                  ],
-                  "additionalProperties": true
-                }
-              }
-            }
-          },
-          "default": {
-            "$ref": "#/components/responses/Error"
-          }
-        },
-        "x-typed-client-io": true,
-        "x-access": "authenticated",
-        "x-transport": [
-          "http",
-          "ws"
-        ],
-        "x-scopes": [
-          "read:browser"
-        ],
-        "parameters": [
-          {
-            "name": "sessionId",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ]
-      }
-    },
-    "/api/browser/tabs/new": {
       "post": {
-        "operationId": "browser.tabs.new",
+        "operationId": "browser.tabs.create",
         "summary": "Open Tab",
         "description": "Open a new tab, optionally at a URL, opening a session first if none is open.",
         "tags": [
@@ -18753,6 +18672,85 @@
             }
           }
         }
+      },
+      "get": {
+        "operationId": "browser.tabs.list",
+        "summary": "List Tabs",
+        "description": "Return every open page in a session, with which one is active.",
+        "tags": [
+          "browser"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sessionId": {
+                      "type": "string"
+                    },
+                    "pages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "pageId": {
+                            "type": "string"
+                          },
+                          "url": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "active": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "pageId",
+                          "url",
+                          "title",
+                          "active"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "sessionId",
+                    "pages"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "read:browser"
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       }
     },
     "/api/browser/tabs/switch": {
@@ -94648,19 +94646,19 @@
       "outputSchemaCoverage": "typed"
     },
     {
-      "id": "browser.tabs.list",
+      "id": "browser.tabs.create",
       "category": "browser",
       "access": "authenticated",
-      "rest": "GET /api/browser/tabs",
+      "rest": "POST /api/browser/tabs",
       "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
     {
-      "id": "browser.tabs.new",
+      "id": "browser.tabs.list",
       "category": "browser",
       "access": "authenticated",
-      "rest": "POST /api/browser/tabs/new",
+      "rest": "GET /api/browser/tabs",
       "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"

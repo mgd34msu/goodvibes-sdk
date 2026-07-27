@@ -179,7 +179,7 @@ export const GATEWAY_REST_ROUTES: readonly GatewayRestRoute[] = [
   route('POST', '/api/browser/extract', 'browser.extract'),
   route('POST', '/api/browser/screenshot', 'browser.screenshot'),
   route('GET', '/api/browser/tabs', 'browser.tabs.list'),
-  route('POST', '/api/browser/tabs/new', 'browser.tabs.new'),
+  route('POST', '/api/browser/tabs', 'browser.tabs.create'),
   route('POST', '/api/browser/tabs/switch', 'browser.tabs.switch'),
   route('POST', '/api/browser/tabs/close', 'browser.tabs.close'),
   route('POST', '/api/browser/history/back', 'browser.history.back'),

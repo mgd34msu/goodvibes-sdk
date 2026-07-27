@@ -18074,76 +18074,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
-        "id": "browser.tabs.list",
-        "title": "List Tabs",
-        "description": "Return every open page in a session, with which one is active.",
-        "category": "browser",
-        "source": "builtin",
-        "access": "authenticated",
-        "transport": [
-          "http",
-          "ws"
-        ],
-        "scopes": [
-          "read:browser"
-        ],
-        "http": {
-          "method": "GET",
-          "path": "/api/browser/tabs"
-        },
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "sessionId": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
-        },
-        "outputSchema": {
-          "type": "object",
-          "properties": {
-            "sessionId": {
-              "type": "string"
-            },
-            "pages": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "pageId": {
-                    "type": "string"
-                  },
-                  "url": {
-                    "type": "string"
-                  },
-                  "title": {
-                    "type": "string"
-                  },
-                  "active": {
-                    "type": "boolean"
-                  }
-                },
-                "required": [
-                  "pageId",
-                  "url",
-                  "title",
-                  "active"
-                ],
-                "additionalProperties": false
-              }
-            }
-          },
-          "required": [
-            "sessionId",
-            "pages"
-          ],
-          "additionalProperties": true
-        },
-        "invokable": true
-      },
-      {
-        "id": "browser.tabs.new",
+        "id": "browser.tabs.create",
         "title": "Open Tab",
         "description": "Open a new tab, optionally at a URL, opening a session first if none is open.",
         "category": "browser",
@@ -18158,7 +18089,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         ],
         "http": {
           "method": "POST",
-          "path": "/api/browser/tabs/new"
+          "path": "/api/browser/tabs"
         },
         "inputSchema": {
           "type": "object",
@@ -18224,6 +18155,75 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "required": [
             "sessionId",
             "pageId"
+          ],
+          "additionalProperties": true
+        },
+        "invokable": true
+      },
+      {
+        "id": "browser.tabs.list",
+        "title": "List Tabs",
+        "description": "Return every open page in a session, with which one is active.",
+        "category": "browser",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:browser"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/browser/tabs"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "pages": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "pageId": {
+                    "type": "string"
+                  },
+                  "url": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "active": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "pageId",
+                  "url",
+                  "title",
+                  "active"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "sessionId",
+            "pages"
           ],
           "additionalProperties": true
         },

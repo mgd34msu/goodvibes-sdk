@@ -444,12 +444,12 @@ export const builtinGatewayBrowserMethodDescriptors: readonly GatewayMethodDescr
     }, ['sessionId', 'pages'], { additionalProperties: true }),
   }),
   methodDescriptor({
-    id: 'browser.tabs.new',
+    id: 'browser.tabs.create',
     title: 'Open Tab',
     description: 'Open a new tab, optionally at a URL, opening a session first if none is open.',
     category: 'browser',
     scopes: ['write:browser'],
-    http: { method: 'POST', path: '/api/browser/tabs/new' },
+    http: { method: 'POST', path: '/api/browser/tabs' },
     inputSchema: pageInputSchema({
       url: STRING_SCHEMA,
       profileName: STRING_SCHEMA,

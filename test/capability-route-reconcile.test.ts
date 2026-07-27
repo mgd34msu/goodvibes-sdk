@@ -148,7 +148,7 @@ describe('capability-advertisement honesty: route reconcile', () => {
       read_text: 'browser.readText',
       screenshot: 'browser.screenshot',
       tabs: 'browser.tabs.list',
-      new_tab: 'browser.tabs.new',
+      new_tab: 'browser.tabs.create',
       switch_tab: 'browser.tabs.switch',
       close_tab: 'browser.tabs.close',
       back: 'browser.history.back',

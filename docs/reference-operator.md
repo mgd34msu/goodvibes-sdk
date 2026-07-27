@@ -18061,80 +18061,7 @@ Close one tab. The browser itself keeps running.
 }
 ```
 
-#### `browser.tabs.list`
-
-Return every open page in a session, with which one is active.
-
-- Title: `List Tabs`
-- Source: `builtin`
-- Access: `authenticated`
-- Transport: `http`, `ws`
-- HTTP: `GET /api/browser/tabs`
-- Scopes: `read:browser`
-- Emits events: none
-- Dangerous: `no`
-- Invokable: `yes`
-
-##### Input schema
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "sessionId": {
-      "type": "string"
-    }
-  },
-  "additionalProperties": false
-}
-```
-
-##### Output schema
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "sessionId": {
-      "type": "string"
-    },
-    "pages": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "pageId": {
-            "type": "string"
-          },
-          "url": {
-            "type": "string"
-          },
-          "title": {
-            "type": "string"
-          },
-          "active": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "pageId",
-          "url",
-          "title",
-          "active"
-        ],
-        "additionalProperties": false
-      }
-    }
-  },
-  "required": [
-    "sessionId",
-    "pages"
-  ],
-  "additionalProperties": true
-}
-```
-
-#### `browser.tabs.new`
+#### `browser.tabs.create`
 
 Open a new tab, optionally at a URL, opening a session first if none is open.
 
@@ -18142,7 +18069,7 @@ Open a new tab, optionally at a URL, opening a session first if none is open.
 - Source: `builtin`
 - Access: `authenticated`
 - Transport: `http`, `ws`
-- HTTP: `POST /api/browser/tabs/new`
+- HTTP: `POST /api/browser/tabs`
 - Scopes: `write:browser`
 - Emits events: none
 - Dangerous: `no`
@@ -18220,6 +18147,79 @@ Open a new tab, optionally at a URL, opening a session first if none is open.
   "required": [
     "sessionId",
     "pageId"
+  ],
+  "additionalProperties": true
+}
+```
+
+#### `browser.tabs.list`
+
+Return every open page in a session, with which one is active.
+
+- Title: `List Tabs`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/browser/tabs`
+- Scopes: `read:browser`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pageId": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "pageId",
+          "url",
+          "title",
+          "active"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "sessionId",
+    "pages"
   ],
   "additionalProperties": true
 }
