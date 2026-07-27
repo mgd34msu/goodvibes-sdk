@@ -17,6 +17,15 @@ import {
   createStores,
   waitFor,
 } from './_helpers/knowledge-semantic-fixtures.js';
+import { trackDisposables } from './_helpers/disposables.ts';
+
+/**
+ * HomeGraphService.syncSnapshot() starts a self-improvement pump
+ * fire-and-forget behind an AbortController — it sleeps in 15s rounds and
+ * calls the semantic service (and therefore fetch) between them, for the rest
+ * of the process. dispose() aborts it.
+ */
+const disposables = trackDisposables();
 
 describe('semantic knowledge/wiki enrichment: answer quality', () => {
   test('persists source-grounded facts, wiki pages, and synthesized answers', async () => {
@@ -353,7 +362,7 @@ describe('semantic knowledge/wiki enrichment: answer quality', () => {
   test('Home Graph ask uses the shared semantic layer instead of raw snippets', async () => {
     const { store, artifactStore } = createStores();
     const semantic = new KnowledgeSemanticService(store, { llm: new FakeKnowledgeLlm() });
-    const service = new HomeGraphService(store, artifactStore, { semanticService: semantic });
+    const service = disposables.add(new HomeGraphService(store, artifactStore, { semanticService: semantic }));
     await service.syncSnapshot({
       installationId: 'house',
       areas: [{ id: 'living-room', name: 'Living Room' }],
@@ -389,7 +398,7 @@ describe('semantic knowledge/wiki enrichment: answer quality', () => {
   test('base knowledge ask treats homeassistant as a namespace alias', async () => {
     const { store, artifactStore } = createStores();
     const semantic = new KnowledgeSemanticService(store, { llm: new FakeKnowledgeLlm() });
-    const service = new HomeGraphService(store, artifactStore, { semanticService: semantic });
+    const service = disposables.add(new HomeGraphService(store, artifactStore, { semanticService: semantic }));
     await service.syncSnapshot({
       installationId: 'house',
       devices: [{ id: 'tv', name: 'Living Room TV', model: 'MODEL-1' }],
@@ -417,7 +426,7 @@ describe('semantic knowledge/wiki enrichment: answer quality', () => {
   test('base Home Assistant alias ask suppresses unrelated broad facts', async () => {
     const { store, artifactStore } = createStores();
     const semantic = new KnowledgeSemanticService(store, { llm: new FakeKnowledgeLlm() });
-    const service = new HomeGraphService(store, artifactStore, { semanticService: semantic });
+    const service = disposables.add(new HomeGraphService(store, artifactStore, { semanticService: semantic }));
     await service.syncSnapshot({
       installationId: 'house',
       devices: [
@@ -471,7 +480,7 @@ describe('semantic knowledge/wiki enrichment: answer quality', () => {
   test('base Home Assistant alias does not invent a linked object for a generic device ask', async () => {
     const { store, artifactStore } = createStores();
     const semantic = new KnowledgeSemanticService(store, { llm: new FakeKnowledgeLlm() });
-    const service = new HomeGraphService(store, artifactStore, { semanticService: semantic });
+    const service = disposables.add(new HomeGraphService(store, artifactStore, { semanticService: semantic }));
     await service.syncSnapshot({
       installationId: 'house',
       devices: [
@@ -507,12 +516,12 @@ describe('semantic knowledge/wiki enrichment: answer quality', () => {
       llm: new GapRepairAnswerLlm(),
       gapRepairer: async () => ({ searched: true, ingestedSourceIds: [], skippedUrls: [] }),
     });
-    const snapshotService = new HomeGraphService(store, artifactStore);
+    const snapshotService = disposables.add(new HomeGraphService(store, artifactStore));
     await snapshotService.syncSnapshot({
       installationId: 'house',
       devices: [{ id: 'tv', name: 'LG webOS Smart TV', manufacturer: 'LG', model: '86NANO90UNA' }],
     });
-    const service = new HomeGraphService(store, artifactStore, { semanticService: semantic });
+    const service = disposables.add(new HomeGraphService(store, artifactStore, { semanticService: semantic }));
     await service.ingestNote({
       installationId: 'house',
       title: 'LG TV setup note',
@@ -543,7 +552,7 @@ describe('semantic knowledge/wiki enrichment: answer quality', () => {
   test('broad feature asks create gaps when only weak generated profile evidence matches', async () => {
     const { store, artifactStore } = createStores();
     const semantic = new KnowledgeSemanticService(store, { llm: new WeakFeatureAnswerLlm() });
-    const service = new HomeGraphService(store, artifactStore, { semanticService: semantic });
+    const service = disposables.add(new HomeGraphService(store, artifactStore, { semanticService: semantic }));
     await service.syncSnapshot({
       installationId: 'house',
       devices: [{ id: 'tv', name: 'LG webOS Smart TV', manufacturer: 'LG', model: '86NANO90UNA' }],
@@ -565,7 +574,7 @@ describe('semantic knowledge/wiki enrichment: answer quality', () => {
     const { store, artifactStore } = createStores();
     const llm = new OrderedHomeGraphAskLlm();
     const semantic = new KnowledgeSemanticService(store, { llm });
-    const service = new HomeGraphService(store, artifactStore, { semanticService: semantic });
+    const service = disposables.add(new HomeGraphService(store, artifactStore, { semanticService: semantic }));
     await service.syncSnapshot({
       installationId: 'house',
       areas: [{ id: 'living-room', name: 'Living Room' }],
@@ -631,7 +640,7 @@ describe('semantic knowledge/wiki enrichment: answer quality', () => {
         };
       },
     });
-    const service = new HomeGraphService(store, artifactStore, { semanticService: semantic });
+    const service = disposables.add(new HomeGraphService(store, artifactStore, { semanticService: semantic }));
     await service.syncSnapshot({
       installationId: 'house',
       devices: [{ id: 'tv', name: 'LG webOS Smart TV', manufacturer: 'LG', model: '86NANO90UNA' }],
@@ -719,7 +728,7 @@ describe('semantic knowledge/wiki enrichment: answer quality', () => {
         };
       },
     });
-    const service = new HomeGraphService(store, artifactStore, { semanticService: semantic });
+    const service = disposables.add(new HomeGraphService(store, artifactStore, { semanticService: semantic }));
     await service.syncSnapshot({
       installationId: 'house',
       devices: [{ id: 'tv', name: 'LG webOS Smart TV', manufacturer: 'LG', model: '86NANO90UNA' }],
@@ -770,7 +779,7 @@ describe('semantic knowledge/wiki enrichment: answer quality', () => {
   test('Home Graph semantic ask does not let unrelated semantic pages become object anchors', async () => {
     const { store, artifactStore } = createStores();
     const semantic = new KnowledgeSemanticService(store);
-    const service = new HomeGraphService(store, artifactStore, { semanticService: semantic });
+    const service = disposables.add(new HomeGraphService(store, artifactStore, { semanticService: semantic }));
     await service.syncSnapshot({
       installationId: 'house',
       areas: [{ id: 'living-room', name: 'Living Room' }],
@@ -1077,7 +1086,7 @@ describe('semantic knowledge/wiki enrichment: answer quality', () => {
   test('base Home Assistant alias does not return generic device facts without a subject', async () => {
     const { store, artifactStore } = createStores();
     const semantic = new KnowledgeSemanticService(store);
-    const service = new HomeGraphService(store, artifactStore, { semanticService: semantic });
+    const service = disposables.add(new HomeGraphService(store, artifactStore, { semanticService: semantic }));
     await service.syncSnapshot({
       installationId: 'house',
       devices: [

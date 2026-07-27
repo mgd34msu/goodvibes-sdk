@@ -12,7 +12,12 @@ import {
   createHomeGraphService,
   readHomeAssistantEntityId,
   waitFor,
+  useHomeGraphFixtures,
 } from './_helpers/homegraph-service-fixtures.js';
+
+// Registered here, at this file's own top level — see the helper's doc comment
+// for why it cannot be registered inside the helper.
+useHomeGraphFixtures();
 
 describe('Home Graph ask, source repair, and reindex', () => {
   test('ingests notes, links and unlinks targets, and renders device passports', async () => {
