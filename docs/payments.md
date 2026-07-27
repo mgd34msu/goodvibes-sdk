@@ -556,9 +556,15 @@ it wrong and relayed a coordinator decision as an owner ruling:
 > address etc) in the tui too"*
 > *"and in the agent - basically ui should expose it in both."*
 
-He named the **TUI and the agent**. He did **not** name the webui. Whether a
-card number may be typed into a browser page is a materially different exposure
-from typing it at a terminal, and that question is open in front of him.
+He named the **TUI and the agent**. The webui question was then put to him
+directly, as a two-option choice with the exposure stated — PAN on a browser
+page, form autofill, password managers, browser history, XSS in our own UI. He
+selected the option labelled **"Card entry in webui too"**, and wrote:
+
+> "so is the webui getting card input? i said yes..."
+
+The option he selected carried the six browser-side conditions in §8.2.3. They
+are part of what he chose, not a gloss added afterwards.
 
 **Coordinator ruling:** that card details are refused on remote messaging
 surfaces, with the reasoning below. Recorded as the coordinator's because no
@@ -568,8 +574,8 @@ verbatim owner wording exists for it.
 |---|---|---|
 | The question | May this surface say yes or no to a purchase? | May card details be typed here? |
 | Telegram and other live channels | **Yes** — owner's explicit ruling, and it stays | **No** |
-| TUI, agent terminal | Yes | **Yes** — the two he named |
-| The webui | Yes | **Not yet** — awaiting his ruling |
+| TUI, agent terminal | Yes | **Yes** — the two he named first |
+| The webui | Yes | **Yes** — his direct ruling, with the conditions in §8.2.3 |
 | Email | Never | Never |
 
 **Remote channels have authority to decide about a purchase. They have no path
@@ -600,8 +606,26 @@ message and treat the card as exposed.
 
 Implemented in `platform/payments/entry-surface.ts`; asserted in
 `test/payments-card-entry-surface.test.ts`, including a test that the refusal
-text contains no four-digit run at all, and one that the webui is refused until
-he rules.
+text contains no four-digit run at all.
+
+### 8.2.3 The conditions attached to webui card entry
+
+A browser adds attack surface a terminal does not, which is why these arrived
+with the ruling rather than after it. Each is a requirement with a test, and the
+list ships from the SDK as `WEBUI_CARD_ENTRY_CONDITIONS` so a surface cannot
+quietly implement a weaker version.
+
+| Condition | Why |
+|---|---|
+| Posted over the **authenticated daemon channel** | The same path as any other secret; nothing bespoke for card material. |
+| **Never in a URL** — no query parameter, fragment, or path segment | URLs reach browser history, referrer headers and server logs, none of which this system controls. |
+| **Never rendered back after entry** — no response returns the value, no field repopulates from the server | A rendered value reaches the DOM and anything reading it, and a repopulated field is a read path. |
+| **`autocomplete="off"`** on every card field | Keeps the browser from retaining it. |
+| **No password-manager capture** — the fields must not present as ones a manager offers to save | A manager copies the value into storage this system does not control and cannot clear. |
+| **No value retained in DOM state** — cleared from component state after submit | State surviving navigation outlives the submit that needed it. |
+
+Asserted the same way the CVV containment is: a test walks real output and fails
+if a card field appears in any URL or comes back in any response body.
 
 ### 8.2.1 Detecting "undeliverable"
 

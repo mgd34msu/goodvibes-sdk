@@ -88,6 +88,7 @@ export {
   scanForCardDetails,
   evaluateCardEntry,
   describeCardEntryRefusal,
+  WEBUI_CARD_ENTRY_CONDITIONS,
 } from './entry-surface.js';
 export type { CardEntrySurface, CardDetailScan, CardEntryDecision } from './entry-surface.js';
 
