@@ -24,6 +24,7 @@ import {
 } from '../../push/index.js';
 import type { ConfigManager } from '../../config/manager.js';
 import type { ConfigKey } from '../../config/schema.js';
+import type { DisposalRegistry } from '../../runtime/disposal.js';
 import { logger } from '../../utils/logger.js';
 
 /** The slice of the gateway dependency bag push composition needs. */
@@ -35,6 +36,12 @@ export interface PushCompositionDeps {
   readonly configManager?: Pick<ConfigManager, 'get'> | undefined;
   /** Explicit VAPID `sub` override; absent ⇒ the `push.vapidSubject` config key. */
   readonly vapidSubject?: string | undefined;
+  /**
+   * Where the subscription store's periodic sweep registers its stop. Present
+   * when composed from a runtime graph that can be torn down; absent in narrow
+   * compositions, whose caller owns the store directly.
+   */
+  readonly disposal?: DisposalRegistry | undefined;
 }
 
 /** Default sweep cadence when the config key is absent or nonsense (minutes). */
@@ -100,6 +107,7 @@ export function createPushSubscriptionStore(deps: PushCompositionDeps): PushSubs
   });
   const minutes = readNumber(deps, 'push.subscriptions.sweepIntervalMinutes', DEFAULT_SWEEP_INTERVAL_MINUTES);
   store.startPeriodicSweep((minutes > 0 ? minutes : DEFAULT_SWEEP_INTERVAL_MINUTES) * 60_000);
+  deps.disposal?.add('push subscription sweep', () => store.stopPeriodicSweep());
   return store;
 }
 

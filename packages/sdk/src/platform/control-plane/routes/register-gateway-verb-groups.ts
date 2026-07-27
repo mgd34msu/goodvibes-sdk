@@ -95,6 +95,7 @@ import { registerMemoryGatewayMethods, type MemoryGatewayService } from './memor
 import { registerVoiceSetupGatewayMethods, type VoiceSetupGatewayService } from './voice-setup.js';
 import { bindCostAttributionIngest } from './attribution-ingest.js';
 import type { ConfigManager } from '../../config/manager.js';
+import type { DisposalRegistry } from '../../runtime/disposal.js';
 import type { ConfigKey } from '../../config/schema.js';
 import type { RuntimeStore } from '../../runtime/store/index.js';
 import { FileSystemSkillStore, SkillService } from '../../skills/index.js';
@@ -112,6 +113,13 @@ import type { FleetEvent } from '../../../events/fleet.js';
 export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps {
   /** SecretsManager (get/set) — VAPID keypair custody lives here, never in config. */
   readonly secretsManager: VapidSecretStore;
+  /**
+   * Teardown registry for the pollers this registration starts — today the
+   * push-subscription sweep, which is constructed here and so is otherwise
+   * unreachable from the graph that owns it. Optional: a narrow composition
+   * that never tears down passes nothing and keeps today's behaviour.
+   */
+  readonly disposal?: DisposalRegistry | undefined;
   /** The approval broker — the real event source push fans out from. */
   readonly approvalBroker: ApprovalSource;
   /**

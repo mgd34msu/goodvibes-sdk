@@ -393,6 +393,7 @@ export function resolveDaemonFacadeRuntime(config: DaemonConfig): ResolvedDaemon
   return {
     configManager: resolvedConfigManager,
     runtimeServices,
+    ownsRuntimeServices: config.runtimeServices === undefined, // see facade-types.ts
     integrationHelpers: runtimeServices.integrationHelpers,
     port: config.port ?? resolvedControlPlaneBinding.port,
     host: config.host ?? resolvedControlPlaneBinding.host,

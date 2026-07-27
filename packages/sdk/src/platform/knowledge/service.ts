@@ -894,7 +894,12 @@ export class KnowledgeService {
     await syncKnowledgeMemoryNodes(this.store, this.options.memoryRegistry);
   }
 
-  private dispose(): void {
+  /**
+   * Release the knowledge scheduler's pending timers. Was `private` with no
+   * caller, so every graph left six `reconcileSchedules` timers pending out to
+   * a 24h horizon; runtime/services.ts registers it for teardown. Idempotent.
+   */
+  dispose(): void {
     this.scheduleService.dispose();
   }
 
