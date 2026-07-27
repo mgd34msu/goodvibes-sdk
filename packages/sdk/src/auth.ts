@@ -279,6 +279,7 @@ export function createGoodVibesAuthClient(
               autoRefresh,
               refreshLeewayMs,
               ...(autoRefreshOptions?.refresh !== undefined ? { refresh: autoRefreshOptions.refresh } : {}),
+              ...(autoRefreshOptions?.now !== undefined ? { now: autoRefreshOptions.now } : {}),
               observer,
             })
           : null;
