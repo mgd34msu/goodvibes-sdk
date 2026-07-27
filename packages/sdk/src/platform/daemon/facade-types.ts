@@ -41,6 +41,12 @@ import type { ResolvedInboundTlsContext } from '../runtime/network/index.js';
 export interface ResolvedDaemonFacadeRuntime {
   readonly configManager: ConfigManager;
   readonly runtimeServices: RuntimeServices;
+  /**
+   * True when this composition constructed `runtimeServices` itself. A caller
+   * that supplied its own graph keeps ownership of it, and `stop()` must leave
+   * that graph's pollers running rather than disposing something it did not build.
+   */
+  readonly ownsRuntimeServices: boolean;
   readonly integrationHelpers: IntegrationHelperService;
   readonly port: number;
   readonly host: string;

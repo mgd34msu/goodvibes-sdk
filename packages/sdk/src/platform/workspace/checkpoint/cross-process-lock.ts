@@ -122,6 +122,25 @@ function sleep(ms: number): Promise<void> {
   });
 }
 
+/**
+ * A sleep whose timer can be cancelled when it loses a `Promise.race`.
+ *
+ * The losing side of a race is never settled, so a plain `sleep()` used as a
+ * deadline strands its handle until it finally elapses. On the queue race below
+ * that is 15 seconds per lock acquisition, and lock acquisitions are frequent:
+ * a full test run ended with 65 of these still pending. Unref'd handles do not
+ * hold the process open, but they are still retained callbacks holding their
+ * closures, and they still fire.
+ */
+function cancellableSleep(ms: number): { promise: Promise<void>; cancel: () => void } {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const promise = new Promise<void>((resolve) => {
+    timer = setTimeout(resolve, ms);
+    timer.unref?.();
+  });
+  return { promise, cancel: () => { if (timer !== undefined) clearTimeout(timer); } };
+}
+
 /** True when a process with this pid is still alive (or exists but we lack permission to signal it — still "alive" for our purposes). */
 function isPidAlive(pid: number): boolean {
   if (!Number.isFinite(pid) || pid <= 0) return false;
@@ -507,10 +526,19 @@ export async function acquireCrossProcessLock(
   // Wait for earlier in-process holders, but never past the deadline. On
   // timeout the slot resolves immediately so later waiters are not wedged
   // behind a acquisition that never happened.
-  const queueOutcome = await Promise.race([
-    prior.then(() => 'ready' as const),
-    sleep(totalTimeoutMs).then(() => 'timeout' as const),
-  ]);
+  const deadline = cancellableSleep(totalTimeoutMs);
+  let queueOutcome: 'ready' | 'timeout';
+  try {
+    queueOutcome = await Promise.race([
+      prior.then(() => 'ready' as const),
+      deadline.promise.then(() => 'timeout' as const),
+    ]);
+  } finally {
+    // Whichever side won, the deadline handle is done with. Without this the
+    // common case — `prior` already resolved — strands a full-length timer on
+    // every single acquisition.
+    deadline.cancel();
+  }
   if (queueOutcome === 'timeout') {
     releaseSlot();
     dropTailIfOurs();

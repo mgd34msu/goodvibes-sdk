@@ -90,6 +90,8 @@ export class DaemonServer {
   private host: string;
   private agentManager: AgentManager;
   private readonly runtimeServices: RuntimeServices;
+  /** Whether this server constructed its runtime graph, and so may dispose it on stop(). */
+  private readonly ownsRuntimeServices: boolean;
   private readonly integrationHelpers: IntegrationHelperService;
   private configManager: ConfigManager;
   private authToken: string | null = null;
@@ -153,6 +155,7 @@ export class DaemonServer {
     const resolved = resolveDaemonFacadeRuntime(config);
     this.configManager = resolved.configManager;
     this.runtimeServices = resolved.runtimeServices;
+    this.ownsRuntimeServices = resolved.ownsRuntimeServices;
     this.integrationHelpers = resolved.integrationHelpers;
     this.port = resolved.port;
     this.host = resolved.host;
@@ -576,6 +579,9 @@ export class DaemonServer {
       } catch (error) {
         logger.warn('DaemonServer: power-manager stop failed', { error: summarizeError(error) });
       }
+      // Stop every poller the graph started. Same gate as the power manager: a
+      // restart cycle keeps the graph, and only a graph we built is ours to stop.
+      if (this.ownsRuntimeServices) this.runtimeServices.dispose();
     }
 
     this.lifecycle?.onStopping(this._restarting);
