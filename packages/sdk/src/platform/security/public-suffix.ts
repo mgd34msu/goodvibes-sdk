@@ -37,69 +37,53 @@
  * widening what compares equal.
  */
 
-/**
- * Multi-label public suffixes. Single-label suffixes are handled by the
- * fallback and are deliberately absent.
- */
-const MULTI_LABEL_SUFFIXES: ReadonlySet<string> = new Set([
-  // United Kingdom
-  'co.uk', 'org.uk', 'me.uk', 'ltd.uk', 'plc.uk', 'net.uk', 'sch.uk', 'ac.uk', 'gov.uk', 'nhs.uk', 'police.uk', 'mod.uk',
-  // Australia
-  'com.au', 'net.au', 'org.au', 'edu.au', 'gov.au', 'asn.au', 'id.au',
-  // New Zealand
-  'co.nz', 'net.nz', 'org.nz', 'govt.nz', 'ac.nz', 'school.nz', 'geek.nz', 'kiwi.nz',
-  // Japan
-  'co.jp', 'or.jp', 'ne.jp', 'ac.jp', 'ad.jp', 'ed.jp', 'go.jp', 'gr.jp', 'lg.jp',
-  // Brazil
-  'com.br', 'net.br', 'org.br', 'gov.br', 'edu.br',
-  // India
-  'co.in', 'net.in', 'org.in', 'gen.in', 'firm.in', 'ind.in', 'ac.in', 'edu.in', 'gov.in', 'nic.in',
-  // South Africa
-  'co.za', 'org.za', 'net.za', 'gov.za', 'ac.za', 'web.za',
-  // China / Hong Kong / Taiwan
-  'com.cn', 'net.cn', 'org.cn', 'gov.cn', 'edu.cn', 'ac.cn',
-  'com.hk', 'net.hk', 'org.hk', 'edu.hk', 'gov.hk', 'idv.hk',
-  'com.tw', 'net.tw', 'org.tw', 'edu.tw', 'gov.tw',
-  // Korea
-  'co.kr', 'ne.kr', 'or.kr', 're.kr', 'pe.kr', 'go.kr', 'ac.kr',
-  // Europe
-  'co.at', 'or.at', 'ac.at', 'gv.at',
-  'com.es', 'org.es', 'nom.es', 'gob.es', 'edu.es',
-  'com.pl', 'net.pl', 'org.pl', 'gov.pl', 'edu.pl',
-  'com.pt', 'org.pt', 'edu.pt', 'gov.pt',
-  'com.tr', 'net.tr', 'org.tr', 'gov.tr', 'edu.tr',
-  'com.gr', 'net.gr', 'org.gr', 'edu.gr', 'gov.gr',
-  'com.ua', 'net.ua', 'org.ua', 'gov.ua', 'edu.ua',
-  'com.ru', 'net.ru', 'org.ru',
-  // Americas
-  'com.mx', 'org.mx', 'net.mx', 'edu.mx', 'gob.mx',
-  'com.ar', 'net.ar', 'org.ar', 'gov.ar', 'edu.ar',
-  'com.co', 'net.co', 'org.co', 'gov.co', 'edu.co',
-  'com.pe', 'net.pe', 'org.pe', 'gob.pe', 'edu.pe',
-  // Middle East / other
-  'com.sg', 'net.sg', 'org.sg', 'edu.sg', 'gov.sg',
-  'com.my', 'net.my', 'org.my', 'gov.my', 'edu.my',
-  'co.il', 'org.il', 'net.il', 'ac.il', 'gov.il',
-  'com.sa', 'net.sa', 'org.sa', 'gov.sa', 'edu.sa',
-  // Common hosting suffixes where each label IS a separate registrant.
-  // Getting these wrong makes two unrelated sites compare equal, which is the
-  // failure direction that matters.
-  'github.io', 'gitlab.io', 'pages.dev', 'workers.dev', 'vercel.app', 'netlify.app',
-  'herokuapp.com', 'azurewebsites.net', 'cloudfront.net', 'r2.dev', 'web.app', 'firebaseapp.com',
-  's3.amazonaws.com', 'blogspot.com', 'wordpress.com', 'sharepoint.com', 'myshopify.com',
-]);
+import {
+  PUBLIC_SUFFIX_MULTI_LABEL,
+  PUBLIC_SUFFIX_WILDCARD_PARENTS,
+  PUBLIC_SUFFIX_EXCEPTIONS,
+} from './generated/public-suffix-data.js';
 
 /**
- * Suffix rules where EVERY label at that level is a suffix (PSL `*.` rules).
- * `*.compute.amazonaws.com` means `a.compute.amazonaws.com` is a suffix, so
- * two instances under it are different registrants.
+ * The bundled tables, generated from upstream.
+ *
+ * The first version of this file carried a HAND-CURATED 174 suffixes out of
+ * upstream's 5,484. That left 5,332 multi-label suffixes under which two
+ * different registrants reduced to the same registrable domain — a link check
+ * would have accepted a stranger's domain as the authorized one. The drift
+ * check caught it on its first run. Curation by hand is how that happens, so
+ * the data is generated now and the tables below are not edited directly.
  */
-const WILDCARD_SUFFIX_PARENTS: readonly string[] = [
-  'compute.amazonaws.com',
-  'compute-1.amazonaws.com',
-  'elb.amazonaws.com',
-  'ck.page',
-];
+const MULTI_LABEL_SUFFIXES: ReadonlySet<string> = new Set(PUBLIC_SUFFIX_MULTI_LABEL);
+
+/**
+ * `*.parent` rules: every label directly under one of these is itself a
+ * suffix, so two instances under it are different registrants.
+ */
+const WILDCARD_SUFFIX_PARENTS: readonly string[] = PUBLIC_SUFFIX_WILDCARD_PARENTS;
+
+/**
+ * `!exception` rules: registrable despite matching a wildcard above.
+ *
+ * Checked before the wildcard rules, which is the order the PSL algorithm
+ * requires — an exception that lost to its own wildcard would do nothing.
+ */
+const SUFFIX_EXCEPTIONS: ReadonlySet<string> = new Set(PUBLIC_SUFFIX_EXCEPTIONS);
+
+/**
+ * The bundled snapshot, for the drift check.
+ *
+ * Exported so `scripts/check-public-suffix-drift.ts` compares against the data
+ * this module actually uses — a drift check holding its own copy of what it is
+ * checking would pass forever.
+ */
+export function bundledMultiLabelSuffixes(): ReadonlySet<string> {
+  return MULTI_LABEL_SUFFIXES;
+}
+
+/** The wildcard-parent rules in the snapshot. See the header. */
+export function bundledWildcardSuffixParents(): readonly string[] {
+  return WILDCARD_SUFFIX_PARENTS;
+}
 
 /** True when `host` is itself exactly a public suffix (so it has no registrant). */
 export function isPublicSuffix(host: string): boolean {
@@ -126,6 +110,14 @@ export function registrableDomain(host: string): string | null {
   if (normalized.length === 0) return null;
   const labels = normalized.split('.');
   if (labels.length < 2 || labels.some((label) => label.length === 0)) return null;
+
+  // PSL order: an exception rule wins over the wildcard it contradicts.
+  for (const exception of SUFFIX_EXCEPTIONS) {
+    if (normalized === exception || normalized.endsWith(`.${exception}`)) {
+      const exceptionLabels = exception.split('.');
+      return exceptionLabels.slice(exceptionLabels.length - 2).join('.');
+    }
+  }
 
   for (const parent of WILDCARD_SUFFIX_PARENTS) {
     const parentLabels = parent.split('.');

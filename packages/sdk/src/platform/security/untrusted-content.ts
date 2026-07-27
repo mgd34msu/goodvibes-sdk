@@ -43,7 +43,7 @@
  * write here, so "read a stranger's page, then send mail" is visible to the
  * outward-effect guard as ONE composition rather than two unrelated acts.
  */
-import { findContentTaint, describeContentTaint, type TaintFinding, type TaintSource } from './content-taint.js';
+import { findContentTaint, describeContentTaint, type TaintFinding, type TaintOptions, type TaintSource } from './content-taint.js';
 
 
 import type { UntrustedContentPort } from '../browser/browser-types.js';
@@ -316,6 +316,8 @@ export function evaluateOutwardEffect(input: {
    * still guarded rather than waved through.
    */
   readonly content?: Readonly<Record<string, string | undefined>> | undefined;
+  /** Field-level rules: exact-match recipients, reply exemptions, quote stripping. */
+  readonly taintOptions?: TaintOptions | undefined;
 }): OutwardEffectDecision {
   const origins = input.ledger.originsThisTurn();
   if (origins.length === 0) {
@@ -327,7 +329,7 @@ export function evaluateOutwardEffect(input: {
   // composed nothing from a stranger proceed, while refusing a send whose body
   // repeats what was just read.
   if (input.content !== undefined && input.ledger.hasTaintSourcesThisTurn()) {
-    const taint = findContentTaint(input.content, input.ledger.taintSourcesThisTurn());
+    const taint = findContentTaint(input.content, input.ledger.taintSourcesThisTurn(), input.taintOptions);
     if (taint.length === 0) {
       return { allowed: true, reason: null, fix: null, untrustedOrigins: origins, taint: [] };
     }
@@ -421,7 +423,12 @@ export function createUntrustedContentPort(options: UntrustedContentPortOptions)
         ...(options.now ? { now: options.now } : {}),
       }),
     recordIngest: (input) => {
-      ledger.record({ surface, origin: input.origin, at: input.at });
+      ledger.record({
+        surface,
+        origin: input.origin,
+        at: input.at,
+        ...(input.content === undefined ? {} : { content: input.content }),
+      });
     },
     evaluateOutwardEffect: (input) =>
       evaluateOutwardEffect({

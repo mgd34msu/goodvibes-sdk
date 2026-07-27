@@ -1,0 +1,71 @@
+name: Public Suffix Drift
+
+# Compares the BUNDLED public-suffix snapshot against upstream, and FAILS on
+# drift.
+#
+# ── Why this is its own workflow ─────────────────────────────────────────────
+#
+# Two deliberate choices, and both matter:
+#
+#   1. It FAILS rather than warns. A nudge that cannot go red is not a guard —
+#      this platform has already been bitten by exactly that, where several
+#      checks looked like enforcement and none of them could fail. If this job
+#      is red, something is genuinely out of date.
+#
+#   2. It is OUTSIDE ci.yml. Mozilla publishes on its own cadence, not ours,
+#      and a release must never be blocked because upstream happened to add a
+#      suffix this morning. Keeping it here means it can be red without
+#      stopping a release, which is the only way a scheduled data check is
+#      honest about what it is.
+#
+# ── What a red run means, and what it does not ───────────────────────────────
+#
+# READ THIS BEFORE TREATING IT AS AN OUTAGE. The bundled list is reduced to
+# MULTI-LABEL suffixes on purpose. Anything the snapshot does not know falls
+# back to a single-label suffix, which is CORRECT for com, dev, app and every
+# new gTLD. So a stale snapshot degrades in the harmless direction: link
+# validation keeps working, its coverage is simply narrower than upstream's.
+#
+# You are fixing a NARROWING OF COVERAGE, not an outage. Nothing is broken
+# while this is red; a specific class of multi-label domain is being compared
+# less precisely than it should be.
+#
+# The fix is DATA-ONLY — edit the tables in
+# packages/sdk/src/platform/security/public-suffix.ts. No code change, and the
+# module header carries the refresh procedure. The job's own output names each
+# suffix and says whether it is the security-relevant direction (upstream has
+# it, we do not, so two registrants compare equal) or the correctness one (we
+# carry it, upstream dropped it, so a legitimate link may be refused).
+#
+# The data is bundled and NEVER fetched at runtime. A security gate that
+# reached the network to decide would be one an attacker could influence by
+# making that fetch fail or hang, precisely when validation matters. This job
+# is the network access, and it happens here, in CI, ahead of time.
+
+on:
+  schedule:
+    # Weekly, Monday 06:00 UTC — early enough in the week that a finding can be
+    # picked up without competing with a release.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: public-suffix-drift
+  cancel-in-progress: false
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.10
+
+      - name: Compare the bundled public-suffix snapshot against upstream
+        run: bun scripts/check-public-suffix-drift.ts

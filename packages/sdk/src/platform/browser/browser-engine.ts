@@ -149,10 +149,23 @@ export class BrowserEngine {
     this.approval = approval;
   }
 
-  /** Records that page content entered the conversation, with where it came from. */
-  private recordPageIngest(url: string): string {
+  /**
+   * Records that page content entered the conversation, with where it came
+   * from AND what it said.
+   *
+   * The text matters as much as the origin. Without it, a later outward action
+   * can only be judged on "did this turn read anything", which in a daemon is
+   * permanently true — so every send would be refused and the boundary would
+   * be switched off. With it, the guard can ask the answerable question:
+   * does what is about to leave derive from what was read.
+   */
+  private recordPageIngest(url: string, content?: string): string {
     const origin = this.untrusted.originOf(url);
-    this.untrusted.recordIngest({ origin, at: new Date().toISOString() });
+    this.untrusted.recordIngest({
+      origin,
+      at: new Date().toISOString(),
+      ...(content === undefined ? {} : { content }),
+    });
     return origin;
   }
 
@@ -302,7 +315,10 @@ export class BrowserEngine {
     this.snapshots.set(snapshot);
     // Element names and values are written by the page, so a snapshot is
     // untrusted content just as much as the body text is.
-    const origin = this.recordPageIngest(snapshot.url);
+    const origin = this.recordPageIngest(
+      snapshot.url,
+      snapshot.elements.map((element) => `${element.name} ${element.value ?? ''}`).join('\n'),
+    );
     return {
       sessionId,
       pageId,
@@ -510,7 +526,7 @@ export class BrowserEngine {
       frameTexts.push(`\n\n[embedded frame ${this.untrusted.originOf(frame.url())}]\n${frameText.trim()}`);
     }
     const normalized = `${text}${frameTexts.join('')}`.replace(/\n{3,}/g, '\n\n').trim();
-    const origin = this.recordPageIngest(page.url());
+    const origin = this.recordPageIngest(page.url(), normalized);
     return {
       sessionId,
       pageId,
@@ -663,7 +679,11 @@ export class BrowserEngine {
       }
     }
 
-    const origin = this.recordPageIngest(page.url());
+    // Extracted field values are page-written text exactly as body text is —
+    // a value lifted out of a form or a table is as good an injection carrier
+    // as a paragraph, and recording the origin without the words would leave
+    // the derivation check with nothing to compare against.
+    const origin = this.recordPageIngest(page.url(), JSON.stringify(extracted));
     return {
       sessionId,
       pageId,

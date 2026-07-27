@@ -296,6 +296,16 @@ export interface EmailServiceDeps {
     readonly surface: 'email';
     readonly origin: string;
     readonly at: string;
+    /**
+     * The message text that was read.
+     *
+     * Without it the guard downstream can only ask "has this process read
+     * mail", which in a daemon is permanently true and therefore decides
+     * nothing. With it, an outward action can be checked for DERIVATION from
+     * this message — which is the owner's named threat: an injection arriving
+     * by email.
+     */
+    readonly content?: string | undefined;
   }) => void;
 }
 
@@ -499,7 +509,13 @@ export class EmailService {
       // Delivery evidence is carried through deliberately. Dropping it here
       // would leave correlation with nothing but the sender-authored `To:`
       // header, which is the exact hole the evidence exists to close.
-      this.recordIngest(envelopes.map((env) => env.from));
+      this.recordIngest(envelopes.map((env, idx) => ({
+        from: env.from,
+        // The preview is fetched for the newest message only, so that is the
+        // one whose words are available here; the rest contribute their
+        // subject, which is itself attacker-written.
+        text: `${env.subject}\n${idx === 0 ? newestBodyPreview : ''}`.trim(),
+      })));
 
       const messages = envelopes.map((env, idx) => ({
         uid: env.uid,
@@ -549,7 +565,12 @@ export class EmailService {
       await client.open();
       const detail = await client.fetchMessage(uid);
       await client.logout();
-      if (detail !== null) this.recordIngest([detail.from]);
+      if (detail !== null) {
+        this.recordIngest([{
+          from: detail.from,
+          text: `${detail.subject}\n${detail.bodyText}`.trim(),
+        }]);
+      }
       return detail;
     } catch (err) {
       try { await client.logout(); } catch { /* best-effort */ }
@@ -609,17 +630,21 @@ export class EmailService {
    * surfaces. It is a useful label for the owner, never an identity check — the
    * claim is why the content is untrusted, not a reason to trust it.
    */
-  private recordIngest(fromHeaders: readonly string[]): void {
+  private recordIngest(entries: readonly { readonly from: string; readonly text?: string | undefined }[]): void {
     const recordIngest = this.deps.recordUntrustedIngest;
     if (!recordIngest) return;
     const at = new Date().toISOString();
-    for (const fromHeader of fromHeaders) {
-      const claimed = this.deps.describeSenderClaim(fromHeader).claimedAddress;
+    for (const entry of entries) {
+      const claimed = this.deps.describeSenderClaim(entry.from).claimedAddress;
       const domain = claimed.includes('@') ? claimed.slice(claimed.lastIndexOf('@') + 1) : '';
       recordIngest({
         surface: 'email',
         origin: domain.length > 0 ? `email:${domain} (claimed)` : 'email:unknown sender',
         at,
+        // The subject and body ARE the injection surface. Recording the origin
+        // without them leaves the guard unable to tell a send that repeats an
+        // instruction from one that does not.
+        ...(entry.text === undefined ? {} : { content: entry.text }),
       });
     }
   }
