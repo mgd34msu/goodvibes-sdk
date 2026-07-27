@@ -10,10 +10,20 @@
  */
 import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
+import { trackDisposables } from './_helpers/disposables.ts';
 import { KnowledgeService } from '../packages/sdk/src/platform/knowledge/service.js';
 import { HomeGraphService } from '../packages/sdk/src/platform/knowledge/home-graph/service.js';
 import { enrichAndImproveHomeGraphSource } from '../packages/sdk/src/platform/knowledge/home-graph/sync-self-improvement.js';
 import { createStores } from './_helpers/knowledge-semantic-fixtures.js';
+
+/**
+ * A KnowledgeService kicks off initializeSchedules() fire-and-forget in its
+ * constructor, arming one bootstrap reconcile timer per schedule out to a 24h
+ * horizon. dispose() is what releases them; without it they outlive the file.
+ * Run alone the arming lands after the process has already exited, which is why
+ * this class of leftover only ever shows up in a whole-suite scan.
+ */
+const disposables = trackDisposables();
 
 const refuse = (label: string) => ({ allowed: false, reason: `${label} refused: critical memory pressure` });
 const memoryRegistryStub = { add: () => {}, getAll: () => [], getStore: () => null } as never;
@@ -21,10 +31,10 @@ const memoryRegistryStub = { add: () => {}, getAll: () => [], getStore: () => nu
 describe('agent-alias KnowledgeService admission (the /api/goodvibes-agent/knowledge surface)', () => {
   test('runJob / ingestUrl / ingestArtifact refuse with the honest reason when the governor refuses', async () => {
     const { store, artifactStore } = createStores();
-    const service = new KnowledgeService(store, artifactStore, undefined, {
+    const service = disposables.add(new KnowledgeService(store, artifactStore, undefined, {
       memoryRegistry: memoryRegistryStub,
       admitExpensiveWork: refuse,
-    });
+    }));
     await expect(service.runJob('any-job')).rejects.toThrow(/critical memory pressure/);
     await expect(service.ingestUrl({ url: 'https://x.test/a' })).rejects.toThrow(/critical memory pressure/);
     await expect(service.ingestArtifact({ artifactId: 'a1' })).rejects.toThrow(/critical memory pressure/);

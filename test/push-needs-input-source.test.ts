@@ -9,9 +9,17 @@
 import { describe, expect, test } from 'bun:test';
 import { PushService } from '../packages/sdk/src/platform/push/index.js';
 import type { FleetNotice, PushMessage, VapidManager, PushSubscriptionStore } from '../packages/sdk/src/platform/push/index.js';
+import { trackDisposables } from './_helpers/disposables.ts';
+import { cancellableEscalationScheduler } from './_helpers/push-escalation.ts';
+
+const disposables = trackDisposables();
 
 function makeService(): { service: PushService; delivered: PushMessage[] } {
-  const service = new PushService({ vapid: {} as VapidManager, store: {} as PushSubscriptionStore });
+  const service = new PushService({
+    vapid: {} as VapidManager,
+    store: {} as PushSubscriptionStore,
+    scheduler: cancellableEscalationScheduler(disposables),
+  });
   const delivered: PushMessage[] = [];
   // Override the fan-out to capture the composed message without touching the
   // encryption/transport path (covered elsewhere).

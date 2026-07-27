@@ -8,6 +8,14 @@ import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/ind
 import { createRuntimeServices } from '../packages/sdk/src/platform/runtime/services.js';
 import { createRuntimeStore } from '../packages/sdk/src/platform/runtime/store/index.js';
 import { GOODVIBES_AGENT_KNOWLEDGE_DB_FILE } from '../packages/sdk/src/platform/knowledge/index.js';
+import { trackDisposables } from './_helpers/disposables.ts';
+
+/**
+ * The graph below is INJECTED into DaemonServer, and the facade deliberately
+ * disposes only a graph it composed itself — an injected one may outlive the
+ * daemon, so it is the caller's to stop. Here the caller is this test.
+ */
+const disposables = trackDisposables();
 
 const tmpRoots: string[] = [];
 
@@ -48,7 +56,7 @@ describe('daemon Agent knowledge route wiring', () => {
       workingDir,
       surfaceRoot: 'goodvibes-test',
     });
-    const runtimeServices = createRuntimeServices({
+    const runtimeServices = disposables.add(createRuntimeServices({
       configManager,
       runtimeBus,
       runtimeStore: createRuntimeStore(),
@@ -56,7 +64,7 @@ describe('daemon Agent knowledge route wiring', () => {
       getConversationTitle: () => 'goodvibes test daemon',
       workingDir,
       homeDirectory,
-    });
+    }));
 
     // Simulate an embedding host that updated DaemonServer before refreshing
     // its injected runtime-services object. The daemon must still create an
@@ -64,6 +72,12 @@ describe('daemon Agent knowledge route wiring', () => {
     // falling back to regular Knowledge/Wiki.
     delete (runtimeServices as Partial<typeof runtimeServices>).agentKnowledgeService;
 
+    // KNOWN SURVIVORS — the CompanionChatManager GC sweep and the batch
+    // manager tick this daemon builds. `DaemonServer.stop()` opens with
+    // `if (this.server === null) return`, so a daemon that was constructed and
+    // enabled but never bound a socket — which is exactly what this route test
+    // needs — has no reachable teardown at all. Closing them needs a
+    // construction-time teardown path on DaemonServer, in product code.
     const daemon = new DaemonServer({ runtimeServices });
     daemon.enable({ daemon: true }, 'test-token');
 

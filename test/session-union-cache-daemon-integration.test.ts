@@ -14,6 +14,7 @@ import { join } from 'node:path';
 import { bootDaemon, type BootedDaemon } from '../packages/sdk/src/platform/daemon/boot.ts';
 import { createHttpTransport } from '../packages/sdk/src/platform/runtime/transport.ts';
 import { SharedSessionBroker } from '../packages/sdk/src/platform/control-plane/session-broker.ts';
+import { trackDisposables } from './_helpers/disposables.ts';
 import type { RouteBindingManager } from '../packages/sdk/src/platform/channels/index.ts';
 import type { SharedSessionRecord } from '../packages/sdk/src/platform/control-plane/index.ts';
 import {
@@ -25,6 +26,8 @@ import {
 } from '../packages/sdk/src/platform/runtime/session-spine/index.ts';
 
 const TOKEN = 'union-integration-token';
+
+const disposables = trackDisposables();
 
 const noopScheduler = {
   setInterval: () => 0 as unknown as ReturnType<typeof setInterval>,
@@ -158,12 +161,13 @@ describe('D-TUI-1: adopting surface self-mirror identity against a real bootDaem
 
     // The adopting surface's own local broker — a SEPARATE store from the
     // daemon's, exactly as the TUI's in-process SharedSessionBroker is.
-    const localBroker = new SharedSessionBroker({
+    // A broker starts a 60s GC sweep the moment it is used; stop() clears it.
+    const localBroker = disposables.add(new SharedSessionBroker({
       storePath: join(harness.homeDirectory, 'local-sessions.json'),
       routeBindings: makeNoopRouteBindings(),
       agentStatusProvider: { getStatus: () => null },
       messageSender: { send: () => true },
-    } as unknown as ConstructorParameters<typeof SharedSessionBroker>[0]);
+    } as unknown as ConstructorParameters<typeof SharedSessionBroker>[0]));
 
     const selfId = 'tui-self-session';
     await localBroker.createSession({ id: selfId, kind: 'tui', project: harness.workingDir, title: 'Terminal UI session' });
@@ -215,12 +219,13 @@ describe('D-TUI-1: adopting surface self-mirror identity against a real bootDaem
     const N = 3;
     await registerOthers(harness, N);
 
-    const localBroker = new SharedSessionBroker({
+    // A broker starts a 60s GC sweep the moment it is used; stop() clears it.
+    const localBroker = disposables.add(new SharedSessionBroker({
       storePath: join(harness.homeDirectory, 'local-sessions-mismatch.json'),
       routeBindings: makeNoopRouteBindings(),
       agentStatusProvider: { getStatus: () => null },
       messageSender: { send: () => true },
-    } as unknown as ConstructorParameters<typeof SharedSessionBroker>[0]);
+    } as unknown as ConstructorParameters<typeof SharedSessionBroker>[0]));
 
     // Deliberately DIFFERENT ids for "the same" conceptual session — the
     // realistic failure mode the raw id-equality dedup could never catch.
