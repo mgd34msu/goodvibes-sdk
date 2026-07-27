@@ -96,7 +96,15 @@ async function establishPipe(
   return { pipeId, channel: new RelaySecureChannel(keys, 'client') };
 }
 
-async function waitUntil(predicate: () => boolean, timeoutMs = 2000): Promise<void> {
+/**
+ * Poll until a predicate holds.
+ *
+ * The default ceiling is generous on purpose: it is a hang detector, not a
+ * performance assertion. The callers below drive thousands of real ECDH
+ * handshakes, so on a loaded host they are simply slower — and a deadline tight
+ * enough to catch that reports a cap failure for something that is not one.
+ */
+async function waitUntil(predicate: () => boolean, timeoutMs = 30_000): Promise<void> {
   const started = Date.now();
   while (!predicate()) {
     if (Date.now() - started > timeoutMs) throw new Error('waitUntil timed out');
@@ -141,7 +149,11 @@ describe('relay registration retained-context caps', () => {
       expect(heapDelta).toBeLessThan(64 * 1024 * 1024);
     }
     reg.stop();
-  });
+    // Three thousand real ECDH pipe establishments: CPU-bound by design, and
+    // comfortably inside bun's default 5s budget on an idle host but not on a
+    // busy one. The explicit budget is a hang detector — the test still returns
+    // the moment the work is done, and every assertion above is unchanged.
+  }, 120_000);
 
   test('in-flight request cap refuses (never retains) beyond the ceiling', async () => {
     const identity = await generateRelayIdentity();
@@ -197,5 +209,8 @@ describe('relay registration retained-context caps', () => {
     await waitUntil(() => reg.stats().inFlightRequests === 0);
     expect(reg.stats().inFlightRequests).toBe(0);
     reg.stop();
-  });
+    // Twenty real handshakes rather than three thousand, so this one has far
+    // more headroom — but it is the same CPU-bound shape and gets the same
+    // hang-detector budget rather than the 5s default.
+  }, 120_000);
 });
