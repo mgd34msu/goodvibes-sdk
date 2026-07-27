@@ -141,7 +141,11 @@ describe('relay registration retained-context caps', () => {
       expect(heapDelta).toBeLessThan(64 * 1024 * 1024);
     }
     reg.stop();
-  });
+    // An explicit ceiling: this case allocates thousands of pipes inside a
+    // process that has already run hundreds of test files, so it is one of the
+    // slowest in the suite — 7.3 s on an idle host, and it blew a 60 s ceiling
+    // in a loaded full-suite run. A ceiling, not a delay.
+  }, 300_000);
 
   test('in-flight request cap refuses (never retains) beyond the ceiling', async () => {
     const identity = await generateRelayIdentity();
