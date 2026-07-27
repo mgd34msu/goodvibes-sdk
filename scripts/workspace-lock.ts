@@ -38,7 +38,20 @@ function lockRoot(): string {
 const TMP_ROOT = lockRoot();
 const LOCK_DIR = resolve(TMP_ROOT, 'workspace.lock');
 const LOCK_INFO_PATH = resolve(LOCK_DIR, 'owner.json');
-const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000;
+/**
+ * How long to WAIT for the lock before giving up.
+ *
+ * Raised when the lock moved to the shared git directory. It now serializes
+ * every worktree of this repository rather than each one separately, which is
+ * the point — but it also means a legitimate queue is longer than it used to
+ * be. A full suite is minutes, and several queued back to back are routinely
+ * more than ten, so the old ceiling turned ordinary waiting into a failure.
+ *
+ * A holder that has actually died is reclaimed by the staleness check below
+ * regardless of this value, so this is a deadlock ceiling, not a patience
+ * budget.
+ */
+const DEFAULT_TIMEOUT_MS = 30 * 60 * 1000;
 const STALE_AFTER_MS = 15 * 60 * 1000;
 const POLL_MS = 200;
 
