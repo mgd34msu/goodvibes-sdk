@@ -336,6 +336,32 @@ export interface OperatorMethodInputMap {
   "worktrees.discard": { path: string; };
   "acp.agents.list": {  };
   "acp.sessions.create": { agentId: string; cwd: string; title?: string; prompt?: string; };
+  // Daemon-served browser control (browser.*): typed like every other
+  // served family, so a client gets a compile-time shape rather than unknown.
+  "browser.status": {  };
+  "browser.provision": ({ repair?: boolean; allowDownload?: boolean; } & { readonly [key: string]: unknown });
+  "browser.sessions.list": {  };
+  "browser.sessions.launch": ({ profileName?: string; headless?: boolean; } & { readonly [key: string]: unknown });
+  "browser.sessions.attach": ({ cdpEndpoint: string; } & { readonly [key: string]: unknown });
+  "browser.sessions.release": ({ sessionId: string; } & { readonly [key: string]: unknown });
+  "browser.sessions.close": ({ sessionId: string; } & { readonly [key: string]: unknown });
+  "browser.navigate": ({ sessionId?: string; pageId?: string; url: string; waitUntil?: string; timeoutMs?: number; profileName?: string; headless?: boolean; } & { readonly [key: string]: unknown });
+  "browser.snapshot": ({ sessionId?: string; pageId?: string; limit?: number; } & { readonly [key: string]: unknown });
+  "browser.click": ({ sessionId?: string; pageId?: string; ref: string; button?: string; clickCount?: number; timeoutMs?: number; } & { readonly [key: string]: unknown });
+  "browser.type": ({ sessionId?: string; pageId?: string; ref: string; text: string; submit?: boolean; replace?: boolean; timeoutMs?: number; } & { readonly [key: string]: unknown });
+  "browser.select": ({ sessionId?: string; pageId?: string; ref: string; values: readonly string[]; timeoutMs?: number; } & { readonly [key: string]: unknown });
+  "browser.press": ({ sessionId?: string; pageId?: string; ref: string; key: string; timeoutMs?: number; } & { readonly [key: string]: unknown });
+  "browser.scroll": ({ sessionId?: string; pageId?: string; ref?: string; direction?: string; amount?: number; } & { readonly [key: string]: unknown });
+  "browser.waitFor": ({ sessionId?: string; pageId?: string; text?: string; url?: string; timeoutMs?: number; } & { readonly [key: string]: unknown });
+  "browser.readText": ({ sessionId?: string; pageId?: string; maxChars?: number; } & { readonly [key: string]: unknown });
+  "browser.extract": ({ sessionId?: string; pageId?: string; ref?: string; selector?: string; fields?: readonly string[]; all?: boolean; limit?: number; } & { readonly [key: string]: unknown });
+  "browser.screenshot": ({ sessionId?: string; pageId?: string; fullPage?: boolean; path?: string; } & { readonly [key: string]: unknown });
+  "browser.tabs.list": { sessionId?: string; };
+  "browser.tabs.new": ({ sessionId?: string; pageId?: string; url?: string; profileName?: string; headless?: boolean; } & { readonly [key: string]: unknown });
+  "browser.tabs.switch": ({ sessionId?: string; pageId: string; } & { readonly [key: string]: unknown });
+  "browser.tabs.close": ({ sessionId?: string; pageId: string; } & { readonly [key: string]: unknown });
+  "browser.history.back": ({ sessionId?: string; pageId?: string; } & { readonly [key: string]: unknown });
+  "browser.history.forward": ({ sessionId?: string; pageId?: string; } & { readonly [key: string]: unknown });
 }
 
 export interface OperatorMethodOutputMap {
@@ -661,6 +687,32 @@ export interface OperatorMethodOutputMap {
   "worktrees.discard": { path: string; ok: boolean; branch?: string; preservedCommit?: string; discardedAt: number; detail: string; };
   "acp.agents.list": { agents: readonly ({ id: string; title: string; binaryPath: string; args: readonly string[]; })[]; };
   "acp.sessions.create": { hosted: { id: string; agentId: string; title: string; binaryPath: string; cwd: string; state: string; startedAt: number; completedAt?: number; sessionId?: string; progress?: string; pendingPermission?: string; error?: { binary: string; stage: string; message: string; }; promptCount: number; }; started: boolean; };
+  // Daemon-served browser control (browser.*): typed like every other
+  // served family, so a client gets a compile-time shape rather than unknown.
+  "browser.status": ({ browserAvailable: boolean; binarySource?: string; executablePath?: string; driverVersion?: string; browsersPath?: string; displayAvailable?: boolean; defaultMode?: string; sessions?: readonly ({ sessionId: string; origin: string; profileDirectory?: string; cdpEndpoint?: string; executablePath?: string; source?: string; headless: boolean; startedAt: string; pageCount: number; activePageId?: string; closableByAgent: boolean; })[]; provisionSteps?: readonly (({  } & { readonly [key: string]: JsonValue }))[]; problem?: string; fix?: string; } & { readonly [key: string]: unknown });
+  "browser.provision": ({ provision: ({  } & { readonly [key: string]: JsonValue }); } & { readonly [key: string]: unknown });
+  "browser.sessions.list": { sessions: readonly ({ sessionId: string; origin: string; profileDirectory?: string; cdpEndpoint?: string; executablePath?: string; source?: string; headless: boolean; startedAt: string; pageCount: number; activePageId?: string; closableByAgent: boolean; })[]; };
+  "browser.sessions.launch": ({ session: { sessionId: string; origin: string; profileDirectory?: string; cdpEndpoint?: string; executablePath?: string; source?: string; headless: boolean; startedAt: string; pageCount: number; activePageId?: string; closableByAgent: boolean; }; setup?: string; note?: string; } & { readonly [key: string]: unknown });
+  "browser.sessions.attach": ({ session: { sessionId: string; origin: string; profileDirectory?: string; cdpEndpoint?: string; executablePath?: string; source?: string; headless: boolean; startedAt: string; pageCount: number; activePageId?: string; closableByAgent: boolean; }; pages?: readonly ({ pageId: string; url: string; title: string; active: boolean; })[]; note?: string; } & { readonly [key: string]: unknown });
+  "browser.sessions.release": ({ released: { sessionId: string; origin: string; profileDirectory?: string; cdpEndpoint?: string; executablePath?: string; source?: string; headless: boolean; startedAt: string; pageCount: number; activePageId?: string; closableByAgent: boolean; }; note?: string; } & { readonly [key: string]: unknown });
+  "browser.sessions.close": ({ closed: { sessionId: string; origin: string; profileDirectory?: string; cdpEndpoint?: string; executablePath?: string; source?: string; headless: boolean; startedAt: string; pageCount: number; activePageId?: string; closableByAgent: boolean; }; } & { readonly [key: string]: unknown });
+  "browser.navigate": ({ sessionId: string; pageId: string; url?: string; title?: string; httpStatus?: number; setup?: string; next?: string; } & { readonly [key: string]: unknown });
+  "browser.snapshot": ({ sessionId: string; pageId: string; url?: string; title?: string; contentTrust?: string; origin?: string; rule?: string; snapshotId?: string; elementCount?: number; truncated?: boolean; elements?: readonly ({ ref: string; role: string; name: string; value?: string; disabled?: boolean; checked?: boolean; })[]; } & { readonly [key: string]: unknown });
+  "browser.click": ({ sessionId: string; pageId: string; url?: string; clicked?: ({  } & { readonly [key: string]: JsonValue }); urlBefore?: string; navigated?: boolean; next?: string; } & { readonly [key: string]: unknown });
+  "browser.type": ({ sessionId: string; pageId: string; url?: string; typedInto?: ({  } & { readonly [key: string]: JsonValue }); submitted?: boolean; } & { readonly [key: string]: unknown });
+  "browser.select": ({ sessionId: string; pageId: string; url?: string; selectedIn?: ({  } & { readonly [key: string]: JsonValue }); selected?: readonly string[]; } & { readonly [key: string]: unknown });
+  "browser.press": ({ sessionId: string; pageId: string; url?: string; pressed?: string; on?: ({  } & { readonly [key: string]: JsonValue }); } & { readonly [key: string]: unknown });
+  "browser.scroll": ({ sessionId: string; pageId: string; url?: string; scrolledBy?: number; scrolledTo?: ({  } & { readonly [key: string]: JsonValue }); scrollY?: number; scrollHeight?: number; } & { readonly [key: string]: unknown });
+  "browser.waitFor": ({ sessionId: string; pageId: string; url?: string; waitedFor?: ({  } & { readonly [key: string]: JsonValue }); found?: boolean; } & { readonly [key: string]: unknown });
+  "browser.readText": ({ sessionId: string; pageId: string; url?: string; title?: string; content?: { trust: string; surface: string; origin: string; retrievedAt: string; text: string; truncated: boolean; rule: string; }; truncated?: boolean; } & { readonly [key: string]: unknown });
+  "browser.extract": ({ sessionId: string; pageId: string; url?: string; matched?: number; returned?: number; note?: string; data?: { trust: string; surface: string; origin: string; retrievedAt: string; text: string; truncated: boolean; rule: string; }; } & { readonly [key: string]: unknown });
+  "browser.screenshot": ({ sessionId: string; pageId: string; url?: string; path?: string; bytes?: number; next?: string; } & { readonly [key: string]: unknown });
+  "browser.tabs.list": ({ sessionId: string; pages: readonly ({ pageId: string; url: string; title: string; active: boolean; })[]; } & { readonly [key: string]: unknown });
+  "browser.tabs.new": ({ sessionId: string; pageId: string; url?: string; pages?: readonly ({ pageId: string; url: string; title: string; active: boolean; })[]; } & { readonly [key: string]: unknown });
+  "browser.tabs.switch": ({ sessionId: string; activePageId: string; } & { readonly [key: string]: unknown });
+  "browser.tabs.close": ({ sessionId: string; closedPageId: string; pages: readonly ({ pageId: string; url: string; title: string; active: boolean; })[]; } & { readonly [key: string]: unknown });
+  "browser.history.back": ({ sessionId: string; pageId: string; url?: string; moved?: boolean; } & { readonly [key: string]: unknown });
+  "browser.history.forward": ({ sessionId: string; pageId: string; url?: string; moved?: boolean; } & { readonly [key: string]: unknown });
 }
 
 export interface OperatorEventPayloadMap {

@@ -2618,6 +2618,491 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       "status": "sample"
     }
   },
+  "browser.click": {
+    "methodId": "browser.click",
+    "http": {
+      "method": "POST",
+      "path": "/api/browser/click"
+    },
+    "status": 200,
+    "body": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "url": "sample",
+      "clicked": {},
+      "urlBefore": "sample",
+      "navigated": false,
+      "next": "sample"
+    }
+  },
+  "browser.extract": {
+    "methodId": "browser.extract",
+    "http": {
+      "method": "POST",
+      "path": "/api/browser/extract"
+    },
+    "status": 200,
+    "body": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "url": "sample",
+      "matched": 0,
+      "returned": 0,
+      "note": "sample",
+      "data": {
+        "trust": "sample",
+        "surface": "sample",
+        "origin": "sample",
+        "retrievedAt": "sample",
+        "text": "sample",
+        "truncated": false,
+        "rule": "sample"
+      }
+    }
+  },
+  "browser.history.back": {
+    "methodId": "browser.history.back",
+    "http": {
+      "method": "POST",
+      "path": "/api/browser/history/back"
+    },
+    "status": 200,
+    "body": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "url": "sample",
+      "moved": false
+    }
+  },
+  "browser.history.forward": {
+    "methodId": "browser.history.forward",
+    "http": {
+      "method": "POST",
+      "path": "/api/browser/history/forward"
+    },
+    "status": 200,
+    "body": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "url": "sample",
+      "moved": false
+    }
+  },
+  "browser.navigate": {
+    "methodId": "browser.navigate",
+    "http": {
+      "method": "POST",
+      "path": "/api/browser/navigate"
+    },
+    "status": 200,
+    "body": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "url": "sample",
+      "title": "sample",
+      "httpStatus": 0,
+      "setup": "sample",
+      "next": "sample"
+    }
+  },
+  "browser.press": {
+    "methodId": "browser.press",
+    "http": {
+      "method": "POST",
+      "path": "/api/browser/press"
+    },
+    "status": 200,
+    "body": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "url": "sample",
+      "pressed": "sample",
+      "on": {}
+    }
+  },
+  "browser.provision": {
+    "methodId": "browser.provision",
+    "http": {
+      "method": "POST",
+      "path": "/api/browser/provision"
+    },
+    "status": 200,
+    "body": {
+      "provision": {}
+    }
+  },
+  "browser.readText": {
+    "methodId": "browser.readText",
+    "http": {
+      "method": "POST",
+      "path": "/api/browser/read-text"
+    },
+    "status": 200,
+    "body": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "url": "sample",
+      "title": "sample",
+      "content": {
+        "trust": "sample",
+        "surface": "sample",
+        "origin": "sample",
+        "retrievedAt": "sample",
+        "text": "sample",
+        "truncated": false,
+        "rule": "sample"
+      },
+      "truncated": false
+    }
+  },
+  "browser.screenshot": {
+    "methodId": "browser.screenshot",
+    "http": {
+      "method": "POST",
+      "path": "/api/browser/screenshot"
+    },
+    "status": 200,
+    "body": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "url": "sample",
+      "path": "sample",
+      "bytes": 0,
+      "next": "sample"
+    }
+  },
+  "browser.scroll": {
+    "methodId": "browser.scroll",
+    "http": {
+      "method": "POST",
+      "path": "/api/browser/scroll"
+    },
+    "status": 200,
+    "body": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "url": "sample",
+      "scrolledBy": 0,
+      "scrolledTo": {},
+      "scrollY": 0,
+      "scrollHeight": 0
+    }
+  },
+  "browser.select": {
+    "methodId": "browser.select",
+    "http": {
+      "method": "POST",
+      "path": "/api/browser/select"
+    },
+    "status": 200,
+    "body": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "url": "sample",
+      "selectedIn": {},
+      "selected": [
+        "sample"
+      ]
+    }
+  },
+  "browser.sessions.attach": {
+    "methodId": "browser.sessions.attach",
+    "http": {
+      "method": "POST",
+      "path": "/api/browser/sessions/attach"
+    },
+    "status": 200,
+    "body": {
+      "session": {
+        "sessionId": "sample",
+        "origin": "sample",
+        "profileDirectory": "sample",
+        "cdpEndpoint": "sample",
+        "executablePath": "sample",
+        "source": "sample",
+        "headless": false,
+        "startedAt": "sample",
+        "pageCount": 0,
+        "activePageId": "sample",
+        "closableByAgent": false
+      },
+      "pages": [
+        {
+          "pageId": "sample",
+          "url": "sample",
+          "title": "sample",
+          "active": false
+        }
+      ],
+      "note": "sample"
+    }
+  },
+  "browser.sessions.close": {
+    "methodId": "browser.sessions.close",
+    "http": {
+      "method": "POST",
+      "path": "/api/browser/sessions/close"
+    },
+    "status": 200,
+    "body": {
+      "closed": {
+        "sessionId": "sample",
+        "origin": "sample",
+        "profileDirectory": "sample",
+        "cdpEndpoint": "sample",
+        "executablePath": "sample",
+        "source": "sample",
+        "headless": false,
+        "startedAt": "sample",
+        "pageCount": 0,
+        "activePageId": "sample",
+        "closableByAgent": false
+      }
+    }
+  },
+  "browser.sessions.launch": {
+    "methodId": "browser.sessions.launch",
+    "http": {
+      "method": "POST",
+      "path": "/api/browser/sessions/launch"
+    },
+    "status": 200,
+    "body": {
+      "session": {
+        "sessionId": "sample",
+        "origin": "sample",
+        "profileDirectory": "sample",
+        "cdpEndpoint": "sample",
+        "executablePath": "sample",
+        "source": "sample",
+        "headless": false,
+        "startedAt": "sample",
+        "pageCount": 0,
+        "activePageId": "sample",
+        "closableByAgent": false
+      },
+      "setup": "sample",
+      "note": "sample"
+    }
+  },
+  "browser.sessions.list": {
+    "methodId": "browser.sessions.list",
+    "http": {
+      "method": "GET",
+      "path": "/api/browser/sessions"
+    },
+    "status": 200,
+    "body": {
+      "sessions": [
+        {
+          "sessionId": "sample",
+          "origin": "sample",
+          "profileDirectory": "sample",
+          "cdpEndpoint": "sample",
+          "executablePath": "sample",
+          "source": "sample",
+          "headless": false,
+          "startedAt": "sample",
+          "pageCount": 0,
+          "activePageId": "sample",
+          "closableByAgent": false
+        }
+      ]
+    }
+  },
+  "browser.sessions.release": {
+    "methodId": "browser.sessions.release",
+    "http": {
+      "method": "POST",
+      "path": "/api/browser/sessions/release"
+    },
+    "status": 200,
+    "body": {
+      "released": {
+        "sessionId": "sample",
+        "origin": "sample",
+        "profileDirectory": "sample",
+        "cdpEndpoint": "sample",
+        "executablePath": "sample",
+        "source": "sample",
+        "headless": false,
+        "startedAt": "sample",
+        "pageCount": 0,
+        "activePageId": "sample",
+        "closableByAgent": false
+      },
+      "note": "sample"
+    }
+  },
+  "browser.snapshot": {
+    "methodId": "browser.snapshot",
+    "http": {
+      "method": "POST",
+      "path": "/api/browser/snapshot"
+    },
+    "status": 200,
+    "body": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "url": "sample",
+      "title": "sample",
+      "contentTrust": "sample",
+      "origin": "sample",
+      "rule": "sample",
+      "snapshotId": "sample",
+      "elementCount": 0,
+      "truncated": false,
+      "elements": [
+        {
+          "ref": "sample",
+          "role": "sample",
+          "name": "sample",
+          "value": "sample",
+          "disabled": false,
+          "checked": false
+        }
+      ]
+    }
+  },
+  "browser.status": {
+    "methodId": "browser.status",
+    "http": {
+      "method": "GET",
+      "path": "/api/browser/status"
+    },
+    "status": 200,
+    "body": {
+      "browserAvailable": false,
+      "binarySource": "sample",
+      "executablePath": "sample",
+      "driverVersion": "sample",
+      "browsersPath": "sample",
+      "displayAvailable": false,
+      "defaultMode": "sample",
+      "sessions": [
+        {
+          "sessionId": "sample",
+          "origin": "sample",
+          "profileDirectory": "sample",
+          "cdpEndpoint": "sample",
+          "executablePath": "sample",
+          "source": "sample",
+          "headless": false,
+          "startedAt": "sample",
+          "pageCount": 0,
+          "activePageId": "sample",
+          "closableByAgent": false
+        }
+      ],
+      "provisionSteps": [
+        {}
+      ],
+      "problem": "sample",
+      "fix": "sample"
+    }
+  },
+  "browser.tabs.close": {
+    "methodId": "browser.tabs.close",
+    "http": {
+      "method": "POST",
+      "path": "/api/browser/tabs/close"
+    },
+    "status": 200,
+    "body": {
+      "sessionId": "sample",
+      "closedPageId": "sample",
+      "pages": [
+        {
+          "pageId": "sample",
+          "url": "sample",
+          "title": "sample",
+          "active": false
+        }
+      ]
+    }
+  },
+  "browser.tabs.list": {
+    "methodId": "browser.tabs.list",
+    "http": {
+      "method": "GET",
+      "path": "/api/browser/tabs"
+    },
+    "status": 200,
+    "body": {
+      "sessionId": "sample",
+      "pages": [
+        {
+          "pageId": "sample",
+          "url": "sample",
+          "title": "sample",
+          "active": false
+        }
+      ]
+    }
+  },
+  "browser.tabs.new": {
+    "methodId": "browser.tabs.new",
+    "http": {
+      "method": "POST",
+      "path": "/api/browser/tabs/new"
+    },
+    "status": 200,
+    "body": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "url": "sample",
+      "pages": [
+        {
+          "pageId": "sample",
+          "url": "sample",
+          "title": "sample",
+          "active": false
+        }
+      ]
+    }
+  },
+  "browser.tabs.switch": {
+    "methodId": "browser.tabs.switch",
+    "http": {
+      "method": "POST",
+      "path": "/api/browser/tabs/switch"
+    },
+    "status": 200,
+    "body": {
+      "sessionId": "sample",
+      "activePageId": "sample"
+    }
+  },
+  "browser.type": {
+    "methodId": "browser.type",
+    "http": {
+      "method": "POST",
+      "path": "/api/browser/type"
+    },
+    "status": 200,
+    "body": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "url": "sample",
+      "typedInto": {},
+      "submitted": false
+    }
+  },
+  "browser.waitFor": {
+    "methodId": "browser.waitFor",
+    "http": {
+      "method": "POST",
+      "path": "/api/browser/wait-for"
+    },
+    "status": 200,
+    "body": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "url": "sample",
+      "waitedFor": {},
+      "found": false
+    }
+  },
   "calendar.events.create": {
     "methodId": "calendar.events.create",
     "http": {

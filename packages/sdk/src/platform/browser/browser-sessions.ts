@@ -29,8 +29,8 @@ const STEALTH_ARGS: readonly string[] = [
 const SUPPRESSED_DEFAULT_ARGS: readonly string[] = ['--enable-automation'];
 
 export interface BrowserLaunchOptions {
-  readonly profileName?: string;
-  readonly headless?: boolean;
+  readonly profileName?: string | undefined;
+  readonly headless?: boolean | undefined;
   readonly viewport?: { readonly width: number; readonly height: number } | undefined;
 }
 
@@ -187,7 +187,7 @@ export class BrowserSessionManager {
     return this.lastProvision;
   }
 
-  async provision(options: { readonly repair?: boolean; readonly allowDownload?: boolean } = {}): Promise<BrowserProvisionReport> {
+  async provision(options: { readonly repair?: boolean | undefined; readonly allowDownload?: boolean | undefined } = {}): Promise<BrowserProvisionReport> {
     const report = await ensureBrowserBinary(this.io, {
       forceReinstall: options.repair === true,
       ...(options.allowDownload === undefined ? {} : { allowDownload: options.allowDownload }),

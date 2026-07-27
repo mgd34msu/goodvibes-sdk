@@ -307,7 +307,7 @@ export async function takeSnapshot(
   page: Page,
   sessionId: string,
   pageId: string,
-  options: { readonly limit?: number } = {},
+  options: { readonly limit?: number | undefined } = {},
 ): Promise<BrowserSnapshot> {
   const limit = Math.max(1, Math.min(MAX_ELEMENTS, options.limit ?? MAX_ELEMENTS));
   const raw: (RawElement & { readonly frameChain: readonly string[] })[] = [];

@@ -177,7 +177,7 @@ export class BrowserEngine {
     return this.sessions;
   }
 
-  async provision(options: { readonly repair?: boolean; readonly allowDownload?: boolean } = {}): Promise<BrowserProvisionReport> {
+  async provision(options: { readonly repair?: boolean | undefined; readonly allowDownload?: boolean | undefined } = {}): Promise<BrowserProvisionReport> {
     return this.sessions.provision(options);
   }
 
@@ -272,9 +272,9 @@ export class BrowserEngine {
     target: BrowserTarget,
     args: {
       readonly url: string;
-      readonly waitUntil?: 'load' | 'domcontentloaded' | 'networkidle';
-      readonly timeoutMs?: number;
-      readonly launch?: BrowserLaunchOptions;
+      readonly waitUntil?: 'load' | 'domcontentloaded' | 'networkidle' | undefined;
+      readonly timeoutMs?: number | undefined;
+      readonly launch?: BrowserLaunchOptions | undefined;
     },
   ): Promise<Record<string, unknown>> {
     const url = normalizeUrl(args.url);
@@ -296,7 +296,7 @@ export class BrowserEngine {
     };
   }
 
-  async snapshot(target: BrowserTarget, args: { readonly limit?: number } = {}): Promise<Record<string, unknown>> {
+  async snapshot(target: BrowserTarget, args: { readonly limit?: number | undefined } = {}): Promise<Record<string, unknown>> {
     const { sessionId, pageId, page } = await this.target(target);
     const snapshot = await takeSnapshot(page, sessionId, pageId, args);
     this.snapshots.set(snapshot);
@@ -331,7 +331,7 @@ export class BrowserEngine {
 
   async click(
     target: BrowserTarget,
-    args: { readonly ref: string; readonly button?: 'left' | 'right' | 'middle'; readonly clickCount?: number; readonly timeoutMs?: number },
+    args: { readonly ref: string; readonly button?: 'left' | 'right' | 'middle' | undefined; readonly clickCount?: number | undefined; readonly timeoutMs?: number | undefined },
   ): Promise<Record<string, unknown>> {
     const { sessionId, pageId, page } = await this.target(target);
     const { locator, element } = await resolveRef(page, this.currentSnapshot(sessionId, pageId), args.ref);
@@ -373,9 +373,9 @@ export class BrowserEngine {
     args: {
       readonly ref: string;
       readonly text: string;
-      readonly submit?: boolean;
-      readonly replace?: boolean;
-      readonly timeoutMs?: number;
+      readonly submit?: boolean | undefined;
+      readonly replace?: boolean | undefined;
+      readonly timeoutMs?: number | undefined;
     },
   ): Promise<Record<string, unknown>> {
     const { sessionId, pageId, page } = await this.target(target);
@@ -411,7 +411,7 @@ export class BrowserEngine {
 
   async select(
     target: BrowserTarget,
-    args: { readonly ref: string; readonly values: readonly string[]; readonly timeoutMs?: number },
+    args: { readonly ref: string; readonly values: readonly string[]; readonly timeoutMs?: number | undefined },
   ): Promise<Record<string, unknown>> {
     const { sessionId, pageId, page } = await this.target(target);
     const { locator, element } = await resolveRef(page, this.currentSnapshot(sessionId, pageId), args.ref);
@@ -421,7 +421,7 @@ export class BrowserEngine {
 
   async press(
     target: BrowserTarget,
-    args: { readonly ref: string; readonly key: string; readonly timeoutMs?: number },
+    args: { readonly ref: string; readonly key: string; readonly timeoutMs?: number | undefined },
   ): Promise<Record<string, unknown>> {
     const { sessionId, pageId, page } = await this.target(target);
     const { locator, element } = await resolveRef(page, this.currentSnapshot(sessionId, pageId), args.ref);
@@ -438,7 +438,7 @@ export class BrowserEngine {
 
   async scroll(
     target: BrowserTarget,
-    args: { readonly ref?: string; readonly direction?: 'up' | 'down'; readonly amount?: number },
+    args: { readonly ref?: string | undefined; readonly direction?: 'up' | 'down' | undefined; readonly amount?: number | undefined },
   ): Promise<Record<string, unknown>> {
     const { sessionId, pageId, page } = await this.target(target);
     if (args.ref) {
@@ -455,7 +455,7 @@ export class BrowserEngine {
 
   async waitFor(
     target: BrowserTarget,
-    args: { readonly text?: string; readonly url?: string; readonly timeoutMs?: number },
+    args: { readonly text?: string | undefined; readonly url?: string | undefined; readonly timeoutMs?: number | undefined },
   ): Promise<Record<string, unknown>> {
     const { sessionId, pageId, page } = await this.target(target);
     const timeout = args.timeoutMs ?? DEFAULT_NAVIGATION_TIMEOUT_MS;
@@ -473,7 +473,7 @@ export class BrowserEngine {
     return { sessionId, pageId, waitedFor: { state: 'networkidle' }, url: page.url(), found: true };
   }
 
-  async readText(target: BrowserTarget, args: { readonly maxChars?: number } = {}): Promise<Record<string, unknown>> {
+  async readText(target: BrowserTarget, args: { readonly maxChars?: number | undefined } = {}): Promise<Record<string, unknown>> {
     const { sessionId, pageId, page } = await this.target(target);
     const limit = Math.max(200, Math.min(200_000, args.maxChars ?? DEFAULT_TEXT_LIMIT));
     // innerText ignores shadow DOM, so a page that renders its content inside a
@@ -529,7 +529,7 @@ export class BrowserEngine {
 
   async screenshot(
     target: BrowserTarget,
-    args: { readonly fullPage?: boolean; readonly path?: string } = {},
+    args: { readonly fullPage?: boolean | undefined; readonly path?: string | undefined } = {},
   ): Promise<Record<string, unknown>> {
     const { sessionId, pageId, page } = await this.target(target);
     mkdirSync(this.options.screenshotDirectory, { recursive: true });
@@ -567,7 +567,7 @@ export class BrowserEngine {
 
   async newTab(
     target: BrowserTarget,
-    args: { readonly url?: string; readonly launch?: BrowserLaunchOptions } = {},
+    args: { readonly url?: string | undefined; readonly launch?: BrowserLaunchOptions | undefined } = {},
   ): Promise<Record<string, unknown>> {
     const sessionId = await this.ensureSession(target, args.launch ?? {});
     const { pageId, page } = await this.sessions.newPage(sessionId);
@@ -630,11 +630,11 @@ export class BrowserEngine {
   async extract(
     target: BrowserTarget,
     args: {
-      readonly ref?: string;
-      readonly selector?: string;
-      readonly fields?: readonly BrowserExtractField[];
-      readonly all?: boolean;
-      readonly limit?: number;
+      readonly ref?: string | undefined;
+      readonly selector?: string | undefined;
+      readonly fields?: readonly BrowserExtractField[] | undefined;
+      readonly all?: boolean | undefined;
+      readonly limit?: number | undefined;
     },
   ): Promise<Record<string, unknown>> {
     const { sessionId, pageId, page } = await this.target(target);

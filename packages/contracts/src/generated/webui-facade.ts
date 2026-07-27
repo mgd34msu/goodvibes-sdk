@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.17.2
- * Methods: 419 total, 368 REST-routed, 51 ws-only invoke.
+ * Methods: 443 total, 392 REST-routed, 51 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -179,6 +179,102 @@ export const WEBUI_METHOD_ROUTES: Readonly<Record<string, WebuiRouteDefinition>>
   "automation.schedules.run": {
     "method": "POST",
     "path": "/api/automation/schedules/{scheduleId}/run"
+  },
+  "browser.click": {
+    "method": "POST",
+    "path": "/api/browser/click"
+  },
+  "browser.extract": {
+    "method": "POST",
+    "path": "/api/browser/extract"
+  },
+  "browser.history.back": {
+    "method": "POST",
+    "path": "/api/browser/history/back"
+  },
+  "browser.history.forward": {
+    "method": "POST",
+    "path": "/api/browser/history/forward"
+  },
+  "browser.navigate": {
+    "method": "POST",
+    "path": "/api/browser/navigate"
+  },
+  "browser.press": {
+    "method": "POST",
+    "path": "/api/browser/press"
+  },
+  "browser.provision": {
+    "method": "POST",
+    "path": "/api/browser/provision"
+  },
+  "browser.readText": {
+    "method": "POST",
+    "path": "/api/browser/read-text"
+  },
+  "browser.screenshot": {
+    "method": "POST",
+    "path": "/api/browser/screenshot"
+  },
+  "browser.scroll": {
+    "method": "POST",
+    "path": "/api/browser/scroll"
+  },
+  "browser.select": {
+    "method": "POST",
+    "path": "/api/browser/select"
+  },
+  "browser.sessions.attach": {
+    "method": "POST",
+    "path": "/api/browser/sessions/attach"
+  },
+  "browser.sessions.close": {
+    "method": "POST",
+    "path": "/api/browser/sessions/close"
+  },
+  "browser.sessions.launch": {
+    "method": "POST",
+    "path": "/api/browser/sessions/launch"
+  },
+  "browser.sessions.list": {
+    "method": "GET",
+    "path": "/api/browser/sessions"
+  },
+  "browser.sessions.release": {
+    "method": "POST",
+    "path": "/api/browser/sessions/release"
+  },
+  "browser.snapshot": {
+    "method": "POST",
+    "path": "/api/browser/snapshot"
+  },
+  "browser.status": {
+    "method": "GET",
+    "path": "/api/browser/status"
+  },
+  "browser.tabs.close": {
+    "method": "POST",
+    "path": "/api/browser/tabs/close"
+  },
+  "browser.tabs.list": {
+    "method": "GET",
+    "path": "/api/browser/tabs"
+  },
+  "browser.tabs.new": {
+    "method": "POST",
+    "path": "/api/browser/tabs/new"
+  },
+  "browser.tabs.switch": {
+    "method": "POST",
+    "path": "/api/browser/tabs/switch"
+  },
+  "browser.type": {
+    "method": "POST",
+    "path": "/api/browser/type"
+  },
+  "browser.waitFor": {
+    "method": "POST",
+    "path": "/api/browser/wait-for"
   },
   "calendar.events.create": {
     "method": "POST",
@@ -1609,6 +1705,30 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "automation.schedules.enable": "rest",
   "automation.schedules.list": "rest",
   "automation.schedules.run": "rest",
+  "browser.click": "rest",
+  "browser.extract": "rest",
+  "browser.history.back": "rest",
+  "browser.history.forward": "rest",
+  "browser.navigate": "rest",
+  "browser.press": "rest",
+  "browser.provision": "rest",
+  "browser.readText": "rest",
+  "browser.screenshot": "rest",
+  "browser.scroll": "rest",
+  "browser.select": "rest",
+  "browser.sessions.attach": "rest",
+  "browser.sessions.close": "rest",
+  "browser.sessions.launch": "rest",
+  "browser.sessions.list": "rest",
+  "browser.sessions.release": "rest",
+  "browser.snapshot": "rest",
+  "browser.status": "rest",
+  "browser.tabs.close": "rest",
+  "browser.tabs.list": "rest",
+  "browser.tabs.new": "rest",
+  "browser.tabs.switch": "rest",
+  "browser.type": "rest",
+  "browser.waitFor": "rest",
   "calendar.events.create": "rest",
   "calendar.events.get": "rest",
   "calendar.events.list": "rest",
@@ -4757,6 +4877,475 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
       "runId": "sample",
       "agentId": "sample",
       "status": "sample"
+    }
+  },
+  "browser.click": {
+    "input": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "ref": "sample",
+      "button": "sample",
+      "clickCount": 0,
+      "timeoutMs": 0
+    },
+    "output": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "url": "sample",
+      "clicked": {},
+      "urlBefore": "sample",
+      "navigated": false,
+      "next": "sample"
+    }
+  },
+  "browser.extract": {
+    "input": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "ref": "sample",
+      "selector": "sample",
+      "fields": [
+        "sample"
+      ],
+      "all": false,
+      "limit": 0
+    },
+    "output": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "url": "sample",
+      "matched": 0,
+      "returned": 0,
+      "note": "sample",
+      "data": {
+        "trust": "sample",
+        "surface": "sample",
+        "origin": "sample",
+        "retrievedAt": "sample",
+        "text": "sample",
+        "truncated": false,
+        "rule": "sample"
+      }
+    }
+  },
+  "browser.history.back": {
+    "input": {
+      "sessionId": "sample",
+      "pageId": "sample"
+    },
+    "output": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "url": "sample",
+      "moved": false
+    }
+  },
+  "browser.history.forward": {
+    "input": {
+      "sessionId": "sample",
+      "pageId": "sample"
+    },
+    "output": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "url": "sample",
+      "moved": false
+    }
+  },
+  "browser.navigate": {
+    "input": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "url": "sample",
+      "waitUntil": "sample",
+      "timeoutMs": 0,
+      "profileName": "sample",
+      "headless": false
+    },
+    "output": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "url": "sample",
+      "title": "sample",
+      "httpStatus": 0,
+      "setup": "sample",
+      "next": "sample"
+    }
+  },
+  "browser.press": {
+    "input": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "ref": "sample",
+      "key": "sample",
+      "timeoutMs": 0
+    },
+    "output": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "url": "sample",
+      "pressed": "sample",
+      "on": {}
+    }
+  },
+  "browser.provision": {
+    "input": {
+      "repair": false,
+      "allowDownload": false
+    },
+    "output": {
+      "provision": {}
+    }
+  },
+  "browser.readText": {
+    "input": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "maxChars": 0
+    },
+    "output": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "url": "sample",
+      "title": "sample",
+      "content": {
+        "trust": "sample",
+        "surface": "sample",
+        "origin": "sample",
+        "retrievedAt": "sample",
+        "text": "sample",
+        "truncated": false,
+        "rule": "sample"
+      },
+      "truncated": false
+    }
+  },
+  "browser.screenshot": {
+    "input": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "fullPage": false,
+      "path": "sample"
+    },
+    "output": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "url": "sample",
+      "path": "sample",
+      "bytes": 0,
+      "next": "sample"
+    }
+  },
+  "browser.scroll": {
+    "input": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "ref": "sample",
+      "direction": "sample",
+      "amount": 0
+    },
+    "output": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "url": "sample",
+      "scrolledBy": 0,
+      "scrolledTo": {},
+      "scrollY": 0,
+      "scrollHeight": 0
+    }
+  },
+  "browser.select": {
+    "input": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "ref": "sample",
+      "values": [
+        "sample"
+      ],
+      "timeoutMs": 0
+    },
+    "output": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "url": "sample",
+      "selectedIn": {},
+      "selected": [
+        "sample"
+      ]
+    }
+  },
+  "browser.sessions.attach": {
+    "input": {
+      "cdpEndpoint": "sample"
+    },
+    "output": {
+      "session": {
+        "sessionId": "sample",
+        "origin": "sample",
+        "profileDirectory": "sample",
+        "cdpEndpoint": "sample",
+        "executablePath": "sample",
+        "source": "sample",
+        "headless": false,
+        "startedAt": "sample",
+        "pageCount": 0,
+        "activePageId": "sample",
+        "closableByAgent": false
+      },
+      "pages": [
+        {
+          "pageId": "sample",
+          "url": "sample",
+          "title": "sample",
+          "active": false
+        }
+      ],
+      "note": "sample"
+    }
+  },
+  "browser.sessions.close": {
+    "input": {
+      "sessionId": "sample"
+    },
+    "output": {
+      "closed": {
+        "sessionId": "sample",
+        "origin": "sample",
+        "profileDirectory": "sample",
+        "cdpEndpoint": "sample",
+        "executablePath": "sample",
+        "source": "sample",
+        "headless": false,
+        "startedAt": "sample",
+        "pageCount": 0,
+        "activePageId": "sample",
+        "closableByAgent": false
+      }
+    }
+  },
+  "browser.sessions.launch": {
+    "input": {
+      "profileName": "sample",
+      "headless": false
+    },
+    "output": {
+      "session": {
+        "sessionId": "sample",
+        "origin": "sample",
+        "profileDirectory": "sample",
+        "cdpEndpoint": "sample",
+        "executablePath": "sample",
+        "source": "sample",
+        "headless": false,
+        "startedAt": "sample",
+        "pageCount": 0,
+        "activePageId": "sample",
+        "closableByAgent": false
+      },
+      "setup": "sample",
+      "note": "sample"
+    }
+  },
+  "browser.sessions.list": {
+    "input": {},
+    "output": {
+      "sessions": [
+        {
+          "sessionId": "sample",
+          "origin": "sample",
+          "profileDirectory": "sample",
+          "cdpEndpoint": "sample",
+          "executablePath": "sample",
+          "source": "sample",
+          "headless": false,
+          "startedAt": "sample",
+          "pageCount": 0,
+          "activePageId": "sample",
+          "closableByAgent": false
+        }
+      ]
+    }
+  },
+  "browser.sessions.release": {
+    "input": {
+      "sessionId": "sample"
+    },
+    "output": {
+      "released": {
+        "sessionId": "sample",
+        "origin": "sample",
+        "profileDirectory": "sample",
+        "cdpEndpoint": "sample",
+        "executablePath": "sample",
+        "source": "sample",
+        "headless": false,
+        "startedAt": "sample",
+        "pageCount": 0,
+        "activePageId": "sample",
+        "closableByAgent": false
+      },
+      "note": "sample"
+    }
+  },
+  "browser.snapshot": {
+    "input": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "limit": 0
+    },
+    "output": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "url": "sample",
+      "title": "sample",
+      "contentTrust": "sample",
+      "origin": "sample",
+      "rule": "sample",
+      "snapshotId": "sample",
+      "elementCount": 0,
+      "truncated": false,
+      "elements": [
+        {
+          "ref": "sample",
+          "role": "sample",
+          "name": "sample",
+          "value": "sample",
+          "disabled": false,
+          "checked": false
+        }
+      ]
+    }
+  },
+  "browser.status": {
+    "input": {},
+    "output": {
+      "browserAvailable": false,
+      "binarySource": "sample",
+      "executablePath": "sample",
+      "driverVersion": "sample",
+      "browsersPath": "sample",
+      "displayAvailable": false,
+      "defaultMode": "sample",
+      "sessions": [
+        {
+          "sessionId": "sample",
+          "origin": "sample",
+          "profileDirectory": "sample",
+          "cdpEndpoint": "sample",
+          "executablePath": "sample",
+          "source": "sample",
+          "headless": false,
+          "startedAt": "sample",
+          "pageCount": 0,
+          "activePageId": "sample",
+          "closableByAgent": false
+        }
+      ],
+      "provisionSteps": [
+        {}
+      ],
+      "problem": "sample",
+      "fix": "sample"
+    }
+  },
+  "browser.tabs.close": {
+    "input": {
+      "sessionId": "sample",
+      "pageId": "sample"
+    },
+    "output": {
+      "sessionId": "sample",
+      "closedPageId": "sample",
+      "pages": [
+        {
+          "pageId": "sample",
+          "url": "sample",
+          "title": "sample",
+          "active": false
+        }
+      ]
+    }
+  },
+  "browser.tabs.list": {
+    "input": {
+      "sessionId": "sample"
+    },
+    "output": {
+      "sessionId": "sample",
+      "pages": [
+        {
+          "pageId": "sample",
+          "url": "sample",
+          "title": "sample",
+          "active": false
+        }
+      ]
+    }
+  },
+  "browser.tabs.new": {
+    "input": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "url": "sample",
+      "profileName": "sample",
+      "headless": false
+    },
+    "output": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "url": "sample",
+      "pages": [
+        {
+          "pageId": "sample",
+          "url": "sample",
+          "title": "sample",
+          "active": false
+        }
+      ]
+    }
+  },
+  "browser.tabs.switch": {
+    "input": {
+      "sessionId": "sample",
+      "pageId": "sample"
+    },
+    "output": {
+      "sessionId": "sample",
+      "activePageId": "sample"
+    }
+  },
+  "browser.type": {
+    "input": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "ref": "sample",
+      "text": "sample",
+      "submit": false,
+      "replace": false,
+      "timeoutMs": 0
+    },
+    "output": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "url": "sample",
+      "typedInto": {},
+      "submitted": false
+    }
+  },
+  "browser.waitFor": {
+    "input": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "text": "sample",
+      "url": "sample",
+      "timeoutMs": 0
+    },
+    "output": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "url": "sample",
+      "waitedFor": {},
+      "found": false
     }
   },
   "calendar.events.create": {

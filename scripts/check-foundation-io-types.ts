@@ -49,6 +49,7 @@ import { builtinGatewayPairingMethodDescriptors } from '../packages/sdk/src/plat
 import { builtinGatewayTailscaleMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-tailscale.ts';
 import { builtinGatewayControlAutomationMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-automation.ts';
 import { builtinGatewayAcpMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-acp.ts';
+import { builtinGatewayBrowserMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-browser.ts';
 import { builtinGatewayPermissionRuleMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-permission-rules.ts';
 import { builtinGatewayControlCoreMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-core.ts';
 import { builtinGatewayControlLiveTurnMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-live-turn.ts';
@@ -235,6 +236,7 @@ const CATALOG_DESCRIPTORS = [
   ...builtinGatewayTailscaleMethodDescriptors,
   ...builtinGatewayControlAutomationMethodDescriptors,
   ...builtinGatewayAcpMethodDescriptors,
+  ...builtinGatewayBrowserMethodDescriptors,
 ];
 
 function descriptorSchemas(methodId: string): { input: Record<string, unknown>; output: Record<string, unknown> } {
@@ -484,6 +486,33 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   // Hosted third-party ACP agents (discovery + one-act spawn):
   { methodId: 'acp.agents.list', ...descriptorSchemas('acp.agents.list') },
   { methodId: 'acp.sessions.create', ...descriptorSchemas('acp.sessions.create') },
+  // Daemon-served browser control: every verb ships with typed IO rather
+  // than raising the untyped baseline, so a client gets the same compile-time
+  // shape here that it gets for a fleet or checkpoint call.
+  { methodId: 'browser.status', ...descriptorSchemas('browser.status') },
+  { methodId: 'browser.provision', ...descriptorSchemas('browser.provision') },
+  { methodId: 'browser.sessions.list', ...descriptorSchemas('browser.sessions.list') },
+  { methodId: 'browser.sessions.launch', ...descriptorSchemas('browser.sessions.launch') },
+  { methodId: 'browser.sessions.attach', ...descriptorSchemas('browser.sessions.attach') },
+  { methodId: 'browser.sessions.release', ...descriptorSchemas('browser.sessions.release') },
+  { methodId: 'browser.sessions.close', ...descriptorSchemas('browser.sessions.close') },
+  { methodId: 'browser.navigate', ...descriptorSchemas('browser.navigate') },
+  { methodId: 'browser.snapshot', ...descriptorSchemas('browser.snapshot') },
+  { methodId: 'browser.click', ...descriptorSchemas('browser.click') },
+  { methodId: 'browser.type', ...descriptorSchemas('browser.type') },
+  { methodId: 'browser.select', ...descriptorSchemas('browser.select') },
+  { methodId: 'browser.press', ...descriptorSchemas('browser.press') },
+  { methodId: 'browser.scroll', ...descriptorSchemas('browser.scroll') },
+  { methodId: 'browser.waitFor', ...descriptorSchemas('browser.waitFor') },
+  { methodId: 'browser.readText', ...descriptorSchemas('browser.readText') },
+  { methodId: 'browser.extract', ...descriptorSchemas('browser.extract') },
+  { methodId: 'browser.screenshot', ...descriptorSchemas('browser.screenshot') },
+  { methodId: 'browser.tabs.list', ...descriptorSchemas('browser.tabs.list') },
+  { methodId: 'browser.tabs.new', ...descriptorSchemas('browser.tabs.new') },
+  { methodId: 'browser.tabs.switch', ...descriptorSchemas('browser.tabs.switch') },
+  { methodId: 'browser.tabs.close', ...descriptorSchemas('browser.tabs.close') },
+  { methodId: 'browser.history.back', ...descriptorSchemas('browser.history.back') },
+  { methodId: 'browser.history.forward', ...descriptorSchemas('browser.history.forward') },
 ];
 
 const fileText = readFileSync(FOUNDATION_TYPES_PATH, 'utf8');

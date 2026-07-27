@@ -1282,7 +1282,7 @@ export { forSession as forSessionRuntime }
 export const FOUNDATION_METADATA: {
     readonly productId: "goodvibes";
     readonly productVersion: "1.17.2";
-    readonly operatorMethodCount: 419;
+    readonly operatorMethodCount: 443;
     readonly operatorEventCount: 32;
     readonly peerEndpointCount: 6;
 };
@@ -2175,7 +2175,7 @@ export function openServerSentEventStream(transport: HttpTransport, pathOrUrl: s
 export const OPERATOR_CONTRACT: OperatorContractManifest;
 
 // @public (undocumented)
-export const OPERATOR_METHOD_IDS: readonly ["accounts.snapshot", "acp.agents.list", "acp.sessions.create", "approvals.approve", "approvals.cancel", "approvals.claim", "approvals.deny", "approvals.list", "artifacts.content.get", "artifacts.create", "artifacts.get", "artifacts.list", "automation.heartbeat.list", "automation.heartbeat.run", "automation.integration.snapshot", "automation.jobs.create", "automation.jobs.delete", "automation.jobs.disable", "automation.jobs.enable", "automation.jobs.list", "automation.jobs.run", "automation.jobs.update", "automation.runs.cancel", "automation.runs.get", "automation.runs.list", "automation.runs.retry", "automation.schedules.create", "automation.schedules.delete", "automation.schedules.disable", "automation.schedules.enable", "automation.schedules.list", "automation.schedules.run", "calendar.events.create", "calendar.events.get", "calendar.events.list", "calendar.ics.export", "calendar.ics.import", "channels.accounts.action.default", "channels.accounts.action.named", "channels.accounts.get", "channels.accounts.list", "channels.accounts.surface.list", "channels.actions.invoke", "channels.actions.list", "channels.actions.surface.list", "channels.agent_tools.list", "channels.agent_tools.surface.list", "channels.allowlist.edit", "channels.allowlist.resolve", "channels.authorize", "channels.capabilities.list", "channels.capabilities.surface.list", "channels.directory.query", "channels.doctor.get", "channels.drafts.delete", "channels.drafts.get", "channels.drafts.list", "channels.drafts.save", "channels.inbox.list", "channels.lifecycle.get", "channels.policies.audit", "channels.policies.list", "channels.policies.update", "channels.profiles.delete", "channels.profiles.get", "channels.profiles.list", "channels.profiles.set", "channels.repairs.list", "channels.routing.assign", "channels.routing.delete", "channels.routing.list", "channels.setup.get", "channels.status", "channels.targets.resolve", "channels.test.send", "channels.tools.invoke", "channels.tools.list", "channels.tools.surface.list", "checkin.config.get", "checkin.config.set", "checkin.receipts.list", "checkin.run", "checkpoints.create", "checkpoints.diff", "checkpoints.list", "checkpoints.restore", "checkpoints.restorePreview", "checkpoints.revertHunk", "checkpoints.revertHunkPreview", "ci.status", "ci.watches.create", "ci.watches.delete", "ci.watches.list", "ci.watches.run", "companion.chat.events.stream", "companion.chat.messages.create", "companion.chat.messages.edit", "companion.chat.messages.list", "companion.chat.messages.retry", "companion.chat.messages.steer", "companion.chat.sessions.close", "companion.chat.sessions.create", "companion.chat.sessions.delete", "companion.chat.sessions.get", "companion.chat.sessions.list", "companion.chat.sessions.update", "companion.chat.turns.cancel", "config.get", "config.set", "continuity.snapshot", "control.auth.current", "control.auth.login", "control.clients.list", "control.contract", "control.events.catalog", "control.events.stream", "control.messages.list", "control.methods.get", "control.methods.list", "control.snapshot", "control.status", "control.web", "cost.attribution.get", "credentials.get", "deliveries.get", "deliveries.list", "devices.grants.list", "devices.grants.revoke", "devices.housekeeping.run", "devices.nodes.list", "email.draft.create", "email.inbox.list", "email.inbox.read", "email.send", "flags.graduation.report", "fleet.archive", "fleet.archiveFinished", "fleet.archived.list", "fleet.attempts.judge", "fleet.attempts.list", "fleet.attempts.pick", "fleet.conflicts.list", "fleet.conflicts.resolve", "fleet.graph.get", "fleet.list", "fleet.observed.steer", "fleet.snapshot", "fleet.unarchive", "health.snapshot", "homeassistant.homeGraph.askHomeGraph", "homeassistant.homeGraph.browse", "homeassistant.homeGraph.export", "homeassistant.homeGraph.generateHomeGraphPacket", "homeassistant.homeGraph.generateRoomPage", "homeassistant.homeGraph.import", "homeassistant.homeGraph.ingestHomeGraphArtifact", "homeassistant.homeGraph.ingestHomeGraphNote", "homeassistant.homeGraph.ingestHomeGraphUrl", "homeassistant.homeGraph.linkHomeGraphKnowledge", "homeassistant.homeGraph.listHomeGraphIssues", "homeassistant.homeGraph.map", "homeassistant.homeGraph.pages.list", "homeassistant.homeGraph.refinement.run", "homeassistant.homeGraph.refinement.task.cancel", "homeassistant.homeGraph.refinement.task.get", "homeassistant.homeGraph.refinement.tasks.list", "homeassistant.homeGraph.refreshDevicePassport", "homeassistant.homeGraph.reindex", "homeassistant.homeGraph.reset", "homeassistant.homeGraph.reviewHomeGraphFact", "homeassistant.homeGraph.sources.list", "homeassistant.homeGraph.status", "homeassistant.homeGraph.syncHomeGraph", "homeassistant.homeGraph.unlinkHomeGraphKnowledge", "intelligence.snapshot", "knowledge.ask", "knowledge.candidate.decide", "knowledge.candidate.get", "knowledge.candidates.list", "knowledge.connector.doctor", "knowledge.connector.get", "knowledge.connectors.list", "knowledge.extraction.get", "knowledge.extractions.list", "knowledge.graphql.execute", "knowledge.graphql.schema", "knowledge.ingest.artifact", "knowledge.ingest.bookmarks", "knowledge.ingest.browserHistory", "knowledge.ingest.connector", "knowledge.ingest.url", "knowledge.ingest.urls", "knowledge.issue.review", "knowledge.issues.list", "knowledge.item.get", "knowledge.job-runs.list", "knowledge.job.get", "knowledge.job.run", "knowledge.jobs.list", "knowledge.lint", "knowledge.map", "knowledge.nodes.list", "knowledge.packet", "knowledge.projection.materialize", "knowledge.projection.render", "knowledge.projections.list", "knowledge.refinement.run", "knowledge.refinement.task.cancel", "knowledge.refinement.task.get", "knowledge.refinement.tasks.list", "knowledge.reindex", "knowledge.report.get", "knowledge.reports.list", "knowledge.schedule.delete", "knowledge.schedule.enable", "knowledge.schedule.get", "knowledge.schedule.save", "knowledge.schedules.list", "knowledge.search", "knowledge.source.extraction.get", "knowledge.sources.list", "knowledge.status", "knowledge.usage.list", "local_auth.bootstrap.delete", "local_auth.sessions.delete", "local_auth.status", "local_auth.users.create", "local_auth.users.delete", "local_auth.users.password.rotate", "mcp.config.get", "mcp.config.reload", "mcp.servers.list", "mcp.servers.remove", "mcp.servers.upsert", "mcp.tools.list", "media.analyze", "media.generate", "media.providers.list", "media.transform", "memory.consolidation.receipts", "memory.doctor", "memory.embeddings.default.set", "memory.projections.get", "memory.projections.list", "memory.records.add", "memory.records.delete", "memory.records.export", "memory.records.get", "memory.records.import", "memory.records.links.add", "memory.records.links.list", "memory.records.list", "memory.records.search", "memory.records.search-semantic", "memory.records.update", "memory.records.update-review", "memory.review-queue", "memory.vector.rebuild", "memory.vector.stats", "multimodal.analyze", "multimodal.packet", "multimodal.providers.list", "multimodal.status", "multimodal.writeback", "ops.memory.get", "pairing.handoff.complete", "pairing.handoff.create", "pairing.posture.get", "pairing.tokens.create", "pairing.tokens.delete", "pairing.tokens.list", "pairing.tokens.migrate", "pairing.tokens.rename", "pairing.tokens.revokeShared", "panels.list", "panels.open", "permissions.rules.delete", "permissions.rules.list", "power.keepAwake.set", "power.status.get", "principals.create", "principals.delete", "principals.get", "principals.list", "principals.resolve", "principals.update", "projectPlanning.decisions.list", "projectPlanning.decisions.record", "projectPlanning.evaluate", "projectPlanning.language.get", "projectPlanning.language.upsert", "projectPlanning.state.get", "projectPlanning.state.upsert", "projectPlanning.status", "projectPlanning.workPlan.clearCompleted", "projectPlanning.workPlan.snapshot", "projectPlanning.workPlan.task.create", "projectPlanning.workPlan.task.delete", "projectPlanning.workPlan.task.get", "projectPlanning.workPlan.task.status", "projectPlanning.workPlan.task.update", "projectPlanning.workPlan.tasks.list", "projectPlanning.workPlan.tasks.reorder", "providers.get", "providers.list", "providers.usage.get", "push.subscriptions.create", "push.subscriptions.delete", "push.subscriptions.list", "push.subscriptions.reconcile", "push.subscriptions.verify", "push.vapid.get", "quota.fanout.get", "quota.snapshot.get", "remote.node_host.contract", "remote.pair.requests.approve", "remote.pair.requests.list", "remote.pair.requests.reject", "remote.peers.disconnect", "remote.peers.invoke", "remote.peers.list", "remote.peers.token.revoke", "remote.peers.token.rotate", "remote.snapshot", "remote.work.cancel", "remote.work.list", "review.snapshot", "rewind.apply", "rewind.plan", "routes.bindings.create", "routes.bindings.delete", "routes.bindings.list", "routes.bindings.update", "routes.snapshot", "runtime.metrics.get", "scheduler.capacity", "security.settings", "services.install", "services.restart", "services.start", "services.status", "services.stop", "services.uninstall", "sessions.changes.get", "sessions.close", "sessions.contextUsage.get", "sessions.create", "sessions.delete", "sessions.detach", "sessions.followUp", "sessions.get", "sessions.inputs.cancel", "sessions.inputs.deliver", "sessions.inputs.list", "sessions.integration.snapshot", "sessions.list", "sessions.messages.create", "sessions.messages.list", "sessions.permissionMode.get", "sessions.permissionMode.set", "sessions.queuedMessages.delete", "sessions.queuedMessages.edit", "sessions.queuedMessages.list", "sessions.register", "sessions.reopen", "sessions.search", "sessions.steer", "sessions.toolCalls.cancel", "settings.snapshot", "skills.create", "skills.delete", "skills.get", "skills.list", "skills.update", "stepup.challenge.mint", "stepup.credentials.register", "surfaces.list", "tailscale.get", "tailscale.serve.run", "tasks.cancel", "tasks.create", "tasks.get", "tasks.list", "tasks.retry", "tasks.status", "telemetry.errors.list", "telemetry.events.list", "telemetry.metrics.get", "telemetry.otlp.logs", "telemetry.otlp.metrics", "telemetry.otlp.traces", "telemetry.snapshot", "telemetry.stream", "telemetry.traces.list", "voice.local.install", "voice.local.status", "voice.providers.list", "voice.realtime.session", "voice.status", "voice.stt", "voice.tts", "voice.tts.stream", "voice.voices.list", "watchers.create", "watchers.delete", "watchers.list", "watchers.run", "watchers.start", "watchers.stop", "watchers.update", "web_search.providers.list", "web_search.query", "workspaces.registrations.add", "workspaces.registrations.list", "workspaces.registrations.remove", "workspaces.resolve", "worktrees.discard", "worktrees.setup.run", "worktrees.snapshot"];
+export const OPERATOR_METHOD_IDS: readonly ["accounts.snapshot", "acp.agents.list", "acp.sessions.create", "approvals.approve", "approvals.cancel", "approvals.claim", "approvals.deny", "approvals.list", "artifacts.content.get", "artifacts.create", "artifacts.get", "artifacts.list", "automation.heartbeat.list", "automation.heartbeat.run", "automation.integration.snapshot", "automation.jobs.create", "automation.jobs.delete", "automation.jobs.disable", "automation.jobs.enable", "automation.jobs.list", "automation.jobs.run", "automation.jobs.update", "automation.runs.cancel", "automation.runs.get", "automation.runs.list", "automation.runs.retry", "automation.schedules.create", "automation.schedules.delete", "automation.schedules.disable", "automation.schedules.enable", "automation.schedules.list", "automation.schedules.run", "browser.click", "browser.extract", "browser.history.back", "browser.history.forward", "browser.navigate", "browser.press", "browser.provision", "browser.readText", "browser.screenshot", "browser.scroll", "browser.select", "browser.sessions.attach", "browser.sessions.close", "browser.sessions.launch", "browser.sessions.list", "browser.sessions.release", "browser.snapshot", "browser.status", "browser.tabs.close", "browser.tabs.list", "browser.tabs.new", "browser.tabs.switch", "browser.type", "browser.waitFor", "calendar.events.create", "calendar.events.get", "calendar.events.list", "calendar.ics.export", "calendar.ics.import", "channels.accounts.action.default", "channels.accounts.action.named", "channels.accounts.get", "channels.accounts.list", "channels.accounts.surface.list", "channels.actions.invoke", "channels.actions.list", "channels.actions.surface.list", "channels.agent_tools.list", "channels.agent_tools.surface.list", "channels.allowlist.edit", "channels.allowlist.resolve", "channels.authorize", "channels.capabilities.list", "channels.capabilities.surface.list", "channels.directory.query", "channels.doctor.get", "channels.drafts.delete", "channels.drafts.get", "channels.drafts.list", "channels.drafts.save", "channels.inbox.list", "channels.lifecycle.get", "channels.policies.audit", "channels.policies.list", "channels.policies.update", "channels.profiles.delete", "channels.profiles.get", "channels.profiles.list", "channels.profiles.set", "channels.repairs.list", "channels.routing.assign", "channels.routing.delete", "channels.routing.list", "channels.setup.get", "channels.status", "channels.targets.resolve", "channels.test.send", "channels.tools.invoke", "channels.tools.list", "channels.tools.surface.list", "checkin.config.get", "checkin.config.set", "checkin.receipts.list", "checkin.run", "checkpoints.create", "checkpoints.diff", "checkpoints.list", "checkpoints.restore", "checkpoints.restorePreview", "checkpoints.revertHunk", "checkpoints.revertHunkPreview", "ci.status", "ci.watches.create", "ci.watches.delete", "ci.watches.list", "ci.watches.run", "companion.chat.events.stream", "companion.chat.messages.create", "companion.chat.messages.edit", "companion.chat.messages.list", "companion.chat.messages.retry", "companion.chat.messages.steer", "companion.chat.sessions.close", "companion.chat.sessions.create", "companion.chat.sessions.delete", "companion.chat.sessions.get", "companion.chat.sessions.list", "companion.chat.sessions.update", "companion.chat.turns.cancel", "config.get", "config.set", "continuity.snapshot", "control.auth.current", "control.auth.login", "control.clients.list", "control.contract", "control.events.catalog", "control.events.stream", "control.messages.list", "control.methods.get", "control.methods.list", "control.snapshot", "control.status", "control.web", "cost.attribution.get", "credentials.get", "deliveries.get", "deliveries.list", "devices.grants.list", "devices.grants.revoke", "devices.housekeeping.run", "devices.nodes.list", "email.draft.create", "email.inbox.list", "email.inbox.read", "email.send", "flags.graduation.report", "fleet.archive", "fleet.archiveFinished", "fleet.archived.list", "fleet.attempts.judge", "fleet.attempts.list", "fleet.attempts.pick", "fleet.conflicts.list", "fleet.conflicts.resolve", "fleet.graph.get", "fleet.list", "fleet.observed.steer", "fleet.snapshot", "fleet.unarchive", "health.snapshot", "homeassistant.homeGraph.askHomeGraph", "homeassistant.homeGraph.browse", "homeassistant.homeGraph.export", "homeassistant.homeGraph.generateHomeGraphPacket", "homeassistant.homeGraph.generateRoomPage", "homeassistant.homeGraph.import", "homeassistant.homeGraph.ingestHomeGraphArtifact", "homeassistant.homeGraph.ingestHomeGraphNote", "homeassistant.homeGraph.ingestHomeGraphUrl", "homeassistant.homeGraph.linkHomeGraphKnowledge", "homeassistant.homeGraph.listHomeGraphIssues", "homeassistant.homeGraph.map", "homeassistant.homeGraph.pages.list", "homeassistant.homeGraph.refinement.run", "homeassistant.homeGraph.refinement.task.cancel", "homeassistant.homeGraph.refinement.task.get", "homeassistant.homeGraph.refinement.tasks.list", "homeassistant.homeGraph.refreshDevicePassport", "homeassistant.homeGraph.reindex", "homeassistant.homeGraph.reset", "homeassistant.homeGraph.reviewHomeGraphFact", "homeassistant.homeGraph.sources.list", "homeassistant.homeGraph.status", "homeassistant.homeGraph.syncHomeGraph", "homeassistant.homeGraph.unlinkHomeGraphKnowledge", "intelligence.snapshot", "knowledge.ask", "knowledge.candidate.decide", "knowledge.candidate.get", "knowledge.candidates.list", "knowledge.connector.doctor", "knowledge.connector.get", "knowledge.connectors.list", "knowledge.extraction.get", "knowledge.extractions.list", "knowledge.graphql.execute", "knowledge.graphql.schema", "knowledge.ingest.artifact", "knowledge.ingest.bookmarks", "knowledge.ingest.browserHistory", "knowledge.ingest.connector", "knowledge.ingest.url", "knowledge.ingest.urls", "knowledge.issue.review", "knowledge.issues.list", "knowledge.item.get", "knowledge.job-runs.list", "knowledge.job.get", "knowledge.job.run", "knowledge.jobs.list", "knowledge.lint", "knowledge.map", "knowledge.nodes.list", "knowledge.packet", "knowledge.projection.materialize", "knowledge.projection.render", "knowledge.projections.list", "knowledge.refinement.run", "knowledge.refinement.task.cancel", "knowledge.refinement.task.get", "knowledge.refinement.tasks.list", "knowledge.reindex", "knowledge.report.get", "knowledge.reports.list", "knowledge.schedule.delete", "knowledge.schedule.enable", "knowledge.schedule.get", "knowledge.schedule.save", "knowledge.schedules.list", "knowledge.search", "knowledge.source.extraction.get", "knowledge.sources.list", "knowledge.status", "knowledge.usage.list", "local_auth.bootstrap.delete", "local_auth.sessions.delete", "local_auth.status", "local_auth.users.create", "local_auth.users.delete", "local_auth.users.password.rotate", "mcp.config.get", "mcp.config.reload", "mcp.servers.list", "mcp.servers.remove", "mcp.servers.upsert", "mcp.tools.list", "media.analyze", "media.generate", "media.providers.list", "media.transform", "memory.consolidation.receipts", "memory.doctor", "memory.embeddings.default.set", "memory.projections.get", "memory.projections.list", "memory.records.add", "memory.records.delete", "memory.records.export", "memory.records.get", "memory.records.import", "memory.records.links.add", "memory.records.links.list", "memory.records.list", "memory.records.search", "memory.records.search-semantic", "memory.records.update", "memory.records.update-review", "memory.review-queue", "memory.vector.rebuild", "memory.vector.stats", "multimodal.analyze", "multimodal.packet", "multimodal.providers.list", "multimodal.status", "multimodal.writeback", "ops.memory.get", "pairing.handoff.complete", "pairing.handoff.create", "pairing.posture.get", "pairing.tokens.create", "pairing.tokens.delete", "pairing.tokens.list", "pairing.tokens.migrate", "pairing.tokens.rename", "pairing.tokens.revokeShared", "panels.list", "panels.open", "permissions.rules.delete", "permissions.rules.list", "power.keepAwake.set", "power.status.get", "principals.create", "principals.delete", "principals.get", "principals.list", "principals.resolve", "principals.update", "projectPlanning.decisions.list", "projectPlanning.decisions.record", "projectPlanning.evaluate", "projectPlanning.language.get", "projectPlanning.language.upsert", "projectPlanning.state.get", "projectPlanning.state.upsert", "projectPlanning.status", "projectPlanning.workPlan.clearCompleted", "projectPlanning.workPlan.snapshot", "projectPlanning.workPlan.task.create", "projectPlanning.workPlan.task.delete", "projectPlanning.workPlan.task.get", "projectPlanning.workPlan.task.status", "projectPlanning.workPlan.task.update", "projectPlanning.workPlan.tasks.list", "projectPlanning.workPlan.tasks.reorder", "providers.get", "providers.list", "providers.usage.get", "push.subscriptions.create", "push.subscriptions.delete", "push.subscriptions.list", "push.subscriptions.reconcile", "push.subscriptions.verify", "push.vapid.get", "quota.fanout.get", "quota.snapshot.get", "remote.node_host.contract", "remote.pair.requests.approve", "remote.pair.requests.list", "remote.pair.requests.reject", "remote.peers.disconnect", "remote.peers.invoke", "remote.peers.list", "remote.peers.token.revoke", "remote.peers.token.rotate", "remote.snapshot", "remote.work.cancel", "remote.work.list", "review.snapshot", "rewind.apply", "rewind.plan", "routes.bindings.create", "routes.bindings.delete", "routes.bindings.list", "routes.bindings.update", "routes.snapshot", "runtime.metrics.get", "scheduler.capacity", "security.settings", "services.install", "services.restart", "services.start", "services.status", "services.stop", "services.uninstall", "sessions.changes.get", "sessions.close", "sessions.contextUsage.get", "sessions.create", "sessions.delete", "sessions.detach", "sessions.followUp", "sessions.get", "sessions.inputs.cancel", "sessions.inputs.deliver", "sessions.inputs.list", "sessions.integration.snapshot", "sessions.list", "sessions.messages.create", "sessions.messages.list", "sessions.permissionMode.get", "sessions.permissionMode.set", "sessions.queuedMessages.delete", "sessions.queuedMessages.edit", "sessions.queuedMessages.list", "sessions.register", "sessions.reopen", "sessions.search", "sessions.steer", "sessions.toolCalls.cancel", "settings.snapshot", "skills.create", "skills.delete", "skills.get", "skills.list", "skills.update", "stepup.challenge.mint", "stepup.credentials.register", "surfaces.list", "tailscale.get", "tailscale.serve.run", "tasks.cancel", "tasks.create", "tasks.get", "tasks.list", "tasks.retry", "tasks.status", "telemetry.errors.list", "telemetry.events.list", "telemetry.metrics.get", "telemetry.otlp.logs", "telemetry.otlp.metrics", "telemetry.otlp.traces", "telemetry.snapshot", "telemetry.stream", "telemetry.traces.list", "voice.local.install", "voice.local.status", "voice.providers.list", "voice.realtime.session", "voice.status", "voice.stt", "voice.tts", "voice.tts.stream", "voice.voices.list", "watchers.create", "watchers.delete", "watchers.list", "watchers.run", "watchers.start", "watchers.stop", "watchers.update", "web_search.providers.list", "web_search.query", "workspaces.registrations.add", "workspaces.registrations.list", "workspaces.registrations.remove", "workspaces.resolve", "worktrees.discard", "worktrees.setup.run", "worktrees.snapshot"];
 
 // @public (undocumented)
 export interface OperatorContractManifest {
@@ -2900,6 +2900,196 @@ export interface OperatorMethodInputMap {
     "automation.schedules.run": {
         scheduleId: string;
     };
+    // (undocumented)
+    "browser.click": ({
+        sessionId?: string;
+        pageId?: string;
+        ref: string;
+        button?: string;
+        clickCount?: number;
+        timeoutMs?: number;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.extract": ({
+        sessionId?: string;
+        pageId?: string;
+        ref?: string;
+        selector?: string;
+        fields?: readonly string[];
+        all?: boolean;
+        limit?: number;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.history.back": ({
+        sessionId?: string;
+        pageId?: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.history.forward": ({
+        sessionId?: string;
+        pageId?: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.navigate": ({
+        sessionId?: string;
+        pageId?: string;
+        url: string;
+        waitUntil?: string;
+        timeoutMs?: number;
+        profileName?: string;
+        headless?: boolean;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.press": ({
+        sessionId?: string;
+        pageId?: string;
+        ref: string;
+        key: string;
+        timeoutMs?: number;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.provision": ({
+        repair?: boolean;
+        allowDownload?: boolean;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.readText": ({
+        sessionId?: string;
+        pageId?: string;
+        maxChars?: number;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.screenshot": ({
+        sessionId?: string;
+        pageId?: string;
+        fullPage?: boolean;
+        path?: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.scroll": ({
+        sessionId?: string;
+        pageId?: string;
+        ref?: string;
+        direction?: string;
+        amount?: number;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.select": ({
+        sessionId?: string;
+        pageId?: string;
+        ref: string;
+        values: readonly string[];
+        timeoutMs?: number;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.sessions.attach": ({
+        cdpEndpoint: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.sessions.close": ({
+        sessionId: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.sessions.launch": ({
+        profileName?: string;
+        headless?: boolean;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.sessions.list": {};
+    // (undocumented)
+    "browser.sessions.release": ({
+        sessionId: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.snapshot": ({
+        sessionId?: string;
+        pageId?: string;
+        limit?: number;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.status": {};
+    // (undocumented)
+    "browser.tabs.close": ({
+        sessionId?: string;
+        pageId: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.tabs.list": {
+        sessionId?: string;
+    };
+    // (undocumented)
+    "browser.tabs.new": ({
+        sessionId?: string;
+        pageId?: string;
+        url?: string;
+        profileName?: string;
+        headless?: boolean;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.tabs.switch": ({
+        sessionId?: string;
+        pageId: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.type": ({
+        sessionId?: string;
+        pageId?: string;
+        ref: string;
+        text: string;
+        submit?: boolean;
+        replace?: boolean;
+        timeoutMs?: number;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.waitFor": ({
+        sessionId?: string;
+        pageId?: string;
+        text?: string;
+        url?: string;
+        timeoutMs?: number;
+    } & {
+        readonly [key: string]: unknown;
+    });
     // (undocumented)
     "channels.accounts.action.default": ({
         accountId?: string;
@@ -7510,6 +7700,367 @@ export interface OperatorMethodOutputMap {
         runId: string;
         agentId?: string;
         status: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.click": ({
+        sessionId: string;
+        pageId: string;
+        url?: string;
+        clicked?: ({} & {
+            readonly [key: string]: JsonValue;
+        });
+        urlBefore?: string;
+        navigated?: boolean;
+        next?: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.extract": ({
+        sessionId: string;
+        pageId: string;
+        url?: string;
+        matched?: number;
+        returned?: number;
+        note?: string;
+        data?: {
+            trust: string;
+            surface: string;
+            origin: string;
+            retrievedAt: string;
+            text: string;
+            truncated: boolean;
+            rule: string;
+        };
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.history.back": ({
+        sessionId: string;
+        pageId: string;
+        url?: string;
+        moved?: boolean;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.history.forward": ({
+        sessionId: string;
+        pageId: string;
+        url?: string;
+        moved?: boolean;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.navigate": ({
+        sessionId: string;
+        pageId: string;
+        url?: string;
+        title?: string;
+        httpStatus?: number;
+        setup?: string;
+        next?: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.press": ({
+        sessionId: string;
+        pageId: string;
+        url?: string;
+        pressed?: string;
+        on?: ({} & {
+            readonly [key: string]: JsonValue;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.provision": ({
+        provision: ({} & {
+            readonly [key: string]: JsonValue;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.readText": ({
+        sessionId: string;
+        pageId: string;
+        url?: string;
+        title?: string;
+        content?: {
+            trust: string;
+            surface: string;
+            origin: string;
+            retrievedAt: string;
+            text: string;
+            truncated: boolean;
+            rule: string;
+        };
+        truncated?: boolean;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.screenshot": ({
+        sessionId: string;
+        pageId: string;
+        url?: string;
+        path?: string;
+        bytes?: number;
+        next?: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.scroll": ({
+        sessionId: string;
+        pageId: string;
+        url?: string;
+        scrolledBy?: number;
+        scrolledTo?: ({} & {
+            readonly [key: string]: JsonValue;
+        });
+        scrollY?: number;
+        scrollHeight?: number;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.select": ({
+        sessionId: string;
+        pageId: string;
+        url?: string;
+        selectedIn?: ({} & {
+            readonly [key: string]: JsonValue;
+        });
+        selected?: readonly string[];
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.sessions.attach": ({
+        session: {
+            sessionId: string;
+            origin: string;
+            profileDirectory?: string;
+            cdpEndpoint?: string;
+            executablePath?: string;
+            source?: string;
+            headless: boolean;
+            startedAt: string;
+            pageCount: number;
+            activePageId?: string;
+            closableByAgent: boolean;
+        };
+        pages?: readonly ({
+            pageId: string;
+            url: string;
+            title: string;
+            active: boolean;
+        })[];
+        note?: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.sessions.close": ({
+        closed: {
+            sessionId: string;
+            origin: string;
+            profileDirectory?: string;
+            cdpEndpoint?: string;
+            executablePath?: string;
+            source?: string;
+            headless: boolean;
+            startedAt: string;
+            pageCount: number;
+            activePageId?: string;
+            closableByAgent: boolean;
+        };
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.sessions.launch": ({
+        session: {
+            sessionId: string;
+            origin: string;
+            profileDirectory?: string;
+            cdpEndpoint?: string;
+            executablePath?: string;
+            source?: string;
+            headless: boolean;
+            startedAt: string;
+            pageCount: number;
+            activePageId?: string;
+            closableByAgent: boolean;
+        };
+        setup?: string;
+        note?: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.sessions.list": {
+        sessions: readonly ({
+            sessionId: string;
+            origin: string;
+            profileDirectory?: string;
+            cdpEndpoint?: string;
+            executablePath?: string;
+            source?: string;
+            headless: boolean;
+            startedAt: string;
+            pageCount: number;
+            activePageId?: string;
+            closableByAgent: boolean;
+        })[];
+    };
+    // (undocumented)
+    "browser.sessions.release": ({
+        released: {
+            sessionId: string;
+            origin: string;
+            profileDirectory?: string;
+            cdpEndpoint?: string;
+            executablePath?: string;
+            source?: string;
+            headless: boolean;
+            startedAt: string;
+            pageCount: number;
+            activePageId?: string;
+            closableByAgent: boolean;
+        };
+        note?: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.snapshot": ({
+        sessionId: string;
+        pageId: string;
+        url?: string;
+        title?: string;
+        contentTrust?: string;
+        origin?: string;
+        rule?: string;
+        snapshotId?: string;
+        elementCount?: number;
+        truncated?: boolean;
+        elements?: readonly ({
+            ref: string;
+            role: string;
+            name: string;
+            value?: string;
+            disabled?: boolean;
+            checked?: boolean;
+        })[];
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.status": ({
+        browserAvailable: boolean;
+        binarySource?: string;
+        executablePath?: string;
+        driverVersion?: string;
+        browsersPath?: string;
+        displayAvailable?: boolean;
+        defaultMode?: string;
+        sessions?: readonly ({
+            sessionId: string;
+            origin: string;
+            profileDirectory?: string;
+            cdpEndpoint?: string;
+            executablePath?: string;
+            source?: string;
+            headless: boolean;
+            startedAt: string;
+            pageCount: number;
+            activePageId?: string;
+            closableByAgent: boolean;
+        })[];
+        provisionSteps?: readonly (({} & {
+            readonly [key: string]: JsonValue;
+        }))[];
+        problem?: string;
+        fix?: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.tabs.close": ({
+        sessionId: string;
+        closedPageId: string;
+        pages: readonly ({
+            pageId: string;
+            url: string;
+            title: string;
+            active: boolean;
+        })[];
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.tabs.list": ({
+        sessionId: string;
+        pages: readonly ({
+            pageId: string;
+            url: string;
+            title: string;
+            active: boolean;
+        })[];
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.tabs.new": ({
+        sessionId: string;
+        pageId: string;
+        url?: string;
+        pages?: readonly ({
+            pageId: string;
+            url: string;
+            title: string;
+            active: boolean;
+        })[];
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.tabs.switch": ({
+        sessionId: string;
+        activePageId: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.type": ({
+        sessionId: string;
+        pageId: string;
+        url?: string;
+        typedInto?: ({} & {
+            readonly [key: string]: JsonValue;
+        });
+        submitted?: boolean;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "browser.waitFor": ({
+        sessionId: string;
+        pageId: string;
+        url?: string;
+        waitedFor?: ({} & {
+            readonly [key: string]: JsonValue;
+        });
+        found?: boolean;
     } & {
         readonly [key: string]: unknown;
     });

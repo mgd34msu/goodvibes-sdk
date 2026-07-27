@@ -22,3 +22,25 @@ export type {
   RotationAuditOutcome,
 } from './token-audit.js';
 export { DEFAULT_ROTATION_CADENCE_MS, DEFAULT_ROTATION_WARNING_THRESHOLD_MS } from './token-audit.js';
+export {
+  UNTRUSTED_CONTENT_RULE,
+  UntrustedContentLedger,
+  createUntrustedContentPort,
+  evaluateOutwardEffect,
+  getProcessUntrustedContentLedger,
+  grantOwnerApproval,
+  labelUntrustedContent,
+  originOf,
+  resetProcessUntrustedContentLedgerForTests,
+  surfaceHasCommandAuthority,
+} from './untrusted-content.js';
+export type {
+  AuthoritySurface,
+  OutwardEffectDecision,
+  OutwardEffectRequest,
+  OwnerApproval,
+  UntrustedContentEnvelope,
+  UntrustedContentPortOptions,
+  UntrustedIngest,
+  UntrustedSurface,
+} from './untrusted-content.js';
