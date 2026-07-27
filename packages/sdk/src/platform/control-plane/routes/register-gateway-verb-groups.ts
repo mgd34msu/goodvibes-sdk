@@ -95,6 +95,7 @@ import { registerMemoryGatewayMethods, type MemoryGatewayService } from './memor
 import { registerVoiceSetupGatewayMethods, type VoiceSetupGatewayService } from './voice-setup.js';
 import { registerCalendarGatewayMethods, type CalendarGatewayService } from './calendar.js';
 import { createDaemonCalendarGatewayService } from './calendar-composition.js';
+import { registerEmailGatewayMethods, type EmailGatewayService } from './email.js';
 import { bindCostAttributionIngest } from './attribution-ingest.js';
 import type { ConfigManager } from '../../config/manager.js';
 import type { DisposalRegistry } from '../../runtime/disposal.js';
@@ -234,6 +235,13 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
   readonly calendarGateway?: CalendarGatewayService | undefined;
   /** The daemon's home directory; the credential-adoption probe needs a real one. */
   readonly homeDirectory?: string | undefined;
+  /**
+   * Optional mail backend. When present, email.inbox.* / email.draft.create /
+   * email.send serve real mail; absent they stay cataloged-but-unhandled.
+   *
+   * Its absence is why nothing the daemon did on its own could send a message.
+   */
+  readonly emailGateway?: EmailGatewayService | undefined;
   /**
    * The following three are wired only by the full runtime-services composition
    * root; when any is absent (e.g. the terminal-shell embed) the proactive
@@ -600,6 +608,7 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   if (deps.voiceSetup) registerVoiceSetupGatewayMethods(catalog, deps.voiceSetup);
   const calendarGateway = createDaemonCalendarGatewayService(deps);
   if (calendarGateway) registerCalendarGatewayMethods(catalog, calendarGateway);
+  if (deps.emailGateway) registerEmailGatewayMethods(catalog, deps.emailGateway);
   registerSessionRuntimeGatewayMethods(
     catalog,
     createSessionRuntimeControls({

@@ -29340,21 +29340,24 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "outputSchema": {
           "type": "object",
           "properties": {
+            "draftId": {
+              "type": "string"
+            },
             "uid": {
               "type": "number"
             },
-            "draftId": {
+            "mailbox": {
               "type": "string"
             }
           },
           "required": [
-            "uid",
-            "draftId"
+            "draftId",
+            "mailbox"
           ],
           "additionalProperties": false
         },
         "dangerous": true,
-        "invokable": false
+        "invokable": true
       },
       {
         "id": "email.inbox.list",
@@ -29441,7 +29444,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
-        "invokable": false
+        "invokable": true
       },
       {
         "id": "email.inbox.read",
@@ -29531,7 +29534,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
-        "invokable": false
+        "invokable": true
       },
       {
         "id": "email.send",
@@ -29595,7 +29598,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "additionalProperties": false
         },
         "dangerous": true,
-        "invokable": false
+        "invokable": true
       },
       {
         "id": "flags.graduation.report",

@@ -189,10 +189,41 @@ function loadConfiguredSecretPolicy(configManager?: Pick<ConfigManager, 'get'>):
  * directory the daemon happened to start in, and the next start from a
  * different directory reads a store that does not have it.
  *
- * An explicit `scope` still wins. Everything else keeps the historical default.
+ * Everything that is not daemon-owned keeps the historical default.
  */
 function defaultScopeForKey(key: string): SecretScope {
   return isDaemonOwnedSecretKey(key) ? 'daemon' : 'project';
+}
+
+/**
+ * Where a write to `key` will actually go, given what the caller asked for.
+ *
+ * **Daemon ownership beats an explicit scope, deliberately.** It used to be the
+ * other way round — an explicit `scope` won — and that made the routing above
+ * defeatable by the ordinary path a person takes to store a credential:
+ * `/secrets set` passes a scope on every call, so a daemon-owned password went
+ * into a client silo the daemon never reads. The credential reported success
+ * and did nothing, which is the exact failure the ownership rule exists to
+ * prevent.
+ *
+ * The alternative — refusing the write and telling the caller to pick a
+ * different scope — was rejected: it turns a storage bug into a wall in front
+ * of the credentials people most need to set, and the caller's scope argument
+ * is nearly always a default it never thought about rather than an intent.
+ *
+ * So the write is honoured and RELOCATED, never dropped, and the relocation is
+ * disclosed rather than silent: `set()` logs it naming both scopes, and this
+ * function is exported so a surface can tell the operator where a credential is
+ * going BEFORE it asks for it.
+ */
+export function resolveSecretWriteScope(key: string, requested?: SecretScope | undefined): SecretScope {
+  if (isDaemonOwnedSecretKey(key)) return 'daemon';
+  return requested ?? defaultScopeForKey(key);
+}
+
+/** True when `requested` would have sent a daemon-owned credential somewhere the daemon cannot read. */
+export function secretWriteScopeWasOverridden(key: string, requested?: SecretScope | undefined): boolean {
+  return requested !== undefined && requested !== 'daemon' && isDaemonOwnedSecretKey(key);
 }
 
 export class SecretsManager {
@@ -318,7 +349,18 @@ export class SecretsManager {
   async set(key: string, value: string, options: SecretWriteOptions = {}): Promise<void> {
     const policy = this.getPolicy();
     const medium = options.medium ?? this.getDefaultWriteMedium(policy);
-    const scope = options.scope ?? defaultScopeForKey(key);
+    const scope = resolveSecretWriteScope(key, options.scope);
+    if (secretWriteScopeWasOverridden(key, options.scope)) {
+      // Disclosed, not silent: the caller asked for one home and the credential
+      // went to another, and it did so because the other one is the only home
+      // the daemon reads. See resolveSecretWriteScope.
+      logger.info('SecretsManager: daemon-owned credential filed in the daemon tier', {
+        key,
+        requestedScope: options.scope,
+        actualScope: scope,
+        reason: 'a daemon-owned config path names this credential, and the daemon reads only its own tier',
+      });
+    }
 
     if (policy === 'require_secure' && medium === 'plaintext') {
       throw new Error('Secret policy require_secure forbids plaintext persistence');
@@ -460,8 +502,13 @@ export class SecretsManager {
   }
 
   async delete(key: string, options: SecretDeleteOptions = {}): Promise<void> {
+    // Same rule as `set`, and for the same reason in reverse: a daemon-owned
+    // credential lives in the daemon tier, so a delete narrowed to some other
+    // scope would report success while leaving the live copy in place — a
+    // credential the operator believes is revoked and is not.
+    const scopeFilter = isDaemonOwnedSecretKey(key) ? undefined : options.scope;
     const stores = this.getAllCandidateStores().filter((store) => {
-      if (options.scope && store.scope !== options.scope) return false;
+      if (scopeFilter && store.scope !== scopeFilter) return false;
       if (options.medium && (options.medium === 'secure') !== store.secure) return false;
       return true;
     });

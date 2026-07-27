@@ -11793,11 +11793,19 @@
       "kind": "function"
     },
     {
+      "name": "resolveSecretWriteScope",
+      "kind": "function"
+    },
+    {
       "name": "resolveSubscriptionAccessToken",
       "kind": "function"
     },
     {
       "name": "resolveToolLLM",
+      "kind": "function"
+    },
+    {
+      "name": "secretWriteScopeWasOverridden",
       "kind": "function"
     },
     {

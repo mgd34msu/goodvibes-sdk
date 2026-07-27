@@ -5273,8 +5273,9 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
     },
     "status": 200,
     "body": {
+      "draftId": "sample",
       "uid": 0,
-      "draftId": "sample"
+      "mailbox": "sample"
     }
   },
   "email.inbox.list": {

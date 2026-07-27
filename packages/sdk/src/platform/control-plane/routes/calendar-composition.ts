@@ -42,9 +42,12 @@ export function createDaemonCalendarGatewayService(
     sources: {
       files: nodeGoogleFilePort,
       homeDirectory: deps.homeDirectory,
-      // `get` throws on a config section that does not exist yet; the
-      // connector wraps this call and reads a throw as "not configured",
-      // which is the honest answer rather than a broken verb.
+      // `get` throws on a config section that does not exist yet — the mail
+      // and calendar sections are app-layer and absent on a machine where
+      // nobody has run setup. The connector reads every config value through
+      // its own guard (platform/google/config-access.ts), so an absent section
+      // reads as "not configured" instead of surfacing Invalid config path as
+      // a 500 from a route.
       configGet: (key) => deps.configManager.get(key as never),
       secretGet: (key) => deps.secretsManager.get(key),
     },

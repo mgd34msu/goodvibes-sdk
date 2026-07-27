@@ -15,6 +15,7 @@
 
 import { GOOGLE_CONFIG_KEYS, GOOGLE_SECRET_KEYS } from './setup-plan.js';
 import type { GoogleConfigPort, GoogleSecretPort } from './types.js';
+import { safeConfigGet, safeConfigString } from './config-access.js';
 
 /** A snapshot of what already exists, all of it probed rather than remembered. */
 export interface GoogleSetupState {
@@ -38,12 +39,6 @@ export interface GoogleSetupState {
   readonly projectId: string | null;
   /** Last known publishing status. 'unknown' until the console has been read. */
   readonly publishingStatus: 'testing' | 'in-production' | 'unknown';
-}
-
-function readString(value: unknown): string | null {
-  if (typeof value !== 'string') return null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
 }
 
 function readPublishingStatus(value: unknown): GoogleSetupState['publishingStatus'] {
@@ -70,10 +65,10 @@ export async function detectGoogleSetupState(deps: {
 }): Promise<GoogleSetupState> {
   const { config, secrets } = deps;
 
-  const username = readString(config.get(GOOGLE_CONFIG_KEYS.emailUsername));
-  const imapHost = readString(config.get(GOOGLE_CONFIG_KEYS.emailImapHost));
-  const smtpHost = readString(config.get(GOOGLE_CONFIG_KEYS.emailSmtpHost));
-  const passwordRef = readString(config.get(GOOGLE_CONFIG_KEYS.emailPasswordRef));
+  const username = safeConfigString(config, GOOGLE_CONFIG_KEYS.emailUsername);
+  const imapHost = safeConfigString(config, GOOGLE_CONFIG_KEYS.emailImapHost);
+  const smtpHost = safeConfigString(config, GOOGLE_CONFIG_KEYS.emailSmtpHost);
+  const passwordRef = safeConfigString(config, GOOGLE_CONFIG_KEYS.emailPasswordRef);
 
   const [hasAppPassword, hasCalendarAddress, hasOAuthClientSecret, hasRefreshToken] = await Promise.all([
     secretPresent(secrets, GOOGLE_SECRET_KEYS.appPassword),
@@ -85,14 +80,14 @@ export async function detectGoogleSetupState(deps: {
   return {
     hasAppPassword,
     hasGmailConfig: username !== null && imapHost !== null && smtpHost !== null && passwordRef !== null,
-    gmailEnabled: config.get(GOOGLE_CONFIG_KEYS.emailEnabled) === true,
+    gmailEnabled: safeConfigGet(config, GOOGLE_CONFIG_KEYS.emailEnabled) === true,
     gmailUsername: username,
     hasCalendarAddress,
-    oauthClientId: readString(config.get(GOOGLE_CONFIG_KEYS.oauthClientId)),
+    oauthClientId: safeConfigString(config, GOOGLE_CONFIG_KEYS.oauthClientId),
     hasOAuthClientSecret,
     hasRefreshToken,
-    projectId: readString(config.get(GOOGLE_CONFIG_KEYS.oauthProjectId)),
-    publishingStatus: readPublishingStatus(config.get(GOOGLE_CONFIG_KEYS.oauthPublishingStatus)),
+    projectId: safeConfigString(config, GOOGLE_CONFIG_KEYS.oauthProjectId),
+    publishingStatus: readPublishingStatus(safeConfigGet(config, GOOGLE_CONFIG_KEYS.oauthPublishingStatus)),
   };
 }
 

@@ -29646,7 +29646,7 @@ Append a draft message to the configured IMAP Drafts folder. Distinct from the l
 - Scopes: `write:email`
 - Emits events: none
 - Dangerous: `yes`
-- Invokable: `no`
+- Invokable: `yes`
 
 ##### Input schema
 
@@ -29685,16 +29685,19 @@ Append a draft message to the configured IMAP Drafts folder. Distinct from the l
 {
   "type": "object",
   "properties": {
+    "draftId": {
+      "type": "string"
+    },
     "uid": {
       "type": "number"
     },
-    "draftId": {
+    "mailbox": {
       "type": "string"
     }
   },
   "required": [
-    "uid",
-    "draftId"
+    "draftId",
+    "mailbox"
   ],
   "additionalProperties": false
 }
@@ -29712,7 +29715,7 @@ Return inbox message summaries fetched live from the configured IMAP account. Re
 - Scopes: `read:email`
 - Emits events: none
 - Dangerous: `no`
-- Invokable: `no`
+- Invokable: `yes`
 
 ##### Input schema
 
@@ -29803,7 +29806,7 @@ Return the full body and attachment metadata for a single inbox message by IMAP 
 - Scopes: `read:email`
 - Emits events: none
 - Dangerous: `no`
-- Invokable: `no`
+- Invokable: `yes`
 
 ##### Input schema
 
@@ -29897,7 +29900,7 @@ Send a composed email via the configured SMTP account. Irreversible external sen
 - Scopes: `write:email`
 - Emits events: none
 - Dangerous: `yes`
-- Invokable: `no`
+- Invokable: `yes`
 
 ##### Input schema
 

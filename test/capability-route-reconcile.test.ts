@@ -9,18 +9,21 @@
  * with inert marker-returning handler stubs (no real service ever runs).
  *
  * Covers the brief's three SDK tests:
- *   1. the exact dogfood repro: email.inbox.list's route is unresolvable,
- *      and it is marked unavailable (invokable: false) rather than
- *      advertised live.
+ *   1. the dogfood repro, now inverted: email.inbox.list resolves to a real
+ *      route at the same path it always advertised, and is no longer marked
+ *      unavailable. The defect it recorded was never a routing mistake — the
+ *      only IMAP/SMTP implementation lived inside one product, so the daemon
+ *      had nothing to call. Hoisting it is what let the route exist.
  *   2. the build/boot regression gate: no descriptor in the live catalog
  *      is advertised-but-undispatchable without also being marked
  *      unavailable. KNOWN_PRE_EXISTING_ROUTE_DEBT started as a grandfather
  *      list for calendar.* and channels.inbox/routing/drafts.* (distinct,
  *      out-of-ownership findings this reconcile surfaced incidentally) and
- *      has since been retired to empty: every one of those methods is now
- *      marked `invokable: false` at the source (method-catalog-calendar.ts,
- *      method-catalog-channels.ts), so the exact-set comparison below holds
- *      with no exceptions. A new, unmarked advertise-without-route method
+ *      has since been retired to empty. calendar.* left it by being SERVED
+ *      (method-catalog-calendar.ts, routes/calendar.ts) rather than by being
+ *      marked unavailable; channels.* is marked `invokable: false` at the
+ *      source. Either way the exact-set comparison below holds with no
+ *      exceptions. A new, unmarked advertise-without-route method
  *      changes the observed violation set and fails this test.
  *   3. a genuinely-served method (control.auth.current) still reconciles
  *      as 'live' — the reconcile must not cry wolf on real routes.
@@ -63,29 +66,45 @@ function liveCatalogDescriptors() {
 }
 
 describe('capability-advertisement honesty: route reconcile', () => {
-  test('email.inbox.list reproduces the dogfood finding: no route, and it is marked unavailable', async () => {
+  test('email.inbox.list: the dogfood finding is fixed, and the path it always advertised is the one now served', async () => {
     const probe = createDaemonSdkRouteProbe();
     const descriptors = liveCatalogDescriptors();
     const emailInboxList = descriptors.find((d) => d.id === 'email.inbox.list');
     expect(emailInboxList).toBeDefined();
+    // The advertised path is UNCHANGED from when it was unreachable. That is
+    // the point: the ad was always honest about where this lives, and the fix
+    // was to serve it rather than to quietly move the goalposts to a path that
+    // happened to already have a route.
     expect(emailInboxList!.http).toEqual({ method: 'GET', path: '/api/email/inbox' });
 
     const result = await reconcileHttpDescriptor(emailInboxList!, probe);
-    expect(result.status).toBe('unavailable');
+    expect(result.status).toBe('live');
 
-    // The ad itself must already say "don't call this" — not just the probe.
-    expect(emailInboxList!.invokable).toBe(false);
+    // And the ad no longer says "don't call this".
+    expect(emailInboxList!.invokable).not.toBe(false);
   });
 
-  test('all four email.* methods are unresolvable and all four are marked unavailable', async () => {
+  test('all four email.* methods resolve to a route and none is marked unavailable', async () => {
     const probe = createDaemonSdkRouteProbe();
     const descriptors = liveCatalogDescriptors().filter((d) => d.category === 'email');
     expect(descriptors).toHaveLength(4);
 
     for (const descriptor of descriptors) {
       const result = await reconcileHttpDescriptor(descriptor, probe);
-      expect(result.status).toBe('unavailable');
-      expect(descriptor.invokable).toBe(false);
+      expect(result.status, `${descriptor.id} advertises ${descriptor.http?.method ?? '?'} ${descriptor.http?.path ?? '?'} but no route resolves it`).toBe('live');
+      expect(descriptor.invokable).not.toBe(false);
+    }
+  });
+
+  test('all five calendar.* methods resolve to a route and none is marked unavailable', async () => {
+    const probe = createDaemonSdkRouteProbe();
+    const descriptors = liveCatalogDescriptors().filter((d) => d.category === 'calendar');
+    expect(descriptors).toHaveLength(5);
+
+    for (const descriptor of descriptors) {
+      const result = await reconcileHttpDescriptor(descriptor, probe);
+      expect(result.status, `${descriptor.id} advertises ${descriptor.http?.method ?? '?'} ${descriptor.http?.path ?? '?'} but no route resolves it`).toBe('live');
+      expect(descriptor.invokable).not.toBe(false);
     }
   });
 

@@ -29643,16 +29643,19 @@
                 "schema": {
                   "type": "object",
                   "properties": {
+                    "draftId": {
+                      "type": "string"
+                    },
                     "uid": {
                       "type": "number"
                     },
-                    "draftId": {
+                    "mailbox": {
                       "type": "string"
                     }
                   },
                   "required": [
-                    "uid",
-                    "draftId"
+                    "draftId",
+                    "mailbox"
                   ],
                   "additionalProperties": false
                 }
