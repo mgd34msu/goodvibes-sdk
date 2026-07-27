@@ -22,6 +22,9 @@ import { describe, expect, test } from 'bun:test';
 import { SharedSessionBroker } from '../packages/sdk/src/platform/control-plane/session-broker.ts';
 import { PersistentStore } from '../packages/sdk/src/platform/state/persistent-store.ts';
 import { RouteBindingManager } from '../packages/sdk/src/platform/channels/index.ts';
+import { trackDisposables } from './_helpers/disposables.ts';
+
+const disposables = trackDisposables();
 
 function makeBroker(): SharedSessionBroker {
   const store = new PersistentStore<never>(':memory:' as string);
@@ -32,12 +35,12 @@ function makeBroker(): SharedSessionBroker {
     resolve: () => null,
     patchBinding: async () => null,
   } as unknown as RouteBindingManager;
-  return new SharedSessionBroker({
+  return disposables.add(new SharedSessionBroker({
     store,
     routeBindings,
     agentStatusProvider: { getStatus: () => null }, // never a live daemon agent
     messageSender: { send: () => false },
-  } as unknown as ConstructorParameters<typeof SharedSessionBroker>[0]);
+  } as unknown as ConstructorParameters<typeof SharedSessionBroker>[0]));
 }
 
 describe('follow-up to a closed session is rejected before any mutation', () => {

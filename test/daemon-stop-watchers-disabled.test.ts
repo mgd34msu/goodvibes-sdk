@@ -41,7 +41,13 @@ beforeAll(async () => {
   });
 });
 
-afterAll(() => {
+afterAll(async () => {
+  // The tests above deliberately call the RAW `daemon.server.stop()`, which is
+  // the path this regression guards. That leaves the rest of the booted daemon
+  // (schedulers, sweeps, watch registries) running for the remainder of the
+  // shared test process, so the full teardown still has to happen here. The
+  // second stop is a no-op — idempotency is what the test above asserts.
+  await daemon?.stop();
   rmSync(home, { recursive: true, force: true });
   rmSync(work, { recursive: true, force: true });
 });

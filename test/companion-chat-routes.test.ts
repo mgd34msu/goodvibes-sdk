@@ -8,6 +8,7 @@
 import { describe, expect, test, beforeEach } from 'bun:test';
 import { Buffer } from 'node:buffer';
 import { settleEvents } from './_helpers/test-timeout.js';
+import { trackDisposables } from './_helpers/disposables.ts';
 import { CompanionChatManager } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
 import { dispatchCompanionChatRoutes } from '../packages/sdk/src/platform/companion/companion-chat-routes.js';
 import type {
@@ -18,6 +19,8 @@ import type {
 } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
 import type { CompanionChatRouteContext } from '../packages/sdk/src/platform/companion/companion-chat-route-types.js';
 import type { ProviderMessage } from '../packages/sdk/src/platform/providers/interface.js';
+
+const disposables = trackDisposables();
 
 // ---------------------------------------------------------------------------
 // Mock provider — returns deterministic chunks
@@ -136,7 +139,7 @@ describe('companion-chat-routes: create session', () => {
       eventPublisher: publisher,
       gcIntervalMs: 999_999,
     };
-    manager = new CompanionChatManager(config);
+    manager = disposables.add(new CompanionChatManager(config));
   });
 
   test('POST /api/companion/chat/sessions returns 201 with sessionId', async () => {
@@ -243,11 +246,13 @@ describe('companion-chat-routes: create session', () => {
 describe('companion-chat-routes: update session', () => {
   test('PATCH updates session-local provider/model without using global provider state', async () => {
     const calls: Array<{ model: string | null; provider: string | null }> = [];
-    const manager = new CompanionChatManager({
-      provider: makeCapturingProvider(calls),
-      eventPublisher: makeEventPublisher(),
-      gcIntervalMs: 999_999,
-    });
+    const manager = disposables.add(
+      new CompanionChatManager({
+        provider: makeCapturingProvider(calls),
+        eventPublisher: makeEventPublisher(),
+        gcIntervalMs: 999_999,
+      }),
+    );
     const ctx = makeContext(manager);
     const session = manager.createSession({ provider: 'openai', model: 'gpt-5.4' });
 
@@ -269,11 +274,13 @@ describe('companion-chat-routes: update session', () => {
   });
 
   test('PATCH rejects a partial provider/model update', async () => {
-    const manager = new CompanionChatManager({
-      provider: makeMockProvider(),
-      eventPublisher: makeEventPublisher(),
-      gcIntervalMs: 999_999,
-    });
+    const manager = disposables.add(
+      new CompanionChatManager({
+        provider: makeMockProvider(),
+        eventPublisher: makeEventPublisher(),
+        gcIntervalMs: 999_999,
+      }),
+    );
     const ctx = makeContext(manager);
     const session = manager.createSession();
 
@@ -289,11 +296,13 @@ describe('companion-chat-routes: update session', () => {
   });
 
   test('PATCH unknown session returns 404', async () => {
-    const manager = new CompanionChatManager({
-      provider: makeMockProvider(),
-      eventPublisher: makeEventPublisher(),
-      gcIntervalMs: 999_999,
-    });
+    const manager = disposables.add(
+      new CompanionChatManager({
+        provider: makeMockProvider(),
+        eventPublisher: makeEventPublisher(),
+        gcIntervalMs: 999_999,
+      }),
+    );
     const ctx = makeContext(manager);
     const res = await dispatchCompanionChatRoutes(
       makeRequest('PATCH', 'http://localhost/api/companion/chat/sessions/ghost-id', {
@@ -312,11 +321,13 @@ describe('companion-chat-routes: post message and events', () => {
 
   beforeEach(() => {
     publisher = makeEventPublisher();
-    manager = new CompanionChatManager({
-      provider: makeMockProvider('The answer is 42'),
-      eventPublisher: publisher,
-      gcIntervalMs: 999_999,
-    });
+    manager = disposables.add(
+      new CompanionChatManager({
+        provider: makeMockProvider('The answer is 42'),
+        eventPublisher: publisher,
+        gcIntervalMs: 999_999,
+      }),
+    );
   });
 
   test('POST message returns 202 with messageId', async () => {
@@ -370,20 +381,22 @@ describe('companion-chat-routes: post message and events', () => {
       fetchMode: 'not-applicable',
       metadata: { source: 'test' },
     };
-    const manager = new CompanionChatManager({
-      provider: makeMessageCapturingProvider(providerCalls),
-      eventPublisher: publisher,
-      gcIntervalMs: 999_999,
-      artifactStore: {
-        get: (id) => id === artifact.id ? artifact : null,
-        async readContent() {
-          return {
-            record: { mimeType: artifact.mimeType, filename: artifact.filename },
-            buffer: Buffer.from('hello attachment'),
-          };
+    const manager = disposables.add(
+      new CompanionChatManager({
+        provider: makeMessageCapturingProvider(providerCalls),
+        eventPublisher: publisher,
+        gcIntervalMs: 999_999,
+        artifactStore: {
+          get: (id) => id === artifact.id ? artifact : null,
+          async readContent() {
+            return {
+              record: { mimeType: artifact.mimeType, filename: artifact.filename },
+              buffer: Buffer.from('hello attachment'),
+            };
+          },
         },
-      },
-    });
+      }),
+    );
     const ctx = makeContext(manager);
     const session = manager.createSession({ provider: 'openai', model: 'openai:gpt-5.5' });
 
@@ -416,17 +429,19 @@ describe('companion-chat-routes: post message and events', () => {
   });
 
   test('POST message rejects unknown attachment artifacts', async () => {
-    const manager = new CompanionChatManager({
-      provider: makeMockProvider(),
-      eventPublisher: makeEventPublisher(),
-      gcIntervalMs: 999_999,
-      artifactStore: {
-        get: () => null,
-        async readContent() {
-          throw new Error('not used');
+    const manager = disposables.add(
+      new CompanionChatManager({
+        provider: makeMockProvider(),
+        eventPublisher: makeEventPublisher(),
+        gcIntervalMs: 999_999,
+        artifactStore: {
+          get: () => null,
+          async readContent() {
+            throw new Error('not used');
+          },
         },
-      },
-    });
+      }),
+    );
     const ctx = makeContext(manager);
     const session = manager.createSession({ provider: 'openai', model: 'openai:gpt-5.5' });
     const res = await dispatchCompanionChatRoutes(
@@ -500,11 +515,13 @@ describe('companion-chat-routes: post message and events', () => {
 describe('companion-chat-routes: close vs delete (delete-means-delete)', () => {
   test('POST /close soft-closes: status closed, session still gettable', async () => {
     const publisher = makeEventPublisher();
-    const manager = new CompanionChatManager({
-      provider: makeMockProvider(),
-      eventPublisher: publisher,
-      gcIntervalMs: 999_999,
-    });
+    const manager = disposables.add(
+      new CompanionChatManager({
+        provider: makeMockProvider(),
+        eventPublisher: publisher,
+        gcIntervalMs: 999_999,
+      }),
+    );
     const ctx = makeContext(manager);
     const session = manager.createSession({ title: 'To close' });
 
@@ -534,11 +551,13 @@ describe('companion-chat-routes: close vs delete (delete-means-delete)', () => {
   });
 
   test('DELETE on an ACTIVE session is rejected 409 SESSION_ACTIVE (close it first)', async () => {
-    const manager = new CompanionChatManager({
-      provider: makeMockProvider(),
-      eventPublisher: makeEventPublisher(),
-      gcIntervalMs: 999_999,
-    });
+    const manager = disposables.add(
+      new CompanionChatManager({
+        provider: makeMockProvider(),
+        eventPublisher: makeEventPublisher(),
+        gcIntervalMs: 999_999,
+      }),
+    );
     const ctx = makeContext(manager);
     const session = manager.createSession({ title: 'Still active' });
 
@@ -559,11 +578,13 @@ describe('companion-chat-routes: close vs delete (delete-means-delete)', () => {
   });
 
   test('DELETE on a CLOSED session hard-removes it: gone even with includeClosed', async () => {
-    const manager = new CompanionChatManager({
-      provider: makeMockProvider(),
-      eventPublisher: makeEventPublisher(),
-      gcIntervalMs: 999_999,
-    });
+    const manager = disposables.add(
+      new CompanionChatManager({
+        provider: makeMockProvider(),
+        eventPublisher: makeEventPublisher(),
+        gcIntervalMs: 999_999,
+      }),
+    );
     const ctx = makeContext(manager);
     const session = manager.createSession({ title: 'To delete' });
     manager.closeSession(session.id);
@@ -593,11 +614,13 @@ describe('companion-chat-routes: close vs delete (delete-means-delete)', () => {
   });
 
   test('DELETE of an already-deleted id is an honest 404, never a 200-noop', async () => {
-    const manager = new CompanionChatManager({
-      provider: makeMockProvider(),
-      eventPublisher: makeEventPublisher(),
-      gcIntervalMs: 999_999,
-    });
+    const manager = disposables.add(
+      new CompanionChatManager({
+        provider: makeMockProvider(),
+        eventPublisher: makeEventPublisher(),
+        gcIntervalMs: 999_999,
+      }),
+    );
     const ctx = makeContext(manager);
     const session = manager.createSession({ title: 'Delete twice' });
     manager.closeSession(session.id);
@@ -618,11 +641,13 @@ describe('companion-chat-routes: close vs delete (delete-means-delete)', () => {
   });
 
   test('DELETE unknown session returns 404', async () => {
-    const manager = new CompanionChatManager({
-      provider: makeMockProvider(),
-      eventPublisher: makeEventPublisher(),
-      gcIntervalMs: 999_999,
-    });
+    const manager = disposables.add(
+      new CompanionChatManager({
+        provider: makeMockProvider(),
+        eventPublisher: makeEventPublisher(),
+        gcIntervalMs: 999_999,
+      }),
+    );
     const ctx = makeContext(manager);
     const res = await dispatchCompanionChatRoutes(
       makeRequest('DELETE', 'http://localhost/api/companion/chat/sessions/ghost-id'),
@@ -638,11 +663,13 @@ describe('companion-chat-routes: close vs delete (delete-means-delete)', () => {
 
 describe('companion-chat-routes: turn cancel + steer', () => {
   function makeTurnControlManager(): CompanionChatManager {
-    return new CompanionChatManager({
-      provider: makeMockProvider(),
-      eventPublisher: makeEventPublisher(),
-      gcIntervalMs: 999_999,
-    });
+    return disposables.add(
+      new CompanionChatManager({
+        provider: makeMockProvider(),
+        eventPublisher: makeEventPublisher(),
+        gcIntervalMs: 999_999,
+      }),
+    );
   }
 
   test('POST /turns/cancel with no turn in flight returns the benign 404 NO_ACTIVE_TURN', async () => {

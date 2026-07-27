@@ -9,6 +9,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { AutomationManager } from '../packages/sdk/src/platform/automation/index.ts';
+import { trackDisposables } from './_helpers/disposables.ts';
 import { SharedSessionBroker } from '../packages/sdk/src/platform/control-plane/session-broker.ts';
 import { ConfigManager } from '../packages/sdk/src/platform/config/manager.ts';
 import type { RouteBindingManager } from '../packages/sdk/src/platform/channels/index.ts';
@@ -27,6 +28,8 @@ const routeBindingsStub = {
   ensureBinding: async () => null,
 } as unknown as RouteBindingManager;
 
+const disposables = trackDisposables();
+
 const brief: FixSessionBrief = {
   repo: 'o/r',
   ref: 'main',
@@ -35,14 +38,17 @@ const brief: FixSessionBrief = {
 };
 
 function harness(dir: string, enabled: boolean) {
-  const sessionBroker = new SharedSessionBroker({
+  // The broker's start() (reached via createSession/register) and the
+  // automation manager's runtime both begin intervals that outlive the test
+  // unless stopped.
+  const sessionBroker = disposables.add(new SharedSessionBroker({
     storePath: join(dir, 'sessions.json'),
     routeBindings: routeBindingsStub,
     agentStatusProvider: { getStatus: () => null },
     messageSender: { send: () => true },
-  } as unknown as ConstructorParameters<typeof SharedSessionBroker>[0]);
+  } as unknown as ConstructorParameters<typeof SharedSessionBroker>[0]));
   const spawned: string[] = [];
-  const automation = new AutomationManager({
+  const automation = disposables.add(new AutomationManager({
     configManager: new ConfigManager({ configDir: join(dir, 'config') }),
     routeBindings: routeBindingsStub,
     sessionBroker,
@@ -52,7 +58,7 @@ function harness(dir: string, enabled: boolean) {
       spawned.push(id);
       return id;
     },
-  } as unknown as ConstructorParameters<typeof AutomationManager>[0]);
+  } as unknown as ConstructorParameters<typeof AutomationManager>[0]));
   return { sessionBroker, automation, spawned };
 }
 

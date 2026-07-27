@@ -29,6 +29,9 @@ import type { RouteBindingManager } from '../packages/sdk/src/platform/channels/
 import type { AutomationRouteBinding } from '../packages/sdk/src/platform/automation/routes.js';
 import type { PendingSurfaceReply } from '../packages/sdk/src/platform/daemon/types.js';
 import { logger } from '../packages/sdk/src/platform/utils/logger.js';
+import { trackDisposables } from './_helpers/disposables.ts';
+
+const disposables = trackDisposables();
 
 type LogCall = { readonly level: 'error' | 'warn'; readonly message: string; readonly data: Record<string, unknown> };
 
@@ -124,12 +127,12 @@ function makeHarness(options: { readonly deliverReplyThrows: boolean }): Harness
   const pendingSurfaceReplies = new Map<string, PendingSurfaceReply>();
   const agentStatus: Harness['agentStatus'] = { current: null };
 
-  const broker = new SharedSessionBroker({
+  const broker = disposables.add(new SharedSessionBroker({
     storePath,
     routeBindings,
     agentStatusProvider: { getStatus: () => agentStatus.current as never },
     messageSender: { send: () => false },
-  } as unknown as ConstructorParameters<typeof SharedSessionBroker>[0]);
+  } as unknown as ConstructorParameters<typeof SharedSessionBroker>[0]));
 
   const pipeline = new ChannelReplyPipeline({ channelPlugins, routeBindings });
   const helper = new DaemonSurfaceDeliveryHelper({
