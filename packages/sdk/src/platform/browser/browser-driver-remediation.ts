@@ -38,6 +38,15 @@ export interface BrowserDriverInstallProfile {
   readonly globalPackageCommand: string;
   /** How to install a source checkout's dependencies, e.g. `bun install`. */
   readonly sourceInstallCommand: string;
+  /**
+   * The product's own sentence for "a package manager is also a route in".
+   *
+   * Parameterized rather than written here because it names the PRODUCT as the
+   * actor — "the agent then installs the driver for itself" — and a shared
+   * module that guesses at that either says something wrong or retreats to a
+   * passive voice that tells the reader less. Omitted = the neutral sentence.
+   */
+  readonly packageManagerFallbackAdvice?: string | undefined;
 }
 
 export interface DriverRemediationOptions {
@@ -71,7 +80,8 @@ export function driverRemediation(
         `The driver ships with the release. Re-run the installer (${profile.installerCommand}),`,
         `or download ${profile.archiveName} from ${profile.releasesUrl} and extract it beside the binary`,
         `so that ${directory}/${profile.directoryName}/cli.js exists.`,
-        'Installing bun or npm also works: the driver is then installed automatically on the next browser call.',
+        profile.packageManagerFallbackAdvice
+          ?? 'Installing bun or npm also works: the driver is then installed automatically on the next browser call.',
       ].join(' ');
     case 'global-package':
       return `Reinstall the package so its dependencies are present: ${profile.globalPackageCommand}`;
