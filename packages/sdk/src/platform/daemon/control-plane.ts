@@ -15,7 +15,8 @@ import type { RuntimeEventDomain } from '../runtime/events/index.js';
 import { isRuntimeEventDomain } from '../runtime/events/index.js';
 import type { DistributedRuntimeManager } from '../runtime/remote/index.js';
 import { extractForwardedClientIp } from '../runtime/network/index.js';
-import { resolveGatewayPathTemplate } from './helpers.js';
+import { resolveGatewayPathTemplate, readBodyBounded } from './helpers.js';
+import { SYNTHESIZED_DISPATCH_HEADER, guardSelfDispatch, guardSynthesizedDepth } from './gateway-self-dispatch.js';
 import { summarizeError } from '../utils/error-display.js';
 import { validateInvocationInput } from '../control-plane/invoke-input-validation.js';
 import { isGatewayVerbError } from '../control-plane/routes/gateway-verb-error.js';
@@ -104,38 +105,6 @@ const WS_CALL_MAX_RESPONSE_BYTES = 8 * 1024 * 1024;
  * rather than growing the native buffer without bound to a stalled consumer.
  */
 const WS_EVENT_MAX_BUFFERED_BYTES = 4 * 1024 * 1024;
-
-/**
- * Read a response body to text with a hard byte ceiling. Returns
- * `{ ok:false }` (and cancels the body) when the ceiling is exceeded — the
- * caller aborts and reports a structured error instead of buffering forever.
- */
-async function readBodyBounded(response: Response, maxBytes: number): Promise<{ ok: true; text: string } | { ok: false; bytesRead: number }> {
-  const body = response.body;
-  if (!body) return { ok: true, text: '' };
-  const reader = body.getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    if (value) {
-      total += value.byteLength;
-      if (total > maxBytes) {
-        await reader.cancel().catch(() => {});
-        return { ok: false, bytesRead: total };
-      }
-      chunks.push(value);
-    }
-  }
-  const merged = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    merged.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return { ok: true, text: new TextDecoder().decode(merged) };
-}
 
 export class DaemonControlPlaneHelper {
   /** Live WS 'call' invocations (full lifetime incl. response buffering). */
@@ -538,7 +507,12 @@ export class DaemonControlPlaneHelper {
       readonly admin?: boolean | undefined;
       readonly scopes?: readonly string[] | undefined;
     };
+    /** Synthesized dispatches behind this call. 0 = a real client. */
+    readonly synthesizedDepth?: number | undefined;
   }): Promise<{ status: number; ok: boolean; body: unknown }> {
+    const loop = guardSynthesizedDepth(input.synthesizedDepth,
+      this.context.gatewayMethods.findByHttpBinding(input.method, input.path)?.id, input.path);
+    if (loop) return loop;
     const matchedDescriptor = this.context.gatewayMethods.findByHttpBinding(input.method, input.path);
     if (matchedDescriptor) {
       const denied = this.validateGatewayInvocation(matchedDescriptor, input.context);
@@ -578,6 +552,8 @@ export class DaemonControlPlaneHelper {
         method: input.method,
         headers: {
           Authorization: `Bearer ${input.authToken}`,
+          // Depth travels WITH the request: concurrency is not a cycle.
+          [SYNTHESIZED_DISPATCH_HEADER]: String((input.synthesizedDepth ?? 0) + 1),
           ...(input.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
         },
         ...(input.body !== undefined ? { body: JSON.stringify(input.body) } : {}),
@@ -648,6 +624,8 @@ export class DaemonControlPlaneHelper {
        */
       readonly explicitUserRequest?: boolean | undefined;
     };
+    /** Synthesized dispatches behind this call. 0 = a real client. */
+    readonly synthesizedDepth?: number | undefined;
   }): Promise<{ status: number; ok: boolean; body: unknown }> {
     // A fresh owner request resets the untrusted-content window; automated
     // work deliberately does not. See security/turn-boundary.ts.
@@ -740,6 +718,11 @@ export class DaemonControlPlaneHelper {
       return { status: 501, ok: false, body: { error: `Gateway method is not invokable: ${input.methodId}` } };
     }
     const resolvedPath = resolveGatewayPathTemplate(descriptor.http.path, input.query, input.body);
+    // A path routing back to this same methodId would re-enter rather than
+    // reach an implementation; no handler means terminal. See the sibling.
+    const unwired = resolvedPath.path
+      && guardSelfDispatch(input.methodId, descriptor.http.method, resolvedPath.path);
+    if (unwired) return unwired;
     if (!resolvedPath.path) {
       return {
         status: 400,
@@ -755,6 +738,7 @@ export class DaemonControlPlaneHelper {
       method: descriptor.http.method,
       path: resolvedPath.path,
       query: input.query,
+      synthesizedDepth: input.synthesizedDepth,
       body: descriptor.http.method === 'GET' || descriptor.http.method === 'DELETE' ? undefined : input.body,
       context: {
         principalKind: input.context?.principalKind,
