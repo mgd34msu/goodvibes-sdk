@@ -70,6 +70,7 @@ import {
 } from './oauth-loopback.js';
 import { adoptGmailMcpCredentials, type GoogleFilePort } from './credential-adoption.js';
 import { looksLikeGoogleSignIn } from './browser-elements.js';
+import { safeConfigGet, safeConfigString } from './config-access.js';
 
 /** How the OAuth client credentials should be obtained, when they are not already stored. */
 export type GoogleClientIntakeChoice =
@@ -252,7 +253,7 @@ function appPasswordRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
  */
 function gmailConfigRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
   return async () => {
-    const configured = readString(deps.config.get(GOOGLE_CONFIG_KEYS.emailUsername));
+    const configured = safeConfigString(deps.config, GOOGLE_CONFIG_KEYS.emailUsername);
     const username = configured;
     if (username === null) {
       return needsHuman(
@@ -391,7 +392,7 @@ function gcloudProjectRunner(deps: GoogleSetupActionDeps, state: GcloudState): G
 
 function apisEnabledRunner(deps: GoogleSetupActionDeps, state: GcloudState): GoogleStepRunner {
   return async () => {
-    const projectId = readString(deps.config.get(GOOGLE_CONFIG_KEYS.oauthProjectId));
+    const projectId = safeConfigString(deps.config, GOOGLE_CONFIG_KEYS.oauthProjectId);
     if (projectId === null) {
       return failed(
         'No Cloud project is recorded.',
@@ -506,7 +507,7 @@ async function obtainClientCredentials(deps: GoogleSetupActionDeps): Promise<Goo
 
 function oauthClientRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
   return async () => {
-    const storedId = readString(deps.config.get(GOOGLE_CONFIG_KEYS.oauthClientId));
+    const storedId = safeConfigString(deps.config, GOOGLE_CONFIG_KEYS.oauthClientId);
     if (storedId !== null && (await secretPresent(deps.secrets, GOOGLE_SECRET_KEYS.oauthClientSecret))) {
       return alreadyDone('An OAuth client is already configured.');
     }
@@ -541,7 +542,7 @@ function oauthAuthorizeRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
       return alreadyDone('The agent is already authorized; a refresh token is in the encrypted store.');
     }
 
-    const clientId = readString(deps.config.get(GOOGLE_CONFIG_KEYS.oauthClientId));
+    const clientId = safeConfigString(deps.config, GOOGLE_CONFIG_KEYS.oauthClientId);
     const clientSecret = await deps.secrets.get(GOOGLE_SECRET_KEYS.oauthClientSecret);
     if (clientId === null || readString(clientSecret) === null) {
       return failed(
@@ -620,7 +621,7 @@ function oauthAuthorizeRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
       }
 
       await deps.secrets.set(GOOGLE_SECRET_KEYS.oauthRefreshToken, tokens.refreshToken);
-      const warnings = deps.config.get(GOOGLE_CONFIG_KEYS.oauthPublishingStatus) === 'in-production'
+      const warnings = safeConfigGet(deps.config, GOOGLE_CONFIG_KEYS.oauthPublishingStatus) === 'in-production'
         ? []
         : ['The app is not published, so this refresh token expires seven days after it was issued. Publish the app and authorize again.'];
       return done('Authorized. The refresh token went straight into the encrypted store.', warnings);
@@ -639,7 +640,7 @@ function oauthVerifyRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
         'Re-run: /google setup --path oauth',
       );
     }
-    const status = deps.config.get(GOOGLE_CONFIG_KEYS.oauthPublishingStatus);
+    const status = safeConfigGet(deps.config, GOOGLE_CONFIG_KEYS.oauthPublishingStatus);
     const warnings = status === 'in-production'
       ? []
       : ['Publishing status is not "In production", so the stored credential expires seven days after it was issued.'];

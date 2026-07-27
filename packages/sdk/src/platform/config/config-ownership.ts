@@ -168,6 +168,49 @@ export const DAEMON_OWNED_NON_SCHEMA_CONFIG_PATHS = [
   'google.oauth.projectId',
   'google.oauth.publishingStatus',
   'google.credentials.migratedFrom',
+  // The daemon's OWN mail and calendar handlers read these, and none of them
+  // is a CONFIG_SCHEMA key.
+  //
+  // `surfaces.` is already a daemon-owned PREFIX, so `isDaemonOwnedConfigKey`
+  // has always answered true for these — but the daemon-owned SECRET set is
+  // derived by walking the ENUMERATED paths, not by prefix. A path nothing
+  // enumerates therefore names no daemon-owned credential, and
+  // `GOODVIBES_SURFACES_EMAIL_PASSWORD` was filed wherever the surface that
+  // set it happened to keep its own store. The daemon reads none of those, so
+  // the password looked set and did nothing.
+  //
+  // The whole connection is listed, not just the password, for the reason
+  // established above: a password with no host and no user is not a usable
+  // credential either.
+  'surfaces.email.host',
+  'surfaces.email.user',
+  'surfaces.email.username',
+  'surfaces.email.from',
+  'surfaces.email.password',
+  'surfaces.email.imap.host',
+  'surfaces.email.imap.port',
+  'surfaces.email.imap.user',
+  'surfaces.email.imap.password',
+  'surfaces.email.imap.secure',
+  'surfaces.email.imap.mailbox',
+  'surfaces.email.imap.draftsMailbox',
+  'surfaces.email.smtp.host',
+  'surfaces.email.smtp.port',
+  'surfaces.email.smtp.password',
+  'surfaces.email.smtp.secure',
+  // The inbox provider reads a flat camelCase spelling of the same settings.
+  // Both are live, so both are declared: leaving one out would strand exactly
+  // the half a given machine happened to use.
+  'surfaces.email.imapHost',
+  'surfaces.email.imapPort',
+  'surfaces.email.imapUser',
+  'surfaces.email.imapPassword',
+  // CalDAV, same shape: the URL and user are as load-bearing as the password.
+  'surfaces.calendar.caldavUrl',
+  'surfaces.calendar.caldavUser',
+  'surfaces.calendar.caldavPassword',
+  'surfaces.calendar.defaultCalendarId',
+  'surfaces.calendar.calendars',
 ] as const;
 
 /** A daemon-owned path that has no scalar CONFIG_SCHEMA entry. */

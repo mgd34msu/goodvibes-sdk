@@ -7336,8 +7336,9 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
       "references": "sample"
     },
     "output": {
+      "draftId": "sample",
       "uid": 0,
-      "draftId": "sample"
+      "mailbox": "sample"
     }
   },
   "email.inbox.list": {

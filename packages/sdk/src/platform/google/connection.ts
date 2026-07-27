@@ -32,6 +32,7 @@ import {
   type GoogleOAuthCredentials,
 } from './credential-adoption.js';
 import { GOOGLE_CONFIG_KEYS, GOOGLE_SECRET_KEYS } from './setup-plan.js';
+import { safeConfigGet } from './config-access.js';
 
 /** The paths adoption reads. Exported so the capability index probes the same list. */
 export function googleCredentialPaths(homeDirectory: string): readonly string[] {
@@ -49,16 +50,12 @@ export interface GoogleConnectionSources {
 }
 
 /**
- * Config reads are wrapped because resolvePath throws on an absent section.
- * Callers seed the sections, but a throw here would turn a missing key into a
- * broken tool rather than "no account connected".
+ * Config reads go through the shared guard: resolvePath throws on an absent
+ * section, and a throw here would turn a missing key into a broken tool rather
+ * than "no account connected". See config-access.ts.
  */
 function safeGet(sources: GoogleConnectionSources, key: string): unknown {
-  try {
-    return sources.configGet(key);
-  } catch {
-    return undefined;
-  }
+  return safeConfigGet({ get: sources.configGet }, key);
 }
 
 function readString(value: unknown): string | null {

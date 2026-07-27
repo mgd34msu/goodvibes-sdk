@@ -29338,21 +29338,24 @@
         "outputSchema": {
           "type": "object",
           "properties": {
+            "draftId": {
+              "type": "string"
+            },
             "uid": {
               "type": "number"
             },
-            "draftId": {
+            "mailbox": {
               "type": "string"
             }
           },
           "required": [
-            "uid",
-            "draftId"
+            "draftId",
+            "mailbox"
           ],
           "additionalProperties": false
         },
         "dangerous": true,
-        "invokable": false
+        "invokable": true
       },
       {
         "id": "email.inbox.list",
@@ -29439,7 +29442,7 @@
           ],
           "additionalProperties": false
         },
-        "invokable": false
+        "invokable": true
       },
       {
         "id": "email.inbox.read",
@@ -29529,7 +29532,7 @@
           ],
           "additionalProperties": false
         },
-        "invokable": false
+        "invokable": true
       },
       {
         "id": "email.send",
@@ -29593,7 +29596,7 @@
           "additionalProperties": false
         },
         "dangerous": true,
-        "invokable": false
+        "invokable": true
       },
       {
         "id": "flags.graduation.report",

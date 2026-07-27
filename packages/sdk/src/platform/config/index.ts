@@ -185,7 +185,12 @@ export {
   listDaemonOwnedSecretKeys,
 } from './daemon-secret-keys.js';
 export { defaultDaemonSecretHome } from './secrets-store-paths.js';
-export { SecretsManager, SecretStoreUnreadableError } from './secrets.js';
+export {
+  SecretsManager,
+  SecretStoreUnreadableError,
+  resolveSecretWriteScope,
+  secretWriteScopeWasOverridden,
+} from './secrets.js';
 export type {
   LegacyStoreIdentity,
   SecretDeleteOptions,

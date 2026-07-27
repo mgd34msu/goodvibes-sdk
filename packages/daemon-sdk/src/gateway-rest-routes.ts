@@ -145,6 +145,14 @@ export const GATEWAY_REST_ROUTES: readonly GatewayRestRoute[] = [
   route('POST', '/api/calendar/events', 'calendar.events.create'),
   route('GET', '/api/calendar/ics/export', 'calendar.ics.export'),
   route('POST', '/api/calendar/ics/import', 'calendar.ics.import'),
+  // email.* — inbox read and outbound send over the platform IMAP/SMTP
+  // service. Same story as calendar above, with a sharper consequence: while
+  // there was no daemon-reachable implementation, nothing the daemon did on
+  // its own — a schedule, a trigger, a channel reply — could send mail.
+  route('GET', '/api/email/inbox', 'email.inbox.list'),
+  route('GET', '/api/email/inbox/{uid}', 'email.inbox.read'),
+  route('POST', '/api/email/drafts', 'email.draft.create'),
+  route('POST', '/api/email/send', 'email.send'),
 ];
 
 /**
