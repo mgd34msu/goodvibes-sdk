@@ -206,7 +206,7 @@ export interface DaemonCalendarConfig {
   /** Held in the daemon secret tier, never written to a settings file. */
   caldavPassword: string;
   defaultCalendarId: string;
-  /** Comma-separated calendar ids the daemon may read. */
+  /** JSON object mapping a logical calendar id to its collection path. */
   calendars: string;
 }
 

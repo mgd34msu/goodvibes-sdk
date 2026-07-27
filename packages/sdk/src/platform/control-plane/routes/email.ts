@@ -40,6 +40,7 @@ import {
   type UntrustedContentLedger,
 } from '../../security/untrusted-content.js';
 import { GatewayVerbError } from './gateway-verb-error.js';
+import { refuseNonUserRequest } from './explicit-user-request.js';
 import { readInvocationParams } from './invocation-params.js';
 
 /** One inbox message, in the shape `email.inbox.list` advertises. */
@@ -262,6 +263,7 @@ export function createEmailSendHandler(
         400,
       );
     }
+    refuseNonUserRequest(invocation, 'email.send');
     const sent = await service.send({
       to: readRequiredString(params.to, 'to'),
       subject: readRequiredString(params.subject, 'subject'),
