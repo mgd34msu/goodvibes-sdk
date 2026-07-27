@@ -9,6 +9,7 @@
  */
 
 import { describe, expect, test, beforeEach } from 'bun:test';
+import { trackDisposables } from './_helpers/disposables.ts';
 import { CompanionChatManager } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
 import { dispatchCompanionChatRoutes } from '../packages/sdk/src/platform/companion/companion-chat-routes.js';
 import type {
@@ -18,6 +19,8 @@ import type {
   CompanionProviderChunk,
 } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
 import type { CompanionChatRouteContext } from '../packages/sdk/src/platform/companion/companion-chat-route-types.js';
+
+const disposables = trackDisposables();
 
 // ---------------------------------------------------------------------------
 // Stubs
@@ -43,7 +46,7 @@ function makeManager(): CompanionChatManager {
     eventPublisher: makeEventPublisher(),
     gcIntervalMs: 999_999,
   };
-  return new CompanionChatManager(config);
+  return disposables.add(new CompanionChatManager(config));
 }
 
 function makeContext(

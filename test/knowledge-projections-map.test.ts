@@ -13,6 +13,7 @@ import { KnowledgeService } from '../packages/sdk/src/platform/knowledge/service
 import { knowledgeSpaceMetadata } from '../packages/sdk/src/platform/knowledge/spaces.js';
 import { KnowledgeStore } from '../packages/sdk/src/platform/knowledge/store.js';
 import { semanticFactId } from '../packages/sdk/src/platform/knowledge/semantic/utils.js';
+import { trackDisposables } from './_helpers/disposables.ts';
 
 const tmpRoots: string[] = [];
 
@@ -21,6 +22,14 @@ afterEach(() => {
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+// KnowledgeService's constructor builds a KnowledgeScheduleService that owns a
+// setTimeout chain (packages/sdk/src/platform/knowledge/scheduling.ts); dispose()
+// is declared private (compile-time only), so the disposer casts to reach it.
+const disposables = trackDisposables();
+function disposeKnowledgeService(service: KnowledgeService): void {
+  (service as unknown as { dispose(): void }).dispose();
+}
 
 describe('knowledge generated projections and maps', () => {
   test('deletes replaced generated page artifacts when regenerated markdown changes', async () => {
@@ -1191,13 +1200,13 @@ describe('knowledge generated projections and maps', () => {
       metadata: knowledgeSpaceMetadata('default'),
     });
 
-    const service = new KnowledgeService(store, artifactStore, undefined, {
+    const service = disposables.add(new KnowledgeService(store, artifactStore, undefined, {
       memoryRegistry: {
         add: async () => {},
         getAll: () => [],
         getStore: () => null,
       },
-    });
+    }), disposeKnowledgeService);
     const projectionService = new KnowledgeProjectionService(store, artifactStore);
 
     expect(service.queryNodes({ limit: 100 }).items.map((node) => node.id)).toContain(baseNode.id);

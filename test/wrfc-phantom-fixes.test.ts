@@ -28,6 +28,13 @@ import type { AgentRecord } from '../packages/sdk/src/platform/tools/agent/manag
 import type { AgentManagerLike } from '../packages/sdk/src/platform/agents/wrfc-config.js';
 import type { EngineerReport } from '../packages/sdk/src/platform/agents/completion-report.js';
 import type { WrfcChain } from '../packages/sdk/src/platform/agents/wrfc-types.js';
+import { trackDisposables } from './_helpers/disposables.ts';
+
+// Every WrfcController starts a watchdog setInterval at construction (see
+// resetWatchdog() in wrfc-controller.ts); registering here — inside
+// createHarness() — disposes it after each test regardless of whether the
+// test body remembers to call controller.dispose() itself.
+const disposables = trackDisposables();
 
 // ---------------------------------------------------------------------------
 // Shared utilities
@@ -201,7 +208,7 @@ function createHarness(overrides?: {
 
   const messageBus = { registerAgent: (_opts: unknown) => {} };
 
-  const controller = new WrfcController(bus, messageBus, {
+  const controller = disposables.add(new WrfcController(bus, messageBus, {
     agentManager,
     configManager,
     projectRoot,
@@ -211,7 +218,7 @@ function createHarness(overrides?: {
       cloneForAgent: async () => {},
       worktreePathForAgent: () => null,
     }),
-  });
+  }));
 
   return { bus, controller, agentStore, spawnedRecords, workflowEvents, projectRoot };
 }
