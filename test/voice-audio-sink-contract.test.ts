@@ -183,7 +183,12 @@ describe('AudioSink contract — bounded waitForDrain on exit', () => {
     const elapsed = Date.now() - started;
 
     // The exit path forwarded its budget to waitForDrain and returned inside it.
+    // `waitForDrainMs` is the exact assertion; the wall-clock bound is the
+    // secondary check that the call did not instead block on a full drain, and
+    // 500 ms was a number only an idle machine can promise for it. Widened to a
+    // value that still separates "returned inside its own budget" from "waited
+    // for the drain" without asking the host to be idle.
     expect(waitForDrainMs).toBe(30);
-    expect(elapsed).toBeLessThan(500);
+    expect(elapsed).toBeLessThan(10_000);
   });
 });

@@ -101,7 +101,16 @@ describe('SecretsManager key-mismatch guards', () => {
     const reader = makeManager(dirs);
     expect(await reader.get('ORPHANED_SECRET')).toBeNull();
     const review = await reader.inspect();
-    const warning = review.warnings.find((w: string) => w.includes('cannot be read'));
+    // Select the warning for THIS test's store by path, not merely the first
+    // one that says "cannot be read". `inspect()` reports every candidate store
+    // it can see, and the project-scope candidates are derived by walking the
+    // ancestors of `projectRoot` — so whichever directory the temp root happens
+    // to sit under contributes stores too, including a real `~/.goodvibes`
+    // store belonging to the person running the suite. Matching on the text
+    // alone made the assertion depend on that: it read back a stranger's
+    // fingerprints ("written with encryption key 2b8e4193, but the current
+    // keyfile is f5ee33d2") and failed, while the guard under test was working.
+    const warning = review.warnings.find((w: string) => w.includes(dirs.store) && w.includes('cannot be read'));
     expect(warning).toBeDefined();
     expect(warning!).toContain(`written with encryption key ${keyFingerprint(writerKey)}`);
     expect(warning!).toContain(keyFingerprint(replacement));

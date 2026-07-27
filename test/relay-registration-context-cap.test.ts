@@ -151,9 +151,13 @@ describe('relay registration retained-context caps', () => {
     reg.stop();
     // Three thousand real ECDH pipe establishments: CPU-bound by design, and
     // comfortably inside bun's default 5s budget on an idle host but not on a
-    // busy one. The explicit budget is a hang detector — the test still returns
-    // the moment the work is done, and every assertion above is unchanged.
-  }, 120_000);
+    // busy one. It is also one of the slowest cases in the suite because it
+    // allocates those pipes inside a process that has already run hundreds of
+    // test files — 7.3s idle, and it blew even a 60s ceiling in a loaded
+    // full-suite run, which is why this one is set so far above its own
+    // runtime. A hang detector, not a delay: the test returns the moment the
+    // work is done and every assertion above is unchanged.
+  }, 300_000);
 
   test('in-flight request cap refuses (never retains) beyond the ceiling', async () => {
     const identity = await generateRelayIdentity();

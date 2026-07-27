@@ -360,8 +360,18 @@ describe('feature flag safe-default gates', () => {
 
   test('fetch-sanitization validates redirect targets before following', async () => {
     const originalFetch = globalThis.fetch;
+    // Count only THIS test's request. `globalThis.fetch` is process-wide and
+    // this suite runs every file in one process, so a counter that counts every
+    // call also counts the background work other files leave running — one such
+    // counter elsewhere in this suite reported 4962 where 2 were expected.
+    // Anything aimed elsewhere gets a 404 rather than this test's redirect, so
+    // a stray caller fails immediately instead of being pointed at a link-local
+    // metadata address.
+    const TARGET = 'https://example.test/redirect';
     let calls = 0;
-    globalThis.fetch = (async () => {
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      if (!url.startsWith(TARGET)) return new Response('not this test\'s request', { status: 404 });
       calls++;
       return new Response('', {
         status: 302,
@@ -372,7 +382,7 @@ describe('feature flag safe-default gates', () => {
     try {
       const output = await executeFetchInput(
         {
-          urls: [{ url: 'https://example.test/redirect' }],
+          urls: [{ url: TARGET }],
         },
         { featureFlags: flags(['fetch-sanitization']) },
       );

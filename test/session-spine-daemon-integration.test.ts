@@ -22,12 +22,36 @@ import {
 
 const TOKEN = 'spine-integration-token';
 
-async function waitFor<T>(fn: () => Promise<T | undefined | null>, timeoutMs = 2_000, intervalMs = 20): Promise<T> {
+/**
+ * Ceiling for a single poll, and per-test budget for the whole file.
+ *
+ * Both are ceilings, not targets. Every test here boots a REAL daemon on a real
+ * socket and talks to it over real HTTP; a fast host finishes in tens of
+ * milliseconds and pays nothing for the headroom, because every wait below
+ * returns the instant its condition holds. The previous numbers were an idle
+ * machine's numbers: a 2 s poll ceiling and bun's implicit 5 s per-test default,
+ * against work that legitimately includes process boot and socket setup. On a
+ * loaded host these failed with "this test timed out after 5000ms" while the
+ * daemon was still coming up perfectly normally — the whole file takes ~37 s
+ * there, so a 5 s budget for one of its tests was never realistic.
+ */
+const WAIT_CEILING_MS = 30_000;
+const TEST_BUDGET_MS = 120_000;
+
+async function waitFor<T>(
+  fn: () => Promise<T | undefined | null>,
+  what = 'unlabelled condition',
+  timeoutMs = WAIT_CEILING_MS,
+  intervalMs = 20,
+): Promise<T> {
   const startedAt = Date.now();
   for (;;) {
     const value = await fn();
     if (value !== undefined && value !== null) return value;
-    if (Date.now() - startedAt > timeoutMs) throw new Error('waitFor: timed out');
+    const elapsedMs = Date.now() - startedAt;
+    if (elapsedMs > timeoutMs) {
+      throw new Error(`waitFor: ${what} never became true — waited ${elapsedMs}ms (ceiling ${timeoutMs}ms)`);
+    }
     await new Promise((r) => setTimeout(r, intervalMs));
   }
 }
@@ -99,19 +123,21 @@ describe('SDK SessionSpineClient against a real bootDaemon (TUI-exact adapter)',
     client.activate(harness.spineTransport); // adopt-or-start told us a compatible daemon exists
 
     client.register({ sessionId: 'tui-create-1', project: harness.workingDir, title: 'Terminal UI session' });
-    const record = await waitFor(async () => (await harness!.listSessions()).find((s) => s.id === 'tui-create-1') ?? null);
+    const record = await waitFor(async () => (await harness!.listSessions()).find((s) => s.id === 'tui-create-1') ?? null,
+      'session tui-create-1 appears in sessions.list');
     expect(record.kind).toBe('tui');
     expect(record.project).toBe(harness.workingDir);
     expect(record.status).toBe('active');
     client.dispose();
-  });
+  }, TEST_BUDGET_MS);
 
   test('keepalive advances the participant lastSeenAt on its own cadence with no activity', async () => {
     harness = await startHarness();
     const client = new SessionSpineClient({ participant: TUI_SPINE_PARTICIPANT, recordKind: 'tui', heartbeatMinIntervalMs: 20, log: { debug: () => {}, info: () => {} } });
     client.activate(harness.spineTransport);
     client.register({ sessionId: 'tui-keepalive-1', project: harness.workingDir, title: 'T' });
-    const initial = await waitFor(async () => (await harness!.listSessions()).find((s) => s.id === 'tui-keepalive-1') ?? null);
+    const initial = await waitFor(async () => (await harness!.listSessions()).find((s) => s.id === 'tui-keepalive-1') ?? null,
+      'session tui-keepalive-1 appears in sessions.list');
     const initialLastSeen = initial.participants[0]?.lastSeenAt ?? 0;
 
     // No further calls into the client — the 20ms keepalive timer drives heartbeats.
@@ -119,10 +145,10 @@ describe('SDK SessionSpineClient against a real bootDaemon (TUI-exact adapter)',
       const rec = (await harness!.listSessions()).find((s) => s.id === 'tui-keepalive-1');
       const lastSeen = rec?.participants[0]?.lastSeenAt ?? 0;
       return lastSeen > initialLastSeen ? rec : null;
-    });
+    }, 'the keepalive timer advances the participant lastSeenAt with no other activity');
     expect((advanced.participants[0]?.lastSeenAt ?? 0)).toBeGreaterThan(initialLastSeen);
     client.dispose();
-  });
+  }, TEST_BUDGET_MS);
 
   test('offline queue + reconnect flush: an op buffered during an outage lands once the wire recovers', async () => {
     harness = await startHarness();
@@ -130,14 +156,21 @@ describe('SDK SessionSpineClient against a real bootDaemon (TUI-exact adapter)',
     client.activate(harness.spineTransport);
 
     client.register({ sessionId: 'tui-online-1', project: harness.workingDir, title: 'Online' });
-    await waitFor(async () => (await harness!.listSessions()).find((s) => s.id === 'tui-online-1') ?? null);
+    await waitFor(async () => (await harness!.listSessions()).find((s) => s.id === 'tui-online-1') ?? null,
+      'session tui-online-1 appears in sessions.list');
     // The reachability flip lands one microtask after the record is persisted; poll for it.
-    await waitFor(async () => (client.status() === 'online' ? true : null));
+    await waitFor(async () => (client.status() === 'online' ? true : null), 'the client reports status online');
 
     // Transient outage: the register buffers into the bounded ring, never lands yet.
     harness.setBlocked(true);
     client.register({ sessionId: 'tui-queued-1', project: harness.workingDir, title: 'Queued' });
-    await new Promise((r) => setTimeout(r, 30));
+    // Poll instead of sleeping a fixed 30 ms: the register has to reach the
+    // blocked wire, fail, and be buffered before the status flips, and how long
+    // that takes is a property of the machine, not of the behaviour under test.
+    // The wait ends the moment the client reports what it should, so a fast host
+    // pays nothing — and the assertions below still hold it to the exact state.
+    await waitFor(async () => (client.status() === 'offline' && client.pendingOps === 1 ? true : null),
+      'the blocked register buffers and the client reports status offline');
     expect(client.status()).toBe('offline');
     expect(client.pendingOps).toBe(1);
     const stillMissing = (await harness.listSessions()).find((s) => s.id === 'tui-queued-1') ?? null;
@@ -146,41 +179,47 @@ describe('SDK SessionSpineClient against a real bootDaemon (TUI-exact adapter)',
     // Recover: the next op triggers a flush that replays the buffered register.
     harness.setBlocked(false);
     client.heartbeat('tui-online-1');
-    const flushed = await waitFor(async () => (await harness!.listSessions()).find((s) => s.id === 'tui-queued-1') ?? null);
+    const flushed = await waitFor(async () => (await harness!.listSessions()).find((s) => s.id === 'tui-queued-1') ?? null,
+      'the buffered register replays and tui-queued-1 lands');
     expect(flushed.status).toBe('active');
     expect(client.status()).toBe('online');
     expect(client.pendingOps).toBe(0);
     client.dispose();
-  });
+  }, TEST_BUDGET_MS);
 
   test('a real daemon outage (stop) maps to offline + queued, never a throw into the caller', async () => {
     harness = await startHarness();
     const client = new SessionSpineClient({ participant: TUI_SPINE_PARTICIPANT, recordKind: 'tui', log: { debug: () => {}, info: () => {} } });
     client.activate(harness.spineTransport);
     client.register({ sessionId: 'tui-pre-stop', project: harness.workingDir, title: 'T' });
-    await waitFor(async () => (await harness!.listSessions()).find((s) => s.id === 'tui-pre-stop') ?? null);
+    await waitFor(async () => (await harness!.listSessions()).find((s) => s.id === 'tui-pre-stop') ?? null,
+      'session tui-pre-stop appears in sessions.list');
 
     await harness.daemon.stop(); // genuine outage — the socket now refuses
     expect(() => client.register({ sessionId: 'tui-after-stop', project: harness!.workingDir, title: 'T' })).not.toThrow();
-    await new Promise((r) => setTimeout(r, 50));
+    // Same reasoning as above: poll for the state the outage must produce
+    // rather than guessing how long a refused socket takes to be observed.
+    await waitFor(async () => (client.status() === 'offline' && client.pendingOps > 0 ? true : null),
+      'the daemon outage flips the client offline with the op queued');
     expect(client.status()).toBe('offline');
     expect(client.pendingOps).toBeGreaterThan(0);
     client.dispose();
-  });
+  }, TEST_BUDGET_MS);
 
   test('close is honest: the daemon record flips to status closed', async () => {
     harness = await startHarness();
     const client = new SessionSpineClient({ participant: TUI_SPINE_PARTICIPANT, recordKind: 'tui', log: { debug: () => {}, info: () => {} } });
     client.activate(harness.spineTransport);
     client.register({ sessionId: 'tui-close-1', project: harness.workingDir, title: 'T' });
-    await waitFor(async () => (await harness!.listSessions()).find((s) => s.id === 'tui-close-1') ?? null);
+    await waitFor(async () => (await harness!.listSessions()).find((s) => s.id === 'tui-close-1') ?? null,
+      'session tui-close-1 appears in sessions.list');
 
     client.close('tui-close-1');
     const closed = await waitFor(async () => {
       const s = await harness!.getSession('tui-close-1');
       return s?.status === 'closed' ? s : null;
-    });
+    }, 'session tui-close-1 reaches status closed');
     expect(closed.status).toBe('closed');
     client.dispose();
-  });
+  }, TEST_BUDGET_MS);
 });
