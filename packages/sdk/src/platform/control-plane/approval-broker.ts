@@ -75,6 +75,18 @@ export interface RequestSharedApprovalInput {
   readonly metadata?: Record<string, unknown> | undefined;
   readonly localPrompt?: PermissionRequestHandler | undefined;
   readonly timeoutMs?: number | undefined;
+  /**
+   * Which surface the local prompt belongs to, for the audit trail.
+   *
+   * Was hardcoded to 'tui'/'tui-local' regardless of caller, so every product
+   * that answers at its own terminal — the agent, and now the payment
+   * capability's approval prompts — recorded a decision made somewhere it was
+   * not. That is a lie in exactly the record you consult to find out who
+   * approved a purchase. Defaults preserve the old values for callers that do
+   * not say, because the TUI was the only caller when they were written.
+   */
+  readonly localPromptSurface?: string | undefined;
+  readonly localPromptActor?: string | undefined;
 }
 
 type ApprovalListener = (approval: SharedApprovalRecord) => void;
@@ -417,8 +429,8 @@ export class ApprovalBroker {
           rememberTier: decision.rememberTier,
           reason: decision.reason,
           modifiedArgs: decision.modifiedArgs,
-          actor: 'tui-local',
-          actorSurface: 'tui',
+          actor: input.localPromptActor ?? 'tui-local',
+          actorSurface: input.localPromptSurface ?? 'tui',
         }))
         .catch((error) => logger.warn('Local approval prompt failed', {
           approvalId: approval.id,
