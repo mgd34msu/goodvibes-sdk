@@ -610,3 +610,83 @@ describe('SmtpClient.verifyAuth', () => {
     await expect(client.verifyAuth()).rejects.toThrow();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Message-ID and the send result
+// ---------------------------------------------------------------------------
+
+describe('SmtpClient.sendMail — Message-ID and sentAt', () => {
+  let fakeServer: FakeServer | null = null;
+
+  afterEach(() => {
+    fakeServer?.close();
+    fakeServer = null;
+  });
+
+  async function send(from: string): Promise<{
+    readonly result: { readonly messageId: string; readonly sentAt: string };
+    readonly wire: string[];
+  }> {
+    const wire: string[] = [];
+    fakeServer = await makeFakeSmtpServer((sock) => happyPathScript(sock, wire));
+    const socket = await connectSocket(fakeServer.address.port);
+    const client = new SmtpClient({
+      socket,
+      hostname: 'smtp.example.test',
+      username: 'owner@example.test',
+      password: 'app-password',
+      timeoutMs: 5000,
+    });
+    const result = await client.sendMail({
+      from,
+      to: 'bob@example.test',
+      subject: 'Hello',
+      body: 'Body text',
+    });
+    return { result, wire };
+  }
+
+  test('the returned messageId is the one the server actually received', async () => {
+    const { result, wire } = await send('owner@example.test');
+
+    const headers = wire.filter((line) => /^Message-ID:/i.test(line));
+    expect(headers).toHaveLength(1);
+    // Not merely well-formed — the same string that went down the wire, which
+    // is the only thing that makes it usable for correlation.
+    expect(headers[0]).toBe(`Message-ID: ${result.messageId}`);
+  });
+
+  test('the id is at the sending domain, not a literal like localhost', async () => {
+    const { result } = await send('owner@mail.example.test');
+
+    expect(result.messageId.startsWith('<')).toBe(true);
+    expect(result.messageId.endsWith('>')).toBe(true);
+    expect(result.messageId.endsWith('@mail.example.test>')).toBe(true);
+    expect(result.messageId).not.toContain('localhost');
+  });
+
+  test('exactly one Message-ID header is written', async () => {
+    const { wire } = await send('owner@example.test');
+    expect(wire.filter((line) => /^Message-ID:/i.test(line))).toHaveLength(1);
+  });
+
+  test('two sends do not repeat an id', async () => {
+    const first = await send('owner@example.test');
+    fakeServer?.close();
+    fakeServer = null;
+    const second = await send('owner@example.test');
+    expect(first.result.messageId).not.toBe(second.result.messageId);
+  });
+
+  test('sentAt is an ISO-8601 instant recorded after acceptance', async () => {
+    const before = Date.now();
+    const { result, wire } = await send('owner@example.test');
+    const sentAt = Date.parse(result.sentAt);
+
+    expect(result.sentAt).toMatch(/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/);
+    expect(sentAt).toBeGreaterThanOrEqual(before);
+    expect(sentAt).toBeLessThanOrEqual(Date.now());
+    // The acceptance really did happen: the terminating dot was sent.
+    expect(wire).toContain('.');
+  });
+});

@@ -57,8 +57,18 @@
  *    injection is blocked regardless of which client a caller reaches for.
  *  - **STARTTLS is not negotiated blind.** The upgrade aborts if the server
  *    sends any byte after its `220` before TLS begins.
+ *  - **Reading never writes.** Every fetch is `BODY.PEEK[...]`, including the
+ *    whole-message read: plain `BODY[...]` would set `\Seen` and mark the
+ *    owner's mail read behind their back. The mailbox is EXAMINEd, never
+ *    SELECTed, and no flag, delete or expunge command exists in the client.
+ *  - **Attachments are described, never downloaded.** `fetchMessage` reads the
+ *    server's BODYSTRUCTURE and then fetches only the text sections, so an
+ *    unread message with a large or hostile attachment on it costs a filename
+ *    and a size — not its bytes, and not the memory to hold them.
  *  - **Sending is never implicit.** `EmailService.sendMail` throws without
  *    `confirm: true`, and the style-reply composer has no send path at all.
+ *    Saving a draft (`createDraft`) sends nothing, and appends only to the
+ *    Drafts folder the server itself flags `\Drafts`.
  */
 
 // ---------------------------------------------------------------------------
@@ -74,6 +84,9 @@ export type {
 export type {
   EmailConfig,
   EmailConnectionTestResult,
+  EmailDraftInput,
+  EmailInboxListInput,
+  EmailInboxListResult,
   EmailServiceDeps,
   EmailSocketFactory,
   EmailSummary,
@@ -93,9 +106,13 @@ export {
 } from './imap-client.js';
 
 export type {
+  ImapAppendDraftInput,
+  ImapAppendDraftResult,
+  ImapAttachmentInfo,
   ImapClientOptions,
   ImapEnvelope,
   ImapMessage,
+  ImapMessageDetail,
 } from './imap-client.js';
 
 export {
@@ -109,6 +126,24 @@ export type {
   DeliveryEvidence,
   DeliveryEvidenceSource,
 } from './imap-headers.js';
+
+export {
+  attachmentsFromParts,
+  decodeTextPart,
+  parseBodyStructure,
+  selectBodyPart,
+} from './imap-bodystructure.js';
+
+export type { ImapBodyPart } from './imap-bodystructure.js';
+
+export {
+  buildDraftMessage,
+  parseAppendUid,
+  selectDraftsMailbox,
+  validateDraftHeaderValue,
+  validateDraftInput,
+  DEFAULT_DRAFTS_MAILBOX,
+} from './imap-draft.js';
 
 // ---------------------------------------------------------------------------
 // SMTP
@@ -124,6 +159,7 @@ export {
 export type {
   SmtpClientOptions,
   SmtpSendOptions,
+  SmtpSendResult,
 } from './smtp-client.js';
 
 // ---------------------------------------------------------------------------
