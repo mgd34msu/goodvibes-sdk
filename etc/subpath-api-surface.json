@@ -14342,6 +14342,326 @@
       "kind": "function"
     }
   ],
+  "./platform/email": [
+    {
+      "name": "DeliveryEvidence",
+      "kind": "interface",
+      "required": [
+        "address",
+        "rawValue",
+        "source"
+      ]
+    },
+    {
+      "name": "DeliveryEvidenceSource",
+      "kind": "type"
+    },
+    {
+      "name": "DraftReplyResult",
+      "kind": "interface",
+      "required": [
+        "body",
+        "profile",
+        "requiresBeforeSendReview",
+        "reviewBoundary",
+        "subject"
+      ]
+    },
+    {
+      "name": "EmailConfig",
+      "kind": "interface",
+      "required": [
+        "enabled",
+        "fromAddress",
+        "imapHost",
+        "imapPort",
+        "passwordRef",
+        "smtpHost",
+        "smtpPort",
+        "smtpSecurity",
+        "username"
+      ]
+    },
+    {
+      "name": "EmailConnectionTestResult",
+      "kind": "interface",
+      "required": [
+        "ok"
+      ]
+    },
+    {
+      "name": "EmailSenderClaim",
+      "kind": "interface",
+      "required": [
+        "claimedAddress",
+        "claimedDisplayName",
+        "commandAuthority",
+        "display",
+        "displayedConfidence"
+      ]
+    },
+    {
+      "name": "EmailSenderClaimDescriber",
+      "kind": "type"
+    },
+    {
+      "name": "EmailSenderConfidence",
+      "kind": "type"
+    },
+    {
+      "name": "EmailService",
+      "kind": "class"
+    },
+    {
+      "name": "EmailServiceDeps",
+      "kind": "interface",
+      "required": [
+        "describeSenderClaim",
+        "getConfig",
+        "secretsManager",
+        "transport"
+      ]
+    },
+    {
+      "name": "EmailSocketFactory",
+      "kind": "type"
+    },
+    {
+      "name": "EmailSummary",
+      "kind": "interface",
+      "required": [
+        "bodyPreview",
+        "date",
+        "deliveredTo",
+        "from",
+        "mailbox",
+        "senderClaim",
+        "subject",
+        "unread",
+        "unverifiedToHeaderClaim"
+      ]
+    },
+    {
+      "name": "EmailTransportPort",
+      "kind": "interface",
+      "required": [
+        "connectImapTls",
+        "connectSmtpStartTls",
+        "connectSmtpTls"
+      ]
+    },
+    {
+      "name": "IMAP_DEFAULT_TIMEOUT_MS",
+      "kind": "const"
+    },
+    {
+      "name": "ImapClient",
+      "kind": "class"
+    },
+    {
+      "name": "ImapClientOptions",
+      "kind": "interface",
+      "required": [
+        "password",
+        "socket",
+        "username"
+      ]
+    },
+    {
+      "name": "ImapEnvelope",
+      "kind": "interface",
+      "required": [
+        "authenticationResults",
+        "date",
+        "deliveredTo",
+        "deliveryEvidence",
+        "from",
+        "mailbox",
+        "messageId",
+        "subject",
+        "uid",
+        "unverifiedToHeaderClaim"
+      ]
+    },
+    {
+      "name": "ImapMessage",
+      "kind": "interface",
+      "required": [
+        "bodyPreview"
+      ]
+    },
+    {
+      "name": "SMTP_DEFAULT_TIMEOUT_MS",
+      "kind": "const"
+    },
+    {
+      "name": "SendMailOptions",
+      "kind": "interface",
+      "required": [
+        "body",
+        "confirm",
+        "subject",
+        "to"
+      ]
+    },
+    {
+      "name": "SmtpClient",
+      "kind": "class"
+    },
+    {
+      "name": "SmtpClientOptions",
+      "kind": "interface",
+      "required": [
+        "hostname",
+        "password",
+        "socket",
+        "username"
+      ]
+    },
+    {
+      "name": "SmtpSecurityMode",
+      "kind": "type"
+    },
+    {
+      "name": "SmtpSendOptions",
+      "kind": "interface",
+      "required": [
+        "body",
+        "from",
+        "subject",
+        "to"
+      ]
+    },
+    {
+      "name": "StyleProfile",
+      "kind": "interface",
+      "required": [
+        "greeting",
+        "isDefault",
+        "medianSentenceCount",
+        "signOff",
+        "tone"
+      ]
+    },
+    {
+      "name": "StyleReplyLaneAdditions",
+      "kind": "interface",
+      "required": [
+        "liveRecord",
+        "workflow"
+      ]
+    },
+    {
+      "name": "buildStyleReplyLaneAdditions",
+      "kind": "function"
+    },
+    {
+      "name": "classifyTone",
+      "kind": "function"
+    },
+    {
+      "name": "composeDraftReply",
+      "kind": "function"
+    },
+    {
+      "name": "countSentences",
+      "kind": "function"
+    },
+    {
+      "name": "ensureEmailConfigDefaults",
+      "kind": "function"
+    },
+    {
+      "name": "extractAuthenticationResults",
+      "kind": "function"
+    },
+    {
+      "name": "extractDeliveryEvidence",
+      "kind": "function"
+    },
+    {
+      "name": "extractHeader",
+      "kind": "function"
+    },
+    {
+      "name": "extractSenderName",
+      "kind": "function"
+    },
+    {
+      "name": "extractStyleProfile",
+      "kind": "function"
+    },
+    {
+      "name": "formatImapDate",
+      "kind": "function"
+    },
+    {
+      "name": "imapQuoteCredential",
+      "kind": "function"
+    },
+    {
+      "name": "median",
+      "kind": "function"
+    },
+    {
+      "name": "mostFrequent",
+      "kind": "function"
+    },
+    {
+      "name": "readEmailConfig",
+      "kind": "function"
+    },
+    {
+      "name": "replySubject",
+      "kind": "function"
+    },
+    {
+      "name": "resolveEmailPassword",
+      "kind": "function"
+    },
+    {
+      "name": "styleReplyLiveRecord",
+      "kind": "function"
+    },
+    {
+      "name": "styleReplyWorkflow",
+      "kind": "function"
+    },
+    {
+      "name": "styleReplyWorkflowStatus",
+      "kind": "function"
+    },
+    {
+      "name": "validateEmailConfig",
+      "kind": "function"
+    },
+    {
+      "name": "validateSmtpAddress",
+      "kind": "function"
+    },
+    {
+      "name": "validateSmtpSubject",
+      "kind": "function"
+    }
+  ],
+  "./platform/email/node": [
+    {
+      "name": "createImapTlsSocket",
+      "kind": "function"
+    },
+    {
+      "name": "createSmtpStartTlsSocket",
+      "kind": "function"
+    },
+    {
+      "name": "createSmtpTlsSocket",
+      "kind": "function"
+    },
+    {
+      "name": "nodeEmailTransport",
+      "kind": "const"
+    }
+  ],
   "./platform/export": [
     {
       "name": "ExportMessage",

@@ -1,0 +1,520 @@
+/**
+ * Email service — config, secret resolution, and orchestration.
+ *
+ * Config namespace: email.*
+ * ─────────────────────────
+ * The ConfigKey union is sealed and does not include email keys.
+ * Email settings are accessed via ensureEmailConfigDefaults(), which
+ * injects the email section into the ConfigManager's live config object
+ * before first use. This follows the same pattern as other categories that
+ * extend beyond the built-in schema.
+ *
+ * Settings registered:
+ *   email.enabled        boolean   — feature gate (default: false)
+ *   email.imapHost       string    — IMAP TLS host (default: '')
+ *   email.imapPort       number    — default 993
+ *   email.smtpHost       string    — SMTP submission host (default: '')
+ *   email.smtpPort       number    — 465 (TLS) or 587 (STARTTLS, default)
+ *   email.username       string    — login username (default: '')
+ *   email.passwordRef    string    — goodvibes:// secret reference only;
+ *                                    NEVER a raw password
+ *   email.fromAddress    string    — From: address for outbound mail
+ *
+ * Secret resolution
+ * ─────────────────
+ * `email.passwordRef` must be a goodvibes secret reference string.
+ * The service calls `secretsManager.get(resolvedKey)` using the same
+ * SecretsManager instance the product already has wired.
+ * Plaintext passwords in config are rejected at validation time.
+ *
+ * Everything is injected
+ * ──────────────────────
+ * Not a line here opens a socket, reads a file or reaches for a global. The
+ * transports (`EmailTransportPort`), the config reader, the secret store, the
+ * sender-claim describer and the untrusted-ingest recorder all arrive as ports,
+ * so the whole service runs against fakes with no machine. The concrete
+ * bun/node transport lives in the sibling `email/node` entry.
+ */
+
+import { readSenderAuthentication } from '../google/sender-authentication.js';
+import { ImapClient } from './imap-client.js';
+import { SmtpClient, validateSmtpAddress, validateSmtpSubject } from './smtp-client.js';
+import type { ImapEnvelope } from './imap-client.js';
+import type { EmailSenderClaim, EmailSenderClaimDescriber } from './sender-claim.js';
+import type { Socket } from 'node:net';
+
+// ---------------------------------------------------------------------------
+// Email defaults injection
+// ---------------------------------------------------------------------------
+
+/** Email section defaults — injected once per ConfigManager instance. */
+const EMAIL_DEFAULTS = {
+  enabled: false,
+  imapHost: '',
+  imapPort: 993,
+  smtpHost: '',
+  smtpPort: 587,
+  smtpSecurity: 'auto' as const,
+  username: '',
+  passwordRef: '',
+  fromAddress: '',
+} as const;
+
+/**
+ * Inject the email config section into the ConfigManager's live config
+ * object if it is not already present.
+ *
+ * DEFAULT_CONFIG does not include an email section. ConfigManager.resolvePath()
+ * walks the live config object and throws for any section that does not exist.
+ * Calling this helper once before any email.* access ensures the traversal
+ * succeeds.
+ *
+ * The helper is safe to call multiple times — it is a no-op after the first
+ * call for a given configManager instance.
+ */
+export function ensureEmailConfigDefaults(
+  configManager: object,
+): void {
+  // Use the internal config object via an opaque cast. This is the sanctioned
+  // extension pattern for categories absent from the built-in schema.
+  const cm = configManager as unknown as { config: Record<string, unknown> };
+  if (cm.config && !('email' in cm.config)) {
+    cm.config['email'] = { ...EMAIL_DEFAULTS };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Public types
+// ---------------------------------------------------------------------------
+
+/** SMTP connection security mode. 'auto' = port-based default (465→tls, else starttls). */
+export type SmtpSecurityMode = 'tls' | 'starttls' | 'auto';
+
+export interface EmailConfig {
+  readonly enabled: boolean;
+  readonly imapHost: string;
+  readonly imapPort: number;
+  readonly smtpHost: string;
+  readonly smtpPort: number;
+  /** SMTP connection security. Default: 'auto' (port-based). */
+  readonly smtpSecurity: SmtpSecurityMode;
+  readonly username: string;
+  /** Secret reference string — never a raw password. */
+  readonly passwordRef: string;
+  readonly fromAddress: string;
+}
+
+export interface EmailSummary {
+  readonly from: string;
+  readonly subject: string;
+  readonly date: string;
+  readonly unread: boolean;
+  /** First ~4 KB of the plain-text body, fetched read-only. Empty string when unavailable. */
+  readonly bodyPreview: string;
+  /**
+   * The mailbox this message was fetched from. Delivery evidence: a message
+   * cannot be talked into arriving in a mailbox that exists only for one
+   * signup, which is what makes per-signup aliases worth minting.
+   */
+  readonly mailbox: string;
+  /**
+   * Delivery-agent trace, top-most first. Written by the receiving mail
+   * server, so — unlike `To:` — a sender cannot set it. Safe to correlate on.
+   */
+  readonly deliveredTo: readonly string[];
+  /**
+   * The `To:` header verbatim. **Display only, never evidence.** The sender
+   * writes this field, so it proves nothing about where the message landed.
+   * Named so that correlating on it reads as obviously wrong.
+   */
+  readonly unverifiedToHeaderClaim: string;
+  /**
+   * The `From:` line described as a CLAIM, carrying the receiving server's
+   * sender-authentication verdict as DISPLAY confidence.
+   *
+   * `senderClaim.commandAuthority` is the literal `'none'` and cannot hold any
+   * other value. A message that passes DKIM, SPF and DMARC and writes the
+   * owner's own address in its From header gets a more confident sentence for
+   * a human to read, and exactly the same authority as a stranger's: none.
+   */
+  readonly senderClaim: EmailSenderClaim;
+}
+
+/**
+ * Result of a connection verification pass (a connect-wizard "test connection"
+ * step). Never includes the raw password; `error` messages come from the
+ * underlying client's plain-language exceptions.
+ */
+export interface EmailConnectionTestResult {
+  readonly ok: boolean;
+  /** Which stage failed, when ok is false. 'config' means validation failed before any connection was attempted. */
+  readonly stage?: 'config' | 'imap' | 'smtp';
+  readonly error?: string;
+}
+
+export interface SendMailOptions {
+  readonly to: string;
+  readonly subject: string;
+  readonly body: string;
+  /** Must be true at the call site; the service rejects sends without it. */
+  readonly confirm: boolean;
+}
+
+/** Opens one transport connection to a mail host. */
+export type EmailSocketFactory = (host: string, port: number) => Promise<Socket>;
+
+/**
+ * The three real connections this service can need.
+ *
+ * A port rather than a direct call so that the service half never imports
+ * `node:tls`: the concrete implementation is `nodeEmailTransport` in the
+ * sibling `email/node` entry, and a test supplies one that throws.
+ */
+export interface EmailTransportPort {
+  /** IMAP over implicit TLS (port 993). */
+  readonly connectImapTls: EmailSocketFactory;
+  /** SMTP submission over implicit TLS (port 465). */
+  readonly connectSmtpTls: EmailSocketFactory;
+  /** SMTP submission over a plain connection upgraded with STARTTLS (port 587). */
+  readonly connectSmtpStartTls: EmailSocketFactory;
+}
+
+export interface EmailServiceDeps {
+  /** Untyped config getter — reads the `email.*` namespace. */
+  readonly getConfig: (key: string) => unknown;
+  /** SecretsManager-compatible interface for resolving secret refs. */
+  readonly secretsManager: {
+    readonly get: (key: string) => Promise<string | null>;
+  };
+  /** The real connections. Required: this module never opens one itself. */
+  readonly transport: EmailTransportPort;
+  /**
+   * Describes a `From:` header as a claim, for display.
+   *
+   * Injected because the wording of a trust boundary belongs to the surface
+   * that renders it, and because a second copy in the SDK would drift from the
+   * product's own. Its `commandAuthority` is the literal `'none'`; see
+   * `sender-claim.ts`.
+   */
+  readonly describeSenderClaim: EmailSenderClaimDescriber;
+  /** Optional socket factory override for IMAP (injected in tests). */
+  readonly imapSocketFactory?: EmailSocketFactory;
+  /** Optional socket factory override for SMTP (injected in tests). */
+  readonly smtpSocketFactory?: EmailSocketFactory;
+  /**
+   * Records that untrusted content entered the conversation.
+   *
+   * Reading a mailbox pulls in text written by anyone who knows the address,
+   * which is the same exposure as loading a web page — and the outward-effect
+   * guard only fires on exposure it has been told about. Injected rather than
+   * reached for globally so the service stays testable and so a caller cannot
+   * accidentally record into a different session's ledger.
+   */
+  readonly recordUntrustedIngest?: (ingest: {
+    readonly surface: 'email';
+    readonly origin: string;
+    readonly at: string;
+  }) => void;
+}
+
+// ---------------------------------------------------------------------------
+// Config reading
+// ---------------------------------------------------------------------------
+
+function readString(value: unknown, fallback = ''): string {
+  return typeof value === 'string' ? value : fallback;
+}
+
+function readNumber(value: unknown, fallback: number): number {
+  const n = typeof value === 'number' ? value : parseInt(String(value), 10);
+  return isFinite(n) ? n : fallback;
+}
+
+function readBoolean(value: unknown, fallback = false): boolean {
+  return typeof value === 'boolean' ? value : fallback;
+}
+
+function readSmtpSecurity(value: unknown): SmtpSecurityMode {
+  if (value === 'tls' || value === 'starttls' || value === 'auto') return value;
+  return 'auto';
+}
+
+export function readEmailConfig(getConfig: (key: string) => unknown): EmailConfig {
+  return {
+    enabled: readBoolean(getConfig('email.enabled'), false),
+    imapHost: readString(getConfig('email.imapHost')),
+    imapPort: readNumber(getConfig('email.imapPort'), 993),
+    smtpHost: readString(getConfig('email.smtpHost')),
+    smtpPort: readNumber(getConfig('email.smtpPort'), 587),
+    smtpSecurity: readSmtpSecurity(getConfig('email.smtpSecurity')),
+    username: readString(getConfig('email.username')),
+    passwordRef: readString(getConfig('email.passwordRef')),
+    fromAddress: readString(getConfig('email.fromAddress')),
+  };
+}
+
+export function validateEmailConfig(config: EmailConfig): string[] {
+  const errors: string[] = [];
+  if (!config.imapHost) errors.push('email.imapHost is required');
+  if (!config.smtpHost) errors.push('email.smtpHost is required');
+  if (!config.username) errors.push('email.username is required');
+  if (!config.passwordRef) {
+    errors.push('email.passwordRef is required (must be a secret reference, not a raw password)');
+  } else if (!config.passwordRef.startsWith('goodvibes://secrets/')) {
+    errors.push('email.passwordRef must be a goodvibes secret reference (goodvibes://secrets/...)');
+  }
+  if (!config.fromAddress) errors.push('email.fromAddress is required');
+  return errors;
+}
+
+// ---------------------------------------------------------------------------
+// Secret resolution
+// ---------------------------------------------------------------------------
+
+/**
+ * Extract the storage key from a goodvibes://secrets/goodvibes/<key> ref.
+ * For other secret ref types (env, file, bitwarden, etc.) we cannot resolve
+ * them directly — the user should configure via the standard secret manager
+ * path. We return the raw ref string for those cases so the SecretsManager
+ * can attempt its own resolution chain.
+ */
+function extractSecretKey(passwordRef: string): string {
+  const prefix = 'goodvibes://secrets/goodvibes/';
+  if (passwordRef.startsWith(prefix)) {
+    return decodeURIComponent(passwordRef.slice(prefix.length));
+  }
+  // Return the full ref for the SecretsManager to resolve
+  return passwordRef;
+}
+
+export async function resolveEmailPassword(
+  passwordRef: string,
+  secretsManager: { readonly get: (key: string) => Promise<string | null> },
+): Promise<string> {
+  const key = extractSecretKey(passwordRef);
+  const value = await secretsManager.get(key);
+  if (!value) {
+    throw new Error(
+      'Email password secret could not be resolved. ' +
+      'Verify that email.passwordRef points to a configured secret.',
+    );
+  }
+  return value;
+}
+
+// ---------------------------------------------------------------------------
+// EmailService
+// ---------------------------------------------------------------------------
+
+export class EmailService {
+  private readonly deps: EmailServiceDeps;
+
+  constructor(deps: EmailServiceDeps) {
+    this.deps = deps;
+  }
+
+  /** Returns a redacted status summary — never includes secret values. */
+  getStatus(): { config: EmailConfig; errors: string[]; ready: boolean } {
+    const config = readEmailConfig(this.deps.getConfig);
+    const errors = validateEmailConfig(config);
+    return {
+      config: {
+        ...config,
+        // Redact the ref itself for display; keep structural info only
+        passwordRef: config.passwordRef ? '[configured]' : '[missing]',
+      },
+      errors,
+      ready: errors.length === 0 && config.enabled,
+    };
+  }
+
+  /**
+   * Fetch up to `limit` inbox summaries.
+   * Messages are read via EXAMINE (read-only); unread flag is never modified.
+   */
+  async checkInbox(limit = 10): Promise<EmailSummary[]> {
+    const config = this.getValidatedConfig();
+    const password = await resolveEmailPassword(config.passwordRef, this.deps.secretsManager);
+
+    const socketFactory = this.deps.imapSocketFactory ?? this.deps.transport.connectImapTls;
+    const socket = await socketFactory(config.imapHost, config.imapPort);
+
+    const client = new ImapClient({
+      socket,
+      username: config.username,
+      password,
+    });
+
+    try {
+      await client.open();
+      const seqNums = await client.searchUnseen();
+      const envelopes: ImapEnvelope[] = await client.fetchEnvelopes(seqNums, limit);
+
+      // Fetch body preview for the newest message only (read-only; BODY.PEEK).
+      // Failures are non-fatal — the inbox summary is still returned.
+      let newestBodyPreview = '';
+      const newestSeq = seqNums[0];
+      if (newestSeq !== undefined) {
+        try {
+          newestBodyPreview = await client.fetchBodyPreview(newestSeq);
+        } catch {
+          // best-effort: body preview unavailable, proceed without it
+        }
+      }
+
+      await client.logout();
+
+      // Delivery evidence is carried through deliberately. Dropping it here
+      // would leave correlation with nothing but the sender-authored `To:`
+      // header, which is the exact hole the evidence exists to close.
+      // Reading a mailbox is an untrusted ingest, exactly as loading a web page
+      // is: the text was written by whoever chose to send it. The outward-effect
+      // guard can only weigh exposure it has been told about, so it is told here
+      // rather than after something has already been sent.
+      const recordIngest = this.deps.recordUntrustedIngest;
+      if (recordIngest) {
+        const at = new Date().toISOString();
+        for (const env of envelopes) {
+          // Origin is the CLAIMED sender domain, and is labelled as claimed
+          // wherever it surfaces. It is a useful label for the owner, never an
+          // identity check — the claim is why the content is untrusted, not a
+          // reason to trust it.
+          const claimed = this.deps.describeSenderClaim(env.from).claimedAddress;
+          const domain = claimed.includes('@') ? claimed.slice(claimed.lastIndexOf('@') + 1) : '';
+          recordIngest({
+            surface: 'email',
+            origin: domain.length > 0 ? `email:${domain} (claimed)` : 'email:unknown sender',
+            at,
+          });
+        }
+      }
+
+      return envelopes.map((env, idx) => ({
+        from: env.from,
+        subject: env.subject,
+        date: env.date,
+        unread: true,
+        bodyPreview: idx === 0 ? newestBodyPreview : '',
+        mailbox: env.mailbox,
+        deliveredTo: env.deliveredTo,
+        unverifiedToHeaderClaim: env.unverifiedToHeaderClaim,
+        senderClaim: this.deps.describeSenderClaim(
+          env.from,
+          readSenderAuthentication(env.authenticationResults),
+        ),
+      }));
+    } catch (err) {
+      try { await client.logout(); } catch { /* best-effort */ }
+      throw err;
+    }
+  }
+
+  /**
+   * Verify the configured IMAP and SMTP connections without sending mail or
+   * reading the inbox — a real connectivity + authentication check for a
+   * connect-wizard "test connection" step. Does not require config.enabled;
+   * callers that want to gate readiness on enabled should check separately.
+   *
+   * Never throws — returns a result describing which stage (if any) failed,
+   * with a plain-language error message. Never includes the raw password.
+   */
+  async testConnection(): Promise<EmailConnectionTestResult> {
+    const config = readEmailConfig(this.deps.getConfig);
+    const errors = validateEmailConfig(config);
+    if (errors.length > 0) {
+      return { ok: false, stage: 'config', error: errors.join('; ') };
+    }
+
+    let password: string;
+    try {
+      password = await resolveEmailPassword(config.passwordRef, this.deps.secretsManager);
+    } catch (err) {
+      return { ok: false, stage: 'config', error: err instanceof Error ? err.message : String(err) };
+    }
+
+    try {
+      const socketFactory = this.deps.imapSocketFactory ?? this.deps.transport.connectImapTls;
+      const socket = await socketFactory(config.imapHost, config.imapPort);
+      const client = new ImapClient({ socket, username: config.username, password });
+      await client.open();
+      await client.logout();
+    } catch (err) {
+      return { ok: false, stage: 'imap', error: err instanceof Error ? err.message : String(err) };
+    }
+
+    try {
+      const socketFactory = this.deps.smtpSocketFactory ?? this.defaultSmtpSocketFactory(config.smtpPort, config.smtpSecurity);
+      const socket = await socketFactory(config.smtpHost, config.smtpPort);
+      const client = new SmtpClient({ socket, hostname: config.smtpHost, username: config.username, password });
+      await client.verifyAuth();
+    } catch (err) {
+      return { ok: false, stage: 'smtp', error: err instanceof Error ? err.message : String(err) };
+    }
+
+    return { ok: true };
+  }
+
+  /**
+   * Send a plain-text email.
+   * Requires `confirm: true` at the call site — throws without it.
+   */
+  async sendMail(opts: SendMailOptions): Promise<void> {
+    if (!opts.confirm) {
+      throw new Error('sendMail requires confirm: true at the call site');
+    }
+
+    const config = this.getValidatedConfig();
+    const password = await resolveEmailPassword(config.passwordRef, this.deps.secretsManager);
+
+    const socketFactory = this.deps.smtpSocketFactory ?? this.defaultSmtpSocketFactory(config.smtpPort, config.smtpSecurity);
+    const socket = await socketFactory(config.smtpHost, config.smtpPort);
+
+    const client = new SmtpClient({
+      socket,
+      hostname: config.smtpHost,
+      username: config.username,
+      password,
+    });
+
+    // Validate at the service boundary so injection is blocked regardless of
+    // which client implementation is used.
+    validateSmtpAddress(config.fromAddress, 'from');
+    validateSmtpAddress(opts.to, 'to');
+    validateSmtpSubject(opts.subject);
+
+    await client.sendMail({
+      from: config.fromAddress,
+      to: opts.to,
+      subject: opts.subject,
+      body: opts.body,
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // Private
+  // -------------------------------------------------------------------------
+
+  private getValidatedConfig(): EmailConfig {
+    const config = readEmailConfig(this.deps.getConfig);
+    if (!config.enabled) {
+      throw new Error('Email is not enabled. Set email.enabled = true in config.');
+    }
+    const errors = validateEmailConfig(config);
+    if (errors.length > 0) {
+      throw new Error(`Email config is invalid:\n${errors.map((e) => `  - ${e}`).join('\n')}`);
+    }
+    return config;
+  }
+
+  private defaultSmtpSocketFactory(
+    port: number,
+    security: SmtpSecurityMode,
+  ): EmailSocketFactory {
+    // Honor an explicit smtpSecurity setting; fall back to port-based auto detection
+    if (security === 'tls') return this.deps.transport.connectSmtpTls;
+    if (security === 'starttls') return this.deps.transport.connectSmtpStartTls;
+    // 'auto': use direct TLS on port 465, STARTTLS otherwise
+    if (port === 465) return this.deps.transport.connectSmtpTls;
+    return this.deps.transport.connectSmtpStartTls;
+  }
+}
