@@ -640,11 +640,16 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
       deps.configManager.set('web.publicBaseUrl', url);
     },
   });
+  // The escalation timers this service arms: one per outstanding blocked ask,
+  // rearmed for each bounded reminder. Nothing outside the service could reach
+  // them, so a stopping daemon sat on up to a five-minute grace timer per
+  // unanswered ask with no way to put it down.
+  deps.disposal?.add('push escalation timers', () => pushService.dispose());
+
   // Real event source: approvals-needed -> push to every registered device.
-  // The unsubscribe handle is intentionally not retained — the subscription
-  // lives for the daemon's lifetime, exactly like the fleet/checkpoint verb
-  // registrations above (there is no RuntimeServices-wide shutdown seam yet).
-  pushService.attachApprovalSource(deps.approvalBroker);
+  // Retained now that the graph has a shutdown seam: a subscription that
+  // outlives the daemon fans pushes out of a torn-down graph.
+  const pushSubscriptions: (() => void)[] = [pushService.attachApprovalSource(deps.approvalBroker)];
 
   // Second event source: a fleet node blocked on the operator -> a 'needs-input'
   // push carrying the session/node deep link, suppressed when an operator is
@@ -654,12 +659,15 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
     const source: FleetNoticeSource = {
       subscribe: (listener) => bus.onDomain('fleet', (envelope) => listener(toFleetNotice(envelope.payload))),
     };
-    pushService.attachFleetNeedsInputSource(source, deps.sessionPresence);
+    pushSubscriptions.push(pushService.attachFleetNeedsInputSource(source, deps.sessionPresence));
     // Third event source: a tracked run reaching a terminal state -> a
     // 'completion' push, by default with zero setup (the
     // notifications.pushCompletion toggle only silences the class).
-    pushService.attachCompletionSource(source);
+    pushSubscriptions.push(pushService.attachCompletionSource(source));
   }
+  deps.disposal?.add('push event sources', () => {
+    for (let i = pushSubscriptions.length - 1; i >= 0; i -= 1) pushSubscriptions[i]!();
+  });
 
   // Cost attribution + quota-window tracking over the platform's own LLM usage
   // records. Pricing goes through the ONE model pricing resolver (manual

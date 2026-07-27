@@ -359,7 +359,7 @@ export class AnthropicProvider implements LLMProvider {
         },
         ...(rateLimit ? { rateLimit } : {}),
       };
-    }, undefined, onRetry), { provider: 'anthropic', model: model })).result;
+    }, signal ? { signal } : undefined, onRetry), { provider: 'anthropic', model: model })).result;
   }
 
   async describeRuntime(deps: ProviderRuntimeMetadataDeps): Promise<ProviderRuntimeMetadata> {

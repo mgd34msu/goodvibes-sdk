@@ -34,7 +34,7 @@ import {
 } from '../knowledge/store-config.js';
 import { MediaProviderRegistry, ensureBuiltinMediaProviders } from '../media/index.js';
 import { MultimodalService } from '../multimodal/index.js';
-import { AgentManager } from '../tools/agent/index.js';
+import { AgentManager, cancelAllAgentRuns } from '../tools/agent/index.js';
 import { AgentMessageBus } from '../agents/message-bus.js';
 import { WrfcController } from '../agents/wrfc-controller.js';
 import { AgentOrchestrator } from '../agents/orchestrator.js';
@@ -1069,8 +1069,8 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   registerRuntimePollers(disposalScope.registry, {
     stopConfigWatch, watcherRegistry, storeSnapshotScheduler, appendOnlyRetentionScheduler,
     memoryConsolidationScheduler, codeIndexReindexScheduler, sessionOrchestration,
-    knowledgeService, agentKnowledgeService, wrfcController, orchestrationEngine,
-    processRegistry, memoryGovernor, triggerManager,
+    knowledgeService, agentKnowledgeService, wrfcController, orchestrationEngine, homeGraphService,
+    processRegistry, memoryGovernor, triggerManager, agentOrchestrator, cancelHostedAgentRuns: () => cancelAllAgentRuns(agentManager),
   });
   return {
     workingDirectory,

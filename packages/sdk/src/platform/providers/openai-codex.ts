@@ -433,7 +433,7 @@ export async function chatWithOpenAICodex(
           phase: 'stream',
         });
       }
-    }, undefined, params.onRetry);
+    }, params.signal ? { signal: params.signal } : undefined, params.onRetry);
 }
 
 export class OpenAICodexProvider implements LLMProvider {

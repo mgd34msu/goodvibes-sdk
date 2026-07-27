@@ -8,6 +8,19 @@ export interface RetryConfig {
   maxRetries: number;
   initialDelayMs: number;
   maxDelayMs: number;
+  /**
+   * Cancellation for the backoff between attempts.
+   *
+   * Without it the backoff is unreachable once armed: a caller that has been
+   * cancelled — an agent killed, a turn abandoned — still sits out the full
+   * wait, up to `maxDelayMs` per attempt, before it can even discover it was
+   * cancelled. The wait is where nearly all of a failing retry's wall time
+   * goes, so leaving it uncancellable made cancellation approximate.
+   *
+   * When it fires the sleep ends immediately and the last error is thrown,
+   * which is what the surrounding code already does with a spent retry budget.
+   */
+  signal?: AbortSignal | undefined;
 }
 
 const DEFAULT_CONFIG: RetryConfig = {
@@ -95,9 +108,20 @@ export async function withRetry<T>(
         throw lastError;
       }
 
+      // A cancelled caller does not get a retry, and does not get a backoff to
+      // sit through before learning that.
+      if (cfg.signal?.aborted) {
+        throw lastError;
+      }
+
       const delayMs = computeDelay(attempt, cfg.initialDelayMs, cfg.maxDelayMs);
       onRetry?.(attempt + 1, cfg.maxRetries, delayMs, lastError);
-      await sleep(delayMs);
+      await sleep(delayMs, cfg.signal ? { signal: cfg.signal } : {});
+      // sleep() resolves early on abort, so the wait ending is not by itself
+      // permission to try again.
+      if (cfg.signal?.aborted) {
+        throw lastError;
+      }
     }
   }
 

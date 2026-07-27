@@ -493,7 +493,7 @@ export class GeminiProvider implements LLMProvider {
         ...(lastFinishReason ? { providerStopReason: lastFinishReason } : {}),
         ...(rateLimit ? { rateLimit } : {}),
       };
-    }, undefined, onRetry), { provider: 'gemini', model: model })).result;
+    }, signal ? { signal } : undefined, onRetry), { provider: 'gemini', model: model })).result;
   }
 
   async embed(request: ProviderEmbeddingRequest): Promise<ProviderEmbeddingResult> {
