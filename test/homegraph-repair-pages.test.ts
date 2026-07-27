@@ -13,6 +13,15 @@ import { refreshDevicePagesForHomeGraphAsk } from '../packages/sdk/src/platform/
 import { HOME_GRAPH_PAGE_POLICY_VERSION } from '../packages/sdk/src/platform/knowledge/home-graph/generated-pages.js';
 import type { HomeGraphAskResult } from '../packages/sdk/src/platform/knowledge/home-graph/types.js';
 import { KnowledgeStore } from '../packages/sdk/src/platform/knowledge/store.js';
+import { trackDisposables } from './_helpers/disposables.ts';
+
+/**
+ * HomeGraphService.syncSnapshot() starts a self-improvement pump
+ * fire-and-forget behind an AbortController — it sleeps in 15s rounds and
+ * calls the semantic service (and therefore fetch) between them, for the rest
+ * of the process. dispose() aborts it.
+ */
+const disposables = trackDisposables();
 
 const tmpRoots: string[] = [];
 
@@ -760,7 +769,7 @@ function createHomeGraphService(): {
   tmpRoots.push(root);
   const store = new KnowledgeStore({ dbPath: join(root, 'knowledge.sqlite') });
   const artifactStore = new ArtifactStore({ rootDir: join(root, 'artifacts') });
-  const service = new HomeGraphService(store, artifactStore);
+  const service = disposables.add(new HomeGraphService(store, artifactStore));
   return { root, store, artifactStore, service };
 }
 

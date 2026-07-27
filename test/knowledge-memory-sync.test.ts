@@ -6,7 +6,17 @@ import { ArtifactStore } from '../packages/sdk/src/platform/artifacts/index.js';
 import { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 import { KnowledgeService } from '../packages/sdk/src/platform/knowledge/service.js';
 import { KnowledgeStore } from '../packages/sdk/src/platform/knowledge/store.js';
+import { trackDisposables } from './_helpers/disposables.ts';
 import { MemoryEmbeddingProviderRegistry, MemoryRegistry, MemoryStore } from '../packages/sdk/src/platform/state/index.js';
+
+/**
+ * A KnowledgeService kicks off initializeSchedules() fire-and-forget in its
+ * constructor, arming one bootstrap reconcile timer per schedule out to a 24h
+ * horizon. dispose() is what releases them; without it they outlive the file.
+ * Run alone the arming lands after the process has already exited, which is why
+ * this class of leftover only ever shows up in a whole-suite scan.
+ */
+const disposables = trackDisposables();
 
 const tmpRoots: string[] = [];
 
@@ -37,12 +47,12 @@ describe('knowledge memory sync', () => {
     });
 
     const store = new KnowledgeStore({ dbPath: join(root, 'knowledge.sqlite') });
-    const service = new KnowledgeService(
+    const service = disposables.add(new KnowledgeService(
       store,
       new ArtifactStore({ rootDir: join(root, 'artifacts') }),
       undefined,
       { memoryRegistry },
-    );
+    ));
 
     await service.reindex();
 

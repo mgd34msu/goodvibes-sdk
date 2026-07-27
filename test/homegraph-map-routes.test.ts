@@ -6,6 +6,15 @@ import { ArtifactStore } from '../packages/sdk/src/platform/artifacts/index.js';
 import { HomeGraphRoutes } from '../packages/sdk/src/platform/daemon/http/home-graph-routes.js';
 import { HomeGraphService } from '../packages/sdk/src/platform/knowledge/index.js';
 import { KnowledgeStore } from '../packages/sdk/src/platform/knowledge/store.js';
+import { trackDisposables } from './_helpers/disposables.ts';
+
+/**
+ * HomeGraphService.syncSnapshot() starts a self-improvement pump
+ * fire-and-forget behind an AbortController — it sleeps in 15s rounds and
+ * calls the semantic service (and therefore fetch) between them, for the rest
+ * of the process. dispose() aborts it.
+ */
+const disposables = trackDisposables();
 
 const tmpRoots: string[] = [];
 
@@ -67,5 +76,5 @@ function createHomeGraphService(): {
   tmpRoots.push(root);
   const store = new KnowledgeStore({ dbPath: join(root, 'knowledge.sqlite') });
   const artifactStore = new ArtifactStore({ rootDir: join(root, 'artifacts') });
-  return { artifactStore, service: new HomeGraphService(store, artifactStore) };
+  return { artifactStore, service: disposables.add(new HomeGraphService(store, artifactStore)) };
 }

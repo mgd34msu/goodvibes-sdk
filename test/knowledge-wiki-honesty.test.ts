@@ -353,7 +353,7 @@ describe('knowledge wiki honesty — packet truncation disclosure (Defect 9)', (
 describe('knowledge wiki honesty — unlink is a real reversal (unlink sub-defect)', () => {
   test('unlinking a never-linked target creates no phantom node or edge', async () => {
     const { store, artifactStore } = createStores();
-    const service = new HomeGraphService(store, artifactStore);
+    const service = disposables.add(new HomeGraphService(store, artifactStore));
     await service.syncSnapshot({ installationId: 'house', devices: [{ id: 'tv', name: 'TV' }] });
     const source = (await service.ingestNote({
       installationId: 'house', title: 'Note', body: 'A note body long enough to index.',

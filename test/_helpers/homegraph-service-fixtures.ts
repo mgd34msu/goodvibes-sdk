@@ -9,12 +9,28 @@ import { KnowledgeStore } from '../../packages/sdk/src/platform/knowledge/store.
 import { waitFor as _canonicalWaitFor } from './test-timeout.js';
 
 const tmpRoots: string[] = [];
+const liveServices: HomeGraphService[] = [];
 
-afterEach(() => {
-  for (const root of tmpRoots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+/**
+ * Register this fixture's teardown for the calling test file.
+ *
+ * MUST be called from each test file's own top level. An `afterEach` at this
+ * module's scope runs at IMPORT time, and because `bun test` caches modules it
+ * binds to whichever file imported this helper FIRST — every later file gets
+ * silently no cleanup at all. That is not hypothetical here: the temp-dir sweep
+ * below used to be registered that way, so only one of the three files using
+ * this fixture ever swept, and none of them ever stopped the self-improvement
+ * pump `HomeGraphService.syncSnapshot()` starts (a 15s-round loop that calls
+ * the semantic service, and therefore fetch, for the rest of the process).
+ */
+export function useHomeGraphFixtures(): void {
+  afterEach(() => {
+    for (const service of liveServices.splice(0)) service.dispose();
+    for (const root of tmpRoots.splice(0)) {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+}
 
 export function createHomeGraphService(): {
   readonly root: string;
@@ -27,6 +43,7 @@ export function createHomeGraphService(): {
   const store = new KnowledgeStore({ dbPath: join(root, 'knowledge.sqlite') });
   const artifactStore = new ArtifactStore({ rootDir: join(root, 'artifacts') });
   const service = new HomeGraphService(store, artifactStore);
+  liveServices.push(service);
   return { root, store, artifactStore, service };
 }
 
