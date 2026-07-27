@@ -160,6 +160,56 @@ export interface MatrixSurfaceConfig {
   setupVersion: number;
 }
 
+/**
+ * The daemon's own mailbox — the account it reads and sends AS, rather than a
+ * chat service it talks TO. Both key spellings are declared because both are
+ * genuinely read; see schema-domain-daemon-mailbox.ts for which reader uses
+ * which, and why declaring one would strand the other.
+ */
+export interface DaemonMailboxConfig {
+  /** Host used for both IMAP and SMTP unless the per-protocol section overrides it. */
+  host: string;
+  user: string;
+  /** Read when `user` is unset. */
+  username: string;
+  /** From address on outbound mail; falls back to the account name. */
+  from: string;
+  /** Held in the daemon secret tier, never written to a settings file. */
+  password: string;
+  /** Flat spelling, read by the inbox provider. */
+  imapHost: string;
+  imapPort: number;
+  imapUser: string;
+  imapPassword: string;
+  /** Nested spelling, read by the triage tagger and the settings resolver. */
+  imap: {
+    host: string;
+    port: number;
+    user: string;
+    password: string;
+    secure: boolean;
+    mailbox: string;
+    draftsMailbox: string;
+  };
+  smtp: {
+    host: string;
+    port: number;
+    password: string;
+    secure: boolean;
+  };
+}
+
+/** The daemon's own calendar, reached over CalDAV. */
+export interface DaemonCalendarConfig {
+  caldavUrl: string;
+  caldavUser: string;
+  /** Held in the daemon secret tier, never written to a settings file. */
+  caldavPassword: string;
+  defaultCalendarId: string;
+  /** Comma-separated calendar ids the daemon may read. */
+  calendars: string;
+}
+
 export interface SurfacesConfig {
   slack: SlackSurfaceConfig;
   discord: DiscordSurfaceConfig;
@@ -176,4 +226,12 @@ export interface SurfacesConfig {
   bluebubbles: BlueBubblesSurfaceConfig;
   mattermost: MattermostSurfaceConfig;
   matrix: MatrixSurfaceConfig;
+  /**
+   * Not chat adapters. These two are the daemon's OWN mail account and
+   * calendar, which sit under `surfaces.` so they inherit the domain's
+   * daemon-ownership rule — the daemon is the process that acts on them, so
+   * the daemon tier is their only home.
+   */
+  email: DaemonMailboxConfig;
+  calendar: DaemonCalendarConfig;
 }

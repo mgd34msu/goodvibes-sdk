@@ -41,6 +41,8 @@ export interface BootDaemonOptions {
    * loop starts; the SDK package version is never assumed to be the artifact.
    */
   readonly updateArtifact?: import('./facade-lifecycle.js').DaemonUpdateArtifact | undefined;
+  /** See DaemonConfig.hasOverriddenHome. */
+  readonly hasOverriddenHome?: boolean | undefined;
 }
 
 export interface BootedDaemon {
@@ -94,6 +96,7 @@ export async function bootDaemon(options: BootDaemonOptions): Promise<BootedDaem
     configManager,
     ...(options.serveFactory !== undefined ? { serveFactory: options.serveFactory } : {}),
     ...(options.updateArtifact !== undefined ? { updateArtifact: options.updateArtifact } : {}),
+    ...(options.hasOverriddenHome !== undefined ? { hasOverriddenHome: options.hasOverriddenHome } : {}),
   });
 
   server.enable({ daemon: true }, options.token);

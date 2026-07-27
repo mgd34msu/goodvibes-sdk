@@ -170,7 +170,14 @@ export interface RuntimeServicesOptions {
   readonly sessionStorePath?: string | undefined;
   /** Opt-in host power seam for sleep ownership; absent ⇒ non-spawning unavailable seam (test determinism), the standalone daemon (cli.ts) passes createHostPowerSeam(). */
   readonly powerSeam?: PowerPlatformSeam | undefined;
-  /** Daemon state root override; see runtime/secrets-composition.ts. */ readonly daemonHome?: string | undefined;
+  /**
+   * The daemon's state root when the host was told one (`--daemon-home`,
+   * `GOODVIBES_DAEMON_HOME`, a test harness's temp tree). Threaded into
+   * `SecretsManager` so the override actually MOVES the daemon-scoped
+   * credential store; see runtime/secrets-composition.ts for what went wrong
+   * while it did not. Absent = the machine default.
+   */
+  readonly daemonHome?: string | undefined;
 }
 
 export interface RuntimeServices {
@@ -1053,11 +1060,14 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // Late-bind the admission gate now that the governor exists: the expensive
   // entry points captured `admitExpensiveWork` earlier via this holder.
   admitExpensiveWorkRef.current = (label) => memoryGovernor.admitExpensiveWork(label);
-  // Managed local-voice provisioning: single-flight one-act install, live
-  // install progress, ownership-aware preconfigure, breaker reset and
-  // admission gating all live in runtime/voice-setup.ts.
+  // Managed local-voice provisioning: single-flight one-act install +
+  // status read carrying live install progress while an install runs
+  // (surfaces poll status during the ~209MB provision). Ownership-aware
+  // preconfigure, breaker reset, and admission gating live in
+  // runtime/voice-setup.ts.
+  const managedVoiceRoot = shellPaths.resolveUserPath('voice');
   const voiceSetup = createVoiceSetupService({
-    managedVoiceRoot: shellPaths.resolveUserPath('voice'),
+    managedVoiceRoot,
     getConfig: (k) => String(configManager.get(k as never) ?? ''),
     setConfig: (k, v) => configManager.setDynamic(k as never, v),
     resetLocalEngineFailureState: () => voiceProviders.get('local')?.resetEngineFailureState?.(),

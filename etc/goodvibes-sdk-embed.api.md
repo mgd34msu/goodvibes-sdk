@@ -104,6 +104,7 @@ export interface BootDaemonOptions {
     // Warning: (ae-forgotten-export) The symbol "ConfigManager" needs to be exported by the entry point embed.d.ts
     readonly configManager?: ConfigManager | undefined;
     readonly daemonHomeDir?: string | undefined;
+    readonly hasOverriddenHome?: boolean | undefined;
     readonly homeDirectory: string;
     readonly host?: string | undefined;
     readonly port?: number | undefined;

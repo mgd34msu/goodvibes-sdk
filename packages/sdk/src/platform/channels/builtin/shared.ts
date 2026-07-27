@@ -64,7 +64,24 @@ export interface BuiltinChannelRuntimeDeps {
   readonly deliverWebhookApprovalUpdate: (approval: SharedApprovalRecord, binding: AutomationRouteBinding) => Promise<void>;
 }
 
-type SurfaceConfigSection = keyof SurfacesConfig;
+/**
+ * The `surfaces.*` sections that are CHANNEL ADAPTERS.
+ *
+ * Not every section under `surfaces.` is one. `surfaces.email` and
+ * `surfaces.calendar` are the daemon's own mailbox and calendar — the account
+ * it acts AS rather than a service it talks TO — and they live under the same
+ * prefix because they share its daemon-ownership rule, not because they are
+ * adapters. Plain `keyof SurfacesConfig` swept them in, and the first thing
+ * that broke was `getConfiguredSetupVersion` reading `.setupVersion` off a
+ * section that has no setup version.
+ *
+ * Derived from the shape rather than by excluding names, so the next non-adapter
+ * section under this prefix is excluded automatically instead of the day it
+ * breaks a member read.
+ */
+type SurfaceConfigSection = {
+  [K in keyof SurfacesConfig]: SurfacesConfig[K] extends { setupVersion: number } ? K : never;
+}[keyof SurfacesConfig];
 
 export const CHANNEL_SETUP_VERSION = 1;
 export const DEFAULT_SECRET_BACKENDS = [

@@ -28,12 +28,26 @@ const SCHEMA_TYPES_PATH = join(
   import.meta.dir, '..', 'packages', 'sdk', 'src', 'platform', 'config', 'schema-types.ts',
 );
 
+/**
+ * Comments are stripped before any quote matching.
+ *
+ * Both extractors below pair single quotes across a whole declaration, so ONE
+ * apostrophe in a prose comment inside the union ("the daemon's own mailbox")
+ * re-pairs every quote after it and silently truncates the extracted set — the
+ * gate keeps passing while it has stopped covering the tail of the union. That
+ * is exactly the fail-open this file exists to prevent, so the comment text is
+ * removed rather than trusted to stay apostrophe-free.
+ */
+function withoutComments(body: string): string {
+  return body.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+}
+
 /** Extract the ConfigKey union's string-literal members from source text. */
 export function extractUnionMembers(source: string): Set<string> {
   const start = source.indexOf('export type ConfigKey =');
   if (start < 0) throw new Error('ConfigKey union not found in schema-types.ts');
   const end = source.indexOf(';', start);
-  const body = source.slice(start, end);
+  const body = withoutComments(source.slice(start, end));
   return new Set([...body.matchAll(/'([^']+)'/g)].map((m) => m[1]!));
 }
 
@@ -42,7 +56,7 @@ export function extractMappingKeys(source: string): Set<string> {
   const start = source.indexOf('export type ConfigValue<K extends ConfigKey>');
   if (start < 0) throw new Error('ConfigValue mapping not found in schema-types.ts');
   const end = source.indexOf('never;', start);
-  const body = source.slice(start, end);
+  const body = withoutComments(source.slice(start, end));
   return new Set([...body.matchAll(/K extends '([^']+)'/g)].map((m) => m[1]!));
 }
 
@@ -101,6 +115,34 @@ describe('ConfigKey union completeness (fail-closed against the schema domains)'
     seeded.add('phantom.key.no.domain.defines');
     const { stale } = diffKeySets(schemaKeys, seeded);
     expect(stale).toEqual(['phantom.key.no.domain.defines']);
+  });
+
+  // The truncation this guards against is not hypothetical: adding the daemon
+  // mailbox keys with a `// the daemon's own mailbox` comment above them cut the
+  // extracted union from 300-odd members to 259, because the apostrophe
+  // re-paired every quote after it. The sanity floor below caught it, but only
+  // because the loss was large — a comment nearer the end of the union would
+  // have dropped a handful of keys and still cleared the floor.
+  test('an apostrophe in a comment inside the union cannot truncate the extracted set', () => {
+    const withApostrophe = [
+      "export type ConfigKey =",
+      "  | 'alpha.one'",
+      "  // the daemon's own mailbox and calendar",
+      "  | 'beta.two'",
+      "  | 'gamma.three';",
+    ].join('\n');
+    expect([...extractUnionMembers(withApostrophe)]).toEqual(['alpha.one', 'beta.two', 'gamma.three']);
+  });
+
+  test('an apostrophe in a comment inside the mapping cannot truncate it either', () => {
+    const withApostrophe = [
+      "export type ConfigValue<K extends ConfigKey> =",
+      "  K extends 'alpha.one' ? string :",
+      "  // the daemon's own mailbox",
+      "  K extends 'beta.two' ? number :",
+      "  never;",
+    ].join('\n');
+    expect([...extractMappingKeys(withApostrophe)]).toEqual(['alpha.one', 'beta.two']);
   });
 
   test('the source extractors actually parse the committed file (non-empty, disjoint anchors)', () => {
