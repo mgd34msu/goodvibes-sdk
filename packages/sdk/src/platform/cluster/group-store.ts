@@ -35,6 +35,7 @@ import {
   sweepGroupState,
   type GroupStateDocument,
 } from './group-state.js';
+import { daemonSecretKeyFor } from '../config/daemon-secret-keys.js';
 import type { ClusterKeyring } from './protocol-envelope.js';
 import type { ClusterLogger } from './types.js';
 
@@ -42,8 +43,21 @@ import type { ClusterLogger } from './types.js';
 export const GROUP_STATE_FILENAME = 'group-state.json';
 /** The replicated settings file, alongside the roster. Public to the group, like it. */
 export const GROUP_REPLICA_FILENAME = 'group-config.json';
-/** The single secrets-store key holding every piece of group key material. */
-export const GROUP_MATERIAL_SECRET_KEY = 'cluster.groupMaterial';
+/**
+ * The single secrets-store key holding every piece of group key material.
+ *
+ * DERIVED from the daemon-owned config path rather than written out, because
+ * the name is what decides where the value lives. `defaultScopeForKey` files a
+ * secret in the daemon tier exactly when its name is one the daemon's
+ * derivation produces; a hand-written `'cluster.groupMaterial'` matches
+ * nothing it produces, so the group's key material was landing at PROJECT
+ * scope — in whichever directory the daemon happened to start in, outside the
+ * tier holding every other cluster secret.
+ *
+ * Deriving it means the name the daemon recognises and the name actually
+ * written are the same by construction, and cannot drift apart again.
+ */
+export const GROUP_MATERIAL_SECRET_KEY = daemonSecretKeyFor('cluster.groupMaterial');
 
 /**
  * Bounds on key history.

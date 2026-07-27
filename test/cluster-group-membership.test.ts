@@ -4,6 +4,7 @@
  * These run the real runtimes over an in-memory bus: real scrypt, real x25519
  * seals, real envelopes. Nothing here models the protocol; it exercises it.
  */
+import { GROUP_MATERIAL_SECRET_KEY } from '../packages/sdk/src/platform/cluster/group-store.js';
 import { describe, expect, test, afterEach } from 'bun:test';
 import {
   addGroupNode,
@@ -459,7 +460,7 @@ describe('leaving', () => {
     expect(left.ok).toBe(true);
     expect(first.runtime.membership).toBe('no-group');
     expect(first.runtime.keyring().acceptedGenerations()).toEqual([]);
-    expect(memorySecrets(first).snapshot()['cluster.groupMaterial']).toBeUndefined();
+    expect(memorySecrets(first).snapshot()[GROUP_MATERIAL_SECRET_KEY]).toBeUndefined();
   });
 });
 

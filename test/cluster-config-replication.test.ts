@@ -47,6 +47,7 @@ import {
   MAX_REPLICATED_VALUE_BYTES,
 } from '../packages/sdk/src/platform/cluster/config-replica.js';
 import { listDaemonOwnedConfigPaths } from '../packages/sdk/src/platform/config/config-ownership.js';
+import { GROUP_MATERIAL_SECRET_KEY } from '../packages/sdk/src/platform/cluster/group-store.js';
 import { isDaemonOwnedSecretKey } from '../packages/sdk/src/platform/config/daemon-secret-keys.js';
 import { SecretsManager } from '../packages/sdk/src/platform/config/secrets.js';
 
@@ -133,9 +134,12 @@ describe('what may cross the network', () => {
     for (const path of listReplicatedConfigPaths()) {
       expect(isReplicatedSecretKey(replicatedSecretKeyFor(path))).toBe(true);
     }
-    // The group's own key material has no config path that derives it, so it
-    // cannot be selected — which is the property that keeps it off the wire.
-    expect(isReplicatedSecretKey('cluster.groupMaterial')).toBe(false);
+    // The group's own key material IS daemon-owned and IS derived — asserting
+    // the bare literal here would pass for the wrong reason, because nothing
+    // derives that string. What keeps it off the wire is the node-local ruling
+    // on `cluster.`, not an absence of derivation.
+    expect(isDaemonOwnedSecretKey(GROUP_MATERIAL_SECRET_KEY)).toBe(true);
+    expect(isReplicatedSecretKey(GROUP_MATERIAL_SECRET_KEY)).toBe(false);
     expect(isReplicatedSecretKey(replicatedSecretKeyFor('cluster.secret'))).toBe(false);
     expect(isReplicatedSecretKey('GOODVIBES_ANTHROPIC_API_KEY')).toBe(false);
   });
@@ -485,6 +489,52 @@ describe('a daemon-owned credential after a handover', () => {
     const standbyStore = join(standbySecrets.home, '.goodvibes', 'daemon', 'secrets.enc');
     expect(readFileSync(standbyStore, 'utf-8')).not.toContain(GOOGLE_CREDENTIAL);
     expect(wireText(created)).not.toContain(GOOGLE_CREDENTIAL);
+  });
+
+  test('the group key material lands in the daemon tier and deliberately does NOT replicate', async () => {
+    // Two separate claims, and the second is a security property rather than
+    // an oversight:
+    //
+    //  1. It belongs in the daemon tier. Before the name was derived, it was
+    //     written at project scope — into whichever directory the daemon
+    //     happened to start in, outside the tier holding every other cluster
+    //     secret.
+    //
+    //  2. It must NOT replicate. Group key material is what proves membership,
+    //     so a node that does not have it is a node that is not in the group.
+    //     Shipping it over the group bus would mean the bus distributes the key
+    //     that authenticates the bus, and any machine that could hear traffic
+    //     would obtain membership without ever completing the join handshake.
+    //     A joining node gets this material through `joinGroup`, which proves
+    //     identity first. That is the only path, on purpose.
+    const created = createGroupWorld();
+    world = created;
+    const masterSecrets = secretsFor(created, 'node-a');
+    const standbySecrets = secretsFor(created, 'node-b');
+
+    const master = await addGroupNode(created, 'node-a', { isMaster: true, secrets: masterSecrets.manager });
+    const group = await createGroup(master.context, { displayName: 'the workshop' });
+    if (!group.ok) throw new Error(group.error);
+    const standby = await addGroupNode(created, 'node-b', { isMaster: false, secrets: standbySecrets.manager });
+    const joined = await joinGroup(standby.context, { groupId: group.data.groupId, joinKey: group.data.joinKey });
+    if (!joined.ok) throw new Error(joined.error);
+    await settle();
+
+    // Creating a group stores real material under the derived name...
+    const stored = await masterSecrets.manager.get(GROUP_MATERIAL_SECRET_KEY);
+    expect(stored).not.toBeNull();
+    // ...in the daemon tier, not at project scope.
+    expect(await storedScope(masterSecrets.manager, GROUP_MATERIAL_SECRET_KEY)).toBe('daemon');
+
+    // The node that joined has its OWN material, obtained through the join
+    // handshake — not a copy of the master's replicated to it.
+    expect(await storedScope(standbySecrets.manager, GROUP_MATERIAL_SECRET_KEY)).toBe('daemon');
+    expect(await standbySecrets.manager.get(GROUP_MATERIAL_SECRET_KEY)).not.toBe(stored);
+
+    // And the master's material never appeared on the wire at any point.
+    const material = stored ?? '';
+    expect(material.length).toBeGreaterThan(0);
+    expect(wireText(created)).not.toContain(material);
   });
 
   test('a machine that joins later is handed the credential in its snapshot, and nothing else', async () => {

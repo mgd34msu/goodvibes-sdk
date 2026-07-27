@@ -115,6 +115,14 @@ export const DAEMON_OWNED_NON_SCHEMA_CONFIG_PATHS = [
   // this shipped would strand in a client silo and the daemon would keep
   // coordinating over multicast alone on a network that drops it.
   'cluster.peers',
+  // The group's key material. Daemon-owned for the same reason the rest of the
+  // cluster's settings are: the daemon is the only thing that reads it, and a
+  // client silo can only hold a stale copy of it.
+  //
+  // Being daemon-owned does NOT make it replicate — `cluster.` is ruled
+  // node-local in config-replication-policy.ts, and for this key that ruling is
+  // load-bearing rather than incidental. See the note there.
+  'cluster.groupMaterial',
   // The credentials the daemon needs to keep mail and calendar working.
   //
   // These are app-layer paths rather than CONFIG_SCHEMA keys, which is exactly
