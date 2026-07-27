@@ -2,52 +2,76 @@
  * entry-surface.ts — where card details may be TYPED, which is a different
  * question from where a purchase may be APPROVED.
  *
+ * ══ Attribution, stated precisely ═════════════════════════════════════════
+ *
+ * These are two different weights and collapsing them is how a chain of agents
+ * talks itself into anything. An earlier version of this file got it wrong and
+ * relayed a coordinator decision as an owner ruling.
+ *
+ * OWNER, verbatim — what he actually said about entry surfaces:
+ *
+ *   "i need to be able to enter payment details (card info and shipping/billing
+ *    address etc) in the tui too"
+ *   "and in the agent - basically ui should expose it in both."
+ *
+ * He named the TUI and the agent. He did NOT name the webui, and whether a card
+ * number may be typed into a browser page is an open question in front of him —
+ * a materially different exposure from typing it at a terminal. Until he
+ * answers, the webui is not an entry surface.
+ *
+ * COORDINATOR ruling — that card details are refused on remote messaging
+ * surfaces, with the reasoning below. Not attributed to the owner because no
+ * verbatim wording of his has been produced for it.
+ *
  * ══ The two axes look alike and must never be merged ══════════════════════
  *
- * A later reader will notice two channel classifications in this module and try
- * to unify them. They answer different questions and the owner ruled on each
- * separately:
+ * A later reader will notice two channel classifications here and try to unify
+ * them. They answer different questions:
  *
  *   ANSWERING  — may this surface say yes or no to a purchase?
- *                YES for Telegram and every other live channel. That is his
- *                explicit ruling and it stays. See types.ts,
+ *                YES for Telegram and every other live channel. That IS the
+ *                owner's explicit ruling and it stays. See types.ts,
  *                `CommandAuthorityChannel`.
  *
  *   ENTERING   — may card details be typed into this surface?
- *                NO for every remote messaging channel, permanently. Only a
- *                local terminal (the TUI, the agent's own terminal) and the
- *                owner's own browser client over his own LAN (the webui).
+ *                Only a local terminal: the TUI and the agent's own terminal.
  *
  * Remote channels have authority to decide about a purchase. They have no path
  * for entering the instrument.
  *
  * ══ Why entering is stricter than answering ═══════════════════════════════
  *
- * The owner's reasoning, and it is concrete rather than a posture: a card number
- * typed into Telegram is stored on Telegram's servers, in message history we do
- * not control and cannot erase, and it travels through their infrastructure
- * before it ever reaches us. The same is true of every hosted chat channel.
+ * A card number typed into Telegram is stored on Telegram's servers, in message
+ * history nobody here controls or can erase, and it travelled through their
+ * infrastructure before it ever reached us. The same is true of every hosted
+ * chat channel.
  *
- * Our encryption at rest is irrelevant to a value that was already copied
- * somewhere else on its way in. That is the whole argument: the damage is done
- * before our storage decisions apply.
+ * Encryption at rest is irrelevant to a value that was already copied somewhere
+ * else on its way in. That is the whole argument: the damage is done before any
+ * storage decision of ours applies.
  *
  * An "approve" typed into Telegram carries no such residue — it is one word
  * about one purchase, it expires, and it authorizes nothing on its own.
  *
  * ══ The prompt is itself the harm ═════════════════════════════════════════
  *
- * There is deliberately no card-entry flow that can be STARTED from a remote
- * channel. Prompting for a card number on a surface that cannot accept the
- * answer is an invitation to type it there, and the invitation is what causes
- * the number to land on someone else's server. Refusing the answer afterwards
- * is too late.
+ * There is deliberately no card-entry flow that can be STARTED from a
+ * non-entry surface. Prompting for a card number where the answer cannot be
+ * accepted is an invitation to type it there, and the invitation is what puts
+ * the number on someone else's server. Refusing the answer afterwards is too
+ * late.
  */
 
 /** Surfaces where card details may be typed. */
-export type CardEntrySurface = 'tui' | 'agent-terminal' | 'webui';
+/**
+ * Surfaces where card details may be typed.
+ *
+ * The webui is deliberately ABSENT pending an owner ruling — see the header.
+ * Adding it is a one-line change and must not be made without his answer.
+ */
+export type CardEntrySurface = 'tui' | 'agent-terminal';
 
-const CARD_ENTRY_SURFACES: readonly string[] = ['tui', 'agent-terminal', 'webui'];
+const CARD_ENTRY_SURFACES: readonly string[] = ['tui', 'agent-terminal'];
 
 /**
  * Remote messaging surfaces, named so a refusal can say which one it refused.
@@ -129,7 +153,7 @@ export function describeCardEntryRefusal(surface: string): string {
     'and it passed through their systems before it ever got to me — encrypting it on my end afterwards',
     'would not undo that.',
     '',
-    'Enter the card at a terminal instead: the TUI, the agent terminal, or the web UI on your own network.',
+    'Enter the card at a terminal instead: the TUI or the agent terminal.',
     '',
     'Please also delete the message you just sent, and if that was a real card number, treat it as exposed.',
   ].join(' ').replace(/ {2,}/g, ' ');
