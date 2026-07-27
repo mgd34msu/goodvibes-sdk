@@ -35,7 +35,37 @@ export const MAX_INPUT_LENGTH = 65_536;
 export const MAX_TOKEN_COUNT = 1_024;
 
 /** Shell operator strings recognized by the tokenizer. */
-const OPERATOR_TOKENS = new Set(['&&', '||', ';', '|', '>', '>>', '<', '2>']);
+const OPERATOR_TOKENS = new Set(['&&', '||', ';', '|', '>', '>>', '<', '2>', '<<', '<<-', '<<~']);
+
+/** Characters that terminate an unquoted heredoc delimiter word. */
+const HEREDOC_DELIMITER_END = /[\s;|&<>]/;
+
+/**
+ * Returns the offset just past a heredoc body — the character after the line
+ * whose trimmed text equals `delimiter`, or the end of input if the heredoc is
+ * never terminated.
+ *
+ * @param input     - Full command string.
+ * @param from      - Offset just past the heredoc delimiter word.
+ * @param delimiter - Terminator word, already unquoted.
+ */
+function skipHeredocBody(input: string, from: number, delimiter: string): number {
+  const len = input.length;
+  const bodyStart = input.indexOf('\n', from);
+  if (bodyStart < 0) return len;
+
+  let cursor = bodyStart + 1;
+  while (cursor < len) {
+    const lineEnd = input.indexOf('\n', cursor);
+    const line = input.slice(cursor, lineEnd < 0 ? len : lineEnd);
+    if (line.trim() === delimiter) {
+      return lineEnd < 0 ? len : lineEnd + 1;
+    }
+    if (lineEnd < 0) return len;
+    cursor = lineEnd + 1;
+  }
+  return len;
+}
 
 /** Shell redirect operator prefixes (single-char). */
 const REDIRECT_CHARS = new Set(['>', '<']);
@@ -95,8 +125,58 @@ function splitRaw(input: string, maxTokens: number): Array<{ value: string; posi
       }
     }
 
-    // Single-character operators
     const ch = input[i]!;
+
+    // Heredoc: `<<`/`<<-`/`<<~` DELIM, body lines, terminator line.
+    //
+    // The body is data handed to the receiving process, not shell source. Left
+    // untokenized it was scanned as ordinary shell text, so `;`/`&&`/`|` inside
+    // the body split it into fabricated command segments — a heredoc carrying
+    // the characters `rm -rf` was reported as a denied destructive segment that
+    // the shell would never execute. Consume the operator and delimiter as
+    // tokens (the redirect stays visible) and skip the body.
+    //
+    // `<<<` is a here-string: it takes a single word, not a body, so it falls
+    // through to the ordinary redirect handling below.
+    if (ch === '<' && input[i + 1] === '<' && input[i + 2] !== '<') {
+      let j = i + 2;
+      let operator = '<<';
+      if (input[j] === '-' || input[j] === '~') {
+        operator += input[j]!;
+        j += 1;
+      }
+      results.push({ value: operator, position: start });
+      if (results.length >= maxTokens) return results;
+
+      while (j < len && (input[j] === ' ' || input[j] === '\t')) j += 1;
+
+      // Delimiter word, optionally quoted (`<<'EOF'` suppresses expansion).
+      const delimiterStart = j;
+      let delimiter = '';
+      const quote = input[j];
+      if (quote === '"' || quote === "'") {
+        j += 1;
+        while (j < len && input[j] !== quote) {
+          delimiter += input[j];
+          j += 1;
+        }
+        if (j < len) j += 1;
+      } else {
+        while (j < len && !HEREDOC_DELIMITER_END.test(input[j]!)) {
+          delimiter += input[j];
+          j += 1;
+        }
+      }
+      if (delimiter.length > 0) {
+        results.push({ value: input.slice(delimiterStart, j), position: delimiterStart });
+        if (results.length >= maxTokens) return results;
+      }
+
+      i = delimiter.length > 0 ? skipHeredocBody(input, j, delimiter) : j;
+      continue;
+    }
+
+    // Single-character operators
     if (ch === ';' || ch === '|' || ch === '<') {
       results.push({ value: ch, position: start });
       i++;
