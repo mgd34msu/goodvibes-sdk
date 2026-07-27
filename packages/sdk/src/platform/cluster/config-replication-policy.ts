@@ -110,6 +110,13 @@ export const NODE_LOCAL_CONFIG_DOMAINS: readonly string[] = [
 const NODE_LOCAL_CONFIG_KEYS: readonly string[] = [
   // Whether THIS installation exposes a raw HTTP listener at all.
   'danger.httpListener',
+  // "This machine has already read the legacy plaintext credential files that
+  // were sitting in its own home directory." It is a statement about one
+  // filesystem, not about the group: another node has its own home directory,
+  // may well have its own stranded copy of those files, and needs to make its
+  // own pass. Replicating the marker would tell it the work was done and leave
+  // the credentials sitting in the clear where nobody looks again.
+  'google.credentials.migratedFrom',
 ];
 
 /** Why a daemon-owned path is or is not replicated. */

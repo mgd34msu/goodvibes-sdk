@@ -16288,7 +16288,7 @@ Create an event on the configured CalDAV calendar. Requires explicit confirmatio
 - Scopes: `write:calendar`
 - Emits events: none
 - Dangerous: `no`
-- Invokable: `no`
+- Invokable: `yes`
 
 ##### Input schema
 
@@ -16371,7 +16371,7 @@ Return the full event object including attendees, recurrence, and raw iCalendar 
 - Scopes: `read:calendar`
 - Emits events: none
 - Dangerous: `no`
-- Invokable: `no`
+- Invokable: `yes`
 
 ##### Input schema
 
@@ -16452,7 +16452,7 @@ Return calendar event summaries from the configured CalDAV calendar within an op
 - Scopes: `read:calendar`
 - Emits events: none
 - Dangerous: `no`
-- Invokable: `no`
+- Invokable: `yes`
 
 ##### Input schema
 
@@ -16542,7 +16542,7 @@ Export events from the configured CalDAV calendar as raw .ics content within an 
 - Scopes: `read:calendar`
 - Emits events: none
 - Dangerous: `no`
-- Invokable: `no`
+- Invokable: `yes`
 
 ##### Input schema
 
@@ -16597,7 +16597,7 @@ Import raw .ics content into the configured CalDAV calendar. Requires explicit c
 - Scopes: `write:calendar`
 - Emits events: none
 - Dangerous: `no`
-- Invokable: `no`
+- Invokable: `yes`
 
 ##### Input schema
 

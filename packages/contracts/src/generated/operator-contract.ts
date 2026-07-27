@@ -16436,7 +16436,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
-        "invokable": false
+        "invokable": true
       },
       {
         "id": "calendar.events.get",
@@ -16513,7 +16513,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
-        "invokable": false
+        "invokable": true
       },
       {
         "id": "calendar.events.list",
@@ -16599,7 +16599,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
-        "invokable": false
+        "invokable": true
       },
       {
         "id": "calendar.ics.export",
@@ -16650,7 +16650,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
-        "invokable": false
+        "invokable": true
       },
       {
         "id": "calendar.ics.import",
@@ -16715,7 +16715,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
-        "invokable": false
+        "invokable": true
       },
       {
         "id": "channels.accounts.action.default",

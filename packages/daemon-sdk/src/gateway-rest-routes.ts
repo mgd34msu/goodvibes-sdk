@@ -134,6 +134,17 @@ export const GATEWAY_REST_ROUTES: readonly GatewayRestRoute[] = [
   // voice.local.* — managed local-voice runtime status + one-act install.
   route('GET', '/api/voice/local/status', 'voice.local.status'),
   route('POST', '/api/voice/local/install', 'voice.local.install'),
+  // calendar.* — event read/write and iCalendar import/export over the
+  // platform Google connector. These paths were advertised for a long time
+  // with nothing behind them, because the connector lived inside one product
+  // and the daemon had no implementation to call; the descriptors carried
+  // `invokable: false` to say so honestly. The connector is platform
+  // capability now (platform/google), so the paths are real.
+  route('GET', '/api/calendar/events', 'calendar.events.list'),
+  route('GET', '/api/calendar/events/{eventId}', 'calendar.events.get'),
+  route('POST', '/api/calendar/events', 'calendar.events.create'),
+  route('GET', '/api/calendar/ics/export', 'calendar.ics.export'),
+  route('POST', '/api/calendar/ics/import', 'calendar.ics.import'),
 ];
 
 /**
