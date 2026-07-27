@@ -27,7 +27,7 @@ import { captureConsole } from './_helpers/test-timeout.js';
 describe('createConsoleObserver — debug level', () => {
   test('onTransportActivity at debug level logs to console.debug (send — no status/dur)', () => {
     const obs = createConsoleObserver({ level: 'debug' });
-    const capture = captureConsole('debug');
+    const capture = captureConsole('debug', /transport send/);
     try {
       obs.onTransportActivity?.({ direction: 'send', url: 'http://localhost/api', kind: 'http' });
       expect(capture.messages).toHaveLength(1);
@@ -39,7 +39,7 @@ describe('createConsoleObserver — debug level', () => {
 
   test('onTransportActivity at debug level logs status and duration when present', () => {
     const obs = createConsoleObserver({ level: 'debug' });
-    const capture = captureConsole('debug');
+    const capture = captureConsole('debug', /transport recv|transport send/);
     try {
       obs.onTransportActivity?.({
         direction: 'recv',
@@ -58,7 +58,7 @@ describe('createConsoleObserver — debug level', () => {
 
   test('onTransportActivity at info level does NOT log', () => {
     const obs = createConsoleObserver({ level: 'info' });
-    const capture = captureConsole('debug');
+    const capture = captureConsole('debug', /transport send/);
     try {
       obs.onTransportActivity?.({ direction: 'send', url: 'http://localhost/api', kind: 'http' });
       expect(capture.messages).toHaveLength(0);
@@ -69,7 +69,7 @@ describe('createConsoleObserver — debug level', () => {
 
   test('onEvent at debug level logs to console.debug', () => {
     const obs = createConsoleObserver({ level: 'debug' });
-    const capture = captureConsole('debug');
+    const capture = captureConsole('debug', /event runtime\.turn\.start/);
     try {
       obs.onEvent?.({ type: 'runtime.turn.start' } as Parameters<NonNullable<typeof obs.onEvent>>[0]);
       expect(capture.messages).toHaveLength(1);
@@ -81,7 +81,7 @@ describe('createConsoleObserver — debug level', () => {
 
   test('onEvent at info level does NOT log', () => {
     const obs = createConsoleObserver({ level: 'info' });
-    const capture = captureConsole('debug');
+    const capture = captureConsole('debug', /event runtime\.turn\.start/);
     try {
       obs.onEvent?.({ type: 'runtime.turn.start' } as Parameters<NonNullable<typeof obs.onEvent>>[0]);
       expect(capture.messages).toHaveLength(0);
@@ -92,7 +92,7 @@ describe('createConsoleObserver — debug level', () => {
 
   test('onError logs kind and category to console.error', () => {
     const obs = createConsoleObserver({ level: 'info' });
-    const capture = captureConsole('error');
+    const capture = captureConsole('error', /rate-limit/);
     try {
       const err = new GoodVibesSdkError('test error', { category: 'rate_limit' });
       obs.onError?.(err);
@@ -262,7 +262,7 @@ describe('invokeObserver', () => {
 
   test('isolates, reports, and returns errors thrown by the thunk', () => {
     const err = new Error('boom');
-    const capture = captureConsole('warn');
+    const capture = captureConsole('warn', /observer callback failed: testObserver/);
     try {
       const result = invokeObserver(() => { throw err; }, { label: 'testObserver' });
       expect(result.ok).toBe(false);

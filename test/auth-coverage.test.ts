@@ -241,7 +241,7 @@ describe('createGoodVibesAuthClient — observer onAuthTransition', () => {
     };
     const tokenStore = createMemoryTokenStore();
     const client = createGoodVibesAuthClient(makeOperator(), tokenStore, undefined, observer);
-    const capture = captureConsole('warn');
+    const capture = captureConsole('warn', /observer callback failed: onAuthTransition/);
     try {
       await expect(client.login({ username: 'alice', password: 'secret' })).resolves.toMatchObject({ token: 'auth-tok' });
       expect(capture.messages).toHaveLength(1);
@@ -257,7 +257,7 @@ describe('createGoodVibesAuthClient — observer onAuthTransition', () => {
     };
     const tokenStore = createMemoryTokenStore('existing');
     const client = createGoodVibesAuthClient(makeOperator(), tokenStore, undefined, observer);
-    const capture = captureConsole('warn');
+    const capture = captureConsole('warn', /observer callback failed: onAuthTransition/);
     try {
       await expect(client.clearToken()).resolves.toBeUndefined();
       expect(capture.messages).toHaveLength(1);
