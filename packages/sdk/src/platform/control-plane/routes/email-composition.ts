@@ -34,6 +34,9 @@ import {
 import { addressDigest } from '../../email/address-digest.js';
 import type { SurfaceEmailConfigProblem } from '../../email/surface-config.js';
 import { GatewayVerbError } from './gateway-verb-error.js';
+import { resolveOwnerAddresses } from '../../security/owner-identity.js';
+import { registerEmailGatewayMethods } from './email.js';
+import type { GatewayMethodCatalog } from '../method-catalog.js';
 import type {
   EmailGatewayDraftInput,
   EmailGatewayDraftResult,
@@ -300,4 +303,31 @@ export function createDaemonEmailGatewayService(
     describeEmailConfigProblem: deps.describeEmailConfigProblem,
     emailLog: deps.emailLog,
   });
+}
+
+/**
+ * Register the daemon's `email.*` verbs, with the owner identity the taint
+ * exemption needs.
+ *
+ * Lives here rather than at the verb-group root so the whole mail composition
+ * — service, instrumentation, and now the owner's own addresses — is decided
+ * in one file. The addresses are read from the daemon's configuration and from
+ * nowhere a message can reach; empty leaves the taint refusal in force rather
+ * than guessing at an identity. See security/owner-identity.ts.
+ */
+export function registerDaemonEmailVerbs(
+  catalog: GatewayMethodCatalog,
+  deps: EmailCompositionDeps & { readonly configManager?: { get(key: never): unknown } | undefined },
+): void {
+  const gateway = createDaemonEmailGatewayService(deps);
+  if (!gateway) return;
+  const getConfig = deps.configManager;
+  registerEmailGatewayMethods(
+    catalog,
+    gateway,
+    undefined,
+    getConfig === undefined
+      ? new Set<string>()
+      : resolveOwnerAddresses((key) => getConfig.get(key as never)),
+  );
 }
