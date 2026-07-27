@@ -38,7 +38,7 @@ export const DEFAULT_DRAFTS_MAILBOX = 'Drafts';
 // Header validation
 // ---------------------------------------------------------------------------
 
-/** CR, LF, and the other C0/C1 control characters — same set as the SMTP side. */
+/** CR, LF, and the other C0 and C1 control characters — same set as the SMTP side. */
 const CONTROL_CHAR_RE = /[\x00-\x1f\x7f-\x9f]/;
 
 /**

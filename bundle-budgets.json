@@ -38,7 +38,11 @@
   },
   "./daemon": {
     "gzip_bytes": 658,
-    "rationale": "daemon route handler re-export entry; measured 548 B gzip after adding the StepUpService class + its ceremony types (RuntimeServices.stepUpService is required \u2014 DaemonServer.start() calls createVerifier() unconditionally \u2014 so a consumer composing its own RuntimeServices-compatible object needs the class, not a deep import) alongside the pre-existing relay surface (reachability control + WebAuthn step-up policy hook re-exports for the zero-knowledge relay; the certificate-minting helper was REMOVED — the daemon never mints certificates, tailscale serve is the https path); headroom max(ceil(548*1.2)=658, 548+50=598) \u2192 658 (1.2x dominates by 60 B)"
+    "rationale": "daemon route handler re-export entry; measured 548 B gzip after adding the StepUpService class + its ceremony types (RuntimeServices.stepUpService is required \u2014 DaemonServer.start() calls createVerifier() unconditionally \u2014 so a consumer composing its own RuntimeServices-compatible object needs the class, not a deep import) alongside the pre-existing relay surface (reachability control + WebAuthn step-up policy hook re-exports for the zero-knowledge relay; the certificate-minting helper was REMOVED \u2014 the daemon never mints certificates, tailscale serve is the https path); headroom max(ceil(548*1.2)=658, 548+50=598) \u2192 658 (1.2x dominates by 60 B)"
+  },
+  "./embed": {
+    "gzip_bytes": 1152,
+    "rationale": "SDK Embedding API 1.0 entrypoint (embed-session facade + curated re-exports of bootDaemon/permission/event-bus surface); measured 960 B gzip; headroom max(ceil(960*1.2)=1152, 960+50=1010) -> 1152 (1.2x dominates)"
   },
   "./errors": {
     "gzip_bytes": 112,
@@ -237,6 +241,10 @@
     "gzip_bytes": 575,
     "rationale": "new public package export budget for the hoisted browser-automation engine (provisioning, sessions, snapshots, CDP host client); the entry is a re-export barrel, so this measures the barrel rather than playwright-core, which is an optional runtime dependency resolved at call time and never bundled; measured 479 B gzip @ the browser-engine hoist; headroom max(ceil(479*1.2)=575, 479+50=529) -> 575 (1.2x dominates)"
   },
+  "./platform/calendar": {
+    "gzip_bytes": 2060,
+    "rationale": "external-calendar export (ICS parser + RRULE subset + feed store + OAuth 2.0 Google/Microsoft connectivity); measured 1716 B gzip @ v1.0.0 release verification; headroom max(ceil(1716*1.2)=2060, 1716+50=1766) -> 2060 (1.2x dominates)"
+  },
   "./platform/channels": {
     "gzip_bytes": 524,
     "rationale": "grew when getBuiltinSetupSchema + CHANNEL_SETUP_VERSION were exported through this entry (the authoritative per-channel setup declaration, so consumers stop duplicating it), pulling builtin/setup-schema.ts into the entry; measured 436 B gzip @ channel-setup-exports commit; headroom max(ceil(436*1.2)=524, 436+50=486) -> 524 (1.2x dominates)"
@@ -245,21 +253,13 @@
     "gzip_bytes": 217,
     "rationale": "new public package export budget; measured 167 B gzip @ v0.33.0 release verification; headroom max(ceil(167*1.2)=201, 167+50=217) -> 217 (+50 B floor dominates)"
   },
+  "./platform/cluster": {
+    "gzip_bytes": 2286,
+    "rationale": "new public package export budget; LAN leader election seam \u2014 ClusterCoordinator, the per-surface election and its surface-id/ranking/holdings helpers, the group runtime and its key/roster/replication types, and the datagram envelope codec; measured 1905 B gzip on the merged cluster branches; headroom max(ceil(1905*1.2)=2286, 1905+50=1955) -> 2286 (1.2x dominates)"
+  },
   "./platform/companion": {
     "gzip_bytes": 208,
     "rationale": "new public package export budget; measured 158 B gzip @ v0.33.0 release verification; headroom max(ceil(158*1.2)=190, 158+50=208) -> 208 (+50 B floor dominates)"
-  },
-  "./platform/calendar": {
-    "gzip_bytes": 2060,
-    "rationale": "external-calendar export (ICS parser + RRULE subset + feed store + OAuth 2.0 Google/Microsoft connectivity); measured 1716 B gzip @ v1.0.0 release verification; headroom max(ceil(1716*1.2)=2060, 1716+50=1766) -> 2060 (1.2x dominates)"
-  },
-  "./platform/presentation": {
-    "gzip_bytes": 956,
-    "rationale": "W4-S1 SDK presentation contract export (glyphs, tones, spinner frames, waiting/thinking wording); measured 796 B gzip @ v1.0.0 release verification; headroom max(ceil(796*1.2)=956, 796+50=846) -> 956 (1.2x dominates)"
-  },
-  "./platform/runtime/session-spine": {
-    "gzip_bytes": 532,
-    "rationale": "W3-S4 extracted SDK session-spine surface client + read facade export; measured 443 B gzip @ v1.0.0 release verification; headroom max(ceil(443*1.2)=532, 443+50=493) -> 532 (1.2x dominates)"
   },
   "./platform/config": {
     "gzip_bytes": 1977,
@@ -268,10 +268,6 @@
   "./platform/control-plane": {
     "gzip_bytes": 1494,
     "rationale": "re-anchored when the device method catalog/routes and the client build-floor compatibility helper joined the barrel; measured 1245 B gzip @ 1.15.0 release preparation; headroom max(ceil(1245*1.2)=1494, 1245+50=1295) -> 1494 (1.2x dominates)"
-  },
-  "./platform/cluster": {
-    "gzip_bytes": 2286,
-    "rationale": "new public package export budget; LAN leader election seam \u2014 ClusterCoordinator, the per-surface election and its surface-id/ranking/holdings helpers, the group runtime and its key/roster/replication types, and the datagram envelope codec; measured 1905 B gzip on the merged cluster branches; headroom max(ceil(1905*1.2)=2286, 1905+50=1955) -> 2286 (1.2x dominates)"
   },
   "./platform/core": {
     "gzip_bytes": 342,
@@ -291,11 +287,19 @@
   },
   "./platform/devices": {
     "gzip_bytes": 962,
-    "rationale": "new public package export budget; paired-phone capability contract — catalog, capability ids and input validation, grant and capture store types, housekeeping report; measured 801 B gzip @ 1.15.0 release preparation; headroom max(ceil(801*1.2)=962, 801+50=851) -> 962 (1.2x dominates)"
+    "rationale": "new public package export budget; paired-phone capability contract \u2014 catalog, capability ids and input validation, grant and capture store types, housekeeping report; measured 801 B gzip @ 1.15.0 release preparation; headroom max(ceil(801*1.2)=962, 801+50=851) -> 962 (1.2x dominates)"
   },
   "./platform/discovery": {
     "gzip_bytes": 194,
     "rationale": "new public package export budget; measured 144 B gzip @ v0.33.0 release verification; headroom max(ceil(144*1.2)=173, 144+50=194) -> 194 (+50 B floor dominates)"
+  },
+  "./platform/email": {
+    "gzip_bytes": 3226,
+    "rationale": "new public package export budget for the hoisted IMAP/SMTP email service (EmailService, ImapClient, SmtpClient, draft building, style-reply); the entry is a re-export barrel and every socket is injected through EmailTransportPort, so no node:tls/node:net implementation is bundled here \u2014 those live behind ./platform/email/node; measured 2688 B gzip @ the google/email hoist; headroom max(ceil(2688*1.2)=3226, 2688+50=2738) -> 3226 (1.2x dominates)"
+  },
+  "./platform/email/node": {
+    "gzip_bytes": 2223,
+    "rationale": "the concrete bun/node half of the email surface: the three TLS/STARTTLS socket factories and the nodeEmailTransport record they compose; deliberately a SEPARATE entry so importing ./platform/email carries no node built-ins and stays usable from a browser or worker build; measured 1852 B gzip @ the google/email hoist; headroom max(ceil(1852*1.2)=2223, 1852+50=1902) -> 2223 (1.2x dominates)"
   },
   "./platform/export": {
     "gzip_bytes": 116,
@@ -304,6 +308,14 @@
   "./platform/git": {
     "gzip_bytes": 109,
     "rationale": "public facade; measured 59 B gzip @ commit 4e5a5e2; headroom max(ceil(59*1.2)=71, 59+50=109) \u2192 109 (+50 B floor dominates by 38 B)"
+  },
+  "./platform/google": {
+    "gzip_bytes": 3837,
+    "rationale": "new public package export budget for the hoisted Gmail/Calendar connector: the step plan and runbook, credential intake/adoption/refresh, the live API and CalDAV clients, the browser-driven console flows, and the mail-trust surface (delivery evidence, sender authentication, verification expectations, account registry); the largest platform barrel because it is the whole connector, and still a barrel \u2014 every port (browser, command, config, secret, file, fetch, loopback) is injected, so no machine I/O is bundled; measured 3197 B gzip @ the google/email hoist; headroom max(ceil(3197*1.2)=3837, 3197+50=3247) -> 3837 (1.2x dominates)"
+  },
+  "./platform/google/node": {
+    "gzip_bytes": 2801,
+    "rationale": "the concrete bun/node half of the Google surface: the process command port, the file port, the OAuth loopback listener, and the fetch-backed CalDAV http port; a SEPARATE entry for the same reason as ./platform/email/node \u2014 the connector proper must stay free of node built-ins so it runs against fakes with no machine; measured 2334 B gzip @ the google/email hoist; headroom max(ceil(2334*1.2)=2801, 2334+50=2384) -> 2801 (1.2x dominates)"
   },
   "./platform/hooks": {
     "gzip_bytes": 352,
@@ -371,11 +383,11 @@
   },
   "./platform/power": {
     "gzip_bytes": 351,
-    "rationale": "sleep-ownership composition surface (PowerManager, wireRuntimePower, logind seam, work signals) — exported for consumer composition roots after the 2026-07-14 phantom-export find; measured 292 B gzip; headroom max(ceil(292*1.2)=351, 292+50=342) -> 351 (1.2x dominates)"
+    "rationale": "sleep-ownership composition surface (PowerManager, wireRuntimePower, logind seam, work signals) \u2014 exported for consumer composition roots after the 2026-07-14 phantom-export find; measured 292 B gzip; headroom max(ceil(292*1.2)=351, 292+50=342) -> 351 (1.2x dominates)"
   },
-  "./platform/relay": {
-    "gzip_bytes": 590,
-    "rationale": "relay reachability + WebAuthn step-up composition surface (StepUpService, createRelayReachability, step-up policy); re-measured 491 B gzip after the certificate-minting helper was deleted (bundler chunk reshuffle moved shared bytes into this entry even as the surface shrank); headroom max(ceil(491*1.2)=590, 491+50=541) -> 590 (1.2x dominates)"
+  "./platform/presentation": {
+    "gzip_bytes": 956,
+    "rationale": "W4-S1 SDK presentation contract export (glyphs, tones, spinner frames, waiting/thinking wording); measured 796 B gzip @ v1.0.0 release verification; headroom max(ceil(796*1.2)=956, 796+50=846) -> 956 (1.2x dominates)"
   },
   "./platform/profiles": {
     "gzip_bytes": 110,
@@ -385,17 +397,9 @@
     "gzip_bytes": 1815,
     "rationale": "provider registry surface; re-anchored after the per-model reasoning-effort surface joined the barrel (the configured-vs-effective effort resolver and its provenance types); measured 1512 B gzip @ v1.13.0 release verification; headroom max(ceil(1512*1.2)=1815, 1512+50=1562) \u2192 1815 (1.2x dominates); previously 1250 B after the model pricing + bare-model-id resolvers, and 1005 B @ commit 4e5a5e2"
   },
-  "./platform/runtime/disposal": {
-    "gzip_bytes": 2220,
-    "rationale": "runtime-graph shutdown seam: the disposal scope (best-effort ordered teardown) plus the all-required RuntimePollerOwners registration helper the consumer forks call; re-anchored after three owners joined the required list (homeGraphService's post-sync self-improvement pump, agentOrchestrator's per-worktree ProjectIndex release, and cancelHostedAgentRuns for the agent runs the graph was hosting); measured 1850 B gzip on branch fix/complete-disposal-seam; headroom max(ceil(1850*1.2)=2220, 1850+50=1900) -> 2220 (1.2x dominates); previously 1700 B against a measured 1416 B"
-  },
-  "./platform/runtime/feature-announcements": {
-    "gzip_bytes": 3351,
-    "rationale": "one-time feature announcement store + startup announcement collection, now with the persisted pending-delivery queue (drainPending + legacy-format read) that carries fired lines to the consuming status receipts read; measured 2792 B gzip after the queue landed; headroom max(ceil(2792*1.2)=3351, 2792+50=2842) -> 3351 (1.2x dominates)"
-  },
-  "./platform/runtime/permissions/localhost-fetch-approval": {
-    "gzip_bytes": 1574,
-    "rationale": "buildLocalhostFetchApproval one-time localhost fetch gate; measured 1311 B gzip at first export; headroom max(ceil(1311*1.2)=1574, 1311+50=1361) -> 1574 (1.2x dominates)"
+  "./platform/relay": {
+    "gzip_bytes": 590,
+    "rationale": "relay reachability + WebAuthn step-up composition surface (StepUpService, createRelayReachability, step-up policy); re-measured 491 B gzip after the certificate-minting helper was deleted (bundler chunk reshuffle moved shared bytes into this entry even as the surface shrank); headroom max(ceil(491*1.2)=590, 491+50=541) -> 590 (1.2x dominates)"
   },
   "./platform/rewind": {
     "gzip_bytes": 374,
@@ -405,13 +409,33 @@
     "gzip_bytes": 192,
     "rationale": "platform runtime re-export entry; measured 142 B gzip @ commit 4e5a5e2; headroom max(ceil(142*1.2)=171, 142+50=192) \u2192 192 (+50 B floor dominates by 21 B)"
   },
-  "./platform/runtime/fleet/observed": {
-    "gzip_bytes": 2438,
-    "rationale": "daemon-composition subpath for the observed foreign-agent source (ObservedAgentSource + detector/reader seams) so forks composing their own runtime instantiate it without deep paths; measured 2031 B gzip at the export commit; headroom max(ceil(2031*1.2)=2438, 2031+50=2081) -> 2438 (1.2x dominates)"
+  "./platform/runtime/disposal": {
+    "gzip_bytes": 2220,
+    "rationale": "runtime-graph shutdown seam: the disposal scope (best-effort ordered teardown) plus the all-required RuntimePollerOwners registration helper the consumer forks call; re-anchored after three owners joined the required list (homeGraphService's post-sync self-improvement pump, agentOrchestrator's per-worktree ProjectIndex release, and cancelHostedAgentRuns for the agent runs the graph was hosting); measured 1850 B gzip on branch fix/complete-disposal-seam; headroom max(ceil(1850*1.2)=2220, 1850+50=1900) -> 2220 (1.2x dominates); previously 1700 B against a measured 1416 B"
+  },
+  "./platform/runtime/ecosystem": {
+    "gzip_bytes": 398,
+    "rationale": "new public entrypoint (curated catalog + capability-bundle distribution + governed marketplace index); measured 331 B gzip; headroom max(ceil(331*1.2)=398, 331+50=381) -> 398 (1.2x dominates by 17 B)"
+  },
+  "./platform/runtime/emitters": {
+    "gzip_bytes": 264,
+    "rationale": "new public entrypoint (the typed runtime-event emitter wrappers barrel, e.g. emitPermissionModeChanged, previously reachable only by deep-importing platform/runtime/emitters/*.js; a consumer composing its own RuntimeServices-compatible object needs these to emit the same typed events the daemon does); measured 214 B gzip; headroom max(ceil(214*1.2)=257, 214+50=264) -> 264 (+50 B floor dominates)"
+  },
+  "./platform/runtime/feature-announcements": {
+    "gzip_bytes": 3351,
+    "rationale": "one-time feature announcement store + startup announcement collection, now with the persisted pending-delivery queue (drainPending + legacy-format read) that carries fired lines to the consuming status receipts read; measured 2792 B gzip after the queue landed; headroom max(ceil(2792*1.2)=3351, 2792+50=2842) -> 3351 (1.2x dominates)"
+  },
+  "./platform/runtime/feature-flags": {
+    "gzip_bytes": 725,
+    "rationale": "the capability-gates barrel: FEATURE_SETTINGS (per-feature domain/enablement-shape/option-keys metadata surfaces render), the enablement bindings + derivation helpers, the gate manager, and the gate helpers; measured 604 B gzip after the settings dissolution; headroom max(ceil(604*1.2)=725, 604+50=654) -> 725 (1.2x dominates)"
   },
   "./platform/runtime/fleet": {
     "gzip_bytes": 663,
     "rationale": "fleet process registry entrypoint; re-measured 552 B gzip after the observed-external adapter landed (adapters/observed.js adaptObservedAgent/steerObservedNode/observedNodeId, reachable from createProcessRegistry via registry.ts's observed fold); headroom max(ceil(552*1.2)=663, 552+50=602) -> 663 (1.2x dominates)"
+  },
+  "./platform/runtime/fleet/observed": {
+    "gzip_bytes": 2438,
+    "rationale": "daemon-composition subpath for the observed foreign-agent source (ObservedAgentSource + detector/reader seams) so forks composing their own runtime instantiate it without deep paths; measured 2031 B gzip at the export commit; headroom max(ceil(2031*1.2)=2438, 2031+50=2081) -> 2438 (1.2x dominates)"
   },
   "./platform/runtime/memory": {
     "gzip_bytes": 468,
@@ -425,45 +449,33 @@
     "gzip_bytes": 1371,
     "rationale": "public runtime seam; added snapshotMetrics + RuntimeMetricsSnapshot/RuntimeMetricsBucket/ToolFormatFailureClass re-exports (the runtime.metrics.get operator method's underlying accessor and types) @ commit d468ef66; measured 1142 B gzip; headroom max(ceil(1142*1.2)=1371, 1142+50=1192) \u2192 1371 (1.2x dominates by 179 B); budget bumped from 1265 to 1371"
   },
-  "./embed": {
-    "gzip_bytes": 1152,
-    "rationale": "SDK Embedding API 1.0 entrypoint (embed-session facade + curated re-exports of bootDaemon/permission/event-bus surface); measured 960 B gzip; headroom max(ceil(960*1.2)=1152, 960+50=1010) -> 1152 (1.2x dominates)"
-  },
-  "./platform/runtime/ecosystem": {
-    "gzip_bytes": 398,
-    "rationale": "new public entrypoint (curated catalog + capability-bundle distribution + governed marketplace index); measured 331 B gzip; headroom max(ceil(331*1.2)=398, 331+50=381) -> 398 (1.2x dominates by 17 B)"
-  },
-  "./platform/runtime/sandbox": {
-    "gzip_bytes": 270,
-    "rationale": "new public package export budget; measured 220 B gzip @ v0.33.0 release verification; headroom max(ceil(220*1.2)=264, 220+50=270) -> 270 (+50 B floor dominates)"
-  },
-  "./platform/runtime/emitters": {
-    "gzip_bytes": 264,
-    "rationale": "new public entrypoint (the typed runtime-event emitter wrappers barrel, e.g. emitPermissionModeChanged, previously reachable only by deep-importing platform/runtime/emitters/*.js; a consumer composing its own RuntimeServices-compatible object needs these to emit the same typed events the daemon does); measured 214 B gzip; headroom max(ceil(214*1.2)=257, 214+50=264) -> 264 (+50 B floor dominates)"
-  },
-  "./platform/runtime/feature-flags": {
-    "gzip_bytes": 725,
-    "rationale": "the capability-gates barrel: FEATURE_SETTINGS (per-feature domain/enablement-shape/option-keys metadata surfaces render), the enablement bindings + derivation helpers, the gate manager, and the gate helpers; measured 604 B gzip after the settings dissolution; headroom max(ceil(604*1.2)=725, 604+50=654) -> 725 (1.2x dominates)"
-  },
   "./platform/runtime/permissions/exec-prompt-wiring": {
     "gzip_bytes": 1425,
     "rationale": "buildExecPromptAnswerHandler + the ask/answer types: routes a running command's terminal prompt through the approval broker as an execute-category ask; measured 1187 B gzip at first export; headroom max(ceil(1187*1.2)=1425, 1187+50=1237) -> 1425 (1.2x dominates)"
+  },
+  "./platform/runtime/permissions/localhost-fetch-approval": {
+    "gzip_bytes": 1574,
+    "rationale": "buildLocalhostFetchApproval one-time localhost fetch gate; measured 1311 B gzip at first export; headroom max(ceil(1311*1.2)=1574, 1311+50=1361) -> 1574 (1.2x dominates)"
   },
   "./platform/runtime/permissions/sandbox-policy": {
     "gzip_bytes": 2106,
     "rationale": "sandbox-aware exec permission input (decideSandboxedExec + SandboxPolicyDecision/Effect/Input types) exposed so consumers can wire approval flows to the sandbox policy; measured 1755 B gzip @ commit 01b2cf4c; headroom max(ceil(1755*1.2)=2106, 1755+50=1805) -> 2106 (1.2x dominates); dominated by the command-normalization import decideSandboxedExec reasons over"
   },
+  "./platform/runtime/sandbox": {
+    "gzip_bytes": 270,
+    "rationale": "new public package export budget; measured 220 B gzip @ v0.33.0 release verification; headroom max(ceil(220*1.2)=264, 220+50=270) -> 270 (+50 B floor dominates)"
+  },
   "./platform/runtime/self-update": {
     "gzip_bytes": 4541,
     "rationale": "release artifact resolution + checksum verification + version banding helpers (compareVersions, resolveLatestReleaseTag, resolveArtifactNames, verifyChecksum) for hosts that manage their own update swap; measured 3784 B gzip at first export; headroom max(ceil(3784*1.2)=4541, 3784+50=3834) -> 4541 (1.2x dominates)"
   },
+  "./platform/runtime/session-spine": {
+    "gzip_bytes": 532,
+    "rationale": "W3-S4 extracted SDK session-spine surface client + read facade export; measured 443 B gzip @ v1.0.0 release verification; headroom max(ceil(443*1.2)=532, 443+50=493) -> 532 (1.2x dominates)"
+  },
   "./platform/runtime/settings": {
     "gzip_bytes": 125,
     "rationale": "new public package export budget; measured 75 B gzip @ v0.33.0 release verification; headroom max(ceil(75*1.2)=90, 75+50=125) -> 125 (+50 B floor dominates)"
-  },
-  "./platform/runtime/voice-setup": {
-    "gzip_bytes": 1924,
-    "rationale": "managed local-voice setup composer for fork-composed runtimes (TUI): createVoiceSetupService wires the single-flight install + live-progress status over the voice/provisioning primitives (provisionLocalVoiceRuntime/localVoiceRuntimeStatus/preconfigureLocalVoiceKeys/install-stamp) plus singleFlight; measured 1603 B gzip at first export; headroom max(ceil(1603*1.2)=1924, 1603+50=1653) -> 1924 (1.2x dominates)"
   },
   "./platform/runtime/state": {
     "gzip_bytes": 423,
@@ -476,6 +488,10 @@
   "./platform/runtime/ui": {
     "gzip_bytes": 834,
     "rationale": "public runtime seam; measured 695 B gzip @ commit c0e5910; headroom max(ceil(695*1.2)=834, 695+50=745) \u2192 834 (1.2x dominates by 89 B)"
+  },
+  "./platform/runtime/voice-setup": {
+    "gzip_bytes": 1924,
+    "rationale": "managed local-voice setup composer for fork-composed runtimes (TUI): createVoiceSetupService wires the single-flight install + live-progress status over the voice/provisioning primitives (provisionLocalVoiceRuntime/localVoiceRuntimeStatus/preconfigureLocalVoiceKeys/install-stamp) plus singleFlight; measured 1603 B gzip at first export; headroom max(ceil(1603*1.2)=1924, 1603+50=1653) -> 1924 (1.2x dominates)"
   },
   "./platform/scheduler": {
     "gzip_bytes": 102,
@@ -495,7 +511,7 @@
   },
   "./platform/state": {
     "gzip_bytes": 1437,
-    "rationale": "re-measured 1197 B gzip after MemoryConsolidationScheduler joined the barrel (the daemon-side consolidation driver, exported so consumers stop fork-mirroring it — 2026-07-14 phantom-export find); headroom max(ceil(1197*1.2)=1437, 1197+50=1247) -> 1437 (1.2x dominates)"
+    "rationale": "re-measured 1197 B gzip after MemoryConsolidationScheduler joined the barrel (the daemon-side consolidation driver, exported so consumers stop fork-mirroring it \u2014 2026-07-14 phantom-export find); headroom max(ceil(1197*1.2)=1437, 1197+50=1247) -> 1437 (1.2x dominates)"
   },
   "./platform/state/store-snapshots": {
     "gzip_bytes": 4304,
@@ -515,7 +531,7 @@
   },
   "./platform/triggers": {
     "gzip_bytes": 492,
-    "rationale": "new public package export budget; the trigger family — rule validation and extraction, supervision spine, store and grants, probes, on-exit and stream watchers, the manager and its hosts; measured 410 B gzip @ 1.15.0 release preparation; headroom max(ceil(410*1.2)=492, 410+50=460) -> 492 (1.2x dominates)"
+    "rationale": "new public package export budget; the trigger family \u2014 rule validation and extraction, supervision spine, store and grants, probes, on-exit and stream watchers, the manager and its hosts; measured 410 B gzip @ 1.15.0 release preparation; headroom max(ceil(410*1.2)=492, 410+50=460) -> 492 (1.2x dominates)"
   },
   "./platform/types": {
     "gzip_bytes": 225,
