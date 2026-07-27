@@ -23,6 +23,13 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { UserAuthManager } from '../packages/sdk/src/platform/security/user-auth.js';
 import { HttpListener } from '../packages/sdk/src/platform/daemon/http-listener.js';
+import { trackDisposables } from './_helpers/disposables.ts';
+import { stopListenerTimers } from './_helpers/listener-teardown.ts';
+
+// Every HttpListener built here starts two rate-limiter sweep intervals in its
+// constructor and is never start()ed, so `stop()` would early-return and leave
+// them running for the rest of the shared test process.
+const disposables = trackDisposables();
 import { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 
 function tempDir(suffix: string): string {
@@ -66,13 +73,16 @@ function makeListener(opts: {
     return { stop: () => {} } as ReturnType<typeof Bun.serve>;
   };
 
-  const listener = new HttpListener({
-    configManager: opts.configManager,
-    userAuth: opts.userAuth,
-    allowedOrigins: opts.allowedOrigins ?? [],
-    enforceCors: opts.enforceCors,
-    serveFactory: mockServe as unknown as typeof Bun.serve,
-  });
+  const listener = disposables.add(
+    new HttpListener({
+      configManager: opts.configManager,
+      userAuth: opts.userAuth,
+      allowedOrigins: opts.allowedOrigins ?? [],
+      enforceCors: opts.enforceCors,
+      serveFactory: mockServe as unknown as typeof Bun.serve,
+    }),
+    stopListenerTimers,
+  );
 
   listener.enable({ httpListener: true }, 'test-token');
 
@@ -111,13 +121,16 @@ describe('startup guard (opt-in via enforceCors)', () => {
       const configManager = makeConfigManager(dir, 'network');
       const userAuth = makeUserAuth(dir);
       expect(() => {
-        new HttpListener({
-          configManager,
-          userAuth,
-          allowedOrigins: ['https://good.example'],
-          enforceCors: true,
-          serveFactory: (() => ({ stop: () => {} })) as unknown as typeof Bun.serve,
-        });
+        disposables.add(
+          new HttpListener({
+            configManager,
+            userAuth,
+            allowedOrigins: ['https://good.example'],
+            enforceCors: true,
+            serveFactory: (() => ({ stop: () => {} })) as unknown as typeof Bun.serve,
+          }),
+          stopListenerTimers,
+        );
       }).not.toThrow();
     } finally {
       cleanup(dir);
@@ -210,10 +223,13 @@ describe('permissive default (enforceCors unset)', () => {
       const configManager = makeConfigManager(dir, 'network');
       const userAuth = makeUserAuth(dir);
       expect(() => {
-        new HttpListener({
-          configManager, userAuth, allowedOrigins: [],
-          serveFactory: (() => ({ stop: () => {} })) as unknown as typeof Bun.serve,
-        });
+        disposables.add(
+          new HttpListener({
+            configManager, userAuth, allowedOrigins: [],
+            serveFactory: (() => ({ stop: () => {} })) as unknown as typeof Bun.serve,
+          }),
+          stopListenerTimers,
+        );
       }).not.toThrow();
     } finally {
       cleanup(dir);
@@ -243,10 +259,13 @@ describe('permissive default (enforceCors unset)', () => {
       const configManager = makeConfigManager(dir, 'network');
       const userAuth = makeUserAuth(dir);
       expect(() => {
-        new HttpListener({
-          configManager, userAuth, allowedOrigins: [], enforceCors: false,
-          serveFactory: (() => ({ stop: () => {} })) as unknown as typeof Bun.serve,
-        });
+        disposables.add(
+          new HttpListener({
+            configManager, userAuth, allowedOrigins: [], enforceCors: false,
+            serveFactory: (() => ({ stop: () => {} })) as unknown as typeof Bun.serve,
+          }),
+          stopListenerTimers,
+        );
       }).not.toThrow();
     } finally {
       cleanup(dir);

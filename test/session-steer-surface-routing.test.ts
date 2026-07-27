@@ -2,6 +2,9 @@ import { describe, expect, test } from 'bun:test';
 import { SharedSessionBroker } from '../packages/sdk/src/platform/control-plane/session-broker.ts';
 import { PersistentStore } from '../packages/sdk/src/platform/state/persistent-store.ts';
 import { RouteBindingManager } from '../packages/sdk/src/platform/channels/index.ts';
+import { trackDisposables } from './_helpers/disposables.ts';
+
+const disposables = trackDisposables();
 
 // D3 — STEER ROUTING TO SURFACE-BACKED SESSIONS. A steer/follow-up to a
 // surface-managed session with a live registered surface participant queues for
@@ -20,12 +23,12 @@ function makeBroker(): { broker: SharedSessionBroker; events: Captured[] } {
     resolve: () => null,
     patchBinding: async () => null,
   } as unknown as RouteBindingManager;
-  const broker = new SharedSessionBroker({
+  const broker = disposables.add(new SharedSessionBroker({
     store,
     routeBindings,
     agentStatusProvider: { getStatus: () => null }, // never a live daemon agent
     messageSender: { send: () => false },
-  } as unknown as ConstructorParameters<typeof SharedSessionBroker>[0]);
+  } as unknown as ConstructorParameters<typeof SharedSessionBroker>[0]));
   const events: Captured[] = [];
   broker.setEventPublisher((_event, payload) => {
     const p = payload as { event: string; payload: Record<string, unknown> };

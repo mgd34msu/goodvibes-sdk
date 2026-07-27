@@ -24,6 +24,9 @@ import {
   CHANNEL_PROFILE_PERMISSION_MODE_KEY,
 } from '../packages/sdk/src/platform/channel-profiles/index.ts';
 import { PrincipalRegistry, PrincipalStore, UNKNOWN_PRINCIPAL_ID } from '../packages/sdk/src/platform/principals/index.ts';
+import { trackDisposables } from './_helpers/disposables.ts';
+
+const disposables = trackDisposables();
 
 function makeBroker(): SharedSessionBroker {
   const store = new PersistentStore<never>(':memory:' as string);
@@ -39,12 +42,12 @@ function makeBroker(): SharedSessionBroker {
     resolve: () => null,
     upsertBinding: async (b: Record<string, unknown>) => ({ id: 'rb-1', ...b }),
   } as unknown as RouteBindingManager;
-  return new SharedSessionBroker({
+  return disposables.add(new SharedSessionBroker({
     store,
     routeBindings,
     agentStatusProvider: { getStatus: () => null },
     messageSender: { send: async () => {} },
-  } as unknown as ConstructorParameters<typeof SharedSessionBroker>[0]);
+  } as unknown as ConstructorParameters<typeof SharedSessionBroker>[0]));
 }
 
 async function makeRegistries() {

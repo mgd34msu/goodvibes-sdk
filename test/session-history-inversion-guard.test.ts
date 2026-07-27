@@ -23,6 +23,9 @@ import type {
 } from '../packages/sdk/src/platform/companion/companion-chat-manager.ts';
 import { SharedSessionBroker } from '../packages/sdk/src/platform/control-plane/session-broker.ts';
 import { RouteBindingManager } from '../packages/sdk/src/platform/channels/index.ts';
+import { trackDisposables } from './_helpers/disposables.ts';
+
+const disposables = trackDisposables();
 
 const N = 299;
 const ANCIENT = Date.now() - 24 * 60 * 60_000; // a full day past close
@@ -63,12 +66,12 @@ function ancientClosedChat(id: string, messageCount: number): PersistedChatSessi
 }
 
 function makeBroker(storePath: string): SharedSessionBroker {
-  return new SharedSessionBroker({
+  return disposables.add(new SharedSessionBroker({
     storePath,
     routeBindings: { start: async () => {}, patchBinding: async () => null, getBinding: () => null } as unknown as RouteBindingManager,
     agentStatusProvider: { getStatus: () => null },
     messageSender: { send: () => true },
-  } as unknown as ConstructorParameters<typeof SharedSessionBroker>[0]);
+  } as unknown as ConstructorParameters<typeof SharedSessionBroker>[0]));
 }
 
 describe('inversion guard — the 299-closed-chat scenario is never mass-deleted', () => {

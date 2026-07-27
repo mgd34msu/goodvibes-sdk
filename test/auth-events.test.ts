@@ -3,6 +3,12 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, test } from 'bun:test';
 import { resetMetrics } from '../packages/sdk/src/platform/runtime/metrics.js';
+import { trackDisposables } from './_helpers/disposables.ts';
+import { stopListenerTimers } from './_helpers/listener-teardown.ts';
+
+// These listeners are never start()ed — only `handleRequest` is exercised — so
+// `stop()` would early-return and leave their rate-limiter sweeps running.
+const disposables = trackDisposables();
 
 /**
  * Auth events — verifies that auth-related metric counters exist and
@@ -72,7 +78,7 @@ describe('auth counter wiring — login path', () => {
     // NOTE: `as unknown as` is used here to access the internal handleRequest
     // method without a public test hook. Any future signature change will surface at
     // runtime rather than compile time — acceptable trade-off for this integration test.
-    const listener = new HttpListener({ port: 0, userAuth, configManager }) as unknown as {
+    const listener = disposables.add(new HttpListener({ port: 0, userAuth, configManager }), stopListenerTimers) as unknown as {
       handleRequest: (req: Request) => Promise<Response>;
     };
 
@@ -103,7 +109,7 @@ describe('auth counter wiring — login path', () => {
     // Add a known user for this test
     userAuth.addUser('test-admin', 'correct-password', ['admin']);
     const configManager = new ConfigManager({ configDir: dir });
-    const listener = new HttpListener({ port: 0, userAuth, configManager }) as unknown as {
+    const listener = disposables.add(new HttpListener({ port: 0, userAuth, configManager }), stopListenerTimers) as unknown as {
       handleRequest: (req: Request) => Promise<Response>;
     };
 

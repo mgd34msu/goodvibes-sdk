@@ -521,6 +521,11 @@ describe('push.vapidSubject reaches a real delivery', () => {
     };
     try {
       const service = createPushService(deps);
+      // createPushService builds its OWN store and starts that store's periodic
+      // sweep, so stopping only the store created below would leave the
+      // service's sweep running for the rest of the shared test process. The
+      // field is TS-private but present at runtime.
+      (service as unknown as { store: { stopPeriodicSweep(): void } }).store.stopPeriodicSweep();
       // The store the service built is the same file this one addresses.
       const store = createPushSubscriptionStore(deps);
       store.stopPeriodicSweep();
@@ -564,5 +569,8 @@ describe('push.vapidSubject reaches a real delivery', () => {
     // daemon) and the bad contact is dropped rather than signed into a JWT.
     const service = createPushService(deps);
     expect(service).toBeDefined();
+    // Even a service built only to prove construction succeeds has already
+    // started its store's periodic sweep, which would outlive this test.
+    (service as unknown as { store: { stopPeriodicSweep(): void } }).store.stopPeriodicSweep();
   });
 });
