@@ -150,6 +150,7 @@ export class DaemonServer {
   private _restartingPromise: Promise<void> | null = null;
   /** True if a config change arrived while _restarting was set; triggers a second cycle. */
   private _restartDirty = false;
+  private tornDown = false; // True once stop() tore this daemon down; cleared by a successful bind. Teardown was gated on `server === null`, which conflated "never bound a socket" with "has nothing to release" — the CONSTRUCTOR starts the companion-chat GC sweep and the batch tick, so enable() plus a failed or never-called start() left both running with no reachable stop. What must not run twice is the teardown, so that is what this guards.
 
   constructor(private config: DaemonConfig = {}) {
     const resolved = resolveDaemonFacadeRuntime(config);
@@ -399,7 +400,7 @@ export class DaemonServer {
     }
     this.transportEventsHelper.emitTransportInitializing();
     try {
-      this.tlsState = resolveInboundTlsContext(this.configManager, 'controlPlane');
+      this.tlsState = resolveInboundTlsContext(this.configManager, 'controlPlane'); this.tornDown = false; // a daemon that is up again is one that can be torn down again
       this.server = this.serveFactory({
         port: this.port,
         hostname: this.host,
@@ -534,7 +535,7 @@ export class DaemonServer {
   }
 
   async stop(): Promise<void> {
-    if (this.server === null) return;
+    if (this.tornDown) return; this.tornDown = true; // whether a socket was ever bound decides only what the SOCKET half of this method does (the tail); everything between releases resources that exist whether or not the listen ever happened
 
     // Tear down config watcher only on intentional stop; during a restart cycle
     // (_restarting) it must stay active so mid-restart changes hit the dirty flag.
@@ -543,8 +544,8 @@ export class DaemonServer {
       this._configWatchUnsub = null;
     }
 
-    // Synchronous pre-stop teardown. Only stop the heartbeat watcher when start() engaged it (registered solely behind `watchers.enabled`); stopWatcher() runs requireFeatureGate('watcher-framework') and THROWS when that gate is off, which would break a clean shutdown of a watchers-disabled daemon.
-    if (this.configManager.get('watchers.enabled')) this.watcherRegistry.stopWatcher('daemon-heartbeat', 'daemon-stopped');
+    // Synchronous pre-stop teardown. Only stop the heartbeat watcher when start() engaged it (registered solely behind `watchers.enabled`); stopWatcher() runs requireFeatureGate('watcher-framework') and THROWS when that gate is off, which would break a clean shutdown of a watchers-disabled daemon. Wrapped as well because stop() is reachable on a daemon whose start() never ran, where the watcher is not registered and stopWatcher() runs its gate check before discovering that — a clean shutdown must not depend on the gate, the same stance start()'s own cleanup path takes.
+    if (this.configManager.get('watchers.enabled')) { try { this.watcherRegistry.stopWatcher('daemon-heartbeat', 'daemon-stopped'); } catch (error) { logger.warn('DaemonServer: heartbeat watcher stop failed', { error: summarizeError(error) }); } }
     // Optional-chained: a host that composed its own RuntimeServices without a trigger family must shut down cleanly, not throw. When present, shutdown() is safe even if start() never ran or the family is disabled.
     this.triggerManager?.shutdown();
     if (this.replyPoller !== null) {
@@ -586,12 +587,11 @@ export class DaemonServer {
 
     this.lifecycle?.onStopping(this._restarting);
 
-    this.server.stop(true);
-    this.server = null;
     this.tlsState = null;
     this.controlPlaneGateway.setServerState({ enabled: this.enabled, host: this.host, port: this.port });
-    this.transportEventsHelper.emitTransportDisconnected('Daemon server stopped', false);
-    logger.info('DaemonServer stopped');
+    // A daemon that never listened has no disconnect to announce and no "stopped" to claim; everything above was released either way.
+    if (this.server !== null) { this.server.stop(true); this.server = null; this.transportEventsHelper.emitTransportDisconnected('Daemon server stopped', false); logger.info('DaemonServer stopped'); }
+    else logger.debug('DaemonServer released without ever binding a socket');
   }
 
   /** Undelivered daemon receipts for the /status payload (marked delivered once served). */

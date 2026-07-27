@@ -330,7 +330,7 @@ export class AnthropicCompatProvider implements LLMProvider {
         ...withProviderStopReason(state.rawStopReason),
         ...(rateLimit ? { rateLimit } : {}),
       };
-    }, this.retryConfig, onRetry), { provider: this.name, model: model ?? this.defaultModel })).result;
+    }, { ...this.retryConfig, ...(signal ? { signal } : {}) }, onRetry), { provider: this.name, model: model ?? this.defaultModel })).result;
   }
 
   async describeRuntime(deps: ProviderRuntimeMetadataDeps): Promise<ProviderRuntimeMetadata> {
