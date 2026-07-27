@@ -206,9 +206,9 @@ export interface CredentialStatusRecord {
   readonly configured: boolean;
   /** The value/reference resolved to non-empty plaintext in-process. */
   readonly usable: boolean;
-  /** Where the value was found: 'env' | 'user-secure' | 'project-secure' | … */
+  /** Where the value was found: 'env' | 'daemon-secure' | 'user-secure' | … */
   readonly source: string;
-  /** 'user' | 'project' | 'env'. */
+  /** 'daemon' | 'user' | 'project' | 'env'. */
   readonly scope: string;
   /** Backed by an encrypted store (vs plaintext). */
   readonly secure: boolean;

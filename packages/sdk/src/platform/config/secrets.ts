@@ -3,11 +3,18 @@
  *
  * Resolution order:
  *   1. Environment variable (process.env[key])
- *   2. Project/ancestor secure stores (.goodvibes/<surface>/secrets.enc), nearest first
- *   3. Project/ancestor plaintext stores (.goodvibes/<surface>.secrets.json), nearest first
- *   4. User secure store (~/.goodvibes/<surface>/secrets.enc)
- *   5. User plaintext store (~/.goodvibes/<surface>.secrets.json)
- *   6. If a resolved value is a SecretRef, resolve through the referenced provider
+ *   2. Daemon stores (~/.goodvibes/daemon/secrets.enc, then secrets.json)
+ *   3. Project/ancestor secure stores (.goodvibes/<surface>/secrets.enc), nearest first
+ *   4. Project/ancestor plaintext stores (.goodvibes/<surface>.secrets.json), nearest first
+ *   5. User secure store (~/.goodvibes/<surface>/secrets.enc)
+ *   6. User plaintext store (~/.goodvibes/<surface>.secrets.json)
+ *   7. If a resolved value is a SecretRef, resolve through the referenced provider
+ *
+ * The three scopes and the files behind them are documented in
+ * secrets-store-paths.ts. The daemon tier leads because a credential the daemon
+ * executes with has one home and a surface silo can only hold a stale copy of
+ * it; the tier is empty until something writes to it, so a store with no daemon
+ * secrets resolves exactly as it did before the tier existed.
  *
  * The active policy decides whether plaintext stores are eligible:
  *   - plaintext_allowed  → read/write plaintext or secure
@@ -25,7 +32,7 @@
  * Secret values are never logged.
  */
 
-import { dirname, isAbsolute, join, resolve } from 'path';
+import { dirname, isAbsolute, resolve } from 'path';
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import type { ConfigManager } from './manager.js';
 import {
@@ -42,18 +49,26 @@ import {
 export { SecretStoreUnreadableError } from './secrets-keyfile.js';
 import { getSecretRefSource, isSecretRefInput, resolveSecretRef } from './secret-refs.js';
 import { logger } from '../utils/logger.js';
-import { requireSurfaceRoot, resolveSharedDirectory, resolveSurfaceDirectory, resolveSurfaceSharedFile } from '../runtime/surface-root.js';
+import { requireSurfaceRoot, resolveSharedDirectory } from '../runtime/surface-root.js';
 import { summarizeError } from '../utils/error-display.js';
+import { isDaemonOwnedSecretKey } from './daemon-secret-keys.js';
+import {
+  allSecretStores,
+  defaultDaemonSecretHome,
+  secretReadOrder,
+  secretWriteTarget,
+  type SecretStoreLayout,
+  type SecretStorePath,
+} from './secrets-store-paths.js';
 
 export type SecretStorageMode = 'plaintext_allowed' | 'preferred_secure' | 'require_secure';
-export type SecretScope = 'project' | 'user';
-export type SecretStorageMedium = 'secure' | 'plaintext';
-export type SecretSource =
-  | 'env'
-  | 'project-secure'
-  | 'project-plaintext'
-  | 'user-secure'
-  | 'user-plaintext';
+export type {
+  SecretScope,
+  SecretSource,
+  SecretStorageMedium,
+  SecretStorePath,
+} from './secrets-store-paths.js';
+import type { SecretScope, SecretSource, SecretStorageMedium } from './secrets-store-paths.js';
 
 export interface SecretRecord {
   readonly key: string;
@@ -106,13 +121,6 @@ interface PlaintextStore {
   readonly secrets: Record<string, string>;
 }
 
-interface SecretStorePath {
-  readonly source: Exclude<SecretSource, 'env'>;
-  readonly path: string;
-  readonly secure: boolean;
-  readonly scope: SecretScope;
-}
-
 /**
  * Identity used only to decrypt legacy stores (written before keyfile-derived
  * encryption existed). Overridable so tests can simulate stores written on a
@@ -127,12 +135,21 @@ export interface SecretsManagerOptions {
   readonly projectRoot: string;
   readonly globalHome: string;
   readonly surfaceRoot: string;
+  /**
+   * The daemon's state root, holding the daemon-scoped stores. Defaults to
+   * `<globalHome>/.goodvibes/daemon`; a caller that honors `--daemon-home` or
+   * `GOODVIBES_DAEMON_HOME` resolves it first and passes it here, so the daemon
+   * and its clients agree on one file.
+   */
+  readonly daemonHome?: string | undefined;
   readonly configManager?: Pick<ConfigManager, 'get'> | undefined;
   readonly policy?: SecretStorageMode | undefined;
   readonly secureProjectFilePath?: string | undefined;
   readonly secureUserFilePath?: string | undefined;
+  readonly secureDaemonFilePath?: string | undefined;
   readonly plaintextProjectFilePath?: string | undefined;
   readonly plaintextUserFilePath?: string | undefined;
+  readonly plaintextDaemonFilePath?: string | undefined;
   /** Override the keyfile location (defaults to <globalHome>/.goodvibes/secrets.key). */
   readonly keyFilePath?: string | undefined;
   /** Override the host identity used to decrypt legacy stores (tests only). */
@@ -162,28 +179,20 @@ function loadConfiguredSecretPolicy(configManager?: Pick<ConfigManager, 'get'>):
   }
 }
 
-function uniquePaths(paths: readonly SecretStorePath[]): SecretStorePath[] {
-  const seen = new Set<string>();
-  const ordered: SecretStorePath[] = [];
-  for (const path of paths) {
-    const key = `${path.source}:${path.path}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    ordered.push(path);
-  }
-  return ordered;
-}
-
-function collectAncestorRoots(start: string): string[] {
-  const roots: string[] = [];
-  let current = resolve(start);
-  while (true) {
-    roots.push(current);
-    const parent = dirname(current);
-    if (parent === current) break;
-    current = parent;
-  }
-  return roots;
+/**
+ * Where a write lands when the caller did not name a scope.
+ *
+ * A credential a daemon-owned config path names is one the daemon executes
+ * with, so its home is the daemon tier — the same rule config-ownership.ts
+ * applies to the setting that points at it. Getting this wrong is not cosmetic:
+ * a replicated surface token written to the project store lands under whatever
+ * directory the daemon happened to start in, and the next start from a
+ * different directory reads a store that does not have it.
+ *
+ * An explicit `scope` still wins. Everything else keeps the historical default.
+ */
+function defaultScopeForKey(key: string): SecretScope {
+  return isDaemonOwnedSecretKey(key) ? 'daemon' : 'project';
 }
 
 export class SecretsManager {
@@ -210,16 +219,35 @@ export class SecretsManager {
   private readonly surfaceRoot: string;
   private readonly reportedUnreadableStores = new Set<string>();
 
+  private readonly layout: SecretStoreLayout;
+
   constructor(options: SecretsManagerOptions) {
     this.surfaceRoot = requireSurfaceRoot(options.surfaceRoot, 'SecretsManager surfaceRoot');
+    const globalHome = requireAbsoluteOwnedPath(options.globalHome, 'globalHome');
     this.options = {
       ...options,
       projectRoot: requireAbsoluteOwnedPath(options.projectRoot, 'projectRoot'),
-      globalHome: requireAbsoluteOwnedPath(options.globalHome, 'globalHome'),
+      globalHome,
+      daemonHome: normalizeOptionalOwnedPath(options.daemonHome, 'daemonHome')
+        ?? defaultDaemonSecretHome(globalHome),
       secureProjectFilePath: normalizeOptionalOwnedPath(options.secureProjectFilePath, 'secureProjectFilePath'),
       secureUserFilePath: normalizeOptionalOwnedPath(options.secureUserFilePath, 'secureUserFilePath'),
+      secureDaemonFilePath: normalizeOptionalOwnedPath(options.secureDaemonFilePath, 'secureDaemonFilePath'),
       plaintextProjectFilePath: normalizeOptionalOwnedPath(options.plaintextProjectFilePath, 'plaintextProjectFilePath'),
       plaintextUserFilePath: normalizeOptionalOwnedPath(options.plaintextUserFilePath, 'plaintextUserFilePath'),
+      plaintextDaemonFilePath: normalizeOptionalOwnedPath(options.plaintextDaemonFilePath, 'plaintextDaemonFilePath'),
+    };
+    this.layout = {
+      projectRoot: this.options.projectRoot,
+      globalHome: this.options.globalHome,
+      daemonHome: this.options.daemonHome ?? defaultDaemonSecretHome(globalHome),
+      surfaceRoot: this.surfaceRoot,
+      secureProjectFilePath: this.options.secureProjectFilePath,
+      secureUserFilePath: this.options.secureUserFilePath,
+      secureDaemonFilePath: this.options.secureDaemonFilePath,
+      plaintextProjectFilePath: this.options.plaintextProjectFilePath,
+      plaintextUserFilePath: this.options.plaintextUserFilePath,
+      plaintextDaemonFilePath: this.options.plaintextDaemonFilePath,
     };
     this.keyFilePath = normalizeOptionalOwnedPath(options.keyFilePath, 'keyFilePath')
       ?? resolveSharedDirectory(this.options.globalHome, 'secrets.key');
@@ -290,7 +318,7 @@ export class SecretsManager {
   async set(key: string, value: string, options: SecretWriteOptions = {}): Promise<void> {
     const policy = this.getPolicy();
     const medium = options.medium ?? this.getDefaultWriteMedium(policy);
-    const scope = options.scope ?? 'project';
+    const scope = options.scope ?? defaultScopeForKey(key);
 
     if (policy === 'require_secure' && medium === 'plaintext') {
       throw new Error('Secret policy require_secure forbids plaintext persistence');
@@ -396,7 +424,7 @@ export class SecretsManager {
     const policy = this.getPolicy();
     const records = await this.listDetailed();
     const storedRecords = records.filter((record) => record.source !== 'env');
-    const storeStates = uniquePaths(this.getAllCandidateStores()).map((store) => ({
+    const storeStates = this.getAllCandidateStores().map((store) => ({
       store,
       result: store.secure ? this.readEncryptedStore(store.path) : this.readPlaintextStore(store.path),
     }));
@@ -459,113 +487,15 @@ export class SecretsManager {
   }
 
   private getReadOrder(): SecretStorePath[] {
-    const policy = this.getPolicy();
-    const includePlaintext = policy !== 'require_secure';
-    const ordered: SecretStorePath[] = [];
-    const projectRoot = this.options.projectRoot;
-    const userHome = this.options.globalHome;
-
-    for (const root of collectAncestorRoots(projectRoot)) {
-      ordered.push({
-        source: 'project-secure',
-        path: this.options.secureProjectFilePath ?? resolveSurfaceDirectory(root, this.surfaceRoot, 'secrets.enc'),
-        secure: true,
-        scope: 'project',
-      });
-      if (includePlaintext) {
-        ordered.push({
-          source: 'project-plaintext',
-          path: this.options.plaintextProjectFilePath ?? resolveSurfaceSharedFile(root, `${this.surfaceRoot}.secrets`, 'json'),
-          secure: false,
-          scope: 'project',
-        });
-      }
-    }
-
-    ordered.push({
-      source: 'user-secure',
-      path: this.options.secureUserFilePath ?? resolveSurfaceDirectory(userHome, this.surfaceRoot, 'secrets.enc'),
-      secure: true,
-      scope: 'user',
-    });
-
-    if (includePlaintext) {
-      ordered.push({
-        source: 'user-plaintext',
-        path: this.options.plaintextUserFilePath ?? resolveSurfaceSharedFile(userHome, `${this.surfaceRoot}.secrets`, 'json'),
-        secure: false,
-        scope: 'user',
-      });
-    }
-
-    return uniquePaths(ordered);
+    return secretReadOrder(this.layout, this.getPolicy() !== 'require_secure');
   }
 
   private getAllCandidateStores(): SecretStorePath[] {
-    const projectRoot = this.options.projectRoot;
-    const userHome = this.options.globalHome;
-    const ordered: SecretStorePath[] = [];
-    for (const root of collectAncestorRoots(projectRoot)) {
-      ordered.push({
-        source: 'project-secure',
-        path: this.options.secureProjectFilePath ?? resolveSurfaceDirectory(root, this.surfaceRoot, 'secrets.enc'),
-        secure: true,
-        scope: 'project',
-      });
-      ordered.push({
-        source: 'project-plaintext',
-        path: this.options.plaintextProjectFilePath ?? resolveSurfaceSharedFile(root, `${this.surfaceRoot}.secrets`, 'json'),
-        secure: false,
-        scope: 'project',
-      });
-    }
-    ordered.push({
-      source: 'user-secure',
-      path: this.options.secureUserFilePath ?? resolveSurfaceDirectory(userHome, this.surfaceRoot, 'secrets.enc'),
-      secure: true,
-      scope: 'user',
-    });
-    ordered.push({
-      source: 'user-plaintext',
-      path: this.options.plaintextUserFilePath ?? resolveSurfaceSharedFile(userHome, `${this.surfaceRoot}.secrets`, 'json'),
-      secure: false,
-      scope: 'user',
-    });
-    return uniquePaths(ordered);
+    return allSecretStores(this.layout);
   }
 
   private resolveWriteTarget(scope: SecretScope, medium: SecretStorageMedium): SecretStorePath {
-    if (scope === 'project') {
-      const root = this.options.projectRoot;
-      return medium === 'secure'
-        ? {
-          source: 'project-secure',
-          path: this.options.secureProjectFilePath ?? resolveSurfaceDirectory(root, this.surfaceRoot, 'secrets.enc'),
-          secure: true,
-          scope,
-        }
-        : {
-          source: 'project-plaintext',
-          path: this.options.plaintextProjectFilePath ?? resolveSurfaceSharedFile(root, `${this.surfaceRoot}.secrets`, 'json'),
-          secure: false,
-          scope,
-        };
-    }
-
-    const userHome = this.options.globalHome;
-    return medium === 'secure'
-      ? {
-        source: 'user-secure',
-        path: this.options.secureUserFilePath ?? resolveSurfaceDirectory(userHome, this.surfaceRoot, 'secrets.enc'),
-        secure: true,
-        scope,
-      }
-      : {
-        source: 'user-plaintext',
-        path: this.options.plaintextUserFilePath ?? resolveSurfaceSharedFile(userHome, `${this.surfaceRoot}.secrets`, 'json'),
-        secure: false,
-        scope,
-      };
+    return secretWriteTarget(this.layout, scope, medium);
   }
 
   private getDefaultWriteMedium(policy: SecretStorageMode): SecretStorageMedium {

@@ -45,6 +45,7 @@ import {
   rotateGroupKeyMaterial,
   loadReplicaDocument,
   saveGroupKeyMaterial,
+  GROUP_MATERIAL_SECRET_KEY,
   saveGroupState,
   saveReplicaDocument,
   sweepKeyHistory,
@@ -322,7 +323,7 @@ export class ClusterGroupRuntime {
 
   private async hasStoredMaterial(): Promise<boolean> {
     try {
-      return (await this.options.secrets.get('cluster.groupMaterial')) !== null;
+      return (await this.options.secrets.get(GROUP_MATERIAL_SECRET_KEY)) !== null;
     } catch {
       return false;
     }
