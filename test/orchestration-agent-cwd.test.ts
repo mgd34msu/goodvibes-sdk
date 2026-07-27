@@ -84,7 +84,17 @@ const disposables = trackDisposables();
 function makeRealToolDeps(defaultDir: string, scratchRoot: string): Record<string, unknown> {
   return {
     fileCache: new FileStateCache(),
-    projectIndex: new ProjectIndex(defaultDir),
+    // ProjectIndex debounces its writes behind a scheduleFlush() timeout;
+    // dispose() flushes and clears it.
+    //
+    // KNOWN SURVIVOR, and not this one: the override-cwd write below goes
+    // through a registry that getFullRegistry(cwd) deliberately built with
+    // `projectIndex: undefined`, and registerAllTools then makes its own
+    // (tools/index.ts). That instance is held only in tool closures — no
+    // caller, this test included, can reach it to dispose it, so its 5s
+    // debounce timeout survives the file. Closing it needs a disposal seam on
+    // ToolRegistry in product code, not a change here.
+    projectIndex: disposables.add(new ProjectIndex(defaultDir)),
     workingDirectory: defaultDir,
     surfaceRoot: 'test-surface',
     fileUndoManager: new FileUndoManager(),

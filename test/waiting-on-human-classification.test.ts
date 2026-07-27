@@ -22,6 +22,10 @@ import type { Phase, WorkItem, Workstream } from '../packages/sdk/src/platform/o
 import { emptyWorkItemUsage } from '../packages/sdk/src/platform/orchestration/types.ts';
 import type { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.ts';
 import { EventEmitter } from 'node:events';
+import { trackDisposables } from './_helpers/disposables.ts';
+import { cancellableEscalationScheduler } from './_helpers/push-escalation.ts';
+
+const disposables = trackDisposables();
 
 const T0 = 1_750_000_000_000;
 
@@ -115,7 +119,11 @@ describe('wire events — all three reasons emit FLEET_NODE_BLOCKED_ON_USER', ()
 
 describe('push — a ready pick and a conflict both push through the needs-input source', () => {
   function makeService(): { service: PushService; delivered: PushMessage[] } {
-    const service = new PushService({ vapid: {} as VapidManager, store: {} as PushSubscriptionStore });
+    const service = new PushService({
+      vapid: {} as VapidManager,
+      store: {} as PushSubscriptionStore,
+      scheduler: cancellableEscalationScheduler(disposables),
+    });
     const delivered: PushMessage[] = [];
     (service as unknown as { deliver: (m: PushMessage) => Promise<unknown[]> }).deliver = async (m) => { delivered.push(m); return []; };
     return { service, delivered };

@@ -21,6 +21,10 @@ import {
   type GatewayVerbGroupDeps,
 } from '@pellux/goodvibes-terminal-shell';
 import { GatewayMethodCatalog } from '@pellux/goodvibes-sdk/platform/control-plane';
+import { createDisposalScope } from '@pellux/goodvibes-sdk/platform/runtime/disposal';
+import { trackDisposables } from './_helpers/disposables.ts';
+
+const disposables = trackDisposables();
 
 /** A minimal in-memory catalog matching the structural conformance view. */
 function fakeCatalog(entries: ReadonlyArray<{ id: string; handled: boolean }>): GatewayCatalogConformanceView {
@@ -31,9 +35,20 @@ function fakeCatalog(entries: ReadonlyArray<{ id: string; handled: boolean }>): 
   };
 }
 
-/** Enough of GatewayVerbGroupDeps for registration to run; handlers are never invoked here. */
+/**
+ * Enough of GatewayVerbGroupDeps for registration to run; handlers are never
+ * invoked here.
+ *
+ * `disposal` is real, not a stub: registering the push verb group composes a
+ * PushSubscriptionStore, which starts an hourly sweep the moment it exists and
+ * registers its stop call on exactly this seam. Without it the sweep outlives
+ * the file.
+ */
 function fakeVerbGroupDeps(): GatewayVerbGroupDeps {
+  const scope = createDisposalScope('terminal-shell-conformance');
+  disposables.add(scope);
   const deps = {
+    disposal: scope.registry,
     processRegistry: { query: () => ({ nodes: [], generatedAt: 0 }) },
     workspaceCheckpointManager: {},
     sessionBroker: {},

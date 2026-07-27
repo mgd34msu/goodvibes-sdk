@@ -195,11 +195,15 @@ describe('S2a — stock daemon streams companion chat (no 503 dead end)', () => 
     }
   });
 
-  test('the raw gateway createEventStream returns 200 for a stock manager', () => {
+  test('the raw gateway createEventStream returns 200 for a stock manager', async () => {
     const { gateway } = makeStockGateway();
     const res = gateway.createEventStream(new Request('http://localhost/stream'), { clientKind: 'web' });
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toContain('text/event-stream');
+    // An open SSE stream owns a heartbeat interval that only its teardown
+    // clears; cancelling the body is what runs that teardown. Same idiom the
+    // other two streaming tests in this file already use.
+    await res.body?.cancel();
   });
 });
 
