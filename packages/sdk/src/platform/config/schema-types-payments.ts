@@ -37,6 +37,17 @@ export interface PaymentsWindowsConfig {
   approvalMinutes: number;  // default: 60
 }
 
+/** A postal address, flat so each field is an ordinary config key. */
+export interface PaymentsAddressConfig {
+  name: string;
+  line1: string;
+  line2: string;
+  city: string;
+  region: string;
+  postalCode: string;
+  country: string;
+}
+
 export interface PaymentsConfig {
   enabled: boolean;                 // default: false — master switch
   defaultCardId: string;            // default: '' — which card a purchase uses when it names none
@@ -44,6 +55,10 @@ export interface PaymentsConfig {
   cvvHandling: CvvHandling;         // default: 'stored'
   budget: PaymentsBudgetConfig;
   shipping: { preferredTier: ShippingTierPreference };
+  /** Checked by the issuer's address verification. */
+  billingAddress: PaymentsAddressConfig;
+  /** Where purchases go. A purchase is refused while this is incomplete. */
+  shippingAddress: PaymentsAddressConfig;
   /** Ordered command-authority channels. Email is never accepted here. */
   notifyChannels: string;           // default: ''
   windows: PaymentsWindowsConfig;
@@ -70,6 +85,20 @@ export type PaymentsConfigKey =
   | 'payments.shipping.preferredTier'
   | 'payments.windows.vetoMinutes'
   | 'payments.windows.approvalMinutes'
+  | 'payments.billingAddress.name'
+  | 'payments.billingAddress.line1'
+  | 'payments.billingAddress.line2'
+  | 'payments.billingAddress.city'
+  | 'payments.billingAddress.region'
+  | 'payments.billingAddress.postalCode'
+  | 'payments.billingAddress.country'
+  | 'payments.shippingAddress.name'
+  | 'payments.shippingAddress.line1'
+  | 'payments.shippingAddress.line2'
+  | 'payments.shippingAddress.city'
+  | 'payments.shippingAddress.region'
+  | 'payments.shippingAddress.postalCode'
+  | 'payments.shippingAddress.country'
   | 'payments.notifyChannels';
 
 /** The value type each payments key carries, for `ConfigValue<K>`. */
@@ -87,5 +116,19 @@ export interface PaymentsConfigValueMap {
   'payments.shipping.preferredTier': ShippingTierPreference;
   'payments.windows.vetoMinutes': number;
   'payments.windows.approvalMinutes': number;
+  'payments.billingAddress.name': string;
+  'payments.billingAddress.line1': string;
+  'payments.billingAddress.line2': string;
+  'payments.billingAddress.city': string;
+  'payments.billingAddress.region': string;
+  'payments.billingAddress.postalCode': string;
+  'payments.billingAddress.country': string;
+  'payments.shippingAddress.name': string;
+  'payments.shippingAddress.line1': string;
+  'payments.shippingAddress.line2': string;
+  'payments.shippingAddress.city': string;
+  'payments.shippingAddress.region': string;
+  'payments.shippingAddress.postalCode': string;
+  'payments.shippingAddress.country': string;
   'payments.notifyChannels': string;
 }

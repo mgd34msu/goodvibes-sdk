@@ -137,6 +137,14 @@ describe('the payments module never emits card material', () => {
 
     const offenders: string[] = [];
     for await (const file of glob.scan({ cwd: dir })) {
+      // entry-surface.ts is the one module that must NAME these fields: it
+      // decides whether an inbound message looks like card details so it can
+      // refuse it. It reports which SHAPE matched and never the matching text —
+      // asserted separately in payments-card-entry-surface.test.ts, including
+      // that the refusal contains no four-digit run at all. Exempting it by name
+      // keeps this rule meaningful for every other module rather than widening
+      // the pattern until it stops catching anything.
+      if (file === 'entry-surface.ts') continue;
       const text = await Bun.file(`${dir}${file}`).text();
       const code = text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
       // The decision modules deal in amounts, tiers and last4. None of them has

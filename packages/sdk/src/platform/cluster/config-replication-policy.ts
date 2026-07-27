@@ -169,7 +169,25 @@ function underAny(path: string, domains: readonly string[]): boolean {
  * later adds inside a replicated domain is still refused without anyone having
  * to remember to list it.
  */
+/**
+ * Daemon-owned keys ruled on individually because their DOMAIN goes the other
+ * way.
+ */
+export const REPLICATED_CONFIG_KEYS: readonly string[] = [
+  // `daemon.*` is otherwise node-local — it answers "does THIS machine run a
+  // daemon". The timezone answers where the operator is, and the group has to
+  // agree on it: the payment capability rolls its daily budgets over at
+  // midnight in this zone, so two nodes on different zones would disagree about
+  // what day it is. A handover across that disagreement either hands back a
+  // fresh daily budget or retroactively overspends one, and neither is visible
+  // to the operator, who set one zone and was shown one zone.
+  'daemon.timezone',
+];
+
 export function classifyDaemonConfigPath(path: string): ConfigPathClassification {
+  if (REPLICATED_CONFIG_KEYS.includes(path)) {
+    return { path, replication: 'replicated', reason: 'the group must agree on what day it is' };
+  }
   if (isPortConfigKey(path)) {
     return { path, replication: 'node-local', reason: 'the schema marks this a port, and a port belongs to a machine' };
   }
