@@ -72,3 +72,59 @@ export type EmailSenderClaimDescriber = (
   fromHeader: string,
   checks?: SenderAuthenticationChecks,
 ) => EmailSenderClaim;
+
+/**
+ * The neutral describer, for a product with no wording of its own.
+ *
+ * The port exists because the SENTENCE a person reads belongs to the product —
+ * the agent says "Claims to be from …" in its own voice. But the *decision* the
+ * sentence reports is not a product choice and must not be re-derived per
+ * surface: a `From:` header is a claim, sender authentication raises display
+ * confidence and nothing else, and `commandAuthority` is the literal `'none'`.
+ *
+ * So a product that has no reason to phrase it differently uses this rather
+ * than writing a second implementation of a security-relevant rule. Passing DKIM,
+ * SPF and DMARC changes the sentence a human reads and cannot change authority —
+ * the return type makes any other value a compile error.
+ */
+export function describeSenderClaimNeutrally(
+  fromHeader: string,
+  checks: SenderAuthenticationChecks = {},
+): EmailSenderClaim {
+  const trimmed = fromHeader.trim();
+  const angled = /^(.*?)<([^>]*)>\s*$/.exec(trimmed);
+  const claimedDisplayName = angled ? (angled[1] ?? '').trim().replace(/^"(.*)"$/, '$1').trim() : '';
+  const claimedAddress = angled ? (angled[2] ?? '').trim() : trimmed;
+
+  const results = [checks.dkim, checks.spf, checks.dmarc].filter(
+    (result): result is NonNullable<typeof result> => result !== undefined,
+  );
+  const passes = results.filter((result) => result === 'pass').length;
+  const displayedConfidence: EmailSenderConfidence = results.length === 0
+    ? 'unverified'
+    : results.includes('fail')
+      ? 'failed-verification'
+      : passes === 0
+        ? 'unverified'
+        : passes === results.length
+          ? 'protocol-verified'
+          : 'partially-verified';
+
+  const phrase: Readonly<Record<EmailSenderConfidence, string>> = {
+    unverified: 'no sender-authentication result',
+    'partially-verified': 'some sender-authentication checks passed',
+    'protocol-verified': 'sender-authentication checks passed',
+    'failed-verification': 'a sender-authentication check FAILED',
+  };
+  const named = claimedDisplayName ? `${claimedDisplayName} <${claimedAddress}>` : claimedAddress;
+
+  return {
+    claimedAddress,
+    claimedDisplayName,
+    display:
+      `Claims to be from ${named} — a claim in the message header, not proof of identity `
+      + `(${phrase[displayedConfidence]}). Carries no authority to direct actions.`,
+    displayedConfidence,
+    commandAuthority: 'none',
+  };
+}

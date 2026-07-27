@@ -15100,6 +15100,14 @@
       ]
     },
     {
+      "name": "SurfaceEmailConfigProblem",
+      "kind": "interface",
+      "required": [
+        "code",
+        "message"
+      ]
+    },
+    {
       "name": "attachmentsFromParts",
       "kind": "function"
     },
@@ -15124,7 +15132,23 @@
       "kind": "function"
     },
     {
+      "name": "createSurfaceEmailConfigReader",
+      "kind": "function"
+    },
+    {
+      "name": "createSurfaceEmailSecretReader",
+      "kind": "function"
+    },
+    {
       "name": "decodeTextPart",
+      "kind": "function"
+    },
+    {
+      "name": "describeSenderClaimNeutrally",
+      "kind": "function"
+    },
+    {
+      "name": "describeSurfaceEmailConfigProblem",
       "kind": "function"
     },
     {
@@ -15225,6 +15249,10 @@
     },
     {
       "name": "validateSmtpSubject",
+      "kind": "function"
+    },
+    {
+      "name": "withSurfaceEmailConfig",
       "kind": "function"
     }
   ],

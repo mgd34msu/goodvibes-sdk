@@ -202,3 +202,18 @@ export {
 } from './style-reply-lane.js';
 
 export type { StyleReplyLaneAdditions } from './style-reply-lane.js';
+
+// ---------------------------------------------------------------------------
+// The neutral sender-claim describer, and the daemon's surfaces.email.* keys
+// ---------------------------------------------------------------------------
+
+export { describeSenderClaimNeutrally } from './sender-claim.js';
+
+export {
+  withSurfaceEmailConfig,
+  describeSurfaceEmailConfigProblem,
+  createSurfaceEmailConfigReader,
+  createSurfaceEmailSecretReader,
+} from './surface-config.js';
+
+export type { SurfaceEmailConfigProblem } from './surface-config.js';

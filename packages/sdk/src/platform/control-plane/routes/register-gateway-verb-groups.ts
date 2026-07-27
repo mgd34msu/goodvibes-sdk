@@ -252,6 +252,13 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
   /** Everything platform/email needs; absent in narrow compositions. */
   readonly emailServiceDeps?: EmailCompositionDeps['emailServiceDeps'];
   /**
+   * Why the mailbox is not usable yet, in the operator's own key names.
+   * Supplied by a composition reading the daemon's `surfaces.email.*` keys.
+   */
+  readonly describeEmailConfigProblem?: EmailCompositionDeps['describeEmailConfigProblem'];
+  /** Operational log sink for the mail verbs; absent means they log nothing. */
+  readonly emailLog?: EmailCompositionDeps['emailLog'];
+  /**
    * The following three are wired only by the full runtime-services composition
    * root; when any is absent (e.g. the terminal-shell embed) the proactive
    * check-in verb group is simply not registered — a graceful degrade, exactly
