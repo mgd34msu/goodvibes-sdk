@@ -257,6 +257,16 @@ export class HttpListener {
   private _restartingPromise: Promise<void> | null = null;
   /** True if a config change arrived while _restarting was set; triggers a second cycle. */
   private _restartDirty = false;
+  /**
+   * True once stop() has released this listener; cleared by a successful bind.
+   *
+   * The two rate limiters are built in the CONSTRUCTOR and each arms a 60s
+   * eviction sweep there, so they are running before start() is ever called and
+   * long after a start() that failed. Gating teardown on `server === null` left
+   * both sweeps with no reachable stop; gating it on "have we already torn down"
+   * releases them exactly once, bound socket or not.
+   */
+  private tornDown = false;
 
   constructor(private config: HttpListenerConfig) {
     this.configManager = config.configManager;
@@ -337,6 +347,8 @@ export class HttpListener {
     }
     const self = this;
     this.tlsState = resolveInboundTlsContext(this.configManager, 'httpListener');
+    // A listener that is up again is a listener that can be torn down again.
+    this.tornDown = false;
     this.server = this.serveFactory({
       port: this.port,
       hostname: this.host,
@@ -368,7 +380,9 @@ export class HttpListener {
    * Stop the listener.
    */
   async stop(): Promise<void> {
-    if (this.server === null) return;
+    if (this.tornDown) return;
+    this.tornDown = true;
+    const boundServer = this.server;
 
     // Tear down config watcher only on intentional stop, not mid-restart.
     // During a restart cycle (_restarting=true) the watcher must stay active so
@@ -379,12 +393,18 @@ export class HttpListener {
       this._configWatchUnsub = null;
     }
 
-    // Stop rate limiter sweep intervals before tearing down.
+    // Stop rate limiter sweep intervals before tearing down. Unconditional:
+    // these are constructor-owned, so they are exactly what a never-bound
+    // listener still has running.
     this.rateLimiter.stop();
     this.loginRateLimiter.stop();
-    this.server.stop(true);
-    this.server = null;
     this.tlsState = null;
+    if (boundServer === null) {
+      logger.debug('HttpListener: released without ever binding a socket');
+      return;
+    }
+    boundServer.stop(true);
+    this.server = null;
     logger.info('HttpListener stopped');
   }
 

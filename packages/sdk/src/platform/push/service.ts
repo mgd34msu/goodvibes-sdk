@@ -264,6 +264,27 @@ export class PushService {
     return deliverToAll(message, this.deliveryDeps());
   }
 
+  /**
+   * Release every escalation timer this service has armed.
+   *
+   * A blocked ask arms a grace timer (honest default ~5 minutes) and each
+   * escalation arms the next reminder, so at any moment the service holds one
+   * live timer per outstanding block. The only way to cancel one was to answer
+   * the ask or to inject a scheduler seam, which meant a daemon shutting down
+   * with blocked asks outstanding had no way at all to put them down — the
+   * production scheduler's `unref()` keeps them off the event loop but does
+   * nothing about a graph that is meant to be finished with.
+   *
+   * The tracked blocks go too: after this the service is not tracking anything,
+   * so a stale escalation cannot fire against a torn-down graph. Idempotent.
+   */
+  dispose(): void {
+    for (const block of this.trackedBlocks.values()) {
+      block.cancel();
+    }
+    this.trackedBlocks.clear();
+  }
+
   /** Delivery dependencies with the bounded-failure threshold read live. */
   private deliveryDeps(): DeliveryDeps {
     const threshold = this.failureThreshold?.();
