@@ -7,6 +7,8 @@
  *   - EHLO negotiation
  *   - AUTH PLAIN and AUTH LOGIN
  *   - MAIL FROM / RCPT TO / DATA with RFC 2821 dot-stuffing
+ *   - A generated RFC 5322 `Message-ID` on every send, returned to the caller
+ *     along with the moment the server accepted the message
  *   - QUIT
  *   - TLS-direct (port 465) via `createSmtpTlsSocket()`
  *   - STARTTLS upgrade (port 587) via `createSmtpStartTlsSocket()`
@@ -26,6 +28,7 @@
  * this module never opens a connection or pulls `node:tls` in behind it.
  */
 
+import { randomBytes } from 'node:crypto';
 import type { Socket } from 'node:net';
 
 // ---------------------------------------------------------------------------
@@ -45,6 +48,24 @@ export interface SmtpSendOptions {
   readonly to: string;
   readonly subject: string;
   readonly body: string;
+}
+
+/** What a completed send is afterwards identifiable by. */
+export interface SmtpSendResult {
+  /**
+   * The `Message-ID` header this send actually carried, angle brackets
+   * included. It is generated here, written into the message, and handed back
+   * — the same string on the wire and in the return value, because its whole
+   * purpose is to correlate with what left the machine and with the
+   * `In-Reply-To` of whatever comes back.
+   */
+  readonly messageId: string;
+  /**
+   * ISO-8601 instant the server ACCEPTED the message — read after the final
+   * `250`, not when the attempt started, so it records a send that happened
+   * rather than one that was tried.
+   */
+  readonly sentAt: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -122,6 +143,24 @@ function dotStuff(body: string): string {
 
 function base64(str: string): string {
   return Buffer.from(str, 'utf8').toString('base64');
+}
+
+/**
+ * Build an RFC 5322 §3.6.4 message id: a value unlikely to repeat, at the
+ * domain that is doing the sending.
+ *
+ * The domain half has to be the sending domain. A literal like `localhost`, or
+ * a domain that does not exist, is a signal receiving servers weigh against a
+ * message — an id is supposed to be globally unique BECAUSE its right-hand
+ * side belongs to whoever wrote it. The from-address supplies it; the SMTP
+ * hostname stands in only if the address somehow carries none.
+ */
+function generateMessageId(fromAddress: string, smtpHostname: string): string {
+  const at = fromAddress.lastIndexOf('@');
+  const fromDomain = at === -1 ? '' : fromAddress.slice(at + 1).trim();
+  const domain = fromDomain.length > 0 ? fromDomain : smtpHostname;
+  const unique = `${Date.now().toString(36)}.${randomBytes(12).toString('hex')}`;
+  return `<${unique}@${domain}>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -267,8 +306,13 @@ export class SmtpClient {
   /**
    * Send a plain-text email.
    * Callers must ensure the caller-side confirms the send before calling this.
+   *
+   * Returns the `Message-ID` the message actually carried and the instant the
+   * server accepted it. Nothing about either value is invented after the fact:
+   * the id is written into the headers that go out, and the timestamp is read
+   * once the final `250` has arrived.
    */
-  async sendMail(opts: SmtpSendOptions): Promise<void> {
+  async sendMail(opts: SmtpSendOptions): Promise<SmtpSendResult> {
     const { hostname, username, password } = this.options;
     const timeoutMs = this.options.timeoutMs ?? SMTP_DEFAULT_TIMEOUT_MS;
     const session = new SmtpSession(this.options.socket, timeoutMs);
@@ -290,27 +334,38 @@ export class SmtpClient {
     await session.cmd('DATA', 354);
 
     const date = new Date().toUTCString();
-    const message = [
+    const headers = [
       `From: ${opts.from}`,
       `To: ${opts.to}`,
       `Subject: ${opts.subject}`,
       `Date: ${date}`,
       `MIME-Version: 1.0`,
       `Content-Type: text/plain; charset=utf-8`,
-      '',
-      dotStuff(opts.body),
-      '.',
-    ].join(CRLF) + CRLF;
+    ];
+
+    // Two Message-ID headers is a protocol error, so an id already present in
+    // the composed headers is reported rather than replaced.
+    const existing = headers.find((header) => /^message-id:/i.test(header));
+    const messageId = existing === undefined
+      ? generateMessageId(opts.from, hostname)
+      : existing.slice(existing.indexOf(':') + 1).trim();
+    if (existing === undefined) headers.push(`Message-ID: ${messageId}`);
+
+    const message = [...headers, '', dotStuff(opts.body), '.'].join(CRLF) + CRLF;
 
     await session.sendRaw(message);
     const dataResp = await session.readResponse();
     if (dataResp.code !== 250) {
       throw new Error(`SMTP DATA rejected: ${dataResp.lines.join(' | ')}`);
     }
+    // The message is now the server's problem, which is what makes this the
+    // moment the send happened.
+    const sentAt = new Date().toISOString();
 
     // QUIT
     await session.send('QUIT');
     session.destroy();
+    return { messageId, sentAt };
   }
 
   // -------------------------------------------------------------------------
