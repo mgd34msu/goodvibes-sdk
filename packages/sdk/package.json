@@ -229,6 +229,10 @@
       "types": "./dist/platform/bookmarks/index.d.ts",
       "import": "./dist/platform/bookmarks/index.js"
     },
+    "./platform/browser": {
+      "types": "./dist/platform/browser/index.d.ts",
+      "import": "./dist/platform/browser/index.js"
+    },
     "./platform/calendar": {
       "types": "./dist/platform/calendar/index.d.ts",
       "import": "./dist/platform/calendar/index.js"
@@ -608,6 +612,7 @@
     "node-edge-tts": "^1.2.10",
     "openai": "6.46.0",
     "pdfjs-dist": "5.7.284",
+    "playwright-core": "1.62.0",
     "pyright": "^1.1.408",
     "simple-git": "^3.33.0",
     "sql.js": "^1.14.1",
