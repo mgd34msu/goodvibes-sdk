@@ -33,6 +33,10 @@ import {
   shouldYieldSurface,
   type ClusterSpreadRankable,
 } from './ranking.js';
+import {
+  INITIAL_CONSUMER_CONFLICT_STATE,
+  nextConsumerConflictBackoff,
+} from './consumer-conflict-backoff.js';
 import type { ClusterHoldingsLedger } from './holdings.js';
 import type { ClusterTiming } from './timing.js';
 import type {
@@ -110,6 +114,16 @@ export class SurfaceElection {
   private holderNodeId: string | null = null;
   private lastHolderHeartbeatAt: number | null = null;
   private lastHolderHeartbeatMono: number | null = null;
+
+  /**
+   * Consecutive refusals by the provider for THIS surface, and what was waited
+   * for the last one. A refusal means another process holds the credential,
+   * which retrying cannot fix, so the interval grows rather than staying flat
+   * — see consumer-conflict-backoff.ts.
+   */
+  private consumerConflictBackoff = INITIAL_CONSUMER_CONFLICT_STATE;
+  /** When the consumer last actually started, for judging "did it serve?". */
+  private consumerStartedMono: number | null = null;
 
   private cancelProbe: (() => void) | null = null;
   private cancelHeartbeat: (() => void) | null = null;
@@ -206,18 +220,41 @@ export class SurfaceElection {
     if (this.role === 'stopped') return;
     this.enqueue(async () => {
       if (this.role !== 'master') return;
+      const delayMs = this.nextConsumerConflictDelay();
       this.host.logger.warn('cluster: another consumer is already reading this surface; standing down', {
         surface: this.options.label,
         detail,
-        backoffMs: this.host.timing.consumerConflictBackoffMs,
+        backoffMs: delayMs,
+        // Without the streak this line looks identical on the first refusal and
+        // on the two-hundredth, so a node stuck against a credential another
+        // process holds reads as a one-off every time it happens.
+        consecutiveConflicts: this.consumerConflictBackoff.streak,
+        ...(this.consumerConflictBackoff.streak > 1
+          ? {
+              action: 'this surface has been refused repeatedly; stop the other process using this '
+                + 'credential, or remove the credential from this machine — retrying cannot resolve it',
+            }
+          : {}),
       });
       await this.stopConsumerThenResign(`consumer conflict: ${detail}`, null);
       this.becomeStandby(null, 'a consumer conflict was reported');
       this.cancelProbe?.();
       this.cancelProbe = this.host.clock.setTimer(() => {
         this.enqueue(() => this.beginProbe('re-probe after a consumer conflict'));
-      }, this.host.timing.consumerConflictBackoffMs);
+      }, delayMs);
     });
+  }
+
+  /** See consumer-conflict-backoff.ts for why this grows rather than repeats. */
+  private nextConsumerConflictDelay(): number {
+    const now = this.host.clock.monotonicNow();
+    this.consumerConflictBackoff = nextConsumerConflictBackoff(this.consumerConflictBackoff, {
+      servedForMs: this.consumerStartedMono === null ? 0 : now - this.consumerStartedMono,
+      floorMs: this.host.timing.consumerConflictBackoffMs,
+      ceilingMs: this.host.timing.consumerConflictBackoffMaxMs,
+      servedLongEnoughMs: this.host.timing.masterTimeoutMs,
+    });
+    return this.consumerConflictBackoff.lastDelayMs;
   }
 
   // ── probing ───────────────────────────────────────────────────────────────
@@ -322,6 +359,7 @@ export class SurfaceElection {
     try {
       await this.host.startConsumer(this.surfaceId, context);
       this.consumerRunning = true;
+      this.consumerStartedMono = this.host.clock.monotonicNow();
       this.host.logger.info('cluster: this node is now responsible for an inbound surface', {
         surface: this.options.label,
         nodeId: this.host.nodeId,
@@ -638,7 +676,19 @@ export class SurfaceElection {
     const mono = this.host.clock.monotonicNow();
     const selfHoldings = this.host.ledger.holdingsOf(this.host.nodeId, mono);
     let best: { nodeId: string; holdings: number } | null = null;
-    const liveWithinMs = this.host.timing.candidacyAnnounceMs * 2;
+    // A node this cluster would already declare DEAD as a holder must not be
+    // handed a surface as a candidate. The two liveness questions used to
+    // disagree — a holder is gone after masterTimeoutMs, a yield target was
+    // believed alive for twice candidacyAnnounceMs, and candidacyAnnounceMs IS
+    // masterTimeoutMs — so a crashed node stayed an eligible recipient for
+    // twice as long as it stayed an eligible holder. Measured on a two-node LAN
+    // at a 4s timeout: failover finished 4.6s after the kill, a rescued surface
+    // was yielded back to the corpse 0.8s later, and it went unconsumed for a
+    // further 5.3s. See the regression test in cluster-spread.test.ts.
+    const liveWithinMs = Math.min(
+      this.host.timing.candidacyAnnounceMs * 2,
+      this.host.timing.masterTimeoutMs,
+    );
     for (const nodeId of this.host.ledger.candidatesFor(this.surfaceId, mono, this.host.nodeId, liveWithinMs)) {
       const holdings = this.host.ledger.holdingsOf(nodeId, mono);
       if (!best || holdings < best.holdings) best = { nodeId, holdings };
