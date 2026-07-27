@@ -20,6 +20,16 @@ import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/ind
 import { createRuntimeServices } from '../packages/sdk/src/platform/runtime/services.js';
 import { createRuntimeStore } from '../packages/sdk/src/platform/runtime/store/index.js';
 import { createFeatureFlagManager } from '../packages/sdk/src/platform/runtime/feature-flags/manager.js';
+import { trackDisposables } from './_helpers/disposables.ts';
+
+/**
+ * Each test here composes a whole runtime graph, which starts the fleet
+ * registry tick, the config-file watch, the knowledge scheduler, the
+ * push-subscription sweep and the snapshot / retention / consolidation
+ * schedulers. Four graphs left running is 64 handles firing inside every later
+ * file in this single-process suite.
+ */
+const disposables = trackDisposables();
 
 const TOGGLEABLE_FLAG_ID = 'hitl-ux-modes';
 const TOGGLEABLE_KEY = 'behavior.hitlMode' as ConfigKey;
@@ -46,14 +56,14 @@ function buildServices() {
     workingDir,
     surfaceRoot: 'goodvibes-test',
   });
-  const runtimeServices = createRuntimeServices({
+  const runtimeServices = disposables.add(createRuntimeServices({
     configManager,
     runtimeBus: new RuntimeEventBus(),
     runtimeStore: createRuntimeStore(),
     surfaceRoot: 'goodvibes',
     workingDir,
     homeDirectory,
-  });
+  }));
   return { configManager, runtimeServices };
 }
 
@@ -103,7 +113,7 @@ describe('createRuntimeServices — live feature-settings bridge', () => {
       surfaceRoot: 'goodvibes-test',
     });
     const injectedFeatureFlags = createFeatureFlagManager();
-    const runtimeServices = createRuntimeServices({
+    const runtimeServices = disposables.add(createRuntimeServices({
       configManager,
       runtimeBus: new RuntimeEventBus(),
       runtimeStore: createRuntimeStore(),
@@ -111,7 +121,7 @@ describe('createRuntimeServices — live feature-settings bridge', () => {
       workingDir,
       homeDirectory,
       featureFlags: injectedFeatureFlags,
-    });
+    }));
     expect(runtimeServices.featureFlags).toBe(injectedFeatureFlags);
 
     configManager.setDynamic(TOGGLEABLE_KEY, 'off');
@@ -138,14 +148,14 @@ describe('createRuntimeServices — live feature-settings bridge', () => {
     // boot path derives gate states from the domain keys at construction.
     configManager.setDynamic(TOGGLEABLE_KEY, 'off');
 
-    const runtimeServices = createRuntimeServices({
+    const runtimeServices = disposables.add(createRuntimeServices({
       configManager,
       runtimeBus: new RuntimeEventBus(),
       runtimeStore: createRuntimeStore(),
       surfaceRoot: 'goodvibes',
       workingDir,
       homeDirectory,
-    });
+    }));
     expect(runtimeServices.featureFlags.isEnabled(TOGGLEABLE_FLAG_ID)).toBe(false);
   });
 });

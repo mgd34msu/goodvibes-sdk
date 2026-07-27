@@ -11,6 +11,15 @@ import {
 import { KnowledgeStore } from '../packages/sdk/src/platform/knowledge/store.js';
 import { HomeGraphRoutes } from '../packages/sdk/src/platform/daemon/http/home-graph-routes.js';
 import type { KnowledgeSemanticLlm } from '../packages/sdk/src/platform/knowledge/semantic/index.js';
+import { trackDisposables } from './_helpers/disposables.ts';
+
+/**
+ * HomeGraphService.syncSnapshot() starts a self-improvement pump
+ * fire-and-forget behind an AbortController — it sleeps in 15s rounds and
+ * calls the semantic service (and therefore fetch) between them, for the rest
+ * of the process. dispose() aborts it.
+ */
+const disposables = trackDisposables();
 
 interface TriageDecisionScript {
   readonly action: 'reject' | 'review';
@@ -60,7 +69,7 @@ function createTriageService(llm: KnowledgeSemanticLlm | null): {
   const store = new KnowledgeStore({ dbPath: join(root, 'knowledge.sqlite') });
   const artifactStore = new ArtifactStore({ rootDir: join(root, 'artifacts') });
   const semanticService = new KnowledgeSemanticService(store, { llm });
-  const service = new HomeGraphService(store, artifactStore, { semanticService });
+  const service = disposables.add(new HomeGraphService(store, artifactStore, { semanticService }));
   return { root, store, artifactStore, service };
 }
 

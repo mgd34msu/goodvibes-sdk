@@ -10,6 +10,16 @@ import {
   REGULAR_KNOWLEDGE_DB_FILE,
 } from '../packages/sdk/src/platform/knowledge/store-config.js';
 import { HomeGraphService, KnowledgeService, KnowledgeStore } from '../packages/sdk/src/platform/knowledge/index.js';
+import { trackDisposables } from './_helpers/disposables.ts';
+
+/**
+ * A KnowledgeService kicks off initializeSchedules() fire-and-forget in its
+ * constructor, arming one bootstrap reconcile timer per schedule out to a 24h
+ * horizon. dispose() is what releases them; without it they outlive the file.
+ * Run alone the arming lands after the process has already exited, which is why
+ * this class of leftover only ever shows up in a whole-suite scan.
+ */
+const disposables = trackDisposables();
 
 const tmpRoots: string[] = [];
 
@@ -28,21 +38,21 @@ describe('knowledge instance isolation', () => {
     const regularStore = new KnowledgeStore({ configManager, dbFileName: REGULAR_KNOWLEDGE_DB_FILE });
     const agentStore = new KnowledgeStore({ configManager, dbFileName: GOODVIBES_AGENT_KNOWLEDGE_DB_FILE });
     const homeGraphStore = new KnowledgeStore({ configManager, dbFileName: HOME_GRAPH_KNOWLEDGE_DB_FILE });
-    const regularService = new KnowledgeService(regularStore, artifactStore, undefined, {
+    const regularService = disposables.add(new KnowledgeService(regularStore, artifactStore, undefined, {
       memoryRegistry: {
         add: async () => {},
         getAll: () => [],
         getStore: () => null,
       },
-    });
-    const agentService = new KnowledgeService(agentStore, artifactStore, undefined, {
+    }));
+    const agentService = disposables.add(new KnowledgeService(agentStore, artifactStore, undefined, {
       memoryRegistry: {
         add: async () => {},
         getAll: () => [],
         getStore: () => null,
       },
-    });
-    const homeGraphService = new HomeGraphService(homeGraphStore, artifactStore);
+    }));
+    const homeGraphService = disposables.add(new HomeGraphService(homeGraphStore, artifactStore));
 
     await agentStore.upsertSource({
       connectorId: 'manual',

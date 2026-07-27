@@ -9,6 +9,10 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { PushService } from '../packages/sdk/src/platform/push/index.js';
 import type { FleetNotice, PushMessage, VapidManager, PushSubscriptionStore } from '../packages/sdk/src/platform/push/index.js';
+import { trackDisposables } from './_helpers/disposables.ts';
+import { cancellableEscalationScheduler } from './_helpers/push-escalation.ts';
+
+const disposables = trackDisposables();
 
 /**
  * Every block these tests push arms a real ~5-minute escalation timer. They ran
@@ -22,7 +26,15 @@ afterEach(() => {
 });
 
 function makeService(): { service: PushService; delivered: PushMessage[] } {
-  const service = new PushService({ vapid: {} as VapidManager, store: {} as PushSubscriptionStore });
+  // Both halves, deliberately. The injected scheduler keeps an escalation timer
+  // from outliving the test whatever the service does, and tracking the service
+  // for dispose() exercises PushService.dispose() itself — which is the thing
+  // this round added, and would otherwise be covered nowhere.
+  const service = new PushService({
+    vapid: {} as VapidManager,
+    store: {} as PushSubscriptionStore,
+    scheduler: cancellableEscalationScheduler(disposables),
+  });
   built.push(service);
   const delivered: PushMessage[] = [];
   // Override the fan-out to capture the composed message without touching the
