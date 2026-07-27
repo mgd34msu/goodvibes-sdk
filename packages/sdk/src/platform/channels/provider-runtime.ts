@@ -386,6 +386,19 @@ export class ChannelProviderRuntimeManager {
 
   private async handleNtfyMessage(message: NtfyMessage): Promise<void> {
     if (message.event !== 'message') return;
+    // WHICH MACHINE READ THIS MESSAGE.
+    //
+    // On a network where the same install runs on several machines, exactly
+    // one of them should emit this line per message id. Two machines emitting
+    // it for one id means both were reading the topic, which is the precise
+    // failure leadership exists to prevent — and without this line there is no
+    // way to tell that from the outside, because the surface pipeline that
+    // runs afterwards leaves no per-message trace of the node that fed it.
+    // The id and topic are recorded; the message body deliberately is not.
+    logger.debug('ntfy: this node read an inbound message', {
+      topic: message.topic ?? '(none)',
+      messageId: message.id ?? '(none)',
+    });
     await handleNtfySurfacePayload(message, this.deps.buildSurfaceAdapterContext()).catch((error: unknown) => {
       logger.warn('ChannelProviderRuntimeManager: ntfy message dispatch failed', {
         error: summarizeError(error),
