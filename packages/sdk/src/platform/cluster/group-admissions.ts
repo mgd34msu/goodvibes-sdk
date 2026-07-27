@@ -52,9 +52,32 @@ export interface AdmissionHost {
   nextSeq(): number;
 }
 
+/**
+ * Why an admission request failed, when the caller must act differently.
+ *
+ * - `unanswered` — nobody replied. The ordinary case for a machine that booted
+ *   before its peers, and it resolves itself when they come up.
+ *
+ * - `refused` — a member said no AND proved it was a member when it said so.
+ *   This is final: the machine is out, waiting changes nothing, and the
+ *   operator has to put it back by hand. Only an AUTHENTICATED refusal reaches
+ *   this, which is what stops anything on the network from talking a machine
+ *   out of its own group by shouting at it.
+ *
+ * - `unverifiable-replies` — replies arrived and none of them could be
+ *   authenticated. Deliberately NOT final, because this machine genuinely
+ *   cannot tell the two possible causes apart: it may have been away across a
+ *   removal and no longer recognise any current member, or a stranger may be
+ *   sending it noise. It is worth telling the operator about and it is not
+ *   worth asserting a removal over.
+ *
+ * - `not-sent` — the request never left this machine.
+ */
+export type AdmissionFailure = 'unanswered' | 'refused' | 'unverifiable-replies' | 'not-sent';
+
 export type AdmissionOutcome =
   | { readonly ok: true; readonly grant: AdmissionGrant; readonly node: NodeKeyMaterial }
-  | { readonly ok: false; readonly reason: string };
+  | { readonly ok: false; readonly reason: string; readonly failure: AdmissionFailure };
 
 interface PendingAdmission {
   readonly kind: 'join' | 'rejoin';
@@ -62,6 +85,12 @@ interface PendingAdmission {
   readonly node: NodeKeyMaterial;
   readonly deadline: number;
   readonly settle: (result: AdmissionOutcome) => void;
+  /**
+   * Replies addressed to this machine that arrived and could not be
+   * authenticated. Counted so the timeout can tell "the group is not there"
+   * from "the group is there and no longer knows me".
+   */
+  unauthenticatedReplies: number;
 }
 
 export class GroupAdmissionService {
@@ -71,11 +100,11 @@ export class GroupAdmissionService {
 
   /** Fail an in-flight request — on shutdown, or when its deadline passes. */
   expire(now: number, reason: string): void {
-    if (this.pending && this.pending.deadline <= now) this.settle({ ok: false, reason });
+    if (this.pending && this.pending.deadline <= now) this.settle({ ok: false, failure: 'unanswered', reason });
   }
 
   abandon(reason: string): void {
-    this.settle({ ok: false, reason });
+    this.settle({ ok: false, failure: 'unanswered', reason });
   }
 
   /** Route a datagram the group layer could not authenticate with a group key. */
@@ -93,6 +122,9 @@ export class GroupAdmissionService {
         return;
       case GROUP_MESSAGE_TYPES.rejoinAccept:
         this.onRejoinReply(raw);
+        return;
+      case GROUP_MESSAGE_TYPES.rejoinRefuse:
+        this.onRejoinRefused(raw);
         return;
       default:
     }
@@ -190,10 +222,16 @@ export class GroupAdmissionService {
       MAX_GROUP_MEMBERS,
     );
     if (!decision.admit || !member) {
+      const reason = decision.admit ? 'not-on-the-roster' : decision.reason;
       this.host.logger.debug('cluster: refused a machine asking to come back', {
         nodeId: peeked.nodeId,
-        reason: decision.admit ? 'not-on-the-roster' : decision.reason,
+        reason,
       });
+      // Say no OUT LOUD. Staying silent here is what left a removed machine
+      // waiting out its full timeout and then reporting that nobody answered —
+      // a healthy-looking daemon, permanently out of the group, with nothing
+      // anywhere naming the reason or the fix.
+      await this.refuseRejoin(peeked.nodeId, reason);
       return;
     }
     const body = parseRejoinRequestBody(peeked.body);
@@ -231,6 +269,41 @@ export class GroupAdmissionService {
       },
       material.groupId,
       material.joinVerifier,
+    ));
+  }
+
+  /**
+   * Tell a returning machine, in a way it can actually verify, that it is out.
+   *
+   * Signed with THIS machine's identity key rather than the group key. The
+   * recipient cannot check the group key — a removal rotated it and that is
+   * precisely why it is being refused — but it can check this machine against
+   * the roster it stored before it went away, and this machine was on it.
+   *
+   * It carries no secret and grants nothing. The worst a forged one can do is
+   * make a machine give up early and tell its operator to run `cluster join`,
+   * and a forgery cannot even do that: it is dropped unless it verifies.
+   */
+  private async refuseRejoin(nodeId: string, reason: AdmissionRefusal | 'not-on-the-roster'): Promise<void> {
+    const material = this.host.material();
+    if (!material) return;
+    await this.host.send(encodeIdentityClassMessage(
+      {
+        type: GROUP_MESSAGE_TYPES.rejoinRefuse,
+        nodeId: this.host.nodeId,
+        nodeVersion: this.host.version,
+        seq: this.host.nextSeq(),
+        ts: this.host.clock.now(),
+        body: {
+          forNodeId: nodeId,
+          reason,
+          detail: reason === 'not-on-the-roster'
+            ? 'this machine is not on the group roster'
+            : describeRefusal(reason),
+        },
+      },
+      material.groupId,
+      material.node.identity,
     ));
   }
 
@@ -291,7 +364,7 @@ export class GroupAdmissionService {
     try {
       joinVerifier = await deriveJoinVerifier(input.joinKey, input.joinSalt);
     } catch {
-      return { ok: false, reason: 'that group advertised a join salt this build cannot read' };
+      return { ok: false, failure: 'not-sent', reason: 'that group advertised a join salt this build cannot read' };
     }
     return this.await('join', joinVerifier, node, input.timeoutMs, () => this.host.send(encodeJoinClassMessage(
       {
@@ -322,7 +395,7 @@ export class GroupAdmissionService {
    */
   async requestRejoin(timeoutMs: number): Promise<AdmissionOutcome> {
     const material = this.host.material();
-    if (!material) return { ok: false, reason: 'this machine is not in a group' };
+    if (!material) return { ok: false, failure: 'not-sent', reason: 'this machine is not in a group' };
     return this.await('rejoin', material.joinVerifier, material.node, timeoutMs, () => this.host.send(
       encodeIdentityClassMessage(
         {
@@ -353,7 +426,12 @@ export class GroupAdmissionService {
 
     if (type === GROUP_MESSAGE_TYPES.joinRefuse) {
       const detail = checked.envelope.body['detail'];
-      this.settle({ ok: false, reason: typeof detail === 'string' ? detail : 'the group refused the request' });
+      // An explicit refusal from the group: it heard us and said no.
+      this.settle({
+        ok: false,
+        failure: 'refused',
+        reason: typeof detail === 'string' ? detail : 'the group refused the request',
+      });
       return;
     }
     const grant = openGrant(pending.node, checked.envelope.body['sealed'], 'join');
@@ -394,6 +472,11 @@ export class GroupAdmissionService {
     const peeked = peekIdentityClassMessage(raw);
     if (!peeked || peeked.body['forNodeId'] !== this.host.nodeId) return;
     if (!this.rejoinReplyIsAuthentic(raw, peeked.nodeId)) {
+      // Counted, not just dropped: a reply arriving at all proves the group is
+      // on this network and heard us. Without that count the timeout below
+      // reports "nobody answered", which is the opposite of what happened and
+      // sends the operator looking for a network problem that does not exist.
+      pending.unauthenticatedReplies += 1;
       this.host.logger.debug('cluster: dropped a reply to this machine\'s return that it could not authenticate', {
         from: peeked.nodeId,
       });
@@ -402,6 +485,37 @@ export class GroupAdmissionService {
     const grant = openGrant(pending.node, peeked.body['sealed'], 'rejoin');
     if (!grant) return;
     this.settle({ ok: true, grant, node: pending.node });
+  }
+
+  /**
+   * A member said no, and proved it was a member when it said so.
+   *
+   * Settled immediately and marked terminal rather than waiting out the
+   * timeout: the answer is not going to change, and the difference between
+   * "wait, someone may still come up" and "you are out, run `cluster join`" is
+   * the entire point of telling the operator anything at all.
+   *
+   * Authenticated through the same two-key check the acceptance path uses. An
+   * unverifiable refusal is counted, not obeyed, so a stranger cannot talk a
+   * machine out of its own group.
+   */
+  private onRejoinRefused(raw: string): void {
+    const pending = this.pending;
+    if (!pending || pending.kind !== 'rejoin') return;
+    const peeked = peekIdentityClassMessage(raw);
+    if (!peeked || peeked.body['forNodeId'] !== this.host.nodeId) return;
+    if (!this.rejoinReplyIsAuthentic(raw, peeked.nodeId)) {
+      pending.unauthenticatedReplies += 1;
+      return;
+    }
+    const detail = peeked.body['detail'];
+    this.settle({
+      ok: false,
+      failure: 'refused',
+      reason: typeof detail === 'string' && detail.length > 0
+        ? detail
+        : 'the group refused this machine\'s return',
+    }, pending);
   }
 
   /** Group signing key first, then a remembered member's identity key. Never neither. */
@@ -428,18 +542,34 @@ export class GroupAdmissionService {
         node,
         deadline: this.host.clock.now() + timeoutMs,
         settle: resolve,
+        unauthenticatedReplies: 0,
       };
       this.pending = pending;
       void send().catch((error: unknown) => {
         this.settle(
-          { ok: false, reason: error instanceof Error ? error.message : 'the request could not be sent' },
+          {
+            ok: false,
+            failure: 'not-sent',
+            reason: error instanceof Error ? error.message : 'the request could not be sent',
+          },
           pending,
         );
       });
       // Identity-scoped so a timer left over from an earlier attempt cannot
       // settle a later one with a deadline that never applied to it.
       this.host.clock.setTimer(() => {
-        this.settle({ ok: false, reason: 'no machine in that group answered in time' }, pending);
+        this.settle(
+          pending.unauthenticatedReplies > 0
+            ? {
+              ok: false,
+              failure: 'unverifiable-replies',
+              reason: 'replies arrived and none of them could be authenticated:'
+                + ' either this machine was away across a removal and no longer recognises any current member,'
+                + ' or something on this network is answering that is not in the group',
+            }
+            : { ok: false, failure: 'unanswered', reason: 'no machine in that group answered in time' },
+          pending,
+        );
       }, timeoutMs);
     });
   }

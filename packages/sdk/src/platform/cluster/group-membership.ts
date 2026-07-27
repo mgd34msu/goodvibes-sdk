@@ -57,6 +57,17 @@ export const GROUP_MESSAGE_TYPES = {
   joinRefuse: 'JOIN_REFUSE',
   rejoin: 'REJOIN',
   rejoinAccept: 'REJOIN_ACCEPT',
+  /**
+   * An explicit "no" to a returning machine.
+   *
+   * Signed with the REFUSER'S identity key, not the group key. A machine that
+   * was away across a removal cannot verify the current group key by
+   * definition, but it can verify any member that was on the roster it stored
+   * before it left — which is exactly who is answering. Without this message a
+   * refused return is simply silence, and the returning machine waits out its
+   * whole timeout only to be told, wrongly, that nobody answered.
+   */
+  rejoinRefuse: 'REJOIN_REFUSE',
 } as const;
 
 /** Message classes authenticated with the join verifier rather than a group key. */
@@ -68,6 +79,7 @@ const JOIN_CLASS: ReadonlySet<string> = new Set([
 
 /** Message classes authenticated with the sender's long-lived identity key. */
 const IDENTITY_CLASS: ReadonlySet<string> = new Set([
+  GROUP_MESSAGE_TYPES.rejoinRefuse,
   GROUP_MESSAGE_TYPES.rejoin,
   GROUP_MESSAGE_TYPES.rejoinAccept,
 ]);
