@@ -1,7 +1,7 @@
 {
   "name": "goodvibes-sdk",
   "private": true,
-  "version": "1.17.0",
+  "version": "1.17.1",
   "type": "module",
   "packageManager": "bun@1.3.10",
   "engines": {
@@ -48,7 +48,7 @@
     "test:workers": "bun scripts/test.ts test/workers/workers.test.ts",
     "test:workers:wrangler": "bun scripts/test.ts test/workers-wrangler/wrangler.test.ts",
     "any:check": "bun scripts/no-any-types.ts",
-    "api:check": "bunx api-extractor run --local && bunx api-extractor run --local --config api-extractor.embed.json && git diff --quiet -- etc/goodvibes-sdk.api.md etc/goodvibes-sdk-embed.api.md",
+    "api:check": "bunx api-extractor run --local && bunx api-extractor run --local --config api-extractor.embed.json && git diff --quiet -- etc/goodvibes-sdk.api.md etc/goodvibes-sdk-embed.api.md && bun run api:subpath:check",
     "bundle:check": "bun scripts/bundle-budget.ts",
     "bundle:init": "bun scripts/plugin-bundle.ts init",
     "bundle:validate": "bun scripts/plugin-bundle.ts validate",
@@ -91,7 +91,9 @@
     "release:verify": "bun run validate && bun run flags:graduation && bun run security:audit && bun run test && bun run test:rn && bun run test:workers && bun run test:workers:wrangler && bun run release:dry-run && bun run install:smoke",
     "release:verify:published": "bun scripts/verify-published-packages.ts && bun scripts/install-smoke-check.ts --registry",
     "release:verify:verdaccio": "bun scripts/verdaccio-dry-run.ts",
-    "bundle:check:strict": "bun scripts/bundle-budget.ts --no-build"
+    "bundle:check:strict": "bun scripts/bundle-budget.ts --no-build",
+    "api:subpath": "bun scripts/check-subpath-api-surface.ts",
+    "api:subpath:check": "bun scripts/check-subpath-api-surface.ts --check"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "0.18.2",
