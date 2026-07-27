@@ -638,7 +638,27 @@ export class SurfaceElection {
     const mono = this.host.clock.monotonicNow();
     const selfHoldings = this.host.ledger.holdingsOf(this.host.nodeId, mono);
     let best: { nodeId: string; holdings: number } | null = null;
-    const liveWithinMs = this.host.timing.candidacyAnnounceMs * 2;
+    // A node this cluster would already declare DEAD as a holder must not be
+    // handed a surface as a candidate.
+    //
+    // These two liveness questions used to disagree. A holder is gone after
+    // masterTimeoutMs of silence, but a yield target was believed alive for
+    // twice candidacyAnnounceMs — and candidacyAnnounceMs IS masterTimeoutMs,
+    // so a crashed node stayed an eligible recipient for twice as long as it
+    // stayed an eligible holder. Measured on a two-node LAN with a 4s master
+    // timeout: the survivor completed a failover 4.6s after the peer was
+    // killed, then 0.8s later yielded one of the surfaces it had just rescued
+    // back to that same dead peer, and the surface had no consumer at all
+    // until the watchdog re-elected it 5.3s after that. The rebalance undid
+    // the failover it had just finished.
+    //
+    // Bounding candidacy by the master timeout makes the two answers agree:
+    // silence long enough to lose the role is silence long enough to stop
+    // receiving one.
+    const liveWithinMs = Math.min(
+      this.host.timing.candidacyAnnounceMs * 2,
+      this.host.timing.masterTimeoutMs,
+    );
     for (const nodeId of this.host.ledger.candidatesFor(this.surfaceId, mono, this.host.nodeId, liveWithinMs)) {
       const holdings = this.host.ledger.holdingsOf(nodeId, mono);
       if (!best || holdings < best.holdings) best = { nodeId, holdings };
