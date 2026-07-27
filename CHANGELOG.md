@@ -4,6 +4,70 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
+## [1.17.1] - 2026-07-27
+
+### Fixed
+
+- **A daemon that never bound a socket still left work running.**
+  `DaemonServer.stop()` released only what `start()` had wired, so a daemon
+  constructed and stopped without ever accepting a connection — a failed bind, a
+  short-lived embed, a test — kept 78 constructor-owned pollers ticking.
+  Construction-owned work is now released whether or not a socket was bound.
+
+- **`PushService` had no `dispose()`.** Its escalation scheduler outlived the
+  service.
+
+- **The `ProjectIndex` built by `registerAllTools` was never released.** The
+  orchestrator builds one per non-default agent working directory, each holding
+  a debounced flush timer reachable only from the tool closures of a cached
+  registry.
+
+- **A close during initialization raced in the inbox cursor store.**
+
+- **`RuntimePollerOwners` is all-required for a reason.** `homeGraphService` had
+  a `dispose()` from the day it was written and simply was not named in the
+  list, so its post-sync self-improvement pump — a rescheduling loop with as
+  many as ten rounds — kept running after disposal.
+
+### Changed
+
+- **Graph disposal now cancels the agent runs the graph was hosting**, and
+  reports how many. This is a deliberate behaviour change, not a leak fix: by
+  `dispose()` time the fleet registry, orchestration engine, process registry
+  and event bus are already gone, so an agent still described as "running" is
+  orphaned rather than preserved — its provider call stays in flight and it
+  sleeps out its retry backoff with nothing left to report to.
+
+- **`RetryConfig` gained an optional `signal`**, threaded through ten provider
+  call sites. Additive and optional — no consumer has to change — but it does
+  touch a public type in a patch release, which is worth saying plainly.
+
+  Equally worth saying: mutation testing showed this threading is NOT
+  load-bearing for the test that motivated it. An aborted request fails
+  non-retryably before it ever reaches the backoff, so the test passes with the
+  signal removed. It is kept on its own merit — a caller that cancels should not
+  wait out a sleep it no longer needs — and not as a fix for that failure.
+
+### Internal
+
+- **The published subpath surface is now gated.** `api:check` runs api-extractor
+  over `index.d.ts` and `embed.d.ts` only, so everything reachable exclusively
+  through a subpath export was invisible to it: `RuntimePollerOwners`,
+  `PushService`, `RetryConfig`, `HttpListener`, `AgentOrchestrator` and
+  `cancelAllAgentRuns` appear in NEITHER rollup. Consumer forks implement some
+  of those contracts, so adding a required member to one is a breaking change
+  that no gate in this repository caught — which is exactly what happened when
+  `cancelHostedAgentRuns` went in, surfacing only because somebody checked by
+  hand.
+
+  `api:check` now also records every exported name across all 135 typed subpath
+  exports, plus the required member names of every exported interface, and fails
+  on drift with the consumer impact spelled out. What it does NOT capture, so
+  nobody reads more into it than is there: parameter and return types, generics,
+  member types, and optional members. A required member whose TYPE changes
+  incompatibly still passes. The two rollups remain the authority for the root
+  and embed entry points.
+
 ## [1.17.0] - 2026-07-27
 
 ### Added
