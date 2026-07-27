@@ -19,19 +19,31 @@
  * then the top-most Delivered-To/X-Original-To stamped by the delivery agent.
  * The To: header is surfaced only as `unverifiedToHeaderClaim`.
  *   - FETCH BODY.PEEK[TEXT]<0.N> — bounded plain-text body preview
+ *   - UID FETCH of one whole message: headers, BODYSTRUCTURE, and only the
+ *     text/plain and text/html sections. Attachments are REPORTED, never
+ *     downloaded — see `fetchMessage`.
+ *   - APPEND of a draft with the \Draft flag, to the folder the server flags
+ *     `\Drafts` (RFC 6154) rather than to a hardcoded name — see `appendDraft`
  *   - XOAUTH2 pass-through: if imapPassword starts with 'Bearer ' the client
  *     sends AUTHENTICATE XOAUTH2 with the base64-encoded SASL token; token
  *     acquisition is out of scope.
- *   - {n} literal continuations on server responses
+ *   - {n} literal continuations on server responses, counted in bytes
  *   - Per-await timeouts via AbortSignal
  *   - LOGOUT
+ *
+ * Sequence numbers vs UIDs
+ * ────────────────────────
+ * `searchUnseen`/`searchAll` return sequence numbers, which are only valid
+ * inside the session that produced them. `fetchMessage` therefore speaks UID
+ * FETCH: the caller that reads a message is a later request holding an
+ * identifier from an earlier listing, and a sequence number from then may by
+ * now belong to a different message.
  *
  * Not supported (document boundaries):
  *   - IDLE / NOTIFY push
  *   - STARTTLS upgrade (use TLS-direct port 993)
- *   - Full MIME multipart decoding; only the first raw text block is returned
- *   - Message UID operations (uses sequence numbers)
- *   - APPEND, COPY, MOVE, EXPUNGE
+ *   - Attachment CONTENT — metadata only, deliberately
+ *   - COPY, MOVE, EXPUNGE, STORE, and every other flag or deletion command
  *   - Credentials are never logged; callers must not log them either
  *
  * Transport injection
@@ -45,6 +57,23 @@
 
 import type { Socket } from 'node:net';
 import {
+  attachmentsFromParts,
+  decodeTextPart,
+  extractBodyStructure,
+  extractFetchSection,
+  hasFetchResponse,
+  parseBodyStructure,
+  selectBodyPart,
+  type ImapBodyPart,
+} from './imap-bodystructure.js';
+import {
+  DEFAULT_DRAFTS_MAILBOX,
+  buildDraftMessage,
+  parseAppendUid,
+  selectDraftsMailbox,
+  validateDraftInput,
+} from './imap-draft.js';
+import {
   extractAuthenticationResults,
   extractDeliveryEvidence,
   extractHeader,
@@ -54,6 +83,7 @@ import {
   formatImapDate,
   type DeliveryEvidence,
 } from './imap-headers.js';
+import { ImapSession } from './imap-session.js';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -102,6 +132,62 @@ export interface ImapMessage extends ImapEnvelope {
   readonly bodyPreview: string;
 }
 
+/**
+ * One whole message: everything an envelope carries, plus its readable text.
+ *
+ * Extends `ImapEnvelope` rather than restating it so the provenance rules that
+ * govern a listing govern a full read identically — the mailbox it came from,
+ * the delivery evidence, the `To:` header still named as an unverified claim,
+ * and the sender-authentication results still carrying no authority. A second
+ * shape here would be a second, weaker labelling of the same untrusted text.
+ *
+ * `bodyText` and `bodyHtml` are attacker-controlled: they are whatever the
+ * sender wrote. `EmailService.readMessage` records the untrusted ingest for
+ * them exactly as the inbox listing does.
+ */
+export interface ImapMessageDetail extends ImapEnvelope {
+  /** Decoded text/plain body, '' when the message has none. */
+  readonly bodyText: string;
+  /** Decoded text/html body, '' when the message has none. */
+  readonly bodyHtml: string;
+  /** What is attached, described. Never the attached bytes — see `fetchMessage`. */
+  readonly attachments: readonly ImapAttachmentInfo[];
+}
+
+/**
+ * An attachment as the server described it. METADATA ONLY: this is read out of
+ * the message's BODYSTRUCTURE, and no code path in this module fetches an
+ * attachment's content.
+ */
+export interface ImapAttachmentInfo {
+  /** Filename the sender chose. '' when the part carries none. */
+  readonly filename: string;
+  /** Lowercased `type/subtype`, e.g. `application/pdf`. */
+  readonly contentType: string;
+  /** Size in bytes as the server reported it; 0 when it reported none. */
+  readonly sizeBytes: number;
+}
+
+/** The fields an APPENDed draft is built from. */
+export interface ImapAppendDraftInput {
+  readonly to: string;
+  readonly subject: string;
+  readonly body: string;
+  readonly from: string;
+  readonly inReplyTo?: string | undefined;
+  readonly references?: string | undefined;
+  /** Overrides Drafts-folder discovery. */
+  readonly mailbox?: string | undefined;
+}
+
+/** Where an appended draft landed, and under which UID if the server said. */
+export interface ImapAppendDraftResult {
+  /** The APPENDUID the server reported (RFC 4315), or null when it reported none. */
+  readonly uid: number | null;
+  /** The mailbox the draft was appended to, after discovery. */
+  readonly mailbox: string;
+}
+
 export interface ImapClientOptions {
   /** Pre-connected socket (TLS for prod, plain for tests). */
   readonly socket: Socket;
@@ -128,17 +214,12 @@ export interface ImapClientOptions {
 /** Per-operation timeout, and the connect timeout used by the node adapter. */
 export const IMAP_DEFAULT_TIMEOUT_MS = 15_000;
 const DEFAULT_MAX_BODY_BYTES = 4_096;
-const CRLF = '\r\n';
 
 function buildXOAuth2Token(username: string, bearerToken: string): string {
   const sasl = `user=${username}\x01auth=${bearerToken}\x01\x01`;
   return Buffer.from(sasl).toString('base64');
 }
 
-/**
- * Wraps a Socket with line-buffered async reading and tagged command writing.
- * Owns a single shared read cursor; callers must not interleave awaits.
- */
 // ---------------------------------------------------------------------------
 // IMAP credential quoting: LOGIN injection prevention
 // ---------------------------------------------------------------------------
@@ -171,221 +252,6 @@ export function imapQuoteCredential(value: string, name: string): string {
   return `"${escaped}"`;
 }
 
-class ImapSession {
-  private readonly socket: Socket;
-  private readonly timeoutMs: number;
-  private readonly literalCap: number;
-  private buffer = '';
-  private tagCounter = 0;
-
-  constructor(socket: Socket, timeoutMs: number, literalCap: number) {
-    this.socket = socket;
-    this.timeoutMs = timeoutMs;
-    this.literalCap = literalCap;
-    this.socket.setEncoding('utf8');
-  }
-
-  // -------------------------------------------------------------------------
-  // Low-level I/O
-  // -------------------------------------------------------------------------
-
-  /** Read lines until the predicate returns the accumulated lines or null. */
-  private async readUntil(
-    predicate: (lines: string[]) => string[] | null,
-  ): Promise<string[]> {
-    const lines: string[] = [];
-
-    return new Promise<string[]>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        cleanup();
-        reject(new Error('IMAP read timeout'));
-      }, this.timeoutMs);
-
-      const onData = (chunk: string): void => {
-        this.buffer += chunk;
-        let pos: number;
-        while ((pos = this.buffer.indexOf('\n')) !== -1) {
-          const line = this.buffer.slice(0, pos).replace(/\r$/, '');
-          this.buffer = this.buffer.slice(pos + 1);
-          lines.push(line);
-          const result = predicate(lines);
-          if (result !== null) {
-            cleanup();
-            resolve(result);
-            return;
-          }
-        }
-      };
-
-      const onError = (err: Error): void => {
-        cleanup();
-        reject(err);
-      };
-
-      const onClose = (): void => {
-        cleanup();
-        reject(new Error('IMAP connection closed unexpectedly'));
-      };
-
-      const cleanup = (): void => {
-        clearTimeout(timer);
-        this.socket.off('data', onData);
-        this.socket.off('error', onError);
-        this.socket.off('close', onClose);
-      };
-
-      this.socket.on('data', onData);
-      this.socket.on('error', onError);
-      this.socket.on('close', onClose);
-
-      // Flush any already-buffered data
-      if (this.buffer.length > 0) {
-        onData('');
-      }
-    });
-  }
-
-  /** Read the server greeting. */
-  async readGreeting(): Promise<void> {
-    await this.readUntil((lines) => {
-      const last = lines[lines.length - 1] ?? '';
-      if (last.startsWith('* OK') || last.startsWith('* PREAUTH')) return lines;
-      if (last.startsWith('* BYE')) return lines; // rejected
-      return null;
-    });
-  }
-
-  /** Send a tagged IMAP command and collect all response lines through completion. */
-  async command(text: string): Promise<string[]> {
-    this.tagCounter += 1;
-    const tag = `A${String(this.tagCounter).padStart(4, '0')}`;
-    const raw = `${tag} ${text}${CRLF}`;
-
-    await this.write(raw);
-    return this.readTaggedResponse(tag);
-  }
-
-  /**
-   * Collect response lines for a tagged command, handling {n} literals.
-   * A literal is signalled by a server response line ending with {<n>}.
-   * We read exactly n bytes of literal data then continue line reading.
-   */
-  private async readTaggedResponse(tag: string): Promise<string[]> {
-    const lines: string[] = [];
-
-    return new Promise<string[]>((resolve, reject) => {
-      let literalBytesRemaining = 0;
-      let literalAccum = '';
-      let literalOwnerLine = '';
-      const timer = setTimeout(() => {
-        cleanup();
-        reject(new Error(`IMAP command ${tag} timed out`));
-      }, this.timeoutMs);
-
-      const flush = (): void => {
-        let pos: number;
-        while (this.buffer.length > 0) {
-          if (literalBytesRemaining > 0) {
-            const take = Math.min(literalBytesRemaining, this.buffer.length);
-            literalAccum += this.buffer.slice(0, take);
-            this.buffer = this.buffer.slice(take);
-            literalBytesRemaining -= take;
-            if (literalBytesRemaining === 0) {
-              lines.push(`${literalOwnerLine}${literalAccum}`);
-              literalAccum = '';
-              literalOwnerLine = '';
-            }
-            continue;
-          }
-
-          pos = this.buffer.indexOf('\n');
-          if (pos === -1) break;
-
-          const line = this.buffer.slice(0, pos).replace(/\r$/, '');
-          this.buffer = this.buffer.slice(pos + 1);
-
-          // Check for literal continuation
-          const literalMatch = /\{(\d+)\}$/.exec(line);
-          if (literalMatch) {
-            const requested = parseInt(literalMatch[1] ?? '0', 10);
-            // Cap server-supplied literal size to prevent memory exhaustion
-            if (requested > this.literalCap) {
-              cleanup();
-              reject(new Error(
-                `IMAP server sent an oversized literal ({${requested}} bytes, ` +
-                `max allowed: ${this.literalCap}). The operation has been aborted.`,
-              ));
-              return;
-            }
-            literalBytesRemaining = requested;
-            literalOwnerLine = line.slice(0, line.lastIndexOf('{')) + ' ';
-            continue;
-          }
-
-          lines.push(line);
-
-          // Tagged completion
-          if (line.startsWith(`${tag} OK`) || line.startsWith(`${tag} NO`) || line.startsWith(`${tag} BAD`)) {
-            cleanup();
-            if (line.startsWith(`${tag} NO`) || line.startsWith(`${tag} BAD`)) {
-              reject(new Error(`IMAP command failed: ${line}`));
-            } else {
-              resolve(lines);
-            }
-            return;
-          }
-        }
-      };
-
-      const onData = (chunk: string): void => {
-        this.buffer += chunk;
-        flush();
-      };
-
-      const onError = (err: Error): void => {
-        cleanup();
-        reject(err);
-      };
-
-      const onClose = (): void => {
-        cleanup();
-        reject(new Error('IMAP connection closed during command'));
-      };
-
-      const cleanup = (): void => {
-        clearTimeout(timer);
-        this.socket.off('data', onData);
-        this.socket.off('error', onError);
-        this.socket.off('close', onClose);
-      };
-
-      this.socket.on('data', onData);
-      this.socket.on('error', onError);
-      this.socket.on('close', onClose);
-
-      // Flush already-buffered data
-      flush();
-    });
-  }
-
-  private write(data: string): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-      this.socket.write(data, 'utf8', (err) => {
-        if (err) reject(err);
-        else resolve();
-      });
-    });
-  }
-
-  destroy(): void {
-    try {
-      this.socket.destroy();
-    } catch {
-      // ignore
-    }
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Public client
 // ---------------------------------------------------------------------------
@@ -393,13 +259,55 @@ class ImapSession {
 const DEFAULT_MAILBOX = 'INBOX';
 
 /**
+ * Encode a mailbox name as RFC 3501 §5.1.3 modified UTF-7.
+ *
+ * IMAP mailbox names are 7-bit on the wire, so a folder called `Entwürfe` or
+ * `Черновики` — which is what a Drafts folder is called on most of the
+ * planet — has to be written `Entw&APw-rfe`. Without this, every non-English
+ * mailbox name is simply unusable: the quoted-string form rejects 8-bit
+ * characters outright, which would have made "save a draft" work only for
+ * people whose mail is in English.
+ *
+ * Runs of non-ASCII are base64'd as UTF-16BE with `/` written `,` and padding
+ * dropped; a literal `&` becomes `&-`.
+ */
+function toModifiedUtf7(mailbox: string): string {
+  let out = '';
+  let run = '';
+  const flush = (): void => {
+    if (run.length === 0) return;
+    const utf16be = Buffer.from(run, 'utf16le').swap16();
+    out += `&${utf16be.toString('base64').replace(/=+$/, '').replace(/\//g, ',')}-`;
+    run = '';
+  };
+  for (const char of mailbox) {
+    const code = char.codePointAt(0) ?? 0;
+    if (char === '&') {
+      flush();
+      out += '&-';
+      continue;
+    }
+    if (code >= 0x20 && code <= 0x7e) {
+      flush();
+      out += char;
+      continue;
+    }
+    run += char;
+  }
+  flush();
+  return out;
+}
+
+/**
  * Mailbox names that are plain atoms go on the wire bare; anything else is
  * sent as an RFC 3501 quoted string so spaces and delimiters stay intact.
+ * Non-ASCII names are encoded first — see `toModifiedUtf7`.
  */
 function formatMailboxName(mailbox: string): string {
-  return /^[A-Za-z0-9._/-]+$/.test(mailbox)
-    ? mailbox
-    : imapQuoteCredential(mailbox, 'mailbox name');
+  const encoded = toModifiedUtf7(mailbox);
+  return /^[A-Za-z0-9._/-]+$/.test(encoded)
+    ? encoded
+    : imapQuoteCredential(encoded, 'mailbox name');
 }
 
 export class ImapClient {
@@ -440,6 +348,21 @@ export class ImapClient {
     const criterion = sinceDate
       ? `UNSEEN SINCE ${formatImapDate(sinceDate)}`
       : 'UNSEEN';
+    const lines = await session.command(`SEARCH ${criterion}`);
+    return parseSequenceNumbers(lines);
+  }
+
+  /**
+   * Search every message in the mailbox, not only the unread ones.
+   * Returns sequence numbers, like `searchUnseen`.
+   *
+   * Exists because a caller that asked for "all mail" must not be quietly
+   * served "unread mail": a listing that advertises an unread-only switch has
+   * to honour both of its positions.
+   */
+  async searchAll(sinceDate?: Date): Promise<number[]> {
+    const session = this.session();
+    const criterion = sinceDate ? `SINCE ${formatImapDate(sinceDate)}` : 'ALL';
     const lines = await session.command(`SEARCH ${criterion}`);
     return parseSequenceNumbers(lines);
   }
@@ -495,6 +418,113 @@ export class ImapClient {
     return (bodyMap[seqNum] ?? '').slice(0, maxBytes);
   }
 
+  /**
+   * Fetch one whole message by UID: its headers, its readable text, and a
+   * description of what is attached to it.
+   *
+   * **UID, not sequence number.** A sequence number is only meaningful inside
+   * the session that produced it; the caller here is holding an identifier
+   * from an earlier listing, so anything else would risk reading a different
+   * message than the one asked for.
+   *
+   * **Read-only.** Every section is fetched with `BODY.PEEK[...]`. Plain
+   * `BODY[...]` sets `\Seen`, which would mean reading the owner's mail marked
+   * it read behind their back — for a daemon answering mail unattended, that
+   * is a visible change to their mailbox nobody asked for.
+   *
+   * **Attachments are described, never downloaded.** The parts list comes from
+   * BODYSTRUCTURE and only the text/plain and text/html sections are fetched.
+   * A message with a 30 MB archive on it costs the same to read as one without.
+   *
+   * Returns null when the UID is not in the mailbox. A deleted or expunged
+   * message is an ordinary answer to an ordinary question — the caller asked
+   * about something that is gone — and reporting it as a server failure would
+   * make callers treat a normal outcome as an outage.
+   */
+  async fetchMessage(uid: number): Promise<ImapMessageDetail | null> {
+    const session = this.session();
+
+    const headerLines = await session.command(`UID FETCH ${uid} BODY.PEEK[HEADER]`);
+    if (!hasFetchResponse(headerLines)) return null;
+    const rawHeaders = extractFetchSection(headerLines) ?? '';
+
+    const structureLines = await session.command(`UID FETCH ${uid} BODYSTRUCTURE`);
+    const parts = parseBodyStructure(extractBodyStructure(structureLines));
+
+    const textPart = selectBodyPart(parts, 'plain');
+    const htmlPart = selectBodyPart(parts, 'html');
+    let bodyText = textPart === null ? '' : await this.fetchTextSection(session, uid, textPart);
+    let bodyHtml = htmlPart === null ? '' : await this.fetchTextSection(session, uid, htmlPart);
+
+    if (parts.length === 0) {
+      // The server's own description of the message was unreadable. Falling
+      // back to BODY.PEEK[TEXT] is safe ONLY when the headers say the message
+      // is a single text part — on a multipart message that section is every
+      // part concatenated, including the encoded attachments this method
+      // exists not to download, so it stays unfetched and the body reads empty.
+      const contentType = extractHeader(rawHeaders, 'Content-Type').toLowerCase();
+      if (contentType.length === 0 || contentType.startsWith('text/')) {
+        const lines = await session.command(`UID FETCH ${uid} BODY.PEEK[TEXT]`);
+        const raw = (extractFetchSection(lines) ?? '').replace(/\r\n/g, '\n');
+        if (contentType.startsWith('text/html')) bodyHtml = raw;
+        else bodyText = raw;
+      }
+    }
+
+    const deliveryEvidence = extractDeliveryEvidence(rawHeaders);
+    return {
+      uid,
+      from: extractHeader(rawHeaders, 'From'),
+      subject: extractHeader(rawHeaders, 'Subject'),
+      date: extractHeader(rawHeaders, 'Date'),
+      messageId: extractHeader(rawHeaders, 'Message-ID'),
+      mailbox: this.mailbox,
+      deliveredTo: deliveryEvidence.map((entry) => entry.address),
+      deliveryEvidence,
+      // Display only — see the field docs on ImapEnvelope.
+      unverifiedToHeaderClaim: extractHeader(rawHeaders, 'To'),
+      authenticationResults: extractAuthenticationResults(rawHeaders),
+      bodyText,
+      bodyHtml,
+      attachments: attachmentsFromParts(parts),
+    };
+  }
+
+  /**
+   * Append a draft to the Drafts folder with the `\Draft` flag.
+   *
+   * The message is uploaded as an IMAP literal whose declared length is its
+   * length in BYTES. A subject or body with any non-ASCII character in it is
+   * longer in bytes than in characters, and a count taken from `.length` would
+   * leave the tail of the message being read by the server as commands.
+   *
+   * The target folder is discovered, not assumed: `LIST` first, prefer the
+   * folder the server flagged `\Drafts`, then a name match, then the plain
+   * `Drafts` name. Gmail's is `[Gmail]/Drafts`, and appending to a literal
+   * `Drafts` there creates a stray folder the owner never sees.
+   *
+   * Every caller-supplied field is validated before a byte is written; a CR or
+   * LF in any of them is refused, never stripped.
+   *
+   * `uid` is the APPENDUID the server reported (RFC 4315 UIDPLUS) and null
+   * when it advertised none — no id is invented to fill the field.
+   *
+   * Requires `open()`. APPEND writes to the Drafts mailbox only; the mailbox
+   * this client reads from stays EXAMINEd, and stays read-only.
+   */
+  async appendDraft(input: ImapAppendDraftInput): Promise<ImapAppendDraftResult> {
+    validateDraftInput(input);
+
+    const session = this.session();
+    const mailbox = await this.resolveDraftsMailbox(session, input.mailbox);
+    const message = buildDraftMessage(input, new Date());
+    const lines = await session.commandWithLiteral(
+      `APPEND ${formatMailboxName(mailbox)} (\\Draft)`,
+      message,
+    );
+    return { uid: parseAppendUid(lines), mailbox };
+  }
+
   /** Send LOGOUT and destroy the socket. */
   async logout(): Promise<void> {
     const session = this.session();
@@ -508,6 +538,47 @@ export class ImapClient {
   // -------------------------------------------------------------------------
   // Private
   // -------------------------------------------------------------------------
+
+  /**
+   * Fetch and decode one text section, read-only.
+   *
+   * Best-effort in the same way the inbox listing's body preview already is: a
+   * section that cannot be read — a literal over the session cap, a server
+   * that refuses that part — leaves that one body empty instead of failing a
+   * read whose headers and attachment list already succeeded.
+   */
+  private async fetchTextSection(
+    session: ImapSession,
+    uid: number,
+    part: ImapBodyPart,
+  ): Promise<string> {
+    try {
+      const lines = await session.command(`UID FETCH ${uid} BODY.PEEK[${part.section}]`);
+      return decodeTextPart(extractFetchSection(lines) ?? '', part.encoding, part.charset);
+    } catch {
+      return '';
+    }
+  }
+
+  /**
+   * Where a draft should go: the caller's override, else what the server says,
+   * else the plain `Drafts` name as a last resort — including when LIST itself
+   * fails, since an unanswered question about folders is not a reason to lose
+   * the draft.
+   */
+  private async resolveDraftsMailbox(
+    session: ImapSession,
+    override: string | undefined,
+  ): Promise<string> {
+    const explicit = (override ?? '').trim();
+    if (explicit.length > 0) return explicit;
+    try {
+      const lines = await session.command('LIST "" "*"');
+      return selectDraftsMailbox(lines) ?? DEFAULT_DRAFTS_MAILBOX;
+    } catch {
+      return DEFAULT_DRAFTS_MAILBOX;
+    }
+  }
 
   private session(): ImapSession {
     const maxBodyBytes = this.options.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES;
