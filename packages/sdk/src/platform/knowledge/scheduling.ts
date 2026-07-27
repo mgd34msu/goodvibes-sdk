@@ -22,6 +22,14 @@ export class KnowledgeScheduleService {
   private readonly jobs: readonly KnowledgeJobRecord[];
   private readonly scheduleTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private schedulesInitialized = false;
+  /**
+   * Set by dispose(). Schedule arming is an async path started fire-and-forget
+   * from the constructor, so it can still be mid-`await` when a host tears the
+   * graph down; without this flag it re-armed bootstrap timers AFTER dispose()
+   * had cleared the map, leaving three pending every time a short-lived process
+   * composed a graph, answered one question and disposed.
+   */
+  private disposed = false;
 
   constructor(private readonly context: KnowledgeSchedulingContext) {
     this.jobs = [
@@ -147,6 +155,7 @@ export class KnowledgeScheduleService {
   }
 
   dispose(): void {
+    this.disposed = true;
     for (const timer of this.scheduleTimers.values()) {
       clearTimeout(timer);
     }
@@ -154,9 +163,10 @@ export class KnowledgeScheduleService {
   }
 
   private async initializeSchedules(): Promise<void> {
-    if (this.schedulesInitialized) return;
+    if (this.schedulesInitialized || this.disposed) return;
     this.schedulesInitialized = true;
     await this.context.store.init();
+    if (this.disposed) return;
     await this.ensureBootstrapSchedule('knowledge-light-consolidation', 'Daily Light Consolidation', normalizeEverySchedule('24h'));
     await this.ensureBootstrapSchedule('knowledge-deep-consolidation', 'Weekly Deep Consolidation', normalizeCronSchedule('15 4 * * 0'));
     await this.ensureBootstrapSchedule('knowledge-semantic-self-improvement', 'Continuous Semantic Self-Improvement', normalizeEverySchedule('1h'));
@@ -209,7 +219,9 @@ export class KnowledgeScheduleService {
         nextRunAt: dueAt,
         metadata: schedule.metadata,
       });
-      if (!normalized.nextRunAt) continue;
+      // Re-checked after the upsert await: a dispose() that landed mid-loop must
+      // not have a timer armed behind it.
+      if (!normalized.nextRunAt || this.disposed) continue;
       const delay = Math.max(250, Math.min(2_147_483_647, normalized.nextRunAt - Date.now()));
       const timer = setTimeout(() => {
         void this.runScheduledJob(normalized.id).catch((error) => {
