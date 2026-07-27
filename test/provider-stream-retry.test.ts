@@ -23,22 +23,53 @@ const SSE_BODY = [
   '',
 ].join('\n');
 
+/**
+ * Install a fake `globalThis.fetch` that answers — and counts — ONLY requests
+ * aimed at `baseURL`.
+ *
+ * `globalThis.fetch` is process-wide, and this suite runs every file in ONE
+ * process. Other files leave background work running (reconnect loops, pollers,
+ * schedulers) that keeps calling fetch, and a fake that counts every call
+ * counts theirs too. Observed in a loaded full-suite run: this file's
+ * `expect(callCount).toBe(2)` reported `Received: 4962`. The number is not a
+ * property of the provider under test at all — it is a property of what else
+ * happened to be running.
+ *
+ * Scoping by URL keeps the assertions exact (they still pin the provider to an
+ * exact call count) while making them independent of the rest of the process.
+ * Anything aimed elsewhere gets a non-retryable 404 rather than this file's
+ * canned response, so a stray caller fails immediately instead of being handed
+ * a body meant for someone else and looping on it.
+ */
+function installScopedFetch(
+  baseURL: string,
+  respond: (attempt: number) => Response,
+): { readonly count: () => number } {
+  let callCount = 0;
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    if (!url.startsWith(baseURL)) {
+      return new Response('not this test\'s request', { status: 404 });
+    }
+    callCount += 1;
+    return respond(callCount);
+  }) as typeof fetch;
+  return { count: () => callCount };
+}
+
 describe('provider chat onRetry wiring', () => {
   test('AnthropicCompatProvider.chat calls onRetry once on a 503 then succeeds', async () => {
     const { AnthropicCompatProvider } = await import('../packages/sdk/src/platform/providers/anthropic-compat.js');
 
-    let callCount = 0;
-    globalThis.fetch = (async () => {
-      callCount++;
-      if (callCount === 1) {
-        return new Response('service unavailable', { status: 503 });
-      }
-      return new Response(SSE_BODY, { status: 200 });
-    }) as typeof fetch;
+    const BASE_URL = 'https://example.invalid/v1';
+    const fetched = installScopedFetch(BASE_URL, (attempt) =>
+      attempt === 1
+        ? new Response('service unavailable', { status: 503 })
+        : new Response(SSE_BODY, { status: 200 }));
 
     const provider = new AnthropicCompatProvider({
       name: 'test-compat',
-      baseURL: 'https://example.invalid/v1',
+      baseURL: BASE_URL,
       apiKey: 'test-key',
       defaultModel: 'claude-test',
       models: ['claude-test'],
@@ -57,7 +88,7 @@ describe('provider chat onRetry wiring', () => {
       },
     });
 
-    expect(callCount).toBe(2);
+    expect(fetched.count()).toBe(2);
     expect(response.content).toBe('hi');
     expect(retryCalls.length).toBe(1);
     expect(retryCalls[0]!.attempt).toBe(1);
@@ -68,15 +99,12 @@ describe('provider chat onRetry wiring', () => {
   test('AnthropicCompatProvider.chat does not call onRetry on a non-retryable 400', async () => {
     const { AnthropicCompatProvider } = await import('../packages/sdk/src/platform/providers/anthropic-compat.js');
 
-    let callCount = 0;
-    globalThis.fetch = (async () => {
-      callCount++;
-      return new Response('bad request', { status: 400 });
-    }) as typeof fetch;
+    const BASE_URL = 'https://example.invalid/v1';
+    const fetched = installScopedFetch(BASE_URL, () => new Response('bad request', { status: 400 }));
 
     const provider = new AnthropicCompatProvider({
       name: 'test-compat-400',
-      baseURL: 'https://example.invalid/v1',
+      baseURL: BASE_URL,
       apiKey: 'test-key',
       defaultModel: 'claude-test',
       models: ['claude-test'],
@@ -90,7 +118,7 @@ describe('provider chat onRetry wiring', () => {
     });
 
     await expect(promise).rejects.toThrow();
-    expect(callCount).toBe(1);
+    expect(fetched.count()).toBe(1);
     expect(onRetryCalls).toBe(0);
   });
 });
