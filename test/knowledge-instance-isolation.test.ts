@@ -52,7 +52,7 @@ describe('knowledge instance isolation', () => {
         getStore: () => null,
       },
     }));
-    const homeGraphService = new HomeGraphService(homeGraphStore, artifactStore);
+    const homeGraphService = disposables.add(new HomeGraphService(homeGraphStore, artifactStore));
 
     await agentStore.upsertSource({
       connectorId: 'manual',

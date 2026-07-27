@@ -44,7 +44,7 @@ describe('agent-alias KnowledgeService admission (the /api/goodvibes-agent/knowl
 describe('HomeGraphService admission (the home-graph ingest HTTP surface)', () => {
   test('ingestUrl / ingestNote / ingestArtifact refuse with the honest reason when the governor refuses', async () => {
     const { store, artifactStore } = createStores();
-    const service = new HomeGraphService(store, artifactStore, { admitExpensiveWork: refuse });
+    const service = disposables.add(new HomeGraphService(store, artifactStore, { admitExpensiveWork: refuse }));
     await expect(service.ingestUrl({} as never)).rejects.toThrow(/critical memory pressure/);
     await expect(service.ingestNote({} as never)).rejects.toThrow(/critical memory pressure/);
     await expect(service.ingestArtifact({} as never)).rejects.toThrow(/critical memory pressure/);
