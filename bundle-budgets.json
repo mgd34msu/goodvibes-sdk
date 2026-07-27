@@ -498,8 +498,8 @@
     "rationale": "new public package export budget; measured 52 B gzip @ v0.33.0 release verification; headroom max(ceil(52*1.2)=63, 52+50=102) -> 102 (+50 B floor dominates)"
   },
   "./platform/security": {
-    "gzip_bytes": 287,
-    "rationale": "new public package export budget; measured 237 B gzip @ v0.33.0 release verification; headroom max(ceil(237*1.2)=285, 237+50=287) -> 287 (+50 B floor dominates)"
+    "gzip_bytes": 446,
+    "rationale": "auth/token surface plus the untrusted-content contract: the standing rule text, the per-process ingest ledger, the outward-effect decision, and the port factory a browser engine is handed. Hoisted here from one product when the daemon gained browser and mail verbs of its own and needed the same contract; a second copy of the refusal wording would have drifted within a release. Measured 371 B gzip @ the browser-verb round (was 237 B); headroom max(ceil(371*1.2)=446, 371+50=421) -> 446 (1.2x dominates)"
   },
   "./platform/sessions": {
     "gzip_bytes": 138,
