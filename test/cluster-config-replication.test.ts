@@ -9,6 +9,8 @@
  * quietly defaulting either way.
  */
 import { describe, expect, test, afterEach } from 'bun:test';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   addGroupNode,
   advanceStepped,
@@ -45,6 +47,8 @@ import {
   MAX_REPLICATED_VALUE_BYTES,
 } from '../packages/sdk/src/platform/cluster/config-replica.js';
 import { listDaemonOwnedConfigPaths } from '../packages/sdk/src/platform/config/config-ownership.js';
+import { isDaemonOwnedSecretKey } from '../packages/sdk/src/platform/config/daemon-secret-keys.js';
+import { SecretsManager } from '../packages/sdk/src/platform/config/secrets.js';
 
 /**
  * Real replicated paths, taken from the policy itself.
@@ -340,5 +344,191 @@ describe('replicating across a live group', () => {
     expect(status.data.replication?.lastAppliedFrom).toBe('node-a');
     const rendered = JSON.stringify(status.data.replication);
     expect(rendered).not.toContain('workstream');
+  });
+});
+
+/**
+ * The credential a machine needs after it takes a surface over.
+ *
+ * The blocks above prove CLASSIFICATION — which paths may cross. These prove
+ * the rest of the sentence: that a daemon-owned credential actually arrives on
+ * the other machine, that it lands in that machine's DAEMON tier (one home,
+ * read back whatever directory the daemon starts in) rather than in whatever
+ * project directory the process happened to be launched from, and that a
+ * credential the group does not own does not travel with it.
+ *
+ * The secret stores here are real `SecretsManager` instances over real
+ * directories, not the harness Map, because "which tier did it land in" is a
+ * question a Map cannot answer and a test against a Map would only be
+ * restating the classification constant.
+ */
+describe('a daemon-owned credential after a handover', () => {
+  const GROUP_CREDENTIAL = 'group-owned-credential-value';
+  const PERSONAL_CREDENTIAL = 'this-operators-own-credential';
+  const NODE_LOCAL_CREDENTIAL = 'this-machines-own-credential';
+  /** Daemon-owned, and node-local: the group must not carry it. */
+  const NODE_LOCAL_PATH = 'cluster.multicastGroup';
+  /**
+   * A name nothing derives, so nothing can select it.
+   *
+   * Deliberately not a real provider key name: `SecretsManager` resolves the
+   * environment first, so a developer who happens to export `ANTHROPIC_API_KEY`
+   * would satisfy the "did not replicate" assertion from their own shell and
+   * the test would pass without proving anything. The assertion below pins that.
+   */
+  const PERSONAL_KEY = 'GV_TEST_OPERATOR_PERSONAL_KEY';
+
+  interface NodeSecrets {
+    readonly manager: SecretsManager;
+    readonly home: string;
+  }
+
+  function secretsFor(current: GroupTestWorld, label: string): NodeSecrets {
+    const home = join(current.tempRoot, `${label}-secrets`, 'home');
+    const project = join(current.tempRoot, `${label}-secrets`, 'project');
+    mkdirSync(home, { recursive: true });
+    mkdirSync(project, { recursive: true });
+    return {
+      manager: new SecretsManager({ projectRoot: project, globalHome: home, surfaceRoot: 'goodvibes' }),
+      home,
+    };
+  }
+
+  async function storedScope(manager: SecretsManager, key: string): Promise<string | undefined> {
+    const records = await manager.listDetailed();
+    return records.find((record) => record.key === key && record.source !== 'env')?.scope;
+  }
+
+  test('every credential that may cross the network is one the daemon owns', () => {
+    // The join between selection and storage: anything replication picks is
+    // daemon-owned, so it has a daemon home to land in on the far side.
+    for (const path of listReplicatedConfigPaths()) {
+      expect(isDaemonOwnedSecretKey(replicatedSecretKeyFor(path)), `${path} has no daemon home`).toBe(true);
+    }
+    // And NOT the converse — the daemon tier is a storage location, not an
+    // export list. A node-local daemon credential is daemon-owned and stays put.
+    expect(isDaemonOwnedSecretKey(replicatedSecretKeyFor(NODE_LOCAL_PATH))).toBe(true);
+    expect(isReplicatedSecretKey(replicatedSecretKeyFor(NODE_LOCAL_PATH))).toBe(false);
+  });
+
+  test('the credential reaches the other machine and lands in its daemon tier', async () => {
+    const created = createGroupWorld();
+    world = created;
+    const masterSecrets = secretsFor(created, 'node-a');
+    const standbySecrets = secretsFor(created, 'node-b');
+
+    const master = await addGroupNode(created, 'node-a', { isMaster: true, secrets: masterSecrets.manager });
+    const group = await createGroup(master.context, { displayName: 'the workshop' });
+    if (!group.ok) throw new Error(group.error);
+    const standby = await addGroupNode(created, 'node-b', { isMaster: false, secrets: standbySecrets.manager });
+    const joined = await joinGroup(standby.context, { groupId: group.data.groupId, joinKey: group.data.joinKey });
+    if (!joined.ok) throw new Error(joined.error);
+    await settle();
+
+    const secretKey = replicatedSecretKeyFor(SECRET_PATH);
+    // Nobody names a scope: the key is derived from a daemon-owned path, so the
+    // daemon tier is where it belongs and where it goes.
+    await masterSecrets.manager.set(secretKey, GROUP_CREDENTIAL);
+    expect(await storedScope(masterSecrets.manager, secretKey)).toBe('daemon');
+
+    await master.runtime.announceSecretChange(SECRET_PATH);
+    await advanceStepped(created, 40_000, 30_000);
+
+    expect(await standbySecrets.manager.get(secretKey)).toBe(GROUP_CREDENTIAL);
+    expect(await storedScope(standbySecrets.manager, secretKey)).toBe('daemon');
+    // On disk, in the receiving machine's own daemon home, encrypted under that
+    // machine's own keyfile — not stored as the sender's ciphertext.
+    const standbyStore = join(standbySecrets.home, '.goodvibes', 'daemon', 'secrets.enc');
+    expect(existsSync(standbyStore)).toBe(true);
+    expect(readFileSync(standbyStore, 'utf-8')).not.toContain(GROUP_CREDENTIAL);
+    // And never readable on the bus at any point.
+    expect(wireText(created)).not.toContain(GROUP_CREDENTIAL);
+  });
+
+  test('the Google refresh token survives a handover, so mail does not go quiet on failover', async () => {
+    // The concrete case this whole mechanism exists for. Before the daemon
+    // tier, a Google credential lived in whichever client silo the operator
+    // pasted it into, so the node that won a handover came up unable to read
+    // or send mail — and nothing said why. This asserts the actual path the
+    // agent stores, not a stand-in.
+    const GOOGLE_PATH = 'google.oauth.refreshToken';
+    const GOOGLE_CREDENTIAL = 'refresh-token-standing-in-for-a-real-one';
+
+    expect(isReplicatedConfigPath(GOOGLE_PATH)).toBe(true);
+    expect(isDaemonOwnedSecretKey(replicatedSecretKeyFor(GOOGLE_PATH))).toBe(true);
+
+    const created = createGroupWorld();
+    world = created;
+    const masterSecrets = secretsFor(created, 'node-a');
+    const standbySecrets = secretsFor(created, 'node-b');
+
+    const master = await addGroupNode(created, 'node-a', { isMaster: true, secrets: masterSecrets.manager });
+    const group = await createGroup(master.context, { displayName: 'the workshop' });
+    if (!group.ok) throw new Error(group.error);
+    const standby = await addGroupNode(created, 'node-b', { isMaster: false, secrets: standbySecrets.manager });
+    const joined = await joinGroup(standby.context, { groupId: group.data.groupId, joinKey: group.data.joinKey });
+    if (!joined.ok) throw new Error(joined.error);
+    await settle();
+
+    const secretKey = replicatedSecretKeyFor(GOOGLE_PATH);
+    await masterSecrets.manager.set(secretKey, GOOGLE_CREDENTIAL);
+    expect(await storedScope(masterSecrets.manager, secretKey)).toBe('daemon');
+
+    await master.runtime.announceSecretChange(GOOGLE_PATH);
+    await advanceStepped(created, 40_000, 30_000);
+
+    // The node that would take over can actually use it.
+    expect(await standbySecrets.manager.get(secretKey)).toBe(GOOGLE_CREDENTIAL);
+    expect(await storedScope(standbySecrets.manager, secretKey)).toBe('daemon');
+    // Re-encrypted under the receiving machine's own keyfile, and never
+    // readable on the bus.
+    const standbyStore = join(standbySecrets.home, '.goodvibes', 'daemon', 'secrets.enc');
+    expect(readFileSync(standbyStore, 'utf-8')).not.toContain(GOOGLE_CREDENTIAL);
+    expect(wireText(created)).not.toContain(GOOGLE_CREDENTIAL);
+  });
+
+  test('a machine that joins later is handed the credential in its snapshot, and nothing else', async () => {
+    // Nothing in the ambient environment may answer for these, or the negative
+    // assertions below would be satisfied without a single datagram.
+    expect(process.env[PERSONAL_KEY]).toBeUndefined();
+    expect(process.env[replicatedSecretKeyFor(NODE_LOCAL_PATH)]).toBeUndefined();
+
+    const created = createGroupWorld();
+    world = created;
+    const masterSecrets = secretsFor(created, 'node-a');
+
+    const master = await addGroupNode(created, 'node-a', { isMaster: true, secrets: masterSecrets.manager });
+    const group = await createGroup(master.context, { displayName: 'the workshop' });
+    if (!group.ok) throw new Error(group.error);
+
+    const groupKey = replicatedSecretKeyFor(SECRET_PATH);
+    const nodeLocalKey = replicatedSecretKeyFor(NODE_LOCAL_PATH);
+    await masterSecrets.manager.set(groupKey, GROUP_CREDENTIAL);
+    // Daemon-scoped, but named by a node-local path.
+    await masterSecrets.manager.set(nodeLocalKey, NODE_LOCAL_CREDENTIAL);
+    // This operator's own key: user-scoped, and nothing derives its name.
+    await masterSecrets.manager.set(PERSONAL_KEY, PERSONAL_CREDENTIAL, { scope: 'user' });
+    expect(await storedScope(masterSecrets.manager, nodeLocalKey)).toBe('daemon');
+    expect(await storedScope(masterSecrets.manager, PERSONAL_KEY)).toBe('user');
+
+    // The strongest push available for each: ask the group to replicate it.
+    await master.runtime.announceSecretChange(SECRET_PATH);
+    await master.runtime.announceSecretChange(NODE_LOCAL_PATH);
+
+    // The second machine only now joins, so everything it gets arrives in the
+    // snapshot the master sends a newcomer.
+    const standbySecrets = secretsFor(created, 'node-b');
+    const standby = await addGroupNode(created, 'node-b', { isMaster: false, secrets: standbySecrets.manager });
+    const joined = await joinGroup(standby.context, { groupId: group.data.groupId, joinKey: group.data.joinKey });
+    if (!joined.ok) throw new Error(joined.error);
+    await advanceStepped(created, 60_000, 30_000);
+
+    expect(await standbySecrets.manager.get(groupKey)).toBe(GROUP_CREDENTIAL);
+    // The two that must not travel, neither into the other machine's store...
+    expect(await standbySecrets.manager.get(nodeLocalKey)).toBeNull();
+    expect(await standbySecrets.manager.get(PERSONAL_KEY)).toBeNull();
+    // ...nor onto the wire at all, sealed or otherwise.
+    expect(wireText(created)).not.toContain(NODE_LOCAL_CREDENTIAL);
+    expect(wireText(created)).not.toContain(PERSONAL_CREDENTIAL);
   });
 });

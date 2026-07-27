@@ -115,6 +115,24 @@ export const DAEMON_OWNED_NON_SCHEMA_CONFIG_PATHS = [
   // this shipped would strand in a client silo and the daemon would keep
   // coordinating over multicast alone on a network that drops it.
   'cluster.peers',
+  // The credentials the daemon needs to keep mail and calendar working.
+  //
+  // These are app-layer paths rather than CONFIG_SCHEMA keys, which is exactly
+  // why they need naming here: the derivation walks daemon-owned paths, and a
+  // path nothing declares is a credential nothing files in the daemon tier.
+  //
+  // Without this, a node that wins a handover comes up with no way to read or
+  // send mail, because the credential stayed in the silo of whichever client
+  // the operator happened to paste it into. The symptom is email going quiet
+  // after a failover with nothing in the logs to explain it.
+  'email.passwordRef',
+  'calendar.google.clientSecretRef',
+  'calendar.microsoft.clientSecretRef',
+  'google.oauth.refreshToken',
+  // The private calendar feed address. A URL rather than a password, but it
+  // grants read access to the operator's calendar to anyone holding it, so it
+  // is treated as a credential and follows the same handover rules.
+  'calendar.google.icsUrl',
 ] as const;
 
 /** A daemon-owned path that has no scalar CONFIG_SCHEMA entry. */

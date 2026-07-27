@@ -27,10 +27,19 @@
  * replicates is the one a replicated config path names. Nothing else in the
  * secret store — least of all the group's own key material — has a config path
  * that derives its name, so nothing else can be selected.
+ *
+ * Selection is not the same thing as STORAGE, and the two are deliberately not
+ * merged. A replicated credential is by construction daemon-owned
+ * (`isDaemonOwnedSecretKey`), so the receiving node files it in its daemon
+ * secret tier — one home, read back whatever directory the daemon starts in.
+ * The reverse does not hold and must not: the daemon tier is not an export
+ * list. A daemon-owned credential replicates only if a REPLICATED path names
+ * it, which is why `cluster.*` credentials stay on the machine that made them.
  */
 import { CONFIG_SCHEMA } from '../config/schema.js';
 import { PORT_VALIDATION_HINT } from '../config/schema-shared.js';
 import { listDaemonOwnedConfigPaths } from '../config/config-ownership.js';
+import { daemonSecretKeyFor } from '../config/daemon-secret-keys.js';
 
 /**
  * Daemon-owned domains that describe how the GROUP behaves, and therefore
@@ -58,6 +67,17 @@ export const REPLICATED_CONFIG_DOMAINS: readonly string[] = [
   'atRest.',
   // Paired phones belong to the operator, not to one machine.
   'device.',
+  // The operator's mailbox and calendar belong to the operator, not to the
+  // machine that happens to be holding the surface this minute. A node that
+  // takes over a handover has to be able to read and send as them, or the
+  // handover moves the responsibility without the means to meet it.
+  //
+  // These are credential pointers, so what crosses the wire is the credential
+  // itself: it lands in the receiving node's daemon tier, which is the one
+  // home that does not depend on which directory the daemon started in.
+  'email.',
+  'calendar.',
+  'google.oauth.',
 ];
 
 /**
@@ -175,23 +195,17 @@ export function listDaemonConfigClassifications(): readonly ConfigPathClassifica
 
 // ── secrets ─────────────────────────────────────────────────────────────────
 
-function normalizeSecretKeyPart(value: string): string {
-  return value
-    .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
-    .replace(/[^a-zA-Z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .toUpperCase();
-}
-
 /**
  * The secret-store name a config path implies.
  *
- * Deliberately the same derivation the rest of the platform uses
- * (`buildGoodVibesSecretKey`), duplicated here only because it lives in a
- * consumer package; a test asserts the two agree so they cannot drift.
+ * One implementation, in the config layer (`daemonSecretKeyFor`), because the
+ * same derivation decides two things that must agree: which credential a
+ * replicated path names, and which credential the daemon owns and therefore
+ * stores in its own tier. This used to be a second copy of the rule, and a
+ * second copy is a drift waiting to happen.
  */
 export function replicatedSecretKeyFor(configPath: string): string {
-  return `GOODVIBES_${configPath.split('.').map(normalizeSecretKeyPart).filter(Boolean).join('_')}`;
+  return daemonSecretKeyFor(configPath);
 }
 
 let replicatedSecretCache: ReadonlyMap<string, string> | null = null;
