@@ -1,5 +1,7 @@
 import { execFileSync } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import { mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -10,12 +12,12 @@ const SDK_ROOT = resolve(__dirname, '..');
 const args = process.argv.slice(2);
 
 /**
- * Where this run's tests are allowed to put temp directories.
+ * Where this run's tests put their temp directories.
  *
  * The suite calls `mkdtempSync(join(tmpdir(), …))` in hundreds of places, and
  * the ones whose cleanup does not run — a test that throws before its
  * `afterEach`, a process killed mid-file — leave the directory behind in the
- * SYSTEM temp dir, where nothing ever reclaims it. On a machine where /tmp is a
+ * system temp dir, where nothing ever reclaims it. On a machine where /tmp is a
  * tmpfs that is a slow inode leak, and inodes are the resource that runs out
  * first: measured on this project's own host, ~74k leaked directories from
  * these suites had consumed all 1,048,576 tmpfs inodes, at which point every
@@ -23,32 +25,42 @@ const args = process.argv.slice(2);
  * the worst kind of failure, because it looks like a defect in whichever test
  * happened to run next.
  *
- * Pointing TMPDIR at a per-run directory inside the checkout makes the leak
- * bounded and self-cleaning: this run's leftovers go away with this run, and an
- * age-based sweep reclaims anything a signal-killed run could not remove
- * itself. It matches what the TUI's runner already does (scripts/run-tests.ts).
+ * The fix is a single per-run PARENT inside the system temp dir: this run's
+ * leftovers are one directory, removed with the run, and an age-based sweep
+ * reclaims what a signal-killed run could not remove itself. Thousands of
+ * unowned siblings become one owned subtree.
+ *
+ * It deliberately does NOT live inside the checkout. `tmpdir()` is expected to
+ * be somewhere no project rooted above it, and tests rely on that: pointing it
+ * at `<repo>/.test-tmp` put a tsconfig.json above every temp directory, so
+ * post-edit-diagnostics.test.ts's "returns [] when no TS project context is
+ * detectable" case suddenly had one and reported 14 diagnostics where it
+ * expected none. Anything rooted above the temp dir — tsconfig, .git,
+ * package.json, an editorconfig — is a property tests are entitled to assume
+ * absent.
  */
-const TEST_TMP_ROOT = resolve(SDK_ROOT, '.test-tmp');
-const RUN_TMP_DIR = join(TEST_TMP_ROOT, `run-${process.pid}`);
+const TEST_TMP_ROOT = tmpdir();
+const RUN_TMP_PREFIX = 'goodvibes-sdk-testrun-';
+const RUN_TMP_DIR = join(TEST_TMP_ROOT, `${RUN_TMP_PREFIX}${process.pid}-${randomBytes(4).toString('hex')}`);
 /** Entries older than this are from a run that is long gone. */
 const STALE_RUN_MS = 60 * 60 * 1000;
 
 /**
- * Reclaim `run-*` directories left by a previous run that could not clean up
+ * Reclaim per-run directories left by a previous run that could not clean up
  * after itself. Age-based, so a sibling run started moments ago is never
  * touched — several checkouts of this repository are routinely under test at
- * the same time.
+ * the same time, and so are other projects sharing this temp dir.
  */
 function sweepStaleRunDirs(): void {
   let entries: string[];
   try {
     entries = readdirSync(TEST_TMP_ROOT);
   } catch {
-    return; // nothing there yet
+    return;
   }
   const now = Date.now();
   for (const name of entries) {
-    if (!name.startsWith('run-')) continue;
+    if (!name.startsWith(RUN_TMP_PREFIX)) continue;
     const path = join(TEST_TMP_ROOT, name);
     try {
       if (now - statSync(path).mtimeMs <= STALE_RUN_MS) continue;
@@ -141,14 +153,6 @@ await withWorkspaceLock('test', () => {
         TMPDIR: RUN_TMP_DIR,
         TMP: RUN_TMP_DIR,
         TEMP: RUN_TMP_DIR,
-        // TMPDIR now lives INSIDE this repository, so git discovery from a bare
-        // temp directory would walk up and find the repo's own `.git` — which
-        // breaks every test that needs a genuinely non-git directory. Fence
-        // discovery at the run's temp root. A repository a test `git init`s
-        // under this directory is unaffected: its own `.git` is found first.
-        // Set here in the child's environment because bun snapshots the
-        // environment at process start.
-        GIT_CEILING_DIRECTORIES: RUN_TMP_DIR,
       },
     });
   } finally {
