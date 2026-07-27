@@ -236,6 +236,18 @@ export {
   type GoogleConnectionSources,
 } from './connection.js';
 
+export {
+  GMAIL_HISTORY_SCOPES,
+  collectHistoryDelta,
+  type GmailHistoryType,
+  type HistoryDeltaOptions,
+  type GmailHistoryDelta,
+  type HistoryUnavailableReason,
+  type HistoryDeltaUnavailable,
+  type HistoryListDeltaResult,
+  type HistoryDeltaDeps,
+} from './history-delta.js';
+
 // ---------------------------------------------------------------------------
 // Browser-driven pages (all against an injected GoogleBrowserPort)
 // ---------------------------------------------------------------------------

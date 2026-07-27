@@ -15815,6 +15815,10 @@
       "kind": "const"
     },
     {
+      "name": "GMAIL_HISTORY_SCOPES",
+      "kind": "const"
+    },
+    {
       "name": "GMAIL_IMAP_HOST",
       "kind": "const"
     },
@@ -15870,6 +15874,18 @@
       "required": [
         "projectId"
       ]
+    },
+    {
+      "name": "GmailHistoryDelta",
+      "kind": "interface",
+      "required": [
+        "historyId",
+        "messages"
+      ]
+    },
+    {
+      "name": "GmailHistoryType",
+      "kind": "type"
     },
     {
       "name": "GmailMcpLayout",
@@ -16290,6 +16306,37 @@
       ]
     },
     {
+      "name": "HistoryDeltaDeps",
+      "kind": "interface",
+      "required": [
+        "fetchHistoryPage",
+        "getMessage",
+        "scopes"
+      ]
+    },
+    {
+      "name": "HistoryDeltaOptions",
+      "kind": "interface",
+      "required": [
+        "startHistoryId"
+      ]
+    },
+    {
+      "name": "HistoryDeltaUnavailable",
+      "kind": "interface",
+      "required": [
+        "unavailable"
+      ]
+    },
+    {
+      "name": "HistoryListDeltaResult",
+      "kind": "type"
+    },
+    {
+      "name": "HistoryUnavailableReason",
+      "kind": "type"
+    },
+    {
       "name": "InstallOptions",
       "kind": "interface",
       "required": [
@@ -16636,6 +16683,10 @@
     },
     {
       "name": "collectDownloadedClientFile",
+      "kind": "function"
+    },
+    {
+      "name": "collectHistoryDelta",
       "kind": "function"
     },
     {
