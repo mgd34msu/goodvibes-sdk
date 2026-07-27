@@ -1,0 +1,8 @@
+[
+  {
+    "date": "2026-07-27",
+    "approach": "Running the SDK's full test suite as a background command with unbounded captured output",
+    "reason": "One run streamed ~47GB into a single task .output file and filled the host's 63G /tmp tmpfs, after which no process could open a file and the Bash tool itself failed with ENOSPC before running anything.",
+    "suggestion": "Always pipe chatty commands through `| tail -N`. Recovery when the tool is already wedged: the Write tool can still truncate an existing file (O_TRUNC frees blocks before writing), so Read one line of the largest task .output and overwrite it. Agent .output paths are symlinks into $HOME and refuse Write; background COMMAND outputs are real files in /tmp and are the ones to truncate."
+  }
+]
