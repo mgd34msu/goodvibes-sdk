@@ -81,6 +81,16 @@ export {
 } from './message.js';
 export type { PurchaseFacts } from './message.js';
 
+export {
+  mayEnterCardDetails,
+  mayOfferCardEntryFlow,
+  isRemoteMessageSurface,
+  scanForCardDetails,
+  evaluateCardEntry,
+  describeCardEntryRefusal,
+} from './entry-surface.js';
+export type { CardEntrySurface, CardDetailScan, CardEntryDecision } from './entry-surface.js';
+
 export { checkPaymentGates } from './gates.js';
 export type { GateInput, GateRefusal } from './gates.js';
 

@@ -21731,6 +21731,27 @@
       "kind": "const"
     },
     {
+      "name": "CardDetailScan",
+      "kind": "interface",
+      "required": [
+        "looksLikeCardDetails",
+        "matched"
+      ]
+    },
+    {
+      "name": "CardEntryDecision",
+      "kind": "interface",
+      "required": [
+        "allowed",
+        "matched",
+        "reason"
+      ]
+    },
+    {
+      "name": "CardEntrySurface",
+      "kind": "type"
+    },
+    {
       "name": "CardMetadata",
       "kind": "interface",
       "required": [
@@ -22047,6 +22068,10 @@
       "kind": "function"
     },
     {
+      "name": "describeCardEntryRefusal",
+      "kind": "function"
+    },
+    {
       "name": "describePaymentTaint",
       "kind": "function"
     },
@@ -22055,11 +22080,19 @@
       "kind": "function"
     },
     {
+      "name": "evaluateCardEntry",
+      "kind": "function"
+    },
+    {
       "name": "evaluatePaymentTaint",
       "kind": "function"
     },
     {
       "name": "formatMinorUnits",
+      "kind": "function"
+    },
+    {
+      "name": "isRemoteMessageSurface",
       "kind": "function"
     },
     {
@@ -22072,6 +22105,14 @@
     },
     {
       "name": "isValidTimezone",
+      "kind": "function"
+    },
+    {
+      "name": "mayEnterCardDetails",
+      "kind": "function"
+    },
+    {
+      "name": "mayOfferCardEntryFlow",
       "kind": "function"
     },
     {
@@ -22112,6 +22153,10 @@
     },
     {
       "name": "sameDay",
+      "kind": "function"
+    },
+    {
+      "name": "scanForCardDetails",
       "kind": "function"
     },
     {

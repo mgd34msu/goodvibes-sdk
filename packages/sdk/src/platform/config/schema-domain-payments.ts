@@ -46,6 +46,12 @@ export const paymentsConfigDefaults = {
     shipping: {
       preferredTier: 'normal' as const,
     },
+    billingAddress: {
+      name: '', line1: '', line2: '', city: '', region: '', postalCode: '', country: '',
+    },
+    shippingAddress: {
+      name: '', line1: '', line2: '', city: '', region: '', postalCode: '', country: '',
+    },
     windows: {
       vetoMinutes: 10,
       approvalMinutes: 60,
@@ -143,6 +149,106 @@ export const paymentsConfigSettings: ConfigSetting[] = [
     enumValues: ['normal', 'fast', 'fastest'],
     description:
       "Preferred delivery tier, ordinal against WHAT THE CHECKOUT ACTUALLY OFFERS rather than delivery-day promises: its options are ranked cheapest-first and this indexes into that ranking. The chosen tier draws on the overage budget; when the budget cannot cover it, delivery steps down ONE tier at a time until it fits, stopping at the cheapest. A step-down needs no approval (it is within budget) but is recorded and shown to you, so you never learn about it from a late package. Default 'normal'.",
+  },
+
+  // ── Addresses ──────────────────────────────────────────────────────────
+  {
+    key: 'payments.billingAddress.name',
+    type: 'string',
+    default: '',
+    description:
+      'Full name as it appears on the card statement. Part of the billing address the card issuer checks against (address verification). Stored in daemon-owned config rather than the secret store because surfaces must display and edit it — but note it sits beside stored card material, so anyone holding both has everything a card-not-present charge needs. A virtual card with a hard issuer cap is what bounds that.',
+  },
+  {
+    key: 'payments.billingAddress.line1',
+    type: 'string',
+    default: '',
+    description:
+      'Street address, first line. Part of the billing address the card issuer checks against (address verification). Stored in daemon-owned config rather than the secret store because surfaces must display and edit it — but note it sits beside stored card material, so anyone holding both has everything a card-not-present charge needs. A virtual card with a hard issuer cap is what bounds that.',
+  },
+  {
+    key: 'payments.billingAddress.line2',
+    type: 'string',
+    default: '',
+    description:
+      'Second address line (apartment, suite); leave empty when unused. Part of the billing address the card issuer checks against (address verification). Stored in daemon-owned config rather than the secret store because surfaces must display and edit it — but note it sits beside stored card material, so anyone holding both has everything a card-not-present charge needs. A virtual card with a hard issuer cap is what bounds that.',
+  },
+  {
+    key: 'payments.billingAddress.city',
+    type: 'string',
+    default: '',
+    description:
+      'City or town. Part of the billing address the card issuer checks against (address verification). Stored in daemon-owned config rather than the secret store because surfaces must display and edit it — but note it sits beside stored card material, so anyone holding both has everything a card-not-present charge needs. A virtual card with a hard issuer cap is what bounds that.',
+  },
+  {
+    key: 'payments.billingAddress.region',
+    type: 'string',
+    default: '',
+    description:
+      'State, province or region. Part of the billing address the card issuer checks against (address verification). Stored in daemon-owned config rather than the secret store because surfaces must display and edit it — but note it sits beside stored card material, so anyone holding both has everything a card-not-present charge needs. A virtual card with a hard issuer cap is what bounds that.',
+  },
+  {
+    key: 'payments.billingAddress.postalCode',
+    type: 'string',
+    default: '',
+    description:
+      'Postal or ZIP code. Part of the billing address the card issuer checks against (address verification). Stored in daemon-owned config rather than the secret store because surfaces must display and edit it — but note it sits beside stored card material, so anyone holding both has everything a card-not-present charge needs. A virtual card with a hard issuer cap is what bounds that.',
+  },
+  {
+    key: 'payments.billingAddress.country',
+    type: 'string',
+    default: '',
+    description:
+      'Country, as the checkout expects it (an ISO two-letter code is safest). Part of the billing address the card issuer checks against (address verification). Stored in daemon-owned config rather than the secret store because surfaces must display and edit it — but note it sits beside stored card material, so anyone holding both has everything a card-not-present charge needs. A virtual card with a hard issuer cap is what bounds that.',
+  },
+  {
+    key: 'payments.shippingAddress.name',
+    type: 'string',
+    default: '',
+    description:
+      'Recipient name. Where purchases are delivered. A purchase is REFUSED while the shipping address is incomplete — there is nowhere to send it, and guessing an address is not a thing this should do.',
+  },
+  {
+    key: 'payments.shippingAddress.line1',
+    type: 'string',
+    default: '',
+    description:
+      'Street address, first line. Where purchases are delivered. A purchase is REFUSED while the shipping address is incomplete — there is nowhere to send it, and guessing an address is not a thing this should do.',
+  },
+  {
+    key: 'payments.shippingAddress.line2',
+    type: 'string',
+    default: '',
+    description:
+      'Second address line (apartment, suite); leave empty when unused. Where purchases are delivered. A purchase is REFUSED while the shipping address is incomplete — there is nowhere to send it, and guessing an address is not a thing this should do.',
+  },
+  {
+    key: 'payments.shippingAddress.city',
+    type: 'string',
+    default: '',
+    description:
+      'City or town. Where purchases are delivered. A purchase is REFUSED while the shipping address is incomplete — there is nowhere to send it, and guessing an address is not a thing this should do.',
+  },
+  {
+    key: 'payments.shippingAddress.region',
+    type: 'string',
+    default: '',
+    description:
+      'State, province or region. Where purchases are delivered. A purchase is REFUSED while the shipping address is incomplete — there is nowhere to send it, and guessing an address is not a thing this should do.',
+  },
+  {
+    key: 'payments.shippingAddress.postalCode',
+    type: 'string',
+    default: '',
+    description:
+      'Postal or ZIP code. Where purchases are delivered. A purchase is REFUSED while the shipping address is incomplete — there is nowhere to send it, and guessing an address is not a thing this should do.',
+  },
+  {
+    key: 'payments.shippingAddress.country',
+    type: 'string',
+    default: '',
+    description:
+      'Country, as the checkout expects it (an ISO two-letter code is safest). Where purchases are delivered. A purchase is REFUSED while the shipping address is incomplete — there is nowhere to send it, and guessing an address is not a thing this should do.',
   },
 
   // ── The two windows ────────────────────────────────────────────────────
