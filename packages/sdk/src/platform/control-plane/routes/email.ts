@@ -265,11 +265,22 @@ function refuseTaintedSend(
   ledger: UntrustedContentLedger,
   fields: Readonly<Record<string, string | undefined>>,
   description: string,
+  replyToEnvelopeSenders: readonly string[] = [],
 ): void {
   const decision = evaluateOutwardEffect({
     request: { toolName: 'email', action: 'email.send', description },
     ledger,
     content: fields,
+    taintOptions: {
+      // The recipient is where the mail GOES; length thresholds are the wrong
+      // instrument for it, so it is tested by containment.
+      exactMatchFields: ['to'],
+      // …with one exemption: replying to where a message actually came from,
+      // established from delivery evidence rather than a From: header.
+      replyToEnvelopeSenders,
+      // A reply quoting what it answers repeats it by design.
+      stripQuotedFields: ['body'],
+    },
   });
   if (decision.allowed) return;
   throw new GatewayVerbError(

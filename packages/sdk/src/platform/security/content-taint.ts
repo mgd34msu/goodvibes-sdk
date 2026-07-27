@@ -53,11 +53,55 @@ export const MIN_SHARED_CHARS = 40;
 /** Longest single field considered; a caller cannot force an O(huge) scan. */
 const MAX_FIELD_CHARS = 20_000;
 
+/**
+ * A span appearing in this many DISTINCT untrusted origins is boilerplate, not
+ * derivation.
+ *
+ * Confidentiality footers, unsubscribe lines and standard disclaimers are long
+ * enough to clear the span threshold and appear in mail from everyone. Treating
+ * them as evidence would refuse ordinary correspondence, and the fix must not
+ * be to raise the threshold — that would weaken the case the check exists for,
+ * which is a verbatim account number or token. Repetition across unrelated
+ * senders is the signal that distinguishes boilerplate from a payload.
+ */
+const BOILERPLATE_DISTINCT_ORIGINS = 2;
+
 /** Untrusted text retained for comparison, with where it came from. */
 export interface TaintSource {
   readonly surface: string;
   readonly origin: string;
   readonly text: string;
+}
+
+export interface TaintOptions {
+  /**
+   * Fields tested by EXACT CONTAINMENT rather than by the length thresholds.
+   *
+   * A recipient address is short and high-signal: `accounts-payable@vendor.example`
+   * is 3 words and 31 characters, under both thresholds, so an injection that
+   * only redirects where mail goes would pass a length test entirely. Length is
+   * the wrong instrument for a field where the whole value IS the payload.
+   */
+  readonly exactMatchFields?: readonly string[] | undefined;
+  /**
+   * Recipients that are allowed even when they appear in untrusted text.
+   *
+   * Exactly one case: replying to where a message actually came from. The
+   * address must be established from DELIVERY EVIDENCE — the envelope sender —
+   * and never from a `From:` header, which the sender writes. Without this,
+   * every legitimate auto-reply is refused, because the address it replies to
+   * is by definition present in the message it answers.
+   */
+  readonly replyToEnvelopeSenders?: readonly string[] | undefined;
+  /**
+   * Strip quoted regions from these fields before checking.
+   *
+   * A reply that quotes the message it answers repeats it verbatim by design.
+   * Quoting is not derivation of an INSTRUCTION; it is context. Whether that
+   * is safe is a judgement the owner should make knowingly — see the module
+   * header for what stays refused.
+   */
+  readonly stripQuotedFields?: readonly string[] | undefined;
 }
 
 export interface TaintFinding {
@@ -130,15 +174,78 @@ function truncate(value: string, limit = 120): string {
  * refusal names the field an operator would recognise ("body", "subject")
  * rather than an index.
  */
+
+/**
+ * Remove quoted regions from a reply body.
+ *
+ * Two conventions cover nearly all real mail: `>`-prefixed lines, and an
+ * attribution line ("On <date>, <someone> wrote:") after which everything is
+ * the quoted original. Anything not matched stays in and is still checked.
+ */
+export function stripQuotedRegions(body: string): string {
+  const lines = body.split(/\r?\n/);
+  const kept: string[] = [];
+  for (const line of lines) {
+    if (/^\s*>/.test(line)) continue;
+    if (/^\s*On .*wrote:\s*$/i.test(line.trim())) break;
+    if (/^\s*-{2,}\s*(Original Message|Forwarded message)\s*-{2,}/i.test(line)) break;
+    kept.push(line);
+  }
+  return kept.join('\n');
+}
+
+/** Normalized recipient address, for exact containment. */
+function normalizeAddress(value: string): string {
+  const trimmed = value.trim();
+  const angled = /<([^<>]+)>\s*$/.exec(trimmed);
+  return (angled?.[1] ?? trimmed).replace(/^<|>$/g, '').trim().toLowerCase();
+}
+
+/** How many distinct origins contain this span — boilerplate repeats, payloads do not. */
+function originsContaining(span: string, sources: readonly TaintSource[]): number {
+  const origins = new Set<string>();
+  for (const source of sources) {
+    if (normalizeSpan(source.text).includes(span)) origins.add(source.origin);
+  }
+  return origins.size;
+}
+
 export function findContentTaint(
   fields: Readonly<Record<string, string | undefined>>,
   sources: readonly TaintSource[],
+  options: TaintOptions = {},
 ): readonly TaintFinding[] {
   const findings: TaintFinding[] = [];
   if (sources.length === 0) return findings;
 
-  for (const [field, rawValue] of Object.entries(fields)) {
-    if (rawValue === undefined || rawValue.trim().length === 0) continue;
+  const exactFields = new Set(options.exactMatchFields ?? []);
+  const stripFields = new Set(options.stripQuotedFields ?? []);
+  const allowedReplies = new Set((options.replyToEnvelopeSenders ?? []).map(normalizeAddress));
+
+  for (const [field, rawInput] of Object.entries(fields)) {
+    if (rawInput === undefined || rawInput.trim().length === 0) continue;
+    const rawValue = stripFields.has(field) ? stripQuotedRegions(rawInput) : rawInput;
+    if (rawValue.trim().length === 0) continue;
+
+    // Short, high-signal fields: the value itself is the payload, so the test
+    // is containment rather than length.
+    if (exactFields.has(field)) {
+      const address = normalizeAddress(rawValue);
+      if (address.length === 0) continue;
+      if (allowedReplies.has(address)) continue;
+      const hit = sources.find((source) => normalizeSpan(source.text).includes(address));
+      if (hit !== undefined) {
+        findings.push({
+          field,
+          surface: hit.surface,
+          origin: hit.origin,
+          excerpt: truncate(address),
+          kind: 'shared-span',
+        });
+      }
+      continue;
+    }
+
     const words = normalizeWords(rawValue);
     const span = normalizeSpan(rawValue);
     const fieldShingles = words.length >= MIN_SHARED_WORDS ? shingles(words, MIN_SHARED_WORDS) : null;
@@ -150,7 +257,13 @@ export function findContentTaint(
         const sourceShingles = shingles(normalizeWords(source.text), MIN_SHARED_WORDS);
         let shared: string | null = null;
         for (const shingle of fieldShingles) {
-          if (sourceShingles.has(shingle)) { shared = shingle; break; }
+          if (!sourceShingles.has(shingle)) continue;
+          // Boilerplate applies to the word rule as well as the span rule — a
+          // confidentiality footer clears both, and exempting only one branch
+          // means whichever fires first decides, which is not a rule at all.
+          if (originsContaining(shingle, sources) >= BOILERPLATE_DISTINCT_ORIGINS) continue;
+          shared = shingle;
+          break;
         }
         if (shared !== null) {
           findings.push({
@@ -165,6 +278,12 @@ export function findContentTaint(
       }
 
       const sharedSpan = longestSharedSpan(span, normalizeSpan(source.text), MIN_SHARED_CHARS);
+      // A span present in several unrelated senders' mail is boilerplate — a
+      // confidentiality footer, an unsubscribe line — not something lifted
+      // from one message.
+      if (sharedSpan !== null && originsContaining(sharedSpan, sources) >= BOILERPLATE_DISTINCT_ORIGINS) {
+        continue;
+      }
       if (sharedSpan !== null) {
         findings.push({
           field,

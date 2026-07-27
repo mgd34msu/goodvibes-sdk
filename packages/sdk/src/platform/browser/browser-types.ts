@@ -257,7 +257,20 @@ export interface UntrustedContentPort {
     readonly truncated?: boolean;
   }) => UntrustedContentEnvelope;
   /** Records that page content entered the conversation, with its origin. */
-  readonly recordIngest: (input: { readonly origin: string; readonly at: string }) => void;
+  readonly recordIngest: (input: {
+    readonly origin: string;
+    readonly at: string;
+    /**
+     * The text that was read.
+     *
+     * Supplying it is what lets a later outward action be checked for
+     * DERIVATION from this page rather than merely for having happened after
+     * it. Without it the guard falls back to "this turn read something", which
+     * in a daemon is permanently true and therefore refuses everything — the
+     * over-strict behaviour that gets a boundary switched off.
+     */
+    readonly content?: string | undefined;
+  }) => void;
   /**
    * Decides whether an action that reaches the outside world may run now,
    * given what this turn has already read and whether the owner asked for it.

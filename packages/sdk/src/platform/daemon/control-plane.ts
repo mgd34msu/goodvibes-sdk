@@ -1,4 +1,5 @@
 import type { AgentManager } from '../tools/agent/index.js';
+import { startTurnForOwnerRequest } from '../security/turn-boundary.js';
 import type { UserAuthManager } from '../security/user-auth.js';
 import { pairingPrincipalId } from '../pairing/pairing-token-store.js';
 import {
@@ -638,24 +639,20 @@ export class DaemonControlPlaneHelper {
       readonly scopes?: readonly string[] | undefined;
       readonly clientKind?: string | undefined;
       /**
-       * True when this call is a direct human action right now — a person
-       * typed a command, pressed a button, or asked an agent for this in a
-       * live turn.
-       *
-       * Set ONLY by transports that can honestly claim it. Scheduled work,
-       * triggers and channel-driven work deliberately leave it unset, because
-       * they cannot: the whole point of the distinction is telling work the
-       * owner authorized apart from work initiated by content.
-       *
-       * Nothing new is gated on it. It is enforced where it was already
-       * meaningful (a supplied `false` is refused), and `confirm: true`
-       * carries the guarantee otherwise. A field nothing ever sets is
-       * vestigial, and a vestigial security field is worse than none because
-       * it reads as protection in review — so it is set for real.
+       * True when a person asked for this, now. Set ONLY by transports that
+       * can honestly claim it; scheduled work and triggers leave it unset
+       * because they cannot. It gates the explicit-user-request refusal and
+       * starts a new untrusted-content turn — see
+       * control-plane/routes/explicit-user-request.ts and
+       * security/turn-boundary.ts.
        */
       readonly explicitUserRequest?: boolean | undefined;
     };
   }): Promise<{ status: number; ok: boolean; body: unknown }> {
+    // A fresh owner request resets the untrusted-content window; automated
+    // work deliberately does not. See security/turn-boundary.ts.
+    startTurnForOwnerRequest(input.context?.explicitUserRequest);
+
     const descriptor = this.context.gatewayMethods.get(input.methodId);
     if (!descriptor) {
       return {
