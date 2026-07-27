@@ -179,6 +179,12 @@ export {
 export type { OpenAICodexLoginStart, OpenAICodexTokenResult } from './openai-codex-auth.js';
 export * from './secret-refs.js';
 export { createCredentialStatusProvider } from './credential-status.js';
+export {
+  daemonSecretKeyFor,
+  isDaemonOwnedSecretKey,
+  listDaemonOwnedSecretKeys,
+} from './daemon-secret-keys.js';
+export { defaultDaemonSecretHome } from './secrets-store-paths.js';
 export { SecretsManager, SecretStoreUnreadableError } from './secrets.js';
 export type {
   LegacyStoreIdentity,

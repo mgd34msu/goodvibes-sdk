@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { createCipheriv, createHash, randomBytes } from 'node:crypto';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { SecretsManager, SecretStoreUnreadableError } from '../packages/sdk/src/platform/config/secrets.js';
@@ -194,5 +194,117 @@ describe('SecretsManager keyfile-encrypted store', () => {
     const rereader = makeManager(dirs, { hostname: 'elsewhere', username: 'someone-else' });
     expect(await rereader.get('KEEP_ME')).toBe('still-here');
     expect(await rereader.get('REPLACE_ME')).toBe('new');
+  });
+});
+
+/**
+ * The daemon tier: a third scope with a third directory behind it.
+ *
+ * The property under test is that the scope is a real storage location and not
+ * a label — a daemon-scoped write must be readable by a manager rooted in a
+ * different project directory and a different surface, because that is exactly
+ * what "the daemon has one home whichever product launched it" means.
+ */
+describe('SecretsManager daemon scope', () => {
+  const scratchDirs: string[] = [];
+
+  function makeScratch(): { home: string; project: string } {
+    const root = mkdtempSync(join(tmpdir(), 'gv-secrets-daemon-'));
+    scratchDirs.push(root);
+    const home = join(root, 'home');
+    const project = join(root, 'project');
+    mkdirSync(home, { recursive: true });
+    mkdirSync(project, { recursive: true });
+    return { home, project };
+  }
+
+  function makeManager(
+    dirs: { home: string; project: string },
+    surfaceRoot = 'testsurface',
+    projectRoot = dirs.project,
+  ): SecretsManager {
+    return new SecretsManager({
+      projectRoot,
+      globalHome: dirs.home,
+      surfaceRoot,
+      policy: 'require_secure',
+      legacyIdentity: { hostname: 'host', username: 'user' },
+    });
+  }
+
+  afterEach(() => {
+    for (const dir of scratchDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+  });
+
+  test('a daemon-scoped write lands in the daemon home, not in a surface silo', async () => {
+    const dirs = makeScratch();
+    const manager = makeManager(dirs);
+    await manager.set('GOODVIBES_SURFACES_SLACK_BOT_TOKEN', 'xoxb-group-token', { scope: 'daemon' });
+
+    const daemonStore = join(dirs.home, '.goodvibes', 'daemon', 'secrets.enc');
+    expect(existsSync(daemonStore)).toBe(true);
+    expect(existsSync(join(dirs.home, '.goodvibes', 'testsurface', 'secrets.enc'))).toBe(false);
+    expect(existsSync(join(dirs.project, '.goodvibes', 'testsurface', 'secrets.enc'))).toBe(false);
+    expect(statSync(daemonStore).mode & 0o777).toBe(0o600);
+    // The value is encrypted at rest like every other tier.
+    expect(readFileSync(daemonStore, 'utf-8')).not.toContain('xoxb-group-token');
+  });
+
+  test('a credential a daemon-owned config path names goes to the daemon tier without being asked', async () => {
+    const dirs = makeScratch();
+    const manager = makeManager(dirs);
+    // No scope named. `surfaces.slack.botToken` is daemon-owned, so this is.
+    await manager.set('GOODVIBES_SURFACES_SLACK_BOT_TOKEN', 'xoxb-derived');
+    // A name nothing derives keeps the historical project default.
+    await manager.set('ANTHROPIC_API_KEY', 'sk-personal');
+
+    const records = await manager.listDetailed();
+    const stored = (key: string): string | undefined =>
+      records.find((record) => record.key === key && record.source !== 'env')?.scope;
+    expect(stored('GOODVIBES_SURFACES_SLACK_BOT_TOKEN')).toBe('daemon');
+    expect(stored('ANTHROPIC_API_KEY')).toBe('project');
+  });
+
+  test('the daemon tier is read by another surface and another project directory', async () => {
+    const dirs = makeScratch();
+    await makeManager(dirs, 'tui').set('GOODVIBES_SURFACES_SLACK_BOT_TOKEN', 'xoxb-one-home', { scope: 'daemon' });
+
+    const elsewhere = join(dirs.project, 'nested', 'checkout');
+    mkdirSync(elsewhere, { recursive: true });
+    const otherProduct = makeManager(dirs, 'agent', elsewhere);
+    expect(await otherProduct.get('GOODVIBES_SURFACES_SLACK_BOT_TOKEN')).toBe('xoxb-one-home');
+  });
+
+  test('a stale surface-silo copy does not beat the daemon tier', async () => {
+    const dirs = makeScratch();
+    const manager = makeManager(dirs);
+    await manager.set('GOODVIBES_SURFACES_SLACK_BOT_TOKEN', 'xoxb-stale', { scope: 'project' });
+    await manager.set('GOODVIBES_SURFACES_SLACK_BOT_TOKEN', 'xoxb-current', { scope: 'daemon' });
+    expect(await manager.get('GOODVIBES_SURFACES_SLACK_BOT_TOKEN')).toBe('xoxb-current');
+  });
+
+  test('deleting at daemon scope leaves the other tiers alone', async () => {
+    const dirs = makeScratch();
+    const manager = makeManager(dirs);
+    await manager.set('SHARED_NAME', 'from-user', { scope: 'user' });
+    await manager.set('SHARED_NAME', 'from-daemon', { scope: 'daemon' });
+    await manager.delete('SHARED_NAME', { scope: 'daemon' });
+    expect(await manager.get('SHARED_NAME')).toBe('from-user');
+  });
+
+  test('an explicit daemon home overrides the default location', async () => {
+    const dirs = makeScratch();
+    const daemonHome = join(dirs.home, 'elsewhere', 'daemon-home');
+    const manager = new SecretsManager({
+      projectRoot: dirs.project,
+      globalHome: dirs.home,
+      surfaceRoot: 'testsurface',
+      policy: 'require_secure',
+      daemonHome,
+    });
+    await manager.set('GOODVIBES_SURFACES_SLACK_BOT_TOKEN', 'xoxb-moved', { scope: 'daemon' });
+    expect(existsSync(join(daemonHome, 'secrets.enc'))).toBe(true);
+    expect(existsSync(join(dirs.home, '.goodvibes', 'daemon', 'secrets.enc'))).toBe(false);
+    expect(await manager.get('GOODVIBES_SURFACES_SLACK_BOT_TOKEN')).toBe('xoxb-moved');
   });
 });

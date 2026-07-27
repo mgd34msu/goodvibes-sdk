@@ -10,6 +10,7 @@ import {
   advance,
   createGroupWorld,
   destroyGroupWorld,
+  memorySecrets,
   resolveWithClock,
   settle,
   stopGroupWorld,
@@ -458,7 +459,7 @@ describe('leaving', () => {
     expect(left.ok).toBe(true);
     expect(first.runtime.membership).toBe('no-group');
     expect(first.runtime.keyring().acceptedGenerations()).toEqual([]);
-    expect(first.secrets.snapshot()['cluster.groupMaterial']).toBeUndefined();
+    expect(memorySecrets(first).snapshot()['cluster.groupMaterial']).toBeUndefined();
   });
 });
 

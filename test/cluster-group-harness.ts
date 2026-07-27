@@ -83,11 +83,25 @@ export class MemoryConfigStore {
   }
 }
 
+/**
+ * The in-memory store a node was built with.
+ *
+ * Throws when a test injected a different store (a real `SecretsManager`, say),
+ * because `snapshot()` is a property of this one and quietly returning an empty
+ * object there would turn a "nothing was stored" assertion into a lie.
+ */
+export function memorySecrets(node: GroupTestNode): MemorySecretStore {
+  if (!(node.secrets instanceof MemorySecretStore)) {
+    throw new Error(`node ${node.id} was built with an injected secret store, not the in-memory one`);
+  }
+  return node.secrets;
+}
+
 export interface GroupTestNode {
   readonly id: string;
   readonly runtime: ClusterGroupRuntime;
   readonly context: GroupOperationsContext;
-  readonly secrets: MemorySecretStore;
+  readonly secrets: ClusterSecretStore;
   readonly config: MemoryConfigStore;
   /** This machine's own control-plane port, which must never replicate. */
   readonly localPort: number;
@@ -157,6 +171,14 @@ export interface AddNodeOptions {
   readonly isMaster?: boolean | undefined;
   /** A logger to capture lines from; silent by default. */
   readonly logger?: ClusterLogger | undefined;
+  /**
+   * The secret store the runtime writes replicated credentials through.
+   *
+   * Defaults to the in-memory Map. A test that cares WHERE a credential lands —
+   * which tier, which file — passes a real `SecretsManager` instead, so the
+   * storage behaviour under test is the shipping one rather than a model of it.
+   */
+  readonly secrets?: ClusterSecretStore | undefined;
 }
 
 /** Build a node and start its runtime. */
@@ -166,7 +188,7 @@ export async function addGroupNode(
   options: AddNodeOptions = {},
 ): Promise<GroupTestNode> {
   const transport = world.bus.createTransport(label);
-  const secrets = options.reuse?.secrets ?? new MemorySecretStore();
+  const secrets = options.secrets ?? options.reuse?.secrets ?? new MemorySecretStore();
   const id = options.nodeId ?? options.reuse?.id ?? label;
   const stateDirectory = options.reuse?.stateDirectory ?? join(world.tempRoot, label);
   const settings = testGroupSettings(options.settings);
