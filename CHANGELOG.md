@@ -4,6 +4,314 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
+## [1.18.0] - 2026-07-27
+
+Mail, calendar and a browser stop being things a surface implements and become
+things the platform serves. Everything below follows from that one move: the
+Google connector, the IMAP/SMTP email service and the Playwright browser engine
+were implemented inside products, so a daemon — the one runtime with no surface
+attached — could not read a mailbox, answer a calendar request or open a page.
+Scheduled work, triggers and inbound channel messages had no way to do any of
+it. All three are now SDK code, served over the operator contract, with the
+products consuming them instead of carrying their own copy.
+
+Serving them from an unattended process is what makes the security half of this
+release necessary rather than optional, and it is the larger part of the work.
+
+### Added
+
+- **`./platform/google`** — the Gmail and Google Calendar connector, hoisted out
+  of the agent. `./platform/google/node` holds every node built-in it needs, so
+  the connector proper stays runtime-neutral: sockets, files, processes and
+  listeners are injected.
+
+- **`./platform/email`** — the IMAP4rev1 client, the SMTP submission client, the
+  service that resolves config and secrets and drives them, the writing-style
+  draft composer and the Personal Ops lane descriptors. `./platform/email/node`
+  carries the node-only half for the same reason.
+
+  New capability inside the client, not just relocation: `fetchMessage(uid)`
+  reads a whole message over UID FETCH (a sequence number from an earlier
+  listing may now be a different message), reads headers and BODYSTRUCTURE and
+  then only the `text/plain` and `text/html` sections — attachments are reported
+  from the structure and their bytes are never downloaded, so a 30 MB archive
+  costs a filename and a size. Every fetch is `BODY.PEEK`, asserted on the wire
+  bytes a fake server receives, because a plain `BODY[` marks the owner's mail
+  read behind their back. `appendDraft` uploads as a literal counted in BYTES,
+  discovers the Drafts folder by `\Drafts` special-use (RFC 6154) then by name
+  then by fallback — Gmail's is `[Gmail]/Drafts` and a hardcoded name creates a
+  stray folder there — and refuses CR/LF in every caller-supplied header field
+  rather than sanitizing it. `APPENDUID` is reported when the server advertises
+  UIDPLUS and `null` when it does not; no id is invented.
+
+- **`./platform/browser`** — the Playwright browser engine, hoisted out of the
+  agent, with the session-ownership vocabulary it enforces: `launch` starts a
+  browser this daemon owns and may close, `attach` connects to one it did not
+  start and may never close, `release` lets go of an attached browser while
+  leaving it running.
+
+- **`./platform/security`** — the untrusted-content contract: the standing rule
+  text, the per-process ingest ledger, the outward-effect decision and the port
+  factory a browser engine is handed. This was the agent's module, which was
+  correct while the agent was the only runtime that could both read a page and
+  send a message. It is not any more.
+
+- **Nine mail and calendar methods are served and invokable.**
+  `email.inbox.list`, `email.inbox.read`, `email.draft.create`, `email.send`
+  and the `calendar.*` family reconcile live: handlers behind an
+  `EmailGatewayService`/`CalendarGatewayService`, rows in the gateway REST
+  table, flags cleared. The advertised paths are unchanged — the catalog was
+  always honest about where these live; what was missing was an implementation
+  the daemon could reach.
+
+- **CalDAV as a second calendar backend** alongside Google: discovery, event
+  list/get/create, `.ics` import and export, reading `surfaces.calendar.*`
+  through injected config and secret ports and speaking to an injected HTTP
+  port. Which backend answers is decided in the composition — a configured
+  CalDAV server, else a connected Google account.
+
+- **24 `browser.*` verbs, with routes and handlers**, so a caller with no
+  surface process attached can drive a browser: navigate, snapshot, click,
+  type, select, press, scroll, wait, read text, extract, screenshot, tabs,
+  history and the full session lifecycle. That is the whole surface a product's
+  browser tool exposes rather than a convenient subset, and a test maps each of
+  the tool's actions to the verb that serves it so a later change cannot quietly
+  leave the daemon a smaller browser than a surface has. The route layer imports
+  nothing from `platform/browser`, so the engine's guarantees are preserved by
+  not re-deciding them: a session the daemon did not launch is still refused a
+  close by the session registry rather than by a second opinion in the routes.
+
+- **A daemon-owned secret tier, and 25 new `surfaces.email.*` /
+  `surfaces.calendar.*` schema keys.** The paths were already daemon-owned,
+  which fixed WHERE a value is stored; it did not make them settable, because
+  the settings modal renders from `CONFIG_SCHEMA` and none of these were in it.
+  So the handlers' own errors — "Set `surfaces.calendar.caldavUrl` and
+  `surfaces.calendar.caldavUser`" — named keys no operator could reach through
+  the UI that told them to set them. Both spellings of the IMAP settings are
+  declared, because both are read: the inbox provider reads the flat
+  `imapHost`/`imapPort`/`imapUser`/`imapPassword` and the triage tagger reads
+  the nested `imap.*`.
+
+- **`describeSenderClaimNeutrally`** — a shared sender-claim describer for a
+  product with no wording of its own. The SENTENCE a person reads belongs to the
+  product, so `EmailServiceDeps.describeSenderClaim` stays a required port; the
+  DECISION it reports does not. A `From:` header is a claim, sender
+  authentication raises display confidence and nothing else, and
+  `commandAuthority` is the literal `'none'` — the type makes any other
+  authority value a compile error.
+
+### Changed — the email trust model
+
+- **A derived outward send is refused, not disclosed.** A send from the daemon
+  used to be allowed with a disclosure attached, on the reasoning that an
+  unattended process has nobody to take a refusal to. That is backwards: a
+  disclosure is a note in a receipt nobody reads, on the one surface with no
+  human watching, and an unattended daemon is exactly where an injection pays
+  off.
+
+  What makes the strictness affordable is asking a narrower question — not "has
+  this process read anything untrusted", which is permanently true in a daemon
+  and therefore decides nothing, but "does THIS action's content derive from
+  what was read". A scheduled report built from a database proceeds. A send
+  whose recipient, subject or body repeats text from a page or a mailbox is
+  refused, and the refusal shows the overlapping text so it is checkable rather
+  than asserted. Disclosure is kept for the sends that pass; it stops being the
+  only protection.
+
+  **The check is connected to the paths that read.** A peer round verified this
+  at runtime rather than by reading and found it inert: no production path
+  supplied the text it compares against, so `taintSourcesThisTurn()` returned
+  empty and the refusal refused nothing. A security check that silently passes
+  everything looks exactly like a working one. `UntrustedContentPort.recordIngest`
+  and `EmailServiceDeps.recordUntrustedIngest` now carry content,
+  `createUntrustedContentPort` forwards it, `BrowserEngine` records page text
+  from `readText`/`snapshot`/`extract`, and `EmailService` records subject and
+  body — proven end to end: two ingests, two taint sources, a send repeating the
+  injection refused.
+
+  **Recipient redirection is caught by exact containment**, not by length:
+  `accounts-payable@vendor.example` is 3 words and 31 characters, under both
+  thresholds, so an injection that only changes where mail goes slipped past a
+  length test while the comment claimed it was covered. One exemption: replying
+  to the ENVELOPE SENDER, established from delivery evidence rather than a
+  `From:` header.
+
+  **A turn now begins on `explicitUserRequest`.** `startTurn()` had no
+  production caller, so "this turn" meant "since process start" — harmless
+  driving a disclosure, wrong driving a refusal, since a daemon up for a week
+  carried a week of strangers' text as evidence against every send. Automated
+  work deliberately does not reset it, so content cannot arrange for the record
+  of itself to be erased.
+
+  Two false-positive classes are fixed without touching `MIN_SHARED_CHARS`
+  (which would weaken the verbatim-token case the check exists for): a span
+  appearing in two or more distinct origins is boilerplate rather than
+  derivation, and quoted regions are stripped from a reply body before checking.
+  An injection placed outside the quote is still caught.
+
+- **Links are validated before navigation.** Every rule exists because a naive
+  check fails to a specific attack, and each refusal names which: userinfo
+  (`https://accounts.google.com@evil.example` reads as Google), scheme,
+  homograph (mixed-script labels refused outright rather than similarity-scored),
+  eTLD+1 comparison (`google.com.evil.example`, `google-verify.example` and
+  `accounts-google.example` all defeat `endsWith` or `includes`), redirect
+  chains where every hop is re-validated and any hop leaving the domain refuses
+  the chain, shorteners refused by name, IP literals, and non-443 ports. Refusal
+  is loud and carries both domains, because a refused verification link is often
+  something the owner has to finish by hand.
+
+  **The public-suffix snapshot is generated, not curated.** Its drift check
+  found on first run that the hand-written list held 174 of 5,484 ICANN
+  multi-label suffixes, leaving 5,332 under which two different registrants
+  compared equal. It is 5,501 entries now and the check is green. It is bundled
+  and never fetched at runtime; a weekly workflow outside `ci.yml` fails on
+  drift, and its text says what a red run means — a narrowing of coverage, not
+  an outage, because the single-label fallback keeps unknown suffixes resolving
+  correctly.
+
+- **Verification expectations are scoped to what the agent is doing now.** An
+  expectation is opened only for a signup it is completing or a login it is
+  performing, so unsolicited verification-shaped mail with no open expectation
+  can never cause an action. The login case correlates far more weakly than the
+  signup case — the address is one the owner already gave out — so it is
+  compensated: the link must be on the EXACT domain rather than a tolerated
+  subdomain. Ambiguity stops everything: two messages matching one expectation
+  act on neither and surface both, because a phisher racing a genuine login is
+  precisely what produces two, and choosing is a coin flip.
+
+- **Trust tiers are declared per surface**, with no middle tier — a middle tier
+  is where "this one is probably fine" lives, and the attack is content that
+  looks fine. Sender authentication informs the sentence a human reads and never
+  the tier: a phisher who owns their domain and configures DNS correctly passes
+  DKIM, SPF and DMARC.
+
+- **A send to the owner himself is exempt from the taint refusal** (owner
+  ruling: he is the trust root, not a third party, and telling him what arrived
+  is the point of an assistant reading his mail — "what came in overnight"
+  necessarily reuses the words of what came in). The exemption is drawn as
+  narrowly as it can be, and every narrowing is tested as an attack that must
+  fail: his configured addresses only, never a domain (that would exempt every
+  colleague, and a forward to a colleague is third-party disclosure), never a
+  pattern (no plus-address folding), and never partial — a send to the owner AND
+  anyone else is refused, because naming him first and slipping a second
+  recipient in beside him is exactly how this would be used. Identity comes from
+  configuration alone (`email.fromAddress`, `email.username`,
+  `surfaces.email.from`/`.user`/`.username`) and never from a `From:` header,
+  `Reply-To:`, delivery evidence, the ledger or the body. Nothing configured
+  means no identity, so the exemption cannot fire and the refusal stands. It
+  exempts the taint rule and nothing else: link validation, the confirmation
+  gate and the explicit-user-request rule all still apply.
+
+### Changed
+
+- `browser.tabs.new` is now **`browser.tabs.create`**, on `POST /api/browser/tabs`
+  beside the GET that lists them — opening a tab IS creating one, so it took the
+  core verb rather than an exemption. The other seventeen flagged browser verb
+  tails get a documented exempt category instead: these are the operations a page
+  and a browser process actually have, and renaming them to CRUD words would
+  describe something else. Navigate is not update; press is not set.
+
+### Fixed
+
+- **A Telegram 409 is never terminal, and its cause is established rather than
+  guessed.** Inbound Telegram went permanently dead on a live machine: polling
+  stopped at 12:24 and stayed stopped until a human restarted the daemon, with
+  every message in between unread. Telegram uses 409 for two unrelated
+  situations — a registered webhook, and another process long-polling the same
+  token — and they were told apart by matching the description against
+  "terminated by other getUpdates", with `isWebhookConflict` defined as "409 and
+  not concurrent". Webhook was therefore the DEFAULT for every 409 whose
+  description was missing, reworded, or replaced by an intermediary's error
+  body. A string that has to be exhaustive to be safe is a guess, not a
+  classification.
+
+  `getWebhookInfo` is now the authority and the description only enriches what a
+  person reads; the decision moved to `conflict-policy.ts` as pure data, so every
+  branch is provable without a socket. Neither cause is fatal: a proven stuck
+  webhook escalates to an error naming the fix and keeps retrying, and a
+  competing consumer is reported so a cluster coordinator can stand the node
+  down, then retried anyway — with `cluster.enabled` off there is no election to
+  stand down to, which is exactly how the failure became permanent. Retries are
+  jittered so two consumers cannot settle into lockstep terminating each other's
+  long poll, and a surface that is up but not consuming reports itself blocked
+  with the reason instead of sitting silent.
+
+- **A throwaway daemon could replace the machine's daemon.** A daemon started
+  from a scratchpad with `--daemon-home` found the machine's service unit not
+  running, wrote its own scratchpad `ExecStart` into the systemd unit and
+  exited; systemd then supervised the throwaway, which read the real home's
+  config and the real home's credentials and long-polled the real bot — the
+  collision that produced the 409 above. A daemon whose home was overridden now
+  never adopts the machine service unit, and the check runs BEFORE
+  `service.enabled` deliberately: that key is client-owned and resolves against
+  the real home, so a test tree's own opt-out was written and never read.
+  Isolation that depends on the isolated process reading its own settings file
+  is not isolation.
+
+- **`SecretsManagerOptions.daemonHome` is finally passed.** Its own doc always
+  said a caller honouring `--daemon-home` should resolve and pass it; no
+  composition root ever did, so the override moved the identity directory and
+  nothing else while the credential store stayed in the real home.
+  `describeSecretIsolation` reports which tier still reaches it, because the
+  interesting answer is not "isolated: false" but which of the three roots
+  leaked.
+
+- **Surfaces filed daemon credentials where the daemon could not read them.**
+  The daemon-owned secret set is derived by walking enumerated daemon-owned
+  config paths, not by prefix; `surfaces.` has always been a daemon-owned
+  prefix, but nothing enumerated `surfaces.email.password` or
+  `surfaces.calendar.caldavPassword`, so the password went to whichever client
+  store the operator happened to be sitting in. The whole mail and CalDAV
+  connection is now declared, not only the passwords — a password with no host
+  and no user is not a usable credential either. An explicit scope also beat
+  daemon ownership, and `/secrets set` passes one on every call, so the ordinary
+  path a person takes to store a credential defeated the routing outright.
+  Daemon ownership now wins, the write is relocated rather than refused, and the
+  relocation is disclosed: `set()` logs it naming both scopes, and
+  `resolveSecretWriteScope` is exported so a surface can say where a credential
+  is going before it asks. `delete()` gets the same treatment, or a revoke
+  narrowed to the wrong scope would report success and leave the live copy in
+  place.
+
+- **A daemon-owned app-layer key bricked `ConfigManager` construction.**
+  `email.*`, `calendar.*` and `google.*` are app-layer sections a product
+  materializes at runtime, and the daemon-tier overlay runs inside the
+  `ConfigManager` CONSTRUCTOR — before any product has called its `ensure*`
+  seeding. So a daemon settings file containing `email.imapHost`, a path the
+  platform itself declares daemon-owned, made `resolvePath` throw "section
+  'email' does not exist" and every `ConfigManager` built against that directory
+  failed to construct: storing a value correctly made it impossible to read
+  back. The overlay now creates the missing section, which cannot become a hole
+  for arbitrary keys because it only ever yields paths on the declared
+  daemon-owned list.
+
+- **Config reads go through one guard.** `resolvePath` throws on an absent
+  section and every connector path is app-layer, so on a machine where nobody
+  ran setup the first read threw `Invalid config path` instead of reporting that
+  nothing was connected.
+
+- Mail addresses reach log fields as a digest and never as themselves.
+
+- Two IMAP defects found while building on the module: literals were consumed by
+  CHARACTER count while the socket decodes UTF-8, so any message with an
+  accented character desynchronized the reader until it timed out (now counted
+  in bytes); and mailbox names went through the credential quoter, which rejects
+  8-bit characters, making every non-English folder name unusable (now encoded
+  as RFC 3501 modified UTF-7).
+
+- `email.draft.create`'s output no longer requires `uid` — it is the `APPENDUID`,
+  which only a server advertising UIDPLUS returns, and inventing one for every
+  other server produces a number a later fetch cannot resolve. It reports the
+  Drafts mailbox it actually landed in instead.
+
+- Errors from the mail composition translate into honest statuses rather than
+  collapsing into a 500: not-enabled and not-configured are the operator's own
+  unfinished setup and answer 400, a refused password answers 401.
+
+- Layer 2 of the Google browser-flow test no longer launches a real Chromium
+  behind an availability gate — it ran nothing on machines without a provisioned
+  browser. It drives the adapter against a fake engine now and runs everywhere.
+
 ## [1.17.2] - 2026-07-27
 
 ### Fixed
