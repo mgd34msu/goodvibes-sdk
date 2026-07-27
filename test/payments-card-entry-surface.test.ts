@@ -1,16 +1,25 @@
 /**
  * payments-card-entry-surface.test.ts
  *
- * Owner ruling: card details are accepted ONLY at a local terminal — the TUI
- * and the agent's own terminal — plus the webui, which is his own browser
- * client over his own LAN rather than a third-party message store. Never over
- * Telegram, ntfy, Discord, Slack, WhatsApp, Signal, a webhook, or any other
- * remote messaging surface.
+ * Card details are accepted only at a local terminal — the TUI and the agent's
+ * own terminal.
  *
- * His reasoning is concrete: a card number typed into Telegram is stored on
- * Telegram's servers, in history we cannot reach or erase, and it travelled
- * through their infrastructure before reaching us. Encryption at rest does not
- * apply to a value already copied somewhere else.
+ * ── Attribution, because an earlier version of this file got it wrong ──────
+ *
+ * OWNER, verbatim, on where payment details are entered:
+ *   "i need to be able to enter payment details (card info and shipping/billing
+ *    address etc) in the tui too"
+ *   "and in the agent - basically ui should expose it in both."
+ *
+ * He named the TUI and the agent. He did NOT name the webui. Whether a card may
+ * be typed into a browser page is an open question in front of him, so the
+ * webui is NOT an entry surface and these tests assert that it is refused.
+ *
+ * COORDINATOR ruling — the refusal of card details on remote messaging
+ * surfaces, and the reasoning that a card number typed into a hosted chat is
+ * stored on that provider's servers, in history nobody here can erase, having
+ * already traversed their infrastructure. Recorded as the coordinator's because
+ * no verbatim owner wording exists for it.
  *
  * The distinction these tests protect, which a later round will try to
  * collapse: remote channels DO have authority to approve or veto a purchase.
@@ -35,7 +44,15 @@ describe('entering and approving are different questions', () => {
   test('a local terminal may take card details', () => {
     expect(mayEnterCardDetails('tui')).toBe(true);
     expect(mayEnterCardDetails('agent-terminal')).toBe(true);
-    expect(mayEnterCardDetails('webui')).toBe(true);
+  });
+
+  test('the webui may NOT, pending an owner ruling', () => {
+    // He named the TUI and the agent. He did not name the webui, and typing a
+    // card into a browser page is a materially different exposure from typing
+    // it at a terminal. Absent his answer, this stays closed — the safe
+    // direction, and a one-line change once he rules.
+    expect(mayEnterCardDetails('webui')).toBe(false);
+    expect(mayOfferCardEntryFlow('webui')).toBe(false);
   });
 
   test.each(['telegram', 'ntfy', 'discord', 'slack', 'whatsapp', 'signal', 'webhook', 'email', 'sms'])(
@@ -95,6 +112,8 @@ describe('card details arriving on a remote channel are refused', () => {
     expect(reply).not.toMatch(/\d{4}/);
     expect(reply).toContain('telegram');
     expect(reply).toContain('terminal');
+    // It must not point him at a surface that cannot take the card either.
+    expect(reply).not.toContain('web UI');
   });
 
   test('the scan reports shapes, never the matching text', () => {

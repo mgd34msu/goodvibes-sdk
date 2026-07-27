@@ -545,53 +545,63 @@ Config-supplied channel names are parsed into this union and unknown values are
 
 ### 8.2.2 Answering is not entering — and these must never be merged
 
-Two channel rules live side by side in this design and they look similar enough
-that a later reader will try to unify them. They answer different questions and
-the owner ruled on each separately.
+Two channel rules live side by side and look similar enough that a later reader
+will try to unify them. They answer different questions.
+
+**Attribution, stated precisely**, because an earlier draft of this section got
+it wrong and relayed a coordinator decision as an owner ruling:
+
+> **Owner, verbatim, on entry surfaces:**
+> *"i need to be able to enter payment details (card info and shipping/billing
+> address etc) in the tui too"*
+> *"and in the agent - basically ui should expose it in both."*
+
+He named the **TUI and the agent**. He did **not** name the webui. Whether a
+card number may be typed into a browser page is a materially different exposure
+from typing it at a terminal, and that question is open in front of him.
+
+**Coordinator ruling:** that card details are refused on remote messaging
+surfaces, with the reasoning below. Recorded as the coordinator's because no
+verbatim owner wording exists for it.
 
 | | Answering | Entering |
 |---|---|---|
-| The question | May this surface say yes or no to a purchase? | May card details be typed into this surface? |
-| Telegram and other live channels | **Yes.** His explicit ruling, and it stays. | **No. Permanently.** |
-| Local terminal (TUI, agent terminal) | Yes | Yes |
-| The webui | Yes | Yes — his own browser client over his own LAN |
+| The question | May this surface say yes or no to a purchase? | May card details be typed here? |
+| Telegram and other live channels | **Yes** — owner's explicit ruling, and it stays | **No** |
+| TUI, agent terminal | Yes | **Yes** — the two he named |
+| The webui | Yes | **Not yet** — awaiting his ruling |
 | Email | Never | Never |
 
 **Remote channels have authority to decide about a purchase. They have no path
 for entering the instrument.**
 
-The reason entering is stricter is concrete rather than a posture. A card number
-typed into Telegram is **stored on Telegram's servers, in message history we do
-not control and cannot erase, and it travelled through their infrastructure
-before it reached us**. The same is true of every hosted chat channel. Our
-encryption at rest is irrelevant to a value that was already copied somewhere
-else on its way in — the damage is complete before any storage decision of ours
-applies.
+The reason entering is stricter is concrete. A card number typed into Telegram
+is **stored on Telegram's servers, in message history nobody here controls or
+can erase, and it travelled through their infrastructure before it reached
+us**. The same is true of every hosted chat channel. Encryption at rest is
+irrelevant to a value already copied somewhere else on its way in — the damage
+is complete before any storage decision of ours applies.
 
 An "approve" typed into the same chat carries no such residue: it is one word
 about one purchase, it expires, and on its own it authorizes nothing.
 
-The webui qualifies as an entry surface because it is the owner's own client
-over his own network rather than a third-party message store. Its card fields go
-over the same authenticated daemon channel as any other secret — never in a URL,
-and never rendered back after entry.
-
 **The prompt is itself the harm.** There is deliberately no card-entry flow that
-can be started from a remote channel (`mayOfferCardEntryFlow`). Asking for a card
-number on a surface that cannot accept the answer is an invitation to type it
+can be started from a non-entry surface (`mayOfferCardEntryFlow`). Asking for a
+card number where the answer cannot be accepted is an invitation to type it
 there, and the invitation is what puts the number on someone else's server.
 Refusing the answer afterwards is too late.
 
 When card-shaped content does arrive on a remote channel anyway, it is refused
 without being stored, without being logged, and **without being echoed** — the
-refusal is delivered over the same channel that already stored the message, so
+refusal travels over the same channel that already stored the message, so
 quoting the value, even masked, would write it there a second time. The reply
 names the shape that matched, never the value, and tells him to delete the
 message and treat the card as exposed.
 
 Implemented in `platform/payments/entry-surface.ts`; asserted in
 `test/payments-card-entry-surface.test.ts`, including a test that the refusal
-text contains no four-digit run at all.
+text contains no four-digit run at all, and one that the webui is refused until
+he rules.
 
 ### 8.2.1 Detecting "undeliverable"
 
