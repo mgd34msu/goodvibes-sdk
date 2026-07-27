@@ -140,7 +140,11 @@ export {
   type AdmissionGrant,
   type AdmissionRefusal,
 } from './group-membership.js';
-export { GroupAdmissionService, type AdmissionOutcome } from './group-admissions.js';
+export {
+  GroupAdmissionService,
+  type AdmissionFailure,
+  type AdmissionOutcome,
+} from './group-admissions.js';
 export {
   CLUSTER_ENVELOPE_VERSION,
   canonicalizeEnvelope,

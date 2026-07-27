@@ -28,6 +28,7 @@ import {
 } from '../packages/sdk/src/platform/cluster/group-operations.js';
 import {
   decideAdmission,
+  encodeIdentityClassMessage,
   GROUP_MESSAGE_TYPES,
 } from '../packages/sdk/src/platform/cluster/group-membership.js';
 import {
@@ -40,7 +41,11 @@ import {
   GROUP_TOMBSTONE_MAX_AGE_MS,
   MAX_GROUP_TOMBSTONES,
 } from '../packages/sdk/src/platform/cluster/group-state.js';
-import { deriveGroupId, generateGroupRoot } from '../packages/sdk/src/platform/cluster/group-crypto.js';
+import {
+  deriveGroupId,
+  generateGroupRoot,
+  generateNodeKeyMaterial,
+} from '../packages/sdk/src/platform/cluster/group-crypto.js';
 
 let world: GroupTestWorld | null = null;
 
@@ -364,6 +369,53 @@ describe('the reply to a returning machine', () => {
       .toBe(second.runtime.keyMaterial?.currentGeneration);
   });
 
+  test('a REJOIN_REFUSE from a stranger cannot talk a machine out of its own group', async () => {
+    // The refusal is a message this machine ACTS on — it gives up early and
+    // tells its operator to re-join by hand — so it has to be authenticated to
+    // exactly the standard the acceptance is. Otherwise anything on the LAN
+    // could evict every machine on it by shouting, without holding a single key.
+    const { world: w, first, groupId, joinKey } = await makeGroupOfOne();
+    const second = await addGroupNode(w, 'node-b');
+    await joinGroup(second.context, { groupId, joinKey });
+    await settle();
+    await second.runtime.stop();
+    await first.runtime.stop();
+
+    // A stranger with a perfectly good key pair that is on nobody's roster.
+    const stranger = w.bus.createTransport('stranger-refuser');
+    await stranger.start(() => {});
+    const strangerKeys = generateNodeKeyMaterial();
+
+    const returned = await addGroupNode(w, 'node-b-restarted', { reuse: second });
+    const pending = rejoinGroup(returned.context);
+    // Land the forgery while the return is in flight.
+    await settle();
+    await stranger.send(encodeIdentityClassMessage(
+      {
+        type: GROUP_MESSAGE_TYPES.rejoinRefuse,
+        nodeId: 'node-b',
+        nodeVersion: '9.9.9',
+        seq: 1,
+        ts: w.clock.now(),
+        body: { forNodeId: returned.id, reason: 'removed-from-the-group', detail: 'you were removed' },
+      },
+      groupId,
+      strangerKeys.identity,
+    ));
+
+    const rejoined = await resolveWithClock(w, pending);
+    expect(rejoined.ok).toBe(false);
+    if (!rejoined.ok) {
+      // NOT final: the forgery was refused, so the machine is still a member
+      // that simply has not heard from anyone it trusts.
+      expect(rejoined.terminal).toBeFalsy();
+      expect(rejoined.error).not.toContain('you were removed');
+    }
+    // And it still holds its own key material — nothing was given up.
+    expect(returned.runtime.keyMaterial?.currentGeneration)
+      .toBe(second.runtime.keyMaterial?.currentGeneration);
+  });
+
   test('the group signing key rotates on a removal and not on a scheduled rotation', async () => {
     const { world: w, first, groupId, joinKey } = await makeGroupOfOne();
     const second = await addGroupNode(w, 'node-b');
@@ -408,6 +460,32 @@ describe('removal', () => {
     const rejoined = await resolveWithClock(w, rejoinGroup(second.context));
     expect(rejoined.ok).toBe(false);
     if (!rejoined.ok) expect(rejoined.fix).toContain('cluster join');
+    // It is told the refusal is FINAL, not that nobody answered. The automatic
+    // start-up path logs the ordinary "no answer yet" at debug and carries on,
+    // because a machine that booted first resolves that by itself. This case
+    // never resolves by itself, and a machine that swallowed it would look
+    // healthy forever while silently being given no work at all.
+    if (!rejoined.ok) {
+      expect(rejoined.terminal).toBe(true);
+      expect(rejoined.error).not.toContain('no machine in that group answered');
+    }
+  });
+
+  test('a machine that is merely alone is NOT told it was removed', async () => {
+    // The mirror of the case above, and the reason `terminal` exists rather
+    // than treating every rejoin failure as final: this machine is a perfectly
+    // good member that happened to boot before any of its peers. It must come
+    // back on its own, so the failure it gets must not be the one that tells an
+    // operator to re-join by hand.
+    const { world: w, first } = await makeGroupOfOne();
+    await settle();
+
+    const rejoined = await resolveWithClock(w, rejoinGroup(first.context));
+    expect(rejoined.ok).toBe(false);
+    if (!rejoined.ok) {
+      expect(rejoined.terminal).toBeFalsy();
+      expect(rejoined.error).toContain('answered');
+    }
   });
 
   test('a tombstone beats an add across a partition that heals', () => {

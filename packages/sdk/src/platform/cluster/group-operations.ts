@@ -39,6 +39,7 @@ import {
   type ClusterSecretStore,
 } from './group-store.js';
 import { keyRotationGraceMs, type ClusterGroupSettings } from './group-settings.js';
+import type { AdmissionFailure } from './group-admissions.js';
 
 /** How long a join or a rejoin waits for the group to answer. */
 export const ADMISSION_TIMEOUT_MS = 15_000;
@@ -46,10 +47,42 @@ export const ADMISSION_TIMEOUT_MS = 15_000;
 /** Every operation returns one of these. `ok: false` always names the fix. */
 export type GroupOperationResult<T> =
   | { readonly ok: true; readonly data: T }
-  | { readonly ok: false; readonly error: string; readonly fix: string };
+  | {
+    readonly ok: false;
+    readonly error: string;
+    readonly fix: string;
+    /**
+     * True when this machine is out of the group and waiting will not change
+     * it — as opposed to the ordinary "nobody answered yet", which resolves on
+     * its own the moment another machine comes up.
+     *
+     * An automatic caller must not swallow this one. It is the difference
+     * between a machine that will rejoin by itself and a machine that needs
+     * the operator, and both look identical from the outside otherwise: a
+     * healthy daemon that is simply never given any work.
+     */
+    readonly terminal?: boolean;
+    /**
+     * The admission layer's own classification, when this failure came from
+     * one. Lets an automatic caller tell "nobody answered yet" (ordinary,
+     * self-resolving) from "replies arrived that I could not verify" (worth
+     * telling the operator, but not proof of anything).
+     */
+    readonly failure?: AdmissionFailure;
+  };
 
-function failed(error: string, fix: string): GroupOperationResult<never> {
-  return { ok: false, error, fix };
+function failed(
+  error: string,
+  fix: string,
+  options: { readonly terminal?: boolean; readonly failure?: AdmissionFailure } = {},
+): GroupOperationResult<never> {
+  return {
+    ok: false,
+    error,
+    fix,
+    ...(options.terminal ? { terminal: options.terminal } : {}),
+    ...(options.failure ? { failure: options.failure } : {}),
+  };
 }
 
 /** One machine, as `cluster nodes` reports it. */
@@ -595,9 +628,14 @@ export async function rejoinGroup(
   }
   const outcome = await context.runtime.requestRejoin(ADMISSION_TIMEOUT_MS);
   if (!outcome.ok) {
+    // Only an AUTHENTICATED refusal is final. Replies this machine could not
+    // verify are reported honestly and left non-final, because a stranger on
+    // the network can produce those and must not be able to convince a machine
+    // it was removed from its own group.
     return failed(
       outcome.reason,
       'if this machine was removed from the group, join it again with `cluster join` and the current join key',
+      { terminal: outcome.failure === 'refused', failure: outcome.failure },
     );
   }
   const now = context.now();
