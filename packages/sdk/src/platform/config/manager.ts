@@ -28,6 +28,7 @@ import {
 } from './settings-io.js';
 import { watchConfigFiles, reloadAndNotifyChanges, type ConfigFileWatchHandle } from './config-file-watcher.js';
 import { isDaemonOwnedConfigKey, listDaemonOwnedConfigPaths, type DaemonOwnedConfigPath } from './config-ownership.js';
+import { resolveOrCreateDaemonPath } from './daemon-tier-paths.js';
 import { clearDaemonTierForReset, daemonConfigPath, overlayDaemonTier, persistDaemonKey } from './daemon-config-tier.js';
 import { describeKeySource, type ConfigKeySource } from './manager-key-source.js';
 import { persistCategoryKeyRemoval, persistCategoryPatch, type CategoryIoDeps } from './manager-category-io.js';
@@ -612,7 +613,7 @@ export class ConfigManager {
     if (!this.daemonTierPath) return;
     try {
       const applied = overlayDaemonTier(this.daemonTierPath, (key, value) => {
-        const { parent, field } = this.resolvePath(key);
+        const { parent, field } = resolveOrCreateDaemonPath(this.config as unknown as Record<string, unknown>, key);
         parent[field] = value;
       });
       for (const key of applied) this.daemonKeysPresent.add(key);
