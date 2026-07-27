@@ -18,7 +18,12 @@
  *   email.username       string    — login username (default: '')
  *   email.passwordRef    string    — goodvibes:// secret reference only;
  *                                    NEVER a raw password
+ *   email.smtpPasswordRef string   — optional; a second goodvibes:// reference
+ *                                    for providers that issue separate SMTP
+ *                                    credentials. Empty means "same password"
  *   email.fromAddress    string    — From: address for outbound mail
+ *   email.mailbox        string    — mailbox to read; empty means INBOX
+ *   email.draftsMailbox  string    — Drafts folder; empty means ask the server
  *
  * Secret resolution
  * ─────────────────
@@ -62,7 +67,10 @@ const EMAIL_DEFAULTS = {
   smtpSecurity: 'auto' as const,
   username: '',
   passwordRef: '',
+  smtpPasswordRef: '',
   fromAddress: '',
+  mailbox: '',
+  draftsMailbox: '',
 } as const;
 
 /**
@@ -106,7 +114,25 @@ export interface EmailConfig {
   readonly username: string;
   /** Secret reference string — never a raw password. */
   readonly passwordRef: string;
+  /**
+   * Secret reference for the SMTP password, when the provider issues one that
+   * differs from the IMAP password. Empty — the common case — means submission
+   * authenticates with `passwordRef` like everything else.
+   */
+  readonly smtpPasswordRef: string;
   readonly fromAddress: string;
+  /**
+   * Mailbox to read. Empty — the common case — means INBOX. Set when the
+   * account delivers to a folder, which is what a per-signup alias mailbox is.
+   */
+  readonly mailbox: string;
+  /**
+   * Drafts folder. Empty means "ask the server", which is the better answer:
+   * discovery reads the `\Drafts` special-use flag and gets `[Gmail]/Drafts`
+   * right where a hard-coded `Drafts` silently creates a stray folder. Set it
+   * only when the server does not advertise one.
+   */
+  readonly draftsMailbox: string;
 }
 
 export interface EmailSummary {
@@ -305,8 +331,22 @@ export function readEmailConfig(getConfig: (key: string) => unknown): EmailConfi
     smtpSecurity: readSmtpSecurity(getConfig('email.smtpSecurity')),
     username: readString(getConfig('email.username')),
     passwordRef: readString(getConfig('email.passwordRef')),
+    smtpPasswordRef: readString(getConfig('email.smtpPasswordRef')),
     fromAddress: readString(getConfig('email.fromAddress')),
+    mailbox: readString(getConfig('email.mailbox')),
+    draftsMailbox: readString(getConfig('email.draftsMailbox')),
   };
+}
+
+/**
+ * Which secret submission authenticates with: the SMTP-specific one when the
+ * operator set it, otherwise the mailbox password. Resolved through one helper
+ * so `sendMail` and `testConnection` cannot disagree about which credential a
+ * send would actually use — a test that passes with the wrong password is worse
+ * than no test.
+ */
+export function smtpPasswordRefFor(config: EmailConfig): string {
+  return config.smtpPasswordRef.length > 0 ? config.smtpPasswordRef : config.passwordRef;
 }
 
 export function validateEmailConfig(config: EmailConfig): string[] {
@@ -318,6 +358,12 @@ export function validateEmailConfig(config: EmailConfig): string[] {
     errors.push('email.passwordRef is required (must be a secret reference, not a raw password)');
   } else if (!config.passwordRef.startsWith('goodvibes://secrets/')) {
     errors.push('email.passwordRef must be a goodvibes secret reference (goodvibes://secrets/...)');
+  }
+  // Optional: an empty value means "same password as IMAP", which is the common
+  // case. A non-empty one is held to the same rule as passwordRef — a raw
+  // password here would be a raw password in a settings file.
+  if (config.smtpPasswordRef.length > 0 && !config.smtpPasswordRef.startsWith('goodvibes://secrets/')) {
+    errors.push('email.smtpPasswordRef must be a goodvibes secret reference (goodvibes://secrets/...)');
   }
   if (!config.fromAddress) errors.push('email.fromAddress is required');
   return errors;
@@ -378,6 +424,9 @@ export class EmailService {
         ...config,
         // Redact the ref itself for display; keep structural info only
         passwordRef: config.passwordRef ? '[configured]' : '[missing]',
+        // '[shared]' rather than '[missing]': an unset SMTP ref is not an
+        // omission, it is the mailbox password doing both jobs.
+        smtpPasswordRef: config.smtpPasswordRef ? '[configured]' : '[shared]',
       },
       errors,
       ready: errors.length === 0 && config.enabled,
@@ -416,6 +465,7 @@ export class EmailService {
       socket,
       username: config.username,
       password,
+      ...(config.mailbox.length > 0 ? { mailbox: config.mailbox } : {}),
     });
 
     try {
@@ -488,7 +538,12 @@ export class EmailService {
 
     const socketFactory = this.deps.imapSocketFactory ?? this.deps.transport.connectImapTls;
     const socket = await socketFactory(config.imapHost, config.imapPort);
-    const client = new ImapClient({ socket, username: config.username, password });
+    const client = new ImapClient({
+      socket,
+      username: config.username,
+      password,
+      ...(config.mailbox.length > 0 ? { mailbox: config.mailbox } : {}),
+    });
 
     try {
       await client.open();
@@ -529,7 +584,10 @@ export class EmailService {
         from,
         inReplyTo: input.inReplyTo,
         references: input.references,
-        mailbox: input.mailbox,
+        // Caller's choice first, then the configured folder, then discovery.
+        // A configured name is an operator saying the server's own answer is
+        // wrong for them, so it outranks discovery but not an explicit call.
+        mailbox: input.mailbox ?? (config.draftsMailbox.length > 0 ? config.draftsMailbox : undefined),
       });
       await client.logout();
       return result;
@@ -592,7 +650,15 @@ export class EmailService {
     try {
       const socketFactory = this.deps.imapSocketFactory ?? this.deps.transport.connectImapTls;
       const socket = await socketFactory(config.imapHost, config.imapPort);
-      const client = new ImapClient({ socket, username: config.username, password });
+      const client = new ImapClient({
+        socket,
+        username: config.username,
+        password,
+        // EXAMINE the mailbox that will actually be read, so a folder name
+        // that does not exist fails the connection test rather than the first
+        // real listing.
+        ...(config.mailbox.length > 0 ? { mailbox: config.mailbox } : {}),
+      });
       await client.open();
       await client.logout();
     } catch (err) {
@@ -600,9 +666,10 @@ export class EmailService {
     }
 
     try {
+      const smtpPassword = await resolveEmailPassword(smtpPasswordRefFor(config), this.deps.secretsManager);
       const socketFactory = this.deps.smtpSocketFactory ?? this.defaultSmtpSocketFactory(config.smtpPort, config.smtpSecurity);
       const socket = await socketFactory(config.smtpHost, config.smtpPort);
-      const client = new SmtpClient({ socket, hostname: config.smtpHost, username: config.username, password });
+      const client = new SmtpClient({ socket, hostname: config.smtpHost, username: config.username, password: smtpPassword });
       await client.verifyAuth();
     } catch (err) {
       return { ok: false, stage: 'smtp', error: err instanceof Error ? err.message : String(err) };
@@ -626,7 +693,7 @@ export class EmailService {
     }
 
     const config = this.getValidatedConfig();
-    const password = await resolveEmailPassword(config.passwordRef, this.deps.secretsManager);
+    const password = await resolveEmailPassword(smtpPasswordRefFor(config), this.deps.secretsManager);
 
     const socketFactory = this.deps.smtpSocketFactory ?? this.defaultSmtpSocketFactory(config.smtpPort, config.smtpSecurity);
     const socket = await socketFactory(config.smtpHost, config.smtpPort);

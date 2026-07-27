@@ -14835,12 +14835,15 @@
       "name": "EmailConfig",
       "kind": "interface",
       "required": [
+        "draftsMailbox",
         "enabled",
         "fromAddress",
         "imapHost",
         "imapPort",
+        "mailbox",
         "passwordRef",
         "smtpHost",
+        "smtpPasswordRef",
         "smtpPort",
         "smtpSecurity",
         "username"

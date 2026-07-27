@@ -11,16 +11,28 @@
  * Returns `null` when the composition is too narrow to reach a real store, so
  * the verbs stay unregistered rather than half-wired and answering 500s.
  *
- * Errors are translated once, here, into honest statuses. `EmailService`
- * throws plain-language `Error`s — "Email is not enabled", "Email config is
- * invalid", an IMAP/SMTP refusal — and collapsing all of them into 500 would
- * report the operator's own unfinished setup as a server fault.
+ * Three layers, in order, so each is one idea:
+ *
+ *  1. `createServiceBackedGateway` — the mapping onto `EmailService`, and the
+ *     one place its errors become honest statuses. `EmailService` throws
+ *     plain-language `Error`s — "Email is not enabled", "Email config is
+ *     invalid", an IMAP/SMTP refusal — and collapsing all of them into 500
+ *     would report the operator's own unfinished setup as a server fault.
+ *  2. `instrumentEmailGateway` — unfinished setup reported in the operator's
+ *     own key names, and an operational log line per verb.
+ *  3. `createDaemonEmailGatewayService` — which of those a given composition
+ *     gets.
+ *
+ * Every address in a log field is a digest. See `email/address-digest.ts` for
+ * why that is not optional.
  */
 import { EmailService, type EmailServiceDeps } from '../../email/index.js';
 import {
   getProcessUntrustedContentLedger,
   type UntrustedContentLedger,
 } from '../../security/untrusted-content.js';
+import { addressDigest } from '../../email/address-digest.js';
+import type { SurfaceEmailConfigProblem } from '../../email/surface-config.js';
 import { GatewayVerbError } from './gateway-verb-error.js';
 import type {
   EmailGatewayDraftInput,
@@ -32,6 +44,18 @@ import type {
   EmailGatewaySendResult,
   EmailGatewayService,
 } from './email.js';
+
+/**
+ * One operational log line about a mail verb.
+ *
+ * Addresses arrive here already reduced to a digest — see `address-digest.ts`
+ * for why, and note that this signature makes it awkward to pass anything else:
+ * the fields are scalars a log can hold, not a message a log should not.
+ */
+export type EmailGatewayLog = (
+  event: string,
+  fields: Readonly<Record<string, string | number | boolean>>,
+) => void;
 
 /** The slice of the verb-group deps this composition needs. */
 export interface EmailCompositionDeps {
@@ -49,6 +73,17 @@ export interface EmailCompositionDeps {
    * one record rather than from two that cannot see each other.
    */
   readonly untrustedContentLedger?: UntrustedContentLedger | undefined;
+  /**
+   * Why the mailbox is not usable yet, in the operator's own key names.
+   *
+   * Supplied when the settings come from the daemon's `surfaces.email.*` keys,
+   * because the service's own validation reports `email.imapHost is required` —
+   * a key that operator does not have and cannot set. Absent for a plain
+   * `email.*` composition, where that wording is the correct wording.
+   */
+  readonly describeEmailConfigProblem?: (() => Promise<SurfaceEmailConfigProblem | null>) | undefined;
+  /** Operational log sink. Absent means these verbs log nothing at all. */
+  readonly emailLog?: EmailGatewayLog | undefined;
 }
 
 /**
@@ -82,22 +117,8 @@ async function guard<T>(run: () => Promise<T>): Promise<T> {
   }
 }
 
-export function createDaemonEmailGatewayService(
-  deps: EmailCompositionDeps,
-): EmailGatewayService | null {
-  if (deps.emailGateway) return deps.emailGateway;
-  if (!deps.emailServiceDeps) return null;
-  const ledger = deps.untrustedContentLedger ?? getProcessUntrustedContentLedger();
-  const service = new EmailService({
-    ...deps.emailServiceDeps,
-    // Bound here rather than left to the caller: a composition that forgot it
-    // would read strangers' mail into nothing, and the exposure a later send
-    // discloses would be missing exactly the half that mattered. A caller that
-    // supplies its own recorder still wins.
-    recordUntrustedIngest: deps.emailServiceDeps.recordUntrustedIngest
-      ?? ((ingest) => { ledger.record(ingest); }),
-  });
-
+/** The `EmailGatewayService` slice, served by a platform `EmailService`. */
+export function createServiceBackedGateway(service: EmailService): EmailGatewayService {
   return {
     async listInbox(input: EmailGatewayListInput): Promise<EmailGatewayListResult> {
       return guard(async () => {
@@ -179,4 +200,104 @@ export function createDaemonEmailGatewayService(
       });
     },
   };
+}
+
+export interface EmailGatewayInstrumentation {
+  readonly describeEmailConfigProblem?: (() => Promise<SurfaceEmailConfigProblem | null>) | undefined;
+  readonly emailLog?: EmailGatewayLog | undefined;
+}
+
+/**
+ * Wrap a mail backend with the two things every caller of these verbs should
+ * get regardless of what is behind them: unfinished setup reported in terms the
+ * operator can act on, and a log line that says what happened without saying
+ * who it happened with.
+ */
+export function instrumentEmailGateway(
+  backend: EmailGatewayService,
+  options: EmailGatewayInstrumentation,
+): EmailGatewayService {
+  const log: EmailGatewayLog = options.emailLog ?? ((): void => {});
+
+  /** Refuse before the mailbox is touched when setup is not finished. */
+  async function ready(): Promise<void> {
+    const problem = await options.describeEmailConfigProblem?.();
+    if (problem) throw new GatewayVerbError(problem.message, problem.code, 400);
+  }
+
+  return {
+    async listInbox(input: EmailGatewayListInput): Promise<EmailGatewayListResult> {
+      await ready();
+      const result = await backend.listInbox(input);
+      log('email.inbox.list', {
+        count: result.messages.length,
+        unreadOnly: input.unreadOnly ?? true,
+        // Digested, and joined rather than listed one per sender: the line says
+        // how many distinct people wrote, never who.
+        senders: result.messages.map((message) => addressDigest(message.from)).join(','),
+      });
+      return result;
+    },
+
+    async readMessage(uid: number): Promise<EmailGatewayMessageDetail | null> {
+      await ready();
+      const message = await backend.readMessage(uid);
+      if (message === null) return null;
+      log('email.inbox.read', {
+        uid,
+        from: addressDigest(message.from),
+        hasHtml: message.bodyHtml !== undefined && message.bodyHtml.length > 0,
+        attachments: message.attachments?.length ?? 0,
+      });
+      return message;
+    },
+
+    async createDraft(input: EmailGatewayDraftInput): Promise<EmailGatewayDraftResult> {
+      await ready();
+      const result = await backend.createDraft(input);
+      log('email.draft.create', {
+        mailbox: result.mailbox,
+        ...(result.uid === undefined ? {} : { uid: result.uid }),
+        recipient: addressDigest(input.to),
+      });
+      return result;
+    },
+
+    async send(input: EmailGatewaySendInput): Promise<EmailGatewaySendResult> {
+      await ready();
+      const result = await backend.send(input);
+      log('email.send', {
+        messageId: result.messageId,
+        sentAt: result.sentAt,
+        recipient: addressDigest(input.to),
+      });
+      return result;
+    },
+  };
+}
+
+export function createDaemonEmailGatewayService(
+  deps: EmailCompositionDeps,
+): EmailGatewayService | null {
+  const ledger = deps.untrustedContentLedger ?? getProcessUntrustedContentLedger();
+  const backend = deps.emailGateway
+    ?? (deps.emailServiceDeps
+      ? createServiceBackedGateway(new EmailService({
+        ...deps.emailServiceDeps,
+        // Bound here rather than left to the caller: a composition that forgot
+        // it would read strangers' mail into nothing, and the exposure a later
+        // send discloses would be missing exactly the half that mattered. This
+        // is the SAME process-wide ledger the daemon's browser engine records
+        // page reads into, so reading a stranger's page and reading a
+        // stranger's mail accrue to one record rather than two that cannot see
+        // each other. A caller that supplies its own recorder still wins.
+        recordUntrustedIngest: deps.emailServiceDeps.recordUntrustedIngest
+          ?? ((ingest) => { ledger.record(ingest); }),
+      }))
+      : null);
+  if (backend === null) return null;
+  return instrumentEmailGateway(backend, {
+    describeEmailConfigProblem: deps.describeEmailConfigProblem,
+    emailLog: deps.emailLog,
+  });
 }
