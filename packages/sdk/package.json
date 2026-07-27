@@ -257,6 +257,10 @@
       "types": "./dist/platform/config/index.d.ts",
       "import": "./dist/platform/config/index.js"
     },
+    "./platform/payments": {
+      "types": "./dist/platform/payments/index.d.ts",
+      "import": "./dist/platform/payments/index.js"
+    },
     "./platform/control-plane": {
       "types": "./dist/platform/control-plane/index.d.ts",
       "import": "./dist/platform/control-plane/index.js"
