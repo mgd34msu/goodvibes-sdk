@@ -102,30 +102,34 @@ export type BrowserKnowledgeMethodId =
 export type BrowserKnowledgeDomain = typeof KNOWLEDGE_BROWSER_DOMAINS[number];
 
 /**
- * Fold a path-bound session id into a companion-chat payload.
+ * The declared properties of `T`, with any index signature dropped.
  *
- * Why this needs an assertion rather than a plain spread. The companion-chat
- * verbs whose required set is conditional — a message needs `body`, `content`
- * OR `attachments`; a session update needs at least one field to update — are
- * typed as a base intersected with a union of requirement branches, so the
- * contract can say what the handler actually refuses instead of calling every
- * field optional and 400ing at runtime.
- *
- * These helpers take `Omit<Input, 'sessionId'>`, and `Omit` cannot see through
- * the base's open-ended body envelope: the envelope contributes a
- * `{ [key: string]: unknown }` index signature, `keyof` of an intersection with
- * one is `string | number`, and omitting a named key from that removes nothing
- * and keeps nothing. The parameter's named properties were already erased that
- * way before the requirement branches existed — this is not new, it simply
- * became visible once the target type had something left to check.
- *
- * So the caller's payload cannot be re-proved here. It is checked where it is
- * written (a direct `invoke('companion.chat.messages.create', …)` gets the full
- * union), and this helper only adds the id the path already carries.
+ * Body-envelope inputs are open (`additionalProperties: true`), which renders
+ * as an intersection with `{ readonly [key: string]: unknown }`. That single
+ * addition breaks `Omit`: `keyof` an intersection carrying an index signature
+ * is `string | number`, so omitting a named key removes nothing and keeps
+ * nothing, and the result is a bare record. Every helper below that took
+ * `Omit<Input, 'sessionId'>` was therefore accepting anything at all — not
+ * because of the requirement branches, which came later, but from the moment
+ * the envelope was opened. Dropping the index signature first is what makes
+ * the omit mean something.
  */
-function withSessionId<TInput>(sessionId: string, input: unknown): TInput {
-  return { sessionId, ...(input as Record<string, unknown>) } as TInput;
-}
+type DeclaredKeys<T> = {
+  [K in keyof T as string extends K ? never : number extends K ? never : K]: T[K];
+};
+
+/**
+ * `Omit` that survives both the index signature and a union.
+ *
+ * Distributing matters as much as `DeclaredKeys`: the companion-chat verbs
+ * whose required set is conditional are typed as a base intersected with a
+ * union of requirement branches, and a non-distributive `Omit` collapses that
+ * union to its members' common keys — discarding the requirement it exists to
+ * state.
+ */
+type OmitDeclared<T, TKeys extends PropertyKey> = T extends unknown
+  ? Omit<DeclaredKeys<T>, TKeys>
+  : never;
 
 export interface BrowserKnowledgeSdk extends ScopedBrowserSdk<BrowserKnowledgeMethodId, BrowserKnowledgeDomain> {
   readonly knowledge: {
@@ -141,13 +145,13 @@ export interface BrowserKnowledgeSdk extends ScopedBrowserSdk<BrowserKnowledgeMe
       list(input?: OperatorMethodInput<'companion.chat.sessions.list'>): Promise<OperatorMethodOutput<'companion.chat.sessions.list'>>;
       update(
         sessionId: string,
-        input: Omit<OperatorMethodInput<'companion.chat.sessions.update'>, 'sessionId'>,
+        input: OmitDeclared<OperatorMethodInput<'companion.chat.sessions.update'>, 'sessionId'>,
       ): Promise<OperatorMethodOutput<'companion.chat.sessions.update'>>;
     };
     readonly messages: {
       create(
         sessionId: string,
-        input: Omit<OperatorMethodInput<'companion.chat.messages.create'>, 'sessionId'>,
+        input: OmitDeclared<OperatorMethodInput<'companion.chat.messages.create'>, 'sessionId'>,
       ): Promise<OperatorMethodOutput<'companion.chat.messages.create'>>;
       list(sessionId: string): Promise<OperatorMethodOutput<'companion.chat.messages.list'>>;
       /**
@@ -158,7 +162,7 @@ export interface BrowserKnowledgeSdk extends ScopedBrowserSdk<BrowserKnowledgeMe
        */
       steer(
         sessionId: string,
-        input: Omit<OperatorMethodInput<'companion.chat.messages.steer'>, 'sessionId'>,
+        input: OmitDeclared<OperatorMethodInput<'companion.chat.messages.steer'>, 'sessionId'>,
       ): Promise<OperatorMethodOutput<'companion.chat.messages.steer'>>;
     };
     readonly turns: {
@@ -236,12 +240,12 @@ export function createBrowserKnowledgeSdkFromRoutes(
         create: (input) => invoke('companion.chat.sessions.create', input),
         get: (id) => invoke('companion.chat.sessions.get', { sessionId: id }),
         list: (input) => invoke('companion.chat.sessions.list', input),
-        update: (id, input) => invoke('companion.chat.sessions.update', withSessionId(id, input)),
+        update: (id, input) => invoke('companion.chat.sessions.update', { sessionId: id, ...input }),
       },
       messages: {
-        create: (id, input) => invoke('companion.chat.messages.create', withSessionId(id, input)),
+        create: (id, input) => invoke('companion.chat.messages.create', { sessionId: id, ...input }),
         list: (id) => invoke('companion.chat.messages.list', { sessionId: id }),
-        steer: (id, input) => invoke('companion.chat.messages.steer', withSessionId(id, input)),
+        steer: (id, input) => invoke('companion.chat.messages.steer', { sessionId: id, ...input }),
       },
       turns: {
         cancel: (id, input) => invoke('companion.chat.turns.cancel', { sessionId: id, ...(input ?? {}) }),

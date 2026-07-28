@@ -43,6 +43,7 @@
  * edit and the coverage becomes end-to-end.
  */
 import type { OperatorMethodInput } from '@pellux/goodvibes-sdk/contracts';
+import { createBrowserKnowledgeSdk } from '@pellux/goodvibes-sdk/browser/knowledge';
 
 // ── Plain required fields ───────────────────────────────────────────────────
 
@@ -134,6 +135,76 @@ const viaVariableMissingId: OperatorMethodInput<'knowledge.projection.render'> =
 const staleWithUnknownKey = { enabled: true, unknownExtra: 1 };
 const closedSchemaVariableSlipsThrough: OperatorMethodInput<'power.keepAwake.set'> = staleWithUnknownKey;
 
+// ── Bodies built with a SPREAD inside a fresh literal ───────────────────────
+//
+// A third hole in excess-property checking, beyond the variable case above: a
+// FRESH object literal that contains a spread is not treated as fresh for the
+// spread's contribution, so a correctly typed parameter stops rejecting extra
+// keys. That is real, and it matters because payloads at real call sites are
+// routinely assembled as `{ id, ...input }`.
+//
+// It is worth being exact about what it costs, because the answer is narrower
+// than "typing does not help". Measured against these contract types:
+//
+//   missing required field via spread   → CAUGHT
+//   wrong-typed field via spread        → CAUGHT
+//   satisfies no requirement branch     → CAUGHT
+//   EXCESS key via spread               → NOT caught
+//
+// Excess properties are the only casualty, and excess properties are not this
+// gate's subject — these are open body envelopes where an undeclared key is
+// legitimate anyway. The defect class this file exists for survives the spread.
+
+const nothingToSay = {};
+// @ts-expect-error spread contributes no body/content/attachments, so no branch is satisfied
+const spreadMissingRequirement: OperatorMethodInput<'companion.chat.messages.create'> = { sessionId: 's1', ...nothingToSay };
+
+const wrongTypedPiece = { enabled: 'yes' };
+// @ts-expect-error a spread does not launder a wrong property type
+const spreadWrongType: OperatorMethodInput<'power.keepAwake.set'> = { ...wrongTypedPiece };
+
+const enoughToSay = { body: 'hello' };
+// Satisfies a branch through the spread — must keep compiling.
+const spreadSatisfiesBranch: OperatorMethodInput<'companion.chat.messages.create'> = { sessionId: 's1', ...enoughToSay };
+
+// The one that gets through: an excess key on a CLOSED schema, which the same
+// literal without the spread would reject. Asserted as compiling so the hole is
+// recorded at its true size rather than described in a comment and forgotten —
+// if TypeScript ever closes it, this line fails and the note gets revisited.
+const strayKey = { unknownExtra: 1 };
+const spreadHidesExcessKey: OperatorMethodInput<'power.keepAwake.set'> = { enabled: true, ...strayKey };
+
+// ── The named facade helpers, not just the raw contract types ───────────────
+//
+// These wrap a verb and fold the path-bound session id in for the caller, and
+// they took `Omit<Input, 'sessionId'>`. That parameter had been accepting
+// ANYTHING — an open body envelope renders as an intersection with
+// `{ readonly [key: string]: unknown }`, `keyof` of which is `string | number`,
+// so omitting a named key removed nothing and kept nothing and the parameter
+// degenerated to a bare record. It predated the requirement branches; the
+// branches only made the consequence visible.
+//
+// `OmitDeclared` (browser-knowledge.ts) drops the index signature before
+// omitting and distributes over the union, so the helpers now carry the same
+// constraint the contract type does. Asserted here because the degeneration was
+// invisible for as long as nothing downstream had anything left to check.
+
+async function verifyFacadeHelpersEnforce(): Promise<void> {
+  const knowledge = createBrowserKnowledgeSdk({ baseUrl: 'http://127.0.0.1:3210' });
+
+  // @ts-expect-error a message needs body, content or attachments
+  await knowledge.chat.messages.create('session-1', {});
+
+  // @ts-expect-error an update needs at least one field to update
+  await knowledge.chat.sessions.update('session-1', {});
+
+  // Both shapes below are real calls and must keep compiling.
+  await knowledge.chat.messages.create('session-1', { body: 'hello' });
+  await knowledge.chat.sessions.update('session-1', { title: 'renamed' });
+}
+
+void verifyFacadeHelpersEnforce;
+
 // ── Calls that must keep compiling ──────────────────────────────────────────
 // The gate is only meaningful if it refuses the wrong bodies WITHOUT refusing
 // the right ones. Each of these is a shape the handler genuinely accepts.
@@ -175,6 +246,7 @@ const extraKeysTolerated: OperatorMethodInput<'artifacts.create'> = { text: 'hel
 void [
   missingEnabled, wrongEnabledType, missingSurfaceId,
   viaVariableWrongType, viaVariableNoBranch, viaVariableMissingId,
+  spreadMissingRequirement, spreadWrongType, spreadSatisfiesBranch, spreadHidesExcessKey,
   closedSchemaVariableSlipsThrough,
   artifactWithNoContent, analyzeWithNoArtifact, resolveWithNoTarget,
   messageWithNothingInIt, editWithNoTarget, steerWithNothingInIt,
