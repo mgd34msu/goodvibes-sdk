@@ -5,5 +5,6 @@ export type {
   ChannelPolicyServiceLike,
   ChannelSurface,
   DaemonChannelRouteContext,
+  InboundMailHealthLike,
   SurfaceRegistryLike,
 } from '@pellux/goodvibes-daemon-sdk';

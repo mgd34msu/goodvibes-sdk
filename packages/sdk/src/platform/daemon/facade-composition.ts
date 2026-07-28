@@ -632,6 +632,11 @@ export function createDaemonFacadeCollaborators(
     routeBindings: runtime.routeBindings,
     channelPolicy: runtime.channelPolicy,
     channelPlugins: runtime.channelPlugins,
+    // A thunk, not a value: `builtinChannels` is constructed further down this
+    // same function, and the route only runs on an HTTP request long after
+    // composition finishes. Reading it eagerly here would be a temporal-dead-
+    // zone error at startup.
+    inboundMailHealth: () => builtinChannels.inboundMailHealth(),
     surfaceRegistry: runtime.surfaceRegistry,
     distributedRuntime: runtime.distributedRuntime,
     watcherRegistry: runtime.watcherRegistry,

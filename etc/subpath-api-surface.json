@@ -3669,6 +3669,19 @@
       ]
     },
     {
+      "name": "InboundMailHealthLike",
+      "kind": "interface",
+      "required": [
+        "account",
+        "enabled",
+        "kind",
+        "mailbox",
+        "mode",
+        "reason",
+        "state"
+      ]
+    },
+    {
       "name": "IntegrationApprovalSnapshotSourceLike",
       "kind": "interface",
       "required": [
