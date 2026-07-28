@@ -54,7 +54,7 @@ import {
 } from './capability.js';
 import { runIdleLoop, type IdleWakeSummary } from './idle-watcher.js';
 import { drainMailboxDelta, runPollLoop, type MailboxDeltaReport } from './poll-loop.js';
-import type { EmailCapabilityFailureNotice } from '../imap-client.js';
+import type { EmailCapabilityFailureNotice, ImapBodyProbeVerdict } from '../imap-client.js';
 import type {
   InboundCapabilityReason,
   InboundCapabilityVerdict,
@@ -95,6 +95,18 @@ export interface InboundMailboxWatcherStatus {
   readonly reconnectAttempts: number;
   /** Completed connections, for telling "flapping" from "up". */
   readonly connections: number;
+  /**
+   * What the last connection's connect-time body probe found, or `null`
+   * before any connection has opened.
+   *
+   * Kept distinct from `verdict` on purpose: `{ probed: false }` (an empty
+   * mailbox at connect time) is not a capability problem and does not change
+   * `verdict` at all, but it is a different fact from `{ probed: true, ok:
+   * true }` and has to stay visible as one — reading either as "fine, same as
+   * the other" is the exact silent-degradation mistake `ImapBodyProbeVerdict`
+   * exists to make impossible to write by accident.
+   */
+  readonly bodyProbe: ImapBodyProbeVerdict | null;
 }
 
 /**
@@ -143,6 +155,7 @@ export class InboundMailboxWatcher {
   private terminal: InboundMailTerminalFailure | null = null;
   private authRetried = false;
   private connectionCount = 0;
+  private lastBodyProbe: ImapBodyProbeVerdict | null = null;
   /** Set when a verdict only a change can clear was reported this pass. */
   private pendingRecheck = false;
 
@@ -175,6 +188,7 @@ export class InboundMailboxWatcher {
       terminalFailure: this.terminal,
       reconnectAttempts: this.connectBackoff.attempts,
       connections: this.connectionCount,
+      bodyProbe: this.lastBodyProbe,
     };
   }
 
@@ -269,6 +283,34 @@ export class InboundMailboxWatcher {
         'uidvalidity-missing',
         `The server opened '${this.settings.mailbox}' without reporting a UIDVALIDITY.`,
       ), null);
+      return;
+    }
+
+    // The connect-time body probe (§3.4d "Scope sufficiency applies to
+    // both"): on a non-empty mailbox, `connection.report.bodyProbe` already
+    // answers "will this server hand over a body" before anything below this
+    // point has run — before the cursor is resolved and before any
+    // expectation could be opened. A refusal here is the SAME finding the
+    // reactive path (`handleDrainFailure`) would reach on the first real
+    // fetch, just reached sooner, so it is classified through the identical
+    // `classifyReadFailure` and can turn out non-terminal (a `[LIMIT]`-style
+    // refusal is a server condition, not a body-access verdict) as well as
+    // terminal. `{ probed: false }` — an empty mailbox, or nothing to
+    // conclude from — changes nothing here: the watcher runs and the
+    // reactive path remains the answer for this mailbox.
+    this.lastBodyProbe = connection.report.bodyProbe;
+    const bodyProbe = connection.report.bodyProbe;
+    if (bodyProbe.probed && !bodyProbe.ok) {
+      const { verdict, terminal, notice } = classifyReadFailure(
+        new Error(bodyProbe.detail),
+        'fetch',
+      );
+      if (terminal) {
+        this.reportTerminal(verdict, notice);
+        return;
+      }
+      this.tracker.record(verdict);
+      await this.pauseBeforeReconnect(verdict.reason);
       return;
     }
 
