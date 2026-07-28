@@ -27,12 +27,13 @@ import {
 } from './_helpers/fake-imap-mailbox.ts';
 import {
   FakeClock,
-  MemoryCursorStore,
+  makeCursorStore,
   RecordingObserver,
   RecordingSink,
   fixedRandom,
   flush,
   waitFor,
+  type RecordingCursorStore,
 } from './_helpers/inbound-watcher-harness.ts';
 
 const ACCOUNT = 'primary';
@@ -42,7 +43,7 @@ interface Harness {
   readonly mailbox: FakeMailboxServer;
   readonly watcher: InboundMailboxWatcher;
   readonly clock: FakeClock;
-  readonly cursors: MemoryCursorStore;
+  readonly cursors: RecordingCursorStore;
   readonly sink: RecordingSink;
   readonly observer: RecordingObserver;
   readonly settings: InboundWatcherSettings;
@@ -67,7 +68,7 @@ async function build(input: {
 } = {}): Promise<Harness> {
   const mailbox = await makeFakeMailbox(input.server);
   const clock = new FakeClock();
-  const cursors = new MemoryCursorStore(input.seed);
+  const { store: cursors } = await makeCursorStore(input.seed);
   const sink = new RecordingSink();
   const observer = new RecordingObserver();
   const settings = resolveWatcherSettings({
@@ -187,7 +188,7 @@ describe('inbound watcher — IDLE', () => {
     harness.watcher.start();
     await idleReached(harness);
     const searchesBefore = count(harness.mailbox.commands, SEARCH_COMMAND);
-    const cursorBefore = harness.cursors.peek({ account: ACCOUNT, mailbox: MAILBOX });
+    const cursorBefore = await harness.cursors.get(ACCOUNT, MAILBOX);
 
     harness.mailbox.expunge(101);
     // Wait for the IDLE to be torn down and re-issued, which proves the
@@ -200,7 +201,7 @@ describe('inbound watcher — IDLE', () => {
 
     expect(count(harness.mailbox.commands, SEARCH_COMMAND)).toBe(searchesBefore);
     expect(harness.sink.delivered).toEqual([]);
-    expect(harness.cursors.peek({ account: ACCOUNT, mailbox: MAILBOX }))
+    expect(await harness.cursors.get(ACCOUNT, MAILBOX))
       .toEqual(cursorBefore);
     expect(harness.observer.notes.some((note) => note.kind === 'expunge-observed'))
       .toBe(true);
@@ -533,7 +534,7 @@ describe('inbound watcher — the cursor', () => {
 
     // First attempt: fetched, refused between fetch and completion.
     await waitFor(() => harness.sink.attempts.length >= 1, 'the first delivery attempt');
-    expect(harness.cursors.peek({ account: ACCOUNT, mailbox: MAILBOX })?.lastSeenUid)
+    expect((await harness.cursors.get(ACCOUNT, MAILBOX))?.lastSeenUid)
       .toBe(101);
     expect(harness.cursors.advances).toEqual([]);
 
@@ -544,8 +545,8 @@ describe('inbound watcher — the cursor', () => {
     await waitFor(() => harness.sink.uids.includes(102), 'the redelivered message');
     expect(harness.sink.attempts).toEqual([102, 102]);
     expect(harness.sink.uids).toEqual([102]);
-    expect(harness.cursors.advances.map((entry) => entry.uid)).toEqual([102]);
-    expect(harness.cursors.peek({ account: ACCOUNT, mailbox: MAILBOX })?.lastSeenUid)
+    expect(harness.cursors.advances).toEqual([102]);
+    expect((await harness.cursors.get(ACCOUNT, MAILBOX))?.lastSeenUid)
       .toBe(102);
   });
 
@@ -566,7 +567,7 @@ describe('inbound watcher — the cursor', () => {
     expect(harness.sink.uids).toEqual(
       Array.from({ length: 25 }, (_value, index) => 102 + index),
     );
-    expect(harness.cursors.peek({ account: ACCOUNT, mailbox: MAILBOX })?.lastSeenUid)
+    expect((await harness.cursors.get(ACCOUNT, MAILBOX))?.lastSeenUid)
       .toBe(126);
   });
 
@@ -603,7 +604,7 @@ describe('inbound watcher — the cursor', () => {
     await flush();
 
     expect(harness.sink.delivered).toEqual([]);
-    expect(harness.cursors.peek({ account: ACCOUNT, mailbox: MAILBOX })?.lastSeenUid)
+    expect((await harness.cursors.get(ACCOUNT, MAILBOX))?.lastSeenUid)
       .toBe(103);
     expect(harness.observer.notes.some((note) => note.kind === 'cursor-established'))
       .toBe(true);
