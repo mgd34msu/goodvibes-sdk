@@ -21,7 +21,10 @@ import {
   validateInboundMailRecord,
   type InboundMailRecordInput,
 } from '../packages/sdk/src/platform/email/inbound/record-store.ts';
-import { InboundMailHousekeeper } from '../packages/sdk/src/platform/email/inbound/housekeeping.ts';
+import {
+  DEFAULT_DISCLOSURE_RETENTION_MS,
+  InboundMailHousekeeper,
+} from '../packages/sdk/src/platform/email/inbound/housekeeping.ts';
 import { MailboxCursorStore } from '../packages/sdk/src/platform/email/inbound/cursor-store.ts';
 import { PersistedExpectationStore } from '../packages/sdk/src/platform/email/inbound/expectation-store.ts';
 import {
@@ -323,6 +326,91 @@ describe('the housekeeping disclosure log discloses removals, not survivors', ()
     expect(persisted.removed.length).toBe(100);
     // Bounded, and the count is still true.
     expect(persisted.removedTotal).toBe(250);
+  });
+
+  /**
+   * The count cap alone reaps by ARRIVALS, and a quiet store has none.
+   *
+   * Twenty entries look like an age bound on a daemon sweeping every six hours
+   * — five days' worth — but that is arithmetic about a busy daemon, not a
+   * bound. A mailbox that goes quiet, a surface switched off, a daemon that
+   * stops: in each the twentieth entry is the last one written and it stays
+   * forever. Proved with a file whose entries are old rather than numerous.
+   */
+  test('a disclosure entry past the retention window is reaped, not merely hidden', async () => {
+    const disclosurePath = join(dir, 'email-inbound-housekeeping.json');
+    const ancient = NOW - (DEFAULT_DISCLOSURE_RETENTION_MS + 86_400_000);
+    writeFileSync(disclosurePath, `${JSON.stringify({
+      version: 1,
+      reports: [
+        { sweptAt: ancient, trigger: 'periodic', summary: 'from another season', failures: [], cursors: null, records: null, expectations: null },
+        { sweptAt: NOW - 1_000, trigger: 'periodic', summary: 'recent', failures: [], cursors: null, records: null, expectations: null },
+      ],
+    }, null, 2)}\n`, 'utf-8');
+
+    const housekeeper = new InboundMailHousekeeper({
+      cursors: new MailboxCursorStore(join(dir, 'cursors.json')),
+      records: new InboundMailStore(storePath, { now: () => NOW }),
+      expectations: new PersistedExpectationStore(join(dir, 'expectations.json'), { now: () => new Date(NOW) }),
+      disclosurePath,
+      now: () => NOW,
+    });
+
+    expect((await housekeeper.listDisclosures()).map((r) => r.summary)).toEqual(['recent']);
+
+    // And the next sweep REMOVES it from the file rather than leaving a read to
+    // keep filtering it — the same "bounds apply on the write" rule as part 1.
+    await housekeeper.sweep('manual');
+    const raw = readFileSync(disclosurePath, 'utf-8');
+    expect(raw).not.toContain('from another season');
+    expect(raw).toContain('recent');
+  });
+
+  test('a shorter disclosure retention can be asked for, and it binds', async () => {
+    const disclosurePath = join(dir, 'email-inbound-housekeeping.json');
+    writeFileSync(disclosurePath, `${JSON.stringify({
+      version: 1,
+      reports: [
+        { sweptAt: NOW - 10_000, trigger: 'periodic', summary: 'older than the window', failures: [], cursors: null, records: null, expectations: null },
+        { sweptAt: NOW - 100, trigger: 'periodic', summary: 'inside the window', failures: [], cursors: null, records: null, expectations: null },
+      ],
+    }, null, 2)}\n`, 'utf-8');
+
+    const housekeeper = new InboundMailHousekeeper({
+      cursors: new MailboxCursorStore(join(dir, 'cursors.json')),
+      records: new InboundMailStore(storePath, { now: () => NOW }),
+      expectations: new PersistedExpectationStore(join(dir, 'expectations.json'), { now: () => new Date(NOW) }),
+      disclosurePath,
+      disclosureRetentionMs: 5_000,
+      now: () => NOW,
+    });
+
+    expect((await housekeeper.listDisclosures()).map((r) => r.summary)).toEqual(['inside the window']);
+  });
+
+  test('reclaiming an orphaned temp file is DISCLOSED, not silent', async () => {
+    const disclosurePath = join(dir, 'email-inbound-housekeeping.json');
+    const orphan = `${storePath}.tmp.999999.abandoned`;
+    writeFileSync(orphan, 'half a write', 'utf-8');
+    const longAgo = Date.now() / 1000 - 3_600;
+    utimesSync(orphan, longAgo, longAgo);
+
+    const records = new InboundMailStore(storePath, { now: () => NOW });
+    // The write is what reclaims it; the sweep is what says so out loud.
+    await records.record(input({ uid: 900 }));
+    expect(existsSync(orphan)).toBe(false);
+
+    const housekeeper = new InboundMailHousekeeper({
+      cursors: new MailboxCursorStore(join(dir, 'cursors.json')),
+      records,
+      expectations: new PersistedExpectationStore(join(dir, 'expectations.json'), { now: () => new Date(NOW) }),
+      disclosurePath,
+      now: () => NOW,
+    });
+    const report = await housekeeper.sweep('manual');
+
+    expect(report.summary).toContain('orphaned temporary file');
+    expect(report.summary).toContain('reclaimed');
   });
 
   test('listDisclosures() validates by content and drops what does not parse as a report', async () => {

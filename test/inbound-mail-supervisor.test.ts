@@ -20,7 +20,7 @@
  * test them again while testing the supervisor not at all.
  */
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -474,6 +474,61 @@ describe('email.inbound.status discloses what is held', () => {
     expect(retention.records!.maxBodyExcerptChars).toBe(20_000);
 
     await rig.supervisor.stop();
+  });
+
+  /**
+   * The disclosure measured against the FILE, through the real handler.
+   *
+   * Ported from a parallel branch that solved the same finding by redefining
+   * `kept` to mean the file. This branch keeps `kept` as the served view and
+   * adds `stored`, so the assertion is retargeted — but the thing it pins is
+   * identical and is the thing that was missing here: every other test for this
+   * fix is at the STORE level, so `supervisor.ts` reverting `stored` to
+   * `records.length` (the served view) would have reddened nothing at all. A
+   * disclosure fix with no test that reddens is the shape this round keeps
+   * finding.
+   *
+   * Both numbers are asserted, and so is the gap between them, because the gap
+   * is the disclosure: two served, ten on disk, eight of them past the window
+   * and waiting for the next write or sweep.
+   */
+  test('retention.records reports the FILE in `stored` and the served view in `kept`', async () => {
+    const rows = Array.from({ length: 10 }, (_unused, index) => ({
+      id: `rec-${String(index)}`,
+      account: ACCOUNT,
+      mailbox: MAILBOX,
+      source: 'imap',
+      uidValidity: 7,
+      uid: index + 1,
+      senderDisplay: 'noreply@github.com',
+      subject: 'Verify your email',
+      deliveredToAddress: 'owner+alias@example.com',
+      deliveryEvidenceSource: 'alias-mailbox',
+      links: [],
+      outcome: 'matched-expectation',
+      noticeStatus: 'delivered',
+      bodyExcerpt: 'hello',
+      // Two inside the default thirty-day window, eight well past it.
+      receivedAt: new Date(T0.getTime() - (index < 2 ? 0 : 60) * 86_400_000).toISOString(),
+    }));
+    writeFileSync(join(dir, 'records.json'), JSON.stringify({ version: 1, records: rows }), 'utf-8');
+
+    const rig = buildRig({
+      sources: factoryFor(new RecordingSource(HEALTHY, { kind: 'push' })),
+      now: () => T0.getTime(),
+    });
+    expect(await rig.records.list()).toHaveLength(2);
+
+    const handler = createEmailInboundStatusHandler(rig.supervisor);
+    const disclosed = await handler({ methodId: 'email.inbound.status' } as never) as Record<string, unknown>;
+    const retention = disclosed.retention as Record<string, Record<string, number>>;
+
+    expect(retention.records!.stored).toBe(10);
+    expect(retention.records!.kept).toBe(2);
+    // Stated as its own assertion rather than left implicit: if these two ever
+    // become the same expression again, the disclosure has gone back to
+    // describing a filter instead of a file.
+    expect(retention.records!.stored).toBeGreaterThan(retention.records!.kept!);
   });
 
   test('an absent capability and an absent sweep are omitted, never serialized as null', async () => {

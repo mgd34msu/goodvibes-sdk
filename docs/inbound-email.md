@@ -1576,6 +1576,82 @@ config UI, which states plainly what is retained and for how long — the owner
 should not have to read source to learn his daemon keeps a month of his mail's
 metadata.
 
+### 9.4 Hygiene of the files themselves
+
+Four things the five rules imply about a FILE rather than about a record, each
+of which was unmet and is now closed. Exercised by
+`test/inbound-mail-persistence-hygiene.test.ts`, where every assertion reads the
+file rather than a store's own read method — a read that filters is what hid
+three of these four.
+
+**Bounds apply at write, not only at the sweep.** `record()` applied neither
+`maxRecords` nor `retentionMs` — both were the sweep's job, and the sweep runs
+every six hours. Measured with `maxRecords: 2`, ten writes put ten records on
+disk while `list()` served two. Worse, `email.inbound.status` computed
+`retention.records.kept` from that filtered read, so the owner was told a
+smaller number than the file held: a bound reported by the very filter that
+concealed it not being applied. Both bounds now apply on every write, by the
+same age-then-count precedence the sweep uses. The disclosure reports two
+numbers rather than redefining one — `kept` is what a read serves, `stored` is
+what the file holds, and **the gap between them is itself the disclosure**:
+records past their window that no write or sweep has reached yet. A write-time
+reap cannot appear in any sweep report, so `reapedOnWrite` counts it; §9's fifth
+rule is that a reap is disclosed, and that applies to reaping this code does as
+much as to reaping it describes. The same gap in
+`PersistedExpectationStore.replaceAll`, which capped nothing at all, is closed
+the same way. The periodic sweep still matters: a store nothing writes to still
+ages, and a retention lowered in config takes effect on the next pass.
+
+**The disclosure log obeys the rules it records.** It carried
+`ExpectationSweepReport.survivors` whole, duplicating every recipient alias,
+service domain and purpose into `email-inbound-housekeeping.json`, which expiry
+reaping never touched; and `listDisclosures()` read it back with no content
+validation at all. What is persisted now is a projection: survivors dropped
+(`retained` carries the count, and a count is what a disclosure needs about what
+stayed — naming them is retention, not disclosure), removals kept because the
+removed *are* the disclosure but capped at 100 with `removedTotal` carrying the
+true number, and every entry validated field by field on load with a torn one
+dropped rather than served. Bounded by age as well as by count: twenty entries
+looks like five days on a daemon sweeping four times a day, but that cap reaps
+by ARRIVALS, and a mailbox that goes quiet has none — the twentieth entry would
+otherwise be the last one written and stay forever. The live in-process report
+still carries the survivors, because the boot-time hydrate reads them from it;
+they stop at the disk boundary.
+
+**Modes, durability, and orphaned temporaries.** `PersistentStore` wrote 0644
+files into a 0755 directory with no fsync anywhere. These files hold recipient
+aliases, the services an agent signed up at and retained body excerpts, and
+nothing but the daemon reads them, so they are written 0600 into a 0700
+directory — set at create time on the temporary, which a rename carries, so an
+existing 0644 file heals on its next write without a separate chmod pass. The
+temporary is fsynced before the rename and the directory after it, because
+`rename` is atomic against other processes but says nothing about power loss:
+the failure it left behind was a zero-length file, which is indistinguishable
+from a corrupt one. A `*.tmp.<pid>.<uuid>` left by a process killed mid-write is
+reclaimed by a later write — by AGE rather than by the liveness of the pid in
+its name, because pids are recycled — and the count is disclosed in the
+housekeeping summary, for the same reason `reapedOnWrite` exists.
+
+**One writer at a time, across processes, is enforced rather than assumed.**
+Writes were serialized per store INSTANCE, and an instance is as narrow as the
+object holding it: six records written by two writers left three on disk, with
+no error on either side. It is tempting to record that as an accepted boundary
+on the grounds that the daemon runs one process per machine — **and that premise
+does not hold.** `requirePortAvailable` refuses a start only when the CONFIGURED
+PORT is already bound; the port is configuration (`resolveHostBinding`); and the
+store paths are `shellPaths.resolveUserPath('daemon', …)`, derived from `$HOME`
+with no port in them. Two daemons on two ports under one home directory
+therefore share every one of these files and neither refuses to start.
+`lifecycle-marker.ts` records a pid and a `running` state, but it is a
+crash-receipt marker, not a mutex: a second start reads it, writes a receipt and
+proceeds. So the three stores take `acquireCrossProcessLock` around the whole
+read-modify-write — the advisory lock the checkpoint and push-subscription
+stores already use, reused rather than reinvented, so the hard parts
+(populated-before-published, single-winner takeover, release-only-your-own,
+staleness by pid *and* mtime, reclamation of its own staging litter) are already
+answered. Pinned by a test that spawns two real OS processes: twelve writes by
+two processes leave twelve records.
+
 ---
 
 ## 10. What this needs from the taint round

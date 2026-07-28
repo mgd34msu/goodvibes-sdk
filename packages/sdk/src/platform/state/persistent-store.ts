@@ -93,9 +93,31 @@ const TEMP_SWEEP_INTERVAL_MS = 60_000;
  */
 const lastTempSweepAt = new Map<string, number>();
 
-/** Reset the temp-sweep throttle. Test seam only — a fresh process starts empty. */
+/**
+ * How many orphaned temp files this process has reclaimed.
+ *
+ * Counted because reaping without disclosure is the defect this round spent
+ * most of its time on. `record()` bounding the record store silently was wrong
+ * for exactly one reason — §9.5 says a reap is disclosed — and a temp-file
+ * reaper that deletes files with nothing anywhere saying so is that same
+ * objection applied to everything except the code that raised it.
+ * `InboundMailHousekeeper` puts this in its summary sentence.
+ *
+ * Process-wide rather than per-store, and deliberately not persisted: a tally
+ * of what THIS process cleaned up is a fact about this process, and persisting
+ * it would make the tally another store needing its own reaping and bounding.
+ */
+let orphanedTempFilesReclaimed = 0;
+
+/** Orphaned `<file>.tmp.<pid>.<uuid>` files reclaimed by this process since it started. */
+export function persistentStoreOrphansReclaimed(): number {
+  return orphanedTempFilesReclaimed;
+}
+
+/** Reset the temp-sweep throttle and tally. Test seam only — a fresh process starts empty. */
 export function resetPersistentStoreTempSweepThrottle(): void {
   lastTempSweepAt.clear();
+  orphanedTempFilesReclaimed = 0;
 }
 
 /**
@@ -265,7 +287,8 @@ export class PersistentStore<T extends Record<string, unknown>> {
       } catch {
         continue; // vanished between the listing and the stat
       }
-      await fs.rm(path, { force: true }).catch(() => undefined);
+      const removed = await fs.rm(path, { force: true }).then(() => true, () => false);
+      if (removed) orphanedTempFilesReclaimed += 1;
     }
   }
 }
