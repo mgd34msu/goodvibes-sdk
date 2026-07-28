@@ -10,7 +10,7 @@
  * failure the capability exists to eliminate.
  */
 
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, describe, expect, test } from 'bun:test';
 import {
   InboundMailboxWatcher,
   imapMailboxConnectionPort,
@@ -27,6 +27,7 @@ import {
 } from './_helpers/fake-imap-mailbox.ts';
 import {
   FakeClock,
+  cleanupInboundScratch,
   makeCursorStore,
   RecordingObserver,
   RecordingSink,
@@ -50,6 +51,8 @@ interface Harness {
 }
 
 const open: Harness[] = [];
+
+afterAll(() => { cleanupInboundScratch(); });
 
 afterEach(async () => {
   while (open.length > 0) {
