@@ -71983,14 +71983,14 @@ Answer "where did you get that?" for one field: the surface, the date and the ow
 
 #### `profile.read`
 
-Return the whole owner profile, by section, with each section's tier and every mechanical field's validity. This is the answer to "what do you know about me?" and is the ONE read that returns closed-tier content in bulk. It carries its own scope, read:profile.full, so a token issued to a composition path can hold read:profile for the named lookups (get/person/provenance/status) without also being able to ask for everything.
+Return the whole owner profile, by section, with each section's tier and every mechanical field's validity. This is the answer to "what do you know about me?" and is the ONE read that returns closed-tier content in bulk. It carries its own scope, read:profile-document, so a token issued to a composition path can hold read:profile for the named lookups (get/person/provenance/status) without also being able to ask for everything. The two are unrelated names rather than a hierarchy: scope matching is exact, `*`, or a `prefix:*` wildcard, so a caller wanting both lists both.
 
 - Title: `Read Owner Profile`
 - Source: `builtin`
 - Access: `authenticated`
 - Transport: `http`, `ws`
 - HTTP: `GET /api/profile`
-- Scopes: `read:profile.full`
+- Scopes: `read:profile-document`
 - Emits events: none
 - Dangerous: `no`
 - Invokable: `yes`

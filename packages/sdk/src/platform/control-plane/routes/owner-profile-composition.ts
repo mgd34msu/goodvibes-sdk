@@ -6,15 +6,19 @@
  * push-composition.ts / browser-composition.ts / calendar-composition.ts: the
  * registrar calls one function and gets back a teardown.
  *
- * ## Why the load is not awaited
+ * ## The load is synchronous, and finishes before this returns
  *
- * `registerGatewayVerbGroups` is synchronous, and making it async to wait for a
- * file read would ripple through the whole composition root. The load is started
- * here and the watcher attached when it finishes. In the milliseconds before it
- * lands, every verb answers the store's own honest state — "Your profile has not
- * been loaded yet" — rather than an empty profile, which is exactly the
- * distinction §4.4 insists on: never answer "I know nothing about you" when the
- * truth is "I have not read the file yet".
+ * `registerGatewayVerbGroups` is synchronous, so an awaited load would ripple
+ * through the whole composition root — but starting one and letting this
+ * function return was worse. It left a window in which the profile existed and
+ * had not been read, and "your profile has not been loaded yet" is not one of
+ * §4.4's three states. Below the verb layer it was worse still: the config
+ * fallback was attached but resolved nothing, so `checkin.quietHours` read as
+ * unset and a first turn landing in that window got no open-tier block, with
+ * nothing logged to connect a check-in firing at the wrong hour to a restart.
+ *
+ * `store.loadSync()` closes it outright. By the time this returns, the state is
+ * loaded, disabled, or unavailable with a reason — one of the three, always.
  *
  * ## Why the config reads are closures
  *
@@ -77,11 +81,19 @@ export function composeOwnerProfile(
     injectOpenTierEnabled: () => config.get('profile.injectOpenTier'),
   });
 
-  void store.load().then((state) => {
-    // Counts and names only; the store's own logging never carries a value.
-    logger.debug('owner-profile: initial load', { kind: state.kind, path: state.path });
-    store.watch();
-  });
+  // Synchronously, and before this function returns. An async initial load left
+  // a window in which the profile existed but had not been read: every verb
+  // answered "your profile has not been loaded yet", which §4.4 does not
+  // sanction as a state, and — with nothing logged — `checkin.quietHours` read
+  // as UNSET and the first turn's open-tier block rendered empty. A readiness
+  // promise could not have closed the second half, because `ConfigManager.get()`
+  // is synchronous and a fallback reader has nothing to await with. One small
+  // file read at boot, on the path that already reads settings.json the same
+  // way, removes the window instead of making it awaitable.
+  const state = store.loadSync();
+  // Counts and names only; the store's own logging never carries a value.
+  logger.debug('owner-profile: initial load', { kind: state.kind, path: state.path });
+  store.watch();
 
   return {
     store,
