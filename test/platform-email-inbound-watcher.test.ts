@@ -468,6 +468,37 @@ describe('inbound watcher — capability sufficiency', () => {
     expect(cannotSearch.observer.terminals).toEqual([]);
   });
 
+  test('an insufficient watcher releases the connection instead of holding it', async () => {
+    // "The watcher does not run" has to include "and is not still occupying a
+    // connection slot". Gmail allows fifteen simultaneous IMAP connections and
+    // EmailService takes a fresh one per request, so a watcher parked on an
+    // open socket for an hour while refusing to read from it makes the
+    // connection-limit verdict more likely on every OTHER mailbox — the same
+    // limit pressure with none of the benefit.
+    const harness = await build({
+      server: { fetch: 'refused', initial: [message(101, 'a')] },
+      seed: {
+        account: ACCOUNT,
+        mailbox: MAILBOX,
+        uidValidity: 42,
+        lastSeenUid: 100,
+        updatedAt: new Date(0).toISOString(),
+      },
+    });
+    harness.watcher.start();
+    await waitFor(
+      () => harness.observer.terminals.length >= 1,
+      'a terminal report for the refused fetch',
+    );
+    await waitFor(
+      () => harness.mailbox.liveConnections === 0,
+      'the connection to be released while the watcher waits out the re-check',
+    );
+    expect(harness.watcher.status.verdict.state).toBe('insufficient');
+    // Still waiting on the re-check, not spinning: one wait, an hour out.
+    expect(harness.clock.nextDueIn).toBe(60 * 60_000);
+  });
+
   test('a mailbox that reports no UIDVALIDITY is refused rather than guessed at', async () => {
     const harness = await build({
       server: { omitUidValidity: true, initial: [message(101, 'a')] },
