@@ -654,6 +654,21 @@ home address, because the address was never in context to leak.
   `Commerce` fields, all `Contacting me` fields, `Defaults`, and the `People`,
   `Places`, `Work` and `Notes` sections entirely.
 
+The block is rendered once by `renderOpenTierBlock(store)` and composed at two
+seams, both of which build per-turn additions onto the base prompt **without
+writing back** into any cached base string — an invariant their own comments
+call out, because writing back compounds the block once per tool round:
+
+| Seam | File |
+|---|---|
+| Main conversation | `platform/core/orchestrator-turn-loop.ts`, its local `composeTurnSystemPrompt` |
+| Spawned agents | `platform/agents/orchestrator-runner.ts`, its local `composeTurnSystemPrompt` |
+
+When the profile is disabled or unavailable the block is simply absent. It is
+never replaced by a placeholder saying it could not be read — that would be
+prompt noise on every turn for a condition the `profile.status` verb already
+reports honestly.
+
 `location.city` is open deliberately: the failure that prompted this work was the
 agent guessing a metro area for a weather answer. `location.homeAddress` is
 closed — a city is not a doorstep.
