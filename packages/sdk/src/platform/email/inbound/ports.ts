@@ -311,17 +311,112 @@ export interface MailboxConnectionPort {
 // What arriving mail is handed to
 // ---------------------------------------------------------------------------
 
-/** One message the watcher found above the cursor. */
-export interface InboundMailboxMessage {
+/**
+ * What ANY source can say about a message it found.
+ *
+ * Everything the pipeline downstream of a source reads lives here, and nothing
+ * here is IMAP-shaped. Expectation matching, taint labelling, dedup, notice
+ * rendering and disclosure are written against this base and never switch on
+ * `source` at all — that is the whole point of the seam
+ * (docs/inbound-email.md §3.4d, and
+ * docs/decisions/2026-07-27-inbound-message-is-a-discriminated-union.md).
+ */
+export interface InboundMessageCommon {
+  /** Config account id, not an address. */
   readonly account: string;
+  /** The IMAP EXAMINE target, or the Gmail label. Identity of what was watched. */
   readonly mailbox: string;
+  readonly from: string;
+  readonly subject: string;
+  /**
+   * The `Date:` header, verbatim.
+   *
+   * SENDER-WRITTEN, so it is display only. It is never an ordering key and
+   * never a windowing key: anything that sorts or windows on this is sorting
+   * on a value whoever sent the message chose. The cursor is the ordering
+   * authority on both sources — `UIDVALIDITY` + UID on IMAP, `historyId` on
+   * Gmail — and the name here is the warning.
+   */
+  readonly claimedDate: string;
+  readonly messageId: string;
+  /**
+   * Receiver-written delivery evidence addresses, TOP-MOST FIRST. The
+   * correlation key.
+   *
+   * Deliberately a plain `readonly string[]` rather than a `DeliveredRecipient`:
+   * the brand is minted downstream, at the matching boundary, by
+   * `deliveredRecipientFromDeliveryHeaders` (top-most entry only) or
+   * `deliveredRecipientFromAliasMailbox`. A source that could hand the pipeline
+   * a pre-branded value could hand it a branded `To:` header, which is exactly
+   * the forgery the brand exists to make unrepresentable. Both
+   * `ImapEnvelope.deliveredTo` and `GmailMessageBody.deliveredTo` are already
+   * ordered top-most-first, so this is a straight carry on both sides.
+   */
+  readonly deliveredTo: readonly string[];
+  /**
+   * The `To:` header verbatim, for DISPLAY ONLY. Never evidence: anyone can put
+   * any address here, including one we are waiting on.
+   */
+  readonly unverifiedToHeaderClaim: string;
+}
+
+/** One message an IMAP source found above the cursor. */
+export interface ImapInboundMessage extends InboundMessageCommon {
+  readonly source: 'imap';
   readonly uidValidity: number;
   readonly uid: number;
-  /** Headers and delivery evidence. The body is NOT fetched by the watcher. */
+  /**
+   * Headers and delivery evidence with provenance attached. Kept on the
+   * variant rather than hoisted into the base: hoisting it would put IMAP back
+   * into the common type under a different name. Anything that genuinely needs
+   * IMAP specifics (`authenticationResults`, the full `deliveryEvidence` list)
+   * narrows to this variant first.
+   *
+   * The body is NOT fetched by the watcher — the envelope pass is cheap
+   * precisely because it is headers only.
+   */
   readonly envelope: ImapEnvelope;
   /** Whether this arrived through IDLE push or through the poll fallback. */
   readonly via: 'idle' | 'poll';
 }
+
+/** One message a Gmail source found in a `users.history.list` delta. */
+export interface GmailInboundMessage extends InboundMessageCommon {
+  readonly source: 'gmail';
+  /** Gmail's opaque message resource id. Not a number, never coerced to one. */
+  readonly resourceId: string;
+  /**
+   * The delta's high-water mark, a decimal uint64 STRING. Never parsed to a
+   * number — see the header of `source-cursor.ts` for the precision loss that
+   * causes.
+   */
+  readonly historyId: string;
+  /**
+   * The message body. Gmail's history delta carries it; IMAP's envelope pass
+   * does not, and that asymmetry is deliberate rather than an oversight — a
+   * batch of headers is cheap and a batch of bodies is not, so the IMAP body
+   * fetch stays the pipeline's step and is a no-op on this variant.
+   */
+  readonly body: string;
+  /**
+   * Always `'poll'`. There is no Gmail push on this path: `users.watch` +
+   * Pub/Sub needs a public HTTPS endpoint and a GCP topic, which a daemon
+   * behind NAT does not have. Narrowed in the type so no surface can render
+   * "pushed" for a Gmail message by accident.
+   */
+  readonly via: 'poll';
+}
+
+/**
+ * One message a source found, discriminated on which source found it.
+ *
+ * A union rather than a widened record with `uid?` / `historyId?`: a record
+ * that is always half-filled makes "half-filled" and "torn" indistinguishable,
+ * and every consumer then invents its own idea of what the missing case means.
+ * The union makes the exhaustive switch the compiler's job — the same rule, and
+ * the same discriminant, as `InboundSourceCursor` in `source-cursor.ts`.
+ */
+export type InboundMailboxMessage = ImapInboundMessage | GmailInboundMessage;
 
 /**
  * Where a found message goes.

@@ -2,7 +2,7 @@
  * inbound-email-config-schema.test.ts
  *
  * Gate tests for the `surfaces.email.inbound.*` config keys added for the
- * inbound-mail watcher (docs/inbound-email.md §8). Every one of these twelve
+ * inbound-mail watcher (docs/inbound-email.md §8, §3.4d). Every one of these
  * keys is the owner's default to confirm, not a foregone conclusion, so this
  * file pins the exact defaults from the design table and the range each
  * numeric key is bounded to.
@@ -45,11 +45,17 @@ function freshManager(): ConfigManager {
  * The twelve keys from docs/inbound-email.md §8, plus the two capability
  * keys added after the design doc landed (owner ruling relayed mid-round:
  * the daemon must state plainly, and refuse by default, when the mailbox
- * cannot do what inbound mail requires).
+ * cannot do what inbound mail requires), plus the three source-selection keys
+ * from §3.4d — Gmail is a first-class inbound source, and its poll interval is
+ * adaptive because an open expectation and an idle week have genuinely
+ * different needs.
  */
 const EXPECTED_DEFAULTS: ReadonlyArray<{ key: string; default: unknown }> = [
   { key: 'surfaces.email.inbound.enabled', default: false },
   { key: 'surfaces.email.inbound.accounts', default: '[]' },
+  { key: 'surfaces.email.inbound.source', default: 'auto' },
+  { key: 'surfaces.email.inbound.gmailPollSecondsExpecting', default: 5 },
+  { key: 'surfaces.email.inbound.gmailPollSecondsIdle', default: 60 },
   { key: 'surfaces.email.inbound.mode', default: 'auto' },
   { key: 'surfaces.email.inbound.pollIntervalSeconds', default: 120 },
   { key: 'surfaces.email.inbound.idleReissueMinutes', default: 27 },
@@ -71,11 +77,11 @@ describe('every key from the §8 table is in CONFIG_SCHEMA with the exact defaul
     expect(row!.default).toBe(expected);
   });
 
-  test('there are exactly fourteen inbound keys — not more, not fewer', () => {
+  test('there are exactly seventeen inbound keys — not more, not fewer', () => {
     const inboundKeys = CONFIG_SCHEMA
       .map((s) => s.key)
       .filter((key) => key.startsWith('surfaces.email.inbound.'));
-    expect(new Set(inboundKeys).size).toBe(14);
+    expect(new Set(inboundKeys).size).toBe(17);
     expect(inboundKeys.sort()).toEqual(EXPECTED_DEFAULTS.map((e) => e.key).sort());
   });
 
@@ -102,7 +108,7 @@ describe('every new key is daemon-owned, because surfaces. is a daemon-owned pre
     expect(configKeyScope(key)).toBe('daemon');
   });
 
-  test('the owned-path walk includes all twelve keys', () => {
+  test('the owned-path walk includes every inbound key', () => {
     const paths = new Set(listDaemonOwnedConfigPaths());
     for (const { key } of EXPECTED_DEFAULTS) {
       expect(paths.has(key), `${key} is missing from listDaemonOwnedConfigPaths()`).toBe(true);
@@ -184,6 +190,39 @@ describe('range validators reject out-of-range values', () => {
     expect(() => mgr.set('surfaces.email.inbound.mode' as never, 'push' as never)).toThrow(ConfigError);
     expect(() => mgr.set('surfaces.email.inbound.mode', 'idle')).not.toThrow();
     expect(() => mgr.set('surfaces.email.inbound.mode', 'poll')).not.toThrow();
+  });
+
+  test('source rejects a value outside auto/gmail/imap', () => {
+    const mgr = freshManager();
+    expect(() => mgr.set('surfaces.email.inbound.source' as never, 'exchange' as never)).toThrow(ConfigError);
+    expect(() => mgr.set('surfaces.email.inbound.source', 'auto')).not.toThrow();
+    expect(() => mgr.set('surfaces.email.inbound.source', 'gmail')).not.toThrow();
+    expect(() => mgr.set('surfaces.email.inbound.source', 'imap')).not.toThrow();
+  });
+
+  test('gmailPollSecondsExpecting rejects below 2 and above 60', () => {
+    const mgr = freshManager();
+    expect(() => mgr.set('surfaces.email.inbound.gmailPollSecondsExpecting', 1)).toThrow(ConfigError);
+    expect(() => mgr.set('surfaces.email.inbound.gmailPollSecondsExpecting', 61)).toThrow(ConfigError);
+    expect(() => mgr.set('surfaces.email.inbound.gmailPollSecondsExpecting', 2)).not.toThrow();
+    expect(() => mgr.set('surfaces.email.inbound.gmailPollSecondsExpecting', 60)).not.toThrow();
+  });
+
+  test('gmailPollSecondsIdle rejects below 10 and above 3600', () => {
+    const mgr = freshManager();
+    expect(() => mgr.set('surfaces.email.inbound.gmailPollSecondsIdle', 9)).toThrow(ConfigError);
+    expect(() => mgr.set('surfaces.email.inbound.gmailPollSecondsIdle', 3601)).toThrow(ConfigError);
+    expect(() => mgr.set('surfaces.email.inbound.gmailPollSecondsIdle', 10)).not.toThrow();
+    expect(() => mgr.set('surfaces.email.inbound.gmailPollSecondsIdle', 3600)).not.toThrow();
+  });
+
+  test('the expecting interval is the faster of the two, and both are polling latencies', () => {
+    // Not a tautology: if these two defaults were ever swapped, the daemon
+    // would poll every minute while someone waits on a signup form and every
+    // five seconds all week when nobody is.
+    const expecting = CONFIG_SCHEMA.find((s) => s.key === 'surfaces.email.inbound.gmailPollSecondsExpecting')!;
+    const idle = CONFIG_SCHEMA.find((s) => s.key === 'surfaces.email.inbound.gmailPollSecondsIdle')!;
+    expect(expecting.default as number).toBeLessThan(idle.default as number);
   });
 
   test('notice.mode rejects a value outside all/expected-only/none', () => {
