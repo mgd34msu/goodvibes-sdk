@@ -15,6 +15,33 @@ import {
 } from './browser-scoped.js';
 import type { ServerSentEventHandlers } from './transport-http.js';
 
+/** The named (non-index-signature) properties of T. */
+type NamedProps<T> = {
+  [K in keyof T as string extends K ? never : number extends K ? never : K]: T[K];
+};
+
+/** T's broad string index signature if it has one, otherwise nothing. */
+type IndexPart<T> = string extends keyof T ? { readonly [key: string]: unknown } : unknown;
+
+/**
+ * The input type of `TMethodId` minus the key this wrapper supplies from its own
+ * positional argument (the id already in the URL path).
+ *
+ * A plain `Omit<OperatorMethodInput<M>, K>` does NOT do this for any verb whose
+ * schema sets `additionalProperties: true`: that renders as
+ * `Base & { readonly [key: string]: unknown }`, whose `keyof` is `string |
+ * number`, so `Exclude<keyof T, K>` removes nothing and `Pick` keeps no named
+ * property. The argument type silently collapses to the bare index signature and
+ * every field — including which fields are REQUIRED — is lost. Stripping the
+ * index signature before the omit, then re-adding it, keeps both the named
+ * shape and the additional-properties escape hatch.
+ */
+type OperatorInputWithout<TMethodId extends OperatorTypedMethodId, TKey extends string> = Omit<
+  NamedProps<OperatorMethodInput<TMethodId>>,
+  TKey
+> &
+  IndexPart<OperatorMethodInput<TMethodId>>;
+
 export const KNOWLEDGE_BROWSER_ROUTES = {
   'knowledge.ask': { method: 'POST', path: '/api/knowledge/ask' },
   'knowledge.candidate.decide': { method: 'POST', path: '/api/knowledge/candidates/{id}/decide' },
@@ -115,13 +142,13 @@ export interface BrowserKnowledgeSdk extends ScopedBrowserSdk<BrowserKnowledgeMe
       list(input?: OperatorMethodInput<'companion.chat.sessions.list'>): Promise<OperatorMethodOutput<'companion.chat.sessions.list'>>;
       update(
         sessionId: string,
-        input: Omit<OperatorMethodInput<'companion.chat.sessions.update'>, 'sessionId'>,
+        input: OperatorInputWithout<'companion.chat.sessions.update', 'sessionId'>,
       ): Promise<OperatorMethodOutput<'companion.chat.sessions.update'>>;
     };
     readonly messages: {
       create(
         sessionId: string,
-        input: Omit<OperatorMethodInput<'companion.chat.messages.create'>, 'sessionId'>,
+        input: OperatorInputWithout<'companion.chat.messages.create', 'sessionId'>,
       ): Promise<OperatorMethodOutput<'companion.chat.messages.create'>>;
       list(sessionId: string): Promise<OperatorMethodOutput<'companion.chat.messages.list'>>;
       /**
@@ -132,7 +159,7 @@ export interface BrowserKnowledgeSdk extends ScopedBrowserSdk<BrowserKnowledgeMe
        */
       steer(
         sessionId: string,
-        input: Omit<OperatorMethodInput<'companion.chat.messages.steer'>, 'sessionId'>,
+        input: OperatorInputWithout<'companion.chat.messages.steer', 'sessionId'>,
       ): Promise<OperatorMethodOutput<'companion.chat.messages.steer'>>;
     };
     readonly turns: {
@@ -143,7 +170,7 @@ export interface BrowserKnowledgeSdk extends ScopedBrowserSdk<BrowserKnowledgeMe
        */
       cancel(
         sessionId: string,
-        input?: Omit<OperatorMethodInput<'companion.chat.turns.cancel'>, 'sessionId'>,
+        input?: OperatorInputWithout<'companion.chat.turns.cancel', 'sessionId'>,
       ): Promise<OperatorMethodOutput<'companion.chat.turns.cancel'>>;
     };
     readonly events: {
@@ -163,18 +190,18 @@ export interface BrowserKnowledgeSdk extends ScopedBrowserSdk<BrowserKnowledgeMe
     snapshot(input?: OperatorMethodInput<'projectPlanning.workPlan.snapshot'>): Promise<OperatorMethodOutput<'projectPlanning.workPlan.snapshot'>>;
     readonly tasks: {
       list(input?: OperatorMethodInput<'projectPlanning.workPlan.tasks.list'>): Promise<OperatorMethodOutput<'projectPlanning.workPlan.tasks.list'>>;
-      get(taskId: string, input?: Omit<OperatorMethodInput<'projectPlanning.workPlan.task.get'>, 'taskId'>): Promise<OperatorMethodOutput<'projectPlanning.workPlan.task.get'>>;
+      get(taskId: string, input?: OperatorInputWithout<'projectPlanning.workPlan.task.get', 'taskId'>): Promise<OperatorMethodOutput<'projectPlanning.workPlan.task.get'>>;
       create(input: OperatorMethodInput<'projectPlanning.workPlan.task.create'>): Promise<OperatorMethodOutput<'projectPlanning.workPlan.task.create'>>;
       update(
         taskId: string,
-        input: Omit<OperatorMethodInput<'projectPlanning.workPlan.task.update'>, 'taskId'>,
+        input: OperatorInputWithout<'projectPlanning.workPlan.task.update', 'taskId'>,
       ): Promise<OperatorMethodOutput<'projectPlanning.workPlan.task.update'>>;
       status(
         taskId: string,
-        input: Omit<OperatorMethodInput<'projectPlanning.workPlan.task.status'>, 'taskId'>,
+        input: OperatorInputWithout<'projectPlanning.workPlan.task.status', 'taskId'>,
       ): Promise<OperatorMethodOutput<'projectPlanning.workPlan.task.status'>>;
       reorder(input: OperatorMethodInput<'projectPlanning.workPlan.tasks.reorder'>): Promise<OperatorMethodOutput<'projectPlanning.workPlan.tasks.reorder'>>;
-      delete(taskId: string, input?: Omit<OperatorMethodInput<'projectPlanning.workPlan.task.delete'>, 'taskId'>): Promise<OperatorMethodOutput<'projectPlanning.workPlan.task.delete'>>;
+      delete(taskId: string, input?: OperatorInputWithout<'projectPlanning.workPlan.task.delete', 'taskId'>): Promise<OperatorMethodOutput<'projectPlanning.workPlan.task.delete'>>;
       clearCompleted(input?: OperatorMethodInput<'projectPlanning.workPlan.clearCompleted'>): Promise<OperatorMethodOutput<'projectPlanning.workPlan.clearCompleted'>>;
     };
   };
