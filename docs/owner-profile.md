@@ -841,6 +841,31 @@ test. Each surface types its wrapper's input parameter as
 declared input for that method. That catches this class today without touching a
 published signature.
 
+**Typing the parameter is necessary and not sufficient, and exactly which forms
+it misses was got wrong twice before it was measured.** Compiled against this
+repo's TypeScript 5.9.3 with a `profile.forget`-shaped input, seeding a retired
+`lineIndex`:
+
+| how the stale field arrives | plain parameter typing | a distributed key guard |
+|---|---|---|
+| fresh literal, written inline | rejected `TS2353` | rejected |
+| spread literal, stale field written **inline beside** the spread | rejected `TS2353` | rejected |
+| body built as a variable first | **slips through** | rejected |
+| stale field carried in **by the spread source's type** | **slips through** | rejected |
+
+A spread literal is *not* uniformly unchecked, which was the wrong
+generalisation. Anything written inline in one is checked normally; only what
+arrives **through** the spread escapes, because it belongs to the source's type
+rather than to the literal. So the question at a call site is never "is there a
+spread" — it is **"can the spread source's type carry a field the contract has
+retired"**.
+
+Rows three and four are caught by nothing except a guard that checks keys
+against the contract independently of how the body was constructed. That makes
+such a guard **load-bearing, not a backstop**, and it is worth saying so in its
+own comment: the obvious future "simplification" is to delete it in favour of
+typing the parameter, which would silently restore both holes.
+
 **Proposed platform change, for the owner to rule on, not adopted here:** make
 `invoke` typed-only and move dynamic invocation to a separately named method, so
 a known id can never fall through to the loose overload. That is a breaking
