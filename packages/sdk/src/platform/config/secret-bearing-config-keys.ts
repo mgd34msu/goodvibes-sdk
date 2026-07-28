@@ -93,6 +93,11 @@ export const SECRET_BEARING_CONFIG_PATHS: readonly string[] = [
 
   // Cluster key material.
   'cluster.groupMaterial',
+  // The shared phrase nodes sign coordination messages with. Found by the
+  // declaration-coverage check rather than by anyone noticing: it was masked by
+  // the name-pattern backstop and declared nowhere, which is exactly the state
+  // that backstop exists to make survivable and must never be left in.
+  'cluster.secret',
 ];
 
 const SECRET_BEARING_SET = new Set<string>(SECRET_BEARING_CONFIG_PATHS);

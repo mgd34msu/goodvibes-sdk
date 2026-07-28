@@ -43,6 +43,11 @@ import {
   findCredentialScopeDeclaration,
 } from '../packages/sdk/src/platform/config/credential-scope-registry.ts';
 import { daemonSecretKeyFor, listDaemonOwnedSecretKeys } from '../packages/sdk/src/platform/config/daemon-secret-keys.ts';
+import {
+  isDeclaredSecretBearingConfigKey,
+  isSecretBearingConfigKey,
+} from '../packages/sdk/src/platform/config/secret-bearing-config-keys.ts';
+import { CONFIG_SCHEMA } from '../packages/sdk/src/platform/config/schema.ts';
 
 const REPO_ROOT = process.env['CREDENTIAL_SCOPE_ROOT'] ?? resolve(import.meta.dir, '..');
 const DEFAULT_DIRS = ['packages/sdk/src'];
@@ -328,13 +333,48 @@ function checkFile(path: string, constants: ReadonlyMap<string, string>): Findin
   return findings;
 }
 
+/**
+ * The convention must never be load-bearing on its own.
+ *
+ * `secret-bearing-config-keys.ts` keeps a name pattern as an additive backstop,
+ * so an undeclared credential is masked rather than printed. That is the right
+ * default and the wrong place to stop: a backstop that silently covers for a
+ * missing declaration is how a rule ends up enforced by convention and declared
+ * nowhere — the same shape as a method catalog that requires a field it never
+ * lists in `required`.
+ *
+ * So the pattern is turned around and used as a DETECTOR: any schema key it
+ * recognises must also be declared. The convention finds the gap; the
+ * declaration is still what does the work.
+ */
+function checkDeclarationsCoverConvention(): Finding[] {
+  const findings: Finding[] = [];
+  for (const setting of CONFIG_SCHEMA) {
+    const key = setting.key;
+    if (!isSecretBearingConfigKey(key)) continue;
+    if (isDeclaredSecretBearingConfigKey(key)) continue;
+    findings.push({
+      file: 'packages/sdk/src/platform/config/secret-bearing-config-keys.ts',
+      line: 0,
+      snippet: key,
+      reason:
+        `"${key}" reads as a credential but is not declared in SECRET_BEARING_CONFIG_PATHS. `
+        + 'It is currently masked by the name-pattern backstop only, which is not a declaration — add it to the list.',
+    });
+  }
+  return findings;
+}
+
 function main(): void {
   const files: string[] = [];
   for (const dir of SCAN_DIRS) walk(resolve(REPO_ROOT, dir), files);
 
   collectDerivingWrappers(files.map((file) => withoutComments(readFileSync(file, 'utf-8'))));
   const constants = buildConstantTable(files);
-  const findings = files.flatMap((file) => checkFile(file, constants));
+  const findings = [
+    ...files.flatMap((file) => checkFile(file, constants)),
+    ...checkDeclarationsCoverConvention(),
+  ];
   if (findings.length === 0) {
     console.log(`credential-scope-check: OK — every secret write in ${files.length} file(s) names a classified credential or states its scope.`);
     return;
