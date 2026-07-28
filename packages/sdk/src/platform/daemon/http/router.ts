@@ -26,6 +26,7 @@ import {
 } from '../../providers/runtime-snapshot.js';
 import type { RouteBindingManager, ChannelPolicyManager, ChannelPluginRegistry, SurfaceRegistry } from '../../channels/index.js';
 import type { WatcherRegistry } from '../../watchers/index.js';
+import type { InboundMailHealthLike } from './channel-route-types.js';
 import type { DistributedPeerAuth, DistributedRuntimeManager } from '../../runtime/remote/index.js';
 import type { HomeGraphService, KnowledgeService, ProjectPlanningService } from '../../knowledge/index.js';
 import { inspectKnowledgeGraphqlAccess, KnowledgeGraphqlService } from '../../knowledge/index.js';
@@ -113,6 +114,8 @@ interface DaemonHttpRouterContext {
   readonly channelPolicy: ChannelPolicyManager;
   readonly channelPlugins: ChannelPluginRegistry;
   readonly surfaceRegistry: SurfaceRegistry;
+  /** Inbound mail's health. Absent means no mailbox — NOT a healthy one. */
+  readonly inboundMailHealth?: (() => InboundMailHealthLike | null) | undefined;
   readonly distributedRuntime: DistributedRuntimeManager;
   readonly watcherRegistry: WatcherRegistry;
   readonly voiceService: VoiceService;
@@ -512,6 +515,11 @@ export class DaemonHttpRouter {
           parseOptionalJsonBody: (request) => this.parseOptionalJsonBody(request),
           requireAdmin: (request) => this.context.requireAdmin(request),
           surfaceRegistry: this.context.surfaceRegistry,
+          // The call that was missing. `inboundMailHealth()` had no callers
+          // repo-wide, so a watched mailbox reported its state to nothing.
+          ...(this.context.inboundMailHealth === undefined
+            ? {}
+            : { inboundMailHealth: this.context.inboundMailHealth }),
         }),
       }),
       ...createDaemonSystemRouteHandlers({

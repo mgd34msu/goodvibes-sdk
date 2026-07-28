@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `459`
+- Methods: `463`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -31901,9 +31901,659 @@ Append a draft message to the configured IMAP Drafts folder. Distinct from the l
 }
 ```
 
+#### `email.expectation.cancel`
+
+Close an expectation the workstream abandoned. A signup dropped before submission otherwise leaves a live correlation key for an address nobody is waiting on, occupying one of the bounded open slots until its window elapses. Cancelling an id that is not open is an answer, not a failure.
+
+- Title: `Cancel Verification Expectation`
+- Source: `builtin`
+- Access: `admin`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `write:email`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "cancelled": {
+      "type": "boolean"
+    },
+    "expectation": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "serviceDomain": {
+          "type": "string"
+        },
+        "recipientAddress": {
+          "type": "string"
+        },
+        "purpose": {
+          "type": "string"
+        },
+        "openedAt": {
+          "type": "string"
+        },
+        "expiresAt": {
+          "type": "string"
+        },
+        "authority": {
+          "type": "string"
+        },
+        "remainingMs": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "serviceDomain",
+        "recipientAddress",
+        "purpose",
+        "openedAt",
+        "expiresAt",
+        "authority"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "cancelled"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `email.expectation.list`
+
+Return every open verification expectation with its recipient, service domain, purpose and remaining window. Disclosure: an expectation is a live correlation key, and the owner is entitled to see which ones exist.
+
+- Title: `List Verification Expectations`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `read:email`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "expectations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "serviceDomain": {
+            "type": "string"
+          },
+          "recipientAddress": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "openedAt": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "authority": {
+            "type": "string"
+          },
+          "remainingMs": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "serviceDomain",
+          "recipientAddress",
+          "purpose",
+          "openedAt",
+          "expiresAt",
+          "authority"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "total": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "expectations",
+    "total"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `email.expectation.open`
+
+Register, in advance, that a verification message is expected at one address from one service domain, within a bounded window. Called by the workstream that already holds authority BEFORE it submits the signup or checkout form. Grants evidence-only authority: a matching message proves control of the address and can never start work, widen the expectation or extend its window.
+
+- Title: `Open Verification Expectation`
+- Source: `builtin`
+- Access: `admin`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `write:email`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "serviceDomain": {
+      "type": "string"
+    },
+    "recipientAddress": {
+      "type": "string"
+    },
+    "purpose": {
+      "type": "string"
+    },
+    "windowMs": {
+      "type": "number"
+    },
+    "kind": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "serviceDomain",
+    "recipientAddress",
+    "purpose"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string"
+    },
+    "serviceDomain": {
+      "type": "string"
+    },
+    "recipientAddress": {
+      "type": "string"
+    },
+    "purpose": {
+      "type": "string"
+    },
+    "openedAt": {
+      "type": "string"
+    },
+    "expiresAt": {
+      "type": "string"
+    },
+    "authority": {
+      "type": "string"
+    },
+    "remainingMs": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "id",
+    "kind",
+    "serviceDomain",
+    "recipientAddress",
+    "purpose",
+    "openedAt",
+    "expiresAt",
+    "authority"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `email.inbound.status`
+
+Disclose the inbound-mail watcher: whether it is running and why, which source is reading the mailbox and the delay that source actually costs, the current capability verdict, every persisted cursor with its position and age, every open verification expectation with its remaining window, whether each store could be read, whether arriving mail is actually being announced to the owner, and what each store retains before it is reaped. Read-only.
+
+- Title: `Inbound Mail Status`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `read:email`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "enabled": {
+      "type": "boolean"
+    },
+    "running": {
+      "type": "boolean"
+    },
+    "mode": {
+      "type": "string"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "account": {
+      "type": "string"
+    },
+    "mailbox": {
+      "type": "string"
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "basis": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "string"
+        },
+        "latency": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "basis",
+        "detail",
+        "latency"
+      ],
+      "additionalProperties": false
+    },
+    "capability": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "string"
+        },
+        "fix": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "state",
+        "reason",
+        "detail",
+        "fix"
+      ],
+      "additionalProperties": false
+    },
+    "cursors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "account": {
+            "type": "string"
+          },
+          "mailbox": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "position": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "ageMs": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "account",
+          "mailbox",
+          "source",
+          "position",
+          "updatedAt",
+          "ageMs"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "expectations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "serviceDomain": {
+            "type": "string"
+          },
+          "recipientAddress": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "openedAt": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "remainingMs": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "serviceDomain",
+          "recipientAddress",
+          "purpose",
+          "openedAt",
+          "expiresAt",
+          "remainingMs"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "retention": {
+      "type": "object",
+      "properties": {
+        "cursors": {
+          "type": "object",
+          "properties": {
+            "kept": {
+              "type": "number"
+            },
+            "maxCursors": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "kept",
+            "maxCursors"
+          ],
+          "additionalProperties": false
+        },
+        "records": {
+          "type": "object",
+          "properties": {
+            "kept": {
+              "type": "number"
+            },
+            "stored": {
+              "type": "number"
+            },
+            "retentionDays": {
+              "type": "number"
+            },
+            "maxRecords": {
+              "type": "number"
+            },
+            "maxBodyExcerptChars": {
+              "type": "number"
+            },
+            "reapedOnWrite": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "kept",
+            "stored",
+            "retentionDays",
+            "maxRecords",
+            "maxBodyExcerptChars",
+            "reapedOnWrite"
+          ],
+          "additionalProperties": false
+        },
+        "expectations": {
+          "type": "object",
+          "properties": {
+            "open": {
+              "type": "number"
+            },
+            "maxOpen": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "open",
+            "maxOpen"
+          ],
+          "additionalProperties": false
+        },
+        "lastSweep": {
+          "type": "object",
+          "properties": {
+            "sweptAt": {
+              "type": "number"
+            },
+            "trigger": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sweptAt",
+            "trigger",
+            "summary"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "cursors",
+        "records",
+        "expectations"
+      ],
+      "additionalProperties": false
+    },
+    "stores": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "store": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "store",
+          "state",
+          "detail"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "noticeDelivery": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "string"
+        },
+        "fix": {
+          "type": "string"
+        },
+        "since": {
+          "type": "string"
+        },
+        "unannounced": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "health": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "account": {
+          "type": "string"
+        },
+        "mailbox": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "id",
+        "label",
+        "state",
+        "enabled",
+        "account",
+        "mailbox",
+        "mode",
+        "reason"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "enabled",
+    "running",
+    "mode",
+    "reason",
+    "account",
+    "mailbox",
+    "source",
+    "cursors",
+    "expectations",
+    "retention",
+    "stores",
+    "noticeDelivery",
+    "health"
+  ],
+  "additionalProperties": false
+}
+```
+
 #### `email.inbox.list`
 
-Return inbox message summaries fetched live from the configured IMAP account. Read-only (EXAMINE / BODY.PEEK); never marks messages read.
+Return inbox message summaries fetched live from the configured IMAP account, newest first (ordered by server-assigned UID, never by the sender-written Date header). Read-only (EXAMINE / BODY.PEEK); never marks messages read. When the server answered for a message and the daemon could not read the answer, the page is short and `unreadable` says so — an omitted message is not by itself evidence that it was deleted.
 
 - Title: `List Email Inbox`
 - Source: `builtin`
@@ -31982,6 +32632,24 @@ Return inbox message summaries fetched live from the configured IMAP account. Re
     },
     "total": {
       "type": "number"
+    },
+    "unreadable": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "uid": {
+            "type": "number"
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "additionalProperties": false
+      }
     }
   },
   "required": [

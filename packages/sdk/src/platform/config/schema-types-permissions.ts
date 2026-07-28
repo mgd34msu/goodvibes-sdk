@@ -1,3 +1,11 @@
+/**
+ * Permission-layer config types: the tool-action matrix (`permissions.mode`,
+ * `permissions.tools.*`) and the background-agent mode that decides whether
+ * background/subagent tool calls consult it. Split out of schema-types.ts so
+ * that file stays under its grandfathered line ceiling; re-exported from
+ * schema-types.ts so import sites are unchanged.
+ */
+export type PermissionMode = 'prompt' | 'allow-all' | 'custom' | 'plan' | 'accept-edits';
 export type PermissionAction = 'allow' | 'prompt' | 'deny';
 /**
  * How background/subagent tool execution consults the permission layer.
@@ -10,12 +18,7 @@ export type PermissionAction = 'allow' | 'prompt' | 'deny';
  *   autonomous runs that never want a background ask).
  */
 export type BackgroundAgentsMode = 'inherit' | 'allow-all';
-
-/**
- * Permission-system config interfaces. Split out of schema-types.ts so that
- * file stays under its grandfathered line ceiling; re-exported from
- * schema-types.ts so import sites are unchanged.
- */
+export type LineNumberMode = 'all' | 'code' | 'off';
 
 export interface PermissionsToolConfig {
   read?: PermissionAction;        // default: 'allow'

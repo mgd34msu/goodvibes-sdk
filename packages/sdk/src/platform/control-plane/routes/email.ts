@@ -80,10 +80,28 @@ export interface EmailGatewayListInput {
   readonly unreadOnly?: boolean | undefined;
 }
 
+/** A FETCH response on the returned page the daemon could not read. */
+export interface EmailGatewayUnreadableResponse {
+  /** The UID the response named, or absent when it named none legibly. */
+  readonly uid?: number;
+  readonly detail: string;
+}
+
 export interface EmailGatewayListResult {
   readonly messages: readonly EmailGatewayMessageSummary[];
   /** Matches BEFORE `limit` truncation, so a caller can tell there is more. */
   readonly total: number;
+  /**
+   * Answers on THIS page the daemon could not read. Absent when there were
+   * none.
+   *
+   * Without it a short page is silent, and a caller reading `messages` against
+   * `total` cannot tell "that message was deleted between the search and the
+   * fetch" from "that message is in the mailbox and we could not read what the
+   * server said about it". The first is ordinary; the second means the owner
+   * is looking at a list that is missing mail and reading it as complete.
+   */
+  readonly unreadable?: readonly EmailGatewayUnreadableResponse[];
 }
 
 export interface EmailGatewayDraftInput {

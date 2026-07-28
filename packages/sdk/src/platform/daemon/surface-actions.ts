@@ -12,21 +12,17 @@ import type { ChannelPolicyDecision, ChannelIngressPolicyInput } from '../channe
 import type { RuntimeEventBus, TurnEvent, TurnInputOrigin } from '../runtime/events/index.js';
 import { emitCompanionMessageReceived } from '../runtime/emitters/index.js';
 import { NtfyIntegration } from '../integrations/ntfy.js';
-import { HomeAssistantIntegration } from '../integrations/homeassistant.js';
 import {
-  HOME_ASSISTANT_DEFAULT_EVENT_TYPE,
-  resolveHomeAssistantAccessToken,
-  resolveHomeAssistantBaseUrl,
-} from '../channels/builtin/homeassistant.js';
-import {
-  postHomeAssistantChatMessage as postHomeAssistantChatTurn,
-  readHomeAssistantRemoteSessionTtlMs,
-} from './homeassistant-chat.js';
+  postHomeAssistantSurfaceChatMessage,
+  type HomeAssistantSurfaceChatInput,
+  type HomeAssistantSurfaceChatResult,
+} from './surface-homeassistant-reply.js';
 import type { CompanionChatManager } from '../companion/companion-chat-manager.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 import { tryResolveApprovalReplyFromChannel, type ApprovalReplyBroker } from './approval-reply.js';
 import { tryResolveWorkProposalReplyFromChannel } from './work-proposal-reply.js';
+import { refuseCardShapedIngress, CARD_SHAPES_REFUSED_REASON } from './surface-card-gate.js';
 import {
   deliverProposalNotice,
   gateSurfaceSpawn,
@@ -124,7 +120,7 @@ export class DaemonSurfaceActionHelper {
       configManager: this.context.configManager,
       routeBindings: this.context.routeBindings,
       sessionBroker: this.context.sessionBroker,
-      authorizeSurfaceIngress: (input) => {
+      authorizeSurfaceIngress: async (input) => {
         origin.current = {
           surface: input.surface,
           ...(input.text !== undefined ? { text: input.text } : {}),
@@ -132,7 +128,15 @@ export class DaemonSurfaceActionHelper {
           ...(input.channelId !== undefined ? { channelId: input.channelId } : {}),
           ...(input.threadId !== undefined ? { threadId: input.threadId } : {}),
         };
-        return this.authorizeSurfaceIngress(input);
+        const decision = await this.authorizeSurfaceIngress(input);
+        // A card-refused message must not stay readable from the cell the gated
+        // spawn path reads. Every adapter does return early on a not-allowed
+        // decision, so this changes no behaviour today — it stops the guarantee
+        // from depending on all nineteen of them continuing to.
+        if (!decision.allowed && decision.reason.startsWith(CARD_SHAPES_REFUSED_REASON)) {
+          origin.current = null;
+        }
+        return decision;
       },
       parseSurfaceControlCommand: (text) => this.parseSurfaceControlCommand(text),
       performSurfaceControlCommand: (command) => this.performSurfaceControlCommand(command),
@@ -177,6 +181,20 @@ export class DaemonSurfaceActionHelper {
   }
 
   async authorizeSurfaceIngress(input: ChannelIngressPolicyInput): Promise<ChannelPolicyDecision> {
+    // FIRST, before anything below can store, log or transcribe the message
+    // (docs/inbound-email.md §11.0). evaluateIngress writes input.text into the
+    // channel policy audit trail and schedules it to disk, and an approval
+    // reply's trailing text becomes a stored steering note — so a card number
+    // typed here reaches disk by two routes unless this runs ahead of both.
+    // Approvals and vetoes themselves keep working over remote channels: a
+    // remote surface has authority to say yes or no about a purchase, and no
+    // path for entering the instrument. Authority over a decision is not a
+    // channel for a secret.
+    const cardRefusal = await refuseCardShapedIngress(
+      { ...this.conversationGateDeps(), channelPolicy: this.context.channelPolicy },
+      input,
+    );
+    if (cardRefusal) return cardRefusal;
     const decision = await this.context.channelPolicy.evaluateIngress(input);
     if (!decision.allowed) return decision;
     // An answer to a pending work proposal is consumed here, on the shared
@@ -616,167 +634,15 @@ export class DaemonSurfaceActionHelper {
     }
   }
 
-  private async postHomeAssistantChatMessage(input: {
-    readonly body: string;
-    readonly messageId: string;
-    readonly conversationId: string;
-    readonly surfaceId: string;
-    readonly channelId: string;
-    readonly threadId?: string | undefined;
-    readonly userId?: string | undefined;
-    readonly displayName?: string | undefined;
-    readonly title: string;
-    readonly providerId?: string | undefined;
-    readonly modelId?: string | undefined;
-    readonly tools?: readonly string[] | undefined;
-    readonly context?: Record<string, unknown> | undefined;
-    readonly remoteSessionTtlMs?: number | undefined;
-    readonly publishEvent?: boolean | undefined;
-  }): Promise<{
-    readonly sessionId: string;
-    readonly routeId?: string | undefined;
-    readonly messageId: string;
-    readonly assistantMessageId?: string | undefined;
-    readonly response?: string | undefined;
-    readonly delivered: boolean;
-    readonly error?: string | undefined;
-  }> {
-    const manager = this.context.companionChatManager;
-    if (!manager) {
-      return {
-        sessionId: '',
-        messageId: input.messageId,
-        delivered: false,
-        error: 'Home Assistant remote chat manager is unavailable',
-      };
-    }
-
-    try {
-      const result = await postHomeAssistantChatTurn(
-        {
-          configManager: this.context.configManager,
-          routeBindings: this.context.routeBindings,
-          chatManager: manager,
-          resolveDefaultProviderModel: this.context.resolveDefaultProviderModel,
-        },
-        {
-          text: input.body,
-          messageId: input.messageId,
-          conversationId: input.conversationId,
-          surfaceId: input.surfaceId,
-          channelId: input.channelId,
-          ...(input.threadId ? { threadId: input.threadId } : {}),
-          ...(input.userId ? { userId: input.userId } : {}),
-          ...(input.displayName ? { displayName: input.displayName } : {}),
-          title: input.title,
-          ...(input.providerId ? { providerId: input.providerId } : {}),
-          ...(input.modelId ? { modelId: input.modelId } : {}),
-          ...(input.tools?.length ? { tools: input.tools } : {}),
-          ...(input.context ? { context: input.context } : {}),
-          remoteSessionTtlMs: readHomeAssistantRemoteSessionTtlMs(this.context.configManager, input.remoteSessionTtlMs),
-        },
-        {
-          wait: true,
-          timeoutMs: 120_000,
-          clientId: `homeassistant:${input.surfaceId}:${input.conversationId}`,
-        },
-      );
-      const response = result.response?.trim();
-      const error = result.error ?? (response ? undefined : 'No response from Home Assistant remote chat');
-      if (input.publishEvent !== false) {
-        await this.publishHomeAssistantChatReply(input, {
-          sessionId: result.session.id,
-          routeId: result.binding.id,
-          assistantMessageId: result.assistantMessageId,
-          response: response || `Error: ${error}`,
-          status: error ? 'failed' : 'completed',
-        });
-      }
-      return {
-        sessionId: result.session.id,
-        routeId: result.binding.id,
-        messageId: input.messageId,
-        ...(result.assistantMessageId ? { assistantMessageId: result.assistantMessageId } : {}),
-        ...(response ? { response } : {}),
-        delivered: !error,
-        ...(error ? { error } : {}),
-      };
-    } catch (error) {
-      const errorMessage = summarizeError(error);
-      if (input.publishEvent !== false) {
-        try {
-          await this.publishHomeAssistantChatReply(input, {
-            sessionId: '',
-            response: `Error: ${errorMessage}`,
-            status: 'failed',
-          });
-        } catch (publishError) {
-          logger.warn('DaemonSurfaceActionHelper: failed to publish Home Assistant chat error', {
-            conversationId: input.conversationId,
-            error: summarizeError(publishError),
-          });
-        }
-      }
-      return {
-        sessionId: '',
-        messageId: input.messageId,
-        delivered: false,
-        error: errorMessage,
-      };
-    }
-  }
-
-  private async publishHomeAssistantChatReply(
-    input: {
-      readonly body: string;
-      readonly messageId: string;
-      readonly conversationId: string;
-      readonly surfaceId: string;
-      readonly channelId: string;
-      readonly threadId?: string | undefined;
-      readonly userId?: string | undefined;
-      readonly displayName?: string | undefined;
-      readonly title: string;
-      readonly context?: Record<string, unknown> | undefined;
-    },
-    result: {
-      readonly sessionId: string;
-      readonly routeId?: string | undefined;
-      readonly assistantMessageId?: string | undefined;
-      readonly response: string;
-      readonly status: string;
-    },
-  ): Promise<void> {
-    const baseUrl = resolveHomeAssistantBaseUrl(this.context.configManager, this.context.serviceRegistry);
-    const accessToken = await resolveHomeAssistantAccessToken(this.context);
-    if (!baseUrl || !accessToken) {
-      throw new Error('Home Assistant instance URL or access token is not configured.');
-    }
-    const eventType = String(this.context.configManager.get('surfaces.homeassistant.eventType') || HOME_ASSISTANT_DEFAULT_EVENT_TYPE);
-    const client = new HomeAssistantIntegration({ baseUrl, accessToken });
-    await client.publishGoodVibesEvent(eventType, {
-      type: 'message',
-      title: input.title || 'GoodVibes',
-      body: result.response,
-      speechText: result.response,
-      status: result.status,
-      sessionId: result.sessionId,
-      ...(result.routeId ? { routeId: result.routeId } : {}),
-      surfaceId: input.surfaceId,
-      externalId: input.conversationId,
-      ...(result.assistantMessageId ? { messageId: result.assistantMessageId } : {}),
-      replyToMessageId: input.messageId,
-      conversationId: input.conversationId,
-      metadata: {
-        threadId: input.threadId ?? null,
-        channelId: input.channelId,
-        userId: input.userId ?? null,
-        displayName: input.displayName ?? null,
-        inboundMessageId: input.messageId,
-        conversationId: input.conversationId,
-        ...(input.context ? { homeAssistantContext: input.context } : {}),
-      },
-    });
+  /**
+   * Run an inbound Home Assistant message as a chat turn and publish the reply.
+   * The work lives in surface-homeassistant-reply.ts; this stays so the adapter
+   * context keeps the same shape.
+   */
+  private async postHomeAssistantChatMessage(
+    input: HomeAssistantSurfaceChatInput,
+  ): Promise<HomeAssistantSurfaceChatResult> {
+    return postHomeAssistantSurfaceChatMessage(this.context, input);
   }
 
   private async publishNtfyReply(topic: string, message: string, title: string): Promise<void> {

@@ -12,7 +12,6 @@ import { RuntimeEventBus } from '../runtime/events/index.js';
 import { createRuntimeStore } from '../runtime/store/index.js';
 import { setTelemetryIncludeRawPrompts } from '../runtime/telemetry/redaction-config.js';
 import {
-  BuiltinChannelRuntime,
   ChannelReplyPipeline,
   ChannelProviderRuntimeManager,
 } from '../channels/index.js';
@@ -28,6 +27,7 @@ import {
   createProviderBackedKnowledgeSemanticLlm,
   createWebKnowledgeGapRepairer,
 } from '../knowledge/index.js';
+import { createBuiltinChannelRuntime } from './facade-builtin-channels.js';
 import { DaemonControlPlaneHelper } from './control-plane.js';
 import { DaemonSurfaceDeliveryHelper, type SurfaceDeliveryLedgerEntry } from './surface-delivery.js';
 import { ROUTE_SURFACE_KINDS, type RouteSurfaceKind } from '../../events/routes.js';
@@ -632,6 +632,11 @@ export function createDaemonFacadeCollaborators(
     routeBindings: runtime.routeBindings,
     channelPolicy: runtime.channelPolicy,
     channelPlugins: runtime.channelPlugins,
+    // A thunk, not a value: `builtinChannels` is constructed further down this
+    // same function, and the route only runs on an HTTP request long after
+    // composition finishes. Reading it eagerly here would be a temporal-dead-
+    // zone error at startup.
+    inboundMailHealth: () => builtinChannels.inboundMailHealth(),
     surfaceRegistry: runtime.surfaceRegistry,
     distributedRuntime: runtime.distributedRuntime,
     watcherRegistry: runtime.watcherRegistry,
@@ -683,34 +688,9 @@ export function createDaemonFacadeCollaborators(
     serviceRegistry: runtime.serviceRegistry,
     buildSurfaceAdapterContext: () => surfaceActionHelper.buildSurfaceAdapterContext(),
   });
-  const builtinChannels = new BuiltinChannelRuntime({
-    configManager: runtime.configManager,
-    secretsManager: runtime.runtimeServices.secretsManager,
-    serviceRegistry: runtime.serviceRegistry,
-    routeBindings: runtime.routeBindings,
-    channelPolicy: runtime.channelPolicy,
-    channelPlugins: runtime.channelPlugins,
-    providerRuntime,
-    deliveryRouter: runtime.deliveryManager.getDeliveryRouter(),
-    surfaceDeliveryEnabled: options.surfaceDeliveryEnabled,
-    // Surface-scoped, alongside the channel policy store: the Telegram poll
-    // cursor is per-surface state and must not leak across surface roots.
-    telegramOffsetPath: runtime.runtimeServices.shellPaths.resolveProjectPath(
-      'goodvibes', 'channels', 'telegram-offset.json',
-    ),
-    buildSurfaceAdapterContext: () => surfaceActionHelper.buildSurfaceAdapterContext(),
-    buildGenericWebhookAdapterContext: () => surfaceActionHelper.buildGenericWebhookAdapterContext(),
-    deliverSurfaceProgress: (pending, progress) => surfaceDeliveryHelper.deliverSurfaceProgress(pending as PendingSurfaceReply, progress),
-    deliverSlackAgentReply: (pending, message) => surfaceDeliveryHelper.deliverSlackAgentReply(pending as PendingSurfaceReply, message),
-    deliverDiscordAgentReply: (pending, message) => surfaceDeliveryHelper.deliverDiscordAgentReply(pending as PendingSurfaceReply, message),
-    deliverNtfyAgentReply: (pending, message) => surfaceDeliveryHelper.deliverNtfyAgentReply(pending as PendingSurfaceReply, message),
-    deliverWebhookAgentReply: (pending, message) => surfaceDeliveryHelper.deliverWebhookAgentReply(pending as PendingSurfaceReply, message),
-    deliverSlackApprovalUpdate: (approval, binding) => surfaceDeliveryHelper.deliverSlackApprovalUpdate(approval, binding),
-    deliverDiscordApprovalUpdate: (approval, binding) => surfaceDeliveryHelper.deliverDiscordApprovalUpdate(approval, binding),
-    deliverNtfyApprovalUpdate: (approval, binding) => surfaceDeliveryHelper.deliverNtfyApprovalUpdate(approval, binding),
-    deliverWebhookApprovalUpdate: (approval, binding) => surfaceDeliveryHelper.deliverWebhookApprovalUpdate(approval, binding),
+  const builtinChannels = createBuiltinChannelRuntime({
+    runtime, options, providerRuntime, surfaceActionHelper, surfaceDeliveryHelper,
   });
-  builtinChannels.registerPlugins();
 
   return {
     channelReplyPipeline,

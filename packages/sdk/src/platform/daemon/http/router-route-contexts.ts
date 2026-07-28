@@ -13,7 +13,7 @@ import type { PlatformServiceManager } from '../service-manager.js';
 import { toRecord } from '../../utils/record-coerce.js';
 import type { JsonRecord } from '../helpers.js';
 import type { WatcherRegistry } from '../../watchers/index.js';
-import type { DaemonChannelRouteContext } from './channel-route-types.js';
+import type { DaemonChannelRouteContext, InboundMailHealthLike } from './channel-route-types.js';
 import type { DaemonIntegrationRouteContext } from './integration-route-types.js';
 import type { DaemonKnowledgeRouteContext } from './knowledge-route-types.js';
 import type { DaemonMediaRouteContext } from './media-route-types.js';
@@ -45,8 +45,13 @@ export function buildChannelRouteContext(input: {
   readonly parseOptionalJsonBody: (request: Request) => Promise<JsonRecord | null | Response>;
   readonly requireAdmin: (request: Request) => Response | null;
   readonly surfaceRegistry: SurfaceRegistry;
+  /** Supplied by a composition that has the builtin channel runtime. */
+  readonly inboundMailHealth?: (() => InboundMailHealthLike | null) | undefined;
 }): DaemonChannelRouteContext {
   return {
+    ...(input.inboundMailHealth === undefined
+      ? {}
+      : { inboundMailHealth: input.inboundMailHealth }),
     channelPlugins: {
       listAccounts: (surface) => input.channelPlugins.listAccounts(
         surface as Parameters<ChannelPluginRegistry['listAccounts']>[0],

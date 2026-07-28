@@ -32,6 +32,12 @@ import type { ProfileConfigKey, ProfileConfigValue } from './schema-types-owner-
 // ConfigValue that used to live in schema-types.ts, and move here with it.
 import type { PaymentsConfigValueMap } from './schema-types-payments.js';
 import type { DaemonProcessConfigValueMap } from './schema-types-daemon.js';
+import type {
+  InboundEmailCapabilityPolicy,
+  InboundEmailMode,
+  InboundEmailNoticeMode,
+  InboundEmailSource,
+} from './schema-types-surfaces.js';
 
 /** Maps a ConfigKey to its value type. */
 export type ConfigValue<K extends ConfigKey> =
@@ -301,6 +307,26 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'surfaces.email.smtp.port' ? number :
   K extends 'surfaces.email.smtp.password' ? string :
   K extends 'surfaces.email.smtp.secure' ? boolean :
+  // The inbound-mail keys, re-applied here rather than inline in
+  // schema-types.ts: the owner-profile split moved ConfigValue into this file,
+  // and these clauses were written against the version that still lived there.
+  K extends 'surfaces.email.inbound.enabled' ? boolean :
+  K extends 'surfaces.email.inbound.accounts' ? string :
+  K extends 'surfaces.email.inbound.source' ? InboundEmailSource :
+  K extends 'surfaces.email.inbound.gmailPollSecondsExpecting' ? number :
+  K extends 'surfaces.email.inbound.gmailPollSecondsIdle' ? number :
+  K extends 'surfaces.email.inbound.mode' ? InboundEmailMode :
+  K extends 'surfaces.email.inbound.pollIntervalSeconds' ? number :
+  K extends 'surfaces.email.inbound.idleReissueMinutes' ? number :
+  K extends 'surfaces.email.inbound.reconnect.maxBackoffSeconds' ? number :
+  K extends 'surfaces.email.inbound.notice.route' ? string :
+  K extends 'surfaces.email.inbound.notice.mode' ? InboundEmailNoticeMode :
+  K extends 'surfaces.email.inbound.expectationWindowMinutes' ? number :
+  K extends 'surfaces.email.inbound.dedupTtlMinutes' ? number :
+  K extends 'surfaces.email.inbound.retentionDays' ? number :
+  K extends 'surfaces.email.inbound.maxRecords' ? number :
+  K extends 'surfaces.email.inbound.capabilityRecheckMinutes' ? number :
+  K extends 'surfaces.email.inbound.onInsufficientCapability' ? InboundEmailCapabilityPolicy :
   K extends 'surfaces.calendar.caldavUrl' ? string :
   K extends 'surfaces.calendar.caldavUser' ? string :
   K extends 'surfaces.calendar.caldavPassword' ? string :

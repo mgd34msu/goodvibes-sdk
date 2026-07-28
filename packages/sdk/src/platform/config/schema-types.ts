@@ -3,11 +3,9 @@
  */
 import type { ProfileConfigKey, ProfileConfigValue } from './schema-types-owner-profile.js';
 
-export type PermissionMode = 'prompt' | 'allow-all' | 'custom' | 'plan' | 'accept-edits';
-export type LineNumberMode = 'all' | 'code' | 'off';
 
 export * from "./schema-types-surfaces.js";
-import type { SurfacesConfig } from "./schema-types-surfaces.js";
+import type { InboundEmailCapabilityPolicy, InboundEmailMode, InboundEmailNoticeMode, InboundEmailSource, SurfacesConfig } from "./schema-types-surfaces.js";
 
 export * from "./schema-types-network.js";
 import type {
@@ -30,7 +28,7 @@ import type {
 } from "./schema-types-platform.js";
 
 export * from "./schema-types-permissions.js";
-import type { BackgroundAgentsMode, PermissionAction, PermissionsToolConfig } from "./schema-types-permissions.js";
+import type { BackgroundAgentsMode, LineNumberMode, PermissionAction, PermissionMode, PermissionsToolConfig } from "./schema-types-permissions.js";
 export * from "./schema-types-payments.js";
 import type { PaymentsConfig, PaymentsConfigKey, PaymentsConfigValueMap } from "./schema-types-payments.js";
 
@@ -500,6 +498,24 @@ export type ConfigKey =
   | 'surfaces.email.smtp.port'
   | 'surfaces.email.smtp.password'
   | 'surfaces.email.smtp.secure'
+  // The inbound-mail watcher (schema-domain-daemon-mailbox.ts, docs/inbound-email.md §8)
+  | 'surfaces.email.inbound.enabled'
+  | 'surfaces.email.inbound.accounts'
+  | 'surfaces.email.inbound.source'
+  | 'surfaces.email.inbound.gmailPollSecondsExpecting'
+  | 'surfaces.email.inbound.gmailPollSecondsIdle'
+  | 'surfaces.email.inbound.mode'
+  | 'surfaces.email.inbound.pollIntervalSeconds'
+  | 'surfaces.email.inbound.idleReissueMinutes'
+  | 'surfaces.email.inbound.reconnect.maxBackoffSeconds'
+  | 'surfaces.email.inbound.notice.route'
+  | 'surfaces.email.inbound.notice.mode'
+  | 'surfaces.email.inbound.expectationWindowMinutes'
+  | 'surfaces.email.inbound.dedupTtlMinutes'
+  | 'surfaces.email.inbound.retentionDays'
+  | 'surfaces.email.inbound.maxRecords'
+  | 'surfaces.email.inbound.capabilityRecheckMinutes'
+  | 'surfaces.email.inbound.onInsufficientCapability'
   | 'surfaces.calendar.caldavUrl'
   | 'surfaces.calendar.caldavUser'
   | 'surfaces.calendar.caldavPassword'

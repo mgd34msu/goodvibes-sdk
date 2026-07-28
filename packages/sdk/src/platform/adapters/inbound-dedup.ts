@@ -56,6 +56,31 @@ export class InboundMessageDedup {
     return seenAt !== undefined && this.now() - seenAt < this.ttlMs;
   }
 
+  /**
+   * Give a claim back, so the next delivery of that message is treated as the
+   * first one again.
+   *
+   * `claim()` records the key BEFORE the caller does its work, which is what
+   * stops two concurrent deliveries of one message both running the pipeline.
+   * That ordering has a consequence: if the work then FAILS, the key stays
+   * claimed, and a retry is suppressed as a duplicate of an attempt that never
+   * finished. The message is silently dropped — which, for a caller whose
+   * whole purpose is to tell somebody a message arrived, is worse than the
+   * double-delivery the claim was preventing.
+   *
+   * So a caller that claims-then-fails releases, and its retry does real work.
+   * The inbound-mail watcher is the case this was added for: its cursor
+   * advances only after processing completes, so a failure there is
+   * DESIGNED to redeliver, and the redelivery has to be allowed to succeed.
+   *
+   * Releasing a key that was never claimed is a no-op, not an error — an error
+   * path that can itself throw is not much of an error path.
+   */
+  release(key: string): void {
+    if (!key) return;
+    this.seen.delete(key);
+  }
+
   get size(): number {
     return this.seen.size;
   }

@@ -8,6 +8,18 @@
  * top-most-only rules below be tested without a server.
  */
 
+import { fetchSection, parseFetchResponses } from './imap-fetch-response.js';
+// The 32-bit protocol ceiling, imported rather than restated. `source-cursor.ts`
+// states the reasoning at length and is a leaf module (its only import is
+// `inbound/types.js`, which imports nothing), so there is one bound and no way
+// for the reader of the wire and the writer of the cursor to disagree about it.
+import { MAX_IMAP_UID } from './inbound/source-cursor.js';
+import type {
+  ImapEnvelope,
+  ImapEnvelopeBatch,
+  ImapFetchProblem,
+} from './imap-types.js';
+
 // ---------------------------------------------------------------------------
 // Public types
 // ---------------------------------------------------------------------------
@@ -164,84 +176,201 @@ export function extractAuthenticationResults(rawHeaders: string): string[] {
 // Response parsing
 // ---------------------------------------------------------------------------
 
-export function parseSequenceNumbers(searchResponse: readonly string[]): number[] {
+/**
+ * The numbers in a `* SEARCH ...` response, in the order the server gave them.
+ *
+ * A server answers `SEARCH` with sequence numbers and `UID SEARCH` with UIDs,
+ * in the same untagged `* SEARCH` line either way — the wire shape carries no
+ * mark of which it is. The caller knows which command it sent, so the name
+ * here says "numbers" rather than claiming one or the other. This client only
+ * ever sends `UID SEARCH`.
+ *
+ * BOUNDED AT BOTH ENDS, and the upper bound is not decoration. Sequence
+ * numbers and UIDs are both 32-bit (RFC 3501 §2.3.1.1); `parseInt` is not.
+ * `parseInt('99999999999999999999', 10)` is `1e20`, `Number.isInteger(1e20)`
+ * is true, and that value used to travel from this line straight into
+ * `MailboxCursorStore.advance()`, where `Math.max` would pin the cursor above
+ * every UID a server can ever issue with no way for a later pass to bring it
+ * down. A token outside the protocol's range names no message this client can
+ * fetch, so it is dropped here rather than carried on as a number that still
+ * looks usable.
+ */
+export function parseSearchNumbers(searchResponse: readonly string[]): number[] {
   const nums: number[] = [];
   for (const line of searchResponse) {
     if (!line.startsWith('* SEARCH')) continue;
     const parts = line.slice(9).trim().split(/\s+/);
     for (const part of parts) {
       const n = parseInt(part, 10);
-      if (!isNaN(n) && n > 0) nums.push(n);
+      if (!isNaN(n) && n > 0 && n <= MAX_IMAP_UID) nums.push(n);
     }
   }
   return nums;
 }
 
-export function parseFetchHeaders(fetchLines: readonly string[]): Record<number, string> {
-  const result: Record<number, string> = {};
-  let seqNum = 0;
-  let headerAccum = '';
-  let inBody = false;
+/**
+ * Turn the lines of one envelope `UID FETCH` into envelopes, and say plainly
+ * which responses could not be read.
+ *
+ * The second half is the point. A caller that advances a cursor has to tell
+ * two things apart that used to look identical from here:
+ *
+ *   - the server sent NO response for a UID — it was expunged between the
+ *     search and the fetch, and the cursor may move past it;
+ *   - the server sent a response for it and this client could not read the
+ *     answer — nothing is known about that message, and moving the cursor
+ *     would skip mail that is still sitting in the mailbox.
+ *
+ * So every response that arrives is accounted for: it becomes an envelope, or
+ * it becomes an entry in `unreadable` with a plain-language reason. Nothing is
+ * dropped on the floor, which is what `parseFetchHeaders` and `parseFetchUids`
+ * did between them — a response whose UID could not be located was skipped in
+ * silence, and read downstream as an expunge.
+ */
+export function readEnvelopeBatch(
+  fetchLines: readonly string[],
+  mailbox: string,
+  wanted: readonly number[],
+): ImapEnvelopeBatch {
+  const byUid = new Map<number, string>();
+  const unreadable: ImapFetchProblem[] = [];
 
-  for (const line of fetchLines) {
-    const fetchStart = /^\* (\d+) FETCH/.exec(line);
-    if (fetchStart) {
-      seqNum = parseInt(fetchStart[1] ?? '0', 10);
-      headerAccum = '';
-      inBody = true;
-      // The literal content may be appended after the header-fields marker on the same line
-      const afterFetch = line.slice(fetchStart[0].length);
-      const literalAfter = afterFetch.indexOf(' ') !== -1 ? afterFetch.slice(afterFetch.indexOf(' ') + 1) : '';
-      if (literalAfter && !literalAfter.startsWith('(')) {
-        headerAccum += literalAfter + '\n';
-      }
+  for (const response of parseFetchResponses(fetchLines)) {
+    const seq = response.seq > 0 ? response.seq : null;
+    if (response.parseError !== null) {
+      unreadable.push({ seq, uid: response.uid, detail: response.parseError });
       continue;
     }
-    if (inBody) {
-      if (line === ')') {
-        if (seqNum > 0) result[seqNum] = headerAccum;
-        inBody = false;
-        seqNum = 0;
-        headerAccum = '';
-      } else {
-        headerAccum += line + '\n';
-      }
+    if (response.uid === null) {
+      unreadable.push({
+        seq,
+        uid: null,
+        detail: `the FETCH response for sequence number ${response.seq} carried no UID data `
+          + `item, so it cannot be attributed to a message`,
+      });
+      continue;
     }
+    const raw = fetchSection(response, (spec) => spec.startsWith('HEADER'));
+    if (raw === null) {
+      unreadable.push({
+        seq,
+        uid: response.uid,
+        detail: `the FETCH response for UID ${response.uid} carried no header section`,
+      });
+      continue;
+    }
+    byUid.set(response.uid, raw);
   }
-  return result;
+
+  const envelopes: ImapEnvelope[] = [];
+  for (const uid of wanted) {
+    const raw = byUid.get(uid);
+    if (raw === undefined) continue;
+    const deliveryEvidence = extractDeliveryEvidence(raw);
+    envelopes.push({
+      uid,
+      from: extractHeader(raw, 'From'),
+      subject: extractHeader(raw, 'Subject'),
+      date: extractHeader(raw, 'Date'),
+      messageId: extractHeader(raw, 'Message-ID'),
+      mailbox,
+      deliveredTo: deliveryEvidence.map((entry) => entry.address),
+      deliveryEvidence,
+      // Display only — see the field docs on ImapEnvelope.
+      unverifiedToHeaderClaim: extractHeader(raw, 'To'),
+      authenticationResults: extractAuthenticationResults(raw),
+    });
+  }
+  return { envelopes, unreadable };
 }
 
-export function parseFetchBody(fetchLines: readonly string[]): Record<number, string> {
-  const result: Record<number, string> = {};
-  let seqNum = 0;
-  let bodyAccum = '';
-  let inBody = false;
+// ---------------------------------------------------------------------------
+// Capabilities
+// ---------------------------------------------------------------------------
 
-  for (const line of fetchLines) {
-    const fetchStart = /^\* (\d+) FETCH/.exec(line);
-    if (fetchStart) {
-      seqNum = parseInt(fetchStart[1] ?? '0', 10);
-      bodyAccum = '';
-      inBody = true;
-      // literal content appended after BODY.PEEK[TEXT] tag
-      const afterLiteral = line.slice(line.indexOf(' ', fetchStart[0].length) + 1);
-      if (afterLiteral && !afterLiteral.includes('BODY')) {
-        bodyAccum += afterLiteral + '\n';
-      }
+/**
+ * The capability atoms a server named, from anywhere it named them.
+ *
+ * Servers advertise in three places and no server uses all three: inside the
+ * greeting as `* OK [CAPABILITY ...]`, as an untagged `* CAPABILITY ...` line,
+ * and inside a tagged completion as `... OK [CAPABILITY ...]`. All three are
+ * read here so a caller does not have to ask again for something the server
+ * already volunteered.
+ *
+ * Atoms are upper-cased and de-duplicated, order preserved. An empty result
+ * means the server said nothing — which is NOT the same as "supports nothing",
+ * and callers must not read it that way.
+ */
+export function parseCapabilities(lines: readonly string[]): string[] {
+  const found: string[] = [];
+  const seen = new Set<string>();
+  const add = (raw: string): void => {
+    for (const atom of raw.trim().split(/\s+/)) {
+      const upper = atom.toUpperCase();
+      if (upper.length === 0 || seen.has(upper)) continue;
+      seen.add(upper);
+      found.push(upper);
+    }
+  };
+
+  for (const line of lines) {
+    const bracketed = /\[CAPABILITY ([^\]]*)\]/i.exec(line);
+    if (bracketed !== null) add(bracketed[1] ?? '');
+    const untagged = /^\* CAPABILITY (.*)$/i.exec(line);
+    if (untagged !== null) add(untagged[1] ?? '');
+  }
+  return found;
+}
+
+// ---------------------------------------------------------------------------
+// Mailbox status, as EXAMINE reports it
+// ---------------------------------------------------------------------------
+
+/**
+ * What the server said about the mailbox when it was EXAMINEd.
+ *
+ * `uidValidity` is the field that matters most and is the one most easily
+ * ignored: when it changes, every UID recorded under the old value names
+ * nothing, because the mailbox was recreated. Anything keeping a UID across
+ * connections has to store this alongside it.
+ *
+ * Every field is null when the server did not report it. Nothing here is
+ * defaulted to zero — a missing UIDVALIDITY is not the same fact as
+ * `UIDVALIDITY 0`, and a caller that has to tell the difference cannot if we
+ * invent one.
+ */
+export interface ImapMailboxStatus {
+  /** `* n EXISTS` — how many messages the mailbox holds. */
+  readonly exists: number | null;
+  /** `* OK [UIDVALIDITY n]` — the generation the UIDs below belong to. */
+  readonly uidValidity: number | null;
+  /** `* OK [UIDNEXT n]` — the UID the next arriving message will be given. */
+  readonly uidNext: number | null;
+  /** True when the completion carried `[READ-ONLY]`, as EXAMINE's does. */
+  readonly readOnly: boolean;
+}
+
+/** Read an EXAMINE (or SELECT) response into its mailbox facts. */
+export function parseMailboxStatus(lines: readonly string[]): ImapMailboxStatus {
+  let exists: number | null = null;
+  let uidValidity: number | null = null;
+  let uidNext: number | null = null;
+  let readOnly = false;
+
+  for (const line of lines) {
+    const existsMatch = /^\* (\d+) EXISTS\b/.exec(line);
+    if (existsMatch !== null) {
+      exists = parseInt(existsMatch[1] ?? '0', 10);
       continue;
     }
-    if (inBody) {
-      if (line === ')') {
-        if (seqNum > 0) result[seqNum] = bodyAccum;
-        inBody = false;
-        seqNum = 0;
-        bodyAccum = '';
-      } else {
-        bodyAccum += line + '\n';
-      }
-    }
+    const validity = /\[UIDVALIDITY (\d+)\]/.exec(line);
+    if (validity !== null) uidValidity = parseInt(validity[1] ?? '0', 10);
+    const next = /\[UIDNEXT (\d+)\]/.exec(line);
+    if (next !== null) uidNext = parseInt(next[1] ?? '0', 10);
+    if (line.includes('[READ-ONLY]')) readOnly = true;
   }
-  return result;
+
+  return { exists, uidValidity, uidNext, readOnly };
 }
 
 // ---------------------------------------------------------------------------

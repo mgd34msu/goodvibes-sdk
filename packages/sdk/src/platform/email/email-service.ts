@@ -43,16 +43,35 @@
 
 import { ensureMailboxConfigDefaults } from '../config/connector-config-sections.js';
 import { readSenderAuthentication } from '../google/sender-authentication.js';
-import { ImapClient } from './imap-client.js';
+import { ImapClient, IMAP_MAX_FETCH_UIDS } from './imap-client.js';
 import { SmtpClient, validateSmtpAddress, validateSmtpSubject } from './smtp-client.js';
+import {
+  readEmailConfig,
+  resolveEmailPassword,
+  smtpPasswordRefFor,
+  validateEmailConfig,
+} from './email-config.js';
+
+// Re-exported so the service stays the one entry point callers already import.
+export {
+  EmailCredentialUnavailableError,
+  readEmailConfig,
+  resolveEmailPassword,
+  smtpPasswordRefFor,
+  validateEmailConfig,
+} from './email-config.js';
 import type {
   ImapAppendDraftResult,
   ImapEnvelope,
   ImapMessageDetail,
 } from './imap-client.js';
+import type { EmailInboxUnreadableResponse, EmailMessageRead } from './email-read-results.js';
 import type { SmtpSendResult } from './smtp-client.js';
 import type { EmailSenderClaim, EmailSenderClaimDescriber } from './sender-claim.js';
 import type { Socket } from 'node:net';
+
+// Re-exported so this module stays the one entry point callers already import.
+export type { EmailInboxUnreadableResponse, EmailMessageRead } from './email-read-results.js';
 
 // ---------------------------------------------------------------------------
 // Email defaults injection
@@ -120,9 +139,13 @@ export interface EmailConfig {
 
 export interface EmailSummary {
   /**
-   * The IMAP identifier this message is read back by. Carried through from the
+   * The IMAP UID this message is read back by. Carried through from the
    * envelope because a listing whose entries cannot be opened is a listing
    * nobody can act on.
+   *
+   * A UID, and never a sequence number: a listing is read from later, and a
+   * sequence number stops naming the same message as soon as anything below it
+   * is expunged.
    */
   readonly uid: number;
   /** The `Message-ID` header, for threading and correlation. '' when absent. */
@@ -197,6 +220,21 @@ export interface EmailInboxListInput {
 }
 
 export interface EmailInboxListResult {
+  /**
+   * The matched messages, **newest first**, capped at `limit`.
+   *
+   * The order is part of the contract rather than an accident of how IMAP
+   * answers a search, because it WAS an accident before and two consumers
+   * disagreed about it: one rendered the array as-is and so showed the newest
+   * page with the oldest message at the top, the other re-sorted client-side
+   * on the `Date:` header. A daemon that does not define an order makes every
+   * consumer invent one, and one of those inventions sorted on a field the
+   * sender writes.
+   *
+   * Ordered by UID, which the receiving server assigns, and never by `Date:`,
+   * which whoever sent the message wrote — a forged date must not be able to
+   * pin a message to the top of the owner's inbox.
+   */
   readonly messages: readonly EmailSummary[];
   /**
    * How many messages MATCHED, before `limit` truncated the list.
@@ -206,6 +244,16 @@ export interface EmailInboxListResult {
    * equalled the page size would say there is never any more mail.
    */
   readonly total: number;
+  /**
+   * FETCH responses on THIS page the client could not read. Absent means none.
+   *
+   * Here because a short page used to be silent — see
+   * `EmailInboxUnreadableResponse` for the two facts that were being collapsed.
+   * `total` cannot carry it: `total` counts the SEARCH match, and the loss
+   * happens at the FETCH. Omitted when empty, so nothing consuming this shape
+   * today sees a change; a caller that wants to know reads `unreadable?.length`.
+   */
+  readonly unreadable?: readonly EmailInboxUnreadableResponse[] | undefined;
 }
 
 /**
@@ -293,111 +341,6 @@ export interface EmailServiceDeps {
 }
 
 // ---------------------------------------------------------------------------
-// Config reading
-// ---------------------------------------------------------------------------
-
-function readString(value: unknown, fallback = ''): string {
-  return typeof value === 'string' ? value : fallback;
-}
-
-function readNumber(value: unknown, fallback: number): number {
-  const n = typeof value === 'number' ? value : parseInt(String(value), 10);
-  return isFinite(n) ? n : fallback;
-}
-
-function readBoolean(value: unknown, fallback = false): boolean {
-  return typeof value === 'boolean' ? value : fallback;
-}
-
-function readSmtpSecurity(value: unknown): SmtpSecurityMode {
-  if (value === 'tls' || value === 'starttls' || value === 'auto') return value;
-  return 'auto';
-}
-
-export function readEmailConfig(getConfig: (key: string) => unknown): EmailConfig {
-  return {
-    enabled: readBoolean(getConfig('email.enabled'), false),
-    imapHost: readString(getConfig('email.imapHost')),
-    imapPort: readNumber(getConfig('email.imapPort'), 993),
-    smtpHost: readString(getConfig('email.smtpHost')),
-    smtpPort: readNumber(getConfig('email.smtpPort'), 587),
-    smtpSecurity: readSmtpSecurity(getConfig('email.smtpSecurity')),
-    username: readString(getConfig('email.username')),
-    passwordRef: readString(getConfig('email.passwordRef')),
-    smtpPasswordRef: readString(getConfig('email.smtpPasswordRef')),
-    fromAddress: readString(getConfig('email.fromAddress')),
-    mailbox: readString(getConfig('email.mailbox')),
-    draftsMailbox: readString(getConfig('email.draftsMailbox')),
-  };
-}
-
-/**
- * Which secret submission authenticates with: the SMTP-specific one when the
- * operator set it, otherwise the mailbox password. Resolved through one helper
- * so `sendMail` and `testConnection` cannot disagree about which credential a
- * send would actually use — a test that passes with the wrong password is worse
- * than no test.
- */
-export function smtpPasswordRefFor(config: EmailConfig): string {
-  return config.smtpPasswordRef.length > 0 ? config.smtpPasswordRef : config.passwordRef;
-}
-
-export function validateEmailConfig(config: EmailConfig): string[] {
-  const errors: string[] = [];
-  if (!config.imapHost) errors.push('email.imapHost is required');
-  if (!config.smtpHost) errors.push('email.smtpHost is required');
-  if (!config.username) errors.push('email.username is required');
-  if (!config.passwordRef) {
-    errors.push('email.passwordRef is required (must be a secret reference, not a raw password)');
-  } else if (!config.passwordRef.startsWith('goodvibes://secrets/')) {
-    errors.push('email.passwordRef must be a goodvibes secret reference (goodvibes://secrets/...)');
-  }
-  // Optional: an empty value means "same password as IMAP", which is the common
-  // case. A non-empty one is held to the same rule as passwordRef — a raw
-  // password here would be a raw password in a settings file.
-  if (config.smtpPasswordRef.length > 0 && !config.smtpPasswordRef.startsWith('goodvibes://secrets/')) {
-    errors.push('email.smtpPasswordRef must be a goodvibes secret reference (goodvibes://secrets/...)');
-  }
-  if (!config.fromAddress) errors.push('email.fromAddress is required');
-  return errors;
-}
-
-// ---------------------------------------------------------------------------
-// Secret resolution
-// ---------------------------------------------------------------------------
-
-/**
- * Extract the storage key from a goodvibes://secrets/goodvibes/<key> ref.
- * For other secret ref types (env, file, bitwarden, etc.) we cannot resolve
- * them directly — the user should configure via the standard secret manager
- * path. We return the raw ref string for those cases so the SecretsManager
- * can attempt its own resolution chain.
- */
-function extractSecretKey(passwordRef: string): string {
-  const prefix = 'goodvibes://secrets/goodvibes/';
-  if (passwordRef.startsWith(prefix)) {
-    return decodeURIComponent(passwordRef.slice(prefix.length));
-  }
-  // Return the full ref for the SecretsManager to resolve
-  return passwordRef;
-}
-
-export async function resolveEmailPassword(
-  passwordRef: string,
-  secretsManager: { readonly get: (key: string) => Promise<string | null> },
-): Promise<string> {
-  const key = extractSecretKey(passwordRef);
-  const value = await secretsManager.get(key);
-  if (!value) {
-    throw new Error(
-      'Email password secret could not be resolved. ' +
-      'Verify that email.passwordRef points to a configured secret.',
-    );
-  }
-  return value;
-}
-
-// ---------------------------------------------------------------------------
 // EmailService
 // ---------------------------------------------------------------------------
 
@@ -438,8 +381,8 @@ export class EmailService {
   }
 
   /**
-   * List the inbox: unread only by default, everything when `unreadOnly` is
-   * false, optionally bounded by a date.
+   * List the inbox, NEWEST FIRST: unread only by default, everything when
+   * `unreadOnly` is false, optionally bounded by a date.
    *
    * Read-only throughout — the mailbox is EXAMINEd and every fetch peeks, so
    * listing mail never marks it read. Returns the matched `total` alongside
@@ -463,18 +406,45 @@ export class EmailService {
 
     try {
       await client.open();
-      const seqNums = unreadOnly
+      const uids = unreadOnly
         ? await client.searchUnseen(input.since)
         : await client.searchAll(input.since);
-      const envelopes: ImapEnvelope[] = await client.fetchEnvelopes(seqNums, limit);
+      // Page here, visibly, rather than handing the whole match set to a
+      // function that would quietly keep the tail of it. `total` below reports
+      // the full match, so a caller can always see that this is a page.
+      const pageUids = uids.slice(-Math.min(limit, IMAP_MAX_FETCH_UIDS));
+      // `fetchEnvelopeBatch`, not `fetchEnvelopes`. They run the same fetch;
+      // the difference is that one of them answers the question this method
+      // has to answer. `fetchEnvelopes` returns a list, and its own doc warns
+      // that "omission alone is not evidence of an expunge" — which is exactly
+      // the inference a caller makes when a page comes back short with nothing
+      // saying why. The responses that could not be read travel with the page.
+      const batch = await client.fetchEnvelopeBatch(pageUids);
+      const envelopes: readonly ImapEnvelope[] = batch.envelopes;
 
-      // Fetch body preview for the newest message only (read-only; BODY.PEEK).
+      // NEWEST FIRST. A search answers in ascending UID order and the page
+      // keeps the highest UIDs, so `envelopes` is the newest N with the OLDEST
+      // of them at index 0 — which is the reverse of what anybody displaying a
+      // mailbox wants, and the reverse of what this method's own contract now
+      // promises. Ordered by UID rather than by the `Date:` header, because
+      // the UID is assigned by the receiving server and `Date:` is written by
+      // whoever sent the message: sorting on it would let a forged date pin a
+      // message to the top of the owner's inbox.
+      const page = [...envelopes].reverse();
+
+      // Fetch a body preview for the newest message of this page (read-only;
+      // BODY.PEEK), which is now index 0. Taken from the page rather than from
+      // the search results: the first search result is the oldest match and is
+      // usually not on the page at all. Preview text taken from one message
+      // and shown against another is worse than no preview — it attributes
+      // words to a sender who did not write them, both in the listing and in
+      // the untrusted-ingest record below.
       // Failures are non-fatal — the inbox summary is still returned.
+      const previewTarget = page[0];
       let newestBodyPreview = '';
-      const newestSeq = seqNums[0];
-      if (newestSeq !== undefined) {
+      if (previewTarget !== undefined) {
         try {
-          newestBodyPreview = await client.fetchBodyPreview(newestSeq);
+          newestBodyPreview = await client.fetchBodyPreview(previewTarget.uid);
         } catch {
           // best-effort: body preview unavailable, proceed without it
         }
@@ -492,15 +462,17 @@ export class EmailService {
       // Delivery evidence is carried through deliberately. Dropping it here
       // would leave correlation with nothing but the sender-authored `To:`
       // header, which is the exact hole the evidence exists to close.
-      this.recordIngest(envelopes.map((env, idx) => ({
+      this.recordIngest(page.map((env, idx) => ({
         from: env.from,
-        // The preview is fetched for the newest message only, so that is the
-        // one whose words are available here; the rest contribute their
-        // subject, which is itself attacker-written.
+        // The preview is fetched for one message only, so that is the one
+        // whose words are available here; the rest contribute their subject,
+        // which is itself attacker-written. The index is the one the preview
+        // was fetched from, so the text is attributed to the sender who wrote
+        // it.
         text: `${env.subject}\n${idx === 0 ? newestBodyPreview : ''}`.trim(),
       })));
 
-      const messages = envelopes.map((env, idx) => ({
+      const messages = page.map((env, idx) => ({
         uid: env.uid,
         messageId: env.messageId,
         from: env.from,
@@ -516,7 +488,18 @@ export class EmailService {
           readSenderAuthentication(env.authenticationResults),
         ),
       }));
-      return { messages, total: seqNums.length };
+      return {
+        messages,
+        total: uids.length,
+        ...(batch.unreadable.length > 0
+          ? {
+            unreadable: batch.unreadable.map((problem) => ({
+              uid: problem.uid,
+              detail: problem.detail,
+            })),
+          }
+          : {}),
+      };
     } catch (err) {
       try { await client.logout(); } catch { /* best-effort */ }
       throw err;
@@ -530,8 +513,35 @@ export class EmailService {
    * body is MORE attacker-controlled text than a preview, not less, so it
    * records the same untrusted ingest the listing does — one path into the
    * product, one labelling.
+   *
+   * **`null` means gone, and only gone.** It used to mean gone OR "the server
+   * answered and this client could not read the answer", and the one caller of
+   * this method turns `null` into the sentence "no message with UID n is in
+   * the mailbox — it may have been moved or deleted since it was listed",
+   * which in the second case is a false statement about the owner's mailbox.
+   * An unreadable answer now THROWS, carrying what could not be read, because
+   * every honest thing this signature can say about that case is "not the
+   * message" and a caller has to be able to tell that apart from an expunge.
+   * `readMessageResult` is the same read without the throw, for a caller that
+   * would rather branch than catch.
    */
   async readMessage(uid: number): Promise<ImapMessageDetail | null> {
+    const read = await this.readMessageResult(uid);
+    if (read.outcome === 'read') return read.detail;
+    if (read.outcome === 'gone') return null;
+    throw new Error(
+      `The mail server answered the request for UID ${String(uid)} with `
+      + `${String(read.problems.length)} response(s) this client could not read `
+      + `(${read.problems.map((problem) => problem.detail).join('; ')}). The message has not `
+      + 'been shown to be gone — it is the answer about it that could not be read.',
+    );
+  }
+
+  /**
+   * The same read as `readMessage`, with "gone" and "could not be read" as
+   * separate outcomes instead of one thrown error and one null.
+   */
+  async readMessageResult(uid: number): Promise<EmailMessageRead> {
     const config = this.getValidatedConfig();
     const password = await resolveEmailPassword(config.passwordRef, this.deps.secretsManager);
 
@@ -546,15 +556,23 @@ export class EmailService {
 
     try {
       await client.open();
-      const detail = await client.fetchMessage(uid);
+      const read = await client.readMessageDetail(uid);
       await client.logout();
-      if (detail !== null) {
+      if (read.outcome === 'read') {
         this.recordIngest([{
-          from: detail.from,
-          text: `${detail.subject}\n${detail.bodyText}`.trim(),
+          from: read.detail.from,
+          text: `${read.detail.subject}\n${read.detail.bodyText}`.trim(),
         }]);
+        return read;
       }
-      return detail;
+      if (read.outcome === 'gone') return { outcome: 'gone' };
+      return {
+        outcome: 'unreadable',
+        problems: read.problems.map((problem) => ({
+          uid: problem.uid,
+          detail: problem.detail,
+        })),
+      };
     } catch (err) {
       try { await client.logout(); } catch { /* best-effort */ }
       throw err;

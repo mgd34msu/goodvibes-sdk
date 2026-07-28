@@ -23,6 +23,12 @@
  */
 
 import type { GoogleTokenManager } from './token-manager.js';
+import {
+  collectHistoryDelta,
+  type HistoryDeltaDeps,
+  type HistoryDeltaOptions,
+  type HistoryListDeltaResult,
+} from './history-delta.js';
 
 const GMAIL_BASE = 'https://gmail.googleapis.com/gmail/v1/users/me';
 const CALENDAR_BASE = 'https://www.googleapis.com/calendar/v3/calendars';
@@ -71,6 +77,37 @@ export interface GmailMessageBody extends GmailMessageSummary {
    * arrived at. `To:` is sender-controlled and is deliberately kept separate.
    */
   readonly deliveredTo: readonly string[];
+}
+
+/**
+ * The mailbox itself, as `users.getProfile` describes it.
+ *
+ * Endpoint read from Google's live reference on 2026-07-28, not recalled:
+ *   https://developers.google.com/workspace/gmail/api/reference/rest/v1/users/getProfile
+ *
+ *   - `GET https://gmail.googleapis.com/gmail/v1/users/{userId}/profile`, where
+ *     `userId` takes "The user's email address. The special value `me` can be
+ *     used to indicate the authenticated user." — verbatim.
+ *   - Response body: `emailAddress` (string), `messagesTotal` (integer),
+ *     `threadsTotal` (integer), and `historyId` (string), whose description
+ *     reads **"The ID of the mailbox's current history record"** — verbatim.
+ *   - Authorization scopes, verbatim and in full: `https://mail.google.com/`,
+ *     `.../auth/gmail.modify`, `.../auth/gmail.compose`,
+ *     `.../auth/gmail.readonly`, `.../auth/gmail.metadata`. Every scope that
+ *     authorizes `users.history.list` therefore also authorizes this call, so a
+ *     credential that can read a delta can always establish a position.
+ *
+ * `messagesTotal` and `threadsTotal` are carried because they are what the
+ * response contains, and dropping them would make this a partial mapping that
+ * the next caller has to widen. Nothing here is a secret: the address is the
+ * one the owner connected, and the counts are two integers.
+ */
+export interface GmailProfile {
+  readonly emailAddress: string;
+  readonly messagesTotal: number;
+  readonly threadsTotal: number;
+  /** Decimal uint64 as a STRING. Never parsed to a number — it does not fit one. */
+  readonly historyId: string;
 }
 
 export interface CalendarEventRecord {
@@ -345,6 +382,86 @@ export class GoogleApiClient {
         deliveredTo: deliveryHeaderValues(headers),
       },
     };
+  }
+
+  /**
+   * Incremental sync via `users.history.list` — what changed since
+   * `options.startHistoryId`, without re-listing the mailbox.
+   *
+   * Gated on the token's actual granted scopes, checked at call time via
+   * `this.tokens.scopes()` rather than assumed from what setup requested.
+   * With no Gmail read scope present this returns
+   * `unavailable: 'no-gmail-scope'`, never an empty success. A `startHistoryId`
+   * that has aged out of Gmail's retention window returns
+   * `unavailable: 'resync-required'` instead of an empty delta. See
+   * `history-delta.ts` for the full design rationale and the live-docs
+   * citations it is built against.
+   */
+  async historyListDelta(options: HistoryDeltaOptions): Promise<HistoryListDeltaResult> {
+    return collectHistoryDelta(this.historyDeltaPort(), options);
+  }
+
+  /**
+   * The narrow I/O slice `collectHistoryDelta` takes, over this client.
+   *
+   * Exposed because a long-lived caller — `GmailMailSource` — drives the delta
+   * itself rather than through `historyListDelta`: it has to inspect
+   * `unreadable` before it may move its cursor, and it re-enters on its own
+   * poll interval. Handing it THIS object rather than letting it build a second
+   * one is the point. `request` is private, so a hand-built port would need its
+   * own fetch, its own Authorization header and its own 401-retry, and the
+   * scope gate would then read a different token manager's answer than the one
+   * actually making the calls.
+   */
+  historyDeltaPort(): HistoryDeltaDeps {
+    return {
+      scopes: () => this.tokens.scopes(),
+      fetchHistoryPage: (params) => this.request(`${GMAIL_BASE}/history?${params.toString()}`),
+      getMessage: (id) => this.getMessage(id),
+    };
+  }
+
+  /** The mailbox's address, size and current history position. See `GmailProfile`. */
+  async getProfile(): Promise<GoogleApiResult<GmailProfile>> {
+    const result = await this.request(`${GMAIL_BASE}/profile`);
+    if (!result.ok) return result;
+    const record = isRecord(result.value) ? result.value : {};
+    return {
+      ok: true,
+      value: {
+        emailAddress: readString(record.emailAddress),
+        messagesTotal: typeof record.messagesTotal === 'number' ? record.messagesTotal : 0,
+        threadsTotal: typeof record.threadsTotal === 'number' ? record.threadsTotal : 0,
+        // Read as a string and never coerced: a decimal uint64 loses precision
+        // as a JS number, and a history position that is off by one is a
+        // message that is never fetched again.
+        historyId: readString(record.historyId),
+      },
+    };
+  }
+
+  /**
+   * The mailbox's current `historyId`, for a caller establishing a position.
+   *
+   * This is the call `GmailMailSource.currentHistoryId` needed and had nowhere
+   * to get: its own comment recorded that "`GoogleApiClient` exposes neither a
+   * profile call nor a `historyId` today", which is what left the Gmail source
+   * unbuildable in any composition.
+   *
+   * Google's sync guide names `messages.get` / `messages.list` as where a
+   * client reads a message's `historyId` for a full sync
+   * (https://developers.google.com/workspace/gmail/api/guides/sync, verified
+   * live 2026-07-28: "To retrieve the historyId of a recent message, use the
+   * messages.get or messages.list methods"). `users.getProfile` is used here
+   * instead, deliberately: it answers "the ID of the mailbox's current history
+   * record" in one request that lists nothing, which is exactly what
+   * establishing-without-backfilling means. Reading it off the newest message
+   * would name a position BELOW that message, and re-announcing mail that was
+   * already in the mailbox is precisely what the establish path refuses to do.
+   */
+  async currentHistoryId(): Promise<GoogleApiResult<string>> {
+    const profile = await this.getProfile();
+    return profile.ok ? { ok: true, value: profile.value.historyId } : profile;
   }
 
   /** Send a plain-text message. */

@@ -85,14 +85,30 @@ describe('capability-advertisement honesty: route reconcile', () => {
     expect(emailInboxList!.invokable).not.toBe(false);
   });
 
-  test('all four email.* methods resolve to a route and none is marked unavailable', async () => {
+  test('every email.* method that advertises a route resolves to one, and none is marked unavailable', async () => {
     const probe = createDaemonSdkRouteProbe();
     const descriptors = liveCatalogDescriptors().filter((d) => d.category === 'email');
-    expect(descriptors).toHaveLength(4);
+    const advertised = descriptors.filter((d) => d.http);
+    // The four mail verbs promise /api/email/* paths. The expectation verbs
+    // advertise none: their callers are inside the daemon, reaching them over
+    // the control plane, and a descriptor promising a path no route serves is
+    // precisely what this gate exists to redden.
+    //
+    // Counted as two groups rather than one total, deliberately. A single
+    // `toHaveLength(descriptors.length)` would keep passing if someone gave a
+    // mail verb an http binding and no route, so long as they also added a
+    // REST-less verb — the check would move with the thing it is checking.
+    expect(advertised).toHaveLength(4);
 
-    for (const descriptor of descriptors) {
+    for (const descriptor of advertised) {
       const result = await reconcileHttpDescriptor(descriptor, probe);
       expect(result.status, `${descriptor.id} advertises ${descriptor.http?.method ?? '?'} ${descriptor.http?.path ?? '?'} but no route resolves it`).toBe('live');
+      expect(descriptor.invokable).not.toBe(false);
+    }
+
+    for (const descriptor of descriptors.filter((d) => !d.http)) {
+      const result = await reconcileHttpDescriptor(descriptor, probe);
+      expect(result.status, `${descriptor.id} has no http binding, so there is nothing to reconcile`).toBe('unchecked');
       expect(descriptor.invokable).not.toBe(false);
     }
   });
