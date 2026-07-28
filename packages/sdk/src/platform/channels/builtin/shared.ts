@@ -10,6 +10,20 @@ import type { ChannelPolicyManager } from '../policy-manager.js';
 import type { ChannelPluginRegistry } from '../plugin-registry.js';
 import type { ChannelProviderRuntimeManager } from '../provider-runtime.js';
 import type { RouteBindingManager } from '../route-manager.js';
+import type { InboundMailSupervisor } from '../../email/inbound/supervisor.js';
+
+/**
+ * What the channel runtime needs from the inbound-mail supervisor, projected
+ * off the real class rather than restated (docs/inbound-email.md §7.3).
+ *
+ * `status` and `health` are getters/methods on the supervisor; picking them
+ * keeps the shape and the semantics tied to one declaration, so a change to
+ * what `stop()` promises cannot silently fail to reach this seam.
+ */
+export type InboundMailRuntimeSupervisor = Pick<
+  InboundMailSupervisor,
+  'start' | 'stop' | 'status' | 'health' | 'describeStatus'
+>;
 
 export type ManagedSurface =
   | 'slack'
@@ -51,6 +65,23 @@ export interface BuiltinChannelRuntimeDeps {
    * TelegramIngressDeps.onConcurrentConsumerConflict.
    */
   readonly onTelegramConsumerConflict?: ((detail: string) => void) | undefined;
+  /**
+   * The inbound-mail supervisor, when the composition built one.
+   *
+   * Owned here for the same reason the Telegram ingress supervisor is
+   * (docs/inbound-email.md §3.5): inbound mail is a poll/socket lifecycle that
+   * must be armed at boot and torn down with the daemon, not a webhook that
+   * arrives on its own. Absent in embedders that watch no mailbox — the
+   * cluster registration then reports why nothing is watched rather than
+   * electing a node for a surface it cannot serve.
+   *
+   * Note what this is NOT: email does not join `ManagedSurface`. That union
+   * means a channel the daemon talks TO — accounts, delivery, ingress
+   * authorization, conversation routing — and §2.1 removes those from inbound
+   * mail structurally. Widening it to fit email in would hand every one of
+   * them back by inheritance.
+   */
+  readonly inboundMail?: InboundMailRuntimeSupervisor | undefined;
   readonly buildSurfaceAdapterContext: () => SurfaceAdapterContext;
   readonly buildGenericWebhookAdapterContext: () => GenericWebhookAdapterContext;
   readonly deliverSurfaceProgress: (pending: unknown, progress: string) => Promise<void>;

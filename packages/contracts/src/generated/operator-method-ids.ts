@@ -157,6 +157,7 @@ export const OPERATOR_METHOD_IDS = [
   "email.expectation.cancel",
   "email.expectation.list",
   "email.expectation.open",
+  "email.inbound.status",
   "email.inbox.list",
   "email.inbox.read",
   "email.send",
