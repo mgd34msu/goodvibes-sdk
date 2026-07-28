@@ -22,13 +22,25 @@
  *    answer to the owner, which is exactly the call a composition path must not
  *    make (§10). The absence of a `profile.people.list` is load-bearing, not an
  *    oversight.
- *  - **`profile.read` carries its own scope**, `read:profile.full`, rather than
- *    sharing `read:profile` with the named lookups. §11.2 asserts it "is not
- *    callable from a composition path at all", and while nothing here can decide
- *    which token a composition path is handed, a separate scope is what makes
- *    that assertion expressible: the bulk read can be withheld while `get`,
- *    `person`, `provenance` and `status` are granted. Without it the claim had
- *    no mechanism behind it whatsoever — every profile read sat at one scope.
+ *  - **`profile.read` carries its own scope**, `read:profile-document`, rather
+ *    than sharing `read:profile` with the named lookups. §11.2 asserts it "is
+ *    not callable from a composition path at all", and while nothing here can
+ *    decide which token a composition path is handed, a separate scope is what
+ *    makes that assertion expressible: the bulk read can be withheld while
+ *    `get`, `person`, `provenance` and `status` are granted. Without it the
+ *    claim had no mechanism behind it whatsoever — every profile read sat at
+ *    one scope.
+ *
+ *    The name is flat and UNRELATED, deliberately not `read:profile.full`.
+ *    `scopeMatches` (daemon-sdk/route-helpers.ts) grants on an exact match, on
+ *    `*`, or on a `prefix:*` wildcard; there is no dotted hierarchy anywhere in
+ *    the platform, and `read:profile.full` was its only dotted scope. That name
+ *    read as "profile, but more" while granting its holder none of the plain
+ *    `read:profile` verbs — a token minted with the apparent superset would
+ *    have taken 403s on `get`, `person`, `provenance` and `status`. It is
+ *    masked today only because `getGrantedGatewayScopes` unions every declared
+ *    scope, so real tokens hold both; it would surface the moment a caller
+ *    passed an explicit list.
  */
 import type { GatewayMethodDescriptor } from './method-catalog-shared.js';
 import {
@@ -229,9 +241,9 @@ export const builtinGatewayOwnerProfileMethodDescriptors: readonly GatewayMethod
   methodDescriptor({
     id: 'profile.read',
     title: 'Read Owner Profile',
-    description: 'Return the whole owner profile, by section, with each section\'s tier and every mechanical field\'s validity. This is the answer to "what do you know about me?" and is the ONE read that returns closed-tier content in bulk. It carries its own scope, read:profile.full, so a token issued to a composition path can hold read:profile for the named lookups (get/person/provenance/status) without also being able to ask for everything.',
+    description: 'Return the whole owner profile, by section, with each section\'s tier and every mechanical field\'s validity. This is the answer to "what do you know about me?" and is the ONE read that returns closed-tier content in bulk. It carries its own scope, read:profile-document, so a token issued to a composition path can hold read:profile for the named lookups (get/person/provenance/status) without also being able to ask for everything. The two are unrelated names rather than a hierarchy: scope matching is exact, `*`, or a `prefix:*` wildcard, so a caller wanting both lists both.',
     category: 'profile',
-    scopes: ['read:profile.full'],
+    scopes: ['read:profile-document'],
     http: { method: 'GET', path: '/api/profile' },
     inputSchema: PROFILE_READ_INPUT_SCHEMA,
     outputSchema: PROFILE_READ_OUTPUT_SCHEMA,

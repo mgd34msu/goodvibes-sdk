@@ -690,11 +690,20 @@ export { parseFieldLine };
 /**
  * Delete one prose line, matched by its exact text within one section.
  *
- * Whitespace at the ends is ignored on both sides — that is equality, not a
- * fuzzy match — and nothing else is. A near-miss delete on the file that holds
- * his address is worse than a refusal, so an unmatched text removes nothing and
- * says the line is not there any more, which is both true and the useful thing
- * to tell him: his file changed under the answer he was working from.
+ * End whitespace and the leading LIST MARKER are ignored on both sides; nothing
+ * else is. The marker is syntax, not content: he says "forget that I'm allergic
+ * to shellfish", and the `- ` in front of it is a Markdown artefact he never
+ * uttered. Requiring it back would be asking a model to guess at our storage
+ * format, and it would fail closed in the least useful direction — a delete
+ * that silently matches nothing.
+ *
+ * Normalising cannot widen a match onto the WRONG line, because ambiguity is
+ * refused rather than resolved: if both `- Foo` and a bare `Foo` sit in the
+ * same section they now both match, and that is two matches, which is a
+ * refusal. A near-miss delete on the file that holds his address is worse than
+ * a refusal, so an unmatched text removes nothing and says the line is not
+ * there any more — which is true, and the useful thing to tell him: his file
+ * changed under the answer he was working from.
  *
  * Two byte-identical lines in one section refuse rather than guess. Removing
  * "one of them" would report a deletion while the same text stayed in the file,
@@ -705,7 +714,15 @@ export function forgetProseByText(
   section: string,
   text: string,
 ): ProfileEditResult {
-  const wanted = text.trim();
+  const wanted = withoutListMarker(text);
+  if (wanted.length === 0) {
+    return {
+      ok: false,
+      reason: 'Name the line by its text — there was nothing to match on.',
+      lines: projection.rawLines,
+      changes: [],
+    };
+  }
   const target = findProfileSectionByHeading(projection, section);
   if (target === undefined) {
     return {
@@ -715,7 +732,7 @@ export function forgetProseByText(
       changes: [],
     };
   }
-  const matches = target.prose.filter((line) => line.text.trim() === wanted);
+  const matches = target.prose.filter((line) => withoutListMarker(line.text) === wanted);
   if (matches.length === 0) {
     return {
       ok: false,
@@ -735,4 +752,15 @@ export function forgetProseByText(
     };
   }
   return forget(projection, { lineIndex: matches[0]!.lineIndex });
+}
+
+/**
+ * A prose line's content, with its list marker and surrounding space removed.
+ *
+ * Matches `-`, `*`, `+` and ordered `1.` / `1)` forms, and only when whitespace
+ * follows — so a line that genuinely begins `-5 degrees` keeps its minus sign
+ * rather than becoming `5 degrees`.
+ */
+function withoutListMarker(value: string): string {
+  return value.trim().replace(/^(?:[-*+]|\d+[.)])\s+/, '').trim();
 }

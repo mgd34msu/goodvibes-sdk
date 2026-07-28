@@ -27,11 +27,12 @@
  * longer be read is exactly the silent-success failure this design exists to
  * avoid.
  */
-import { promises as fs, statSync, watch, type FSWatcher } from 'node:fs';
+import { watch, type FSWatcher } from 'node:fs';
 import { basename, dirname } from 'node:path';
 import { summarizeError } from '../utils/error-display.js';
 import { logger } from '../utils/logger.js';
 import { parseProfileDocument, findProfileSectionByHeading } from './document.js';
+import { readProfile, readProfileSync, statOf, type FileStat, type ProfileReadResult } from './store-load.js';
 import { describeProfileWrite } from './disclosure.js';
 import { PROFILE_SECTIONS, profileFieldById, profileSectionTier } from './fields.js';
 import { resolveOwnerProfilePath } from './paths.js';
@@ -127,45 +128,33 @@ export class OwnerProfileStore {
    * answers "profile is disabled" — a stated state, not an empty profile.
    */
   async load(): Promise<ProfileLoadState> {
-    if (!this.enabled) {
+    return this.adoptRead(await readProfile(this.filePath), this.enabled);
+  }
+
+  /**
+   * The same load, synchronously — for the ONE caller that cannot await.
+   *
+   * A daemon composition root is synchronous. Loading asynchronously there left
+   * a window in which every verb answered "your profile has not been loaded
+   * yet" (not a state §4.4 sanctions) and, worse because nothing logged it, the
+   * config fallback answered UNSET and the open-tier block rendered empty. See
+   * store-load.ts for why a readiness promise could not have closed that.
+   */
+  loadSync(): ProfileLoadState {
+    return this.adoptRead(readProfileSync(this.filePath), this.enabled);
+  }
+
+  /** Turn one read into the load state, or report the profile turned off. */
+  private adoptRead(read: ProfileReadResult, enabled: boolean): ProfileLoadState {
+    if (!enabled) {
       this.projection = null;
       this.state = { kind: 'disabled', path: this.filePath };
       return this.state;
     }
-
-    // Stat BEFORE the read: if the file changes while it is being read, this
-    // baseline is the older one, so the next write notices and reloads rather
-    // than believing its projection is current.
-    const seen = statOf(this.filePath);
-    let bytes: Buffer;
-    try {
-      bytes = await fs.readFile(this.filePath);
-    } catch (error) {
-      if (isNotFound(error)) {
-        this.lastSeen = seen;
-        return this.adopt(parseProfileDocument({ path: this.filePath, text: '', exists: false }));
-      }
-      return this.markUnavailable(summarizeError(error));
-    }
-
-    let text: string;
-    try {
-      // Fatal decoding, not replacement characters: a UTF-16 mis-save decodes to
-      // plausible-looking mojibake under a lenient decoder, and the profile would
-      // then load "successfully" full of garbage instead of saying it cannot be
-      // read. Round-tripping the bytes is the only honest check.
-      text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-    } catch (error) {
-      // The cause is stated here rather than passed through from the runtime:
-      // Node says "The encoded data was not valid for encoding utf-8" and Bun
-      // says "invalid byte sequence", and he should read the same sentence
-      // either way — one that names the encoding, since "saved as UTF-16" is
-      // the accident behind almost every occurrence.
-      return this.markUnavailable(`its bytes are not valid UTF-8 (${summarizeError(error)})`);
-    }
-
-    this.lastSeen = seen;
-    return this.adopt(parseProfileDocument({ path: this.filePath, text, exists: true }));
+    if (read.kind === 'error') return this.markUnavailable(read.cause);
+    this.lastSeen = read.seen;
+    const text = read.kind === 'text' ? read.text : '';
+    return this.adopt(parseProfileDocument({ path: this.filePath, text, exists: read.kind === 'text' }));
   }
 
   /** True when the file on disk is still the content the projection reflects. */
@@ -710,28 +699,6 @@ export class OwnerProfileStore {
 
 function refusal(reason: string): ProfileWriteResult {
   return { ok: false, reason, changes: [], disclosure: '' };
-}
-
-interface FileStat {
-  readonly mtimeMs: number;
-  readonly size: number;
-}
-
-/** A missing file is a real state (zeros), not an error. */
-function statOf(path: string): FileStat {
-  try {
-    const stats = statSync(path);
-    return { mtimeMs: stats.mtimeMs, size: stats.size };
-  } catch {
-    return { mtimeMs: 0, size: 0 };
-  }
-}
-
-function isNotFound(error: unknown): boolean {
-  return typeof error === 'object'
-    && error !== null
-    && 'code' in error
-    && (error as { code?: unknown }).code === 'ENOENT';
 }
 
 function escapeRegExp(value: string): string {

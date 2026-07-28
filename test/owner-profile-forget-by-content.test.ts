@@ -298,3 +298,85 @@ describe('the mechanical-field path is unchanged', () => {
     expect(after).toContain('- A line he added just now');
   });
 });
+
+describe('§9.2 — the list marker is syntax, not content', () => {
+  test('the bare prose he actually said deletes the line', async () => {
+    const { catalog, path } = await harness();
+    // He says "forget that I'm allergic to shellfish". The `- ` in front of it
+    // in the file is a Markdown artefact he never uttered, and requiring it
+    // back would be asking a model to guess at our storage format.
+    const result = await catalog.invoke('profile.forget', {
+      ...ctx,
+      body: { ...OWNER, section: 'Notes', text: 'Allergic to shellfish' },
+    }) as ProfileWriteResult;
+    expect(result.ok).toBe(true);
+    expect(readFileSync(path, 'utf-8')).not.toContain('shellfish');
+  });
+
+  test('the stored form deletes the same line', async () => {
+    const { catalog, path } = await harness();
+    const result = await catalog.invoke('profile.forget', {
+      ...ctx,
+      body: { ...OWNER, section: 'Notes', text: '- Allergic to shellfish' },
+    }) as ProfileWriteResult;
+    expect(result.ok).toBe(true);
+    expect(readFileSync(path, 'utf-8')).not.toContain('shellfish');
+  });
+
+  test.each(['* Starred note', '+ Plus note', '1. Ordered note', '1) Paren note'])(
+    'the %s marker style normalises on both sides',
+    async (stored) => {
+      const bare = stored.replace(/^(?:[-*+]|\d+[.)])\s+/, '');
+      const { catalog, path } = await harness([
+        "# Mike's profile", '', '## Notes', '', stored, '',
+      ].join('\n'));
+      const result = await catalog.invoke('profile.forget', {
+        ...ctx,
+        body: { ...OWNER, section: 'Notes', text: bare },
+      }) as ProfileWriteResult;
+      expect(result.ok).toBe(true);
+      expect(readFileSync(path, 'utf-8')).not.toContain(bare);
+    },
+  );
+
+  test('a leading minus that is NOT a marker is preserved', async () => {
+    // `-5 degrees` has no space after the minus, so it is content, not syntax.
+    const { catalog, path } = await harness([
+      "# Mike's profile", '', '## Notes', '', '- Freezer runs at -5 degrees', '',
+    ].join('\n'));
+    const result = await catalog.invoke('profile.forget', {
+      ...ctx,
+      body: { ...OWNER, section: 'Notes', text: 'Freezer runs at -5 degrees' },
+    }) as ProfileWriteResult;
+    expect(result.ok).toBe(true);
+    expect(readFileSync(path, 'utf-8')).not.toContain('Freezer');
+  });
+
+  test('normalising cannot delete the wrong line — ambiguity still refuses', async () => {
+    // `- Foo` and a bare `Foo` now both normalise to `Foo`. That is two
+    // matches, which is a refusal, not a guess. Deleting the wrong one of two
+    // identical lines is unrecoverable; asking is not.
+    const { catalog, path } = await harness([
+      "# Mike's profile", '', '## Notes', '', '- Allergic to shellfish', 'Allergic to shellfish', '',
+    ].join('\n'));
+    const before = readFileSync(path);
+    const result = await catalog.invoke('profile.forget', {
+      ...ctx,
+      body: { ...OWNER, section: 'Notes', text: 'Allergic to shellfish' },
+    }) as ProfileWriteResult;
+    expect(result.ok).toBe(false);
+    expect(result.reason).toContain('2 lines');
+    expect(readFileSync(path).equals(before)).toBe(true);
+  });
+
+  test('a marker with nothing after it is not a way to match everything', async () => {
+    const { catalog, path } = await harness();
+    const before = readFileSync(path);
+    const result = await catalog.invoke('profile.forget', {
+      ...ctx,
+      body: { ...OWNER, section: 'Notes', text: '-' },
+    }) as ProfileWriteResult;
+    expect(result.ok).toBe(false);
+    expect(readFileSync(path).equals(before)).toBe(true);
+  });
+});

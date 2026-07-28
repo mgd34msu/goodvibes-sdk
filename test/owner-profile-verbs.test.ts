@@ -110,7 +110,7 @@ describe('profile.* verbs — catalog surface', () => {
     const expectedScope: Record<string, string> = {
       // Its own scope on purpose — see the descriptor's note. A composition
       // path can be granted read:profile without being granted the bulk read.
-      'profile.read': 'read:profile.full',
+      'profile.read': 'read:profile-document',
       'profile.get': 'read:profile',
       'profile.person': 'read:profile',
       'profile.provenance': 'read:profile',
@@ -132,9 +132,9 @@ describe('profile.* verbs — catalog surface', () => {
   // would not notice someone later widening `profile.get` to the full scope,
   // which is precisely the change that would quietly hand a composition path
   // the bulk read back.
-  test('profile.read alone carries read:profile.full; every other read is read:profile', async () => {
+  test('profile.read alone carries read:profile-document; every other read is read:profile', async () => {
     const { catalog } = await harness();
-    const full = VERB_IDS.filter((id) => catalog.get(id)?.scopes.includes('read:profile.full'));
+    const full = VERB_IDS.filter((id) => catalog.get(id)?.scopes.includes('read:profile-document'));
     expect(full).toEqual(['profile.read']);
 
     const namedReads = ['profile.get', 'profile.person', 'profile.provenance', 'profile.status'];
@@ -144,6 +144,15 @@ describe('profile.* verbs — catalog surface', () => {
     // And the bulk read does NOT also carry the narrow scope, or holding
     // read:profile would still reach it.
     expect(catalog.get('profile.read')?.scopes).not.toContain('read:profile');
+    // No profile scope is dotted. `scopeMatches` is exact / `*` / `prefix:*`
+    // with no hierarchy, so a dotted name would promise a containment the grant
+    // check does not implement — `read:profile.full` looked like a superset of
+    // `read:profile` and granted none of its verbs.
+    for (const id of VERB_IDS) {
+      for (const scope of catalog.get(id)?.scopes ?? []) {
+        expect(scope, `${id} declares a dotted scope`).not.toContain('.');
+      }
+    }
   });
 
   // The contract and the handler must agree about `authority`. They did not:

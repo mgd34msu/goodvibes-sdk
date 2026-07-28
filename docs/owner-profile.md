@@ -345,12 +345,17 @@ first turn landing there gets no open-tier block at all. Nothing logs it. The
 owner would see his check-in fire at the wrong hour once after a restart and have
 no way to connect it to anything.
 
-**The store exposes a `ready` promise, and every verb and every consumer read
-awaits it before answering.** Boot is not blocked — composition stays
-synchronous — but no caller is ever handed the pre-load state. It collapses to
-one of the three real answers. A load that is genuinely still in flight makes the
-caller wait for a single small file read, which is the honest cost and is
-measured in milliseconds.
+**The initial load is synchronous, at boot.** An earlier version of this section
+prescribed a `ready` promise that verbs and consumer reads would await. That was
+wrong, and the reason is worth keeping: **`ConfigManager.get()` is synchronous**,
+so a fallback reader has nothing to await with. A readiness promise could have
+closed the verb half of the window and never the consumer half — which is the
+half that costs him a mis-timed check-in. Reading the file once, synchronously,
+in the composition root removes the window instead of making it awaitable.
+
+The cost is one small file read on a path the daemon already reads
+`settings.json` from at boot. The reload path stays asynchronous, because the
+watcher has an event loop to run on and a reload must never block one.
 
 This is the class of defect only a live run finds. Every stubbed test constructs
 a loaded store, so the window does not exist for it, and four refusal tests were
