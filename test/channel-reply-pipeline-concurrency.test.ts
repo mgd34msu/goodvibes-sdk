@@ -73,15 +73,22 @@ function harness(surfaceKind: string, dispatchMs = DISPATCH_MS) {
         routeId: 'route-1',
       } as unknown as Parameters<ChannelReplyPipeline['trackPending']>[0]);
     },
-    /** A bus event, delivered the way the daemon delivers it: not awaited. */
-    emitProgress(agentId: string, text: string) {
+    /**
+     * A bus event, delivered the way the daemon delivers it: not awaited.
+     *
+     * Owner-audience, because these tests are about the delivery critical
+     * section rather than about content. Tool-activity progress never reaches
+     * this machinery at all — see channels/render-audience.ts and
+     * channel-internal-diagnostics-never-delivered.test.ts.
+     */
+    emitProgress(agentId: string, text: string, audience: 'owner' | 'operator' = 'owner') {
       sequence += 1;
       emitAgentProgress(bus, {
         sessionId: 'race-session',
         traceId: `progress-${sequence}`,
         source: 'test',
         agentId,
-      }, { agentId, progress: text });
+      }, { agentId, progress: text, audience });
     },
     emitCompleted(agentId: string, output: string) {
       sequence += 1;
@@ -145,11 +152,11 @@ describe('concurrent progress deliveries with a slow dispatch', () => {
 
     // Exactly the live shape: two tool events land while the first publish is
     // still on the wire, and the poller's forced status tick lands with them.
-    h.emitProgress('agent-race', 'Turn 1 · exec — ls');
+    h.emitProgress('agent-race', 'Turn 1 · Network error, retrying in 5s…');
     h.advance(30_000);
-    h.emitProgress('agent-race', 'Turn 1 · exec — echo $((5 + 3))');
+    h.emitProgress('agent-race', 'Turn 1 · Rate limited, retrying in 60s…');
     h.advance(30_000);
-    const polled = h.pipeline.deliverProgress('agent-race', 'Turn 1 · Thinking…', true);
+    const polled = h.pipeline.deliverProgress('agent-race', 'Turn 1 · Thinking…', true, 'owner');
 
     await polled;
     await h.settle();
@@ -158,8 +165,8 @@ describe('concurrent progress deliveries with a slow dispatch', () => {
     expect(supersetPairs(bodies)).toEqual([]);
     expect(duplicatedLines(bodies)).toEqual([]);
     // Every event still reaches the reader exactly once.
-    expect(bodies.join('\n')).toContain('exec — ls');
-    expect(bodies.join('\n')).toContain('exec — echo $((5 + 3))');
+    expect(bodies.join('\n')).toContain('Network error, retrying in 5s…');
+    expect(bodies.join('\n')).toContain('Rate limited, retrying in 60s…');
   });
 
   test('the critical section never runs two dispatches for one agent at once', async () => {
@@ -169,7 +176,7 @@ describe('concurrent progress deliveries with a slow dispatch', () => {
       h.emitProgress('agent-serial', `Turn 1 · step ${i}`);
       h.advance(30_000);
     }
-    void h.pipeline.deliverProgress('agent-serial', 'Turn 1 · Thinking…', true);
+    void h.pipeline.deliverProgress('agent-serial', 'Turn 1 · Thinking…', true, 'owner');
     await h.settle();
 
     expect(h.maxConcurrentDispatches()).toBe(1);
@@ -181,7 +188,7 @@ describe('concurrent progress deliveries with a slow dispatch', () => {
     const h = harness('ntfy');
     h.track('agent-final-race');
 
-    h.emitProgress('agent-final-race', 'Turn 1 · exec — ls');
+    h.emitProgress('agent-final-race', 'Turn 1 · Network error, retrying in 5s…');
     h.advance(30_000);
     // The completion lands while the progress publish is still on the wire —
     // deliverFinal had the same select/await/mark shape as deliverProgress.
@@ -202,8 +209,8 @@ describe('concurrent progress deliveries with a slow dispatch', () => {
     h.advance(45_000);
     const started = Date.now();
     await Promise.all([
-      h.pipeline.deliverProgress('agent-a', 'Turn 1 · exec — build a', true),
-      h.pipeline.deliverProgress('agent-b', 'Turn 1 · exec — build b', true),
+      h.pipeline.deliverProgress('agent-a', 'Turn 1 · Network error, retrying in 5s…', true, 'owner'),
+      h.pipeline.deliverProgress('agent-b', 'Turn 1 · Rate limited, retrying in 60s…', true, 'owner'),
     ]);
     // Serialized, this would take two dispatch windows. Per-agent scope means
     // one slow surface cannot stall another agent's updates.

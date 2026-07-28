@@ -8,6 +8,15 @@
 import type { RuntimeEventEnvelope, AnyRuntimeEvent } from '../runtime/events/index.js';
 import { splitInlineReasoning } from '../providers/inline-reasoning.js';
 import { stripProseCompletionReport } from './completion-report-prose.js';
+import { isOwnerFacingRenderEvent, type ChannelRenderAudience } from './render-audience.js';
+import {
+  describeWorkstreamState,
+  finishWorkstreamLabel,
+  rememberWorkstreamLabel,
+  workstreamLabel,
+  workstreamLabelInline,
+  workstreamPlaceSuffix,
+} from './workstream-labels.js';
 import type {
   ChannelRenderEvent,
   ChannelRenderPhase,
@@ -154,12 +163,19 @@ function assistantTextForVisibility(text: string, reasoningVisibility: ChannelRe
 
 /**
  * Ceiling for a status arriving as a render EVENT rather than as an explicit
- * progress line. Looser than the progress ceiling because WRFC chain lines
- * legitimately quote a task summary; the surface policy trims the final body.
+ * progress line. Looser than the progress ceiling because a workstream's
+ * opening line legitimately quotes its task; the surface policy trims the
+ * final body.
  */
 const MAX_EVENT_STATUS_CHARS = 400;
 
 export function eventLine(event: ChannelRenderEvent, reasoningVisibility: ChannelReasoningVisibility): string | null {
+  // The gate. Everything below this line is text a person in a conversation
+  // receives, so nothing written for an operator gets past it — see
+  // channels/render-audience.ts for the incident that put it here. Placed at
+  // the top of the ONE function every channel's body is built from, rather than
+  // in each surface's plugin, so no channel can be fixed and another left.
+  if (!isOwnerFacingRenderEvent(event)) return null;
   switch (event.kind) {
     case 'assistant_text': {
       if (!event.text?.trim()) return null;
@@ -337,8 +353,16 @@ export function normalizeChannelRenderEventFromRuntime(
         ? [renderEvent('assistant_text', 'progress', envelope, { text: payload.content })]
         : [];
     case 'AGENT_PROGRESS':
+      // The audience the emitter stamped, and nothing else. An unstamped
+      // progress line resolves to `operator` and is dropped by `eventLine`,
+      // which is how `registry — email send` stops being a chat message: the
+      // orchestrator's tool-activity lines say `operator`, its retry and
+      // model-fallback lines say `owner`. See agents/progress-audience.ts.
       return payload.progress.trim().length > 0
-        ? [renderEvent('status', 'progress', envelope, { text: payload.progress })]
+        ? [renderEvent('status', 'progress', envelope, {
+          text: payload.progress,
+          audience: (payload.audience ?? 'operator') as ChannelRenderAudience,
+        })]
         : [];
     case 'AGENT_COMPLETED':
       // The answer, and nothing else.
@@ -364,7 +388,14 @@ export function normalizeChannelRenderEventFromRuntime(
     case 'AGENT_FAILED':
       return [renderEvent('error', 'final', envelope, { text: payload.error })];
     case 'AGENT_CANCELLED':
-      return [renderEvent('status', 'final', envelope, { text: payload.reason ? `Cancelled: ${payload.reason}` : 'Cancelled' })];
+      // Owner-facing: someone who asked for work is owed the news that it
+      // stopped, and the reason is written for them rather than about the
+      // machine. This is a `status` event, so it says so explicitly — the kind
+      // alone denies.
+      return [renderEvent('status', 'final', envelope, {
+        audience: 'owner',
+        text: payload.reason ? `Cancelled: ${payload.reason}` : 'Cancelled',
+      })];
     case 'STREAM_DELTA': {
       const events: ChannelRenderEvent[] = [];
       if (payload.content.trim().length > 0) {
@@ -406,7 +437,11 @@ export function normalizeChannelRenderEventFromRuntime(
         text: `${payload.approved ? 'Approved' : 'Denied'} ${payload.tool}`,
       })];
     case 'MODEL_FALLBACK':
+      // OWNER. Their answer is now coming from a different model — a fact about
+      // the reply rather than about the machine, and the same call the
+      // orchestrator's own `Model fallback → …` progress line makes.
       return [renderEvent('model', 'progress', envelope, {
+        audience: 'owner',
         provider: payload.provider,
         model: `${payload.from} -> ${payload.to}`,
       })];
@@ -427,54 +462,89 @@ export function normalizeChannelRenderEventFromRuntime(
       return [renderEvent(payload.type === 'COMPACTION_FAILED' ? 'error' : 'compaction', 'progress', envelope, {
         text: payload.type.replace(/^COMPACTION_/, '').toLowerCase().replace(/_/g, ' '),
       })];
+    // The workstream family is OWNER-facing, deliberately and by exception.
+    //
+    // Everything else that names the machine's internals is operator-only, but
+    // someone who asked for a long-running workstream is owed its legs: which
+    // phase it reached, whether review passed, whether a gate failed. That is
+    // progress on THEIR work, not telemetry about the process running it, and
+    // suppressing it would be the "suppress the message that should have been
+    // there" failure rather than the fix.
+    //
+    // These lines used to lead with `WRFC chain 7f3a91c02b4e` — a name for the
+    // machinery and a register id, neither of which belongs in outward-facing
+    // text. The id was doing one real job, telling two concurrent workstreams
+    // apart, so it is replaced rather than deleted: a workstream is named by
+    // what it is doing, and two that would read the same are counted in words.
+    // `payload.chainId` below is only ever a lookup key — see
+    // workstream-labels.ts. Nothing in this family renders it.
     case 'WORKFLOW_CHAIN_CREATED':
+      rememberWorkstreamLabel(payload.chainId, payload.task);
+      // The task in full, since this is the line that introduces it; the place
+      // suffix only when another workstream is already running under the same
+      // phrase, and it has to come from AFTER the remember call above.
       return [renderEvent('status', 'progress', envelope, {
-        text: `WRFC chain ${payload.chainId.slice(0, 12)} started: ${trimText(payload.task, 180)}`,
+        audience: 'owner',
+        text: `Started work on: ${trimText(payload.task, 180)}${workstreamPlaceSuffix(payload.chainId)}`,
       })];
     case 'WORKFLOW_STATE_CHANGED':
       return [renderEvent('status', 'progress', envelope, {
-        text: `WRFC chain ${payload.chainId.slice(0, 12)} moved from ${payload.from} to ${payload.to}`,
+        audience: 'owner',
+        text: `${workstreamLabel(payload.chainId)} is now ${describeWorkstreamState(payload.to)}`,
       })];
     case 'WORKFLOW_REVIEW_COMPLETED': {
       const constraintSummary = typeof payload.constraintsSatisfied === 'number' && typeof payload.constraintsTotal === 'number'
-        ? `, constraints ${payload.constraintsSatisfied}/${payload.constraintsTotal}`
+        ? `, ${payload.constraintsSatisfied} of ${payload.constraintsTotal} requirements met`
         : '';
       return [renderEvent(payload.passed ? 'status' : 'error', 'progress', envelope, {
-        text: `WRFC review ${payload.passed ? 'passed' : 'needs fixes'}: score ${payload.score}/10${constraintSummary}`,
+        audience: 'owner',
+        text: `Review of ${workstreamLabelInline(payload.chainId)} ${payload.passed ? 'passed' : 'found things to fix'}: scored ${payload.score} out of 10${constraintSummary}`,
       })];
     }
     case 'WORKFLOW_FIX_ATTEMPTED':
       return [renderEvent('status', 'progress', envelope, {
-        text: `WRFC fix attempt ${payload.attempt}/${payload.maxAttempts} started`,
+        audience: 'owner',
+        text: `Fixing review findings on ${workstreamLabelInline(payload.chainId)} — attempt ${payload.attempt} of ${payload.maxAttempts}`,
       })];
     case 'WORKFLOW_GATE_RESULT':
       return [renderEvent(payload.passed ? 'status' : 'error', 'progress', envelope, {
-        text: `WRFC gate ${payload.gate} ${payload.passed ? 'passed' : 'failed'}`,
+        audience: 'owner',
+        text: `The ${payload.gate} check on ${workstreamLabelInline(payload.chainId)} ${payload.passed ? 'passed' : 'failed'}`,
       })];
     case 'WORKFLOW_AUTO_COMMITTED':
+      // A commit hash is provenance a person can act on, not an internal id.
       return [renderEvent('status', 'progress', envelope, {
-        text: `WRFC changes committed${payload.commitHash ? `: ${payload.commitHash}` : ''}`,
+        audience: 'owner',
+        text: `Committed the changes for ${workstreamLabelInline(payload.chainId)}${payload.commitHash ? ` as ${payload.commitHash}` : ''}`,
       })];
     case 'WORKFLOW_SCORE_REGRESSION':
       return [renderEvent('status', 'progress', envelope, {
-        text: `WRFC score regression warning: ${payload.reason}`,
+        audience: 'owner',
+        text: `Review of ${workstreamLabelInline(payload.chainId)} scored worse than the attempt before it: ${payload.reason}`,
       })];
     case 'WORKFLOW_CASCADE_ABORTED':
       return [renderEvent('error', 'progress', envelope, {
-        text: `WRFC cascade warning: ${payload.reason}`,
+        audience: 'owner',
+        text: `Stopped retrying ${workstreamLabelInline(payload.chainId)}: ${payload.reason}`,
       })];
     case 'WORKFLOW_CONSTRAINTS_ENUMERATED':
       return [renderEvent('status', 'progress', envelope, {
-        text: `WRFC constraints enumerated: ${payload.constraints.length}`,
+        audience: 'owner',
+        text: `${workstreamLabel(payload.chainId)} has ${payload.constraints.length} requirement${payload.constraints.length === 1 ? '' : 's'} to meet`,
       })];
-    case 'WORKFLOW_CHAIN_PASSED':
-      return [renderEvent('status', 'final', envelope, {
-        text: `WRFC chain ${payload.chainId.slice(0, 12)} passed`,
-      })];
-    case 'WORKFLOW_CHAIN_FAILED':
+    case 'WORKFLOW_CHAIN_PASSED': {
+      const label = workstreamLabel(payload.chainId);
+      finishWorkstreamLabel(payload.chainId);
+      return [renderEvent('status', 'final', envelope, { audience: 'owner', text: `${label} is done` })];
+    }
+    case 'WORKFLOW_CHAIN_FAILED': {
+      const label = workstreamLabel(payload.chainId);
+      finishWorkstreamLabel(payload.chainId);
       return [renderEvent('error', 'final', envelope, {
-        text: `WRFC chain ${payload.chainId.slice(0, 12)} failed: ${payload.reason}`,
+        audience: 'owner',
+        text: `${label} could not be finished: ${payload.reason}`,
       })];
+    }
     case 'TURN_COMPLETED':
       return payload.response.trim().length > 0
         ? [renderEvent('assistant_text', 'final', envelope, { text: payload.response })]

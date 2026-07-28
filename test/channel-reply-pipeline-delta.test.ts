@@ -57,14 +57,21 @@ function harness(surfaceKind: string) {
         ...extra,
       } as unknown as Parameters<ChannelReplyPipeline['trackPending']>[0]);
     },
-    async progress(agentId: string, text: string) {
+    /**
+     * Owner-audience by default: these tests are about pacing and delta, and
+     * they use prose statuses a reader can act on. Tool-activity progress is
+     * `operator` and is dropped before any of this machinery runs — that rule
+     * has its own tests, above and in
+     * channel-internal-diagnostics-never-delivered.test.ts.
+     */
+    async progress(agentId: string, text: string, audience: 'owner' | 'operator' = 'owner') {
       sequence += 1;
       emitAgentProgress(bus, {
         sessionId: 'test-session',
         traceId: `progress-${sequence}`,
         source: 'test',
         agentId,
-      }, { agentId, progress: text });
+      }, { agentId, progress: text, audience });
       await new Promise((resolve) => { setTimeout(resolve, 0); });
     },
     async complete(agentId: string, output: string, durationMs = 5) {
@@ -120,7 +127,12 @@ describe('ntfy delivers the answer, not just the duration', () => {
     h.advance(30_000);
     await h.chainPassed('chain-9');
     await waitFor(() => h.published.length === 2);
-    expect(h.published[1]?.text).toContain('chain-9 passed');
+    // The leg still arrives; it no longer quotes the chain id. This harness
+    // never emits the opening event that carries the task, so the workstream
+    // has no name to be known by — and it says so in words rather than falling
+    // back to the identifier. See channel-workstream-labels.test.ts.
+    expect(h.published[1]?.text).toBe('The workstream is done');
+    expect(h.published[1]?.text).not.toContain('chain-9');
     expect(h.pipeline.has('agent-chain')).toBe(false);
   });
 });
@@ -380,14 +392,27 @@ describe('progress notifications carry a status line, never the answer', () => {
     // Long enough that a person would wonder whether the run died. Below that
     // floor a progress notification is not warranted at all.
     h.advance(45_000);
-    await h.pipeline.deliverProgress('agent-status', 'Turn 3 · Read(src/parse.ts)', true);
+    await h.pipeline.deliverProgress('agent-status', 'Turn 3 · Network error, retrying in 5s…', true, 'owner');
 
     await waitFor(() => h.published.length > 0);
     expect(h.published[0]!.phase).toBe('progress');
-    // The tool and the file are information. "Turn 3" is a fact about the
+    // The reason the reply is late is information. "Turn 3" is a fact about the
     // machine that changes on every tick and that nobody can act on.
-    expect(h.published[0]!.text).toContain('Read(src/parse.ts)');
+    expect(h.published[0]!.text).toContain('Network error, retrying in 5s…');
     expect(h.published[0]!.text).not.toContain('Turn 3');
+  });
+
+  // The owner received `registry — email send`, `exec — standard` and
+  // `find` as Telegram messages. Those are `record.progress` — the running tool
+  // and a scrap of its arguments — and no surface may carry them, whatever the
+  // pacing says. See channels/render-audience.ts.
+  test.each(['ntfy', 'telegram', 'slack'])('a tool-activity status is dropped on %s however old the run', async (surface) => {
+    const h = harness(surface);
+    h.track('agent-tool-status');
+    h.advance(45_000);
+    expect(await h.pipeline.deliverProgress('agent-tool-status', 'Turn 3 · registry — email send', true)).toBeNull();
+    expect(await h.pipeline.deliverProgress('agent-tool-status', 'Turn 4 · Read(src/parse.ts)', true)).toBeNull();
+    expect(h.published).toHaveLength(0);
   });
 
   test('a status line is one bounded line, not a growing transcript', async () => {
@@ -397,7 +422,7 @@ describe('progress notifications carry a status line, never the answer', () => {
     // Even a caller that wrongly hands over multi-line accumulating content
     // cannot produce a transcript: it collapses to one bounded line.
     const blob = `line one\nline two\nline three\n${'x'.repeat(500)}`;
-    await h.pipeline.deliverProgress('agent-bounded', blob, true);
+    await h.pipeline.deliverProgress('agent-bounded', blob, true, 'owner');
 
     await waitFor(() => h.published.length > 0);
     const body = h.published[0]!.text;
@@ -409,10 +434,10 @@ describe('progress notifications carry a status line, never the answer', () => {
     const h = harness('ntfy');
     h.track('agent-repeat');
     h.advance(45_000);
-    await h.pipeline.deliverProgress('agent-repeat', 'Turn 1 · Read(src/parse.ts)', true);
+    await h.pipeline.deliverProgress('agent-repeat', 'Turn 1 · Rate limited, retrying in 60s…', true, 'owner');
     const after = h.published.length;
     expect(after).toBe(1);
-    await h.pipeline.deliverProgress('agent-repeat', 'Turn 2 · Read(src/parse.ts)', true);
+    await h.pipeline.deliverProgress('agent-repeat', 'Turn 2 · Rate limited, retrying in 60s…', true, 'owner');
     // Same work, a later turn. With the turn counter gone the two render
     // identically, which is what the duplicate check is for.
     expect(h.published.length).toBe(after);
@@ -422,8 +447,8 @@ describe('progress notifications carry a status line, never the answer', () => {
     const h = harness('ntfy');
     h.track('agent-silent');
     h.advance(45_000);
-    expect(await h.pipeline.deliverProgress('agent-silent', '', true)).toBeNull();
-    expect(await h.pipeline.deliverProgress('agent-silent', '   \n  ', true)).toBeNull();
+    expect(await h.pipeline.deliverProgress('agent-silent', '', true, 'owner')).toBeNull();
+    expect(await h.pipeline.deliverProgress('agent-silent', '   \n  ', true, 'owner')).toBeNull();
     expect(h.published).toHaveLength(0);
   });
 
@@ -432,10 +457,10 @@ describe('progress notifications carry a status line, never the answer', () => {
     h.track('agent-placeholder');
     h.advance(10 * 60_000);
     // The single most-delivered notification body on the owner's phone.
-    expect(await h.pipeline.deliverProgress('agent-placeholder', 'Turn 1 · Thinking…', true)).toBeNull();
-    expect(await h.pipeline.deliverProgress('agent-placeholder', 'Turn 12 · Thinking...', true)).toBeNull();
-    expect(await h.pipeline.deliverProgress('agent-placeholder', 'Working…', true)).toBeNull();
-    expect(await h.pipeline.deliverProgress('agent-placeholder', 'Starting', true)).toBeNull();
+    expect(await h.pipeline.deliverProgress('agent-placeholder', 'Turn 1 · Thinking…', true, 'owner')).toBeNull();
+    expect(await h.pipeline.deliverProgress('agent-placeholder', 'Turn 12 · Thinking...', true, 'owner')).toBeNull();
+    expect(await h.pipeline.deliverProgress('agent-placeholder', 'Working…', true, 'owner')).toBeNull();
+    expect(await h.pipeline.deliverProgress('agent-placeholder', 'Starting', true, 'owner')).toBeNull();
     expect(h.published).toHaveLength(0);
   });
 
@@ -443,13 +468,13 @@ describe('progress notifications carry a status line, never the answer', () => {
     const h = harness('ntfy');
     h.track('agent-quick');
     // A real, informative status — withheld purely because the run is young.
-    expect(await h.pipeline.deliverProgress('agent-quick', 'Turn 1 · Read(src/parse.ts)', true)).toBeNull();
+    expect(await h.pipeline.deliverProgress('agent-quick', 'Turn 1 · Network error, retrying in 5s…', true, 'owner')).toBeNull();
     h.advance(29_000);
-    expect(await h.pipeline.deliverProgress('agent-quick', 'Turn 2 · Edit(src/parse.ts)', true)).toBeNull();
+    expect(await h.pipeline.deliverProgress('agent-quick', 'Turn 2 · Network error, retrying in 9s…', true, 'owner')).toBeNull();
     expect(h.published).toHaveLength(0);
     h.advance(2_000);
-    await h.pipeline.deliverProgress('agent-quick', 'Turn 3 · Edit(src/parse.ts)', true);
-    expect(h.bodies()).toEqual(['Edit(src/parse.ts)']);
+    await h.pipeline.deliverProgress('agent-quick', 'Turn 3 · Network error, retrying in 9s…', true, 'owner');
+    expect(h.bodies()).toEqual(['Network error, retrying in 9s…']);
   });
 
   test('a short conversational exchange produces exactly one notification: the answer', async () => {

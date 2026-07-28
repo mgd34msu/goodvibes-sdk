@@ -14,6 +14,7 @@ import type { SharedApprovalRecord } from '../control-plane/index.js';
 import type { PendingSurfaceReply, SurfaceNoticeDelivery, SurfaceNoticeRefusal } from './types.js';
 import { summarizeError } from '../utils/error-display.js';
 import { resolveSecretInput } from '../config/secret-refs.js';
+import { isOwnerFacingProgress } from '../agents/progress-audience.js';
 import {
   deliverDiscordAgentReply,
   deliverNtfyAgentReply,
@@ -375,17 +376,25 @@ export class DaemonSurfaceDeliveryHelper {
       }
       const record = this.context.agentManager.getStatus(pending.agentId);
       if (record && (record.status === 'pending' || record.status === 'running')) {
-        // `record.progress` ONLY, on every surface. It is the concise one-line
-        // status the orchestrator maintains ("Turn 3 · Read(src/parse.ts)",
-        // "Network error, retrying in 5s…"). `streamingContent` is the raw
-        // model output accumulated so far — both a growing transcript and a
-        // fragment of the answer, so sending it made every notification a
-        // superset of the previous one and leaked the reply a piece at a time.
-        // The answer goes out once, complete, in the final message.
-        const progress = record.progress;
+        // `record.progress` ONLY, on every surface, and only the lines written
+        // for the person on the other end. `streamingContent` is the raw model
+        // output accumulated so far — both a growing transcript and a fragment
+        // of the answer, so sending it made every notification a superset of
+        // the previous one and leaked the reply a piece at a time. The answer
+        // goes out once, complete, in the final message.
+        //
+        // The audience test is what this route was missing. `record.progress`
+        // is mostly the running tool and a scrap of its arguments, kept for the
+        // TUI's activity surfaces. The channel renderer strips the `Turn 3 · `
+        // prefix, so those arrived on the owner's phone as bare tool traces —
+        // `registry — email send`, `exec — standard` — in the middle of a
+        // conversation. Only lines the orchestrator marked `owner` (a retry, a
+        // model fallback, a stall the reader can act on) travel this way now.
+        // See agents/progress-audience.ts.
+        const progress = isOwnerFacingProgress(record.progressAudience) ? record.progress : undefined;
         if (progress && progress !== pending.lastProgress && (Date.now() - (pending.lastProgressAt ?? 0)) >= 10_000) {
           try {
-            await this.context.channelReplyPipeline.deliverProgress(pending.agentId, progress, true);
+            await this.context.channelReplyPipeline.deliverProgress(pending.agentId, progress, true, 'owner');
             pending.lastProgress = progress;
             pending.lastProgressAt = Date.now();
           } catch (error) {

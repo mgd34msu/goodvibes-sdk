@@ -48,10 +48,11 @@ import {
 } from './secrets-keyfile.js';
 export { SecretStoreUnreadableError } from './secrets-keyfile.js';
 import { getSecretRefSource, isSecretRefInput, resolveSecretRef } from './secret-refs.js';
+import { listMigratableSecrets, migratableStores } from './secrets-migration-view.js';
 import { logger } from '../utils/logger.js';
 import { requireSurfaceRoot, resolveSharedDirectory } from '../runtime/surface-root.js';
 import { summarizeError } from '../utils/error-display.js';
-import { isDaemonOwnedSecretKey } from './daemon-secret-keys.js';
+import { describeCredentialScope, isDaemonNeededSecretKey } from './credential-scope-registry.js';
 import {
   allSecretStores,
   defaultDaemonSecretHome,
@@ -192,7 +193,7 @@ function loadConfiguredSecretPolicy(configManager?: Pick<ConfigManager, 'get'>):
  * Everything that is not daemon-owned keeps the historical default.
  */
 function defaultScopeForKey(key: string): SecretScope {
-  return isDaemonOwnedSecretKey(key) ? 'daemon' : 'project';
+  return isDaemonNeededSecretKey(key) ? 'daemon' : 'project';
 }
 
 /**
@@ -217,13 +218,18 @@ function defaultScopeForKey(key: string): SecretScope {
  * going BEFORE it asks for it.
  */
 export function resolveSecretWriteScope(key: string, requested?: SecretScope | undefined): SecretScope {
-  if (isDaemonOwnedSecretKey(key)) return 'daemon';
+  if (isDaemonNeededSecretKey(key)) return 'daemon';
   return requested ?? defaultScopeForKey(key);
 }
 
 /** True when `requested` would have sent a daemon-owned credential somewhere the daemon cannot read. */
 export function secretWriteScopeWasOverridden(key: string, requested?: SecretScope | undefined): boolean {
-  return requested !== undefined && requested !== 'daemon' && isDaemonOwnedSecretKey(key);
+  return requested !== undefined && requested !== 'daemon' && isDaemonNeededSecretKey(key);
+}
+
+/** Why `key` was filed where it was. Safe to display: names only, never values. */
+export function describeSecretWriteScope(key: string): string {
+  return describeCredentialScope(key);
 }
 
 export class SecretsManager {
@@ -298,6 +304,30 @@ export class SecretsManager {
     return this.getInternal(key, new Set([key]));
   }
 
+  /**
+   * Read `key` from ONE tier, ignoring the read order and the environment.
+   *
+   * `get()` answers "what value would be used", which is the right question
+   * almost everywhere and the wrong one for migration: a surface copy read
+   * through `get()` returns whatever the DAEMON tier holds, because the daemon
+   * tier leads. Moving a credential needs to see each tier separately — read
+   * the surface copy, write the daemon copy, read the daemon copy BACK and
+   * compare — and a resolver that transparently prefers one tier makes that
+   * comparison meaningless.
+   *
+   * Returns the value exactly as stored. A `goodvibes://` reference is NOT
+   * followed: migration moves the stored bytes, and following a reference here
+   * would copy the pointed-at value over the pointer.
+   */
+  async getFromScope(key: string, scope: SecretScope, storePath?: string): Promise<string | null> {
+    for (const path of this.getMigratableStores()) {
+      if (storePath !== undefined ? path.path !== storePath : path.scope !== scope) continue;
+      const secrets = path.secure ? this.readEncryptedFile(path.path) : this.readPlaintextFile(path.path);
+      if (secrets !== null && key in secrets) return secrets[key] ?? null;
+    }
+    return null;
+  }
+
   private async getInternal(key: string, seen: Set<string>): Promise<string | null> {
     const envValue = process.env[key]!;
     if (envValue !== undefined) {
@@ -358,7 +388,7 @@ export class SecretsManager {
         key,
         requestedScope: options.scope,
         actualScope: scope,
-        reason: 'a daemon-owned config path names this credential, and the daemon reads only its own tier',
+        reason: describeCredentialScope(key),
       });
     }
 
@@ -501,12 +531,24 @@ export class SecretsManager {
     };
   }
 
+  /**
+   * REVOKE. Removes the credential everywhere it can be reached.
+   *
+   * For a daemon-needed key the caller's `scope` is deliberately DISCARDED and
+   * every tier is swept, because a revoke narrowed to one tier reports success
+   * while leaving a live copy behind — a credential the operator believes is
+   * gone and is not.
+   *
+   * That makes this the wrong method for moving a credential between tiers, and
+   * the difference is not visible at the call site: the migration's "remove the
+   * surface copy now the daemon copy is verified" was spelled
+   * `delete(key, { scope: source })`, the key was daemon-needed by definition,
+   * so the sweep ran and destroyed the daemon copy it had just written and
+   * read back. Both stores ended empty while the report said `migrated: 1,
+   * failed: 0`. Use `deleteFromScope` to remove ONE physical copy.
+   */
   async delete(key: string, options: SecretDeleteOptions = {}): Promise<void> {
-    // Same rule as `set`, and for the same reason in reverse: a daemon-owned
-    // credential lives in the daemon tier, so a delete narrowed to some other
-    // scope would report success while leaving the live copy in place — a
-    // credential the operator believes is revoked and is not.
-    const scopeFilter = isDaemonOwnedSecretKey(key) ? undefined : options.scope;
+    const scopeFilter = isDaemonNeededSecretKey(key) ? undefined : options.scope;
     const stores = this.getAllCandidateStores().filter((store) => {
       if (scopeFilter && store.scope !== scopeFilter) return false;
       if (options.medium && (options.medium === 'secure') !== store.secure) return false;
@@ -529,6 +571,29 @@ export class SecretsManager {
     if (removed) this.notifyChanged(key);
   }
 
+  /**
+   * Remove ONE tier's copy, and never any other. The narrow counterpart to
+   * `delete`: that one means "this credential is revoked" and sweeps every
+   * tier; this means "this copy is redundant, the real one is elsewhere".
+   * A separate method because the two were indistinguishable at the call site,
+   * and the migration reached for the wrong one. Migration is the only caller.
+   */
+  async deleteFromScope(key: string, scope: SecretScope, storePath?: string): Promise<void> {
+    let removed = false;
+    for (const store of this.getMigratableStores()) {
+      if (storePath !== undefined ? store.path !== storePath : store.scope !== scope) continue;
+      const values = store.secure ? this.readEncryptedFile(store.path) : this.readPlaintextFile(store.path);
+      if (!values || !(key in values)) continue;
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+      delete (values as Record<string, unknown>)[key];
+      if (store.secure) this.writeEncryptedFile(store.path, values);
+      else this.writePlaintextFile(store.path, values);
+      logger.debug('SecretsManager: removed one tier copy', { key, source: store.source });
+      removed = true;
+    }
+    if (removed) this.notifyChanged(key);
+  }
+
   private getPolicy(): SecretStorageMode {
     return this.options.policy ?? loadConfiguredSecretPolicy(this.options.configManager);
   }
@@ -539,6 +604,19 @@ export class SecretsManager {
 
   private getAllCandidateStores(): SecretStorePath[] {
     return allSecretStores(this.layout);
+  }
+
+  /** Every store a MIGRATION may look in, including other surfaces' silos. */
+  private getMigratableStores(): SecretStorePath[] {
+    return migratableStores(this.layout, this.getAllCandidateStores());
+  }
+
+  /** Every credential a migration could move, across every surface's silo. */
+  async listDetailedForMigration(): Promise<SecretRecord[]> {
+    return listMigratableSecrets(
+      this.getMigratableStores(),
+      (path, secure) => (secure ? this.readEncryptedFile(path) : this.readPlaintextFile(path)),
+    );
   }
 
   private resolveWriteTarget(scope: SecretScope, medium: SecretStorageMedium): SecretStorePath {

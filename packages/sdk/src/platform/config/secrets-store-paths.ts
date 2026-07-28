@@ -77,13 +77,26 @@ export function defaultDaemonSecretHome(globalHome: string): string {
   return resolveSharedDirectory(globalHome, DAEMON_CONFIG_ROOT);
 }
 
+/**
+ * Deduplicate by FILE, not by (tier, file).
+ *
+ * A project root inside the home directory — `~/Projects/thing` under `~` — has
+ * the home among its ancestors, so `<home>/.goodvibes/<surface>/secrets.enc`
+ * is produced once as a project store (from the ancestor walk) and again as the
+ * user store. One physical file, two entries.
+ *
+ * Keying on `source:path` kept both, because the sources differ. Reading twice
+ * is harmless; ENUMERATING twice is not — the credential migration walks these
+ * stores, so one credential was processed and receipted as two, in two tiers,
+ * one of which does not exist. Whichever entry comes first wins, which
+ * preserves the existing precedence exactly.
+ */
 function uniquePaths(paths: readonly SecretStorePath[]): SecretStorePath[] {
   const seen = new Set<string>();
   const ordered: SecretStorePath[] = [];
   for (const path of paths) {
-    const key = `${path.source}:${path.path}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
+    if (seen.has(path.path)) continue;
+    seen.add(path.path);
     ordered.push(path);
   }
   return ordered;
@@ -148,6 +161,64 @@ function projectStore(layout: SecretStoreLayout, root: string, medium: SecretSto
       secure: false,
       scope: 'project',
     };
+}
+
+/**
+ * Every OTHER surface's user-tier store under this home.
+ *
+ * `secretReadOrder` walks one surface root — this manager's own — which is
+ * right for resolution: the agent has no business resolving a credential out of
+ * the TUI's silo at read time, and a daemon that did would be reading a value
+ * nobody asked it to.
+ *
+ * Migration is the exception, and the owner's machine is why. His Telegram
+ * token sat in `~/.goodvibes/agent/secrets.enc` while the daemon booted rooted
+ * at `daemon` and enumerated only its own store. The credential was one
+ * directory away, readable, and invisible to the only code that could have
+ * lifted it — so it was never lifted by anything, ever.
+ *
+ * Discovered by listing `<home>/.goodvibes/` rather than from a list of known
+ * surface names: a product the SDK has never heard of still leaves its store
+ * there, and a hand-maintained list is the thing that goes stale. Entries
+ * holding no store are skipped, so every path returned exists.
+ */
+export function siblingSurfaceSecretStores(
+  layout: SecretStoreLayout,
+  listDirectory: (path: string) => readonly string[],
+  fileExists: (path: string) => boolean,
+): SecretStorePath[] {
+  const root = join(layout.globalHome, '.goodvibes');
+  let entries: readonly string[];
+  try {
+    entries = listDirectory(root);
+  } catch {
+    return [];
+  }
+
+  const stores: SecretStorePath[] = [];
+  const seenSurfaces = new Set<string>();
+  for (const entry of entries) {
+    // The two tiers do not share a layout, and assuming they did is how this
+    // first shipped looking in the wrong place for half of them:
+    //   secure    -> <home>/.goodvibes/<surface>/secrets.enc   (a directory)
+    //   plaintext -> <home>/.goodvibes/<surface>.secrets.json  (a sibling FILE)
+    // So the surface name is recovered from either shape, then both candidate
+    // paths are probed.
+    const surface = entry.endsWith('.secrets.json') ? entry.slice(0, -'.secrets.json'.length) : entry;
+    if (!surface || surface === DAEMON_CONFIG_ROOT || surface === layout.surfaceRoot) continue;
+    if (seenSurfaces.has(surface)) continue;
+    seenSurfaces.add(surface);
+
+    const secure = join(root, surface, 'secrets.enc');
+    if (fileExists(secure)) {
+      stores.push({ source: 'user-secure', path: secure, secure: true, scope: 'user' });
+    }
+    const plaintext = join(root, `${surface}.secrets.json`);
+    if (fileExists(plaintext)) {
+      stores.push({ source: 'user-plaintext', path: plaintext, secure: false, scope: 'user' });
+    }
+  }
+  return stores;
 }
 
 /**

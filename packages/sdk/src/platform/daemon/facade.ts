@@ -1,4 +1,4 @@
-import { ensureDaemonActivityLog, migrateDaemonOwnedConfigOnBoot } from './facade-boot-guarantees.js';
+import { runDaemonBootGuarantees } from './facade-boot-guarantees.js';
 import { logger } from '../utils/logger.js';
 import { jsonErrorResponse } from './http/error-response.js';
 import { summarizeError } from '../utils/error-display.js';
@@ -347,10 +347,9 @@ export class DaemonServer {
    * Start the daemon. Refuses to start if not explicitly enabled.
    */
   async start(): Promise<void> {
-    // Two guarantees the daemon refuses to inherit from its host; see
-    // facade-boot-guarantees.ts for why each one is owned here.
-    ensureDaemonActivityLog(this.runtimeServices.shellPaths.workingDirectory);
-    migrateDaemonOwnedConfigOnBoot(this.configManager, this.runtimeServices.shellPaths.homeDirectory);
+    // Guarantees the daemon refuses to inherit from its host; see
+    // facade-boot-guarantees.ts for why each one is owned here and why order matters.
+    await runDaemonBootGuarantees(this.configManager, this.runtimeServices);
     if (!this.enabled) {
       logger.info('Daemon mode is disabled (daemon.enabled=false). It is on by default.');
       return;

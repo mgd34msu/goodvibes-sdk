@@ -178,16 +178,72 @@ export {
 } from './openai-codex-auth.js';
 export type { OpenAICodexLoginStart, OpenAICodexTokenResult } from './openai-codex-auth.js';
 export * from './secret-refs.js';
+export {
+  GOODVIBES_URI_PREFIX,
+  MalformedSecretRefError,
+  describeMalformedSecretRef,
+  looksLikeSecretRef,
+} from './secret-ref-refusal.js';
 export { createCredentialStatusProvider } from './credential-status.js';
 export {
   daemonSecretKeyFor,
   isDaemonOwnedSecretKey,
   listDaemonOwnedSecretKeys,
 } from './daemon-secret-keys.js';
-export { defaultDaemonSecretHome } from './secrets-store-paths.js';
+export { defaultDaemonSecretHome, siblingSurfaceSecretStores } from './secrets-store-paths.js';
+export {
+  CREDENTIAL_SCOPE_DECLARATIONS,
+  describeCredentialScope,
+  findCredentialScopeDeclaration,
+  isDaemonNeededSecretKey,
+  listDaemonNeededKeyPrefixes,
+  listExactDaemonNeededKeys,
+} from './credential-scope-registry.js';
+export type {
+  CredentialScopeClass,
+  CredentialScopeDeclaration,
+} from './credential-scope-registry.js';
+export {
+  buildCredentialMigrationReceipt,
+  describeCredentialMigration,
+  migrateDaemonNeededCredentials,
+  migrateOnSurfaceStart,
+} from './daemon-credential-migration.js';
+export type {
+  CredentialMigrationEntry,
+  CredentialMigrationOutcome,
+  CredentialMigrationReceipt,
+  CredentialMigrationReport,
+  MigratableSecretStore,
+} from './daemon-credential-migration.js';
+export {
+  isDeclaredSecretBearingConfigKey,
+  isSecretBearingConfigKey,
+  isSecretReferenceValue,
+  SECRET_BEARING_CONFIG_PATHS,
+} from './secret-bearing-config-keys.js';
+export {
+  describePlaintextSweep,
+  secretReferenceFor,
+  sweepPlaintextCredentials,
+} from './plaintext-credential-sweep.js';
+export type {
+  PlaintextSweepEntry,
+  PlaintextSweepOutcome,
+  PlaintextSweepReport,
+  SweepableConfig,
+  SweepableSecrets,
+} from './plaintext-credential-sweep.js';
+export {
+  ensureCalendarConfigDefaults,
+  ensureConnectorConfigSections,
+  ensureGoogleOAuthConfigDefaults,
+  ensureMailboxConfigDefaults,
+} from './connector-config-sections.js';
 export {
   SecretsManager,
   SecretStoreUnreadableError,
+  describeSecretWriteScope,
   resolveSecretWriteScope,
   secretWriteScopeWasOverridden,
 } from './secrets.js';

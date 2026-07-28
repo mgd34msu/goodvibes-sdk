@@ -123,6 +123,7 @@ export type AgentEvent =
     agentId: string;
     taskId?: string;
     progress: string;
+    audience?: 'owner' | 'operator' | undefined;
     parentAgentId?: string | undefined;
     wrfcId?: string | undefined;
     wrfcRole?: 'owner' | 'orchestrator' | 'engineer' | 'reviewer' | 'fixer' | 'integrator' | 'verifier' | undefined;

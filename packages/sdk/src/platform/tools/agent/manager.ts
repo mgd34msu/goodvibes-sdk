@@ -27,6 +27,7 @@ import type { ProviderRegistry } from '../../providers/registry.js';
 import { requireProviderQualifiedModel, normalizeProviderQualifiedModelList } from './model-routing.js';
 import type { WrfcAgentRole } from '../../agents/wrfc-types.js';
 import type { TurnInjectionRecord } from '../../agents/turn-knowledge-injection.js';
+import type { ProgressBearingRecord } from '../../agents/progress-audience.js';
 import {
   isRootReviewRoleTask,
   resolveAuthoritativeWrfcScope,
@@ -102,7 +103,7 @@ export const AGENT_TEMPLATES: Record<string, { description: string; defaultTools
   },
 };
 
-export interface AgentRecord {
+export interface AgentRecord extends ProgressBearingRecord {
   id: string;
   task: string;
   template: string;
@@ -127,7 +128,8 @@ export interface AgentRecord {
   terminationKind?: 'interrupt' | 'kill' | undefined;
   startedAt: number;
   completedAt?: number | undefined;
-  progress?: string | undefined;
+  // `progress` and `progressAudience` come from ProgressBearingRecord: set them
+  // together with `setAgentProgress`, never `progress` alone.
   toolCallCount: number;
   usage?: {
     inputTokens: number;
