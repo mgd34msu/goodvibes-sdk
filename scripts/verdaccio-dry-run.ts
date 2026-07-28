@@ -349,6 +349,83 @@ if (existsSync(nestedInternal)) {
     throw new Error('published package contains nested GoodVibes deps: ' + leaked.join(', '));
 }
 
+// ── Every declared subpath, enumerated from the INSTALLED manifest ─────────
+//
+// The entry points above are hand-listed, which is why they stayed green while
+// the platform/* subpaths had never been resolved from a published package even
+// once. A source tree — or a \`file:\` overlay — resolves more leniently than a
+// real install: deep paths the \`exports\` map blocks still work locally, so a
+// consumer suite can pass on an import that fails the moment it consumes the
+// published artifact. This sweep reads the subpath list out of the installed
+// package's own manifest, so a new subpath is covered because it exists, not
+// because someone remembered to add it here.
+const manifest = req(PKG + '/package.json');
+const subpaths = Object.keys(manifest.exports ?? {})
+  .filter((key) => key.startsWith('.'))
+  .filter((key) => !key.endsWith('.json'));
+if (subpaths.length < 50)
+  throw new Error('expected the exports map to declare many subpaths, saw ' + subpaths.length);
+
+let resolvedCount = 0;
+const unresolved = [];
+for (const key of subpaths) {
+  const specifier = key === '.' ? PKG : PKG + key.slice(1);
+  try {
+    const mod = await import(specifier);
+    if (!mod || typeof mod !== 'object') throw new Error('module is not an object');
+    resolvedCount += 1;
+  } catch (err) {
+    unresolved.push(specifier + ' — ' + err.message);
+  }
+}
+if (unresolved.length > 0)
+  throw new Error('subpaths that do not resolve from the published package:\\n  ' + unresolved.join('\\n  '));
+console.log('[smoke] OK: all ' + resolvedCount + ' declared subpaths resolve from the published package');
+
+// ── The two capability subpaths this round adds ───────────────────────────
+//
+// Asserted BY IMPORT, not by reading the manifest — reading the manifest is
+// what the source-tree gates already do, and it is what missed this.
+// \`platform/profiles\` is a pre-existing, unrelated config-profile module that
+// resolves perfectly against the published 1.18.1, so "is profiles published?"
+// answers a false yes while \`platform/owner-profile\` is absent. Hence the exact
+// subpath names.
+const ownerProfile = await check(PKG + '/platform/owner-profile', () => import(PKG + '/platform/owner-profile'));
+const payments     = await check(PKG + '/platform/payments',      () => import(PKG + '/platform/payments'));
+
+// ── Symbols, not just subpaths ────────────────────────────────────────────
+//
+// A subpath can be declared correctly and still lack the symbol that makes it
+// usable. PaymentsGatewayServiceImpl binds the verbs to the checkout flow, so
+// without it a consumer cannot construct the capability at all — it was
+// reachable from source and absent from the published surface, and no gate
+// caught it.
+for (const name of ['PaymentsGatewayServiceImpl', 'runCheckout', 'classifyMerchant'])
+  if (payments[name] === undefined)
+    throw new Error('platform/payments: missing ' + name + ' from the published surface');
+if (ownerProfile.OwnerProfileStore === undefined)
+  throw new Error('platform/owner-profile: missing OwnerProfileStore from the published surface');
+
+// ── The owner-profile control-plane verbs ─────────────────────────────────
+//
+// No consumer imports platform/owner-profile at all — all three reach the
+// capability through control-plane verbs — so the subpath sweep above would
+// pass with the owner-profile verb surface entirely broken. The real consumer
+// contract is the method catalog, and it is asserted separately.
+const catalogIds = new Set(contracts.OPERATOR_METHOD_IDS);
+const ownerProfileVerbs = [...catalogIds].filter((id) => id.startsWith('profile.'));
+if (ownerProfileVerbs.length === 0)
+  throw new Error('the published method catalog declares no profile.* verbs at all');
+for (const id of ['profile.get', 'profile.append', 'profile.forget', 'profile.provenance'])
+  if (!catalogIds.has(id))
+    throw new Error('owner-profile verb absent from the published method catalog: ' + id);
+console.log('[smoke] OK: ' + ownerProfileVerbs.length + ' owner-profile verbs in the published catalog');
+
+// And the payments execution pair, for the same reason.
+for (const id of ['payments.checkout.begin', 'payments.checkout.fillCard'])
+  if (!catalogIds.has(id))
+    throw new Error('payments verb absent from the published method catalog: ' + id);
+
 console.log('[smoke] ALL ENTRY POINTS RESOLVED OK');
 `.trim();
 }
