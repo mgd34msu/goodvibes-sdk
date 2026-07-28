@@ -132,7 +132,9 @@ describe('§14.14 — odd content survives a write to another section byte-for-b
     const store = await loadedStore(path);
     await store.set({ ...OWNER, fieldId: 'location.timezone', value: 'Europe/Lisbon', date: '2026-07-27' });
 
-    const invented = store.section('Something I invented');
+    // Via read(), because a heading he invented is closed tier and section()
+    // serves only the open tier — see the §14.19 containment suite.
+    const invented = store.read().sections.find((section) => section.heading === 'Something I invented');
     expect(invented).toBeDefined();
     expect(invented?.prose.map((line) => line.text)).toEqual(['units: metric', 'some key: some value']);
   });

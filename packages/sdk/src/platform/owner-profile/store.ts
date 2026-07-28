@@ -381,26 +381,62 @@ export class OwnerProfileStore {
     return this.projection?.fields.get(fieldId);
   }
 
-  /** One section by heading, matched case-insensitively with whitespace collapsed. */
+  /**
+   * One section by heading — OPEN TIER ONLY.
+   *
+   * A closed-tier section returns `undefined`, `People` included. This is the
+   * STRUCTURE behind {@link person}'s guarantee rather than a comment asserting
+   * it. `section('People')` was an enumerate-all-people call sitting next to the
+   * by-name lookup that exists precisely so no such call is available, which
+   * re-opens the failure §10 rules out: "the model judged it relevant" is not a
+   * boundary, because the model's judgement is the thing an injection attacks.
+   *
+   * Everything closed is still reachable, by a route that is either named or
+   * addressed to him:
+   *   - `People`             → {@link person}, by a name he used this turn
+   *   - a mechanical field   → {@link get}, by field id
+   *   - the whole document   → {@link read}, the owner-disclosure verb
+   *
+   * A heading he invented is treated as closed. His own sections can hold
+   * anything, and defaulting them open would mean a section named by nobody in
+   * particular became bulk-readable from a composition path.
+   */
   section(name: string): ProfileSection | undefined {
+    const found = this.sectionByHeading(name);
+    if (found === undefined) return undefined;
+    return profileSectionTier(found.heading) === 'open' ? found : undefined;
+  }
+
+  /**
+   * Unfiltered section lookup, for this class's own use only.
+   *
+   * `person()` goes through this rather than through the public `section()`, so
+   * the tier filter is not something a caller can sidestep by reaching for
+   * whichever method happens to skip it — and so tightening the public method
+   * cannot silently break the private one.
+   */
+  private sectionByHeading(name: string): ProfileSection | undefined {
     const projection = this.projection;
-    return projection === undefined || projection === null
-      ? undefined
-      : findProfileSectionByHeading(projection, name);
+    return projection === null ? undefined : findProfileSectionByHeading(projection, name);
   }
 
   /**
    * The lines about one person, BY NAME.
    *
-   * There is deliberately no enumerate-all-people counterpart. A `People` line
-   * may reach outbound content only when the owner named that person in this
-   * turn's instruction, and the structural guarantee behind that rule is that
-   * the only lookup available takes a name.
+   * There is deliberately no enumerate-all-people counterpart, and `section()`
+   * refusing the closed tier is what makes that true rather than merely stated.
+   * A `People` line may reach outbound content only when the owner named that
+   * person in this turn's instruction, and the structural guarantee behind that
+   * rule is that the only lookup available takes a name.
+   *
+   * An empty or whitespace-only name returns nothing rather than everything —
+   * "he named nobody" must not degrade into "give me all of them", which is the
+   * shape this kind of guard usually fails in.
    */
   person(name: string): readonly ProfileLine[] {
     const trimmed = name.trim();
     if (trimmed.length === 0) return [];
-    const section = this.section('People');
+    const section = this.sectionByHeading('People');
     if (section === undefined) return [];
     const pattern = new RegExp(`(^|[^\\p{L}\\p{N}])${escapeRegExp(trimmed)}([^\\p{L}\\p{N}]|$)`, 'iu');
     return section.prose.filter((line) => pattern.test(line.text));
@@ -419,7 +455,23 @@ export class OwnerProfileStore {
     };
   }
 
-  /** The whole document, by section. Not callable from a composition path. */
+  /**
+   * The whole document, by section — the ONLY method that returns the full
+   * `People` section.
+   *
+   * The asymmetry with {@link section} is deliberate, not an inconsistency.
+   * `read()` answers "what do you know about me?": it is him asking about
+   * himself, and an answer that silently omitted the section holding facts
+   * about the people around him would be a dishonest disclosure — the one place
+   * where withholding is the wrong behaviour. `section()` serves a consumer
+   * assembling something, where bulk access to that same content is exactly the
+   * hole §10 closes.
+   *
+   * The rule that keeps both true: `read()` is reachable only from the
+   * `profile.read` control-plane verb, and never from a composition path. Any
+   * other caller reaching for it is the enumerate-all hole by another route —
+   * check that before wiring it into anything new.
+   */
   read(): ProfileDocumentView {
     const projection = this.projection;
     if (projection === null) return { state: this.state, sections: [] };

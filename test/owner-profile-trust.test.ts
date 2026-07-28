@@ -278,6 +278,104 @@ describe('§14.3 — there is no propose path', () => {
   });
 });
 
+describe('§14.19 — third-party containment: no enumerate-all-people call exists', () => {
+  const WITH_PEOPLE = [
+    '## Style',
+    '',
+    '- Keep replies short',
+    '',
+    '## People',
+    '',
+    '- Sarah, sister, sarah@example.com',
+    '- Dave from work, handles the Pellux contracts',
+    '',
+    '## Notes',
+    '',
+    '- Allergic to shellfish',
+    '',
+  ].join('\n');
+
+  /** Present in the People section and nowhere else, so a leak is unambiguous. */
+  const PEOPLE_MARKER = 'sarah@example.com';
+
+  async function peopleStore(): Promise<OwnerProfileStore> {
+    const store = new OwnerProfileStore({
+      path: tempProfile(WITH_PEOPLE),
+      ledger: new UntrustedContentLedger(),
+    });
+    await store.load();
+    return store;
+  }
+
+  test('section() refuses People — the by-name lookup is the only way in', async () => {
+    const store = await peopleStore();
+    expect(store.person('Sarah')).toHaveLength(1);
+    // ...and the bulk route that sat beside it does not exist.
+    expect(store.section('People')).toBeUndefined();
+    expect(store.section('people')).toBeUndefined();
+    expect(store.section('  PEOPLE  ')).toBeUndefined();
+  });
+
+  test('naming nobody returns nothing, never everything', async () => {
+    const store = await peopleStore();
+    for (const name of ['', '   ', '\t\n']) {
+      expect(store.person(name)).toEqual([]);
+    }
+    // A wildcard is a name he did not say, not a request for the section.
+    expect(store.person('*')).toEqual([]);
+    expect(store.person('.')).toEqual([]);
+  });
+
+  test('the other closed-tier sections are refused too, and Style is served', async () => {
+    const store = await peopleStore();
+    for (const heading of ['People', 'Places', 'Work', 'Notes', 'Contact', 'Commerce', 'Identity', 'Defaults']) {
+      expect({ heading, served: store.section(heading) !== undefined })
+        .toEqual({ heading, served: false });
+    }
+    // Style is open tier — it is the section an injection path may read.
+    expect(store.section('Style')?.prose.map((line) => line.text)).toEqual(['- Keep replies short']);
+  });
+
+  test('read() is the ONLY store method that returns the full People section', async () => {
+    const store = await peopleStore();
+
+    const attempts: ReadonlyArray<readonly [string, unknown]> = [
+      ['section("People")', store.section('People')],
+      ['section("Notes")', store.section('Notes')],
+      ['section("Style")', store.section('Style')],
+      ['person("")', store.person('')],
+      ['person("   ")', store.person('   ')],
+      ['person("*")', store.person('*')],
+      ['get("people")', store.get('people')],
+      ['provenance("people")', store.provenance('people')],
+      ['status()', store.status()],
+    ];
+    for (const [label, result] of attempts) {
+      expect({ label, leaks: JSON.stringify(result ?? null).includes(PEOPLE_MARKER) })
+        .toEqual({ label, leaks: false });
+    }
+
+    // read() is complete on purpose: it answers him about himself.
+    expect(JSON.stringify(store.read())).toContain(PEOPLE_MARKER);
+  });
+
+  test('a new store method cannot appear without this containment being reconsidered', () => {
+    // A canary, not a style rule. The hole this suite exists for was a public
+    // method that looked innocuous next to a correct one, so an addition to
+    // this surface has to be weighed against §10 before it ships.
+    const methods = Object.getOwnPropertyNames(OwnerProfileStore.prototype)
+      .filter((name) => name !== 'constructor')
+      .sort();
+    expect(methods).toEqual([
+      'adopt', 'append', 'closeWatcher', 'commit', 'forget', 'get', 'load',
+      'markUnavailable', 'path', 'person', 'provenance', 'provenanceFor', 'read',
+      'reloadIfChanged', 'scheduleReload', 'section', 'sectionByHeading', 'set',
+      'startPolling', 'status', 'undo', 'unwatch', 'viewOf', 'watch',
+      'writableProjection',
+    ]);
+  });
+});
+
 describe('the disclosure a write returns', () => {
   test('one line, naming what was recorded, never quoting the value', async () => {
     const path = tempProfile();
