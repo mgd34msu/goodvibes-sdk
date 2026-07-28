@@ -191,7 +191,9 @@ export async function makeFakeMailbox(
 
     if (/^UID SEARCH\b/i.test(rest)) {
       if (options.search === 'refused') {
-        serverWrite(socket, `${tag} NO Server busy, try again`);
+        // Deliberately says nothing about itself, so the watcher's PHASE rule
+        // is what gets exercised rather than the wording classifier.
+        serverWrite(socket, `${tag} NO Request failed`);
         return;
       }
       serverWrite(socket, `* SEARCH ${searchRange(rest).join(' ')}`.trimEnd());

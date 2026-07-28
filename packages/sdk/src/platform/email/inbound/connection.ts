@@ -71,7 +71,7 @@ export function imapMailboxConnectionPort(
       }
       const reader: MailboxReader = {
         capabilities: () => client.capabilities(),
-        fetchEnvelopes: (uids, limit) => client.fetchEnvelopes(uids, limit),
+        fetchEnvelopes: (uids) => client.fetchEnvelopes(uids),
       };
       return {
         report,

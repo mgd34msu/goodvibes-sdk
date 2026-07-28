@@ -198,7 +198,13 @@ export async function runIdleRound(deps: IdleRoundDeps): Promise<IdleRoundResult
   try {
     let tag: string;
     try {
-      tag = await deps.wire.sendCommand('IDLE');
+      // `retainUntagged: false`: this command is outstanding for twenty-seven
+      // minutes, and every untagged line arriving in that window would
+      // otherwise be retained in its own buffer for a reader that never comes
+      // — the IDLE completion is read for its status, never for its lines. The
+      // subscription above still sees all of them, which is where they are
+      // actually used.
+      tag = await deps.wire.sendCommand('IDLE', { retainUntagged: false });
     } catch (error) {
       return { outcome: 'connection-lost', wake: summarise(collected, 'error'), error };
     }

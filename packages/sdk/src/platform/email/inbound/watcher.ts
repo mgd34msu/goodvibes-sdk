@@ -54,7 +54,9 @@ import {
 } from './capability.js';
 import { runIdleLoop, type IdleWakeSummary } from './idle-watcher.js';
 import { drainMailboxDelta, runPollLoop, type MailboxDeltaReport } from './poll-loop.js';
+import type { EmailCapabilityFailureNotice } from '../imap-client.js';
 import type {
+  InboundCapabilityReason,
   InboundCapabilityVerdict,
   InboundMailObserver,
   InboundMailSink,
@@ -247,7 +249,7 @@ export class InboundMailboxWatcher {
    * simultaneous-connection slots. Gmail allows fifteen and `EmailService`
    * takes a fresh one per request, so spending one on a mailbox we have
    * already decided we cannot read is the same limit pressure with none of
-   * the benefit, and it would make our own `connection-limit` verdict more
+   * the benefit, and it would make our own `server-unavailable` verdict more
    * likely on every other mailbox.
    */
   private async settleTerminal(): Promise<void> {
@@ -266,7 +268,7 @@ export class InboundMailboxWatcher {
       this.reportTerminal(capabilityVerdict(
         'uidvalidity-missing',
         `The server opened '${this.settings.mailbox}' without reporting a UIDVALIDITY.`,
-      ));
+      ), null);
       return;
     }
 
@@ -290,7 +292,10 @@ export class InboundMailboxWatcher {
         + 'not replayed.');
     }
 
-    const idle = await resolveIdleSupport(connection.report, connection.reader);
+    // The email layer owns this decision and resolves "the server said
+    // nothing" by asking. Reading `connection.report.idle` here instead would
+    // be a second answer to the same question.
+    const idle = await resolveIdleSupport(connection.reader);
     const useIdle = this.settings.mode !== 'poll' && idle.supported;
     this.tracker.record(verdictForOpenConnection({ mode: this.settings.mode, idle }));
     this.connectBackoff.reset();
@@ -427,15 +432,16 @@ export class InboundMailboxWatcher {
       await this.sleep(this.deliveryBackoff.next());
       return;
     }
-    const { verdict, terminal } = classifyReadFailure(report.error, report.phase ?? 'fetch');
+    const { verdict, terminal, notice } = classifyReadFailure(
+      report.error,
+      report.phase ?? 'fetch',
+    );
     if (terminal) {
-      this.reportTerminal(verdict);
+      this.reportTerminal(verdict, notice);
       return;
     }
     this.tracker.record(verdict);
-    await this.pauseBeforeReconnect(verdict.reason === 'connection-limit'
-      ? 'connection-limit'
-      : 'reconnecting');
+    await this.pauseBeforeReconnect(verdict.reason);
   }
 
   // -------------------------------------------------------------------------
@@ -443,7 +449,7 @@ export class InboundMailboxWatcher {
   // -------------------------------------------------------------------------
 
   private async handleOpenFailure(error: unknown): Promise<void> {
-    const { verdict, terminal } = classifyOpenFailure(error);
+    const { verdict, terminal, notice } = classifyOpenFailure(error);
 
     // A rejected credential is retried EXACTLY ONCE, to absorb an OAuth token
     // that expired between connections and can be refreshed on the next open.
@@ -458,13 +464,11 @@ export class InboundMailboxWatcher {
       return;
     }
     if (terminal) {
-      this.reportTerminal(verdict);
+      this.reportTerminal(verdict, notice);
       return;
     }
     this.tracker.record(verdict);
-    await this.pauseBeforeReconnect(verdict.reason === 'connection-limit'
-      ? 'connection-limit'
-      : 'reconnecting');
+    await this.pauseBeforeReconnect(verdict.reason);
   }
 
   /**
@@ -479,7 +483,10 @@ export class InboundMailboxWatcher {
    * The waiting itself is left to `settleTerminal`, which runs after the
    * connection has been released.
    */
-  private reportTerminal(verdict: InboundCapabilityVerdict): void {
+  private reportTerminal(
+    verdict: InboundCapabilityVerdict,
+    notice: EmailCapabilityFailureNotice | null,
+  ): void {
     const announced = this.tracker.record(verdict);
     this.mode = 'inactive';
     const failure: InboundMailTerminalFailure = {
@@ -489,6 +496,7 @@ export class InboundMailboxWatcher {
       detail: verdict.detail,
       fix: verdict.fix,
       at: new Date(this.deps.clock.now()).toISOString(),
+      notice,
     };
     this.terminal = failure;
     this.pendingRecheck = true;
@@ -521,11 +529,9 @@ export class InboundMailboxWatcher {
     }
   }
 
-  private async pauseBeforeReconnect(
-    reason: 'reconnecting' | 'connection-limit',
-  ): Promise<void> {
-    const ceiling = reason === 'connection-limit'
-      ? this.settings.connectionLimitBackoffMs
+  private async pauseBeforeReconnect(reason: InboundCapabilityReason): Promise<void> {
+    const ceiling = reason === 'server-unavailable'
+      ? this.settings.serverUnavailableBackoffMs
       : undefined;
     await this.sleep(this.connectBackoff.next(ceiling));
   }

@@ -135,6 +135,14 @@ function chunk(uids: readonly number[], size: number): number[][] {
 /**
  * Fetch and process everything above the cursor, advancing behind each one.
  *
+ * Batched at `deltaBatchSize`, and the batching is load-bearing rather than
+ * defensive. `fetchEnvelopes` REFUSES a batch above `IMAP_MAX_FETCH_UIDS`
+ * instead of trimming it, so a mailbox that took two thousand messages while
+ * the daemon was down would fail its whole delta on one over-long `UID FETCH`
+ * line and make no progress at all on any pass. Splitting it is what makes
+ * that recovery possible; the ceiling is enforced when the setting is
+ * resolved.
+ *
  * Ascending UID order throughout, because the cursor is a high-water mark:
  * processing 12 before 11 and then failing on 11 would leave the cursor either
  * at 12 (losing 11) or at 10 (redelivering 12). In order, the cursor is always
@@ -178,10 +186,7 @@ export async function drainMailboxDelta(
     if (deps.signal.aborted) return finish('aborted', uids.length);
     let envelopes: ImapEnvelope[];
     try {
-      // `batch.length`, never a default: the client keeps only the LAST
-      // `limit` UIDs, so a smaller number silently drops the oldest of the
-      // delta and the cursor would then advance straight past them.
-      envelopes = await deps.reader.fetchEnvelopes(batch, batch.length);
+      envelopes = await deps.reader.fetchEnvelopes(batch);
     } catch (error) {
       return finish(
         deps.signal.aborted ? 'aborted' : 'read-failed', uids.length, error, 'fetch');
