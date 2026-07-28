@@ -631,11 +631,35 @@ infrastructure the owner does not have.
 
 #### Scope sufficiency applies to both
 
-§3.4a is not a Gmail detail. The Gmail source already refuses
-`metadata-scope-only` before making the call. The IMAP source owes the
-equivalent: a connection that authenticates but cannot fetch bodies fails
-loudly at connect time with the exact remedy, and never delivers empty-bodied
-messages that read as a quiet mailbox.
+§3.4a is not a Gmail detail. Both sources refuse rather than deliver
+empty-bodied messages that read as a quiet mailbox, and both name a remedy the
+owner can act on. **But they do not detect it at the same moment, and this
+paragraph originally claimed they did.**
+
+| | Gmail | IMAP |
+|---|---|---|
+| What is checked | granted scopes | whether the server hands over message data |
+| When | **before the first call** — scopes are declarative | **on the first fetch** — `fetch-refused` |
+| Verdict | `insufficient`, `metadata-scope-only` | `insufficient`, `fetch-refused` |
+
+The asymmetry is the protocol, not laziness. A Gmail token *states* what it may
+do, so it can be checked against nothing. IMAP has no equivalent declaration —
+`CAPABILITY` does not say "you may fetch bodies from this mailbox", and
+permission is discovered only by asking for data. On an **empty mailbox there is
+nothing to ask for**, so a universal connect-time body probe does not exist.
+
+What follows matters for the journey this capability serves: during a signup the
+first fetch **is** the verification mail, so an expectation is already open when
+the refusal is found. §3.4b already covers the outcome — expectations open when
+capability is lost are **failed with a named reason**, never left to expire — so
+the owner is told the truth either way. He is simply told slightly later on IMAP
+than on Gmail.
+
+**Closing most of the gap:** when the mailbox is non-empty at connect, one
+`BODY.PEEK` of a single envelope at the highest UID answers the question before
+any expectation is opened, at the cost of one round trip per connection. That is
+the honest version of "connect-time" for IMAP — available whenever there is
+anything to probe, and impossible when there is not.
 
 ### 3.5 Where it plugs in — the supervisor model, not the webhook model
 
