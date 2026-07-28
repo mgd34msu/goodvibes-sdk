@@ -675,3 +675,28 @@ type _AssertProducerReturnsStructure = _ProducerReturnType extends string
   : true;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const _assertProducerReturnsStructure: _AssertProducerReturnsStructure = true;
+
+/**
+ * The brand IS the protection for `ReceiptTimestamp` and
+ * `ValidatedRegistrableDomain` — and unlike the two guards above, nothing
+ * else notices if it degrades. Should either type ever be simplified to a
+ * plain `string` alias (plausibly by someone chasing an unrelated type error
+ * elsewhere, with no idea this line existed), every test still passes,
+ * `tsc` is still clean apart from here, and the line cap does not move — the
+ * compile-time guarantee is gone with no other signal anywhere. These four
+ * assignments exist purely so that degradation has somewhere to fail:
+ * `@ts-expect-error` fails the build the moment the error it expects STOPS
+ * occurring, which is exactly the event worth hearing about.
+ */
+// @ts-expect-error — a raw string must never satisfy ReceiptTimestamp; only receiptTimestamp(date) may construct one.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _rawStringIsNotAReceiptTimestamp: ReceiptTimestamp = '2026-07-27T12:00:00.000Z';
+// @ts-expect-error — the sender's own Date: header text must never satisfy ReceiptTimestamp either.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _senderDateHeaderIsNotAReceiptTimestamp: ReceiptTimestamp = 'Mon, 27 Jul 2026 12:00:00 +0000';
+// @ts-expect-error — a raw string must never satisfy ValidatedRegistrableDomain; only safeRegistrableDomain() may construct one.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _rawStringIsNotAValidatedDomain: ValidatedRegistrableDomain = 'evil.example';
+// @ts-expect-error — an attacker-claimed link host must never satisfy ValidatedRegistrableDomain without going through validation first.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _claimedHostIsNotAValidatedDomain: ValidatedRegistrableDomain = 'attacker-controlled.example';
