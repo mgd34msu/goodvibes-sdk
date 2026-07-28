@@ -43,6 +43,7 @@ function validRaw(overrides: Record<string, unknown> = {}): Record<string, unkno
     id: 'rec-1',
     account: 'acct-1',
     mailbox: 'INBOX',
+    source: 'imap',
     uidValidity: 100,
     uid: 42,
     senderDisplay: 'noreply@github.com',
@@ -62,6 +63,7 @@ function recordInput(overrides: Partial<InboundMailRecordInput> = {}): InboundMa
   return {
     account: 'acct-1',
     mailbox: 'INBOX',
+    source: 'imap',
     uidValidity: 100,
     uid: 1,
     senderDisplay: 'noreply@github.com',

@@ -25,6 +25,7 @@
 import { randomUUID } from 'node:crypto';
 import { PersistentStore } from '../../state/persistent-store.js';
 import { redactCardShapes } from '../../security/card-shapes.js';
+import { isHistoryId } from './source-cursor.js';
 import {
   isNonEmptyTrimmedString,
   isNonNegativeInteger,
@@ -114,12 +115,11 @@ export interface InboundLinkVerdict {
 const LINK_VERDICTS: readonly InboundLinkVerdict['verdict'][] = ['allowed', 'refused', 'unresolved'];
 
 /** Structured fields for one inbound message, plus a bounded body excerpt. */
-export interface InboundMailRecord {
+/** Everything a record carries regardless of which source found the message. */
+export interface InboundMailRecordCommon {
   readonly id: string;
   readonly account: string;
   readonly mailbox: string;
-  readonly uidValidity: number;
-  readonly uid: number;
   /** Sanitized: sender's registrable domain + local part, never raw untrusted text (§7). */
   readonly senderDisplay: string;
   /** Sanitized/truncated (§7): newlines and control characters removed before this is ever stored. */
@@ -135,13 +135,70 @@ export interface InboundMailRecord {
   readonly receivedAt: string;
 }
 
+/** A record of a message an IMAP source found. */
+export interface ImapInboundMailRecord extends InboundMailRecordCommon {
+  readonly source: 'imap';
+  readonly uidValidity: number;
+  readonly uid: number;
+}
+
+/** A record of a message a Gmail source found. */
+export interface GmailInboundMailRecord extends InboundMailRecordCommon {
+  readonly source: 'gmail';
+  /** Gmail's opaque message resource id. Not a number, never coerced to one. */
+  readonly resourceId: string;
+  /**
+   * The delta's high-water mark, a decimal uint64 STRING.
+   *
+   * Never parsed to a number. `18446744073709551615` does not survive a
+   * round trip through a JS double, and a position that silently shifts is a
+   * position that re-reads or skips history. `source-cursor.ts` already made
+   * that impossible for the cursor; this is the same value in the same
+   * shape, validated by the same predicate rather than a second copy of it.
+   */
+  readonly historyId: string;
+}
+
+/**
+ * One stored record, discriminated on the source that found the message.
+ *
+ * A union rather than a widened record with optional `uid` / `historyId`, and
+ * the reason is the defect this replaced: `validateInboundMailRecord` required
+ * a positive `uidValidity` and `uid` unconditionally, so EVERY Gmail message
+ * failed validation and was dropped — on the path automatic selection makes
+ * the default once Google is adopted. Mail arrived, matched, was announced,
+ * and nothing was ever written. §9.3's retention had nothing to retain,
+ * §11.0's card redaction had nothing to redact, and `email.inbound.status`
+ * truthfully reported zero records, which reads as "no mail" rather than
+ * "cannot store mail".
+ *
+ * Same discriminant and same rule as `InboundSourceCursor`.
+ */
+export type InboundMailRecord = ImapInboundMailRecord | GmailInboundMailRecord;
+
+/**
+ * A record's identity as one readable string, for disclosure only.
+ *
+ * `imap:<uidValidity>:<uid>` / `gmail:<resourceId>`. Never a key and never
+ * parsed back apart — a sweep report exists to tell the owner WHICH message
+ * went, and a report that carried `uid: 0` for every Gmail record (which is
+ * what an IMAP-shaped field would have to do) tells him nothing while looking
+ * like it told him something.
+ */
+export function describeRecordIdentity(record: InboundMailRecord): string {
+  return record.source === 'gmail'
+    ? `gmail:${record.resourceId}`
+    : `imap:${String(record.uidValidity)}:${String(record.uid)}`;
+}
+
 export type InboundMailDiscardReason = 'malformed' | 'expired' | 'over-cap';
 
 export interface InboundMailDiscard {
   readonly id: string;
   readonly account: string;
   readonly mailbox: string;
-  readonly uid: number;
+  /** See `describeRecordIdentity`. Disclosure, not a key. */
+  readonly messageRef: string;
   readonly reason: InboundMailDiscardReason;
   readonly removedAt: number;
 }
@@ -187,6 +244,49 @@ function isValidLinkVerdict(value: unknown): value is InboundLinkVerdict {
  * never repairs — a body excerpt that somehow exceeds the hard cap is a
  * reason to discard the whole record, not to truncate it again on read.
  */
+/**
+ * The identity half of a record, chosen by the record's OWN `source` field.
+ *
+ * Returns `null` for a payload that does not match the source it declares —
+ * discarded, never coerced. §9's rule is that a torn record is dropped rather
+ * than repaired, and coercion here is the specific repair that caused the bug
+ * this replaced: reading a Gmail record against IMAP rules and rejecting it.
+ *
+ * A record with NO `source` is read as IMAP. That is deliberate backward
+ * compatibility, not inference: every record written before the union existed
+ * is an IMAP record, and treating absence as unknown would discard the whole
+ * existing store on first load. Gmail is never inferred from absence — it must
+ * say so — which is the same asymmetry `validateGmailCursor` uses and for the
+ * same reason.
+ */
+function validateRecordIdentity(
+  record: Record<string, unknown>,
+): Pick<ImapInboundMailRecord, 'source' | 'uidValidity' | 'uid'>
+  | Pick<GmailInboundMailRecord, 'source' | 'resourceId' | 'historyId'>
+  | null {
+  const source = record.source;
+  if (source === 'gmail') {
+    if (!isNonEmptyTrimmedString(record.resourceId, 256)) return null;
+    // The same predicate the cursor validates with, imported rather than
+    // restated — a second copy of a uint64 rule is a second chance to get it
+    // wrong.
+    if (!isHistoryId(record.historyId)) return null;
+    return {
+      source: 'gmail',
+      resourceId: (record.resourceId as string).trim(),
+      historyId: record.historyId,
+    };
+  }
+  if (source !== undefined && source !== 'imap') return null;
+  if (!isPositiveInteger(record.uidValidity)) return null;
+  if (!isPositiveInteger(record.uid)) return null;
+  return {
+    source: 'imap',
+    uidValidity: record.uidValidity,
+    uid: record.uid,
+  };
+}
+
 export function validateInboundMailRecord(value: unknown): InboundMailRecord | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const record = value as Record<string, unknown>;
@@ -194,8 +294,10 @@ export function validateInboundMailRecord(value: unknown): InboundMailRecord | n
   if (!isNonEmptyTrimmedString(record.id, 128)) return null;
   if (!isNonEmptyTrimmedString(record.account, 256)) return null;
   if (!isNonEmptyTrimmedString(record.mailbox, 512)) return null;
-  if (!isPositiveInteger(record.uidValidity)) return null;
-  if (!isPositiveInteger(record.uid)) return null;
+  // Discriminate FIRST. Validating identity fields before knowing which source
+  // wrote them is exactly how every Gmail record came to be discarded.
+  const identity = validateRecordIdentity(record);
+  if (identity === null) return null;
   if (typeof record.senderDisplay !== 'string' || record.senderDisplay.length > 998) return null;
   if (typeof record.subject !== 'string' || record.subject.length > 998) return null;
 
@@ -223,12 +325,10 @@ export function validateInboundMailRecord(value: unknown): InboundMailRecord | n
   if (typeof record.bodyExcerpt !== 'string' || record.bodyExcerpt.length > MAX_BODY_EXCERPT_CHARS) return null;
   if (!isParsableIsoDate(record.receivedAt)) return null;
 
-  return {
+  const common: Omit<InboundMailRecordCommon, 'id'> & { readonly id: string } = {
     id: (record.id as string).trim(),
     account: (record.account as string).trim(),
     mailbox: (record.mailbox as string).trim(),
-    uidValidity: record.uidValidity as number,
-    uid: record.uid as number,
     senderDisplay: record.senderDisplay,
     subject: record.subject,
     deliveredToAddress: deliveryEvidenceSource === 'none' ? null : (deliveredToAddress as string),
@@ -240,6 +340,7 @@ export function validateInboundMailRecord(value: unknown): InboundMailRecord | n
     bodyExcerpt: record.bodyExcerpt,
     receivedAt: record.receivedAt as string,
   };
+  return { ...common, ...identity };
 }
 
 export interface InboundMailStoreOptions {
@@ -247,7 +348,18 @@ export interface InboundMailStoreOptions {
   readonly now?: (() => number) | undefined;
 }
 
-export type InboundMailRecordInput = Omit<InboundMailRecord, 'id' | 'bodyExcerpt'> & { readonly body: string };
+/**
+ * `Omit` distributed across the union.
+ *
+ * A plain `Omit<InboundMailRecord, …>` on a union collapses to the keys the
+ * variants SHARE, which would silently drop `uid`, `resourceId` and
+ * `historyId` from the input type — every caller would then compile while
+ * passing an identity the store cannot use. Distributing keeps each arm whole.
+ */
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
+
+export type InboundMailRecordInput =
+  DistributiveOmit<InboundMailRecord, 'id' | 'bodyExcerpt'> & { readonly body: string };
 
 /**
  * Durable inbound-mail record store, named to match `InboundMailContext`
@@ -326,12 +438,16 @@ export class InboundMailStore {
    * truncation regardless.
    */
   async record(input: InboundMailRecordInput): Promise<InboundMailRecord> {
+    // The identity travels as a unit, chosen by the input's own source, so a
+    // new source cannot be half-copied into a record.
+    const identity = input.source === 'gmail'
+      ? { source: 'gmail' as const, resourceId: input.resourceId, historyId: input.historyId }
+      : { source: 'imap' as const, uidValidity: input.uidValidity, uid: input.uid };
     const entry: InboundMailRecord = {
+      ...identity,
       id: randomUUID(),
       account: input.account,
       mailbox: input.mailbox,
-      uidValidity: input.uidValidity,
-      uid: input.uid,
       senderDisplay: input.senderDisplay,
       // The subject is persisted alongside the excerpt AND rendered to the
       // owner in the notice, so it is the same exposure by a different field.
@@ -364,13 +480,13 @@ export class InboundMailStore {
     return this.mutate(async (records, malformed) => {
       const removed: InboundMailDiscard[] = [];
       if (malformed > 0) {
-        removed.push({ id: '(unreadable)', account: '(unknown)', mailbox: '(unknown)', uid: 0, reason: 'malformed', removedAt: now });
+        removed.push({ id: '(unreadable)', account: '(unknown)', mailbox: '(unknown)', messageRef: '(unreadable)', reason: 'malformed', removedAt: now });
       }
 
       const withinAge: InboundMailRecord[] = [];
       for (const record of records) {
         if (Date.parse(record.receivedAt) < cutoff) {
-          removed.push({ id: record.id, account: record.account, mailbox: record.mailbox, uid: record.uid, reason: 'expired', removedAt: now });
+          removed.push({ id: record.id, account: record.account, mailbox: record.mailbox, messageRef: describeRecordIdentity(record), reason: 'expired', removedAt: now });
           continue;
         }
         withinAge.push(record);
@@ -383,7 +499,7 @@ export class InboundMailStore {
         const record = sorted[index];
         if (!record) continue;
         if (index < overflow) {
-          removed.push({ id: record.id, account: record.account, mailbox: record.mailbox, uid: record.uid, reason: 'over-cap', removedAt: now });
+          removed.push({ id: record.id, account: record.account, mailbox: record.mailbox, messageRef: describeRecordIdentity(record), reason: 'over-cap', removedAt: now });
           continue;
         }
         final.push(record);

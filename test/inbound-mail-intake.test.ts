@@ -31,7 +31,7 @@ import {
   type InboundNoticeMode,
 } from '../packages/sdk/src/platform/email/inbound/index.ts';
 import { VerificationExpectationBook } from '../packages/sdk/src/platform/google/verification-expectations.ts';
-import type { ImapInboundMessage } from '../packages/sdk/src/platform/email/inbound/ports.ts';
+import type { GmailInboundMessage, ImapInboundMessage } from '../packages/sdk/src/platform/email/inbound/ports.ts';
 import type { SurfaceNoticeDelivery } from '../packages/sdk/src/platform/daemon/types.ts';
 
 const NOW = new Date('2026-07-27T12:00:00.000Z');
@@ -126,6 +126,67 @@ describe('which failures put the message back', () => {
     await intake(message());
     expect(sent).toEqual([]);
     expect((await records.list())[0]!.noticeStatus).toBe('no-route-binding');
+  });
+});
+
+function gmailMessage(overrides: Partial<GmailInboundMessage> = {}): GmailInboundMessage {
+  return {
+    source: 'gmail',
+    account: 'primary',
+    mailbox: 'INBOX',
+    from: 'noreply@github.com',
+    subject: 'Verify your email',
+    claimedDate: 'Mon, 27 Jul 2026 11:59:00 +0000',
+    messageId: '<abc@github.com>',
+    deliveredTo: ['owner+gv-github-com@example.com'],
+    unverifiedToHeaderClaim: 'owner@example.com',
+    resourceId: '18f0a2b3c4d5e6f7',
+    historyId: '9876543210',
+    body: 'Receipt attached.',
+    via: 'poll',
+    ...overrides,
+  };
+}
+
+describe('a Gmail message is recorded, not announced-and-forgotten', () => {
+  test('it reaches the store with its own identity', async () => {
+    // The intake used to return early for Gmail — announced, never recorded —
+    // because the store keyed every record on a positive UIDVALIDITY and UID.
+    // On the path automatic selection makes the default, that meant §9.3 had
+    // nothing to retain and email.inbound.status truthfully reported zero.
+    const { intake, records, sent } = rig({ delivery: { delivered: true } });
+    await intake(gmailMessage());
+
+    expect(sent).toHaveLength(1);
+    const stored = (await records.list())[0]!;
+    expect(stored.source).toBe('gmail');
+    if (stored.source !== 'gmail') throw new Error('narrowing failed');
+    expect(stored.resourceId).toBe('18f0a2b3c4d5e6f7');
+    expect(stored.historyId).toBe('9876543210');
+    expect(stored.noticeStatus).toBe('delivered');
+  });
+
+  test('its body is retained and card-redacted, unlike the IMAP envelope pass', async () => {
+    // Gmail's history delta carries the body; IMAP's envelope pass does not.
+    // §11.0 redaction runs before persisting, and this is the path that gives
+    // it something to redact — it had never executed.
+    const { intake, records } = rig({ delivery: { delivered: true } });
+    await intake(gmailMessage({
+      body: 'Charged card 4111111111111111 today. Thanks.',
+      subject: 'Card 4111 1111 1111 1111 charged',
+    }));
+
+    const stored = (await records.list())[0]!;
+    expect(stored.bodyExcerpt).not.toContain('4111111111111111');
+    expect(stored.bodyExcerpt).toContain('Charged card');
+    expect(stored.subject).not.toContain('4111 1111 1111 1111');
+  });
+
+  test('an IMAP message still retains no body, because none was fetched', async () => {
+    const { intake, records } = rig({ delivery: { delivered: true } });
+    await intake(message());
+    const stored = (await records.list())[0]!;
+    expect(stored.bodyExcerpt).toBe('');
   });
 });
 
