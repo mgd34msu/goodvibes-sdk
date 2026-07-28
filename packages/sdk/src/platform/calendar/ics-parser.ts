@@ -11,7 +11,7 @@
  *
  * Scope of what this reads (documented, not faked):
  *  - VCALENDAR framing, X-WR-CALNAME for a calendar display name.
- *  - VEVENT: UID, SUMMARY, LOCATION, DESCRIPTION, DTSTART, DTEND, RRULE.
+ *  - VEVENT: UID, SUMMARY, LOCATION, DESCRIPTION, ORGANIZER, DTSTART, DTEND, RRULE.
  *  - DTSTART/DTEND as VALUE=DATE ('YYYYMMDD') or date-time ('YYYYMMDDTHHMMSS'),
  *    with honest zone anchoring: trailing 'Z' => utc; TZID=... => tzid (wall time
  *    kept, NOT offset-converted, because this build has no tz database); otherwise
@@ -148,6 +148,7 @@ interface VEventDraft {
   summary?: string;
   location?: string;
   description?: string;
+  organizer?: string;
   start?: EventDateTime;
   end?: EventDateTime;
   rrule?: string;
@@ -205,6 +206,15 @@ export function parseIcs(text: string): ParsedCalendar {
       case 'DESCRIPTION':
         draft.description = unescapeText(cl.value);
         break;
+      case 'ORGANIZER': {
+        // The value is a CAL-ADDRESS ('mailto:alice@example.com'); the address
+        // is what identifies the inviter, so the scheme is dropped and the
+        // CN parameter (a display name the same party wrote) is not preferred
+        // over it. Recorded as CLAIMED — nothing here verifies it.
+        const address = cl.value.trim().replace(/^mailto:/i, '').trim();
+        if (address.length > 0) draft.organizer = address;
+        break;
+      }
       case 'DTSTART': {
         const parsed = parseDateValue(cl.value, cl.params);
         if (parsed) draft.start = parsed;
@@ -264,6 +274,7 @@ function finalizeEvent(
     summary,
     ...(draft.location !== undefined ? { location: draft.location } : {}),
     ...(draft.description !== undefined ? { description: draft.description } : {}),
+    ...(draft.organizer !== undefined ? { organizer: draft.organizer } : {}),
     start: draft.start,
     ...(draft.end !== undefined ? { end: draft.end } : {}),
     ...(recurrence !== undefined ? { recurrence } : {}),
