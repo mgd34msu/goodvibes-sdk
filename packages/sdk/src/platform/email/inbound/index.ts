@@ -97,3 +97,46 @@ export {
   type InboundMailboxWatcherDeps,
   type InboundMailboxWatcherStatus,
 } from './watcher.js';
+
+export { MailboxCursorStore, validateMailboxCursor } from './cursor-store.js';
+export { InboundMailStore, validateInboundMailRecord } from './record-store.js';
+export { PersistedExpectationStore } from './expectation-store.js';
+export { InboundMailHousekeeper } from './housekeeping.js';
+export {
+  InboundExpectationRegistry,
+  type ExpectationMatcher,
+  type DisclosedExpectation,
+} from './expectation-registry.js';
+export {
+  createInboundMailDedup,
+  DedupingInboundMailSink,
+  type InboundMailSourceId,
+} from './sink.js';
+export { describeSourceLatency, type InboundMailSource, type SourceLatency } from './source.js';
+export {
+  selectInboundMailSource,
+  type InboundMailSourceKind,
+  type InboundSourceSelection,
+} from './source-selection.js';
+export { ImapMailSource } from './imap-source.js';
+export {
+  createInboundMailSourceFactory,
+  type GmailSourceBuilder,
+  type InboundMailSourceFactoryDeps,
+} from './source-factory.js';
+export {
+  createInboundMailIntake,
+  InboundNoticeTransportError,
+  type InboundMailIntakeDeps,
+  type InboundMailNoticeRoute,
+  type InboundNoticeMode,
+  type NoticeRouteBinding,
+} from './intake.js';
+export { describeInboundMailHealth, type InboundMailHealthEntry } from './health.js';
+export {
+  InboundMailSupervisor,
+  type InboundMailSourceFactory,
+  type InboundMailStatusSnapshot,
+  type InboundMailSupervisorDeps,
+  type InboundMailSupervisorStatus,
+} from './supervisor.js';
