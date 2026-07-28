@@ -48,19 +48,31 @@ export interface InboundSourceSelectionInput {
    * Whether a Gmail source is available to read with.
    *
    * NOT "whether Google credentials are adopted", which is what this was
-   * called and what its messages claimed. The only caller
-   * (`composeInboundMail`) sets it from `options.gmail !== undefined` — the
-   * presence of a Gmail SOURCE BUILDER — and no composition in this repo
-   * passes one, so it is always false. An owner who has connected Google was
-   * told "no Google credentials have been adopted", which sent him to look for
-   * a credential that was already there.
+   * called and what its messages claimed. It used to be set from
+   * `options.gmail !== undefined` — the presence of an injected Gmail source
+   * BUILDER — and no composition passed one, so it was permanently false and
+   * an owner who had connected Google was told "no Google credentials have
+   * been adopted", which sent him to look for a credential that was already
+   * there.
    *
-   * The two facts are not separated because the selector cannot separate them:
-   * it is handed one boolean. So the name says what the boolean actually is,
-   * and the messages name both possibilities rather than asserting the one
-   * that was never checked.
+   * It is now the answer from a composition that actually opened the
+   * credential and asked Google for the mailbox
+   * (`resolveGmailInboundReader`), and when it is false the reason arrives
+   * alongside it in `gmailUnavailable` rather than being guessed at here.
    */
   readonly googleAdopted: boolean;
+  /**
+   * Why no Gmail source is available, in the composition's own words.
+   *
+   * A VALUE, so this module still reads nothing and decides nothing it was not
+   * told — the property the header states. Present only when `googleAdopted`
+   * is false, and carried into the message the owner reads, because the three
+   * conditions behind that boolean need three different actions: no account
+   * connected, a grant Google refused, or a network that could not be reached.
+   * Absent, the messages fall back to naming every possibility, which is what
+   * a selector handed one bare boolean can honestly say.
+   */
+  readonly gmailUnavailable?: string | undefined;
   /**
    * Whether the configured mail account is a Gmail account.
    *
@@ -114,6 +126,43 @@ export interface InboundSourceRefused {
 export type InboundSourceSelection = InboundSourceSelected | InboundSourceRefused;
 
 /**
+ * The composition's reason, or every possibility when it did not give one.
+ *
+ * The fallback is the honest reading of a bare `googleAdopted: false`: a
+ * selector told one boolean cannot know which of the three conditions produced
+ * it, and asserting the first — which is what "no Google credentials have been
+ * adopted on this machine" did — sent an owner who HAD connected Google looking
+ * for a credential that was already there.
+ */
+function reasonOrEveryPossibility(input: InboundSourceSelectionInput): string {
+  const reason = input.gmailUnavailable?.trim() ?? '';
+  if (reason.length > 0) return reason;
+  return 'Either no Google credentials have been adopted on this machine, or the Gmail reader '
+    + 'is not wired into this build; the daemon reported no reason, so both are named rather '
+    + 'than asserting the one that was not checked.';
+}
+
+/**
+ * The remedial step for a forced-`gmail` refusal.
+ *
+ * Two shapes, because the owner needs different things in the two cases. When
+ * the composition named a reason it also named what fixes it — `gmailUnavailable`
+ * carries the reader's own `fix` — so repeating a guess here would be a second
+ * instruction competing with the accurate one. When it named nothing, the step
+ * that resolves the commonest cause has to be stated, and it is: connect Google.
+ *
+ * Falling back to IMAP is offered in BOTH, and only ever as an explicit change
+ * the owner makes. This function never authorizes the daemon to make it.
+ */
+function refusalFix(input: InboundSourceSelectionInput): string {
+  const meanwhile = 'Set surfaces.email.inbound.source to "imap" (or back to "auto") to read the '
+    + 'mailbox over IMAP meanwhile.';
+  if ((input.gmailUnavailable?.trim() ?? '').length > 0) return meanwhile;
+  return `Connect Google if you have not. If Google is already connected, this is the daemon `
+    + `missing its Gmail reader rather than anything you can change. ${meanwhile}`;
+}
+
+/**
  * Pick the source for one mailbox.
  *
  * Pure. Every input is supplied; nothing here reads configuration, opens a
@@ -141,14 +190,8 @@ export function selectInboundMailSource(
         kind: 'refused',
         reason: 'gmail-forced-without-google',
         detail: 'surfaces.email.inbound.source is set to "gmail", and this daemon has no Gmail source '
-          + 'to read with — either no Google credentials have been adopted on this machine, or the '
-          + 'Gmail reader is not wired into this build. The two are reported together because the '
-          + 'selector is told one fact, not both, and naming only the first would send an owner who '
-          + 'HAS connected Google looking for a credential that is already there.',
-        fix: 'Connect Google if you have not. If Google is already connected, this is the daemon '
-          + 'missing its Gmail reader rather than anything you can change — set '
-          + 'surfaces.email.inbound.source to "imap" (or back to "auto") to read the mailbox over '
-          + 'IMAP meanwhile.',
+          + `to read with. ${reasonOrEveryPossibility(input)}`,
+        fix: refusalFix(input),
       };
     }
     if (!input.mailAccountIsGmail) {
@@ -177,10 +220,9 @@ export function selectInboundMailSource(
       kind: 'selected',
       source: 'imap',
       basis: 'google-not-adopted',
-      detail: 'Inbound mail is read over IMAP because no Gmail source is available — either Google '
-        + 'is not connected on this machine, or the Gmail reader is not wired into this build. '
-        + 'IMAP holds an IDLE connection, which is push: new mail is noticed within about a second, '
-        + 'so this is the better of the two paths either way.',
+      detail: 'Inbound mail is read over IMAP because no Gmail source is available. '
+        + `${reasonOrEveryPossibility(input)} IMAP holds an IDLE connection, which is push: new `
+        + 'mail is noticed within about a second, so this is the better of the two paths either way.',
     };
   }
   if (!input.mailAccountIsGmail) {

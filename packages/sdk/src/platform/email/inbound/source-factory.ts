@@ -18,22 +18,28 @@
  * fixes it. That is why nothing here catches it: a second, quieter report of
  * the same fact would be the one nobody sees.
  *
- * The Gmail arm is a hole this file states rather than fills
- * ─────────────────────────────────────────────────────────
- * `GmailMailSource` is built and tested, and it needs two things a composition
- * has to supply: the `HistoryDeltaDeps` I/O slice over an adopted Google
- * credential, and a `currentHistoryId()` probe. Neither is derivable here —
- * `GoogleApiClient` exposes no profile call and no `historyId` today (see
- * `gmail-source.ts`'s note on `currentHistoryId`), so there is no call this
- * module could pick on its own.
+ * The Gmail arm arrives as an injected builder
+ * ────────────────────────────────────────────
+ * `GmailMailSource` needs an `HistoryDeltaDeps` I/O slice over an adopted
+ * Google credential and a `currentHistoryId()` probe, and neither is derivable
+ * here for the same reason an IMAP password is not: they are composition-root
+ * facts, and a factory that reached for them itself could not be exercised
+ * without a machine that has Google adopted on it. `composeInboundMail` builds
+ * the builder — over `GoogleApiClient.historyDeltaPort()` and
+ * `currentHistoryId()`, which exist now — and passes it here.
  *
- * So the Gmail arm arrives as an injected builder. When a composition supplies
- * one, Gmail is served; when it does not, `create()` returns `null` and the
- * supervisor REPORTS that — it does not fall back to IMAP. The refusal is the
- * point: quietly serving IMAP for a mailbox the owner asked to be read over
- * Gmail is the silent substitution §3.4d forbids, and quietly serving it under
- * an `auto` selection would report a `google-adopted` basis while running the
- * other source.
+ * `deps.gmail` remains OPTIONAL, and that is a seam rather than a shrug: a test
+ * exercising the IMAP arm should not have to supply a Gmail one. What is no
+ * longer optional is the daemon composition's Gmail READER, so the shape that
+ * used to reach production — every arm complete, nothing injected, `create()`
+ * answering `null` on every machine — cannot recur silently.
+ *
+ * When there is no builder, `create()` returns `null` and the supervisor
+ * REPORTS that; it does not fall back to IMAP. The refusal is the point:
+ * quietly serving IMAP for a mailbox the owner asked to be read over Gmail is
+ * the silent substitution §3.4d forbids, and quietly serving it under an `auto`
+ * selection would report a `google-adopted` basis while running the other
+ * source.
  */
 
 import { imapMailboxConnectionPort } from './connection.js';
@@ -81,7 +87,15 @@ export interface InboundMailSourceFactoryDeps {
   readonly settings: Omit<InboundWatcherSettings, 'account' | 'mailbox'>;
   readonly clock?: WatcherClock | undefined;
   readonly random?: RandomSource | undefined;
-  /** Supplied by a composition that has an adopted Google credential. */
+  /**
+   * Supplied by `composeInboundMail`, which resolves an adopted Google
+   * credential through `createDaemonGmailInboundReader`.
+   *
+   * Optional so the IMAP arm can be exercised without one. It was optional
+   * before too, and nothing filled it — the daemon composition now does, and
+   * ITS option is required, which is where the reachability is enforced rather
+   * than here.
+   */
   readonly gmail?: GmailSourceBuilder | undefined;
 }
 

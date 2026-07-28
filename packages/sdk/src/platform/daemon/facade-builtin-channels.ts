@@ -14,6 +14,7 @@
 
 import { BuiltinChannelRuntime } from '../channels/index.js';
 import { composeInboundMail } from './facade-inbound-mail.js';
+import { createDaemonGmailInboundReader } from './facade-gmail-reader.js';
 import type { ChannelProviderRuntimeManager } from '../channels/index.js';
 import type { DaemonSurfaceActionHelper } from './surface-actions.js';
 import type { DaemonSurfaceDeliveryHelper } from './surface-delivery.js';
@@ -55,6 +56,17 @@ export function createBuiltinChannelRuntime(
     routeBindings: runtime.routeBindings,
     gatewayMethods: runtime.gatewayMethods,
     deliverStructuredNotice: (binding, notice) => surfaceDeliveryHelper.deliverStructuredNotice(binding, notice),
+    // THE composition that has an adopted Google credential — the one the
+    // Gmail arm's own comment claimed existed while nothing built it. Google
+    // credentials resolve from the daemon's own config and secret tiers plus
+    // this runtime's home directory, which is where `~/.gmail-mcp` adoption
+    // looks; `createDaemonCalendarGatewayService` reaches for exactly the same
+    // three, for exactly the same reason.
+    gmailReader: createDaemonGmailInboundReader({
+      configManager: runtime.configManager,
+      secretsManager: runtime.runtimeServices.secretsManager,
+      homeDirectory: runtime.runtimeServices.homeDirectory,
+    }),
   });
   const builtinChannels = new BuiltinChannelRuntime({
     configManager: runtime.configManager,

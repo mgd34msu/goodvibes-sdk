@@ -2539,27 +2539,81 @@ The same reasoning is why the capability probe in §13.7 treats `null` — nothi
 has probed yet — as permission to proceed rather than as a failure. Three
 answers, in both places, for the same reason.
 
-### 13.11 Three settings ship configured and read by nothing
+### 13.11 Settings that ship configured and read by nothing
 
 `surfaces.email.inbound.gmailPollSecondsExpecting`, `.gmailPollSecondsIdle` and
-`.onInsufficientCapability` each have a schema row, a documented default, a
+`.onInsufficientCapability` each had a schema row, a documented default, a
 validated range, daemon-owned scope and a user-facing description — and no
-consumer anywhere in `packages/sdk/src`. Two of them are *named in doc comments*
+consumer anywhere in `packages/sdk/src`. Two of them were *named in doc comments*
 beside the fields they are supposed to fill (`GmailMailSourceDeps.pollExpectingMs`
-and `pollIdleMs`), which is what made them look wired; `onInsufficientCapability`
-is mentioned once in `inbound-notice.ts` and read nowhere, so `notice-only` and
-`refuse-and-notify` are the same behaviour today.
+and `pollIdleMs`), which is what made them look wired.
+
+The two Gmail keys are now read, and the reason they were not is §13.12: the
+only constructor that takes them had no production call site at all. They are
+filled in `composeInboundMail`, and the effect — both intervals read back off a
+running Gmail source, the short one after an expectation is opened — is asserted
+in `test/inbound-mail-gmail-reachability.test.ts`.
+
+`onInsufficientCapability` remains inert. It is mentioned once in
+`inbound-notice.ts` and read nowhere, so `notice-only` and `refuse-and-notify`
+are the same behaviour today.
 
 This is the failure mode §13.7's V9 row describes, one level up: the schema half
 of the coverage is thorough enough that the missing half does not show. A
 setting is not a feature until something reads it — see the owner ruling that
 every flag ships as a real configurable feature.
 
-`inbound-email-config-schema.test.ts` now scans production sources for a *read*
-of each key (inside a `get(...)` or `readNumberSetting(...)` call, not a mention
-in prose) and fails if the set of unread keys is anything other than these three
-by name. Wiring one reddens it, which forces an effect assertion to be written
-beside the others rather than the key quietly joining the "tested" pile.
+`inbound-email-config-schema.test.ts` scans production sources for a *read* of
+each key (inside a `get(...)` or `readNumberSetting(...)` call, not a mention in
+prose) and fails if the set of unread keys is anything other than the named
+inert list. Wiring one reddens it, which forces an effect assertion to be written
+rather than the key quietly joining the "tested" pile — which is exactly what
+happened when the two Gmail keys were wired.
+
+### 13.12 The Gmail source was complete, tested, exported and never constructed
+
+`GmailMailSource` shipped finished. `createInboundMailSourceFactory` took a
+`GmailSourceBuilder`, `composeInboundMail` accepted an optional `gmail` field,
+and its comment read "Supplied by a composition that has an adopted Google
+credential." **No such composition existed.** `deps.gmail` was `undefined` on
+every machine, `create()` answered `null` for `kind: 'gmail'`, and
+`selectionFacts` reported `googleAdopted: options.gmail !== undefined` —
+permanently false.
+
+The consequence was not a degraded Gmail path; it was no Gmail path. An owner
+with Google adopted and IMAP never configured got an inactive supervisor whose
+status told him "no Google credentials have been adopted on this machine",
+sending him to look for a credential that was already there. Everything else on
+the inbound path — the cursor, backoff, dedup, expectations, the notice route —
+was on the IMAP branch he did not use.
+
+Three things kept it invisible:
+
+  - **Every test that exercised the Gmail arm handed the factory a builder.**
+    That is precisely the shape production lacked, so the suite was green over
+    the one condition that mattered.
+  - **`GoogleApiClient` had no way to produce a `currentHistoryId`.** It exposed
+    no profile call, which the source's own comment recorded — so the missing
+    wiring had a true-sounding excuse attached to it.
+  - **`mailAccountIsGmail` was read off the configured IMAP host.** On a machine
+    with Google adopted and no IMAP at all it answered `false`, so even a wired
+    Gmail arm would not have been selected under `auto`.
+
+All three are closed. `GoogleApiClient.getProfile()` / `.currentHistoryId()`
+call `users.getProfile`, whose `historyId` is documented as "the ID of the
+mailbox's current history record" — the right value for a path that establishes
+without backfilling. `createDaemonGmailInboundReader` resolves the adopted
+credential in the daemon tier, exactly as `createDaemonCalendarGatewayService`
+does. `isGmailMailbox` accepts the address `users.getProfile` returns as direct
+evidence, keeping the IMAP-host test for the case where both are configured.
+
+The Gmail reader option on `composeInboundMail` is **required**, not optional.
+An unfilled optional field is indistinguishable from a machine with no Google
+account, and that indistinguishability is the whole defect; a required provider
+that ANSWERS `unavailable` with a reason carries the same information and cannot
+be silently dropped, because `createBuiltinChannelRuntime` stops compiling.
+That compile error is the gate — a test could go inert the same way the code
+did.
 
 ## 14. Related
 

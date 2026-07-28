@@ -442,6 +442,16 @@ function compose(
       notices.push({ binding, notice });
       return { delivered: true } as never;
     },
+    // These cases drive the IMAP source, so this rig's machine has no Google
+    // account. Stated rather than omitted: the option is required because an
+    // absent optional one is what let the Gmail arm ship with nothing behind
+    // it. The two Gmail poll settings are covered where they are now read, in
+    // test/inbound-mail-gmail-reachability.test.ts.
+    gmailReader: async () => ({
+      kind: 'unavailable' as const,
+      detail: 'No Google account is connected on this machine.',
+      fix: '',
+    }),
   });
 
   if (supervisor === null) return null;
@@ -539,7 +549,12 @@ describe('each inbound setting reaches the thing it names', () => {
     const rig = compose({ 'surfaces.email.inbound.source': 'gmail' })!;
     const status = await rig.supervisor.start();
     expect(status.running).toBe(false);
-    expect(status.reason).toContain('no Google credentials have been adopted');
+    // The refusal now carries the reason the COMPOSITION found, which for this
+    // rig is a machine with no Google account. It used to assert "no Google
+    // credentials have been adopted" — a sentence the selector printed whether
+    // or not any had been, because nothing had looked.
+    expect(status.reason).toContain('No Google account is connected on this machine');
+    expect(status.reason).toContain('surfaces.email.inbound.source is set to "gmail"');
     await rig.supervisor.stop();
   });
 
@@ -572,31 +587,27 @@ describe('each inbound setting reaches the thing it names', () => {
   });
 
   /**
-   * Three keys have a schema row, a validated range and a description, and
-   * NOTHING in the tree reads them.
+   * The keys that have a schema row, a validated range and a description, and
+   * that NOTHING in the tree reads.
    *
-   * Recorded here rather than left to be re-found. `grep` for each across
-   * `packages/sdk/src` returns the schema definition, the key union, and — for
-   * two of them — a doc comment naming the key beside a field that is never
-   * populated from it:
+   * This list was three. Two of them — `gmailPollSecondsExpecting` and
+   * `gmailPollSecondsIdle` — were documented on `GmailMailSourceDeps` as the
+   * origin of `pollExpectingMs` / `pollIdleMs` while no code mapped them onto
+   * those fields, because the only constructor that takes them was never
+   * called anywhere in production. `composeInboundMail` now builds the Gmail
+   * source and reads both, so they are off this list, and the effect this test
+   * exists to force is asserted in
+   * `test/inbound-mail-gmail-reachability.test.ts` — where both intervals are
+   * read back off a running source rather than off the config.
    *
-   *  - `gmailPollSecondsExpecting` and `gmailPollSecondsIdle` are documented on
-   *    `GmailMailSourceDeps` as the origin of `pollExpectingMs` / `pollIdleMs`,
-   *    and no code maps the config keys onto those fields. The Gmail source
-   *    builder is injected by a composition that supplies its own numbers.
-   *  - `onInsufficientCapability` is named in one comment in
-   *    `inbound-notice.ts` and read by nothing at all, so `notice-only` and
-   *    `refuse-and-notify` are the same behaviour today.
-   *
-   * This test asserts the CURRENT state, which is not the desired one — it is
-   * here so that wiring any of the three reddens it and forces the effect
-   * assertion above to be written. It fails the day the defect is fixed, which
-   * is the only honest shape for a test over a known gap.
+   * `onInsufficientCapability` is still inert: it is named in one comment in
+   * `inbound-notice.ts` and read by nothing, so `notice-only` and
+   * `refuse-and-notify` remain the same behaviour. It stays here, alone,
+   * asserting the CURRENT state rather than the desired one, so wiring it
+   * reddens this and forces its effect assertion to be written too.
    */
   test('every inbound key is either read by production code or on the named inert list', () => {
     const INERT = new Set([
-      'surfaces.email.inbound.gmailPollSecondsExpecting',
-      'surfaces.email.inbound.gmailPollSecondsIdle',
       'surfaces.email.inbound.onInsufficientCapability',
     ]);
 
@@ -604,8 +615,8 @@ describe('each inbound setting reaches the thing it names', () => {
     const readByProduction = (key: string): boolean => sources.some((text) => {
       // A read, not a mention: the key inside a `get(...)` call or a
       // `readNumberSetting(..., '<key>', ...)` argument. A doc comment naming
-      // the key does not count, which is the whole distinction — two of the
-      // three inert keys ARE named in comments beside fields they never fill.
+      // the key does not count, which is the whole distinction — it is exactly
+      // how the two Gmail poll keys looked wired for as long as they were not.
       const quoted = key.replace(/\./g, '\\.');
       return new RegExp(`(?:get|readNumberSetting)\\([^)]*['"]${quoted}['"]`, 's').test(text);
     });
@@ -613,8 +624,8 @@ describe('each inbound setting reaches the thing it names', () => {
     const wired = EXPECTED_DEFAULTS.map((entry) => entry.key).filter(readByProduction);
     const unread = EXPECTED_DEFAULTS.map((entry) => entry.key).filter((key) => !readByProduction(key));
 
-    // Not a tautology in either direction: most keys ARE read, and the three
-    // named ones are not.
+    // Not a tautology in either direction: most keys ARE read, and the named
+    // one is not.
     expect(wired.length).toBeGreaterThan(10);
     expect(unread.sort()).toEqual([...INERT].sort());
   });

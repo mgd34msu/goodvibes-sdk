@@ -158,6 +158,23 @@ function refreshFn(fetchPort: GoogleFetchPort) {
 
 export interface GoogleConnection {
   readonly client: GoogleApiClient;
+  /**
+   * The same token manager the client calls through.
+   *
+   * Carried because `scopes()` is the only honest answer to "what is this grant
+   * allowed to do", and it is only correct AFTER a refresh: credentials read
+   * from the encrypted secret store are constructed with `scopes: []` (the
+   * store records no scope list), and the real set arrives on the refresh
+   * response. A caller that gates on scopes — `collectHistoryDelta` does, and
+   * refuses with `no-gmail-scope` when it sees none — therefore has to be able
+   * to force that refresh first, or it would read an empty list as a revoked
+   * capability and report a working mailbox as unreadable.
+   *
+   * The SAME instance rather than a second one, for the same reason
+   * `historyDeltaPort` exists: two managers are two access tokens, two refresh
+   * races and two different answers to `scopes()`.
+   */
+  readonly tokens: GoogleTokenManager;
   readonly credentials: GoogleOAuthCredentials;
   readonly summary: GoogleCredentialSummary;
 }
@@ -179,6 +196,7 @@ export async function openGoogleConnection(
   const tokens = new GoogleTokenManager(credentials, { refresh: refreshFn(ports.fetch) });
   return {
     client: new GoogleApiClient(tokens, ports.fetch),
+    tokens,
     credentials,
     summary: summarizeCredentials(credentials, now),
   };
