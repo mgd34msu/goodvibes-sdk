@@ -69,6 +69,7 @@ release-history source.
 - [Secret references](./secrets.md)
 - [Feature settings](./feature-settings.md)
 - [Security](./security.md)
+- [Payments](./payments.md) — design for the daemon's payment capability: budgets, the approval/veto windows, and the taint boundary around spending.
 - [Observability](./observability.md)
 - [Performance and tuning](./performance.md)
 - [Transport architecture](./transports.md)

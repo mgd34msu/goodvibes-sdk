@@ -33,6 +33,7 @@ import {
   NODE_LOCAL_CONFIG_DOMAINS,
   replicatedSecretKeyFor,
   REPLICATED_CONFIG_DOMAINS,
+  REPLICATED_CONFIG_KEYS,
 } from '../packages/sdk/src/platform/cluster/config-replication-policy.js';
 import {
   createConfigReplicaDocument,
@@ -125,7 +126,16 @@ describe('what may cross the network', () => {
     const replicated = listReplicatedConfigPaths();
     expect(replicated.length).toBeGreaterThan(0);
     for (const path of replicated) {
-      expect(REPLICATED_CONFIG_DOMAINS.some((domain) => path.startsWith(domain))).toBe(true);
+      // Replication is granted either by DOMAIN or, for a key whose domain goes
+      // the other way, by an individual ruling. `daemon.timezone` is the second
+      // kind: `daemon.*` is node-local because it answers "does this machine run
+      // a daemon", while the timezone answers where the operator is and the
+      // group must agree on it. Accepting only the domain form here would force
+      // that key to be replicated by widening `daemon.` — which would drag
+      // `daemon.enabled` and `daemon.embedInProcess` across the network with it.
+      const ruledByDomain = REPLICATED_CONFIG_DOMAINS.some((domain) => path.startsWith(domain));
+      const ruledByKey = REPLICATED_CONFIG_KEYS.includes(path);
+      expect(ruledByDomain || ruledByKey, `${path} replicates without a ruling`).toBe(true);
     }
     expect(replicated.some((path) => path.startsWith('surfaces.'))).toBe(true);
   });

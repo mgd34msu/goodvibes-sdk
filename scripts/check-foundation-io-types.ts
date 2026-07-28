@@ -106,6 +106,22 @@ import {
 } from '../packages/sdk/src/platform/control-plane/operator-contract-schemas-fleet.ts';
 import { METADATA_SCHEMA } from '../packages/sdk/src/platform/control-plane/operator-contract-schemas-shared.ts';
 import {
+  PAYMENTS_BUDGET_STATUS_INPUT_SCHEMA,
+  PAYMENTS_BUDGET_STATUS_OUTPUT_SCHEMA,
+  PAYMENTS_CARDS_CREATE_INPUT_SCHEMA,
+  PAYMENTS_CARDS_CREATE_OUTPUT_SCHEMA,
+  PAYMENTS_CARDS_DELETE_INPUT_SCHEMA,
+  PAYMENTS_CARDS_DELETE_OUTPUT_SCHEMA,
+  PAYMENTS_CARDS_LIST_INPUT_SCHEMA,
+  PAYMENTS_CARDS_LIST_OUTPUT_SCHEMA,
+  PAYMENTS_CHECKOUT_BEGIN_INPUT_SCHEMA,
+  PAYMENTS_CHECKOUT_BEGIN_OUTPUT_SCHEMA,
+  PAYMENTS_CHECKOUT_FILL_CARD_INPUT_SCHEMA,
+  PAYMENTS_CHECKOUT_FILL_CARD_OUTPUT_SCHEMA,
+  PAYMENTS_PURCHASES_LIST_INPUT_SCHEMA,
+  PAYMENTS_PURCHASES_LIST_OUTPUT_SCHEMA,
+} from '../packages/sdk/src/platform/control-plane/operator-contract-schemas-payments.ts';
+import {
   SKILLS_CREATE_INPUT_SCHEMA,
   SKILLS_CREATE_OUTPUT_SCHEMA,
   SKILLS_DELETE_INPUT_SCHEMA,
@@ -329,6 +345,18 @@ function renderType(schema: Record<string, unknown>): string {
 }
 
 const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record<string, unknown>; readonly output: Record<string, unknown> }> = [
+  // payments.* — the daemon holds the card and charges it. No entry here
+  // carries card material: cards.create takes it and answers with metadata.
+  { methodId: 'payments.budget.status', input: PAYMENTS_BUDGET_STATUS_INPUT_SCHEMA, output: PAYMENTS_BUDGET_STATUS_OUTPUT_SCHEMA },
+  { methodId: 'payments.cards.list', input: PAYMENTS_CARDS_LIST_INPUT_SCHEMA, output: PAYMENTS_CARDS_LIST_OUTPUT_SCHEMA },
+  { methodId: 'payments.cards.create', input: PAYMENTS_CARDS_CREATE_INPUT_SCHEMA, output: PAYMENTS_CARDS_CREATE_OUTPUT_SCHEMA },
+  { methodId: 'payments.cards.delete', input: PAYMENTS_CARDS_DELETE_INPUT_SCHEMA, output: PAYMENTS_CARDS_DELETE_OUTPUT_SCHEMA },
+  { methodId: 'payments.purchases.list', input: PAYMENTS_PURCHASES_LIST_INPUT_SCHEMA, output: PAYMENTS_PURCHASES_LIST_OUTPUT_SCHEMA },
+  // The execution pair. fillCard's INPUT names element refs, never card
+  // material — the daemon reads the card from its own store — and its output is
+  // the sanitized result the route already asserts holds nothing readable.
+  { methodId: 'payments.checkout.begin', input: PAYMENTS_CHECKOUT_BEGIN_INPUT_SCHEMA, output: PAYMENTS_CHECKOUT_BEGIN_OUTPUT_SCHEMA },
+  { methodId: 'payments.checkout.fillCard', input: PAYMENTS_CHECKOUT_FILL_CARD_INPUT_SCHEMA, output: PAYMENTS_CHECKOUT_FILL_CARD_OUTPUT_SCHEMA },
   { methodId: 'fleet.snapshot', input: EMPTY_OBJECT_SCHEMA, output: FLEET_SNAPSHOT_OUTPUT_SCHEMA },
   { methodId: 'fleet.list', input: FLEET_LIST_INPUT_SCHEMA, output: FLEET_LIST_OUTPUT_SCHEMA },
   // Fleet archive verbs (SDK 1.6.x):

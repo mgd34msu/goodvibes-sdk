@@ -50,6 +50,7 @@
     "any:check": "bun scripts/no-any-types.ts",
     "architecture:check": "bun scripts/test-tmp-architecture-check.ts",
     "api:check": "bunx api-extractor run --local && bunx api-extractor run --local --config api-extractor.embed.json && git diff --quiet -- etc/goodvibes-sdk.api.md etc/goodvibes-sdk-embed.api.md && bun run api:subpath:check",
+    "subpath:declared:check": "bun scripts/check-subpath-declared.ts",
     "bundle:check": "bun scripts/bundle-budget.ts",
     "bundle:init": "bun scripts/plugin-bundle.ts init",
     "bundle:validate": "bun scripts/plugin-bundle.ts validate",

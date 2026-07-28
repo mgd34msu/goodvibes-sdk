@@ -241,6 +241,7 @@ Importing any path not in this table will produce an `ERR_PACKAGE_PATH_NOT_EXPOR
 | `platform/cloudflare` | Cloudflare worker discovery, config, resources, and status helpers | beta |
 | `platform/companion` | Companion chat sessions, routes, and persistence | beta |
 | `platform/config` | Config manager, secrets, schema, subscriptions | beta |
+| `platform/payments` | Payment decision order, budget pools, both approval/veto window state machines, taint gate, prompt rendering | beta |
 | `platform/control-plane` | Control-plane gateway, method catalog, contracts, and session broker | beta |
 | `platform/core` | Orchestrator, transcript events, execution plan | beta |
 | `platform/daemon` | HTTP server, routes, port-in-use checks | beta |

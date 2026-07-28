@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.18.1
- * Methods: 452 total, 401 REST-routed, 51 ws-only invoke.
+ * Methods: 459 total, 408 REST-routed, 51 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -1172,6 +1172,34 @@ export const WEBUI_METHOD_ROUTES: Readonly<Record<string, WebuiRouteDefinition>>
     "method": "POST",
     "path": "/api/panels/open"
   },
+  "payments.budget.status": {
+    "method": "GET",
+    "path": "/api/payments/budget"
+  },
+  "payments.cards.create": {
+    "method": "POST",
+    "path": "/api/payments/cards"
+  },
+  "payments.cards.delete": {
+    "method": "DELETE",
+    "path": "/api/payments/cards/{id}"
+  },
+  "payments.cards.list": {
+    "method": "GET",
+    "path": "/api/payments/cards"
+  },
+  "payments.checkout.begin": {
+    "method": "POST",
+    "path": "/api/payments/checkout/begin"
+  },
+  "payments.checkout.fillCard": {
+    "method": "POST",
+    "path": "/api/payments/checkout/fill-card"
+  },
+  "payments.purchases.list": {
+    "method": "GET",
+    "path": "/api/payments/purchases"
+  },
   "principals.create": {
     "method": "POST",
     "path": "/api/principals"
@@ -2020,6 +2048,13 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "pairing.tokens.revokeShared": "ws-invoke",
   "panels.list": "rest",
   "panels.open": "rest",
+  "payments.budget.status": "rest",
+  "payments.cards.create": "rest",
+  "payments.cards.delete": "rest",
+  "payments.cards.list": "rest",
+  "payments.checkout.begin": "rest",
+  "payments.checkout.fillCard": "rest",
+  "payments.purchases.list": "rest",
   "permissions.rules.delete": "ws-invoke",
   "permissions.rules.list": "ws-invoke",
   "principals.create": "rest",
@@ -15673,6 +15708,226 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
       "opened": false,
       "id": "sample",
       "pane": "top"
+    }
+  },
+  "payments.budget.status": {
+    "input": {},
+    "output": {
+      "enabled": false,
+      "dayKey": "sample",
+      "timezone": "sample",
+      "currency": "sample",
+      "item": {
+        "limit": 0,
+        "spent": 0,
+        "reserved": 0,
+        "remaining": 0
+      },
+      "overage": {
+        "limit": 0,
+        "spent": 0,
+        "reserved": 0,
+        "remaining": 0
+      },
+      "tolerance": {
+        "limit": 0,
+        "spent": 0,
+        "reserved": 0,
+        "remaining": 0
+      },
+      "reservationCount": 0,
+      "isPaymentsLeader": false
+    }
+  },
+  "payments.cards.create": {
+    "input": {
+      "label": "sample",
+      "kind": "virtual",
+      "number": "sample",
+      "expiryMonth": 0,
+      "expiryYear": 0,
+      "cvv": "sample",
+      "cardholderName": "sample",
+      "issuerCapMinorUnits": 0
+    },
+    "output": {
+      "card": {
+        "id": "sample",
+        "label": "sample",
+        "brand": "sample",
+        "last4": "sample",
+        "kind": "virtual",
+        "expiryMonth": 0,
+        "expiryYear": 0,
+        "issuerCapMinorUnits": 0,
+        "addedAt": "sample",
+        "materialComplete": false
+      }
+    }
+  },
+  "payments.cards.delete": {
+    "input": {
+      "id": "sample"
+    },
+    "output": {
+      "id": "sample",
+      "deleted": false,
+      "secretsCleared": 0
+    }
+  },
+  "payments.cards.list": {
+    "input": {},
+    "output": {
+      "cards": [
+        {
+          "id": "sample",
+          "label": "sample",
+          "brand": "sample",
+          "last4": "sample",
+          "kind": "virtual",
+          "expiryMonth": 0,
+          "expiryYear": 0,
+          "issuerCapMinorUnits": 0,
+          "addedAt": "sample",
+          "materialComplete": false
+        }
+      ],
+      "defaultCardId": "sample"
+    }
+  },
+  "payments.checkout.begin": {
+    "input": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "merchantDomain": "sample",
+      "checkoutUrl": "sample",
+      "item": "sample",
+      "cardId": "sample",
+      "requestedLines": [
+        {
+          "label": "sample",
+          "quantity": 0
+        }
+      ],
+      "lines": [
+        {
+          "label": "sample",
+          "quantity": "sample",
+          "unitPrice": "sample"
+        }
+      ],
+      "tax": "sample",
+      "fees": [
+        {
+          "label": "sample",
+          "amount": "sample"
+        }
+      ],
+      "shippingOptions": [
+        {
+          "label": "sample",
+          "cost": "sample"
+        }
+      ],
+      "statedTotal": "sample",
+      "currency": "sample",
+      "orderSummaryText": "sample",
+      "cardFields": [
+        {
+          "field": "number",
+          "ref": "sample"
+        }
+      ],
+      "addressFields": [
+        {
+          "kind": "shipping",
+          "field": "name",
+          "ref": "sample"
+        }
+      ],
+      "shippingTargets": [
+        "sample"
+      ],
+      "placeOrderTarget": "sample",
+      "preferredTier": "normal",
+      "expirySeparator": "sample",
+      "twoDigitYear": false,
+      "requestedMax": "sample"
+    },
+    "output": {
+      "outcome": "sample",
+      "purchaseId": "sample",
+      "reason": "sample",
+      "merchantOrderId": "sample",
+      "totalMinorUnits": 0,
+      "currency": "sample",
+      "shippingTierUsed": "sample",
+      "steppedDown": false,
+      "challengeStep": "sample"
+    }
+  },
+  "payments.checkout.fillCard": {
+    "input": {
+      "sessionId": "sample",
+      "pageId": "sample",
+      "targets": [
+        {
+          "field": "number",
+          "ref": "sample"
+        }
+      ],
+      "expirySeparator": "sample",
+      "twoDigitYear": false
+    },
+    "output": {
+      "ok": false,
+      "filled": [
+        "sample"
+      ],
+      "failedField": "sample",
+      "reason": "sample"
+    }
+  },
+  "payments.purchases.list": {
+    "input": {
+      "limit": 0,
+      "dayKey": "sample"
+    },
+    "output": {
+      "purchases": [
+        {
+          "purchaseId": "sample",
+          "atUtc": "sample",
+          "dayKey": "sample",
+          "timezone": "sample",
+          "merchantDomain": "sample",
+          "item": "sample",
+          "currency": "sample",
+          "itemMinorUnits": 0,
+          "taxMinorUnits": 0,
+          "feesMinorUnits": 0,
+          "shippingMinorUnits": 0,
+          "totalMinorUnits": 0,
+          "shippingTierRequested": "sample",
+          "shippingTierUsed": "sample",
+          "steppedDown": false,
+          "itemPoolDraw": 0,
+          "overagePoolDraw": 0,
+          "tolerancePoolDraw": 0,
+          "cardLast4": "sample",
+          "windowKind": "sample",
+          "windowOutcome": "sample",
+          "answeredBy": "sample",
+          "outcome": "sample",
+          "refusalReason": "sample",
+          "merchantOrderId": "sample",
+          "refundedAt": "sample",
+          "merchantRecognised": false,
+          "merchantQualifier": "sample",
+          "merchantDiscovered": false
+        }
+      ],
+      "total": 0
     }
   },
   "permissions.rules.delete": {

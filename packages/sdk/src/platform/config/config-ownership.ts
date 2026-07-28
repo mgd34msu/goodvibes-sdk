@@ -65,6 +65,12 @@ export const DAEMON_OWNED_CONFIG_PREFIXES: readonly string[] = [
   'checkin.',
   'integrations.',
   'atRest.',
+  // The daemon is the process that holds the card and charges it, with every
+  // surface closed and across restarts. Card material and budgets left
+  // client-owned would live in whichever surface happened to enter them and the
+  // daemon would charge against defaults — the failure mode the budget exists to
+  // prevent. See docs/payments.md §3.
+  'payments.',
   'voice.local.',
   // The daemon is the process that receives inbound channel messages, so it is
   // the process that decides whether one becomes a conversation or a
@@ -95,6 +101,19 @@ export const DAEMON_OWNED_CONFIG_PREFIXES: readonly string[] = [
 /** Individual daemon-owned keys that do not sit under a daemon-owned domain. */
 export const DAEMON_OWNED_CONFIG_KEYS: readonly string[] = [
   'danger.httpListener',
+  // The one `daemon.*` key that is NOT a per-installation switch.
+  //
+  // The rest of that prefix answers "does THIS machine run or embed a daemon",
+  // which is rightly client-owned. `daemon.timezone` answers something else
+  // entirely: where the daemon thinks it IS. Anything that resets on a calendar
+  // day reads it, starting with the payment capability's daily budgets.
+  //
+  // Left client-owned it would land in whichever surface the operator happened
+  // to set it from, and the daemon — the process that actually rolls the budget
+  // over at midnight — would never see it and would keep resetting in UTC. The
+  // operator would have picked a zone, been shown that zone, and had his money
+  // reset in a different one.
+  'daemon.timezone',
 ];
 
 /**

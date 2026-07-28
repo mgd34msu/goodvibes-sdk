@@ -20,7 +20,7 @@
  * union/mapping entry no schema domain defines).
  */
 import { describe, expect, test } from 'bun:test';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { CONFIG_SCHEMA } from '../packages/sdk/src/platform/config/schema.js';
 
@@ -36,11 +36,24 @@ import { CONFIG_SCHEMA } from '../packages/sdk/src/platform/config/schema.js';
  * one fixed name.
  */
 const CONFIG_DIR = join(import.meta.dir, '..', 'packages', 'sdk', 'src', 'platform', 'config');
-const SCHEMA_TYPE_SOURCES = [
-  'schema-types.ts',
-  'schema-types-values.ts',
-  'schema-types-owner-profile.ts',
-].map((name) => join(CONFIG_DIR, name));
+
+/**
+ * Discovered, not listed.
+ *
+ * An explicit list is a second place to remember: a domain that splits into a
+ * new `schema-types-<domain>.ts` and is not added here becomes invisible to
+ * this gate, which is the same fail-open the file exists to prevent, just one
+ * level up. Matching every `schema-types*.ts` in the directory means a new
+ * split file is covered the moment it exists.
+ */
+function schemaTypeSources(): string[] {
+  return readdirSync(CONFIG_DIR)
+    .filter((name) => /^schema-types.*\.ts$/.test(name))
+    .sort()
+    .map((name) => join(CONFIG_DIR, name));
+}
+
+const SCHEMA_TYPE_SOURCES = schemaTypeSources();
 
 /**
  * Comments are stripped before any quote matching.
@@ -57,14 +70,37 @@ function withoutComments(body: string): string {
 }
 
 /**
+/**
  * Every `export type <Something>ConfigKey =` declaration, so a domain that
- * carries its own key union (schema-types-owner-profile.ts) is covered by the
- * same parse rather than being invisible to it.
+ * carries its own key union — schema-types-owner-profile.ts,
+ * schema-types-payments.ts, schema-types-daemon.ts — is covered by the same
+ * parse rather than being invisible to it.
  */
 const KEY_UNION_ANCHOR = /export type \w*ConfigKey =/g;
 
 /** Every `export type <Something>ConfigValue<K extends <Something>ConfigKey> =`. */
 const VALUE_MAP_ANCHOR = /export type \w*ConfigValue<K extends \w*ConfigKey> =/g;
+
+/**
+ * Every `export interface <Something>ConfigValueMap {`.
+ *
+ * The two domain shapes in this codebase state their value types differently
+ * and BOTH have to be followed:
+ *
+ *   - owner-profile declares a conditional type
+ *     (`ProfileConfigValue<K extends ProfileConfigKey>`), matched by
+ *     VALUE_MAP_ANCHOR above, whose arms are literal `K extends '<key>'`.
+ *   - payments and daemon-process declare an INTERFACE whose property names
+ *     are the keys, folded into ConfigValue by a single
+ *     `K extends keyof PaymentsConfigValueMap ? PaymentsConfigValueMap[K] :`
+ *     arm.
+ *
+ * Reading only the arm sees one clause where the map declares dozens of keys,
+ * so every key in those domains would read as unmapped. The map is therefore
+ * read directly, which also means the check never depends on the arm's exact
+ * spelling.
+ */
+const VALUE_INTERFACE_ANCHOR = /export interface \w*ConfigValueMap \{/g;
 
 /** The bodies of every declaration matching `anchor`, each ending at `terminator`. */
 function declarationBodies(source: string, anchor: RegExp, terminator: string): string[] {
@@ -89,13 +125,19 @@ export function extractUnionMembers(source: string): Set<string> {
   return members;
 }
 
-/** Extract the keys the ConfigValue<K> mapping has `K extends '<key>'` clauses for. */
+/** Extract the keys ConfigValue<K> resolves, in both of the shapes above. */
 export function extractMappingKeys(source: string): Set<string> {
-  const bodies = declarationBodies(source, VALUE_MAP_ANCHOR, 'never;');
-  if (bodies.length === 0) throw new Error('no ConfigValue mapping found in the schema type sources');
+  const conditional = declarationBodies(source, VALUE_MAP_ANCHOR, 'never;');
+  const interfaces = declarationBodies(source, VALUE_INTERFACE_ANCHOR, '\n}');
+  if (conditional.length === 0 && interfaces.length === 0) {
+    throw new Error('no ConfigValue mapping found in the schema type sources');
+  }
   const keys = new Set<string>();
-  for (const body of bodies) {
+  for (const body of conditional) {
     for (const match of body.matchAll(/K extends '([^']+)'/g)) keys.add(match[1]!);
+  }
+  for (const body of interfaces) {
+    for (const match of body.matchAll(/'([^']+)'\s*:/g)) keys.add(match[1]!);
   }
   return keys;
 }

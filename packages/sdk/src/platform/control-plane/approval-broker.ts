@@ -34,6 +34,17 @@ export interface SharedApprovalRecord {
   readonly resolvedBy?: string | undefined;
   readonly decision?: PermissionPromptDecision | undefined;
   /**
+   * When this ask stops waiting, for asks that were given a timeout.
+   *
+   * PERSISTED deliberately. The expiry timer lives in `pendingResolvers`, which
+   * is in-memory and rebuilt empty on start, so before this field existed a
+   * restart left a pending approval with no timer, no deadline and no way to
+   * ever resolve — it sat 'pending' forever. Recording the deadline on the
+   * record is what lets `start()` re-arm it, or expire it immediately when the
+   * deadline passed while the process was down. See `rearmRestoredTimers`.
+   */
+  readonly expiresAt?: number | undefined;
+  /**
    * The REAL session an ACCEPTED ask spawned, when acceptance starts one
    * (e.g. the CI fix-session a "fix this?" offer starts) — always an id
    * session attach/resume resolves, never a scheduling handle. Stamped at
@@ -64,6 +75,18 @@ export interface RequestSharedApprovalInput {
   readonly metadata?: Record<string, unknown> | undefined;
   readonly localPrompt?: PermissionRequestHandler | undefined;
   readonly timeoutMs?: number | undefined;
+  /**
+   * Which surface the local prompt belongs to, for the audit trail.
+   *
+   * Was hardcoded to 'tui'/'tui-local' regardless of caller, so every product
+   * that answers at its own terminal — the agent, and now the payment
+   * capability's approval prompts — recorded a decision made somewhere it was
+   * not. That is a lie in exactly the record you consult to find out who
+   * approved a purchase. Defaults preserve the old values for callers that do
+   * not say, because the TUI was the only caller when they were written.
+   */
+  readonly localPromptSurface?: string | undefined;
+  readonly localPromptActor?: string | undefined;
 }
 
 type ApprovalListener = (approval: SharedApprovalRecord) => void;
@@ -182,6 +205,7 @@ function validateApprovalRecord(value: unknown): void {
   validateOptionalString(value['claimedBy']);
   validateOptionalNumber(value['claimedAt']);
   validateOptionalNumber(value['resolvedAt']);
+  validateOptionalNumber(value['expiresAt']);
   validateOptionalString(value['resolvedBy']);
   if (value['decision'] !== undefined) {
     const decision = value['decision'];
@@ -274,6 +298,58 @@ export class ApprovalBroker {
     }
     this.pruneTerminalApprovals();
     this.loaded = true;
+    this.rearmRestoredTimers();
+  }
+
+  /**
+   * Re-arm expiry for approvals restored from disk.
+   *
+   * Without this, a restart orphaned every timed approval: the timer lived only
+   * in `pendingResolvers`, which is rebuilt empty, so a record reloaded as
+   * 'pending' had nothing left that would ever resolve it and sat pending
+   * forever. For a tool-permission ask that is a stale row; for a payment
+   * approval it is money in limbo.
+   *
+   * A deadline that passed while the process was down expires IMMEDIATELY rather
+   * than being extended. Silence for the full window is silence whether or not
+   * we were running to hear it, and for an approval silence means denied — the
+   * direction that cannot spend money nobody agreed to.
+   *
+   * There are no local resolvers to call for a restored record (the awaiting
+   * caller died with the previous process), so this settles the RECORD, which
+   * is what every surface reads.
+   */
+  private rearmRestoredTimers(): void {
+    const now = Date.now();
+    for (const approval of this.approvals.values()) {
+      if (approval.status !== 'pending' && approval.status !== 'claimed') continue;
+      if (approval.expiresAt === undefined) continue;
+      if (this.pendingResolvers.has(approval.id)) continue;
+
+      const remaining = approval.expiresAt - now;
+      if (remaining <= 0) {
+        void this.expireApproval(approval.id, 'deadline passed while the daemon was not running')
+          .catch((error: unknown) => {
+            logger.warn('Restored approval expiration failed', {
+              approvalId: approval.id,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          });
+        continue;
+      }
+
+      const timer = setTimeout(() => {
+        void this.expireApproval(approval.id, 'timed out after a restart re-armed its deadline')
+          .catch((error: unknown) => {
+            logger.warn('Approval expiration failed', {
+              approvalId: approval.id,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          });
+      }, remaining);
+      timer.unref?.();
+      this.pendingResolvers.set(approval.id, { resolvers: [], timer });
+    }
   }
 
   listApprovals(limit = 100): SharedApprovalRecord[] {
@@ -313,6 +389,7 @@ export class ApprovalBroker {
       request: input.request,
       createdAt: now,
       updatedAt: now,
+      ...(input.timeoutMs && input.timeoutMs > 0 ? { expiresAt: now + input.timeoutMs } : {}),
       metadata: input.metadata ?? {},
       audit: [buildAudit('created', 'approval-broker', 'service')],
     };
@@ -352,8 +429,8 @@ export class ApprovalBroker {
           rememberTier: decision.rememberTier,
           reason: decision.reason,
           modifiedArgs: decision.modifiedArgs,
-          actor: 'tui-local',
-          actorSurface: 'tui',
+          actor: input.localPromptActor ?? 'tui-local',
+          actorSurface: input.localPromptSurface ?? 'tui',
         }))
         .catch((error) => logger.warn('Local approval prompt failed', {
           approvalId: approval.id,
