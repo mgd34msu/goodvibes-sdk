@@ -870,17 +870,27 @@ well: the payments capability and `daemon.timezone` live on an unmerged branch
 (`wo/payments-spec`) that a live round owns. Editing that branch from here would
 collide with it. A declared fallback map keyed by config path wires those
 consumers the moment their keys exist, with no change to their code and no
-contention over their files. Keys absent from the schema today are inert and
-cost nothing.
+contention over their files.
+
+**"Inert until the key exists" is true of the `payments.*` rows and false of
+`daemon.timezone`, and the difference is worth stating precisely** because an
+earlier version of this section got it wrong. `ConfigManager.resolvePath()` walks
+only as far as the *parent* section and then reads the field off it. So
+`payments.currency` throws — there is no `payments` section on this branch — and
+the fallback catches that and stays dormant. But `daemon.timezone` resolves
+today: the `daemon` section exists for other reasons, the field is simply unset,
+and an unset field is exactly what the fallback is for. It is live now, not
+waiting on a merge. Both behaviours are correct and both are pinned by tests; it
+was the description that was wrong.
 
 | Consumer config key | Profile field | Status |
 |---|---|---|
-| `daemon.timezone` | `location.timezone` | on `wo/payments-spec`; fallback declared, active on merge |
-| `payments.billingAddress.*` | `commerce.billingAddress` (parsed to the 7 `PostalAddress` parts) | as above |
+| `daemon.timezone` | `location.timezone` | **live now** — the `daemon` section exists, the field is unset |
+| `payments.billingAddress.*` | `commerce.billingAddress` (parsed to the 7 `PostalAddress` parts) | dormant — no `payments` section on this branch; activates on merge |
 | `payments.shippingAddress.*` | `commerce.shippingAddress` (as above) | as above |
 | `payments.currency` | `commerce.currency` | as above |
-| `checkin.quietHours` | `contactMe.quietHours` | on `main`, wired now |
-| `checkin.deliveryChannel` | `contactMe.channel` | on `main`, wired now |
+| `checkin.quietHours` | `contactMe.quietHours` | live now |
+| `checkin.deliveryChannel` | `contactMe.channel` | live now |
 
 ### 13.2 Direct consumers
 
