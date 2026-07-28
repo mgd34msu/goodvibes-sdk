@@ -1103,6 +1103,35 @@ So the rule:
 > second declaration of the same idea that can drift, and it will drift silently,
 > because nothing links the two.
 
+**Three separate defects tonight came from this one root**, which is why it is
+stated as a rule rather than an anecdote:
+
+1. A hand-written `boolean | null` mirror of the IDLE tri-state read `undefined`
+   as falsy, and the watcher silently polled a push-capable server.
+2. Two lanes each declared a structurally-identical `MailboxCursor`. Everything
+   compiled while the store clamped with `Math.max` and the poll loop assigned
+   unconditionally, so a late write would have dragged the high-water mark
+   backwards and **re-announced every message between the two marks**.
+3. `SurfaceAuthorityProbe` typed its parameter `string`, which made the **real**
+   predicate structurally **unassignable** — a function accepting only
+   `AuthoritySurface` cannot stand where one accepting any `string` is required.
+   Passing the genuine check therefore required wrapping it in a shim. That is
+   part of *why* §2.2's defensive check had never run: it could not have. The
+   type carried a comment naming `src/agent/surface-authority.ts`, a path that
+   does not exist, while the predicate lives in
+   `platform/security/untrusted-content.ts` — a drifted type under a comment
+   citing a file that was never there.
+
+**So where a narrowed view is needed, project it from the real declaration
+rather than restating it.** `ExpectationMatcher` began as a hand-authored
+interface and described a method the book does not have — it omitted the
+required `now` — so every caller through it would have been type-checked against
+fiction. As `Pick<VerificationExpectationBook, 'matchCandidate'>` it **cannot
+drift, because there is nothing to keep in sync.**
+
+> Narrowing by projection (`Pick`, `Omit`) beats narrowing by restatement. A
+> restated interface is a second declaration wearing the word "narrow".
+
 Applies equally to `ReceiptTimestamp`, `ValidatedRegistrableDomain`,
 `DeliveredRecipient`, `CardShapeFinding` and `ExpectationMatcher`. Where a
 boundary matters, consumers import the declaration; they do not restate it. A
