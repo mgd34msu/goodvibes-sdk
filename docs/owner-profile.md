@@ -422,6 +422,14 @@ round report. Not an assertion that it is fast; a number. If it is not
 effectively free the design has failed his requirement regardless of how correct
 everything else is.
 
+**Measured: 15.2 ns/read** — median of five runs (14.7, 15.0, 15.2, 15.4, 17.2)
+at 1,000,000 reads of a 200-line profile, on a host at 0.42 load per core.
+Roughly sixty-five times inside the sub-microsecond target.
+
+Quote a figure only from a quiet host. An earlier run during a four-lane build
+read 43.6 ns — still far inside the criterion, but nearly three times the
+settled number. A benchmark taken under contention measures the contention.
+
 ### 5.3 Picking up a hand edit
 
 `fs.watch` on the **containing directory**, filtered to the profile's filename —
