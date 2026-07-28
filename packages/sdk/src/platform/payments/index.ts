@@ -243,3 +243,17 @@ export type { PaymentsConfigReader } from './payments-config.js';
 
 export { createModelMerchantJudge } from './merchant-judge-model.js';
 export type { MerchantJudgeModel } from './merchant-judge-model.js';
+
+// The daemon-side service. Exported because a consumer that cannot construct
+// this cannot use the capability at all: it is what binds the verbs to the
+// flow, and it was reachable from source but absent from the published surface
+// — the exact shape of gap that a subpath check keyed on the exports map
+// cannot see, since the subpath itself was declared correctly.
+export { PaymentsGatewayServiceImpl } from './payments-gateway-service.js';
+export type {
+  PaymentsServiceConfig,
+  PaymentsServiceDeps,
+  BeginCheckoutInput,
+  PaymentBeginResult,
+  PaymentFillCardResult,
+} from './payments-gateway-service.js';
