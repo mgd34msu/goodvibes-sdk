@@ -57,7 +57,8 @@ import { runIdleLoop, type IdleWakeSummary } from './idle-watcher.js';
 import { anySignal } from './any-signal.js';
 import { resolveMailboxStartPosition } from './mailbox-position.js';
 import { drainMailboxDelta, runPollLoop, type MailboxDeltaReport } from './poll-loop.js';
-import type { EmailCapabilityFailureNotice, ImapBodyProbeVerdict } from '../imap-client.js';
+import type { EmailCapabilityFailureNotice } from '../imap-client.js';
+import type { ImapBodyProbe } from '../imap-body-probe.js';
 import type {
   InboundCapabilityReason,
   InboundCapabilityVerdict,
@@ -117,7 +118,7 @@ export class InboundMailboxWatcher {
   private terminal: InboundMailTerminalFailure | null = null;
   private authRetried = false;
   private connectionCount = 0;
-  private lastBodyProbe: ImapBodyProbeVerdict | null = null;
+  private lastBodyProbe: ImapBodyProbe | null = null;
   /** Set when a verdict only a change can clear was reported this pass. */
   private pendingRecheck = false;
   /** Unexpected throws in a row, with no completed drain in between. */
@@ -299,33 +300,17 @@ export class InboundMailboxWatcher {
       return;
     }
 
-    // The connect-time body probe (§3.4d "Scope sufficiency applies to
-    // both"): on a non-empty mailbox, `connection.report.bodyProbe` already
-    // answers "will this server hand over a body" before anything below this
-    // point has run — before the cursor is resolved and before any
-    // expectation could be opened. A refusal here is the SAME finding the
-    // reactive path (`handleDrainFailure`) would reach on the first real
-    // fetch, just reached sooner, so it is classified through the identical
-    // `classifyReadFailure` and can turn out non-terminal (a `[LIMIT]`-style
-    // refusal is a server condition, not a body-access verdict) as well as
-    // terminal. `{ probed: false }` — an empty mailbox, or nothing to
-    // conclude from — changes nothing here: the watcher runs and the
-    // reactive path remains the answer for this mailbox.
-    this.lastBodyProbe = connection.report.bodyProbe;
-    const bodyProbe = connection.report.bodyProbe;
-    if (bodyProbe.probed && !bodyProbe.ok) {
-      const { verdict, terminal, notice } = classifyReadFailure(
-        new Error(bodyProbe.detail),
-        'fetch',
-      );
-      if (terminal) {
-        this.reportTerminal(verdict, notice);
-        return;
-      }
-      this.tracker.record(verdict);
-      await this.pauseBeforeReconnect(verdict.reason);
-      return;
-    }
+    // The connect-time body probe (§3.4d "Scope sufficiency applies to both").
+    // Only two outcomes reach here: a connection that demonstrated it cannot
+    // read message content never becomes a `MailboxConnection` at all — the
+    // port raises `ImapBodyCapabilityError` and `handleOpenFailure` reports it
+    // terminal with the `bodies-unfetchable` remedy — so what survives is
+    // `readable` or `unproven`, and the difference between those two is
+    // recorded rather than flattened. `unproven` is an empty mailbox, which is
+    // not a capability problem and does not stop the watcher; it is still a
+    // different fact from a connection that actually read a body, and the
+    // verdict below says which one this was.
+    this.lastBodyProbe = connection.bodyCapability;
 
     // Protocol half (incl. why a missing UIDNEXT is derived, never assumed to
     // be 0) in `mailbox-position.ts`; the verdict policy is here.

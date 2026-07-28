@@ -38,17 +38,15 @@
  * declaration there is no way to tell "this message is empty" from "this server
  * will not show me the message".
  *
- * Not the same probe as `ImapClient.probeBodyAccess()`
- * ────────────────────────────────────────────────────
- * That one sends `UID FETCH <uid> (UID BODY.PEEK[TEXT])` and reads any FETCH
- * response at all as success, which makes it the check for "will this server
- * answer a UID-addressed fetch" — the command form the real drain uses, and
- * worth asking at connect for that reason. It cannot see the case this file
- * exists for: a server that answers that fetch with an empty section passes it.
- *
- * This one sends sequence-addressed `FETCH n` and compares against the
- * declaration. Neither absorbs the other, and `inbound/connection.ts` runs both
- * — see the note at its `open()`.
+ * One probe, both command forms
+ * ─────────────────────────────
+ * There were briefly two probes here — one asking "will this server answer a
+ * UID-addressed fetch", the other asking "does what came back match what was
+ * declared" — costing three round trips between them. They are one probe now,
+ * because they were two halves of one question. `probeMailboxBody` issues the
+ * sequence-addressed BODYSTRUCTURE that supplies the declaration and the
+ * UID-addressed body fetch that exercises the drain's own addressing, in two
+ * round trips, and neither form is droppable. The argument is at that function.
  */
 
 import {
@@ -78,41 +76,69 @@ export const IMAP_BODY_PROBE_BYTES = 512;
 /**
  * What is known about this connection's ability to read message content.
  *
- * Three cases, not two, and the third is the one that would otherwise be
- * guessed wrong in both directions:
+ * Three outcomes, and the third is the one that would otherwise be guessed
+ * wrong in both directions:
  *
  *   - `readable` — content came back. Demonstrated, not inferred.
- *   - `unfetchable` — the server accepted the fetch and gave nothing usable
- *     back, or refused it outright. Mail can be seen arriving and never read.
+ *   - `unreadable` — this account cannot read message content. Mail can be
+ *     seen arriving and never read.
  *   - `unproven` — there was nothing to read from, so nothing was learned.
  *     NOT the same as `readable`: claiming a capability nobody has
  *     demonstrated is how the Gmail metadata-scope defect looked from outside.
+ *
+ * Discriminated on `outcome`, in the same discipline as `ImapIdleSupport`: the
+ * evidence for an outcome does not exist as a property until `outcome` has been
+ * narrowed, so `if (probe.returnedBytes > 0)` on an unnarrowed probe does not
+ * compile rather than compiling and reading `undefined` as falsy.
  */
-export type ImapBodyReadability =
+export type ImapBodyProbe =
   | {
-    readonly kind: 'readable';
-    /** Bytes the fetch returned. */
+    readonly outcome: 'readable';
+    /** Bytes the body fetch returned. The proof, not an inference from it. */
     readonly returnedBytes: number;
-    /** Octets the server's own BODYSTRUCTURE declared. 0 when it declared none. */
-    readonly declaredOctets: number;
     readonly detail: string;
   }
   | {
-    readonly kind: 'unproven';
+    readonly outcome: 'unproven';
     /** Plain-language reason nothing could be demonstrated. Never a body. */
     readonly detail: string;
   }
   | {
-    readonly kind: 'unfetchable';
-    readonly declaredOctets: number;
-    readonly returnedBytes: number;
+    readonly outcome: 'unreadable';
+    /** How it was learned. One fact, two ways of finding it out. */
+    readonly evidence: ImapBodyUnreadableEvidence;
     /**
-     * The server's own wording where it said anything, and a description of
-     * the declared-versus-returned mismatch where it said nothing. Never a
-     * message body, never a credential.
+     * Plain language, carrying the server's own wording where it gave any.
+     * Never a message body, never a credential.
      */
     readonly detail: string;
   };
+
+/**
+ * The two ways a connection demonstrates it cannot read message content.
+ *
+ * They are one outcome rather than two because they carry the same meaning for
+ * the owner and the same remedy — this account is not permitted to read message
+ * content — and a reader that had to handle them separately would be handling
+ * the same finding twice. They stay distinguishable because the EVIDENCE
+ * genuinely differs, and each case carries only the evidence it actually has:
+ * there is no declaration to report when the server refused before declaring
+ * anything, and no server wording to report when the server said nothing and
+ * merely returned nothing.
+ *
+ *   - `withheld` — the server ACCEPTED the fetch and returned an empty body for
+ *     a message its own BODYSTRUCTURE declared has content in it. This is the
+ *     case that has no other detector: a refusal-only check reads it as success,
+ *     and from outside it is indistinguishable from a mailbox nobody wrote to.
+ *   - `refused` — the server declined, and named no condition
+ *     `classifyServerRefusal` can place. A refusal it CAN place ([LIMIT], an
+ *     auth code, a mailbox code) never reaches here; it is re-thrown for the
+ *     classifier that already owns it, because "this account may not read
+ *     bodies" would be a specific and false explanation for a busy server.
+ */
+export type ImapBodyUnreadableEvidence =
+  | { readonly kind: 'withheld'; readonly declaredOctets: number }
+  | { readonly kind: 'refused'; readonly serverMessage: string };
 
 /**
  * The octets the server declared for the parts a reader would be SHOWN.
@@ -146,10 +172,10 @@ export function assessFetchedBody(input: {
   readonly returnedBytes: number;
   /** Which message this was about, for the detail. Never its content. */
   readonly subject: string;
-}): ImapBodyReadability {
+}): ImapBodyProbe {
   if (!input.responded) {
     return {
-      kind: 'unproven',
+      outcome: 'unproven',
       detail: `The server returned no message for ${input.subject}, so it was `
         + 'gone before it could be read and nothing was learned about whether '
         + 'message content can be read.',
@@ -157,18 +183,16 @@ export function assessFetchedBody(input: {
   }
   if (input.returnedBytes > 0) {
     return {
-      kind: 'readable',
+      outcome: 'readable',
       returnedBytes: input.returnedBytes,
-      declaredOctets: input.declaredOctets,
       detail: `Read ${input.returnedBytes} byte(s) of ${input.subject}, so this `
         + 'account can read message content.',
     };
   }
   if (input.declaredOctets > 0) {
     return {
-      kind: 'unfetchable',
-      declaredOctets: input.declaredOctets,
-      returnedBytes: 0,
+      outcome: 'unreadable',
+      evidence: { kind: 'withheld', declaredOctets: input.declaredOctets },
       detail: `The server accepted the fetch for ${input.subject} and returned `
         + `an empty body, though its own BODYSTRUCTURE declared a text part of `
         + `${input.declaredOctets} octet(s). An empty answer to a message the `
@@ -177,7 +201,7 @@ export function assessFetchedBody(input: {
     };
   }
   return {
-    kind: 'unproven',
+    outcome: 'unproven',
     detail: `${input.subject} declares no readable text content, so reading it `
       + 'proved nothing either way about this account\'s access to message '
       + 'content.',
@@ -228,7 +252,7 @@ export class ImapBodyCapabilityError extends Error {
   }
 }
 
-/** Raise the capability failure that an `unfetchable` reading means. */
+/** Raise the capability failure an `unreadable` outcome means. */
 export function bodyCapabilityFailure(input: {
   readonly mailbox: string;
   readonly summary: string;
@@ -282,16 +306,38 @@ function uidFrom(lines: readonly string[]): number {
 /**
  * Read one existing message far enough to prove content can be read.
  *
- * The newest message is chosen by SEQUENCE number `exists`, which is the same
- * message the highest UID names — IMAP keeps UID order and sequence order
- * together — and costs no `UID SEARCH` to find. Its UID is read back off the
- * response so the detail can name it.
+ * ONE probe, TWO command forms, and both are load-bearing
+ * ──────────────────────────────────────────────────────
+ * This used to be two separate probes making three round trips between them,
+ * and the reason they merged is that each was answering half of one question:
  *
- * BODYSTRUCTURE and the body arrive as two commands rather than one, on
- * purpose: in a single response the structure and the section sit in the same
+ *   1. `FETCH <exists> (UID BODYSTRUCTURE)` — SEQUENCE-addressed. Asks the
+ *      server to describe the newest message, which is what supplies the
+ *      declared octet count the whole check compares against, and its UID.
+ *      The newest message is chosen by sequence number `exists` because that is
+ *      the same message the highest UID names — IMAP keeps UID order and
+ *      sequence order together — and it costs no `UID SEARCH` to find.
+ *   2. `UID FETCH <uid> BODY.PEEK[]<0.N>` — UID-addressed, and deliberately so.
+ *      That is the command form the real drain uses, so a server that refuses
+ *      UID-addressed fetches is caught HERE, at connect, rather than on the
+ *      first message that matters. Fetching the body by sequence number instead
+ *      would leave that refusal undiscovered until a verification mail arrived.
+ *
+ * So the two forms are not redundant: the first is the only source of the
+ * declaration, and the second is the only exercise of the drain's own
+ * addressing. Losing either loses a case — a withheld body becomes invisible
+ * without the comparison, and a UID-refusing server becomes invisible without
+ * the UID fetch.
+ *
+ * Two round trips, once per connection. The pair cannot collapse into one
+ * command: in a single response the structure and the section sit in the same
  * FETCH item list, and `extractFetchSection` would collect the structure text
- * as part of the body. Two round trips, once per connection, buys a reading
- * that cannot be off by the server's item ordering.
+ * as part of the body, which would read as "content came back" for a server
+ * that returned none.
+ *
+ * `BODY.PEEK`, and bounded to `IMAP_BODY_PROBE_BYTES`, so nothing is marked
+ * `\Seen` and no large message is pulled through a connection that has not yet
+ * been declared healthy.
  */
 export async function probeMailboxBody(
   session: Pick<ImapSession, 'command'>,
@@ -300,11 +346,11 @@ export async function probeMailboxBody(
     readonly exists: number | null;
     readonly mailbox: string;
   },
-): Promise<ImapBodyReadability> {
+): Promise<ImapBodyProbe> {
   const exists = input.exists ?? 0;
   if (exists <= 0) {
     return {
-      kind: 'unproven',
+      outcome: 'unproven',
       detail: `The mailbox '${input.mailbox}' holds no messages, so there was `
         + 'nothing to read and it is not yet proven that this account can read '
         + 'message content. The first message that arrives settles it.',
@@ -318,7 +364,7 @@ export async function probeMailboxBody(
   );
   if (!hasFetchResponse(structureLines)) {
     return {
-      kind: 'unproven',
+      outcome: 'unproven',
       detail: `The newest message in '${input.mailbox}' was gone before it could `
         + 'be read, so nothing was learned about whether message content can be '
         + 'read.',
@@ -327,9 +373,17 @@ export async function probeMailboxBody(
   const parts = parseBodyStructure(extractBodyStructure(structureLines));
   const uid = uidFrom(structureLines);
 
+  // UID-addressed whenever the server named a UID, because that is the form the
+  // drain uses. Falling back to the sequence form when it named none is not a
+  // silent downgrade of the check: the declared-versus-returned comparison —
+  // the part with no other detector — runs either way, and refusing to probe at
+  // all because a server omitted a UID it was explicitly asked for would turn a
+  // server quirk into a mailbox nobody watches.
   const bodyLines = await probeCommand(
     session,
-    `FETCH ${exists} BODY.PEEK[]<0.${IMAP_BODY_PROBE_BYTES}>`,
+    uid > 0
+      ? `UID FETCH ${uid} BODY.PEEK[]<0.${IMAP_BODY_PROBE_BYTES}>`
+      : `FETCH ${exists} BODY.PEEK[]<0.${IMAP_BODY_PROBE_BYTES}>`,
     input.mailbox,
   );
   const section = extractFetchSection(bodyLines);

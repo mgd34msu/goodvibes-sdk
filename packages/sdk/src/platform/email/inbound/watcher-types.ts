@@ -15,7 +15,7 @@
  * Re-exported from `watcher.ts`, which remains the name every consumer imports.
  */
 
-import type { ImapBodyProbeVerdict } from '../imap-client.js';
+import type { ImapBodyProbe } from '../imap-body-probe.js';
 import type {
   InboundCapabilityVerdict,
   InboundMailObserver,
@@ -69,14 +69,13 @@ export interface InboundMailboxWatcherStatus {
    * What the last connection's connect-time body probe found, or `null`
    * before any connection has opened.
    *
-   * Kept distinct from `verdict` on purpose: `{ probed: false }` (an empty
-   * mailbox at connect time) is not a capability problem and does not change
-   * `verdict` at all, but it is a different fact from `{ probed: true, ok:
-   * true }` and has to stay visible as one — reading either as "fine, same as
-   * the other" is the exact silent-degradation mistake `ImapBodyProbeVerdict`
-   * exists to make impossible to write by accident.
+   * Kept distinct from `verdict` on purpose: `unproven` (an empty mailbox at
+   * connect time) and `readable` are different facts about this account, and
+   * both have to stay visible as such — reading either as "fine, same as the
+   * other" is the exact silent-degradation mistake `ImapBodyProbe` exists to
+   * make impossible to write by accident.
    */
-  readonly bodyProbe: ImapBodyProbeVerdict | null;
+  readonly bodyProbe: ImapBodyProbe | null;
 }
 
 /**

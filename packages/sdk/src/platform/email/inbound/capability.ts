@@ -43,7 +43,7 @@ import type {
   EmailCapabilityFailureReason,
   ImapIdleDecision,
 } from '../imap-client.js';
-import type { ImapBodyReadability } from '../imap-body-probe.js';
+import type { ImapBodyProbe } from '../imap-body-probe.js';
 import type {
   InboundCapabilityReason,
   InboundCapabilityState,
@@ -226,7 +226,7 @@ export function verdictForOpenConnection(input: {
    * while unable to prove it can read anything would be describing the less
    * consequential of two facts.
    */
-  readonly body?: ImapBodyReadability | undefined;
+  readonly body?: ImapBodyProbe | undefined;
 }): InboundCapabilityVerdict {
   const bodyVerdict = input.body === undefined ? null : verdictForBodyReadability(input.body);
   if (bodyVerdict !== null) return bodyVerdict;
@@ -270,15 +270,15 @@ export function verdictForOpenConnection(input: {
  * able to prove it can read message content, and lets the first real message
  * settle it.
  *
- * `unfetchable` never reaches here in the connect path: the connection port
+ * `unreadable` never reaches here in the connect path: the connection port
  * raises before it hands a connection back. It is mapped anyway, because a
  * reading produced anywhere else must not silently fall through to "fine".
  */
 export function verdictForBodyReadability(
-  body: ImapBodyReadability,
+  body: ImapBodyProbe,
 ): InboundCapabilityVerdict | null {
-  if (body.kind === 'readable') return null;
-  if (body.kind === 'unproven') return capabilityVerdict('bodies-unproven', body.detail);
+  if (body.outcome === 'readable') return null;
+  if (body.outcome === 'unproven') return capabilityVerdict('bodies-unproven', body.detail);
   return capabilityVerdict('bodies-unfetchable', body.detail);
 }
 

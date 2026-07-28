@@ -299,8 +299,36 @@ export async function makeFakeMailbox(
       return;
     }
 
-    // The body probe addresses a message by SEQUENCE number, so this has to be
-    // matched before the UID form and must not be answered by it.
+    /**
+     * The body section of the connect-time probe, or NIL when the options say
+     * the server withholds it.
+     *
+     * Shared by the sequence-addressed and UID-addressed arms below, because
+     * the probe now issues one of each and a fake that answered them
+     * differently would be testing the fake rather than the client.
+     */
+    const writeProbeBody = (
+      socket: Socket,
+      seq: number,
+      message: FakeMessage,
+      probe: Exclude<FakeMailboxOptions['bodyProbe'], undefined>,
+    ): void => {
+      if (probe === 'ok') {
+        serverWrite(socket, `* ${seq} FETCH (UID ${message.uid} BODY[]<0> `);
+        serverWrite(socket, `From: ${message.from}`);
+        serverWrite(socket, `Subject: ${message.subject}`);
+        serverWrite(socket, '');
+        serverWrite(socket, 'Body text the server was willing to hand over.');
+        serverWrite(socket, ')');
+      } else {
+        serverWrite(socket, `* ${seq} FETCH (UID ${message.uid} BODY[]<0> NIL)`);
+      }
+      serverWrite(socket, `${tag} OK FETCH completed`);
+    };
+
+    // The probe's BODYSTRUCTURE command addresses a message by SEQUENCE number,
+    // so this has to be matched before the UID form and must not be answered
+    // by it.
     if (/^FETCH\b/i.test(rest)) {
       const probe = options.bodyProbe ?? 'ok';
       if (probe === 'refused') {
@@ -321,23 +349,33 @@ export async function makeFakeMailbox(
         serverWrite(socket, `${tag} OK FETCH completed`);
         return;
       }
-      if (probe === 'ok') {
-        serverWrite(socket, `* ${seq} FETCH (UID ${message.uid} BODY[]<0> `);
-        serverWrite(socket, `From: ${message.from}`);
-        serverWrite(socket, `Subject: ${message.subject}`);
-        serverWrite(socket, '');
-        serverWrite(socket, 'Body text the server was willing to hand over.');
-        serverWrite(socket, ')');
-      } else {
-        serverWrite(socket, `* ${seq} FETCH (UID ${message.uid} BODY[]<0> NIL)`);
-      }
-      serverWrite(socket, `${tag} OK FETCH completed`);
+      writeProbeBody(socket, seq, message, probe);
       return;
     }
 
     if (/^UID FETCH\b/i.test(rest)) {
       if (options.fetch === 'refused') {
         serverWrite(socket, `${tag} NO Server error fetching message data`);
+        return;
+      }
+      // The probe's BODY fetch, addressed by UID — the same form the real
+      // drain uses, which is exactly why the probe sends it. `options.fetch`
+      // above already refused it: a server that will not answer UID-addressed
+      // fetches refuses this one too, and that is the point of asking in this
+      // form rather than by sequence number.
+      if (/BODY\.PEEK\[\]/i.test(rest)) {
+        const probe = options.bodyProbe ?? 'ok';
+        if (probe === 'refused') {
+          serverWrite(socket, `${tag} NO Not permitted`);
+          return;
+        }
+        const askedUid = parseInt(/^UID FETCH (\d+)/i.exec(rest)?.[1] ?? '0', 10);
+        const index = messages.findIndex((entry) => entry.uid === askedUid);
+        if (index < 0) {
+          serverWrite(socket, `${tag} OK FETCH completed`);
+          return;
+        }
+        writeProbeBody(socket, index + 1, messages[index] as FakeMessage, probe);
         return;
       }
       const wanted = (/^UID FETCH (\S+)/i.exec(rest)?.[1] ?? '')

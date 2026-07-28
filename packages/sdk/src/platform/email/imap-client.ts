@@ -110,7 +110,7 @@ import {
 import { readMessageDetail } from './imap-message-read.js';
 import {
   probeMailboxBody,
-  type ImapBodyReadability,
+  type ImapBodyProbe,
 } from './imap-body-probe.js';
 import { ImapSession } from './imap-session.js';
 import type {
@@ -143,18 +143,20 @@ import {
 } from './imap-names.js';
 import {
   NOT_OPEN_MESSAGE,
-  NOT_PROBED,
   composeOpenFailure,
   forgetConnection,
   idleSupportFrom,
   rememberConnection,
-  type ImapBodyProbeVerdict,
   type ImapConnectionReport,
 } from './imap-open.js';
 
 // Re-exported so the module's importers keep one entry point for the client
 // and everything that describes opening it.
 export { imapQuoteCredential } from './imap-names.js';
+export type {
+  ImapBodyProbe,
+  ImapBodyUnreadableEvidence,
+} from './imap-body-probe.js';
 export {
   ImapOpenError,
   describeEmailCapabilityFailure,
@@ -163,7 +165,6 @@ export {
   resolveIdleSupport,
   type EmailCapabilityFailureNotice,
   type EmailCapabilityFailureReason,
-  type ImapBodyProbeVerdict,
   type ImapConnectionReport,
   type ImapIdleDecision,
   type ImapIdleSupport,
@@ -295,68 +296,7 @@ export class ImapClient {
       advertisedCapabilities: this.advertised,
       idle: idleSupportFrom(this.advertised),
       mailbox: { ...this.status, name: this.mailbox },
-      // Plain open() never probes body access — see `probeBodyAccess()` and
-      // `ImapBodyProbeVerdict`. This is accurate (no round trip happened),
-      // not a placeholder: only the inbound watcher's connection wiring
-      // calls the probe and replaces this field with what it found.
-      bodyProbe: NOT_PROBED,
     };
-  }
-
-  /**
-   * Probe whether this connection will actually hand over message content,
-   * without assuming it from the fact that EXAMINE succeeded.
-   *
-   * `CAPABILITY` never says "you may fetch bodies from this mailbox" the way
-   * a Gmail OAuth token declares its granted scopes — IMAP has no equivalent
-   * declaration, and permission is discoverable only by asking for data. So
-   * this asks, once, for the smallest possible slice of the newest message:
-   * one byte of `BODY.PEEK[TEXT]`, which never marks the message `\Seen`.
-   *
-   * **One round trip.** The UID asked for is `UIDNEXT - 1` — the highest UID
-   * EXAMINE already told us about — rather than a UID found by a separate
-   * `UID SEARCH`, because a second command would make this a two-round-trip
-   * probe and the whole point is answering as cheaply as the reactive path
-   * answers it anyway, before any expectation could be opened.
-   *
-   * **Empty mailbox: nothing is asked for.** `EXISTS` at zero, or no
-   * `UIDNEXT` to compute a UID from, means there is genuinely nothing to
-   * probe — not "assume it works", not "fetch a UID that cannot exist and
-   * read the error as a verdict". Returns `{ probed: false }` without
-   * touching the wire.
-   *
-   * **A UID that no longer exists is not a refusal.** If the message named by
-   * `UIDNEXT - 1` was expunged after being assigned and before this
-   * connection opened, the server answers the FETCH with no message data and
-   * no error — RFC 3501 does not treat "no such message" as a refusal. That
-   * is read as `{ probed: false }` rather than `ok: true`: no body was
-   * actually handed over, so nothing was confirmed, and claiming otherwise
-   * would be exactly the empty-looking-success this design refuses
-   * everywhere else.
-   *
-   * Never throws: a refused or failed FETCH is reported as
-   * `{ probed: true, ok: false, detail }`, with the raw error text preserved
-   * in `detail` so a caller can classify it through the SAME classifier the
-   * reactive path uses (`classifyReadFailure` in `inbound/capability.ts`)
-   * rather than a second one.
-   */
-  async probeBodyAccess(): Promise<ImapBodyProbeVerdict> {
-    const session = this.requireReadableMailbox();
-    const exists = this.status?.exists ?? 0;
-    const uidNext = this.status?.uidNext ?? null;
-    if (exists <= 0 || uidNext === null || uidNext <= 1) return NOT_PROBED;
-    const uid = uidNext - 1;
-    let lines: string[];
-    try {
-      lines = await session.command(`UID FETCH ${uid} (UID BODY.PEEK[TEXT]<0.1>)`);
-    } catch (err) {
-      return {
-        probed: true,
-        ok: false,
-        detail: err instanceof Error ? err.message : String(err ?? ''),
-      };
-    }
-    return hasFetchResponse(lines) ? { probed: true, ok: true } : NOT_PROBED;
   }
 
   /**
@@ -511,12 +451,16 @@ export class ImapClient {
    * was there. Bounded, and `BODY.PEEK`, so it neither pulls a large message
    * nor marks anything `\Seen`.
    *
+   * Two round trips, both forms: the sequence-addressed BODYSTRUCTURE that
+   * supplies the declaration, and the UID-addressed body fetch that exercises
+   * the same addressing the real drain uses. See `probeMailboxBody`.
+   *
    * Raises `ImapBodyCapabilityError` when the server refuses without naming a
    * reason of its own; returns `unproven` when the mailbox is empty, because
    * there was nothing to read and claiming otherwise would be the defect this
    * exists to catch.
    */
-  async probeBodyReadable(): Promise<ImapBodyReadability> {
+  async probeBodyReadable(): Promise<ImapBodyProbe> {
     const session = this.requireReadableMailbox();
     return probeMailboxBody(session, {
       exists: this.status?.exists ?? null,

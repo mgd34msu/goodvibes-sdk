@@ -27,7 +27,7 @@ import type { Socket } from 'node:net';
 import { ImapClient, imapConnection } from '../imap-client.js';
 import {
   bodyCapabilityFailure,
-  type ImapBodyReadability,
+  type ImapBodyProbe,
 } from '../imap-body-probe.js';
 import type {
   MailboxConnection,
@@ -90,51 +90,29 @@ export function imapMailboxConnectionPort(
       // connection is asked to prove it, at connect time, before the watcher
       // opens an expectation nobody can satisfy.
       //
-      // Both probes belong HERE rather than inside `ImapClient.open()`:
+      // The probe belongs HERE rather than inside `ImapClient.open()`:
       // `open()` is the general entry, shared by every ad hoc caller
       // (`EmailService` included), and probing on each of those would spend
       // round trips nobody asked for. Only a long-lived watcher needs the
-      // answer up front.
-      //
-      // WHY TWO PROBES AND NOT ONE. They look redundant and are not: they send
-      // DIFFERENT COMMANDS and catch different refusals.
-      //
-      //   - `probeBodyAccess()` sends `UID FETCH <uid> (UID BODY.PEEK[TEXT])`.
-      //     That is the command form the real drain uses, so it is the one that
-      //     catches a server which refuses UID-addressed fetches — and it
-      //     catches it here, at connect, instead of on the first real message.
-      //     Its answer lands in `report.bodyProbe`, and `serve()` classifies a
-      //     refusal through `classifyReadFailure` into `fetch-refused`, which
-      //     can come out non-terminal because a `[LIMIT]`-style refusal is a
-      //     server condition rather than a verdict about this account.
-      //   - `probeBodyReadable()` sends sequence-addressed
-      //     `FETCH n (UID BODYSTRUCTURE)` and `FETCH n BODY.PEEK[]<0.N>`, and
-      //     compares what came back against what the server's own BODYSTRUCTURE
-      //     declared. That comparison is the only thing that catches a server
-      //     which ACCEPTS the fetch and hands over nothing — a refusal-only
-      //     check reads that as success, and from the outside it is
-      //     indistinguishable from a mailbox nobody has written to.
-      //
-      // Neither subsumes the other. Dropping the first loses connect-time
-      // detection of a refused UID FETCH; dropping the second loses the
-      // withheld-body case entirely, which is the one this capability exists
-      // for. Two extra round trips, once per connection, is what that costs.
-      const report = { ...opened, bodyProbe: await client.probeBodyAccess() };
-
-      let bodyCapability: ImapBodyReadability;
+      // answer up front. Two round trips, once per connection, and both
+      // command forms — see `probeMailboxBody` for why neither is droppable.
+      let bodyCapability: ImapBodyProbe;
       try {
         bodyCapability = await client.probeBodyReadable();
-        if (bodyCapability.kind === 'unfetchable') {
-          // The server said yes and returned an empty body for a message its
-          // own BODYSTRUCTURE said has content in it. No amount of
-          // reconnecting grants an account access rights, so this is terminal
-          // with its own reason and its own remedy — not `fetch-refused`,
-          // which points at folder and IMAP-access restrictions instead of at
-          // what this account is permitted to read.
+        if (bodyCapability.outcome === 'unreadable') {
+          // This account cannot read message content — either the server
+          // accepted the fetch and returned nothing for a message it declared
+          // has content, or it refused and named no condition any classifier
+          // can place. No amount of reconnecting grants an account access
+          // rights, so this is terminal, with its own reason and its own
+          // remedy rather than the folder-and-access wording `fetch-refused`
+          // carries.
           throw bodyCapabilityFailure({
             mailbox: options.mailbox,
             summary: bodyCapability.detail,
-            serverMessage: '',
+            serverMessage: bodyCapability.evidence.kind === 'refused'
+              ? bodyCapability.evidence.serverMessage
+              : '',
           });
         }
       } catch (error) {
@@ -142,6 +120,7 @@ export function imapMailboxConnectionPort(
         throw error;
       }
 
+      const report = opened;
       const reader: MailboxReader = {
         capabilities: () => client.capabilities(),
         fetchEnvelopes: (uids) => client.fetchEnvelopes(uids),

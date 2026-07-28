@@ -48,7 +48,8 @@ export {
   bodyCapabilityFailure,
   declaredTextOctets,
   probeMailboxBody,
-  type ImapBodyReadability,
+  type ImapBodyProbe,
+  type ImapBodyUnreadableEvidence,
 } from '../imap-body-probe.js';
 
 export {

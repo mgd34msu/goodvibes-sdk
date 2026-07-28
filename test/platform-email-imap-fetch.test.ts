@@ -846,7 +846,7 @@ describe('assessFetchedBody — declared octets against returned bytes', () => {
       returnedBytes: 118,
       subject: "UID 7 in 'INBOX'",
     });
-    expect(reading.kind).toBe('readable');
+    expect(reading.outcome).toBe('readable');
   });
 
   test('nothing came back for a message the server SAID has content: withheld', () => {
@@ -859,7 +859,7 @@ describe('assessFetchedBody — declared octets against returned bytes', () => {
       returnedBytes: 0,
       subject: "UID 7 in 'INBOX'",
     });
-    expect(reading.kind).toBe('unfetchable');
+    expect(reading.outcome).toBe('unreadable');
     expect(reading.detail).toContain('120');
   });
 
@@ -870,7 +870,7 @@ describe('assessFetchedBody — declared octets against returned bytes', () => {
       returnedBytes: 0,
       subject: "UID 7 in 'INBOX'",
     });
-    expect(reading.kind).toBe('unproven');
+    expect(reading.outcome).toBe('unproven');
   });
 
   test('a message that vanished before it was read proves nothing either way', () => {
@@ -880,7 +880,7 @@ describe('assessFetchedBody — declared octets against returned bytes', () => {
       returnedBytes: 0,
       subject: "UID 7 in 'INBOX'",
     });
-    expect(reading.kind).toBe('unproven');
+    expect(reading.outcome).toBe('unproven');
   });
 });
 
@@ -904,15 +904,29 @@ describe('probeMailboxBody', () => {
 
     const reading = await probeMailboxBody(session, { exists: 3, mailbox: 'INBOX' });
 
-    expect(reading.kind).toBe('readable');
+    expect(reading.outcome).toBe('readable');
     expect(reading.detail).toContain('UID 137');
-    // Read-only and bounded: a plain BODY[ would mark the owner's mail read,
-    // and an unbounded fetch would pull whatever a stranger attached down a
-    // connection that is not yet declared healthy.
+    // TWO round trips, and the two command FORMS are the whole reason this is
+    // one probe rather than the two it replaced.
+    //
+    // The first is sequence-addressed, because it is what supplies the declared
+    // octet count the comparison needs. The second is UID-addressed — `UID
+    // FETCH 137`, not `FETCH 3` — because that is the form the real drain uses,
+    // so a server that refuses UID-addressed fetches is caught here at connect
+    // rather than on the first message that matters. Rewriting the second as a
+    // sequence fetch would still satisfy every other assertion in this file and
+    // would silently drop that case.
+    //
+    // Read-only and bounded throughout: a plain BODY[ would mark the owner's
+    // mail read, and an unbounded fetch would pull whatever a stranger attached
+    // down a connection that is not yet declared healthy.
     expect(session.commands).toEqual([
       'FETCH 3 (UID BODYSTRUCTURE)',
-      `FETCH 3 BODY.PEEK[]<0.${IMAP_BODY_PROBE_BYTES}>`,
+      `UID FETCH 137 BODY.PEEK[]<0.${IMAP_BODY_PROBE_BYTES}>`,
     ]);
+    for (const command of session.commands) {
+      expect(command.includes(' BODY[')).toBe(false);
+    }
   });
 
   test('an empty section for a declared text part is a withheld body', async () => {
@@ -921,7 +935,7 @@ describe('probeMailboxBody', () => {
 
     const reading = await probeMailboxBody(session, { exists: 3, mailbox: 'INBOX' });
 
-    expect(reading.kind).toBe('unfetchable');
+    expect(reading.outcome).toBe('unreadable');
     expect(reading.detail).toContain('120');
   });
 
@@ -930,14 +944,14 @@ describe('probeMailboxBody', () => {
       /BODYSTRUCTURE/.test(command) ? PROBE_STRUCTURE_ZERO(137) : PROBE_BODY_EMPTY(137));
 
     const reading = await probeMailboxBody(session, { exists: 3, mailbox: 'INBOX' });
-    expect(reading.kind).toBe('unproven');
+    expect(reading.outcome).toBe('unproven');
   });
 
   test('an empty mailbox is unproven, and does not claim to have been verified', async () => {
     const session = scriptedSession(() => []);
     const reading = await probeMailboxBody(session, { exists: 0, mailbox: 'INBOX' });
 
-    expect(reading.kind).toBe('unproven');
+    expect(reading.outcome).toBe('unproven');
     expect(reading.detail).toContain('not yet proven');
     // Nothing was asked of the server, because there was nothing to ask about.
     expect(session.commands).toEqual([]);
@@ -950,7 +964,7 @@ describe('probeMailboxBody', () => {
     const session = scriptedSession(() => ['A0005 OK FETCH completed']);
     const reading = await probeMailboxBody(session, { exists: 3, mailbox: 'INBOX' });
 
-    expect(reading.kind).toBe('unproven');
+    expect(reading.outcome).toBe('unproven');
     // It stopped there rather than fetching a body for a message that is gone.
     expect(session.commands).toEqual(['FETCH 3 (UID BODYSTRUCTURE)']);
   });

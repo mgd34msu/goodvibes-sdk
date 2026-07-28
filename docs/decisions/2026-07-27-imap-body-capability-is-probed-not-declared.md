@@ -187,23 +187,62 @@ The `bodies-unfetchable` half needed no watcher change: the connection port
 raises before returning a connection, and the existing
 `classifyOpenFailure` → `reportTerminal` path carries it to `insufficient`.
 
-## Two probes, and why neither absorbs the other
+## One probe, both command forms
 
-This connection runs `probeBodyAccess()` and `probeBodyReadable()` both, which
-reads as redundant and is not. They send different commands and catch different
-refusals:
+There were briefly TWO probes here, and an earlier revision of this document
+argued they had to stay two. They are one now. Recording why, so nobody
+re-splits them on the strength of the argument that used to be here.
 
-- `probeBodyAccess()` sends `UID FETCH <uid> (UID BODY.PEEK[TEXT])` — the
-  command form the real drain uses — so it is what catches a server that
-  refuses UID-addressed fetches, at connect rather than on the first real
-  message. Its refusal stays `fetch-refused`, classified by
-  `classifyReadFailure`, and can come out non-terminal: a `[LIMIT]`-style
-  refusal is a server condition, not a verdict about this account.
-- `probeBodyReadable()` sends sequence-addressed `FETCH n (UID BODYSTRUCTURE)`
-  and `FETCH n BODY.PEEK[]<0.N>` and compares returned against declared. That
-  comparison is the only thing that catches a server which ACCEPTS the fetch and
-  returns nothing, which a refusal-only check reads as success.
+The two were `probeBodyAccess()` — a single `UID FETCH <uid> BODY.PEEK[TEXT]`
+that read any FETCH response at all as success — and `probeBodyReadable()`, a
+sequence-addressed `FETCH n (UID BODYSTRUCTURE)` / `FETCH n BODY.PEEK[]` pair
+that compared returned bytes against declared octets. The observation that kept
+them apart was correct and still is: **neither detection case can be dropped.**
 
-Dropping the first loses connect-time detection of a refused `UID FETCH`;
-dropping the second loses the withheld-body case, which is the case this
-document exists for. Two extra round trips, once per connection, is the price.
+- The **UID-addressed** form is the addressing the real drain uses, so it is
+  what catches a server that refuses UID-addressed fetches — at connect, rather
+  than on the first message that matters.
+- The **declared-versus-returned comparison** is the only thing that catches a
+  server which ACCEPTS the fetch and hands over nothing. A refusal-only check
+  reads that as success, and from outside it is indistinguishable from a mailbox
+  nobody has written to.
+
+What was wrong was the conclusion that two detections need two probes. They are
+two properties of one exchange, and one probe can carry both by choosing its
+command forms deliberately:
+
+1. `FETCH <exists> (UID BODYSTRUCTURE)` — sequence-addressed, because it is what
+   supplies the declaration the comparison needs, and it yields the UID.
+2. `UID FETCH <uid> BODY.PEEK[]<0.N>` — **UID-addressed**, because that is the
+   drain's own form.
+
+The second used to be a sequence fetch. Making it UID-addressed is the whole of
+the merge: the declaration still comes from step 1, the comparison still runs on
+step 2, and step 2 now also exercises the addressing the deleted probe existed
+to exercise.
+
+**Cost, measured rather than asserted.** Three FETCH round trips per non-empty
+connect became two; an empty mailbox cost nothing before and costs nothing now.
+`test/probe-roundtrip-count.test.ts` counts them on the wire, so a change that
+quietly reintroduces a third fails there rather than being paid on every connect
+in silence.
+
+**One vocabulary.** `ImapBodyProbeVerdict` (`probed`/`ok`) and
+`ImapBodyReadability` (`readable`/`unproven`/`unfetchable`) described the same
+fact in two shapes, and a connection carried both. There is now one
+`ImapBodyProbe` with three outcomes — `readable`, `unproven`, `unreadable` — and
+`unreadable` carries an `evidence` union naming which of the two ways it was
+learned (`withheld`, or `refused` with the server's own wording). One reason
+code reaches the owner, `bodies-unfetchable`, because both evidences mean the
+same thing to him and carry the same remedy.
+
+One consequence worth naming: a refusal of the probe that no classifier can
+place now reports `bodies-unfetchable` rather than `fetch-refused`. Both are
+`insufficient` and both are terminal, so nothing changes about whether the
+watcher runs — but the remedy the owner reads now points at what the account may
+READ rather than at folder and IMAP-access restrictions, which is the more
+useful of the two for the case this document exists for. `fetch-refused` remains
+the verdict for a fetch that fails during ordinary draining, which
+`handleDrainFailure` still classifies through `classifyReadFailure` unchanged.
+A refusal the classifier CAN place — `[LIMIT]`, an auth code, a mailbox code —
+is still re-thrown to `classifyOpenFailure` and never becomes a body verdict.
