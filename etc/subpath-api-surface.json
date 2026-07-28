@@ -21721,6 +21721,21 @@
       "kind": "type"
     },
     {
+      "name": "BeginCheckoutInput",
+      "kind": "interface",
+      "required": [
+        "cardId",
+        "checkoutUrl",
+        "controls",
+        "item",
+        "merchantDomain",
+        "pageId",
+        "reading",
+        "requestedLines",
+        "sessionId"
+      ]
+    },
+    {
       "name": "BudgetDraw",
       "kind": "interface",
       "required": [
@@ -22281,6 +22296,31 @@
       ]
     },
     {
+      "name": "PaymentBeginResult",
+      "kind": "interface",
+      "required": [
+        "challengeStep",
+        "currency",
+        "merchantOrderId",
+        "outcome",
+        "purchaseId",
+        "reason",
+        "shippingTierUsed",
+        "steppedDown",
+        "totalMinorUnits"
+      ]
+    },
+    {
+      "name": "PaymentFillCardResult",
+      "kind": "interface",
+      "required": [
+        "failedField",
+        "filled",
+        "ok",
+        "reason"
+      ]
+    },
+    {
       "name": "PaymentIntent",
       "kind": "type"
     },
@@ -22330,6 +22370,39 @@
       "kind": "interface",
       "required": [
         "get"
+      ]
+    },
+    {
+      "name": "PaymentsGatewayServiceImpl",
+      "kind": "class"
+    },
+    {
+      "name": "PaymentsServiceConfig",
+      "kind": "interface",
+      "required": [
+        "approvalMinutes",
+        "budgetCurrency",
+        "limits",
+        "preferredTier",
+        "timezone",
+        "vetoMinutes"
+      ]
+    },
+    {
+      "name": "PaymentsServiceDeps",
+      "kind": "interface",
+      "required": [
+        "addresses",
+        "cards",
+        "config",
+        "driverFor",
+        "gates",
+        "journal",
+        "ledger",
+        "merchantJudge",
+        "notifier",
+        "purchases",
+        "untrusted"
       ]
     },
     {
