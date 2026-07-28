@@ -69,6 +69,23 @@ const CRLF = '\r\n';
 const MAX_UNCONSUMED_COMPLETIONS = 32;
 
 /**
+ * The most response lines one command will retain before giving up on it.
+ *
+ * A command collects every line that arrives while it is in flight, which is
+ * right for a FETCH and wrong for a command that stays in flight for
+ * twenty-seven minutes: IDLE is the steady state of a daemon that runs for
+ * weeks, and on a busy mailbox its line array would grow for the whole round
+ * with nothing consuming it. Long-lived callers opt out with
+ * `retainUntagged: false` and read the stream through `onUntagged` instead.
+ *
+ * This ceiling is the backstop for everyone else. It FAILS the command rather
+ * than dropping lines out of it: a silently shortened response is a wrong
+ * answer, and a wrong answer about which messages exist is exactly the kind
+ * that gets written to a cursor. No real response comes close to it.
+ */
+const MAX_COMMAND_LINES = 100_000;
+
+/**
  * Take the longest prefix of `text` that fits in `maxBytes` bytes of UTF-8,
  * and report how many bytes that prefix actually is.
  *
@@ -129,6 +146,20 @@ export function takeUtf8Bytes(
  */
 export type ImapUntaggedListener = (line: string) => void;
 
+/** What a caller wants kept while a command is in flight. */
+export interface ImapSendOptions {
+  /**
+   * Collect untagged lines into this command's response. Default true, which
+   * is what an ordinary request/response command needs.
+   *
+   * IDLE sets it false: it stays in flight for up to twenty-seven minutes, its
+   * untagged traffic is delivered to subscribers as it arrives, and a second
+   * retained copy would be an array that grows for the whole round with
+   * nothing reading it. The tagged completion is still collected either way.
+   */
+  readonly retainUntagged?: boolean | undefined;
+}
+
 /** How long a single wait may last, and what may cancel it. */
 export interface ImapReadOptions {
   /**
@@ -158,7 +189,7 @@ export interface ImapConnection {
   /** Subscribe to untagged responses. Returns the unsubscribe function. */
   onUntagged(listener: ImapUntaggedListener): () => void;
   /** Send a tagged command and return its tag without awaiting completion. */
-  sendCommand(text: string): Promise<string>;
+  sendCommand(text: string, options?: ImapSendOptions): Promise<string>;
   /** Write one bare line that is not a tagged command, e.g. IDLE's `DONE`. */
   sendRawLine(text: string): Promise<void>;
   /** Await the `+ ...` continuation request for a command already in flight. */
@@ -184,6 +215,14 @@ interface Waiter<T> {
 interface PendingCommand {
   readonly tag: string;
   readonly lines: string[];
+  /**
+   * Whether untagged lines are collected for this command at all.
+   *
+   * False for a command that stays in flight indefinitely and reads the
+   * stream through subscribers — the untagged traffic is consumed there, and
+   * retaining a second copy for a response nobody will read is pure growth.
+   */
+  readonly retainUntagged: boolean;
   /** The status word of the tagged completion, or null while in flight. */
   completion: 'OK' | 'NO' | 'BAD' | null;
   /** The tagged completion line verbatim, for the failure message. */
@@ -351,7 +390,17 @@ export class ImapSession implements ImapConnection {
     }
 
     const open = this.oldestOpenCommand();
-    if (open !== undefined) open.lines.push(line);
+    if (open !== undefined && open.retainUntagged) {
+      if (open.lines.length >= MAX_COMMAND_LINES) {
+        this.failStream(new Error(
+          `IMAP command ${open.tag} received more than ${MAX_COMMAND_LINES} `
+          + `response lines without completing. The connection has been closed `
+          + `rather than kept growing.`,
+        ));
+        return;
+      }
+      open.lines.push(line);
+    }
     if (line.startsWith('*')) this.dispatchUntagged(line);
   }
 
@@ -542,14 +591,17 @@ export class ImapSession implements ImapConnection {
    *
    * Response lines are collected from the moment the tag is allocated, so a
    * server that answers before the caller gets round to `awaitTag` loses
-   * nothing.
+   * nothing. A command that will stay in flight for a long time and read the
+   * stream through `onUntagged` passes `retainUntagged: false`, so its line
+   * array does not grow for the length of the round.
    */
-  async sendCommand(text: string): Promise<string> {
+  async sendCommand(text: string, options: ImapSendOptions = {}): Promise<string> {
     this.greetingSeen = true;
     const tag = this.nextTag();
     this.pending.set(tag, {
       tag,
       lines: [],
+      retainUntagged: options.retainUntagged ?? true,
       completion: null,
       completionLine: '',
       continuations: 0,

@@ -102,17 +102,25 @@ export type {
 export {
   ImapClient,
   ImapOpenError,
+  describeEmailCapabilityFailure,
   imapQuoteCredential,
+  ownerMessageForFailure,
+  resolveIdleSupport,
   IMAP_DEFAULT_TIMEOUT_MS,
+  IMAP_MAX_FETCH_UIDS,
 } from './imap-client.js';
 
 export type {
+  EmailCapabilityFailureNotice,
+  EmailCapabilityFailureReason,
   ImapAppendDraftInput,
   ImapAppendDraftResult,
   ImapAttachmentInfo,
   ImapClientOptions,
   ImapConnectionReport,
   ImapEnvelope,
+  ImapIdleDecision,
+  ImapIdleSupport,
   ImapMessage,
   ImapMessageDetail,
   ImapOpenFailureReason,
