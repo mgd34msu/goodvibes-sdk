@@ -170,9 +170,11 @@ describe('list then read, where UID and sequence number differ', () => {
 
     const result = await service.listInbox({ unreadOnly: false });
 
-    expect(result.messages.map((message) => message.uid)).toEqual([101, 205, 307]);
+    // Newest first: the order is the contract, not whatever order IMAP
+    // happened to answer the search in.
+    expect(result.messages.map((message) => message.uid)).toEqual([307, 205, 101]);
     expect(result.messages.map((message) => message.subject))
-      .toEqual(['oldest', 'middle', 'newest']);
+      .toEqual(['newest', 'middle', 'oldest']);
     expect(commands.some((line) => line.includes('UID SEARCH ALL'))).toBe(true);
     expect(commands.some((line) => line.includes('UID FETCH 101,205,307'))).toBe(true);
   });
@@ -185,6 +187,7 @@ describe('list then read, where UID and sequence number differ', () => {
     const listed = await service.listInbox({ unreadOnly: false });
     const middle = listed.messages[1];
     expect(middle?.subject).toBe('middle');
+    expect(middle?.uid).toBe(205);
 
     const detail = await service.readMessage(middle?.uid ?? 0);
     // Reporting sequence number 2 as the uid would have read UID 2, which is
@@ -201,10 +204,13 @@ describe('list then read, where UID and sequence number differ', () => {
     // Two of three: the page is the highest UIDs, 205 and 307.
     const result = await service.listInbox({ unreadOnly: false, limit: 2 });
 
-    expect(result.messages.map((message) => message.uid)).toEqual([205, 307]);
-    expect(result.messages[0]?.bodyPreview).toBe('');
-    expect(result.messages[1]?.bodyPreview).toContain('body of 307');
-    // Never the oldest match's body against the first row of the page.
+    // Newest first, so the page is 307 then 205 and the preview belongs on the
+    // first row — which is what "the newest message" meant all along.
+    expect(result.messages.map((message) => message.uid)).toEqual([307, 205]);
+    expect(result.messages[0]?.bodyPreview).toContain('body of 307');
+    expect(result.messages[1]?.bodyPreview).toBe('');
+    // Never the oldest match's body against a row it did not come from.
+    expect(result.messages[1]?.bodyPreview).not.toContain('body of 101');
     expect(result.messages[0]?.bodyPreview).not.toContain('body of 101');
 
     // And the same text is attributed to the sender who actually wrote it.
