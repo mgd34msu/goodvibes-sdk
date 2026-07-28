@@ -9,7 +9,7 @@
  * answering mid-handshake, drop the socket, deliver mail while nobody is
  * connected.
  *
- * Two details are emulated ON PURPOSE because getting them wrong in the real
+ * Four details are emulated ON PURPOSE because getting them wrong in the real
  * client is invisible until production:
  *
  *   - **Sequence numbers are not UIDs.** UIDs start at 101 while sequence
@@ -19,6 +19,24 @@
  *     message 10.** RFC 3501 ranges are unordered pairs, so `11:*` becomes
  *     10:11. Real servers do this; a fake that returned nothing would let a
  *     watcher that trusts search output pass here and redeliver in production.
+ *   - **`BODY[HEADER.FIELDS ...]` comes back as a `{n}` literal.** RFC 3501
+ *     §4.3: the count is a BYTE count on the end of the line, and exactly that
+ *     many bytes follow. This fake used to write the header block as ordinary
+ *     lines, which no server does — and that one shortcut is why a client that
+ *     discarded every folded literal, and therefore built envelopes with every
+ *     field empty, passed the whole suite.
+ *   - **The automatic `UID` item may come last.** `uidPosition` switches
+ *     between `UID 307 BODY[…]` and `BODY[…]… UID 307)`; both are conformant,
+ *     both are in the wild, and in the second the UID is not on the
+ *     `* n FETCH` line at all — it is on the line that closes the response.
+ *   - **FETCH answers come back in SEQUENCE order, not in the order asked.**
+ *     A server walks the mailbox once. A client that lines envelopes up
+ *     positionally instead of by the `UID` data item therefore reads the wrong
+ *     message as soon as a caller asks for UIDs out of order.
+ *
+ * Subjects are whatever the caller passes and are NOT restricted to ASCII —
+ * `{n}` is a byte count while the socket is read as utf8, so a non-ASCII
+ * subject is the only thing that exercises that arithmetic end to end.
  */
 
 import type { Socket } from 'node:net';
@@ -26,6 +44,7 @@ import {
   connectSocket,
   makeFakeImapServer,
   serverWrite,
+  serverWriteRaw,
   type FakeServer,
 } from './fake-imap-server.ts';
 
@@ -49,8 +68,38 @@ export type FakeIdleAdvertisement =
   /** Greeting says nothing and CAPABILITY is never answered. */
   | 'silent-unanswered';
 
+/**
+ * Where the automatic `UID` data item goes in a FETCH response.
+ *
+ * `leading` writes `* 3 FETCH (UID 307 BODY[…] {n}`; `trailing` writes
+ * `* 3 FETCH (BODY[…] {n}` and closes with ` UID 307)`. RFC 3501 §6.4.8 says
+ * the server includes the item, not where — so a client has to read both.
+ */
+export type FakeUidPosition = 'leading' | 'trailing';
+
+/**
+ * How the header block comes back.
+ *
+ * `literal` is what servers do and the default. `bare-lines` is the shape this
+ * harness used to hard-code — the header block written as ordinary response
+ * lines with no `{n}` count — kept only so a test can assert that the client
+ * still reads a scripted response of that shape. Nothing on a real socket
+ * produces it.
+ */
+export type FakeSectionEncoding = 'literal' | 'bare-lines';
+
 export interface FakeMailboxOptions {
   readonly uidValidity?: number;
+  /** Where the automatic `UID` data item goes. Default `leading`. */
+  readonly uidPosition?: FakeUidPosition;
+  /** How the `BODY[HEADER.FIELDS …]` payload is framed. Default `literal`. */
+  readonly sectionEncoding?: FakeSectionEncoding;
+  /**
+   * Corrupt the FETCH response for these UIDs: the header section is announced
+   * and the response is then closed without one, which is a response the client
+   * cannot read and MUST NOT mistake for the message having been expunged.
+   */
+  readonly unreadableUids?: readonly number[];
   readonly idle?: FakeIdleAdvertisement;
   readonly login?: 'ok' | 'refused' | 'connection-limit';
   readonly examine?: 'ok' | 'refused';
@@ -210,22 +259,16 @@ export async function makeFakeMailbox(
         .split(',')
         .map((part) => parseInt(part, 10))
         .filter((value) => Number.isFinite(value));
-      for (const uid of wanted) {
-        const index = messages.findIndex((message) => message.uid === uid);
-        if (index === -1) continue;
-        const message = messages[index];
-        if (message === undefined) continue;
+      // Answered in SEQUENCE order, not in the order asked. That is what a
+      // real server does — it walks the mailbox once — and a client that lines
+      // envelopes up positionally rather than by the UID data item reads the
+      // wrong message the moment a caller asks out of order.
+      const answering = messages
+        .map((message, index) => ({ message, seq: index + 1 }))
+        .filter((entry) => wanted.includes(entry.message.uid));
+      for (const { message, seq } of answering) {
         // Sequence number, deliberately not the UID.
-        serverWrite(socket,
-          `* ${index + 1} FETCH (UID ${uid} BODY[HEADER.FIELDS `
-          + '(FROM SUBJECT DATE MESSAGE-ID TO DELIVERED-TO X-ORIGINAL-TO '
-          + 'AUTHENTICATION-RESULTS)] ');
-        serverWrite(socket, `From: ${message.from}`);
-        serverWrite(socket, `Subject: ${message.subject}`);
-        serverWrite(socket, 'Date: Mon, 27 Jul 2026 09:00:00 +0000');
-        serverWrite(socket, `Message-ID: <uid-${uid}@example.test>`);
-        serverWrite(socket, `Delivered-To: ${message.deliveredTo}`);
-        serverWrite(socket, ')');
+        writeFetchResponse(socket, seq, message);
       }
       serverWrite(socket, `${tag} OK FETCH completed`);
       return;
@@ -238,6 +281,53 @@ export async function makeFakeMailbox(
     }
 
     serverWrite(socket, `${tag} BAD Unrecognised command`);
+  };
+
+  const HEADER_SECTION =
+    'BODY[HEADER.FIELDS (FROM SUBJECT DATE MESSAGE-ID TO DELIVERED-TO '
+    + 'X-ORIGINAL-TO AUTHENTICATION-RESULTS)]';
+
+  /** The header block exactly as it goes on the wire: CRLF, blank line last. */
+  const headerBlock = (message: FakeMessage): string =>
+    `From: ${message.from}\r\n`
+    + `Subject: ${message.subject}\r\n`
+    + 'Date: Mon, 27 Jul 2026 09:00:00 +0000\r\n'
+    + `Message-ID: <uid-${message.uid}@example.test>\r\n`
+    + `Delivered-To: ${message.deliveredTo}\r\n`
+    + '\r\n';
+
+  /**
+   * One `* n FETCH (...)` response, framed the way the options ask for.
+   *
+   * The literal count is `Buffer.byteLength`, not `payload.length`: `{n}` is a
+   * byte count, and a fake that counted characters would read correctly only
+   * for pure-ASCII mail and desynchronize the client's reader on anything else
+   * — which is the same arithmetic the client itself has to get right, so
+   * getting it wrong here would hide getting it wrong there.
+   */
+  const writeFetchResponse = (
+    socket: Socket,
+    seq: number,
+    message: FakeMessage,
+  ): void => {
+    const omitUid = (options.unreadableUids ?? []).includes(message.uid);
+    const position: FakeUidPosition = options.uidPosition ?? 'leading';
+    const leading = !omitUid && position === 'leading' ? `UID ${message.uid} ` : '';
+    const trailing = !omitUid && position === 'trailing' ? ` UID ${message.uid}` : '';
+    const block = headerBlock(message);
+
+    if ((options.sectionEncoding ?? 'literal') === 'bare-lines') {
+      serverWrite(socket, `* ${seq} FETCH (${leading}${HEADER_SECTION} `);
+      for (const line of block.split('\r\n')) serverWrite(socket, line);
+      serverWrite(socket, `${trailing})`);
+      return;
+    }
+
+    serverWriteRaw(socket,
+      `* ${seq} FETCH (${leading}${HEADER_SECTION} `
+      + `{${Buffer.byteLength(block, 'utf8')}}\r\n`);
+    serverWriteRaw(socket, block);
+    serverWriteRaw(socket, `${trailing})\r\n`);
   };
 
   /**

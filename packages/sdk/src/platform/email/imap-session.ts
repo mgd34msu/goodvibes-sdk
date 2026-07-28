@@ -339,8 +339,21 @@ export class ImapSession implements ImapConnection {
           ));
           return;
         }
+        const ownerLine = line.slice(0, line.lastIndexOf('{')) + ' ';
+        if (requested === 0) {
+          // `{0}` is legal and means an empty payload — a server answering
+          // BODY[HEADER.FIELDS ...] for a message carrying none of the fields
+          // asked for sends exactly this. There are no bytes to wait for, so
+          // the owner line is routed now. Falling through to the literal branch
+          // would leave `literalBytesRemaining` at zero, and the owner line —
+          // the `* n FETCH (...` line itself — would be dropped and the whole
+          // response lost.
+          this.route(ownerLine);
+          if (this.failure !== null) return;
+          continue;
+        }
         this.literalBytesRemaining = requested;
-        this.literalOwnerLine = line.slice(0, line.lastIndexOf('{')) + ' ';
+        this.literalOwnerLine = ownerLine;
         continue;
       }
 
