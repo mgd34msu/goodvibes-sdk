@@ -28,6 +28,7 @@ export { startCiFixSession, startConflictResolutionSession } from './seeded-sess
 import { defaultTailscaleRunner, TailscaleServeReceiptStore, type TailscaleCommandRunner } from '../../remote-access/tailscale.js';
 import { registerSkillsGatewayMethods } from './skills.js';
 import { registerPrincipalsGatewayMethods } from './principals.js';
+import { composeOwnerProfile } from './owner-profile-composition.js';
 import { PrincipalRegistry, PrincipalStore } from '../../principals/index.js';
 import { registerChannelProfilesGatewayMethods } from './channel-profiles.js';
 import { registerChannelTestGatewayMethods } from './channel-test.js';
@@ -57,7 +58,7 @@ import {
 import type { ProviderRegistry } from '../../providers/registry.js';
 import type { AutomationManager } from '../../automation/index.js';
 import type { ChannelDeliveryRouter } from '../../channels/delivery-router.js';
-import type { ChannelDeliveryTarget } from '../../channels/delivery/types.js';
+import { parseChannelDeliveryTarget } from '../../channels/delivery/types.js';
 import { registerCiGatewayMethods } from './ci.js';
 import { CiWatchAutoMinter, CiWatchService, CiWatchStore, createGhCliCiSource, registerCiWatchPolling, type CiPollingHost, type FixSessionBrief, type FixSessionStartOutcome } from '../../ci-watch/index.js';
 import { summarizeError } from '../../utils/error-display.js';
@@ -75,18 +76,6 @@ import { UnifiedRewindService } from '../../rewind/index.js';
 import type { RewindConversationPort } from '../../rewind/index.js';
 import { createEventEnvelope } from '../../runtime/events/index.js';
 import type { WorkspaceEvent } from '../../../events/workspace.js';
-
-/** Parse a 'surfaceKind' or 'surfaceKind:address' channel string into a delivery target. */
-function parseChannelDeliveryTarget(channel: string): ChannelDeliveryTarget {
-  const separator = channel.indexOf(':');
-  const surfaceKind = (separator === -1 ? channel : channel.slice(0, separator)).trim();
-  const address = separator === -1 ? '' : channel.slice(separator + 1).trim();
-  return {
-    kind: 'surface',
-    surfaceKind: surfaceKind as ChannelDeliveryTarget['surfaceKind'],
-    ...(address ? { address } : {}),
-  };
-}
 
 import { createSessionRuntimeControls, registerSessionRuntimeGatewayMethods, type SessionLiveTurnControlsHolder } from './session-runtime.js';
 import { registerPowerGatewayMethods, type PowerGatewayService } from './power.js';
@@ -205,7 +194,7 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
    * read/write. A set flows to surfaces as runtime.permissions via the
    * already-wired mode-change binding.
    */
-  readonly configManager: Pick<ConfigManager, 'get' | 'set'>;
+  readonly configManager: Pick<ConfigManager, 'get' | 'set' | 'attachProfileFallback'>;
   /**
    * Runtime store backing sessions.contextUsage.get and the local-session
    * resolution the session-runtime verbs gate on (getState().session.id).
@@ -412,6 +401,25 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   );
   registerPrincipalsGatewayMethods(catalog, principalRegistry);
 
+  // The owner profile: one Markdown file at daemon scope, its nine profile.*
+  // verbs, and the consumer seams it fills (the ConfigManager read fallback for
+  // unset keys, the closed-tier redaction values, the signup base address, and
+  // the open-tier context block). See routes/owner-profile-composition.ts.
+  // No daemonHome passed: this registrar never sees the --daemon-home flag, and
+  // the profile's own resolver already honours GOODVIBES_DAEMON_HOME, which is
+  // what an isolated daemon sets. A host that DOES parse the flag threads it
+  // through OwnerProfileCompositionDeps.daemonHome.
+  // Skipped when the composition supplied no config manager (a narrow embed, a
+  // conformance harness): every `profile.*` switch lives in config, so without
+  // one there is nothing to read the feature's own on/off from. The verbs then
+  // stay cataloged-but-unhandled — the same graceful degrade the other optional
+  // groups use — instead of one optional family throwing and taking every other
+  // verb group in this registrar down with it.
+  if (deps.configManager?.attachProfileFallback !== undefined) {
+    const ownerProfile = composeOwnerProfile(catalog, { configManager: deps.configManager });
+    deps.disposal?.add('owner profile', ownerProfile.dispose);
+  }
+
   // Per-channel profile bindings (model/permission defaults for the sessions a
   // channel originates), over a JSON snapshot under the daemon's control-plane
   // state directory. Constructed here like the principal/skill/push groups. The
@@ -586,16 +594,8 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
       judge: createProviderBackedCheckinJudge(deps.providerRegistry),
       deliverer: {
         deliver: async (channel, message) => {
-          const separator = channel.indexOf(':');
-          const surfaceKind = (separator === -1 ? channel : channel.slice(0, separator)).trim();
-          const address = separator === -1 ? '' : channel.slice(separator + 1).trim();
-          const target: ChannelDeliveryTarget = {
-            kind: 'surface',
-            surfaceKind: surfaceKind as ChannelDeliveryTarget['surfaceKind'],
-            ...(address ? { address } : {}),
-          };
           return channelDeliveryRouter.deliver({
-            target,
+            target: parseChannelDeliveryTarget(channel),
             body: message,
             title: 'Check-in',
             jobId: 'checkin',

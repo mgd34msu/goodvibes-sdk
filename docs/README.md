@@ -45,6 +45,7 @@ release-history source.
 
 ## Knowledge, Media, and Search
 
+- [Owner profile](./owner-profile.md)
 - [Knowledge system](./knowledge.md)
 - [Knowledge refinement](./knowledge-refinement.md)
 - [Generated knowledge pages](./knowledge-pages.md)

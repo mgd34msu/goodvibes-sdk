@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import { dirname, isAbsolute, join, resolve } from 'path';
+import { dirname, join } from 'path';
 import type { GoodVibesConfig, ConfigKey, ConfigValue, ConfigSetting } from './schema.js';
 import { DEFAULT_CONFIG, CONFIG_SCHEMA } from './schema.js';
 import { ConfigError } from '../types/errors.js';
@@ -31,6 +31,8 @@ import { isDaemonOwnedConfigKey, listDaemonOwnedConfigPaths, type DaemonOwnedCon
 import { resolveOrCreateDaemonPath } from './daemon-tier-paths.js';
 import { clearDaemonTierForReset, daemonConfigPath, overlayDaemonTier, persistDaemonKey } from './daemon-config-tier.js';
 import { describeKeySource, type ConfigKeySource } from './manager-key-source.js';
+import { DEFAULT_CONFIG_SNAPSHOT, cloneDefaultConfig, ensureSharedConfig, requireAbsoluteOwnedPath, sanitizeConfigShape } from './manager-bootstrap.js';
+import { resolveWithProfileFallback, type ConfigProfileFallbackReader } from './profile-fallback.js';
 import { persistCategoryKeyRemoval, persistCategoryPatch, type CategoryIoDeps } from './manager-category-io.js';
 
 /** Deep immutable type — prevents mutation of nested objects returned from getAll(). */
@@ -92,43 +94,6 @@ export type ConfigChangeCallback<K extends ConfigKey> = (newValue: ConfigValue<K
 /** Unsubscribe handle returned by ConfigManager.subscribe(). */
 export type ConfigUnsubscribe = () => void;
 
-const DEFAULT_CONFIG_SNAPSHOT = structuredClone(DEFAULT_CONFIG) as GoodVibesConfig;
-const PERMISSION_TOOL_KEYS = new Set(Object.keys(DEFAULT_CONFIG.permissions.tools));
-
-function cloneDefaultConfig(): GoodVibesConfig {
-  return structuredClone(DEFAULT_CONFIG_SNAPSHOT) as GoodVibesConfig;
-}
-
-function sanitizeConfigShape(config: GoodVibesConfig): GoodVibesConfig {
-  const sanitized = structuredClone(config) as GoodVibesConfig;
-  for (const key of Object.keys(sanitized.permissions.tools)) {
-    if (!PERMISSION_TOOL_KEYS.has(key)) {
-      delete (sanitized.permissions.tools as Record<string, unknown>)[key];
-    }
-  }
-  return sanitized;
-}
-
-function requireAbsoluteOwnedPath(path: string | undefined, name: string): string | undefined {
-  if (path === undefined) return undefined;
-  const trimmed = path.trim();
-  if (!trimmed) {
-    throw new Error(`ConfigManager ${name} must be a non-empty absolute path.`);
-  }
-  if (!isAbsolute(trimmed)) {
-    throw new Error(`ConfigManager ${name} must be an absolute path.`);
-  }
-  return resolve(trimmed);
-}
-
-/** Ensure the shared ~/.goodvibes/<surface>.json exists (empty object if not). */
-function ensureSharedConfig(sharedPath: string): void {
-  if (!existsSync(sharedPath)) {
-    mkdirSync(dirname(sharedPath), { recursive: true });
-    writeFileSync(sharedPath, '{}\n', 'utf-8');
-  }
-}
-
 /**
  * ConfigManager — Layered, mutable, persistent config system.
  *
@@ -151,6 +116,8 @@ export class ConfigManager {
   /** Daemon-owned keys the last load sourced from the daemon store. */
   private readonly daemonKeysPresent = new Set<DaemonOwnedConfigPath>();
   private hookDispatcher: Pick<HookDispatcher, 'fire'> | null = null;
+  /** Owner-profile read fallback for UNSET keys. Injected; null unless installed. */
+  private profileFallback: ConfigProfileFallbackReader | null = null;
   private readonly _listeners = new Map<string, Set<(newVal: unknown, oldVal: unknown) => void>>();
   /** Active config-file watch handle (external-edit live reload), or null. */
   private _fileWatch: ConfigFileWatchHandle | null = null;
@@ -246,6 +213,11 @@ export class ConfigManager {
     this.hookDispatcher = hookDispatcher;
   }
 
+  /** Install (or clear) the owner-profile read fallback. See ./profile-fallback.ts. */
+  attachProfileFallback(reader: ConfigProfileFallbackReader | null): void {
+    this.profileFallback = reader;
+  }
+
   private resolvePath(
     key: DaemonOwnedConfigPath,
   ): { parent: Record<string, unknown>; field: string } {
@@ -270,10 +242,16 @@ export class ConfigManager {
     };
   }
 
-  /** Get a config value by dot-path key. */
+  /**
+   * Get a config value by dot-path key.
+   *
+   * An UNSET key may resolve from the owner profile when a fallback reader is
+   * installed — one keyed read by a consumer that needs the value. Deliberately
+   * not applied by `getAll()` or any category/dump path: see ./profile-fallback.ts.
+   */
   get<K extends ConfigKey>(key: K): ConfigValue<K> {
     const { parent, field } = this.resolvePath(key);
-    return parent[field] as ConfigValue<K>;
+    return resolveWithProfileFallback(key, parent[field], this.profileFallback) as ConfigValue<K>;
   }
 
   /** Set a config value by dot-path key and auto-save to disk. */

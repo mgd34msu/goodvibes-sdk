@@ -26,7 +26,7 @@ import type { FeatureFlagManager } from '../runtime/feature-flags/manager.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import { emitCommunicationConsumed } from '../runtime/emitters/index.js';
 import { maybeCompactAfterModelContextWarning, setAgentProgress, summarizeToolArgs, type ProgressAudience } from './orchestrator-utils.js';
-import { buildLayeredOrchestratorSystemPrompt, buildOrchestratorSystemPrompt } from './orchestrator-prompts.js';
+import { buildLayeredOrchestratorSystemPrompt, buildOrchestratorSystemPrompt, withOpenTierProfileBlock } from './orchestrator-prompts.js';
 import { completeOrRegenerate, recoverEmptyConversationalReply } from './conversational-reply-recovery.js';
 import {
   buildPerTurnKnowledgeInjection,
@@ -640,7 +640,8 @@ export async function runAgentTask(
       // e.g. after several no-new-input turns of tool-result growth). It never mutates
       // `priorTurnKnowledgeBlock` or the stored TurnInjectionRecord, both of which honestly
       // reflect what retrieval computed at the time it ran.
-      const composeTurnSystemPrompt = (base: string): string => {
+      const composeTurnSystemPrompt = (raw: string): string => {
+        const base = withOpenTierProfileBlock(raw); // owner-profile §11.2: composed fresh, never written back
         if (!priorTurnKnowledgeBlock) return base;
         if (contextWindowAwarenessEnabled && contextWindowForTurn > 0) {
           const liveMsgTokens = estimateConversationTokens(activeConversation.getMessagesForLLM());

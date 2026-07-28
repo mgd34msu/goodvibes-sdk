@@ -5,7 +5,7 @@ import type { DaemonGatewayRestRouteHandlers } from './context.js';
  *
  * Explicit REST route table for the handler-backed gateway verb families that
  * ALSO advertise an `http` binding in the operator method catalog (skills.*,
- * principals.*, checkin.*, ci.*, channels.profiles.*, the session-scoped
+ * principals.*, profile.*, checkin.*, ci.*, channels.profiles.*, the session-scoped
  * sessions.permissionMode.get/set + sessions.contextUsage.get, stepup.* (the
  * relay step-up ceremony), and runtime.metrics.get). Those verbs are
  * served in-process through `invokeGatewayMethodCall`'s registered-handler
@@ -68,6 +68,20 @@ export const GATEWAY_REST_ROUTES: readonly GatewayRestRoute[] = [
   route('GET', '/api/principals/{principalId}', 'principals.get'),
   route('DELETE', '/api/principals/{principalId}', 'principals.delete'),
   route('POST', '/api/principals/{principalId}/update', 'principals.update'),
+  // profile.* — the owner profile (docs/owner-profile.md §11.1). `person` is a
+  // POST with the name in the body rather than a GET with it in the path: a
+  // path segment lands in every access log and proxy trace it passes through,
+  // and the whole point of the People section's containment is that a person's
+  // name is not something to scatter around because a URL shape was convenient.
+  route('GET', '/api/profile', 'profile.read'),
+  route('GET', '/api/profile/status', 'profile.status'),
+  route('POST', '/api/profile/person', 'profile.person'),
+  route('GET', '/api/profile/fields/{fieldId}', 'profile.get'),
+  route('GET', '/api/profile/fields/{fieldId}/provenance', 'profile.provenance'),
+  route('POST', '/api/profile/set', 'profile.set'),
+  route('POST', '/api/profile/append', 'profile.append'),
+  route('POST', '/api/profile/forget', 'profile.forget'),
+  route('POST', '/api/profile/undo', 'profile.undo'),
   // checkin.*
   route('GET', '/api/checkin/config', 'checkin.config.get'),
   route('POST', '/api/checkin/config', 'checkin.config.set'),

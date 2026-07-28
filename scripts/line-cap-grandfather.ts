@@ -55,33 +55,14 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
   // schema-domain-runtime.ts ~0.83k — runtime config defaults + per-key setting
   // definitions; crossed 800 with the relay.* reachability keys.
   'packages/sdk/src/platform/config/schema-domain-runtime.ts': {
-    ceiling: 888,
-    justification: 'runtime config defaults + setting definitions; +22 for the three telemetry.decisionOtlp* config keys (decisionOtlpEnabled/decisionOtlpEndpoint/decisionOtlpSignal defaults in the telemetry defaults object plus their ConfigSettingDefinition metadata entries) backing decision-log-to-OTLP export; +30 for the relay.* reachability config (the relay defaults object plus the four relay.enabled/url/rendezvousId/label ConfigSettingDefinition entries); +7 for relay.requireStepUpForMutations (default + ConfigSettingDefinition entry) backing WebAuthn step-up on mutating relay calls; +29 for the runtime.toolBudget.maxMs/maxTokens/maxCostUsd config keys (defaults object + their ConfigSettingDefinition entries) backing default per-phase limits for runtime-tools-budget-enforcement',
+    ceiling: 902,
+    justification: 'runtime config defaults + setting definitions; +22 for the three telemetry.decisionOtlp* config keys (decisionOtlpEnabled/decisionOtlpEndpoint/decisionOtlpSignal defaults in the telemetry defaults object plus their ConfigSettingDefinition metadata entries) backing decision-log-to-OTLP export; +30 for the relay.* reachability config (the relay defaults object plus the four relay.enabled/url/rendezvousId/label ConfigSettingDefinition entries); +7 for relay.requireStepUpForMutations (default + ConfigSettingDefinition entry) backing WebAuthn step-up on mutating relay calls; +29 for the runtime.toolBudget.maxMs/maxTokens/maxCostUsd config keys (defaults object + their ConfigSettingDefinition entries) backing default per-phase limits for runtime-tools-budget-enforcement; +14 (888 -> 902) for the CheckinConfig interface and its declare-module block. The checkin.* keys and defaults had shipped for some time, but no domain module ever declared the SECTION on GoodVibesConfig, so config.getAll().checkin and config.getCategory(\'checkin\') were compile errors against a section that ships with four described settings rows. The declaration belongs here because this file already owns checkin\'s defaults and its settings entries; pinned against regression in test/types/config-domains-complete.ts',
   },
   // flags.ts ~0.83k — the internal capability registry: one entry per platform
   // capability, each carrying the full written description surfaces render.
   'packages/sdk/src/platform/runtime/feature-flags/flags.ts': {
     ceiling: 825,
     justification: 'internal capability registry; every entry carries the full written description surfaces render, so the file grows by roughly one paragraph per capability rather than by code. +22 for the paired-device-capabilities entry (the paired-phone camera/screen/location/clipboard/command family, its confirmation-and-grants posture, and the device.* keys that configure it)',
-  },
-  // schema-types.ts ~1.18k — config schema type surface, post-split, shrink-only
-  'packages/sdk/src/platform/config/schema-types.ts': {
-    ceiling: 1255,
-    justification: 'config schema type surface, shrink-only. Split 2026-07-26 from 1399 lines: the '
-      + 'listener/reachability interfaces (ControlPlaneConfig, HttpListenerRuntimeConfig, WebConfig, '
-      + 'NetworkConfig, RelayConfig) moved to schema-types-network.ts and the platform-service '
-      + 'interfaces (BatchConfig + its three modes, CloudflareConfig, TelemetryConfig, AtRestConfig) '
-      + 'moved to schema-types-platform.ts, both re-exported here so import sites are unchanged — the '
-      + 'same convention schema-types-surfaces.ts already used. What remains is the ConfigKey union and '
-      + 'the ConfigValue mapped type, which stay inline because '
-      + 'test/config-key-union-completeness.test.ts parses THIS file as the single source of the '
-      + 'declared key set, plus the interfaces that have no other natural home. The ceiling was '
-      + 'lowered from the old 1397 so new config keys cost a re-justification, which is the point of the '
-      + 'ratchet. A second pass moved the daemon-service interfaces (NotificationsConfig, TtsConfig, '
-      + 'AutomationConfig, WatchersConfig, ServiceConfig, RuntimeConfig) to schema-types-daemon.ts. The '
-      + 'ceiling is deliberately left at 1246 while the file sits near 1175: it is never raised, but the '
-      + 'slack is real headroom for config keys landing concurrently, so tightening it to the exact count '
-      + 'would red-gate in-flight work rather than prevent drift.; +51 for declaring the daemon\'s own mailbox and calendar keys (surfaces.email.*, surfaces.calendar.*) in the ConfigKey union and value map. They were read by the daemon\'s handlers but declared nowhere, and the settings modal renders from CONFIG_SCHEMA — so the handlers\' own error messages ("Set surfaces.calendar.caldavUrl and surfaces.calendar.caldavUser") named keys no operator could reach through the UI that told them to set it. Declaring them also makes them daemon-owned by the existing surfaces. prefix rule, so the credential lands in the daemon tier instead of whichever client silo the operator happened to be in',
   },
   // orchestrator.ts ~1.08k — core orchestrator monolith, pre-split, shrink-only
   'packages/sdk/src/platform/core/orchestrator.ts': {
@@ -125,7 +106,7 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
   },
   // orchestrator-runner.ts ~0.97k — agent orchestrator runner, pre-split, shrink-only
   'packages/sdk/src/platform/agents/orchestrator-runner.ts': {
-    ceiling: 918,
+    ceiling: 919,
     justification: 'agent orchestrator runner; the context-window unit (the ActiveProviderRoute '
       + 'route-id parsing, providerQualifiedRouteLabel, resolveContextWindowModelDefinition, '
       + 'applyContextWindowAwareness, and the compaction-threshold constants + resolver) moved to '
@@ -134,7 +115,7 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
       + 'session-broker-intent.ts used. What remains is the turn loop itself. The ceiling is lowered '
       + 'to the exact post-split count (1028 -> 918): this is not a config-key file, so there is no '
       + 'concurrent-key argument for slack, and the next addition should cost a re-justification. '
-      + 'Prior growth this entry recorded, retained as history: +9 for the model-context-warning compaction call after each chat response (logic lives in orchestrator-utils.ts); +6 for learning the observed context ceiling on provider too-long rejections; +9 for the background permission gate integration into the per-tool-call loop (gate call + denied/executed/threw branch, unified via a local recordResult closure; the gate logic itself lives in background-permission-gate.ts); +2 for the run context\'s at-rest journal redaction/retention policy field, threaded into the AgentSession construction (policy resolution + logic live in runtime/at-rest-persistence.ts); +3 for per-model tool-format telemetry (import + observeToolResults after the background-agent tool loop); +11 for the steer-wake resume seed (restore prior-context summary + inject the steer as a fresh user turn when a wedged agent is re-triggered); +5 for threading the agent cancellation signal into provider.chat (the mid-run abort seam) so a cancel/kill aborts the in-flight LLM call instead of only cooperatively at the next boundary; +25 for promoting the passive-injection + context-window-awareness knobs to live config: the optional configManager field on AgentOrchestratorRunContext + doc, the resolveContextCompactThreshold helper (agents.contextCompactThreshold vs the fallback constant) applied at the four threshold sites, and the budget-ceiling / relevance-floor / code-limit reads (agents.passiveInjection.*) in the per-turn injection block',
+      + 'Prior growth this entry recorded, retained as history: +9 for the model-context-warning compaction call after each chat response (logic lives in orchestrator-utils.ts); +6 for learning the observed context ceiling on provider too-long rejections; +9 for the background permission gate integration into the per-tool-call loop (gate call + denied/executed/threw branch, unified via a local recordResult closure; the gate logic itself lives in background-permission-gate.ts); +2 for the run context\'s at-rest journal redaction/retention policy field, threaded into the AgentSession construction (policy resolution + logic live in runtime/at-rest-persistence.ts); +3 for per-model tool-format telemetry (import + observeToolResults after the background-agent tool loop); +11 for the steer-wake resume seed (restore prior-context summary + inject the steer as a fresh user turn when a wedged agent is re-triggered); +5 for threading the agent cancellation signal into provider.chat (the mid-run abort seam) so a cancel/kill aborts the in-flight LLM call instead of only cooperatively at the next boundary; +25 for promoting the passive-injection + context-window-awareness knobs to live config: the optional configManager field on AgentOrchestratorRunContext + doc, the resolveContextCompactThreshold helper (agents.contextCompactThreshold vs the fallback constant) applied at the four threshold sites, and the budget-ceiling / relevance-floor / code-limit reads (agents.passiveInjection.*) in the per-turn injection block; +1 (918 -> 919) for composing the open-tier owner-profile block into the per-turn system prompt: composeTurnSystemPrompt now takes the raw prompt and derives `base` through withOpenTierProfileBlock, so the profile is composed fresh each turn and never written back into stored state. Paying the re-justification this entry asked the next addition to pay; the block itself lives in orchestrator-prompts.ts and nothing else moved here',
   },
   // service.ts (knowledge) ~0.92k — knowledge service facade, pre-split, shrink-only
   'packages/sdk/src/platform/knowledge/service.ts': {
