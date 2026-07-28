@@ -116,6 +116,57 @@ async function build(): Promise<Harness> {
   return { watcher, clock, cursors, mailbox, notices, handled, failOnce };
 }
 
+/**
+ * Wait for `predicate`, RE-ANNOUNCING the mailbox's message count until it
+ * holds.
+ *
+ * Not a longer timeout — a different mechanism, and the reason is a real race
+ * rather than slowness.
+ *
+ * `runIdleRound` opens its line COLLECTOR before sending `IDLE`, but the thing
+ * that actually ends the wait, `waitForUntagged(isIdleWakeLine, …)`, is not
+ * registered until `waitForWake` runs — which is after the server's `+ idling`
+ * continuation has been received. So there is a window, between the server
+ * logging the `IDLE` command and the client arming its waiter, in which an
+ * untagged `* n EXISTS` is seen by the collector and by nobody who can act on
+ * it. A test that observes `commands` to decide the watcher is idling is
+ * reading a SERVER-side fact and using it as a proxy for a CLIENT-side one; the
+ * two are ordered correctly but not simultaneous, and under load the gap opens.
+ *
+ * When the edge is lost the only recovery is the IDLE re-issue timer — 27
+ * minutes, on a `FakeClock` this test never advances — so the wait cannot
+ * recover and fails at its deadline. That is why it presented as a ~3017 ms
+ * timeout rather than as flaky slowness.
+ *
+ * Verified by widening the window deliberately: a 50 ms delay inserted before
+ * `waitForUntagged` is registered fails the unfixed test 3 runs out of 3, at
+ * the same ~3017 ms, and leaves it passing once this helper is used.
+ *
+ * Re-announcing is faithful to IMAP rather than a trick: `* n EXISTS` reports
+ * the mailbox's current message count, servers re-send it whenever they like,
+ * and a client that only woke on the first one would be broken against real
+ * servers. Nothing is added to the mailbox — `deliver()` would append a second
+ * message; this repeats the announcement of the messages already there.
+ */
+async function nudgeUntil(
+  mailbox: FakeMailboxServer,
+  predicate: () => boolean,
+  what: string,
+  timeoutMs = 3_000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  let lastNudge = 0;
+  while (Date.now() < deadline) {
+    if (predicate()) return;
+    if (Date.now() - lastNudge >= 50) {
+      mailbox.push(`* ${String(mailbox.uids.length)} EXISTS`);
+      lastNudge = Date.now();
+    }
+    await new Promise<void>((resolve) => { setTimeout(resolve, 5); });
+  }
+  throw new Error(`Timed out after ${String(timeoutMs)} ms waiting for: ${what}`);
+}
+
 describe('identity is per-source and server-assigned', () => {
   test('IMAP identity is the UID under its UIDVALIDITY generation', () => {
     expect(inboundMailSourceIdentity({ source: 'imap', uidValidity: 42, uid: 101 }))
@@ -180,19 +231,15 @@ describe('a redelivered message produces exactly one notice', () => {
     );
 
     harness.mailbox.deliver('the only notice the owner should get');
-    await waitFor(() => harness.notices.length >= 1, 'the first notice');
+    await nudgeUntil(harness.mailbox, () => harness.notices.length >= 1, 'the first notice');
 
-    // Push only once the watcher is back INSIDE an IDLE. An untagged line
-    // arriving between rounds — after one round's subscription is released and
-    // before the next IDLE is issued — has nobody waiting on it, so pushing
-    // eagerly would test the harness's timing rather than the watcher.
-    await waitFor(
-      () => harness.mailbox.commands.filter((l) => /^\S+ IDLE$/.test(l)).length >= 2,
-      'the watcher to re-issue IDLE after the first delivery',
-    );
+    // The wake is driven until it takes, rather than pushed once and hoped
+    // for. Waiting on `commands` to show a second IDLE proves the SERVER saw
+    // it, which is strictly earlier than the client arming the waiter that
+    // ends the round — see `nudgeUntil`.
     const searchesBefore = harness.mailbox.commands.filter((l) => /UID SEARCH/.test(l)).length;
-    harness.mailbox.push('* 2 EXISTS');
-    await waitFor(
+    await nudgeUntil(
+      harness.mailbox,
       () => harness.mailbox.commands.filter((l) => /UID SEARCH/.test(l)).length > searchesBefore,
       'the second pass to search the mailbox again',
     );
@@ -218,7 +265,7 @@ describe('a redelivered message produces exactly one notice', () => {
 
     harness.mailbox.deliver('must survive a failed first attempt');
 
-    await waitFor(() => harness.handled.length >= 1, 'the first, failing attempt');
+    await nudgeUntil(harness.mailbox, () => harness.handled.length >= 1, 'the first, failing attempt');
     expect(harness.notices).toEqual([]);
     expect((await harness.cursors.get(ACCOUNT, MAILBOX))?.lastSeenUid).toBe(101);
 
