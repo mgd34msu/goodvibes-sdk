@@ -30,6 +30,7 @@
 import { randomUUID } from 'node:crypto';
 import { normalizeDomain, normalizeEmailAddress } from './signup-address.js';
 import { describeDeliveryEvidence, type DeliveredRecipient } from './delivery-evidence.js';
+import type { AuthoritySurface } from '../security/untrusted-content.js';
 
 // ──────────────────────────────────────────────────────────────────
 // Types
@@ -131,11 +132,25 @@ export interface UntrustedDisplayText {
 }
 
 /**
- * Narrow local mirror of the surface-authority module (`src/agent/surface-authority.ts`,
- * owned by another module). Only the one predicate this module needs.
+ * The one surface-authority predicate this module needs.
+ *
+ * `surface` is `AuthoritySurface`, imported from the module that owns the
+ * union, not the `string` it used to be. The old signature was a narrow local
+ * mirror whose own comment pointed at `src/agent/surface-authority.ts` — a
+ * path that does not exist; the predicate lives in
+ * `platform/security/untrusted-content.ts`. So the mirror had already drifted
+ * from a file it named incorrectly, and typing the parameter as `string` made
+ * the REAL implementation unassignable to it: a function accepting only
+ * `AuthoritySurface` cannot stand where one accepting any string is required.
+ * The production wiring could therefore never pass the genuine predicate
+ * without inventing a shim around it — which is how a defensive check ends up
+ * guarded by a second, weaker copy of the thing it is checking.
+ *
+ * A test double supplying `(surface: string) => boolean` is still assignable,
+ * because a function that accepts more than it is asked to accept always is.
  */
 export interface SurfaceAuthorityProbe {
-  readonly surfaceHasCommandAuthority: (surface: string) => boolean;
+  readonly surfaceHasCommandAuthority: (surface: AuthoritySurface) => boolean;
 }
 
 export type VerificationMatch =
