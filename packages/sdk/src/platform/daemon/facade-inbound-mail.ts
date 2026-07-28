@@ -37,10 +37,12 @@ import {
   PersistedExpectationStore,
   createInboundMailIntake,
   createInboundMailSourceFactory,
+  createInboundNoticeHealth,
   createInboundTerminalFailureAnnouncer,
   resolveWatcherSettings,
   type GmailSourceBuilder,
   type InboundNoticeMode,
+  type NoticeRouteResolution,
 } from '../email/inbound/index.js';
 import { nodeEmailTransport } from '../email/node.js';
 import { readSurfaceEmailSettings } from '../email/surface-config.js';
@@ -63,7 +65,16 @@ export interface InboundMailCompositionOptions {
   readonly configManager: ConfigManager;
   readonly secretsManager: Pick<SecretsManager, 'get'>;
   readonly shellPaths: Pick<ShellPathService, 'resolveUserPath'>;
-  readonly routeBindings: Pick<RouteBindingManager, 'listBindings' | 'getBinding'>;
+  /**
+   * `isRouteBindingEnabled` is in the slice deliberately. Without it, a build
+   * with `integrations.routeBinding` switched off is indistinguishable from one
+   * where the owner has simply connected nothing: both answer `[]` from
+   * `listBindings()`, and inbound mail silently became a recorder.
+   */
+  readonly routeBindings: Pick<
+    RouteBindingManager,
+    'listBindings' | 'getBinding' | 'isRouteBindingEnabled'
+  >;
   readonly gatewayMethods: GatewayMethodCatalog;
   /**
    * `DaemonSurfaceDeliveryHelper.deliverStructuredNotice`.
@@ -104,29 +115,86 @@ function readWatchedAccount(configManager: ConfigManager): string | null {
   }
 }
 
+/** The resolution, with the full binding this file needs to hand the delivery helper. */
+type NoticeRouteAnswer =
+  | { readonly kind: 'bound'; readonly binding: AutomationRouteBinding }
+  | Extract<NoticeRouteResolution, { kind: 'unavailable' }>;
+
 /**
- * Where the owner is told about inbound mail (§8).
+ * Where the owner is told about inbound mail (§8) — or why there is nowhere.
  *
  * A named binding id wins. `default` — the shipped value — means "inherit
  * whatever he already uses", and with no separate owner-notice-route concept
  * in the platform, the honest reading of that is the route binding most
- * recently seen: the one he last reached the daemon on. When there are no
- * bindings at all, this answers `null` and the notice is refused with
- * `no-route-binding`, recorded, and disclosed — never sent somewhere invented.
+ * recently seen: the one he last reached the daemon on.
+ *
+ * Every arm that cannot produce a binding names ITSELF rather than collapsing
+ * to one `null`, and that is the fix rather than a nicety. Three genuinely
+ * different states used to arrive here identically:
+ *
+ *  - route binding is switched off, so `listBindings()` answers `[]` no matter
+ *    how many bindings are stored. An unrelated feature flag, silently turning
+ *    inbound mail into a recorder.
+ *  - the owner has connected no channel at all, which is a fresh install.
+ *  - `surfaces.email.inbound.notice.route` names a binding that is not there,
+ *    which is a typo or a binding that was removed.
+ *
+ * All three were recorded as `no-route-binding` and none of them was reported
+ * as anything, so a message the owner never heard about looked the same as a
+ * message he had never configured a route for. The record still says
+ * `no-route-binding` — that is the delivery layer's vocabulary and the store's
+ * — while the condition surfaced through `email.inbound.status` and the health
+ * entry carries the reason and its own remedial step.
  */
-function resolveNoticeBinding(
+function resolveNoticeRoute(
   configManager: ConfigManager,
-  routeBindings: Pick<RouteBindingManager, 'listBindings' | 'getBinding'>,
-): AutomationRouteBinding | null {
+  routeBindings: InboundMailCompositionOptions['routeBindings'],
+): NoticeRouteAnswer {
+  if (!routeBindings.isRouteBindingEnabled()) {
+    return {
+      kind: 'unavailable',
+      reason: 'route-binding-disabled',
+      detail: 'route binding is switched off, so the daemon has no notice routes at all and '
+        + 'every arriving message is being recorded without ever being announced.',
+      fix: 'Set integrations.routeBinding to true, or set surfaces.email.inbound.notice.mode to '
+        + '"none" if recording without announcing is what you want.',
+    };
+  }
   const configured = configManager.get('surfaces.email.inbound.notice.route');
   if (typeof configured === 'string' && configured.trim().length > 0 && configured.trim() !== 'default') {
-    return routeBindings.getBinding(configured.trim()) ?? null;
+    const named = routeBindings.getBinding(configured.trim());
+    if (named) return { kind: 'bound', binding: named };
+    return {
+      kind: 'unavailable',
+      reason: 'notice-route-not-found',
+      detail: `surfaces.email.inbound.notice.route names the route binding "${configured.trim()}", `
+        + 'and there is no binding with that id.',
+      fix: 'Point surfaces.email.inbound.notice.route at a binding that exists, or set it back to '
+        + '"default" to use the route you most recently reached the daemon on.',
+    };
   }
   let newest: AutomationRouteBinding | null = null;
   for (const binding of routeBindings.listBindings()) {
     if (newest === null || binding.lastSeenAt > newest.lastSeenAt) newest = binding;
   }
-  return newest;
+  if (newest !== null) return { kind: 'bound', binding: newest };
+  return {
+    kind: 'unavailable',
+    reason: 'no-route-binding',
+    detail: 'no channel has ever been connected, so there is no route to announce arriving mail '
+      + 'on and every message is being recorded silently.',
+    fix: 'Connect a channel the daemon can reach you on (Telegram, Slack, ntfy, …), or point '
+      + 'surfaces.email.inbound.notice.route at an existing route binding.',
+  };
+}
+
+/** The binding for a send, or `undefined` so the delivery helper refuses by its own name. */
+function noticeBindingFor(
+  configManager: ConfigManager,
+  routeBindings: InboundMailCompositionOptions['routeBindings'],
+): AutomationRouteBinding | undefined {
+  const route = resolveNoticeRoute(configManager, routeBindings);
+  return route.kind === 'bound' ? route.binding : undefined;
 }
 
 function readNoticeMode(configManager: ConfigManager): InboundNoticeMode {
@@ -205,6 +273,11 @@ export function composeInboundMail(
     capabilityRecheckMs: readNumberSetting(configManager, 'surfaces.email.inbound.capabilityRecheckMinutes', 60) * 60_000,
   });
 
+  // ONE instance, shared by the intake that writes it and the supervisor that
+  // reports it. Two instances would be two answers to "is he being told", and
+  // the one the status verb read would be the one nothing wrote to.
+  const noticeHealth = createInboundNoticeHealth();
+
   const supervisor = new InboundMailSupervisor({
     config: configManager,
     account,
@@ -231,18 +304,20 @@ export function composeInboundMail(
     expectations,
     expectationPolicy: expectationStore,
     housekeeper,
+    noticeHealth,
     handle: createInboundMailIntake({
       expectations: expectations.matcher,
       records,
       notices: {
-        resolveBinding: () => resolveNoticeBinding(configManager, options.routeBindings),
+        resolveBinding: () => resolveNoticeRoute(configManager, options.routeBindings),
         send: (notice) => options.deliverStructuredNotice(
-          resolveNoticeBinding(configManager, options.routeBindings) ?? undefined,
+          noticeBindingFor(configManager, options.routeBindings),
           notice,
         ),
       },
       noticeMode: () => readNoticeMode(configManager),
       now: () => new Date(),
+      noticeHealth,
     }),
     // §3.4b: a terminal state is ANNOUNCED, not merely recorded. This used to
     // be a `logger.error` and nothing else — the once-per-transition tracker
@@ -251,7 +326,7 @@ export function composeInboundMail(
     // notice port arriving mail goes through, and still logs.
     observer: createInboundTerminalFailureAnnouncer({
       send: (notice) => options.deliverStructuredNotice(
-        resolveNoticeBinding(configManager, options.routeBindings) ?? undefined,
+        noticeBindingFor(configManager, options.routeBindings),
         notice,
       ),
     }),

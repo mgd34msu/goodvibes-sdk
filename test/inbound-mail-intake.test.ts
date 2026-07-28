@@ -66,6 +66,14 @@ function message(overrides: Partial<ImapInboundMessage> = {}): ImapInboundMessag
   };
 }
 
+/** The resolution a rig with no route answers with. */
+const NO_ROUTE = {
+  kind: 'unavailable',
+  reason: 'no-route-binding',
+  detail: 'no channel has ever been connected.',
+  fix: 'Connect a channel.',
+} as const;
+
 function rig(options: {
   readonly delivery: SurfaceNoticeDelivery;
   readonly mode?: InboundNoticeMode;
@@ -86,7 +94,9 @@ function rig(options: {
     }).matcher,
     records,
     notices: {
-      resolveBinding: () => (options.binding === undefined ? { surfaceKind: 'telegram' } : options.binding),
+      resolveBinding: () => (options.binding === undefined || options.binding !== null
+        ? { kind: 'bound' as const, binding: { surfaceKind: 'telegram' as const } }
+        : NO_ROUTE),
       send: async (text) => { sent.push(text); return options.delivery; },
     },
     noticeMode: () => options.mode ?? 'all',
@@ -101,8 +111,14 @@ describe('which failures put the message back', () => {
       delivery: { delivered: false, reason: 'delivery-failed', error: 'socket hang up' },
     });
     await expect(intake(message())).rejects.toBeInstanceOf(InboundNoticeTransportError);
-    // Nothing recorded: the message is not handled, so there is no outcome yet.
-    expect(await records.list()).toHaveLength(0);
+    // The record IS written — it goes in before the notice is attempted, which
+    // is what stops a failing store write from re-announcing — and it sits at
+    // `pending`, which is the true statement about a notice that never
+    // resolved. It used to assert zero records here, back when the notice went
+    // first and the record after it.
+    const stored = await records.list();
+    expect(stored).toHaveLength(1);
+    expect(stored[0]!.noticeStatus).toBe('pending');
   });
 
   test('a structural refusal is recorded and does NOT throw, so the mailbox drains', async () => {

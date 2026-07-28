@@ -28,6 +28,7 @@
  */
 
 import type { ChannelStatusSnapshot } from '../../channels/types.js';
+import type { InboundNoticeRefusalState } from './notice-health.js';
 import type { InboundCapabilityVerdict } from './ports.js';
 import type { InboundMailboxWatcherStatus } from './watcher.js';
 
@@ -64,6 +65,12 @@ export interface InboundMailHealthInput {
   readonly reason: string;
   /** The last capability verdict, or null before anything has been probed. */
   readonly verdict: InboundCapabilityVerdict | null;
+  /**
+   * The live notice-refusal condition, or null when notices are getting
+   * through. Optional so a caller that has no notion of one behaves exactly as
+   * before rather than being forced to pass a lie.
+   */
+  readonly noticeRefusal?: InboundNoticeRefusalState | null | undefined;
 }
 
 /**
@@ -73,9 +80,18 @@ export interface InboundMailHealthInput {
  * that cannot be read is `degraded` and never `disabled`, because `disabled`
  * reads as a choice and this is a fault — that distinction is the entire
  * reason this function exists rather than a config lookup.
+ *
+ * A mailbox being READ but whose notices are all being refused is `degraded`
+ * too, and that arm is the one that was missing. Every input above describes
+ * the connection to the mail server, and all of them were satisfied while the
+ * capability delivered nothing: the watcher was connected, the capability
+ * verdict was healthy, the loop was running, and every message it found was
+ * recorded and announced to nobody. `healthy` has to mean the capability is
+ * doing its job, not that its socket is open.
  */
 function healthState(input: InboundMailHealthInput): ChannelStatusSnapshot['state'] {
   if (!input.enabled) return 'disabled';
+  if (input.noticeRefusal) return 'degraded';
   if (input.verdict?.state === 'healthy' && input.running) return 'healthy';
   return 'degraded';
 }
@@ -101,6 +117,13 @@ export function describeInboundMailHealth(
       capabilityReason: input.verdict?.reason ?? null,
       capabilityDetail: input.verdict?.detail ?? null,
       capabilityFix: input.verdict?.fix ?? null,
+      // Named separately from the capability fields because it is a different
+      // fault with a different fix: the capability ones are about reading the
+      // mailbox, these are about telling the owner what was read.
+      noticeRefusedReason: input.noticeRefusal?.reason ?? null,
+      noticeRefusedFix: input.noticeRefusal?.fix ?? null,
+      noticeRefusedSince: input.noticeRefusal?.since ?? null,
+      unannouncedMessages: input.noticeRefusal?.unannounced ?? 0,
     },
   };
 }

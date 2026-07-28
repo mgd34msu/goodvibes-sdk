@@ -38,20 +38,39 @@
 import { InboundMessageDedup, inboundDedupKey } from '../../adapters/inbound-dedup.js';
 import type { InboundMailSink, InboundMailboxMessage } from './ports.js';
 
-/** How long a handled message stays suppressed. */
+/**
+ * How long a handled message stays suppressed WITHIN THE PROCESS THAT HANDLED
+ * IT. See `createInboundMailDedup` for what this window does and does not cover.
+ */
 export const DEFAULT_INBOUND_MAIL_DEDUP_TTL_MS = 60 * 60_000;
 
 /**
  * The email dedup cache is its own instance, never `ntfyInboundDedup`.
  *
- * Two reasons, and the first is a correctness one: that module-scoped cache
- * carries a ten-minute TTL, and ten minutes is shorter than a crash-restart
- * cycle. The daemon checks for updates hourly and restarts itself at idle, so
- * a message fetched just before a restart would come back after it with its
- * claim already expired, and be announced twice. An hour covers the restart.
+ * The reason is scope, and only scope: sharing a cache with ntfy means one
+ * surface's traffic evicting another's under the shared entry cap, and a
+ * suppression that depends on how chatty an unrelated surface has been is not a
+ * suppression anyone can reason about.
  *
- * The second is scope: sharing a cache with ntfy means one surface's traffic
- * evicting another's under the shared entry cap.
+ * WHAT THIS TTL DOES NOT DO, stated because it was claimed for two releases and
+ * was never true. `InboundMessageDedup` is a `Map` on an object the supervisor
+ * builds inside `runStart()`. It does not survive a process restart, it does
+ * not survive the in-process restart a config change or a cluster handoff
+ * causes, and no value of the TTL changes either of those — the cache is gone,
+ * not expired. The claim that an hour "covers the auto-update restart" was
+ * structurally false at every setting, and a comment that justifies code rather
+ * than describing it is the most dangerous shape a comment takes (§13.8).
+ *
+ * What it DOES cover is the window this cache can actually see: two passes
+ * inside one process discovering the same message — an IDLE wake and a fallback
+ * poll overlapping — and a retry after a failed pass in the same process. Both
+ * are seconds apart, so the TTL is generous rather than load-bearing.
+ *
+ * What covers the restart is the record store, not this. `intake.ts` asks
+ * `findByMessage` whether the owner was already told about a message before it
+ * tells him, and that answer is on disk, so a message redelivered because the
+ * cursor had not advanced when the daemon restarted is recorded again and
+ * announced once. See §6.
  */
 export function createInboundMailDedup(
   ttlMs: number = DEFAULT_INBOUND_MAIL_DEDUP_TTL_MS,
