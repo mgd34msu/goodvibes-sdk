@@ -223,7 +223,7 @@ describe('gmail source — capability sufficiency', () => {
 
   test('an insufficient verdict re-probes on the capability timer, not the poll interval', async () => {
     const harness = await build({ scopes: [METADATA_SCOPE], seedHistoryId: '100' });
-    harness.expectationOpen = true;
+    harness.state.expectationOpen = true;
     await harness.source.start(new AbortController().signal);
 
     const controller = new AbortController();
@@ -345,7 +345,7 @@ describe('gmail source — resync', () => {
 describe('gmail source — adaptive interval', () => {
   test('it polls every 5 s while an expectation is open and every 60 s when none is', async () => {
     const harness = await build({ seedHistoryId: '100', page: historyPage('100', []) });
-    harness.expectationOpen = true;
+    harness.state.expectationOpen = true;
 
     const controller = new AbortController();
     const loop = harness.source.run(controller.signal);
@@ -356,7 +356,7 @@ describe('gmail source — adaptive interval', () => {
 
     // The expectation closes mid-run: the very next wait is the slow one,
     // because the predicate is asked each time rather than sampled at start.
-    harness.expectationOpen = false;
+    harness.state.expectationOpen = false;
     await harness.clock.advance(5_000);
     await waitFor(() => harness.clock.nextDueIn === 60_000, 'the idle poll wait');
     expect(harness.source.latency).toEqual({ kind: 'poll', worstCaseMs: 60_000 });
@@ -371,7 +371,7 @@ describe('gmail source — adaptive interval', () => {
   test('latency is never push, whatever the interval', async () => {
     const harness = await build({ seedHistoryId: '100' });
     expect(harness.source.latency.kind).toBe('poll');
-    harness.expectationOpen = true;
+    harness.state.expectationOpen = true;
     expect(harness.source.latency.kind).toBe('poll');
     expect(harness.source.kind).toBe('gmail-history');
   });
