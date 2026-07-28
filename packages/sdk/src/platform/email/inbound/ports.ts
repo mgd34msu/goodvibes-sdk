@@ -33,6 +33,7 @@ import type {
   ImapClient,
   ImapConnectionReport,
   ImapEnvelope,
+  ImapEnvelopeBatch,
 } from '../imap-client.js';
 import type { ImapConnection, ImapReadOptions } from '../imap-session.js';
 import type { CursorResolution, MailboxCursorStore } from './cursor-store.js';
@@ -209,6 +210,18 @@ export interface MailboxReader {
    * the CALLER's job, which is why `deltaBatchSize` exists and is clamped.
    */
   fetchEnvelopes(uids: readonly number[]): Promise<ImapEnvelope[]>;
+  /**
+   * The same fetch, with the responses that could not be read reported.
+   *
+   * The watcher reads through THIS one and not through `fetchEnvelopes`, and
+   * the difference is the whole reason it exists. A list of envelopes cannot
+   * express "the server answered for UID 307 and we could not read the answer";
+   * it can only fail to contain 307, which is indistinguishable from the server
+   * saying 307 is gone. The drain loop used to resolve that ambiguity by
+   * advancing the cursor, which turned every unreadable response into a message
+   * nobody would ever be told about.
+   */
+  fetchEnvelopeBatch(uids: readonly number[]): Promise<ImapEnvelopeBatch>;
 }
 
 /**
@@ -556,6 +569,16 @@ export interface InboundMailNote {
     | 'cursor-established'
     | 'cursor-reset'
     | 'delta-drained'
+    /**
+     * The server answered a FETCH in terms this client could not read.
+     *
+     * Distinct from `delivery-failed` (we read the message and something
+     * downstream refused it) and from an expunge (the server said the message
+     * is not there). The cursor does not move for this one, so the message is
+     * fetched again — and it is reported rather than merely retried, because a
+     * response we can never read would otherwise be an invisible standstill.
+     */
+    | 'fetch-unreadable'
     | 'expunge-observed'
     | 'idle-reissued'
     | 'connection-lost'

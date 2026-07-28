@@ -107,16 +107,15 @@ import {
   selectDraftsMailbox,
   validateDraftInput,
 } from './imap-draft.js';
+import { fetchSection, parseFetchResponses } from './imap-fetch-response.js';
 import {
   extractAuthenticationResults,
   extractDeliveryEvidence,
   extractHeader,
-  parseFetchBody,
-  parseFetchHeaders,
-  parseFetchUids,
   parseCapabilities,
   parseMailboxStatus,
   parseSearchNumbers,
+  readEnvelopeBatch,
   formatImapDate,
   type ImapMailboxStatus,
 } from './imap-headers.js';
@@ -126,6 +125,7 @@ import type {
   ImapAppendDraftResult,
   ImapClientOptions,
   ImapEnvelope,
+  ImapEnvelopeBatch,
   ImapMessageDetail,
 } from './imap-types.js';
 
@@ -136,6 +136,8 @@ export type {
   ImapAttachmentInfo,
   ImapClientOptions,
   ImapEnvelope,
+  ImapEnvelopeBatch,
+  ImapFetchProblem,
   ImapMessage,
   ImapMessageDetail,
 } from './imap-types.js';
@@ -460,9 +462,32 @@ export class ImapClient {
    * was expunged between the search and the fetch, and inventing an envelope
    * for it — or falling back to its sequence number — would hand the caller an
    * identifier that names a different message.
+   *
+   * **Omission alone is not evidence of an expunge.** A caller that advances a
+   * cursor needs to know whether the server answered for a UID in terms this
+   * client could not read, and this method cannot say — it returns a list.
+   * `fetchEnvelopeBatch` is the same fetch with that answer attached, and it is
+   * what the watcher uses.
    */
   async fetchEnvelopes(uids: readonly number[]): Promise<ImapEnvelope[]> {
-    if (uids.length === 0) return [];
+    const batch = await this.fetchEnvelopeBatch(uids);
+    return [...batch.envelopes];
+  }
+
+  /**
+   * The envelope fetch, with the responses that could not be read reported
+   * rather than dropped.
+   *
+   * This exists because the drain loop resolved an ambiguity by guessing, and
+   * guessed in the direction that loses mail: a UID missing from the result was
+   * treated as expunged and the cursor advanced past it, whether the server had
+   * said the message was gone or had sent an answer this client failed to
+   * parse. Those are opposite facts. One means "move on"; the other means "ask
+   * again". They are told apart here, at the only place that knows which
+   * responses arrived.
+   */
+  async fetchEnvelopeBatch(uids: readonly number[]): Promise<ImapEnvelopeBatch> {
+    if (uids.length === 0) return { envelopes: [], unreadable: [] };
     if (uids.length > IMAP_MAX_FETCH_UIDS) {
       throw new Error(
         `fetchEnvelopes was asked for ${uids.length} UIDs, and at most `
@@ -473,41 +498,11 @@ export class ImapClient {
       );
     }
     const session = this.requireReadableMailbox();
-    const bounded = uids;
-    const set = bounded.join(',');
     const lines = await session.command(
-      `UID FETCH ${set} (UID BODY.PEEK[HEADER.FIELDS ` +
+      `UID FETCH ${uids.join(',')} (UID BODY.PEEK[HEADER.FIELDS ` +
       `(FROM SUBJECT DATE MESSAGE-ID TO DELIVERED-TO X-ORIGINAL-TO AUTHENTICATION-RESULTS)])`,
     );
-    const headersBySeq = parseFetchHeaders(lines);
-    const uidBySeq = parseFetchUids(lines);
-    const headersByUid = new Map<number, string>();
-    for (const [seq, raw] of Object.entries(headersBySeq)) {
-      const uid = uidBySeq[Number(seq)];
-      if (uid === undefined) continue;
-      headersByUid.set(uid, raw);
-    }
-    const mailbox = this.mailbox;
-    const envelopes: ImapEnvelope[] = [];
-    for (const uid of bounded) {
-      const raw = headersByUid.get(uid);
-      if (raw === undefined) continue;
-      const deliveryEvidence = extractDeliveryEvidence(raw);
-      envelopes.push({
-        uid,
-        from: extractHeader(raw, 'From'),
-        subject: extractHeader(raw, 'Subject'),
-        date: extractHeader(raw, 'Date'),
-        messageId: extractHeader(raw, 'Message-ID'),
-        mailbox,
-        deliveredTo: deliveryEvidence.map((entry) => entry.address),
-        deliveryEvidence,
-        // Display only — see the field docs on ImapEnvelope.
-        unverifiedToHeaderClaim: extractHeader(raw, 'To'),
-        authenticationResults: extractAuthenticationResults(raw),
-      });
-    }
-    return envelopes;
+    return readEnvelopeBatch(lines, this.mailbox, uids);
   }
 
   /**
@@ -525,7 +520,9 @@ export class ImapClient {
     const lines = await session.command(
       `UID FETCH ${uid} BODY.PEEK[TEXT]<0.${maxBytes}>`,
     );
-    const [body] = Object.values(parseFetchBody(lines));
+    const [response] = parseFetchResponses(lines);
+    if (response === undefined || response.parseError !== null) return '';
+    const body = fetchSection(response, (spec) => spec === 'TEXT' || spec === '');
     return (body ?? '').slice(0, maxBytes);
   }
 

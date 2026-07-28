@@ -1936,6 +1936,67 @@ is sent rather than discovered when one arrives somewhere unexpected.
 The alternative — a real `owner notice route` concept — is the better answer and
 is a larger change than this round. Recorded for a ruling.
 
+### 13.4 The capability did not work against a real server, and 8356 tests said it did
+
+Not an error in this document — an error the document could not catch, because
+every claim it makes about the IMAP read is correct and the code underneath
+still could not read what an IMAP server sends. Recorded because the *cause* is
+the reusable part, and because "the tests pass" was, for a while, the whole of
+the evidence that inbound mail worked.
+
+**What the wire actually looks like.** `BODY[HEADER.FIELDS ...]` comes back as a
+`{N}` literal (RFC 3501 §4.3): a byte count on the end of the line, then exactly
+that many bytes. `ImapSession` handles it correctly and hands the response up
+with the payload welded onto the line that announced it. Separately, `UID FETCH`
+makes the server add a `UID` data item (§6.4.8) **wherever it likes** — before
+the body section or after it. Two shapes, both conformant, both in the wild:
+
+    * 3 FETCH (UID 307 BODY[HEADER.FIELDS (…)] {58}…)
+    * 3 FETCH (BODY[HEADER.FIELDS (…)] {58}… UID 307)
+
+**Two defects, different severities.**
+
+1. **UID first.** `parseFetchHeaders` tested whether the text after `* n FETCH `
+   began with `(` and discarded it when it did. Against a folded literal that
+   text is `(UID 307 BODY[…] From: a@b.test…` — so the header block went out
+   with the data items it was welded to. An envelope **was** produced, with
+   `from`, `subject`, `date` and `messageId` all empty strings and no delivery
+   evidence. The message is delivered and announced: a notice naming nobody,
+   about nothing, that expectation matching cannot correlate.
+2. **UID last.** `parseFetchUids` searched only `line.slice(0, indexOf('BODY'))`
+   of the start line, and on this shape the UID is not on that line at all — it
+   is on the line that closes the response. No UID, so no envelope, so the UID
+   was simply missing from the fetch result.
+
+**And the third defect, which is the one that loses mail.** `poll-loop.ts` could
+not tell *"the server says this UID is gone"* from *"we could not read a response
+for it"*. Both arrive as an absence from the result, and it resolved the
+ambiguity by advancing the cursor — reporting the drain `complete`. Defect 2
+therefore did not surface as an error; it surfaced as a mailbox whose every
+message looked expunged, silently skipped, permanently. Absence of an envelope
+is now two distinct facts: `fetchEnvelopeBatch` returns the responses it could
+not read alongside the ones it could, an expunge still advances, and an
+unreadable answer holds the cursor, is reported through the observer as
+`fetch-unreadable`, and is fetched again.
+
+**The cause, which is the point.** `test/_helpers/fake-imap-mailbox.ts` wrote
+header blocks as ordinary response lines — the one shape no server produces and
+the only shape the broken readers could parse. Every test that touched
+`fetchEnvelopes` went through that helper, so the coverage was real, extensive,
+and entirely of a fiction. A nearby test (`platform-email-imap-fetch.test.ts`)
+**did** emit a literal with a trailing UID and passed, which made the gap look
+closed — it drives `fetchMessage`, which parses through a different function
+that was always correct. Coverage of one path reads as coverage of the
+capability.
+
+Neither parser had a direct unit test. A dozen lines asserting what
+`parseFetchUids` returns for a five-line fixture would have caught both defects
+with no harness at all, and the absence of those lines is why a shape gap in one
+helper became zero coverage for the read the whole capability depends on. The
+fake now emits byte-counted literals, takes `uidPosition`, answers in sequence
+order rather than the order asked, and carries non-ASCII subjects so the literal
+arithmetic is exercised for real.
+
 ## 14. Related
 
 - `docs/payments.md` — a consumer of this capability.

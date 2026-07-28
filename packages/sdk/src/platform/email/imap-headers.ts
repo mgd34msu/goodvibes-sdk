@@ -8,6 +8,13 @@
  * top-most-only rules below be tested without a server.
  */
 
+import { fetchSection, parseFetchResponses } from './imap-fetch-response.js';
+import type {
+  ImapEnvelope,
+  ImapEnvelopeBatch,
+  ImapFetchProblem,
+} from './imap-types.js';
+
 // ---------------------------------------------------------------------------
 // Public types
 // ---------------------------------------------------------------------------
@@ -187,98 +194,79 @@ export function parseSearchNumbers(searchResponse: readonly string[]): number[] 
 }
 
 /**
- * The `UID` data item of each FETCH response, keyed by the response's own
- * sequence number.
+ * Turn the lines of one envelope `UID FETCH` into envelopes, and say plainly
+ * which responses could not be read.
  *
- * `* 3 FETCH (UID 307 BODY[...] ...)` maps 3 → 307. The `3` is a sequence
- * number even when the command was `UID FETCH`, which is exactly why the two
- * have to be read separately and joined rather than assumed equal.
+ * The second half is the point. A caller that advances a cursor has to tell
+ * two things apart that used to look identical from here:
  *
- * Only the data-item list ahead of the first `BODY`/`BODYSTRUCTURE` token is
- * searched, so a `UID 12` written inside a message body cannot be read back as
- * the message's UID.
+ *   - the server sent NO response for a UID — it was expunged between the
+ *     search and the fetch, and the cursor may move past it;
+ *   - the server sent a response for it and this client could not read the
+ *     answer — nothing is known about that message, and moving the cursor
+ *     would skip mail that is still sitting in the mailbox.
+ *
+ * So every response that arrives is accounted for: it becomes an envelope, or
+ * it becomes an entry in `unreadable` with a plain-language reason. Nothing is
+ * dropped on the floor, which is what `parseFetchHeaders` and `parseFetchUids`
+ * did between them — a response whose UID could not be located was skipped in
+ * silence, and read downstream as an expunge.
  */
-export function parseFetchUids(fetchLines: readonly string[]): Record<number, number> {
-  const result: Record<number, number> = {};
-  for (const line of fetchLines) {
-    const start = /^\* (\d+) FETCH/.exec(line);
-    if (start === null) continue;
-    const bodyAt = line.indexOf('BODY');
-    const items = bodyAt === -1 ? line : line.slice(0, bodyAt);
-    const uidMatch = /\bUID (\d+)/.exec(items);
-    if (uidMatch === null) continue;
-    const seqNum = parseInt(start[1] ?? '0', 10);
-    const uid = parseInt(uidMatch[1] ?? '0', 10);
-    if (seqNum > 0 && uid > 0) result[seqNum] = uid;
-  }
-  return result;
-}
+export function readEnvelopeBatch(
+  fetchLines: readonly string[],
+  mailbox: string,
+  wanted: readonly number[],
+): ImapEnvelopeBatch {
+  const byUid = new Map<number, string>();
+  const unreadable: ImapFetchProblem[] = [];
 
-export function parseFetchHeaders(fetchLines: readonly string[]): Record<number, string> {
-  const result: Record<number, string> = {};
-  let seqNum = 0;
-  let headerAccum = '';
-  let inBody = false;
-
-  for (const line of fetchLines) {
-    const fetchStart = /^\* (\d+) FETCH/.exec(line);
-    if (fetchStart) {
-      seqNum = parseInt(fetchStart[1] ?? '0', 10);
-      headerAccum = '';
-      inBody = true;
-      // The literal content may be appended after the header-fields marker on the same line
-      const afterFetch = line.slice(fetchStart[0].length);
-      const literalAfter = afterFetch.indexOf(' ') !== -1 ? afterFetch.slice(afterFetch.indexOf(' ') + 1) : '';
-      if (literalAfter && !literalAfter.startsWith('(')) {
-        headerAccum += literalAfter + '\n';
-      }
+  for (const response of parseFetchResponses(fetchLines)) {
+    const seq = response.seq > 0 ? response.seq : null;
+    if (response.parseError !== null) {
+      unreadable.push({ seq, uid: response.uid, detail: response.parseError });
       continue;
     }
-    if (inBody) {
-      if (line === ')') {
-        if (seqNum > 0) result[seqNum] = headerAccum;
-        inBody = false;
-        seqNum = 0;
-        headerAccum = '';
-      } else {
-        headerAccum += line + '\n';
-      }
-    }
-  }
-  return result;
-}
-
-export function parseFetchBody(fetchLines: readonly string[]): Record<number, string> {
-  const result: Record<number, string> = {};
-  let seqNum = 0;
-  let bodyAccum = '';
-  let inBody = false;
-
-  for (const line of fetchLines) {
-    const fetchStart = /^\* (\d+) FETCH/.exec(line);
-    if (fetchStart) {
-      seqNum = parseInt(fetchStart[1] ?? '0', 10);
-      bodyAccum = '';
-      inBody = true;
-      // literal content appended after BODY.PEEK[TEXT] tag
-      const afterLiteral = line.slice(line.indexOf(' ', fetchStart[0].length) + 1);
-      if (afterLiteral && !afterLiteral.includes('BODY')) {
-        bodyAccum += afterLiteral + '\n';
-      }
+    if (response.uid === null) {
+      unreadable.push({
+        seq,
+        uid: null,
+        detail: `the FETCH response for sequence number ${response.seq} carried no UID data `
+          + `item, so it cannot be attributed to a message`,
+      });
       continue;
     }
-    if (inBody) {
-      if (line === ')') {
-        if (seqNum > 0) result[seqNum] = bodyAccum;
-        inBody = false;
-        seqNum = 0;
-        bodyAccum = '';
-      } else {
-        bodyAccum += line + '\n';
-      }
+    const raw = fetchSection(response, (spec) => spec.startsWith('HEADER'));
+    if (raw === null) {
+      unreadable.push({
+        seq,
+        uid: response.uid,
+        detail: `the FETCH response for UID ${response.uid} carried no header section`,
+      });
+      continue;
     }
+    byUid.set(response.uid, raw);
   }
-  return result;
+
+  const envelopes: ImapEnvelope[] = [];
+  for (const uid of wanted) {
+    const raw = byUid.get(uid);
+    if (raw === undefined) continue;
+    const deliveryEvidence = extractDeliveryEvidence(raw);
+    envelopes.push({
+      uid,
+      from: extractHeader(raw, 'From'),
+      subject: extractHeader(raw, 'Subject'),
+      date: extractHeader(raw, 'Date'),
+      messageId: extractHeader(raw, 'Message-ID'),
+      mailbox,
+      deliveredTo: deliveryEvidence.map((entry) => entry.address),
+      deliveryEvidence,
+      // Display only — see the field docs on ImapEnvelope.
+      unverifiedToHeaderClaim: extractHeader(raw, 'To'),
+      authenticationResults: extractAuthenticationResults(raw),
+    });
+  }
+  return { envelopes, unreadable };
 }
 
 // ---------------------------------------------------------------------------
