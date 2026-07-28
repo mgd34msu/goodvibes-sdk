@@ -134,6 +134,7 @@ export {
 export {
   InboundExpectationRegistry,
   ExpectationMailboxUnreadableError,
+  expectationSweepIntervalMs,
   type ExpectationCapabilityProbe,
   type ExpectationExpiryReason,
   type ExpectationExpiryReport,
@@ -161,6 +162,7 @@ export {
 } from './gmail-source.js';
 export {
   createInboundMailSourceFactory,
+  type GmailPollIntervals,
   type GmailSourceBuilder,
   type InboundMailSourceFactoryDeps,
 } from './source-factory.js';

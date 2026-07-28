@@ -44,6 +44,18 @@
  * expiry through `onExpired` with a named reason. The same rule as a terminal
  * capability failure: tell him rather than go quiet.
  *
+ * And a report nothing asks for is that silence with more code in it.
+ * `sweep()` had exactly one caller repo-wide — its own test — while `onExpired`
+ * WAS wired, in `facade-inbound-mail.ts`. So the handler that announces an
+ * expiry existed and could never fire, and a signup whose verification never
+ * arrived was reported to nobody: the record sat in the book until something
+ * else happened to touch it. `startSweeping()` below is what makes the
+ * reporting real. It is armed from the composition root beside the
+ * housekeeper's own timer and NOT from the supervisor's start, because an
+ * expectation can be opened through `email.expectation.open` while no source is
+ * running at all — which is precisely the case where nothing else would ever
+ * reap it.
+ *
  * "Nothing came" and "we could no longer look" are different facts
  * ───────────────────────────────────────────────────────────────
  * An expectation is a promise to watch a mailbox for fifteen minutes. That
@@ -80,8 +92,36 @@ import {
   type VerificationMatch,
 } from '../../google/verification-expectations.js';
 import { surfaceHasCommandAuthority } from '../../security/untrusted-content.js';
+import { logger } from '../../utils/logger.js';
+import { summarizeError } from '../../utils/error-display.js';
 import type { PersistedExpectationStore } from './expectation-store.js';
 import type { InboundCapabilityReason, InboundCapabilityVerdict } from './ports.js';
+
+/**
+ * How often the registry re-checks for expectations that have run out, given
+ * the default window in force.
+ *
+ * Derived from the window rather than fixed, because the two numbers are the
+ * same promise seen from opposite ends: a fifteen-minute window swept hourly
+ * would report an expiry forty-five minutes after it happened, and a
+ * one-minute window swept every thirty seconds would report half of them late.
+ * A thirtieth of the window keeps the lateness proportional to the promise.
+ *
+ * Clamped at both ends for reasons that have nothing to do with the window.
+ * The floor stops a one-minute window from arming a two-second timer, which
+ * would be a wake-up every two seconds for the life of the daemon to reap a
+ * list that is empty almost always. The ceiling stops the hour-long maximum
+ * window from pushing the cadence past a minute, because `capabilityChanged`
+ * and the gateway verbs can retire expectations at any moment and a sweep that
+ * runs rarely makes `list()` disagree with the truth for longer than anything
+ * reading it would expect.
+ */
+export function expectationSweepIntervalMs(defaultWindowMs: number): number {
+  const window = Number.isFinite(defaultWindowMs) && defaultWindowMs > 0
+    ? defaultWindowMs
+    : MAX_VERIFICATION_WINDOW_MS;
+  return Math.max(5_000, Math.min(60_000, Math.floor(window / 30)));
+}
 
 /**
  * The book's own `matchCandidate`, so the signature below is projected off the
@@ -263,6 +303,8 @@ export class InboundExpectationRegistry {
    * This getter is what lets a test ask.
    */
   private readonly authorityProbe: SurfaceAuthorityProbe;
+  /** The periodic sweep, once armed. Null while nothing is scheduled. */
+  private sweepTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(options: InboundExpectationRegistryOptions) {
     this.authorityProbe = options.authority ?? { surfaceHasCommandAuthority };
@@ -436,6 +478,56 @@ export class InboundExpectationRegistry {
     if (expired.length > 0) await this.persist();
     this.report(reports);
     return reports;
+  }
+
+  /**
+   * Sweep on an interval, so an expiry is reported when it happens rather than
+   * whenever something else next touches the book.
+   *
+   * Not optional wiring, and not a convenience. `sweep()` is the only thing
+   * that turns an elapsed window into an `onExpired` report, and with no caller
+   * the whole "an expiry is an outcome, not silence" property above was
+   * unreachable — the one component built to stop a signup dying quietly was
+   * itself dying quietly. Idempotent: a second call replaces the first timer
+   * rather than adding one, so a re-arm cannot leave two sweeps running.
+   *
+   * There is deliberately NO in-flight guard, and that is a decision rather
+   * than an omission. One was written here and then removed, because no test
+   * could be made to fail without it: `sweep()` takes what it reaps out of the
+   * book SYNCHRONOUSLY (`book.sweepExpired`) and only then awaits the disk
+   * write, so a tick landing during a slow write finds an empty list, reports
+   * nothing, and writes nothing. A guard against that would be defensive code
+   * whose absence nothing can detect — which is the same unfalsifiable shape as
+   * the dead paths this round exists to remove. If `sweep()` ever awaits before
+   * it takes the records, this needs revisiting and this paragraph is the
+   * reason why.
+   *
+   * The timer is unref'd, so it never by itself keeps the process alive.
+   */
+  startSweeping(intervalMs: number): void {
+    this.stopSweeping();
+    if (!Number.isFinite(intervalMs) || intervalMs <= 0) return;
+    this.sweepTimer = setInterval(() => {
+      void this.sweep().catch((error: unknown) => {
+        // `sweep()` already swallows a throwing `onExpired` per report, so
+        // reaching here means the book or the store write broke. Logged rather
+        // than discarded: a sweep that has stopped working is a daemon that has
+        // gone back to never reporting an expiry, which is the exact condition
+        // this timer exists to end.
+        logger.error('The inbound-mail expectation sweep failed', {
+          surface: 'email-inbound',
+          detail: summarizeError(error),
+        });
+      });
+    }, intervalMs);
+    this.sweepTimer.unref?.();
+  }
+
+  /** Stop the periodic sweep. Safe to call when nothing is armed. */
+  stopSweeping(): void {
+    if (this.sweepTimer === null) return;
+    clearInterval(this.sweepTimer);
+    this.sweepTimer = null;
   }
 
   /**
