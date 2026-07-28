@@ -5,6 +5,7 @@ import { buildKnowledgeInjectionPrompt, selectKnowledgeForTask } from '../state/
 import type { MemoryRegistry } from '../state/index.js';
 import type { AgentRecord } from '../tools/agent/index.js';
 import { logger } from '../utils/logger.js';
+import { openTierContextBlock } from '../owner-profile/context-block.js';
 
 type PromptContextDeps = {
   readonly workingDirectory: string;
@@ -409,4 +410,32 @@ export function buildLayeredOrchestratorSystemPrompt(
     : noContext;
   logger.warn('[AgentOrchestrator] context-window awareness: system prompt hard-truncated to fit context window', { agentId: record.id, chars: truncated.length });
   return truncated;
+}
+
+/**
+ * Append the owner profile's OPEN tier to a system prompt, if there is one.
+ *
+ * Lives here because this file is where a system prompt is assembled, and it is
+ * reached from both per-turn composers — the main conversation loop's
+ * (`core/orchestrator-turn-loop.ts`) and the agent runner's — so the wording
+ * exists once and the two surfaces cannot drift.
+ *
+ * Two invariants the callers must keep, both of which cost real prompt tokens
+ * when broken:
+ *
+ *  - **Compose, never write back.** Call this on the way into the provider, on
+ *    the CURRENT base string, and throw the result away. Storing the result
+ *    back into a cached base makes the block compound once per tool round.
+ *  - **Absent is absent.** No profile, profile disabled, `profile.injectOpenTier`
+ *    off, or nothing in the open tier ⇒ the base comes back untouched. There is
+ *    deliberately no "profile unavailable" placeholder: that would put a file
+ *    path in front of the model on every single turn and buy nothing.
+ *
+ * The CLOSED tier — his name, contact details, home address, everything
+ * commercial, and the People / Places / Work / Notes sections — is never
+ * injected by this or any other path. See docs/owner-profile.md §11.2.
+ */
+export function withOpenTierProfileBlock(base: string): string {
+  const block = openTierContextBlock();
+  return block.length === 0 ? base : `${base}\n\n${block}`;
 }

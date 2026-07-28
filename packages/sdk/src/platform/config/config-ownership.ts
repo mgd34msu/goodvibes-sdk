@@ -81,6 +81,15 @@ export const DAEMON_OWNED_CONFIG_PREFIXES: readonly string[] = [
   // certain they are alone) with a settings file that reads as if it were
   // configured.
   'cluster.',
+  // The owner profile is one file at daemon scope with the daemon as its single
+  // writer, so the policy governing it has to resolve from the daemon store as
+  // well. Left client-owned, `profile.autonomousWrites` turned off from the TUI
+  // would land in the TUI's silo while the daemon — the process that loads the
+  // file, serves the profile.* verbs and decides whether a fact gets recorded —
+  // kept reading the default. That is the reported-success-configured-nothing
+  // failure the daemon tier exists for, and this instance would be a bad one:
+  // the operator would believe he had stopped autonomous recording.
+  'profile.',
 ];
 
 /** Individual daemon-owned keys that do not sit under a daemon-owned domain. */
