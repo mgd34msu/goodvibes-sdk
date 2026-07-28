@@ -12,7 +12,7 @@
  * backend.
  */
 
-import { describe, expect, test } from 'bun:test';
+import { beforeEach, describe, expect, test } from 'bun:test';
 import {
   SURFACE_EMAIL_PASSWORD_REF,
   SURFACE_EMAIL_SMTP_PASSWORD_REF,
@@ -26,6 +26,7 @@ import { daemonSecretKeyFor } from '../packages/sdk/src/platform/config/daemon-s
 import { readEmailConfig, smtpPasswordRefFor } from '../packages/sdk/src/platform/email/email-service.ts';
 import { createDaemonEmailGatewayService } from '../packages/sdk/src/platform/control-plane/routes/email-composition.ts';
 import { createEmailSendHandler } from '../packages/sdk/src/platform/control-plane/routes/email.ts';
+import { resetProcessUntrustedContentLedgerForTests } from '../packages/sdk/src/platform/security/untrusted-content.ts';
 import { createCalendarEventsCreateHandler } from '../packages/sdk/src/platform/control-plane/routes/calendar.ts';
 import { GatewayVerbError } from '../packages/sdk/src/platform/control-plane/routes/gateway-verb-error.ts';
 import type { EmailGatewayService } from '../packages/sdk/src/platform/control-plane/routes/email.ts';
@@ -384,6 +385,15 @@ describe('addresses in log fields', () => {
 // ---------------------------------------------------------------------------
 
 describe('a caller that declares this is not a user request', () => {
+  // These handlers take the PROCESS ledger by default, which is right in
+  // production — one process, one ledger, so a page read and a send are one
+  // composition — and is shared state here. Since the fetch tool began
+  // recording its reads, any earlier test in the same bun process can leave
+  // exposure behind and these sends would be refused for something another
+  // file did. Reset rather than pass a private ledger, so what is exercised
+  // stays the real production default.
+  beforeEach(() => { resetProcessUntrustedContentLedgerForTests(); });
+
   const sendService: EmailGatewayService = {
     async listInbox() { return { messages: [], total: 0 }; },
     async readMessage() { return null; },

@@ -323,10 +323,29 @@ describe('the browser and the mailbox write to one ledger', () => {
     const port = createUntrustedContentPort({ surface: 'web-page', toolName: 'browser', ledger });
     port.recordIngest({ origin: port.originOf('https://news.example/x'), at: new Date().toISOString() });
 
+    // The refusal now says WHY the question could not be answered — nothing read
+    // this turn kept its text — instead of the bare "not available here" it used
+    // to give. Same decision, and a reader can now tell this apart from a
+    // derivation finding, which is the difference between a refusal they can act
+    // on and one they can only obey.
     await expect(sendHandlerOver(ledger)({
       body: { to: 'someone@example.com', subject: 'hi', body: 'text', confirm: true },
       context: {},
-    })).rejects.toThrow(/not available here/);
+    })).rejects.toThrow(/refused rather than assumed safe/);
+  });
+
+  test('the coarse refusal names a web page as a web page', async () => {
+    // It used to say "which anyone able to write to those pages controls" about
+    // every surface, mailboxes included. The noun now follows the surface — see
+    // security/untrusted-surface-language.ts for why that is not cosmetic.
+    const ledger = new UntrustedContentLedger();
+    const port = createUntrustedContentPort({ surface: 'web-page', toolName: 'browser', ledger });
+    port.recordIngest({ origin: port.originOf('https://news.example/x'), at: new Date().toISOString() });
+
+    await expect(sendHandlerOver(ledger)({
+      body: { to: 'someone@example.com', subject: 'hi', body: 'text', confirm: true },
+      context: {},
+    })).rejects.toThrow(/the web page at https:\/\/news\.example/);
   });
 
   test('a send with nothing read carries no exposure disclosure', async () => {
