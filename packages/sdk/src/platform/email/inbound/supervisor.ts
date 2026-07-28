@@ -68,9 +68,28 @@ import type {
   InboundMailTerminalFailure,
   InboundMailboxMessage,
 } from './ports.js';
+import { discloseCursor } from './supervisor-status.js';
+import type {
+  DisclosedCursor,
+  InboundMailRetentionReport,
+  InboundMailSourceReport,
+  InboundMailStatusSnapshot,
+  InboundMailStoreHealth,
+} from './supervisor-status.js';
 import type { InboundMailboxWatcherStatus } from './watcher.js';
-import type { InboundSourceCursor } from './source-cursor.js';
 import type { ConfigManager } from '../../config/manager.js';
+
+/**
+ * The disclosure shapes, re-exported so a file split does not move the public
+ * surface. Their declarations live in `supervisor-status.ts`.
+ */
+export type {
+  DisclosedCursor,
+  InboundMailRetentionReport,
+  InboundMailSourceReport,
+  InboundMailStatusSnapshot,
+  InboundMailStoreHealth,
+} from './supervisor-status.js';
 
 /**
  * The status triple every poll/socket surface reports (§3.5).
@@ -89,130 +108,6 @@ export interface InboundMailSupervisorStatus {
 
 /** The config reads this supervisor makes, projected off the real manager. */
 export type InboundMailConfigPort = Pick<ConfigManager, 'get'>;
-
-/**
- * Which source is in force, and what it costs.
- *
- * `latency` is carried as the SENTENCE `describeSourceLatency` produces rather
- * than as a raw number, because the whole reason `SourceLatency` is on the
- * interface is that "real-time" must never be claimed for a poll — and a
- * consumer handed `{ kind: 'poll', worstCaseMs }` is a consumer that can write
- * that sentence itself, wrongly.
- */
-export interface InboundMailSourceReport {
-  readonly kind: InboundMailSourceKind | null;
-  /** `forced`, `google-adopted`, … or the refusal reason when nothing runs. */
-  readonly basis: string;
-  readonly detail: string;
-  /** Empty string before a source exists to state its latency. */
-  readonly latency: string;
-}
-
-/**
- * Whether a persisted store could be read, per store.
- *
- * Present on the snapshot because a store whose file would not parse is
- * DISCARDED (§9's "a torn record is discarded, not repaired", applied to the
- * file), and a discard nobody is told about is indistinguishable from data
- * loss. It is also the one fact that explains the state a reader is looking at:
- * a mailbox that resumed from nowhere, or an expectation book that is empty
- * when a workstream is waiting on it.
- */
-export interface InboundMailStoreHealth {
-  readonly store: 'cursors' | 'records' | 'expectations';
-  readonly state:
-    /** Read normally. */
-    | 'ok'
-    /** The file would not parse; its contents were discarded and the store is serving empty. */
-    | 'discarded-unreadable'
-    /** The store could not be read at all just now, so this snapshot omits it. */
-    | 'unavailable';
-  /** '' when `ok`; otherwise what went wrong, in the platform's own words. */
-  readonly detail: string;
-}
-
-/** What a store retains, for the disclosure §9 requires. */
-export interface InboundMailRetentionReport {
-  readonly cursors: { readonly kept: number; readonly maxCursors: number };
-  readonly records: {
-    readonly kept: number;
-    readonly retentionDays: number;
-    readonly maxRecords: number;
-    readonly maxBodyExcerptChars: number;
-  };
-  readonly expectations: { readonly open: number; readonly maxOpen: number };
-  /** The last housekeeping pass this process ran, or null before the first. */
-  readonly lastSweep: {
-    readonly sweptAt: number;
-    readonly trigger: string;
-    readonly summary: string;
-    /** Stores that pass could not sweep at all. Empty on a clean pass. */
-    readonly failures: readonly string[];
-  } | null;
-}
-
-/** One persisted cursor, as `email.inbound.status` discloses it. */
-export interface DisclosedCursor {
-  readonly account: string;
-  readonly mailbox: string;
-  readonly source: InboundSourceCursor['source'];
-  /**
-   * The position, as a string on both sources.
-   *
-   * A Gmail `historyId` is a decimal uint64 that must never be parsed to a
-   * number, and an IMAP position is two numbers rather than one, so a single
-   * numeric field could only be wrong for one of them.
-   */
-  readonly position: string;
-  readonly updatedAt: string;
-  readonly ageMs: number;
-}
-
-/** The whole disclosure `email.inbound.status` answers with. */
-export interface InboundMailStatusSnapshot {
-  readonly enabled: boolean;
-  readonly running: boolean;
-  readonly mode: InboundMailboxWatcherStatus['mode'];
-  readonly reason: string;
-  readonly account: string;
-  readonly mailbox: string;
-  readonly source: InboundMailSourceReport;
-  readonly capability: InboundCapabilityVerdict | null;
-  readonly cursors: readonly DisclosedCursor[];
-  readonly expectations: readonly {
-    readonly id: string;
-    readonly serviceDomain: string;
-    readonly recipientAddress: string;
-    readonly purpose: string;
-    readonly openedAt: string;
-    readonly expiresAt: string;
-    readonly remainingMs: number;
-  }[];
-  readonly retention: InboundMailRetentionReport;
-  /** One entry per persisted store, always all three. See `InboundMailStoreHealth`. */
-  readonly stores: readonly InboundMailStoreHealth[];
-  /**
-   * Whether arriving mail is reaching the owner, and what is stopping it.
-   *
-   * `state: 'ok'` means notices are getting through OR nothing has been refused
-   * yet — deliberately one value, because "nothing refused" and "refusals
-   * cleared" are the same fact about right now. `state: 'refused'` carries the
-   * condition, its remedial step, when it started and how many messages have
-   * been recorded without a notice under it. A capability quietly demoted to a
-   * recorder is precisely what this field exists to make unmissable.
-   */
-  readonly noticeDelivery:
-    | { readonly state: 'ok' }
-    | {
-      readonly state: 'refused';
-      readonly reason: string;
-      readonly detail: string;
-      readonly fix: string;
-      readonly since: string;
-      readonly unannounced: number;
-    };
-  readonly health: InboundMailHealthEntry;
-}
 
 /**
  * How a selected source is built.
@@ -514,6 +409,34 @@ export class InboundMailSupervisor {
   }
 
   /**
+   * A setting the running source re-reads on every reconnect has changed; look
+   * again now rather than at the next scheduled check.
+   *
+   * This is the seam that makes `recheckNow()` real. It existed on
+   * `InboundMailboxWatcher`, was delegated verbatim by `ImapMailSource`, and was
+   * called by NOTHING — its own comment said "called when configuration
+   * changed" while no configuration change reached it, because nothing
+   * subscribed to any `surfaces.email.*` key anywhere. An owner who fixed a
+   * wrong IMAP host waited out `capabilityRecheckMinutes` to find out whether it
+   * had worked, or restarted the daemon. Both are the restart this platform is
+   * supposed not to need.
+   *
+   * Deliberately NOT a restart. `start()` re-runs the recovery sweep, re-decides
+   * the source and rebuilds the dedup cache, none of which a corrected password
+   * warrants — and a restart per settings save is how a mailbox ends up
+   * reconnecting in a loop while somebody is still typing. The reconnect the
+   * watcher was going to make anyway is simply made now.
+   *
+   * A no-op when nothing is running, and a no-op on a source that declares no
+   * `recheckNow`. Both are honest answers to "look again", not swallowed
+   * failures: whether there is anything to look again AT is the source's own
+   * business — see `InboundMailSource.recheckNow`.
+   */
+  recheckNow(): void {
+    this.source?.recheckNow?.();
+  }
+
+  /**
    * Stop reading and release the connection.
    *
    * Does not resolve until the source has genuinely stopped — the cluster
@@ -782,18 +705,4 @@ export class InboundMailSupervisor {
     this.currentStatus = { mode, reason: full, running };
     return this.currentStatus;
   }
-}
-
-function discloseCursor(cursor: InboundSourceCursor, now: number): DisclosedCursor {
-  const updatedAt = Date.parse(cursor.updatedAt);
-  return {
-    account: cursor.account,
-    mailbox: cursor.mailbox,
-    source: cursor.source,
-    position: cursor.source === 'gmail'
-      ? `historyId ${cursor.historyId}`
-      : `UIDVALIDITY ${String(cursor.uidValidity)} / UID ${String(cursor.lastSeenUid)}`,
-    updatedAt: cursor.updatedAt,
-    ageMs: Number.isFinite(updatedAt) ? Math.max(0, now - updatedAt) : 0,
-  };
 }

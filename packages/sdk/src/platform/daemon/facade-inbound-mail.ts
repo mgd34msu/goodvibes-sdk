@@ -39,6 +39,7 @@ import {
   createInboundMailSourceFactory,
   createInboundNoticeHealth,
   createInboundTerminalFailureAnnouncer,
+  expectationSweepIntervalMs,
   resolveWatcherSettings,
   type GmailSourceBuilder,
   type InboundMailObserver,
@@ -255,9 +256,13 @@ export function composeInboundMail(
   // answer: nothing has looked at the mailbox yet.
   let supervisor: InboundMailSupervisor | undefined;
 
+  const expectationWindowMs = readNumberSetting(
+    configManager, 'surfaces.email.inbound.expectationWindowMinutes', 15,
+  ) * 60_000;
+
   const expectations = new InboundExpectationRegistry({
     store: expectationStore,
-    defaultWindowMs: readNumberSetting(configManager, 'surfaces.email.inbound.expectationWindowMinutes', 15) * 60_000,
+    defaultWindowMs: expectationWindowMs,
     // §12 gate #31: an expectation opened against a mailbox already known
     // unreadable is refused at open time, so the workstream learns now rather
     // than from a fifteen-minute silence it cannot tell from "nothing came".
@@ -381,6 +386,13 @@ export function composeInboundMail(
   registerEmailExpectationGatewayMethods(options.gatewayMethods, expectations);
   registerEmailInboundStatusGatewayMethod(options.gatewayMethods, supervisor);
   housekeeper.start(6 * 60 * 60_000);
+  // The call `sweep()` never had. Beside the housekeeper's timer and not inside
+  // the supervisor's start, because `email.expectation.open` can register an
+  // expectation while no source is running — and a daemon watching no mailbox
+  // is exactly when an expectation running out would otherwise be reported by
+  // nothing. Six hours is right for reaping records off disk; it is not right
+  // for a promise measured in minutes, so this runs on its own cadence.
+  expectations.startSweeping(expectationSweepIntervalMs(expectationWindowMs));
   return supervisor;
 }
 
