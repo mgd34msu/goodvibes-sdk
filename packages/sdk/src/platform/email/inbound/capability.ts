@@ -33,17 +33,27 @@
  * answer even then leaves the question genuinely unknown.
  */
 
+import {
+  classifyServerRefusal,
+  describeEmailCapabilityFailure,
+  resolveIdleSupport,
+} from '../imap-open.js';
+import type {
+  EmailCapabilityFailureNotice,
+  EmailCapabilityFailureReason,
+  ImapIdleDecision,
+} from '../imap-client.js';
 import type {
   InboundCapabilityReason,
   InboundCapabilityState,
   InboundCapabilityTransition,
   InboundCapabilityVerdict,
   InboundMailObserver,
-  MailboxOpenReport,
   MailboxReader,
   WatcherClock,
 } from './ports.js';
-import { isConnectionLimitRefusal } from './backoff.js';
+
+export { resolveIdleSupport } from '../imap-open.js';
 
 // ---------------------------------------------------------------------------
 // Verdicts
@@ -56,7 +66,8 @@ const STATE_BY_REASON: Readonly<Record<InboundCapabilityReason, InboundCapabilit
   'polling-idle-refused': 'degraded',
   'polling-capability-unknown': 'degraded',
   reconnecting: 'degraded',
-  'connection-limit': 'degraded',
+  'server-unavailable': 'degraded',
+  'credentials-missing': 'insufficient',
   'credentials-rejected': 'insufficient',
   'mailbox-unreadable': 'insufficient',
   'uidvalidity-missing': 'insufficient',
@@ -92,7 +103,10 @@ const FIX_BY_REASON: Readonly<Record<InboundCapabilityReason, string>> = {
     'Nothing to fix — the server would not say whether it supports push, so '
     + 'new mail is found by polling instead.',
   reconnecting: '',
-  'connection-limit': '',
+  'server-unavailable': '',
+  'credentials-missing':
+    'No mail password is stored where the daemon reads secrets, so there is '
+    + 'nothing to sign in with. Store one at daemon scope.',
   'credentials-rejected':
     'The mail server refused the sign-in. Replace the stored password for this '
     + 'account (surfaces.email.imap.password); if the account uses two-factor '
@@ -136,68 +150,25 @@ export function stateForReason(reason: InboundCapabilityReason): InboundCapabili
 // Resolving whether the server can push
 // ---------------------------------------------------------------------------
 
-/** How the IDLE question was answered, and by what. */
-export interface IdleSupportResolution {
-  readonly supported: boolean;
-  /**
-   *   - `advertised` — the server volunteered its capabilities at greeting or
-   *     login time and we read them for free;
-   *   - `capability-probe` — it volunteered nothing, so we asked;
-   *   - `unknown` — it volunteered nothing and would not answer either. Poll,
-   *     and say that is why.
-   */
-  readonly resolvedBy: 'advertised' | 'capability-probe' | 'unknown';
-}
-
-/**
- * Decide whether this connection can hold an IDLE, resolving the unknown case
- * rather than collapsing it into "no".
- *
- * The whole point of the tri-state is that these three inputs are different:
- *
- *   | `supportsIdle` | meaning                       | what happens here |
- *   |----------------|-------------------------------|-------------------|
- *   | `true`         | advertised                    | IDLE              |
- *   | `false`        | advertised, and IDLE not in it| poll              |
- *   | `null`         | the server said nothing       | **ask, then decide** |
- *
- * A watcher that treated `null` as `false` would poll a push-capable server
- * forever and produce no evidence that it had done so.
- */
-export async function resolveIdleSupport(
-  report: MailboxOpenReport,
-  reader: MailboxReader,
-): Promise<IdleSupportResolution> {
-  if (report.supportsIdle !== null) {
-    return { supported: report.supportsIdle, resolvedBy: 'advertised' };
-  }
-  let atoms: readonly string[] = [];
-  try {
-    atoms = await reader.capabilities();
-  } catch {
-    // A server that will not answer leaves the question unknown, not false.
-    return { supported: false, resolvedBy: 'unknown' };
-  }
-  if (atoms.length === 0) return { supported: false, resolvedBy: 'unknown' };
-  return {
-    supported: atoms.some((atom) => atom.toUpperCase() === 'IDLE'),
-    resolvedBy: 'capability-probe',
-  };
-}
-
 /**
  * The verdict for a connection that opened, given what the mode asked for and
  * what the server turned out to offer.
  *
+ * The IDLE decision itself is NOT made here. `resolveIdleSupport` in
+ * `imap-open.ts` owns it, resolves "the server said nothing" by issuing
+ * `CAPABILITY`, and names how it found out. This file only turns that answer
+ * into a watcher state, because two resolvers would be two answers and the
+ * quiet one would win.
+ *
  * Explicitly configured polling is `healthy`, not `degraded`: the watcher is
  * doing exactly what it was told, nothing is wrong, and a permanent amber
- * light for a working configuration is the same alarm fatigue this file exists
- * to avoid. Polling because push was unavailable is `degraded`, because
- * something the owner would want to know did not go the way it was meant to.
+ * light for a working configuration is alarm fatigue. Polling because push was
+ * unavailable is `degraded`, because something the owner would want to know
+ * did not go the way it was meant to.
  */
 export function verdictForOpenConnection(input: {
   readonly mode: 'idle' | 'poll' | 'auto';
-  readonly idle: IdleSupportResolution;
+  readonly idle: ImapIdleDecision;
 }): InboundCapabilityVerdict {
   if (input.mode === 'poll') {
     return capabilityVerdict(
@@ -206,23 +177,19 @@ export function verdictForOpenConnection(input: {
     );
   }
   if (input.idle.supported) {
-    return capabilityVerdict(
-      'idle-push',
-      input.idle.resolvedBy === 'capability-probe'
-        ? 'Holding an IDLE connection; the server confirmed IDLE when asked.'
-        : 'Holding an IDLE connection; the server advertised IDLE.',
-    );
+    return capabilityVerdict('idle-push', 'Holding an IDLE connection; the server advertised IDLE.');
   }
-  if (input.idle.resolvedBy === 'unknown') {
+  if (input.idle.reason === 'server-would-not-say') {
     return capabilityVerdict(
       'polling-capability-unknown',
-      'The server would not say what it supports, so new mail is found by '
-      + 'polling rather than assumed to be unpushable.',
+      'The server would not say what it supports, even when asked, so new mail '
+      + 'is found by polling rather than assumed to be unpushable.',
     );
   }
   return capabilityVerdict(
     'polling-no-idle',
-    'The server does not advertise IDLE, so new mail is found by polling.',
+    'The server listed its capabilities and IDLE was not among them, so new '
+    + 'mail is found by polling.',
   );
 }
 
@@ -230,126 +197,127 @@ export function verdictForOpenConnection(input: {
 // Classifying failures
 // ---------------------------------------------------------------------------
 
-/**
- * The three named ways an open can fail, as a shape rather than a class.
- *
- * Duck-typed so a `MailboxConnectionPort` implementation is free to throw its
- * own error type: what matters is that it named the reason and said whether
- * retrying could ever help, not which constructor produced it.
- */
-export interface OpenFailureShape {
-  readonly reason: 'authentication-rejected' | 'mailbox-unavailable' | 'connection-failed';
-  readonly terminal: boolean;
-  readonly serverMessage: string;
-  readonly message: string;
-}
-
-function readOpenFailure(error: unknown): OpenFailureShape | null {
-  if (typeof error !== 'object' || error === null) return null;
-  const candidate = error as Partial<Record<string, unknown>>;
-  const reason = candidate['reason'];
-  if (
-    reason !== 'authentication-rejected'
-    && reason !== 'mailbox-unavailable'
-    && reason !== 'connection-failed'
-  ) return null;
-  return {
-    reason,
-    terminal: candidate['terminal'] === true,
-    serverMessage: typeof candidate['serverMessage'] === 'string' ? candidate['serverMessage'] : '',
-    message: typeof candidate['message'] === 'string' ? candidate['message'] : '',
-  };
-}
-
-/** Everything the caller can read off a failed open, already classified. */
+/** Everything the caller can read off a failure, already classified. */
 export interface OpenFailureVerdict {
   readonly verdict: InboundCapabilityVerdict;
   /**
    * True when retrying on a backoff cannot help and the watcher must stop
-   * until something changes. A connection limit is NOT terminal.
+   * until something changes. Taken from the failure's own record, never
+   * re-derived here.
    */
   readonly terminal: boolean;
+  /** The routable record, when the failure carried one. */
+  readonly notice: EmailCapabilityFailureNotice | null;
 }
+
+/** Each email-layer failure reason as the watcher state it produces. */
+const REASON_FOR_NOTICE: Readonly<
+  Record<EmailCapabilityFailureReason, InboundCapabilityReason>
+> = {
+  'credential-unavailable': 'credentials-missing',
+  'authentication-rejected': 'credentials-rejected',
+  'mailbox-unavailable': 'mailbox-unreadable',
+  'server-unavailable': 'server-unavailable',
+  'connection-failed': 'reconnecting',
+};
 
 /**
  * Turn a failed `open()` into a verdict.
  *
- * The ordering here is the load-bearing part. A simultaneous-connection
- * refusal arrives at LOGIN, and the open path classifies anything the server
- * refuses at LOGIN as `authentication-rejected`, which is TERMINAL. Checking
- * the provider's own wording first is what keeps a condition that clears in
- * seconds from permanently stopping the watcher — and it is checked against
- * both the composed message and the server's raw text, because a caller may
- * carry the provider's words in either.
+ * This used to re-read the server's wording ahead of the reason, because
+ * `composeOpenFailure` classified by PHASE and called every refusal at LOGIN a
+ * rejected credential — which is terminal, and which Gmail's
+ * `NO [LIMIT] Too many simultaneous connections` arrives as. That workaround
+ * is gone: the email layer now classifies from the response code and the
+ * wording first, produces `server-unavailable` for a refusal about the server
+ * rather than the account, and prefers the non-terminal reading when the
+ * refusal is ambiguous.
+ *
+ * So there is one classifier and this reads its answer. Two classifiers is how
+ * the wrong one wins silently, and the wrong one here stops mail delivery
+ * until a person notices.
+ *
+ * The owner-facing sentence comes from the notice as well, so a rejected
+ * credential produces ONE text wherever it surfaces rather than one from the
+ * email layer and a competing one from here.
  */
 export function classifyOpenFailure(error: unknown): OpenFailureVerdict {
   const text = errorText(error);
-  const failure = readOpenFailure(error);
-  const wording = failure === null
-    ? text
-    : `${failure.message} ${failure.serverMessage}`.trim();
-
-  // ── WORKAROUND, not the real classification ──────────────────────────────
-  // This check exists because `composeOpenFailure` in `imap-open.ts` marks
-  // EVERY server refusal at LOGIN as `authentication-rejected`, and that
-  // reason is terminal. Gmail answers a simultaneous-connection refusal at
-  // exactly that point, so a caller that believed the reason would stop the
-  // watcher permanently on a condition that clears by itself in seconds.
-  // Re-reading the provider's own wording ahead of the reason is a second
-  // classifier disagreeing with the first, which is worth having only until
-  // the first one is right.
-  //
-  // Remove this block when the foundation round teaches `composeOpenFailure`
-  // to distinguish a refused credential from a refused connection, and read
-  // the corrected reason instead. Leaving both would mean two classifiers
-  // that can drift apart, and the wrong one winning is silent.
-  if (isConnectionLimitRefusal(wording)) {
+  const notice = describeEmailCapabilityFailure(error);
+  if (notice === null) {
+    // A socket that never reached a server, or a factory that threw. Nothing
+    // said it was about the account, so it is a reconnect.
     return {
-      verdict: capabilityVerdict('connection-limit', wording),
+      verdict: capabilityVerdict('reconnecting', text),
       terminal: false,
+      notice: null,
     };
   }
-  if (failure === null) {
-    return { verdict: capabilityVerdict('reconnecting', text), terminal: false };
-  }
-  if (failure.reason === 'authentication-rejected' && failure.terminal) {
-    return { verdict: capabilityVerdict('credentials-rejected', wording), terminal: true };
-  }
-  if (failure.reason === 'mailbox-unavailable' && failure.terminal) {
-    return { verdict: capabilityVerdict('mailbox-unreadable', wording), terminal: true };
-  }
-  return { verdict: capabilityVerdict('reconnecting', wording), terminal: false };
+  const reason = REASON_FOR_NOTICE[notice.reason];
+  return {
+    verdict: {
+      state: STATE_BY_REASON[reason],
+      reason,
+      detail: notice.serverMessage.length > 0 ? notice.serverMessage : text,
+      fix: notice.ownerMessage,
+    },
+    terminal: notice.terminal,
+    notice,
+  };
 }
 
 /**
  * Whether a failure while reading messages means the mailbox cannot be read at
  * all, or merely that this connection ended.
  *
- * The phase matters, and conflating the two would be a real defect in opposite
- * directions:
+ * The server's own words are read by `classifyServerRefusal` — the same
+ * function the open path uses — so a `[LIMIT]` refused mid-session is the same
+ * `server-unavailable` it would have been at login. The phase reason handed in
+ * is deliberately the non-terminal one, so a refusal that says nothing about
+ * itself falls through to the rule below rather than to a verdict that stops
+ * the watcher.
+ *
+ * When the server named nothing, the phase decides, and the two phases are
+ * different claims:
  *
  *   - A `NO`/`BAD` to a **FETCH** is a mailbox whose contents the server will
  *     not hand over. Arrival can be observed and never read, so the capability
- *     is `insufficient` and reconnecting achieves nothing — the watcher stops
- *     and says so.
- *   - A `NO` to a **SEARCH** is not the same claim. Servers refuse searches
+ *     is `insufficient` and reconnecting achieves nothing.
+ *   - A `NO` to a **SEARCH** is not that claim. Servers refuse searches
  *     transiently, under load, and on a folder being reindexed, and stopping
- *     the watcher for an hour over one of those would turn a hiccup into
- *     silence. It reconnects.
- *   - A socket that died is a reconnect either way.
+ *     for an hour over one would turn a hiccup into silence.
  */
 export function classifyReadFailure(
   error: unknown,
   phase: 'search' | 'fetch' = 'fetch',
 ): OpenFailureVerdict {
   const text = errorText(error);
-  if (isConnectionLimitRefusal(text)) {
-    return { verdict: capabilityVerdict('connection-limit', text), terminal: false };
+  const transient = { terminal: false, notice: null } as const;
+  if (!/^IMAP command failed:/.test(text)) {
+    return { verdict: capabilityVerdict('reconnecting', text), ...transient };
   }
-  if (phase === 'fetch' && /^IMAP command failed:/.test(text)) {
-    return { verdict: capabilityVerdict('fetch-refused', text), terminal: true };
+  const named = classifyServerRefusal(text, 'connection-failed');
+  if (named === 'server-unavailable') {
+    return { verdict: capabilityVerdict('server-unavailable', text), ...transient };
   }
-  return { verdict: capabilityVerdict('reconnecting', text), terminal: false };
+  if (named === 'authentication-rejected') {
+    return {
+      verdict: capabilityVerdict('credentials-rejected', text),
+      terminal: true,
+      notice: null,
+    };
+  }
+  if (named === 'mailbox-unavailable') {
+    return {
+      verdict: capabilityVerdict('mailbox-unreadable', text),
+      terminal: true,
+      notice: null,
+    };
+  }
+  if (phase === 'fetch') {
+    return { verdict: capabilityVerdict('fetch-refused', text), terminal: true, notice: null };
+  }
+  return { verdict: capabilityVerdict('reconnecting', text), ...transient };
 }
 
 export function errorText(error: unknown): string {

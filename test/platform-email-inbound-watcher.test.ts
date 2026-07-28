@@ -410,11 +410,15 @@ describe('inbound watcher — capability sufficiency', () => {
   });
 
   test('a simultaneous-connection refusal is degraded in the provider’s words', async () => {
+    // Gmail answers this at the LOGIN step, which the email layer used to call
+    // a rejected credential — terminal — stopping the watcher permanently on a
+    // condition that clears in seconds. It now reads the [LIMIT] response code
+    // and reports the server's own unavailability instead.
     const harness = await build({ server: { login: 'connection-limit' } });
     harness.watcher.start();
     await waitFor(
-      () => harness.watcher.status.verdict.reason === 'connection-limit',
-      'the connection-limit verdict',
+      () => harness.watcher.status.verdict.reason === 'server-unavailable',
+      'the server-unavailable verdict',
     );
 
     const verdict = harness.watcher.status.verdict;
@@ -427,7 +431,7 @@ describe('inbound watcher — capability sufficiency', () => {
     await harness.clock.advance(15 * 60_000);
     await waitFor(
       () => harness.mailbox.connectionCount > before,
-      'a retry after the connection-limit backoff',
+      'a retry after the server-unavailable backoff',
     );
     expect(harness.observer.insufficientAnnouncements).toEqual([]);
   });
@@ -473,7 +477,7 @@ describe('inbound watcher — capability sufficiency', () => {
     // connection slot". Gmail allows fifteen simultaneous IMAP connections and
     // EmailService takes a fresh one per request, so a watcher parked on an
     // open socket for an hour while refusing to read from it makes the
-    // connection-limit verdict more likely on every OTHER mailbox — the same
+    // server-unavailable verdict more likely on every OTHER mailbox — the same
     // limit pressure with none of the benefit.
     const harness = await build({
       server: { fetch: 'refused', initial: [message(101, 'a')] },
