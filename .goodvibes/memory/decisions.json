@@ -252,5 +252,16 @@
       "inferring the runner from file layout"
     ],
     "agent": "engineer"
+  },
+  {
+    "title": "Merchant recourse is JUDGED against a profile, never matched against a list",
+    "date": "2026-07-28",
+    "rationale": "Owner correction: 'i didn't fucking say make a list of retailers, i said retailers matching that profile.' A curated allowlist fails closed on every established retailer nobody enumerated, needs permanent maintenance, and is the scaffolding-that-thinks-for-the-model shape this platform rejected. Deleted it; merchant-recourse.ts has MERCHANT_RECOURSE_CRITERION plus an injectable MerchantJudgePort (SDK owns criterion and precedence, daemon supplies the model call). THE SAFETY ARGUMENT IS THE INPUT: reading a page to judge legitimacy is injectable and stays banned, but judging a VALIDATED REGISTRABLE DOMAIN against world knowledge is not page-derived \u2014 the domain comes from a link-validated URL via registrableDomain(). MerchantJudgeInput has exactly ONE field so page content has nowhere to go; a test asserts the key set while a hostile sellerIdentity and seller-controlled reputation are present. No fast-path cache: purchases are infrequent, and a cache is a second source of truth that rots like the list would. Precedence: storefront-domain handoff > owner exclusion > owner addition > marketplace policy > judgement; uncertainty resolves to not-major. Unchanged: content-initiated refused absolutely; eBay Buy-It-Now-only with auctions refused structurally.",
+    "alternatives": [
+      "curated allowlist (rejected by owner)",
+      "fast-path cache alongside judgement",
+      "runtime legitimacy scoring from page signals (injectable)"
+    ],
+    "agent": "engineer"
   }
 ]

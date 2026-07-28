@@ -315,10 +315,18 @@ testable without a browser, a card or a clock.
 ```
 0.  GATES  (any failure is terminal — no approval path, no downgrade path)
     0a. payments.enabled, a card configured, a shipping address configured
-    0b. TAINT: does the purchase INTENT derive from untrusted content?   → REFUSE
-    0c. LINK: did the checkout URL arrive from untrusted content?
-        → full link validation against the owner-named merchant, or REFUSE
-    0d. The request came from a surface with command authority
+    0b. ORIGIN: did CONTENT initiate this purchase?                      → REFUSE
+        (absolute — no approval path; §9.1)
+    0c. TAINT: do `item` / `requestedMax` derive from untrusted content? → REFUSE
+        `merchant` / `checkoutUrl` too, unless HE asked us to find the
+        merchant (`merchantDiscovered`), in which case they are graded
+        at step 3a rather than refused
+    0d. LINK: did the checkout URL arrive from untrusted content?
+        → full link validation, or REFUSE (§9.2)
+    0e. LISTING: a marketplace listing with no fixed price at decision
+        time — an eBay auction or Best Offer                            → REFUSE
+        (structural: the notify-then-pay flow cannot execute; §9.1.1)
+    0f. The request came from a surface with command authority
 
 1.  ITEM PRICE vs DAILY ITEM BUDGET  (and the per-purchase ceiling if enabled)
     ├─ over  →  ABOVE BUDGET: explicit approval required
@@ -340,13 +348,29 @@ testable without a browser, a card or a clock.
 
 3.  RESERVE the pools
 
-4.  WITHIN BUDGET → VETO WINDOW  (silence PROCEEDS)
-    Fired once the final total is known and before payment.
+3a. GRADE THE MERCHANT on the validated registrable domain that takes the
+    card  (§9.1.1) — judgement on the domain alone
+    ├─ recourse established  →  the window stays a VETO
+    └─ anything else         →  the window becomes an APPROVAL
+    Either condition escalates and nothing downgrades: a recognised
+    retailer buys no leniency on an over-budget purchase.
+
+4.  THE ONE NOTIFICATION  — sent once, when the item is chosen and the
+    final total is known, before payment. Same content either way; the
+    grade decides only what SILENCE means.
+
+    VETO  (within budget, recourse established) — silence PROCEEDS
     ├─ silence for windows.vetoMinutes  →  PROCEED
     ├─ explicit acknowledgement         →  PROCEED immediately
     ├─ objection                        →  CANCEL, release, and REPORT
     └─ undeliverable                    →  PROCEED  (owner ruling: under/at
                                            budget items get through)
+
+    APPROVAL  (above budget OR no recourse established) — silence DENIES
+    ├─ silence for windows.approvalMinutes  →  DENIED
+    ├─ explicit approve                     →  continue to 5
+    ├─ explicit deny                        →  DENIED
+    └─ undeliverable                        →  REFUSE
 
     Above budget purchases do NOT get a second window: the approval in step 1 is
     itself fired at this same point, with the final total in it (§8.4).
@@ -745,10 +769,33 @@ recoveries are disclosed rather than silent.
 
 ## 9. Security boundaries
 
-### 9.1 A payment whose target, amount or item derives from untrusted content is refused outright
+### 9.1 Who may initiate a purchase, and who may choose the merchant
 
-No owner-address exemption. No disclose-instead-of-refuse fallback. No approval
-path around it. This is the one gate with no downstream branch at all.
+These are two different questions, and the owner ruled them differently. This
+section used to conflate them — refusing any purchase whose merchant came from
+page content, and documenting that as a feature. He overrode that:
+
+> "the taint gate is wrong. if i tell you to buy the cheapest X you find online,
+> you will 1) find it, 2) show it to me, and then 3) alert me prior to purchasing
+> if it is not a major retailer - use your best judgement on what you consider a
+> major retailer"
+
+**What did not move: who initiates.** A content-initiated purchase is refused
+outright. An email or a web page saying "buy X from Y" cannot start a purchase,
+cannot name a merchant, and cannot set an amount. No owner-address exemption, no
+disclose-instead-of-refuse fallback, **no approval path around it** — this is the
+one gate with no downstream branch at all, because the approval is exactly the
+step an injection is trying to reach.
+
+**What relaxed: who chooses the merchant**, on a purchase he initiated. "Buy the
+cheapest X you can find" is his instruction — the item and the intent are his,
+and only the storefront was found on a page. That now proceeds, with the merchant
+graded by the standard in §9.1.1 into a veto or an approval.
+
+The distinction is carried in the **type**, not checked at runtime.
+`merchantDiscovered` exists only on `OwnerOriginIntent`, so "a discovered
+merchant is permissible only on an owner-origin intent" is a fact the compiler
+enforces rather than a rule a later edit can forget.
 
 Reuses the existing machinery unchanged:
 
@@ -768,15 +815,23 @@ still refused when a valid `OwnerApproval` for the same action is present.
 
 **Which fields are checked, and which deliberately are not.**
 
-Checked — the fields that decide *whether and where* money moves. These come
-from the owner or they do not exist:
+**Always checked** — these come from the owner or the purchase does not exist. A
+page that supplies the thing to buy, or the ceiling to buy it under, is
+initiating a purchase whatever else is true:
+
+| Field | Test |
+|---|---|
+| `item` | the length thresholds |
+| `requestedMaxCents` | the length thresholds, when the request states a limit |
+
+**Conditionally checked** — only when *he named the merchant*, because then it
+has to be his. When `merchantDiscovered` is set, the storefront came off a page
+by design, and grading it (§9.1.1) rather than refusing it is the safeguard:
 
 | Field | Test |
 |---|---|
 | `merchant` | exact containment (like a recipient address — short, high-signal) |
 | `checkoutUrl` | exact containment |
-| `item` | the length thresholds |
-| `requestedMaxCents` | the length thresholds, when the request states a limit |
 
 Not checked — the merchant's own quoted numbers:
 
@@ -788,10 +843,136 @@ Not checked — the merchant's own quoted numbers:
 > budget or the per-purchase ceiling and needs an approval, and the approval
 > shows our own re-rendered number (§9.3).
 
-**A deliberate consequence:** "buy me the cheapest X you can find online" is
-refused, because the merchant was chosen from page content rather than named by
-the owner. The owner names the merchant, or there is no purchase. This is a
-feature of the design and is tested as one.
+### 9.1.1 The merchant standard: recourse, not recognisability
+
+When he initiates a purchase and we find the storefront, the merchant is
+**graded**, and the grade decides only one thing — **what silence means**.
+
+> "if the place we're buying isn't what the average person would consider a major
+> retailer, silence means denial of purchase"
+
+> "even smaller specialty retailers like microcenter would be considered major,
+> unlike something like www.jeffsgadgets.biz"
+
+| Grade | Window | Silence |
+|---|---|---|
+| Recourse established | veto | **proceeds** |
+| Anything else | approval | **denies** |
+
+**The organizing principle is recourse.** Recognisability was the proxy; he named
+the real test himself when he explained why Etsy counts:
+
+> "even etsy is fine, mainly because they have consumer protections. so yeah, use
+> judgement in situations like ebay, try to buy from established retailers -- even
+> established online-only retailers like redbubble etc, but be wary of storefronts
+> like jeffsgadgets.biz"
+
+A merchant qualifies when there is a real path to remedy if the purchase goes
+wrong — platform buyer protection, an established returns process, an accountable
+business with something to lose. `jeffsgadgets.biz` fails not because it is small
+or obscure but because **there is nobody to go to**. Micro Center qualifies at two
+dozen stores and Redbubble qualifies with no stores at all, because both are real
+businesses with real policies. Size and physical presence are weak evidence, not
+the test.
+
+**One notification, not two.** He collapsed the two steps himself — *"2 and 3 are
+basically the same step"* — so there is one message, sent once, when the item is
+chosen and the final total is known, before payment. Both branches carry
+identical content: what was found, the validated registrable domain, the item,
+and the total re-rendered from our own parsed integers (§9.3). The grade changes
+only what silence means, and the message states which mode it is in and what
+happens if he does nothing. `renderPurchaseNotice` is the single send site — a
+selection between the two existing windows, not a third message type.
+
+**The notification names the recourse, not the verdict.** "Etsy, buyer protection
+applies" is something he can evaluate; "on your approved list" sends him off to
+check a list. When it goes to approval it reads as a checkpoint, not an
+accusation about the seller — he may well want to buy there, and all we are
+saying is that we ask rather than assume.
+
+**Where "use judgement" lives — and it is not at runtime.** The judgement is
+exercised when the list is **curated**, and recorded as data in
+`payments/merchant-recourse.ts`. At runtime this is a lookup. There is deliberately
+**no runtime inference**: no heuristics on traffic, page quality, certificate age
+or review counts, because every one of those is controlled by whoever built the
+page, and a purchase gate reading page-derived legitimacy signals is the
+injection surface the rest of this capability closes. A site built to look
+trustworthy is the easiest thing in the world to produce.
+
+Each entry carries **why** it qualifies, so the notification can be specific and
+a later reader understands the list rather than seeing arbitrary strings:
+
+| Qualifier | Meaning |
+|---|---|
+| `national-chain` | Large general retailer; established returns process |
+| `specialty-retailer` | Established in its category — his Micro Center case |
+| `online-only-retailer` | Established with no physical stores — his Redbubble case |
+| `marketplace-buyer-protection` | The marketplace's own protection covers it — his Etsy case; major outright |
+| `marketplace-per-seller` | Recourse depends on the seller — his eBay case; per-listing conditions |
+
+**Default is not-major.** A longer list does not make a more permissive one:
+everything outside it asks him. There is no benefit of the doubt, because the
+fallback is not refusal — it is asking. Treating a real retailer as unqualified
+costs one message he answers; the reverse costs money spent somewhere with no way
+to get it back.
+
+**The list is owner-editable and nothing learns its way onto it.**
+`payments.majorRetailersAdditional` and `payments.majorRetailersExcluded` take
+comma-separated registrable domains. No page, agent or inference adds an entry —
+a page that could argue itself onto the list could buy from itself unattended.
+
+**Recourse must survive the checkout.** Matching is on the validated registrable
+domain **that takes the card**. If an established retailer hands off to a payment
+page on an unrelated registrable domain, the protection the qualification rested
+on may not follow it — that is not-major, and the notification says why.
+
+#### eBay is per-listing, not per-domain
+
+> "something of a grey area is Ebay - i would allow buy it now purchases on Ebay,
+> but only if the seller has a solid reputation from selling, not just buying"
+
+ebay.com is necessary and not sufficient. Two conditions, both required, in
+`payments/marketplace-listing.ts`:
+
+**1. Fixed price only. Auctions are refused structurally, not by policy toggle.**
+The flow he designed is: know the final total → notify him → run the window →
+pay. An auction has no final total until it ends, so that flow *cannot execute at
+all* — this is a structural impossibility, not a preference that could be
+configured away. Bidding is also an open-ended commitment rather than a purchase.
+The same reasoning covers Best Offer and any listing whose format we could not
+confirm as fixed-price.
+
+**2. Reputation earned selling.** eBay's headline feedback score combines buying
+and selling, so a large number can have been earned entirely by buying. Only the
+seller-side figures count: **≥98% positive as a seller and ≥100 seller ratings**
+by default, configurable via `payments.ebayMinSellerPositivePercent` and
+`payments.ebayMinSellerFeedbackCount`.
+
+Reading a page here is acceptable only because the figures are rendered by
+**eBay**, on a domain already validated, in eBay's own feedback widget — not by
+the seller. It is nonetheless built as a **ratchet**:
+
+- It may only ever make the outcome **stricter**. It can move a listing to
+  approval-required and can never move one the other way. No reputation figure
+  promotes a domain that was not already recognised.
+- **Unreadable means not-major.** Missing, ambiguous, or an unexpected page shape
+  all fail closed and he is asked.
+- A figure from a **seller-controlled** region of the page is never accepted, and
+  if the region cannot be told apart, the figure is unreadable.
+
+The worst case a hostile listing can achieve is being sent for his approval,
+which is where an unrecognised seller was going anyway.
+
+#### The config seam
+
+`merchantPolicyFromConfig(config)` is the **only** mapping from `PaymentsConfig`
+to the merchant policy. Every consumer — the daemon's checkout path, the
+control-plane handlers, a surface previewing a decision — calls it rather than
+reading the keys itself. A second copy of that mapping is how a renamed key
+silently degrades a purchase gate to its defaults while still looking configured.
+Note that **no config value can make this decision more permissive**: the knobs
+add domains he vouches for, remove domains he does not, and move the eBay seller
+bar.
 
 ### 9.2 Checkout URLs from untrusted content pass full link validation
 
@@ -801,9 +982,23 @@ Any checkout URL that arrived from untrusted content passes
 (`public-suffix.ts`). Redirect chains go through `followValidatedRedirects`, so a
 link that lands correctly and then 302s away refuses the chain.
 
-`authorizedDomain` is **the merchant the owner named**, which the gate in §9.1
-has already established is not page-derived. That closes the loop: the domain we
-validate against cannot itself have been chosen by an attacker.
+**What `authorizedDomain` is depends on who chose the merchant**, and the two
+cases close the loop differently:
+
+- **He named it.** `authorizedDomain` is the merchant he named, which §9.1 has
+  already established is not page-derived. The domain we validate against cannot
+  itself have been chosen by an attacker.
+- **We discovered it.** The domain *was* chosen from page content, so validation
+  alone cannot vouch for it and does not pretend to. It still does its real job —
+  proving the URL we are about to open is the domain it claims to be, catching
+  userinfo tricks, homographs and redirect chains. **Whether that domain deserves
+  the card is a separate question, answered by §9.1.1**, and an unrecognised one
+  goes to an approval he must answer. Link validation establishes identity; the
+  merchant standard establishes recourse. Neither substitutes for the other.
+
+In both cases the registrable domain that survives validation is the one shown in
+the notification and the one the recourse test is applied to — so what he is told,
+what is graded, and what takes the card are the same string.
 
 The refusal reasons already distinguish userinfo tricks
 (`https://shop.example@evil.example/pay`), non-https schemes, mixed-script
@@ -1258,9 +1453,9 @@ These are requirements on Phase 2, not suggestions:
 
 ### 12.1 Ruled
 
-Recorded so they are not re-litigated. Item 1 is the owner's own ruling and is
-closed. The rest were taken under zero-deferrals where he had not ruled, and he
-can overturn any of them; none is a coin toss left in the code.
+Recorded so they are not re-litigated. Items 1 and 8–11 are the owner's own
+rulings and are closed. The rest were taken under zero-deferrals where he had not
+ruled, and he can overturn any of them; none is a coin toss left in the code.
 
 1. **The CVV is stored (§9.5).** Owner ruling, stated directly: *"we save the
    cvv, full stop. it is 100% needed for autonomous action."* Settled and closed
@@ -1288,25 +1483,61 @@ can overturn any of them; none is a coin toss left in the code.
 7. **Any configured command-authority channel may answer; first answer wins**,
    and the audit record names which one did. `notifyChannels` orders delivery,
    not the right to reply.
+8. **A discovered merchant is graded, not refused (§9.1, §9.1.1).** Owner
+   ruling, overriding this document's earlier position that "buy the cheapest X
+   you can find" was refused by design: *"the taint gate is wrong."* On a
+   purchase **he** initiated, the merchant and checkout URL may derive from page
+   content; the merchant standard then decides whether silence proceeds or
+   denies. See
+   `docs/decisions/2026-07-27-a-discovered-merchant-is-graded-not-refused.md`.
+9. **Content-initiated purchases remain refused absolutely (§9.1).** Unchanged
+   by the above, and the reason it is safe: what relaxed is *who chooses the
+   merchant*, never *who initiates*. There is still no owner-approval escape
+   hatch on this gate.
+10. **The standard is recourse, not recognisability (§9.1.1).** His own reason
+    for admitting Etsy — *"mainly because they have consumer protections"* —
+    which makes recognisability evidence rather than the test. Established
+    online-only retailers qualify with no physical stores.
+11. **eBay is per-listing, with auctions refused structurally (§9.1.1).** Not a
+    policy toggle: an auction has no final total, so the notify-then-pay flow
+    cannot execute. Seller-side reputation only, and the check may only ever make
+    the outcome stricter.
 
 ### 12.2 Still open
 
-8. **`daemon.timezone` ownership (§4.1).** Built as a general daemon setting
-   because payments should not own the platform's only clock. If another domain
-   later wants its own zone, this becomes a default rather than the answer.
-9. **Subscription detection is heuristic (§9.7.2).** It reads order-summary
-   language and errs toward refusing. It will refuse some one-off purchases that
-   merely mention a renewal elsewhere on the page. That trade is deliberate, but
-   the false-refusal rate is unknown until it meets real merchants.
-10. **Backfill coverage varies by channel (§8.6.1).** Telegram has a readable
+12. **`daemon.timezone` ownership (§4.1).** Built as a general daemon setting
+    because payments should not own the platform's only clock. If another domain
+    later wants its own zone, this becomes a default rather than the answer.
+13. **Subscription detection is heuristic (§9.7.2).** It reads order-summary
+    language and errs toward refusing. It will refuse some one-off purchases that
+    merely mention a renewal elsewhere on the page. That trade is deliberate, but
+    the false-refusal rate is unknown until it meets real merchants.
+14. **Backfill coverage varies by channel (§8.6.1).** Telegram has a readable
     history; a channel without one is always treated as un-backfillable and
     re-opens. The set of channels that can be backfilled will shape how often he
     sees a re-opened window, and that is only measurable in use.
+15. **eBay account age is not checked (§9.1.1).** `minAccountAgeDays` exists in
+    `MarketplaceListingThresholds` and defaults to `null`, meaning no check. eBay
+    does not expose a member-since date in a place that can be read reliably and
+    attributed to eBay rather than the seller, and a threshold that silently
+    failed closed on every listing would make the whole eBay path unusable while
+    looking like a working check. The lever is built and off; turning it on needs
+    a trustworthy source for the figure first.
+16. **The shipped retailer list is a starting point, not a survey.** It covers
+    the classes he named and the obvious members of each. Absence is not a
+    judgement about a seller — it only means we ask. The list will need real use
+    to find the retailers he actually buys from, and `majorRetailersAdditional`
+    is how he adds them without a release.
 
 ## 13. Related
 
 - `docs/decisions/2026-07-27-daemon-refuses-derived-sends.md` — the taint ruling
   this capability inherits
+- `docs/decisions/2026-07-27-a-discovered-merchant-is-graded-not-refused.md` —
+  the owner's override of the blanket merchant refusal, and the recourse standard
+  that replaced it
+- `docs/decisions/2026-07-27-payment-windows-are-deliberately-opposite.md` — why
+  the two windows must never be unified into one primitive
 - `docs/security.md` — `SecretsManager`, storage policies, permission system
 - `docs/secrets.md` — the `goodvibes://secrets/...` reference form
 - `docs/contract-regeneration-recipe.md` — the procedure for the `payments.*`

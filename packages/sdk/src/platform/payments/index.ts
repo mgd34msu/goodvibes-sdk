@@ -110,11 +110,13 @@ export type {
   MerchantPolicy,
   MarketplaceKind,
   MarketplacePolicy,
+  SaleType,
 } from './merchant-recourse.js';
 
 export {
   DEFAULT_MARKETPLACE_LISTING_THRESHOLDS,
   evaluateMarketplaceListing,
+  isThirdPartySale,
 } from './marketplace-listing.js';
 export type {
   FigureRegion,

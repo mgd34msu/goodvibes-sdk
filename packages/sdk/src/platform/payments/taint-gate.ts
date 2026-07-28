@@ -15,7 +15,7 @@
  * RELAXED — **who chooses the merchant** on a purchase he initiated. "Buy the
  * cheapest X you can find" is his instruction; the item and the intent are his,
  * and only the storefront was found on a page. That now proceeds, with the
- * merchant graded by `merchant-judgement.ts` into a veto (silence proceeds) or an
+ * merchant graded by `merchant-recourse.ts` into a veto (silence proceeds) or an
  * approval (silence denies).
  *
  * NOT RELAXED — **who initiates.** Content-initiated purchases are refused
@@ -56,6 +56,9 @@
  * the check would be removed within a release. The BUDGET is their defence: an
  * inflated price hits the daily budget or the per-purchase ceiling and needs an
  * approval, showing our own re-rendered number.
+ *
+ * See docs/decisions/2026-07-27-a-discovered-merchant-is-graded-not-refused.md
+ * for the full record of the override, and docs/payments.md §9.1.
  */
 import { findContentTaint, type TaintFinding } from '../security/content-taint.js';
 import type { UntrustedContentLedger } from '../security/untrusted-content.js';
@@ -147,7 +150,7 @@ export function evaluatePaymentTaint(input: {
   const exactMatchFields: string[] = [];
 
   // Where the money goes only has to be his when HE chose it. When the merchant
-  // was discovered it came off a page by design, and merchant-judgement.ts grades
+  // was discovered it came off a page by design, and merchant-recourse.ts grades
   // it into a veto or an approval rather than refusing it.
   if (!intent.merchantDiscovered) {
     fields['merchant'] = intent.merchant;
