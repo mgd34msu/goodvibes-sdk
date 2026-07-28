@@ -1,0 +1,103 @@
+/**
+ * The inbound-mail watcher: IMAP IDLE with an adaptive poll fallback.
+ *
+ * Deliberately NOT re-exported from `platform/email/index.ts`. That barrel is
+ * the mail-sending and mail-reading service surface; this is a long-lived
+ * listener that holds a socket, and folding it in would mean every importer of
+ * the email module pulled a supervisor's worth of machinery behind it. The
+ * daemon wiring imports this path directly.
+ *
+ * Nothing exported here can start work. There is no `trySpawnAgent`, no
+ * session broker and no reply queue in any argument of any function below —
+ * an arriving message can cause a store write, a delivered notice and a status
+ * change, and there is nothing else to call.
+ */
+
+export {
+  BackoffSchedule,
+  DEFAULT_BACKOFF_POLICY,
+  backoffWindowMs,
+  fullJitterDelayMs,
+  isConnectionLimitRefusal,
+  type BackoffPolicy,
+} from './backoff.js';
+
+export {
+  CapabilityStateTracker,
+  capabilityVerdict,
+  classifyOpenFailure,
+  classifyReadFailure,
+  errorText,
+  resolveIdleSupport,
+  stateForReason,
+  verdictForOpenConnection,
+  type IdleSupportResolution,
+  type OpenFailureShape,
+  type OpenFailureVerdict,
+} from './capability.js';
+
+export {
+  imapMailboxConnectionPort,
+  type ImapMailboxConnectionOptions,
+} from './connection.js';
+
+export {
+  isIdleWakeLine,
+  runIdleLoop,
+  runIdleRound,
+  type IdleLoopDeps,
+  type IdleLoopOutcome,
+  type IdleLoopResult,
+  type IdleRoundDeps,
+  type IdleRoundOutcome,
+  type IdleRoundResult,
+  type IdleWakeSummary,
+} from './idle-watcher.js';
+
+export {
+  drainMailboxDelta,
+  runPollLoop,
+  searchAboveCursor,
+  type MailboxDeltaDeps,
+  type MailboxDeltaOutcome,
+  type MailboxDeltaReport,
+  type PollLoopOutcome,
+  type PollLoopResult,
+} from './poll-loop.js';
+
+export {
+  DEFAULT_INBOUND_WATCHER_SETTINGS,
+  IDLE_REISSUE_ADVISORY_BOUND_MS,
+  resolveWatcherSettings,
+  systemWatcherClock,
+  type InboundCapabilityReason,
+  type InboundCapabilityState,
+  type InboundCapabilityTransition,
+  type InboundCapabilityVerdict,
+  type InboundMailNote,
+  type InboundMailObserver,
+  type InboundMailSink,
+  type InboundMailTerminalFailure,
+  type InboundMailboxMessage,
+  type InboundWatcherSettings,
+  type MailboxConnection,
+  type MailboxConnectionPort,
+  type MailboxCursor,
+  type MailboxCursorKey,
+  type MailboxCursorOrigin,
+  type MailboxCursorPort,
+  type MailboxCursorResolution,
+  type MailboxCursorResolveInput,
+  type MailboxOpenReport,
+  type MailboxReader,
+  type MailboxWire,
+  type MailboxWireReadOptions,
+  type RandomSource,
+  type WatcherClock,
+} from './ports.js';
+
+export {
+  InboundMailboxWatcher,
+  type InboundMailboxWatcherDeps,
+  type InboundMailboxWatcherStatus,
+} from './watcher.js';
