@@ -886,12 +886,12 @@ it misses was got wrong twice before it was measured.** Compiled against this
 repo's TypeScript 5.9.3 with a `profile.forget`-shaped input, seeding a retired
 `lineIndex`:
 
-| how the stale field arrives | bare type annotation | **at a real `invoke` call site** | a distributed key guard |
-|---|---|---|---|
-| fresh literal, written inline | rejected `TS2353` | **slips through** | rejected |
-| spread literal, stale field written **inline beside** the spread | rejected `TS2353` | **slips through** | rejected |
-| body built as a variable first | **slips through** | **slips through** | rejected |
-| stale field carried in **by the spread source's type** | **slips through** | **slips through** | rejected |
+| how the stale field arrives | bare annotation | **raw `invoke` call site** | a wrapper (one signature) | a contract-derived key guard |
+|---|---|---|---|---|
+| fresh literal, written inline | rejected `TS2353` | **slips through** | rejected `TS2353` | rejected |
+| spread literal, stale field written **inline beside** the spread | rejected `TS2353` | **slips through** | rejected `TS2353` | rejected |
+| body built as a variable first | **slips through** | **slips through** | **slips through** | rejected |
+| stale field carried in **by the spread source's type** | **slips through** | **slips through** | **slips through** | rejected |
 
 **The middle column is the one that matters, and it is all four rows.** Measured
 against a faithful model of `operator-sdk/client-core.ts` — the variadic
@@ -903,29 +903,39 @@ from the same model and rows one and two immediately fail `TS2353` again.
 
 So the loose overload does not merely leave a gap for awkward constructions — it
 removes compiler protection from the payload entirely, including the plainest
-possible case of a stale key typed straight into a fresh literal. That is direct
-evidence for the platform change proposed below, and it is why a wrapper binding
-the payload to `OperatorMethodInput<TMethodId>` is load-bearing for **every**
-row rather than for the awkward ones.
+possible case of a stale key typed straight into a fresh literal. Payload
+checking at a raw call site is not weak; it is **absent**. That is direct
+evidence for the platform change proposed below.
+
+**A wrapper restores exactly the bare-annotation column, and no more.** Measured:
+a single non-overloaded generic signature catches rows one and two (`TS2353`)
+and lets rows three and four through, because with no loose sibling to fall
+through to it behaves like a plain annotation again. So the two mechanisms cover
+**disjoint halves**:
+
+| rows | sole protection |
+|---|---|
+| 1, 2 | the wrapper's non-overloaded signature |
+| 3, 4 | a contract-derived key guard |
+
+Neither is redundant and neither subsumes the other. Delete either and its half
+is caught by nothing at all — which is what both comments need to say, because a
+comment that *overstates* a guard gets it deleted by the next person who checks
+and finds the stated reason does not hold. That is the same failure as
+understating one.
 
 A spread literal is *not* uniformly unchecked — that was the first wrong
 generalisation. Under a bare annotation, anything written inline in one is
 checked normally and only what arrives **through** the spread escapes, because
 it belongs to the source's type rather than to the literal.
 
-But the annotation column describes a context that does not exist in this
-codebase. At a real call site the overload set decides, and it catches nothing.
-Both corrections went the same direction: each time the protection was weaker
-than the previous measurement said, because each measurement modelled one layer
-less of what actually runs.
-
-The consequence is simple and should not be re-derived: **a guard that checks
-keys against the contract independently of how the body was constructed is the
-only thing standing between a retired field and the wire.** It is load-bearing
-for every row, not a backstop for awkward ones, and that belongs in its own
-comment — because the obvious future "simplification" is to delete it in favour
-of typing the parameter, which measurement now shows would restore all four
-holes rather than two.
+**Standing instruction, not an anecdote.** This table was wrong three times and
+every correction went the same way: the protection was weaker, or narrower, than
+the previous version claimed, because each measurement modelled one layer less
+than what actually runs — a bare annotation, then a single overload, then a
+wrapper asserted to cover more than it did. When a safety measurement keeps
+moving in one direction under scrutiny, assume it has not finished moving, and
+re-measure against the **real call shape** rather than against a model of it.
 
 **Proposed platform change, for the owner to rule on, not adopted here:** make
 `invoke` typed-only and move dynamic invocation to a separately named method, so
