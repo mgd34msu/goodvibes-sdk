@@ -134,6 +134,12 @@ export const DAEMON_OWNED_NON_SCHEMA_CONFIG_PATHS = [
   // the operator happened to paste it into. The symptom is email going quiet
   // after a failover with nothing in the logs to explain it.
   'email.passwordRef',
+  // The SMTP password, when it differs from the IMAP one. Left off this list
+  // while `email.passwordRef` was on it, so a mailbox whose send and receive
+  // credentials differ had half its connection daemon-owned and half stranded —
+  // the daemon could read the inbox and not send a reply, which is the exact
+  // shape of "configured, reports success, does nothing".
+  'email.smtpPasswordRef',
   'calendar.google.clientSecretRef',
   'calendar.microsoft.clientSecretRef',
   'google.oauth.refreshToken',

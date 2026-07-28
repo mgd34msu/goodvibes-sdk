@@ -30,6 +30,7 @@
  *     treats reaching "In production" as a first-class, verified step.
  */
 
+import { ensureConnectorConfigSections } from '../config/connector-config-sections.js';
 import { daemonSecretKeyFor } from '../config/daemon-secret-keys.js';
 import type { GoogleSetupStepSpec, GoogleStepId, GoogleSetupPath } from './types.js';
 
@@ -94,29 +95,21 @@ export const REQUIRED_SERVICES: readonly string[] = [
   'calendar-json.googleapis.com',
 ];
 
-/**
- * Default (empty) `google` config section, seeded so get()/setDynamic() resolve
- * the nested path.
- *
- * ConfigManager.resolvePath() walks the live config object and throws
- * "Invalid config path" for any section that does not exist, and `google` is an
- * app-layer category absent from the SDK schema. Nothing called the connector,
- * so nothing ever hit that — `/google status` threw on its first real run.
- *
- * Mirrors ensureEmailConfigDefaults and ensureCalendarConfigDefaults, the
- * sanctioned pattern for this.
- */
-const GOOGLE_CONFIG_DEFAULTS = {
-  oauth: { projectId: '', publishingStatus: '', refreshToken: '' },
-  credentials: { migratedFrom: '' },
-};
 
-/** Seed the google config section on the real ConfigManager if absent. */
+/**
+ * Seed every config section this connector touches.
+ *
+ * All three, not just `google`. The flow writes `email.*`, `calendar.google.*`
+ * and `google.oauth.*`, and ConfigManager throws on a section that is not on
+ * the live config object — so seeding only `google` left the first
+ * `calendar.google.clientId` write throwing "section 'calendar' does not
+ * exist" in every product that did not separately carry a calendar seeder. One
+ * did (goodvibes-agent, locally); the daemon, the TUI and the web UI did not,
+ * which meant the connector could only ever run in one place. See
+ * config/connector-config-sections.ts.
+ */
 export function ensureGoogleConfigDefaults(configManager: object): void {
-  const cm = configManager as unknown as { config?: Record<string, unknown> };
-  if (cm.config && !('google' in cm.config)) {
-    cm.config['google'] = structuredClone(GOOGLE_CONFIG_DEFAULTS);
-  }
+  ensureConnectorConfigSections(configManager);
 }
 
 /** Config keys written by the app-password path. */

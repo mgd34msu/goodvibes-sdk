@@ -4,6 +4,7 @@ import type { AgentEvent, ProviderEvent, RuntimeEventBus, WorkflowEvent } from '
 import type { createDomainDispatch } from './store/index.js';
 import type { WrfcController } from '../agents/wrfc-controller.js';
 import type { AgentManager } from '../tools/agent/index.js';
+import { finishWorkstreamLabel, rememberWorkstreamLabel, workstreamLabel } from '../channels/workstream-labels.js';
 
 const AGENT_STATUS_INTERVAL_MS = 30_000;
 
@@ -146,7 +147,12 @@ export function registerHostRuntimeEvents(
   }));
 
   unsubs.push(runtimeBus.on<Extract<WorkflowEvent, { type: 'WORKFLOW_CHAIN_CREATED' }>>('WORKFLOW_CHAIN_CREATED', ({ payload }) => {
+    // Registered here as well as in the channel renderer, because the
+    // conversation follow-ups below need a name for this workstream and a
+    // TUI-only run never goes through a channel. Remembering twice is a no-op.
+    rememberWorkstreamLabel(payload.chainId, payload.task);
     withRouter(getSystemMessageRouter, (router) => {
+      // Operator feed: the id belongs here, where it is used for correlation.
       router.wrfc(`[WRFC] Chain ${payload.chainId} started: ${payload.task}`);
     });
     requestRender();
@@ -166,10 +172,14 @@ export function registerHostRuntimeEvents(
     withRouter(getSystemMessageRouter, (router) => {
       router.wrfc(`[WRFC] \u2713 Chain ${payload.chainId.slice(0, 12)} PASSED \u2014 all gates clear`);
     });
+    // A conversation follow-up is read by the person, not the operator, so it
+    // is named in plain words. The `key` keeps the id: it is a dedupe key
+    // nobody reads. See channels/workstream-labels.ts.
     queueConversationFollowUp?.({
       key: `wrfc:${payload.chainId}:passed`,
-      summary: `WRFC chain ${payload.chainId.slice(0, 12)} passed all gates.`,
+      summary: `${workstreamLabel(payload.chainId)} passed all its checks.`,
     });
+    finishWorkstreamLabel(payload.chainId);
     const chain = wrfcController.getChain(payload.chainId);
     if (chain?.engineerAgentId) {
       const record = agentManager.getStatus(chain.engineerAgentId);
@@ -184,8 +194,9 @@ export function registerHostRuntimeEvents(
     });
     queueConversationFollowUp?.({
       key: `wrfc:${payload.chainId}:failed`,
-      summary: `WRFC chain ${payload.chainId.slice(0, 12)} failed: ${payload.reason.slice(0, 120)}`,
+      summary: `${workstreamLabel(payload.chainId)} could not be finished: ${payload.reason.slice(0, 120)}`,
     });
+    finishWorkstreamLabel(payload.chainId);
     const chain = wrfcController.getChain(payload.chainId);
     if (chain?.engineerAgentId) {
       const record = agentManager.getStatus(chain.engineerAgentId);

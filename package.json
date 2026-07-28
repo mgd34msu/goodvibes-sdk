@@ -57,6 +57,7 @@
     "check:browser": "bun scripts/browser-compat-check.ts",
     "check:metadata": "bun scripts/package-metadata-check.ts",
     "contracts:check": "bun scripts/check-contract-artifacts.ts",
+    "credential-scope:check": "bun scripts/check-credential-scope.ts",
     "contracts:foundation-io:check": "bun scripts/check-foundation-io-types.ts --check",
     "contracts:foundation-io:coverage": "bun scripts/check-foundation-io-coverage.ts --check",
     "dist:check": "bun scripts/check-dist-freshness.ts",

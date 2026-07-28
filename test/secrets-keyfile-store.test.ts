@@ -255,14 +255,20 @@ describe('SecretsManager daemon scope', () => {
     const manager = makeManager(dirs);
     // No scope named. `surfaces.slack.botToken` is daemon-owned, so this is.
     await manager.set('GOODVIBES_SURFACES_SLACK_BOT_TOKEN', 'xoxb-derived');
-    // A name nothing derives keeps the historical project default.
+    // A model-provider key is daemon-needed too, and by a different route: the
+    // DAEMON runs the model, so a key only one client can read means the daemon
+    // cannot answer at all. It is declared in credential-scope-registry.ts,
+    // derived from the provider catalog rather than hand-listed.
     await manager.set('ANTHROPIC_API_KEY', 'sk-personal');
+    // A name nothing derives and nothing declares keeps the historical default.
+    await manager.set('MY_OWN_SCRATCH_KEY', 'value');
 
     const records = await manager.listDetailed();
     const stored = (key: string): string | undefined =>
       records.find((record) => record.key === key && record.source !== 'env')?.scope;
     expect(stored('GOODVIBES_SURFACES_SLACK_BOT_TOKEN')).toBe('daemon');
-    expect(stored('ANTHROPIC_API_KEY')).toBe('project');
+    expect(stored('ANTHROPIC_API_KEY')).toBe('daemon');
+    expect(stored('MY_OWN_SCRATCH_KEY')).toBe('project');
   });
 
   test('the daemon tier is read by another surface and another project directory', async () => {

@@ -170,8 +170,12 @@ describe('the channel backstop honours reasoningVisibility on assistant text', (
       'final',
     );
     expect(body).not.toContain('still working through it');
-    // It falls through to the terminal status rather than sending nothing.
-    expect(body).toBe('Completed');
+    // And nothing takes its place. The `status` event carrying "Completed" is
+    // operator telemetry — see channels/render-audience.ts — and the owner's
+    // ruling on a bare acknowledgement is that it is not a message: "work with
+    // nothing to report reports nothing". A suppressed surface handed only
+    // reasoning therefore sends nothing at all.
+    expect(body).toBe('');
   });
 
   test('an ordinary answer is unaffected on every visibility', () => {

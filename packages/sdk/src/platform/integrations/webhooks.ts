@@ -3,6 +3,7 @@ import type { RuntimeEventBus, AgentEvent, WorkflowEvent } from '../runtime/even
 import { classifyHostTrustTier, extractHostname, emitSsrfDeny } from '../tools/fetch/trust-tiers.js';
 import { instrumentedFetch, createTimeoutController } from '../utils/fetch-with-timeout.js';
 import { isNotifySuppressed } from '../utils/notify.js';
+import { workstreamLabel } from '../channels/workstream-labels.js';
 
 // ---------------------------------------------------------------------------
 // WebhookNotifier
@@ -167,13 +168,15 @@ export class WebhookNotifier {
 
     this.unsubscribers.push(
       bus.on<Extract<WorkflowEvent, { type: 'WORKFLOW_CHAIN_PASSED' }>>('WORKFLOW_CHAIN_PASSED', ({ payload }) => {
-        this.sendRuntimeNotification(`WRFC passed: chain ${payload.chainId}`);
+        // Named in plain words: a webhook body is read by whatever the operator
+        // pointed it at, which makes it outward-facing text.
+        this.sendRuntimeNotification(`${workstreamLabel(payload.chainId)} passed all its checks.`);
       }),
     );
 
     this.unsubscribers.push(
       bus.on<Extract<WorkflowEvent, { type: 'WORKFLOW_CHAIN_FAILED' }>>('WORKFLOW_CHAIN_FAILED', ({ payload }) => {
-        this.sendRuntimeNotification(`WRFC failed: ${payload.reason}`);
+        this.sendRuntimeNotification(`${workstreamLabel(payload.chainId)} could not be finished: ${payload.reason}`);
       }),
     );
 

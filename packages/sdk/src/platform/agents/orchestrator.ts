@@ -19,6 +19,7 @@ import type { ModelDefinition } from '../providers/registry-types.js';
 import type { RequestProfile } from '../providers/capabilities.js';
 import type { FeatureFlagManager } from '../runtime/feature-flags/manager.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
+import type { ProgressAudience } from './progress-audience.js';
 import {
   emitAgentCancelled,
   emitAgentCompleted,
@@ -235,11 +236,18 @@ export class AgentOrchestrator {
     };
   }
 
-  private emitAgentProgress(recordId: string, progress: string): void {
+  /**
+   * `audience` is required rather than defaulted so a new caller has to answer
+   * "who is this for" at the call site. See agents/progress-audience.ts: an
+   * unanswered one used to mean "everyone", and the tool trace ended up on the
+   * owner's phone.
+   */
+  private emitAgentProgress(recordId: string, progress: string, audience: ProgressAudience): void {
     if (!this.runtimeBus) return;
     emitAgentProgress(this.runtimeBus, this.emitterContext(recordId), {
       agentId: recordId,
       progress,
+      audience,
     });
   }
 
@@ -654,7 +662,7 @@ export class AgentOrchestrator {
       runtimeBus: this.runtimeBus,
       featureFlagManager: this.featureFlagManager,
       emitterContext: (agentId) => this.emitterContext(agentId),
-      emitAgentProgress: (recordId, progress) => this.emitAgentProgress(recordId, progress),
+      emitAgentProgress: (recordId, progress, audience) => this.emitAgentProgress(recordId, progress, audience),
       emitOrchestrationProgress: (record, progress) => this.emitOrchestrationProgress(record, progress),
       emitAgentStarted: (recordId) => this.emitAgentStarted(recordId),
       emitAgentCancelledEvent: (recordId, reason) => this.emitAgentCancelledEvent(recordId, reason),
