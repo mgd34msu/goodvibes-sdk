@@ -494,12 +494,27 @@ describe('outcome rendering distinguishes matched / inert / refused-link / capab
     expect(renderNoticeAsPlainText(degraded).split('\n')[0]).toContain('LIMITED');
   });
 
-  test('missingCapability is rendered literal (daemon-generated, never attacker text)', () => {
+  test('missingCapability is rendered UNTRUSTED, because nothing yet decides what fills it', () => {
+    // This asserted the opposite — that the whole Outcome line is literal, on
+    // the grounds that the capability is daemon-generated. That was true by
+    // accident rather than by construction: `missingCapability` has no
+    // producer anywhere in `packages/sdk/src`, so the claim held only because
+    // the field is never populated at all. Nothing builds `capability-degraded`
+    // today.
+    //
+    // Whoever wires it will most likely fill it from a refusal the SERVER
+    // worded, and a literal span skips every channel escaper — so the first
+    // time this field carries real text it would carry live markup with it.
+    // Escaping a phrase we chose ourselves costs nothing visible; treating a
+    // server's phrase as ours costs an escape hatch. Only the substituted
+    // value is untrusted; the sentence around it stays literal.
     const notice = renderInboundMailNotice(baseInput({
       outcome: { kind: 'capability-degraded', missingCapability: 'read message bodies' },
     }));
     const field = notice.fields.find((f) => f.label === 'Outcome')!;
-    expect(field.value.every((s) => s.kind === 'literal')).toBe(true);
+    const carrying = field.value.find((s) => s.text.includes('read message bodies'));
+    expect(carrying?.kind).toBe('untrusted');
+    expect(field.value.some((s) => s.kind === 'literal' && s.text.includes('LIMITED VIEW'))).toBe(true);
   });
 });
 

@@ -28,8 +28,10 @@ import {
 } from '../packages/sdk/src/platform/email/inbound/sink.ts';
 import {
   InboundMailboxWatcher,
+  drainMailboxDelta,
   imapMailboxConnectionPort,
   resolveWatcherSettings,
+  type MailboxWire,
 } from '../packages/sdk/src/platform/email/inbound/index.ts';
 import type { InboundMailboxMessage } from '../packages/sdk/src/platform/email/inbound/ports.ts';
 import { makeFakeMailbox, openMailboxSocket, type FakeMailboxServer } from './_helpers/fake-imap-mailbox.ts';
@@ -46,6 +48,23 @@ import {
 
 const ACCOUNT = 'primary';
 const MAILBOX = 'INBOX';
+const UID_VALIDITY = 42;
+
+/** A minimal envelope for a drain that only needs the UID to line up. */
+function envelopeFor(uid: number) {
+  return {
+    uid,
+    from: `s${String(uid)}@sender.test`,
+    subject: `Message ${String(uid)}`,
+    date: 'Mon, 27 Jul 2026 09:00:00 +0000',
+    messageId: `<uid-${String(uid)}@example.test>`,
+    mailbox: MAILBOX,
+    deliveredTo: ['watched@example.test'],
+    deliveryEvidence: [{ address: 'watched@example.test', source: 'delivered-to' as const }],
+    unverifiedToHeaderClaim: 'watched@example.test',
+    authenticationResults: [],
+  };
+}
 
 interface Live { readonly watcher: InboundMailboxWatcher; readonly mailbox: FakeMailboxServer }
 const live: Live[] = [];
@@ -228,10 +247,16 @@ describe('a redelivered message produces exactly one notice', () => {
     expect((await harness.cursors.get(ACCOUNT, MAILBOX))?.lastSeenUid).toBe(102);
   });
 
-  test('a suppressed duplicate still advances the cursor, so the mailbox drains', async () => {
+  test('a suppressed duplicate resolves rather than throwing', async () => {
     // Suppression resolves rather than throwing. Throwing would pin the cursor
     // below a message that is suppressed again on every pass, and the watcher
     // would re-fetch it forever while making no progress.
+    //
+    // This half is about the SINK. The cursor half — that a real drain then
+    // advances past the suppressed message — is asserted in the test below,
+    // because it is a property of the drain and cannot be seen from here. The
+    // two used to be one test carrying the cursor claim in its name and no
+    // cursor in its body.
     const dedup = createInboundMailDedup();
     const handled: number[] = [];
     const sink = new DedupingInboundMailSink({
@@ -246,6 +271,62 @@ describe('a redelivered message produces exactly one notice', () => {
     await sink.deliver(msg);
     await expect(sink.deliver(msg)).resolves.toBeUndefined();
     expect(handled).toEqual([7]);
+  });
+
+  test('a suppressed duplicate still ADVANCES THE CURSOR, so the mailbox drains', async () => {
+    // The claim the name above used to make and never checked. A drain whose
+    // sink suppresses must still move the cursor past the message: if it did
+    // not, every later pass would re-search from the same point, re-fetch the
+    // same UID, suppress it again, and the mailbox would never drain — the
+    // suppression would have become the stall it exists to prevent.
+    const { store: cursors } = await makeCursorStore({
+      account: ACCOUNT, mailbox: MAILBOX, uidValidity: UID_VALIDITY, lastSeenUid: 101,
+    });
+    const cursor = await cursors.get(ACCOUNT, MAILBOX);
+    if (cursor === null) throw new Error('the seeded cursor did not persist');
+
+    const handled: number[] = [];
+    const sink = new DedupingInboundMailSink({
+      dedup: createInboundMailDedup(),
+      handle: async (msg) => { handled.push(msg.uid); },
+    });
+    // Claim UID 102 first, so the drain's delivery is a duplicate.
+    await sink.deliver({
+      account: ACCOUNT, mailbox: MAILBOX, uidValidity: UID_VALIDITY, uid: 102,
+      envelope: { uid: 102 } as InboundMailboxMessage['envelope'], via: 'idle' as const,
+    });
+    expect(handled).toEqual([102]);
+
+    const report = await drainMailboxDelta({
+      settings: resolveWatcherSettings({ account: ACCOUNT, mailbox: MAILBOX, mode: 'poll' }),
+      reader: {
+        capabilities: async () => ['IMAP4REV1'],
+        fetchEnvelopes: async () => [envelopeFor(102)],
+        fetchEnvelopeBatch: async () => ({ envelopes: [envelopeFor(102)], unreadable: [] }),
+      },
+      wire: {
+        onUntagged: () => () => undefined,
+        sendCommand: async () => 'A001',
+        sendRawLine: async () => undefined,
+        awaitContinuation: async () => undefined,
+        awaitTag: async () => ['* SEARCH 102', 'A001 OK'],
+        waitForUntagged: async () => '',
+      } as unknown as MailboxWire,
+      cursors,
+      sink,
+      clock: new FakeClock(),
+      observer: new RecordingObserver(),
+      cursor,
+      via: 'poll',
+      signal: new AbortController().signal,
+    });
+
+    // Suppressed — the handler did not run a second time...
+    expect(handled).toEqual([102]);
+    // ...and the cursor moved past it anyway.
+    expect(report.outcome).toBe('complete');
+    expect(report.cursor.lastSeenUid).toBe(102);
+    expect((await cursors.get(ACCOUNT, MAILBOX))?.lastSeenUid).toBe(102);
   });
 
   test('two concurrent deliveries of one message run the pipeline once', async () => {
