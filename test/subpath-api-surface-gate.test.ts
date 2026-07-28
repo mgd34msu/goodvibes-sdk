@@ -179,6 +179,62 @@ describe('diffSnapshots', () => {
   });
 });
 
+describe('class members', () => {
+  const base: Snapshot = {
+    './platform/email': [
+      {
+        name: 'EmailService',
+        kind: 'class',
+        publicMembers: ['checkInbox', 'constructor'],
+        text: 'declare class EmailService { constructor(); checkInbox(): void; }',
+      },
+    ],
+  };
+
+  test('an unchanged class produces no findings', () => {
+    expect(diffSnapshots(base, structuredClone(base))).toEqual([]);
+  });
+
+  test('a NEW public method is named in the failure', () => {
+    const after: Snapshot = {
+      './platform/email': [
+        {
+          name: 'EmailService',
+          kind: 'class',
+          publicMembers: ['checkInbox', 'constructor', 'listInbox'],
+          text: 'declare class EmailService { constructor(); checkInbox(): void; listInbox(): void; }',
+        },
+      ],
+    };
+    const lines = diffSnapshots(base, after);
+    expect(lines.some((line) => line.includes('gained PUBLIC member(s): listInbox'))).toBe(true);
+  });
+
+  test('a removed public method is reported too', () => {
+    const after: Snapshot = {
+      './platform/email': [
+        { name: 'EmailService', kind: 'class', publicMembers: ['constructor'], text: 'declare class EmailService { constructor(); }' },
+      ],
+    };
+    expect(diffSnapshots(base, after).some((line) => line.includes('no longer exposes PUBLIC member(s): checkInbox'))).toBe(true);
+  });
+
+  test('the committed report records public members for the classes that have them', () => {
+    const committed = JSON.parse(readFileSync(join(SDK_ROOT, 'etc', 'subpath-api-surface.json'), 'utf8')) as Snapshot;
+    const classes = Object.values(committed).flat().filter((entry) => entry.kind === 'class');
+    const withMembers = classes.filter((entry) => (entry.publicMembers?.length ?? 0) > 0);
+    expect(classes.length).toBeGreaterThan(100);
+    // Not "all", because three providers genuinely declare no members of their
+    // own (`class LocalAIProvider extends DiscoveredCompatProvider {}`). A
+    // detector that claimed 100% here would be reporting coverage it lacks:
+    // members reached only by INHERITANCE are not recorded on the subclass.
+    expect(withMembers.length).toBeGreaterThan(classes.length * 0.9);
+    const emailService = (committed['./platform/email'] ?? []).find((entry) => entry.name === 'EmailService');
+    expect(emailService?.publicMembers).toContain('listInbox');
+    expect(emailService?.publicMembers).not.toContain('recordIngest'); // private — not surface
+  });
+});
+
 describe('normalizeDeclarationText', () => {
   test('strips block comments so a doc-only edit does not churn the report', () => {
     expect(normalizeDeclarationText('interface A {\n  /** the uid */\n  uid: number;\n}'))
