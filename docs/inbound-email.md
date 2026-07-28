@@ -549,12 +549,24 @@ export interface InboundMailSource {
 }
 ```
 
-This costs little, because the seam already exists. `InboundMailboxMessage`,
-`InboundMailSink`, `MailboxCursorPort`, `InboundMailObserver` and
-`InboundCapabilityVerdict` are already source-agnostic — only
+Some of the seam already exists. `InboundMailSink`, `MailboxCursorPort`,
+`InboundMailObserver` and `InboundCapabilityVerdict` are source-agnostic; only
 `MailboxConnectionPort`, `MailboxReader` and `MailboxWire` are IMAP-shaped.
 **Expectation matching, taint labelling, dedup, notice rendering, cursor
 persistence and owner disclosure are written once and serve both sources.**
+
+**Correction — this paragraph originally listed `InboundMailboxMessage` among
+the source-agnostic types, and that was wrong.** As shipped it carries
+`uidValidity: number`, `uid: number` and `envelope: ImapEnvelope` — three
+IMAP-specific fields. A Gmail message has an opaque message id, a `historyId`
+that is a decimal uint64 string, and no UID or `UIDVALIDITY` at all.
+
+The error was mine and it was avoidable: I read the *export list* and inferred
+from the name rather than reading the fields. So the message becomes a
+discriminated union on source, exactly as the cursor does — see
+`docs/decisions/2026-07-27-inbound-message-is-a-discriminated-union.md`. Widening
+it with optional fields was rejected for the same reason it was rejected for the
+cursor: a record that can be half-filled is a record that will be.
 
 - **IMAP source** — IDLE, wrapping the existing watcher.
 - **Gmail source** — `collectHistoryDelta` over `users.history.list`, already
@@ -1566,6 +1578,42 @@ overturn any of them.
   20, silently. A caller handing it a larger delta and then advancing a cursor
   skips everything dropped. Being fixed at source; recorded because the shape of
   the bug — a truncating default feeding a cursor — will recur elsewhere.
+
+### 13.2 Three errors in this document, and the one cause behind them
+
+Recorded because the cause is more useful than the corrections, and because a
+design document that hides its own defects teaches the next reader to trust it
+more than it deserves.
+
+1. **§10 required every inbound invocation to pass `ownerDirect: false`.**
+   `inputOriginIsOwnerDirect`, `startTurnForOwnerInput` and `ownerDirect` exist
+   nowhere in `packages/sdk/src`. The taint round shipped
+   `startTurnForOwnerRequest(explicitUserRequest)`, which returns false unless
+   the argument is exactly `true` — so it fails closed and there is no absence
+   to misread. Implementing the requirement as written meant coding against an
+   API that does not exist.
+2. **§6 ruled the dedup identity as `UIDVALIDITY:UID`.** Gmail has neither.
+   Written before Gmail became a source and never revisited when it did.
+3. **§3.4d called `InboundMailboxMessage` source-agnostic.** It carries
+   `uidValidity`, `uid` and `ImapEnvelope`.
+
+**The common cause: each was asserted from something other than the code it
+described.** The first from another round's *uncommitted working-tree diff*,
+read early and never re-checked after that round landed — the draft I read did
+have the hazard I wrote up; the shipped version had inverted it. The second from
+a rule that was true when written and was never re-derived when a second source
+was added. The third from an export list and a type's *name*, without opening
+the declaration.
+
+This is the same failure this round kept catching in implementation work —
+copying a shape instead of importing it, mirroring a tri-state, trusting a
+description over a definition. It applies to design documents identically, and
+arguably worse: an implementation error fails a test, while a design error gets
+built.
+
+> A requirement that names a function, a field or a type is a claim about the
+> code, and it decays. Re-verify it against the code at the moment it is handed
+> to someone to implement — not at the moment it was written.
 
 ## 14. Related
 
