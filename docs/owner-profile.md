@@ -612,6 +612,13 @@ no enumerate-all-people call available to a composition path**: `profile.person`
 takes a name, and `profile.read` — which returns everything — is not callable
 from a composition path at all.
 
+For that guarantee to be structural rather than a comment, the store's generic
+`section(name)` accessor **refuses the closed-tier prose sections**. `People` is
+reachable two ways and only two: `person(name)`, which requires a name, and
+`read()`, which returns the whole document and exists to answer him about
+himself. A generic section accessor that served `People` would be the
+enumerate-all call this rule denies, arriving by another name.
+
 Every `profile.person` read is disclosed in the reply in the same one-line form
 as §8.2: *"Used Sarah's details from your profile."*
 
@@ -840,7 +847,7 @@ Each test is verified to fail without its fix, and both counts are reported.
 | 16 | hand edit picked up | an external modification is reflected without a restart |
 | 17 | atomic write | an interrupted write leaves the previous complete file |
 | 18 | invalid mechanical value | `timezone: Mars/Olympus` is preserved, reported invalid with a reason, and its consumer falls back |
-| 19 | third-party containment | `People` content is absent from context, exports and logs; `profile.person` requires a name and has no enumerate-all counterpart |
+| 19 | third-party containment | `People` content is absent from context, exports and logs; `profile.person` requires a name; and no exported store method other than `read()` returns the whole `People` section — `section('People')` refuses |
 | 20 | consumer fallback direction | an explicitly configured `checkin.quietHours` beats the profile; an unset one reads from the profile |
 | 21 | read latency | benchmark; measured nanoseconds reported |
 | 22 | removal is gated | `forget` and `undo` from each untrusted authority are refused and the file is byte-identical after |
