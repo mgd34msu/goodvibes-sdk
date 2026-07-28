@@ -24,6 +24,7 @@ export {
 export {
   CapabilityStateTracker,
   capabilityVerdict,
+  classifyLocalFailure,
   classifyOpenFailure,
   classifyReadFailure,
   errorText,
@@ -101,7 +102,16 @@ export {
 export { MailboxCursorStore, validateMailboxCursor } from './cursor-store.js';
 export { InboundMailStore, validateInboundMailRecord } from './record-store.js';
 export { PersistedExpectationStore } from './expectation-store.js';
-export { InboundMailHousekeeper } from './housekeeping.js';
+export {
+  InboundMailHousekeeper,
+  type InboundMailHousekeepingReport,
+  type InboundMailSweepFailure,
+} from './housekeeping.js';
+export {
+  createInboundTerminalFailureAnnouncer,
+  type InboundTerminalFailureAnnouncer,
+  type InboundTerminalFailureAnnouncerOptions,
+} from './terminal-notice.js';
 export {
   InboundExpectationRegistry,
   type ExpectationMatcher,
@@ -137,6 +147,8 @@ export {
   InboundMailSupervisor,
   type InboundMailSourceFactory,
   type InboundMailStatusSnapshot,
+  type InboundMailStoreHealth,
   type InboundMailSupervisorDeps,
   type InboundMailSupervisorStatus,
 } from './supervisor.js';
+export type { MailboxCursor } from './types.js';

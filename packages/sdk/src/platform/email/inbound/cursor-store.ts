@@ -54,7 +54,7 @@
  * keeping `uidValidity` strictly positive. Flagged in the implementation
  * report as a design-doc correction, not silently reinterpreted.
  */
-import { PersistentStore } from '../../state/persistent-store.js';
+import { PersistentStore, type PersistentStoreCorruption } from '../../state/persistent-store.js';
 import {
   type HousekeepingTrigger,
   type MailboxCursor,
@@ -68,7 +68,19 @@ import {
   type InboundSourceCursor,
 } from './source-cursor.js';
 
-export type CursorDiscardReason = 'malformed' | 'account-not-configured' | 'over-cap';
+/**
+ * `file-unreadable` is rule 3 applied to the FILE rather than to a record: a
+ * cursor file that will not parse is discarded and disclosed, exactly as a torn
+ * record inside it would be. Reading it as a permanent hard failure instead
+ * would take every reader of this store down with it — including the sweep of
+ * the two stores that are fine, and including the disclosure verb whose whole
+ * job is to explain this state.
+ */
+export type CursorDiscardReason =
+  | 'malformed'
+  | 'file-unreadable'
+  | 'account-not-configured'
+  | 'over-cap';
 
 /** One removal, itemised for disclosure. */
 export interface CursorDiscard {
@@ -248,6 +260,8 @@ export class MailboxCursorStore {
   private readonly now: () => number;
   private readonly isAccountConfigured: ((account: string) => boolean) | undefined;
   private writeChain: Promise<void> = Promise.resolve();
+  /** The last unreadable-file event, latched so status can name it. */
+  private corruption: PersistentStoreCorruption | null = null;
 
   constructor(storeOrPath: PersistentStore<CursorSnapshot> | string, options: MailboxCursorStoreOptions = {}) {
     this.store = typeof storeOrPath === 'string' ? new PersistentStore<CursorSnapshot>(storeOrPath) : storeOrPath;
@@ -260,22 +274,43 @@ export class MailboxCursorStore {
     return this.policy;
   }
 
-  private async readWithDrops(): Promise<{ cursors: InboundSourceCursor[]; malformed: number }> {
-    const raw = await this.store.load();
-    if (!raw || typeof raw !== 'object') return { cursors: [], malformed: 0 };
+  /**
+   * The unreadable-file event this store last saw, or null.
+   *
+   * Latched rather than transient because the next write replaces the file: by
+   * the time anyone asks, the evidence on disk is gone, and "the cursors were
+   * discarded" is the one fact that explains a mailbox that resumed from
+   * nowhere.
+   */
+  getCorruption(): PersistentStoreCorruption | null {
+    return this.corruption;
+  }
+
+  private async readWithDrops(): Promise<{
+    cursors: InboundSourceCursor[];
+    malformed: number;
+    corrupt: PersistentStoreCorruption | null;
+  }> {
+    const { data: raw, corruption } = await this.store.loadOrDiscard();
+    if (corruption !== null) this.corruption = corruption;
+    if (!raw || typeof raw !== 'object') return { cursors: [], malformed: 0, corrupt: corruption };
     const rawCursors = Array.isArray(raw.cursors) ? raw.cursors : [];
     const cursors = rawCursors
       .map(validateInboundSourceCursor)
       .filter((c): c is InboundSourceCursor => c !== null);
-    return { cursors, malformed: rawCursors.length - cursors.length };
+    return { cursors, malformed: rawCursors.length - cursors.length, corrupt: null };
   }
 
   private async mutate<T>(
-    fn: (cursors: InboundSourceCursor[], malformed: number) => Promise<{ next: InboundSourceCursor[]; result: T }>,
+    fn: (
+      cursors: InboundSourceCursor[],
+      malformed: number,
+      corrupt: PersistentStoreCorruption | null,
+    ) => Promise<{ next: InboundSourceCursor[]; result: T }>,
   ): Promise<T> {
     const run = this.writeChain.then(async () => {
-      const { cursors, malformed } = await this.readWithDrops();
-      const { next, result } = await fn(cursors, malformed);
+      const { cursors, malformed, corrupt } = await this.readWithDrops();
+      const { next, result } = await fn(cursors, malformed, corrupt);
       await this.store.persist({ version: 1, cursors: next });
       return result;
     });
@@ -552,8 +587,19 @@ export class MailboxCursorStore {
    */
   async sweep(trigger: HousekeepingTrigger = 'manual'): Promise<CursorSweepReport> {
     const now = this.now();
-    return this.mutate(async (cursors, malformed) => {
+    return this.mutate(async (cursors, malformed, corrupt) => {
       const removed: CursorDiscard[] = [];
+      if (corrupt !== null) {
+        removed.push({
+          account: '(unknown)',
+          mailbox: '(unknown)',
+          reason: 'file-unreadable',
+          removedAt: now,
+          note: `the cursor file could not be read (${corrupt.detail}), so every stored `
+            + 'position was discarded; each mailbox re-establishes at its current '
+            + 'high-water mark rather than replaying',
+        });
+      }
       if (malformed > 0) {
         removed.push({
           account: '(unknown)',
