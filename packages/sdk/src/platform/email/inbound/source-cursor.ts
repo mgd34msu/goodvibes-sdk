@@ -72,6 +72,48 @@ export type InboundSourceCursor = ImapMailboxCursor | GmailMailboxCursor;
 const HISTORY_ID_PATTERN = /^(?:0|[1-9][0-9]{0,19})$/;
 
 /**
+ * The ceiling on a UID and on UIDVALIDITY alike: `2^32 - 1`.
+ *
+ * RFC 3501 §2.3.1.1 defines both as 32-bit values, so a stored number above
+ * this names nothing a server can ever hand back. Bounding it is the exact
+ * counterpart of `HISTORY_ID_PATTERN` above — a position outside the range the
+ * protocol defines is a torn or hand-edited record, not a place to resume from.
+ *
+ * WHY THE SIGN CHECK ALONE WAS NOT ENOUGH, since that is what this replaces.
+ * `lastSeenUid` is a HIGH-WATER MARK and `advance()` moves it with `Math.max`,
+ * so it only ever climbs. One absurd value — `9007199254740991`, or the `1e20`
+ * a `parseInt` of an over-long SEARCH token produces — therefore has no way
+ * back down: `resolve()` answers `resumed` without ever comparing it to the
+ * mailbox's real high-water mark, `sweep()` has no rule that reaps it, and
+ * `UID SEARCH UID <cursor+1>:*` filtered to `uid > lastSeenUid` then discards
+ * every real message forever. The drain reports `complete, found: 0` and the
+ * watcher calls itself healthy while no mail is ever delivered again.
+ *
+ * A value outside the range is DISCARDED, never clamped down to the ceiling.
+ * Clamping would invent a position: `4294967295` is not where the daemon
+ * actually got to, and resuming from it would skip the whole mailbox just as
+ * silently. Discarding sends the record through the same path a torn one
+ * takes — dropped at load, disclosed by `sweep()` as `malformed`, and
+ * re-established at the current high-water mark by `resolve()`.
+ */
+export const MAX_IMAP_UID = 4_294_967_295;
+
+/**
+ * A UID as a cursor may hold it: an integer in `0 .. MAX_IMAP_UID`.
+ *
+ * Zero is accepted deliberately — see `validateImapSourceCursor`'s note on why
+ * `lastSeenUid` is non-negative rather than positive.
+ */
+export function isImapUid(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= MAX_IMAP_UID;
+}
+
+/** A UIDVALIDITY as a cursor may hold it: an integer in `1 .. MAX_IMAP_UID` (RFC 3501: non-zero). */
+export function isImapUidValidity(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value > 0 && value <= MAX_IMAP_UID;
+}
+
+/**
  * A `historyId` as Google writes it: decimal digits, no sign, no exponent, no
  * leading zeros, at most a uint64's worth.
  *
@@ -143,12 +185,11 @@ export function validateInboundSourceCursor(value: unknown): InboundSourceCursor
 export function validateMailboxCursorFields(record: Record<string, unknown>): MailboxCursor | null {
   if (!isNonEmptyTrimmedString(record.account, 256)) return null;
   if (!isNonEmptyTrimmedString(record.mailbox, 512)) return null;
-  if (typeof record.uidValidity !== 'number' || !Number.isInteger(record.uidValidity) || record.uidValidity <= 0) {
-    return null;
-  }
-  if (typeof record.lastSeenUid !== 'number' || !Number.isInteger(record.lastSeenUid) || record.lastSeenUid < 0) {
-    return null;
-  }
+  // Bounded at BOTH ends. The upper bound is the one that was missing, and it
+  // is the one that matters — see `MAX_IMAP_UID` for why an unbounded
+  // `lastSeenUid` is unrecoverable rather than merely wrong.
+  if (!isImapUidValidity(record.uidValidity)) return null;
+  if (!isImapUid(record.lastSeenUid)) return null;
   if (!isParsableIsoDate(record.updatedAt)) return null;
   return {
     account: (record.account as string).trim(),

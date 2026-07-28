@@ -27,8 +27,10 @@
  *     bug or a hand-edited config ever produced more distinct (account,
  *     mailbox) pairs than could plausibly be real.
  *  3. Validate by content — on an IMAP record, `uidValidity` and `lastSeenUid`
- *     must be positive / non-negative integers (see the note on `lastSeenUid`
- *     below); on a Gmail record, `historyId` must be a decimal uint64 string;
+ *     must be integers inside the 32-bit range RFC 3501 §2.3.1.1 defines,
+ *     positive / non-negative respectively (see the note on `lastSeenUid`
+ *     below, and `MAX_IMAP_UID` on why the UPPER bound is the load-bearing
+ *     one); on a Gmail record, `historyId` must be a decimal uint64 string;
  *     on both, `updatedAt` a parseable ISO date and `mailbox` and `account`
  *     non-empty, length-bounded strings. A record failing ANY check is
  *     discarded, not repaired: a corrupt cursor silently coerced to 0 would
@@ -61,6 +63,9 @@ import {
 } from './types.js';
 import {
   isHistoryId,
+  isImapUid,
+  isImapUidValidity,
+  MAX_IMAP_UID,
   validateInboundSourceCursor,
   validateMailboxCursorFields,
   type GmailMailboxCursor,
@@ -176,6 +181,41 @@ export function validateMailboxCursor(value: unknown): MailboxCursor | null {
  * served by exactly one source at a time — `surfaces.email.inbound.source`
  * picks one, and the two never run against the same mailbox concurrently.
  */
+/**
+ * Refuse an out-of-range IMAP position ON THE WAY IN, exactly as
+ * `resolveGmail` and `advanceGmail` refuse a non-decimal `historyId`.
+ *
+ * The load-time check in `source-cursor.ts` is what stops a bad value being
+ * HONOURED; this is what stops one being WRITTEN. Without it the two disagree
+ * in the worst possible direction: the store would accept `9007199254740991`,
+ * persist it, and then silently discard it as malformed on the next load — so
+ * the daemon would look like it held a position and hold none, and every
+ * mailbox would re-establish at its high-water mark on every restart. That is
+ * the same reasoning `resolveGmail` states for `isHistoryId`, applied to the
+ * source that had no ceiling at all.
+ *
+ * Thrown rather than clamped: `MAX_IMAP_UID` explains why silently moving a
+ * caller's number is worse than refusing it.
+ */
+function requireImapPosition(
+  verb: string,
+  key: { readonly account: string; readonly mailbox: string },
+  position: { readonly uidValidity: number; readonly lastSeenUid: number },
+): void {
+  if (!isImapUidValidity(position.uidValidity)) {
+    throw new Error(
+      `Refusing to ${verb} the IMAP cursor for ${key.account}:${key.mailbox} at UIDVALIDITY `
+      + `${String(position.uidValidity)}: not an integer in 1..${String(MAX_IMAP_UID)} (RFC 3501 §2.3.1.1).`,
+    );
+  }
+  if (!isImapUid(position.lastSeenUid)) {
+    throw new Error(
+      `Refusing to ${verb} the IMAP cursor for ${key.account}:${key.mailbox} at UID `
+      + `${String(position.lastSeenUid)}: not an integer in 0..${String(MAX_IMAP_UID)} (RFC 3501 §2.3.1.1).`,
+    );
+  }
+}
+
 function indexOfKey(
   cursors: readonly InboundSourceCursor[],
   account: string,
@@ -379,6 +419,10 @@ export class MailboxCursorStore {
     readonly currentHighestUid: number;
     readonly currentMessageCount: number;
   }): Promise<CursorResolution> {
+    requireImapPosition('establish', input, {
+      uidValidity: input.serverUidValidity,
+      lastSeenUid: input.currentHighestUid,
+    });
     const now = this.now();
     return this.mutate(async (cursors) => {
       const index = indexOfKey(cursors, input.account, input.mailbox);
@@ -505,6 +549,7 @@ export class MailboxCursorStore {
     readonly uidValidity: number;
     readonly lastSeenUid: number;
   }): Promise<MailboxCursor> {
+    requireImapPosition('advance', input, input);
     const now = this.now();
     return this.mutate(async (cursors) => {
       const index = indexOfKey(cursors, input.account, input.mailbox);

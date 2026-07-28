@@ -49,6 +49,40 @@ const MAX_CARD_SPAN_CHARS = 19 + 18;
 /** What `validateInboundMailRecord` accepts for `subject`; redaction must not exceed it. */
 const MAX_SUBJECT_CHARS = 998;
 
+/** What `validateInboundMailRecord` accepts for `senderDisplay`; same rule as the subject. */
+const MAX_SENDER_DISPLAY_CHARS = 998;
+
+/** What `validateInboundMailRecord` accepts for `deliveredToAddress`. */
+const MAX_DELIVERED_TO_CHARS = 320;
+
+/**
+ * Clamp a redacted delivery address back inside its bound WITHOUT losing the
+ * `@` the loader insists on.
+ *
+ * The plain `.slice(0, max)` the subject uses is wrong for this one field.
+ * `validateInboundMailRecord` requires a `deliveredToAddress` to contain an
+ * `@`, and a redaction marker is longer than the digits it replaces
+ * (`[redacted:security-code]` is twenty-four characters for three), so a long
+ * address carrying card shapes in its local part can grow past the bound and a
+ * head-slice would cut the `@` off. The record would then fail its own
+ * validation on the very next load and be discarded WHOLE — the mail would
+ * vanish from the store entirely, which is a worse outcome than the exposure
+ * this redaction exists to close.
+ *
+ * So the domain is kept intact and the local part gives up the characters. The
+ * part that is truncated is the part that had already been overwritten with
+ * markers, and the part that identifies where the message landed survives.
+ */
+function clampDeliveryAddress(value: string): string {
+  if (value.length <= MAX_DELIVERED_TO_CHARS) return value;
+  const at = value.indexOf('@');
+  if (at < 0) return value.slice(0, MAX_DELIVERED_TO_CHARS);
+  const domain = value.slice(at);
+  return domain.length >= MAX_DELIVERED_TO_CHARS
+    ? domain.slice(0, MAX_DELIVERED_TO_CHARS)
+    : value.slice(0, MAX_DELIVERED_TO_CHARS - domain.length) + domain;
+}
+
 /** Correlates to `VerificationMatch['kind']` in verification-expectations.ts, plus link-only outcomes that never reach expectation matching. */
 export type InboundMailOutcome =
   | 'matched-expectation'
@@ -120,10 +154,11 @@ export interface InboundMailRecordCommon {
   readonly id: string;
   readonly account: string;
   readonly mailbox: string;
-  /** Sanitized: sender's registrable domain + local part, never raw untrusted text (§7). */
+  /** Attacker-written `From:` text. Card shapes redacted and length-bounded at write time (§11.0). */
   readonly senderDisplay: string;
-  /** Sanitized/truncated (§7): newlines and control characters removed before this is ever stored. */
+  /** Sanitized/truncated (§7): newlines and control characters removed before this is ever stored. Card shapes redacted (§11.0). */
   readonly subject: string;
+  /** The alias the message landed at. Sender-chosen on a catch-all domain, so card shapes are redacted here too (§11.0). */
   readonly deliveredToAddress: string | null;
   readonly deliveryEvidenceSource: 'alias-mailbox' | 'delivered-to-header' | 'x-original-to-header' | 'none';
   readonly links: readonly InboundLinkVerdict[];
@@ -468,14 +503,26 @@ export class InboundMailStore {
       id: randomUUID(),
       account: input.account,
       mailbox: input.mailbox,
-      senderDisplay: input.senderDisplay,
+      // `From:`'s display name is written by whoever sent the message — the
+      // same standing the subject has, and the same handling. It was left raw
+      // while the subject beside it was redacted, so `"4111111111111111"
+      // <a@b.test>` put a card number on disk for `retentionDays` and into the
+      // owner's notice, through a field nobody thought of as content.
+      senderDisplay: redactCardShapes(input.senderDisplay).slice(0, MAX_SENDER_DISPLAY_CHARS),
       // The subject is persisted alongside the excerpt AND rendered to the
       // owner in the notice, so it is the same exposure by a different field.
       // Re-clamped after redacting because a marker is longer than the digits
       // it replaces, and a subject over 998 chars fails validation on load —
       // taking the whole record with it.
       subject: redactCardShapes(input.subject).slice(0, MAX_SUBJECT_CHARS),
-      deliveredToAddress: input.deliveredToAddress,
+      // Sender-chosen too, on the catch-all domain the aliases live on (§7.1):
+      // the local part is whatever the message was addressed to, so a PAN can
+      // arrive as the alias itself. Clamped by `clampDeliveryAddress` rather
+      // than a plain slice — see there for why this one field cannot use the
+      // subject's re-clamp.
+      deliveredToAddress: input.deliveredToAddress === null
+        ? null
+        : clampDeliveryAddress(redactCardShapes(input.deliveredToAddress)),
       deliveryEvidenceSource: input.deliveryEvidenceSource,
       links: input.links,
       outcome: input.outcome,
