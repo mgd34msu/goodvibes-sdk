@@ -342,8 +342,23 @@ function recordOutcome(match: VerificationMatch): InboundMailOutcome {
  * registered the expectation is not authority over the strings it passed.
  * Everything that is not a match or an expiry is `inert`: the owner is told
  * mail arrived and that nothing acted on it, which is the true statement.
+ *
+ * `bodiesWithheld` short-circuits all of it. When the message was read under a
+ * grant that excludes bodies, the only honest outcome line is the one that says
+ * so, and it is returned BEFORE `match` is consulted rather than after: the
+ * caller never builds a match on this path, so there is nothing here for a
+ * later edit to accidentally start preferring.
  */
-function noticeOutcome(match: VerificationMatch): InboundOutcome {
+function noticeOutcome(match: VerificationMatch, bodiesWithheld: boolean): InboundOutcome {
+  if (bodiesWithheld) {
+    return {
+      kind: 'capability-degraded',
+      // Produced entirely by the daemon's own capability probe — the Google
+      // grant's scope list — so `inbound-notice.ts` may render it without it
+      // ever having quoted a server or a sender.
+      missingCapability: 'read message bodies under the granted scope',
+    };
+  }
   if (match.kind === 'matched') {
     return {
       kind: 'matched-expectation',
@@ -353,6 +368,52 @@ function noticeOutcome(match: VerificationMatch): InboundOutcome {
   }
   if (match.kind === 'expired') return { kind: 'expired-expectation' };
   return { kind: 'inert' };
+}
+
+/**
+ * Was this message read without its body?
+ *
+ * ── This is the security half of the metadata path, and it is not a
+ *    convenience check ──────────────────────────────────────────────────────
+ *
+ * `VerificationExpectationBook.matchCandidate` gates a match on the DELIVERY
+ * EVIDENCE ADDRESS and nothing else. `CandidateEmail.body` is passed to it and
+ * is not consulted in the match decision at all. So a metadata-only message —
+ * which carries real, receiver-written `Delivered-To` headers, because those
+ * are headers — would match an open expectation for that alias and consume it,
+ * on evidence nobody read. The verification link the expectation exists to
+ * wait for lives in a body that was never fetched.
+ *
+ * That is why `createInboundMailIntake` does not call `matchCandidate` at all
+ * on this path, rather than calling it and discarding the answer. A discarded
+ * answer is one edit away from being used, and `consume` defaults to `true` on
+ * that method — a future call that forgot the option would spend the grant on
+ * its way to being ignored.
+ *
+ * ── Why the field is re-checked at run time ──────────────────────────────
+ *
+ * `GmailInboundMessage.bodyAvailability` is a required field, so every
+ * production construction site states it. `bunx tsc -b` does not typecheck
+ * `test/`, though, so a rig that builds a Gmail message literal without it
+ * compiles — and the value would then be `undefined`, which is neither of the
+ * two allowed strings. Rather than let `undefined` fall through the `===`
+ * comparison as "not metadata-only" and be treated as a full body, an absent or
+ * unrecognised value THROWS. A thrown intake releases the sink's claim and the
+ * message is retried, which is the safe direction; treating it as a full body
+ * is the unsafe one.
+ */
+function bodiesWithheldFrom(message: InboundMailboxMessage): boolean {
+  if (message.source !== 'gmail') return false;
+  const availability: unknown = message.bodyAvailability;
+  if (availability === 'metadata-only') return true;
+  if (availability === 'full') return false;
+  throw new Error(
+    'A Gmail inbound message arrived without a usable bodyAvailability field '
+    + `(${JSON.stringify(availability)}). That field is what decides whether this message may `
+    + 'satisfy a verification expectation, and guessing it as "full" would let a message read '
+    + 'without its body satisfy one on delivery evidence alone. Refusing instead: the message '
+    + 'stays above the cursor and is retried.',
+  );
 }
 
 /** Whether this outcome is announced, under the configured notice mode. */
@@ -396,19 +457,41 @@ export function createInboundMailIntake(
     const receivedAt = receiptTimestamp(now);
     const deliveredTo = deliveredRecipientFromDeliveryHeaders(message.deliveredTo);
 
+    // Read BEFORE anything else, and it throws on an unusable value rather than
+    // guessing — see `bodiesWithheldFrom`.
+    const bodiesWithheld = bodiesWithheldFrom(message);
+
     // `consume: false` — the grant is NOT spent here. See the ordering note in
     // the file header: it is spent at the very end, once this pass is known to
     // be completing.
-    const match = await deps.expectations.matchCandidate({
-      messageId: message.messageId,
-      from: message.from,
-      deliveredTo,
-      toHeaderClaim: message.unverifiedToHeaderClaim,
-      subject: message.subject,
-      // The IMAP path fetched envelopes, so there is no body here and the
-      // empty string is the honest value. The Gmail delta carries one.
-      body: message.source === 'gmail' ? message.body : '',
-    }, now, { consume: false });
+    //
+    // On the body-less path the book is NOT ASKED AT ALL. `matchCandidate`
+    // gates on the delivery-evidence address, which is a header and therefore
+    // present on a metadata-only message, so asking would produce a genuine
+    // `matched` for an expectation whose verification link nobody read. The
+    // substituted verdict below is the true statement about what happened, and
+    // it is a shape `recordOutcome` and `consumeMatch` already handle: nothing
+    // was matched, so nothing is spent.
+    const match: VerificationMatch = bodiesWithheld
+      ? {
+        kind: 'no-expectation',
+        reason:
+          'This message was read under a Google grant that authorizes message headers and '
+          + 'excludes message bodies (gmail.metadata), so its body was never fetched. A '
+          + 'verification link lives in a body; an expectation satisfied on headers alone would '
+          + 'be satisfied on evidence nobody read. No expectation was consulted and none was '
+          + 'spent.',
+      }
+      : await deps.expectations.matchCandidate({
+        messageId: message.messageId,
+        from: message.from,
+        deliveredTo,
+        toHeaderClaim: message.unverifiedToHeaderClaim,
+        subject: message.subject,
+        // The IMAP path fetched envelopes, so there is no body here and the
+        // empty string is the honest value. The Gmail delta carries one.
+        body: message.source === 'gmail' ? message.body : '',
+      }, now, { consume: false });
 
     // The identity is the message's own, not a shape assumed from one source.
     // Until the record store carried a discriminated identity, this path
@@ -477,7 +560,14 @@ export function createInboundMailIntake(
         // message is genuinely handled; announcing it again is the duplicate
         // the dedup cache exists to prevent and cannot, across a restart.
         ? { kind: 'settled', status: 'delivered' }
-        : planFor(deps.notices.resolveBinding(), message, deliveredTo, match, receivedAt);
+        : planFor(
+          deps.notices.resolveBinding(),
+          message,
+          deliveredTo,
+          match,
+          receivedAt,
+          bodiesWithheld,
+        );
 
     // THE RECORD GOES IN FIRST, and this is the ordering the file header is
     // about. Everything that can fail happens with nothing announced, so a
@@ -569,6 +659,7 @@ function planFor(
   deliveredTo: ReturnType<typeof deliveredRecipientFromDeliveryHeaders>,
   match: VerificationMatch,
   receivedAt: ReturnType<typeof receiptTimestamp>,
+  bodiesWithheld: boolean,
 ): NoticePlan {
   if (route.kind === 'unavailable') {
     // Recorded under the delivery layer's own vocabulary — `no-route-binding`
@@ -587,7 +678,7 @@ function planFor(
       senderDisplay: message.from,
       subject: message.subject,
       deliveredTo,
-      outcome: noticeOutcome(match),
+      outcome: noticeOutcome(match, bodiesWithheld),
       links: [],
       receivedAt,
     }),

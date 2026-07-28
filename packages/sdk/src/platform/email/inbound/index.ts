@@ -35,6 +35,14 @@ export {
 } from './capability.js';
 
 export {
+  INBOUND_CAPABILITY_POLICY_DEFAULT,
+  NOTICE_ONLY_CAPABLE_REASONS,
+  resolveInboundCapabilityPolicy,
+  type InboundCapabilityPolicy,
+  type ResolvedInboundCapabilityPolicy,
+} from './capability-policy.js';
+
+export {
   imapMailboxConnectionPort,
   type ImapMailboxConnectionOptions,
 } from './connection.js';

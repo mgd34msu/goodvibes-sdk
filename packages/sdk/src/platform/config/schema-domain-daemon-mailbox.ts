@@ -401,7 +401,12 @@ export const daemonMailboxConfigSettings: ConfigSettingDefinition[] = [
       + 'finds it fixed. "notice-only" is a deliberate downgrade: it keeps announcing that mail arrived using '
       + 'envelope fields alone (sender, subject, delivery evidence), stating plainly in every notice that bodies '
       + 'are unavailable, and it can never satisfy a verification expectation while degraded — an account signup '
-      + 'or order confirmation will not work under it.',
+      + 'or order confirmation will not work under it. "notice-only" applies to exactly one condition: a Google '
+      + 'grant that authorizes message headers and excludes message bodies (the gmail.metadata scope), which is '
+      + 'the only case where mail can be seen arriving without being readable. Every other insufficient '
+      + 'condition — no stored password, a refused sign-in, a mailbox that will not open, a lost cursor, a '
+      + 'refused or unreadable fetch — leaves no envelope fields to announce, so "notice-only" behaves as '
+      + '"refuse-and-notify" there and the notice says which one is in force.',
     enumValues: ['refuse-and-notify', 'notice-only'],
   },
 

@@ -369,6 +369,34 @@ function readSourceFilesOutsideConfig(): string[] {
   return texts;
 }
 
+/**
+ * Is this key READ by any of these sources — as opposed to merely mentioned?
+ *
+ * ONE definition, called by the gate and by both tests that prove the gate can
+ * fail. It used to be an arrow function inside the gate test with a
+ * character-for-character copy inside its companion, which is the arrangement
+ * where widening the real one leaves the companion still asserting the narrow
+ * one — a check that proves a pattern nothing uses.
+ *
+ * The rule: the key's own text, inside a config-read CALL. A doc comment naming
+ * it does not count, and neither does a bare string assignment; that is the
+ * distinction the whole gate rests on, because an inert key is typically named
+ * in a comment beside behaviour it never selects.
+ *
+ * `getConfig` is in the alternation because the `ConfigReader` a source is
+ * handed is named that rather than `get`, and a genuine read this could not see
+ * would be worse than an unread key: it would look wired to a reader and
+ * unwired to the gate, and the next person would trust the wrong one. It still
+ * has to be a CALL — widening this to bare mentions is exactly what would make
+ * the gate unable to fail, and with the inert list now empty there would be
+ * nothing else left to notice.
+ */
+function keyIsReadBy(sources: readonly string[], key: string): boolean {
+  const quoted = key.replace(/\./g, '\\.');
+  const pattern = new RegExp(`(?:get|getConfig|readNumberSetting)\\([^)]*['"]${quoted}['"]`, 's');
+  return sources.some((text) => pattern.test(text));
+}
+
 /** Non-default everywhere, so a value that reached its destination is unambiguous. */
 const NON_DEFAULT_CONFIG: Readonly<Record<string, unknown>> = {
   'surfaces.email.inbound.enabled': true,
@@ -587,90 +615,117 @@ describe('each inbound setting reaches the thing it names', () => {
   });
 
   /**
-   * ONE key now has a schema row, a validated range and a description, and
-   * NOTHING in the tree reads it.
+   * The inert list is EMPTY, and that is the whole of what changed.
    *
-   * There were three. `gmailPollSecondsExpecting` and `gmailPollSecondsIdle`
-   * were documented on `GmailMailSourceDeps` as the origin of `pollExpectingMs`
-   * / `pollIdleMs` with no code mapping one onto the other; they are now read in
-   * `source-factory.ts` and handed to the `GmailSourceBuilder` at create time,
-   * so the composition that talks to Google gets the owner's numbers instead of
-   * inventing its own. This test reddened when that landed, exactly as its
-   * previous version said it should.
+   * It has held three keys, then one, and now none.
+   * `gmailPollSecondsExpecting` and `gmailPollSecondsIdle` came off when
+   * `source-factory.ts` began handing them to the `GmailSourceBuilder` at
+   * create time.
    *
-   * What is left is `onInsufficientCapability`, named in one comment in
-   * `inbound-notice.ts` and read by nothing, so `notice-only` and
-   * `refuse-and-notify` are the same behaviour today. It stays on this list for
-   * a reason that is not "not got to yet": `notice-only` promises to keep
+   * `onInsufficientCapability` was the last, and it was on the list for a
+   * reason that was not "not got to yet". `notice-only` promises to keep
    * announcing arriving mail from envelope fields alone while bodies are
-   * unavailable, and there is no path that can do that. On IMAP, `fetch-refused`
-   * is minted from a FAILED envelope fetch (capability.ts), so when it fires
-   * there are no envelopes; every other `insufficient` reason is "cannot log
-   * in", "cannot open the mailbox" or "cannot keep a cursor". The one case that
-   * could work is the one the schema text names — a Gmail `gmail.metadata`
-   * grant, where `messages.get?format=metadata` would return headers — and
-   * `collectHistoryDelta` refuses before calling, with no metadata-format fetch
-   * anywhere in `api-client.ts`. Wiring the key without building that path would
-   * make the settings UI offer a behaviour the daemon answers with silence.
+   * unavailable, and nothing could do that: on IMAP, `fetch-refused` is minted
+   * from a FAILED envelope fetch (`capability.ts`), so when it fires there are
+   * no envelopes, and every other `insufficient` reason is "cannot log in",
+   * "cannot open the mailbox" or "cannot keep a cursor". Wiring the key without
+   * first building a path that CAN announce from envelopes would have made the
+   * settings UI offer a behaviour the daemon answered with silence.
    *
-   * So this still asserts the CURRENT state rather than the desired one, and it
-   * still fails the day the last one is fixed. That is the only honest shape for
-   * a test over a known gap.
+   * That path now exists. `GoogleApiClient.readMessageMetadata` issues
+   * `messages.get?format=metadata` — the call a `gmail.metadata` token is
+   * authorized to make — `collectHistoryDelta` takes it under
+   * `onMetadataOnlyGrant: 'fetch-metadata'`, and `intake.ts` routes the result
+   * to the `capability-degraded` notice outcome. `source-factory.ts` reads this
+   * key at source-create time and hands it to `GmailMailSource`, which is what
+   * this assertion now sees.
+   *
+   * With the list empty this assertion is `unread === []`, which a detector
+   * that reported EVERY key as read would also satisfy. The two tests below
+   * are what stop that from being a way to pass, and they run the same detector
+   * this one does rather than a copy of it.
    */
-  test('every inbound key is either read by production code or on the named inert list', () => {
-    const INERT = new Set([
-      'surfaces.email.inbound.onInsufficientCapability',
-    ]);
+  test('every inbound key is read by production code, with nothing on the inert list', () => {
+    const INERT: readonly string[] = [];
 
     const sources = readSourceFilesOutsideConfig();
-    const readByProduction = (key: string): boolean => sources.some((text) => {
-      // A read, not a mention: the key's own text inside a config-read call. A
-      // doc comment naming it does not count, which is the whole distinction —
-      // the inert key IS named in a comment beside behaviour it never selects.
-      //
-      // `getConfig` is in the alternation because the `ConfigReader` a source
-      // is handed is named that rather than `get`, and a genuine read the check
-      // cannot see is worse than an unread key: it would look wired to a reader
-      // and unwired here, and the next person would trust the wrong one. The
-      // call still has to be a CALL — widening this to bare mentions is what
-      // would make the check unable to fail.
-      const quoted = key.replace(/\./g, '\\.');
-      return new RegExp(`(?:get|getConfig|readNumberSetting)\\([^)]*['"]${quoted}['"]`, 's').test(text);
-    });
+    const wired = EXPECTED_DEFAULTS.map((entry) => entry.key)
+      .filter((key) => keyIsReadBy(sources, key));
+    const unread = EXPECTED_DEFAULTS.map((entry) => entry.key)
+      .filter((key) => !keyIsReadBy(sources, key));
 
-    const wired = EXPECTED_DEFAULTS.map((entry) => entry.key).filter(readByProduction);
-    const unread = EXPECTED_DEFAULTS.map((entry) => entry.key).filter((key) => !readByProduction(key));
-
-    // Not a tautology in either direction: most keys ARE read, and the named
-    // one is not.
+    // Not a tautology in either direction: most keys ARE read, and the two
+    // tests below prove this detector can still answer no — over synthetic
+    // text AND over this exact source corpus.
     expect(wired.length).toBeGreaterThan(10);
     expect(unread.sort()).toEqual([...INERT].sort());
   });
 
   /**
-   * The detector above can still answer "no", which is the property that makes
-   * the assertion mean anything.
+   * The detector can still answer "no" ABOUT THE REAL SOURCE TREE, not just
+   * about a string literal written in this file.
+   *
+   * This is the test that matters now the inert list is empty, and it covers
+   * BOTH ways the gate above could stop being able to fail:
+   *
+   *   1. A detector that answers true regardless of its input. The absent key
+   *      catches that — nothing under `packages/sdk/src` contains that string,
+   *      so a `true` means the answer stopped depending on the argument.
+   *   2. A detector widened to match a bare MENTION instead of a call. The
+   *      absent key does NOT catch that, and this was verified rather than
+   *      assumed: the pattern was replaced with `['"]${key}['"]` and the suite
+   *      re-run, and this assertion stayed green, because a key absent from
+   *      the corpus is absent as a mention too. Only the companion test below
+   *      reddened. So the mention case is asserted HERE as well, against a
+   *      source file of exactly the shape an inert key had — named in a doc
+   *      comment beside behaviour it never selects.
+   *
+   * The last assertion is the control: a key that genuinely IS read answers
+   * true over this corpus, so a `false` above is the detector discriminating
+   * rather than the corpus being empty, unreadable, or the wrong directory.
+   */
+  test('the read-detector answers no for an absent key and for a mention, over the real source tree', () => {
+    const sources = readSourceFilesOutsideConfig();
+    expect(sources.length).toBeGreaterThan(100);
+
+    // (1) Shaped like a real key, and deliberately not one.
+    expect(keyIsReadBy(sources, 'surfaces.email.inbound.noSuchSettingExists')).toBe(false);
+
+    // (2) A key that exists in the schema, in a source file that only NAMES it.
+    // Asked in isolation, so the real corpus's genuine reads of it cannot be
+    // what answers. This is the assertion a mention-widened pattern fails.
+    const mentionOnlyKey = 'surfaces.email.inbound.pollIntervalSeconds';
+    const mentionOnlySource = `/** Cadence is governed by '${mentionOnlyKey}'. */\n`
+      + 'export const READS_NOTHING = 1;\n';
+    expect(keyIsReadBy([mentionOnlySource], mentionOnlyKey)).toBe(false);
+
+    // (3) The control.
+    expect(keyIsReadBy(sources, 'surfaces.email.inbound.onInsufficientCapability')).toBe(true);
+  });
+
+  /**
+   * The detector rejects a MENTION, which is the distinction the whole gate
+   * rests on.
    *
    * Written after a night in which four checks turned out to be unable to fail.
    * A regex widened one alternation too far — `['"]key['"]` with no call in
-   * front of it — would report every key in the schema as read, including the
-   * inert one, and the test above would go on passing for as long as the
-   * inert list happened to match. This asks the detector about text that
-   * MENTIONS a key without reading it, and about a key nothing anywhere
-   * contains.
+   * front of it — would report every key in the schema as read, and with the
+   * inert list now empty that widening would make the gate above pass forever.
+   *
+   * It calls `keyIsReadBy`, the same function the two tests above call, rather
+   * than restating the pattern. A restated copy is how a widened production
+   * regex goes on being "proved" by a companion test still holding the narrow
+   * one — the mirror that agrees with itself and with nothing else.
    */
   test('the read-detector rejects a mention and an absent key', () => {
-    const detect = (text: string, key: string): boolean => {
-      const quoted = key.replace(/\./g, '\\.');
-      return new RegExp(`(?:get|getConfig|readNumberSetting)\\([^)]*['"]${quoted}['"]`, 's').test(text);
-    };
     const key = 'surfaces.email.inbound.pollIntervalSeconds';
+    const detect = (text: string): boolean => keyIsReadBy([text], key);
 
-    expect(detect(`/** See ${key} for the cadence. */`, key)).toBe(false);
-    expect(detect(`const x = '${key}';`, key)).toBe(false);
-    expect(detect(`configManager.get('${key}')`, key)).toBe(true);
-    expect(detect(`getConfig('${key}' as never)`, key)).toBe(true);
-    expect(detect('nothing here at all', key)).toBe(false);
+    expect(detect(`/** See ${key} for the cadence. */`)).toBe(false);
+    expect(detect(`const x = '${key}';`)).toBe(false);
+    expect(detect(`configManager.get('${key}')`)).toBe(true);
+    expect(detect(`getConfig('${key}' as never)`)).toBe(true);
+    expect(detect('nothing here at all')).toBe(false);
   });
 
   /**
