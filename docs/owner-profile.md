@@ -667,6 +667,16 @@ uttered. The matcher strips a leading list marker (`-`, `*`, `+`, or an ordered
 forms find the same line. Nothing else changes, and it cannot widen a match into
 the wrong line, because ambiguity is already refused.
 
+**A marker only counts when whitespace follows it**, and that condition is
+load-bearing rather than tidiness. Without it a note reading
+`- -5 degrees is when the pipes freeze` would normalise to
+`5 degrees is when the pipes freeze`, so asking to forget `5 degrees…` would
+delete a line about *minus* five — a correct-looking delete of the wrong
+content, which is the hardest kind of wrong to notice afterwards. Verified in
+both directions: bare `5 degrees…` matches nothing and leaves the file
+untouched, `-5 degrees…` matches, and a bare `Allergic to shellfish` still
+matches the stored `- Allergic to shellfish`.
+
 **Two lines reading identically are refused, never guessed.** The answer names
 how many matched and the file is untouched. Deleting the wrong one of two
 identical lines is unrecoverable; asking is not, and it is not a burden because
