@@ -982,6 +982,37 @@ Sanitizing is still the right tool for text that must be displayed. Branding is
 for values that carry authority, where the answer is not "clean it" but "you
 cannot have this from there".
 
+#### A structural guarantee only holds if consumers import the type
+
+This one was learned the expensive way, in the round that built the watcher, and
+it applies to every structural protection in this document.
+
+The IDLE tri-state was deliberately made unignorable: `report.idle` is
+`{ known: true; supported: boolean } | { known: false }`, so `if
+(report.idle.supported)` does not compile and "the server said nothing" cannot
+be silently read as "no". That guarantee held exactly as designed — in the module
+that declared it.
+
+The watcher had **hand-written its own `boolean | null` mirror** of the same
+concept rather than importing the type. After the rename, its mirror read
+`undefined`, `undefined` is falsy, and the watcher **silently polled a
+push-capable server** — precisely the defect the two-case shape exists to
+prevent, reintroduced by copying the shape instead of importing it. Its own
+tests caught it, as "Timed out waiting for: IDLE command number 1".
+
+So the rule:
+
+> A type that makes a wrong state unrepresentable protects only the code that
+> imports it. A structurally-equivalent local mirror is not equivalent — it is a
+> second declaration of the same idea that can drift, and it will drift silently,
+> because nothing links the two.
+
+Applies equally to `ReceiptTimestamp`, `ValidatedRegistrableDomain`,
+`DeliveredRecipient`, `CardShapeFinding` and `ExpectationMatcher`. Where a
+boundary matters, consumers import the declaration; they do not restate it. A
+port interface that must stay structurally compatible with a real type should
+say so and be pinned by a type-level test, not maintained by hand in two places.
+
 `deliverSurfaceNotice(binding, text)` takes a plain string and stays as it is;
 the channel renderer runs immediately before it. Until every channel has an
 escaper, the fallback renderer emits **plain text with all markup neutralized**
