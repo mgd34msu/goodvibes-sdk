@@ -464,6 +464,16 @@ async function handlePostMessage(
     const messageId = await context.chatManager.postMessage(sessionId, input.content, '', {
       attachments: input.attachments,
       ...(input.metadata !== undefined ? { metadata: input.metadata } : {}),
+      // This route sits behind the daemon's bearer-token auth, validated by
+      // DaemonHttpRouter.handleRequest before any API route is dispatched (see
+      // this file's header). Holding that token IS being the owner — it is the
+      // same credential the TUI and the operator API use — so the daemon can
+      // honestly attest this message is his, and does.
+      //
+      // This is what gives the webui a turn boundary. Without it the window
+      // never reset for anything he typed there, and the taint guard would
+      // weigh a page read an hour ago against a message he is writing now.
+      ownerDirect: true,
     });
     return Response.json({ messageId }, { status: 202 });
   } catch (err: unknown) {
@@ -640,6 +650,11 @@ async function handleSteerMessage(
       metadata: typeof body['metadata'] === 'object' && body['metadata'] !== null
         ? (body['metadata'] as Record<string, unknown>)
         : undefined,
+      // Same bearer-token auth as the post route above, so the same attestation.
+      // A steer is the owner speaking with more urgency, not less authority —
+      // wiring one and not the other would leave him a way to start a turn that
+      // silently did not end the previous one.
+      ownerDirect: true,
     });
     return Response.json(result, { status: 202 });
   } catch (err: unknown) {
