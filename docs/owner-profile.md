@@ -465,6 +465,18 @@ alias); pass 1 catches the long ones including reworded and partially-quoted
 forms. No field is exempt from either pass, so no value's only defence is exact
 string equality.
 
+### Removal is a write, and gets layer 1
+
+`profile.forget` and `profile.undo` pass the same authority gate. An injection
+that cannot add a fact must not be able to delete one either: clearing his
+shipping address or his `contact.email` is tampering and denial, which is
+squarely inside what this boundary exists to stop.
+
+Layers 2 and 3 do not apply to a removal and are deliberately not faked — there
+is no value to check for derivation and no owner utterance to quote, and
+demanding either would refuse every legitimate delete or invite a caller to
+invent a quote. Authority is the whole gate here, and it is the right one.
+
 ### Layer 3 — a verbatim quote must exist
 
 An autonomous write must carry a non-empty `said`. A fact learned from a page has
@@ -784,3 +796,5 @@ Each test is verified to fail without its fix, and both counts are reported.
 | 19 | third-party containment | `People` content is absent from context, exports and logs; `profile.person` requires a name and has no enumerate-all counterpart |
 | 20 | consumer fallback direction | an explicitly configured `checkin.quietHours` beats the profile; an unset one reads from the profile |
 | 21 | read latency | benchmark; measured nanoseconds reported |
+| 22 | removal is gated | `forget` and `undo` from each untrusted authority are refused and the file is byte-identical after |
+| 23 | watcher survives rename | after two atomic writes, an external edit is still observed (fails against a file-level `fs.watch`) |
