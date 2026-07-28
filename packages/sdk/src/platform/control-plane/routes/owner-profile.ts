@@ -85,7 +85,7 @@ const AUTHORITY_SURFACES: readonly AuthoritySurface[] = [
 
 function requireString(value: unknown, field: string): string {
   if (typeof value !== 'string' || value.trim().length === 0) {
-    throw new GatewayVerbError(`${field} is required`, 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError(`${field} is required`, 'INVALID_ARGUMENT', 400, field);
   }
   return value;
 }
@@ -98,6 +98,7 @@ function requireFieldId(value: unknown): string {
       `"${fieldId}" is not a profile field. Profile fields are the mechanical fields listed in docs/owner-profile.md §4.3; everything else in the document is prose.`,
       'INVALID_ARGUMENT',
       400,
+      'fieldId',
     );
   }
   return fieldId;
@@ -128,6 +129,7 @@ function readAuthority(value: unknown): AuthoritySurface {
       `authority is required and must be one of ${AUTHORITY_SURFACES.join(', ')}`,
       'INVALID_ARGUMENT',
       400,
+      'authority',
     );
   }
   return value as AuthoritySurface;
@@ -141,6 +143,7 @@ function readSurface(value: unknown): ProfileSurface {
       `surface must be one of tui, agent, webui, voice, hand-edit`,
       'INVALID_ARGUMENT',
       400,
+      'surface',
     );
   }
   return surface;
@@ -252,6 +255,7 @@ function createForgetHandler(service: OwnerProfileGatewayService): GatewayMethod
         + 'you edit this file yourself, so a position taken from an earlier read may be a different line by now.',
         'INVALID_ARGUMENT',
         400,
+        'lineIndex',
       );
     }
     const section = typeof params.section === 'string' ? params.section : undefined;

@@ -6,10 +6,13 @@ import {
   STRING_SCHEMA,
   arraySchema,
   bodyEnvelopeSchema,
+  branchedSchema,
+  requirementBranch,
   listOutputSchema,
   methodDescriptor,
   objectSchema,
   runtimeEventId,
+  stringEnumSchema,
 } from './method-catalog-shared.js';
 import {
   AUTOMATION_DELIVERY_POLICY_SCHEMA,
@@ -35,6 +38,55 @@ import {
   SURFACE_RECORD_SCHEMA,
 } from './operator-contract-schemas.js';
 import { METADATA_SCHEMA } from './operator-contract-schemas-shared.js';
+
+/**
+ * A schedule-creating verb needs a schedule, and which field carries it
+ * depends on `kind`.
+ *
+ * `kind` is optional and defaults to `'cron'`
+ * (daemon-sdk/runtime-automation-routes.ts), after which the handler calls
+ * `normalizeCronSchedule(input.cron ?? '')` and
+ * `platform/automation/schedules.ts` throws `schedule.expression must not be
+ * empty` — returned as a 400. So `{ prompt }` alone, which the declared
+ * contract called a complete call, has never worked; the same holds for
+ * `kind: 'every'` without `every` and `kind: 'at'` without `at`.
+ *
+ * A flat `required` array cannot express this: `cron` is genuinely not
+ * required for an interval schedule. The union below is discriminated on
+ * `kind`, with the cron branch appearing twice because the handler also
+ * accepts the expression nested as `schedule.expression` — that path works
+ * today and stays valid.
+ */
+function automationScheduleInputSchema(
+  properties: Record<string, Record<string, unknown>>,
+  alwaysRequired: readonly string[],
+): Record<string, unknown> {
+  const scheduleSchema = objectSchema({ expression: STRING_SCHEMA }, ['expression']);
+  const branchProperty: Readonly<Record<string, Record<string, unknown>>> = {
+    cron: STRING_SCHEMA,
+    schedule: scheduleSchema,
+    every: STRING_SCHEMA,
+    at: STRING_SCHEMA,
+  };
+  const branch = (kinds: readonly string[], scheduleField: string): Record<string, unknown> =>
+    requirementBranch({
+      kind: stringEnumSchema([...kinds]),
+      [scheduleField]: branchProperty[scheduleField] as Record<string, unknown>,
+    }, [scheduleField]);
+  return branchedSchema(
+    bodyEnvelopeSchema({
+      ...properties,
+      kind: stringEnumSchema(['cron', 'every', 'at']),
+      schedule: scheduleSchema,
+    }, alwaysRequired),
+    [
+      branch(['cron'], 'cron'),
+      branch(['cron'], 'schedule'),
+      branch(['every'], 'every'),
+      branch(['at'], 'at'),
+    ],
+  );
+}
 
 export const builtinGatewayControlAutomationMethodDescriptors: readonly GatewayMethodDescriptor[] = [
   methodDescriptor({
@@ -69,12 +121,11 @@ export const builtinGatewayControlAutomationMethodDescriptors: readonly GatewayM
     scopes: ['write:automation'],
     http: { method: 'POST', path: '/api/automation/jobs' },
     events: [runtimeEventId('automation')],
-    inputSchema: bodyEnvelopeSchema({
+    inputSchema: automationScheduleInputSchema({
       id: STRING_SCHEMA,
       name: STRING_SCHEMA,
       description: STRING_SCHEMA,
       prompt: STRING_SCHEMA,
-      kind: STRING_SCHEMA,
       cron: STRING_SCHEMA,
       every: STRING_SCHEMA,
       at: STRING_SCHEMA,
@@ -295,10 +346,9 @@ export const builtinGatewayControlAutomationMethodDescriptors: readonly GatewayM
     category: 'automation',
     scopes: ['write:automation'],
     http: { method: 'POST', path: '/api/automation/schedules' },
-    inputSchema: bodyEnvelopeSchema({
+    inputSchema: automationScheduleInputSchema({
       name: STRING_SCHEMA,
       prompt: STRING_SCHEMA,
-      kind: STRING_SCHEMA,
       cron: STRING_SCHEMA,
       every: STRING_SCHEMA,
       at: STRING_SCHEMA,

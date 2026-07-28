@@ -38,7 +38,7 @@ function rethrowAsVerbError(error: unknown): never {
 
 function requireString(value: unknown, field: string): string {
   if (typeof value !== 'string' || value.trim().length === 0) {
-    throw new GatewayVerbError(`${field} is required`, 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError(`${field} is required`, 'INVALID_ARGUMENT', 400, field);
   }
   return value;
 }
@@ -47,7 +47,7 @@ function requireString(value: unknown, field: string): string {
 function readMetadata(value: unknown): Readonly<Record<string, SkillFrontmatterValue>> | undefined {
   if (value === undefined || value === null) return undefined;
   if (typeof value !== 'object' || Array.isArray(value)) {
-    throw new GatewayVerbError('metadata must be an object', 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError('metadata must be an object', 'INVALID_ARGUMENT', 400, 'metadata');
   }
   const out: Record<string, SkillFrontmatterValue> = {};
   for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
@@ -56,7 +56,7 @@ function readMetadata(value: unknown): Readonly<Record<string, SkillFrontmatterV
     } else if (Array.isArray(raw) && raw.every((item) => typeof item === 'string')) {
       out[key] = raw as string[];
     } else {
-      throw new GatewayVerbError(`metadata.${key} must be a string or string array`, 'INVALID_ARGUMENT', 400);
+      throw new GatewayVerbError(`metadata.${key} must be a string or string array`, 'INVALID_ARGUMENT', 400, `metadata.${key}`);
     }
   }
   return out;

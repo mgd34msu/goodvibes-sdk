@@ -35,7 +35,7 @@ function rethrowAsVerbError(error: unknown): never {
 
 function requireString(value: unknown, field: string): string {
   if (typeof value !== 'string' || value.trim().length === 0) {
-    throw new GatewayVerbError(`${field} is required`, 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError(`${field} is required`, 'INVALID_ARGUMENT', 400, field);
   }
   return value;
 }
@@ -47,7 +47,7 @@ function optionalString(value: unknown): string | undefined {
 function readMetadata(value: unknown): Readonly<Record<string, unknown>> | undefined {
   if (value === undefined || value === null) return undefined;
   if (typeof value !== 'object' || Array.isArray(value)) {
-    throw new GatewayVerbError('metadata must be an object', 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError('metadata must be an object', 'INVALID_ARGUMENT', 400, 'metadata');
   }
   return value as Record<string, unknown>;
 }

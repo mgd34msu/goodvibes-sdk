@@ -22,14 +22,14 @@ const COST_DIMENSIONS: readonly CostDimension[] = ['agent', 'tool', 'hook', 'mcp
 
 function requireEnum<T extends string>(value: unknown, allowed: readonly T[], field: string): T {
   if (typeof value !== 'string' || !allowed.includes(value as T)) {
-    throw new GatewayVerbError(`Invalid ${field}: ${String(value)} (expected one of ${allowed.join(', ')})`, 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError(`Invalid ${field}: ${String(value)} (expected one of ${allowed.join(', ')})`, 'INVALID_ARGUMENT', 400, field);
   }
   return value as T;
 }
 
 function requireString(value: unknown, field: string): string {
   if (typeof value !== 'string' || value.length === 0) {
-    throw new GatewayVerbError(`Missing required field: ${field}`, 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError(`Missing required field: ${field}`, 'INVALID_ARGUMENT', 400, field);
   }
   return value;
 }
@@ -37,7 +37,7 @@ function requireString(value: unknown, field: string): string {
 function requirePositiveInt(value: unknown, field: string): number {
   const n = typeof value === 'number' ? value : Number(value);
   if (!Number.isFinite(n) || n < 0) {
-    throw new GatewayVerbError(`Invalid ${field}: ${String(value)} (expected a non-negative number)`, 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError(`Invalid ${field}: ${String(value)} (expected a non-negative number)`, 'INVALID_ARGUMENT', 400, field);
   }
   return Math.floor(n);
 }

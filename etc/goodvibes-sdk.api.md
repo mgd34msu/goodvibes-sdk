@@ -2121,7 +2121,7 @@ export function mergeHeaders(...sources: Array<HeadersInit | undefined>): Header
 // @public
 export type MethodArgs<TInput, TOptions> = [
 TInput
-] extends [undefined] ? [input?: undefined, options?: TOptions] : TInput extends object ? [RequiredKeys<TInput>] extends [never] ? [input?: TInput, options?: TOptions] : [input: TInput, options?: TOptions] : [input: TInput, options?: TOptions];
+] extends [undefined] ? [input?: undefined, options?: TOptions] : [TInput] extends [object] ? [RequiredKeys<TInput>] extends [never] ? [input?: TInput, options?: TOptions] : [input: TInput, options?: TOptions] : [input: TInput, options?: TOptions];
 
 // @public (undocumented)
 export type ModelChangedEvent = z.infer<typeof ModelChangedEventSchema>;
@@ -2572,6 +2572,14 @@ export interface OperatorMethodInputMap {
         });
     } & {
         readonly [key: string]: unknown;
+    }) & ({
+        dataBase64: string;
+    } | {
+        text: string;
+    } | {
+        path: string;
+    } | {
+        uri: string;
     });
     // (undocumented)
     "artifacts.get": {
@@ -2595,7 +2603,6 @@ export interface OperatorMethodInputMap {
         name?: string;
         description?: string;
         prompt: string;
-        kind?: string;
         cron?: string;
         every?: string;
         at?: string;
@@ -2617,7 +2624,7 @@ export interface OperatorMethodInputMap {
             routeId?: string;
             threadId?: string;
             channelId?: string;
-            surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+            surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
             pinnedSessionId?: string;
             preserveThread?: boolean;
             createIfMissing?: boolean;
@@ -2635,14 +2642,14 @@ export interface OperatorMethodInputMap {
             mode: "integration" | "link" | "none" | "surface" | "webhook";
             targets: readonly ({
                 kind: "integration" | "link" | "none" | "surface" | "webhook";
-                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
                 address?: string;
                 routeId?: string;
                 label?: string;
             })[];
             fallbackTargets: readonly ({
                 kind: "integration" | "link" | "none" | "surface" | "webhook";
-                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
                 address?: string;
                 routeId?: string;
                 label?: string;
@@ -2674,6 +2681,10 @@ export interface OperatorMethodInputMap {
                 readonly [key: string]: JsonValue;
             }) | boolean | null | number | readonly JsonValue[] | string;
         });
+        kind?: "at" | "cron" | "every";
+        schedule?: {
+            expression: string;
+        };
     } & {
         readonly [key: string]: unknown;
     });
@@ -2812,7 +2823,6 @@ export interface OperatorMethodInputMap {
     "automation.schedules.create": ({
         name?: string;
         prompt: string;
-        kind?: string;
         cron?: string;
         every?: string;
         at?: string;
@@ -2828,7 +2838,7 @@ export interface OperatorMethodInputMap {
             routeId?: string;
             threadId?: string;
             channelId?: string;
-            surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+            surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
             pinnedSessionId?: string;
             preserveThread?: boolean;
             createIfMissing?: boolean;
@@ -2846,14 +2856,14 @@ export interface OperatorMethodInputMap {
             mode: "integration" | "link" | "none" | "surface" | "webhook";
             targets: readonly ({
                 kind: "integration" | "link" | "none" | "surface" | "webhook";
-                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
                 address?: string;
                 routeId?: string;
                 label?: string;
             })[];
             fallbackTargets: readonly ({
                 kind: "integration" | "link" | "none" | "surface" | "webhook";
-                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
                 address?: string;
                 routeId?: string;
                 label?: string;
@@ -2880,6 +2890,10 @@ export interface OperatorMethodInputMap {
         };
         enabled?: boolean;
         deleteAfterRun?: boolean;
+        kind?: "at" | "cron" | "every";
+        schedule?: {
+            expression: string;
+        };
     } & {
         readonly [key: string]: unknown;
     });
@@ -3317,6 +3331,12 @@ export interface OperatorMethodInputMap {
         });
     } & {
         readonly [key: string]: unknown;
+    }) & ({
+        target: string;
+    } | {
+        input: string;
+    } | {
+        query: string;
     });
     // (undocumented)
     "channels.test.send": {
@@ -3438,13 +3458,49 @@ export interface OperatorMethodInputMap {
         sessionId: string;
         body?: string;
         content?: string;
-        metadata?: ({} & {
-            readonly [key: string]: ({} & {
-                readonly [key: string]: JsonValue;
-            }) | boolean | null | number | readonly JsonValue[] | string;
-        });
+        attachments?: readonly ({
+            artifactId: string;
+            label?: string;
+            metadata?: {};
+        })[];
+        metadata?: {};
     } & {
         readonly [key: string]: unknown;
+    }) & ({
+        body: string;
+    } | {
+        content: string;
+    } | {
+        attachments: readonly ({
+            artifactId: string;
+            label?: string;
+            metadata?: {};
+        })[];
+    });
+    // (undocumented)
+    "companion.chat.messages.edit": ({
+        sessionId: string;
+        messageId: string;
+        body?: string;
+        content?: string;
+        attachments?: readonly ({
+            artifactId: string;
+            label?: string;
+            metadata?: {};
+        })[];
+        metadata?: {};
+    } & {
+        readonly [key: string]: unknown;
+    }) & ({
+        body: string;
+    } | {
+        content: string;
+    } | {
+        attachments: readonly ({
+            artifactId: string;
+            label?: string;
+            metadata?: {};
+        })[];
     });
     // (undocumented)
     "companion.chat.messages.list": {
@@ -3463,6 +3519,16 @@ export interface OperatorMethodInputMap {
         metadata?: {};
     } & {
         readonly [key: string]: unknown;
+    }) & ({
+        body: string;
+    } | {
+        content: string;
+    } | {
+        attachments: readonly ({
+            artifactId: string;
+            label?: string;
+            metadata?: {};
+        })[];
     });
     // (undocumented)
     "companion.chat.sessions.close": {
@@ -3471,8 +3537,8 @@ export interface OperatorMethodInputMap {
     // (undocumented)
     "companion.chat.sessions.create": ({
         title?: string;
-        provider?: string;
         model?: string;
+        provider?: string;
         systemPrompt?: string;
     } & {
         readonly [key: string]: unknown;
@@ -3494,11 +3560,19 @@ export interface OperatorMethodInputMap {
     "companion.chat.sessions.update": ({
         sessionId: string;
         title?: string;
-        provider?: string;
         model?: string;
-        systemPrompt?: null | string;
+        provider?: string;
+        systemPrompt?: string;
     } & {
         readonly [key: string]: unknown;
+    }) & ({
+        title: string;
+    } | {
+        model: string;
+    } | {
+        provider: string;
+    } | {
+        systemPrompt: string;
     });
     // (undocumented)
     "companion.chat.turns.cancel": ({
@@ -3837,19 +3911,33 @@ export interface OperatorMethodInputMap {
     });
     // (undocumented)
     "knowledge.projection.materialize": ({
-        kind: string;
+        kind: "bundle" | "dashboard" | "issue" | "node" | "overview" | "rollup" | "source";
         id?: string;
         limit?: number;
-    } & KnowledgeSpaceScopeInput & {
+        knowledgeSpaceId?: string;
+        includeAllSpaces?: boolean;
+    } & {
         readonly [key: string]: unknown;
+    }) & ({
+        kind: "bundle" | "dashboard" | "overview";
+    } | {
+        kind: "issue" | "node" | "rollup" | "source";
+        id: string;
     });
     // (undocumented)
     "knowledge.projection.render": ({
-        kind: string;
+        kind: "bundle" | "dashboard" | "issue" | "node" | "overview" | "rollup" | "source";
         id?: string;
         limit?: number;
-    } & KnowledgeSpaceScopeInput & {
+        knowledgeSpaceId?: string;
+        includeAllSpaces?: boolean;
+    } & {
         readonly [key: string]: unknown;
+    }) & ({
+        kind: "bundle" | "dashboard" | "overview";
+    } | {
+        kind: "issue" | "node" | "rollup" | "source";
+        id: string;
     });
     // (undocumented)
     "knowledge.projections.list": ({
@@ -4000,6 +4088,24 @@ export interface OperatorMethodInputMap {
         });
     } & {
         readonly [key: string]: unknown;
+    }) & ({
+        artifact: {
+            id?: string;
+            artifactId?: string;
+            mimeType: string;
+            dataBase64?: string;
+            uri?: string;
+            filename?: string;
+            sizeBytes?: number;
+            sha256?: string;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        };
+    } | {
+        artifactId: string;
     });
     // (undocumented)
     "media.generate": ({
@@ -6130,14 +6236,14 @@ export interface OperatorMethodOutputMap {
             kind: "at";
             at: number;
         } | {
+            kind: "every";
+            intervalMs: number;
+            anchorAt?: number;
+        } | {
             kind: "cron";
             expression: string;
             timezone?: string;
             staggerMs?: number;
-        } | {
-            kind: "every";
-            intervalMs: number;
-            anchorAt?: number;
         };
         execution: {
             prompt?: string;
@@ -6148,7 +6254,7 @@ export interface OperatorMethodOutputMap {
                 routeId?: string;
                 threadId?: string;
                 channelId?: string;
-                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
                 pinnedSessionId?: string;
                 preserveThread?: boolean;
                 createIfMissing?: boolean;
@@ -6181,7 +6287,7 @@ export interface OperatorMethodOutputMap {
                 id?: string;
                 url?: string;
                 routeId?: string;
-                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
                 metadata?: ({} & {
                     readonly [key: string]: ({} & {
                         readonly [key: string]: JsonValue;
@@ -6194,14 +6300,14 @@ export interface OperatorMethodOutputMap {
             mode: "integration" | "link" | "none" | "surface" | "webhook";
             targets: readonly ({
                 kind: "integration" | "link" | "none" | "surface" | "webhook";
-                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
                 address?: string;
                 routeId?: string;
                 label?: string;
             })[];
             fallbackTargets: readonly ({
                 kind: "integration" | "link" | "none" | "surface" | "webhook";
-                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
                 address?: string;
                 routeId?: string;
                 label?: string;
@@ -6230,7 +6336,7 @@ export interface OperatorMethodOutputMap {
             id: string;
             kind: "hook" | "manual" | "schedule" | "surface" | "watcher" | "webhook";
             label: string;
-            surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+            surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
             routeId?: string;
             enabled: boolean;
             createdAt: number;
@@ -7356,14 +7462,14 @@ export interface OperatorMethodOutputMap {
             kind: "at";
             at: number;
         } | {
+            kind: "every";
+            intervalMs: number;
+            anchorAt?: number;
+        } | {
             kind: "cron";
             expression: string;
             timezone?: string;
             staggerMs?: number;
-        } | {
-            kind: "every";
-            intervalMs: number;
-            anchorAt?: number;
         };
         execution: {
             prompt?: string;
@@ -7374,7 +7480,7 @@ export interface OperatorMethodOutputMap {
                 routeId?: string;
                 threadId?: string;
                 channelId?: string;
-                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
                 pinnedSessionId?: string;
                 preserveThread?: boolean;
                 createIfMissing?: boolean;
@@ -7407,7 +7513,7 @@ export interface OperatorMethodOutputMap {
                 id?: string;
                 url?: string;
                 routeId?: string;
-                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
                 metadata?: ({} & {
                     readonly [key: string]: ({} & {
                         readonly [key: string]: JsonValue;
@@ -7420,14 +7526,14 @@ export interface OperatorMethodOutputMap {
             mode: "integration" | "link" | "none" | "surface" | "webhook";
             targets: readonly ({
                 kind: "integration" | "link" | "none" | "surface" | "webhook";
-                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
                 address?: string;
                 routeId?: string;
                 label?: string;
             })[];
             fallbackTargets: readonly ({
                 kind: "integration" | "link" | "none" | "surface" | "webhook";
-                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
                 address?: string;
                 routeId?: string;
                 label?: string;
@@ -7456,7 +7562,7 @@ export interface OperatorMethodOutputMap {
             id: string;
             kind: "hook" | "manual" | "schedule" | "surface" | "watcher" | "webhook";
             label: string;
-            surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+            surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
             routeId?: string;
             enabled: boolean;
             createdAt: number;
@@ -9319,6 +9425,14 @@ export interface OperatorMethodOutputMap {
         messageId: string;
     };
     // (undocumented)
+    "companion.chat.messages.edit": {
+        sessionId: string;
+        editedFrom: string;
+        messageId: string;
+        supersededMessageIds: readonly string[];
+        turnStarted: boolean;
+    };
+    // (undocumented)
     "companion.chat.messages.list": {
         sessionId: string;
         messages: readonly CompanionChatMessage[];
@@ -9340,7 +9454,19 @@ export interface OperatorMethodOutputMap {
     "companion.chat.sessions.create": {
         sessionId: string;
         createdAt: number;
-        session: CompanionChatSession;
+        session: {
+            id: string;
+            kind: "companion-chat";
+            title: string;
+            model: null | string;
+            provider: null | string;
+            systemPrompt: null | string;
+            status: "active" | "closed";
+            createdAt: number;
+            updatedAt: number;
+            closedAt: null | number;
+            messageCount: number;
+        };
     };
     // (undocumented)
     "companion.chat.sessions.delete": {
@@ -9359,7 +9485,19 @@ export interface OperatorMethodOutputMap {
     };
     // (undocumented)
     "companion.chat.sessions.update": {
-        session: CompanionChatSession;
+        session: {
+            id: string;
+            kind: "companion-chat";
+            title: string;
+            model: null | string;
+            provider: null | string;
+            systemPrompt: null | string;
+            status: "active" | "closed";
+            createdAt: number;
+            updatedAt: number;
+            closedAt: null | number;
+            messageCount: number;
+        };
     };
     // (undocumented)
     "companion.chat.turns.cancel": {
@@ -11591,7 +11729,7 @@ export interface OperatorMethodOutputMap {
         }))[];
     };
     // (undocumented)
-    "knowledge.projection.materialize": {
+    "knowledge.projection.materialize": ({
         bundle: {
             id: string;
             target: ({
@@ -11650,7 +11788,55 @@ export interface OperatorMethodOutputMap {
         } & {
             readonly [key: string]: unknown;
         });
-    };
+        source?: ({
+            id: string;
+            connectorId: string;
+            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
+            title?: string;
+            sourceUri?: string;
+            canonicalUri?: string;
+            summary?: string;
+            description?: string;
+            tags: readonly string[];
+            folderPath?: string;
+            status: string;
+            artifactId?: string;
+            contentHash?: string;
+            lastCrawledAt?: number;
+            crawlError?: string;
+            sessionId?: string;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+        linked?: ({
+            id: string;
+            fromKind: string;
+            fromId: string;
+            toKind: string;
+            toId: string;
+            relation: string;
+            weight: number;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+        artifactCreated?: boolean;
+    } & {
+        readonly [key: string]: unknown;
+    });
     // (undocumented)
     "knowledge.projection.render": {
         id: string;

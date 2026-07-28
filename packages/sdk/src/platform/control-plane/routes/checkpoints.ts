@@ -97,7 +97,7 @@ function optionalString(value: unknown): string | undefined {
 
 function requiredString(value: unknown, field: string): string {
   if (typeof value !== 'string' || value.length === 0) {
-    throw new GatewayVerbError(`Missing required field: ${field}`, 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError(`Missing required field: ${field}`, 'INVALID_ARGUMENT', 400, field);
   }
   return value;
 }
@@ -106,7 +106,7 @@ function optionalNumber(value: unknown, field: string): number | undefined {
   if (value === undefined || value === null) return undefined;
   const n = typeof value === 'number' ? value : Number(value);
   if (!Number.isFinite(n)) {
-    throw new GatewayVerbError(`Invalid number for field: ${field}`, 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError(`Invalid number for field: ${field}`, 'INVALID_ARGUMENT', 400, field);
   }
   return n;
 }
@@ -114,7 +114,7 @@ function optionalNumber(value: unknown, field: string): number | undefined {
 function optionalStringArray(value: unknown): string[] | undefined {
   if (value === undefined || value === null) return undefined;
   if (!Array.isArray(value) || !value.every((v) => typeof v === 'string')) {
-    throw new GatewayVerbError('Invalid field: paths must be a string array', 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError('Invalid field: paths must be a string array', 'INVALID_ARGUMENT', 400, 'paths');
   }
   return value as string[];
 }
@@ -122,14 +122,14 @@ function optionalStringArray(value: unknown): string[] | undefined {
 function optionalBoolean(value: unknown, field: string): boolean | undefined {
   if (value === undefined || value === null) return undefined;
   if (typeof value !== 'boolean') {
-    throw new GatewayVerbError(`Invalid boolean for field: ${field}`, 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError(`Invalid boolean for field: ${field}`, 'INVALID_ARGUMENT', 400, field);
   }
   return value;
 }
 
 function validateCheckpointKind(value: unknown, required: boolean): CheckpointKind | undefined {
   if (value === undefined || value === null) {
-    if (required) throw new GatewayVerbError('Missing required field: kind', 'INVALID_ARGUMENT', 400);
+    if (required) throw new GatewayVerbError('Missing required field: kind', 'INVALID_ARGUMENT', 400, 'kind');
     return undefined;
   }
   if (typeof value !== 'string' || !CHECKPOINT_KINDS.includes(value as CheckpointKind)) {
@@ -137,6 +137,7 @@ function validateCheckpointKind(value: unknown, required: boolean): CheckpointKi
       `Invalid kind: ${String(value)} (expected one of ${CHECKPOINT_KINDS.join(', ')})`,
       'INVALID_ARGUMENT',
       400,
+      'kind',
     );
   }
   return value as CheckpointKind;
@@ -149,6 +150,7 @@ function validateRetentionClass(value: unknown): RetentionClass | undefined {
       `Invalid retentionClass: ${String(value)} (expected one of ${RETENTION_CLASSES.join(', ')})`,
       'INVALID_ARGUMENT',
       400,
+      'retentionClass',
     );
   }
   return value as RetentionClass;
@@ -158,7 +160,7 @@ function clampLimit(raw: unknown): number {
   if (raw === undefined || raw === null) return CHECKPOINTS_LIST_DEFAULT_LIMIT;
   const n = typeof raw === 'number' ? raw : Number(raw);
   if (!Number.isFinite(n) || n <= 0) {
-    throw new GatewayVerbError(`Invalid limit: ${String(raw)}`, 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError(`Invalid limit: ${String(raw)}`, 'INVALID_ARGUMENT', 400, 'limit');
   }
   return Math.min(Math.floor(n), CHECKPOINTS_LIST_MAX_LIMIT);
 }
@@ -196,7 +198,7 @@ export function createCheckpointsCreateHandler(manager: CheckpointsGatewayManage
   return async (invocation) => {
     const body = readInvocationParams(invocation);
     const kind = validateCheckpointKind(body.kind, true);
-    if (!kind) throw new GatewayVerbError('Missing required field: kind', 'INVALID_ARGUMENT', 400);
+    if (!kind) throw new GatewayVerbError('Missing required field: kind', 'INVALID_ARGUMENT', 400, 'kind');
     const checkpoint = await manager.create({
       kind,
       label: optionalString(body.label),
@@ -276,6 +278,7 @@ export function createCheckpointsRestoreHandler(
           'confirmToken is invalid, already used, expired, or was issued for a different checkpoint — call checkpoints.restorePreview to obtain a fresh one.',
           'INVALID_ARGUMENT',
           400,
+          'confirmToken',
         );
       }
     } else if (confirm !== true) {
@@ -353,6 +356,7 @@ export function createCheckpointsRevertHunkHandler(
           'confirmToken is invalid, already used, expired, or was issued for a different hunk — call checkpoints.revertHunkPreview to obtain a fresh one.',
           'INVALID_ARGUMENT',
           400,
+          'confirmToken',
         );
       }
     } else if (confirm !== true) {
