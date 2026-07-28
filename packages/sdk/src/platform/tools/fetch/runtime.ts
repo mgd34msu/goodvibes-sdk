@@ -16,6 +16,7 @@ import { applyExtract, sniffContentType } from './extract.js';
 import type { FeatureFlagManager } from '../../runtime/feature-flags/index.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { instrumentedFetch, createTimeoutController } from '../../utils/fetch-with-timeout.js';
+import { recordFetchedPagesAsUntrusted } from './untrusted-ingest.js';
 import { toRecord } from '../../utils/record-coerce.js';
 import { mapWithConcurrency, sleep } from '../../utils/concurrency.js';
 
@@ -162,6 +163,12 @@ export class FetchRuntimeService {
         results.push(await fetchOne(input.urls[i]!, fetchOpts, this));
       }
     }
+
+    // Page text entered the conversation here, so the ledger is told — with the
+    // text, not merely the fact. This tool recorded nothing at all before; see
+    // ./untrusted-ingest.ts for the gap that left and why the text is the part
+    // that keeps this from refusing everything.
+    recordFetchedPagesAsUntrusted(results);
 
     const totalMs = Math.round(performance.now() - wallStart);
     const succeeded = results.filter((result) => result.error === undefined).length;

@@ -17,6 +17,19 @@ export interface TurnInputOrigin {
   readonly messageId?: string | undefined;
   readonly topic?: string | undefined;
   readonly metadata?: Readonly<Record<string, unknown>> | undefined;
+  /**
+   * True when the transport that produced this input can honestly attest the
+   * OWNER sent it — it authenticated him, or it read his local terminal.
+   *
+   * This is what starts a new untrusted-content turn (see
+   * platform/security/turn-boundary.ts), so it is a claim about the caller,
+   * made by the code that handled the call. Nothing in a message body can set
+   * it: message bodies do not construct these records. A transport that cannot
+   * tell the owner from a channel leaves it unset, and the window stays open —
+   * the safe direction, because resetting it wrongly would let content that was
+   * just read erase the record of itself.
+   */
+  readonly ownerDirect?: boolean | undefined;
 }
 
 export type TurnStopReason =

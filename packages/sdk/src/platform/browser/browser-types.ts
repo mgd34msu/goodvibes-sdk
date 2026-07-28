@@ -228,6 +228,15 @@ export interface OwnerApproval {
   readonly action: string;
   readonly grantedAt: string;
   readonly surface: 'owner-direct';
+  /** When it stops being spendable — approvals are minutes, not sessions. */
+  readonly expiresAt: string;
+  /**
+   * The exact payload the owner was shown, digested; `null` when the approving
+   * surface could not enumerate it. See security/owner-approval.ts for why an
+   * approval that names only an action id is a standing permit rather than an
+   * approval of the deed.
+   */
+  readonly contentFingerprint: string | null;
 }
 
 export interface OutwardEffectDecision {
@@ -279,5 +288,25 @@ export interface UntrustedContentPort {
     readonly action: string;
     readonly description: string;
     readonly approval: OwnerApproval | null;
+    /**
+     * The fields about to leave the machine, when this action knows them.
+     *
+     * Without this the port could only ask "has this turn read anything",
+     * which in a daemon is permanently yes — so every caller behind the port
+     * took the blunt path regardless of how well it knew its own payload. A
+     * caller that genuinely cannot enumerate its fields omits this and is
+     * still guarded, by the coarse rule, rather than waved through.
+     */
+    readonly content?: Readonly<Record<string, string | undefined>> | undefined;
+    /** Field-level rules: exact-match recipients, quote stripping, reply exemptions. */
+    readonly taintOptions?: {
+      readonly exactMatchFields?: readonly string[] | undefined;
+      readonly replyToEnvelopeSenders?: readonly string[] | undefined;
+      readonly stripQuotedFields?: readonly string[] | undefined;
+    } | undefined;
+    /** 'owner-direct' when the human asked for this; changes wording, not the decision. */
+    readonly requestedBy?: 'owner-direct' | 'web-page' | 'email' | 'channel-message' | 'document' | undefined;
+    /** How the owner clears a refusal on this surface. Absent = no path wired. */
+    readonly ownerRemedy?: { readonly gesture: string } | undefined;
   }) => OutwardEffectDecision;
 }

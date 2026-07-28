@@ -10,6 +10,14 @@ import type { ContentPart } from '../providers/interface.js';
 import { notifyCompletion } from '../utils/notify.js';
 import { logger } from '../utils/logger.js';
 import type { PermissionManager } from '../permissions/manager.js';
+import { startTurnForOwnerInput } from '../security/turn-boundary.js';
+import {
+  isPassiveCodeInjectionEnabled,
+  isPassiveKnowledgeInjectionEnabled,
+  isReconciliationEnabled,
+  turnFlagSources,
+  type TurnFlagSources,
+} from './orchestrator-turn-flags.js';
 import { appendPlanModeInstruction } from '../permissions/plan-mode-instructions.js';
 import type { AcpManager } from '../acp/manager.js';
 import type { SubagentTask } from '../acp/protocol.js';
@@ -616,6 +624,12 @@ export class Orchestrator {
     const configManager = requireConfigManager(this.coreServices);
     const providerRegistry = requireProviderRegistry(this.coreServices);
 
+    // Where "this turn" acquires a beginning: an owner-started turn ends the
+    // previous untrusted-content window, a channel- or schedule-started one
+    // deliberately does not. Here rather than in handleUserInput so a message
+    // queued mid-thinking gets its own turn. Reasoning: security/turn-boundary.ts.
+    startTurnForOwnerInput(options?.origin);
+
     // --- Phase 1: Preflight — idempotency, event emission, plan injection ---
     const preflight = this.runTurnPreflight(text, content, options, providerRegistry);
     if (!preflight) return; // duplicate in-flight turn was rejected and reported
@@ -1000,32 +1014,14 @@ export class Orchestrator {
    * Defaults to `true` (flag `defaultState: 'enabled'`) when no flag manager
    * has been wired in — safe for tests that omit the optional constructor arg.
    */
-  private isReconciliationEnabled(): boolean {
-    if (this.flagManager === null) return true;
-    return this.flagManager.isEnabled('tool-result-reconciliation');
-  }
+  /** The per-turn flag reads, and their differing defaults: ./orchestrator-turn-flags.ts. */
+  private get turnFlags(): TurnFlagSources { return turnFlagSources(this.flagManager, this.coreServices); }
 
-  /**
-   * True when per-turn passive knowledge injection is active. Shares the SAME
-   * `agent-passive-knowledge-injection` flag as the agent path (one operator
-   * feature, one toggle). Defaults to true with no flag manager wired,
-   * matching {@link isReconciliationEnabled}'s convention.
-   */
-  private isPassiveKnowledgeInjectionEnabled(): boolean {
-    if (this.flagManager === null) return true;
-    return this.flagManager.isEnabled('agent-passive-knowledge-injection');
-  }
+  private isReconciliationEnabled(): boolean { return isReconciliationEnabled(this.turnFlags); }
 
-  /**
-   * Stage B code injection is opt-in: the `agent-passive-code-injection` flag defaults OFF
-   * (so a null flagManager means OFF, unlike the memory flag above), AND the embedder's
-   * storage.codeIndexEnabled setting must be on. Both are re-read per turn.
-   */
-  private isPassiveCodeInjectionEnabled(): boolean {
-    const flagOn = this.flagManager?.isEnabled('agent-passive-code-injection') ?? false;
-    const settingOn = this.coreServices.isCodeInjectionSettingEnabled?.() ?? true;
-    return flagOn && settingOn;
-  }
+  private isPassiveKnowledgeInjectionEnabled(): boolean { return isPassiveKnowledgeInjectionEnabled(this.turnFlags); }
+
+  private isPassiveCodeInjectionEnabled(): boolean { return isPassiveCodeInjectionEnabled(this.turnFlags); }
 
   /**
    * Ids never to re-surface in a later per-turn knowledge block. The main
