@@ -43,7 +43,7 @@ function rethrowAsVerbError(error: unknown): never {
 
 function requireString(value: unknown, field: string): string {
   if (typeof value !== 'string' || value.trim().length === 0) {
-    throw new GatewayVerbError(`${field} is required`, 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError(`${field} is required`, 'INVALID_ARGUMENT', 400, field);
   }
   return value;
 }
@@ -52,15 +52,15 @@ function requireString(value: unknown, field: string): string {
 function readIdentities(value: unknown): PrincipalIdentity[] | undefined {
   if (value === undefined || value === null) return undefined;
   if (!Array.isArray(value)) {
-    throw new GatewayVerbError('identities must be an array', 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError('identities must be an array', 'INVALID_ARGUMENT', 400, 'identities');
   }
   return value.map((raw, index) => {
     if (typeof raw !== 'object' || raw === null) {
-      throw new GatewayVerbError(`identities[${index}] must be an object`, 'INVALID_ARGUMENT', 400);
+      throw new GatewayVerbError(`identities[${index}] must be an object`, 'INVALID_ARGUMENT', 400, 'identities');
     }
     const entry = raw as Record<string, unknown>;
     if (typeof entry.channel !== 'string' || typeof entry.value !== 'string') {
-      throw new GatewayVerbError(`identities[${index}] needs string channel and value`, 'INVALID_ARGUMENT', 400);
+      throw new GatewayVerbError(`identities[${index}] needs string channel and value`, 'INVALID_ARGUMENT', 400, 'identities');
     }
     return { channel: entry.channel, value: entry.value };
   });
@@ -70,7 +70,7 @@ function readIdentities(value: unknown): PrincipalIdentity[] | undefined {
 function readMetadata(value: unknown): Readonly<Record<string, unknown>> | undefined {
   if (value === undefined || value === null) return undefined;
   if (typeof value !== 'object' || Array.isArray(value)) {
-    throw new GatewayVerbError('metadata must be an object', 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError('metadata must be an object', 'INVALID_ARGUMENT', 400, 'metadata');
   }
   return value as Record<string, unknown>;
 }

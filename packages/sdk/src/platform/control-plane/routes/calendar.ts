@@ -111,7 +111,7 @@ function readOptionalString(value: unknown): string | undefined {
 function readRequiredString(value: unknown, field: string): string {
   const read = readOptionalString(value);
   if (read === undefined) {
-    throw new GatewayVerbError(`${field} (non-empty string) is required`, 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError(`${field} (non-empty string) is required`, 'INVALID_ARGUMENT', 400, field);
   }
   return read;
 }

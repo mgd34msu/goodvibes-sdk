@@ -3,8 +3,11 @@ import {
   NUMBER_SCHEMA,
   STRING_SCHEMA,
   arraySchema,
+  bodyEnvelopeSchema,
+  branchedSchema,
   entityOutputSchema,
   objectSchema,
+  requirementBranch,
 } from './method-catalog-shared.js';
 import {
   GENERIC_LIST_SCHEMA,
@@ -385,3 +388,26 @@ export const CHANNEL_TEST_SEND_OUTPUT_SCHEMA = objectSchema({
   address: STRING_SCHEMA,
   error: STRING_SCHEMA,
 }, ['surface', 'delivered']);
+
+/**
+ * The handler reads `target`, then `input`, then `query`, and refuses when all
+ * three are absent or blank (`Target resolution requires target, input, or
+ * query.`). No single one of them is required, so the contract has to say "one
+ * of" — a union, not a required array.
+ */
+export const CHANNEL_TARGET_RESOLVE_INPUT_SCHEMA: Record<string, unknown> = branchedSchema(
+  bodyEnvelopeSchema({
+    target: STRING_SCHEMA,
+    input: STRING_SCHEMA,
+    query: STRING_SCHEMA,
+    accountId: STRING_SCHEMA,
+    preferredKind: STRING_SCHEMA,
+    threadId: STRING_SCHEMA,
+    sessionId: STRING_SCHEMA,
+    createIfMissing: BOOLEAN_SCHEMA,
+    live: BOOLEAN_SCHEMA,
+    metadata: METADATA_SCHEMA,
+  }),
+  (['target', 'input', 'query'] as const).map((field) =>
+    requirementBranch({ [field]: STRING_SCHEMA }, [field])),
+);

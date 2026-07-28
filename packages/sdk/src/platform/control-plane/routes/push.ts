@@ -39,7 +39,7 @@ function requirePrincipal(invocation: GatewayMethodInvocation): string {
 
 function requireString(value: unknown, field: string): string {
   if (typeof value !== 'string' || value.trim().length === 0) {
-    throw new GatewayVerbError(`Missing or invalid ${field}`, 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError(`Missing or invalid ${field}`, 'INVALID_ARGUMENT', 400, field);
   }
   return value;
 }
@@ -52,7 +52,7 @@ function requireString(value: unknown, field: string): string {
 function requireHttpsEndpoint(value: unknown): string {
   const endpoint = requireString(value, 'endpoint');
   const problem = describeEndpointProblem(endpoint);
-  if (problem) throw new GatewayVerbError(problem, 'INVALID_ARGUMENT', 400);
+  if (problem) throw new GatewayVerbError(problem, 'INVALID_ARGUMENT', 400, 'endpoint');
   return endpoint;
 }
 
@@ -64,15 +64,15 @@ function requireHttpsEndpoint(value: unknown): string {
  */
 function requireKeys(value: unknown): SubscriptionKeyMaterial {
   if (value === null || typeof value !== 'object') {
-    throw new GatewayVerbError('Missing subscription keys', 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError('Missing subscription keys', 'INVALID_ARGUMENT', 400, 'keys');
   }
   const keys = value as Record<string, unknown>;
   const p256dh = requireString(keys.p256dh, 'keys.p256dh');
   const auth = requireString(keys.auth, 'keys.auth');
   const p256dhProblem = describeP256dhProblem(p256dh);
-  if (p256dhProblem) throw new GatewayVerbError(p256dhProblem, 'INVALID_ARGUMENT', 400);
+  if (p256dhProblem) throw new GatewayVerbError(p256dhProblem, 'INVALID_ARGUMENT', 400, 'keys.p256dh');
   const authProblem = describeAuthSecretProblem(auth);
-  if (authProblem) throw new GatewayVerbError(authProblem, 'INVALID_ARGUMENT', 400);
+  if (authProblem) throw new GatewayVerbError(authProblem, 'INVALID_ARGUMENT', 400, 'keys.auth');
   return { p256dh, auth };
 }
 

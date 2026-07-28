@@ -22,7 +22,22 @@ export type RequiredKeys<T extends object> = {
 export type MethodArgs<TInput, TOptions> =
   [TInput] extends [undefined]
     ? [input?: undefined, options?: TOptions]
-    : TInput extends object
+    // `[TInput] extends [object]` rather than `TInput extends object`: the bare
+    // form is a DISTRIBUTIVE conditional, so a union input is split and the
+    // whole tail — including `RequiredKeys`, a mapped type doing one `Pick` per
+    // property — is evaluated once per member. A method whose input is
+    // `Base & (A | B | C)` (see method-catalog-shared.ts `branchedSchema`, used
+    // by the verbs whose required set is conditional) therefore cost three full
+    // passes over a thirty-property object, and with several such methods in
+    // one map the operator client stopped compiling: TS2590, "union type too
+    // complex to represent", at the `OperatorRemoteClient` literal.
+    //
+    // Nothing here wanted per-member behaviour. The question being asked is
+    // "is this input an object at all", and the answer for a union is the same
+    // for every member. Wrapping in a tuple asks it once, and yields one
+    // argument tuple instead of a union of them — which is also the more usable
+    // signature for a caller.
+    : [TInput] extends [object]
       ? [RequiredKeys<TInput>] extends [never]
         ? [input?: TInput, options?: TOptions]
         : [input: TInput, options?: TOptions]

@@ -31,6 +31,7 @@ import {
   KNOWLEDGE_PACKET_SCHEMA,
   KNOWLEDGE_PACKET_DETAIL_SCHEMA,
   KNOWLEDGE_PROJECTION_BUNDLE_SCHEMA,
+  KNOWLEDGE_PROJECTION_INPUT_SCHEMA,
   KNOWLEDGE_PROJECTION_TARGETS_OUTPUT_SCHEMA,
   KNOWLEDGE_REINDEX_OUTPUT_SCHEMA,
   KNOWLEDGE_REFINEMENT_RUN_OUTPUT_SCHEMA,
@@ -50,6 +51,7 @@ import {
   KNOWLEDGE_USAGE_OUTPUT_SCHEMA,
 } from './operator-contract-schemas-knowledge.js';
 import {
+  PROJECT_PLANNING_DECISION_INPUT_SCHEMA,
   PROJECT_PLANNING_DECISION_OUTPUT_SCHEMA,
   PROJECT_PLANNING_DECISIONS_OUTPUT_SCHEMA,
   PROJECT_PLANNING_EVALUATION_SCHEMA,
@@ -58,6 +60,7 @@ import {
   PROJECT_PLANNING_STATE_OUTPUT_SCHEMA,
   PROJECT_PLANNING_STATUS_SCHEMA,
   PROJECT_WORK_PLAN_MUTATION_OUTPUT_SCHEMA,
+  PROJECT_WORK_PLAN_TASK_INPUT_SCHEMA,
   PROJECT_WORK_PLAN_SNAPSHOT_SCHEMA,
   PROJECT_WORK_PLAN_TASK_OUTPUT_SCHEMA,
 } from './operator-contract-schemas-project-planning.js';
@@ -657,12 +660,7 @@ export const builtinGatewayKnowledgeMethodDescriptors: readonly GatewayMethodDes
     category: 'knowledge',
     scopes: ['read:knowledge'],
     http: { method: 'POST', path: '/api/knowledge/projections/render' },
-    inputSchema: bodyEnvelopeSchema({
-      kind: STRING_SCHEMA,
-      id: STRING_SCHEMA,
-      limit: NUMBER_SCHEMA,
-      ...KNOWLEDGE_SPACE_INPUT_FIELDS,
-    }, ['kind']),
+    inputSchema: KNOWLEDGE_PROJECTION_INPUT_SCHEMA,
     outputSchema: KNOWLEDGE_PROJECTION_BUNDLE_SCHEMA,
   }),
   methodDescriptor({
@@ -673,12 +671,7 @@ export const builtinGatewayKnowledgeMethodDescriptors: readonly GatewayMethodDes
     scopes: ['write:knowledge'],
     access: 'admin',
     http: { method: 'POST', path: '/api/knowledge/projections/materialize' },
-    inputSchema: bodyEnvelopeSchema({
-      kind: STRING_SCHEMA,
-      id: STRING_SCHEMA,
-      limit: NUMBER_SCHEMA,
-      ...KNOWLEDGE_SPACE_INPUT_FIELDS,
-    }, ['kind']),
+    inputSchema: KNOWLEDGE_PROJECTION_INPUT_SCHEMA,
     outputSchema: KNOWLEDGE_MATERIALIZED_PROJECTION_SCHEMA,
   }),
   methodDescriptor({
@@ -776,7 +769,7 @@ export const builtinGatewayKnowledgeMethodDescriptors: readonly GatewayMethodDes
     inputSchema: bodyEnvelopeSchema({
       projectId: STRING_SCHEMA,
       knowledgeSpaceId: STRING_SCHEMA,
-      decision: JSON_RECORD_SCHEMA,
+      decision: PROJECT_PLANNING_DECISION_INPUT_SCHEMA,
     }, ['decision']),
     outputSchema: PROJECT_PLANNING_DECISION_OUTPUT_SCHEMA,
   }),
@@ -870,7 +863,7 @@ export const builtinGatewayKnowledgeMethodDescriptors: readonly GatewayMethodDes
       projectId: STRING_SCHEMA,
       knowledgeSpaceId: STRING_SCHEMA,
       workPlanId: STRING_SCHEMA,
-      task: JSON_RECORD_SCHEMA,
+      task: PROJECT_WORK_PLAN_TASK_INPUT_SCHEMA,
     }, ['task']),
     outputSchema: PROJECT_WORK_PLAN_MUTATION_OUTPUT_SCHEMA,
   }),

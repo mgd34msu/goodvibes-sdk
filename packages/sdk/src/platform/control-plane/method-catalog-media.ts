@@ -1,5 +1,5 @@
 import type { GatewayMethodDescriptor } from './method-catalog-shared.js';
-import { BOOLEAN_SCHEMA, EMPTY_OBJECT_SCHEMA, NUMBER_SCHEMA, STRING_SCHEMA, bodyEnvelopeSchema, methodDescriptor, objectSchema } from './method-catalog-shared.js';
+import { BOOLEAN_SCHEMA, EMPTY_OBJECT_SCHEMA, NUMBER_SCHEMA, STRING_SCHEMA, bodyEnvelopeSchema, branchedSchema,requirementBranch, methodDescriptor, objectSchema } from './method-catalog-shared.js';
 import { METADATA_SCHEMA } from './operator-contract-schemas-shared.js';
 import {
   ARTIFACT_ENTITY_OUTPUT_SCHEMA,
@@ -159,18 +159,30 @@ export const builtinGatewayMediaMethodDescriptors: readonly GatewayMethodDescrip
     category: 'artifacts',
     scopes: ['write:artifacts'],
     http: { method: 'POST', path: '/api/artifacts' },
-    inputSchema: bodyEnvelopeSchema({
-      kind: STRING_SCHEMA,
-      mimeType: STRING_SCHEMA,
-      filename: STRING_SCHEMA,
-      dataBase64: STRING_SCHEMA,
-      text: STRING_SCHEMA,
-      path: STRING_SCHEMA,
-      uri: STRING_SCHEMA,
-      allowPrivateHosts: BOOLEAN_SCHEMA,
-      retentionMs: NUMBER_SCHEMA,
-      metadata: METADATA_SCHEMA,
-    }),
+    // The store refuses an input carrying none of the four content sources
+    // (`Artifact input requires dataBase64, text, path, or uri`,
+    // platform/artifacts/store.ts), surfacing as a 400 from the route. Exactly
+    // one is needed and any one will do, so the contract is a union.
+    //
+    // This describes the JSON body. The multipart and raw-body upload modes
+    // named in `metadata.uploadModes` carry their content in the HTTP request
+    // itself and never reach this schema.
+    inputSchema: branchedSchema(
+      bodyEnvelopeSchema({
+        kind: STRING_SCHEMA,
+        mimeType: STRING_SCHEMA,
+        filename: STRING_SCHEMA,
+        dataBase64: STRING_SCHEMA,
+        text: STRING_SCHEMA,
+        path: STRING_SCHEMA,
+        uri: STRING_SCHEMA,
+        allowPrivateHosts: BOOLEAN_SCHEMA,
+        retentionMs: NUMBER_SCHEMA,
+        metadata: METADATA_SCHEMA,
+      }),
+      (['dataBase64', 'text', 'path', 'uri'] as const).map((field) =>
+        requirementBranch({ [field]: STRING_SCHEMA }, [field])),
+    ),
     outputSchema: ARTIFACT_ENTITY_OUTPUT_SCHEMA,
     metadata: {
       uploadModes: ['json-inline', 'json-path-or-uri', 'multipart-file', 'raw-body'],

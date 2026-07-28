@@ -191,10 +191,20 @@ export function createDaemonChannelRouteHandlers(
             },
           )
         : null;
+      // The catalog declares `actionId` required, and the invoke gate refuses a
+      // call without it — but this REST path used to substitute the literal
+      // 'unknown' and go on to evaluate authorization against it. So the two
+      // routes to the same verb disagreed: one refused, one authorized a
+      // made-up action id. Refusing here makes the served behaviour match the
+      // contract that was already published, rather than deciding a policy.
+      const actionId = typeof body.actionId === 'string' ? body.actionId.trim() : '';
+      if (!actionId) {
+        return jsonErrorResponse({ error: 'actionId is required.' }, { status: 400 });
+      }
       const result = await context.channelPlugins.authorizeActorAction(
         surface as ChannelSurface,
         {
-          actionId: typeof body.actionId === 'string' ? body.actionId : 'unknown',
+          actionId,
           ...(typeof body.actorId === 'string' ? { actorId: body.actorId } : {}),
           ...(typeof body.accountId === 'string' ? { accountId: body.accountId } : {}),
           ...(target ? { target } : {}),

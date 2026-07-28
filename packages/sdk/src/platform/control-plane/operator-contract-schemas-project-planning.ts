@@ -241,3 +241,53 @@ export const PROJECT_PLANNING_LANGUAGE_OUTPUT_SCHEMA = objectSchema({
   language: nullableSchema(PROJECT_PLANNING_LANGUAGE_SCHEMA),
   source: KNOWLEDGE_SOURCE_SCHEMA,
 }, ['ok', 'projectId', 'knowledgeSpaceId'], { additionalProperties: true });
+
+/**
+ * The nested `decision` payload of projectPlanning.decisions.record.
+ *
+ * It used to be declared as an untyped record, which hid the only two fields
+ * the service will not proceed without: recordDecision reads
+ * `input.decision.title.trim()` and `input.decision.decision.trim()` and throws
+ * on either being absent. Open (`additionalProperties: true`) on purpose — this
+ * states what is REQUIRED, it does not claim to enumerate the record.
+ */
+export const PROJECT_PLANNING_DECISION_INPUT_SCHEMA = objectSchema({
+  id: STRING_SCHEMA,
+  title: STRING_SCHEMA,
+  context: STRING_SCHEMA,
+  decision: STRING_SCHEMA,
+  alternatives: arraySchema(STRING_SCHEMA),
+  reasoning: STRING_SCHEMA,
+  consequences: arraySchema(STRING_SCHEMA),
+  status: STRING_SCHEMA,
+  createdAt: NUMBER_SCHEMA,
+}, ['title', 'decision'], { additionalProperties: true })
+
+/**
+ * The nested `task` payload of projectPlanning.workPlan.task.create. Same gap,
+ * same shape of fix: normalizeWorkPlanTask refuses outright with `Work plan
+ * task title is required.`, so `title` is declared and the object stays open.
+ */
+export const PROJECT_WORK_PLAN_TASK_INPUT_SCHEMA = objectSchema({
+  taskId: STRING_SCHEMA,
+  title: STRING_SCHEMA,
+  notes: STRING_SCHEMA,
+  owner: STRING_SCHEMA,
+  status: STRING_SCHEMA,
+  priority: NUMBER_SCHEMA,
+  order: NUMBER_SCHEMA,
+  source: STRING_SCHEMA,
+  tags: arraySchema(STRING_SCHEMA),
+  parentTaskId: STRING_SCHEMA,
+  chainId: STRING_SCHEMA,
+  phaseId: STRING_SCHEMA,
+  agentId: STRING_SCHEMA,
+  turnId: STRING_SCHEMA,
+  decisionId: STRING_SCHEMA,
+  sourceMessageId: STRING_SCHEMA,
+  linkedArtifactIds: arraySchema(STRING_SCHEMA),
+  linkedSourceIds: arraySchema(STRING_SCHEMA),
+  linkedNodeIds: arraySchema(STRING_SCHEMA),
+  originSurface: STRING_SCHEMA,
+  createdAt: NUMBER_SCHEMA,
+}, ['title'], { additionalProperties: true })

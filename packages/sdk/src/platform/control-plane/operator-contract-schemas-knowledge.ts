@@ -3,9 +3,13 @@ import {
   NUMBER_SCHEMA,
   STRING_SCHEMA,
   arraySchema,
+  bodyEnvelopeSchema,
+  branchedSchema,
   entityOutputSchema,
   listOutputSchema,
   objectSchema,
+  requirementBranch,
+  stringEnumSchema,
 } from './method-catalog-shared.js';
 import {
   ARTIFACT_DESCRIPTOR_SCHEMA,
@@ -764,3 +768,33 @@ export const KNOWLEDGE_CONNECTOR_ENTITY_OUTPUT_SCHEMA = entityOutputSchema('conn
 export const KNOWLEDGE_CONNECTOR_DOCTOR_OUTPUT_SCHEMA = entityOutputSchema('report', KNOWLEDGE_CONNECTOR_DOCTOR_REPORT_SCHEMA);
 export const KNOWLEDGE_EXTRACTIONS_OUTPUT_SCHEMA = listOutputSchema('extractions', KNOWLEDGE_EXTRACTION_SCHEMA);
 export const KNOWLEDGE_USAGE_LIST_OUTPUT_SCHEMA = KNOWLEDGE_USAGE_OUTPUT_SCHEMA;
+
+/**
+ * Knowledge projections, split by whether the kind names ONE item. Both lists
+ * and the rule between them come from the route's own checks
+ * (daemon-sdk/knowledge-routes.ts, `readKnowledgeProjectionRequest`): an
+ * unlisted kind is refused with INVALID_PROJECTION_KIND, and a per-item kind
+ * with no `id` with `Projection kind <kind> requires id.`. A flat `required`
+ * array cannot say that — listing `id` would refuse `{ kind: 'overview' }`,
+ * which works — so the contract is a union discriminated on `kind`, which is
+ * also what lets a consumer's type tell the two cases apart.
+ */
+const KNOWLEDGE_PROJECTION_WHOLE_VIEW_KINDS = ['overview', 'bundle', 'dashboard'] as const;
+const KNOWLEDGE_PROJECTION_PER_ITEM_KINDS = ['source', 'node', 'issue', 'rollup'] as const;
+
+export const KNOWLEDGE_PROJECTION_INPUT_SCHEMA: Record<string, unknown> = branchedSchema(
+  bodyEnvelopeSchema({
+    kind: stringEnumSchema([...KNOWLEDGE_PROJECTION_WHOLE_VIEW_KINDS, ...KNOWLEDGE_PROJECTION_PER_ITEM_KINDS]),
+    id: STRING_SCHEMA,
+    limit: NUMBER_SCHEMA,
+    knowledgeSpaceId: STRING_SCHEMA,
+    includeAllSpaces: BOOLEAN_SCHEMA,
+  }, ['kind']),
+  [
+    requirementBranch({ kind: stringEnumSchema([...KNOWLEDGE_PROJECTION_WHOLE_VIEW_KINDS]) }, ['kind']),
+    requirementBranch({
+      kind: stringEnumSchema([...KNOWLEDGE_PROJECTION_PER_ITEM_KINDS]),
+      id: STRING_SCHEMA,
+    }, ['kind', 'id']),
+  ],
+);

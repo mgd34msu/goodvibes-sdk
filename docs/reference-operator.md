@@ -3339,7 +3339,57 @@ Store a file or attachment artifact for later delivery, analysis, or knowledge i
       }
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "dataBase64": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "dataBase64"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "uri"
+      ],
+      "additionalProperties": true
+    }
+  ]
 }
 ```
 
@@ -5442,9 +5492,6 @@ Create a durable automation job.
     "prompt": {
       "type": "string"
     },
-    "kind": {
-      "type": "string"
-    },
     "cron": {
       "type": "string"
     },
@@ -5848,12 +5895,115 @@ Create a durable automation job.
           }
         ]
       }
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "cron",
+        "every",
+        "at"
+      ]
+    },
+    "schedule": {
+      "type": "object",
+      "properties": {
+        "expression": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "expression"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [
     "prompt"
   ],
-  "additionalProperties": true
+  "additionalProperties": true,
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "cron"
+          ]
+        },
+        "cron": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "cron"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "cron"
+          ]
+        },
+        "schedule": {
+          "type": "object",
+          "properties": {
+            "expression": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "expression"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schedule"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "every"
+          ]
+        },
+        "every": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "every"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "at"
+          ]
+        },
+        "at": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "at"
+      ],
+      "additionalProperties": true
+    }
+  ]
 }
 ```
 
@@ -13129,9 +13279,6 @@ Create a schedule record.
     "prompt": {
       "type": "string"
     },
-    "kind": {
-      "type": "string"
-    },
     "cron": {
       "type": "string"
     },
@@ -13473,12 +13620,115 @@ Create a schedule record.
     },
     "deleteAfterRun": {
       "type": "boolean"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "cron",
+        "every",
+        "at"
+      ]
+    },
+    "schedule": {
+      "type": "object",
+      "properties": {
+        "expression": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "expression"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [
     "prompt"
   ],
-  "additionalProperties": true
+  "additionalProperties": true,
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "cron"
+          ]
+        },
+        "cron": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "cron"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "cron"
+          ]
+        },
+        "schedule": {
+          "type": "object",
+          "properties": {
+            "expression": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "expression"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schedule"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "every"
+          ]
+        },
+        "every": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "every"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "at"
+          ]
+        },
+        "at": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "at"
+      ],
+      "additionalProperties": true
+    }
+  ]
 }
 ```
 
@@ -24627,7 +24877,45 @@ Resolve a typed channel target for outbound delivery or routing.
       }
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "target": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "target"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "input": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "input"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "additionalProperties": true
+    }
+  ]
 }
 ```
 
@@ -26934,6 +27222,9 @@ Post a user message to a companion-chat session. Accepts either `body` or `conte
 {
   "type": "object",
   "properties": {
+    "sessionId": {
+      "type": "string"
+    },
     "body": {
       "type": "string"
     },
@@ -26969,7 +27260,68 @@ Post a user message to a companion-chat session. Accepts either `body` or `conte
       "additionalProperties": false
     }
   },
-  "additionalProperties": true
+  "required": [
+    "sessionId"
+  ],
+  "additionalProperties": true,
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "body": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "body"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "content": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "content"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "attachments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "artifactId": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "metadata": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "artifactId"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "attachments"
+      ],
+      "additionalProperties": true
+    }
+  ]
 }
 ```
 
@@ -27010,6 +27362,9 @@ Edit a user message and branch the conversation from it. `messageId` (required) 
 {
   "type": "object",
   "properties": {
+    "sessionId": {
+      "type": "string"
+    },
     "messageId": {
       "type": "string"
     },
@@ -27048,7 +27403,69 @@ Edit a user message and branch the conversation from it. `messageId` (required) 
       "additionalProperties": false
     }
   },
-  "additionalProperties": true
+  "required": [
+    "sessionId",
+    "messageId"
+  ],
+  "additionalProperties": true,
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "body": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "body"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "content": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "content"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "attachments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "artifactId": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "metadata": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "artifactId"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "attachments"
+      ],
+      "additionalProperties": true
+    }
+  ]
 }
 ```
 
@@ -27389,7 +27806,65 @@ Send a message that runs IMMEDIATELY, interrupting the in-flight turn if one is 
   "required": [
     "sessionId"
   ],
-  "additionalProperties": true
+  "additionalProperties": true,
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "body": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "body"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "content": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "content"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "attachments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "artifactId": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "metadata": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "artifactId"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "attachments"
+      ],
+      "additionalProperties": true
+    }
+  ]
 }
 ```
 
@@ -27510,7 +27985,15 @@ Create a new companion-chat session. Optional `provider` / `model` override the 
       "type": "string"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "dependentRequired": {
+    "model": [
+      "provider"
+    ],
+    "provider": [
+      "model"
+    ]
+  }
 }
 ```
 
@@ -28115,6 +28598,9 @@ Update companion-chat session metadata, including session-local `provider` and `
 {
   "type": "object",
   "properties": {
+    "sessionId": {
+      "type": "string"
+    },
     "title": {
       "type": "string"
     },
@@ -28128,7 +28614,68 @@ Update companion-chat session metadata, including session-local `provider` and `
       "type": "string"
     }
   },
-  "additionalProperties": true
+  "required": [
+    "sessionId"
+  ],
+  "additionalProperties": true,
+  "dependentRequired": {
+    "model": [
+      "provider"
+    ],
+    "provider": [
+      "model"
+    ]
+  },
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "model": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "model"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "provider"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "systemPrompt": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "systemPrompt"
+      ],
+      "additionalProperties": true
+    }
+  ]
 }
 ```
 
@@ -38783,7 +39330,45 @@ Index an existing artifact reference, JSON path/URI reference, multipart file up
       }
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "artifactId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifactId"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "uri"
+      ],
+      "additionalProperties": true
+    }
+  ]
 }
 ```
 
@@ -40067,7 +40652,33 @@ Attach a Home Graph source or node to a Home Assistant object.
   "required": [
     "target"
   ],
-  "additionalProperties": true
+  "additionalProperties": true,
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "sourceId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sourceId"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "nodeId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "nodeId"
+      ],
+      "additionalProperties": true
+    }
+  ]
 }
 ```
 
@@ -42899,7 +43510,45 @@ Accept, reject, resolve, edit, or forget a Home Graph issue, source, or node.
   "required": [
     "action"
   ],
-  "additionalProperties": true
+  "additionalProperties": true,
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "issueId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "issueId"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "nodeId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "nodeId"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "sourceId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sourceId"
+      ],
+      "additionalProperties": true
+    }
+  ]
 }
 ```
 
@@ -44299,7 +44948,33 @@ Remove an active Home Graph source/object link without deleting source history.
   "required": [
     "target"
   ],
-  "additionalProperties": true
+  "additionalProperties": true,
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "sourceId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sourceId"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "nodeId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "nodeId"
+      ],
+      "additionalProperties": true
+    }
+  ]
 }
 ```
 
@@ -51967,7 +52642,16 @@ Render and persist a markdown/wiki projection as a derived artifact.
   "type": "object",
   "properties": {
     "kind": {
-      "type": "string"
+      "type": "string",
+      "enum": [
+        "overview",
+        "bundle",
+        "dashboard",
+        "source",
+        "node",
+        "issue",
+        "rollup"
+      ]
     },
     "id": {
       "type": "string"
@@ -51985,7 +52669,48 @@ Render and persist a markdown/wiki projection as a derived artifact.
   "required": [
     "kind"
   ],
-  "additionalProperties": true
+  "additionalProperties": true,
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "overview",
+            "bundle",
+            "dashboard"
+          ]
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "source",
+            "node",
+            "issue",
+            "rollup"
+          ]
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "id"
+      ],
+      "additionalProperties": true
+    }
+  ]
 }
 ```
 
@@ -52462,7 +53187,16 @@ Render a markdown/wiki projection from the canonical structured knowledge store.
   "type": "object",
   "properties": {
     "kind": {
-      "type": "string"
+      "type": "string",
+      "enum": [
+        "overview",
+        "bundle",
+        "dashboard",
+        "source",
+        "node",
+        "issue",
+        "rollup"
+      ]
     },
     "id": {
       "type": "string"
@@ -52480,7 +53214,48 @@ Render a markdown/wiki projection from the canonical structured knowledge store.
   "required": [
     "kind"
   ],
-  "additionalProperties": true
+  "additionalProperties": true,
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "overview",
+            "bundle",
+            "dashboard"
+          ]
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "source",
+            "node",
+            "issue",
+            "rollup"
+          ]
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "id"
+      ],
+      "additionalProperties": true
+    }
+  ]
 }
 ```
 
@@ -56060,30 +56835,46 @@ Persist a meaningful project decision record for future TUI and agent context.
     },
     "decision": {
       "type": "object",
-      "additionalProperties": {
-        "anyOf": [
-          {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "context": {
+          "type": "string"
+        },
+        "decision": {
+          "type": "string"
+        },
+        "alternatives": {
+          "type": "array",
+          "items": {
             "type": "string"
-          },
-          {
-            "type": "number"
-          },
-          {
-            "type": "boolean"
-          },
-          {
-            "type": "null"
-          },
-          {
-            "type": "object",
-            "additionalProperties": {}
-          },
-          {
-            "type": "array",
-            "items": {}
           }
-        ]
-      }
+        },
+        "reasoning": {
+          "type": "string"
+        },
+        "consequences": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "status": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "title",
+        "decision"
+      ],
+      "additionalProperties": true
     }
   },
   "required": [
@@ -60005,30 +60796,87 @@ Create a durable project-scoped work-plan task for TUI, WebUI, APK, daemon plann
     },
     "task": {
       "type": "object",
-      "additionalProperties": {
-        "anyOf": [
-          {
+      "properties": {
+        "taskId": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "priority": {
+          "type": "number"
+        },
+        "order": {
+          "type": "number"
+        },
+        "source": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
             "type": "string"
-          },
-          {
-            "type": "number"
-          },
-          {
-            "type": "boolean"
-          },
-          {
-            "type": "null"
-          },
-          {
-            "type": "object",
-            "additionalProperties": {}
-          },
-          {
-            "type": "array",
-            "items": {}
           }
-        ]
-      }
+        },
+        "parentTaskId": {
+          "type": "string"
+        },
+        "chainId": {
+          "type": "string"
+        },
+        "phaseId": {
+          "type": "string"
+        },
+        "agentId": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        },
+        "decisionId": {
+          "type": "string"
+        },
+        "sourceMessageId": {
+          "type": "string"
+        },
+        "linkedArtifactIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "linkedSourceIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "linkedNodeIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "originSurface": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "additionalProperties": true
     }
   },
   "required": [
@@ -65066,7 +65914,91 @@ Analyze an artifact through a registered media provider.
       }
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "artifact": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "artifactId": {
+              "type": "string"
+            },
+            "mimeType": {
+              "type": "string"
+            },
+            "dataBase64": {
+              "type": "string"
+            },
+            "uri": {
+              "type": "string"
+            },
+            "filename": {
+              "type": "string"
+            },
+            "sizeBytes": {
+              "type": "number"
+            },
+            "sha256": {
+              "type": "string"
+            },
+            "metadata": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            }
+          },
+          "required": [
+            "mimeType",
+            "metadata"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "artifact"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "artifactId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifactId"
+      ],
+      "additionalProperties": true
+    }
+  ]
 }
 ```
 

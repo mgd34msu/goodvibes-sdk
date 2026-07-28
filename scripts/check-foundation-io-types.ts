@@ -52,6 +52,9 @@ import { builtinGatewayAcpMethodDescriptors } from '../packages/sdk/src/platform
 import { builtinGatewayBrowserMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-browser.ts';
 import { builtinGatewayOwnerProfileMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-owner-profile.ts';
 import { builtinGatewayEmailMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-email.ts';
+import { builtinGatewayKnowledgeMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-knowledge.ts';
+import { builtinGatewayChannelMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-channels.ts';
+import { builtinGatewayMediaMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-media.ts';
 import { builtinGatewayPermissionRuleMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-permission-rules.ts';
 import { builtinGatewayControlCoreMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-core.ts';
 import { builtinGatewayControlLiveTurnMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-live-turn.ts';
@@ -257,6 +260,9 @@ const CATALOG_DESCRIPTORS = [
   ...builtinGatewayBrowserMethodDescriptors,
   ...builtinGatewayOwnerProfileMethodDescriptors,
   ...builtinGatewayEmailMethodDescriptors,
+  ...builtinGatewayKnowledgeMethodDescriptors,
+  ...builtinGatewayChannelMethodDescriptors,
+  ...builtinGatewayMediaMethodDescriptors,
 ];
 
 function descriptorSchemas(methodId: string): { input: Record<string, unknown>; output: Record<string, unknown> } {
@@ -292,18 +298,35 @@ function renderType(schema: Record<string, unknown>): string {
   }
 
   if (Array.isArray((schema as { anyOf?: unknown[] }).anyOf)) {
-    const branches = (schema as { anyOf: Record<string, unknown>[] }).anyOf;
+    const { anyOf, ...base } = schema as { anyOf: Record<string, unknown>[] } & Record<string, unknown>;
+    const branches = anyOf;
     if (branches.length === 2 && branches.some((b) => b.type === 'null')) {
       const other = branches.find((b) => b.type !== 'null')!;
       return `null | ${renderType(other)}`;
     }
+    if (branches.length === 0) throw new Error(`Unsupported anyOf shape: ${JSON.stringify(schema)}`);
     // A general (e.g. discriminated) union: branches in declaration order,
     // each rendered by the same rules, joined with ' | '. Needed for the
     // approval request's attribution union (approvals.* entries).
-    if (branches.length > 0) {
-      return branches.map((branch) => renderType(branch)).join(' | ');
-    }
-    throw new Error(`Unsupported anyOf shape: ${JSON.stringify(schema)}`);
+    const union = branches.map((branch) => renderType(branch)).join(' | ');
+    // `anyOf` alongside a base object is a conjunction, not a replacement:
+    // the base says what the input IS and the branches say which of its
+    // optional fields this alternative makes mandatory (see
+    // method-catalog-shared.ts `branchedSchema`). Rendering only the branches
+    // would silently drop every property the base declares.
+    const hasBase = base.type === 'object' && Object.hasOwn(base, 'properties');
+    if (!hasBase) return union;
+    // Each branch is `additionalProperties: true` because the PUBLISHED schema
+    // has to be (see method-catalog-shared.ts `requirementBranch`), but the
+    // base it intersects with already contributes the index signature. Emitting
+    // it again per branch says nothing new and multiplies the type: repeating
+    // it is what put the operator client's method map over TypeScript's
+    // union-complexity limit. So the branches render closed and the openness
+    // comes from the base.
+    const leanUnion = branches
+      .map((branch) => renderType({ ...branch, additionalProperties: false }))
+      .join(' | ');
+    return `${renderType(base)} & (${leanUnion})`;
   }
 
   if (schema.type === 'string') {
@@ -346,7 +369,40 @@ function renderType(schema: Record<string, unknown>): string {
   throw new Error(`Unsupported schema node: ${JSON.stringify(schema)}`);
 }
 
-const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record<string, unknown>; readonly output: Record<string, unknown> }> = [
+/**
+ * Drop a schema's `anyOf` requirement branches, keeping the base.
+ *
+ * Used by exactly the two entries below that declare `typeDropsRequirementBranches`,
+ * and never anywhere else. The schema keeps the branches — the invoke gate
+ * enforces them, so the runtime refusal is honest — but the CLIENT TYPE omits
+ * them, because it provably cannot carry them.
+ *
+ * The reason is a measured TypeScript limit, not a preference. The automation
+ * create verbs take a ~35-property input whose members include several deeply
+ * nested unions (delivery targets, failure policy, session target, each with a
+ * 19-member surfaceKind). Intersecting that with a requirement union makes the
+ * operator client's method map exceed the compiler's union-complexity ceiling:
+ * `packages/operator-sdk/src/client-core.ts` fails to compile with TS2590, and
+ * so does `packages/sdk/src/browser-scoped.ts`. Measured at two, three and four
+ * branches, and with the branch contents reduced to a single property — every
+ * one of them fails, while the same file compiles the moment the intersection
+ * is removed. There is no branch count that fits.
+ *
+ * So these two verbs get the runtime guarantee without the compile-time one.
+ * That is strictly better than before (the call was already refused, just later
+ * and by a handler rather than the contract) and it is declared here rather
+ * than being a silent difference between the schema and the type.
+ */
+function withoutRequirementBranches(schema: Record<string, unknown>): Record<string, unknown> {
+  const { anyOf: _dropped, ...base } = schema;
+  return base;
+}
+
+const ENTRIES: ReadonlyArray<{
+  readonly methodId: string;
+  readonly input: Record<string, unknown>;
+  readonly output: Record<string, unknown>;
+}> = [
   // payments.* — the daemon holds the card and charges it. No entry here
   // carries card material: cards.create takes it and answers with metadata.
   { methodId: 'payments.budget.status', input: PAYMENTS_BUDGET_STATUS_INPUT_SCHEMA, output: PAYMENTS_BUDGET_STATUS_OUTPUT_SCHEMA },
@@ -379,6 +435,35 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   { methodId: 'sessions.search', input: SESSIONS_SEARCH_INPUT_SCHEMA, output: SESSIONS_SEARCH_OUTPUT_SCHEMA },
   { methodId: 'sessions.changes.get', input: SESSIONS_CHANGES_GET_INPUT_SCHEMA, output: SESSIONS_CHANGES_GET_OUTPUT_SCHEMA },
   { methodId: 'sessions.detach', ...descriptorSchemas('sessions.detach') },
+  // The verbs whose handlers were found refusing a field their descriptor did
+  // not declare (the required-conformance sweep). Their schemas are now unions
+  // or carry a dependency, and every one of them has a hand-authored entry in
+  // foundation-client-types.ts — so they are listed here to keep the two in
+  // step. Regenerating the contract artifacts does NOT reach that file: the
+  // script that once generated it is gone (see this file's header), which is
+  // exactly why a schema fix can otherwise land with the consumer type still
+  // saying the field is optional.
+  { methodId: 'knowledge.projection.render', ...descriptorSchemas('knowledge.projection.render') },
+  { methodId: 'knowledge.projection.materialize', ...descriptorSchemas('knowledge.projection.materialize') },
+  { methodId: 'channels.targets.resolve', ...descriptorSchemas('channels.targets.resolve') },
+  // See `withoutRequirementBranches` — these two carry the schedule requirement
+  // in the schema (enforced at the invoke gate) but not in the client type.
+  {
+    methodId: 'automation.jobs.create',
+    ...descriptorSchemas('automation.jobs.create'),
+    input: withoutRequirementBranches(descriptorSchemas('automation.jobs.create').input),
+  },
+  {
+    methodId: 'automation.schedules.create',
+    ...descriptorSchemas('automation.schedules.create'),
+    input: withoutRequirementBranches(descriptorSchemas('automation.schedules.create').input),
+  },
+  { methodId: 'artifacts.create', ...descriptorSchemas('artifacts.create') },
+  { methodId: 'media.analyze', ...descriptorSchemas('media.analyze') },
+  { methodId: 'companion.chat.messages.create', ...descriptorSchemas('companion.chat.messages.create') },
+  { methodId: 'companion.chat.messages.edit', ...descriptorSchemas('companion.chat.messages.edit') },
+  { methodId: 'companion.chat.sessions.create', ...descriptorSchemas('companion.chat.sessions.create') },
+  { methodId: 'companion.chat.sessions.update', ...descriptorSchemas('companion.chat.sessions.update') },
   // Daemon status + explicit receipt consumption (receipts=consume flag):
   { methodId: 'control.status', ...descriptorSchemas('control.status') },
   // Approval actions (decision fields travel over HTTP: rememberTier, deny
