@@ -422,6 +422,13 @@ function compose(
     routeBindings: {
       listBindings: () => bindings,
       getBinding: (id: string) => bindings.find((entry) => entry.id === id),
+      // Added when the notice path gained the feature-gate check: an off gate
+      // makes `listBindings()` answer `[]`, which silently turns inbound mail
+      // into a recorder. This stub predates that method, so it answered
+      // `undefined` and the settings test died on the call rather than on its
+      // assertion. Enabled here because these cases are about the SETTINGS
+      // reaching their target, not about the gate.
+      isRouteBindingEnabled: () => true,
     } as never,
     gatewayMethods: {
       // Every descriptor "exists", so the facade's `attach` registers all three
