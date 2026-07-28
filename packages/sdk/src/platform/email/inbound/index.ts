@@ -30,9 +30,26 @@ export {
   errorText,
   resolveIdleSupport,
   stateForReason,
+  verdictForBodyReadability,
   verdictForOpenConnection,
   type OpenFailureVerdict,
 } from './capability.js';
+
+/**
+ * The body-capability check, re-exported because `MailboxConnection` carries
+ * its reading and a consumer cannot name that field's type otherwise. It lives
+ * beside the IMAP client rather than in this directory because it is protocol
+ * work, not watcher work: the same comparison serves any body fetch.
+ */
+export {
+  IMAP_BODY_PROBE_BYTES,
+  ImapBodyCapabilityError,
+  assessFetchedBody,
+  bodyCapabilityFailure,
+  declaredTextOctets,
+  probeMailboxBody,
+  type ImapBodyReadability,
+} from '../imap-body-probe.js';
 
 export {
   imapMailboxConnectionPort,

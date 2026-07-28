@@ -184,5 +184,18 @@ export interface ImapClientOptions {
    * "which alias mailbox did this land in" rather than on message content.
    */
   readonly mailbox?: string;
+  /**
+   * Treat an empty body for a message the server SAID has content in it as a
+   * capability failure rather than as an empty message. Default: false.
+   *
+   * Off by default because `fetchMessage` currently leaves a section it could
+   * not read empty and returns the rest, and a mail reader that starts
+   * throwing where it used to show headers is a behaviour change its callers
+   * did not ask for. On for the inbound watcher's connections, where an empty
+   * body is not a cosmetic gap: a verification link that reads as blank is
+   * indistinguishable from mail that never came, which is the exact failure
+   * the inbound design exists to eliminate.
+   */
+  readonly enforceBodyReadable?: boolean;
 }
 

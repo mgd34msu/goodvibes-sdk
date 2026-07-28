@@ -108,6 +108,10 @@ import {
   type ImapMailboxStatus,
 } from './imap-headers.js';
 import { readMessageDetail } from './imap-message-read.js';
+import {
+  probeMailboxBody,
+  type ImapBodyReadability,
+} from './imap-body-probe.js';
 import { ImapSession } from './imap-session.js';
 import type {
   ImapAppendDraftInput,
@@ -498,6 +502,29 @@ export class ImapClient {
   }
 
   /**
+   * Ask whether this connection can read message CONTENT, and answer with
+   * evidence rather than with the fact that LOGIN and EXAMINE both worked.
+   *
+   * IMAP has no scope list to compare against — see `imap-body-probe.ts` — so
+   * the equivalent of the Gmail scope gate is reading one existing message and
+   * checking what came back against what the server's own BODYSTRUCTURE said
+   * was there. Bounded, and `BODY.PEEK`, so it neither pulls a large message
+   * nor marks anything `\Seen`.
+   *
+   * Raises `ImapBodyCapabilityError` when the server refuses without naming a
+   * reason of its own; returns `unproven` when the mailbox is empty, because
+   * there was nothing to read and claiming otherwise would be the defect this
+   * exists to catch.
+   */
+  async probeBodyReadable(): Promise<ImapBodyReadability> {
+    const session = this.requireReadableMailbox();
+    return probeMailboxBody(session, {
+      exists: this.status?.exists ?? null,
+      mailbox: this.mailbox,
+    });
+  }
+
+  /**
    * Fetch a bounded body preview for a single message, by UID.
    * Uses BODY.PEEK[TEXT]<0.N> so the message stays unread.
    *
@@ -572,7 +599,12 @@ export class ImapClient {
    * message.
    */
   async readMessageDetail(uid: number): Promise<ImapMessageRead> {
-    return readMessageDetail(this.requireReadableMailbox(), uid, this.mailbox);
+    return readMessageDetail(
+      this.requireReadableMailbox(),
+      uid,
+      this.mailbox,
+      this.options.enforceBodyReadable === true,
+    );
   }
 
   /**

@@ -43,6 +43,7 @@ import type {
   EmailCapabilityFailureReason,
   ImapIdleDecision,
 } from '../imap-client.js';
+import type { ImapBodyReadability } from '../imap-body-probe.js';
 import type {
   InboundCapabilityReason,
   InboundCapabilityState,
@@ -76,6 +77,8 @@ const STATE_BY_REASON: Readonly<Record<InboundCapabilityReason, InboundCapabilit
   'fetch-unreadable': 'insufficient',
   'local-store-unwritable': 'insufficient',
   'watcher-stopped-unexpectedly': 'insufficient',
+  'bodies-unfetchable': 'insufficient',
+  'bodies-unproven': 'degraded',
 };
 
 /**
@@ -162,6 +165,15 @@ const FIX_BY_REASON: Readonly<Record<InboundCapabilityReason, string>> = {
     + 'daemon recognises, so it is reported verbatim rather than guessed at. '
     + 'The detail above is what it said; inbound mail restarts with the daemon '
     + 'or when inbound settings change.',
+  'bodies-unfetchable':
+    'This account can sign in but is not permitted to read message content, so '
+    + 'check the mailbox access rights for it — and where the provider offers a '
+    + 'restricted or metadata-only app password, replace the stored one with a '
+    + 'password that may read message content.',
+  'bodies-unproven':
+    'Nothing to fix — the mailbox was empty, so there was no message to read '
+    + 'and it is not yet proven that this account can read message content. The '
+    + 'first message that arrives settles it either way.',
 };
 
 /** Build a verdict, taking its state and its fix from its reason. */
@@ -205,7 +217,19 @@ export function stateForReason(reason: InboundCapabilityReason): InboundCapabili
 export function verdictForOpenConnection(input: {
   readonly mode: 'idle' | 'poll' | 'auto';
   readonly idle: ImapIdleDecision;
+  /**
+   * What the connect-time body probe demonstrated, when one ran.
+   *
+   * Checked BEFORE the transport, and the ordering is the ruling rather than
+   * an accident: whether message content can be read at all outranks whether
+   * it arrives by push or by poll. A watcher that reported `polling-no-idle`
+   * while unable to prove it can read anything would be describing the less
+   * consequential of two facts.
+   */
+  readonly body?: ImapBodyReadability | undefined;
 }): InboundCapabilityVerdict {
+  const bodyVerdict = input.body === undefined ? null : verdictForBodyReadability(input.body);
+  if (bodyVerdict !== null) return bodyVerdict;
   if (input.mode === 'poll') {
     return capabilityVerdict(
       'polling-configured',
@@ -227,6 +251,35 @@ export function verdictForOpenConnection(input: {
     'The server listed its capabilities and IDLE was not among them, so new '
     + 'mail is found by polling.',
   );
+}
+
+/**
+ * The verdict a body-capability reading implies, or null when it implies none.
+ *
+ * `readable` implies nothing on its own — the transport still decides between
+ * `idle-push`, `polling-configured` and a polling fallback — so it returns
+ * null and lets that decision stand.
+ *
+ * `unproven` is `degraded`, and this is the ruling worth being able to
+ * re-argue later with the facts in front of you. `insufficient` would refuse
+ * to run a watcher on a genuinely empty mailbox, which is what a freshly
+ * created signup alias IS, and would therefore break the exact journey this
+ * capability exists to serve. `healthy` would claim a capability nobody has
+ * demonstrated — the same shape as the Gmail metadata-scope defect, which also
+ * looked like success. `degraded` runs, tells the owner it has not yet been
+ * able to prove it can read message content, and lets the first real message
+ * settle it.
+ *
+ * `unfetchable` never reaches here in the connect path: the connection port
+ * raises before it hands a connection back. It is mapped anyway, because a
+ * reading produced anywhere else must not silently fall through to "fine".
+ */
+export function verdictForBodyReadability(
+  body: ImapBodyReadability,
+): InboundCapabilityVerdict | null {
+  if (body.kind === 'readable') return null;
+  if (body.kind === 'unproven') return capabilityVerdict('bodies-unproven', body.detail);
+  return capabilityVerdict('bodies-unfetchable', body.detail);
 }
 
 // ---------------------------------------------------------------------------
@@ -255,6 +308,7 @@ const REASON_FOR_NOTICE: Readonly<
   'mailbox-unavailable': 'mailbox-unreadable',
   'server-unavailable': 'server-unavailable',
   'connection-failed': 'reconnecting',
+  'bodies-unfetchable': 'bodies-unfetchable',
 };
 
 /**

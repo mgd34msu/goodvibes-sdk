@@ -7,6 +7,13 @@
  * build one by hand. This file is the one place that knows those come from an
  * `ImapClient`, `imapConnection()` and `logout()`.
  *
+ * It is also where "authenticated" stops standing in for "can read the mail".
+ * IMAP publishes no scope list, so before a connection is handed over it reads
+ * one existing message and checks what came back against what the server's own
+ * BODYSTRUCTURE declared — see `imap-body-probe.ts`. A connection that cannot
+ * produce message content raises here instead of becoming a watcher that
+ * reports a mailbox as permanently quiet.
+ *
  * The socket arrives as a factory rather than a value. One connection is one
  * socket: a reconnect needs a NEW one, because a destroyed socket cannot be
  * re-opened and handing the same instance to a second `ImapClient` would give
@@ -18,6 +25,10 @@
 
 import type { Socket } from 'node:net';
 import { ImapClient, imapConnection } from '../imap-client.js';
+import {
+  bodyCapabilityFailure,
+  type ImapBodyReadability,
+} from '../imap-body-probe.js';
 import type {
   MailboxConnection,
   MailboxConnectionPort,
@@ -56,20 +67,15 @@ export function imapMailboxConnectionPort(
         username: options.username,
         password: options.password,
         mailbox: options.mailbox,
+        // The runtime half of the same check the probe makes at connect time:
+        // a body that comes back empty for a message the server said has
+        // content in it is a withheld body, not an empty message.
+        enforceBodyReadable: true,
         ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
       });
-      let report;
+      let opened;
       try {
-        const opened = await client.open();
-        // The connect-time body probe belongs HERE, not inside `open()`
-        // itself: `open()` is the general ImapClient entry, shared by every
-        // ad hoc caller (`EmailService` included), and probing on every one
-        // of those would spend a round trip nobody asked for. Only a
-        // long-lived watcher needs the answer before it opens an expectation
-        // nobody can satisfy, so only this wiring — the watcher's own
-        // connection port — calls it, and folds the result into the report
-        // the watcher actually reads.
-        report = { ...opened, bodyProbe: await client.probeBodyAccess() };
+        opened = await client.open();
       } catch (error) {
         try {
           socket.destroy();
@@ -78,6 +84,64 @@ export function imapMailboxConnectionPort(
         }
         throw error;
       }
+
+      // Authenticated and EXAMINEd is not the same as being allowed to READ
+      // the mail, and IMAP publishes no scope list to consult instead. So the
+      // connection is asked to prove it, at connect time, before the watcher
+      // opens an expectation nobody can satisfy.
+      //
+      // Both probes belong HERE rather than inside `ImapClient.open()`:
+      // `open()` is the general entry, shared by every ad hoc caller
+      // (`EmailService` included), and probing on each of those would spend
+      // round trips nobody asked for. Only a long-lived watcher needs the
+      // answer up front.
+      //
+      // WHY TWO PROBES AND NOT ONE. They look redundant and are not: they send
+      // DIFFERENT COMMANDS and catch different refusals.
+      //
+      //   - `probeBodyAccess()` sends `UID FETCH <uid> (UID BODY.PEEK[TEXT])`.
+      //     That is the command form the real drain uses, so it is the one that
+      //     catches a server which refuses UID-addressed fetches — and it
+      //     catches it here, at connect, instead of on the first real message.
+      //     Its answer lands in `report.bodyProbe`, and `serve()` classifies a
+      //     refusal through `classifyReadFailure` into `fetch-refused`, which
+      //     can come out non-terminal because a `[LIMIT]`-style refusal is a
+      //     server condition rather than a verdict about this account.
+      //   - `probeBodyReadable()` sends sequence-addressed
+      //     `FETCH n (UID BODYSTRUCTURE)` and `FETCH n BODY.PEEK[]<0.N>`, and
+      //     compares what came back against what the server's own BODYSTRUCTURE
+      //     declared. That comparison is the only thing that catches a server
+      //     which ACCEPTS the fetch and hands over nothing — a refusal-only
+      //     check reads that as success, and from the outside it is
+      //     indistinguishable from a mailbox nobody has written to.
+      //
+      // Neither subsumes the other. Dropping the first loses connect-time
+      // detection of a refused UID FETCH; dropping the second loses the
+      // withheld-body case entirely, which is the one this capability exists
+      // for. Two extra round trips, once per connection, is what that costs.
+      const report = { ...opened, bodyProbe: await client.probeBodyAccess() };
+
+      let bodyCapability: ImapBodyReadability;
+      try {
+        bodyCapability = await client.probeBodyReadable();
+        if (bodyCapability.kind === 'unfetchable') {
+          // The server said yes and returned an empty body for a message its
+          // own BODYSTRUCTURE said has content in it. No amount of
+          // reconnecting grants an account access rights, so this is terminal
+          // with its own reason and its own remedy — not `fetch-refused`,
+          // which points at folder and IMAP-access restrictions instead of at
+          // what this account is permitted to read.
+          throw bodyCapabilityFailure({
+            mailbox: options.mailbox,
+            summary: bodyCapability.detail,
+            serverMessage: '',
+          });
+        }
+      } catch (error) {
+        await client.logout().catch(() => undefined);
+        throw error;
+      }
+
       const reader: MailboxReader = {
         capabilities: () => client.capabilities(),
         fetchEnvelopes: (uids) => client.fetchEnvelopes(uids),
@@ -86,6 +150,7 @@ export function imapMailboxConnectionPort(
       return {
         report,
         reader,
+        bodyCapability,
         wire: imapConnection(client),
         close: async () => {
           try {
