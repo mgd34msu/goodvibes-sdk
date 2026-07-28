@@ -39,7 +39,11 @@ export type ChannelPolicyMatchScope = 'surface' | 'group';
 export type ChannelConversationPolicy = 'allow' | 'deny' | 'inherit';
 export type ChannelAccountState = 'healthy' | 'degraded' | 'disabled' | 'unconfigured';
 export type ChannelAuthState = 'linked' | 'configured' | 'not-configured' | 'degraded';
-export type ChannelSecretSource = 'service-registry' | 'config' | 'env' | 'derived' | 'missing';
+/**
+ * Where a channel secret came from. `unresolved` is the case config alone
+ * cannot express: a value IS declared, and it resolves to nothing here.
+ */
+export type ChannelSecretSource = 'service-registry' | 'config' | 'env' | 'derived' | 'unresolved' | 'missing';
 export type ChannelCapabilityScope = 'surface' | 'accounts' | 'directory' | 'delivery' | 'interaction' | 'tooling';
 export type ChannelAccountLifecycleAction =
   | 'inspect'
@@ -144,12 +148,86 @@ export interface ChannelResolvedTarget {
   readonly metadata: Record<string, unknown>;
 }
 
+/**
+ * What a channel's reported state MEANS.
+ *
+ * These answer "can this channel send and receive right now", which is a
+ * different question from "are its credentials present". The two were the same
+ * value until a Telegram bot whose ingress had died kept reporting `healthy`
+ * because its token was still in config — the owner sent a message, got
+ * nothing back, and every surface agreed everything was fine.
+ *
+ * - `healthy`      — something observed the live path and it is working.
+ * - `degraded`     — observed and partially working; delivery is at risk.
+ * - `dead`         — observed and NOT working, while configured and switched
+ *                    on. The state the old shape could not express at all.
+ * - `unknown`      — configured and switched on, but nothing on this node can
+ *                    see whether it works. An honest unknown, never a green.
+ * - `unresolved`   — a credential is DECLARED but does not resolve in the store
+ *                    this process reads. The channel cannot send, and that is
+ *                    knowable without attempting one. Measured on this project's
+ *                    own machine: the daemon's `surfaces.telegram.botToken` held
+ *                    `goodvibes://secrets/goodvibes/TELEGRAM_BOT_TOKEN` while the
+ *                    daemon's own store was `{}` and the token lived in the
+ *                    agent's and the TUI's stores instead. Every send failed with
+ *                    "Missing Telegram bot token"; every surface said healthy.
+ * - `unconfigured` — nothing is declared at all, so it was never going to work.
+ *                    Distinct from `unresolved`: nobody believes it is set up.
+ * - `disabled`     — switched off on purpose; not a fault.
+ */
+export type ChannelHealthState =
+  | 'healthy'
+  | 'degraded'
+  | 'dead'
+  | 'unknown'
+  | 'unresolved'
+  | 'unconfigured'
+  | 'disabled';
+
+/**
+ * What this node can actually SEE of a channel's live inbound/outbound path.
+ *
+ * `observable` is the honesty gate. A surface the daemon serves by registering
+ * an HTTP route and waiting cannot tell a working provider from a silent one,
+ * and must say so rather than let configuration stand in for liveness.
+ */
+export interface ChannelRuntimeObservation {
+  /** True when something here genuinely watches the live path. */
+  readonly observable: boolean;
+  /** Live state when `observable`; null when nothing here can tell. */
+  readonly running: boolean | null;
+  /**
+   * Plain-language account of the state above, and — when it is not working —
+   * the specific thing to change. Never empty.
+   */
+  readonly reason: string;
+  /** The most recent failure this surface reported, when one is known. */
+  readonly lastError?: string | undefined;
+  /** When the observation was taken (epoch ms). */
+  readonly observedAt?: number | undefined;
+}
+
 export interface ChannelStatusSnapshot {
   readonly id: string;
   readonly surface: ChannelSurface;
   readonly label: string;
-  readonly state: 'healthy' | 'degraded' | 'disabled';
+  readonly state: ChannelHealthState;
   readonly enabled: boolean;
+  /** True when a credential for this surface is DECLARED in any backend. */
+  readonly configured?: boolean | undefined;
+  /**
+   * True when a declared credential actually resolves to a value in the store
+   * this process reads. Separate from `configured` because the gap between them
+   * is its own failure: a `goodvibes://secrets/...` reference pointing at a key
+   * that is not in THIS surface's store reads as configured and sends nothing.
+   */
+  readonly credentialResolves?: boolean | undefined;
+  /**
+   * What the state was derived from. Present on every snapshot the built-in
+   * runtime produces; optional so a third-party plugin that only knows its own
+   * state is still a valid plugin.
+   */
+  readonly runtime?: ChannelRuntimeObservation | undefined;
   readonly accountId?: string | undefined;
   readonly metadata: Record<string, unknown>;
 }
@@ -157,7 +235,14 @@ export interface ChannelStatusSnapshot {
 export interface ChannelSecretStatus {
   readonly field: string;
   readonly label: string;
+  /** A value or a reference is DECLARED for this field. */
   readonly configured: boolean;
+  /**
+   * The declared value actually resolves to a secret in the store this process
+   * reads. False with `configured` true is the shape that bit: a reference
+   * naming a key another surface's store holds and this one does not.
+   */
+  readonly resolved?: boolean | undefined;
   readonly source: ChannelSecretSource;
 }
 
@@ -430,7 +515,15 @@ export interface ChannelRepairAction {
 export interface ChannelDoctorReport {
   readonly surface: ChannelSurface;
   readonly accountId?: string | undefined;
-  readonly state: ChannelAccountState;
+  /**
+   * The same health question the status snapshot answers, resolved by the same
+   * rule. It used to be the ACCOUNT state — credential presence — so `doctor`
+   * on a Telegram bot whose ingress had died reported `healthy`, which is the
+   * one answer a doctor must never give a broken thing.
+   */
+  readonly state: ChannelHealthState;
+  /** What this node can see of the live path; the basis for `state`. */
+  readonly runtime?: ChannelRuntimeObservation | undefined;
   readonly summary: string;
   readonly checkedAt: number;
   readonly checks: readonly ChannelDoctorCheck[];

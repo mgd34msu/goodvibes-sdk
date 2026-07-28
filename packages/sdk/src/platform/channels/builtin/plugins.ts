@@ -18,17 +18,20 @@ import {
 } from '../../adapters/index.js';
 import type { AutomationRouteBinding } from '../../automation/routes.js';
 import type { SharedApprovalRecord } from '../../control-plane/index.js';
-import type { ProviderRuntimeSurface } from '../provider-runtime.js';
+import type { ProviderRuntimeStatus, ProviderRuntimeSurface } from '../provider-runtime.js';
 import type {
   ChannelAccountRecord,
   ChannelCapabilityDescriptor,
   ChannelDirectoryEntry,
   ChannelDirectoryQueryOptions,
   ChannelOperatorActionDescriptor,
+  ChannelRuntimeObservation,
+  ChannelStatusSnapshot,
   ChannelSurface,
   ChannelToolDescriptor,
 } from '../types.js';
 import type { ChannelPlugin } from '../plugin-registry.js';
+import { buildBuiltinStatusSnapshot } from './health.js';
 import type { BuiltinChannelRuntimeDeps, ManagedSurface } from './shared.js';
 
 interface BuiltinPluginRegistrationContext {
@@ -66,7 +69,40 @@ interface BuiltinPluginRegistrationContext {
   readonly lookupDirectory: (surface: ManagedSurface, query: string, options?: ChannelDirectoryQueryOptions) => Promise<ChannelDirectoryEntry[]>;
   readonly lookupRouteDirectory: (surface: ManagedSurface, query: string, options?: ChannelDirectoryQueryOptions) => Promise<ChannelDirectoryEntry[]>;
   readonly notifyApprovalViaRouter: (surface: ChannelSurface, approval: SharedApprovalRecord, binding: AutomationRouteBinding) => Promise<void>;
-  readonly providerRuntimeStatus: (surface: ProviderRuntimeSurface) => unknown;
+  readonly providerRuntimeStatus: (surface: ProviderRuntimeSurface) => ProviderRuntimeStatus | null;
+  /**
+   * What this node can see of the surface's live path. Supplied by the runtime
+   * rather than read here, because the two things that can answer it — the
+   * Telegram supervisor and the provider connection manager — are the runtime's
+   * to hold.
+   */
+  readonly observeRuntime: (surface: ChannelSurface) => ChannelRuntimeObservation;
+}
+
+/**
+ * Every built-in surface's status, built one way.
+ *
+ * Each `getStatus` used to decide its own state inline, and all of them decided
+ * it from configuration: four of them reported `healthy` whenever the delivery
+ * switch was on, without so much as checking for a credential. Routing them
+ * all through here means a surface cannot report health without an observation
+ * to base it on.
+ */
+async function builtinStatus(
+  context: BuiltinPluginRegistrationContext,
+  surface: ChannelSurface,
+  label: string,
+  enabled: boolean,
+  metadata: Record<string, unknown>,
+): Promise<ChannelStatusSnapshot> {
+  return buildBuiltinStatusSnapshot({
+    surface,
+    label,
+    enabled,
+    account: await context.buildAccount(surface),
+    runtime: context.observeRuntime(surface),
+    metadata,
+  });
 }
 
 export function registerBuiltinChannelPlugins(context: BuiltinPluginRegistrationContext): void {
@@ -75,14 +111,7 @@ export function registerBuiltinChannelPlugins(context: BuiltinPluginRegistration
     surface: 'tui',
     displayName: 'Terminal UI',
     capabilities: ['ingress', 'egress', 'session_binding', 'account_lifecycle', 'target_resolution', 'agent_tools'],
-    getStatus: async () => ({
-      id: 'surface:tui',
-      surface: 'tui',
-      label: 'Terminal UI',
-      state: 'healthy',
-      enabled: true,
-      metadata: {},
-    }),
+    getStatus: async () => builtinStatus(context, 'tui', 'Terminal UI', true, {}),
     listAccounts: async () => [await context.buildAccount('tui')],
     getAccount: async (accountId) => context.resolveAccount('tui', accountId),
     listCapabilities: async () => context.listCapabilities('tui'),
@@ -102,16 +131,13 @@ export function registerBuiltinChannelPlugins(context: BuiltinPluginRegistration
     surface: 'web',
     displayName: 'Web control plane',
     capabilities: ['ingress', 'egress', 'threaded_reply', 'account_lifecycle', 'target_resolution', 'agent_tools'],
-    getStatus: async () => ({
-      id: 'surface:web',
-      surface: 'web',
-      label: 'Web control plane',
-      state: context.deps.configManager.get('web.enabled') || context.deps.configManager.get('controlPlane.enabled') ? 'healthy' : 'disabled',
-      enabled: Boolean(context.deps.configManager.get('web.enabled') || context.deps.configManager.get('controlPlane.enabled')),
-      metadata: {
-        baseUrl: context.deps.configManager.get('web.publicBaseUrl'),
-      },
-    }),
+    getStatus: async () => builtinStatus(
+      context,
+      'web',
+      'Web control plane',
+      Boolean(context.deps.configManager.get('web.enabled') || context.deps.configManager.get('controlPlane.enabled')),
+      { baseUrl: context.deps.configManager.get('web.publicBaseUrl') },
+    ),
     listAccounts: async () => [await context.buildAccount('web')],
     getAccount: async (accountId) => context.resolveAccount('web', accountId),
     listCapabilities: async () => context.listCapabilities('web'),
@@ -134,17 +160,9 @@ export function registerBuiltinChannelPlugins(context: BuiltinPluginRegistration
     deliverReply: (pending, message) => context.deps.deliverSlackAgentReply(pending, message),
     deliverProgress: (pending, progress) => context.deps.deliverSurfaceProgress(pending, progress),
     notifyApproval: (approval, binding) => context.deps.deliverSlackApprovalUpdate(approval, binding),
-    getStatus: async () => ({
-      id: 'surface:slack',
-      surface: 'slack',
-      label: 'Slack',
-      state: context.deps.surfaceDeliveryEnabled('slack') ? 'healthy' : 'disabled',
-      enabled: context.deps.surfaceDeliveryEnabled('slack'),
-      accountId: String(context.deps.configManager.get('surfaces.slack.workspaceId') || ''),
-      metadata: {
-        defaultChannel: context.deps.configManager.get('surfaces.slack.defaultChannel'),
-        providerRuntime: context.providerRuntimeStatus('slack'),
-      },
+    getStatus: async () => builtinStatus(context, 'slack', 'Slack', context.deps.surfaceDeliveryEnabled('slack'), {
+      defaultChannel: context.deps.configManager.get('surfaces.slack.defaultChannel'),
+      providerRuntime: context.providerRuntimeStatus('slack'),
     }),
     listAccounts: async () => [await context.buildAccount('slack')],
     getAccount: async (accountId) => context.resolveAccount('slack', accountId),
@@ -168,17 +186,9 @@ export function registerBuiltinChannelPlugins(context: BuiltinPluginRegistration
     deliverReply: (pending, message) => context.deps.deliverDiscordAgentReply(pending, message),
     deliverProgress: (pending, progress) => context.deps.deliverSurfaceProgress(pending, progress),
     notifyApproval: (approval, binding) => context.deps.deliverDiscordApprovalUpdate(approval, binding),
-    getStatus: async () => ({
-      id: 'surface:discord',
-      surface: 'discord',
-      label: 'Discord',
-      state: context.deps.surfaceDeliveryEnabled('discord') ? 'healthy' : 'disabled',
-      enabled: context.deps.surfaceDeliveryEnabled('discord'),
-      accountId: String(context.deps.configManager.get('surfaces.discord.applicationId') || ''),
-      metadata: {
-        defaultChannelId: context.deps.configManager.get('surfaces.discord.defaultChannelId'),
-        providerRuntime: context.providerRuntimeStatus('discord'),
-      },
+    getStatus: async () => builtinStatus(context, 'discord', 'Discord', context.deps.surfaceDeliveryEnabled('discord'), {
+      defaultChannelId: context.deps.configManager.get('surfaces.discord.defaultChannelId'),
+      providerRuntime: context.providerRuntimeStatus('discord'),
     }),
     listAccounts: async () => [await context.buildAccount('discord')],
     getAccount: async (accountId) => context.resolveAccount('discord', accountId),
@@ -202,20 +212,13 @@ export function registerBuiltinChannelPlugins(context: BuiltinPluginRegistration
     deliverReply: (pending, message) => context.deps.deliverNtfyAgentReply(pending, message),
     deliverProgress: (pending, progress) => context.deps.deliverSurfaceProgress(pending, progress),
     notifyApproval: (approval, binding) => context.deps.deliverNtfyApprovalUpdate(approval, binding),
-    getStatus: async () => ({
-      id: 'surface:ntfy',
-      surface: 'ntfy',
-      label: 'ntfy',
-      state: context.deps.surfaceDeliveryEnabled('ntfy') ? 'healthy' : 'disabled',
-      enabled: context.deps.surfaceDeliveryEnabled('ntfy'),
-      metadata: {
-        topic: context.deps.configManager.get('surfaces.ntfy.topic'),
-        chatTopic: context.deps.configManager.get('surfaces.ntfy.chatTopic'),
-        agentTopic: context.deps.configManager.get('surfaces.ntfy.agentTopic'),
-        remoteTopic: context.deps.configManager.get('surfaces.ntfy.remoteTopic'),
-        baseUrl: context.deps.configManager.get('surfaces.ntfy.baseUrl'),
-        providerRuntime: context.providerRuntimeStatus('ntfy'),
-      },
+    getStatus: async () => builtinStatus(context, 'ntfy', 'ntfy', context.deps.surfaceDeliveryEnabled('ntfy'), {
+      topic: context.deps.configManager.get('surfaces.ntfy.topic'),
+      chatTopic: context.deps.configManager.get('surfaces.ntfy.chatTopic'),
+      agentTopic: context.deps.configManager.get('surfaces.ntfy.agentTopic'),
+      remoteTopic: context.deps.configManager.get('surfaces.ntfy.remoteTopic'),
+      baseUrl: context.deps.configManager.get('surfaces.ntfy.baseUrl'),
+      providerRuntime: context.providerRuntimeStatus('ntfy'),
     }),
     listAccounts: async () => [await context.buildAccount('ntfy')],
     getAccount: async (accountId) => context.resolveAccount('ntfy', accountId),
@@ -238,15 +241,8 @@ export function registerBuiltinChannelPlugins(context: BuiltinPluginRegistration
     handleInbound: (req) => handleGenericWebhookSurface(req, context.deps.buildGenericWebhookAdapterContext()),
     deliverReply: (pending, message) => context.deps.deliverWebhookAgentReply(pending, message),
     notifyApproval: (approval, binding) => context.deps.deliverWebhookApprovalUpdate(approval, binding),
-    getStatus: async () => ({
-      id: 'surface:webhook',
-      surface: 'webhook',
-      label: 'Generic webhook',
-      state: context.deps.surfaceDeliveryEnabled('webhook') ? 'healthy' : 'disabled',
-      enabled: context.deps.surfaceDeliveryEnabled('webhook'),
-      metadata: {
-        defaultTarget: context.deps.configManager.get('surfaces.webhook.defaultTarget'),
-      },
+    getStatus: async () => builtinStatus(context, 'webhook', 'Generic webhook', context.deps.surfaceDeliveryEnabled('webhook'), {
+      defaultTarget: context.deps.configManager.get('surfaces.webhook.defaultTarget'),
     }),
     listAccounts: async () => [await context.buildAccount('webhook')],
     getAccount: async (accountId) => context.resolveAccount('webhook', accountId),
@@ -290,15 +286,14 @@ function registerRouterBackedPlugin(
     handleInbound: (req) => handleInbound(req, context.deps.buildSurfaceAdapterContext()),
     getStatus: async () => {
       const account = await context.buildAccount(surface);
-      return {
-        id: `surface:${surface}`,
+      return buildBuiltinStatusSnapshot({
         surface,
         label: displayName,
-        state: account.state === 'healthy' ? 'healthy' : account.state === 'disabled' ? 'disabled' : 'degraded',
         enabled: context.deps.surfaceDeliveryEnabled(surface),
-        accountId: account.accountId,
+        account,
+        runtime: context.observeRuntime(surface),
         metadata: account.metadata,
-      };
+      });
     },
     listAccounts: async () => [await context.buildAccount(surface)],
     getAccount: async (accountId) => context.resolveAccount(surface, accountId),

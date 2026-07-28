@@ -9043,6 +9043,43 @@
       ]
     },
     {
+      "name": "ChannelHealthAlert",
+      "kind": "interface",
+      "required": [
+        "kind",
+        "label",
+        "message",
+        "previousState",
+        "reason",
+        "state",
+        "surface"
+      ]
+    },
+    {
+      "name": "ChannelHealthInput",
+      "kind": "interface",
+      "required": [
+        "configured",
+        "enabled",
+        "runtime"
+      ]
+    },
+    {
+      "name": "ChannelHealthState",
+      "kind": "type"
+    },
+    {
+      "name": "ChannelHealthWatcher",
+      "kind": "class"
+    },
+    {
+      "name": "ChannelHealthWatcherDeps",
+      "kind": "interface",
+      "required": [
+        "listStatus"
+      ]
+    },
+    {
       "name": "ChannelIdentity",
       "kind": "interface",
       "required": [
@@ -9243,6 +9280,15 @@
       ]
     },
     {
+      "name": "ChannelRuntimeObservation",
+      "kind": "interface",
+      "required": [
+        "observable",
+        "reason",
+        "running"
+      ]
+    },
+    {
       "name": "ChannelSecretBackend",
       "kind": "type"
     },
@@ -9397,11 +9443,31 @@
       "kind": "function"
     },
     {
+      "name": "isChannelFailing",
+      "kind": "function"
+    },
+    {
+      "name": "isChannelWorking",
+      "kind": "function"
+    },
+    {
       "name": "normalizeChannelRenderEventFromRuntime",
       "kind": "function"
     },
     {
+      "name": "observedRuntime",
+      "kind": "function"
+    },
+    {
       "name": "resolveChannelDeliverySurfaceKind",
+      "kind": "function"
+    },
+    {
+      "name": "resolveChannelHealthState",
+      "kind": "function"
+    },
+    {
+      "name": "unobservableRuntime",
       "kind": "function"
     }
   ],
