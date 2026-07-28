@@ -26,9 +26,26 @@
  * inert in exactly the way §2.3 describes — the middle of the chain missing
  * while both ends worked. They are attached to the registry that this function
  * builds, alongside `email.inbound.status` over the supervisor.
+ *
+ * **The Gmail source is CONSTRUCTED here, and that is new.** `GmailMailSource`
+ * was complete, tested and exported, and nothing in production ever built one:
+ * `createInboundMailSourceFactory` took the builder as an optional `deps.gmail`
+ * and this file passed nothing, so the factory answered `null` for
+ * `kind: 'gmail'` on every machine while `selectionFacts` reported
+ * `googleAdopted: options.gmail !== undefined` — permanently false. An owner
+ * with Google adopted and no IMAP set up therefore had no inbound mail at all,
+ * and was told "no Google credentials have been adopted on this machine".
+ *
+ * So `gmailReader` is a REQUIRED option rather than an optional one. The
+ * compiler is the gate: a composition that stops supplying it stops building,
+ * which is the one check that cannot itself go inert. The reader arrives as a
+ * provider (see `facade-gmail-reader.ts`) and everything else the source needs
+ * — the cursor store, the expectation predicate, the clock, the two Gmail poll
+ * intervals — is assembled from what this file already owns.
  */
 
 import {
+  GmailMailSource,
   InboundExpectationRegistry,
   InboundMailHousekeeper,
   InboundMailStore,
@@ -40,11 +57,16 @@ import {
   createInboundNoticeHealth,
   createInboundTerminalFailureAnnouncer,
   resolveWatcherSettings,
+  systemWatcherClock,
   type GmailSourceBuilder,
   type InboundMailObserver,
   type InboundNoticeMode,
   type NoticeRouteResolution,
 } from '../email/inbound/index.js';
+import type {
+  GmailInboundReaderProvider,
+  GmailInboundReaderResolution,
+} from '../google/gmail-inbound-reader.js';
 import { nodeEmailTransport } from '../email/node.js';
 import { readSurfaceEmailSettings } from '../email/surface-config.js';
 import { registerEmailExpectationGatewayMethods } from '../control-plane/routes/email-expectations.js';
@@ -89,8 +111,21 @@ export interface InboundMailCompositionOptions {
     binding: AutomationRouteBinding | undefined,
     notice: StructuredNotice,
   ) => Promise<SurfaceNoticeDelivery>;
-  /** Supplied by a composition that has an adopted Google credential. */
-  readonly gmail?: GmailSourceBuilder | undefined;
+  /**
+   * How this machine's Google credential is turned into Gmail-reading I/O.
+   *
+   * REQUIRED, deliberately. Its optional predecessor (`gmail?:
+   * GmailSourceBuilder`) is what let the whole Gmail path ship inert: nothing
+   * ever filled it, and an unfilled optional field is indistinguishable from a
+   * machine with no Google account. A required provider that ANSWERS
+   * `unavailable` with a reason carries the same information and cannot be
+   * forgotten — `createBuiltinChannelRuntime` stops compiling if it is dropped.
+   *
+   * Called once per supervisor start rather than held as a resolved value, so a
+   * credential adopted while the daemon is running is picked up on the next
+   * start instead of at the next restart.
+   */
+  readonly gmailReader: GmailInboundReaderProvider;
 }
 
 /**
@@ -329,6 +364,50 @@ export function composeInboundMail(
     },
   };
 
+  /**
+   * The reader resolved by the start that is happening right now.
+   *
+   * `InboundMailSupervisor.start()` asks `selectionFacts()` and then, if the
+   * selection came out `gmail`, asks the factory to build the source. Those are
+   * two steps of ONE decision, so the second must use the credential the first
+   * decided on. Resolving twice would open the credential store twice and, on a
+   * revocation landing between them, would build a source over a grant the
+   * selection had not approved.
+   *
+   * Reset to null before every resolve so a stale reader can never serve a
+   * later start: a restart after a credential was removed must see `null`, not
+   * the reader the previous start happened to obtain.
+   */
+  let resolved: GmailInboundReaderResolution | null = null;
+
+  const gmailBuilder: GmailSourceBuilder = async (input) => {
+    const resolution = resolved ?? await options.gmailReader();
+    if (resolution.kind !== 'ready') return null;
+    return new GmailMailSource({
+      account: input.account,
+      mailbox: input.mailbox,
+      history: resolution.reader.history,
+      currentHistoryId: resolution.reader.currentHistoryId,
+      cursors,
+      sink: input.sink,
+      clock: systemWatcherClock,
+      // The predicate, not the registry: §2.1's structural rule is that a
+      // source must not hold anything that could OPEN an expectation, and a
+      // closure over `list()` is a boolean where the registry would be a
+      // capability. See `ExpectationPresence` in gmail-source.ts.
+      expectationOpen: () => expectations.list().length > 0,
+      // Read here because here is the only place that constructs the source
+      // these two settings belong to. Both were declared in the schema, shown
+      // in the settings UI and documented, and read by nothing at all.
+      pollExpectingMs: readNumberSetting(configManager, 'surfaces.email.inbound.gmailPollSecondsExpecting', 5) * 1_000,
+      pollIdleMs: readNumberSetting(configManager, 'surfaces.email.inbound.gmailPollSecondsIdle', 60) * 1_000,
+      // The same re-probe wait the IMAP path uses, from the same setting, so a
+      // refused grant is re-asked at one interval rather than two.
+      capabilityRecheckMs: settings.capabilityRecheckMs,
+      observer,
+    });
+  };
+
   supervisor = new InboundMailSupervisor({
     config: configManager,
     account,
@@ -339,17 +418,33 @@ export function composeInboundMail(
       transport: nodeEmailTransport,
       cursors,
       settings,
-      ...(options.gmail === undefined ? {} : { gmail: options.gmail }),
+      gmail: gmailBuilder,
     }),
     // Asked at every start, so a Google credential adopted after boot is seen
-    // on the next start rather than at the next restart. Both facts are false
-    // until a composition supplies a Gmail builder: claiming Google is adopted
-    // while having no way to read through it would put `auto` on a source this
-    // build refuses, which is a worse answer than IMAP with an honest basis.
-    selectionFacts: async () => ({
-      googleAdopted: options.gmail !== undefined,
-      mailAccountIsGmail: options.gmail !== undefined && isGmailAccount(configManager),
-    }),
+    // on the next start rather than at the next restart.
+    //
+    // `googleAdopted` is the answer from a composition that actually opened the
+    // credential and asked Google for the mailbox — not, as it was, the
+    // presence of an injected builder that nothing ever injected. When it is
+    // false the reason travels with it, because "no account connected", "the
+    // grant was refused" and "Google could not be reached" need three different
+    // actions and used to arrive as one silent `false`.
+    selectionFacts: async () => {
+      resolved = null;
+      const resolution = await options.gmailReader();
+      resolved = resolution;
+      if (resolution.kind !== 'ready') {
+        return {
+          googleAdopted: false,
+          mailAccountIsGmail: false,
+          gmailUnavailable: `${resolution.detail}${resolution.fix === '' ? '' : ` ${resolution.fix}`}`,
+        };
+      }
+      return {
+        googleAdopted: true,
+        mailAccountIsGmail: isGmailMailbox(configManager, account, resolution.reader.address),
+      };
+    },
     cursors,
     records,
     expectations,
@@ -390,13 +485,48 @@ function readInboundMode(configManager: ConfigManager): 'idle' | 'poll' | 'auto'
 }
 
 /**
- * Whether the configured mailbox is a Gmail one.
+ * Whether the mailbox this node watches is one the adopted Google credential
+ * can read.
  *
- * Read from the IMAP host rather than from the address: an address at a Google
- * Workspace custom domain is still a Gmail mailbox, and an `@gmail.com`
- * address forwarded into somebody else's IMAP server is not.
+ * Two ways to be true, and the second is the one that was missing.
+ *
+ * **The connected mailbox IS the watched account.** `users.getProfile` answers
+ * with the address those credentials read, so an exact match is direct evidence
+ * rather than an inference — and it is the only evidence available on the
+ * machine this whole path exists to serve. The owner has Google connected and
+ * has never configured IMAP, so there is no IMAP host to read a domain off.
+ *
+ * **Or the configured IMAP host is a Google one.** The original test, kept
+ * because it is still right when it fires: an address at a Google Workspace
+ * custom domain is a Gmail mailbox whatever it looks like, and an `@gmail.com`
+ * address forwarded into somebody else's IMAP server is not. It covers the
+ * owner who has both configured and points them at the same mailbox.
+ *
+ * Neither holding is a real answer, not a fallback: Gmail's API reads the
+ * mailbox belonging to the adopted credentials and cannot read a mailbox on
+ * another provider, which is what the `not-a-gmail-account` basis says.
  */
-function isGmailAccount(configManager: ConfigManager): boolean {
+function isGmailMailbox(
+  configManager: ConfigManager,
+  account: string,
+  connectedAddress: string,
+): boolean {
+  if (sameAddress(account, connectedAddress)) return true;
   const host = readSurfaceEmailSettings((key) => configManager.get(key as never)).imapHost ?? '';
   return /(^|\.)(gmail\.com|googlemail\.com|google\.com)$/i.test(host.trim().toLowerCase());
+}
+
+/**
+ * Address equality, case-folded and trimmed — and nothing cleverer.
+ *
+ * Deliberately NOT Gmail's dot-and-plus folding. Deciding that
+ * `o.wner+tag@gmail.com` is the same mailbox as `owner@gmail.com` would be this
+ * file inventing a provider rule, and being wrong about it means watching a
+ * mailbox the owner did not name. An address that needs folding is one the
+ * owner can write the way Google reports it.
+ */
+function sameAddress(left: string, right: string): boolean {
+  const normalize = (value: string): string => value.trim().toLowerCase();
+  const a = normalize(left);
+  return a.length > 0 && a === normalize(right);
 }

@@ -347,6 +347,18 @@ describe('a mailbox that announces nothing does not report healthy', () => {
 // The feature gate: an unrelated flag must not read as "you configured nothing"
 // ---------------------------------------------------------------------------
 
+/**
+ * These cases are about the notice path over IMAP, on a machine with no Google
+ * account. Stated rather than omitted: `composeInboundMail` requires a Gmail
+ * reader because an unfilled optional one is exactly what let the Gmail arm
+ * ship with nothing behind it.
+ */
+const NO_GOOGLE_ACCOUNT = async () => ({
+  kind: 'unavailable' as const,
+  detail: 'No Google account is connected on this machine.',
+  fix: '',
+});
+
 function composeWith(dir: string, routeBindings: Record<string, unknown>) {
   const values: Record<string, unknown> = {
     'surfaces.email.inbound.enabled': true,
@@ -367,6 +379,7 @@ function composeWith(dir: string, routeBindings: Record<string, unknown>) {
       deliveries.push((binding as { id?: string } | undefined)?.id);
       return { delivered: true } as never;
     },
+    gmailReader: NO_GOOGLE_ACCOUNT,
   });
   return { supervisor, deliveries };
 }
@@ -462,6 +475,7 @@ describe('route binding switched off is reported as itself, not as "nothing conf
       } as never,
       gatewayMethods: { get: () => undefined, register: () => undefined } as never,
       deliverStructuredNotice: async () => ({ delivered: true } as never),
+      gmailReader: NO_GOOGLE_ACCOUNT,
     });
     await (supervisor as unknown as {
       deps: { handle: (message: ImapInboundMessage) => Promise<void> };

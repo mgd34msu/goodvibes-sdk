@@ -130,12 +130,14 @@ export interface GmailMailSourceDeps {
   /**
    * The mailbox's CURRENT `historyId`, as Google sent it.
    *
-   * Injected rather than derived here, because there is no single documented
-   * "give me the current historyId" call this module could pick on its own:
-   * Google's guide names `messages.get` / `messages.list` as where a caller
-   * reads one, and `GoogleApiClient` exposes neither a profile call nor a
-   * `historyId` today. Needed on exactly two paths, both of which establish
-   * rather than replay: a first run, and a `resync-required` recovery.
+   * Injected rather than called here, so this file stays free of any Google
+   * client: it is handed I/O, exactly as `history` is. The composition fills it
+   * with `GoogleApiClient.currentHistoryId()`, which reads
+   * `users.getProfile().historyId` — "the ID of the mailbox's current history
+   * record", Google's own words for the field, and the reason that call is the
+   * right one for a path that establishes without backfilling. Needed on
+   * exactly two paths, both of which establish rather than replay: a first run,
+   * and a `resync-required` recovery.
    */
   readonly currentHistoryId: () => Promise<GoogleApiResult<string>>;
   readonly cursors: GmailCursorPort;

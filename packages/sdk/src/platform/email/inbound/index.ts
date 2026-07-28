@@ -154,6 +154,12 @@ export {
 } from './source-selection.js';
 export { ImapMailSource } from './imap-source.js';
 export {
+  GmailMailSource,
+  type ExpectationPresence,
+  type GmailCursorPort,
+  type GmailMailSourceDeps,
+} from './gmail-source.js';
+export {
   createInboundMailSourceFactory,
   type GmailSourceBuilder,
   type InboundMailSourceFactoryDeps,

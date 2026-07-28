@@ -571,6 +571,15 @@ describe('a terminal failure is announced to the owner, once per transition', ()
         sent.push(notice);
         return { delivered: true } as never;
       },
+      // This case is about the IMAP terminal-failure path, so the machine it
+      // runs on has no Google account — STATED, rather than left as an absent
+      // optional. `gmailReader` is required precisely because an unfilled
+      // optional field is what let the Gmail arm ship inert.
+      gmailReader: async () => ({
+        kind: 'unavailable',
+        detail: 'No Google account is connected on this machine.',
+        fix: '',
+      }),
     });
 
     expect(supervisor).not.toBeNull();
