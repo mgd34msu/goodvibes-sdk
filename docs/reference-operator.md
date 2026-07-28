@@ -38662,7 +38662,45 @@ Index an existing artifact reference, JSON path/URI reference, multipart file up
       }
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "artifactId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifactId"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "uri"
+      ],
+      "additionalProperties": true
+    }
+  ]
 }
 ```
 
@@ -39946,7 +39984,33 @@ Attach a Home Graph source or node to a Home Assistant object.
   "required": [
     "target"
   ],
-  "additionalProperties": true
+  "additionalProperties": true,
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "sourceId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sourceId"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "nodeId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "nodeId"
+      ],
+      "additionalProperties": true
+    }
+  ]
 }
 ```
 
@@ -42778,7 +42842,45 @@ Accept, reject, resolve, edit, or forget a Home Graph issue, source, or node.
   "required": [
     "action"
   ],
-  "additionalProperties": true
+  "additionalProperties": true,
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "issueId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "issueId"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "nodeId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "nodeId"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "sourceId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sourceId"
+      ],
+      "additionalProperties": true
+    }
+  ]
 }
 ```
 
@@ -44178,7 +44280,33 @@ Remove an active Home Graph source/object link without deleting source history.
   "required": [
     "target"
   ],
-  "additionalProperties": true
+  "additionalProperties": true,
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "sourceId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sourceId"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "nodeId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "nodeId"
+      ],
+      "additionalProperties": true
+    }
+  ]
 }
 ```
 
@@ -56039,30 +56167,46 @@ Persist a meaningful project decision record for future TUI and agent context.
     },
     "decision": {
       "type": "object",
-      "additionalProperties": {
-        "anyOf": [
-          {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "context": {
+          "type": "string"
+        },
+        "decision": {
+          "type": "string"
+        },
+        "alternatives": {
+          "type": "array",
+          "items": {
             "type": "string"
-          },
-          {
-            "type": "number"
-          },
-          {
-            "type": "boolean"
-          },
-          {
-            "type": "null"
-          },
-          {
-            "type": "object",
-            "additionalProperties": {}
-          },
-          {
-            "type": "array",
-            "items": {}
           }
-        ]
-      }
+        },
+        "reasoning": {
+          "type": "string"
+        },
+        "consequences": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "status": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "title",
+        "decision"
+      ],
+      "additionalProperties": true
     }
   },
   "required": [
@@ -59984,30 +60128,87 @@ Create a durable project-scoped work-plan task for TUI, WebUI, APK, daemon plann
     },
     "task": {
       "type": "object",
-      "additionalProperties": {
-        "anyOf": [
-          {
+      "properties": {
+        "taskId": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "priority": {
+          "type": "number"
+        },
+        "order": {
+          "type": "number"
+        },
+        "source": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
             "type": "string"
-          },
-          {
-            "type": "number"
-          },
-          {
-            "type": "boolean"
-          },
-          {
-            "type": "null"
-          },
-          {
-            "type": "object",
-            "additionalProperties": {}
-          },
-          {
-            "type": "array",
-            "items": {}
           }
-        ]
-      }
+        },
+        "parentTaskId": {
+          "type": "string"
+        },
+        "chainId": {
+          "type": "string"
+        },
+        "phaseId": {
+          "type": "string"
+        },
+        "agentId": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        },
+        "decisionId": {
+          "type": "string"
+        },
+        "sourceMessageId": {
+          "type": "string"
+        },
+        "linkedArtifactIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "linkedSourceIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "linkedNodeIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "originSurface": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "additionalProperties": true
     }
   },
   "required": [

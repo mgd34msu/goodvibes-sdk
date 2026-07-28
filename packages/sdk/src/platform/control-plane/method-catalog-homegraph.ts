@@ -4,8 +4,10 @@ import {
   NUMBER_SCHEMA,
   STRING_SCHEMA,
   bodyEnvelopeSchema,
+  branchedSchema,
   methodDescriptor,
   objectSchema,
+  requirementBranch,
 } from './method-catalog-shared.js';
 import {
   GENERIC_LIST_SCHEMA,
@@ -130,11 +132,21 @@ export const builtinGatewayHomeGraphMethodDescriptors: readonly GatewayMethodDes
     method: 'POST',
     path: '/api/homeassistant/home-graph/ingest/artifact',
     write: true,
-    inputSchema: bodyEnvelopeSchema({
-      installationId: STRING_SCHEMA, knowledgeSpaceId: STRING_SCHEMA, artifactId: STRING_SCHEMA, path: STRING_SCHEMA,
-      uri: STRING_SCHEMA, title: STRING_SCHEMA, tags: STRING_LIST_SCHEMA, target: JSON_RECORD_SCHEMA,
-      allowPrivateHosts: BOOLEAN_SCHEMA, metadata: METADATA_SCHEMA,
-    }),
+    // With no `artifactId` the service creates the artifact instead, and the
+    // store refuses an input with no content source (`Artifact input requires
+    // dataBase64, text, path, or uri`, platform/artifacts/store.ts) — this verb
+    // only forwards `path` and `uri`. So: an existing artifact by id, or a
+    // reference to fetch. The multipart and raw-body upload modes carry their
+    // content in the HTTP request and never reach this schema.
+    inputSchema: branchedSchema(
+      bodyEnvelopeSchema({
+        installationId: STRING_SCHEMA, knowledgeSpaceId: STRING_SCHEMA, artifactId: STRING_SCHEMA, path: STRING_SCHEMA,
+        uri: STRING_SCHEMA, title: STRING_SCHEMA, tags: STRING_LIST_SCHEMA, target: JSON_RECORD_SCHEMA,
+        allowPrivateHosts: BOOLEAN_SCHEMA, metadata: METADATA_SCHEMA,
+      }),
+      (['artifactId', 'path', 'uri'] as const).map((field) =>
+        requirementBranch({ [field]: STRING_SCHEMA }, [field])),
+    ),
     outputSchema: HOME_GRAPH_INGEST_OUTPUT_SCHEMA,
     metadata: {
       uploadModes: ['json-artifact-reference', 'json-path-or-uri', 'multipart-file', 'raw-body'],
@@ -243,10 +255,19 @@ export const builtinGatewayHomeGraphMethodDescriptors: readonly GatewayMethodDes
     method: 'POST',
     path: '/api/homeassistant/home-graph/facts/review',
     write: true,
-    inputSchema: bodyEnvelopeSchema({
-      installationId: STRING_SCHEMA, knowledgeSpaceId: STRING_SCHEMA, issueId: STRING_SCHEMA, nodeId: STRING_SCHEMA,
-      sourceId: STRING_SCHEMA, action: STRING_SCHEMA, value: JSON_RECORD_SCHEMA, reviewer: STRING_SCHEMA,
-    }, ['action']),
+    // A review has to name what it is reviewing: `reviewFact requires issueId,
+    // nodeId, or sourceId.` (knowledge/home-graph/review.ts). Any one of the
+    // three is a complete call, so it is a union rather than three required
+    // fields. `action` stays required — it was already declared, and it is the
+    // one field the caller must always supply.
+    inputSchema: branchedSchema(
+      bodyEnvelopeSchema({
+        installationId: STRING_SCHEMA, knowledgeSpaceId: STRING_SCHEMA, issueId: STRING_SCHEMA, nodeId: STRING_SCHEMA,
+        sourceId: STRING_SCHEMA, action: STRING_SCHEMA, value: JSON_RECORD_SCHEMA, reviewer: STRING_SCHEMA,
+      }, ['action']),
+      (['issueId', 'nodeId', 'sourceId'] as const).map((field) =>
+        requirementBranch({ [field]: STRING_SCHEMA }, [field])),
+    ),
     outputSchema: HOME_GRAPH_REVIEW_OUTPUT_SCHEMA,
   }),
   homeGraphDescriptor({
@@ -407,14 +428,27 @@ export const builtinGatewayHomeGraphMethodDescriptors: readonly GatewayMethodDes
   }),
 ];
 
+/**
+ * Linking and unlinking both need to be told WHICH knowledge record to attach,
+ * and `resolveLinkSource` (knowledge/home-graph/link.ts) refuses with
+ * `linkKnowledge requires sourceId or nodeId.` before it even looks at
+ * `target`. Either id alone is a complete call, so the contract says "one of"
+ * rather than falsely marking both required.
+ */
 function linkBodySchema(): Record<string, unknown> {
-  return bodyEnvelopeSchema({
-    installationId: STRING_SCHEMA,
-    knowledgeSpaceId: STRING_SCHEMA,
-    sourceId: STRING_SCHEMA,
-    nodeId: STRING_SCHEMA,
-    target: JSON_RECORD_SCHEMA,
-    relation: STRING_SCHEMA,
-    metadata: METADATA_SCHEMA,
-  }, ['target']);
+  return branchedSchema(
+    bodyEnvelopeSchema({
+      installationId: STRING_SCHEMA,
+      knowledgeSpaceId: STRING_SCHEMA,
+      sourceId: STRING_SCHEMA,
+      nodeId: STRING_SCHEMA,
+      target: JSON_RECORD_SCHEMA,
+      relation: STRING_SCHEMA,
+      metadata: METADATA_SCHEMA,
+    }, ['target']),
+    [
+      requirementBranch({ sourceId: STRING_SCHEMA }, ['sourceId']),
+      requirementBranch({ nodeId: STRING_SCHEMA }, ['nodeId']),
+    ],
+  );
 }
