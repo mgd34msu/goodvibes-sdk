@@ -393,7 +393,12 @@ export class CompactionManager {
         failReason: 'No boundary commit available for repair.',
       };
     }
-    return runResumeRepair({ commit });
+    // The repair's own default is a hardcoded 80_000 — "80% of a typical 100K
+    // context window", a fair guess when it was written. This manager holds
+    // the REAL window for the model in play, so the ceiling is computed from
+    // it rather than assumed: on a 1M-token model that constant was throwing
+    // away messages a resumed session could comfortably have kept.
+    return runResumeRepair({ commit, maxTokens: Math.floor(this._contextWindow * 0.8) });
   }
 
   // ── Private helpers ────────────────────────────────────────────────────────

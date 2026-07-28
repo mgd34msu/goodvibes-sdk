@@ -49,11 +49,18 @@ function makeRegistry(
       saveSubscription: async () => {},
       resolveAccessToken: async () => null,
     } as unknown as ConstructorParameters<typeof ProviderRegistry>[0]['subscriptionManager'],
+    // No `as unknown as` here any more. The cast was hiding that this double
+    // does not implement setModelFactsSource, which the registry CALLS on every
+    // catalog update — the omission only surfaced as a runtime TypeError once a
+    // test reached that path. Typed against the real port so the next missing
+    // method is a compile error instead.
     capabilityRegistry: {
       getCapability: () => ({}),
       getRouteExplanation: () => ({ accepted: true }),
       invalidate: () => {},
-    } as unknown as ConstructorParameters<typeof ProviderRegistry>[0]['capabilityRegistry'],
+      setModelFactsSource: () => {},
+      canHandle: () => true,
+    } satisfies Record<keyof ConstructorParameters<typeof ProviderRegistry>[0]['capabilityRegistry'], unknown> as unknown as ConstructorParameters<typeof ProviderRegistry>[0]['capabilityRegistry'],
     cacheHitTracker: { record: () => {} } as unknown as ConstructorParameters<typeof ProviderRegistry>[0]['cacheHitTracker'],
     favoritesStore: { load: async () => ({ pinned: [], history: [] }) } as unknown as ConstructorParameters<typeof ProviderRegistry>[0]['favoritesStore'],
     benchmarkStore: {

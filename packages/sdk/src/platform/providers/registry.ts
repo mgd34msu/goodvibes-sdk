@@ -13,7 +13,7 @@ import type { RuntimeEventBus } from '../runtime/events/index.js';
 import { emitProvidersChanged, emitProviderWarning, emitModelChanged } from '../runtime/emitters/index.js';
 import { loadCustomProviders, watchCustomProviders } from './custom-loader.js';
 import {
-  buildSyntheticCanonicalModels, getCatalogCachePath, getCatalogModelDefinitionsFrom, getCatalogTmpPath,
+  buildSyntheticCanonicalModels, getCatalogCachePath, getCatalogModelDefinitionsFrom, getCatalogTmpPath, modelCapabilityFactsFromCatalog,
   getCostFromPricingCatalog, getSyntheticBackendModelIds, getSyntheticModelDefinitions, getSyntheticModelInfo,
   type CatalogModel, type CatalogModelPricing, type CatalogProvider, type MinimalModelDefinition, type PricingCatalog,
 } from './model-catalog.js';
@@ -156,11 +156,8 @@ export class ProviderRegistry {
   }
 
   private getCatalogCachePaths(): { cachePath: string; tmpPath: string } {
-    const cachePath = getCatalogCachePath(this.getPersistenceRoot());
-    return {
-      cachePath,
-      tmpPath: getCatalogTmpPath(this.getPersistenceRoot()),
-    };
+    const root = this.getPersistenceRoot();
+    return { cachePath: getCatalogCachePath(root), tmpPath: getCatalogTmpPath(root) };
   }
 
   private getCatalogBuiltins(): ModelDefinition[] { return getCatalogModelDefinitionsFrom(this.catalogModels) as ModelDefinition[]; }
@@ -171,6 +168,7 @@ export class ProviderRegistry {
     this.catalogModels = [...models];
     this.pricingCatalog = { fetchedAt, models: this.catalogModels };
     this.syntheticCanonicalModels = buildSyntheticCanonicalModels(this.catalogModels);
+    this.capabilityRegistry.setModelFactsSource(modelCapabilityFactsFromCatalog(this.catalogModels));
     this._invalidateModelRegistry();
   }
 

@@ -260,6 +260,7 @@ export const OPERATOR_METHOD_IDS = [
   "mcp.config.reload",
   "mcp.servers.list",
   "mcp.servers.remove",
+  "mcp.servers.reveal",
   "mcp.servers.upsert",
   "mcp.tools.list",
   "media.analyze",

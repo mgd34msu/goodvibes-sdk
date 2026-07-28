@@ -361,19 +361,71 @@ const GLOBAL_DEFAULTS: ProviderCapability = {
 // ---------------------------------------------------------------------------
 
 /**
- * Model-level capability overrides keyed by model ID.
- * These take precedence over both provider defaults and `LLMProvider.capabilities`.
+ * Per-model facts a live source can answer, supplied by `setModelFactsSource`.
+ *
+ * This is the layer that should carry the fleet. The model catalog already
+ * publishes each model's context window, output cap and reasoning support
+ * per model; restating those in a hand-maintained table means the table is
+ * wrong for every model released after the last edit — which is what happened
+ * (see MODEL_LIMIT_FALLBACKS below).
+ *
+ * A field left undefined means "this source has nothing to say", and the
+ * static fallbacks answer instead. It never means zero.
  */
-const MODEL_OVERRIDES: Record<string, Partial<ProviderCapability>> = {
+export interface ModelCapabilityFacts {
+  readonly maxContextTokens?: number | undefined;
+  readonly maxOutputTokens?: number | undefined;
+  readonly reasoningControls?: boolean | undefined;
+}
+
+/** Resolve per-model facts from a live source. Undefined when the source does not know the model. */
+export type ModelCapabilityFactsSource = (
+  providerId: string,
+  modelId: string,
+) => ModelCapabilityFacts | undefined;
+
+/**
+ * Behavioural exceptions that no catalog field expresses — a model that cannot
+ * call tools at all, or cannot do JSON mode.
+ *
+ * These are GENUINE exceptions, which is what an override map should hold, so
+ * they keep the highest precedence: a live source reporting generous limits
+ * must not turn tool calling back on for a model that has none.
+ */
+const MODEL_QUIRKS: Record<string, Partial<ProviderCapability>> = {
+  // The o1 family rejects response_format json_object.
+  'o1': { jsonMode: false },
+  'o1-mini': { jsonMode: false },
+  'o1-preview': { jsonMode: false },
+  // Mercury (InceptionLabs) diffusion models expose no tool-calling surface.
+  'mercury-2': { toolCalling: false, parallelTools: false },
+  'mercury-edit': { toolCalling: false, parallelTools: false },
+};
+
+/**
+ * Static per-model limits, used ONLY where a live source has nothing to say.
+ *
+ * Deliberately demoted below `ModelCapabilityFacts`. As the top-precedence
+ * override map this was stale in both directions: it capped Claude Opus 4.5 at
+ * 32_000 output tokens against a real 64_000, and it carried no row at all for
+ * any model released after it was written — so the whole current fleet fell
+ * through to GLOBAL_DEFAULTS' 4_096 output / 32_768 context, and a stale row
+ * beat live truth wherever a row did exist.
+ *
+ * Values below were checked against each vendor's published limits on
+ * 2026-07-27. Rows are for models the catalog may not cover (retired or
+ * legacy ids); the fleet is expected to come from the live source.
+ */
+const MODEL_LIMIT_FALLBACKS: Record<string, Partial<ProviderCapability>> = {
   // Anthropic reasoning models
-  'claude-opus-4-5': { reasoningControls: true, maxOutputTokens: 32_000 },
-  'claude-sonnet-4-5': { reasoningControls: true, maxOutputTokens: 64_000 },
-  'claude-3-5-sonnet-20241022': { maxOutputTokens: 8_192 },
-  'claude-3-7-sonnet-20250219': { reasoningControls: true, maxOutputTokens: 64_000 },
+  'claude-opus-4-5': { reasoningControls: true, maxContextTokens: 200_000, maxOutputTokens: 64_000 },
+  'claude-sonnet-4-5': { reasoningControls: true, maxContextTokens: 200_000, maxOutputTokens: 64_000 },
+  'claude-3-5-sonnet-20241022': { maxContextTokens: 200_000, maxOutputTokens: 8_192 },
+  'claude-3-7-sonnet-20250219': { reasoningControls: true, maxContextTokens: 200_000, maxOutputTokens: 64_000 },
   // OpenAI reasoning models
-  'o1': { reasoningControls: true, jsonMode: false, maxContextTokens: 200_000, maxOutputTokens: 32_768 },
-  'o1-mini': { reasoningControls: true, jsonMode: false, maxContextTokens: 200_000, maxOutputTokens: 65_536 },
-  'o1-preview': { reasoningControls: true, jsonMode: false, maxContextTokens: 200_000, maxOutputTokens: 32_768 },
+  'o1': { reasoningControls: true, maxContextTokens: 200_000, maxOutputTokens: 32_768 },
+  'o1-mini': { reasoningControls: true, maxContextTokens: 200_000, maxOutputTokens: 65_536 },
+  'o1-preview': { reasoningControls: true, maxContextTokens: 200_000, maxOutputTokens: 32_768 },
   'o3': { reasoningControls: true, maxContextTokens: 200_000, maxOutputTokens: 100_000 },
   'o3-mini': { reasoningControls: true, maxContextTokens: 200_000, maxOutputTokens: 65_536 },
   'o4-mini': { reasoningControls: true, maxContextTokens: 200_000, maxOutputTokens: 65_536 },
@@ -382,8 +434,8 @@ const MODEL_OVERRIDES: Record<string, Partial<ProviderCapability>> = {
   'gpt-4.1': { maxContextTokens: 400_000 },
   'gpt-4.1-mini': { maxContextTokens: 400_000 },
   // Mercury models (InceptionLabs)
-  'mercury-2': { toolCalling: false, parallelTools: false, reasoningControls: true, maxOutputTokens: 32_000 },
-  'mercury-edit': { toolCalling: false, parallelTools: false, reasoningControls: false, maxOutputTokens: 32_000 },
+  'mercury-2': { reasoningControls: true, maxOutputTokens: 32_000 },
+  'mercury-edit': { reasoningControls: false, maxOutputTokens: 32_000 },
   // Gemini large context
   'gemini-2.5-pro': { maxContextTokens: 2_097_152, maxOutputTokens: 65_536, reasoningControls: true },
   'gemini-2.5-flash': { maxContextTokens: 1_048_576, maxOutputTokens: 65_536, reasoningControls: true },
@@ -415,6 +467,19 @@ const MODEL_OVERRIDES: Record<string, Partial<ProviderCapability>> = {
  */
 export class ProviderCapabilityRegistry {
   private readonly cache = new Map<string, ProviderCapability>();
+  private _factsSource: ModelCapabilityFactsSource | undefined;
+
+  /**
+   * Wire a live per-model capability source (see `ModelCapabilityFacts`).
+   *
+   * Invalidates the cache, because every resolved record was computed without
+   * it. Passing `undefined` unwires the source and falls back to the static
+   * tables — which is the state a build with no catalog data is in.
+   */
+  setModelFactsSource(source: ModelCapabilityFactsSource | undefined): void {
+    this._factsSource = source;
+    this.invalidate();
+  }
 
   /**
    * Resolve the full capability record for a provider/model pair.
@@ -526,20 +591,38 @@ export class ProviderCapabilityRegistry {
   ): ProviderCapability {
     const providerDefaults = PROVIDER_DEFAULTS[providerId] ?? {};
     const selfDeclared: Partial<ProviderCapability> = provider?.capabilities ?? {};
-    const modelOverride: Partial<ProviderCapability> = MODEL_OVERRIDES[modelId] ?? {};
+    const limitFallbacks: Partial<ProviderCapability> = MODEL_LIMIT_FALLBACKS[modelId] ?? {};
+    const quirks: Partial<ProviderCapability> = MODEL_QUIRKS[modelId] ?? {};
+
+    // Live per-model facts, when a source is wired. Undefined fields are
+    // dropped rather than merged, so "the source did not say" falls through to
+    // the static fallback instead of overwriting it with undefined.
+    const facts = this._factsSource?.(providerId, modelId);
+    const liveFacts: Partial<ProviderCapability> = {};
+    if (facts?.maxContextTokens !== undefined) liveFacts.maxContextTokens = facts.maxContextTokens;
+    if (facts?.maxOutputTokens !== undefined) liveFacts.maxOutputTokens = facts.maxOutputTokens;
+    if (facts?.reasoningControls !== undefined) liveFacts.reasoningControls = facts.reasoningControls;
 
     // Resolve caching separately via cache-capability module
     const cacheType = getCacheCapability(providerId).type;
 
-    // Merge: GLOBAL_DEFAULTS < provider defaults < self-declared < model overrides
+    // Merge: GLOBAL_DEFAULTS < provider defaults < self-declared
+    //        < static per-model limits < live per-model facts < quirks.
+    //
+    // Live facts outrank the static limits because they are the more current
+    // answer to the same question. Quirks outrank live facts because they say
+    // something live data does not carry at all — a model with no tool-calling
+    // surface must not have it re-enabled by a generous limits record.
     return Object.freeze({
       ...GLOBAL_DEFAULTS,
       ...providerDefaults,
       ...selfDeclared,
-      ...modelOverride,
+      ...limitFallbacks,
+      ...liveFacts,
+      ...quirks,
       // caching always derived from getCacheCapability; not overridable via selfDeclared
-      // but can be overridden by MODEL_OVERRIDES if a future model has different caching
-      caching: modelOverride.caching ?? cacheType,
+      // but can be overridden by a per-model entry if a model has different caching
+      caching: quirks.caching ?? limitFallbacks.caching ?? cacheType,
     });
   }
 

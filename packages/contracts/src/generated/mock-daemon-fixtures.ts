@@ -12127,6 +12127,51 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       }
     }
   },
+  "mcp.servers.reveal": {
+    "methodId": "mcp.servers.reveal",
+    "http": {
+      "method": "GET",
+      "path": "/api/mcp/servers/reveal"
+    },
+    "status": 200,
+    "body": {
+      "locations": [
+        {
+          "scope": "sample",
+          "kind": "sample",
+          "path": "sample",
+          "writable": false
+        }
+      ],
+      "servers": [
+        {
+          "name": "sample",
+          "command": "sample",
+          "args": [
+            "sample"
+          ],
+          "envKeys": [
+            "sample"
+          ],
+          "env": {},
+          "role": "sample",
+          "trustMode": "sample",
+          "allowedPaths": [
+            "sample"
+          ],
+          "allowedHosts": [
+            "sample"
+          ],
+          "source": {
+            "scope": "sample",
+            "kind": "sample",
+            "path": "sample",
+            "writable": false
+          }
+        }
+      ]
+    }
+  },
   "mcp.servers.upsert": {
     "methodId": "mcp.servers.upsert",
     "http": {

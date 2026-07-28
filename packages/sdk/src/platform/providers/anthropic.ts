@@ -13,7 +13,7 @@ import type {
   ProviderRuntimeMetadataDeps,
 } from './interface.js';
 import {
-  fetchAnthropicModelIds,
+  fetchAnthropicModels,
   runLiveModelRefresh,
   type LiveModelDiscoveryResult,
 } from './live-model-discovery.js';
@@ -71,11 +71,40 @@ interface AnthropicResponseBody {
 }
 
 
-/** Anthropic model-specific max output token caps. */
+/**
+ * OFFLINE fallback for per-model max output tokens.
+ *
+ * The authoritative source is the provider: GET /v1/models reports `max_tokens`
+ * per model, and `refreshModels()` reads it (see `_liveMaxOutput`). This table
+ * exists for the same case as ANTHROPIC_DATED_STATIC_MODELS — no API key, so
+ * no live call is possible — and as the baseline when a live call fails.
+ *
+ * Order matters: the first match wins, so the newest and most specific arms
+ * come first. Left un-updated, this table had no arm covering claude-opus-5,
+ * claude-sonnet-5 or claude-fable-5, so all three fell to the 16384 default
+ * and were capped at an eighth of their real 128000.
+ *
+ * Verified against Anthropic's published model comparison on 2026-07-27.
+ */
 const ANTHROPIC_MAX_OUTPUT: Array<{ match: (m: string) => boolean; cap: number }> = [
-  { match: (m) => m.startsWith('claude-opus-4-6') || m.startsWith('claude-sonnet-4-6'), cap: 128000 },
-  { match: (m) => m.includes('opus-4-5') || m.includes('sonnet-4-5') || m.includes('sonnet-4-0') || m.includes('sonnet-4'), cap: 64000 },
+  // 128K-output generation: Fable 5, Opus 5 / 4.8 / 4.7 / 4.6, Sonnet 5 / 4.6.
+  {
+    match: (m) => m.startsWith('claude-fable-5')
+      || m.startsWith('claude-mythos-5')
+      || m.startsWith('claude-opus-5')
+      || m.startsWith('claude-opus-4-8')
+      || m.startsWith('claude-opus-4-7')
+      || m.startsWith('claude-opus-4-6')
+      || m.startsWith('claude-sonnet-5')
+      || m.startsWith('claude-sonnet-4-6'),
+    cap: 128000,
+  },
+  // 64K-output generation: Haiku 4.5, Opus 4.5, Sonnet 4.5.
+  { match: (m) => m.includes('haiku-4-5') || m.includes('opus-4-5') || m.includes('sonnet-4-5'), cap: 64000 },
+  { match: (m) => m.includes('sonnet-4-0') || m.includes('sonnet-4'), cap: 64000 },
+  // Opus 4.1 / 4.0.
   { match: (m) => m.includes('opus-4'), cap: 32000 },
+  // Older Haiku generations (3, 3.5).
   { match: (m) => m.includes('haiku'), cap: 8192 },
 ];
 const ANTHROPIC_DEFAULT_MAX_OUTPUT = 16384;
@@ -84,12 +113,12 @@ const NOOP_CACHE_HIT_TRACKER: Pick<CacheHitTracker, 'getHitRate' | 'recordTurn'>
   recordTurn: () => {},
 };
 
-/** Clamp max_tokens to the model's known limit. */
-function clampMaxTokens(model: string, requested: number): number {
+/** This model's max output tokens per the offline table. Live limits win — see `clampMaxTokens`. */
+function staticMaxOutput(model: string): number {
   for (const { match, cap } of ANTHROPIC_MAX_OUTPUT) {
-    if (match(model)) return Math.min(requested, cap);
+    if (match(model)) return cap;
   }
-  return Math.min(requested, ANTHROPIC_DEFAULT_MAX_OUTPUT);
+  return ANTHROPIC_DEFAULT_MAX_OUTPUT;
 }
 
 /**
@@ -113,6 +142,17 @@ export class AnthropicProvider implements LLMProvider {
   get models(): string[] {
     return this._models;
   }
+
+  /**
+   * Per-model max output tokens as the PROVIDER reports them, populated by
+   * `refreshModels()` from GET /v1/models.
+   *
+   * Empty until a live refresh succeeds, which is why the offline table still
+   * has to be correct — but once populated it is authoritative, so a model
+   * released after this build shipped is capped at its real limit instead of
+   * whatever the table happens to guess.
+   */
+  private readonly _liveMaxOutput = new Map<string, number>();
 
   private readonly apiKey: string;
   private readonly cacheHitTracker: Pick<CacheHitTracker, 'getHitRate' | 'recordTurn'>;
@@ -147,7 +187,7 @@ export class AnthropicProvider implements LLMProvider {
 
       const body: Record<string, unknown> = {
         model: resolvedModel,
-        max_tokens: clampMaxTokens(resolvedModel, maxTokens ?? 8192),
+        max_tokens: this.clampMaxTokens(resolvedModel, maxTokens ?? 8192),
         stream: true,
       };
 
@@ -267,7 +307,7 @@ export class AnthropicProvider implements LLMProvider {
       const resolvedEffort = applyAnthropicReasoning(
         body,
         { model: resolvedModel, reasoningEffort, ...(params.reasoningEffortSpec ? { reasoningEffortSpec: params.reasoningEffortSpec } : {}) },
-        clampMaxTokens(resolvedModel, Infinity),
+        this.clampMaxTokens(resolvedModel, Infinity),
       );
 
       const headers: Record<string, string> = {
@@ -427,11 +467,33 @@ export class AnthropicProvider implements LLMProvider {
       datedStaticModels: ANTHROPIC_DATED_STATIC_MODELS,
       datedStaticAsOf: ANTHROPIC_DATED_STATIC_MODELS_AS_OF,
       isConfigured: this.isConfigured(),
-      fetchLive: () => fetchAnthropicModelIds(this.apiKey),
+      // The same /v1/models call that lists the ids also reports each model's
+      // token limits, so the output cap is recorded here rather than fetched
+      // separately or guessed from a table. Only ids flow back to the shared
+      // refresh machinery, which is id-shaped by design.
+      fetchLive: async () => {
+        const models = await fetchAnthropicModels(this.apiKey);
+        for (const model of models) {
+          if (model.maxOutputTokens !== undefined) this._liveMaxOutput.set(model.id, model.maxOutputTokens);
+        }
+        return models.map((model) => model.id);
+      },
       force,
     });
     this._models = [...result.models];
     return result;
+  }
+
+  /**
+   * Clamp a requested max_tokens to what this model actually allows.
+   *
+   * Live limit first (what the provider says), offline table second. A model
+   * the live call did not cover — because there is no API key, or because the
+   * call failed — still gets a real cap rather than the generic default,
+   * provided the table has an arm for it.
+   */
+  private clampMaxTokens(model: string, requested: number): number {
+    return Math.min(requested, this._liveMaxOutput.get(model) ?? staticMaxOutput(model));
   }
 
   private async createChatBatch(input: ProviderBatchCreateInput): Promise<ProviderBatchCreateResult> {
@@ -533,7 +595,7 @@ export class AnthropicProvider implements LLMProvider {
     const resolvedModel = normalizeAnthropicModel(params.model);
     const body: Record<string, unknown> = {
       model: resolvedModel,
-      max_tokens: clampMaxTokens(resolvedModel, params.maxTokens ?? 8192),
+      max_tokens: this.clampMaxTokens(resolvedModel, params.maxTokens ?? 8192),
       messages: toAnthropicMessages(params.messages),
     };
     if (params.systemPrompt) {
@@ -545,7 +607,7 @@ export class AnthropicProvider implements LLMProvider {
     applyAnthropicReasoning(
       body,
       { model: resolvedModel, reasoningEffort: params.reasoningEffort, ...(params.reasoningEffortSpec ? { reasoningEffortSpec: params.reasoningEffortSpec } : {}) },
-      clampMaxTokens(resolvedModel, Infinity),
+      this.clampMaxTokens(resolvedModel, Infinity),
     );
     return body;
   }

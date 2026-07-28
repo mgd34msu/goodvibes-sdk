@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `463`
+- Methods: `464`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -64392,6 +64392,172 @@ Remove a project/global MCP server config and disconnect it without daemon resta
     "path",
     "reload",
     "config"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `mcp.servers.reveal`
+
+Return effective MCP config with environment VALUES included, not just envKeys. Admin only — the redacted mcp.config.get view is what every other caller should use.
+
+- Title: `MCP Servers Reveal`
+- Source: `builtin`
+- Access: `admin`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/mcp/servers/reveal`
+- Scopes: `read:mcp`
+- Emits events: `runtime.mcp`
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "locations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "writable": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "scope",
+          "kind",
+          "path",
+          "writable"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "servers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "command": {
+            "type": "string"
+          },
+          "args": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "envKeys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "env": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": true
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "trustMode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "allowedPaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "allowedHosts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "source": {
+            "type": "object",
+            "properties": {
+              "scope": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "writable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "scope",
+              "kind",
+              "path",
+              "writable"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "name",
+          "command",
+          "args",
+          "envKeys",
+          "env",
+          "role",
+          "trustMode",
+          "allowedPaths",
+          "allowedHosts",
+          "source"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "locations",
+    "servers"
   ],
   "additionalProperties": false
 }

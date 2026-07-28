@@ -20,11 +20,11 @@
 import type { GrandfatherEntry } from './line-cap-rule.ts';
 
 export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = {
+  // method-catalog-runtime.ts no longer has an entry: its justification named a
+  // split to a sibling file as the next step, and that split has now happened —
+  // on the mcp.* side rather than the memory.* side (method-catalog-runtime-mcp.ts).
+  // The file is ~759 lines, under the 800-line cap on its own merits.
   // wrfc-controller.ts ~2.97k — pre-split monolith, shrink-only
-  'packages/sdk/src/platform/control-plane/method-catalog-runtime.ts': {
-    ceiling: 807,
-    justification: 'runtime-domain method descriptors (memory/mcp/voice/etc), crossed the cap with the memory.consolidation.receipts descriptor (typed receipts + pending-proposals output schema); next split: memory.* descriptors to a sibling file, mirroring method-catalog-fleet.ts',
-  },
   'packages/sdk/src/platform/agents/wrfc-controller.ts': {
     ceiling: 2992,
     justification: 'pre-split monolith, shrink-only; +13 for the acceptance-checklist gate applied to BOTH review paths (the shared evaluateAcceptanceChecklistGate call, the unmet-items and missing-checklist critical-issue appends, and the pass-term additions in the main chain review and the compound-subtask review — gate mechanics live in completion-report.ts); +4 for stamping the gate-inclusive lastReviewVerdict onto the chain and subtask at their review gates, so wire consumers render the TRUE verdict rather than the reviewer claim; +9 for holding the chain-cleanup timers in an instance Set so dispose() can actually cancel them — the one-shot lived only in a local, leaving 38 uncancellable handles across a suite run',
