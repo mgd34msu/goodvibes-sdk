@@ -57,6 +57,7 @@ import {
   RecordingSink,
   cleanupInboundScratch,
   fixedRandom,
+  flush,
   makeCursorStore,
   waitFor,
 } from './_helpers/inbound-watcher-harness.ts';
@@ -474,7 +475,7 @@ describe('a terminal failure is announced to the owner, once per transition', ()
   test('the notice goes out through the structured-notice port, built from structured fields', async () => {
     const sent: StructuredNotice[] = [];
     const announcer = createInboundTerminalFailureAnnouncer({
-      send: async (notice) => { sent.push(notice); },
+      send: async (notice) => { sent.push(notice); return { delivered: true }; },
     });
 
     announcer.terminalFailure(failure('credentials-rejected', 'NO [AUTHENTICATIONFAILED] *bad* password'));
@@ -494,12 +495,16 @@ describe('a terminal failure is announced to the owner, once per transition', ()
   test('the same condition twice is one notice; a recovery re-arms it', async () => {
     const sent: StructuredNotice[] = [];
     const announcer = createInboundTerminalFailureAnnouncer({
-      send: async (notice) => { sent.push(notice); },
+      send: async (notice) => { sent.push(notice); return { delivered: true }; },
     });
 
     announcer.terminalFailure(failure('credentials-rejected', 'refused'));
-    announcer.terminalFailure(failure('credentials-rejected', 'refused again'));
+    // Awaited BEFORE the second call, so this exercises the confirmed-delivery
+    // latch rather than the in-flight guard. Firing both synchronously would
+    // pass either way and prove neither.
     await waitFor(() => sent.length >= 1, 'the first notice');
+    announcer.terminalFailure(failure('credentials-rejected', 'refused again'));
+    await flush(3);
     expect(sent.length).toBe(1);
 
     announcer.stateChanged({
@@ -559,6 +564,137 @@ describe('a terminal failure is announced to the owner, once per transition', ()
       await supervisor?.stop();
     }
   }, 20_000);
+
+  /**
+   * The refusal the `.catch()` could never see.
+   *
+   * `deliverStructuredNotice` reports a refused delivery by RESOLVING
+   * `{ delivered: false, reason: 'no-route-binding' }` — it does not reject.
+   * With no route binding configured, which is a fresh install, the announcer
+   * latched before the send, the rejection handler never fired, nothing
+   * recorded the failure, and the log line said `announced: true`. The owner
+   * was told nothing about the one condition that means no mail will ever
+   * arrive again, and every later occurrence was suppressed as a repeat of an
+   * announcement that never happened.
+   */
+  describe('a refusal that RESOLVES is a delivery failure, not a success', () => {
+    function refusingAnnouncer() {
+      const logs: { message: string; fields: Record<string, unknown> }[] = [];
+      const attempts: StructuredNotice[] = [];
+      const announcer = createInboundTerminalFailureAnnouncer({
+        send: async (notice) => {
+          attempts.push(notice);
+          // Verbatim what surface-delivery.ts returns for a missing binding.
+          return { delivered: false, reason: 'no-route-binding' };
+        },
+        log: (message, fields) => { logs.push({ message, fields }); },
+      });
+      return { announcer, attempts, logs };
+    }
+
+    test('the log never claims the owner was told', async () => {
+      const { announcer, logs } = refusingAnnouncer();
+      announcer.terminalFailure(failure('credentials-rejected', 'refused'));
+      await flush(3);
+
+      // No line anywhere may assert announced: true.
+      expect(logs.some((entry) => entry.fields.announced === true)).toBe(false);
+    });
+
+    test('the delivery failure is RECORDED rather than swallowed', async () => {
+      const { announcer, logs } = refusingAnnouncer();
+      announcer.terminalFailure(failure('credentials-rejected', 'refused'));
+      await flush(3);
+
+      const failed = logs.find((entry) => entry.message.includes('could not be delivered'));
+      expect(failed).toBeDefined();
+      expect(failed?.fields.announced).toBe(false);
+      expect(failed?.fields.delivery).toBe('no-route-binding');
+    });
+
+    test('a second occurrence tries AGAIN instead of being latched out', async () => {
+      const { announcer, attempts } = refusingAnnouncer();
+      announcer.terminalFailure(failure('credentials-rejected', 'refused'));
+      await flush(3);
+      announcer.terminalFailure(failure('credentials-rejected', 'refused again'));
+      await flush(3);
+
+      // The latch may only close on a delivery that actually happened.
+      expect(attempts.length).toBe(2);
+    });
+
+    test('once it DOES get through, the latch closes as before', async () => {
+      // The half the reviewer verified is correct must not regress.
+      const attempts: StructuredNotice[] = [];
+      let deliver = false;
+      const announcer = createInboundTerminalFailureAnnouncer({
+        send: async (notice) => {
+          attempts.push(notice);
+          return deliver ? { delivered: true } : { delivered: false, reason: 'no-route-binding' };
+        },
+        log: () => { /* not under test here */ },
+      });
+
+      announcer.terminalFailure(failure('credentials-rejected', 'refused'));
+      await flush(3);
+      expect(attempts.length).toBe(1);
+
+      deliver = true;
+      announcer.terminalFailure(failure('credentials-rejected', 'refused again'));
+      await flush(3);
+      expect(attempts.length).toBe(2);
+
+      // Now it landed, so the third is suppressed.
+      announcer.terminalFailure(failure('credentials-rejected', 'and again'));
+      await flush(3);
+      expect(attempts.length).toBe(2);
+    });
+
+    test('a send that rejects is also recorded, and also does not latch', async () => {
+      const attempts: StructuredNotice[] = [];
+      const logs: { message: string; fields: Record<string, unknown> }[] = [];
+      const announcer = createInboundTerminalFailureAnnouncer({
+        send: async (notice) => {
+          attempts.push(notice);
+          throw new Error('the route is down');
+        },
+        log: (message, fields) => { logs.push({ message, fields }); },
+      });
+
+      announcer.terminalFailure(failure('credentials-rejected', 'refused'));
+      await flush(3);
+      expect(logs.some((entry) => entry.message.includes('could not be delivered'))).toBe(true);
+      expect(logs.some((entry) => entry.fields.announced === true)).toBe(false);
+
+      announcer.terminalFailure(failure('credentials-rejected', 'refused again'));
+      await flush(3);
+      expect(attempts.length).toBe(2);
+    });
+
+    test('a port that returns no verdict is treated as undelivered, not assumed sent', async () => {
+      // An untyped embedder returning undefined. It has not said the owner was
+      // reached, so he was not reached.
+      const attempts: StructuredNotice[] = [];
+      const logs: { message: string; fields: Record<string, unknown> }[] = [];
+      const announcer = createInboundTerminalFailureAnnouncer({
+        send: (async (notice: StructuredNotice) => {
+          attempts.push(notice);
+        }) as never,
+        log: (message, fields) => { logs.push({ message, fields }); },
+      });
+
+      announcer.terminalFailure(failure('credentials-rejected', 'refused'));
+      await flush(3);
+
+      expect(logs.some((entry) => entry.fields.announced === true)).toBe(false);
+      const failed = logs.find((entry) => entry.message.includes('could not be delivered'));
+      expect(failed?.fields.delivery).toBe('no-verdict');
+
+      announcer.terminalFailure(failure('credentials-rejected', 'again'));
+      await flush(3);
+      expect(attempts.length).toBe(2);
+    });
+  });
 
   test('a notice route that throws does not become a second failure', () => {
     const announcer = createInboundTerminalFailureAnnouncer({

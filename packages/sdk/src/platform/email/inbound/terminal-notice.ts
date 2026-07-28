@@ -43,16 +43,51 @@ import type {
   InboundMailTerminalFailure,
 } from './ports.js';
 
+/**
+ * Whether a notice actually reached the owner.
+ *
+ * Never a bare boolean and never `void`, for the reason the whole file exists:
+ * the delivery port RESOLVES a refusal rather than rejecting it, so a caller
+ * that only catches sees every refusal as a success. `void` would be worse
+ * still — a port that says nothing forces this module to guess, and the guess
+ * that used to be made here was "it went out".
+ *
+ * Structurally compatible with the daemon layer's `SurfaceNoticeDelivery`,
+ * which is what the composition root binds, without importing across the
+ * layer boundary.
+ */
+export type InboundNoticeDelivery =
+  | { readonly delivered: true }
+  | {
+    readonly delivered: false;
+    /** Which guard refused, when the delivery layer named one. */
+    readonly reason?: string | undefined;
+    /** The transport's own message, when there was one. */
+    readonly error?: string | undefined;
+  };
+
 export interface InboundTerminalFailureAnnouncerOptions {
   /**
    * Where the owner is reached. Takes the STRUCTURE, so the composition root's
    * delivery helper picks the channel and its escaper.
    *
-   * Its result is deliberately unread: whether a notice reached a route is the
-   * delivery layer's disclosure to make, and a supervisor that awaited it would
-   * be blocking a status transition on somebody's phone.
+   * Its result is READ, and this is the correction that matters most in this
+   * file. It used to be `Promise<unknown>`, documented as "deliberately
+   * unread" on the reasoning that delivery disclosure belonged to the delivery
+   * layer. That reasoning had a hole in it: `deliverStructuredNotice` reports a
+   * refusal by RESOLVING `{ delivered: false, reason }`, not by rejecting, so
+   * the `.catch()` this module relied on never fired. With no route binding
+   * configured — the ordinary state of a fresh install — the owner was not
+   * told, the latch was set anyway, every later occurrence was suppressed, and
+   * the log line recorded `announced: true`. A log asserting the owner was told
+   * when he was not, for the one condition that means no mail will ever arrive
+   * again.
+   *
+   * The send is still not awaited by the observer, which stays synchronous: the
+   * result is inspected in a continuation, so a status transition is never
+   * blocked on somebody's phone.
    */
-  readonly send: (notice: StructuredNotice) => Promise<unknown>;
+  readonly send: (notice: StructuredNotice) => Promise<InboundNoticeDelivery>;
   /** Overridable for tests that assert on what was logged. */
   readonly log?: ((message: string, fields: Record<string, unknown>) => void) | undefined;
 }
@@ -76,8 +111,34 @@ export function createInboundTerminalFailureAnnouncer(
   options: InboundTerminalFailureAnnouncerOptions,
 ): InboundTerminalFailureAnnouncer {
   const log = options.log ?? ((message, fields) => { logger.error(message, fields); });
-  /** The condition last announced, or null when nothing is outstanding. */
+  /**
+   * The condition whose notice REACHED the owner, or null when none has.
+   *
+   * Set only after a confirmed delivery. It used to be set before the send, on
+   * the assumption that attempting was the same as arriving — which made the
+   * FIRST failure permanent: the owner was never told, and the latch then
+   * suppressed every subsequent occurrence of the same condition for the life
+   * of the process.
+   */
   let announced: string | null = null;
+  /**
+   * Conditions with a send outstanding right now.
+   *
+   * Separate from `announced` because the two answer different questions. This
+   * one stops a burst of identical failures from firing a send each while the
+   * first is still in flight; `announced` stops them once one has actually
+   * landed. Collapsing them is what produced the defect — a single flag cannot
+   * mean both "being tried" and "confirmed".
+   */
+  const inFlight = new Set<string>();
+  /**
+   * Bumped whenever the watcher recovers.
+   *
+   * A send that started before a recovery must not latch after it: by the time
+   * it resolves, the condition it describes has cleared and re-occurred, and
+   * that re-occurrence is a new thing the owner has not been told about.
+   */
+  let generation = 0;
 
   return {
     terminalFailure(failure: InboundMailTerminalFailure): void {
@@ -85,51 +146,115 @@ export function createInboundTerminalFailureAnnouncer(
       // carries the server's wording, and a session id inside it would make
       // every hourly re-probe look like a new condition.
       const key = `${failure.account}:${failure.mailbox}:${failure.reason}`;
-      log('Inbound mail stopped for a reason only a change can clear', {
+      const base = {
         surface: 'email-inbound',
         account: failure.account,
         mailbox: failure.mailbox,
         reason: failure.reason,
+      };
+
+      // The CONDITION, recorded synchronously. Deliberately carries no
+      // `announced` field: nothing has been sent at this point, so there is no
+      // honest value for it. Claiming one here is precisely the defect — the
+      // old line wrote `announced: true` whenever the latch happened to be
+      // clear, which is a statement about a local variable dressed up as a
+      // statement about the owner.
+      log('Inbound mail stopped for a reason only a change can clear', {
+        ...base,
         detail: failure.detail,
         action: failure.fix,
-        announced: announced !== key,
+        alreadyAnnounced: announced === key,
       });
-      if (announced === key) return;
-      announced = key;
+
+      if (announced === key || inFlight.has(key)) return;
+
+      const undelivered = (detail: string, delivery: string): void => {
+        log('The inbound-mail stopped notice could not be delivered', {
+          ...base,
+          announced: false,
+          delivery,
+          detail,
+        });
+      };
+
+      const sentAt = generation;
+      inFlight.add(key);
+      let pending: Promise<InboundNoticeDelivery>;
       try {
-        void options.send(renderInboundMailStoppedNotice({
+        pending = options.send(renderInboundMailStoppedNotice({
           account: failure.account,
           mailbox: failure.mailbox,
           reason: failure.reason,
           detail: failure.detail,
           fix: failure.fix,
           at: failure.at,
-        })).catch((error: unknown) => {
-          log('The inbound-mail stopped notice could not be delivered', {
-            surface: 'email-inbound',
-            account: failure.account,
-            mailbox: failure.mailbox,
-            reason: failure.reason,
-            detail: summarizeError(error),
-          });
-        });
+        }));
       } catch (error) {
-        // A `send` that throws synchronously rather than rejecting. Same rule:
-        // the reporting path cannot become a failure of its own.
-        log('The inbound-mail stopped notice could not be delivered', {
-          surface: 'email-inbound',
-          account: failure.account,
-          mailbox: failure.mailbox,
-          reason: failure.reason,
-          detail: summarizeError(error),
-        });
+        // A `send` that throws synchronously rather than rejecting. The
+        // reporting path cannot become a failure of its own — but it also does
+        // not get to latch, because nothing was delivered.
+        inFlight.delete(key);
+        undelivered(summarizeError(error), 'send-threw');
+        return;
       }
+
+      void pending.then(
+        (result) => {
+          inFlight.delete(key);
+          // A port that answered with something other than a delivery verdict
+          // — an untyped embedder returning `undefined`, say. It has not said
+          // the owner was reached, so he was not reached. Reading `.delivered`
+          // off it unguarded would throw inside this handler, where the
+          // rejection arm below cannot catch it.
+          if (result === null || typeof result !== 'object' || !('delivered' in result)) {
+            undelivered(
+              'the notice port returned no delivery verdict, so whether the owner was '
+              + 'reached is unknown and must not be assumed',
+              'no-verdict',
+            );
+            return;
+          }
+          if (!result.delivered) {
+            // The case `.catch()` could never see.
+            undelivered(
+              result.error ?? 'the delivery layer refused the notice',
+              result.reason ?? 'refused',
+            );
+            return;
+          }
+          if (sentAt !== generation) {
+            // It landed, but the watcher recovered while it was in flight, so
+            // the condition has since cleared. Latching now would silence the
+            // re-occurrence the owner has not heard about.
+            log('The inbound-mail stopped notice was delivered after the condition cleared', {
+              ...base,
+              announced: true,
+              stale: true,
+            });
+            return;
+          }
+          announced = key;
+          log('The inbound-mail stopped notice was delivered to the owner', {
+            ...base,
+            announced: true,
+          });
+        },
+        (error: unknown) => {
+          inFlight.delete(key);
+          undelivered(summarizeError(error), 'send-rejected');
+        },
+      );
     },
 
     stateChanged(transition: InboundCapabilityTransition): void {
       // Anything that is not `insufficient` means the watcher is reading mail
       // again, so the next terminal failure is genuinely new and is announced.
-      if (transition.to.state !== 'insufficient') announced = null;
+      if (transition.to.state === 'insufficient') return;
+      announced = null;
+      generation += 1;
+      // A send still in flight belongs to the condition that just cleared, so
+      // it must not block the next one from being attempted.
+      inFlight.clear();
     },
   };
 }
