@@ -26,11 +26,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   createInboundMailIntake,
+  InboundExpectationRegistry,
   InboundMailStore,
   InboundNoticeTransportError,
+  PersistedExpectationStore,
   type InboundNoticeMode,
 } from '../packages/sdk/src/platform/email/inbound/index.ts';
-import { VerificationExpectationBook } from '../packages/sdk/src/platform/google/verification-expectations.ts';
 import type { GmailInboundMessage, ImapInboundMessage } from '../packages/sdk/src/platform/email/inbound/ports.ts';
 import type { SurfaceNoticeDelivery } from '../packages/sdk/src/platform/daemon/types.ts';
 
@@ -73,9 +74,16 @@ function rig(options: {
   const sent: string[] = [];
   const records = new InboundMailStore(join(dir, 'records.json'));
   const intake = createInboundMailIntake({
-    // The real book, with no expectation open: the honest `no-expectation`
-    // verdict, which is what most arriving mail produces.
-    expectations: new VerificationExpectationBook({ surfaceHasCommandAuthority: () => false }),
+    // The real registry-backed matcher — the same object production wires —
+    // with no expectation open: the honest `no-expectation` verdict, which is
+    // what most arriving mail produces. Deliberately not a hand-built double:
+    // the port carries a write-through obligation on both of its verbs, and a
+    // stub satisfies the shape without ever exercising it.
+    expectations: new InboundExpectationRegistry({
+      store: new PersistedExpectationStore(join(dir, 'expectations.json')),
+      authority: { surfaceHasCommandAuthority: () => false },
+      now: () => NOW,
+    }).matcher,
     records,
     notices: {
       resolveBinding: () => (options.binding === undefined ? { surfaceKind: 'telegram' } : options.binding),
