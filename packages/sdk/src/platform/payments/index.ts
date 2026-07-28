@@ -229,3 +229,17 @@ export {
   CONFIRMATION_WINDOW_MS,
 } from './order-correlation.js';
 export type { InboundMailFacts, CorrelationResult, ConfirmationFacts } from './order-correlation.js';
+
+export {
+  readPaymentsServiceConfig,
+  readMerchantPolicy,
+  readBudgetLimits,
+  readCvvHandling,
+  readPaymentsEnabled,
+  readDefaultCardId,
+  readNotifyChannels,
+} from './payments-config.js';
+export type { PaymentsConfigReader } from './payments-config.js';
+
+export { createModelMerchantJudge } from './merchant-judge-model.js';
+export type { MerchantJudgeModel } from './merchant-judge-model.js';

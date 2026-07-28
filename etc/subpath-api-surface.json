@@ -22216,6 +22216,13 @@
       ]
     },
     {
+      "name": "MerchantJudgeModel",
+      "kind": "interface",
+      "required": [
+        "chat"
+      ]
+    },
+    {
       "name": "MerchantJudgePort",
       "kind": "interface",
       "required": [
@@ -22316,6 +22323,13 @@
         "checkedFields",
         "findings",
         "reason"
+      ]
+    },
+    {
+      "name": "PaymentsConfigReader",
+      "kind": "interface",
+      "required": [
+        "get"
       ]
     },
     {
@@ -22619,6 +22633,10 @@
       "kind": "function"
     },
     {
+      "name": "createModelMerchantJudge",
+      "kind": "function"
+    },
+    {
       "name": "dayKey",
       "kind": "function"
     },
@@ -22755,7 +22773,35 @@
       "kind": "function"
     },
     {
+      "name": "readBudgetLimits",
+      "kind": "function"
+    },
+    {
       "name": "readCheckoutReadingInput",
+      "kind": "function"
+    },
+    {
+      "name": "readCvvHandling",
+      "kind": "function"
+    },
+    {
+      "name": "readDefaultCardId",
+      "kind": "function"
+    },
+    {
+      "name": "readMerchantPolicy",
+      "kind": "function"
+    },
+    {
+      "name": "readNotifyChannels",
+      "kind": "function"
+    },
+    {
+      "name": "readPaymentsEnabled",
+      "kind": "function"
+    },
+    {
+      "name": "readPaymentsServiceConfig",
       "kind": "function"
     },
     {
