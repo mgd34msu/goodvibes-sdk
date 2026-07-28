@@ -42,7 +42,7 @@
  */
 
 import { readSenderAuthentication } from '../google/sender-authentication.js';
-import { ImapClient } from './imap-client.js';
+import { ImapClient, IMAP_MAX_FETCH_UIDS } from './imap-client.js';
 import { SmtpClient, validateSmtpAddress, validateSmtpSubject } from './smtp-client.js';
 import {
   readEmailConfig,
@@ -412,7 +412,11 @@ export class EmailService {
       const uids = unreadOnly
         ? await client.searchUnseen(input.since)
         : await client.searchAll(input.since);
-      const envelopes: ImapEnvelope[] = await client.fetchEnvelopes(uids, limit);
+      // Page here, visibly, rather than handing the whole match set to a
+      // function that would quietly keep the tail of it. `total` below reports
+      // the full match, so a caller can always see that this is a page.
+      const pageUids = uids.slice(-Math.min(limit, IMAP_MAX_FETCH_UIDS));
+      const envelopes: ImapEnvelope[] = await client.fetchEnvelopes(pageUids);
 
       // NEWEST FIRST. A search answers in ascending UID order and the page
       // keeps the highest UIDs, so `envelopes` is the newest N with the OLDEST

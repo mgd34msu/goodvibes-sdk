@@ -14968,6 +14968,10 @@
       "kind": "const"
     },
     {
+      "name": "IMAP_MAX_FETCH_UIDS",
+      "kind": "const"
+    },
+    {
       "name": "ImapAppendDraftInput",
       "kind": "interface",
       "required": [

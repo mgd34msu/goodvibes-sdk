@@ -20,25 +20,154 @@ export const NOT_OPEN_MESSAGE =
   'The IMAP connection is not open. Call open() before reading from the mailbox.';
 
 /**
- * Why a connection could not be opened, as three distinct facts.
+ * Why a connection could not be opened, as four distinct facts.
  *
- * They are distinct because they call for three different responses, and a
- * caller that cannot tell them apart necessarily gets two of the three wrong:
+ * They are distinct because they call for different responses, and a caller
+ * that cannot tell them apart necessarily gets some of them wrong:
  *
- *   - `authentication-rejected` — the credential was refused, or could not be
- *     put on the wire at all. TERMINAL. Retrying a rejected password on a
- *     backoff loop is how an account gets locked; the operator has to change
- *     something before this can succeed.
- *   - `mailbox-unavailable` — the credential worked and the named mailbox did
- *     not open. TERMINAL for the same reason: reconnecting does not create a
+ *   - `authentication-rejected` — the credential was REFUSED as a credential,
+ *     or could not be put on the wire at all. TERMINAL. Retrying a rejected
+ *     password on a backoff loop is how an account gets locked; the operator
+ *     has to change something before this can succeed.
+ *   - `mailbox-unavailable` — the credential worked and the named mailbox does
+ *     not exist. TERMINAL for the same reason: reconnecting does not create a
  *     folder. Authenticated is not readable, and this is the case that says so.
- *   - `connection-failed` — the socket, the greeting or the timing. Transient,
- *     and the only one of the three worth retrying.
+ *   - `server-unavailable` — the server said no for a reason that is about the
+ *     SERVER, not the account: a connection limit, a capacity refusal, a
+ *     temporary fault. NOT terminal. This exists because a refusal at the
+ *     login step is not necessarily about the login: Gmail answers
+ *     `NO [LIMIT] Too many simultaneous connections` right there, and it
+ *     clears in seconds. Classifying that as a rejected credential stops a
+ *     watcher permanently, and the symptom is a mailbox that looks quiet while
+ *     mail piles up behind it — which is the failure this whole capability
+ *     exists to end. We reach it routinely on our own account, because
+ *     `EmailService` opens a fresh connection per request on top of the one a
+ *     watcher holds permanently, and Gmail allows fifteen at once.
+ *   - `connection-failed` — the socket, the greeting or the timing. Transient.
+ *
+ * When the server gives no response code and its wording is ambiguous, the
+ * classification is deliberately the NON-terminal one. The asymmetry is not
+ * close: guessing terminal stops mail delivery until a human notices, guessing
+ * transient costs a retry.
  */
 export type ImapOpenFailureReason =
   | 'authentication-rejected'
   | 'mailbox-unavailable'
+  | 'server-unavailable'
   | 'connection-failed';
+
+/** Reasons where retrying cannot help; something has to change first. */
+const TERMINAL_REASONS: ReadonlySet<string> = new Set([
+  'authentication-rejected',
+  'mailbox-unavailable',
+  'credential-unavailable',
+]);
+
+/**
+ * RFC 3501 / RFC 5530 response codes that describe the SERVER's condition
+ * rather than the account's. None of these is a reason to stop.
+ *
+ * `LIMIT` is Gmail's too-many-connections refusal. `INUSE` is a mailbox
+ * another session holds. `UNAVAILABLE` is the server saying so outright.
+ * `SERVERBUG` and `CONTACTADMIN` describe a server fault, which is somebody
+ * else's to fix and not a reason to stop asking.
+ */
+const TRANSIENT_RESPONSE_CODES: ReadonlySet<string> = new Set([
+  'LIMIT',
+  'INUSE',
+  'UNAVAILABLE',
+  'SERVERBUG',
+  'CONTACTADMIN',
+  'OVERQUOTA',
+]);
+
+/** Response codes that name a credential the server will not accept. */
+const AUTH_RESPONSE_CODES: ReadonlySet<string> = new Set([
+  'AUTHENTICATIONFAILED',
+  'AUTHORIZATIONFAILED',
+  'EXPIRED',
+  'PRIVACYREQUIRED',
+]);
+
+/** Response codes that name a mailbox that is not there. */
+const MAILBOX_RESPONSE_CODES: ReadonlySet<string> = new Set([
+  'NONEXISTENT',
+  'TRYCREATE',
+]);
+
+/** Wording that means "the server is busy", used when no code was given. */
+const TRANSIENT_WORDING = [
+  /too many simultaneous/i,
+  /too many connections/i,
+  /connection limit/i,
+  /rate limit/i,
+  /temporarily/i,
+  /try again/i,
+  /server (is )?busy/i,
+  /service unavailable/i,
+  /system error/i,
+];
+
+/** Wording that means "this credential is not acceptable", when no code. */
+const AUTH_WORDING = [
+  /invalid credential/i,
+  /invalid (user|username|password|login)/i,
+  /authentication fail/i,
+  /login fail/i,
+  /bad (credential|password|username)/i,
+  /password.*(incorrect|wrong)/i,
+  /(incorrect|wrong).*password/i,
+  /application-specific password required/i,
+  /web login required/i,
+];
+
+/** Wording that means "no such folder", when no code. */
+const MAILBOX_WORDING = [
+  /no such mailbox/i,
+  /unknown mailbox/i,
+  /mailbox does ?n'?o?t exist/i,
+  /does not exist/i,
+  /no such folder/i,
+];
+
+/** The bracketed response code of a `NO`/`BAD` line, upper-cased, or ''. */
+function responseCodeOf(serverMessage: string): string {
+  const match = /\[([A-Za-z-]+)[\s\]]/.exec(serverMessage);
+  return (match?.[1] ?? '').toUpperCase();
+}
+
+function matchesAny(patterns: readonly RegExp[], text: string): boolean {
+  return patterns.some((pattern) => pattern.test(text));
+}
+
+/**
+ * What a server refusal actually means, read from the refusal itself.
+ *
+ * The phase a refusal arrived in is a hint, not the answer. A `NO` at the
+ * login step is only an authentication failure when it says something about
+ * authentication; when it says `[LIMIT]` it is about the server, and treating
+ * the two the same is how a transient condition becomes permanent silence.
+ * `phaseReason` is used only when the refusal itself is ambiguous AND the
+ * phase's own reason is not the terminal guess.
+ */
+export function classifyServerRefusal(
+  serverMessage: string,
+  phaseReason: ImapOpenFailureReason,
+): ImapOpenFailureReason {
+  const code = responseCodeOf(serverMessage);
+  if (TRANSIENT_RESPONSE_CODES.has(code)) return 'server-unavailable';
+  if (AUTH_RESPONSE_CODES.has(code)) return 'authentication-rejected';
+  if (MAILBOX_RESPONSE_CODES.has(code)) return 'mailbox-unavailable';
+
+  if (matchesAny(TRANSIENT_WORDING, serverMessage)) return 'server-unavailable';
+  if (matchesAny(AUTH_WORDING, serverMessage)) return 'authentication-rejected';
+  if (matchesAny(MAILBOX_WORDING, serverMessage)) return 'mailbox-unavailable';
+
+  // Nothing in the refusal says what it was about. Prefer the answer that
+  // keeps trying: a wrong "terminal" stops mail until a human notices, a wrong
+  // "transient" costs a retry.
+  return TERMINAL_REASONS.has(phaseReason) ? 'server-unavailable' : phaseReason;
+}
 
 /**
  * An `open()` that did not reach a readable mailbox, with the reason named.
@@ -53,7 +182,7 @@ export class ImapOpenError extends Error {
   readonly serverMessage: string;
   /** The mailbox this attempt was for. */
   readonly mailbox: string;
-  /** False only for `connection-failed`: nothing else is worth retrying. */
+  /** True only when retrying cannot help; something has to change first. */
   readonly terminal: boolean;
   /**
    * The routable record. A supervisor reads this and delivers it; it does not
@@ -77,7 +206,7 @@ export class ImapOpenError extends Error {
     this.reason = input.reason;
     this.serverMessage = input.serverMessage;
     this.mailbox = input.mailbox;
-    this.terminal = input.reason !== 'connection-failed';
+    this.terminal = TERMINAL_REASONS.has(input.reason);
     this.notice = {
       reason: input.reason,
       terminal: this.terminal,
@@ -232,6 +361,12 @@ export function ownerMessageForFailure(
       return `Sign-in worked, but the folder '${mailbox}' could not be opened. `
         + 'Nothing will be read from it until email.mailbox names a folder that '
         + 'exists on the server.';
+    case 'server-unavailable':
+      return 'The mail server refused the connection for now — it reported a '
+        + 'limit or a fault of its own, not a problem with the account. The '
+        + 'usual cause is too many mailbox connections at once. This is retried '
+        + 'automatically on a longer backoff; no change is needed unless it '
+        + 'keeps happening.';
     case 'connection-failed':
       return 'Could not reach the mail server. This is retried automatically, so '
         + 'no change is needed unless it keeps happening.';
@@ -304,17 +439,57 @@ export function composeOpenFailure(input: {
   const serverMessage = input.error instanceof Error
     ? input.error.message
     : String(input.error ?? '');
-  const refused = serverMessage.startsWith('IMAP command failed:')
-    || serverMessage.startsWith('Invalid IMAP ');
+
+  // A credential that cannot be put on the wire at all never reached the
+  // server, so there is no refusal to read: it is the credential, terminally.
+  if (serverMessage.startsWith('Invalid IMAP ')) {
+    return new ImapOpenError({
+      reason: 'authentication-rejected',
+      summary: 'The stored mail credentials cannot be sent to a mail server.',
+      serverMessage,
+      mailbox: input.mailbox,
+    });
+  }
+
+  // The server said no. What it said is the authority on what it meant — the
+  // phase only supplies the fallback, and only when it is not the terminal
+  // guess.
+  if (serverMessage.startsWith('IMAP command failed:')) {
+    const reason = classifyServerRefusal(serverMessage, input.refusedReason);
+    return new ImapOpenError({
+      reason,
+      summary: reason === input.refusedReason
+        ? input.refusedSummary
+        : summaryForReason(reason, input.mailbox),
+      serverMessage,
+      mailbox: input.mailbox,
+    });
+  }
+
+  // No refusal at all: a timeout, a closed socket, a greeting that never came.
   return new ImapOpenError({
-    reason: refused ? input.refusedReason : 'connection-failed',
-    summary: refused || input.refusedReason === 'connection-failed'
+    reason: 'connection-failed',
+    summary: input.refusedReason === 'connection-failed'
       ? input.refusedSummary
       : `The connection to the mail server failed before the mailbox `
         + `'${input.mailbox}' was open for reading.`,
     serverMessage,
     mailbox: input.mailbox,
   });
+}
+
+/** The one-line summary for a reason the phase did not predict. */
+function summaryForReason(reason: ImapOpenFailureReason, mailbox: string): string {
+  switch (reason) {
+    case 'authentication-rejected':
+      return 'The mail server rejected the stored credentials.';
+    case 'mailbox-unavailable':
+      return `Signed in, but the mailbox '${mailbox}' could not be opened for reading.`;
+    case 'server-unavailable':
+      return 'The mail server refused the connection for now.';
+    case 'connection-failed':
+      return 'The mail server did not answer.';
+  }
 }
 
 /** Record the live session of a client that has just connected. */
