@@ -133,8 +133,24 @@ successfully into a silo the daemon never reads, reporting success and
 configuring nothing.
 
 Surfaces never open the file. They read and write through the daemon's control
-plane (§11). The daemon is the single writer, which is what makes
-rename-based atomic writes sufficient with no lock.
+plane (§11).
+
+**The daemon is the only *program* that writes it — but it is not the only
+writer.** The owner is one too, by design (§4.5), and an earlier draft of this
+section claimed single-writer to justify having no lock while §4.5 and §5.3
+simultaneously depended on him editing the same file. That contradiction was a
+real defect and it was reproduced: a save of his landing inside the reload
+window was destroyed by the next machine write, with a success receipt and no
+error.
+
+So the rule is: **a write must verify the file has not changed underneath it
+between the projection it edited and the rename.** Compare mtime and content
+against disk immediately before the rename; on a mismatch, re-read and replay
+the edit against the new content, or refuse and say why. Never clobber. The
+window is small — roughly the debounce with `fs.watch`, up to
+`profile.reloadThrottleMs` on the poll fallback, and unbounded if the watcher
+errored — but "small" is not a property anyone should rely on for the file that
+holds his address.
 
 **Naming note:** `platform/profiles/` already exists and is a named-config-preset
 manager (`ProfileData` = saved `display.*`/`provider.*` settings), unrelated to
@@ -367,7 +383,7 @@ read path.
 ### 5.2 Acceptance criterion
 
 A mechanical-field read must be **effectively free** — target sub-microsecond.
-`packages/sdk/bench/owner-profile-read.bench.ts` measures nanoseconds per read
+`test/owner-profile-read-latency.test.ts` measures nanoseconds per read
 against a realistic document (200 lines), and the measured number goes in the
 round report. Not an assertion that it is fast; a number. If it is not
 effectively free the design has failed his requirement regardless of how correct
@@ -593,6 +609,19 @@ database. It gets the same containment as card material.
 - Never written to logs, at any level, including debug.
 - Never in exports, diagnostics or support bundles.
 - Never in telemetry.
+
+**This is absolute, and it overrides the redaction distinctiveness floor.**
+`redaction.ts` skips values under a length threshold and without a digit, `@` or
+internal whitespace, because turning `standard` or `imperial` into a redaction
+pattern would blank those words out of every unrelated log line — sound
+reasoning, and it stays for ordinary values. But it conflicts with this section,
+and the conflict was reproduced: `- Bob Lee` is seven characters and left an
+export in the clear. The resolution is that `People` content is keyed on its
+**section**, not on the shape of its value: it is redacted regardless of length,
+while the floor keeps protecting ordinary words everywhere else. An earlier
+draft of this document asserted the absolute rule without acknowledging the
+trade, which is how the code came to implement the floor faithfully and breach
+the rule.
 - Never injected into model context (§11.2 — closed tier).
 - Never volunteered in outbound content unless the task genuinely needs it.
 
