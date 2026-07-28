@@ -2285,22 +2285,60 @@ can verify each one rather than take my word for it.
 | V4 | `inbound-mail-housekeeping.test.ts:130` "start(0) is a no-op rather than a busy loop" | `expect(() => start(0)).not.toThrow()`. Delete the guard and `setInterval(fn, 0)` still does not throw — **the test passes with the busy loop installed** |
 | V5 | `platform-email-inbound-gmail-source.test.ts:379` | Terminates in `expect(true).toBe(true)`. A hang-gate, not an assertion |
 | V6 | `inbound-mail-dedup-redelivery.test.ts:234` "a suppressed duplicate still advances the cursor" | Touches no cursor. The suppression half is real; the cursor half is untested. Misnamed |
-| V7 | `inbound-mail-supervisor.test.ts:530` "the health entry carries no channel surface" | `'surface' in health` against a literal that never had the key — a type-level fact (`Omit<>`) asserted at runtime |
+| ~~V7~~ | ~~`inbound-mail-supervisor.test.ts:530`~~ | **STRUCK — the row was wrong.** `expect('surface' in health).toBe(false)` is an ordinary runtime own-property check over a real object, and adding `surface: 'email'` to `describeInboundMailHealth` reddens it. The test is sound |
 | V8 | `surface-card-gate.test.ts:518` | Real data, but the check is per-**file** ("contains both strings somewhere"), not per-call-site. A file with one gated and one ungated spawn passes |
 | V9 | `inbound-email-config-schema.test.ts` | Tests that three settings can be *set*. Nothing asserts they take effect, and nothing reads them — coverage illusion for gate #28 |
 
 **Gates in §12 with no corresponding test at all:** 11, 14, 15, 25, 28, 31, 32,
 33, 35 (type half), 36 (type half), 52 (second half).
 
-Two are worth naming. **#25** — "the expectation book is instantiated in
-production with a real authority probe, **boot wiring assertion**" — has nothing
-importing `composeInboundMail`, so the entire boot-wiring file has zero
-coverage. **#14** is *unconstructible* in the harness: `fake-imap-mailbox.ts`
-mints `Message-ID: <uid-N@example.test>` per UID, so a collision cannot be
-built, and the gate can never be satisfied as written.
+Two are worth naming. **#14** is *unconstructible* in the harness:
+`fake-imap-mailbox.ts` mints `Message-ID: <uid-N@example.test>` per UID, so a
+collision cannot be built, and the gate can never be satisfied as written.
+**#25** — "the expectation book is instantiated in production with a real
+authority probe, **boot wiring assertion**" — is uncovered, but the cause stated
+in the first version of this row was wrong and is corrected here:
+`composeInboundMail` **is** driven, at
+`inbound-mail-lifecycle-failures.test.ts:528`. That test asserts terminal-notice
+routing and nothing else, and `facade-inbound-mail.ts` builds the registry
+without passing `authority` at all, relying on the constructor default — so the
+gate's second half, "with a real authority probe", had nothing observing it. The
+correction matters because "nothing imports the file" and "the file is imported
+and this property is not asserted" call for opposite fixes.
 
 > A defect list is only as durable as the place it is written down. Findings
 > that live in a report are re-found; findings that live in the repo are fixed.
+>
+> And a written-down finding is a claim to be re-checked, not a fact. Two of the
+> eleven entries above were wrong — V7 was not vacuous, and #25's stated cause
+> was not the real one. A list kept so findings do not expire will preserve
+> mistakes just as faithfully.
+
+#### Closing three of them required building the mechanism first
+
+Gates 31, 32 and 33 had no test **because they had no production mechanism**.
+`expectation-registry.ts` took no capability input of any kind, and
+`ExpectationExpiryReport.reason` was the closed union `'window-elapsed'`.
+
+**33 was the sharpest, and its shape is the one to remember.** Since nothing
+*could* fail an expectation for capability loss, gate 33 — "a watcher in
+reconnect backoff does NOT fail expectations" — could not be violated. An
+unfalsifiable gate is strictly worse than an untested one: an untested gate is a
+known hole, while an unfalsifiable one reads as a guarantee, and a test written
+over it passes on the first run and every run after, proving only that the
+mechanism it describes does not exist.
+
+The registry now takes an `ExpectationCapabilityProbe`. `open()` refuses at open
+time against an `insufficient` verdict, so a signup workstream learns
+immediately instead of after fifteen minutes of silence it cannot tell from "the
+service never sent it". `capabilityChanged(verdict)` fails open expectations
+with `reason: 'capability-lost'` — a second reason beside `window-elapsed`,
+because "nothing came" and "we could no longer look" have opposite fixes and one
+of them sends the owner hunting for a message that may well have been delivered.
+And it fails **nothing** for a `degraded` verdict: a reconnect fetches
+everything above the cursor, so "not yet" is not "cannot". Gate 33 is now
+falsifiable — mutating that predicate from `state !== 'insufficient'` to
+`state === 'healthy'` reddens three tests.
 
 ### 13.8 A mutation that does not redden proves nothing until you prove the mutation landed
 
@@ -2463,6 +2501,65 @@ so the gate-off case can name itself.
 > was being delivered. That is the same fault the function's own docstring
 > already criticised in `ChannelStatusSnapshot` — computed from configuration
 > rather than from behaviour — reproduced one field short.
+
+### 13.10 A predicate with two answers cannot say "I do not know yet"
+
+`MailboxCursorStore`'s reap rule asks an injected predicate whether an account
+is still configured. It returned `boolean`, so a caller that could not yet
+answer — config not loaded, manager mid-reload, account list a promise that has
+not settled — had to pick one of two answers, and both are wrong:
+
+- answering `false` reaps the stored cursor. The next `resolve()` then answers
+  **`first-run` at the mailbox's current high-water mark**, so every message
+  between the discarded position and that mark is *skipped* — not replayed,
+  skipped — and the owner is told the mailbox started fresh, which is exactly
+  what a genuine first run looks like. Seeded at UID 900 against a mailbox at
+  1500, that is six hundred messages nobody ever sees and no line anywhere
+  saying so.
+- answering `true` keeps cursors for accounts that really were removed, which is
+  a bounded leak the count cap already handles.
+
+The defect was **latent**: the one production caller builds its predicate from
+an account it has already resolved, so the empty-configured-set trigger is
+avoided by construction. That is not protection, it is luck about the current
+call site — an account-id rename reaches the same path, and nothing in the
+predicate's shape stops the next caller from guessing.
+
+The answer type is now `boolean | 'unknown'`, `'unknown'` keeps the cursor, and
+`CursorSweepReport.unresolvedAccounts` counts what was kept for a reason nobody
+could confirm — because a retained cursor that nothing justified is persisted
+state held for an unknown reason, and a count that never falls to zero is a
+caller that can never answer.
+
+> **Absence of an answer must never be representable as an answer of absence.**
+> A two-valued predicate forces every caller who does not know to lie, and the
+> caller who lies in the safe-looking direction is the one that loses data.
+
+The same reasoning is why the capability probe in §13.7 treats `null` — nothing
+has probed yet — as permission to proceed rather than as a failure. Three
+answers, in both places, for the same reason.
+
+### 13.11 Three settings ship configured and read by nothing
+
+`surfaces.email.inbound.gmailPollSecondsExpecting`, `.gmailPollSecondsIdle` and
+`.onInsufficientCapability` each have a schema row, a documented default, a
+validated range, daemon-owned scope and a user-facing description — and no
+consumer anywhere in `packages/sdk/src`. Two of them are *named in doc comments*
+beside the fields they are supposed to fill (`GmailMailSourceDeps.pollExpectingMs`
+and `pollIdleMs`), which is what made them look wired; `onInsufficientCapability`
+is mentioned once in `inbound-notice.ts` and read nowhere, so `notice-only` and
+`refuse-and-notify` are the same behaviour today.
+
+This is the failure mode §13.7's V9 row describes, one level up: the schema half
+of the coverage is thorough enough that the missing half does not show. A
+setting is not a feature until something reads it — see the owner ruling that
+every flag ships as a real configurable feature.
+
+`inbound-email-config-schema.test.ts` now scans production sources for a *read*
+of each key (inside a `get(...)` or `readNumberSetting(...)` call, not a mention
+in prose) and fails if the set of unread keys is anything other than these three
+by name. Wiring one reddens it, which forces an effect assertion to be written
+beside the others rather than the key quietly joining the "tested" pile.
 
 ## 14. Related
 

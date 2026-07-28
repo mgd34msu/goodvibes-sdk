@@ -10,9 +10,23 @@
  * Each test here was run BEFORE the schema keys existed and failed (missing
  * key / undefined default / `isDaemonOwnedConfigKey` false because the whole
  * key didn't exist yet). They are re-run now against the real schema.
+ *
+ * ## The half this file used to be missing
+ *
+ * Everything above is about the SCHEMA: the key exists, its default is the
+ * documented one, its range refuses what it should. None of it says the
+ * setting does anything. A key can have a perfect row, a validated range, a
+ * daemon-owned scope and a user-facing description while nothing anywhere
+ * reads it — and the coverage reads as complete precisely because the schema
+ * half is thorough. `enabled` was the only key whose EFFECT was tested.
+ *
+ * So the last section drives `composeInboundMail` — the real production
+ * assembly — with non-default values and asserts each one reaches the thing it
+ * names. A setting that stops being read reddens there rather than continuing
+ * to look configured.
  */
 
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, test } from 'bun:test';
@@ -29,6 +43,21 @@ import {
   DEFAULT_VERIFICATION_WINDOW_MS,
   MAX_VERIFICATION_WINDOW_MS,
 } from '../packages/sdk/src/platform/google/verification-expectations.js';
+import { composeInboundMail } from '../packages/sdk/src/platform/daemon/facade-inbound-mail.js';
+import { surfaceHasCommandAuthority } from '../packages/sdk/src/platform/security/untrusted-content.js';
+import { capabilityVerdict } from '../packages/sdk/src/platform/email/inbound/capability.js';
+import type {
+  InboundCapabilityTransition,
+  InboundCapabilityVerdict,
+  InboundMailObserver,
+} from '../packages/sdk/src/platform/email/inbound/ports.js';
+import type {
+  InboundMailSupervisor,
+  InboundMailSupervisorDeps,
+} from '../packages/sdk/src/platform/email/inbound/index.js';
+import type { InboundWatcherSettings } from '../packages/sdk/src/platform/email/inbound/ports.js';
+import type { StructuredNotice } from '../packages/sdk/src/platform/email/inbound-notice.js';
+import type { GatewayMethodHandler } from '../packages/sdk/src/platform/control-plane/method-catalog.js';
 
 const tmpRoots: string[] = [];
 afterEach(() => {
@@ -249,5 +278,436 @@ describe('range validators reject out-of-range values', () => {
     expect(() => mgr.set('surfaces.email.inbound.onInsufficientCapability' as never, 'ignore' as never)).toThrow(ConfigError);
     expect(() => mgr.set('surfaces.email.inbound.onInsufficientCapability', 'notice-only')).not.toThrow();
     expect(() => mgr.set('surfaces.email.inbound.onInsufficientCapability', 'refuse-and-notify')).not.toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The settings TAKE EFFECT — driven through the real composition
+// ---------------------------------------------------------------------------
+
+const ACCOUNT = 'primary';
+const WATCHED_MAILBOX = 'Verifications';
+
+/** One capability transition, as the watcher's tracker emits them. */
+function transitionTo(to: InboundCapabilityVerdict): InboundCapabilityTransition {
+  return {
+    account: ACCOUNT,
+    mailbox: WATCHED_MAILBOX,
+    from: null,
+    to,
+    at: '2026-07-28T09:00:00.000Z',
+  };
+}
+
+/**
+ * Announce a verdict down the path the SOURCE uses.
+ *
+ * Deliberately not `deps.observer` — that is the facade's observer, and
+ * reaching it directly would skip the supervisor's own wrapper, which is where
+ * `this.verdict` is recorded and therefore where the registry's capability
+ * probe reads from. `observer()` is the object the supervisor hands to the
+ * source it starts, so this is the whole chain: source → supervisor → facade
+ * observer → registry.
+ */
+function announce(rig: ComposedRig, verdict: InboundCapabilityVerdict): void {
+  const wrapped = (rig.supervisor as unknown as { observer(): InboundMailObserver }).observer();
+  wrapped.stateChanged?.(transitionTo(verdict));
+}
+
+/**
+ * Let the observer's `void`-ed continuation settle.
+ *
+ * `InboundMailObserver` is synchronous by contract — a report sink must never
+ * hold up the watcher — so the registry write it starts finishes on the
+ * microtask queue rather than before `stateChanged` returns.
+ */
+async function flushMicrotasks(times = 5): Promise<void> {
+  for (let i = 0; i < times; i += 1) await Promise.resolve();
+}
+
+/** One arriving message, shaped as the IMAP source hands it to the intake. */
+function inboundMessage(): Parameters<InboundMailSupervisorDeps['handle']>[0] {
+  return {
+    source: 'imap',
+    account: ACCOUNT,
+    mailbox: WATCHED_MAILBOX,
+    from: 'noreply@example.com',
+    subject: 'Verify your email',
+    claimedDate: 'Mon, 27 Jul 2026 11:59:00 +0000',
+    messageId: '<abc@example.com>',
+    deliveredTo: ['owner+gv-example-com@example.test'],
+    unverifiedToHeaderClaim: 'owner@example.test',
+    uidValidity: 42,
+    uid: 137,
+    envelope: {} as never,
+    via: 'idle',
+  } as never;
+}
+
+/**
+ * Every production `.ts` under the SDK except the config definitions
+ * themselves.
+ *
+ * Excluded on purpose: `config/` is where a key is DECLARED, and a declaration
+ * is what an inert key already has. Counting it would make every key look
+ * read.
+ */
+function readSourceFilesOutsideConfig(): string[] {
+  const root = join(import.meta.dir, '..', 'packages', 'sdk', 'src');
+  const texts: string[] = [];
+  const walk = (directory: string): void => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const path = join(directory, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name !== 'config') walk(path);
+        continue;
+      }
+      if (entry.name.endsWith('.ts')) texts.push(readFileSync(path, 'utf8'));
+    }
+  };
+  walk(root);
+  return texts;
+}
+
+/** Non-default everywhere, so a value that reached its destination is unambiguous. */
+const NON_DEFAULT_CONFIG: Readonly<Record<string, unknown>> = {
+  'surfaces.email.inbound.enabled': true,
+  'surfaces.email.inbound.accounts': JSON.stringify([ACCOUNT, 'second-account']),
+  'surfaces.email.inbound.source': 'imap',
+  'surfaces.email.inbound.mode': 'poll',
+  'surfaces.email.inbound.pollIntervalSeconds': 240,
+  'surfaces.email.inbound.idleReissueMinutes': 11,
+  'surfaces.email.inbound.reconnect.maxBackoffSeconds': 45,
+  'surfaces.email.inbound.capabilityRecheckMinutes': 17,
+  'surfaces.email.inbound.expectationWindowMinutes': 7,
+  'surfaces.email.inbound.dedupTtlMinutes': 23,
+  'surfaces.email.inbound.retentionDays': 3,
+  'surfaces.email.inbound.maxRecords': 321,
+  'surfaces.email.inbound.notice.mode': 'none',
+  'surfaces.email.inbound.notice.route': 'default',
+  // Needed for the IMAP source to be constructible at all.
+  'surfaces.email.imap.host': 'imap.example.test',
+  'surfaces.email.user': 'watched@example.test',
+  'surfaces.email.imap.mailbox': WATCHED_MAILBOX,
+};
+
+interface ComposedRig {
+  readonly supervisor: InboundMailSupervisor;
+  readonly deps: InboundMailSupervisorDeps;
+  readonly handlers: Map<string, GatewayMethodHandler>;
+  readonly notices: { binding: unknown; notice: StructuredNotice }[];
+}
+
+/**
+ * Build the real inbound-mail graph over a throwaway directory.
+ *
+ * Nothing here opens a socket: the IMAP source is CONSTRUCTED (which is where
+ * the settings land) and never started, and the secrets reader is never
+ * reached because credentials are resolved inside `open()`.
+ */
+function compose(
+  overrides: Readonly<Record<string, unknown>> = {},
+  bindings: readonly { id: string; lastSeenAt: number }[] = [],
+): ComposedRig | null {
+  const root = mkdtempSync(join(tmpdir(), 'gv-inbound-effect-'));
+  tmpRoots.push(root);
+  const values: Record<string, unknown> = { ...NON_DEFAULT_CONFIG, ...overrides };
+  const handlers = new Map<string, GatewayMethodHandler>();
+  const notices: { binding: unknown; notice: StructuredNotice }[] = [];
+
+  const supervisor = composeInboundMail({
+    configManager: { get: (key: string) => values[key] } as never,
+    secretsManager: { get: async () => null } as never,
+    shellPaths: { resolveUserPath: (_scope: string, name: string) => join(root, name) } as never,
+    routeBindings: {
+      listBindings: () => bindings,
+      getBinding: (id: string) => bindings.find((entry) => entry.id === id),
+    } as never,
+    gatewayMethods: {
+      // Every descriptor "exists", so the facade's `attach` registers all three
+      // and the handlers are reachable from here.
+      get: (id: string) => ({ id }),
+      register: (descriptor: { id: string }, handler: GatewayMethodHandler) => {
+        handlers.set(descriptor.id, handler);
+      },
+    } as never,
+    deliverStructuredNotice: async (binding, notice) => {
+      notices.push({ binding, notice });
+      return { delivered: true } as never;
+    },
+  });
+
+  if (supervisor === null) return null;
+  const deps = (supervisor as unknown as { deps: InboundMailSupervisorDeps }).deps;
+  return { supervisor, deps, handlers, notices };
+}
+
+/**
+ * The watcher settings the composition actually handed to the source.
+ *
+ * Two private hops — the source's inner watcher, and that watcher's settings.
+ * Reaching through them is deliberate: these four settings have no public
+ * accessor anywhere, and "no way to observe it" is exactly how a setting stops
+ * being wired without anything noticing.
+ */
+async function watcherSettingsFrom(rig: ComposedRig): Promise<InboundWatcherSettings> {
+  const source = await rig.deps.sources.create({
+    kind: 'imap',
+    account: rig.deps.account,
+    mailbox: rig.deps.mailbox,
+    sink: { deliver: async () => {} },
+    observer: {},
+  } as never);
+  if (source === null) throw new Error('the composition built no IMAP source to read settings from');
+  return (source as unknown as { watcher: { settings: InboundWatcherSettings } }).watcher.settings;
+}
+
+describe('each inbound setting reaches the thing it names', () => {
+  test('accounts names the watched account, and an empty list composes nothing', () => {
+    const rig = compose();
+    expect(rig?.deps.account).toBe(ACCOUNT);
+    // Honest about watching nothing rather than defaulting to a mailbox
+    // nobody named.
+    expect(compose({ 'surfaces.email.inbound.accounts': '[]' })).toBeNull();
+    expect(compose({ 'surfaces.email.inbound.accounts': undefined })).toBeNull();
+  });
+
+  test('imap.mailbox names the folder the watcher opens', () => {
+    expect(compose()?.deps.mailbox).toBe(WATCHED_MAILBOX);
+    expect(compose({ 'surfaces.email.imap.mailbox': undefined })?.deps.mailbox).toBe('INBOX');
+  });
+
+  test('retentionDays and maxRecords bound the record store', () => {
+    const policy = compose()!.deps.records.getPolicy();
+    expect(policy.retentionMs).toBe(3 * 86_400_000);
+    expect(policy.maxRecords).toBe(321);
+  });
+
+  test('expectationWindowMinutes is the window an expectation actually gets', async () => {
+    const rig = compose()!;
+    const opened = await rig.deps.expectations.open({
+      serviceDomain: 'example.com',
+      recipientAddress: 'signup@example.test',
+      purpose: 'confirm',
+    });
+    const windowMs = Date.parse(opened.expiresAt) - Date.parse(opened.openedAt);
+    expect(windowMs).toBe(7 * 60_000);
+  });
+
+  test('the four watcher timings arrive at the source in milliseconds', async () => {
+    const settings = await watcherSettingsFrom(compose()!);
+    expect(settings.pollIntervalMs).toBe(240 * 1_000);
+    expect(settings.idleReissueMs).toBe(11 * 60_000);
+    expect(settings.maxBackoffMs).toBe(45 * 1_000);
+    expect(settings.capabilityRecheckMs).toBe(17 * 60_000);
+  });
+
+  test('mode reaches the source, so configured polling is not an inferred fallback', async () => {
+    expect((await watcherSettingsFrom(compose()!)).mode).toBe('poll');
+    expect((await watcherSettingsFrom(compose({ 'surfaces.email.inbound.mode': 'idle' })!)).mode).toBe('idle');
+    // Anything unrecognised is `auto`, not the last value that happened to be set.
+    expect((await watcherSettingsFrom(compose({ 'surfaces.email.inbound.mode': 'push' })!)).mode).toBe('auto');
+  });
+
+  test('dedupTtlMinutes is the suppression window the supervisor uses', () => {
+    const rig = compose()!;
+    const readTtl = (supervisor: InboundMailSupervisor): number =>
+      (supervisor as unknown as { dedupTtlMs(): number }).dedupTtlMs();
+    expect(readTtl(rig.supervisor)).toBe(23 * 60_000);
+    // An unusable value falls back to the correctness FLOOR — one hour, which
+    // outlasts the daemon's own hourly restart — rather than to zero.
+    expect(readTtl(compose({ 'surfaces.email.inbound.dedupTtlMinutes': 'soon' })!.supervisor))
+      .toBe(60 * 60_000);
+  });
+
+  test('enabled=false stops the watcher and names the key that turns it on', async () => {
+    const rig = compose({ 'surfaces.email.inbound.enabled': false })!;
+    const status = await rig.supervisor.start();
+    expect(status.running).toBe(false);
+    expect(status.reason).toContain('surfaces.email.inbound.enabled');
+    await rig.supervisor.stop();
+  });
+
+  test('source=gmail with no Google credential is refused, never quietly served over IMAP', async () => {
+    const rig = compose({ 'surfaces.email.inbound.source': 'gmail' })!;
+    const status = await rig.supervisor.start();
+    expect(status.running).toBe(false);
+    expect(status.reason).toContain('no Google credentials have been adopted');
+    await rig.supervisor.stop();
+  });
+
+  test('notice.route picks the binding the notice is delivered to', async () => {
+    const bindings = [
+      { id: 'older', lastSeenAt: 1 },
+      { id: 'newest', lastSeenAt: 2 },
+    ];
+    const deliveredTo = async (overrides: Readonly<Record<string, unknown>>): Promise<(string | undefined)[]> => {
+      const rig = compose({ 'surfaces.email.inbound.notice.mode': 'all', ...overrides }, bindings)!;
+      await rig.deps.handle(inboundMessage());
+      return rig.notices.map((entry) => (entry.binding as { id: string } | undefined)?.id);
+    };
+
+    // A named binding id wins.
+    expect(await deliveredTo({ 'surfaces.email.inbound.notice.route': 'older' })).toEqual(['older']);
+    // `default` — the shipped value — means "inherit whatever he already
+    // uses", which is the binding he was last seen on.
+    expect(await deliveredTo({ 'surfaces.email.inbound.notice.route': 'default' })).toEqual(['newest']);
+  });
+
+  test('notice.mode=none suppresses the notice; all sends it', async () => {
+    const quiet = compose({ 'surfaces.email.inbound.notice.mode': 'none' }, [{ id: 'r', lastSeenAt: 1 }])!;
+    await quiet.deps.handle(inboundMessage());
+    expect(quiet.notices).toHaveLength(0);
+
+    const loud = compose({ 'surfaces.email.inbound.notice.mode': 'all' }, [{ id: 'r', lastSeenAt: 1 }])!;
+    await loud.deps.handle(inboundMessage());
+    expect(loud.notices).toHaveLength(1);
+  });
+
+  /**
+   * Three keys have a schema row, a validated range and a description, and
+   * NOTHING in the tree reads them.
+   *
+   * Recorded here rather than left to be re-found. `grep` for each across
+   * `packages/sdk/src` returns the schema definition, the key union, and — for
+   * two of them — a doc comment naming the key beside a field that is never
+   * populated from it:
+   *
+   *  - `gmailPollSecondsExpecting` and `gmailPollSecondsIdle` are documented on
+   *    `GmailMailSourceDeps` as the origin of `pollExpectingMs` / `pollIdleMs`,
+   *    and no code maps the config keys onto those fields. The Gmail source
+   *    builder is injected by a composition that supplies its own numbers.
+   *  - `onInsufficientCapability` is named in one comment in
+   *    `inbound-notice.ts` and read by nothing at all, so `notice-only` and
+   *    `refuse-and-notify` are the same behaviour today.
+   *
+   * This test asserts the CURRENT state, which is not the desired one — it is
+   * here so that wiring any of the three reddens it and forces the effect
+   * assertion above to be written. It fails the day the defect is fixed, which
+   * is the only honest shape for a test over a known gap.
+   */
+  test('every inbound key is either read by production code or on the named inert list', () => {
+    const INERT = new Set([
+      'surfaces.email.inbound.gmailPollSecondsExpecting',
+      'surfaces.email.inbound.gmailPollSecondsIdle',
+      'surfaces.email.inbound.onInsufficientCapability',
+    ]);
+
+    const sources = readSourceFilesOutsideConfig();
+    const readByProduction = (key: string): boolean => sources.some((text) => {
+      // A read, not a mention: the key inside a `get(...)` call or a
+      // `readNumberSetting(..., '<key>', ...)` argument. A doc comment naming
+      // the key does not count, which is the whole distinction — two of the
+      // three inert keys ARE named in comments beside fields they never fill.
+      const quoted = key.replace(/\./g, '\\.');
+      return new RegExp(`(?:get|readNumberSetting)\\([^)]*['"]${quoted}['"]`, 's').test(text);
+    });
+
+    const wired = EXPECTED_DEFAULTS.map((entry) => entry.key).filter(readByProduction);
+    const unread = EXPECTED_DEFAULTS.map((entry) => entry.key).filter((key) => !readByProduction(key));
+
+    // Not a tautology in either direction: most keys ARE read, and the three
+    // named ones are not.
+    expect(wired.length).toBeGreaterThan(10);
+    expect(unread.sort()).toEqual([...INERT].sort());
+  });
+});
+
+describe('the expectation book is instantiated in production (gate #25)', () => {
+  test('composeInboundMail builds a registry and registers its three verbs', async () => {
+    const rig = compose()!;
+    expect([...rig.handlers.keys()].sort()).toEqual([
+      'email.expectation.cancel',
+      'email.expectation.list',
+      'email.expectation.open',
+      'email.inbound.status',
+    ]);
+
+    // Driven through the registered verb, not the object: this is the path a
+    // signup workstream takes, and it had no production call site at all
+    // before the facade wired it.
+    const opened = await rig.handlers.get('email.expectation.open')!({
+      methodId: 'email.expectation.open',
+      body: {
+        serviceDomain: 'example.com',
+        recipientAddress: 'signup@example.test',
+        purpose: 'confirm the account',
+      },
+    } as never) as { id: string };
+    expect(opened.id).toBeTruthy();
+
+    const listed = await rig.handlers.get('email.expectation.list')!({
+      methodId: 'email.expectation.list',
+    } as never) as { total: number };
+    expect(listed.total).toBe(1);
+  });
+
+  /**
+   * The wiring, not the registry.
+   *
+   * `capabilityChanged` and the open-time capability refusal are both tested
+   * directly in `inbound-mail-expectation-registry.test.ts`. Neither of those
+   * says the composition CONNECTED them: the registry could have a perfect
+   * capability mechanism and the facade could hand it no probe and route it no
+   * transitions, and every one of those tests would still be green. That is
+   * the same shape as the terminal-notice defect — a mechanism built, and its
+   * only consumer never wired.
+   */
+  test('a capability transition reaches the registry through the composed observer', async () => {
+    const rig = compose()!;
+    await rig.deps.expectations.open({
+      serviceDomain: 'example.com',
+      recipientAddress: 'signup@example.test',
+      purpose: 'confirm',
+    });
+    expect(rig.deps.expectations.list()).toHaveLength(1);
+
+    // A reconnect first: "not yet" is not "cannot", and a wiring that failed
+    // expectations on any transition at all would be caught here rather than
+    // by the owner losing a live signup to a three-second socket drop.
+    announce(rig, capabilityVerdict('reconnecting', 'dropped'));
+    await flushMicrotasks();
+    expect(rig.deps.expectations.list()).toHaveLength(1);
+
+    announce(rig, capabilityVerdict('credentials-rejected', 'the server refused the credential'));
+    await flushMicrotasks();
+    expect(rig.deps.expectations.list()).toHaveLength(0);
+  });
+
+  test('the composed capability probe is the supervisor’s live verdict, so open() refuses on it', async () => {
+    const rig = compose()!;
+    // Nothing has probed yet — the honest answer is "unknown", and an unknown
+    // mailbox does not block a signup.
+    await rig.deps.expectations.open({
+      serviceDomain: 'first.example',
+      recipientAddress: 'a@example.test',
+      purpose: 'confirm',
+    });
+
+    // The supervisor records the verdict off the same stream, and the
+    // registry's probe reads it back off the supervisor.
+    announce(rig, capabilityVerdict('mailbox-unreadable', 'the mailbox would not open'));
+    await flushMicrotasks();
+    expect(rig.supervisor.capability?.reason).toBe('mailbox-unreadable');
+
+    await expect(rig.deps.expectations.open({
+      serviceDomain: 'second.example',
+      recipientAddress: 'b@example.test',
+      purpose: 'confirm',
+    })).rejects.toThrow('mailbox-unreadable');
+  });
+
+  test('the book carries the REAL authority probe, not a permissive stand-in', () => {
+    // §2.2's defensive check — refuse to open an expectation if email ever
+    // gained command authority — could not have fired before, because the book
+    // was never constructed in production. Asserting it fires requires knowing
+    // the probe in force is the shipped predicate, and asking about `email`
+    // cannot establish that: the real function and every plausible stub both
+    // answer `false`. `owner-direct` is where they differ.
+    const probe = compose()!.deps.expectations.authority;
+    expect(probe.surfaceHasCommandAuthority('email')).toBe(false);
+    expect(probe.surfaceHasCommandAuthority('owner-direct')).toBe(true);
+    expect(probe.surfaceHasCommandAuthority('owner-direct'))
+      .toBe(surfaceHasCommandAuthority('owner-direct'));
   });
 });

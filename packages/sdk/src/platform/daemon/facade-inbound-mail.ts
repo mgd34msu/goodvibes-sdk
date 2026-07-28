@@ -41,6 +41,7 @@ import {
   createInboundTerminalFailureAnnouncer,
   resolveWatcherSettings,
   type GmailSourceBuilder,
+  type InboundMailObserver,
   type InboundNoticeMode,
   type NoticeRouteResolution,
 } from '../email/inbound/index.js';
@@ -247,19 +248,36 @@ export function composeInboundMail(
     disclosurePath: storePath('email-inbound-housekeeping.json'),
   });
 
+  // Declared before the registry and assigned after the supervisor, so the
+  // registry can ASK for the live capability verdict without either object
+  // having to be constructed twice. The probe answers `null` until the
+  // supervisor exists and until it has probed anything, which is the honest
+  // answer: nothing has looked at the mailbox yet.
+  let supervisor: InboundMailSupervisor | undefined;
+
   const expectations = new InboundExpectationRegistry({
     store: expectationStore,
     defaultWindowMs: readNumberSetting(configManager, 'surfaces.email.inbound.expectationWindowMinutes', 15) * 60_000,
+    // §12 gate #31: an expectation opened against a mailbox already known
+    // unreadable is refused at open time, so the workstream learns now rather
+    // than from a fifteen-minute silence it cannot tell from "nothing came".
+    capability: () => supervisor?.capability ?? null,
     onExpired: (report) => {
-      // §2.3: an expectation that passes its window fails with a named reason
-      // and is REPORTED, rather than lapsing into silence.
-      logger.warn('A verification expectation expired without a matching message', {
-        surface: 'email-inbound',
-        expectation: report.id,
-        serviceDomain: report.serviceDomain,
-        reason: report.reason,
-        detail: report.detail,
-      });
+      // §2.3: an expectation that ends without its message fails with a named
+      // reason and is REPORTED, rather than lapsing into silence.
+      logger.warn(
+        report.reason === 'capability-lost'
+          ? 'A verification expectation was failed because the mailbox stopped being readable'
+          : 'A verification expectation expired without a matching message',
+        {
+          surface: 'email-inbound',
+          expectation: report.id,
+          serviceDomain: report.serviceDomain,
+          reason: report.reason,
+          ...(report.capabilityReason === undefined ? {} : { capabilityReason: report.capabilityReason }),
+          detail: report.detail,
+        },
+      );
     },
   });
 
@@ -278,7 +296,40 @@ export function composeInboundMail(
   // the one the status verb read would be the one nothing wrote to.
   const noticeHealth = createInboundNoticeHealth();
 
-  const supervisor = new InboundMailSupervisor({
+  // §3.4b, §12 gates #32 and #33. The announcer tells the owner about terminal
+  // failures; the registry has to know about them too, because an expectation
+  // is a promise to watch a mailbox and a mailbox that cannot be read makes
+  // that promise unkeepable. Composed here rather than folded into the
+  // announcer: they are two consumers of one fact, and an announcer that also
+  // retired expectations would be doing something its name does not say.
+  //
+  // `capabilityChanged` itself is the one that decides what to fail — a
+  // `degraded` transition (reconnecting, backing off) fails NOTHING, because
+  // the reconnect fetches everything above the cursor.
+  const announcer = createInboundTerminalFailureAnnouncer({
+    send: (notice) => options.deliverStructuredNotice(
+      noticeBindingFor(configManager, options.routeBindings),
+      notice,
+    ),
+  });
+  const observer: InboundMailObserver = {
+    terminalFailure: (failure) => { announcer.terminalFailure(failure); },
+    stateChanged: (transition) => {
+      announcer.stateChanged(transition);
+      void expectations.capabilityChanged(transition.to).catch((error: unknown) => {
+        // The watcher must keep running whatever happens here, and the owner
+        // must not be left thinking expectations were retired when they were
+        // not. Reported rather than swallowed.
+        logger.error('Open expectations could not be failed after a capability change', {
+          surface: 'email-inbound',
+          reason: transition.to.reason,
+          detail: error instanceof Error ? error.message : String(error),
+        });
+      });
+    },
+  };
+
+  supervisor = new InboundMailSupervisor({
     config: configManager,
     account,
     mailbox,
@@ -324,12 +375,7 @@ export function composeInboundMail(
     // built, and its sink a log line, for the one condition that means no mail
     // will ever arrive again. It goes to the owner through the same structured
     // notice port arriving mail goes through, and still logs.
-    observer: createInboundTerminalFailureAnnouncer({
-      send: (notice) => options.deliverStructuredNotice(
-        noticeBindingFor(configManager, options.routeBindings),
-        notice,
-      ),
-    }),
+    observer,
   });
 
   registerEmailExpectationGatewayMethods(options.gatewayMethods, expectations);
