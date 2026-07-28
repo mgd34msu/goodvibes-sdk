@@ -11,45 +11,128 @@
  * reaches that string is what he reads on his phone. Inbound mail is written
  * entirely by strangers, so the SDK — not the adapter, not the daemon, not a
  * convention documented somewhere — owns turning one arriving message into
- * that string, and the adapter's only allowed move is to pass this function's
- * output straight through.
+ * that string.
  *
- * ── The rule this file enforces structurally, not by convention ───────────
+ * ── Escaping belongs to the channel, not the producer (docs/inbound-email.md §7.2) ──
  *
- * "No raw body text ever reaches the notice" is not implemented as a rule
- * someone has to remember to follow. `InboundMailNoticeInput` below has no
- * body/text/preview field of any shape — there is no parameter position a
- * caller could put message content into, so the question "did we forget to
- * strip the body" cannot even be asked. `NO_BODY_FIELD_GUARD` at the bottom
- * of this file is a second, compiler-checked line against the same failure:
- * if a future edit ever adds a `body`-shaped field to the input type, that
- * line stops compiling.
+ * An earlier version of this module returned one STRING for every channel,
+ * sanitized by one shared trigger-character set. That is an architectural
+ * defect, not a tuning problem: Telegram MarkdownV2 reserves
+ * `` _*[]()~`>#+-=|{}.! ``, Discord additionally turns a bare `@everyone` /
+ * `@here` into a real mention, Slack uses `<url|text>` and has no backslash
+ * escape at all, an HTML notice needs entity escaping instead of stripping,
+ * and ntfy carries fields in HTTP headers where a bare newline is the
+ * injection and markup is irrelevant. A set tuned for one channel is silently
+ * wrong on another, and it goes wrong on the day someone adds a channel, in a
+ * module they never opened. Stripping is also lossy in the wrong direction:
+ * the owner sees a mangled subject and cannot tell whether the mail said that
+ * or we did.
  *
- * Subject and sender ARE accepted, because the owner needs to know who wrote
- * and what it was about — but both are attacker-controlled text, so both are
- * sanitized here rather than trusted: control characters and line breaks are
- * removed (so a subject cannot forge extra lines in the rendered notice or
- * anything that reads as a directive), length is capped, and markup
- * metacharacters that Telegram, Slack, and Discord each interpret differently
- * are neutralized for all three at once, since this function does not know
- * which of them the owner's notice route actually points at.
+ * So `renderInboundMailNotice` returns `StructuredNotice` — literal spans
+ * (our own words, safe by construction) and untrusted spans (attacker text,
+ * unmodified beyond removing control characters and line breaks, which are
+ * unsafe on every channel including plain text, because a raw newline lets
+ * attacker text forge what reads as an extra labeled line). Only when a
+ * specific channel is about to turn the notice into a wire string does an
+ * ESCAPER run — `\[` in Telegram MarkdownV2 renders as a literal `[`, so the
+ * owner sees `[Approved](https://evil.example)` exactly as the mail wrote
+ * it, doing nothing, rather than either a live link or a row of blanks. The
+ * producer never holds a channel-formatted string, so "forgot to escape" is
+ * not a mistake available in the wrong place — only the escaper for a given
+ * channel's own syntax can make that mistake, in a file whose only job is to
+ * know that syntax.
  *
- * Links never render as anything a person or a client could open. Only a
- * registrable domain (via platform/security/public-suffix.ts, punycode-
- * normalized first so a homograph domain renders as its own opaque ASCII
- * form rather than as the Latin lookalike it was built to resemble) plus a
- * verdict ever reaches the string.
+ * `renderNoticeAsPlainText` is the conservative fallback — full markup
+ * neutralization plus mention-breaking, the same shape the old single-string
+ * renderer used — and is what any unregistered channel gets. It is never
+ * the raw concatenation of span text.
+ *
+ * ── The field audit (§7.1) — every field is attacker-chosen until a written
+ *    reason says otherwise ──────────────────────────────────────────────────
+ *
+ * `deliveredTo`'s local part looked safe because the mailbox source is
+ * verified; it is not, because this design runs on per-signup aliases
+ * (catch-all domain or plus-addressing), so the local part is whatever the
+ * SENDER addressed the mail to. `outcome.purpose` looked safe because it
+ * comes from an authorized workstream; authority over the CALL is not
+ * authority over the STRING — a signup flow that lifted a service name off a
+ * web page is still passing untrusted text through a trusted caller. Both are
+ * `untrusted` spans below. `receivedAt` is the one field that must NEVER be
+ * attacker-reachable — see `ReceiptTimestamp`.
  */
 
 import { toASCII } from 'node:punycode';
 import { registrableDomain } from '../security/public-suffix.js';
+import type { LinkRefusalReason } from '../security/link-validation.js';
 import type { DeliveredRecipient } from '../google/delivery-evidence.js';
 
 // ---------------------------------------------------------------------------
-// Types the caller supplies. Every field here is either daemon-generated
-// (receivedAt) or attacker-reachable text that gets sanitized before it is
-// ever placed in the output (senderDisplay, subject, outcome fields, link
-// hosts, refusal reasons).
+// The notice clock. Branded so a caller cannot pass the sender's own `Date:`
+// header through by accident.
+// ---------------------------------------------------------------------------
+
+declare const RECEIPT_TIME_BRAND: unique symbol;
+
+/**
+ * The moment the DAEMON received this message — never a sender-supplied
+ * timestamp. `ImapEnvelope.date` is `extractHeader(raw, 'Date')`, a string
+ * the sender wrote inside the message; it must never reach this field, and a
+ * timestamp is the last field anyone thinks to suspect. The brand is not
+ * exported, so no value can satisfy `ReceiptTimestamp` from outside this
+ * module, and the only constructor takes a real `Date` — not a string of any
+ * kind — so passing a header value through requires an explicit unsafe cast,
+ * never an accidental one. Same shape as `DeliveredRecipient`
+ * (platform/google/delivery-evidence.ts) for the same reason.
+ */
+export interface ReceiptTimestamp {
+  readonly iso: string;
+  readonly [RECEIPT_TIME_BRAND]: true;
+}
+
+/** The only constructor for `ReceiptTimestamp`. Takes a `Date`, never a string. */
+export function receiptTimestamp(receivedAt: Date): ReceiptTimestamp {
+  // The brand is a compile-time construct only; the runtime object carries
+  // just the one real field. Same pattern as DeliveredRecipient's `brand()`
+  // (platform/google/delivery-evidence.ts) — `unique symbol` from a
+  // `declare const` has no runtime value, so it is never actually set.
+  return { iso: receivedAt.toISOString() } as ReceiptTimestamp;
+}
+
+// ---------------------------------------------------------------------------
+// Structured output. See the module header — this replaces a plain string.
+// ---------------------------------------------------------------------------
+
+/**
+ * One piece of notice text. `literal` is ours — assembled by this module,
+ * safe by construction, never escaped. `untrusted` is anyone else's —
+ * escaped by whichever channel is about to render it, never stripped.
+ */
+export type NoticeSpan =
+  | { readonly kind: 'literal'; readonly text: string }
+  | { readonly kind: 'untrusted'; readonly text: string };
+
+/** One labeled row. The label is always ours; the value is spans, in order. */
+export interface NoticeField {
+  readonly label: string;
+  readonly value: readonly NoticeSpan[];
+}
+
+/** The whole notice, before any channel has rendered it to a wire string. */
+export interface StructuredNotice {
+  readonly title: readonly NoticeSpan[];
+  readonly fields: readonly NoticeField[];
+}
+
+function literal(text: string): NoticeSpan {
+  return { kind: 'literal', text };
+}
+
+function untrusted(text: string): NoticeSpan {
+  return { kind: 'untrusted', text };
+}
+
+// ---------------------------------------------------------------------------
+// Types the caller supplies.
 // ---------------------------------------------------------------------------
 
 /**
@@ -62,9 +145,15 @@ export type InboundOutcome =
   | {
       /** The message satisfied an expectation an authorized workstream registered in advance. */
       readonly kind: 'matched-expectation';
-      /** Why the expectation was opened, e.g. "Create a GitHub account for the owner". Attacker-adjacent text — sanitized before use. */
+      /**
+       * Why the expectation was opened, e.g. "Create a GitHub account for
+       * the owner". Rendered as `untrusted`: authority over the call that
+       * registered the expectation is not authority over this string — a
+       * signup flow that lifted a service name off a web page is passing
+       * untrusted text through an authorized caller.
+       */
       readonly purpose: string;
-      /** The domain the expectation was scoped to. Sanitized and punycode-normalized before use, same as a link host. */
+      /** The domain the expectation was scoped to. Punycode-normalized before use, same as a link host, and rendered `untrusted` anyway. */
       readonly serviceDomain: string;
     }
   | {
@@ -76,10 +165,14 @@ export type InboundOutcome =
       readonly kind: 'inert';
     }
   | {
-      /** A link in the message was refused by link validation (platform/security/link-validation.ts). */
+      /**
+       * A link in the message was refused by link validation
+       * (platform/security/link-validation.ts). `reason` is the fixed
+       * `LinkRefusalReason` enum our OWN validation code assigns — never
+       * text quoting a server's wording — so it is rendered `literal`.
+       */
       readonly kind: 'refused-link';
-      /** A short, plain-language refusal reason. Sanitized before use. */
-      readonly reason: string;
+      readonly reason: LinkRefusalReason;
     }
   | {
       /**
@@ -94,7 +187,12 @@ export type InboundOutcome =
        * normal one.
        */
       readonly kind: 'capability-degraded';
-      /** What the account currently cannot do, e.g. "message bodies are not authorized under the granted scope". Sanitized before use. */
+      /**
+       * What the account currently cannot do, e.g. "read message bodies
+       * under the granted scope". Produced entirely by the daemon's own
+       * capability probe (checked OAuth scopes, IMAP CAPABILITY response) —
+       * it never echoes attacker-supplied text, so it is rendered `literal`.
+       */
       readonly missingCapability: string;
     };
 
@@ -106,42 +204,44 @@ export type LinkVerdict = 'authorized' | 'refused' | 'unrecognized';
  * at (punycode or Unicode, either is fine — this module normalizes it before
  * display), never a full URL: there is no field here a caller could put a
  * path or query string into, so an assembled clickable URL cannot reach the
- * output no matter what the caller passes.
+ * output no matter what the caller passes. `refusalReason`, when set, is the
+ * fixed `LinkRefusalReason` enum from link validation — our own vocabulary,
+ * never attacker text — so it renders `literal`.
  */
 export interface ValidatedLinkSummary {
   readonly host: string;
   readonly verdict: LinkVerdict;
-  /** Set when verdict is 'refused'. A short, plain-language reason. Sanitized before use. */
-  readonly refusalReason?: string | undefined;
+  readonly refusalReason?: LinkRefusalReason | undefined;
 }
 
 export interface InboundMailNoticeInput {
-  /** Sender's registrable domain and local part. Attacker-written — sanitized before use. */
+  /** Sender's registrable domain and local part. Attacker-written — rendered `untrusted`. */
   readonly senderDisplay: string;
-  /** The message subject. Attacker-written — sanitized before use. */
+  /** The message subject. Attacker-written — rendered `untrusted`. */
   readonly subject: string;
   /** Evidence-backed delivery address, or null when none was available. Never a `To:` header claim. */
   readonly deliveredTo: DeliveredRecipient | null;
   readonly outcome: InboundOutcome;
   /** Every link found in the message, already run through link validation. */
   readonly links: readonly ValidatedLinkSummary[];
-  /** ISO 8601 timestamp, daemon-generated (not attacker-reachable), but still defensively parsed below. */
-  readonly receivedAt: string;
+  /** The daemon's own receipt clock — see `ReceiptTimestamp`. Never the sender's `Date:` header. */
+  readonly receivedAt: ReceiptTimestamp;
 }
 
 // ---------------------------------------------------------------------------
-// Sanitization. Applied to every attacker-reachable string before it can
-// appear anywhere in the rendered notice.
+// The producer's ONLY text transform: control characters and line breaks are
+// unsafe on every channel, including plain text, because a raw newline lets
+// attacker text forge what reads as a separate labeled line — this is a
+// structural concern, not a markup-syntax one, so it happens here rather
+// than being left to each channel. Nothing else about the text changes:
+// every other character survives into the `untrusted` span exactly as the
+// message contained it, so a channel that escapes rather than strips can
+// show the owner what the mail actually said.
 // ---------------------------------------------------------------------------
-
-/** Cap applied to every free-text field. Generous enough to read, short enough to bound a notification payload. */
-const MAX_FIELD_LENGTH = 200;
-/** Tighter cap for a refusal reason, which is always a short, fixed-shape phrase. */
-const MAX_REASON_LENGTH = 120;
 
 /**
  * Every ASCII control character, DEL, and the Unicode line/paragraph
- * separators — not just `\n` and `\r`. A subject containing ` ` renders
+ * separators — not just `\n` and `\r`. A subject containing ` ` renders
  * as a real line break in several renderers even though it is not `\n`, so
  * treating only `\n`/`\r` as "a newline" would leave an equivalent forgery
  * path open.
@@ -149,96 +249,10 @@ const MAX_REASON_LENGTH = 120;
 // eslint-disable-next-line no-control-regex
 const CONTROL_OR_LINE_BREAK = new RegExp('[\\u0000-\\u001F\\u007F\\u2028\\u2029]', 'g');
 
-/**
- * Markup metacharacters across the surfaces `deliverSurfaceNotice` can fan
- * out to. This function does not know which surface the owner's notice route
- * points at, so it neutralizes the union rather than guessing:
- *   - backtick / asterisk / underscore / tilde / pipe: code, bold, italic,
- *     strikethrough, and spoiler markers in Telegram MarkdownV2, Discord
- *     markdown, and Slack mrkdwn.
- *   - angle brackets / square brackets / parentheses: link and mention
- *     syntax (`<http://x|text>` in Slack, `[text](url)` in Telegram/Discord).
- *     Parentheses are listed explicitly — `[` removal already breaks the
- *     `[text](url)` pair on its own, but leaving that as the only thing
- *     stopping `(url)` from surviving is an implicit dependency between two
- *     character sets that a later edit to either one could break silently.
- *   - ampersand: HTML-entity interpretation some delivery paths apply.
- * Replaced with a space rather than deleted, so removing a trigger character
- * cannot mash two words together into a different word.
- */
-const MARKUP_TRIGGER_CHARS = /[`*_~|<>[\]&()]/g;
-
-/**
- * The same set MINUS underscore, for the delivery-evidence address (see
- * `sanitizeEvidenceField`): underscore is genuinely common in a real address
- * local part and is the weakest of these triggers — unpaired, it renders
- * literally; paired, it is at worst cosmetic italics, never a link or a
- * mention. Every other trigger here can build clickable markup or a mention
- * form and gets removed the same as it would from any other attacker text.
- */
-const EVIDENCE_MARKUP_TRIGGER_CHARS = /[`*~|<>[\]&()]/g;
-
-/** Collapses the runs of spaces the two replacements above can produce. */
 const REPEATED_SPACE = / {2,}/g;
 
-/**
- * Discord and Slack both turn a literal `@everyone` / `@here` / `@role` (and
- * Slack's `@channel`) into a real mention when the text is un-escaped. A
- * zero-width space inserted right after every `@` that precedes a word
- * character breaks that exact contiguous match while staying invisible to a
- * human reading the notice — `user@example.com` still reads as
- * `user@example.com`.
- */
-function breakMentionForms(text: string): string {
-  return text.replace(/@(?=\w)/g, '@​');
-}
-
-/**
- * The one function every attacker-reachable FREE-TEXT string (subject,
- * sender display, an expectation's purpose, a refusal reason) passes through
- * before it can appear in the rendered notice. Order matters: control
- * characters and line breaks are removed FIRST (so a later step cannot
- * reintroduce a forged line from a character a markup replacement exposes),
- * then markup triggers, then mention forms, then whitespace is collapsed,
- * then the result is capped to length.
- */
-function sanitizeField(raw: string, maxLength: number): string {
-  const noControlChars = raw.replace(CONTROL_OR_LINE_BREAK, ' ');
-  const noMarkup = noControlChars.replace(MARKUP_TRIGGER_CHARS, ' ');
-  const noMentionForms = breakMentionForms(noMarkup);
-  const collapsed = noMentionForms.replace(REPEATED_SPACE, ' ').trim();
-  if (collapsed.length <= maxLength) return collapsed;
-  return `${collapsed.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
-}
-
-/**
- * The sanitize used for a DELIVERY-EVIDENCE address (`deliveredTo`).
- *
- * What the evidence actually proves, precisely: `deliveredRecipientFromAliasMailbox`
- * / `deliveredRecipientFromDeliveryHeaders` (platform/google/delivery-evidence.ts)
- * guarantee the address was genuinely stamped by the mailbox fetched from or
- * the top-most delivery header — the sender cannot FORGE which mailbox this
- * says the message arrived at. That is not the same claim as "the sender
- * cannot influence this string". This design is built on per-signup alias
- * mailboxes, which means a catch-all domain or plus-addressing — and under
- * either, the local part in front of `@` is exactly the string whoever sent
- * the mail chose to address it to. `Delivered-To` records that choice
- * truthfully. So this is attacker-chosen text, same as subject or sender,
- * and gets the same markup/mention treatment; the only thing that
- * distinguishes it is which characters are worth keeping for legibility.
- *
- * Underscore is kept — see `EVIDENCE_MARKUP_TRIGGER_CHARS` — because it is
- * common in a real local part and the weakest possible trigger. Every other
- * markup character, and the `@everyone`/`@here` mention form, are removed or
- * broken exactly as they are for any other attacker-controlled field.
- */
-function sanitizeEvidenceField(raw: string, maxLength: number): string {
-  const noControlChars = raw.replace(CONTROL_OR_LINE_BREAK, ' ');
-  const noMarkup = noControlChars.replace(EVIDENCE_MARKUP_TRIGGER_CHARS, ' ');
-  const noMentionForms = breakMentionForms(noMarkup);
-  const collapsed = noMentionForms.replace(REPEATED_SPACE, ' ').trim();
-  if (collapsed.length <= maxLength) return collapsed;
-  return `${collapsed.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
+function stripControlAndLineBreaks(raw: string): string {
+  return raw.replace(CONTROL_OR_LINE_BREAK, ' ').replace(REPEATED_SPACE, ' ').trim();
 }
 
 /**
@@ -263,7 +277,11 @@ const VALID_ASCII_HOSTNAME = new RegExp(
  * host (including one already in `xn--` form) passes through unchanged.
  * Returns a fixed, safe placeholder for anything unparseable — including
  * anything that is not actually hostname-shaped — rather than falling back
- * to raw attacker text.
+ * to raw attacker text. This is a substance transform (which characters the
+ * string is even allowed to contain), separate from and prior to the
+ * escaping model above — it runs the same regardless of which channel ends
+ * up rendering the result, which is then STILL wrapped as `untrusted` (see
+ * the field audit): a validated hostname costs nothing extra to escape.
  */
 function safeRegistrableDomain(rawHost: string): string {
   const trimmed = rawHost.trim().toLowerCase().replace(/\.+$/, '');
@@ -280,37 +298,75 @@ function safeRegistrableDomain(rawHost: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Per-field rendering. Each of these returns ONE line, never more — subject
-// and sender are already newline-free by the time they arrive here, but the
-// per-field structure means a future field added here inherits the same
-// guarantee rather than needing to remember it.
+// Field builders. Each returns a NoticeField; span kind follows the §7.1
+// audit exactly, not intuition.
 // ---------------------------------------------------------------------------
 
-function renderDeliveredToLine(deliveredTo: DeliveredRecipient | null): string {
-  if (deliveredTo === null) return 'Delivered to: (no verified delivery evidence)';
-  return `Delivered to: ${sanitizeEvidenceField(deliveredTo.address, MAX_FIELD_LENGTH)}`;
+function senderField(senderDisplay: string): NoticeField {
+  const stripped = stripControlAndLineBreaks(senderDisplay);
+  return {
+    label: 'From',
+    value: [stripped.length > 0 ? untrusted(stripped) : literal('(unknown sender)')],
+  };
 }
 
-function renderOutcomeLine(outcome: InboundOutcome): string {
+function subjectField(subject: string): NoticeField {
+  const stripped = stripControlAndLineBreaks(subject);
+  return {
+    label: 'Subject',
+    value: [stripped.length > 0 ? untrusted(stripped) : literal('(no subject)')],
+  };
+}
+
+function deliveredToField(deliveredTo: DeliveredRecipient | null): NoticeField {
+  if (deliveredTo === null) {
+    return { label: 'Delivered to', value: [literal('(no verified delivery evidence)')] };
+  }
+  // Attacker-chosen — see the module header's field audit. Only control
+  // characters and line breaks are removed here; everything else (including
+  // markup metacharacters) survives into the untrusted span unmodified, to be
+  // escaped rather than stripped by whichever channel renders this notice.
+  return { label: 'Delivered to', value: [untrusted(stripControlAndLineBreaks(deliveredTo.address))] };
+}
+
+function outcomeField(outcome: InboundOutcome): NoticeField {
   switch (outcome.kind) {
     case 'matched-expectation': {
-      const purpose = sanitizeField(outcome.purpose, MAX_FIELD_LENGTH);
+      const purpose = stripControlAndLineBreaks(outcome.purpose);
       const domain = safeRegistrableDomain(outcome.serviceDomain);
-      return `Matched an open expectation: ${purpose} (${domain}).`;
+      return {
+        label: 'Outcome',
+        value: [
+          literal('Matched an open expectation: '),
+          untrusted(purpose),
+          literal(' ('),
+          untrusted(domain),
+          literal(').'),
+        ],
+      };
     }
     case 'expired-expectation':
-      return 'The closest expectation had already expired — not renewed, not matched.';
-    case 'refused-link': {
-      const reason = sanitizeField(outcome.reason, MAX_REASON_LENGTH);
-      return `A link in this message was refused: ${reason}.`;
-    }
+      return {
+        label: 'Outcome',
+        value: [literal('The closest expectation had already expired — not renewed, not matched.')],
+      };
+    case 'refused-link':
+      return {
+        label: 'Outcome',
+        value: [literal(`A link in this message was refused: ${outcome.reason}.`)],
+      };
     case 'inert':
-      return 'No expectation matched. Recorded, not actioned.';
-    case 'capability-degraded': {
-      const missing = sanitizeField(outcome.missingCapability, MAX_FIELD_LENGTH);
-      return `LIMITED VIEW — this account cannot currently ${missing}. Read from envelope fields only; `
-        + 'nothing here could match or satisfy a verification.';
-    }
+      return { label: 'Outcome', value: [literal('No expectation matched. Recorded, not actioned.')] };
+    case 'capability-degraded':
+      return {
+        label: 'Outcome',
+        value: [
+          literal(
+            `LIMITED VIEW — this account cannot currently ${stripControlAndLineBreaks(outcome.missingCapability)}. `
+            + 'Read from envelope fields only; nothing here could match or satisfy a verification.',
+          ),
+        ],
+      };
     default: {
       const exhaustive: never = outcome;
       return exhaustive;
@@ -323,78 +379,251 @@ function isCapabilityDegraded(outcome: InboundOutcome): boolean {
   return outcome.kind === 'capability-degraded';
 }
 
-function renderLinkLine(link: ValidatedLinkSummary): string {
-  const domain = safeRegistrableDomain(link.host);
+function linkField(link: ValidatedLinkSummary): NoticeField {
+  const domain = untrusted(safeRegistrableDomain(link.host));
   switch (link.verdict) {
     case 'authorized':
-      return `  - ${domain} — matched the authorized service`;
-    case 'refused': {
-      const reason = link.refusalReason ? sanitizeField(link.refusalReason, MAX_REASON_LENGTH) : 'refused';
-      return `  - ${domain} — refused (${reason}), not opened`;
-    }
+      return { label: 'Link', value: [domain, literal(' — matched the authorized service')] };
+    case 'refused':
+      return {
+        label: 'Link',
+        value: [domain, literal(` — refused (${link.refusalReason ?? 'refused'}), not opened`)],
+      };
     case 'unrecognized':
     default:
-      return `  - ${domain} — no expectation matched, not opened`;
+      return { label: 'Link', value: [domain, literal(' — no expectation matched, not opened')] };
   }
 }
 
-function renderReceivedAtLine(receivedAt: string): string {
-  const parsed = new Date(receivedAt);
-  const text = Number.isNaN(parsed.getTime())
-    ? sanitizeField(receivedAt, 64)
-    : parsed.toISOString();
-  return `Received: ${text}`;
+function receivedAtField(receivedAt: ReceiptTimestamp): NoticeField {
+  return { label: 'Received', value: [literal(receivedAt.iso)] };
 }
 
 // ---------------------------------------------------------------------------
-// The one exported entry point.
+// The one exported producer entry point.
 // ---------------------------------------------------------------------------
 
 /**
- * Render an inbound-mail owner notice from structured fields only. The
- * output is the ONLY thing an adapter may pass to
- * `DaemonSurfaceDeliveryHelper.deliverSurfaceNotice` for inbound mail — never
- * a string assembled any other way.
+ * Render an inbound-mail owner notice as STRUCTURE, never a channel-formatted
+ * string. A channel's delivery path runs this through `renderNoticeForChannel`
+ * (or its own equivalent escaper) immediately before calling
+ * `DaemonSurfaceDeliveryHelper.deliverSurfaceNotice` — that is the only
+ * allowed path from an arriving message to what the owner reads.
  *
- * When `outcome.kind === 'capability-degraded'`, the header itself changes
+ * When `outcome.kind === 'capability-degraded'`, the title itself changes
  * (`New mail — LIMITED VIEW` rather than plain `New mail`) so a degraded
- * notice is never visually indistinguishable from a normal one — the owner
- * should be able to tell at a glance that he is seeing less than the full
- * picture, not have to read to the outcome line to find out.
+ * notice is never visually indistinguishable from a normal one.
  */
-export function renderInboundMailNotice(input: InboundMailNoticeInput): string {
-  const sender = sanitizeField(input.senderDisplay, MAX_FIELD_LENGTH) || '(unknown sender)';
-  const subject = sanitizeField(input.subject, MAX_FIELD_LENGTH) || '(no subject)';
+export function renderInboundMailNotice(input: InboundMailNoticeInput): StructuredNotice {
   const degraded = isCapabilityDegraded(input.outcome);
-
-  const lines: string[] = [
-    degraded ? 'New mail — LIMITED VIEW' : 'New mail',
-    `From: ${sender}`,
-    `Subject: ${subject}`,
-    renderDeliveredToLine(input.deliveredTo),
-    renderOutcomeLine(input.outcome),
+  const fields: NoticeField[] = [
+    senderField(input.senderDisplay),
+    subjectField(input.subject),
+    deliveredToField(input.deliveredTo),
+    outcomeField(input.outcome),
+    ...input.links.map(linkField),
+    receivedAtField(input.receivedAt),
   ];
-
-  if (input.links.length > 0) {
-    lines.push('Links:');
-    for (const link of input.links) lines.push(renderLinkLine(link));
-  }
-
-  lines.push(renderReceivedAtLine(input.receivedAt));
-  return lines.join('\n');
+  return {
+    title: [literal(degraded ? 'New mail — LIMITED VIEW' : 'New mail')],
+    fields,
+  };
 }
 
 // ---------------------------------------------------------------------------
-// Compiler-checked guard, independent of the review that added it: if a
-// future edit ever adds a `body`, `text`, `content`, `preview`, or `snippet`
-// field to InboundMailNoticeInput, this line stops compiling. It exists
-// alongside the structural absence above (not instead of it) for the same
-// reason InboundMailContext in platform/email/inbound/ gets a runtime
-// own-property assertion on top of its type: a type shape can be widened by
-// someone who does not read this file's header; a failing build is harder to
-// miss than a comment.
+// The conservative fallback: full markup neutralization plus mention-
+// breaking, applied only to `untrusted` span text. This is what any channel
+// with no registered escaper gets — never the raw concatenation.
 // ---------------------------------------------------------------------------
+
+/**
+ * Markup metacharacters across every channel `deliverSurfaceNotice` can fan
+ * out to, for the conservative plain-text path: backtick / asterisk /
+ * underscore / tilde / pipe (code, bold, italic, strikethrough, spoiler
+ * markers), angle brackets / square brackets / parentheses (link and mention
+ * syntax — parentheses listed explicitly rather than relying on `[` removal
+ * alone to break `[text](url)`), and ampersand (HTML-entity interpretation
+ * some delivery paths apply). Replaced with a space rather than deleted, so
+ * removing a trigger character cannot mash two words into a different one.
+ */
+const PLAIN_TEXT_MARKUP_TRIGGER_CHARS = /[`*_~|<>[\]&()]/g;
+
+/**
+ * Discord and Slack both turn a literal `@everyone` / `@here` / `@role` (and
+ * Slack's `@channel`) into a real mention when the text is un-escaped. A
+ * zero-width space inserted right after every `@` that precedes a word
+ * character breaks that exact contiguous match while staying invisible to a
+ * human reading the notice — `user@example.com` still reads as
+ * `user@example.com`.
+ */
+function breakMentionForms(text: string): string {
+  return text.replace(/@(?=\w)/g, '@​');
+}
+
+function neutralizePlainText(text: string): string {
+  const noMarkup = text.replace(PLAIN_TEXT_MARKUP_TRIGGER_CHARS, ' ');
+  const noMentions = breakMentionForms(noMarkup);
+  return noMentions.replace(REPEATED_SPACE, ' ').trim();
+}
+
+function flattenSpans(spans: readonly NoticeSpan[], escapeUntrusted: (text: string) => string): string {
+  return spans.map((span) => (span.kind === 'literal' ? span.text : escapeUntrusted(span.text))).join('');
+}
+
+function flattenNotice(notice: StructuredNotice, escapeUntrusted: (text: string) => string): string {
+  const lines = [flattenSpans(notice.title, escapeUntrusted)];
+  for (const field of notice.fields) {
+    lines.push(`${field.label}: ${flattenSpans(field.value, escapeUntrusted)}`);
+  }
+  return lines.join('\n');
+}
+
+/** The conservative fallback renderer: full neutralization, never raw concatenation. */
+export function renderNoticeAsPlainText(notice: StructuredNotice): string {
+  return flattenNotice(notice, neutralizePlainText);
+}
+
+// ---------------------------------------------------------------------------
+// Per-channel escapers. Escape, don't strip: the owner sees the exact text
+// the mail contained, rendered inert rather than mangled or live.
+// ---------------------------------------------------------------------------
+
+/**
+ * Telegram MarkdownV2's full reserved set (bot API docs): every one of these
+ * characters must be escaped with a preceding backslash WHEREVER it appears
+ * as literal text, not only where it would otherwise form syntax — that is
+ * MarkdownV2's own rule, not a simplification made here. A backslash in the
+ * input is escaped first (via being included in the same character class),
+ * so `\` itself cannot un-escape anything that follows it.
+ */
+function escapeTelegramMarkdownV2(text: string): string {
+  return text.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, (ch) => `\\${ch}`);
+}
+
+/**
+ * Discord markdown: backslash-escaping `` * _ ~ ` | `` and `>` renders each as
+ * its literal character rather than triggering bold/italic/strikethrough/
+ * code/spoiler/quote — this is the same convention widely used by Discord
+ * bots, and Discord's client does not show the backslash for an escape that
+ * would not otherwise have been syntax. `[` `]` `(` `)` are included too:
+ * this module has no live-verification tool available to confirm whether
+ * masked-link syntax (`[text](url)`) is honored in every Discord surface a
+ * notice might be delivered to, and escaping them costs nothing if it is
+ * not — a stray, Discord-dropped backslash is a far better failure mode than
+ * a live clickable link would be if it turns out to be. `@everyone` /
+ * `@here` / a raw role or channel mention are NOT defeated by backslash-
+ * escaping the `@` in every Discord client, so they get the same zero-
+ * width-space break used by the plain-text path instead.
+ */
+function escapeDiscordMarkdown(text: string): string {
+  const escaped = text.replace(/[*_~`|>[\]()\\]/g, (ch) => `\\${ch}`);
+  return breakMentionForms(escaped);
+}
+
+/**
+ * Slack mrkdwn. `&`, `<`, `>` MUST be HTML-entity-escaped per Slack's own
+ * formatting reference — this is not optional and it is also what defeats
+ * `<url|text>` link syntax and `<!channel>` / `<@id>` mention syntax
+ * completely, since both require a literal, unescaped `<`.
+ *
+ * Slack has no backslash-escape mechanism for `* _ ~ \`` (bold/italic/
+ * strikethrough/code): unlike Telegram and Discord, there is no documented
+ * way to make the character itself render literally while guaranteeing it
+ * can never pair into real formatting. The zero-width-space break used
+ * elsewhere in this module is applied here too, as the best available
+ * mitigation — stated as such rather than as a guaranteed contract, because
+ * Slack's own whitespace-adjacency rule for what breaks a delimiter pair is
+ * not publicly specified to that level of precision. This is a COSMETIC
+ * residual risk (accidental bold/italic), not the injection class this
+ * module exists to close (a clickable link or a real mention), both of
+ * which the entity-escaping above already defeats outright.
+ */
+function escapeSlackMrkdwn(text: string): string {
+  const entityEscaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return entityEscaped.replace(/[*_~`]/g, (ch) => `${ch}​`);
+}
+
+/** Standard HTML entity escaping, for a channel that renders the notice as HTML. */
+function escapeHtmlEntities(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
+ * ntfy carries notice fields in HTTP headers (`X-Title`, `X-Tags`, …); a bare
+ * `\r` or `\n` there is header injection, not markup. `stripControlAndLineBreaks`
+ * in the producer already guarantees none reaches this function, but this
+ * escaper re-asserts it as its own, independently testable layer — a defect
+ * anywhere upstream of this point (a future producer change, a caller that
+ * bypasses `renderInboundMailNotice`) must not compound into a live header
+ * injection. ntfy does not parse markdown or mentions by default, so nothing
+ * else is transformed.
+ */
+function escapeNtfyField(text: string): string {
+  return text.replace(CONTROL_OR_LINE_BREAK, ' ').replace(REPEATED_SPACE, ' ').trim();
+}
+
+/**
+ * Every channel this module ships an escaper for. Not a claim that these are
+ * the only channels `deliverSurfaceNotice` can reach — see
+ * `renderNoticeForChannel` for what an unregistered channel gets.
+ */
+export type NoticeChannel = 'telegram' | 'discord' | 'slack' | 'html' | 'ntfy';
+
+const NOTICE_ESCAPERS: Readonly<Record<NoticeChannel, (text: string) => string>> = {
+  telegram: escapeTelegramMarkdownV2,
+  discord: escapeDiscordMarkdown,
+  slack: escapeSlackMrkdwn,
+  html: escapeHtmlEntities,
+  ntfy: escapeNtfyField,
+};
+
+/**
+ * Render a `StructuredNotice` for one channel. `channel` is a plain `string`
+ * rather than `NoticeChannel` deliberately: a channel this module has no
+ * escaper for — including one that does not exist yet — falls back to
+ * `renderNoticeAsPlainText`, never to a raw, un-escaped concatenation of span
+ * text. Wiring an actual channel's delivery path to call this (or to call its
+ * own equivalent escaper directly) is the integration round's job; this
+ * function and its escapers are what that round has to invoke rather than
+ * invent.
+ */
+export function renderNoticeForChannel(notice: StructuredNotice, channel: string): string {
+  const escaper = (NOTICE_ESCAPERS as Readonly<Record<string, (text: string) => string>>)[channel];
+  if (!escaper) return renderNoticeAsPlainText(notice);
+  return flattenNotice(notice, escaper);
+}
+
+// ---------------------------------------------------------------------------
+// Compiler-checked guards, independent of the review that added them.
+// ---------------------------------------------------------------------------
+
+/**
+ * If a future edit ever adds a `body`, `text`, `content`, `preview`, or
+ * `snippet` field to `InboundMailNoticeInput`, this line stops compiling. It
+ * exists alongside the structural absence above (not instead of it) for the
+ * same reason `InboundMailContext` in platform/email/inbound/ gets a runtime
+ * own-property assertion on top of its type: a type shape can be widened by
+ * someone who does not read this file's header; a failing build is harder to
+ * miss than a comment.
+ */
 type _ForbiddenBodyLikeField = Extract<keyof InboundMailNoticeInput, 'body' | 'text' | 'content' | 'preview' | 'snippet'>;
 type _AssertNoBodyLikeField = _ForbiddenBodyLikeField extends never ? true : 'FAIL: a body-like field was added to InboundMailNoticeInput';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const _assertNoBodyLikeField: _AssertNoBodyLikeField = true;
+
+/**
+ * The producer's return type is structure, never a channel-formatted string.
+ * If `renderInboundMailNotice`'s return type is ever widened to include
+ * `string`, this line stops compiling.
+ */
+type _ProducerReturnType = ReturnType<typeof renderInboundMailNotice>;
+type _AssertProducerReturnsStructure = _ProducerReturnType extends string
+  ? 'FAIL: renderInboundMailNotice must not return a plain string'
+  : true;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _assertProducerReturnsStructure: _AssertProducerReturnsStructure = true;
