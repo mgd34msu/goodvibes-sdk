@@ -31713,7 +31713,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "email.inbound.status",
         "title": "Inbound Mail Status",
-        "description": "Disclose the inbound-mail watcher: whether it is running and why, which source is reading the mailbox and the delay that source actually costs, the current capability verdict, every persisted cursor with its position and age, every open verification expectation with its remaining window, and what each store retains before it is reaped. Read-only.",
+        "description": "Disclose the inbound-mail watcher: whether it is running and why, which source is reading the mailbox and the delay that source actually costs, the current capability verdict, every persisted cursor with its position and age, every open verification expectation with its remaining window, whether each store could be read, whether arriving mail is actually being announced to the owner, and what each store retains before it is reaped. Read-only.",
         "category": "email",
         "source": "builtin",
         "access": "authenticated",
@@ -31957,6 +31957,56 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               ],
               "additionalProperties": false
             },
+            "stores": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "store": {
+                    "type": "string"
+                  },
+                  "state": {
+                    "type": "string"
+                  },
+                  "detail": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "store",
+                  "state",
+                  "detail"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "noticeDelivery": {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                },
+                "detail": {
+                  "type": "string"
+                },
+                "fix": {
+                  "type": "string"
+                },
+                "since": {
+                  "type": "string"
+                },
+                "unannounced": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "state"
+              ],
+              "additionalProperties": false
+            },
             "health": {
               "type": "object",
               "properties": {
@@ -32013,6 +32063,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "cursors",
             "expectations",
             "retention",
+            "stores",
+            "noticeDelivery",
             "health"
           ],
           "additionalProperties": false
