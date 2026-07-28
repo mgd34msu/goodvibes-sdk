@@ -120,6 +120,8 @@ export type {
   ImapClientOptions,
   ImapConnectionReport,
   ImapEnvelope,
+  ImapEnvelopeBatch,
+  ImapFetchProblem,
   ImapIdleDecision,
   ImapIdleSupport,
   ImapMessage,

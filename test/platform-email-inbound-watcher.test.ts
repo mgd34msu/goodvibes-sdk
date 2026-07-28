@@ -163,6 +163,31 @@ describe('inbound watcher — IDLE', () => {
     expect(count(harness.mailbox.commands, SEARCH_COMMAND)).toBeGreaterThan(searchesBefore);
   });
 
+  test('a server that puts the UID data item last delivers mail all the same', async () => {
+    // RFC 3501 §6.4.8 makes `UID FETCH` add the UID item; it does not say
+    // where, and both positions are in the wild. When it lands after the
+    // header literal it is not on the `* n FETCH` line at all — it is on the
+    // line that closes the response — and a client that searches only the
+    // start line finds no UIDs, produces no envelopes, and hands the drain
+    // loop what looks exactly like a mailbox whose messages were all expunged.
+    const harness = await build({
+      server: {
+        uidPosition: 'trailing',
+        initial: [message(101, 'already here')],
+      },
+    });
+    harness.watcher.start();
+    await idleReached(harness);
+
+    harness.mailbox.deliver('arrived on a trailing-UID server');
+    await waitFor(() => harness.sink.uids.includes(102), 'UID 102 delivered');
+
+    expect(harness.sink.subjects).toEqual(['arrived on a trailing-UID server']);
+    expect(harness.sink.delivered[0]?.envelope.from).toBe('sender102@sender.test');
+    expect(harness.sink.delivered[0]?.envelope.deliveredTo)
+      .toEqual(['watched@example.test']);
+  });
+
   test('EXISTS is a wake-up: the delta comes from UID SEARCH, never from the number', async () => {
     const harness = await build({
       server: {

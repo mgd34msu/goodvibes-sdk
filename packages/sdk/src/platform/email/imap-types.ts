@@ -55,6 +55,36 @@ export interface ImapEnvelope {
   readonly authenticationResults: readonly string[];
 }
 
+/**
+ * A FETCH response the server sent and this client could not read.
+ *
+ * Never carries message content — a reason and, where they were legible, the
+ * identifiers the response named.
+ */
+export interface ImapFetchProblem {
+  /** The response's sequence number, or null when even that was unreadable. */
+  readonly seq: number | null;
+  /** The UID the response named, when it named one legibly. */
+  readonly uid: number | null;
+  /** Plain language, safe to log and safe to show an owner. */
+  readonly detail: string;
+}
+
+/**
+ * The whole answer to one envelope fetch: what was read, and what was not.
+ *
+ * `unreadable` being non-empty is a load-bearing fact and not a diagnostic
+ * nicety. While it is non-empty, a UID missing from `envelopes` is NOT evidence
+ * that the message is gone — one of the responses we could not read may have
+ * been that message's. A caller advancing a cursor has to treat the whole batch
+ * as unresolved and ask again, because the alternative is stepping over mail
+ * that is still in the mailbox and never looking at it again.
+ */
+export interface ImapEnvelopeBatch {
+  readonly envelopes: readonly ImapEnvelope[];
+  readonly unreadable: readonly ImapFetchProblem[];
+}
+
 export interface ImapMessage extends ImapEnvelope {
   readonly bodyPreview: string;
 }

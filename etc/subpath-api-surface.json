@@ -15056,6 +15056,23 @@
       ]
     },
     {
+      "name": "ImapEnvelopeBatch",
+      "kind": "interface",
+      "required": [
+        "envelopes",
+        "unreadable"
+      ]
+    },
+    {
+      "name": "ImapFetchProblem",
+      "kind": "interface",
+      "required": [
+        "detail",
+        "seq",
+        "uid"
+      ]
+    },
+    {
       "name": "ImapIdleDecision",
       "kind": "interface",
       "required": [
