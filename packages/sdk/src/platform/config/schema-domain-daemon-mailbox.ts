@@ -79,6 +79,9 @@ export const daemonMailboxConfigDefaults = {
     inbound: {
       enabled: false,
       accounts: '[]',
+      source: 'auto',
+      gmailPollSecondsExpecting: 5,
+      gmailPollSecondsIdle: 60,
       mode: 'auto',
       pollIntervalSeconds: 120,
       idleReissueMinutes: 27,
@@ -249,12 +252,50 @@ export const daemonMailboxConfigSettings: ConfigSettingDefinition[] = [
       + 'switch because one address for signups and another for the owner\'s real mail is the expected shape.',
   },
   {
+    key: 'surfaces.email.inbound.source',
+    type: 'enum',
+    default: 'auto',
+    description: 'Which mechanism reads the mailbox. "auto" uses Gmail when Google credentials have been adopted '
+      + 'and the configured mail account is a Gmail account, and IMAP otherwise — so connecting Google is the '
+      + 'whole of the setup and no IMAP host, username or app password has to be found. "gmail" and "imap" force '
+      + 'one of them. The two are not equivalent and the difference is a real cost: IMAP holds an IDLE '
+      + 'connection, which is true push and delivers in under a second, while Gmail has no push available to a '
+      + 'daemon on a home machine and is POLLED on a timer — its worst-case delay is the whole poll interval '
+      + 'below, never less. Forcing "gmail" without adopted Google credentials, or on an account that is not a '
+      + 'Gmail account, is refused rather than quietly served over IMAP.',
+    enumValues: ['auto', 'gmail', 'imap'],
+  },
+  {
+    key: 'surfaces.email.inbound.gmailPollSecondsExpecting',
+    type: 'number',
+    default: 5,
+    description: 'How often the Gmail source asks Google what changed while something is actually being waited '
+      + 'for — a signup mid-flight whose verification mail has not arrived yet. This is polling, not push: mail '
+      + 'can sit unnoticed for up to this many seconds, and no setting makes Gmail faster than the interval. '
+      + 'Five seconds is the floor worth having for a person watching a signup form; the underlying call costs 2 '
+      + 'quota units against a daily budget in the billions, so a shorter interval buys latency rather than '
+      + 'saving quota. Ignored entirely when the IMAP source is in use, which pushes instead.',
+    ...intRange(2, 60),
+  },
+  {
+    key: 'surfaces.email.inbound.gmailPollSecondsIdle',
+    type: 'number',
+    default: 60,
+    description: 'How often the Gmail source asks Google what changed when nothing is being waited for. Again '
+      + 'polling, not push: with nothing pending, mail is noticed up to this many seconds after it arrives. A '
+      + 'minute keeps the daemon from asking Google every five seconds all week for mail nobody is waiting on; '
+      + 'lowering it narrows that gap at the cost of a request every few seconds around the clock. Ignored '
+      + 'entirely when the IMAP source is in use.',
+    ...intRange(10, 3600),
+  },
+  {
     key: 'surfaces.email.inbound.mode',
     type: 'enum',
     default: 'auto',
-    description: 'How the watcher receives new mail: "idle" holds a persistent IMAP IDLE connection, "poll" '
+    description: 'How the IMAP source receives new mail: "idle" holds a persistent IMAP IDLE connection, "poll" '
       + 'checks on a timer, "auto" uses IDLE when the server advertises it and falls back to polling when it '
-      + 'does not. Leave at auto unless a specific provider needs to be forced one way.',
+      + 'does not. Leave at auto unless a specific provider needs to be forced one way. Applies only to the IMAP '
+      + 'source; the Gmail source has no IDLE to hold and is always polled, on the two intervals above.',
     enumValues: ['idle', 'poll', 'auto'],
   },
   {
