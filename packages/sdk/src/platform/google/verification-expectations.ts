@@ -354,6 +354,73 @@ function clampWindow(windowMs: number | undefined): number {
   return Math.min(Math.max(Math.floor(windowMs), MIN_VERIFICATION_WINDOW_MS), MAX_VERIFICATION_WINDOW_MS);
 }
 
+/**
+ * Validate a PERSISTED expectation record by content, using the exact rules
+ * `openExpectation` enforces. Added for
+ * `platform/email/inbound/expectation-store.ts` (docs/inbound-email.md §9.2),
+ * which persists expectations across a restart with their original absolute
+ * `expiresAt` rather than keeping them in memory only.
+ *
+ * This is the load-bearing security property of that store: **a file on disk
+ * must not be able to mint an expectation the live API would have refused.**
+ * `authority` must read exactly `'evidence-only'`, `serviceDomain` and
+ * `recipientAddress` must normalize to something `openExpectation` would have
+ * accepted, and `expiresAt - openedAt` must not exceed
+ * `MAX_VERIFICATION_WINDOW_MS` — the same ceiling `clampWindow` enforces on
+ * the live path. Returns `null` for anything that fails any check. Never
+ * throws, never repairs, never widens a window.
+ *
+ * Deliberately does NOT check whether `expiresAt` is already in the past —
+ * that is a separate rule (expired records are reaped on load, before they
+ * can match anything) and belongs to the store's own sweep, not to content
+ * validation. Keeping the two checks separate mirrors every other persisted
+ * store in this codebase (`device-grants.ts`'s `validateGrant` does not check
+ * expiry either; `list()`/`sweep()` do).
+ */
+export function validatePersistedExpectation(value: unknown, _now: Date = new Date()): VerificationExpectation | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+
+  const id = typeof record.id === 'string' ? record.id.trim() : '';
+  if (!id) return null;
+
+  const kind = record.kind;
+  if (kind !== 'signup' && kind !== 'login') return null;
+
+  if (record.authority !== 'evidence-only') return null;
+
+  const purpose = typeof record.purpose === 'string' ? record.purpose.trim() : '';
+  if (!purpose) return null;
+
+  const rawServiceDomain = typeof record.serviceDomain === 'string' ? record.serviceDomain : '';
+  const serviceDomain = normalizeDomain(rawServiceDomain);
+  if (!serviceDomain) return null;
+
+  const rawRecipient = typeof record.recipientAddress === 'string' ? record.recipientAddress : '';
+  const recipientAddress = normalizeEmailAddress(rawRecipient);
+  if (!recipientAddress.includes('@')) return null;
+
+  const openedAtRaw = typeof record.openedAt === 'string' ? record.openedAt : '';
+  const expiresAtRaw = typeof record.expiresAt === 'string' ? record.expiresAt : '';
+  const openedAtMs = Date.parse(openedAtRaw);
+  const expiresAtMs = Date.parse(expiresAtRaw);
+  if (!Number.isFinite(openedAtMs) || !Number.isFinite(expiresAtMs)) return null;
+
+  const windowMs = expiresAtMs - openedAtMs;
+  if (windowMs <= 0 || windowMs > MAX_VERIFICATION_WINDOW_MS) return null;
+
+  return {
+    id,
+    kind,
+    serviceDomain,
+    recipientAddress,
+    purpose,
+    openedAt: new Date(openedAtMs).toISOString(),
+    expiresAt: new Date(expiresAtMs).toISOString(),
+    authority: 'evidence-only',
+  };
+}
+
 function senderCorroboration(
   email: CandidateEmail,
   expectation: VerificationExpectation,
@@ -419,6 +486,36 @@ export class VerificationExpectationBook {
     };
     this.open.set(expectation.id, expectation);
     return expectation;
+  }
+
+  /**
+   * Restore a persisted expectation into the live book — the ONLY entry point
+   * that inserts an expectation without minting a fresh window. Added for the
+   * boot-time hydration path described in docs/inbound-email.md §9.2: the
+   * daemon auto-restarts, so an expectation opened moments before a restart
+   * must survive it, but "restarting cannot extend a grant" is the property
+   * that override exists to protect.
+   *
+   * `value` is validated by `validatePersistedExpectation` — the same rules
+   * `openExpectation` enforces — so a hand-edited or torn record on disk can
+   * never mint an expectation the live API would have refused. An already-
+   * expired record is refused here too (reaped before it can match anything),
+   * even though the store this feeds is expected to have reaped it already —
+   * defense in depth, not reliance.
+   *
+   * On success the original `id`, `openedAt` and `expiresAt` are kept
+   * byte-for-byte; nothing here recomputes a window from `now`.
+   */
+  public hydrateExpectation(value: unknown, now: Date = new Date()): VerificationExpectation | null {
+    const validated = validatePersistedExpectation(value, now);
+    if (!validated) return null;
+    if (Date.parse(validated.expiresAt) <= now.getTime()) return null;
+    if (this.authority?.surfaceHasCommandAuthority(EMAIL_SURFACE) === true) return null;
+    if (this.open.size >= MAX_OPEN_EXPECTATIONS && !this.findByRecipient(validated.recipientAddress)) return null;
+    const existing = this.findByRecipient(validated.recipientAddress);
+    if (existing) this.open.delete(existing.id);
+    this.open.set(validated.id, validated);
+    return validated;
   }
 
   /** Explicit close — on success, on abandonment, on anything. */
