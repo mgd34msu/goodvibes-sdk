@@ -29,7 +29,7 @@
  * completes, or it leaves the book exactly as it found it.
  */
 import { afterEach, describe, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -141,6 +141,40 @@ describe('a consuming match is written through, so a restart cannot resurrect it
     await intakeFor({ registry: second, records: records2 })(mail(102));
     // Single-use means single-use across a restart too.
     expect((await records2.list())[0]?.outcome).toBe('no-expectation');
+  });
+
+  test('an expiry the match path deleted is cleared from the FILE, not just from memory', async () => {
+    // The other mutation `matchCandidate` makes: an expectation past its window
+    // is deleted on the way to reporting it `expired`, and the no-match path
+    // sweeps the rest. Asserted against the raw file on purpose — the store's
+    // own read path filters expired records, so every API-level view of this
+    // agrees whether or not the write ever happened, and only the bytes on
+    // disk distinguish a mirror that is current from one that is stale.
+    const dir = scratch();
+    const path = join(dir, 'expectations.json');
+    const store = new PersistedExpectationStore(path, { now: () => NOW });
+    const registry = new InboundExpectationRegistry({
+      store, now: () => NOW, defaultWindowMs: WINDOW_MS,
+    });
+    await registry.open({
+      serviceDomain: 'service.test', recipientAddress: ALIAS, purpose: 'Create an account',
+    });
+    expect(JSON.parse(readFileSync(path, 'utf-8')).expectations).toHaveLength(1);
+
+    // Asked AFTER the window closed.
+    const later = new Date(NOW.getTime() + WINDOW_MS + 60_000);
+    const match = await registry.matcher.matchCandidate({
+      messageId: '<late@service.test>',
+      from: 'verify@service.test',
+      deliveredTo: { address: ALIAS, source: 'delivered-to-header' } as never,
+      toHeaderClaim: ALIAS,
+      subject: 'Confirm your account',
+      body: '',
+    }, later, { consume: false });
+    expect(match.kind).toBe('expired');
+
+    // The book dropped it; the mirror has to have dropped it too.
+    expect(JSON.parse(readFileSync(path, 'utf-8')).expectations).toHaveLength(0);
   });
 
   test('an unspent grant still survives the restart it was persisted for', async () => {
