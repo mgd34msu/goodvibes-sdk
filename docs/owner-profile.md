@@ -667,9 +667,20 @@ same turn.**
 - `platform/utils/redaction.ts` gains owner-profile awareness: closed-tier values
   present in the loaded profile are replaced with `[REDACTED_PROFILE]` by
   `redactSensitiveData()`, and object keys matching the profile-key pattern are
-  redacted by `redactStructuredData()`. That covers
-  `platform/export/session-export.ts`, which routes both markdown and JSON
-  exports through those functions.
+  redacted by `redactStructuredData()`.
+
+  One change, four containment paths — verified call sites:
+
+  | Path | Function | What it covers |
+  |---|---|---|
+  | `platform/export/session-export.ts` | both | markdown and JSON session exports |
+  | `platform/runtime/at-rest-persistence.ts` | `redactSensitiveData` | what a turn writes to disk |
+  | `platform/runtime/telemetry/api-helpers.ts` | `redactStructuredData` | telemetry payloads, attributes, span attributes |
+  | `platform/utils/error-display.ts` | `redactSensitiveData` | `redactedErrorMessage`, so a thrown value carrying a profile string does not surface it |
+
+  The profile store supplies its closed-tier values through a registered reader
+  rather than an import, so `redaction.ts` keeps no dependency on the profile
+  module and stays usable where no profile is loaded.
 - The owner-profile module logs counts and field names, never values.
 - `profile.status` — the diagnostic verb — returns load state, path, section
   names, line counts and the list of invalid mechanical fields with reasons. It
