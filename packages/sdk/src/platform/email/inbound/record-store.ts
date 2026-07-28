@@ -631,6 +631,20 @@ export class InboundMailStore {
       // checking — and this one would also have read as licence to relax the
       // double pass on the grounds that nothing exercises it.
       //
+      // The rule that generalises, because this arrived from a MERGE
+      // RESOLUTION rather than from authorship: a reachability claim is a
+      // claim about the whole tree, and the tree moves under it. The sentence
+      // was accurate against the tree it was written for and false against the
+      // tree it landed in, and nothing about the line itself changed. So a
+      // reachability claim is something to VERIFY, never to inherit — kept
+      // wording carries the same obligation as kept code.
+      //
+      // Verified rather than asserted this time: the multi-span slide below now
+      // has a test. `inbound-mail-card-redaction.test.ts` builds a body whose
+      // second card straddles the removed window and, measured against the
+      // windowed implementation, put ELEVEN readable digits on disk. Restore
+      // the window and that test — and only that test — reddens.
+      //
       // The fix is to remove the window, not to widen it. The body is already
       // bounded upstream by the fetch's own byte cap, and `MAX_BODY_EXCERPT_CHARS`
       // bounds what is kept, so scanning the whole of what we were handed costs

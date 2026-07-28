@@ -2615,6 +2615,64 @@ be silently dropped, because `createBuiltinChannelRuntime` stops compiling.
 That compile error is the gate — a test could go inert the same way the code
 did.
 
+### 13.13 The load-bearing false comment, and the merge-resolution variant
+
+This round kept finding the same thing, often enough to be worth naming as a
+class rather than as four incidents. In each case a comment did not merely fail
+to describe the code: it **justified or protected** the thing it described, and
+that is what stopped anyone checking it.
+
+The two instances inside this document's own scope, both fixed here:
+
+- `terminal-notice.ts`'s *"its result is deliberately unread"* — §13.8 already
+  records this one. The sentence was the defect's rationale, not its
+  description.
+- `sink.ts`, `dedupTtlMs()`, §6 and the §8 table all asserting the dedup TTL
+  "must outlast a restart cycle" — a property the mechanism cannot provide at
+  any value, protecting a config floor that guarded nothing (§13.9).
+
+Two more of the same class arrived elsewhere in the round and are recorded here
+by class rather than by detail, since they were found and fixed outside this
+document's scope: an API file claiming to be produced by a generator that does
+not exist, and a design document citing a decision record that does not exist.
+Both were verified by whoever fixed them, not by me, so they are named as
+instances and not described further.
+
+**The variant worth its own name is the one that came from a merge resolution
+rather than from authorship.** `record-store.ts` carried *"Not reachable today:
+`intake.ts` passes `body: ''`"*. That was accurate against the tree the scan-
+window fix was written for, and false against the tree it landed in, because the
+Gmail body arm merged in between — the IMAP envelope pass sends `''`, a Gmail
+history delta sends the real body. Nothing about the line changed; the tree
+moved under it. The code the comment called unreachable was executing while the
+suite was green, and `inbound-mail-intake.test.ts` had been driving a card
+number through it the whole time.
+
+> **A reachability claim is a claim about the whole tree, and the tree moves
+> under it. Verify it; never inherit it.** A kept comment carries the same
+> obligation as a kept line of code, and a merge resolution is exactly where
+> that obligation is easiest to skip, because nothing in the conflict marks the
+> sentence as needing re-checking.
+
+The direction of this one is why it was worth a commit rather than a tidy-up: it
+told the next reader the multi-span leak was theoretical, when a Gmail message
+carrying several card shapes would have hit it in production on the source
+automatic selection prefers once Google is adopted. And it read as licence to
+relax the double pass later, on the grounds that nothing exercises it.
+
+That harm is no longer only argued. `inbound-mail-card-redaction.test.ts` builds
+a body whose second card straddles the removed scan window; measured against the
+windowed implementation it put **eleven readable digits** of that card on disk,
+and restoring the window reddens that test and only that test. The single-span
+straddle test that already existed passes under the same mutation, which is what
+shows the old coverage genuinely missed this shape rather than merely overlapping
+it.
+
+> **When a comment's claim is the thing in dispute, the fix is a test, not
+> better wording.** Correcting "not reachable" to "reachable" leaves the next
+> reader with two sentences and no evidence. A case that reddens when the guard
+> is removed settles it.
+
 ## 14. Related
 
 - `docs/payments.md` — a consumer of this capability.
