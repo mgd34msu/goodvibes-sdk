@@ -21799,8 +21799,27 @@
       "kind": "type"
     },
     {
+      "name": "ContentOriginIntent",
+      "kind": "interface",
+      "required": [
+        "checkoutUrl",
+        "item",
+        "merchant",
+        "origin",
+        "requestedMax"
+      ]
+    },
+    {
       "name": "CurrencyCode",
       "kind": "type"
+    },
+    {
+      "name": "DEFAULT_MARKETPLACE_LISTING_THRESHOLDS",
+      "kind": "const"
+    },
+    {
+      "name": "DEFAULT_RECOGNISED_RETAILERS",
+      "kind": "const"
     },
     {
       "name": "DayKey",
@@ -21819,6 +21838,10 @@
     },
     {
       "name": "DecisionOutcome",
+      "kind": "type"
+    },
+    {
+      "name": "FigureRegion",
       "kind": "type"
     },
     {
@@ -21841,32 +21864,92 @@
       ]
     },
     {
+      "name": "ListingSaleFormat",
+      "kind": "type"
+    },
+    {
       "name": "MAX_RESERVATIONS",
       "kind": "const"
+    },
+    {
+      "name": "MajorRetailerPolicy",
+      "kind": "interface"
+    },
+    {
+      "name": "MajorRetailerVerdict",
+      "kind": "interface",
+      "required": [
+        "isMajor",
+        "qualifier",
+        "reason",
+        "registrable"
+      ]
+    },
+    {
+      "name": "MarketplaceListing",
+      "kind": "interface",
+      "required": [
+        "format"
+      ]
+    },
+    {
+      "name": "MarketplaceListingThresholds",
+      "kind": "interface",
+      "required": [
+        "minAccountAgeDays",
+        "minSellerFeedbackCount",
+        "minSellerPositivePercent"
+      ]
+    },
+    {
+      "name": "MarketplaceListingVerdict",
+      "kind": "interface",
+      "required": [
+        "outcome",
+        "reason"
+      ]
+    },
+    {
+      "name": "MarketplacePolicy",
+      "kind": "type"
+    },
+    {
+      "name": "MerchantIdentity",
+      "kind": "interface",
+      "required": [
+        "checkoutHost"
+      ]
     },
     {
       "name": "MinorUnits",
       "kind": "type"
     },
     {
-      "name": "OwnerSuppliedText",
-      "kind": "type"
-    },
-    {
-      "name": "PaymentIntentFields",
+      "name": "OwnerOriginIntent",
       "kind": "interface",
       "required": [
         "checkoutUrl",
         "item",
         "merchant",
+        "merchantDiscovered",
+        "origin",
         "requestedMax"
       ]
+    },
+    {
+      "name": "OwnerSuppliedText",
+      "kind": "type"
+    },
+    {
+      "name": "PaymentIntent",
+      "kind": "type"
     },
     {
       "name": "PaymentTaintDecision",
       "kind": "interface",
       "required": [
         "allowed",
+        "checkedFields",
         "findings",
         "reason"
       ]
@@ -21958,8 +22041,33 @@
       ]
     },
     {
+      "name": "RetailerEntry",
+      "kind": "interface",
+      "required": [
+        "domain",
+        "qualifier"
+      ]
+    },
+    {
+      "name": "RetailerQualifier",
+      "kind": "type"
+    },
+    {
       "name": "SHIPPING_TIERS",
       "kind": "const"
+    },
+    {
+      "name": "SaleType",
+      "kind": "type"
+    },
+    {
+      "name": "SellerReputation",
+      "kind": "interface",
+      "required": [
+        "region",
+        "sellerFeedbackCount",
+        "sellerPositivePercent"
+      ]
     },
     {
       "name": "Settlement",
@@ -22064,6 +22172,10 @@
       "kind": "function"
     },
     {
+      "name": "classifyMerchant",
+      "kind": "function"
+    },
+    {
       "name": "dayKey",
       "kind": "function"
     },
@@ -22076,6 +22188,10 @@
       "kind": "function"
     },
     {
+      "name": "describeContentInitiatedRefusal",
+      "kind": "function"
+    },
+    {
       "name": "describePaymentTaint",
       "kind": "function"
     },
@@ -22085,6 +22201,10 @@
     },
     {
       "name": "evaluateCardEntry",
+      "kind": "function"
+    },
+    {
+      "name": "evaluateMarketplaceListing",
       "kind": "function"
     },
     {
@@ -22120,6 +22240,10 @@
       "kind": "function"
     },
     {
+      "name": "merchantPolicyFromConfig",
+      "kind": "function"
+    },
+    {
       "name": "ownerSuppliedText",
       "kind": "function"
     },
@@ -22129,6 +22253,10 @@
     },
     {
       "name": "parseCurrencyCode",
+      "kind": "function"
+    },
+    {
+      "name": "parseRetailerList",
       "kind": "function"
     },
     {
@@ -22148,7 +22276,15 @@
       "kind": "function"
     },
     {
+      "name": "renderPurchaseNotice",
+      "kind": "function"
+    },
+    {
       "name": "renderVetoMessage",
+      "kind": "function"
+    },
+    {
+      "name": "resolveRecognisedRetailers",
       "kind": "function"
     },
     {
@@ -22173,6 +22309,10 @@
     },
     {
       "name": "windowDeadlineMs",
+      "kind": "function"
+    },
+    {
+      "name": "windowForPurchase",
       "kind": "function"
     }
   ],
