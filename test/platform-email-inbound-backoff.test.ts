@@ -257,6 +257,7 @@ describe('resolving whether the server can push', () => {
         return atoms;
       },
       fetchEnvelopes: async () => [],
+      fetchEnvelopeBatch: async () => ({ envelopes: [], unreadable: [] }),
     };
   }
 

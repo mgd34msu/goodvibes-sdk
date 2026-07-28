@@ -39,6 +39,19 @@ export function serverWrite(socket: Socket, line: string): void {
   socket.write(`${line}\r\n`);
 }
 
+/**
+ * Write bytes exactly as given, with no line terminator added.
+ *
+ * `{n}` literals are the reason this exists: the count is a BYTE count and the
+ * payload is not lines, so a helper that appends CRLF would make every literal
+ * one or two bytes shorter than it claims and desynchronize the client's
+ * reader. Anything emitting a literal writes the announcement, the payload and
+ * whatever follows it through here.
+ */
+export function serverWriteRaw(socket: Socket, bytes: string): void {
+  socket.write(bytes);
+}
+
 export async function connectSocket(port: number): Promise<Socket> {
   return new Promise<Socket>((resolve) => {
     const sock = connect({ host: '127.0.0.1', port }, () => resolve(sock));

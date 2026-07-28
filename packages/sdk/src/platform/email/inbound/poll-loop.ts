@@ -37,7 +37,7 @@
  * "ask what is above the cursor".
  */
 
-import type { ImapEnvelope } from '../imap-client.js';
+import type { ImapEnvelopeBatch, ImapFetchProblem } from '../imap-client.js';
 import { parseSearchNumbers } from '../imap-headers.js';
 import type {
   InboundMailObserver,
@@ -149,9 +149,15 @@ function chunk(uids: readonly number[], size: number): number[][] {
  * exactly "everything below this is done".
  *
  * A UID the search returned and the FETCH did not is a message expunged in the
- * gap between the two. The cursor advances past it: the server has said it is
- * not there, and holding the cursor below a UID that no longer exists would
- * make every subsequent pass re-search from a point that can never clear.
+ * gap between the two — but ONLY when every response in that batch was read.
+ * The cursor advances past a genuine expunge: the server has said it is not
+ * there, and holding the cursor below a UID that no longer exists would make
+ * every subsequent pass re-search from a point that can never clear.
+ *
+ * When the batch also contained a response this client could NOT read, the
+ * same absence means nothing of the kind, and the two are no longer conflated:
+ * the drain stops at that UID with the cursor below it, reports the reason
+ * through the observer, and the batch is fetched again. See `unreadableFetch`.
  */
 export async function drainMailboxDelta(
   deps: MailboxDeltaDeps,
@@ -183,19 +189,28 @@ export async function drainMailboxDelta(
 
   for (const batch of chunk(uids, settings.deltaBatchSize)) {
     if (deps.signal.aborted) return finish('aborted', uids.length);
-    let envelopes: ImapEnvelope[];
+    let fetched: ImapEnvelopeBatch;
     try {
-      envelopes = await deps.reader.fetchEnvelopes(batch);
+      fetched = await deps.reader.fetchEnvelopeBatch(batch);
     } catch (error) {
       return finish(
         deps.signal.aborted ? 'aborted' : 'read-failed', uids.length, error, 'fetch');
     }
-    const byUid = new Map(envelopes.map((envelope) => [envelope.uid, envelope]));
+    const byUid = new Map(fetched.envelopes.map((envelope) => [envelope.uid, envelope]));
+    const unreadable = fetched.unreadable;
 
     for (const uid of batch) {
       if (deps.signal.aborted) return finish('aborted', uids.length);
       const envelope = byUid.get(uid);
       if (envelope === undefined) {
+        if (unreadable.length > 0) {
+          // Not an expunge. The server answered this batch with responses we
+          // could not read, and one of them may have been this UID's — see the
+          // block comment above `unreadableFetch`.
+          const error = unreadableFetch(deps, current, uid, unreadable);
+          note(deps, 'fetch-unreadable', error.message);
+          return finish('read-failed', uids.length, error, 'fetch');
+        }
         vanished += 1;
         current = await advanceTo(deps, current, uid);
         continue;
@@ -240,6 +255,46 @@ export async function drainMailboxDelta(
 }
 
 /**
+ * The failure raised when a UID is missing from a batch that also contained
+ * responses this client could not read.
+ *
+ * The two facts that used to be one
+ * ────────────────────────────────
+ * "The server sent no response for UID 307" and "the server sent a response for
+ * UID 307 and we could not read it" arrive here identically: 307 is not in the
+ * result. The first is an expunge and the cursor may move past it. The second
+ * is a message still sitting in the mailbox that we know nothing about, and
+ * moving the cursor past it means nobody is ever told it arrived.
+ *
+ * This function is reached only in the second case, because `unreadable` is
+ * non-empty. It cannot narrow further than the batch — a response whose UID was
+ * illegible cannot be attributed to a particular message — so the whole batch
+ * from this UID onwards is left unresolved and asked for again. Over-retrying a
+ * message that really was expunged costs one more fetch that returns nothing;
+ * under-retrying costs the message.
+ *
+ * The wording is deliberately the owner's, not a stack trace: this reaches
+ * `classifyReadFailure`, which sees a plain Error rather than an
+ * `IMAP command failed:` refusal and classifies it as `reconnecting` — a
+ * transient condition the watcher retries under its normal backoff, not a
+ * capability verdict that would stop it.
+ */
+function unreadableFetch(
+  deps: MailboxDeltaDeps,
+  current: MailboxCursor,
+  uid: number,
+  unreadable: readonly ImapFetchProblem[],
+): Error {
+  const reasons = unreadable.map((problem) => problem.detail).join('; ');
+  return new Error(
+    `The mail server answered the fetch for UID ${uid} with ${unreadable.length} response(s) `
+    + `this client could not read (${reasons}). An unreadable answer is not evidence that the `
+    + `message is gone, so the cursor stays at ${current.lastSeenUid} and the message will be `
+    + `fetched again.`,
+  );
+}
+
+/**
  * Move the cursor and take the store's answer for where it now is.
  *
  * The returned cursor is the STORE'S, not a locally reconstructed one. This
@@ -264,7 +319,7 @@ async function advanceTo(
 
 function note(
   deps: MailboxDeltaDeps,
-  kind: 'delta-drained' | 'delivery-failed',
+  kind: 'delta-drained' | 'delivery-failed' | 'fetch-unreadable',
   detail: string,
 ): void {
   try {
