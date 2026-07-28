@@ -1,10 +1,10 @@
 import { execFileSync } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
-import { mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';
+import { readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { RUNNER_ENV_FLAG, sweepStaleRunDirs, withRunTmpDir } from './test-tmp-root.ts';
 import { withWorkspaceLock } from './workspace-lock.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -14,66 +14,14 @@ const args = process.argv.slice(2);
 /**
  * Where this run's tests put their temp directories.
  *
- * The suite calls `mkdtempSync(join(tmpdir(), …))` in hundreds of places, and
- * the ones whose cleanup does not run — a test that throws before its
- * `afterEach`, a process killed mid-file — leave the directory behind in the
- * system temp dir, where nothing ever reclaims it. On a machine where /tmp is a
- * tmpfs that is a slow inode leak, and inodes are the resource that runs out
- * first: measured on this project's own host, ~74k leaked directories from
- * these suites had consumed all 1,048,576 tmpfs inodes, at which point every
- * subsequent test failed with ENOSPC no matter what it was asserting. That is
- * the worst kind of failure, because it looks like a defect in whichever test
- * happened to run next.
- *
- * The fix is a single per-run PARENT inside the system temp dir: this run's
- * leftovers are one directory, removed with the run, and an age-based sweep
- * reclaims what a signal-killed run could not remove itself. Thousands of
- * unowned siblings become one owned subtree.
- *
- * It deliberately does NOT live inside the checkout. `tmpdir()` is expected to
- * be somewhere no project rooted above it, and tests rely on that: pointing it
- * at `<repo>/.test-tmp` put a tsconfig.json above every temp directory, so
- * post-edit-diagnostics.test.ts's "returns [] when no TS project context is
- * detectable" case suddenly had one and reported 14 diagnostics where it
- * expected none. Anything rooted above the temp dir — tsconfig, .git,
- * package.json, an editorconfig — is a property tests are entitled to assume
- * absent.
+ * The containment lives in ./test-tmp-root.ts, together with the measurements
+ * that justify it and the guard test that drives it. In short: cleanup
+ * registered with `process.on('exit')` never runs under `bun test`, so a GREEN
+ * run of 248 files left 260 directories in the system temp dir. One per-run
+ * parent, exported as TMPDIR/TMP/TEMP and removed on every exit path, turns
+ * that into zero.
  */
 const TEST_TMP_ROOT = tmpdir();
-const RUN_TMP_PREFIX = 'goodvibes-sdk-testrun-';
-const RUN_TMP_DIR = join(TEST_TMP_ROOT, `${RUN_TMP_PREFIX}${process.pid}-${randomBytes(4).toString('hex')}`);
-/** Entries older than this are from a run that is long gone. */
-const STALE_RUN_MS = 60 * 60 * 1000;
-
-/**
- * Reclaim per-run directories left by a previous run that could not clean up
- * after itself. Age-based, so a sibling run started moments ago is never
- * touched — several checkouts of this repository are routinely under test at
- * the same time, and so are other projects sharing this temp dir.
- */
-function sweepStaleRunDirs(): void {
-  let entries: string[];
-  try {
-    entries = readdirSync(TEST_TMP_ROOT);
-  } catch {
-    return;
-  }
-  const now = Date.now();
-  for (const name of entries) {
-    if (!name.startsWith(RUN_TMP_PREFIX)) continue;
-    const path = join(TEST_TMP_ROOT, name);
-    try {
-      if (now - statSync(path).mtimeMs <= STALE_RUN_MS) continue;
-    } catch {
-      continue; // vanished between listing and stat
-    }
-    try {
-      rmSync(path, { recursive: true, force: true });
-    } catch {
-      // Best effort — another run may have reclaimed it first.
-    }
-  }
-}
 
 function defaultTestArgs(): readonly string[] {
   const testRoot = resolve(SDK_ROOT, 'test');
@@ -138,27 +86,24 @@ function hasExplicitTimeout(): boolean {
   return args.some((arg) => arg === '--timeout' || arg.startsWith('--timeout='));
 }
 
-await withWorkspaceLock('test', () => {
+await withWorkspaceLock('test', async () => {
   const testArgs = resolveTestArgs();
-  sweepStaleRunDirs();
-  rmSync(RUN_TMP_DIR, { recursive: true, force: true });
-  mkdirSync(RUN_TMP_DIR, { recursive: true });
-  try {
+  sweepStaleRunDirs(TEST_TMP_ROOT);
+  // withRunTmpDir removes the parent in a `finally`, so a failing suite takes
+  // its temp tree with it too. Sibling runs own their own parent and are never
+  // touched.
+  await withRunTmpDir(TEST_TMP_ROOT, (runTmpDir) => {
     const timeoutArgs = hasExplicitTimeout() ? [] : [`--timeout=${resolveTimeoutMs()}`];
     execFileSync('bun', ['test', ...timeoutArgs, ...testArgs], {
       cwd: SDK_ROOT,
       stdio: 'inherit',
       env: {
         ...process.env,
-        TMPDIR: RUN_TMP_DIR,
-        TMP: RUN_TMP_DIR,
-        TEMP: RUN_TMP_DIR,
+        TMPDIR: runTmpDir,
+        TMP: runTmpDir,
+        TEMP: runTmpDir,
+        [RUNNER_ENV_FLAG]: '1',
       },
     });
-  } finally {
-    // Every exit path, including a failing suite: this run's temp tree goes
-    // with this run. Sibling runs own their own `run-<pid>` subtree and are
-    // never touched.
-    rmSync(RUN_TMP_DIR, { recursive: true, force: true });
-  }
+  });
 });
