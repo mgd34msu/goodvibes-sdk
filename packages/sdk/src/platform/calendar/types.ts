@@ -60,6 +60,15 @@ export interface CalendarEvent {
   readonly summary: string;
   readonly location?: string;
   readonly description?: string;
+  /**
+   * The ORGANIZER as the feed CLAIMED it, `mailto:` stripped — the inviter.
+   *
+   * Present only when the VEVENT carried an ORGANIZER. A useful label for a
+   * reader and the name an untrusted-content record carries as its origin (see
+   * untrusted-events.ts); never an identity check, exactly as a `From:` header
+   * is not one.
+   */
+  readonly organizer?: string;
   readonly start: EventDateTime;
   /** DTEND when present; a VEVENT may legitimately omit it (e.g. a reminder). */
   readonly end?: EventDateTime;

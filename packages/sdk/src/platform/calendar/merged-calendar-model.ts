@@ -28,6 +28,15 @@ interface GoogleDate {
   dateTime?: unknown;
   timeZone?: unknown;
 }
+interface GoogleOrganizer {
+  email?: unknown;
+  /**
+   * Google Calendar API v3, Events resource: "Whether the organizer corresponds
+   * to the calendar on which this copy of the event appears. Read-only. The
+   * default is False."
+   */
+  self?: unknown;
+}
 interface GoogleEvent {
   id?: unknown;
   iCalUID?: unknown;
@@ -37,6 +46,7 @@ interface GoogleEvent {
   start?: GoogleDate;
   end?: GoogleDate;
   status?: unknown;
+  organizer?: GoogleOrganizer;
 }
 
 function googleDateTime(value: GoogleDate | undefined): EventDateTime | null {
@@ -65,11 +75,17 @@ export function normalizeGoogleEvent(
   const id = typeof ev.id === 'string' ? ev.id : undefined;
   const uid = typeof ev.iCalUID === 'string' && ev.iCalUID.length > 0 ? ev.iCalUID : id ?? syntheticUid('google', calendarId);
   const end = googleDateTime(ev.end);
+  const organizer = typeof ev.organizer?.email === 'string' ? ev.organizer.email.trim() : '';
   return {
     uid,
     summary: typeof ev.summary === 'string' ? ev.summary : '(no title)',
     ...(typeof ev.location === 'string' ? { location: ev.location } : {}),
     ...(typeof ev.description === 'string' ? { description: ev.description } : {}),
+    ...(organizer.length > 0 ? { organizer } : {}),
+    // Only `true` counts. The field is read-only and defaults to false, so a
+    // missing organizer block leaves this absent and the event reads as
+    // somebody else's — which is the direction that fails towards recording.
+    ...(ev.organizer?.self === true ? { organizerIsOwner: true } : {}),
     start,
     ...(end ? { end } : {}),
     source: 'google-api',
@@ -96,6 +112,14 @@ interface GraphEvent {
   start?: GraphDate;
   end?: GraphDate;
   isAllDay?: unknown;
+  /** Microsoft Graph `recipient`: `{ emailAddress: { name, address } }`. */
+  organizer?: { emailAddress?: { address?: unknown; name?: unknown } | undefined } | undefined;
+  /**
+   * Microsoft Graph, event resource: "Set to true if the calendar owner
+   * (specified by the owner property of the calendar) is the organizer of the
+   * event (specified by the organizer property of the event)."
+   */
+  isOrganizer?: unknown;
 }
 
 function graphDateTime(value: GraphDate | undefined, isAllDay: boolean): EventDateTime | null {
@@ -128,11 +152,17 @@ export function normalizeGraphEvent(
   const uid = typeof ev.iCalUId === 'string' && ev.iCalUId.length > 0 ? ev.iCalUId : id ?? syntheticUid('microsoft', calendarId);
   const end = graphDateTime(ev.end, isAllDay);
   const location = ev.location && typeof ev.location.displayName === 'string' ? ev.location.displayName : undefined;
+  const organizerAddress = typeof ev.organizer?.emailAddress?.address === 'string'
+    ? ev.organizer.emailAddress.address.trim()
+    : '';
   return {
     uid,
     summary: typeof ev.subject === 'string' ? ev.subject : '(no title)',
     ...(location ? { location } : {}),
     ...(typeof ev.bodyPreview === 'string' && ev.bodyPreview.length > 0 ? { description: ev.bodyPreview } : {}),
+    ...(organizerAddress.length > 0 ? { organizer: organizerAddress } : {}),
+    // Only `true` counts, for the same reason as the Google path above.
+    ...(ev.isOrganizer === true ? { organizerIsOwner: true } : {}),
     start,
     ...(end ? { end } : {}),
     source: 'microsoft-graph',
