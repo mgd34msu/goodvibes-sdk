@@ -886,25 +886,46 @@ it misses was got wrong twice before it was measured.** Compiled against this
 repo's TypeScript 5.9.3 with a `profile.forget`-shaped input, seeding a retired
 `lineIndex`:
 
-| how the stale field arrives | plain parameter typing | a distributed key guard |
-|---|---|---|
-| fresh literal, written inline | rejected `TS2353` | rejected |
-| spread literal, stale field written **inline beside** the spread | rejected `TS2353` | rejected |
-| body built as a variable first | **slips through** | rejected |
-| stale field carried in **by the spread source's type** | **slips through** | rejected |
+| how the stale field arrives | bare type annotation | **at a real `invoke` call site** | a distributed key guard |
+|---|---|---|---|
+| fresh literal, written inline | rejected `TS2353` | **slips through** | rejected |
+| spread literal, stale field written **inline beside** the spread | rejected `TS2353` | **slips through** | rejected |
+| body built as a variable first | **slips through** | **slips through** | rejected |
+| stale field carried in **by the spread source's type** | **slips through** | **slips through** | rejected |
 
-A spread literal is *not* uniformly unchecked, which was the wrong
-generalisation. Anything written inline in one is checked normally; only what
-arrives **through** the spread escapes, because it belongs to the source's type
-rather than to the literal. So the question at a call site is never "is there a
-spread" — it is **"can the spread source's type carry a field the contract has
-retired"**.
+**The middle column is the one that matters, and it is all four rows.** Measured
+against a faithful model of `operator-sdk/client-core.ts` — the variadic
+`...args: KnownMethodArgs<T>` typed overload with the loose
+`invoke<T = unknown>(id: string, input?: Record<string, unknown>, options?)`
+beneath it. A body the typed overload rejects does not error; it **falls through
+to the loose overload**, which accepts any object. Remove that second overload
+from the same model and rows one and two immediately fail `TS2353` again.
 
-Rows three and four are caught by nothing except a guard that checks keys
-against the contract independently of how the body was constructed. That makes
-such a guard **load-bearing, not a backstop**, and it is worth saying so in its
-own comment: the obvious future "simplification" is to delete it in favour of
-typing the parameter, which would silently restore both holes.
+So the loose overload does not merely leave a gap for awkward constructions — it
+removes compiler protection from the payload entirely, including the plainest
+possible case of a stale key typed straight into a fresh literal. That is direct
+evidence for the platform change proposed below, and it is why a wrapper binding
+the payload to `OperatorMethodInput<TMethodId>` is load-bearing for **every**
+row rather than for the awkward ones.
+
+A spread literal is *not* uniformly unchecked — that was the first wrong
+generalisation. Under a bare annotation, anything written inline in one is
+checked normally and only what arrives **through** the spread escapes, because
+it belongs to the source's type rather than to the literal.
+
+But the annotation column describes a context that does not exist in this
+codebase. At a real call site the overload set decides, and it catches nothing.
+Both corrections went the same direction: each time the protection was weaker
+than the previous measurement said, because each measurement modelled one layer
+less of what actually runs.
+
+The consequence is simple and should not be re-derived: **a guard that checks
+keys against the contract independently of how the body was constructed is the
+only thing standing between a retired field and the wire.** It is load-bearing
+for every row, not a backstop for awkward ones, and that belongs in its own
+comment — because the obvious future "simplification" is to delete it in favour
+of typing the parameter, which measurement now shows would restore all four
+holes rather than two.
 
 **Proposed platform change, for the owner to rule on, not adopted here:** make
 `invoke` typed-only and move dynamic invocation to a separately named method, so
