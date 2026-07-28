@@ -96,11 +96,57 @@ export const CREDENTIAL_SCOPE_DECLARATIONS: readonly CredentialScopeDeclaration[
   // config twins are already daemon-owned by prefix; the bare names were not,
   // so the same logical token landed in the daemon tier or a project store
   // depending purely on which route an operator took to set it.
+  // The BARE names channel account setup stores under
+  // (channels/builtin/account-actions.ts). Their `surfaces.<channel>.<field>`
+  // config twins are daemon-owned by prefix and so derive automatically; these
+  // do not derive from anything, which is exactly how they were missed.
+  //
+  // TELEGRAM_BOT_TOKEN is the one that proved it. The derived spelling
+  // GOODVIBES_SURFACES_TELEGRAM_BOT_TOKEN migrated fine, while the bare name —
+  // the spelling the config reference actually points at, and the one on the
+  // owner's disk — was declared nowhere, so the registry answered "not a
+  // declared platform credential" and it never moved from any surface. The
+  // migration would have reported success having moved a different key.
+  //
+  // The set is kept honest by scripts/check-credential-scope.ts, which reads
+  // the names out of the channel account surface and fails the build on any
+  // that is not declared here.
   { key: 'SLACK_BOT_TOKEN', match: 'exact', scope: 'daemon-needed', why: 'The daemon runs the Slack surface: it holds the socket and posts the reply.' },
   { key: 'SLACK_SIGNING_SECRET', match: 'exact', scope: 'daemon-needed', why: 'The daemon verifies inbound Slack requests with it.' },
   { key: 'SLACK_APP_TOKEN', match: 'exact', scope: 'daemon-needed', why: 'The daemon opens the Slack socket-mode connection with it.' },
+  { key: 'SLACK_WEBHOOK_URL', match: 'exact', scope: 'daemon-needed', why: 'The daemon posts to this Slack webhook; anyone holding the URL can post as the app.' },
   { key: 'DISCORD_BOT_TOKEN', match: 'exact', scope: 'daemon-needed', why: 'The daemon runs the Discord gateway connection.' },
+  { key: 'DISCORD_PUBLIC_KEY', match: 'exact', scope: 'daemon-needed', why: 'The daemon verifies inbound Discord interactions with it.' },
+  { key: 'DISCORD_WEBHOOK_URL', match: 'exact', scope: 'daemon-needed', why: 'The daemon posts to this Discord webhook; the URL is the credential.' },
   { key: 'NTFY_ACCESS_TOKEN', match: 'exact', scope: 'daemon-needed', why: 'The daemon publishes to ntfy, including when no client is running.' },
+  { key: 'TELEGRAM_BOT_TOKEN', match: 'exact', scope: 'daemon-needed', why: 'The daemon runs the Telegram bot: it long-polls for messages and sends every reply.' },
+  { key: 'TELEGRAM_WEBHOOK_SECRET', match: 'exact', scope: 'daemon-needed', why: 'The daemon verifies inbound Telegram webhook calls with it.' },
+  { key: 'GOOGLE_CHAT_VERIFICATION_TOKEN', match: 'exact', scope: 'daemon-needed', why: 'The daemon verifies inbound Google Chat requests with it.' },
+  { key: 'GOOGLE_CHAT_WEBHOOK_URL', match: 'exact', scope: 'daemon-needed', why: 'The daemon posts to this Google Chat webhook; the URL is the credential.' },
+  { key: 'MATRIX_ACCESS_TOKEN', match: 'exact', scope: 'daemon-needed', why: 'The daemon holds the Matrix session and sends as that account.' },
+  { key: 'MATTERMOST_BOT_TOKEN', match: 'exact', scope: 'daemon-needed', why: 'The daemon runs the Mattermost bot connection.' },
+  { key: 'MSTEAMS_APP_PASSWORD', match: 'exact', scope: 'daemon-needed', why: 'The daemon authenticates to Microsoft Teams with it.' },
+  { key: 'WHATSAPP_ACCESS_TOKEN', match: 'exact', scope: 'daemon-needed', why: 'The daemon sends WhatsApp messages with it.' },
+  { key: 'WHATSAPP_VERIFY_TOKEN', match: 'exact', scope: 'daemon-needed', why: 'The daemon answers Meta\'s webhook verification challenge with it.' },
+  { key: 'SIGNAL_BRIDGE_TOKEN', match: 'exact', scope: 'daemon-needed', why: 'The daemon authenticates to the Signal bridge with it.' },
+  { key: 'IMESSAGE_BRIDGE_TOKEN', match: 'exact', scope: 'daemon-needed', why: 'The daemon authenticates to the iMessage bridge with it.' },
+  { key: 'BLUEBUBBLES_PASSWORD', match: 'exact', scope: 'daemon-needed', why: 'The daemon authenticates to the BlueBubbles server with it.' },
+  { key: 'TELEPHONY_BRIDGE_TOKEN', match: 'exact', scope: 'daemon-needed', why: 'The daemon authenticates to the telephony bridge with it.' },
+  { key: 'TWILIO_ACCOUNT_SID', match: 'exact', scope: 'daemon-needed', why: 'Identifies the Twilio account the daemon places and answers calls through.' },
+  { key: 'TWILIO_AUTH_TOKEN', match: 'exact', scope: 'daemon-needed', why: 'The daemon authenticates to Twilio with it.' },
+  { key: 'TWILIO_WEBHOOK_SECRET', match: 'exact', scope: 'daemon-needed', why: 'The daemon verifies inbound Twilio webhook calls with it.' },
+  { key: 'TELEPHONY_WEBHOOK_SECRET', match: 'exact', scope: 'daemon-needed', why: 'The daemon verifies inbound telephony webhook calls with it.' },
+  { key: 'WHATSAPP_BRIDGE_TOKEN', match: 'exact', scope: 'daemon-needed', why: 'The daemon authenticates to the WhatsApp bridge with it.' },
+  { key: 'WHATSAPP_SIGNING_SECRET', match: 'exact', scope: 'daemon-needed', why: 'The daemon verifies inbound WhatsApp callbacks with it.' },
+  // Home Assistant accepts several spellings for the same credential, and each
+  // is a name a real installation may have on disk. Declaring only the tidiest
+  // would leave the others un-migratable, which is the defect in miniature.
+  { key: 'HOMEASSISTANT_ACCESS_TOKEN', match: 'exact', scope: 'daemon-needed', why: 'The daemon calls Home Assistant with it.' },
+  { key: 'HOME_ASSISTANT_ACCESS_TOKEN', match: 'exact', scope: 'daemon-needed', why: 'The daemon calls Home Assistant with it; alternate spelling of the same credential.' },
+  { key: 'HA_ACCESS_TOKEN', match: 'exact', scope: 'daemon-needed', why: 'The daemon calls Home Assistant with it; short spelling of the same credential.' },
+  { key: 'HOMEASSISTANT_WEBHOOK_SECRET', match: 'exact', scope: 'daemon-needed', why: 'The daemon verifies inbound Home Assistant webhook calls with it.' },
+  { key: 'HOME_ASSISTANT_WEBHOOK_SECRET', match: 'exact', scope: 'daemon-needed', why: 'The daemon verifies inbound Home Assistant webhook calls with it; alternate spelling.' },
+  { key: 'HA_GOODVIBES_WEBHOOK_SECRET', match: 'exact', scope: 'daemon-needed', why: 'The daemon verifies inbound Home Assistant webhook calls with it; short spelling.' },
 
   // ── Reachability: tunnels, workers, relay ────────────────────────────────
   // All of it exists so the daemon is reachable while nothing else is running.

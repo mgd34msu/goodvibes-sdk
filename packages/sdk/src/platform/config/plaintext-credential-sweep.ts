@@ -82,9 +82,22 @@ export interface SweepableSecrets {
   get(key: string): Promise<string | null>;
 }
 
-/** The reference a config key holds once its value lives in the store. */
+/**
+ * The reference a config key holds once its value lives in the store.
+ *
+ * The provider segment is NOT decoration. `goodvibes://secrets/<KEY>` does not
+ * parse — the parser reads the first path segment as the provider name, so a
+ * key there resolves to no known provider and `normalizeSecretRef` returns
+ * null. Combined with the old passthrough in `resolveSecretInput`, this sweep
+ * would have replaced a working plaintext password with a reference that
+ * resolved to its own text, and put that text on the wire as the credential.
+ *
+ * The canonical form is the one channel account setup already emits
+ * (channels/builtin/account-actions.ts): provider segment, then the key,
+ * percent-encoded so a key containing a slash cannot invent a path segment.
+ */
 export function secretReferenceFor(secretKey: string): string {
-  return `goodvibes://secrets/${secretKey}`;
+  return `goodvibes://secrets/goodvibes/${encodeURIComponent(secretKey)}`;
 }
 
 /** Read a config value without letting a missing section throw. */

@@ -8,8 +8,19 @@
  * run it again is not a fix, and neither is a daemon that starts up next to a
  * working credential it cannot see.
  *
- * So on start — daemon or surface, whichever comes first — every daemon-needed
- * credential found in a surface, project or user store is copied up.
+ * So on start, every daemon-needed credential found in any surface, project or
+ * user store on this machine is copied up.
+ *
+ * This used to say "daemon or surface, whichever comes first". Nothing on the
+ * surface side ever called it, and the claim hid the consequence: the daemon
+ * enumerated only its OWN surface root, so a credential a pre-fix agent left in
+ * `~/.goodvibes/agent/` was invisible to the one thing that could lift it and
+ * was never lifted by anything, ever. That was the owner's exact situation.
+ *
+ * Both halves are now true. `listDetailedForMigration` reaches every surface's
+ * silo, so the daemon alone is sufficient; and `migrateOnSurfaceStart` gives a
+ * surface the same entry point, so a machine whose daemon has not run yet still
+ * converges.
  *
  * The order is the whole design, and it is the same order in every case:
  *
@@ -83,12 +94,40 @@ export interface CredentialMigrationReport {
  * reach the encryption keys or the store paths.
  */
 export interface MigratableSecretStore {
-  listDetailed(): Promise<readonly SecretRecord[]>;
+  /**
+   * Every credential a migration could move, across EVERY surface's silo.
+   *
+   * Not `listDetailed`, which walks only the surface this manager is rooted at.
+   * That is the right question for resolution and the wrong one here: the
+   * owner's Telegram token sat in the agent's store while the daemon
+   * enumerated only its own, so the credential was one directory away and
+   * invisible to the only code that could lift it.
+   */
+  listDetailedForMigration(): Promise<readonly SecretRecord[]>;
   get(key: string): Promise<string | null>;
   set(key: string, value: string, options?: { scope?: SecretScope; medium?: SecretStorageMedium }): Promise<void>;
-  delete(key: string, options?: { scope?: SecretScope; medium?: SecretStorageMedium }): Promise<void>;
-  /** Read a specific tier, bypassing the read order. Required for verification. */
-  getFromScope(key: string, scope: SecretScope): Promise<string | null>;
+  /**
+   * Read one tier — or one exact store FILE when `storePath` is given.
+   *
+   * The file form is required because two surfaces both report scope `user`:
+   * `~/.goodvibes/agent/secrets.enc` and `~/.goodvibes/tui/secrets.enc` are the
+   * same tier and different files, so a scope-addressed read cannot say which
+   * copy it got, and the read-back verification would be comparing against an
+   * arbitrary one.
+   */
+  getFromScope(key: string, scope: SecretScope, storePath?: string): Promise<string | null>;
+  /**
+   * Remove ONE tier's copy.
+   *
+   * Deliberately NOT `delete`. `delete` is the revoke verb: for a daemon-needed
+   * key it discards the caller's scope and sweeps every tier, which is right
+   * for a revoke and catastrophic here — every key this module touches is
+   * daemon-needed by definition, so `delete(key, { scope: source })` destroyed
+   * the daemon copy that had just been written and verified, while the report
+   * said `migrated: 1, failed: 0`. The port names the narrow operation so the
+   * wrong one cannot be reached from here at all.
+   */
+  deleteFromScope(key: string, scope: SecretScope, storePath?: string): Promise<void>;
 }
 
 function isDaemonNeededStoredKey(key: string): boolean {
@@ -110,7 +149,9 @@ function findStrandedCredentials(records: readonly SecretRecord[]): readonly Sec
     if (record.source === 'env' || record.scope === 'env') continue;
     if (record.scope === 'daemon') continue;
     if (!isDaemonNeededStoredKey(record.key)) continue;
-    const dedupe = `${record.key}:${record.scope}`;
+    // Deduplicated per FILE. Keying on tier alone collapsed two surfaces'
+    // stores into one entry and processed only whichever came first.
+    const dedupe = `${record.key}:${record.path ?? record.scope}`;
     if (seen.has(dedupe)) continue;
     seen.add(dedupe);
     stranded.push(record);
@@ -124,8 +165,11 @@ async function migrateOne(
 ): Promise<CredentialMigrationEntry> {
   const fromScope = record.scope as SecretScope;
   const base = { key: record.key, fromScope } as const;
+  // Addressed by FILE, not by tier: several surfaces share the `user` tier and
+  // only the path says which copy this record came from.
+  const sourcePath = record.path;
 
-  const surfaceValue = await store.getFromScope(record.key, fromScope);
+  const surfaceValue = await store.getFromScope(record.key, fromScope, sourcePath);
   if (surfaceValue === null || surfaceValue.length === 0) {
     // Nothing readable there after all — another process may have moved it
     // between the listing and now. Leave it alone.
@@ -138,7 +182,7 @@ async function migrateOne(
       // Same credential in both tiers. The surface copy is pure duplication and
       // the daemon copy is already verified readable by this very read, so the
       // ordering guarantee is satisfied and the duplicate can go.
-      await store.delete(record.key, { scope: fromScope });
+      await store.deleteFromScope(record.key, fromScope, sourcePath);
       return { ...base, outcome: 'already-migrated' };
     }
     // Different. The daemon has been running with ITS copy; a stale surface
@@ -164,7 +208,7 @@ async function migrateOne(
     };
   }
 
-  await store.delete(record.key, { scope: fromScope });
+  await store.deleteFromScope(record.key, fromScope, sourcePath);
   return { ...base, outcome: 'migrated' };
 }
 
@@ -179,7 +223,7 @@ export async function migrateDaemonNeededCredentials(
 ): Promise<CredentialMigrationReport> {
   let records: readonly SecretRecord[];
   try {
-    records = await store.listDetailed();
+    records = await store.listDetailedForMigration();
   } catch (error) {
     // An unreadable store is not a reason to fail a start. Report nothing moved.
     logger.warn('Credential migration: could not read the secret stores', { error: summarizeError(error) });
@@ -274,4 +318,21 @@ export function describeCredentialMigration(report: CredentialMigrationReport): 
     parts.push(`${report.failed} could not be verified in the daemon store and were left where they are`);
   }
   return parts.length > 0 ? `Credentials: ${parts.join('; ')}.` : 'No credentials needed moving.';
+}
+
+/**
+ * The surface-side entry point.
+ *
+ * Identical work, named for where it is called from. A surface running this
+ * lifts credentials into the daemon tier before the daemon has ever started,
+ * which is the case a fresh install hits: setup happens in a client, and the
+ * daemon reads the result later.
+ *
+ * Safe to call on every start of every product — after the first run it is one
+ * enumeration and no writes.
+ */
+export async function migrateOnSurfaceStart(
+  store: MigratableSecretStore,
+): Promise<CredentialMigrationReport> {
+  return await migrateDaemonNeededCredentials(store);
 }
