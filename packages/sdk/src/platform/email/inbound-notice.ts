@@ -268,6 +268,31 @@ const VALID_ASCII_HOSTNAME = new RegExp(
   '^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$',
 );
 
+declare const VALIDATED_DOMAIN_BRAND: unique symbol;
+
+/**
+ * The output of `safeRegistrableDomain` — a punycode-normalized,
+ * hostname-shaped registrable domain, never the raw claimed host it was
+ * built from. Branded so that a raw value (`ValidatedLinkSummary.host`, an
+ * expectation's `serviceDomain`) cannot be substituted for one that has
+ * actually been through validation — the same §7.3 pattern as
+ * `DeliveredRecipient` and `ReceiptTimestamp`, applied here because the two
+ * values are easy to confuse: both are "a domain string" at the type level,
+ * and only one of them has been punycode-normalized and hostname-validated.
+ * A future field builder that reaches for `outcome.serviceDomain` directly
+ * instead of calling `safeRegistrableDomain` first gets a compile error, not
+ * a homograph rendered as its lookalike.
+ */
+interface ValidatedRegistrableDomain {
+  readonly value: string;
+  readonly [VALIDATED_DOMAIN_BRAND]: true;
+}
+
+function validatedDomain(value: string): ValidatedRegistrableDomain {
+  // Brand is compile-time only; see receiptTimestamp() for the same pattern.
+  return { value } as ValidatedRegistrableDomain;
+}
+
 /**
  * The registrable domain of `rawHost`, rendered so a homograph cannot read as
  * its lookalike. `toASCII` punycode-encodes any non-ASCII label BEFORE the
@@ -283,18 +308,18 @@ const VALID_ASCII_HOSTNAME = new RegExp(
  * up rendering the result, which is then STILL wrapped as `untrusted` (see
  * the field audit): a validated hostname costs nothing extra to escape.
  */
-function safeRegistrableDomain(rawHost: string): string {
+function safeRegistrableDomain(rawHost: string): ValidatedRegistrableDomain {
   const trimmed = rawHost.trim().toLowerCase().replace(/\.+$/, '');
-  if (trimmed.length === 0) return '(unrecognized link)';
+  if (trimmed.length === 0) return validatedDomain('(unrecognized link)');
   let ascii: string;
   try {
     ascii = toASCII(trimmed);
   } catch {
-    return '(unrecognized link)';
+    return validatedDomain('(unrecognized link)');
   }
-  if (!VALID_ASCII_HOSTNAME.test(ascii)) return '(unrecognized link)';
+  if (!VALID_ASCII_HOSTNAME.test(ascii)) return validatedDomain('(unrecognized link)');
   const domain = registrableDomain(ascii);
-  return domain ?? '(unrecognized link)';
+  return validatedDomain(domain ?? '(unrecognized link)');
 }
 
 // ---------------------------------------------------------------------------
@@ -340,7 +365,7 @@ function outcomeField(outcome: InboundOutcome): NoticeField {
           literal('Matched an open expectation: '),
           untrusted(purpose),
           literal(' ('),
-          untrusted(domain),
+          untrusted(domain.value),
           literal(').'),
         ],
       };
@@ -380,7 +405,7 @@ function isCapabilityDegraded(outcome: InboundOutcome): boolean {
 }
 
 function linkField(link: ValidatedLinkSummary): NoticeField {
-  const domain = untrusted(safeRegistrableDomain(link.host));
+  const domain = untrusted(safeRegistrableDomain(link.host).value);
   switch (link.verdict) {
     case 'authorized':
       return { label: 'Link', value: [domain, literal(' — matched the authorized service')] };
@@ -505,15 +530,38 @@ function escapeTelegramMarkdownV2(text: string): string {
  * its literal character rather than triggering bold/italic/strikethrough/
  * code/spoiler/quote — this is the same convention widely used by Discord
  * bots, and Discord's client does not show the backslash for an escape that
- * would not otherwise have been syntax. `[` `]` `(` `)` are included too:
- * this module has no live-verification tool available to confirm whether
- * masked-link syntax (`[text](url)`) is honored in every Discord surface a
- * notice might be delivered to, and escaping them costs nothing if it is
- * not — a stray, Discord-dropped backslash is a far better failure mode than
- * a live clickable link would be if it turns out to be. `@everyone` /
- * `@here` / a raw role or channel mention are NOT defeated by backslash-
- * escaping the `@` in every Discord client, so they get the same zero-
- * width-space break used by the plain-text path instead.
+ * would not otherwise have been syntax.
+ *
+ * `[` `]` `(` `)` are escaped too, and this is REQUIRED, not defensive —
+ * live-verified rather than assumed either way:
+ *
+ *   - Masked links (`[text](url)`) DO render as clickable in bot-sent
+ *     messages and webhook messages (and in embeds). They do NOT render for
+ *     text a human typed directly into the client — Discord's own
+ *     trade-off, specifically to stop a human hiding a malicious URL behind
+ *     innocent display text. The daemon delivers over the bot/webhook
+ *     paths — exactly where masked links work.
+ *     https://github.com/discord/discord-api-docs/issues/6096
+ *     https://gist.github.com/matthewzring/9f7bbfd102003963f9be7dbcf7d40e51
+ *
+ * Without this escape, a mail sender's chosen display text arrives in the
+ * owner's Discord as a clickable link reading whatever the sender wrote —
+ * `[Approved](https://evil.example)` renders live. An escaper that looks
+ * optional gets deleted by the next person tidying up this file: it is not
+ * optional, and it stays.
+ *
+ * Observed, and explicitly NOT relied upon: Discord runs its own filter that
+ * blocks a bare URL placed in the TEXT portion of a masked link
+ * (`[https://x](y)` gets flattened before it renders). That is Discord's own
+ * mitigation, not a contract with this module — it can change without
+ * notice, and it does not cover arbitrary attacker-chosen display text
+ * (`[Approved](https://evil.example)` is exactly the shape it does not
+ * stop). This escaper does not depend on it and neither should the next
+ * person reading this comment.
+ *
+ * `@everyone` / `@here` / a raw role or channel mention are NOT defeated by
+ * backslash-escaping the `@` in every Discord client, so they get the same
+ * zero-width-space break used by the plain-text path instead.
  */
 function escapeDiscordMarkdown(text: string): string {
   const escaped = text.replace(/[*_~`|>[\]()\\]/g, (ch) => `\\${ch}`);
