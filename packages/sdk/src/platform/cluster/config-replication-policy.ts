@@ -78,6 +78,18 @@ export const REPLICATED_CONFIG_DOMAINS: readonly string[] = [
   'email.',
   'calendar.',
   'google.oauth.',
+  // How the owner profile behaves — whether it is loaded, whether facts are
+  // recorded autonomously, whether writes and closed-tier reads are announced,
+  // whether the open tier reaches model context, whether unset consumer keys
+  // fall back to it. These are decisions about how the platform treats HIM, and
+  // a group where one node recorded facts silently while another asked would be
+  // the same assistant behaving two different ways depending on which machine
+  // answered.
+  //
+  // What does NOT cross the wire here: the profile document. This replicates
+  // the eight policy keys and nothing else; `profile.path` is ruled node-local
+  // below because it names a location on one machine's disk.
+  'profile.',
 ];
 
 /**
@@ -110,6 +122,11 @@ export const NODE_LOCAL_CONFIG_DOMAINS: readonly string[] = [
 const NODE_LOCAL_CONFIG_KEYS: readonly string[] = [
   // Whether THIS installation exposes a raw HTTP listener at all.
   'danger.httpListener',
+  // Where the owner profile file lives on THIS machine. The rest of `profile.*`
+  // replicates (it is policy about the operator); this one is a filesystem path,
+  // and copying it to a node whose daemon home is elsewhere would point that
+  // node at a file that does not exist there.
+  'profile.path',
   // "This machine has already read the legacy plaintext credential files that
   // were sitting in its own home directory." It is a statement about one
   // filesystem, not about the group: another node has its own home directory,

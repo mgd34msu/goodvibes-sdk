@@ -61,3 +61,24 @@ export interface ChannelDeliveryRouterConfig {
   readonly controlPlaneGateway?: ControlPlaneGateway | null | undefined;
   readonly strategies?: readonly ChannelDeliveryStrategy[] | undefined;
 }
+
+/**
+ * Parse a `surfaceKind` or `surfaceKind:address` channel string into a target.
+ *
+ * The one-line form is how a channel is written in configuration — a check-in
+ * delivery channel, a CI watch notifier — so this is the seam between "what the
+ * operator typed" and the structured target the router takes. It lives beside
+ * the type it produces because it was previously written out twice inside one
+ * registrar, once as a helper and once inline, which is exactly how the two
+ * copies would have drifted.
+ */
+export function parseChannelDeliveryTarget(channel: string): ChannelDeliveryTarget {
+  const separator = channel.indexOf(':');
+  const surfaceKind = (separator === -1 ? channel : channel.slice(0, separator)).trim();
+  const address = separator === -1 ? '' : channel.slice(separator + 1).trim();
+  return {
+    kind: 'surface',
+    surfaceKind: surfaceKind as ChannelDeliveryTarget['surfaceKind'],
+    ...(address ? { address } : {}),
+  };
+}

@@ -24,9 +24,23 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { CONFIG_SCHEMA } from '../packages/sdk/src/platform/config/schema.js';
 
-const SCHEMA_TYPES_PATH = join(
-  import.meta.dir, '..', 'packages', 'sdk', 'src', 'platform', 'config', 'schema-types.ts',
-);
+/**
+ * Every source file that declares part of the union or the mapping.
+ *
+ * schema-types.ts was split (schema-types-values.ts took the ConfigValue map,
+ * schema-types-owner-profile.ts took the `profile.*` key union and its own
+ * value map, which schema-types.ts folds in with one arm each). Reading only
+ * the original file would have made this gate silently stop covering whichever
+ * domain moved — which is the fail-open it exists to prevent, so the list is
+ * explicit and the anchors below match a FAMILY of declarations rather than
+ * one fixed name.
+ */
+const CONFIG_DIR = join(import.meta.dir, '..', 'packages', 'sdk', 'src', 'platform', 'config');
+const SCHEMA_TYPE_SOURCES = [
+  'schema-types.ts',
+  'schema-types-values.ts',
+  'schema-types-owner-profile.ts',
+].map((name) => join(CONFIG_DIR, name));
 
 /**
  * Comments are stripped before any quote matching.
@@ -42,22 +56,48 @@ function withoutComments(body: string): string {
   return body.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
 }
 
+/**
+ * Every `export type <Something>ConfigKey =` declaration, so a domain that
+ * carries its own key union (schema-types-owner-profile.ts) is covered by the
+ * same parse rather than being invisible to it.
+ */
+const KEY_UNION_ANCHOR = /export type \w*ConfigKey =/g;
+
+/** Every `export type <Something>ConfigValue<K extends <Something>ConfigKey> =`. */
+const VALUE_MAP_ANCHOR = /export type \w*ConfigValue<K extends \w*ConfigKey> =/g;
+
+/** The bodies of every declaration matching `anchor`, each ending at `terminator`. */
+function declarationBodies(source: string, anchor: RegExp, terminator: string): string[] {
+  const bodies: string[] = [];
+  for (const match of source.matchAll(anchor)) {
+    const start = match.index;
+    const end = source.indexOf(terminator, start);
+    if (end < 0) throw new Error(`declaration starting at ${start} has no "${terminator}" terminator`);
+    bodies.push(withoutComments(source.slice(start, end)));
+  }
+  return bodies;
+}
+
 /** Extract the ConfigKey union's string-literal members from source text. */
 export function extractUnionMembers(source: string): Set<string> {
-  const start = source.indexOf('export type ConfigKey =');
-  if (start < 0) throw new Error('ConfigKey union not found in schema-types.ts');
-  const end = source.indexOf(';', start);
-  const body = withoutComments(source.slice(start, end));
-  return new Set([...body.matchAll(/'([^']+)'/g)].map((m) => m[1]!));
+  const bodies = declarationBodies(source, KEY_UNION_ANCHOR, ';');
+  if (bodies.length === 0) throw new Error('no ConfigKey union found in the schema type sources');
+  const members = new Set<string>();
+  for (const body of bodies) {
+    for (const match of body.matchAll(/'([^']+)'/g)) members.add(match[1]!);
+  }
+  return members;
 }
 
 /** Extract the keys the ConfigValue<K> mapping has `K extends '<key>'` clauses for. */
 export function extractMappingKeys(source: string): Set<string> {
-  const start = source.indexOf('export type ConfigValue<K extends ConfigKey>');
-  if (start < 0) throw new Error('ConfigValue mapping not found in schema-types.ts');
-  const end = source.indexOf('never;', start);
-  const body = withoutComments(source.slice(start, end));
-  return new Set([...body.matchAll(/K extends '([^']+)'/g)].map((m) => m[1]!));
+  const bodies = declarationBodies(source, VALUE_MAP_ANCHOR, 'never;');
+  if (bodies.length === 0) throw new Error('no ConfigValue mapping found in the schema type sources');
+  const keys = new Set<string>();
+  for (const body of bodies) {
+    for (const match of body.matchAll(/K extends '([^']+)'/g)) keys.add(match[1]!);
+  }
+  return keys;
 }
 
 /**
@@ -76,7 +116,7 @@ export function diffKeySets(schemaKeys: readonly string[], declared: ReadonlySet
 }
 
 describe('ConfigKey union completeness (fail-closed against the schema domains)', () => {
-  const source = readFileSync(SCHEMA_TYPES_PATH, 'utf8');
+  const source = SCHEMA_TYPE_SOURCES.map((path) => readFileSync(path, 'utf8')).join('\n');
   const schemaKeys = CONFIG_SCHEMA.map((setting) => setting.key as string);
 
   test('the schema defines a sane number of keys (extraction sanity floor)', () => {
@@ -145,7 +185,7 @@ describe('ConfigKey union completeness (fail-closed against the schema domains)'
     expect([...extractMappingKeys(withApostrophe)]).toEqual(['alpha.one', 'beta.two']);
   });
 
-  test('the source extractors actually parse the committed file (non-empty, disjoint anchors)', () => {
+  test('the source extractors actually parse the committed files (non-empty, disjoint anchors)', () => {
     const union = extractUnionMembers(source);
     const mapping = extractMappingKeys(source);
     expect(union.size).toBeGreaterThan(300);

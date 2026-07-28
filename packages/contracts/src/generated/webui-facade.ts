@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.18.1
- * Methods: 443 total, 392 REST-routed, 51 ws-only invoke.
+ * Methods: 452 total, 401 REST-routed, 51 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -1196,6 +1196,42 @@ export const WEBUI_METHOD_ROUTES: Readonly<Record<string, WebuiRouteDefinition>>
     "method": "POST",
     "path": "/api/principals/{principalId}/update"
   },
+  "profile.append": {
+    "method": "POST",
+    "path": "/api/profile/append"
+  },
+  "profile.forget": {
+    "method": "POST",
+    "path": "/api/profile/forget"
+  },
+  "profile.get": {
+    "method": "GET",
+    "path": "/api/profile/fields/{fieldId}"
+  },
+  "profile.person": {
+    "method": "POST",
+    "path": "/api/profile/person"
+  },
+  "profile.provenance": {
+    "method": "GET",
+    "path": "/api/profile/fields/{fieldId}/provenance"
+  },
+  "profile.read": {
+    "method": "GET",
+    "path": "/api/profile"
+  },
+  "profile.set": {
+    "method": "POST",
+    "path": "/api/profile/set"
+  },
+  "profile.status": {
+    "method": "GET",
+    "path": "/api/profile/status"
+  },
+  "profile.undo": {
+    "method": "POST",
+    "path": "/api/profile/undo"
+  },
   "providers.get": {
     "method": "GET",
     "path": "/api/providers/{providerId}"
@@ -1992,6 +2028,15 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "principals.list": "rest",
   "principals.resolve": "rest",
   "principals.update": "rest",
+  "profile.append": "rest",
+  "profile.forget": "rest",
+  "profile.get": "rest",
+  "profile.person": "rest",
+  "profile.provenance": "rest",
+  "profile.read": "rest",
+  "profile.set": "rest",
+  "profile.status": "rest",
+  "profile.undo": "rest",
   "providers.get": "rest",
   "providers.list": "rest",
   "providers.usage.get": "rest",
@@ -15784,6 +15829,244 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
         "updatedAt": 0,
         "metadata": {}
       }
+    }
+  },
+  "profile.append": {
+    "input": {
+      "section": "sample",
+      "text": "sample",
+      "surface": "sample",
+      "said": "sample",
+      "authority": "sample"
+    },
+    "output": {
+      "ok": false,
+      "reason": "sample",
+      "changes": [
+        {
+          "kind": "sample",
+          "fieldId": "sample",
+          "section": "sample",
+          "label": "sample",
+          "superseded": false
+        }
+      ],
+      "disclosure": "sample"
+    }
+  },
+  "profile.forget": {
+    "input": {
+      "fieldId": "sample",
+      "section": "sample",
+      "text": "sample",
+      "authority": "sample"
+    },
+    "output": {
+      "ok": false,
+      "reason": "sample",
+      "changes": [
+        {
+          "kind": "sample",
+          "fieldId": "sample",
+          "section": "sample",
+          "label": "sample",
+          "superseded": false
+        }
+      ],
+      "disclosure": "sample"
+    }
+  },
+  "profile.get": {
+    "input": {
+      "fieldId": "sample"
+    },
+    "output": {
+      "fieldId": "sample",
+      "present": false,
+      "field": {
+        "fieldId": "sample",
+        "label": "sample",
+        "value": "sample",
+        "valid": false,
+        "invalidReason": "sample",
+        "provenance": {
+          "surface": "sample",
+          "date": "sample",
+          "said": "sample"
+        }
+      },
+      "disclosure": "sample"
+    }
+  },
+  "profile.person": {
+    "input": {
+      "name": "sample"
+    },
+    "output": {
+      "name": "sample",
+      "lines": [
+        {
+          "lineIndex": 0,
+          "section": "sample",
+          "text": "sample",
+          "provenance": {
+            "surface": "sample",
+            "date": "sample",
+            "said": "sample"
+          }
+        }
+      ],
+      "disclosure": "sample"
+    }
+  },
+  "profile.provenance": {
+    "input": {
+      "fieldId": "sample"
+    },
+    "output": {
+      "fieldId": "sample",
+      "present": false,
+      "handEdited": false,
+      "provenance": {
+        "surface": "sample",
+        "date": "sample",
+        "said": "sample"
+      },
+      "superseded": [
+        {
+          "lineIndex": 0,
+          "fieldId": "sample",
+          "section": "sample",
+          "text": "sample",
+          "value": "sample",
+          "supersededOn": "sample",
+          "previousLine": "sample",
+          "provenance": {
+            "surface": "sample",
+            "date": "sample",
+            "said": "sample"
+          }
+        }
+      ]
+    }
+  },
+  "profile.read": {
+    "input": {},
+    "output": {
+      "state": {
+        "kind": "sample",
+        "path": "sample",
+        "exists": false,
+        "lineCount": 0,
+        "fieldCount": 0,
+        "proseLineCount": 0,
+        "sections": [
+          "sample"
+        ],
+        "invalidFields": [
+          {
+            "fieldId": "sample",
+            "reason": "sample"
+          }
+        ],
+        "reason": "sample"
+      },
+      "sections": [
+        {
+          "heading": "sample",
+          "tier": "sample",
+          "fields": [
+            {
+              "fieldId": "sample",
+              "label": "sample",
+              "value": "sample",
+              "valid": false,
+              "invalidReason": "sample",
+              "provenance": {
+                "surface": "sample",
+                "date": "sample",
+                "said": "sample"
+              }
+            }
+          ],
+          "prose": [
+            {
+              "lineIndex": 0,
+              "section": "sample",
+              "text": "sample",
+              "provenance": {
+                "surface": "sample",
+                "date": "sample",
+                "said": "sample"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "profile.set": {
+    "input": {
+      "fieldId": "sample",
+      "value": "sample",
+      "surface": "sample",
+      "said": "sample",
+      "authority": "sample"
+    },
+    "output": {
+      "ok": false,
+      "reason": "sample",
+      "changes": [
+        {
+          "kind": "sample",
+          "fieldId": "sample",
+          "section": "sample",
+          "label": "sample",
+          "superseded": false
+        }
+      ],
+      "disclosure": "sample"
+    }
+  },
+  "profile.status": {
+    "input": {},
+    "output": {
+      "kind": "sample",
+      "path": "sample",
+      "exists": false,
+      "lineCount": 0,
+      "fieldCount": 0,
+      "proseLineCount": 0,
+      "sections": [
+        "sample"
+      ],
+      "invalidFields": [
+        {
+          "fieldId": "sample",
+          "reason": "sample"
+        }
+      ],
+      "reason": "sample"
+    }
+  },
+  "profile.undo": {
+    "input": {
+      "fieldId": "sample",
+      "authority": "sample"
+    },
+    "output": {
+      "ok": false,
+      "reason": "sample",
+      "changes": [
+        {
+          "kind": "sample",
+          "fieldId": "sample",
+          "section": "sample",
+          "label": "sample",
+          "superseded": false
+        }
+      ],
+      "disclosure": "sample"
     }
   },
   "providers.get": {

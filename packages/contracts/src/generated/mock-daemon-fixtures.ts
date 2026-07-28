@@ -13265,6 +13265,263 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       }
     }
   },
+  "profile.append": {
+    "methodId": "profile.append",
+    "http": {
+      "method": "POST",
+      "path": "/api/profile/append"
+    },
+    "status": 200,
+    "body": {
+      "ok": false,
+      "reason": "sample",
+      "changes": [
+        {
+          "kind": "sample",
+          "fieldId": "sample",
+          "section": "sample",
+          "label": "sample",
+          "superseded": false
+        }
+      ],
+      "disclosure": "sample"
+    }
+  },
+  "profile.forget": {
+    "methodId": "profile.forget",
+    "http": {
+      "method": "POST",
+      "path": "/api/profile/forget"
+    },
+    "status": 200,
+    "body": {
+      "ok": false,
+      "reason": "sample",
+      "changes": [
+        {
+          "kind": "sample",
+          "fieldId": "sample",
+          "section": "sample",
+          "label": "sample",
+          "superseded": false
+        }
+      ],
+      "disclosure": "sample"
+    }
+  },
+  "profile.get": {
+    "methodId": "profile.get",
+    "http": {
+      "method": "GET",
+      "path": "/api/profile/fields/{fieldId}"
+    },
+    "status": 200,
+    "body": {
+      "fieldId": "sample",
+      "present": false,
+      "field": {
+        "fieldId": "sample",
+        "label": "sample",
+        "value": "sample",
+        "valid": false,
+        "invalidReason": "sample",
+        "provenance": {
+          "surface": "sample",
+          "date": "sample",
+          "said": "sample"
+        }
+      },
+      "disclosure": "sample"
+    }
+  },
+  "profile.person": {
+    "methodId": "profile.person",
+    "http": {
+      "method": "POST",
+      "path": "/api/profile/person"
+    },
+    "status": 200,
+    "body": {
+      "name": "sample",
+      "lines": [
+        {
+          "lineIndex": 0,
+          "section": "sample",
+          "text": "sample",
+          "provenance": {
+            "surface": "sample",
+            "date": "sample",
+            "said": "sample"
+          }
+        }
+      ],
+      "disclosure": "sample"
+    }
+  },
+  "profile.provenance": {
+    "methodId": "profile.provenance",
+    "http": {
+      "method": "GET",
+      "path": "/api/profile/fields/{fieldId}/provenance"
+    },
+    "status": 200,
+    "body": {
+      "fieldId": "sample",
+      "present": false,
+      "handEdited": false,
+      "provenance": {
+        "surface": "sample",
+        "date": "sample",
+        "said": "sample"
+      },
+      "superseded": [
+        {
+          "lineIndex": 0,
+          "fieldId": "sample",
+          "section": "sample",
+          "text": "sample",
+          "value": "sample",
+          "supersededOn": "sample",
+          "previousLine": "sample",
+          "provenance": {
+            "surface": "sample",
+            "date": "sample",
+            "said": "sample"
+          }
+        }
+      ]
+    }
+  },
+  "profile.read": {
+    "methodId": "profile.read",
+    "http": {
+      "method": "GET",
+      "path": "/api/profile"
+    },
+    "status": 200,
+    "body": {
+      "state": {
+        "kind": "sample",
+        "path": "sample",
+        "exists": false,
+        "lineCount": 0,
+        "fieldCount": 0,
+        "proseLineCount": 0,
+        "sections": [
+          "sample"
+        ],
+        "invalidFields": [
+          {
+            "fieldId": "sample",
+            "reason": "sample"
+          }
+        ],
+        "reason": "sample"
+      },
+      "sections": [
+        {
+          "heading": "sample",
+          "tier": "sample",
+          "fields": [
+            {
+              "fieldId": "sample",
+              "label": "sample",
+              "value": "sample",
+              "valid": false,
+              "invalidReason": "sample",
+              "provenance": {
+                "surface": "sample",
+                "date": "sample",
+                "said": "sample"
+              }
+            }
+          ],
+          "prose": [
+            {
+              "lineIndex": 0,
+              "section": "sample",
+              "text": "sample",
+              "provenance": {
+                "surface": "sample",
+                "date": "sample",
+                "said": "sample"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "profile.set": {
+    "methodId": "profile.set",
+    "http": {
+      "method": "POST",
+      "path": "/api/profile/set"
+    },
+    "status": 200,
+    "body": {
+      "ok": false,
+      "reason": "sample",
+      "changes": [
+        {
+          "kind": "sample",
+          "fieldId": "sample",
+          "section": "sample",
+          "label": "sample",
+          "superseded": false
+        }
+      ],
+      "disclosure": "sample"
+    }
+  },
+  "profile.status": {
+    "methodId": "profile.status",
+    "http": {
+      "method": "GET",
+      "path": "/api/profile/status"
+    },
+    "status": 200,
+    "body": {
+      "kind": "sample",
+      "path": "sample",
+      "exists": false,
+      "lineCount": 0,
+      "fieldCount": 0,
+      "proseLineCount": 0,
+      "sections": [
+        "sample"
+      ],
+      "invalidFields": [
+        {
+          "fieldId": "sample",
+          "reason": "sample"
+        }
+      ],
+      "reason": "sample"
+    }
+  },
+  "profile.undo": {
+    "methodId": "profile.undo",
+    "http": {
+      "method": "POST",
+      "path": "/api/profile/undo"
+    },
+    "status": 200,
+    "body": {
+      "ok": false,
+      "reason": "sample",
+      "changes": [
+        {
+          "kind": "sample",
+          "fieldId": "sample",
+          "section": "sample",
+          "label": "sample",
+          "superseded": false
+        }
+      ],
+      "disclosure": "sample"
+    }
+  },
   "providers.get": {
     "methodId": "providers.get",
     "http": {

@@ -55,6 +55,21 @@ export const pushPresent: Presence<'push'> = 'present';
 export const worktreePresent: Presence<'worktree'> = 'present';
 export const updatePresent: Presence<'update'> = 'present';
 export const voicePresent: Presence<'voice'> = 'present';
+/**
+ * The owner-profile domain is the thirteenth and arrived without a side-effect
+ * import, so `DEFAULT_CONFIG.profile` did not typecheck from a consumer's
+ * vantage point even though the section, its defaults and its settings rows
+ * all ship.
+ */
+export const profilePresent: Presence<'profile'> = 'present';
+/**
+ * `checkin` is the same defect from the other direction: its four keys were in
+ * `ConfigKey` and its defaults in `DEFAULT_CONFIG`, but no `declare module`
+ * block ever put the SECTION on `GoodVibesConfig` at all, so no side-effect
+ * import could have carried it. Now declared in schema-domain-runtime.ts,
+ * beside the defaults it already owned.
+ */
+export const checkinPresent: Presence<'checkin'> = 'present';
 
 /**
  * The proof that `Presence` can still answer NO.

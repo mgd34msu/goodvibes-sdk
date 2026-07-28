@@ -205,6 +205,53 @@ function formatStore(store: AccountStoreFile): string {
  */
 export const ACCOUNT_REGISTRY_PATH_SEGMENTS: readonly string[] = ['signup', 'accounts.json'];
 
+// ──────────────────────────────────────────────────────────────────
+// Base address for alias minting
+// ──────────────────────────────────────────────────────────────────
+
+/**
+ * Supplies the owner's real delivery address when no mail account is configured.
+ *
+ * A registered reader rather than an import of `platform/owner-profile`: this
+ * module is reachable from surfaces that never load a profile, and it has to keep
+ * working there unchanged. With nothing registered, {@link resolveSignupBaseAddress}
+ * returns exactly what its caller passed in.
+ */
+export type SignupBaseAddressSource = () => string | undefined;
+
+let signupBaseAddressFallback: SignupBaseAddressSource | null = null;
+
+/** Register (or clear, with `null`) the profile-backed base-address fallback. */
+export function registerSignupBaseAddressFallback(source: SignupBaseAddressSource | null): void {
+  signupBaseAddressFallback = source;
+}
+
+/**
+ * The base address every minted alias resolves back to — "the owner's real
+ * delivery address this alias resolves to", in `signup-address.ts`'s own words.
+ *
+ * A configured mail account always wins. The profile's `contact.email` fills the
+ * gap, which is the point of wiring it: without it, an autonomous signup on a
+ * machine with no mail account configured has nowhere to send the confirmation
+ * and cannot proceed, even though the owner told the runtime his address weeks
+ * ago.
+ *
+ * `signup-address.ts` is untouched by this. It is alias-minting machinery, not a
+ * store of owner facts, and it stays a pure function of the base address it is
+ * handed.
+ *
+ * Note what this deliberately does NOT feed: `security/owner-identity.ts`'s
+ * `resolveOwnerAddresses()`. That set gates the one exemption to the
+ * content-taint rule and reads configuration only, on purpose — see
+ * `owner-profile/consumers.ts` for the reasoning.
+ */
+export function resolveSignupBaseAddress(configuredMailAddress?: string | undefined): string | undefined {
+  const configured = configuredMailAddress?.trim() ?? '';
+  if (configured.length > 0) return configured;
+  const fromProfile = signupBaseAddressFallback?.()?.trim() ?? '';
+  return fromProfile.length > 0 ? normalizeEmailAddress(fromProfile) : undefined;
+}
+
 export interface AgentAccountRegistryOptions {
   /** Absolute path to the registry's JSON store. */
   readonly storePath: string;

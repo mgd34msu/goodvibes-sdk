@@ -12,9 +12,24 @@ import { type ConfigSettingDefinition, intRange, numRange, port } from './schema
 export interface WorktreeConfig {
   setup: { commands: string[]; carryOverGlobs: string[] };
 }
+
+/**
+ * The proactive check-in section. Its keys and defaults already shipped; no
+ * `declare module` block ever put the SECTION on `GoodVibesConfig`, so reading
+ * it off the config object was a compile error. Pinned in
+ * test/types/config-domains-complete.ts.
+ */
+export interface CheckinConfig {
+  enabled: boolean;
+  cadence: string;
+  deliveryChannel: string;
+  quietHours: string;
+}
+
 declare module './schema-types.js' {
   interface GoodVibesConfig {
     worktree: WorktreeConfig;
+    checkin: CheckinConfig;
   }
 }
 export const runtimeConfigDefaults = {
