@@ -49,7 +49,10 @@ function startFakeImapServer(headerLines: readonly string[]): Promise<FakeServer
             sock.write('* SEARCH 4\r\n');
             sock.write(`${tag} OK SEARCH completed\r\n`);
           } else if (line.includes('FETCH') && line.includes('HEADER')) {
-            sock.write('* 4 FETCH (BODY[HEADER.FIELDS (FROM SUBJECT DATE MESSAGE-ID TO DELIVERED-TO X-ORIGINAL-TO)] \r\n');
+            // Sequence number 2, UID 4: the client asked by UID and must report
+            // the UID it asked for, never the sequence number in the response
+            // prefix.
+            sock.write('* 2 FETCH (UID 4 BODY[HEADER.FIELDS (FROM SUBJECT DATE MESSAGE-ID TO DELIVERED-TO X-ORIGINAL-TO)] \r\n');
             for (const header of headerLines) sock.write(`${header}\r\n`);
             sock.write(')\r\n');
             sock.write(`${tag} OK FETCH completed\r\n`);

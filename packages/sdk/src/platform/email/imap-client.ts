@@ -6,9 +6,10 @@
  * Supported:
  *   - LOGIN with plain credentials (tag AUTH LOGIN user pass)
  *   - EXAMINE <mailbox> (read-only SELECT; messages are never marked \Seen)
- *   - SEARCH UNSEEN and SEARCH SINCE <date>
- *   - FETCH BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE MESSAGE-ID TO AUTHENTICATION-RESULTS
- *     DELIVERED-TO X-ORIGINAL-TO)] — envelope plus delivery evidence
+ *   - UID SEARCH UNSEEN and UID SEARCH SINCE <date>
+ *   - UID FETCH (UID BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE MESSAGE-ID TO
+ *     AUTHENTICATION-RESULTS DELIVERED-TO X-ORIGINAL-TO)]) — envelope plus
+ *     delivery evidence, addressed and reported by UID
  *
  * Delivered-to vs To:
  * ────────────────────
@@ -28,19 +29,32 @@
  *     sends AUTHENTICATE XOAUTH2 with the base64-encoded SASL token; token
  *     acquisition is out of scope.
  *   - {n} literal continuations on server responses, counted in bytes
- *   - Per-await timeouts via AbortSignal
+ *   - A per-operation read deadline on every command, and — through the
+ *     connection handed to `imapConnection()` — a cancellable read with no
+ *     deadline at all, for a caller that must wait in silence
  *   - LOGOUT
  *
  * Sequence numbers vs UIDs
  * ────────────────────────
- * `searchUnseen`/`searchAll` return sequence numbers, which are only valid
- * inside the session that produced them. `fetchMessage` therefore speaks UID
- * FETCH: the caller that reads a message is a later request holding an
- * identifier from an earlier listing, and a sequence number from then may by
- * now belong to a different message.
+ * Nothing this client reports is a sequence number. A sequence number is only
+ * valid inside the session that produced it and renumbers on every expunge, so
+ * one handed back to a caller who reads the message later — which is what
+ * `email.inbox.list` then `email.inbox.read` is — names whatever message has
+ * since taken that position. Every search is `UID SEARCH`, every envelope
+ * fetch asks for the `UID` data item and reports what the server returned, and
+ * every read is `UID FETCH`. The `uid` field of `ImapEnvelope` is a UID.
  *
- * Not supported (document boundaries):
- *   - IDLE / NOTIFY push
+ * One connection, one session
+ * ───────────────────────────
+ * `open()` builds the single `ImapSession` that owns the socket for the life
+ * of the connection; every other method uses that one. Calling a fetch method
+ * before `open()` fails rather than quietly building a second reader with a
+ * fresh tag counter and an empty buffer.
+ *
+ * Not supported here (document boundaries):
+ *   - IDLE / NOTIFY push. The wire session underneath does support holding a
+ *     connection and dispatching untagged responses, which is what an IDLE
+ *     loop is built on; the loop itself is not this file's job.
  *   - STARTTLS upgrade (use TLS-direct port 993)
  *   - Attachment CONTENT — metadata only, deliberately
  *   - COPY, MOVE, EXPUNGE, STORE, and every other flag or deletion command
@@ -79,11 +93,37 @@ import {
   extractHeader,
   parseFetchBody,
   parseFetchHeaders,
-  parseSequenceNumbers,
+  parseFetchUids,
+  parseCapabilities,
+  parseMailboxStatus,
+  parseSearchNumbers,
   formatImapDate,
   type DeliveryEvidence,
+  type ImapMailboxStatus,
 } from './imap-headers.js';
 import { ImapSession } from './imap-session.js';
+import {
+  DEFAULT_MAILBOX,
+  formatMailboxName,
+  imapQuoteCredential,
+} from './imap-names.js';
+import {
+  NOT_OPEN_MESSAGE,
+  composeOpenFailure,
+  forgetConnection,
+  rememberConnection,
+  type ImapConnectionReport,
+} from './imap-open.js';
+
+// Re-exported so the module's importers keep one entry point for the client
+// and everything that describes opening it.
+export { imapQuoteCredential } from './imap-names.js';
+export {
+  ImapOpenError,
+  imapConnection,
+  type ImapConnectionReport,
+  type ImapOpenFailureReason,
+} from './imap-open.js';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -220,98 +260,19 @@ function buildXOAuth2Token(username: string, bearerToken: string): string {
   return Buffer.from(sasl).toString('base64');
 }
 
-// ---------------------------------------------------------------------------
-// IMAP credential quoting: LOGIN injection prevention
-// ---------------------------------------------------------------------------
-
-/**
- * Reject credentials containing CR or LF — these cannot be safely represented
- * in any IMAP quoted-string or literal.
- * Then return the credential as an RFC 3501 quoted string:
- *   - backslashes escaped as \\\\
- *   - double-quotes escaped as \\"
- * If the result would contain characters outside of printable US-ASCII
- * (which quoted strings cannot hold per RFC 3501), throw a plain-language error.
- */
-export function imapQuoteCredential(value: string, name: string): string {
-  if (/[\r\n]/.test(value)) {
-    throw new Error(
-      `Invalid IMAP ${name}: credentials must not contain carriage return or newline characters.`,
-    );
-  }
-  // RFC 3501 quoted-string is 7-bit only: only printable US-ASCII (0x20–0x7E) is
-  // allowed. Reject anything outside that range — control chars (0x00–0x1F, 0x7F)
-  // and 8-bit bytes (0x80–0xFF) both produce malformed wire data.
-  if (/[^\x20-\x7e]/.test(value)) {
-    throw new Error(
-      `Invalid IMAP ${name}: credentials must be printable US-ASCII characters; 8-bit or control characters aren't supported.`,
-    );
-  }
-  // Escape backslash and double-quote per RFC 3501 §4.3
-  const escaped = value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-  return `"${escaped}"`;
-}
-
-// ---------------------------------------------------------------------------
-// Public client
-// ---------------------------------------------------------------------------
-
-const DEFAULT_MAILBOX = 'INBOX';
-
-/**
- * Encode a mailbox name as RFC 3501 §5.1.3 modified UTF-7.
- *
- * IMAP mailbox names are 7-bit on the wire, so a folder called `Entwürfe` or
- * `Черновики` — which is what a Drafts folder is called on most of the
- * planet — has to be written `Entw&APw-rfe`. Without this, every non-English
- * mailbox name is simply unusable: the quoted-string form rejects 8-bit
- * characters outright, which would have made "save a draft" work only for
- * people whose mail is in English.
- *
- * Runs of non-ASCII are base64'd as UTF-16BE with `/` written `,` and padding
- * dropped; a literal `&` becomes `&-`.
- */
-function toModifiedUtf7(mailbox: string): string {
-  let out = '';
-  let run = '';
-  const flush = (): void => {
-    if (run.length === 0) return;
-    const utf16be = Buffer.from(run, 'utf16le').swap16();
-    out += `&${utf16be.toString('base64').replace(/=+$/, '').replace(/\//g, ',')}-`;
-    run = '';
-  };
-  for (const char of mailbox) {
-    const code = char.codePointAt(0) ?? 0;
-    if (char === '&') {
-      flush();
-      out += '&-';
-      continue;
-    }
-    if (code >= 0x20 && code <= 0x7e) {
-      flush();
-      out += char;
-      continue;
-    }
-    run += char;
-  }
-  flush();
-  return out;
-}
-
-/**
- * Mailbox names that are plain atoms go on the wire bare; anything else is
- * sent as an RFC 3501 quoted string so spaces and delimiters stay intact.
- * Non-ASCII names are encoded first — see `toModifiedUtf7`.
- */
-function formatMailboxName(mailbox: string): string {
-  const encoded = toModifiedUtf7(mailbox);
-  return /^[A-Za-z0-9._/-]+$/.test(encoded)
-    ? encoded
-    : imapQuoteCredential(encoded, 'mailbox name');
-}
 
 export class ImapClient {
   private readonly options: ImapClientOptions;
+  /** The one session this connection uses, from `open()` until `logout()`. */
+  private active: ImapSession | null = null;
+  /** True only once EXAMINE has succeeded. Gates every read. */
+  private readable = false;
+  /** What EXAMINE reported, from `open()` onwards. */
+  private status: ImapMailboxStatus | null = null;
+  /** Capability atoms the server volunteered or was asked for. */
+  private advertised: readonly string[] = [];
+  /** True once a `CAPABILITY` command has been issued, answered or not. */
+  private probedCapabilities = false;
 
   constructor(options: ImapClientOptions) {
     this.options = options;
@@ -329,66 +290,192 @@ export class ImapClient {
   }
 
   /**
-   * Connect and authenticate. Must be called before any fetch operations.
-   * Uses EXAMINE (read-only) so messages are never marked \Seen.
+   * Connect, authenticate, and open the mailbox for reading. Must be called
+   * before any fetch operation. Uses EXAMINE (read-only) so messages are never
+   * marked \Seen.
+   *
+   * Builds the one session this connection uses. Constructing a session per
+   * command — the shape this replaced — reset the read buffer between commands
+   * (discarding bytes the server had already sent) and restarted the tag
+   * counter, so every command in a connection's life went out as `A0001`.
+   *
+   * Returns what the connection turned out to be able to do rather than
+   * nothing, and fails with a NAMED reason rather than a generic error. The
+   * three outcomes it distinguishes — credential refused, mailbox unopenable,
+   * socket trouble — are three different problems with three different
+   * responses, and only one of them is worth retrying.
+   *
+   * Nothing can be read until EXAMINE has succeeded: `this.readable` is set
+   * only there, and every fetch method checks it. An `open()` that got as far
+   * as authentication and no further leaves a client that refuses to read,
+   * rather than one that reads from an unopened mailbox.
    */
-  async open(): Promise<void> {
-    const session = this.session();
-    await session.readGreeting();
-    await this.authenticate(session);
-    await session.command(`EXAMINE ${formatMailboxName(this.mailbox)}`);
+  async open(): Promise<ImapConnectionReport> {
+    if (this.active !== null) {
+      throw new Error('The IMAP connection is already open.');
+    }
+    const session = this.newSession();
+    this.active = session;
+    rememberConnection(this, session);
+
+    let greeting: string;
+    try {
+      greeting = await session.readGreeting();
+    } catch (err) {
+      throw composeOpenFailure({
+        refusedReason: 'connection-failed',
+        refusedSummary: 'The mail server did not answer.',
+        error: err,
+        mailbox: this.mailbox,
+      });
+    }
+
+    let authLines: string[];
+    try {
+      authLines = await this.authenticate(session);
+    } catch (err) {
+      throw composeOpenFailure({
+        refusedReason: 'authentication-rejected',
+        refusedSummary: `The mail server rejected the credentials for ${this.options.username}.`,
+        error: err,
+        mailbox: this.mailbox,
+      });
+    }
+
+    let examineLines: string[];
+    try {
+      examineLines = await session.command(`EXAMINE ${formatMailboxName(this.mailbox)}`);
+    } catch (err) {
+      throw composeOpenFailure({
+        refusedReason: 'mailbox-unavailable',
+        refusedSummary:
+          `Signed in, but the mailbox '${this.mailbox}' could not be opened for reading.`,
+        error: err,
+        mailbox: this.mailbox,
+      });
+    }
+
+    this.status = parseMailboxStatus(examineLines);
+    this.advertised = parseCapabilities([greeting, ...authLines, ...examineLines]);
+    this.readable = true;
+    return {
+      advertisedCapabilities: this.advertised,
+      supportsIdle: this.advertised.length === 0 ? null : this.advertised.includes('IDLE'),
+      mailbox: { ...this.status, name: this.mailbox },
+    };
   }
 
   /**
-   * Search for unseen messages. Returns sequence numbers.
+   * What the server said about the mailbox at EXAMINE time, or null when
+   * EXAMINE has not succeeded.
+   *
+   * `uidValidity` is here because anything that stores a UID between
+   * connections has to store the generation it belongs to: when the server
+   * reports a different UIDVALIDITY, every UID recorded under the old one
+   * names nothing. Read once, at open, rather than asked for again later —
+   * a second answer would describe a different moment.
+   */
+  get mailboxStatus(): ImapMailboxStatus | null {
+    return this.status;
+  }
+
+  /**
+   * The server's capability atoms, asked for if it did not volunteer them.
+   *
+   * Most servers advertise in the greeting or in the login completion, and
+   * those are read at `open()` for free. When a server advertised nothing, a
+   * `CAPABILITY` command is issued once — lazily, so ordinary mail operations
+   * do not pay a round trip for an answer only a long-lived watcher needs.
+   *
+   * A server that refuses to answer leaves the set empty. Empty means UNKNOWN
+   * and is reported as such rather than as "supports nothing"; the one caller
+   * that must decide push-versus-poll on this should poll when it is empty,
+   * and know that it is polling because the server would not say.
+   */
+  async capabilities(): Promise<readonly string[]> {
+    if (this.advertised.length > 0 || this.probedCapabilities) return this.advertised;
+    const session = this.requireSession();
+    this.probedCapabilities = true;
+    try {
+      this.advertised = parseCapabilities(await session.command('CAPABILITY'));
+    } catch {
+      // A server that will not answer leaves the set unknown, not false.
+    }
+    return this.advertised;
+  }
+
+  /**
+   * Search for unseen messages. Returns UIDs.
    * Pass sinceDate to restrict to messages since a date.
+   *
+   * `UID SEARCH`, not `SEARCH`: the caller pages a listing and then reads from
+   * it, and a sequence number stops naming the same message the moment
+   * anything below it is expunged.
    */
   async searchUnseen(sinceDate?: Date): Promise<number[]> {
-    const session = this.session();
+    const session = this.requireReadableMailbox();
     const criterion = sinceDate
       ? `UNSEEN SINCE ${formatImapDate(sinceDate)}`
       : 'UNSEEN';
-    const lines = await session.command(`SEARCH ${criterion}`);
-    return parseSequenceNumbers(lines);
+    const lines = await session.command(`UID SEARCH ${criterion}`);
+    return parseSearchNumbers(lines);
   }
 
   /**
    * Search every message in the mailbox, not only the unread ones.
-   * Returns sequence numbers, like `searchUnseen`.
+   * Returns UIDs, like `searchUnseen`.
    *
    * Exists because a caller that asked for "all mail" must not be quietly
    * served "unread mail": a listing that advertises an unread-only switch has
    * to honour both of its positions.
    */
   async searchAll(sinceDate?: Date): Promise<number[]> {
-    const session = this.session();
+    const session = this.requireReadableMailbox();
     const criterion = sinceDate ? `SINCE ${formatImapDate(sinceDate)}` : 'ALL';
-    const lines = await session.command(`SEARCH ${criterion}`);
-    return parseSequenceNumbers(lines);
+    const lines = await session.command(`UID SEARCH ${criterion}`);
+    return parseSearchNumbers(lines);
   }
 
   /**
-   * Fetch envelope headers for an array of sequence numbers.
+   * Fetch envelope headers for an array of UIDs.
    * Uses BODY.PEEK so messages remain unread.
-   * Returns at most `limit` messages (most recent first, approximate).
+   * Returns at most `limit` messages, the highest UIDs, in ascending order.
+   *
+   * The `UID` data item is requested explicitly and the returned envelope
+   * carries what the server answered. The `* n FETCH` prefix on the response
+   * is a SEQUENCE number even under `UID FETCH`, so it is used only to line a
+   * response up with its own `UID` and is never reported.
+   *
+   * A UID the server returned no FETCH response for is omitted: the message
+   * was expunged between the search and the fetch, and inventing an envelope
+   * for it — or falling back to its sequence number — would hand the caller an
+   * identifier that names a different message.
    */
-  async fetchEnvelopes(seqNums: readonly number[], limit = 20): Promise<ImapEnvelope[]> {
-    if (seqNums.length === 0) return [];
-    const session = this.session();
-    const bounded = seqNums.slice(-limit); // take the last N (highest seq = newest)
+  async fetchEnvelopes(uids: readonly number[], limit = 20): Promise<ImapEnvelope[]> {
+    if (uids.length === 0) return [];
+    const session = this.requireReadableMailbox();
+    const bounded = uids.slice(-limit); // take the last N (highest UID = newest)
     const set = bounded.join(',');
     const lines = await session.command(
-      `FETCH ${set} BODY.PEEK[HEADER.FIELDS ` +
-      `(FROM SUBJECT DATE MESSAGE-ID TO DELIVERED-TO X-ORIGINAL-TO AUTHENTICATION-RESULTS)]`,
+      `UID FETCH ${set} (UID BODY.PEEK[HEADER.FIELDS ` +
+      `(FROM SUBJECT DATE MESSAGE-ID TO DELIVERED-TO X-ORIGINAL-TO AUTHENTICATION-RESULTS)])`,
     );
-    const headersMap = parseFetchHeaders(lines);
+    const headersBySeq = parseFetchHeaders(lines);
+    const uidBySeq = parseFetchUids(lines);
+    const headersByUid = new Map<number, string>();
+    for (const [seq, raw] of Object.entries(headersBySeq)) {
+      const uid = uidBySeq[Number(seq)];
+      if (uid === undefined) continue;
+      headersByUid.set(uid, raw);
+    }
     const mailbox = this.mailbox;
     const envelopes: ImapEnvelope[] = [];
-    for (const seqNum of bounded) {
-      const raw = headersMap[seqNum] ?? '';
+    for (const uid of bounded) {
+      const raw = headersByUid.get(uid);
+      if (raw === undefined) continue;
       const deliveryEvidence = extractDeliveryEvidence(raw);
       envelopes.push({
-        uid: seqNum,
+        uid,
         from: extractHeader(raw, 'From'),
         subject: extractHeader(raw, 'Subject'),
         date: extractHeader(raw, 'Date'),
@@ -405,17 +492,22 @@ export class ImapClient {
   }
 
   /**
-   * Fetch a bounded body preview for a single message.
-   * Uses BODY.PEEK[TEXT]<0.N> so message stays unread.
+   * Fetch a bounded body preview for a single message, by UID.
+   * Uses BODY.PEEK[TEXT]<0.N> so the message stays unread.
+   *
+   * Exactly one message is asked for, so the one FETCH response that comes
+   * back is the answer. It is not looked up by number: the `* n FETCH` prefix
+   * is a sequence number even under `UID FETCH`, and keying on it would read
+   * the preview of whichever message currently sits at position `uid`.
    */
-  async fetchBodyPreview(seqNum: number): Promise<string> {
-    const session = this.session();
+  async fetchBodyPreview(uid: number): Promise<string> {
+    const session = this.requireReadableMailbox();
     const maxBytes = this.options.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES;
     const lines = await session.command(
-      `FETCH ${seqNum} BODY.PEEK[TEXT]<0.${maxBytes}>`,
+      `UID FETCH ${uid} BODY.PEEK[TEXT]<0.${maxBytes}>`,
     );
-    const bodyMap = parseFetchBody(lines);
-    return (bodyMap[seqNum] ?? '').slice(0, maxBytes);
+    const [body] = Object.values(parseFetchBody(lines));
+    return (body ?? '').slice(0, maxBytes);
   }
 
   /**
@@ -442,7 +534,7 @@ export class ImapClient {
    * make callers treat a normal outcome as an outage.
    */
   async fetchMessage(uid: number): Promise<ImapMessageDetail | null> {
-    const session = this.session();
+    const session = this.requireReadableMailbox();
 
     const headerLines = await session.command(`UID FETCH ${uid} BODY.PEEK[HEADER]`);
     if (!hasFetchResponse(headerLines)) return null;
@@ -515,7 +607,7 @@ export class ImapClient {
   async appendDraft(input: ImapAppendDraftInput): Promise<ImapAppendDraftResult> {
     validateDraftInput(input);
 
-    const session = this.session();
+    const session = this.requireSession();
     const mailbox = await this.resolveDraftsMailbox(session, input.mailbox);
     const message = buildDraftMessage(input, new Date());
     const lines = await session.commandWithLiteral(
@@ -525,9 +617,26 @@ export class ImapClient {
     return { uid: parseAppendUid(lines), mailbox };
   }
 
-  /** Send LOGOUT and destroy the socket. */
+  /**
+   * Send LOGOUT and destroy the socket.
+   *
+   * A client that never opened has no session to say LOGOUT on, and callers
+   * reach here from their own failure paths — so the socket is closed and the
+   * call returns, rather than raising a second failure on top of the first.
+   */
   async logout(): Promise<void> {
-    const session = this.session();
+    const session = this.active;
+    this.active = null;
+    this.readable = false;
+    forgetConnection(this);
+    if (session === null) {
+      try {
+        this.options.socket.destroy();
+      } catch {
+        // ignore
+      }
+      return;
+    }
     try {
       await session.command('LOGOUT');
     } finally {
@@ -580,7 +689,31 @@ export class ImapClient {
     }
   }
 
-  private session(): ImapSession {
+  /** The open connection's session, or a plain-language refusal. */
+  private requireSession(): ImapSession {
+    if (this.active === null) throw new Error(NOT_OPEN_MESSAGE);
+    return this.active;
+  }
+
+  /**
+   * The session of a connection whose mailbox is actually open for reading.
+   *
+   * Authenticated is not readable. A connection that signed in and then failed
+   * to EXAMINE refuses every fetch here, by name, instead of putting a FETCH
+   * on the wire against whatever the server considers selected.
+   */
+  private requireReadableMailbox(): ImapSession {
+    const session = this.requireSession();
+    if (!this.readable) {
+      throw new Error(
+        `The mailbox '${this.mailbox}' is not open for reading: EXAMINE did not ` +
+        `succeed on this connection, so nothing can be fetched from it.`,
+      );
+    }
+    return session;
+  }
+
+  private newSession(): ImapSession {
     const maxBodyBytes = this.options.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES;
     // Cap literal size at the larger of 1 MB or 4× the configured body preview limit
     const literalCap = Math.max(1_048_576, 4 * maxBodyBytes);
@@ -591,18 +724,24 @@ export class ImapClient {
     );
   }
 
-  private async authenticate(session: ImapSession): Promise<void> {
+  /**
+   * Sign in, and hand back the response lines.
+   *
+   * The lines matter: a server that advertises its capabilities in the login
+   * completion — `A0001 OK [CAPABILITY ... IDLE ...] Logged in` — has already
+   * answered the question a watcher would otherwise ask again.
+   */
+  private async authenticate(session: ImapSession): Promise<string[]> {
     const { username, password } = this.options;
     if (password.startsWith('Bearer ')) {
       // XOAUTH2 pass-through
       const token = buildXOAuth2Token(username, password.slice(7));
-      await session.command(`AUTHENTICATE XOAUTH2 ${token}`);
-    } else {
-      // LOGIN — credentials are quoted per RFC 3501 to prevent injection.
-      // Credentials are not logged anywhere in this module.
-      const quotedUser = imapQuoteCredential(username, 'username');
-      const quotedPass = imapQuoteCredential(password, 'password');
-      await session.command(`LOGIN ${quotedUser} ${quotedPass}`);
+      return session.command(`AUTHENTICATE XOAUTH2 ${token}`);
     }
+    // LOGIN — credentials are quoted per RFC 3501 to prevent injection.
+    // Credentials are not logged anywhere in this module.
+    const quotedUser = imapQuoteCredential(username, 'username');
+    const quotedPass = imapQuoteCredential(password, 'password');
+    return session.command(`LOGIN ${quotedUser} ${quotedPass}`);
   }
 }

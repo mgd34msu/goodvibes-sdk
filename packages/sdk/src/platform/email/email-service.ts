@@ -137,9 +137,13 @@ export interface EmailConfig {
 
 export interface EmailSummary {
   /**
-   * The IMAP identifier this message is read back by. Carried through from the
+   * The IMAP UID this message is read back by. Carried through from the
    * envelope because a listing whose entries cannot be opened is a listing
    * nobody can act on.
+   *
+   * A UID, and never a sequence number: a listing is read from later, and a
+   * sequence number stops naming the same message as soon as anything below it
+   * is expunged.
    */
   readonly uid: number;
   /** The `Message-ID` header, for threading and correlation. '' when absent. */
@@ -480,18 +484,26 @@ export class EmailService {
 
     try {
       await client.open();
-      const seqNums = unreadOnly
+      const uids = unreadOnly
         ? await client.searchUnseen(input.since)
         : await client.searchAll(input.since);
-      const envelopes: ImapEnvelope[] = await client.fetchEnvelopes(seqNums, limit);
+      const envelopes: ImapEnvelope[] = await client.fetchEnvelopes(uids, limit);
 
-      // Fetch body preview for the newest message only (read-only; BODY.PEEK).
+      // Fetch a body preview for the newest message OF THIS PAGE (read-only;
+      // BODY.PEEK). The target is taken from `envelopes`, not from the search
+      // results: a search returns ascending order and the page keeps the
+      // highest UIDs, so the first search result is the oldest match and is
+      // usually not on the page at all. Preview text taken from one message
+      // and shown against another is worse than no preview — it attributes
+      // words to a sender who did not write them, both in the listing and in
+      // the untrusted-ingest record below.
       // Failures are non-fatal — the inbox summary is still returned.
+      const previewIndex = envelopes.length - 1;
+      const previewTarget = envelopes[previewIndex];
       let newestBodyPreview = '';
-      const newestSeq = seqNums[0];
-      if (newestSeq !== undefined) {
+      if (previewTarget !== undefined) {
         try {
-          newestBodyPreview = await client.fetchBodyPreview(newestSeq);
+          newestBodyPreview = await client.fetchBodyPreview(previewTarget.uid);
         } catch {
           // best-effort: body preview unavailable, proceed without it
         }
@@ -511,10 +523,12 @@ export class EmailService {
       // header, which is the exact hole the evidence exists to close.
       this.recordIngest(envelopes.map((env, idx) => ({
         from: env.from,
-        // The preview is fetched for the newest message only, so that is the
-        // one whose words are available here; the rest contribute their
-        // subject, which is itself attacker-written.
-        text: `${env.subject}\n${idx === 0 ? newestBodyPreview : ''}`.trim(),
+        // The preview is fetched for one message only, so that is the one
+        // whose words are available here; the rest contribute their subject,
+        // which is itself attacker-written. The index is the one the preview
+        // was fetched from, so the text is attributed to the sender who wrote
+        // it.
+        text: `${env.subject}\n${idx === previewIndex ? newestBodyPreview : ''}`.trim(),
       })));
 
       const messages = envelopes.map((env, idx) => ({
@@ -524,7 +538,7 @@ export class EmailService {
         subject: env.subject,
         date: env.date,
         unread: unseen === null ? true : unseen.has(env.uid),
-        bodyPreview: idx === 0 ? newestBodyPreview : '',
+        bodyPreview: idx === previewIndex ? newestBodyPreview : '',
         mailbox: env.mailbox,
         deliveredTo: env.deliveredTo,
         unverifiedToHeaderClaim: env.unverifiedToHeaderClaim,
@@ -533,7 +547,7 @@ export class EmailService {
           readSenderAuthentication(env.authenticationResults),
         ),
       }));
-      return { messages, total: seqNums.length };
+      return { messages, total: uids.length };
     } catch (err) {
       try { await client.logout(); } catch { /* best-effort */ }
       throw err;
