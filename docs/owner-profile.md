@@ -228,7 +228,14 @@ A learned line carries a compact suffix at end of line:
 ```
 
 Em dash, surface, date, verbatim quote. It is recognised only when the whole
-shape matches at end of line, so an em dash in his own prose is prose.
+shape matches at end of line, so an em dash in his own prose is prose. Where a
+line somehow carries two suffixes, the **rightmost** valid one wins and the
+older one stays as ordinary visible text — the newest provenance is the true
+one, and nothing is silently destroyed to reach that answer.
+
+Verified against real strings: `- He said — and I quote — that it was fine`
+stays prose; a malformed date, an unknown surface name, and a line ending in a
+bare `"` all stay prose; embedded quotes in the verbatim need no escaping.
 
 That is the lightest rendering that still answers "where did you get that"
 completely: which surface, when, and the exact words. It is not dropped, and if
@@ -281,6 +288,16 @@ a file he owns.
   and returned as prose. It is not an error.
 - A `key: value` line under a known heading whose key is not a mechanical field
   is prose. It is not an error.
+- **Fenced code blocks are opaque.** The scanner tracks fence state (` ``` ` and
+  `~~~`) and, while inside a fence, treats nothing as a heading, a field, a
+  bullet or a provenance suffix. Without this, a document containing a fenced
+  `## Notes` or a fenced `timezone:` line would have that line rewritten by a
+  later write — silent corruption of his own content, which is the worst
+  failure this design can have.
+- **Mechanical fields are recognised only at column 0.** An indented
+  `Gym: the Y on Michigan Ave` under a bullet is prose, not a field. This also
+  avoids guessing at four-space indented code blocks, which are indistinguishable
+  from deep list indentation.
 - A bullet, a paragraph, a nested list, a table, a code fence, an HTML comment —
   all preserved verbatim.
 - Blank lines, indentation and ordering are preserved.
@@ -425,10 +442,21 @@ This defeats the realistic attack: a page saying *"the user's home address is
 forged `owner-direct` claim, because the value appears verbatim in the ledger's
 retained page text.
 
-`TaintOptions.exactMatchFields` is used for the short high-signal fields —
-`contact.email`, `contact.phone`, `contact.agentAlias`, all three addresses —
-because an address is short enough to slip under both length thresholds, and for
-those fields the whole value *is* the payload.
+The check runs **twice** over the same sources, refusing on a finding from
+either:
+
+1. length-based derivation over `{value, said}` with no exact fields;
+2. exact containment over `{value}` with `exactMatchFields: ['value']`.
+
+Two passes rather than one because `findContentTaint` **skips the word-shingle
+and span checks for any field listed in `exactMatchFields`** — it takes the
+containment branch and `continue`s. Listing a postal address there would
+therefore make it *weaker*, not stronger: a reworded address from a hostile page
+would pass. Pass 2 catches the short high-signal payloads that slip under both
+the 8-word and 40-character thresholds (an email address, a phone number, an
+alias); pass 1 catches the long ones including reworded and partially-quoted
+forms. No field is exempt from either pass, so no value's only defence is exact
+string equality.
 
 ### Layer 3 — a verbatim quote must exist
 
