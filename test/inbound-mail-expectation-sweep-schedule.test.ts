@@ -22,11 +22,19 @@
  *
  * WHY THE SECOND TEST WATCHES THE FILE RATHER THAN `list()`. It would be
  * natural to assert that `registry.list()` drops to zero, and it would prove
- * nothing: `VerificationExpectationBook.list()` calls `sweepExpired()` itself
- * (verification-expectations.ts:662-663), so an expired record disappears from
- * a `list()` whether or not anything swept. The persisted file has no such
- * behaviour — only a write-through from a real sweep empties it — so it is the
+ * nothing. `list()` answers "what is open at this instant", and an expired
+ * record is not open — it is absent from the list whether or not anything has
+ * swept, because the list filters on the window. The persisted file has no such
+ * behaviour: only a write-through from a real sweep empties it, so it is the
  * one observable that cannot answer correctly by accident.
+ *
+ * (When this was written, `list()` reached the book's own `list()`, which
+ * called `sweepExpired()` and discarded the return value — so the record was
+ * not merely absent from the answer, it was destroyed by asking, and with it
+ * the report `onExpired` owed the owner. That is fixed; reads filter and only
+ * `sweepExpired` reaps. See
+ * `test/inbound-mail-expectation-probe-is-a-read.test.ts`. The reason for
+ * watching the file is unchanged either way.)
  */
 
 import { afterEach, describe, expect, test } from 'bun:test';
@@ -205,6 +213,14 @@ function composeRig(overrides: Readonly<Record<string, unknown>> = {}): {
       },
     } as never,
     deliverStructuredNotice: async () => ({ delivered: true }) as never,
+    // Required, and stated rather than omitted: an unfilled optional is exactly
+    // what let the Gmail arm ship inert. This rig forces `source: 'imap'`, so
+    // the honest answer for it is a machine with no Google account.
+    gmailReader: async () => ({
+      kind: 'unavailable' as const,
+      detail: 'No Google account is connected on this machine.',
+      fix: '',
+    }),
   });
   expect(supervisor).not.toBeNull();
   return { handlers, expectationsPath: join(root, 'email-inbound-expectations.json') };

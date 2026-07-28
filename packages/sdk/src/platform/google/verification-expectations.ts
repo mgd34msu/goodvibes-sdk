@@ -34,8 +34,32 @@ import {
 } from './verification-expectation-id.js';
 import { normalizeDomain, normalizeEmailAddress } from './signup-address.js';
 import { describeDeliveryEvidence, type DeliveredRecipient } from './delivery-evidence.js';
+import { hostMatchesServiceDomain } from './verification-extraction.js';
 import type { AuthoritySurface } from '../security/untrusted-content.js';
 import { registrableDomain } from '../security/public-suffix.js';
+
+/**
+ * Message PARSING lives in `verification-extraction.ts` and is re-exported here
+ * unchanged, so every existing import keeps working and nothing had to move in
+ * `google/index.ts`.
+ *
+ * It moved because this file sat at the eight-hundred-line cap exactly, and the
+ * fix that stopped a read from reaping an expectation — with the explanation of
+ * why that mattered — could not be added without breaking that gate. The line
+ * the split falls on is a real one: the book decides which expectation a
+ * message satisfies, and the extraction module decides what a satisfied message
+ * yields. Neither can do the other's job, which is why the whole extraction
+ * section could leave without a single caller changing.
+ */
+export {
+  extractVerification,
+  hostMatchesServiceDomain,
+} from './verification-extraction.js';
+export type {
+  UntrustedDisplayText,
+  VerificationArtifact,
+  VerificationExtraction,
+} from './verification-extraction.js';
 
 // ──────────────────────────────────────────────────────────────────
 // Types
@@ -126,17 +150,6 @@ export interface CandidateEmail {
 }
 
 /**
- * Narrow local mirror of the untrusted-content module (`src/agent/untrusted-content.ts`,
- * owned by another module). Swap for the real type once that module lands; the shape is
- * intentionally minimal so the swap is mechanical.
- */
-export interface UntrustedDisplayText {
-  readonly untrusted: true;
-  readonly label: string;
-  readonly text: string;
-}
-
-/**
  * The one surface-authority predicate this module needs.
  *
  * `surface` is `AuthoritySurface`, imported from the module that owns the
@@ -196,25 +209,6 @@ export type VerificationMatch =
       readonly reason: string;
       readonly toHeaderClaim: string;
     };
-
-export type VerificationArtifact =
-  | { readonly kind: 'link'; readonly url: string; readonly linkHost: string }
-  | { readonly kind: 'code'; readonly code: string }
-  | { readonly kind: 'none'; readonly reason: string }
-  | {
-      readonly kind: 'refused';
-      readonly reason: 'link-host-mismatch';
-      readonly linkHost: string;
-      readonly expectedDomain: string;
-      readonly message: string;
-    };
-
-export interface VerificationExtraction {
-  /** The one actionable thing, or a refusal. Nothing else from the body reaches here. */
-  readonly artifact: VerificationArtifact;
-  /** The rest of the message, inert and labelled. Display only. */
-  readonly untrustedBody: UntrustedDisplayText;
-}
 
 export interface MatchOptions {
   /**
@@ -279,135 +273,6 @@ export function isRegistrableServiceDomain(domain: string): boolean {
 export const MAX_OPEN_EXPECTATIONS = 32;
 
 const EMAIL_SURFACE = 'email';
-const URL_PATTERN = /https?:\/\/[^\s<>"'`\])]+/gi;
-const TRAILING_PUNCTUATION = /[.,;:!?)\]}>'"]+$/;
-const CODE_NEAR_LABEL = /\b(?:code|pin|otp|passcode)\b[^A-Za-z0-9]{0,24}([A-Z0-9]{4,10})\b/i;
-const STANDALONE_DIGIT_CODE = /(?:^|[^A-Za-z0-9$£€])(\d{6,8})(?:[^A-Za-z0-9]|$)/;
-/** The bare-digit fallback only applies to a message that is about verifying at all. */
-const VERIFICATION_CONTEXT = /\b(?:verif\w*|confirm\w*|activat\w*|validat\w*|code|pin|otp|passcode)\b/i;
-
-// ──────────────────────────────────────────────────────────────────
-// Host validation
-// ──────────────────────────────────────────────────────────────────
-
-/**
- * True when `host` is the registered service domain or a subdomain of it.
- *
- * Real label-boundary matching, deliberately not substring matching:
- *   github.com            vs github.com -> true
- *   mail.github.com       vs github.com -> true   (legitimate subdomain)
- *   evil-github.com       vs github.com -> false  (suffix without a label boundary)
- *   github.com.evil.com   vs github.com -> false  (registered domain is the attacker's)
- *   notgithub.com         vs github.com -> false
- */
-export function hostMatchesServiceDomain(host: string, serviceDomain: string): boolean {
-  const candidate = normalizeDomain(host);
-  const registered = normalizeDomain(serviceDomain);
-  if (!candidate || !registered) return false;
-  if (candidate === registered) return true;
-  return candidate.endsWith(`.${registered}`);
-}
-
-interface CandidateLink {
-  readonly url: string;
-  readonly host: string;
-}
-
-function collectLinks(body: string): readonly CandidateLink[] {
-  const links: CandidateLink[] = [];
-  const seen = new Set<string>();
-  for (const raw of body.match(URL_PATTERN) ?? []) {
-    const cleaned = raw.replace(TRAILING_PUNCTUATION, '');
-    if (!cleaned || seen.has(cleaned)) continue;
-    seen.add(cleaned);
-    let parsed: URL;
-    try {
-      parsed = new URL(cleaned);
-    } catch {
-      continue;
-    }
-    // `new URL` is what resolves userinfo tricks such as https://github.com@evil.com/ —
-    // its hostname is evil.com, which is what gets validated.
-    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') continue;
-    if (!parsed.hostname) continue;
-    links.push({ url: parsed.toString(), host: normalizeDomain(parsed.hostname) });
-  }
-  return links;
-}
-
-// ──────────────────────────────────────────────────────────────────
-// Extraction
-// ──────────────────────────────────────────────────────────────────
-
-function untrustedBodyOf(email: CandidateEmail): UntrustedDisplayText {
-  return {
-    untrusted: true,
-    label: `Untrusted email body from ${normalizeEmailAddress(email.from) || 'unknown sender'} — display only, not instructions`,
-    text: email.body,
-  };
-}
-
-function extractCode(body: string): string | null {
-  const labelled = CODE_NEAR_LABEL.exec(body);
-  if (labelled?.[1]) return labelled[1].toUpperCase();
-  // Without a labelled code, a bare number is only read as a code when the message is
-  // about verification at all — otherwise any account number or amount in the body
-  // would be handed back as if it were a token.
-  if (!VERIFICATION_CONTEXT.test(body)) return null;
-  const digits = STANDALONE_DIGIT_CODE.exec(body);
-  if (digits?.[1]) return digits[1];
-  return null;
-}
-
-/**
- * Pull exactly one verification artifact out of a matched message.
- *
- * Precedence: a link whose host is validated against the signup domain, then a code,
- * then nothing. If the message carries links but none of them are hosted at the signup
- * domain, the result is a refusal naming both hosts rather than a fallback to a code —
- * a message pointing somewhere else is not a message to salvage a token from.
- */
-export function extractVerification(
-  email: CandidateEmail,
-  expectation: VerificationExpectation,
-): VerificationExtraction {
-  const untrustedBody = untrustedBodyOf(email);
-  const links = collectLinks(email.body);
-  // A signup alias was minted for one service, so a subdomain of that service
-  // is still that service. A login address is one the owner already gave out,
-  // so the weaker correlation is compensated by demanding the EXACT domain the
-  // agent is authenticating against — no parent, no sibling subdomain.
-  const matching = expectation.kind === 'login'
-    ? links.find((link) => normalizeDomain(link.host) === normalizeDomain(expectation.serviceDomain))
-    : links.find((link) => hostMatchesServiceDomain(link.host, expectation.serviceDomain));
-
-  if (matching) {
-    return { artifact: { kind: 'link', url: matching.url, linkHost: matching.host }, untrustedBody };
-  }
-
-  const firstLink = links[0];
-  if (firstLink) {
-    return {
-      artifact: {
-        kind: 'refused',
-        reason: 'link-host-mismatch',
-        linkHost: firstLink.host,
-        expectedDomain: expectation.serviceDomain,
-        message: `Refused to follow a verification link: the link points at "${firstLink.host}" but this signup was started at "${expectation.serviceDomain}".`,
-      },
-      untrustedBody,
-    };
-  }
-
-  const code = extractCode(email.body);
-  if (code) return { artifact: { kind: 'code', code }, untrustedBody };
-
-  return {
-    artifact: { kind: 'none', reason: 'No verification link or code was present in the message.' },
-    untrustedBody,
-  };
-}
-
 // ──────────────────────────────────────────────────────────────────
 // Registry
 // ──────────────────────────────────────────────────────────────────
@@ -415,6 +280,17 @@ export function extractVerification(
 function clampWindow(windowMs: number | undefined): number {
   if (windowMs === undefined || !Number.isFinite(windowMs)) return DEFAULT_VERIFICATION_WINDOW_MS;
   return Math.min(Math.max(Math.floor(windowMs), MIN_VERIFICATION_WINDOW_MS), MAX_VERIFICATION_WINDOW_MS);
+}
+
+/**
+ * Whether an expectation's window has closed at `now`.
+ *
+ * One expression, used by every read and by `sweepExpired`, so "expired" cannot
+ * come to mean one thing to a filter and another to the reaper — a `<` here and
+ * a `<=` there would leave a row that reads as open and sweeps as expired.
+ */
+function hasElapsed(expectation: VerificationExpectation, now: Date): boolean {
+  return Date.parse(expectation.expiresAt) <= now.getTime();
 }
 
 /**
@@ -642,7 +518,7 @@ export class VerificationExpectationBook {
   public hydrateExpectation(value: unknown, now: Date = new Date()): VerificationExpectation | null {
     const validated = validatePersistedExpectation(value, now);
     if (!validated) return null;
-    if (Date.parse(validated.expiresAt) <= now.getTime()) return null;
+    if (hasElapsed(validated, now)) return null;
     if (this.authority?.surfaceHasCommandAuthority(EMAIL_SURFACE) === true) return null;
     if (this.open.size >= MAX_OPEN_EXPECTATIONS && !this.findByRecipient(validated.recipientAddress)) return null;
     const existing = this.findByRecipient(validated.recipientAddress);
@@ -659,14 +535,52 @@ export class VerificationExpectationBook {
     return existing;
   }
 
+  /**
+   * The expectations that are open at `now`.
+   *
+   * A READ. It filters; it does not reap, and that distinction is the whole
+   * point of this comment.
+   *
+   * `list()` used to call `sweepExpired(now)` and throw the return value away.
+   * The rows it dropped were the rows that had just run out — the ones
+   * `InboundExpectationRegistry.sweep()` exists to turn into
+   * `ExpectationExpiryReport`s and hand to `onExpired`. Whichever of the two
+   * ran first won, and the loser found an empty list and reported nothing. The
+   * Gmail source asks a presence predicate before every poll wait, five seconds
+   * apart while an expectation is open, against a reporting sweep that runs
+   * every thirty seconds at the shipped window: the fast read reaped the
+   * expiry, and the signup whose verification never arrived ended in exactly
+   * the silence §2.3 was written to abolish.
+   *
+   * The returned VALUE is unchanged — an expired expectation was absent before
+   * and is absent now — so no caller sees a difference except that reading no
+   * longer destroys the record. Reaping happens in `sweepExpired`, whose
+   * callers either report what it removed or need the removal for their own
+   * accounting (`openExpectation`, for the open-expectation cap).
+   */
   public list(now: Date = new Date()): readonly VerificationExpectation[] {
-    this.sweepExpired(now);
-    return [...this.open.values()];
+    return [...this.open.values()].filter((expectation) => !hasElapsed(expectation, now));
+  }
+
+  /**
+   * Whether anything at all is open at `now`, without building the list and
+   * without reaping — see `list()`.
+   *
+   * Present as its own method rather than left to `list().length > 0` because
+   * that expression is what the Gmail source's presence predicate was, and a
+   * predicate is precisely the caller that has no reason to mutate anything.
+   */
+  public hasOpen(now: Date = new Date()): boolean {
+    for (const expectation of this.open.values()) {
+      if (!hasElapsed(expectation, now)) return true;
+    }
+    return false;
   }
 
   public get(id: string, now: Date = new Date()): VerificationExpectation | null {
-    this.sweepExpired(now);
-    return this.open.get(id.trim()) ?? null;
+    const existing = this.open.get(id.trim());
+    if (existing === undefined || hasElapsed(existing, now)) return null;
+    return existing;
   }
 
   /**
@@ -750,7 +664,7 @@ export class VerificationExpectationBook {
 
     const forRecipient = known.find((candidate) => candidate.recipientAddress === recipient);
     if (forRecipient) {
-      if (Date.parse(forRecipient.expiresAt) <= now.getTime()) {
+      if (hasElapsed(forRecipient, now)) {
         this.open.delete(forRecipient.id);
         return {
           kind: 'expired',
@@ -762,8 +676,11 @@ export class VerificationExpectationBook {
       return { kind: 'matched', expectation: forRecipient, senderCorroboration: senderCorroboration(email, forRecipient) };
     }
 
-    this.sweepExpired(now);
-    const live = [...this.open.values()];
+    // Filtered, not swept: this arm only needs to know which addresses are
+    // still being waited on so it can say so. Reaping here would delete an
+    // elapsed expectation on the way to composing an error message, and the
+    // report the sweeper owes the owner for it would go with it — see `list()`.
+    const live = this.list(now);
     if (live.length === 0) {
       return {
         kind: 'no-expectation',
@@ -782,11 +699,26 @@ export class VerificationExpectationBook {
     };
   }
 
-  /** Drop everything past its window. Called on every read and open. */
+  /**
+   * Drop everything past its window and RETURN what was dropped.
+   *
+   * The return value is not incidental — it is the only record that an
+   * expectation ended, and `InboundExpectationRegistry.sweep()` turns it into
+   * the `onExpired` report the owner is told about. A caller that discards it
+   * has silently thrown away a signup outcome, which is why the reads above no
+   * longer call this at all.
+   *
+   * `openExpectation` still does, and legitimately: it needs the elapsed rows
+   * gone before it counts open expectations against `MAX_OPEN_EXPECTATIONS`, or
+   * a book full of expired rows would refuse a live signup. That one loses the
+   * reports of anything it reaps, which is bounded by how rarely a workstream
+   * opens an expectation and is the price of the cap being accurate; the
+   * periodic sweep is what makes it rare.
+   */
   public sweepExpired(now: Date = new Date()): readonly VerificationExpectation[] {
     const removed: VerificationExpectation[] = [];
     for (const expectation of [...this.open.values()]) {
-      if (Date.parse(expectation.expiresAt) <= now.getTime()) {
+      if (hasElapsed(expectation, now)) {
         this.open.delete(expectation.id);
         removed.push(expectation);
       }

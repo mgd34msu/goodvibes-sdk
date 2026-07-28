@@ -39,9 +39,19 @@
  * So `gmailReader` is a REQUIRED option rather than an optional one. The
  * compiler is the gate: a composition that stops supplying it stops building,
  * which is the one check that cannot itself go inert. The reader arrives as a
- * provider (see `facade-gmail-reader.ts`) and everything else the source needs
- * — the cursor store, the expectation predicate, the clock, the two Gmail poll
- * intervals — is assembled from what this file already owns.
+ * provider (see `facade-gmail-reader.ts`); the cursor store, the expectation
+ * predicate and the clock are this file's own; and the poll cadence and the
+ * capability re-probe wait arrive on the builder's input, read once in
+ * `source-factory.ts` at create time. One key, one reader — a second read here
+ * would be a second answer to a question the owner has already answered, and
+ * the config gate accepts either call form so it could not tell them apart.
+ *
+ * **Whether this mailbox is a Gmail one is decided from the CREDENTIAL.** See
+ * `isGmailMailbox`: a resolved reader is Google having answered, and
+ * `surfaces.email.inbound.accounts` is read as a filter over that rather than
+ * as the evidence for it. Making the config key the evidence is what let this
+ * path stay dead for an owner who filled the key in the way its own description
+ * tells him to.
  */
 
 import {
@@ -398,17 +408,28 @@ export function composeInboundMail(
       clock: systemWatcherClock,
       // The predicate, not the registry: §2.1's structural rule is that a
       // source must not hold anything that could OPEN an expectation, and a
-      // closure over `list()` is a boolean where the registry would be a
-      // capability. See `ExpectationPresence` in gmail-source.ts.
-      expectationOpen: () => expectations.list().length > 0,
-      // Read here because here is the only place that constructs the source
-      // these two settings belong to. Both were declared in the schema, shown
-      // in the settings UI and documented, and read by nothing at all.
-      pollExpectingMs: readNumberSetting(configManager, 'surfaces.email.inbound.gmailPollSecondsExpecting', 5) * 1_000,
-      pollIdleMs: readNumberSetting(configManager, 'surfaces.email.inbound.gmailPollSecondsIdle', 60) * 1_000,
+      // closure over a presence question is a boolean where the registry would
+      // be a capability. See `ExpectationPresence` in gmail-source.ts.
+      //
+      // `hasOpen()` rather than `list().length > 0`, and that is a correctness
+      // fix rather than a tidier spelling. `list()` reaped what it found
+      // expired and dropped the reports, and this predicate runs every five
+      // seconds while an expectation is open — far faster than the thirty-second
+      // reporting sweep — so it won the race every time and a verification that
+      // never arrived expired without anybody being told. See
+      // `InboundExpectationRegistry.hasOpen`.
+      expectationOpen: () => expectations.hasOpen(),
+      // The owner's own cadence, read from his two Gmail poll settings by
+      // `source-factory.ts` at CREATE time and handed in here. Not re-read:
+      // one key, one reader. A second read in this file would be a second
+      // answer to the same question, and the config gate cannot see the
+      // difference because it accepts either call form.
+      pollExpectingMs: input.pollExpectingMs,
+      pollIdleMs: input.pollIdleMs,
       // The same re-probe wait the IMAP path uses, from the same setting, so a
-      // refused grant is re-asked at one interval rather than two.
-      capabilityRecheckMs: settings.capabilityRecheckMs,
+      // refused grant is re-asked at one interval rather than two. Also handed
+      // in, from the `settings` this file resolved and passed to the factory.
+      capabilityRecheckMs: input.capabilityRecheckMs,
       observer,
     });
   };
@@ -500,32 +521,88 @@ function readInboundMode(configManager: ConfigManager): 'idle' | 'poll' | 'auto'
  * Whether the mailbox this node watches is one the adopted Google credential
  * can read.
  *
- * Two ways to be true, and the second is the one that was missing.
+ * **The credential is the evidence. Configuration is a filter over it.** That
+ * ordering is the fix, and the previous ordering is why this had to be fixed
+ * twice.
  *
- * **The connected mailbox IS the watched account.** `users.getProfile` answers
- * with the address those credentials read, so an exact match is direct evidence
- * rather than an inference — and it is the only evidence available on the
- * machine this whole path exists to serve. The owner has Google connected and
- * has never configured IMAP, so there is no IMAP host to read a domain off.
+ * A resolved reader means `users.getProfile` answered: the credential works,
+ * and it names the address those credentials read. That is a fact obtained from
+ * Google. The previous version asked instead whether the first entry of
+ * `surfaces.email.inbound.accounts` equalled that address, which made a
+ * configuration convention the source of truth — and the convention does not
+ * hold. The schema calls that key a list of "mailbox account identifiers, e.g.
+ * `["primary"]`", its description is what the owner reads when he sets it, and
+ * `sameAddress('primary', 'owner@gmail.com')` is false. So an owner who
+ * connected Google, turned inbound mail on and filled the key in the way its
+ * own description tells him to got `mailAccountIsGmail: false`, `auto` chose
+ * IMAP, and — with no IMAP host configured, which is the whole premise of this
+ * path — the factory answered `null`: the exact end state the Gmail
+ * construction fix was written to close. Only a key holding a full Gmail
+ * address made it work, and the test that covered it set one.
  *
- * **Or the configured IMAP host is a Google one.** The original test, kept
- * because it is still right when it fires: an address at a Google Workspace
- * custom domain is a Gmail mailbox whatever it looks like, and an `@gmail.com`
- * address forwarded into somebody else's IMAP server is not. It covers the
- * owner who has both configured and points them at the same mailbox.
+ * So the question this asks is no longer "does config prove it is Gmail" but
+ * "does config name a DIFFERENT mailbox". Three arms:
  *
- * Neither holding is a real answer, not a fallback: Gmail's API reads the
- * mailbox belonging to the adopted credentials and cannot read a mailbox on
- * another provider, which is what the `not-a-gmail-account` basis says.
+ * **The account names an address.** It is compared, because an owner who wrote
+ * an address meant that mailbox. Equal to the connected one is direct evidence.
+ * Different, and Gmail's API cannot read it — unless the configured IMAP host
+ * is a Google one, which is the Workspace-custom-domain case below.
+ *
+ * **The account is an identifier, and no IMAP host is configured.** Nothing
+ * names another mailbox, and a working Google credential does name one. True.
+ * This is the owner's machine.
+ *
+ * **The account is an identifier and an IMAP host IS configured.** He has
+ * pointed this watcher at a specific server; whether it is a Gmail mailbox is
+ * that host's domain to answer, exactly as before.
+ *
+ * The IMAP-host test is unchanged and still right when it fires: an address at
+ * a Google Workspace custom domain is a Gmail mailbox whatever it looks like,
+ * and an `@gmail.com` address forwarded into somebody else's IMAP server is
+ * not.
  */
 function isGmailMailbox(
   configManager: ConfigManager,
   account: string,
   connectedAddress: string,
 ): boolean {
-  if (sameAddress(account, connectedAddress)) return true;
-  const host = readSurfaceEmailSettings((key) => configManager.get(key as never)).imapHost ?? '';
-  return /(^|\.)(gmail\.com|googlemail\.com|google\.com)$/i.test(host.trim().toLowerCase());
+  const host = (readSurfaceEmailSettings((key) => configManager.get(key as never)).imapHost ?? '')
+    .trim().toLowerCase();
+  if (namesAnAddress(account)) {
+    if (sameAddress(account, connectedAddress)) return true;
+    return isGoogleHost(host);
+  }
+  // No host configured: nothing in this machine's configuration names a mailbox
+  // other than the one the credential reads, and the credential resolved. That
+  // is direct evidence, not a fallback — `resolveGmailInboundReader` has
+  // already proved the grant works and asked Google which address it belongs
+  // to. An `unavailable` resolution never reaches here at all; the caller
+  // answers `mailAccountIsGmail: false` with the reader's own reason.
+  if (host.length === 0) return true;
+  return isGoogleHost(host);
+}
+
+/**
+ * Whether an `accounts` entry is an email address or a mailbox identifier.
+ *
+ * The schema allows both — `["primary"]` is its own example — and they mean
+ * different things here: an address is a claim about WHICH mailbox and gets
+ * compared, an identifier is a label for this watcher and claims nothing.
+ * Treating an identifier as an address is what produced a false negative for
+ * every owner who followed the description.
+ *
+ * A local part, an `@`, and a dotted domain. Deliberately not RFC 5322: this
+ * only has to separate `owner@gmail.com` from `primary`, and a permissive
+ * pattern that accepted `primary` as an address would put it straight back on
+ * the arm that compares.
+ */
+function namesAnAddress(account: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(account.trim());
+}
+
+/** Whether a configured IMAP host is one of Google's. Takes it already normalized. */
+function isGoogleHost(host: string): boolean {
+  return /(^|\.)(gmail\.com|googlemail\.com|google\.com)$/.test(host);
 }
 
 /**

@@ -672,6 +672,69 @@ describe('each inbound setting reaches the thing it names', () => {
     expect(detect(`getConfig('${key}' as never)`, key)).toBe(true);
     expect(detect('nothing here at all', key)).toBe(false);
   });
+
+  /**
+   * One key, one reader — for the two keys that had a reader in two places.
+   *
+   * The check above answers "is anything reading this", and it is `some(...)`:
+   * it says yes just as happily for one reader as for three. That is the shape
+   * that let `gmailPollSecondsExpecting` and `gmailPollSecondsIdle` acquire a
+   * second reader without anything noticing. Two independent branches wired
+   * them at two different tiers — `source-factory.ts` at source-CREATE time,
+   * and `facade-inbound-mail.ts` at compose time — and the gate accepted both
+   * call forms, so the duplication looked exactly like the fix.
+   *
+   * Create time is the tier that wins, and the reason is behavioural rather
+   * than stylistic: `create()` runs on every supervisor start, so an interval
+   * the owner edits while the daemon is running takes effect at the next source
+   * start instead of waiting for the whole graph to be recomposed. That is the
+   * same freshness rule `liveConnectionPort` applies to the IMAP host.
+   *
+   * Two readers of one key is the shape that made these settings inert in the
+   * first place — a value that appears to apply, applied twice, is a value
+   * whose effective setting depends on which caller ran last.
+   */
+  test('each Gmail poll interval is read exactly once, at source-create time', () => {
+    const root = join(import.meta.dir, '..', 'packages', 'sdk', 'src');
+    const files: string[] = [];
+    const walk = (directory: string): void => {
+      for (const entry of readdirSync(directory, { withFileTypes: true })) {
+        const path = join(directory, entry.name);
+        if (entry.isDirectory()) {
+          if (entry.name !== 'config') walk(path);
+          continue;
+        }
+        if (entry.name.endsWith('.ts')) files.push(path);
+      }
+    };
+    walk(root);
+
+    for (const key of [
+      'surfaces.email.inbound.gmailPollSecondsExpecting',
+      'surfaces.email.inbound.gmailPollSecondsIdle',
+      // The Gmail source's re-probe wait travels the same way and for the same
+      // reason: read once for the watcher settings and handed on, never
+      // re-derived beside the source that uses it.
+      'surfaces.email.inbound.capabilityRecheckMinutes',
+    ]) {
+      const quoted = key.replace(/\./g, '\\.');
+      const pattern = new RegExp(`(?:get|getConfig|readNumberSetting)\\([^)]*['"]${quoted}['"]`, 'gs');
+      const readers = files.flatMap((path) => {
+        const found = readFileSync(path, 'utf8').match(pattern) ?? [];
+        return found.map(() => path);
+      });
+      expect({ key, readers: readers.length }).toEqual({ key, readers: 1 });
+    }
+
+    // And the one reader for the poll pair is the create-time one. Naming the
+    // file is what makes the count above mean "the right single reader" rather
+    // than "some single reader" — a count of one in the facade would be the
+    // tier this was ruled out of.
+    const factory = readFileSync(
+      join(root, 'platform', 'email', 'inbound', 'source-factory.ts'), 'utf8');
+    expect(factory).toContain("getConfig('surfaces.email.inbound.gmailPollSecondsExpecting' as never)");
+    expect(factory).toContain("getConfig('surfaces.email.inbound.gmailPollSecondsIdle' as never)");
+  });
 });
 
 describe('the expectation book is instantiated in production (gate #25)', () => {
