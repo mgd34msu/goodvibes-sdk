@@ -28,7 +28,7 @@
  */
 
 import { IMAP_MAX_FETCH_UIDS } from '../imap-client.js';
-import type { ImapBodyReadability } from '../imap-body-probe.js';
+import type { ImapBodyProbe } from '../imap-body-probe.js';
 import type {
   EmailCapabilityFailureNotice,
   ImapClient,
@@ -286,11 +286,11 @@ export interface MailboxConnection {
    * Present because "signed in and the folder opened" answers neither
    * question, and an IMAP server has no scope list to consult instead. A
    * connection that cannot read bodies at all never reaches here — the port
-   * raises `ImapBodyCapabilityError` before returning one — so the two cases
-   * that survive to this field are `readable` and `unproven`, and the second
-   * is the empty mailbox that had nothing to read from.
+   * raises `ImapBodyCapabilityError` before returning one — so the two
+   * outcomes that survive to this field are `readable` and `unproven`, and the
+   * second is the empty mailbox that had nothing to read from.
    */
-  readonly bodyCapability: ImapBodyReadability;
+  readonly bodyCapability: ImapBodyProbe;
   /** LOGOUT and release the socket. Never throws. */
   close(): Promise<void>;
 }

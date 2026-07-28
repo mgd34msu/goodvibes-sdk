@@ -1578,15 +1578,15 @@ describe('ImapSession line retention', () => {
   });
 
   // ---------------------------------------------------------------------
-  // probeBodyAccess() — the connect-time BODY.PEEK probe
+  // probeBodyReadable() — the connect-time body probe
   // ---------------------------------------------------------------------
   //
   // `docs/inbound-email.md` §3.4d, "Scope sufficiency applies to both": IMAP
   // has no declaration of body access the way a Gmail scope grant has, so the
   // only way to know whether the server will hand over message content is to
-  // ask for some — once, at connect time, before an expectation for a real
-  // message could ever be opened.
-  describe('probeBodyAccess', () => {
+  // ask for some — at connect time, before an expectation for a real message
+  // could ever be opened.
+  describe('probeBodyReadable', () => {
     function serverWithExamine(input: {
       readonly exists: number;
       readonly uidNext: number;
@@ -1606,7 +1606,7 @@ describe('ImapSession line retention', () => {
               serverWrite(sock, '* OK [UIDVALIDITY 42] UIDs valid');
               serverWrite(sock, `* OK [UIDNEXT ${input.uidNext}] Predicted next UID`);
               serverWrite(sock, `${tag} OK [READ-ONLY] EXAMINE completed`);
-            } else if (/^UID FETCH\b/i.test(rest)) {
+            } else if (/FETCH\b/i.test(rest)) {
               input.onFetch(sock, tag, rest);
             }
           }
@@ -1614,14 +1614,20 @@ describe('ImapSession line retention', () => {
       });
     }
 
-    test('a non-empty mailbox that serves the byte yields probed-ok, in one round trip', async () => {
+    test('a non-empty mailbox that serves a body is readable, in two round trips and both forms', async () => {
       const fetchCommands: string[] = [];
       fakeServer = await serverWithExamine({
         exists: 1,
         uidNext: 102,
         onFetch: (sock, tag, rest) => {
           fetchCommands.push(rest);
-          serverWrite(sock, '* 1 FETCH (UID 101 BODY[TEXT]<0.1> "H")');
+          if (/BODYSTRUCTURE/i.test(rest)) {
+            serverWrite(sock,
+              '* 1 FETCH (UID 101 BODYSTRUCTURE ("TEXT" "PLAIN" '
+              + '("CHARSET" "UTF-8") NIL NIL "7BIT" 120 4))');
+          } else {
+            serverWrite(sock, '* 1 FETCH (UID 101 BODY[]<0> "Hello there")');
+          }
           serverWrite(sock, `${tag} OK FETCH completed`);
         },
       });
@@ -1633,17 +1639,25 @@ describe('ImapSession line retention', () => {
         timeoutMs: 3000,
       });
       await client.open();
-      const verdict = await client.probeBodyAccess();
+      const verdict = await client.probeBodyReadable();
 
-      expect(verdict).toEqual({ probed: true, ok: true });
-      // Exactly one round trip: one UID FETCH, addressed at the highest UID
-      // EXAMINE already reported (uidNext - 1), no separate SEARCH first.
-      expect(fetchCommands).toHaveLength(1);
-      expect(fetchCommands[0]).toContain('UID FETCH 101');
-      expect(fetchCommands[0]).toContain('BODY.PEEK[TEXT]');
+      expect(verdict.outcome).toBe('readable');
+      // TWO round trips, one per command FORM, and the forms are the point.
+      // The declaration comes from a sequence-addressed BODYSTRUCTURE; the body
+      // itself is fetched BY UID, which is the addressing the real drain uses,
+      // so a server that refuses UID-addressed fetches is caught here rather
+      // than on the first message that matters.
+      expect(fetchCommands).toHaveLength(2);
+      expect(fetchCommands[0]).toContain('FETCH 1 (UID BODYSTRUCTURE)');
+      expect(fetchCommands[1]).toContain('UID FETCH 101');
+      expect(fetchCommands[1]).toContain('BODY.PEEK[]');
+      // Read-only throughout: a plain BODY[ would mark the owner's mail read.
+      for (const command of fetchCommands) {
+        expect(command.includes(' BODY[')).toBe(false);
+      }
     });
 
-    test('a non-empty mailbox that refuses the fetch yields probed-refused, before any expectation could be opened', async () => {
+    test('a refusal that names no condition raises, before any expectation could be opened', async () => {
       const fetchCommands: string[] = [];
       fakeServer = await serverWithExamine({
         exists: 1,
@@ -1661,17 +1675,15 @@ describe('ImapSession line retention', () => {
         timeoutMs: 3000,
       });
       await client.open();
-      const verdict = await client.probeBodyAccess();
 
+      // Raised rather than returned: a refusal the classifier cannot place
+      // means this account cannot read message content, and no amount of
+      // reconnecting grants an account access rights.
+      await expect(client.probeBodyReadable()).rejects.toThrow(/refused to/i);
       expect(fetchCommands).toHaveLength(1);
-      if (!verdict.probed || verdict.ok) {
-        throw new Error(`expected a refused probe, got ${JSON.stringify(verdict)}`);
-      }
-      expect(verdict.detail).toContain('IMAP command failed');
-      expect(verdict.detail).toContain('Server error fetching message data');
     });
 
-    test('an empty mailbox is not-probed: nothing is fetched, and it is not "ok"', async () => {
+    test('an empty mailbox is unproven: nothing is fetched, and it is not "readable"', async () => {
       const fetchCommands: string[] = [];
       fakeServer = await serverWithExamine({
         exists: 0,
@@ -1688,27 +1700,27 @@ describe('ImapSession line retention', () => {
         timeoutMs: 3000,
       });
       await client.open();
-      const verdict = await client.probeBodyAccess();
+      const verdict = await client.probeBodyReadable();
 
       // Genuinely nothing to probe: no FETCH was ever sent.
       expect(fetchCommands).toHaveLength(0);
-      // Asserted on the discriminant directly, not via truthiness: a
-      // not-probed verdict and a probed-ok verdict must never be confusable
-      // by `if (verdict)` or `if (verdict.ok)` — the field does not exist
-      // here at all.
-      expect(verdict.probed).toBe(false);
-      expect('ok' in verdict).toBe(false);
-      expect(verdict).toEqual({ probed: false });
-      expect(verdict).not.toEqual({ probed: true, ok: true });
+      // Asserted on the discriminant directly, not via truthiness: an unproven
+      // outcome and a readable one must never be confusable by `if (verdict)`
+      // or by reading a byte count that does not exist here at all.
+      expect(verdict.outcome).toBe('unproven');
+      expect('returnedBytes' in verdict).toBe(false);
+      expect(verdict.detail).toContain('not yet proven');
     });
 
-    test('a plain open() never probes — the field reads not-probed until the inbound watcher asks', async () => {
+    test('a plain open() never probes — no FETCH is issued until the watcher asks', async () => {
+      const commands: string[] = [];
       fakeServer = await makeFakeImapServer((sock) => {
         serverWrite(sock, '* OK IMAP4rev1 Fake Server ready');
         sock.on('data', (chunk) => {
           for (const line of chunk.toString().split(/\r\n/)) {
             if (!line.trim()) continue;
             const tag = line.split(' ')[0] ?? 'A0001';
+            commands.push(line.slice(tag.length + 1));
             if (line.includes('LOGIN')) serverWrite(sock, `${tag} OK LOGIN completed`);
             else if (line.includes('EXAMINE')) {
               serverWrite(sock, '* 5 EXISTS');
@@ -1726,9 +1738,12 @@ describe('ImapSession line retention', () => {
         password: 'secret',
         timeoutMs: 3000,
       });
-      const report = await client.open();
+      await client.open();
 
-      expect(report.bodyProbe).toEqual({ probed: false });
+      // `open()` is the general entry every ad hoc caller shares, so it must
+      // not spend the probe's round trips. Only the inbound watcher's own
+      // connection wiring asks, and it asks explicitly.
+      expect(commands.some((command) => /FETCH/i.test(command))).toBe(false);
     });
   });
 });

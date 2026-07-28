@@ -15038,7 +15038,11 @@
       ]
     },
     {
-      "name": "ImapBodyProbeVerdict",
+      "name": "ImapBodyProbe",
+      "kind": "type"
+    },
+    {
+      "name": "ImapBodyUnreadableEvidence",
       "kind": "type"
     },
     {
@@ -15059,7 +15063,6 @@
       "kind": "interface",
       "required": [
         "advertisedCapabilities",
-        "bodyProbe",
         "idle",
         "mailbox"
       ]

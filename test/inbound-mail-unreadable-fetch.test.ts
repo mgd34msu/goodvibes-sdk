@@ -157,10 +157,15 @@ class ScriptedMailbox implements MailboxConnectionPort {
           uidNext: highest + 1,
           readOnly: true,
         },
-        bodyProbe: { probed: false },
       },
       reader,
       wire,
+      // This stub connection never ran a probe, and `unproven` is what says so
+      // — not `readable`, which would claim a capability nothing demonstrated.
+      bodyCapability: {
+        outcome: 'unproven',
+        detail: 'A stub connection: no body was fetched, so nothing is proven.',
+      },
       close: async () => undefined,
     };
   }

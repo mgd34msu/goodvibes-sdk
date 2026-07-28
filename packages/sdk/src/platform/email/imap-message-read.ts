@@ -192,7 +192,7 @@ export async function readMessageDetail(
       returnedBytes: bodyText.length + bodyHtml.length,
       subject: `UID ${uid} in '${mailbox}'`,
     });
-    if (readability.kind === 'unfetchable') {
+    if (readability.outcome === 'unreadable') {
       throw bodyCapabilityFailure({
         mailbox,
         summary: readability.detail,

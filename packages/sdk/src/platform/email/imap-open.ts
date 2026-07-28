@@ -248,18 +248,6 @@ export interface ImapConnectionReport {
   readonly idle: ImapIdleSupport;
   /** The mailbox that was EXAMINEd, and what the server said about it. */
   readonly mailbox: ImapMailboxStatus & { readonly name: string };
-  /**
-   * Whether a connect-time BODY.PEEK probe confirmed the mailbox will hand
-   * over message content — see `ImapBodyProbeVerdict`.
-   *
-   * Plain `open()` never probes: this reads `{ probed: false }` for every
-   * ordinary connection, which is accurate (no round trip happened) rather
-   * than a claim. Only the inbound watcher's connection wiring
-   * (`inbound/connection.ts`) actually calls `probeBodyAccess()` and replaces
-   * this field with what it found, because only a long-lived watcher needs
-   * the answer before it opens an expectation nobody can satisfy.
-   */
-  readonly bodyProbe: ImapBodyProbeVerdict;
 }
 
 /**
@@ -275,49 +263,6 @@ export interface ImapConnectionReport {
 export type ImapIdleSupport =
   | { readonly known: true; readonly supported: boolean }
   | { readonly known: false };
-
-/**
- * What a connect-time BODY.PEEK probe found out about a mailbox, in the same
- * discipline as `ImapIdleSupport` and for the identical reason: a caller that
- * can read this as a plain boolean has already made the mistake this shape
- * exists to rule out.
- *
- * `IDLE` support is a two-case question — the server said yes/no, or it said
- * nothing. Body access is a THREE-case question, because IMAP has no
- * `CAPABILITY` atom that declares it the way `IDLE` is declared: permission is
- * discoverable only by asking for data, and on an empty mailbox there is
- * nothing to ask for. So the cases are:
- *
- *   - `probed: false` — nothing was fetched, because the mailbox held no
- *     message to fetch (or, for the rare fetch that named an already-expunged
- *     UID, because nothing came back for it). This is **not** the same as
- *     `ok: true`. No round trip confirmed anything, and reading an unprobed
- *     mailbox as proven-fine is exactly the silent-degradation mistake this
- *     design exists to refuse everywhere else. The reactive path — a real
- *     fetch refused later, once there is a real message to refuse — remains
- *     the answer for a mailbox in this state.
- *   - `probed: true, ok: true` — the server handed over a byte of the newest
- *     message. Body access is confirmed before any expectation could be
- *     opened.
- *   - `probed: true, ok: false` — the server refused to hand over the byte it
- *     was asked for, with its own wording in `detail`. The caller turns this
- *     into the SAME `fetch-refused` / `insufficient` verdict the reactive path
- *     already produces (`inbound/capability.ts`) — this is that finding,
- *     reached sooner, not a second kind of finding.
- *
- * `ok` does not exist until `probed` has been narrowed to `true`, exactly as
- * `supported` does not exist until `known` has been narrowed to `true` on
- * `ImapIdleSupport` — so `if (verdict.ok)` on an unnarrowed verdict does not
- * compile, rather than compiling and quietly treating "never asked" as
- * "asked and fine".
- */
-export type ImapBodyProbeVerdict =
-  | { readonly probed: false }
-  | { readonly probed: true; readonly ok: true }
-  | { readonly probed: true; readonly ok: false; readonly detail: string };
-
-/** The verdict for a connection that never probes. Accurate, not a guess. */
-export const NOT_PROBED: ImapBodyProbeVerdict = { probed: false };
 
 /** Build the IDLE case from a capability set, empty meaning "said nothing". */
 export function idleSupportFrom(capabilities: readonly string[]): ImapIdleSupport {

@@ -491,6 +491,13 @@ describe('inbound watcher — capability sufficiency', () => {
     // reconnecting fixes. A server refusing a search is routinely transient —
     // load, a folder being reindexed — and stopping the watcher over one would
     // turn a hiccup into silence.
+    //
+    // The refused FETCH is now reached by the connect-time probe rather than by
+    // the first drain, so it lands as `bodies-unfetchable` — the reason that
+    // names what the account may READ — instead of the `fetch-refused` the
+    // reactive path produces. Same insufficiency, named for what was actually
+    // established. `fetch-refused` remains the verdict for a fetch that fails
+    // during normal draining, which `handleDrainFailure` still classifies.
     const cannotFetch = await build({
       server: { fetch: 'refused', initial: [message(101, 'a')] },
       seed: {
@@ -506,7 +513,7 @@ describe('inbound watcher — capability sufficiency', () => {
       () => cannotFetch.observer.terminals.length >= 1,
       'a terminal report for the refused fetch',
     );
-    expect(cannotFetch.watcher.status.verdict.reason).toBe('fetch-refused');
+    expect(cannotFetch.watcher.status.verdict.reason).toBe('bodies-unfetchable');
     expect(cannotFetch.watcher.status.verdict.state).toBe('insufficient');
 
     const cannotSearch = await build({
@@ -574,7 +581,12 @@ describe('inbound watcher — capability sufficiency', () => {
 // for a signup workstream is the verification mail itself.
 
 describe('inbound watcher — connect-time body probe', () => {
-  test('a server that refuses the body probe is insufficient before any search ever runs', async () => {
+  test('a server that refuses UID-ADDRESSED fetches is caught at connect, before any search', async () => {
+    // `fetch: 'refused'` refuses `UID FETCH`, and only `UID FETCH`. That is
+    // the form the real drain uses, and it is why the probe's body fetch is
+    // UID-addressed rather than by sequence number: probing purely by sequence
+    // number would sail past this server and leave the refusal to be
+    // discovered on the first message that mattered.
     const harness = await build({
       server: { fetch: 'refused', initial: [message(101, 'a')] },
     });
@@ -584,7 +596,7 @@ describe('inbound watcher — connect-time body probe', () => {
       'a terminal report for the refused probe',
     );
 
-    expect(harness.watcher.status.verdict.reason).toBe('fetch-refused');
+    expect(harness.watcher.status.verdict.reason).toBe('bodies-unfetchable');
     expect(harness.watcher.status.verdict.state).toBe('insufficient');
     // Reached at connect, before the cursor was ever resolved against a
     // search: no UID SEARCH was issued, and the sink was never asked to
@@ -592,40 +604,39 @@ describe('inbound watcher — connect-time body probe', () => {
     // immediately rather than after a signup window expires in silence.
     expect(count(harness.mailbox.commands, SEARCH_COMMAND)).toBe(0);
     expect(harness.sink.attempts).toEqual([]);
-    expect(harness.watcher.status.bodyProbe).toEqual({
-      probed: true,
-      ok: false,
-      detail: expect.stringContaining('IMAP command failed'),
-    });
+    // The server's own wording is carried through, not paraphrased away.
+    expect(harness.observer.terminals[0]?.notice?.serverMessage).toContain('Server error');
   });
 
-  test('a server that serves the body probe reports probed-ok and runs normally', async () => {
+  test('a server that serves the body probe reports readable and runs normally', async () => {
     const harness = await build({
       server: { initial: [message(101, 'a')] },
     });
     harness.watcher.start();
     await idleReached(harness);
 
-    expect(harness.watcher.status.bodyProbe).toEqual({ probed: true, ok: true });
+    expect(harness.watcher.status.bodyProbe?.outcome).toBe('readable');
     expect(harness.watcher.status.verdict.state).not.toBe('insufficient');
     expect(harness.observer.terminals).toEqual([]);
   });
 
-  test('an empty mailbox is not-probed, distinct from probed-ok, and the watcher still runs', async () => {
+  test('an empty mailbox is unproven, distinct from readable, and the watcher still runs', async () => {
     const harness = await build({ server: { initial: [] } });
     harness.watcher.start();
     await idleReached(harness);
 
     const probe = harness.watcher.status.bodyProbe;
     // Asserted on the discriminant directly, not via a truthiness check —
-    // `{ probed: false }` and `{ probed: true, ok: true }` must never read as
-    // interchangeable "it's fine" values.
-    expect(probe?.probed).toBe(false);
-    expect(probe).toEqual({ probed: false });
-    expect(probe).not.toEqual({ probed: true, ok: true });
-    // Not probed is not a capability problem: the watcher is healthy and the
-    // reactive path remains the answer for this (currently empty) mailbox.
-    expect(harness.watcher.status.verdict.state).not.toBe('insufficient');
+    // `unproven` and `readable` must never read as interchangeable
+    // "it's fine" values.
+    expect(probe?.outcome).toBe('unproven');
+    expect(probe?.outcome).not.toBe('readable');
+    // Not a capability FAILURE — the watcher runs and delivers — but not
+    // healthy either: nothing has demonstrated this account can read a body,
+    // and `degraded` is what says so without refusing to watch the empty
+    // signup alias this capability exists to serve.
+    expect(harness.watcher.status.verdict.state).toBe('degraded');
+    expect(harness.watcher.status.verdict.reason).toBe('bodies-unproven');
     expect(harness.observer.terminals).toEqual([]);
   });
 });
@@ -641,6 +652,15 @@ describe('inbound watcher — connect-time body probe', () => {
  * has no scopes and no such statement, so the equivalent is evidence — one
  * message read, and what came back checked against what the server itself said
  * was there.
+ *
+ * THE LIMIT OF THIS COVERAGE, stated so nobody reads more into it than is here:
+ * every case below is driven by `fake-imap-mailbox.ts`, including the withheld
+ * body. No real provider that permits headers and withholds content has ever
+ * been exercised against this code — such an account is not something the suite
+ * can conjure, and fabricating one would be worse than the gap. What these
+ * tests establish is that the CLIENT reaches the right verdict when a server
+ * behaves that way on the wire; that a given real provider behaves that way is
+ * a claim nothing here supports.
  */
 describe('inbound watcher — can it read message content at all', () => {
   test('a refused body fetch is insufficient at connect time, with a remedy', async () => {
@@ -706,7 +726,7 @@ describe('inbound watcher — can it read message content at all', () => {
     const reading = connection.bodyCapability;
     await connection.close();
 
-    expect(reading.kind).toBe('unproven');
+    expect(reading.outcome).toBe('unproven');
     const verdict = verdictForBodyReadability(reading);
     expect(verdict?.reason).toBe('bodies-unproven');
     expect(verdict?.state).toBe('degraded');
@@ -772,13 +792,28 @@ describe('inbound watcher — can it read message content at all', () => {
     expect(harness.watcher.status.verdict.reason).toBe('idle-push');
     expect(harness.observer.terminals).toEqual([]);
 
+    // TWO round trips for the whole probe, in the two forms that make it one
+    // probe rather than the two it replaced.
+    //
+    // The BODYSTRUCTURE is sequence-addressed (it is what supplies the declared
+    // octets); the body fetch is UID-addressed (it is what exercises the
+    // drain's own addressing). Both counts are asserted, so a change that
+    // quietly reintroduces a second probe — or drops one of the two forms —
+    // fails here rather than costing an extra round trip on every connect in
+    // silence.
+    const structureProbes = harness.mailbox.commands
+      .filter((line) => /^\S+ FETCH \d+ \(UID BODYSTRUCTURE\)/.test(line));
+    const bodyProbes = harness.mailbox.commands
+      .filter((line) => /^\S+ UID FETCH \d+ BODY\.PEEK\[\]/.test(line));
+    expect(structureProbes.length).toBe(1);
+    expect(bodyProbes.length).toBe(1);
+    expect(bodyProbes[0]).toContain(`BODY.PEEK[]<0.${IMAP_BODY_PROBE_BYTES}>`);
+
     // Bounded and read-only. An unbounded fetch would pull whatever a stranger
     // attached, and a plain BODY[ would mark the owner's mail read.
-    const probes = harness.mailbox.commands.filter((line) => /^\S+ FETCH \d/.test(line));
-    expect(probes.length).toBe(2);
-    expect(probes[0]).toContain('(UID BODYSTRUCTURE)');
-    expect(probes[1]).toContain(`BODY.PEEK[]<0.${IMAP_BODY_PROBE_BYTES}>`);
-    for (const line of probes) expect(line.includes(' BODY[')).toBe(false);
+    for (const line of [...structureProbes, ...bodyProbes]) {
+      expect(line.includes(' BODY[')).toBe(false);
+    }
   });
 });
 
