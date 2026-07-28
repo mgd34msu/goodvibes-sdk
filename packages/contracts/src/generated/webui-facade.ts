@@ -8059,6 +8059,21 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "summary": "sample"
         }
       },
+      "stores": [
+        {
+          "store": "sample",
+          "state": "sample",
+          "detail": "sample"
+        }
+      ],
+      "noticeDelivery": {
+        "state": "sample",
+        "reason": "sample",
+        "detail": "sample",
+        "fix": "sample",
+        "since": "sample",
+        "unannounced": 0
+      },
       "health": {
         "kind": "sample",
         "id": "sample",
