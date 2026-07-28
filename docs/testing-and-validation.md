@@ -4,6 +4,37 @@
 
 The SDK repo validates more than TypeScript build success. `bun run validate` is the portable command CI runs; it does not require any external repo checkout.
 
+## Run the repo's declared script, never a guessed runner
+
+**Always invoke a repository's own `package.json` script — `bun run test` — and
+never a runner you inferred from the file layout.** Getting this wrong produces
+a false regression report against work that is fine, which costs a whole round
+chasing nothing.
+
+A worked example from this repo's consumers. Running the webui's suite three
+ways, on an identical clean tree:
+
+| Invocation | Result |
+|---|---|
+| `bunx vitest run` | **159 files failed**, "no tests" |
+| `bun test` (bare) | **157 fail, 141 errors** |
+| `bun run test` (the declared script, `bun test --isolate`) | **2168 pass, 0 fail** |
+
+The first two are artifacts of the wrong runner, not defects. `vitest` cannot
+resolve `bun:test` imports at all, so every file fails at import. Bare `bun test`
+skips the `--isolate` flag the suite requires and collapses with
+`Cannot call beforeEach() after the test run has completed` — a symptom that
+looks like a real async bug and is not.
+
+Either number, reported as a regression, would have been a false alarm against
+solid work. The declared script exists because it encodes the flags the suite
+needs; treat any disagreement between your invocation and the script as your bug
+until proven otherwise.
+
+The same rule covers `typecheck`, `lint` and `build`: a repo that ships a script
+has already made these decisions, and a hand-built command silently opts out of
+them.
+
 ## CI Gates
 
 This is the canonical CI-gate reference for the workspace. Every push and PR to `main` runs seven standalone jobs (see `.github/workflows/ci.yml`). The documentation, contract-artifact, version, changelog, error, todo, examples, API-surface, and bundle-budget checks are **not** separate jobs — they run as ordered **steps inside the single `validate` job** (see `scripts/validate.ts`).
