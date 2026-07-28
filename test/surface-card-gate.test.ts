@@ -19,6 +19,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import ts from 'typescript';
 import { DaemonSurfaceActionHelper } from '../packages/sdk/src/platform/daemon/surface-actions.ts';
 import { handleNtfySurfacePayload } from '../packages/sdk/src/platform/adapters/ntfy/index.ts';
 import { WorkProposalStore } from '../packages/sdk/src/platform/agents/work-proposal-store.ts';
@@ -515,16 +516,177 @@ describe('every remote adapter call site is covered by the shared hook', () => {
     });
   });
 
+  /**
+   * Every `trySpawnAgent` call site that is NOT preceded by an
+   * `authorizeSurfaceIngress` call in an enclosing scope.
+   *
+   * Per CALL SITE, using the compiler's own tree. The predecessor of this
+   * check was per FILE — "the file contains both strings somewhere" — which
+   * says nothing about a file that has one gated spawn and one ungated one.
+   * An entirely ungated `context.trySpawnAgent({...})` appended to
+   * `adapters/slack/index.ts` passed it, because slack's three legitimate
+   * gates were still in the file.
+   *
+   * "Precedes" is judged by source position within an enclosing function, so a
+   * handler that gates at the top and spawns inside a nested callback is
+   * correctly seen as gated, and a spawn in a function that never gates is
+   * not.
+   */
+  function ungatedSpawnSites(fileName: string, source: string): string[] {
+    const tree = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true);
+
+    const callsNamed = (name: string): ts.CallExpression[] => {
+      const found: ts.CallExpression[] = [];
+      const walk = (node: ts.Node): void => {
+        if (ts.isCallExpression(node)) {
+          const callee = node.expression;
+          const called = ts.isPropertyAccessExpression(callee)
+            ? callee.name.text
+            : (ts.isIdentifier(callee) ? callee.text : '');
+          if (called === name) found.push(node);
+        }
+        ts.forEachChild(node, walk);
+      };
+      walk(tree);
+      return found;
+    };
+
+    /**
+     * Local functions in this file that reach the hook, directly or through
+     * another local function.
+     *
+     * ntfy is why this exists rather than being over-engineering: its handler
+     * gates by calling `authorizeNtfyPayload(...)`, a helper in the same file
+     * that calls `context.authorizeSurfaceIngress` itself. A rule that only
+     * recognised the literal call would report ntfy's one legitimate spawn as
+     * ungated — a false alarm, which is how a structural gate gets muted.
+     */
+    const gatingFunctionNames = ((): ReadonlySet<string> => {
+      const bodies = new Map<string, ts.Node>();
+      const collect = (node: ts.Node): void => {
+        if (ts.isFunctionDeclaration(node) && node.name) bodies.set(node.name.text, node);
+        if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer
+          && (ts.isArrowFunction(node.initializer) || ts.isFunctionExpression(node.initializer))) {
+          bodies.set(node.name.text, node.initializer);
+        }
+        ts.forEachChild(node, collect);
+      };
+      collect(tree);
+
+      const calledNamesWithin = (scope: ts.Node): Set<string> => {
+        const names = new Set<string>();
+        const walk = (node: ts.Node): void => {
+          if (ts.isCallExpression(node)) {
+            const callee = node.expression;
+            if (ts.isIdentifier(callee)) names.add(callee.text);
+            else if (ts.isPropertyAccessExpression(callee)) names.add(callee.name.text);
+          }
+          ts.forEachChild(node, walk);
+        };
+        ts.forEachChild(scope, walk);
+        return names;
+      };
+
+      const gating = new Set<string>();
+      for (const [name, body] of bodies) {
+        if (calledNamesWithin(body).has('authorizeSurfaceIngress')) gating.add(name);
+      }
+      // Fixed point, so a two-hop helper chain resolves too.
+      for (let changed = true; changed;) {
+        changed = false;
+        for (const [name, body] of bodies) {
+          if (gating.has(name)) continue;
+          for (const called of calledNamesWithin(body)) {
+            if (!gating.has(called)) continue;
+            gating.add(name);
+            changed = true;
+            break;
+          }
+        }
+      }
+      return gating;
+    })();
+
+    const spawns = callsNamed('trySpawnAgent');
+    const gates = [
+      ...callsNamed('authorizeSurfaceIngress'),
+      ...[...gatingFunctionNames].flatMap((name) => callsNamed(name)),
+    ];
+
+    // FUNCTION scopes only — deliberately not the source file. Counting the
+    // file as a scope is exactly the per-file rule wearing an AST costume: a
+    // gate in one handler would "cover" a spawn in a different handler further
+    // down, which is the defect this replaces.
+    const enclosingScopes = (node: ts.Node): ts.Node[] => {
+      const scopes: ts.Node[] = [];
+      for (let current = node.parent; current !== undefined; current = current.parent) {
+        if (ts.isFunctionLike(current)) scopes.push(current);
+      }
+      return scopes;
+    };
+
+    const ungated: string[] = [];
+    for (const spawn of spawns) {
+      const scopes = enclosingScopes(spawn);
+      const covered = gates.some((gate) => gate.end <= spawn.getStart(tree)
+        && scopes.some((scope) => gate.getStart(tree) >= scope.getStart(tree) && gate.end <= scope.end));
+      if (!covered) {
+        const { line } = tree.getLineAndCharacterOfPosition(spawn.getStart(tree));
+        ungated.push(`${fileName}:${String(line + 1)}`);
+      }
+    }
+    return ungated;
+  }
+
+  test('the call-site check catches an ungated spawn that a per-file check waves through', () => {
+    // The counter-example the old check passed. One gated handler and one
+    // ungated one in the SAME file: both strings are present, so "contains
+    // both somewhere" says clean, and the second spawn is wide open.
+    const mixed = [
+      "export async function gated(context: C): Promise<void> {",
+      "  const decision = await context.authorizeSurfaceIngress({ surface: 'x' });",
+      "  if (!decision.allowed) return;",
+      "  context.trySpawnAgent({ mode: 'spawn' });",
+      "}",
+      "export function ungated(context: C): void {",
+      "  context.trySpawnAgent({ mode: 'spawn' });",
+      "}",
+    ].join('\n');
+
+    // The per-file rule this replaced.
+    expect(/context\.trySpawnAgent\(/.test(mixed) && /context\.authorizeSurfaceIngress\(/.test(mixed)).toBe(true);
+    // The per-call-site rule.
+    expect(ungatedSpawnSites('mixed.ts', mixed)).toEqual(['mixed.ts:7']);
+  });
+
+  test('the call-site check accepts a gate in an enclosing scope, not only the same block', () => {
+    const nested = [
+      "export async function handler(context: C): Promise<void> {",
+      "  const decision = await context.authorizeSurfaceIngress({ surface: 'x' });",
+      "  if (!decision.allowed) return;",
+      "  await Promise.all(items.map((item) => {",
+      "    return context.trySpawnAgent({ mode: 'spawn', task: item });",
+      "  }));",
+      "}",
+    ].join('\n');
+    expect(ungatedSpawnSites('nested.ts', nested)).toEqual([]);
+  });
+
   test('no adapter reaches a spawn without passing the hook first', () => {
     const bypassing: string[] = [];
+    let spawnSitesSeen = 0;
     for (const dir of adapterDirs()) {
       if (DOCUMENTED_NON_CHANNEL_ADAPTERS.has(dir)) continue;
-      const source = readFileSync(join(ADAPTERS_DIR, dir, 'index.ts'), 'utf8');
-      const spawns = /context\.trySpawnAgent\(|trySpawnAgent\(/.test(source);
-      const gated = /context\.authorizeSurfaceIngress\(/.test(source);
-      if (spawns && !gated) bypassing.push(dir);
+      const file = join(ADAPTERS_DIR, dir, 'index.ts');
+      const source = readFileSync(file, 'utf8');
+      spawnSitesSeen += (source.match(/trySpawnAgent\(/g) ?? []).length;
+      bypassing.push(...ungatedSpawnSites(`${dir}/index.ts`, source));
     }
     expect(bypassing).toEqual([]);
+    // There ARE spawn sites to check. Without this the assertion above would
+    // hold just as well against a rename that made every call site invisible
+    // to the walk.
+    expect(spawnSitesSeen).toBeGreaterThan(0);
   });
 
   test('the card gate is installed on the shared hook, not per adapter', () => {

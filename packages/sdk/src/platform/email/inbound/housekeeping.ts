@@ -110,11 +110,19 @@ function summarize(
     ? 'Inbound mail housekeeping: nothing to reap.'
     : `Inbound mail housekeeping: ${parts.join('; ')}.`;
   const corrupt = unreadable ? ' A store file could not be read and its contents were discarded.' : '';
+  // Cursors kept because nobody could say whether their account is still
+  // configured. Said out loud rather than folded into `retained`: they were
+  // not justified, they were spared, and a count that never falls to zero
+  // means a caller that can never answer.
+  const unresolved = cursors !== null && cursors.unresolvedAccounts > 0
+    ? ` ${String(cursors.unresolvedAccounts)} cursor(s) were kept because the `
+      + 'configured-account answer was not available on this pass.'
+    : '';
   const failed = failures.length === 0
     ? ''
     : ` ${String(failures.length)} store(s) could not be swept: `
       + `${failures.map((failure) => `${failure.store} (${failure.detail})`).join('; ')}.`;
-  return `${head} Retained ${retained}.${corrupt}${failed}`;
+  return `${head} Retained ${retained}.${corrupt}${unresolved}${failed}`;
 }
 
 /**

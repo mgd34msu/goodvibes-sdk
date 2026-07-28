@@ -21,7 +21,10 @@
  *  1. Reap on recovery — cursors for an account no longer configured are
  *     dropped at load. The "is this account configured" predicate is an
  *     injected dependency (`isAccountConfigured`); this module never reads
- *     config directly.
+ *     config directly. It answers THREE things, not two — `true`, `false` and
+ *     `'unknown'` — because "the config has not loaded yet" is not the same
+ *     claim as "this account is not configured", and reading the first as the
+ *     second reaps a live cursor. See `AccountConfiguredAnswer`.
  *  2. Bound everything — one record per mailbox already bounds the file with
  *     traffic; `maxCursors` is a defensive count cap on top of that, in case a
  *     bug or a hand-edited config ever produced more distinct (account,
@@ -101,6 +104,16 @@ export interface CursorSweepReport {
   readonly sweptAt: number;
   readonly removed: readonly CursorDiscard[];
   readonly retained: number;
+  /**
+   * How many retained cursors were kept because the "is this account
+   * configured" question could not be answered on this pass.
+   *
+   * Disclosed rather than silent: a cursor kept for an unknown reason is
+   * persisted state that nothing has justified, and a sweep whose count never
+   * falls to zero means a caller is permanently unable to answer — which is a
+   * fault worth seeing rather than a leak worth ignoring.
+   */
+  readonly unresolvedAccounts: number;
 }
 
 export type CursorResolutionKind = 'resumed' | 'first-run' | 'uid-validity-changed';
@@ -278,6 +291,32 @@ function compareHistoryIds(a: string, b: string): number {
   return a < b ? -1 : 1;
 }
 
+/**
+ * The three answers to "is this account still configured for inbound
+ * watching", and why the third one has to exist.
+ *
+ * `true` and `false` are the answers a caller that KNOWS can give. `'unknown'`
+ * is the answer a caller gives when it cannot know yet — the config file has
+ * not been read, the manager is mid-reload, the account list is a promise that
+ * has not settled. Without it, such a caller has to pick one of the two, and
+ * both choices are wrong in a way that costs mail:
+ *
+ *  - answering `false` reaps every stored cursor. The next `resolve()` then
+ *    answers `first-run` at the mailbox's CURRENT high-water mark, so every
+ *    message between the discarded position and that mark is silently skipped
+ *    — not replayed, skipped — and the owner is told the mailbox "started
+ *    fresh", which is indistinguishable from a genuine first run. Seeded at
+ *    UID 900 with the mailbox at 1500, that is 600 messages nobody ever sees
+ *    and no line anywhere saying so.
+ *  - answering `true` keeps cursors for accounts that really were removed,
+ *    which is a bounded leak the count cap already handles.
+ *
+ * So the store treats `'unknown'` as "keep, and say so" rather than making the
+ * caller choose between a silent skip and a leak. Absence of an answer is
+ * never read as an answer of absence.
+ */
+export type AccountConfiguredAnswer = boolean | 'unknown';
+
 export interface MailboxCursorStoreOptions {
   readonly policy?: Partial<MailboxCursorPolicy> | undefined;
   readonly now?: (() => number) | undefined;
@@ -286,8 +325,11 @@ export interface MailboxCursorStoreOptions {
    * configured for inbound watching". When omitted, the account-reap rule is
    * inert (nothing is dropped on that basis) rather than defaulting to "drop
    * everything" or "read config directly".
+   *
+   * A caller that cannot answer yet returns `'unknown'` rather than guessing —
+   * see `AccountConfiguredAnswer`.
    */
-  readonly isAccountConfigured?: ((account: string) => boolean) | undefined;
+  readonly isAccountConfigured?: ((account: string) => AccountConfiguredAnswer) | undefined;
 }
 
 /**
@@ -298,7 +340,7 @@ export class MailboxCursorStore {
   private readonly store: PersistentStore<CursorSnapshot>;
   private readonly policy: MailboxCursorPolicy;
   private readonly now: () => number;
-  private readonly isAccountConfigured: ((account: string) => boolean) | undefined;
+  private readonly isAccountConfigured: ((account: string) => AccountConfiguredAnswer) | undefined;
   private writeChain: Promise<void> = Promise.resolve();
   /** The last unreadable-file event, latched so status can name it. */
   private corruption: PersistentStoreCorruption | null = null;
@@ -362,10 +404,16 @@ export class MailboxCursorStore {
    * Live, content-validated cursors, filtered to configured accounts when
    * `isAccountConfigured` was supplied. Read-time filter — does not persist
    * the drop; `sweep()` is what removes it from disk.
+   *
+   * `'unknown'` keeps the cursor, for the same reason `sweep()` keeps it:
+   * hiding a live position because nobody could say yet whether its account is
+   * configured would make the position look absent to the very caller about to
+   * resume from it.
    */
   async list(): Promise<readonly InboundSourceCursor[]> {
     const { cursors } = await this.readWithDrops();
-    return this.isAccountConfigured ? cursors.filter((c) => this.isAccountConfigured!(c.account)) : cursors;
+    const answer = this.isAccountConfigured;
+    return answer ? cursors.filter((c) => answer(c.account) !== false) : cursors;
   }
 
   /**
@@ -656,10 +704,18 @@ export class MailboxCursorStore {
       }
 
       let surviving = cursors;
-      if (this.isAccountConfigured) {
+      let unresolvedAccounts = 0;
+      const configured = this.isAccountConfigured;
+      if (configured) {
         const kept: InboundSourceCursor[] = [];
         for (const cursor of cursors) {
-          if (this.isAccountConfigured(cursor.account)) kept.push(cursor);
+          const answer = configured(cursor.account);
+          // `'unknown'` is KEPT and counted, never reaped. A caller that cannot
+          // yet say whether an account is configured has not said it is gone,
+          // and acting on the difference is a silent skip of every message
+          // between the discarded position and the mailbox's current end.
+          if (answer === 'unknown') { unresolvedAccounts += 1; kept.push(cursor); }
+          else if (answer) kept.push(cursor);
           else removed.push({ account: cursor.account, mailbox: cursor.mailbox, reason: 'account-not-configured', removedAt: now });
         }
         surviving = kept;
@@ -678,7 +734,15 @@ export class MailboxCursorStore {
         final.push(cursor);
       }
 
-      return { next: final, result: { sweptAt: now, removed, retained: final.length } satisfies CursorSweepReport };
+      return {
+        next: final,
+        result: {
+          sweptAt: now,
+          removed,
+          retained: final.length,
+          unresolvedAccounts,
+        } satisfies CursorSweepReport,
+      };
     });
   }
 

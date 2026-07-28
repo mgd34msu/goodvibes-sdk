@@ -550,14 +550,50 @@ describe('gmail source — adaptive interval', () => {
     expect(harness.source.kind).toBe('gmail-history');
   });
 
-  test('run stops when the signal aborts, and stop() ends it too', async () => {
+  test('stop() ends the run, and nothing polls afterwards', async () => {
+    // This used to terminate in `expect(true).toBe(true)` — a hang gate, which
+    // asserts that `await loop` resolved and nothing else. Resolving is not the
+    // claim: the claim is that the loop is over and the source has genuinely
+    // stopped asking Gmail for pages.
     const harness = await build({ seedHistoryId: '100', page: historyPage('100', []) });
-    const loop = harness.source.run(new AbortController().signal);
+
+    let ended = false;
+    const loop = harness.source.run(new AbortController().signal).then(() => { ended = true; });
     await harness.clock.waitForSleepers(1, 'the first poll wait');
+    // Running, and not yet finished — so the assertion after `stop()` is about
+    // `stop()` rather than about a loop that had already fallen out.
+    expect(ended).toBe(false);
+    expect(harness.clock.pending).toBe(1);
+
     await harness.source.stop();
     await flush();
     await loop;
-    expect(true).toBe(true);
+    expect(ended).toBe(true);
+
+    // No wait is outstanding, and moving well past the poll interval produces
+    // no further request. A `stop()` that only resolved the current sleep
+    // would re-arm and poll again here.
+    expect(harness.clock.pending).toBe(0);
+    const pagesAtStop = harness.pages.length;
+    await harness.clock.advance(10 * 60_000);
+    await flush();
+    expect(harness.pages.length).toBe(pagesAtStop);
+  });
+
+  test('an aborted signal ends the run too, without stop() being called', async () => {
+    const harness = await build({ seedHistoryId: '100', page: historyPage('100', []) });
+    const controller = new AbortController();
+
+    let ended = false;
+    const loop = harness.source.run(controller.signal).then(() => { ended = true; });
+    await harness.clock.waitForSleepers(1, 'the first poll wait');
+    expect(ended).toBe(false);
+
+    controller.abort();
+    await flush();
+    await loop;
+    expect(ended).toBe(true);
+    expect(harness.clock.pending).toBe(0);
   });
 });
 
@@ -580,14 +616,62 @@ describe('inbound sources cannot register an expectation', () => {
     }
   });
 
+  /**
+   * Every module specifier the file names, however the import is written.
+   *
+   * A line filter — `lines.filter(l => l.startsWith('import '))` — was what
+   * this used to do, and it is blind to the dominant style in these very
+   * files: a multi-line import contributes only `import {`, and the
+   * `from './x.js'` line that carries the specifier is on a different line and
+   * therefore excluded. A real multi-line import of the expectation registry
+   * passed the whole suite.
+   *
+   * Matching on the specifier itself rather than on line prefixes covers
+   * multi-line static imports, single-line ones, side-effect imports,
+   * `export … from`, and dynamic `import('…')` in one rule.
+   */
+  function moduleSpecifiers(text: string): string[] {
+    const found: string[] = [];
+    for (const pattern of [
+      // `import … from 'x'` and `export … from 'x'`, single- or multi-line.
+      /\bfrom\s*['"]([^'"]+)['"]/g,
+      // Side-effect import: `import 'x'`.
+      /\bimport\s*['"]([^'"]+)['"]/g,
+      // Dynamic: `import('x')`, and `require('x')` for completeness.
+      /\b(?:import|require)\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+    ]) {
+      for (const match of text.matchAll(pattern)) {
+        const specifier = match[1];
+        if (specifier !== undefined) found.push(specifier);
+      }
+    }
+    return found;
+  }
+
+  test('the specifier scan sees a MULTI-LINE import, which is the shape that defeated the old one', () => {
+    // The scanner is the thing under test here, not the sources: a scanner
+    // that misses this shape reports every file clean forever.
+    const multiLine = [
+      'import {',
+      '  InboundExpectationRegistry,',
+      '} from \'./expectation-registry.js\';',
+      '',
+      'import { thing } from \'./elsewhere.js\';',
+    ].join('\n');
+    expect(moduleSpecifiers(multiLine)).toEqual(['./expectation-registry.js', './elsewhere.js']);
+  });
+
   test('no source module imports anything that can create an expectation', () => {
     for (const file of files) {
       const text = readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
-      const imports = text.split('\n').filter((line) => line.trimStart().startsWith('import '));
-      const joined = imports.join('\n');
-      expect(joined).not.toContain('expectation-registry');
-      expect(joined).not.toContain('verification-expectations');
-      expect(joined).not.toContain('expectation-store');
+      const specifiers = moduleSpecifiers(text);
+      // Non-empty, so a file that stopped being parseable — or a path typo
+      // that read an empty file — cannot pass by naming nothing.
+      expect(specifiers.length, `${file} names no imports at all`).toBeGreaterThan(0);
+      for (const forbidden of ['expectation-registry', 'verification-expectations', 'expectation-store']) {
+        const offending = specifiers.filter((specifier) => specifier.includes(forbidden));
+        expect(offending, `${file} imports ${forbidden}`).toEqual([]);
+      }
     }
   });
 });

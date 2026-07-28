@@ -36,6 +36,7 @@
 
 import { GatewayVerbError } from './gateway-verb-error.js';
 import { readInvocationParams } from './invocation-params.js';
+import { ExpectationMailboxUnreadableError } from '../../email/inbound/expectation-registry.js';
 import type { GatewayMethodCatalog, GatewayMethodHandler } from '../method-catalog.js';
 import type {
   DisclosedExpectation,
@@ -112,10 +113,16 @@ export function createEmailExpectationOpenHandler(
     } catch (error) {
       // The book refuses for reasons that are the CALLER's to fix — too many
       // open expectations, an unusable domain or address — so they are 400s
-      // carrying its wording, not 500s. The one exception is the command
-      // authority refusal, which is a statement about the platform's
-      // configuration rather than about this request.
+      // carrying its wording, not 500s. Two refusals are NOT about the request
+      // and must not be reported as though the caller sent something wrong:
+      // the command-authority refusal is a statement about the platform's
+      // configuration, and the unreadable-mailbox refusal is a statement about
+      // the machine. A workstream that reads 400 retries with different
+      // arguments; one that reads 409 knows the arguments were fine.
       const message = error instanceof Error ? error.message : String(error);
+      if (error instanceof ExpectationMailboxUnreadableError) {
+        throw new GatewayVerbError(message, 'FAILED_PRECONDITION', 409);
+      }
       if (message.includes('command authority')) {
         throw new GatewayVerbError(message, 'FAILED_PRECONDITION', 409);
       }
