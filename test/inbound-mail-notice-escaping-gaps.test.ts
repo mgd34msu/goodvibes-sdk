@@ -27,7 +27,16 @@ const LINE_SEPARATOR = '\u2028';
 const PARAGRAPH_SEPARATOR = '\u2029';
 const ZERO_WIDTH_SPACE = '\u200b';
 
-/** Built from escapes: a character class of these is unreadable inline. */
+/**
+ * Built from escapes: a character class of these is unreadable inline.
+ *
+ * DO NOT "simplify" this by importing `CONTROL_OR_LINE_BREAK` from the module
+ * under test. It was written that way first, and it made the U+0085 case pass
+ * vacuously: the assertion mirrored the implementation, so when the production
+ * class was missing NEL the test was missing it too and both agreed. A test
+ * that restates the implementation cannot detect the implementation being
+ * wrong. The code points are listed here independently, on purpose.
+ */
 const LINE_BREAK_CODE_POINTS = new RegExp('[\\u0000-\\u001F\\u007F\\u0085\\u2028\\u2029]');
 
 /** Every channel the dispatch maps, plus the fallbacks. */
