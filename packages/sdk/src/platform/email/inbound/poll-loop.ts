@@ -98,6 +98,20 @@ export interface MailboxDeltaReport {
    * left to guess from the message text.
    */
   readonly phase: 'search' | 'fetch' | null;
+  /**
+   * True when `read-failed` means "the server answered and this client could
+   * not read the answer", rather than a refusal or a dead socket.
+   *
+   * The caller needs this as its own fact rather than as a string match on
+   * `error.message`. An unreadable answer is retried — the message is still in
+   * the mailbox and the cursor has not moved past it — but it is retried
+   * against a condition that may never clear, so it needs a ceiling of its own
+   * the way an unexpected throw does. Counting it requires being able to
+   * recognise it, and recognising it by re-reading the sentence
+   * `unreadableFetch` wrote would be a second classifier that silently stops
+   * agreeing the day the sentence is reworded.
+   */
+  readonly unreadableFetch: boolean;
 }
 
 /**
@@ -149,15 +163,19 @@ function chunk(uids: readonly number[], size: number): number[][] {
  * exactly "everything below this is done".
  *
  * A UID the search returned and the FETCH did not is a message expunged in the
- * gap between the two — but ONLY when every response in that batch was read.
- * The cursor advances past a genuine expunge: the server has said it is not
- * there, and holding the cursor below a UID that no longer exists would make
- * every subsequent pass re-search from a point that can never clear.
+ * gap between the two — but ONLY when no unreadable response could have been
+ * that UID's own. The cursor advances past a genuine expunge: the server has
+ * said it is not there, and holding the cursor below a UID that no longer
+ * exists would make every subsequent pass re-search from a point that can
+ * never clear.
  *
- * When the batch also contained a response this client could NOT read, the
- * same absence means nothing of the kind, and the two are no longer conflated:
- * the drain stops at that UID with the cursor below it, reports the reason
- * through the observer, and the batch is fetched again. See `unreadableFetch`.
+ * Whether an unreadable response could have been this UID's is decided per
+ * UID, not per batch — see `attributeUnreadable`. A batch-wide test was the
+ * first version of this rule and it froze the cursor permanently: with UID 101
+ * genuinely expunged and UID 102 unreadable in the same batch, 101 was refused
+ * as well, batch composition is stable across retries, and so the cursor could
+ * never clear 100. The block that exists to avoid stepping over live mail must
+ * not also refuse to step over mail the server has said is gone.
  */
 export async function drainMailboxDelta(
   deps: MailboxDeltaDeps,
@@ -172,8 +190,9 @@ export async function drainMailboxDelta(
     found: number,
     error: unknown = null,
     phase: 'search' | 'fetch' | null = null,
+    unreadableFetch = false,
   ): MailboxDeltaReport => ({
-    outcome, found, delivered, vanished, cursor: current, error, phase,
+    outcome, found, delivered, vanished, cursor: current, error, phase, unreadableFetch,
   });
 
   let uids: number[];
@@ -198,18 +217,19 @@ export async function drainMailboxDelta(
     }
     const byUid = new Map(fetched.envelopes.map((envelope) => [envelope.uid, envelope]));
     const unreadable = fetched.unreadable;
+    const attribution = attributeUnreadable(unreadable);
 
     for (const uid of batch) {
       if (deps.signal.aborted) return finish('aborted', uids.length);
       const envelope = byUid.get(uid);
       if (envelope === undefined) {
-        if (unreadable.length > 0) {
-          // Not an expunge. The server answered this batch with responses we
-          // could not read, and one of them may have been this UID's — see the
-          // block comment above `unreadableFetch`.
-          const error = unreadableFetch(deps, current, uid, unreadable);
+        if (attribution.couldBe(uid)) {
+          // Not an expunge, or not provably one. An unreadable response could
+          // have been this UID's own — see the block comment above
+          // `unreadableFetch`.
+          const error = unreadableFetch(deps, current, uid, unreadable, attribution.named.has(uid));
           note(deps, 'fetch-unreadable', error.message);
-          return finish('read-failed', uids.length, error, 'fetch');
+          return finish('read-failed', uids.length, error, 'fetch', true);
         }
         vanished += 1;
         current = await advanceTo(deps, current, uid);
@@ -255,8 +275,59 @@ export async function drainMailboxDelta(
 }
 
 /**
- * The failure raised when a UID is missing from a batch that also contained
- * responses this client could not read.
+ * Which missing UIDs an unreadable response could belong to.
+ *
+ * THE RULE, stated once so it is arguable rather than buried: a UID absent
+ * from the fetch result is unattributable — and therefore not provably
+ * expunged — when either
+ *
+ *   1. an unreadable response NAMED that UID (`problem.uid === uid`); the
+ *      server answered for it and the answer could not be read, or
+ *   2. any unreadable response named no UID at all (`problem.uid === null`);
+ *      such a response belongs to some message in this batch and there is
+ *      nothing in it that says which.
+ *
+ * Anything else is a genuine expunge and the cursor advances past it. That is
+ * the whole of the difference from the batch-wide test this replaces: a
+ * response that names UID 102 says nothing whatsoever about UID 101, and
+ * treating it as though it did is what pinned the cursor below a message the
+ * server had already said was gone.
+ *
+ * WHAT THIS CANNOT DECIDE, plainly: case 2. When even one response arrived
+ * with no legible UID, every missing UID in the batch is ambiguous, the drain
+ * stops at the first of them, and no missing UID in that batch advances. A
+ * counting argument does bound how many of them can really be unreadable — at
+ * most one per unattributable response — but it does not say WHICH, and the
+ * cursor is a high-water mark that can only move past a specific UID. A
+ * sequence-number argument could narrow it further (responses come back in
+ * mailbox order, and mailbox order is UID order), but it would rest on an
+ * ordering RFC 3501 does not require a server to use for a `UID FETCH` set,
+ * and being wrong about it means stepping over live mail. So this stays with
+ * what the server actually said.
+ *
+ * Over-retrying a message that really was expunged costs one more fetch that
+ * returns nothing; under-retrying costs the message. The ceiling on how long
+ * that retrying may go on is the watcher's — see `MAX_CONSECUTIVE_UNREADABLE_DRAINS`.
+ */
+function attributeUnreadable(unreadable: readonly ImapFetchProblem[]): {
+  readonly named: ReadonlySet<number>;
+  readonly couldBe: (uid: number) => boolean;
+} {
+  const named = new Set<number>();
+  let anyUnattributable = false;
+  for (const problem of unreadable) {
+    if (problem.uid === null) anyUnattributable = true;
+    else named.add(problem.uid);
+  }
+  return {
+    named,
+    couldBe: (uid: number): boolean => anyUnattributable || named.has(uid),
+  };
+}
+
+/**
+ * The failure raised when a UID is missing from a batch and an unreadable
+ * response could have been its own.
  *
  * The two facts that used to be one
  * ────────────────────────────────
@@ -266,31 +337,35 @@ export async function drainMailboxDelta(
  * is a message still sitting in the mailbox that we know nothing about, and
  * moving the cursor past it means nobody is ever told it arrived.
  *
- * This function is reached only in the second case, because `unreadable` is
- * non-empty. It cannot narrow further than the batch — a response whose UID was
- * illegible cannot be attributed to a particular message — so the whole batch
- * from this UID onwards is left unresolved and asked for again. Over-retrying a
- * message that really was expunged costs one more fetch that returns nothing;
- * under-retrying costs the message.
+ * This function is reached only in the second case. `attributed` says which
+ * way it was reached, and the sentence says so, because "the server answered
+ * for UID 307 and we could not read it" and "one of the answers was
+ * unreadable and none of them said which message it was about" are different
+ * things to tell an owner who is trying to work out what his mail server is
+ * doing.
  *
  * The wording is deliberately the owner's, not a stack trace: this reaches
  * `classifyReadFailure`, which sees a plain Error rather than an
  * `IMAP command failed:` refusal and classifies it as `reconnecting` — a
- * transient condition the watcher retries under its normal backoff, not a
- * capability verdict that would stop it.
+ * transient condition the watcher retries under its normal backoff. It is the
+ * watcher's own consecutive-unreadable count, not this classification, that
+ * eventually calls it a capability verdict.
  */
 function unreadableFetch(
   deps: MailboxDeltaDeps,
   current: MailboxCursor,
   uid: number,
   unreadable: readonly ImapFetchProblem[],
+  attributed: boolean,
 ): Error {
   const reasons = unreadable.map((problem) => problem.detail).join('; ');
+  const claim = attributed
+    ? `The mail server answered the fetch for UID ${uid} with a response this client could not read`
+    : `The mail server answered this fetch with ${unreadable.length} response(s) this client `
+      + `could not read, and none of them named a UID, so any of them may have been UID ${uid}'s`;
   return new Error(
-    `The mail server answered the fetch for UID ${uid} with ${unreadable.length} response(s) `
-    + `this client could not read (${reasons}). An unreadable answer is not evidence that the `
-    + `message is gone, so the cursor stays at ${current.lastSeenUid} and the message will be `
-    + `fetched again.`,
+    `${claim} (${reasons}). An unreadable answer is not evidence that the message is gone, so `
+    + `the cursor stays at ${current.lastSeenUid} and the message will be fetched again.`,
   );
 }
 
@@ -362,8 +437,21 @@ export interface PollLoopResult {
   readonly error: unknown;
   /** Which command failed, for `read-failed`. */
   readonly phase: 'search' | 'fetch' | null;
-  /** How many complete drains ran. */
+  /** True when `read-failed` was an unreadable answer. See `MailboxDeltaReport`. */
+  readonly unreadableFetch: boolean;
+  /** How many drains ran, complete or not. */
   readonly passes: number;
+  /**
+   * How many of those drains completed.
+   *
+   * The caller resets its consecutive-failure counters on a completed drain,
+   * and a poll loop that ran for six hours and then hit one bad fetch has
+   * completed thousands. Without this the caller only ever sees the drain that
+   * ended the loop, so hours of demonstrated progress would count for nothing
+   * and a ceiling meant for CONSECUTIVE failures would accumulate across
+   * unrelated days.
+   */
+  readonly completedDrains: number;
 }
 
 /**
@@ -382,22 +470,45 @@ export interface PollLoopResult {
 export async function runPollLoop(deps: MailboxDeltaDeps): Promise<PollLoopResult> {
   let cursor = deps.cursor;
   let passes = 0;
+  let completedDrains = 0;
+  const stopped = (): PollLoopResult => ({
+    outcome: 'stopped',
+    cursor,
+    error: null,
+    phase: null,
+    unreadableFetch: false,
+    passes,
+    completedDrains,
+  });
   for (;;) {
-    if (deps.signal.aborted) {
-      return { outcome: 'stopped', cursor, error: null, phase: null, passes };
-    }
+    if (deps.signal.aborted) return stopped();
     const report = await drainMailboxDelta({ ...deps, cursor, via: 'poll' });
     cursor = report.cursor;
     passes += 1;
+    if (report.outcome === 'complete') completedDrains += 1;
     if (report.outcome === 'read-failed') {
-      return { outcome: 'read-failed', cursor, error: report.error, phase: report.phase, passes };
+      return {
+        outcome: 'read-failed',
+        cursor,
+        error: report.error,
+        phase: report.phase,
+        unreadableFetch: report.unreadableFetch,
+        passes,
+        completedDrains,
+      };
     }
     if (report.outcome === 'delivery-failed') {
-      return { outcome: 'delivery-failed', cursor, error: report.error, phase: null, passes };
+      return {
+        outcome: 'delivery-failed',
+        cursor,
+        error: report.error,
+        phase: null,
+        unreadableFetch: false,
+        passes,
+        completedDrains,
+      };
     }
-    if (report.outcome === 'aborted' || deps.signal.aborted) {
-      return { outcome: 'stopped', cursor, error: null, phase: null, passes };
-    }
+    if (report.outcome === 'aborted' || deps.signal.aborted) return stopped();
     await deps.clock.sleep(deps.settings.pollIntervalMs, deps.signal);
   }
 }

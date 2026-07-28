@@ -395,6 +395,8 @@ export {
   MAX_VERIFICATION_WINDOW_MS,
   MIN_VERIFICATION_WINDOW_MS,
   MAX_OPEN_EXPECTATIONS,
+  MAX_EXPECTATION_ID_CHARS,
+  normalizeExpectationId,
   type VerificationExpectation,
   type OpenExpectationInput,
   type CandidateEmail,

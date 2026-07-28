@@ -126,7 +126,9 @@ import type {
   ImapClientOptions,
   ImapEnvelope,
   ImapEnvelopeBatch,
+  ImapFetchProblem,
   ImapMessageDetail,
+  ImapMessageRead,
 } from './imap-types.js';
 
 // Re-exported so the client stays the one entry point callers already import.
@@ -140,6 +142,7 @@ export type {
   ImapFetchProblem,
   ImapMessage,
   ImapMessageDetail,
+  ImapMessageRead,
 } from './imap-types.js';
 import {
   DEFAULT_MAILBOX,
@@ -195,6 +198,57 @@ const DEFAULT_MAX_BODY_BYTES = 4_096;
 function buildXOAuth2Token(username: string, bearerToken: string): string {
   const sasl = `user=${username}\x01auth=${bearerToken}\x01\x01`;
   return Buffer.from(sasl).toString('base64');
+}
+
+/**
+ * The FETCH responses in a single-message header fetch that could not be read.
+ *
+ * Empty means one of two ordinary things: the server said nothing about this
+ * UID (an expunge — the caller's `gone`), or the header block came back and
+ * can be read. Non-empty is the third case, which used to have nowhere to go:
+ * the server ANSWERED and this client cannot say what it answered.
+ *
+ * The test for that third case is deliberately "a response arrived and no
+ * header text came out of it", not "the response reader reported an error".
+ * Two parsers read these lines — `extractFetchSection`, which this method's
+ * payload comes from, and `parseFetchResponses`, which is stricter — and they
+ * do not agree on every conformant shape a server sends. Refusing a message
+ * because the stricter one objected while the actual payload extracted fine
+ * would turn readable mail into "could not be read", which is the same class
+ * of false statement in the opposite direction. So the extraction is the
+ * verdict, and the strict reader is used only to SAY WHY when the extraction
+ * came back with nothing.
+ *
+ * Empty header text is not a message with no headers; there is no such
+ * message. It is the case that used to fall through to `?? ''` and produce a
+ * detail with an empty From, Subject, Date and Message-ID, handed to the
+ * caller as a successful read.
+ */
+function unreadableHeaderResponses(
+  lines: readonly string[],
+  uid: number,
+): ImapFetchProblem[] {
+  if (!hasFetchResponse(lines)) return [];
+  if ((extractFetchSection(lines) ?? '').trim().length > 0) return [];
+
+  const responses = parseFetchResponses(lines);
+  const problems: ImapFetchProblem[] = [];
+  for (const response of responses) {
+    if (response.parseError === null) continue;
+    problems.push({
+      seq: response.seq > 0 ? response.seq : null,
+      uid: response.uid,
+      detail: response.parseError,
+    });
+  }
+  if (problems.length > 0) return problems;
+  const first = responses[0];
+  return [{
+    seq: first !== undefined && first.seq > 0 ? first.seq : null,
+    uid: first?.uid ?? null,
+    detail: `the FETCH response for UID ${uid} carried no readable header section, so nothing `
+      + 'about the message could be read from it',
+  }];
 }
 
 
@@ -548,12 +602,44 @@ export class ImapClient {
    * message is an ordinary answer to an ordinary question — the caller asked
    * about something that is gone — and reporting it as a server failure would
    * make callers treat a normal outcome as an outage.
+   *
+   * **It also returns null when the server answered and this client could not
+   * read the answer**, and those are opposite facts about the owner's mailbox.
+   * A caller that will tell a person "that message is no longer there" wants
+   * `readMessageDetail`, which is this same fetch with the distinction kept.
+   * This signature stays because it is the shape existing callers hold.
    */
   async fetchMessage(uid: number): Promise<ImapMessageDetail | null> {
+    const read = await this.readMessageDetail(uid);
+    return read.outcome === 'read' ? read.detail : null;
+  }
+
+  /**
+   * Read one whole message by UID, saying which of the three things happened.
+   *
+   * Everything `fetchMessage` documents — read-only, UID and never a sequence
+   * number, attachments described and never downloaded — applies here
+   * unchanged. This is that method with a third answer, not a different fetch.
+   *
+   * The third answer is `unreadable`, and it is reached two ways:
+   *
+   *   - a FETCH response the response reader itself refused (`parseError`),
+   *     which describes nothing about the message it named;
+   *   - a FETCH response that arrived carrying no header section this client
+   *     could locate. That case used to fall through to `?? ''` and build a
+   *     detail with an empty From, an empty Subject and an empty Date, handed
+   *     back as a successful read of a blank message.
+   *
+   * Neither of those is the message being gone, and neither is a blank
+   * message.
+   */
+  async readMessageDetail(uid: number): Promise<ImapMessageRead> {
     const session = this.requireReadableMailbox();
 
     const headerLines = await session.command(`UID FETCH ${uid} BODY.PEEK[HEADER]`);
-    if (!hasFetchResponse(headerLines)) return null;
+    const problems = unreadableHeaderResponses(headerLines, uid);
+    if (problems.length > 0) return { outcome: 'unreadable', problems };
+    if (!hasFetchResponse(headerLines)) return { outcome: 'gone' };
     const rawHeaders = extractFetchSection(headerLines) ?? '';
 
     const structureLines = await session.command(`UID FETCH ${uid} BODYSTRUCTURE`);
@@ -581,20 +667,23 @@ export class ImapClient {
 
     const deliveryEvidence = extractDeliveryEvidence(rawHeaders);
     return {
-      uid,
-      from: extractHeader(rawHeaders, 'From'),
-      subject: extractHeader(rawHeaders, 'Subject'),
-      date: extractHeader(rawHeaders, 'Date'),
-      messageId: extractHeader(rawHeaders, 'Message-ID'),
-      mailbox: this.mailbox,
-      deliveredTo: deliveryEvidence.map((entry) => entry.address),
-      deliveryEvidence,
-      // Display only — see the field docs on ImapEnvelope.
-      unverifiedToHeaderClaim: extractHeader(rawHeaders, 'To'),
-      authenticationResults: extractAuthenticationResults(rawHeaders),
-      bodyText,
-      bodyHtml,
-      attachments: attachmentsFromParts(parts),
+      outcome: 'read',
+      detail: {
+        uid,
+        from: extractHeader(rawHeaders, 'From'),
+        subject: extractHeader(rawHeaders, 'Subject'),
+        date: extractHeader(rawHeaders, 'Date'),
+        messageId: extractHeader(rawHeaders, 'Message-ID'),
+        mailbox: this.mailbox,
+        deliveredTo: deliveryEvidence.map((entry) => entry.address),
+        deliveryEvidence,
+        // Display only — see the field docs on ImapEnvelope.
+        unverifiedToHeaderClaim: extractHeader(rawHeaders, 'To'),
+        authenticationResults: extractAuthenticationResults(rawHeaders),
+        bodyText,
+        bodyHtml,
+        attachments: attachmentsFromParts(parts),
+      },
     };
   }
 
