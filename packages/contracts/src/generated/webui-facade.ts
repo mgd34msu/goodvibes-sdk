@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.18.1
- * Methods: 443 total, 392 REST-routed, 51 ws-only invoke.
+ * Methods: 444 total, 393 REST-routed, 51 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -1040,6 +1040,10 @@ export const WEBUI_METHOD_ROUTES: Readonly<Record<string, WebuiRouteDefinition>>
     "method": "DELETE",
     "path": "/api/mcp/config/servers/{serverName}"
   },
+  "mcp.servers.reveal": {
+    "method": "GET",
+    "path": "/api/mcp/servers/reveal"
+  },
   "mcp.servers.upsert": {
     "method": "POST",
     "path": "/api/mcp/config/servers"
@@ -1942,6 +1946,7 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "mcp.config.reload": "rest",
   "mcp.servers.list": "rest",
   "mcp.servers.remove": "rest",
+  "mcp.servers.reveal": "rest",
   "mcp.servers.upsert": "rest",
   "mcp.tools.list": "rest",
   "media.analyze": "rest",
@@ -14285,6 +14290,46 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           }
         ]
       }
+    }
+  },
+  "mcp.servers.reveal": {
+    "input": {},
+    "output": {
+      "locations": [
+        {
+          "scope": "sample",
+          "kind": "sample",
+          "path": "sample",
+          "writable": false
+        }
+      ],
+      "servers": [
+        {
+          "name": "sample",
+          "command": "sample",
+          "args": [
+            "sample"
+          ],
+          "envKeys": [
+            "sample"
+          ],
+          "env": {},
+          "role": "sample",
+          "trustMode": "sample",
+          "allowedPaths": [
+            "sample"
+          ],
+          "allowedHosts": [
+            "sample"
+          ],
+          "source": {
+            "scope": "sample",
+            "kind": "sample",
+            "path": "sample",
+            "writable": false
+          }
+        }
+      ]
     }
   },
   "mcp.servers.upsert": {

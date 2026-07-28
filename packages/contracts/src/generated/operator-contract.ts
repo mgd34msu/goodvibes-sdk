@@ -62787,6 +62787,171 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "mcp.servers.reveal",
+        "title": "MCP Servers Reveal",
+        "description": "Return effective MCP config with environment VALUES included, not just envKeys. Admin only — the redacted mcp.config.get view is what every other caller should use.",
+        "category": "mcp",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:mcp"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/mcp/servers/reveal"
+        },
+        "events": [
+          "runtime.mcp"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "locations": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "scope": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "writable": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "scope",
+                  "kind",
+                  "path",
+                  "writable"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "servers": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "command": {
+                    "type": "string"
+                  },
+                  "args": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "envKeys": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "env": {
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": true
+                  },
+                  "role": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "trustMode": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "allowedPaths": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "allowedHosts": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "source": {
+                    "type": "object",
+                    "properties": {
+                      "scope": {
+                        "type": "string"
+                      },
+                      "kind": {
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "string"
+                      },
+                      "writable": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "scope",
+                      "kind",
+                      "path",
+                      "writable"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "name",
+                  "command",
+                  "args",
+                  "envKeys",
+                  "env",
+                  "role",
+                  "trustMode",
+                  "allowedPaths",
+                  "allowedHosts",
+                  "source"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "locations",
+            "servers"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "mcp.servers.upsert",
         "title": "Upsert MCP Server",
         "description": "Persist a project/global MCP server config and reconnect the changed runtime server without daemon restart.",
@@ -94801,10 +94966,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 443,
-      "typedInputs": 443,
+      "methods": 444,
+      "typedInputs": 444,
       "genericInputs": 0,
-      "typedOutputs": 443,
+      "typedOutputs": 444,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -94813,8 +94978,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       "withWireEvents": 32
     },
     "validationCoverage": {
-      "methods": 443,
-      "validated": 436,
+      "methods": 444,
+      "validated": 437,
       "skippedGeneric": 0,
       "skippedUntyped": 7
     }
