@@ -6697,6 +6697,10 @@
       "kind": "const"
     },
     {
+      "name": "ProgressAudience",
+      "kind": "type"
+    },
+    {
       "name": "QualityGate",
       "kind": "interface",
       "required": [
@@ -7173,6 +7177,10 @@
     },
     {
       "name": "runWrfcGateChecks",
+      "kind": "function"
+    },
+    {
+      "name": "setAgentProgress",
       "kind": "function"
     },
     {

@@ -5,6 +5,7 @@ import { createEventEnvelope } from '../events/envelope.js';
 import type { RuntimeEventBus } from '../events/index.js';
 import type { EmitterContext } from './index.js';
 import type { AgentUsage } from '../../../events/agents.js';
+import type { ProgressAudience } from '../../agents/progress-audience.js';
 
 /** Emit AGENT_SPAWNING when an agent is being initialised. */
 export function emitAgentSpawning(
@@ -49,6 +50,8 @@ export function emitAgentProgress(
     agentId: string;
     taskId?: string;
     progress: string;
+    /** See platform/agents/progress-audience.ts. Absent means `operator`. */
+    audience?: ProgressAudience | undefined;
     parentAgentId?: string | undefined;
     wrfcId?: string | undefined;
     wrfcRole?: 'owner' | 'orchestrator' | 'engineer' | 'reviewer' | 'fixer' | 'integrator' | 'verifier' | undefined;

@@ -22,6 +22,7 @@
  * extra turn, not a loop.
  */
 import type { AgentRecord } from '../tools/agent/index.js';
+import { setAgentProgress } from './progress-audience.js';
 
 /**
  * What the person receives when the model produced nothing twice.
@@ -90,12 +91,19 @@ export function completeOrRegenerate(
   conversation.addAssistantMessage(response.content, { usage: response.usage });
   record.fullOutput = response.content;
   if (response.content.trim().length > 0) {
-    record.progress = response.content.slice(0, MAX_PROGRESS_FROM_ANSWER);
+    // OPERATOR. This is a truncated copy of the ANSWER, kept so an operator
+    // surface can show what the agent settled on. The reader gets the real
+    // thing, complete and once, as `fullOutput` in the final message — a
+    // partial answer delivered as progress is what made every notification a
+    // superset of the one before it. See agents/progress-audience.ts.
+    setAgentProgress(record, response.content.slice(0, MAX_PROGRESS_FROM_ANSWER), 'operator');
     return false;
   }
   if (!isConversationalRun(record) || regenerationAlreadySpent(conversation)) return false;
   conversation.addUserMessage(CONVERSATIONAL_REGENERATION_REQUEST);
-  record.progress = 'The reply came back empty; answering again…';
+  // OWNER. Someone waiting on a reply is owed the reason it is taking a
+  // second pass.
+  setAgentProgress(record, 'The reply came back empty; answering again…', 'owner');
   return true;
 }
 
@@ -115,5 +123,6 @@ export function recoverEmptyConversationalReply(record: AgentRecord): void {
   if (!isConversationalRun(record)) return;
   if ((record.fullOutput ?? '').trim().length > 0) return;
   record.fullOutput = CONVERSATIONAL_EMPTY_REPLY_NOTICE;
-  record.progress = CONVERSATIONAL_EMPTY_REPLY_NOTICE;
+  // The notice reaches the reader as `fullOutput`; this is the operator mirror.
+  setAgentProgress(record, CONVERSATIONAL_EMPTY_REPLY_NOTICE, 'operator');
 }
