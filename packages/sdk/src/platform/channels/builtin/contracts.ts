@@ -14,10 +14,12 @@ import type {
   ChannelRenderPolicy,
   ChannelRepairAction,
   ChannelResolvedTarget,
+  ChannelRuntimeObservation,
   ChannelSurface,
   ChannelTargetResolveOptions,
 } from '../types.js';
 import type { ChannelPlugin } from '../plugin-registry.js';
+import { resolveChannelHealthState, unobservableRuntime } from '../health.js';
 import {
   CHANNEL_SETUP_VERSION,
   type BuiltinChannelRuntimeDeps,
@@ -32,6 +34,13 @@ interface BuiltinContractContext {
   readonly buildAccount: (surface: ChannelSurface) => Promise<ChannelAccountRecord>;
   readonly resolveAccount: (surface: ChannelSurface, accountId: string) => Promise<ChannelAccountRecord | null>;
   readonly resolveTarget: (surface: ChannelSurface, options: ChannelTargetResolveOptions) => Promise<ChannelResolvedTarget | null>;
+  /**
+   * What this node can see of the surface's live path. Optional so an embedder
+   * that composes this context by hand still type-checks — an absent observer
+   * yields `unknown`, which is the honest answer for a caller that supplied no
+   * way to look, and never a green.
+   */
+  readonly observeRuntime?: ((surface: ChannelSurface) => ChannelRuntimeObservation) | undefined;
 }
 
 export function buildBuiltinContractHooks(
@@ -118,6 +127,21 @@ export async function getBuiltinDoctorReport(
         : 'No credentials were detected.',
     effectiveAccount.linked ? undefined : 'retest',
   );
+  // Declared is not resolved. A `goodvibes://secrets/...` reference naming a
+  // key that lives in ANOTHER surface's store passes every check above this one
+  // and sends nothing — the exact configuration that made a Telegram bot answer
+  // "Missing Telegram bot token" while its reported health read fine.
+  const unresolvedSecrets = effectiveAccount.secrets.filter((secret) => secret.configured && secret.resolved === false);
+  if (unresolvedSecrets.length > 0) {
+    pushCheck(
+      'credentials-resolve',
+      'Credentials resolve here',
+      'fail',
+      `${unresolvedSecrets.map((secret) => secret.label).join(', ')} names a secret that does not resolve in the store `
+      + 'this process reads. Put the secret in this surface\'s store, or point the setting at one that resolves here.',
+      'setup',
+    );
+  }
   pushCheck(
     'enabled',
     'Surface enabled',
@@ -189,6 +213,20 @@ export async function getBuiltinDoctorReport(
     pushCheck('access-token', 'Long-lived access token', 'warn', 'Home Assistant state, service, template, and event-delivery tools require an access token.', 'setup');
   }
 
+  // The live path, as its own check and as the basis for the reported state.
+  // Every check above this line reads configuration; a doctor that stops there
+  // pronounces a surface healthy on the strength of a token being present,
+  // which is exactly how a dead Telegram bot passed its own examination.
+  const runtime = context.observeRuntime?.(surface)
+    ?? unobservableRuntime('no runtime observer was supplied to this doctor, so liveness was not checked');
+  pushCheck(
+    'runtime',
+    'Receiving and sending now',
+    !runtime.observable || runtime.running === null ? 'warn' : runtime.running ? 'pass' : 'fail',
+    runtime.reason,
+    runtime.observable && runtime.running === false ? 'start' : undefined,
+  );
+
   const failures = checks.filter((check) => check.status === 'fail').length;
   const warnings = checks.filter((check) => check.status === 'warn').length;
   const summary = failures > 0
@@ -200,7 +238,17 @@ export async function getBuiltinDoctorReport(
   return {
     surface,
     ...(accountId ? { accountId } : {}),
-    state: effectiveAccount.state,
+    state: resolveChannelHealthState({
+      enabled: effectiveAccount.enabled,
+      // `linked` rather than `configured`: the account's `configured` flag is
+      // true for every surface, because the account id falls back to the
+      // literal `surface:<name>` and so can never be absent.
+      configured: effectiveAccount.linked || surface === 'tui' || surface === 'web',
+      credentialResolves: surface === 'tui' || surface === 'web'
+        || effectiveAccount.secrets.some((secret) => secret.resolved ?? secret.configured),
+      runtime,
+    }),
+    runtime,
     summary,
     checkedAt: Date.now(),
     checks,

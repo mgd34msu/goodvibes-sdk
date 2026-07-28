@@ -51,7 +51,22 @@ export type {
   ChannelRenderPolicy,
   ChannelRenderRequest,
   ChannelRenderResult,
+  ChannelHealthState,
+  ChannelRuntimeObservation,
 } from './types.js';
+// Health is one rule, exported so a consumer classifies a reported state the
+// same way the runtime produced it. Two readings of one state field is how a
+// dead channel came to look healthy in the first place.
+export {
+  isChannelFailing,
+  isChannelWorking,
+  observedRuntime,
+  resolveChannelHealthState,
+  unobservableRuntime,
+} from './health.js';
+export type { ChannelHealthInput } from './health.js';
+export { ChannelHealthWatcher } from './health-watcher.js';
+export type { ChannelHealthAlert, ChannelHealthWatcherDeps } from './health-watcher.js';
 export type { UpsertRouteBindingInput } from './route-manager.js';
 export { RouteBindingManager } from './route-manager.js';
 export { SurfaceRegistry } from './surface-registry.js';

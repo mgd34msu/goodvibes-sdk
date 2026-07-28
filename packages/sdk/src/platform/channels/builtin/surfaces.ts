@@ -1,4 +1,4 @@
-import type { ProviderRuntimeSurface } from '../provider-runtime.js';
+import type { ProviderRuntimeStatus, ProviderRuntimeSurface } from '../provider-runtime.js';
 import type { ChannelSurface } from '../types.js';
 import type { BuiltinChannelRuntimeDeps, ManagedSurface } from './shared.js';
 import { resolveSecretInput } from '../../config/secret-refs.js';
@@ -25,7 +25,16 @@ export function isManagedSurface(surface: ChannelSurface): surface is ManagedSur
     || surface === 'matrix';
 }
 
-export function providerRuntimeStatus(deps: BuiltinChannelRuntimeDeps, surface: ProviderRuntimeSurface): unknown {
+/**
+ * The provider connection manager's view of a surface, or null when this host
+ * wired no manager. Typed rather than `unknown` because health is now read off
+ * it: an untyped status is one a caller can only guess at, and guessing is what
+ * put a dead channel's `running: false` into a metadata blob nobody consulted.
+ */
+export function providerRuntimeStatus(
+  deps: BuiltinChannelRuntimeDeps,
+  surface: ProviderRuntimeSurface,
+): ProviderRuntimeStatus | null {
   return deps.providerRuntime?.status(surface) ?? null;
 }
 
@@ -71,7 +80,18 @@ export async function resolveNtfyToken(deps: BuiltinChannelRuntimeDeps): Promise
     || null;
 }
 
-async function resolveBuiltinConfigSecret(
+/**
+ * Turn a configured secret VALUE into the secret it names.
+ *
+ * Exported because credential presence and credential resolution are different
+ * facts, and the account describer needs both: a config value such as
+ * `goodvibes://secrets/goodvibes/TELEGRAM_BOT_TOKEN` is present whether or not
+ * that key exists in the store THIS process reads, and the difference between
+ * those two is the difference between a channel that can send and one that
+ * cannot. Returns null when a reference resolves to nothing — resolveSecretInput
+ * logs and returns null rather than throwing.
+ */
+export async function resolveBuiltinConfigSecret(
   deps: BuiltinChannelRuntimeDeps,
   value: unknown,
 ): Promise<string | null> {
