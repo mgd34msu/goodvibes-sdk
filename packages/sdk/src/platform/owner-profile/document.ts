@@ -61,15 +61,48 @@ const WAS_COMMENT = /^\s*<!-- was: (.*) \(superseded (\d{4}-\d{2}-\d{2})\) -->\s
  */
 const FIELD_LINE = /^([A-Za-z][A-Za-z ]*?)\s*:\s*(.+)$/;
 
-/** ``` or ~~~ at the start of a line (up to three spaces of indent, as CommonMark allows). */
-const FENCE_LINE = /^\s{0,3}(```|~~~)/;
+/**
+ * A fence marker: at least three of ` or ~, after up to three spaces of indent.
+ *
+ * The character and the RUN LENGTH are both captured because both decide
+ * whether a later marker closes this block — see {@link fenceMarkerOf}.
+ */
+const FENCE_LINE = /^ {0,3}(`{3,}|~{3,})/;
 
 /** A bullet or numbered list item — never a mechanical field. */
 const BULLET_LINE = /^\s*([-*+]|\d+[.)])\s/;
 
-/** True when this line opens or closes a fenced code block. */
+/** The fence a line opens or closes with, or `null` when it is not a fence line. */
+export interface FenceMarker {
+  readonly char: '`' | '~';
+  readonly length: number;
+}
+
+export function fenceMarkerOf(line: string): FenceMarker | null {
+  const run = FENCE_LINE.exec(line)?.[1];
+  if (run === undefined) return null;
+  return { char: run[0] === '`' ? '`' : '~', length: run.length };
+}
+
+/**
+ * Whether `marker` closes a block opened by `open`.
+ *
+ * CommonMark: a closing fence uses the SAME character and is AT LEAST as long
+ * as the opening one. Treating any fence marker as a toggle breaks two ordinary
+ * documents. A four-backtick block containing a three-backtick sample is the
+ * standard way to show fenced markdown inside markdown, and a `~~~` line is
+ * ordinary content inside a backtick block. Getting this wrong does not merely
+ * mis-parse: the scanner desynchronises, so real content after the block is read
+ * as fenced and sample content inside it is read as real — which is how a line
+ * in his code block became a live field and a later write landed inside it.
+ */
+export function fenceCloses(open: FenceMarker, marker: FenceMarker): boolean {
+  return marker.char === open.char && marker.length >= open.length;
+}
+
+/** True when this line is a fence marker of any kind. */
 export function isFenceToggle(line: string): boolean {
-  return FENCE_LINE.test(line);
+  return fenceMarkerOf(line) !== null;
 }
 
 export interface ProvenanceSplit {
@@ -203,27 +236,30 @@ export interface ParseProfileInput {
  */
 export function parseProfileDocument(input: ParseProfileInput): ProfileProjection {
   const rawLines = input.text.split('\n');
-  const eol: '\n' | '\r\n' = rawLines.some((line) => line.endsWith('\r')) ? '\r\n' : '\n';
+  const eol = dominantLineEnding(rawLines);
 
   const sections: ProfileSection[] = [];
   const fields = new Map<string, ProfileFieldValue>();
   const superseded = new Map<string, ProfileSupersededLine[]>();
+  const duplicates = new Map<string, number[]>();
 
   let current = newSection('', -1);
-  let inFence = false;
+  let openFence: FenceMarker | null = null;
 
   for (let index = 0; index < rawLines.length; index += 1) {
     const raw = rawLines[index] ?? '';
     const line = withoutCarriageReturn(raw);
+    const marker = fenceMarkerOf(line);
 
-    if (isFenceToggle(line)) {
-      inFence = !inFence;
+    if (openFence === null && marker !== null) {
+      openFence = marker;
       current.prose.push({ lineIndex: index, section: current.heading, text: line });
       continue;
     }
-
-    // Inside a fence nothing is typed: not a heading, not a field, not a bullet.
-    if (inFence) {
+    if (openFence !== null) {
+      // Only a fence of the same character and at least the same length closes
+      // this block; anything else is content inside it.
+      if (marker !== null && fenceCloses(openFence, marker)) openFence = null;
       current.prose.push({ lineIndex: index, section: current.heading, text: line });
       continue;
     }
@@ -242,7 +278,7 @@ export function parseProfileDocument(input: ParseProfileInput): ProfileProjectio
 
     if (
       recordWasComment(line, index, current, superseded)
-      || recordField(line, index, current, fields)
+      || recordField(line, index, current, fields, duplicates)
     ) {
       continue;
     }
@@ -265,7 +301,34 @@ export function parseProfileDocument(input: ParseProfileInput): ProfileProjectio
     prose.set(section.heading, existing === undefined ? section.prose : [...existing, ...section.prose]);
   }
 
-  return { path: input.path, exists: input.exists, eol, rawLines, fields, sections, prose, superseded };
+  return {
+    path: input.path,
+    exists: input.exists,
+    eol,
+    rawLines,
+    fields,
+    sections,
+    prose,
+    superseded,
+    duplicateFieldLines: duplicates,
+  };
+}
+
+/**
+ * The line ending most of the document uses.
+ *
+ * Not `.some()`: one pasted CRLF line in an otherwise LF file would make every
+ * future machine-written line CRLF, so the file drifts to mixed endings one
+ * write at a time. The majority is the document's actual convention, and a file
+ * with no newline at all is LF.
+ */
+function dominantLineEnding(rawLines: readonly string[]): '\n' | '\r\n' {
+  // The final element after a split is what follows the last newline, so it
+  // never carries an ending of its own and is not a vote.
+  const voting = rawLines.slice(0, -1);
+  if (voting.length === 0) return '\n';
+  const crlf = voting.filter((line) => line.endsWith('\r')).length;
+  return crlf * 2 > voting.length ? '\r\n' : '\n';
 }
 
 /**
@@ -312,12 +375,18 @@ function recordWasComment(
  * The FIRST occurrence of a field in the document is the active one; a duplicate
  * further down falls through to prose so it is preserved and visible rather than
  * dropped or silently preferred.
+ *
+ * Every duplicate's index is REMEMBERED, though. A `forget` that removed only
+ * the active line would leave the value in the file and still report success —
+ * a false receipt on a delete, which is exactly what delete-means-delete exists
+ * to prevent. The writer needs to know where all of them are.
  */
 function recordField(
   line: string,
   index: number,
   current: SectionBuilder,
   fields: Map<string, ProfileFieldValue>,
+  duplicates: Map<string, number[]>,
 ): boolean {
   if (current.canonical === null) return false;
   const split = splitProvenanceSuffix(line);
@@ -325,7 +394,12 @@ function recordField(
   if (parsed === null) return false;
   const def = profileFieldForLabel(current.canonical, parsed.label);
   if (def === undefined) return false;
-  if (fields.has(def.id)) return false;
+  if (fields.has(def.id)) {
+    const seen = duplicates.get(def.id);
+    if (seen === undefined) duplicates.set(def.id, [index]);
+    else seen.push(index);
+    return false;
+  }
 
   const check = def.validate(parsed.value);
   fields.set(def.id, {
