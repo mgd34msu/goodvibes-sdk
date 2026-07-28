@@ -135,7 +135,8 @@ describe('ChannelReplyPipeline', () => {
         passed: false,
       });
 
-      await waitFor(() => delivered.some((entry) => entry.kind === 'progress' && entry.message.includes('WRFC review needs fixes')));
+      // Plain words, and no chain id: the line names the outcome, not the machinery.
+      await waitFor(() => delivered.some((entry) => entry.kind === 'progress' && entry.message.includes('found things to fix')));
 
       emitWorkflowChainPassed(runtimeBus, {
         sessionId: 'wrfc',
@@ -145,7 +146,9 @@ describe('ChannelReplyPipeline', () => {
         chainId: 'chain-1',
       });
 
-      await waitFor(() => delivered.some((entry) => entry.kind === 'reply' && entry.message.includes('WRFC chain chain-1 passed')));
+      await waitFor(() => delivered.some((entry) => entry.kind === 'reply' && entry.message.includes('is done')));
+      // The id this run correlated on never reaches the reader.
+      expect(delivered.every((entry) => !entry.message.includes('chain-1'))).toBe(true);
       expect(pipeline.has('agent-root')).toBe(false);
     } finally {
       pipeline.dispose();
@@ -195,7 +198,8 @@ describe('ChannelReplyPipeline', () => {
         task: 'expanded WRFC task',
       });
 
-      await waitFor(() => delivered.some((message) => message.includes('WRFC chain chain-2 started')));
+      await waitFor(() => delivered.some((message) => message.includes('Started work on: expanded WRFC task')));
+      expect(delivered.every((message) => !message.includes('chain-2'))).toBe(true);
       expect(pipeline.getPending('agent-root')?.workflowChainId).toBe('chain-2');
     } finally {
       pipeline.dispose();
@@ -290,7 +294,7 @@ describe('ChannelReplyPipeline', () => {
         passed: true,
       });
 
-      await waitFor(() => delivered.some((entry) => entry.kind === 'progress' && entry.message.includes('WRFC review passed')));
+      await waitFor(() => delivered.some((entry) => entry.kind === 'progress' && entry.message.includes('Review of') && entry.message.includes('passed')));
       expect(pipeline.has('agent-root')).toBe(true);
 
       emitWorkflowChainPassed(runtimeBus, {
@@ -301,7 +305,8 @@ describe('ChannelReplyPipeline', () => {
         chainId: 'chain-1',
       });
 
-      await waitFor(() => delivered.some((entry) => entry.kind === 'reply' && entry.message.includes('WRFC chain chain-1 passed')));
+      await waitFor(() => delivered.some((entry) => entry.kind === 'reply' && entry.message.includes('is done')));
+      expect(delivered.every((entry) => !entry.message.includes('chain-1'))).toBe(true);
       expect(pipeline.has('agent-root')).toBe(false);
     } finally {
       pipeline.dispose();

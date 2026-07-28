@@ -127,7 +127,12 @@ describe('ntfy delivers the answer, not just the duration', () => {
     h.advance(30_000);
     await h.chainPassed('chain-9');
     await waitFor(() => h.published.length === 2);
-    expect(h.published[1]?.text).toContain('chain-9 passed');
+    // The leg still arrives; it no longer quotes the chain id. This harness
+    // never emits the opening event that carries the task, so the workstream
+    // has no name to be known by — and it says so in words rather than falling
+    // back to the identifier. See channel-workstream-labels.test.ts.
+    expect(h.published[1]?.text).toBe('The workstream is done');
+    expect(h.published[1]?.text).not.toContain('chain-9');
     expect(h.pipeline.has('agent-chain')).toBe(false);
   });
 });
