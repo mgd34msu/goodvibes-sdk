@@ -15,7 +15,12 @@
 # Don't make a habit of it.
 set -euo pipefail
 
-STAGED_SRC=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '^packages/[^/]+/src/.*\.ts$' || true)
+# Package manifests count as source here. The subpath API report is driven by
+# the `exports` map in packages/*/package.json, so publishing a new subpath
+# changes the public surface without touching a single .ts file; this pattern
+# previously matched src/**.ts only, and such a commit went through untouched.
+STAGED_SRC=$(git diff --cached --name-only --diff-filter=ACMR \
+  | grep -E '^packages/[^/]+/(src/.*\.ts|package\.json)$' || true)
 if [ -z "$STAGED_SRC" ]; then
   exit 0
 fi
