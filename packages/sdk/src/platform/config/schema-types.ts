@@ -6,7 +6,7 @@ export * from "./schema-types-permissions.js";
 import type { BackgroundAgentsMode, LineNumberMode, PermissionAction, PermissionMode, PermissionsToolConfig } from "./schema-types-permissions.js";
 
 export * from "./schema-types-surfaces.js";
-import type { InboundEmailCapabilityPolicy, InboundEmailMode, InboundEmailNoticeMode, SurfacesConfig } from "./schema-types-surfaces.js";
+import type { InboundEmailCapabilityPolicy, InboundEmailMode, InboundEmailNoticeMode, InboundEmailSource, SurfacesConfig } from "./schema-types-surfaces.js";
 
 export * from "./schema-types-network.js";
 import type {
@@ -492,6 +492,9 @@ export type ConfigKey =
   // The inbound-mail watcher (schema-domain-daemon-mailbox.ts, docs/inbound-email.md §8)
   | 'surfaces.email.inbound.enabled'
   | 'surfaces.email.inbound.accounts'
+  | 'surfaces.email.inbound.source'
+  | 'surfaces.email.inbound.gmailPollSecondsExpecting'
+  | 'surfaces.email.inbound.gmailPollSecondsIdle'
   | 'surfaces.email.inbound.mode'
   | 'surfaces.email.inbound.pollIntervalSeconds'
   | 'surfaces.email.inbound.idleReissueMinutes'
@@ -1013,6 +1016,9 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'surfaces.email.smtp.secure' ? boolean :
   K extends 'surfaces.email.inbound.enabled' ? boolean :
   K extends 'surfaces.email.inbound.accounts' ? string :
+  K extends 'surfaces.email.inbound.source' ? InboundEmailSource :
+  K extends 'surfaces.email.inbound.gmailPollSecondsExpecting' ? number :
+  K extends 'surfaces.email.inbound.gmailPollSecondsIdle' ? number :
   K extends 'surfaces.email.inbound.mode' ? InboundEmailMode :
   K extends 'surfaces.email.inbound.pollIntervalSeconds' ? number :
   K extends 'surfaces.email.inbound.idleReissueMinutes' ? number :

@@ -66,7 +66,7 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
   },
   // schema-types.ts ~1.18k — config schema type surface, post-split, shrink-only
   'packages/sdk/src/platform/config/schema-types.ts': {
-    ceiling: 1255,
+    ceiling: 1261,
     justification: 'config schema type surface, shrink-only. Split 2026-07-26 from 1399 lines: the '
       + 'listener/reachability interfaces (ControlPlaneConfig, HttpListenerRuntimeConfig, WebConfig, '
       + 'NetworkConfig, RelayConfig) moved to schema-types-network.ts and the platform-service '
@@ -81,7 +81,7 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
       + 'AutomationConfig, WatchersConfig, ServiceConfig, RuntimeConfig) to schema-types-daemon.ts. The '
       + 'ceiling is deliberately left at 1246 while the file sits near 1175: it is never raised, but the '
       + 'slack is real headroom for config keys landing concurrently, so tightening it to the exact count '
-      + 'would red-gate in-flight work rather than prevent drift.; +51 for declaring the daemon\'s own mailbox and calendar keys (surfaces.email.*, surfaces.calendar.*) in the ConfigKey union and value map. They were read by the daemon\'s handlers but declared nowhere, and the settings modal renders from CONFIG_SCHEMA — so the handlers\' own error messages ("Set surfaces.calendar.caldavUrl and surfaces.calendar.caldavUser") named keys no operator could reach through the UI that told them to set it. Declaring them also makes them daemon-owned by the existing surfaces. prefix rule, so the credential lands in the daemon tier instead of whichever client silo the operator happened to be in',
+      + 'would red-gate in-flight work rather than prevent drift.; +51 for declaring the daemon\'s own mailbox and calendar keys (surfaces.email.*, surfaces.calendar.*) in the ConfigKey union and value map. They were read by the daemon\'s handlers but declared nowhere, and the settings modal renders from CONFIG_SCHEMA — so the handlers\' own error messages ("Set surfaces.calendar.caldavUrl and surfaces.calendar.caldavUser") named keys no operator could reach through the UI that told them to set it. Declaring them also makes them daemon-owned by the existing surfaces. prefix rule, so the credential lands in the daemon tier instead of whichever client silo the operator happened to be in; +6 for the three inbound-mail source-selection keys (surfaces.email.inbound.source, .gmailPollSecondsExpecting, .gmailPollSecondsIdle) in the ConfigKey union and value map. Three lines each because the union member and the ConfigValue clause both have to be here: test/config-key-union-completeness.test.ts parses THIS file as the single declared key set, and a key present in CONFIG_SCHEMA but absent from the union is exactly what that gate exists to catch',
   },
   // orchestrator.ts ~1.08k — core orchestrator monolith, pre-split, shrink-only
   'packages/sdk/src/platform/core/orchestrator.ts': {
