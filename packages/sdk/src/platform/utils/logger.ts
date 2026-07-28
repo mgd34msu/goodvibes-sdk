@@ -38,6 +38,16 @@ const REDACTED = '[REDACTED]';
 const SENSITIVE_KEY_PATTERN = /(authorization|api[-_]?key|token|password|passwd|secret|credential|cookie|set-cookie)/i;
 
 /** Options for configuring the activity logger. */
+/** Options for {@link ActivityLogger.flushSync}. */
+export interface FlushOptions {
+  /**
+   * Rebuild the log directory if it has vanished, then retry the append.
+   * Defaults to true, which is the behaviour a live logger needs. `dispose()`
+   * passes false so teardown cannot resurrect a directory its owner removed.
+   */
+  readonly recreateDestination?: boolean | undefined;
+}
+
 export interface ActivityLoggerOptions {
   /** Rotation threshold in bytes; the live file rotates to `.1` once it reaches this size. */
   readonly maxBytes?: number | undefined;
@@ -118,6 +128,7 @@ export class ActivityLogger {
   private report: (line: string) => void = (line) => { process.stderr.write(line); };
   /** True once the destination has been declared unwritable and reported. */
   private degraded = false;
+  private disposed = false;
   private consecutiveFailures = 0;
   /** Entries lost to the buffer cap, reported in the log once one lands. */
   private droppedEntries = 0;
@@ -143,6 +154,17 @@ export class ActivityLogger {
     return this.degraded;
   }
 
+  /**
+   * True once `dispose()` has run and before any later `configure()`.
+   *
+   * A disposed logger accepts nothing and writes nothing. Observable because
+   * the alternative — finding out by watching a temp directory come back — is
+   * how this was found in the first place.
+   */
+  get isDisposed(): boolean {
+    return this.disposed;
+  }
+
   configure(logDir: string, options: ActivityLoggerOptions = {}): void {
     if (!existsSync(logDir)) {
       mkdirSync(logDir, { recursive: true });
@@ -153,8 +175,12 @@ export class ActivityLogger {
     }
     if (options.report) this.report = options.report;
     // Naming a destination is a host saying "log here now", so it clears a
-    // previous destination's verdict: the new one has not failed yet.
+    // previous destination's verdict: the new one has not failed yet. For the
+    // same reason it revives a disposed logger — an explicit configure() is a
+    // deliberate act, and silently staying mute after one would reproduce the
+    // "host forgot to configure" muteness this class already guards against.
     this.degraded = false;
+    this.disposed = false;
     this.consecutiveFailures = 0;
     // Seed the byte counter from the existing file once, so rotation accounts
     // for history written by earlier processes without stat-ing on every write.
@@ -176,12 +202,22 @@ export class ActivityLogger {
    * the process.
    */
   dispose(): void {
-    this.flushSync();
+    // recreateDestination: false — the difference between a live logger and a
+    // disposed one. A live logger whose directory was moved underneath it
+    // rebuilds it and retries, which is right and is asserted by
+    // test/activity-logger-dispose-lifetime.test.ts. Doing the same DURING
+    // disposal rebuilt a directory the owner had just deleted: a tui test
+    // process removed its temp tree at teardown and the tree came back holding
+    // workspace/.goodvibes/logs/activity.md, written after the delete.
+    this.flushSync({ recreateDestination: false });
     if (this.flushTimer !== null) {
       clearTimeout(this.flushTimer);
       this.flushTimer = null;
     }
     liveLoggers.delete(this);
+    // Set last: everything above is the final flush, and `write()` refuses
+    // entries from here on, so nothing can re-arm the timer behind us.
+    this.disposed = true;
   }
 
   private scheduleFlush(): void {
@@ -224,7 +260,8 @@ export class ActivityLogger {
    * able to make its final lines land at a point it chooses rather than trust
    * that the process happens to stay alive long enough.
    */
-  flushSync(): void {
+  flushSync(options: FlushOptions = {}): void {
+    const recreateDestination = options.recreateDestination ?? true;
     if (this.flushTimer !== null) {
       clearTimeout(this.flushTimer);
       this.flushTimer = null;
@@ -236,7 +273,7 @@ export class ActivityLogger {
     const notice = this.takeDropNotice();
     const chunk = notice + this.buffer.join('');
     this.buffer.length = 0;
-    if (this.append(chunk)) {
+    if (this.append(chunk, recreateDestination)) {
       this.liveBytes += Buffer.byteLength(chunk, 'utf-8');
       this.consecutiveFailures = 0;
       return;
@@ -253,7 +290,7 @@ export class ActivityLogger {
    * attempted once per flush, never in a loop — if the path cannot be a
    * directory at all, the retry fails and the caller degrades.
    */
-  private append(chunk: string): boolean {
+  private append(chunk: string, recreateDestination: boolean): boolean {
     const path = this.logPath;
     if (!path) return false;
     try {
@@ -261,6 +298,7 @@ export class ActivityLogger {
       return true;
     } catch (error) {
       if (errorCode(error) !== 'ENOENT') return false;
+      if (!recreateDestination) return false;
       try {
         mkdirSync(dirname(path), { recursive: true });
         appendFileSync(path, chunk, 'utf-8');
@@ -315,6 +353,11 @@ export class ActivityLogger {
   }
 
   private write(level: string, message: string, data?: Record<string, unknown>) {
+    // Disposed: the owner has torn this logger down. Accepting the entry would
+    // re-arm the flush timer and, on the next flush, rebuild a destination the
+    // owner deleted. Dropped silently for the same reason `degraded` is —
+    // there is nobody left to tell.
+    if (this.disposed) return;
     // Abandoned destination: entries are dropped deliberately and silently.
     // The one report has already been made; counting them here would only grow
     // a number nobody will ever read.

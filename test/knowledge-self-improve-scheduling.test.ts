@@ -21,6 +21,37 @@ import { createStores } from './_helpers/knowledge-semantic-fixtures.js';
 
 const gapRepairer = {} as unknown as KnowledgeSemanticGapRepairer;
 
+/**
+ * A complete KnowledgeSemanticSelfImproveResult with only `candidateGaps`
+ * varying.
+ *
+ * Both sites below built `{ candidateGaps }` and cast it through `unknown`,
+ * which hid eleven required counters. The scheduler under test reads
+ * `candidateGaps`, but a result missing `taskIds` or `queuedTasks` is not a
+ * result the production path can produce, and a field added to the type would
+ * have gone on being absorbed here.
+ */
+function selfImproveResult(candidateGaps: number): KnowledgeSemanticSelfImproveResult {
+  return {
+    scannedGaps: 0,
+    candidateGaps,
+    createdGaps: 0,
+    repairableGaps: 0,
+    suppressedGaps: 0,
+    skippedGaps: 0,
+    searched: 0,
+    ingestedSources: 0,
+    linkedRepairs: 0,
+    blockedGaps: 0,
+    closedGaps: 0,
+    queuedTasks: 0,
+    taskIds: [],
+    ingestedSourceIds: [],
+    errors: [],
+  };
+}
+
+
 interface ScheduledTimer { cb: () => void; at: number }
 
 /** Deterministic harness: fake clock + captured timers + counted runs. */
@@ -51,7 +82,7 @@ function harness(opts: {
   internal.selfImprove = async (input) => {
     runs.push(input);
     const gaps = typeof opts.candidateGaps === 'function' ? opts.candidateGaps(input) : (opts.candidateGaps ?? 1);
-    return { candidateGaps: gaps } as unknown as KnowledgeSemanticSelfImproveResult;
+    return selfImproveResult(gaps);
   };
   /** Advance the fake clock and fire every timer that came due. */
   const advance = async (ms: number): Promise<void> => {
@@ -211,7 +242,7 @@ describe('fix-round 2: in-flight gap evidence and sweep backoff', () => {
     internal.selfImprove = (input) => {
       runs.push(input);
       return new Promise((resolve) => {
-        releases.push((gaps) => resolve({ candidateGaps: gaps } as unknown as KnowledgeSemanticSelfImproveResult));
+        releases.push((gaps) => resolve(selfImproveResult(gaps)));
       });
     };
     const fireDue = (): void => {

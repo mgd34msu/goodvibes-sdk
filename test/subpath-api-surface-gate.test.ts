@@ -275,6 +275,19 @@ describe('the committed report', () => {
     }
   });
 
+  test('a non-exported type an export references is recorded beside it', () => {
+    // The gap that let PermissionConfigReader.getSnapshot() narrow from the
+    // whole GoodVibesConfig to one key with no report diff: the alias name in
+    // the declaration text never changed. One level of referenced definitions
+    // is now recorded; the transitive closure is not (12.1 MB vs 5.7 MB).
+    const reader = (committed['./platform/permissions'] ?? []).find((e) => e.name === 'PermissionConfigReader');
+    expect(reader).toBeDefined();
+    expect(reader?.text).toContain('PermissionConfigSnapshot');
+    expect(reader?.text).toContain(' ;; via ');
+    // And it really carries the DEFINITION, not just the name again.
+    expect(reader?.text).toContain('permissions');
+  });
+
   test('those same names are absent from the api-extractor rollups — the rollups are not this gate', () => {
     const rollup = readFileSync(join(SDK_ROOT, 'etc', 'goodvibes-sdk.api.md'), 'utf8')
       + readFileSync(join(SDK_ROOT, 'etc', 'goodvibes-sdk-embed.api.md'), 'utf8');

@@ -182,6 +182,56 @@ export function normalizeDeclarationText(text: string): string {
   return text.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+/**
+ * Definitions of types an export REFERENCES but that are not themselves
+ * exported from that subpath, one level deep.
+ *
+ * The gap this closes, twice observed rather than imagined:
+ * `PermissionConfigReader.getSnapshot(): PermissionConfigSnapshot` and
+ * `automationManager.listRuns(): AutomationRunLike[]` both changed materially
+ * — one narrowed from the whole GoodVibesConfig to a single key, the other had
+ * silently lost a field — while the recorded declaration text stayed
+ * byte-identical, because only the alias's definition moved and the alias name
+ * did not.
+ *
+ * ONE level, not the transitive closure. Measured on this package, following
+ * references all the way produces a 12.1 MB report against 3.5 MB; one level
+ * catches the alias-beside-the-interface case that actually occurs and stops.
+ * A change confined to a type referenced by a referenced type still passes, and
+ * that is the remaining limit.
+ */
+function referencedLocalDefinitions(
+  checker: ts.TypeChecker,
+  symbol: ts.Symbol,
+  exportedNames: ReadonlySet<string>,
+): string[] {
+  const seen = new Map<string, string>();
+  const visit = (node: ts.Node): void => {
+    if (ts.isTypeReferenceNode(node)) {
+      const referenced = checker.getSymbolAtLocation(node.typeName);
+      if (referenced) {
+        const resolved = referenced.getFlags() & ts.SymbolFlags.Alias
+          ? checker.getAliasedSymbol(referenced)
+          : referenced;
+        const name = resolved.getName();
+        if (!exportedNames.has(name) && !seen.has(name)) {
+          for (const declaration of resolved.getDeclarations() ?? []) {
+            // Type aliases and interfaces only: pulling in classes or functions
+            // here would drag the implementation surface into the report.
+            if (!ts.isTypeAliasDeclaration(declaration) && !ts.isInterfaceDeclaration(declaration)) continue;
+            if (declaration.getSourceFile().isDeclarationFile === false) continue;
+            seen.set(name, `${name} = ${normalizeDeclarationText(declaration.getText())}`);
+            break;
+          }
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  for (const declaration of symbol.getDeclarations() ?? []) ts.forEachChild(declaration, visit);
+  return [...seen.values()].sort();
+}
+
 /** Build the recorded surface for one already-created program. */
 export function buildSnapshot(program: ts.Program, entryPoints: ReadonlyMap<string, string>): Snapshot {
   const checker = program.getTypeChecker();
@@ -197,12 +247,15 @@ export function buildSnapshot(program: ts.Program, entryPoints: ReadonlyMap<stri
     const moduleSymbol = checker.getSymbolAtLocation(source);
     const exported = moduleSymbol ? checker.getExportsOfModule(moduleSymbol) : [];
     const entries: ExportEntry[] = [];
+    const exportedNames = new Set(exported.map((symbol) => symbol.getName()));
     for (const symbol of exported) {
       const resolved = symbol.getFlags() & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol;
       const required = requiredMembers(resolved);
       const publicMembers = publicClassMembers(resolved);
       const declarations = resolved.getDeclarations() ?? [];
-      const text = declarations.map((declaration) => normalizeDeclarationText(declaration.getText())).join(' ;; ');
+      const ownText = declarations.map((declaration) => normalizeDeclarationText(declaration.getText())).join(' ;; ');
+      const referenced = referencedLocalDefinitions(checker, resolved, exportedNames);
+      const text = referenced.length > 0 ? `${ownText} ;; via ${referenced.join(' ;; ')}` : ownText;
       entries.push({
         name: symbol.getName(),
         kind: declarationKind(resolved),

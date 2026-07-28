@@ -22,16 +22,27 @@ interface RenderCall {
   readonly request: ChannelRenderRequest;
 }
 
-function makeBinding(surfaceKind: string, overrides: Partial<AutomationRouteBinding> = {}): AutomationRouteBinding {
+/**
+ * `surfaceKind` is the real union, not `string`.
+ *
+ * Written as `string` behind a cast, this fixture could name a surface that
+ * does not exist and the routing under test would have been exercised against
+ * it. `kind` was missing entirely, and `metadata` is not a member of
+ * AutomationRouteBinding at all.
+ */
+function makeBinding(surfaceKind: AutomationRouteBinding['surfaceKind']): AutomationRouteBinding {
   return {
     id: `route-${surfaceKind}`,
+    kind: 'channel',
     surfaceKind,
     surfaceId: `surface-${surfaceKind}`,
     externalId: '55512345',
     channelId: '55512345',
+    lastSeenAt: 0,
+    createdAt: 0,
+    updatedAt: 0,
     metadata: {},
-    ...overrides,
-  } as unknown as AutomationRouteBinding;
+  };
 }
 
 function makeHelper(options: {
@@ -83,7 +94,7 @@ describe('surface notice delivery', () => {
     // Straight from conversationGate.gatedSurfaces. A surface that is gated but
     // cannot be delivered to is a black hole: work is withheld and no question
     // is ever asked.
-    const gated = [
+    const gated: readonly AutomationRouteBinding['surfaceKind'][] = [
       'ntfy', 'telegram', 'slack', 'discord', 'homeassistant', 'google-chat',
       'signal', 'whatsapp', 'telephony', 'imessage', 'msteams', 'bluebubbles',
       'mattermost', 'matrix',
