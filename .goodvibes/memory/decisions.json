@@ -222,5 +222,16 @@
       "asserting parent authority to override a refusal"
     ],
     "agent": "engineer"
+  },
+  {
+    "title": "A field is not safe because part of its provenance is verified",
+    "date": "2026-07-27",
+    "rationale": "From the inbound-mail notice defect (SDK 140cbcb4): delivered-to was sanitized for control characters only because a sender cannot forge which mailbox received the mail \u2014 true about the mailbox, false about the local part, which under catch-all/plus-addressing is attacker-typed. Payment notices are the same surface with a charge attached. Every merchant-derived string (item title, seller name, shipping labels, promo text, currency strings, and merchant text quoted inside refusal reasons) is neutralised via security/notice-text.ts. Merchant identity is the computed registrable domain, never a display name, asserted by isPlainHostname. Amounts re-rendered from our integers. Owner text is sanitized too because a compile-time brand does not survive a wrong call site. LAYERING: SDK neutralises the UNION of trigger chars at source (it cannot know the route); per-channel escaping stays with the channel adapter. notice-text.ts is behaviourally identical to the mail round's copy so they collapse when inbound-email-config merges.",
+    "alternatives": [
+      "per-channel escaping only",
+      "trusting the OwnerSuppliedText brand",
+      "one escaper tuned for Telegram"
+    ],
+    "agent": "engineer"
   }
 ]
