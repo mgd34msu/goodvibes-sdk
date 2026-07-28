@@ -32175,7 +32175,7 @@ Register, in advance, that a verification message is expected at one address fro
 
 #### `email.inbound.status`
 
-Disclose the inbound-mail watcher: whether it is running and why, which source is reading the mailbox and the delay that source actually costs, the current capability verdict, every persisted cursor with its position and age, every open verification expectation with its remaining window, and what each store retains before it is reaped. Read-only.
+Disclose the inbound-mail watcher: whether it is running and why, which source is reading the mailbox and the delay that source actually costs, the current capability verdict, every persisted cursor with its position and age, every open verification expectation with its remaining window, whether each store could be read, whether arriving mail is actually being announced to the owner, and what each store retains before it is reaped. Read-only.
 
 - Title: `Inbound Mail Status`
 - Source: `builtin`
@@ -32367,6 +32367,9 @@ Disclose the inbound-mail watcher: whether it is running and why, which source i
             "kept": {
               "type": "number"
             },
+            "stored": {
+              "type": "number"
+            },
             "retentionDays": {
               "type": "number"
             },
@@ -32375,13 +32378,18 @@ Disclose the inbound-mail watcher: whether it is running and why, which source i
             },
             "maxBodyExcerptChars": {
               "type": "number"
+            },
+            "reapedOnWrite": {
+              "type": "number"
             }
           },
           "required": [
             "kept",
+            "stored",
             "retentionDays",
             "maxRecords",
-            "maxBodyExcerptChars"
+            "maxBodyExcerptChars",
+            "reapedOnWrite"
           ],
           "additionalProperties": false
         },
@@ -32426,6 +32434,56 @@ Disclose the inbound-mail watcher: whether it is running and why, which source i
         "cursors",
         "records",
         "expectations"
+      ],
+      "additionalProperties": false
+    },
+    "stores": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "store": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "store",
+          "state",
+          "detail"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "noticeDelivery": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "string"
+        },
+        "fix": {
+          "type": "string"
+        },
+        "since": {
+          "type": "string"
+        },
+        "unannounced": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "state"
       ],
       "additionalProperties": false
     },
@@ -32485,6 +32543,8 @@ Disclose the inbound-mail watcher: whether it is running and why, which source i
     "cursors",
     "expectations",
     "retention",
+    "stores",
+    "noticeDelivery",
     "health"
   ],
   "additionalProperties": false
@@ -32493,7 +32553,7 @@ Disclose the inbound-mail watcher: whether it is running and why, which source i
 
 #### `email.inbox.list`
 
-Return inbox message summaries fetched live from the configured IMAP account, newest first (ordered by server-assigned UID, never by the sender-written Date header). Read-only (EXAMINE / BODY.PEEK); never marks messages read.
+Return inbox message summaries fetched live from the configured IMAP account, newest first (ordered by server-assigned UID, never by the sender-written Date header). Read-only (EXAMINE / BODY.PEEK); never marks messages read. When the server answered for a message and the daemon could not read the answer, the page is short and `unreadable` says so — an omitted message is not by itself evidence that it was deleted.
 
 - Title: `List Email Inbox`
 - Source: `builtin`
@@ -32572,6 +32632,24 @@ Return inbox message summaries fetched live from the configured IMAP account, ne
     },
     "total": {
       "type": "number"
+    },
+    "unreadable": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "uid": {
+            "type": "number"
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "additionalProperties": false
+      }
     }
   },
   "required": [

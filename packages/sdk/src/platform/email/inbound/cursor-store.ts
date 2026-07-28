@@ -60,6 +60,7 @@
  * report as a design-doc correction, not silently reinterpreted.
  */
 import { PersistentStore, type PersistentStoreCorruption } from '../../state/persistent-store.js';
+import { withInboundStoreWriteLock } from './store-write-lock.js';
 import {
   type HousekeepingTrigger,
   type MailboxCursor,
@@ -390,12 +391,15 @@ export class MailboxCursorStore {
       corrupt: PersistentStoreCorruption | null,
     ) => Promise<{ next: InboundSourceCursor[]; result: T }>,
   ): Promise<T> {
-    const run = this.writeChain.then(async () => {
+    // The chain orders writers inside THIS process; the lock orders them
+    // across processes. Both, because neither alone is "one writer at a time"
+    // — see store-write-lock.ts for why a second daemon is reachable here.
+    const run = this.writeChain.then(async () => withInboundStoreWriteLock(this.store.lockPath, async () => {
       const { cursors, malformed, corrupt } = await this.readWithDrops();
       const { next, result } = await fn(cursors, malformed, corrupt);
       await this.store.persist({ version: 1, cursors: next });
       return result;
-    });
+    }));
     this.writeChain = run.then(() => undefined, () => undefined);
     return run;
   }

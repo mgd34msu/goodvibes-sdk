@@ -506,10 +506,15 @@ export class InboundMailSupervisor {
     };
     const cursors = await read('cursors', () => this.deps.cursors.list(), []);
     const records = await read('records', () => this.deps.records.list(), []);
+    // Counted against the FILE, not against the filtered list above. Deriving
+    // the disclosure from a view is what let `retention.records.kept` report
+    // two while ten sat on disk — see `InboundMailStore.count`.
+    const recordCounts = await read('records', () => this.deps.records.count(), { stored: 0, live: 0 });
     const open = await read('expectations', async () => this.deps.expectations.list(), []);
     const stores = this.describeStores(unavailable);
     const lastSweep = this.deps.housekeeper.getLastReport();
     const recordPolicy = this.deps.records.getPolicy();
+    const writeReap = this.deps.records.getWriteReapTally();
     const status = this.status;
     const refusal = this.noticeRefusal();
     return {
@@ -535,9 +540,11 @@ export class InboundMailSupervisor {
         cursors: { kept: cursors.length, maxCursors: this.deps.cursors.getPolicy().maxCursors },
         records: {
           kept: records.length,
+          stored: recordCounts.stored,
           retentionDays: Math.round(recordPolicy.retentionMs / 86_400_000),
           maxRecords: recordPolicy.maxRecords,
           maxBodyExcerptChars: recordPolicy.maxBodyExcerptChars,
+          reapedOnWrite: writeReap.expired + writeReap.overCap,
         },
         expectations: {
           open: open.length,

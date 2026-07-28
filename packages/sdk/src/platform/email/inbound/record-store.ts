@@ -25,12 +25,17 @@
 import { randomUUID } from 'node:crypto';
 import { PersistentStore, type PersistentStoreCorruption } from '../../state/persistent-store.js';
 import { redactCardShapes } from '../../security/card-shapes.js';
-import { isHistoryId } from './source-cursor.js';
 import {
-  isNonEmptyTrimmedString,
-  isNonNegativeInteger,
-  isParsableIsoDate,
-  isPositiveInteger,
+  clampDeliveryAddress,
+  clampLinkVerdicts,
+  clampRecordScope,
+  MAX_NOTICE_FAILURE_REASON_CHARS,
+  MAX_SENDER_DISPLAY_CHARS,
+  MAX_SUBJECT_CHARS,
+  validateInboundMailRecord,
+} from './record-validation.js';
+import { withInboundStoreWriteLock } from './store-write-lock.js';
+import {
   MAX_BODY_EXCERPT_CHARS,
   type HousekeepingTrigger,
 } from './types.js';
@@ -38,42 +43,25 @@ import {
 // rather than owning it, which is the point (§7.3).
 import type { SurfaceNoticeRefusal } from '../../daemon/types.js';
 
-/** What `validateInboundMailRecord` accepts for `subject`; redaction must not exceed it. */
-const MAX_SUBJECT_CHARS = 998;
-
-/** What `validateInboundMailRecord` accepts for `senderDisplay`; same rule as the subject. */
-const MAX_SENDER_DISPLAY_CHARS = 998;
-
-/** What `validateInboundMailRecord` accepts for `deliveredToAddress`. */
-const MAX_DELIVERED_TO_CHARS = 320;
-
-/**
- * Clamp a redacted delivery address back inside its bound WITHOUT losing the
- * `@` the loader insists on.
- *
- * The plain `.slice(0, max)` the subject uses is wrong for this one field.
- * `validateInboundMailRecord` requires a `deliveredToAddress` to contain an
- * `@`, and a redaction marker is longer than the digits it replaces
- * (`[redacted:security-code]` is twenty-four characters for three), so a long
- * address carrying card shapes in its local part can grow past the bound and a
- * head-slice would cut the `@` off. The record would then fail its own
- * validation on the very next load and be discarded WHOLE — the mail would
- * vanish from the store entirely, which is a worse outcome than the exposure
- * this redaction exists to close.
- *
- * So the domain is kept intact and the local part gives up the characters. The
- * part that is truncated is the part that had already been overwritten with
- * markers, and the part that identifies where the message landed survives.
- */
-function clampDeliveryAddress(value: string): string {
-  if (value.length <= MAX_DELIVERED_TO_CHARS) return value;
-  const at = value.indexOf('@');
-  if (at < 0) return value.slice(0, MAX_DELIVERED_TO_CHARS);
-  const domain = value.slice(at);
-  return domain.length >= MAX_DELIVERED_TO_CHARS
-    ? domain.slice(0, MAX_DELIVERED_TO_CHARS)
-    : value.slice(0, MAX_DELIVERED_TO_CHARS - domain.length) + domain;
-}
+// The validator, its field bounds and its write-time clamps live in
+// record-validation.ts and are re-exported here so this module stays the one
+// entry point every caller already imports.
+export {
+  clampDeliveryAddress,
+  clampLinkVerdicts,
+  clampRecordScope,
+  INBOUND_MAIL_OUTCOMES,
+  INBOUND_NOTICE_STATUSES,
+  MAX_ACCOUNT_CHARS,
+  MAX_DELIVERED_TO_CHARS,
+  MAX_MAILBOX_CHARS,
+  MAX_LINK_REASON_CHARS,
+  MAX_LINK_VERDICTS,
+  MAX_NOTICE_FAILURE_REASON_CHARS,
+  MAX_SENDER_DISPLAY_CHARS,
+  MAX_SUBJECT_CHARS,
+  validateInboundMailRecord,
+} from './record-validation.js';
 
 /** Correlates to `VerificationMatch['kind']` in verification-expectations.ts, plus link-only outcomes that never reach expectation matching. */
 export type InboundMailOutcome =
@@ -83,15 +71,6 @@ export type InboundMailOutcome =
   | 'expired-expectation'
   | 'ambiguous'
   | 'no-delivery-evidence';
-
-const INBOUND_MAIL_OUTCOMES: readonly InboundMailOutcome[] = [
-  'matched-expectation',
-  'no-expectation',
-  'recipient-mismatch',
-  'expired-expectation',
-  'ambiguous',
-  'no-delivery-evidence',
-];
 
 /**
  * `delivered` / `suppressed` / `pending` — the three outcomes that never come
@@ -118,38 +97,13 @@ const INBOUND_MAIL_OUTCOMES: readonly InboundMailOutcome[] = [
  */
 export type InboundNoticeStatus = 'delivered' | 'suppressed' | 'pending' | SurfaceNoticeRefusal;
 
-/**
- * Every refusal reason, as a map rather than a list.
- *
- * A `Record<SurfaceNoticeRefusal, true>` is exhaustive by the compiler: adding
- * a reason to `SurfaceNoticeRefusal` stops this object compiling, which is the
- * whole reason the validator's accepted set is derived from it instead of
- * being a second literal list beside the type.
- */
-const NOTICE_REFUSAL_STATUSES: Readonly<Record<SurfaceNoticeRefusal, true>> = {
-  'no-route-binding': true,
-  'empty-text': true,
-  'unsupported-delivery-surface': true,
-  'surface-delivery-disabled': true,
-  'no-deliverable-target': true,
-  'delivery-failed': true,
-};
-
-const INBOUND_NOTICE_STATUSES: readonly InboundNoticeStatus[] = [
-  'delivered',
-  'suppressed',
-  'pending',
-  ...(Object.keys(NOTICE_REFUSAL_STATUSES) as readonly SurfaceNoticeRefusal[]),
-];
-
 /** A link's registrable domain plus verdict only — never the raw URL the message assembled (§7). */
 export interface InboundLinkVerdict {
   readonly registrableDomain: string;
   readonly verdict: 'allowed' | 'refused' | 'unresolved';
+  /** Bounded at `MAX_LINK_REASON_CHARS` — sixty-four unbounded strings is an unbounded record. */
   readonly reason?: string | undefined;
 }
-
-const LINK_VERDICTS: readonly InboundLinkVerdict['verdict'][] = ['allowed', 'refused', 'unresolved'];
 
 /** Structured fields for one inbound message, plus a bounded body excerpt. */
 /** Everything a record carries regardless of which source found the message. */
@@ -299,6 +253,30 @@ export interface InboundMailRecordPolicy {
   readonly maxBodyExcerptChars: number;
 }
 
+/**
+ * What write-time bounding has removed since this process started.
+ *
+ * §9 rule 5 is "disclose what was reaped", and applying the bounds on write
+ * would otherwise delete records with nothing anywhere saying so — the sweep
+ * report itemises what IT removed, and a record the write already dropped is a
+ * record the sweep never sees. This is the counterpart disclosure.
+ *
+ * Deliberately in-memory and deliberately labelled `since`: it counts this
+ * daemon's own writes, and a restart resets it. Persisting it would make the
+ * tally a second store needing its own reaping and bounding, which is the
+ * defect two lines up in this same file's history (see housekeeping.ts). A
+ * count that says what window it covers is honest; a count that implies "ever"
+ * would not be.
+ */
+export interface InboundMailWriteReapTally {
+  /** Records a write dropped for being past `retentionMs`. */
+  readonly expired: number;
+  /** Records a write dropped for being past `maxRecords`. */
+  readonly overCap: number;
+  /** When this tally started counting — this store's construction. */
+  readonly since: number;
+}
+
 export const DEFAULT_INBOUND_MAIL_RECORD_POLICY: InboundMailRecordPolicy = {
   retentionMs: 30 * 24 * 60 * 60 * 1000,
   maxRecords: 5000,
@@ -310,119 +288,6 @@ interface InboundMailSnapshot extends Record<string, unknown> {
   readonly records: readonly InboundMailRecord[];
 }
 
-function isValidLinkVerdict(value: unknown): value is InboundLinkVerdict {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-  const record = value as Record<string, unknown>;
-  if (!isNonEmptyTrimmedString(record.registrableDomain, 253)) return false;
-  if (typeof record.verdict !== 'string' || !LINK_VERDICTS.includes(record.verdict as InboundLinkVerdict['verdict'])) return false;
-  if (record.reason !== undefined && typeof record.reason !== 'string') return false;
-  return true;
-}
-
-/**
- * Validate a record by its parsed content, not by its presence in the file.
- * Returns `null` for anything torn, oversized, or out of range. Never throws,
- * never repairs — a body excerpt that somehow exceeds the hard cap is a
- * reason to discard the whole record, not to truncate it again on read.
- */
-/**
- * The identity half of a record, chosen by the record's OWN `source` field.
- *
- * Returns `null` for a payload that does not match the source it declares —
- * discarded, never coerced. §9's rule is that a torn record is dropped rather
- * than repaired, and coercion here is the specific repair that caused the bug
- * this replaced: reading a Gmail record against IMAP rules and rejecting it.
- *
- * A record with NO `source` is read as IMAP. That is deliberate backward
- * compatibility, not inference: every record written before the union existed
- * is an IMAP record, and treating absence as unknown would discard the whole
- * existing store on first load. Gmail is never inferred from absence — it must
- * say so — which is the same asymmetry `validateGmailCursor` uses and for the
- * same reason.
- */
-function validateRecordIdentity(
-  record: Record<string, unknown>,
-): Pick<ImapInboundMailRecord, 'source' | 'uidValidity' | 'uid'>
-  | Pick<GmailInboundMailRecord, 'source' | 'resourceId' | 'historyId'>
-  | null {
-  const source = record.source;
-  if (source === 'gmail') {
-    if (!isNonEmptyTrimmedString(record.resourceId, 256)) return null;
-    // The same predicate the cursor validates with, imported rather than
-    // restated — a second copy of a uint64 rule is a second chance to get it
-    // wrong.
-    if (!isHistoryId(record.historyId)) return null;
-    return {
-      source: 'gmail',
-      resourceId: (record.resourceId as string).trim(),
-      historyId: record.historyId,
-    };
-  }
-  if (source !== undefined && source !== 'imap') return null;
-  if (!isPositiveInteger(record.uidValidity)) return null;
-  if (!isPositiveInteger(record.uid)) return null;
-  return {
-    source: 'imap',
-    uidValidity: record.uidValidity,
-    uid: record.uid,
-  };
-}
-
-export function validateInboundMailRecord(value: unknown): InboundMailRecord | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  const record = value as Record<string, unknown>;
-
-  if (!isNonEmptyTrimmedString(record.id, 128)) return null;
-  if (!isNonEmptyTrimmedString(record.account, 256)) return null;
-  if (!isNonEmptyTrimmedString(record.mailbox, 512)) return null;
-  // Discriminate FIRST. Validating identity fields before knowing which source
-  // wrote them is exactly how every Gmail record came to be discarded.
-  const identity = validateRecordIdentity(record);
-  if (identity === null) return null;
-  if (typeof record.senderDisplay !== 'string' || record.senderDisplay.length > 998) return null;
-  if (typeof record.subject !== 'string' || record.subject.length > 998) return null;
-
-  const deliveryEvidenceSource = record.deliveryEvidenceSource;
-  if (
-    deliveryEvidenceSource !== 'alias-mailbox'
-    && deliveryEvidenceSource !== 'delivered-to-header'
-    && deliveryEvidenceSource !== 'x-original-to-header'
-    && deliveryEvidenceSource !== 'none'
-  ) return null;
-
-  const deliveredToAddress = record.deliveredToAddress;
-  if (deliveryEvidenceSource === 'none') {
-    if (deliveredToAddress !== null) return null;
-  } else if (typeof deliveredToAddress !== 'string' || !deliveredToAddress.includes('@') || deliveredToAddress.length > 320) {
-    return null;
-  }
-
-  if (!Array.isArray(record.links) || record.links.length > 64 || !record.links.every(isValidLinkVerdict)) return null;
-
-  if (typeof record.outcome !== 'string' || !INBOUND_MAIL_OUTCOMES.includes(record.outcome as InboundMailOutcome)) return null;
-  if (typeof record.noticeStatus !== 'string' || !INBOUND_NOTICE_STATUSES.includes(record.noticeStatus as InboundNoticeStatus)) return null;
-  if (record.noticeFailureReason !== undefined && typeof record.noticeFailureReason !== 'string') return null;
-
-  if (typeof record.bodyExcerpt !== 'string' || record.bodyExcerpt.length > MAX_BODY_EXCERPT_CHARS) return null;
-  if (!isParsableIsoDate(record.receivedAt)) return null;
-
-  const common: Omit<InboundMailRecordCommon, 'id'> & { readonly id: string } = {
-    id: (record.id as string).trim(),
-    account: (record.account as string).trim(),
-    mailbox: (record.mailbox as string).trim(),
-    senderDisplay: record.senderDisplay,
-    subject: record.subject,
-    deliveredToAddress: deliveryEvidenceSource === 'none' ? null : (deliveredToAddress as string),
-    deliveryEvidenceSource,
-    links: record.links as readonly InboundLinkVerdict[],
-    outcome: record.outcome as InboundMailOutcome,
-    noticeStatus: record.noticeStatus as InboundNoticeStatus,
-    ...(typeof record.noticeFailureReason === 'string' ? { noticeFailureReason: record.noticeFailureReason } : {}),
-    bodyExcerpt: record.bodyExcerpt,
-    receivedAt: record.receivedAt as string,
-  };
-  return { ...common, ...identity };
-}
 
 export interface InboundMailStoreOptions {
   readonly policy?: Partial<InboundMailRecordPolicy> | undefined;
@@ -453,16 +318,29 @@ export class InboundMailStore {
   private writeChain: Promise<void> = Promise.resolve();
   /** The last unreadable-file event, latched so status can name it. */
   private corruption: PersistentStoreCorruption | null = null;
+  private writeReapedExpired = 0;
+  private writeReapedOverCap = 0;
+  private readonly tallySince: number;
 
   constructor(storeOrPath: PersistentStore<InboundMailSnapshot> | string, options: InboundMailStoreOptions = {}) {
     this.store = typeof storeOrPath === 'string' ? new PersistentStore<InboundMailSnapshot>(storeOrPath) : storeOrPath;
     const merged = { ...DEFAULT_INBOUND_MAIL_RECORD_POLICY, ...(options.policy ?? {}) };
     this.policy = { ...merged, maxBodyExcerptChars: Math.min(merged.maxBodyExcerptChars, MAX_BODY_EXCERPT_CHARS) };
     this.now = options.now ?? (() => Date.now());
+    this.tallySince = this.now();
   }
 
   getPolicy(): InboundMailRecordPolicy {
     return this.policy;
+  }
+
+  /** What write-time bounding has removed since this store was constructed. See `InboundMailWriteReapTally`. */
+  getWriteReapTally(): InboundMailWriteReapTally {
+    return {
+      expired: this.writeReapedExpired,
+      overCap: this.writeReapedOverCap,
+      since: this.tallySince,
+    };
   }
 
   /** The unreadable-file event this store last saw, or null. See `MailboxCursorStore.getCorruption`. */
@@ -490,14 +368,70 @@ export class InboundMailStore {
       corrupt: PersistentStoreCorruption | null,
     ) => Promise<{ next: InboundMailRecord[]; result: T }>,
   ): Promise<T> {
-    const run = this.writeChain.then(async () => {
+    // The chain orders writers inside THIS process; the lock orders them
+    // across processes. Both, because neither alone is "one writer at a time"
+    // — see store-write-lock.ts for why a second daemon is reachable here.
+    const run = this.writeChain.then(async () => withInboundStoreWriteLock(this.store.lockPath, async () => {
       const { records, malformed, corrupt } = await this.readWithDrops();
       const { next, result } = await fn(records, malformed, corrupt);
       await this.store.persist({ version: 1, records: next });
       return result;
-    });
+    }));
     this.writeChain = run.then(() => undefined, () => undefined);
     return run;
+  }
+
+  /**
+   * WHAT THE FILE HOLDS, not what a read is willing to serve.
+   *
+   * `list()` filters by age and by count, so a caller counting its result was
+   * counting a VIEW: with `maxRecords: 2`, ten writes left ten records on disk
+   * and `list()` answered 2. `email.inbound.status` computed its
+   * `retention.records.kept` that way, so the owner was told his store was
+   * bounded while the file grew without limit — a disclosure that reads as
+   * reassurance and is not one.
+   *
+   * `stored` counts EVERY entry in the file, malformed ones included: they
+   * occupy the file, so a count that skipped them would be the same class of
+   * comfortable answer. `live` is what a read serves. Both are returned
+   * because the GAP between them is itself the fact worth disclosing —
+   * records past their window that no write or sweep has reached yet.
+   */
+  async count(): Promise<{ readonly stored: number; readonly live: number }> {
+    const cutoff = this.now() - this.policy.retentionMs;
+    const { records, malformed } = await this.readWithDrops();
+    const live = records.filter((r) => Date.parse(r.receivedAt) >= cutoff);
+    return { stored: records.length + malformed, live: Math.min(live.length, this.policy.maxRecords) };
+  }
+
+  /**
+   * Apply BOTH policy bounds to the set about to be written.
+   *
+   * This is the fix for the finding this store existed for six weeks without:
+   * `record()` wrote `[...records, entry]` and nothing else, so the bounds
+   * lived only in `sweep()` — and `facade-inbound-mail.ts` runs the sweep every
+   * SIX HOURS. Between two sweeps the file was unbounded in both axes, and
+   * every read hid it.
+   *
+   * Age first, then count, so the reason a record went is the bound that
+   * actually bound first — the same order and the same precedence `sweep()`
+   * uses, because two orders would mean two answers to "why is this gone".
+   */
+  private applyBounds(
+    records: readonly InboundMailRecord[],
+    now: number,
+  ): { kept: InboundMailRecord[]; expired: number; overCap: number } {
+    const cutoff = now - this.policy.retentionMs;
+    const withinAge = records.filter((r) => Date.parse(r.receivedAt) >= cutoff);
+    const expired = records.length - withinAge.length;
+    if (withinAge.length <= this.policy.maxRecords) {
+      return { kept: withinAge, expired, overCap: 0 };
+    }
+    // Oldest-first, drop from the front: the same "oldest by receivedAt goes
+    // first" rule `sweep()` applies.
+    const oldestFirst = [...withinAge].sort((a, b) => Date.parse(a.receivedAt) - Date.parse(b.receivedAt));
+    const overCap = oldestFirst.length - this.policy.maxRecords;
+    return { kept: oldestFirst.slice(overCap), expired, overCap };
   }
 
   /**
@@ -535,12 +469,21 @@ export class InboundMailStore {
    * Bounded by the same age filter `list()` applies: a record past the
    * retention window is not a live fact about this message, and answering with
    * one would let a 30-day-old row suppress a notice.
+   *
+   * Note the consequence of write-time bounding, stated rather than left to be
+   * discovered: a record written already past `retentionMs` is bounded out by
+   * the same write that made it, so this answers `null` for it. That is the
+   * policy working — a record too old to keep is too old to have kept — not an
+   * inconsistency between two methods.
    */
   async findByMessage(key: InboundMailMessageKey): Promise<InboundMailRecord | null> {
     const cutoff = this.now() - this.policy.retentionMs;
     const { records } = await this.readWithDrops();
+    // Same clamp the write applied, so a long account is one string on both
+    // sides of the comparison rather than two.
+    const scoped = { ...key, ...clampRecordScope(key) };
     return records.find(
-      (record) => isSameMessage(record, key) && Date.parse(record.receivedAt) >= cutoff,
+      (record) => isSameMessage(record, scoped) && Date.parse(record.receivedAt) >= cutoff,
     ) ?? null;
   }
 
@@ -574,8 +517,12 @@ export class InboundMailStore {
     const entry: InboundMailRecord = {
       ...identity,
       id: randomUUID(),
-      account: input.account,
-      mailbox: input.mailbox,
+      // Clamped, like every other persisted string. These two were bounded on
+      // the load path and nowhere on the write path, so an oversized one was
+      // written in full and then discarded whole on the next load — see
+      // `clampRecordScope`, which `findByMessage` applies to its key for the
+      // same reason.
+      ...clampRecordScope(input),
       // `From:`'s display name is written by whoever sent the message — the
       // same standing the subject has, and the same handling. It was left raw
       // while the subject beside it was redacted, so `"4111111111111111"
@@ -597,10 +544,22 @@ export class InboundMailStore {
         ? null
         : clampDeliveryAddress(redactCardShapes(input.deliveredToAddress)),
       deliveryEvidenceSource: input.deliveryEvidenceSource,
-      links: input.links,
+      // Clamped, not trusted: `reason` is bounded per entry and the array is
+      // bounded by count, because sixty-four unbounded strings is an unbounded
+      // record. Clamping at write rather than rejecting at load is the same
+      // choice the subject and the delivery address make — an oversized field
+      // must not take the whole message down with it on the next load.
+      links: clampLinkVerdicts(input.links),
       outcome: input.outcome,
       noticeStatus: input.noticeStatus,
-      ...(input.noticeFailureReason ? { noticeFailureReason: input.noticeFailureReason } : {}),
+      // The one field on this record whose text a REMOTE SERVER wrote:
+      // `intake.ts` fills it from `delivery.error`, the notice transport's own
+      // refusal body. Bounded here so a chatty push service cannot make one
+      // record arbitrarily large inside a store that believes `maxRecords`
+      // bounds it.
+      ...(input.noticeFailureReason
+        ? { noticeFailureReason: input.noticeFailureReason.slice(0, MAX_NOTICE_FAILURE_REASON_CHARS) }
+        : {}),
       // SCAN, THEN TRUNCATE — and scan everything that could reach the
       // excerpt, not a window sized to one span.
       //
@@ -658,12 +617,25 @@ export class InboundMailStore {
       receivedAt: input.receivedAt,
     };
     return this.mutate(async (records) => {
-      const index = records.findIndex((existing) => isSameMessage(existing, input));
-      if (index < 0) return { next: [...records, entry], result: entry };
-      const replacement: InboundMailRecord = { ...entry, id: records[index]!.id };
-      const next = [...records];
-      next[index] = replacement;
-      return { next, result: replacement };
+      // Matched on the CLAMPED scope, the same one `entry` was built with:
+      // comparing a stored (clamped) account against an unclamped input is how
+      // a retry stops recognising its own earlier row.
+      const key = { ...input, ...clampRecordScope(input) };
+      const index = records.findIndex((existing) => isSameMessage(existing, key));
+      const appended = index < 0 ? [...records, entry] : records.map((existing, at) => (
+        at === index ? { ...entry, id: existing.id } : existing
+      ));
+      const result = index < 0 ? entry : appended[index]!;
+      // BOUNDS ON THE WRITE, not only on the sweep. `record()` used to write
+      // `[...records, entry]` and nothing more, so between two six-hourly
+      // sweeps the file was bounded by neither `maxRecords` nor `retentionMs`.
+      // Applying them here is what makes the file itself bounded; the sweep
+      // stays because it also itemises, reaps malformed rows, and reaches
+      // records this process never wrote.
+      const { kept, expired, overCap } = this.applyBounds(appended, this.now());
+      this.writeReapedExpired += expired;
+      this.writeReapedOverCap += overCap;
+      return { next: kept, result };
     });
   }
 

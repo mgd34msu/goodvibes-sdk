@@ -8045,9 +8045,11 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
         },
         "records": {
           "kept": 0,
+          "stored": 0,
           "retentionDays": 0,
           "maxRecords": 0,
-          "maxBodyExcerptChars": 0
+          "maxBodyExcerptChars": 0,
+          "reapedOnWrite": 0
         },
         "expectations": {
           "open": 0,

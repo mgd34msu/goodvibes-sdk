@@ -31895,6 +31895,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "kept": {
                       "type": "number"
                     },
+                    "stored": {
+                      "type": "number"
+                    },
                     "retentionDays": {
                       "type": "number"
                     },
@@ -31903,13 +31906,18 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     },
                     "maxBodyExcerptChars": {
                       "type": "number"
+                    },
+                    "reapedOnWrite": {
+                      "type": "number"
                     }
                   },
                   "required": [
                     "kept",
+                    "stored",
                     "retentionDays",
                     "maxRecords",
-                    "maxBodyExcerptChars"
+                    "maxBodyExcerptChars",
+                    "reapedOnWrite"
                   ],
                   "additionalProperties": false
                 },

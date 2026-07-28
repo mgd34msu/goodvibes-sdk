@@ -394,10 +394,21 @@ describe('an unreadable store file is discarded and disclosed, not a permanent h
       policy: { retentionMs: 1_000 },
       now: () => now,
     });
-    for (let index = 0; index < 5; index += 1) {
-      await records.record({
+    // Seeded into the FILE rather than written through `record()`.
+    //
+    // `record()` applies both policy bounds to what it writes, so a record
+    // already past `retentionMs` never lands — which is the point of that fix
+    // and makes it useless as a way to manufacture rows for a sweep to find.
+    // These five stand for what a sweep genuinely still has to reach: rows a
+    // previous build wrote, rows a peer process wrote, rows that aged past the
+    // window while nothing was writing.
+    writeFileSync(recordPath, `${JSON.stringify({
+      version: 1,
+      records: Array.from({ length: 5 }, (_unused, index) => ({
+        id: `seeded-${String(index)}`,
         account: ACCOUNT,
         mailbox: MAILBOX,
+        source: 'imap',
         uidValidity: 1,
         uid: 100 + index,
         senderDisplay: 'sender@example.test',
@@ -407,10 +418,10 @@ describe('an unreadable store file is discarded and disclosed, not a permanent h
         links: [],
         outcome: 'no-expectation',
         noticeStatus: 'delivered',
-        body: 'nothing',
+        bodyExcerpt: 'nothing',
         receivedAt: new Date(now - 86_400_000).toISOString(),
-      });
-    }
+      })),
+    }, null, 2)}\n`, 'utf-8');
     expect((await records.list()).length).toBe(0); // read-time filter hides them
     expect(JSON.parse(readFileSync(recordPath, 'utf-8')).records.length).toBe(5);
 
