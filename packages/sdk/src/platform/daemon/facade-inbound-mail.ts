@@ -37,6 +37,7 @@ import {
   PersistedExpectationStore,
   createInboundMailIntake,
   createInboundMailSourceFactory,
+  createInboundTerminalFailureAnnouncer,
   resolveWatcherSettings,
   type GmailSourceBuilder,
   type InboundNoticeMode,
@@ -243,18 +244,17 @@ export function composeInboundMail(
       noticeMode: () => readNoticeMode(configManager),
       now: () => new Date(),
     }),
-    observer: {
-      terminalFailure: (failure) => {
-        logger.error('Inbound mail stopped for a reason only a change can clear', {
-          surface: 'email-inbound',
-          account: failure.account,
-          mailbox: failure.mailbox,
-          reason: failure.reason,
-          detail: failure.detail,
-          action: failure.fix,
-        });
-      },
-    },
+    // §3.4b: a terminal state is ANNOUNCED, not merely recorded. This used to
+    // be a `logger.error` and nothing else — the once-per-transition tracker
+    // built, and its sink a log line, for the one condition that means no mail
+    // will ever arrive again. It goes to the owner through the same structured
+    // notice port arriving mail goes through, and still logs.
+    observer: createInboundTerminalFailureAnnouncer({
+      send: (notice) => options.deliverStructuredNotice(
+        resolveNoticeBinding(configManager, options.routeBindings) ?? undefined,
+        notice,
+      ),
+    }),
   });
 
   registerEmailExpectationGatewayMethods(options.gatewayMethods, expectations);

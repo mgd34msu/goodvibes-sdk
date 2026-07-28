@@ -46,6 +46,7 @@ import {
 import {
   CapabilityStateTracker,
   capabilityVerdict,
+  classifyLocalFailure,
   classifyOpenFailure,
   classifyReadFailure,
   errorText,
@@ -138,6 +139,29 @@ function anySignal(signals: readonly AbortSignal[]): {
   };
 }
 
+/**
+ * How many passes may end in an unexpected throw before it stops being treated
+ * as a condition that will clear.
+ *
+ * Not one — a full disk during a log rotation, or a state directory being
+ * replaced by an installer, recovers within seconds and a watcher that gave up
+ * on the first one would need a restart it should not need. Not unbounded
+ * either: retrying forever is how a permanently unwritable cursor becomes a
+ * watcher that looks busy and delivers nothing. Ten attempts on the reconnect
+ * backoff spans minutes, which is long enough for anything transient and short
+ * enough that the owner hears about anything else the same hour.
+ */
+const MAX_CONSECUTIVE_LOCAL_FAILURES = 10;
+
+/**
+ * The "nothing was thrown" marker.
+ *
+ * A sentinel rather than `null` or `undefined`, because both are values a
+ * `throw` can legally carry, and a watcher that decided "nothing went wrong"
+ * from `throw undefined` would go back to being silently dead.
+ */
+const NOTHING_THREW: unique symbol = Symbol('nothing-threw');
+
 export class InboundMailboxWatcher {
   private readonly deps: InboundMailboxWatcherDeps;
   private readonly settings: InboundWatcherSettings;
@@ -158,6 +182,8 @@ export class InboundMailboxWatcher {
   private lastBodyProbe: ImapBodyProbeVerdict | null = null;
   /** Set when a verdict only a change can clear was reported this pass. */
   private pendingRecheck = false;
+  /** Unexpected throws in a row, with no completed drain in between. */
+  private localFailures = 0;
 
   constructor(deps: InboundMailboxWatcherDeps) {
     this.deps = deps;
@@ -192,11 +218,21 @@ export class InboundMailboxWatcher {
     };
   }
 
-  /** Begin watching. Idempotent; a second call while running does nothing. */
+  /**
+   * Begin watching. Idempotent; a second call while running does nothing.
+   *
+   * The runner is cleared when the loop ends, whatever ended it. `status.running`
+   * is read off this field, and a field that stays set after the loop returned
+   * is the exact lie this round exists to remove: a dead watcher reporting that
+   * it is running.
+   */
   start(): void {
     if (this.runner !== null) return;
     if (this.shutdown.signal.aborted) this.shutdown = new AbortController();
-    this.runner = this.run();
+    const runner: Promise<void> = this.run().finally(() => {
+      if (this.runner === runner) this.runner = null;
+    });
+    this.runner = runner;
   }
 
   /** Stop watching and wait for the loop to unwind. Safe to call twice. */
@@ -240,16 +276,53 @@ export class InboundMailboxWatcher {
         continue;
       }
       this.connectionCount += 1;
+      let unexpected: unknown = NOTHING_THREW;
       try {
         await this.serve(connection);
+      } catch (error) {
+        // Everything below `serve` that can throw rather than report: the
+        // cursor store's `advance`, which `poll-loop.ts` calls OUTSIDE its
+        // `try` because a store write is not a protocol failure. It reaches
+        // here through `drainMailboxDelta` -> `drainOnce` -> `onWake` ->
+        // `runIdleLoop` -> `serve`, and before this catch existed it kept
+        // going: out of `run`, out of the source's `run`, into a supervisor
+        // `.catch(() => undefined)`. One transient disk error ended inbound
+        // mail permanently, with `email.inbound.status` still reporting a
+        // healthy IDLE. Held rather than handled here, because the connection
+        // has to be released first — the same rule `settleTerminal` follows.
+        unexpected = error;
       } finally {
         this.mode = 'inactive';
         await connection.close().catch(() => undefined);
       }
+      if (unexpected !== NOTHING_THREW) await this.handleUnexpectedFailure(unexpected);
       // After the socket is released, never while holding it — see
       // `settleTerminal`.
       await this.settleTerminal();
     }
+  }
+
+  /**
+   * A throw that no reporting path claimed.
+   *
+   * Classified rather than logged: a full disk is a wait, an unwritable state
+   * directory is a decision, and the two need different answers. Either way the
+   * loop stays alive and the verdict stops saying healthy — the failure this
+   * catch exists to prevent is not the throw, it is the silence after it.
+   */
+  private async handleUnexpectedFailure(error: unknown): Promise<void> {
+    this.localFailures += 1;
+    const { verdict, terminal } = classifyLocalFailure(
+      error,
+      this.localFailures,
+      MAX_CONSECUTIVE_LOCAL_FAILURES,
+    );
+    if (terminal) {
+      this.reportTerminal(verdict, null);
+      return;
+    }
+    this.tracker.record(verdict);
+    await this.pauseBeforeReconnect(verdict.reason);
   }
 
   /**
@@ -449,7 +522,14 @@ export class InboundMailboxWatcher {
       signal: this.shutdown.signal,
     });
     this.cursor = report.cursor;
-    if (report.outcome === 'complete') this.deliveryBackoff.reset();
+    if (report.outcome === 'complete') {
+      this.deliveryBackoff.reset();
+      // A completed drain wrote the cursor, so whatever was refusing writes has
+      // stopped refusing. The escalation counts CONSECUTIVE failures for that
+      // reason: one bad minute a week apart must never add up to a permanent
+      // verdict.
+      this.localFailures = 0;
+    }
     return report;
   }
 

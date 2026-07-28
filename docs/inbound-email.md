@@ -1936,6 +1936,47 @@ is sent rather than discovered when one arrives somewhere unexpected.
 The alternative — a real `owner notice route` concept — is the better answer and
 is a larger change than this round. Recorded for a ruling.
 
+### 13.4 Four more, found by trying to kill the watcher
+
+Reported by the lane that hardened the lifecycle, each reproduced before being
+recorded. All four are the SAME defect this capability exists to eliminate —
+*the watcher dies permanently while reporting healthy* — reached by four
+different routes, which is the part worth writing down: the document states the
+rule in §3.4b and then leaves four paths that break it.
+
+1. **"A verdict is reported where it is found" says nothing about a throw that
+   never becomes a verdict.** `poll-loop.ts` calls the cursor store's `advance`
+   outside every `try`, deliberately — a store write is not a protocol failure —
+   and the rejection unwound the whole stack into a supervisor
+   `.catch(() => undefined)`. One transient `ENOSPC` ended inbound mail forever
+   with `email.inbound.status` still reporting a healthy IDLE. The document's
+   three states describe conditions the watcher *concludes*; it needed a rule
+   for conditions it merely *suffers*. Now: an unexpected throw is caught,
+   classified transient or permanent, retried on backoff or escalated to a named
+   `insufficient` reason (`local-store-unwritable`), and reported. `running`
+   never reads true for a loop that has exited.
+2. **§9's "a torn record is discarded, not repaired" was written about records
+   and not about files.** `PersistentStore.load()` throws on unparseable JSON,
+   and none of the three stores caught it, so one bad byte in the cursor file
+   disabled the record sweep, the expectation sweep, `start()`, AND
+   `email.inbound.status` — the disclosure verb failing in exactly the state it
+   exists to disclose. The rule is now applied at file granularity
+   (`loadOrDiscard`), one store's failure cannot stop another's sweep, and the
+   discard is named per store in the status snapshot.
+3. **§3.4b's "announced, not merely recorded" had no implementation.** The
+   once-per-transition tracker existed, the notice port was in the same
+   function, and the only consumer of `terminalFailure` was `logger.error` — the
+   round's own "rendered and never sent" shape, in the one place meaning no mail
+   will ever arrive again. Terminal failures now go to the owner through
+   `deliverStructuredNotice`, rendered from structured fields (our reason and
+   fix `literal`, the server's own wording `untrusted`, per §7.1), once per
+   transition, re-armed by any recovery.
+4. **§3.4b's "fixing his scopes does not require a restart" was untrue of
+   anything he can see.** The supervisor wrote `status` only in the
+   `insufficient` direction, so an hourly re-probe that cleared a rejected
+   credential left `status` saying `inactive` and `health()` saying `degraded`
+   for a watcher that was reading mail again. Both directions are written now.
+
 ## 14. Related
 
 - `docs/payments.md` — a consumer of this capability.

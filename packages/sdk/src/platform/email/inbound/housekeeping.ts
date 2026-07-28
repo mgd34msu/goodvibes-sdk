@@ -15,18 +15,38 @@
  * loss.
  */
 import { PersistentStore } from '../../state/persistent-store.js';
+import { summarizeError } from '../../utils/error-display.js';
+import { logger } from '../../utils/logger.js';
 import type { CursorSweepReport, MailboxCursorStore } from './cursor-store.js';
 import type { ExpectationSweepReport, PersistedExpectationStore } from './expectation-store.js';
 import type { InboundMailRecordSweepReport, InboundMailStore } from './record-store.js';
 import type { HousekeepingTrigger } from './types.js';
 
-/** What one full pass removed, across all three stores. */
+/** One store that could not be swept at all, and why. */
+export interface InboundMailSweepFailure {
+  readonly store: 'cursors' | 'records' | 'expectations' | 'disclosure';
+  readonly detail: string;
+}
+
+/**
+ * What one full pass removed, across all three stores.
+ *
+ * Each store's report is NULLABLE, and that is the point rather than a
+ * convenience: the three used to be swept in one sequential expression, so a
+ * throw from the first meant the second and third never ran and a caller could
+ * not tell — a full record store and an expired expectation book both survived
+ * a "successful" boot because one cursor file had a bad byte in it. A store
+ * that could not be swept says so here, in `failures`, and the other two are
+ * swept anyway.
+ */
 export interface InboundMailHousekeepingReport {
   readonly sweptAt: number;
   readonly trigger: HousekeepingTrigger;
-  readonly cursors: CursorSweepReport;
-  readonly records: InboundMailRecordSweepReport;
-  readonly expectations: ExpectationSweepReport;
+  readonly cursors: CursorSweepReport | null;
+  readonly records: InboundMailRecordSweepReport | null;
+  readonly expectations: ExpectationSweepReport | null;
+  /** Empty on a pass where every store swept. */
+  readonly failures: readonly InboundMailSweepFailure[];
   /** One-line summary a surface can render without reading the itemised lists. */
   readonly summary: string;
 }
@@ -48,28 +68,53 @@ export interface InboundMailHousekeeperOptions {
   readonly now?: (() => number) | undefined;
 }
 
-function summarize(cursors: CursorSweepReport, records: InboundMailRecordSweepReport, expectations: ExpectationSweepReport): string {
-  const totalRemoved = cursors.removed.length + records.removed.length + expectations.removed.length;
-  if (totalRemoved === 0) {
-    return `Inbound mail housekeeping: nothing to reap (${String(cursors.retained)} cursor(s), ${String(records.retained)} record(s), ${String(expectations.retained)} expectation(s) retained).`;
-  }
+/** `3 malformed, 1 file-unreadable` — removals grouped by their own reason word. */
+function byReason(removed: readonly { readonly reason: string }[]): string {
+  const counts = new Map<string, number>();
+  for (const removal of removed) counts.set(removal.reason, (counts.get(removal.reason) ?? 0) + 1);
+  return [...counts].map(([reason, count]) => `${String(count)} ${reason}`).join(', ');
+}
+
+/**
+ * The disclosure sentence.
+ *
+ * A store that did not sweep is named as such rather than omitted: an absent
+ * line reads as "nothing to report", and "nothing to report" is precisely the
+ * wrong thing to say about a file nobody could read.
+ */
+function summarize(
+  cursors: CursorSweepReport | null,
+  records: InboundMailRecordSweepReport | null,
+  expectations: ExpectationSweepReport | null,
+  failures: readonly InboundMailSweepFailure[],
+): string {
   const parts: string[] = [];
-  if (cursors.removed.length > 0) {
-    const byReason = new Map<string, number>();
-    for (const removal of cursors.removed) byReason.set(removal.reason, (byReason.get(removal.reason) ?? 0) + 1);
-    parts.push(`${String(cursors.removed.length)} cursor(s) removed (${[...byReason].map(([reason, count]) => `${String(count)} ${reason}`).join(', ')})`);
+  if (cursors !== null && cursors.removed.length > 0) {
+    parts.push(`${String(cursors.removed.length)} cursor(s) removed (${byReason(cursors.removed)})`);
   }
-  if (records.removed.length > 0) {
-    const byReason = new Map<string, number>();
-    for (const removal of records.removed) byReason.set(removal.reason, (byReason.get(removal.reason) ?? 0) + 1);
-    parts.push(`${String(records.removed.length)} inbound record(s) removed (${[...byReason].map(([reason, count]) => `${String(count)} ${reason}`).join(', ')})`);
+  if (records !== null && records.removed.length > 0) {
+    parts.push(`${String(records.removed.length)} inbound record(s) removed (${byReason(records.removed)})`);
   }
-  if (expectations.removed.length > 0) {
-    const byReason = new Map<string, number>();
-    for (const removal of expectations.removed) byReason.set(removal.reason, (byReason.get(removal.reason) ?? 0) + 1);
-    parts.push(`${String(expectations.removed.length)} expectation(s) removed (${[...byReason].map(([reason, count]) => `${String(count)} ${reason}`).join(', ')})`);
+  if (expectations !== null && expectations.removed.length > 0) {
+    parts.push(`${String(expectations.removed.length)} expectation(s) removed (${byReason(expectations.removed)})`);
   }
-  return `Inbound mail housekeeping: ${parts.join('; ')}. Retained ${String(cursors.retained)} cursor(s), ${String(records.retained)} record(s), ${String(expectations.retained)} expectation(s).`;
+  const unreadable = [cursors, records, expectations].some(
+    (report) => report !== null && report.removed.some((entry) => entry.reason === 'file-unreadable'),
+  );
+  const retained = [
+    cursors === null ? 'cursors NOT SWEPT' : `${String(cursors.retained)} cursor(s)`,
+    records === null ? 'records NOT SWEPT' : `${String(records.retained)} record(s)`,
+    expectations === null ? 'expectations NOT SWEPT' : `${String(expectations.retained)} expectation(s)`,
+  ].join(', ');
+  const head = parts.length === 0
+    ? 'Inbound mail housekeeping: nothing to reap.'
+    : `Inbound mail housekeeping: ${parts.join('; ')}.`;
+  const corrupt = unreadable ? ' A store file could not be read and its contents were discarded.' : '';
+  const failed = failures.length === 0
+    ? ''
+    : ` ${String(failures.length)} store(s) could not be swept: `
+      + `${failures.map((failure) => `${failure.store} (${failure.detail})`).join('; ')}.`;
+  return `${head} Retained ${retained}.${corrupt}${failed}`;
 }
 
 /**
@@ -99,31 +144,65 @@ export class InboundMailHousekeeper {
     return this.lastReport;
   }
 
-  /** Disclosure history from disk, newest last. */
+  /**
+   * Disclosure history from disk, newest last.
+   *
+   * An unreadable log is an empty history rather than an error: the log exists
+   * to explain reaping, and refusing to reap because the explanation of the
+   * last reap will not parse is the tail wagging the dog.
+   */
   async listDisclosures(): Promise<readonly InboundMailHousekeepingReport[]> {
-    const log = await this.disclosure.load();
+    const { data: log } = await this.disclosure.loadOrDiscard();
     return Array.isArray(log?.reports) ? log.reports : [];
   }
 
-  /** One full pass over all three stores, with the result disclosed to disk. */
+  /**
+   * One full pass over all three stores, with the result disclosed to disk.
+   *
+   * Each store is swept INDEPENDENTLY. They were swept in one sequential
+   * expression, which made the first store's failure the second and third
+   * store's failure too — one unreadable cursor file left records past their
+   * retention and expired expectations sitting on disk, with no report, no
+   * disclosure, and nothing anywhere saying why. Three separate attempts, three
+   * separate answers, and the pass itself always produces a report.
+   */
   async sweep(trigger: HousekeepingTrigger): Promise<InboundMailHousekeepingReport> {
-    const cursors = await this.cursors.sweep(trigger);
-    const records = await this.records.sweep(trigger);
-    const expectations = await this.expectations.sweep(trigger);
+    const failures: InboundMailSweepFailure[] = [];
+    const attempt = async <T>(
+      store: InboundMailSweepFailure['store'],
+      run: () => Promise<T>,
+    ): Promise<T | null> => {
+      try {
+        return await run();
+      } catch (error) {
+        failures.push({ store, detail: summarizeError(error) });
+        return null;
+      }
+    };
+
+    const cursors = await attempt('cursors', () => this.cursors.sweep(trigger));
+    const records = await attempt('records', () => this.records.sweep(trigger));
+    const expectations = await attempt('expectations', () => this.expectations.sweep(trigger));
+
+    const existing = await attempt('disclosure', () => this.listDisclosures()) ?? [];
     const report: InboundMailHousekeepingReport = {
       sweptAt: this.now(),
       trigger,
       cursors,
       records,
       expectations,
-      summary: summarize(cursors, records, expectations),
+      failures,
+      summary: summarize(cursors, records, expectations, failures),
     };
     this.lastReport = report;
-    const existing = await this.listDisclosures();
-    await this.disclosure.persist({
+    // Disclosure is the LAST thing and cannot take the pass down with it: a
+    // sweep that reaped correctly and then could not write its own log has
+    // still reaped correctly, and the caller needs to be told what happened
+    // more than it needs the write to have succeeded.
+    await attempt('disclosure', () => this.disclosure.persist({
       version: 1,
       reports: [...existing, report].slice(-MAX_DISCLOSURE_REPORTS),
-    });
+    }));
     return report;
   }
 
@@ -146,7 +225,26 @@ export class InboundMailHousekeeper {
     this.stop();
     if (!Number.isFinite(intervalMs) || intervalMs <= 0) return;
     this.timer = setInterval(() => {
-      void this.sweep('periodic').catch(() => undefined);
+      void this.sweep('periodic').then(
+        (report) => {
+          if (report.failures.length === 0) return;
+          logger.warn('Inbound mail housekeeping could not sweep every store', {
+            surface: 'email-inbound',
+            trigger: 'periodic',
+            failures: report.failures.map((failure) => `${failure.store}: ${failure.detail}`),
+          });
+        },
+        // `sweep` handles its own failures, so reaching here means the pass
+        // itself broke. Swallowing it silently is how a daemon stops reaping
+        // for a month and nothing anywhere says so.
+        (error: unknown) => {
+          logger.error('Inbound mail housekeeping failed', {
+            surface: 'email-inbound',
+            trigger: 'periodic',
+            detail: summarizeError(error),
+          });
+        },
+      );
     }, intervalMs);
     this.timer.unref?.();
   }

@@ -23,7 +23,7 @@
  *  5. Disclose what was reaped — every sweep returns an itemised report.
  */
 import { randomUUID } from 'node:crypto';
-import { PersistentStore } from '../../state/persistent-store.js';
+import { PersistentStore, type PersistentStoreCorruption } from '../../state/persistent-store.js';
 import { redactCardShapes } from '../../security/card-shapes.js';
 import {
   isNonEmptyTrimmedString,
@@ -135,7 +135,8 @@ export interface InboundMailRecord {
   readonly receivedAt: string;
 }
 
-export type InboundMailDiscardReason = 'malformed' | 'expired' | 'over-cap';
+/** `file-unreadable` is the whole-file counterpart of `malformed` — see `CursorDiscardReason`. */
+export type InboundMailDiscardReason = 'malformed' | 'file-unreadable' | 'expired' | 'over-cap';
 
 export interface InboundMailDiscard {
   readonly id: string;
@@ -144,6 +145,8 @@ export interface InboundMailDiscard {
   readonly uid: number;
   readonly reason: InboundMailDiscardReason;
   readonly removedAt: number;
+  /** Present where the removal needs a sentence rather than a reason word. */
+  readonly note?: string | undefined;
 }
 
 export interface InboundMailRecordSweepReport {
@@ -258,6 +261,8 @@ export class InboundMailStore {
   private readonly policy: InboundMailRecordPolicy;
   private readonly now: () => number;
   private writeChain: Promise<void> = Promise.resolve();
+  /** The last unreadable-file event, latched so status can name it. */
+  private corruption: PersistentStoreCorruption | null = null;
 
   constructor(storeOrPath: PersistentStore<InboundMailSnapshot> | string, options: InboundMailStoreOptions = {}) {
     this.store = typeof storeOrPath === 'string' ? new PersistentStore<InboundMailSnapshot>(storeOrPath) : storeOrPath;
@@ -270,20 +275,34 @@ export class InboundMailStore {
     return this.policy;
   }
 
-  private async readWithDrops(): Promise<{ records: InboundMailRecord[]; malformed: number }> {
-    const raw = await this.store.load();
-    if (!raw || typeof raw !== 'object') return { records: [], malformed: 0 };
+  /** The unreadable-file event this store last saw, or null. See `MailboxCursorStore.getCorruption`. */
+  getCorruption(): PersistentStoreCorruption | null {
+    return this.corruption;
+  }
+
+  private async readWithDrops(): Promise<{
+    records: InboundMailRecord[];
+    malformed: number;
+    corrupt: PersistentStoreCorruption | null;
+  }> {
+    const { data: raw, corruption } = await this.store.loadOrDiscard();
+    if (corruption !== null) this.corruption = corruption;
+    if (!raw || typeof raw !== 'object') return { records: [], malformed: 0, corrupt: corruption };
     const rawRecords = Array.isArray(raw.records) ? raw.records : [];
     const records = rawRecords.map(validateInboundMailRecord).filter((r): r is InboundMailRecord => r !== null);
-    return { records, malformed: rawRecords.length - records.length };
+    return { records, malformed: rawRecords.length - records.length, corrupt: null };
   }
 
   private async mutate<T>(
-    fn: (records: InboundMailRecord[], malformed: number) => Promise<{ next: InboundMailRecord[]; result: T }>,
+    fn: (
+      records: InboundMailRecord[],
+      malformed: number,
+      corrupt: PersistentStoreCorruption | null,
+    ) => Promise<{ next: InboundMailRecord[]; result: T }>,
   ): Promise<T> {
     const run = this.writeChain.then(async () => {
-      const { records, malformed } = await this.readWithDrops();
-      const { next, result } = await fn(records, malformed);
+      const { records, malformed, corrupt } = await this.readWithDrops();
+      const { next, result } = await fn(records, malformed, corrupt);
       await this.store.persist({ version: 1, records: next });
       return result;
     });
@@ -361,8 +380,20 @@ export class InboundMailStore {
   async sweep(trigger: HousekeepingTrigger = 'manual'): Promise<InboundMailRecordSweepReport> {
     const now = this.now();
     const cutoff = now - this.policy.retentionMs;
-    return this.mutate(async (records, malformed) => {
+    return this.mutate(async (records, malformed, corrupt) => {
       const removed: InboundMailDiscard[] = [];
+      if (corrupt !== null) {
+        removed.push({
+          id: '(unreadable)',
+          account: '(unknown)',
+          mailbox: '(unknown)',
+          uid: 0,
+          reason: 'file-unreadable',
+          removedAt: now,
+          note: `the inbound record file could not be read (${corrupt.detail}), so its `
+            + 'contents were discarded',
+        });
+      }
       if (malformed > 0) {
         removed.push({ id: '(unreadable)', account: '(unknown)', mailbox: '(unknown)', uid: 0, reason: 'malformed', removedAt: now });
       }

@@ -496,7 +496,31 @@ export type InboundCapabilityReason =
   | 'uidvalidity-missing'
   /** insufficient: the mailbox opened and the server refused to hand over
    *  message data, so arrival can be seen and never read. */
-  | 'fetch-refused';
+  | 'fetch-refused'
+  /**
+   * insufficient: the daemon's OWN state — the cursor file — cannot be
+   * written, and has not been writable for long enough that waiting is no
+   * longer a plausible answer.
+   *
+   * Nothing about the mail server is wrong here, and that is exactly why it
+   * needs its own reason. The cursor is what "this message is handled" is
+   * recorded in; a watcher that cannot write it either stops advancing (and
+   * re-delivers the same message forever) or advances in memory only (and
+   * loses everything at the next restart). Both are silent. A named reason on
+   * the local disk is something the owner can act on; `mailbox-unreadable`
+   * would send him to the mail provider for a full filesystem.
+   */
+  | 'local-store-unwritable'
+  /**
+   * insufficient: the run loop ended with a failure that no other reason
+   * describes.
+   *
+   * The catch-all, and it exists so that "we did not anticipate this" has a
+   * state rather than becoming a dead loop with a healthy status. Any throw
+   * that escapes the source's own handling lands here, is reported, and stops
+   * `running` from reading true for a loop that is not running.
+   */
+  | 'watcher-stopped-unexpectedly';
 
 /** A state with the evidence for it attached. */
 export interface InboundCapabilityVerdict {

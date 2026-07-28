@@ -40,7 +40,9 @@
  */
 
 import { createInboundMailDedup, DedupingInboundMailSink } from './sink.js';
+import { capabilityVerdict } from './capability.js';
 import { describeInboundMailHealth, type InboundMailHealthEntry } from './health.js';
+import { summarizeError } from '../../utils/error-display.js';
 import { describeSourceLatency, type InboundMailSource } from './source.js';
 import {
   selectInboundMailSource,
@@ -101,6 +103,29 @@ export interface InboundMailSourceReport {
   readonly latency: string;
 }
 
+/**
+ * Whether a persisted store could be read, per store.
+ *
+ * Present on the snapshot because a store whose file would not parse is
+ * DISCARDED (§9's "a torn record is discarded, not repaired", applied to the
+ * file), and a discard nobody is told about is indistinguishable from data
+ * loss. It is also the one fact that explains the state a reader is looking at:
+ * a mailbox that resumed from nowhere, or an expectation book that is empty
+ * when a workstream is waiting on it.
+ */
+export interface InboundMailStoreHealth {
+  readonly store: 'cursors' | 'records' | 'expectations';
+  readonly state:
+    /** Read normally. */
+    | 'ok'
+    /** The file would not parse; its contents were discarded and the store is serving empty. */
+    | 'discarded-unreadable'
+    /** The store could not be read at all just now, so this snapshot omits it. */
+    | 'unavailable';
+  /** '' when `ok`; otherwise what went wrong, in the platform's own words. */
+  readonly detail: string;
+}
+
 /** What a store retains, for the disclosure §9 requires. */
 export interface InboundMailRetentionReport {
   readonly cursors: { readonly kept: number; readonly maxCursors: number };
@@ -116,6 +141,8 @@ export interface InboundMailRetentionReport {
     readonly sweptAt: number;
     readonly trigger: string;
     readonly summary: string;
+    /** Stores that pass could not sweep at all. Empty on a clean pass. */
+    readonly failures: readonly string[];
   } | null;
 }
 
@@ -157,6 +184,8 @@ export interface InboundMailStatusSnapshot {
     readonly remainingMs: number;
   }[];
   readonly retention: InboundMailRetentionReport;
+  /** One entry per persisted store, always all three. See `InboundMailStoreHealth`. */
+  readonly stores: readonly InboundMailStoreHealth[];
   readonly health: InboundMailHealthEntry;
 }
 
@@ -206,7 +235,7 @@ export interface InboundMailSupervisorDeps {
    * is the store's to enforce, and a number copied into this file would be a
    * second declaration that reports a bound the store is not applying.
    */
-  readonly expectationPolicy: Pick<PersistedExpectationStore, 'getPolicy'>;
+  readonly expectationPolicy: Pick<PersistedExpectationStore, 'getPolicy' | 'getCorruption'>;
   readonly housekeeper: InboundMailHousekeeper;
   /** What a found message goes through. Injected: the supervisor owns lifecycle, not intake. */
   readonly handle: (message: InboundMailboxMessage) => Promise<void>;
@@ -233,6 +262,8 @@ export class InboundMailSupervisor {
   private verdict: InboundCapabilityVerdict | null = null;
   private terminal: InboundMailTerminalFailure | null = null;
   private starting: Promise<InboundMailSupervisorStatus> | null = null;
+  /** Start-time steps that failed without stopping the watcher. Carried into `status`. */
+  private degradations: readonly string[] = [];
 
   constructor(deps: InboundMailSupervisorDeps) {
     this.deps = deps;
@@ -275,6 +306,9 @@ export class InboundMailSupervisor {
 
   private async runStart(): Promise<InboundMailSupervisorStatus> {
     await this.stop();
+    // Cleared per start: a sweep that failed last time and worked this time
+    // must not go on being appended to every status sentence.
+    this.degradations = [];
 
     if (!this.deps.config.get('surfaces.email.inbound.enabled')) {
       return this.settle('inactive',
@@ -285,8 +319,31 @@ export class InboundMailSupervisor {
     // Rehydration, in the order §9 requires: sweep the stores, THEN bring the
     // expectations back, THEN start reading. A source started first could
     // match a message against an expectation the sweep was about to reap.
-    await this.deps.housekeeper.runRecoverySweep();
-    await this.deps.expectations.hydrate();
+    //
+    // Neither step is allowed to prevent the watcher from starting. `start()`
+    // is called by the cluster gate and by a config change, and an unguarded
+    // rejection here rejected out of both — no source, no `settle()`, and a
+    // health entry with no reason in it. Housekeeping is maintenance: it makes
+    // the state tidier, and a mailbox that goes unread because the tidying
+    // failed is a strictly worse outcome than a mailbox read with a stale
+    // record in a file. Both failures are carried into `status` instead.
+    const degradations: string[] = [];
+    try {
+      await this.deps.housekeeper.runRecoverySweep();
+    } catch (error) {
+      degradations.push(
+        `The recovery sweep of the inbound stores did not run (${summarizeError(error)}); `
+        + 'the watcher started anyway and the stores keep whatever they held.');
+    }
+    try {
+      await this.deps.expectations.hydrate();
+    } catch (error) {
+      degradations.push(
+        `Open expectations could not be restored (${summarizeError(error)}); a verification `
+        + 'opened before this restart cannot be matched, and the workstream waiting on it '
+        + 'will report that no mail arrived.');
+    }
+    this.degradations = degradations;
 
     const facts = await this.deps.selectionFacts();
     const selection = selectInboundMailSource({
@@ -332,12 +389,70 @@ export class InboundMailSupervisor {
       return this.settle('inactive', `${verdict.detail}${verdict.fix ? ` ${verdict.fix}` : ''}`);
     }
 
-    this.loop = source.run(abort.signal).catch(() => undefined);
+    this.loop = this.watch(source, abort);
     return this.settle(
       source.latency.kind === 'push' ? 'idle' : 'polling',
       `${selection.detail} ${describeSourceLatency(source.latency)}`,
       true,
     );
+  }
+
+  /**
+   * Hold the source's run loop and observe how it ends.
+   *
+   * This was `source.run(signal).catch(() => undefined)`, and that single
+   * expression is what made a permanent death invisible: the rejection was
+   * discarded unread, nothing was reported, and `status.running` went on
+   * saying `true` for a loop that had already returned. A run loop can end in
+   * exactly three ways and each has to be answered:
+   *
+   *   - the signal fired — a deliberate stop, and `stop()` settles the status;
+   *   - it returned on its own — the source decided it was done, which nothing
+   *     asked it to do, so it is reported as a stop with the reason unknown;
+   *   - it threw — the failure is named, routed to the observer as a terminal
+   *     failure (the observer is where the OWNER is reached from), and put in
+   *     `status`.
+   *
+   * A superseded controller is ignored: a restart has already replaced this
+   * source, and letting the old loop's ending overwrite the new one's status
+   * would report a stop for a watcher that is running.
+   */
+  private watch(source: InboundMailSource, abort: AbortController): Promise<void> {
+    return source.run(abort.signal).then(
+      () => { this.settleLoopEnd(abort, null); },
+      (error: unknown) => { this.settleLoopEnd(abort, error); },
+    );
+  }
+
+  private settleLoopEnd(abort: AbortController, error: unknown): void {
+    if (this.abort !== abort) return;
+    if (abort.signal.aborted) return;
+    const verdict = error === null
+      ? capabilityVerdict('watcher-stopped-unexpectedly',
+        'The mail source returned from its run loop without being asked to stop.')
+      : capabilityVerdict('watcher-stopped-unexpectedly', summarizeError(error));
+    this.verdict = verdict;
+    this.announceTerminal({
+      account: this.deps.account,
+      mailbox: this.deps.mailbox,
+      reason: verdict.reason,
+      detail: verdict.detail,
+      fix: verdict.fix,
+      at: new Date(this.now()).toISOString(),
+      notice: null,
+    });
+    this.settle('inactive', `${verdict.detail} ${verdict.fix}`);
+  }
+
+  /** Record a terminal failure and forward it, without letting the route's failure become ours. */
+  private announceTerminal(failure: InboundMailTerminalFailure): void {
+    this.terminal = failure;
+    try {
+      this.deps.observer?.terminalFailure?.(failure);
+    } catch {
+      // A notification route that throws must not become a second failure —
+      // the same rule the watcher applies at its own observer call.
+    }
   }
 
   /**
@@ -386,9 +501,29 @@ export class InboundMailSupervisor {
    */
   async describeStatus(): Promise<InboundMailStatusSnapshot> {
     const now = this.now();
-    const cursors = await this.deps.cursors.list();
-    const records = await this.deps.records.list();
-    const open = this.deps.expectations.list();
+    // Every read is guarded, and the guard is the whole point of this method
+    // existing in the shape it does. `email.inbound.status` is the ONE verb
+    // that can explain a broken inbound path, and it used to fail outright on
+    // an unreadable cursor file — erroring in exactly the state it exists to
+    // disclose. A store it cannot read is reported AS unreadable, in `stores`,
+    // rather than taking the answer down with it.
+    const unavailable = new Map<InboundMailStoreHealth['store'], string>();
+    const read = async <T>(
+      store: InboundMailStoreHealth['store'],
+      run: () => Promise<T>,
+      fallback: T,
+    ): Promise<T> => {
+      try {
+        return await run();
+      } catch (error) {
+        unavailable.set(store, summarizeError(error));
+        return fallback;
+      }
+    };
+    const cursors = await read('cursors', () => this.deps.cursors.list(), []);
+    const records = await read('records', () => this.deps.records.list(), []);
+    const open = await read('expectations', async () => this.deps.expectations.list(), []);
+    const stores = this.describeStores(unavailable);
     const lastSweep = this.deps.housekeeper.getLastReport();
     const recordPolicy = this.deps.records.getPolicy();
     return {
@@ -424,10 +559,51 @@ export class InboundMailSupervisor {
         },
         lastSweep: lastSweep === null
           ? null
-          : { sweptAt: lastSweep.sweptAt, trigger: lastSweep.trigger, summary: lastSweep.summary },
+          : {
+            sweptAt: lastSweep.sweptAt,
+            trigger: lastSweep.trigger,
+            summary: lastSweep.summary,
+            failures: lastSweep.failures.map((failure) => `${failure.store}: ${failure.detail}`),
+          },
       },
+      stores,
       health: this.health(),
     };
+  }
+
+  /**
+   * One entry per persisted store: read normally, discarded, or unreadable now.
+   *
+   * Always all three, in a fixed order, because an omitted store reads as a
+   * store with nothing to say — and "nothing to say" is the wrong answer about
+   * a file whose contents were thrown away.
+   */
+  private describeStores(
+    unavailable: ReadonlyMap<InboundMailStoreHealth['store'], string>,
+  ): readonly InboundMailStoreHealth[] {
+    const corruption = {
+      cursors: this.deps.cursors.getCorruption(),
+      records: this.deps.records.getCorruption(),
+      expectations: this.deps.expectationPolicy.getCorruption(),
+    } as const;
+    const order: readonly InboundMailStoreHealth['store'][] = ['cursors', 'records', 'expectations'];
+    return order.map((store): InboundMailStoreHealth => {
+      const unreadableNow = unavailable.get(store);
+      if (unreadableNow !== undefined) {
+        return { store, state: 'unavailable', detail: unreadableNow };
+      }
+      const discarded = corruption[store];
+      if (discarded !== null) {
+        return {
+          store,
+          state: 'discarded-unreadable',
+          detail: `${discarded.filePath} could not be read (${discarded.detail}); its contents `
+            + 'were discarded rather than repaired, and this store is serving what has been '
+            + 'written since.',
+        };
+      }
+      return { store, state: 'ok', detail: '' };
+    });
   }
 
   private describeSource(): InboundMailSourceReport {
@@ -472,17 +648,32 @@ export class InboundMailSupervisor {
       stateChanged: (transition: InboundCapabilityTransition): void => {
         this.verdict = transition.to;
         if (transition.to.state === 'insufficient') {
-          this.currentStatus = {
-            mode: 'inactive',
-            reason: `${transition.to.detail}${transition.to.fix ? ` ${transition.to.fix}` : ''}`,
-            running: false,
-          };
+          this.settle(
+            'inactive',
+            `${transition.to.detail}${transition.to.fix ? ` ${transition.to.fix}` : ''}`,
+          );
+        } else if (this.loop !== null) {
+          // The OTHER direction, which used to be missing entirely. The
+          // capability re-probe runs hourly precisely so that fixing a password
+          // or a scope does not need a restart — and with only the
+          // `insufficient` arm written, the recovery reached the verdict and
+          // never reached the status: `health()` went on answering `degraded`,
+          // and `status` went on saying `inactive`, for a watcher that was
+          // reading mail again. Gated on the loop existing so a transition
+          // during `start()`, before there is anything running, cannot report
+          // `running: true` ahead of the loop it describes.
+          this.terminal = null;
+          const source = this.source;
+          this.settle(
+            source !== null && source.latency.kind === 'poll' ? 'polling' : 'idle',
+            `${transition.to.detail}${transition.to.fix ? ` ${transition.to.fix}` : ''}`,
+            true,
+          );
         }
         this.deps.observer?.stateChanged?.(transition);
       },
       terminalFailure: (failure: InboundMailTerminalFailure): void => {
-        this.terminal = failure;
-        this.deps.observer?.terminalFailure?.(failure);
+        this.announceTerminal(failure);
       },
       note: (note: InboundMailNote): void => {
         this.deps.observer?.note?.(note);
@@ -490,12 +681,22 @@ export class InboundMailSupervisor {
     };
   }
 
+  /**
+   * Set the status, with anything that degraded at start-time appended.
+   *
+   * Appended rather than kept in a separate field nobody reads: `reason` is the
+   * one string every surface renders, and a start that half-worked has to be
+   * visible in the sentence the owner is actually shown.
+   */
   private settle(
     mode: InboundMailSupervisorStatus['mode'],
     reason: string,
     running = false,
   ): InboundMailSupervisorStatus {
-    this.currentStatus = { mode, reason, running };
+    const full = this.degradations.length === 0
+      ? reason
+      : `${reason} ${this.degradations.join(' ')}`;
+    this.currentStatus = { mode, reason: full, running };
     return this.currentStatus;
   }
 }
