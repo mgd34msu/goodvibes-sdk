@@ -615,10 +615,21 @@ export class InboundMailStore {
       // `slice(0, cap)` and is persisted verbatim. Fifteen digits of a
       // sixteen-digit number, with the sixteenth recoverable by check digit.
       //
-      // Not reachable today: `intake.ts` passes `body: ''`. It is the
-      // designated path for the body-fetch round, and the comment that used to
-      // sit here asserting safety is exactly what would have stopped anyone
-      // re-deriving it.
+      // REACHABLE TODAY, on the Gmail path. `intake.ts` passes `''` for the
+      // IMAP envelope pass, which fetches no body, and the real body for a
+      // Gmail history delta — so this runs on the source automatic selection
+      // prefers once Google is adopted, which is the owner's own path.
+      // `inbound-mail-intake.test.ts` drives a card number through it. The
+      // body-fetch round extends this to IMAP; it does not switch it on.
+      //
+      // This comment previously read "not reachable today: intake.ts passes
+      // body: ''". That was true when the window fix was written and false by
+      // the time it merged, because the Gmail body arm landed in between. It is
+      // recorded rather than quietly corrected because it is the fault class
+      // this file already carries a note about: a comment asserting a property
+      // the code does not have, which is precisely what stops the next reader
+      // checking — and this one would also have read as licence to relax the
+      // double pass on the grounds that nothing exercises it.
       //
       // The fix is to remove the window, not to widen it. The body is already
       // bounded upstream by the fetch's own byte cap, and `MAX_BODY_EXCERPT_CHARS`
