@@ -245,6 +245,30 @@ describe('the cursor advances only after processing completes', () => {
     expect(cursor?.lastSeenUid).toBe(beforeCrash?.lastSeenUid);
     expect(cursor?.lastSeenUid).toBe(10); // UID 11 was never marked processed — a UID SEARCH UID 11:* refetches it.
   });
+
+  test('advance() never moves the cursor backwards, so a late write cannot resurrect handled mail', async () => {
+    // `advance` clamps with Math.max(existing, incoming), and nothing tested
+    // that. It is the rule the watcher now depends on rather than recomputing:
+    // it takes the store's returned cursor as the answer instead of building
+    // `{ ...current, lastSeenUid: uid }` itself, which is what the two
+    // declarations used to disagree about.
+    //
+    // Without the clamp, a write arriving out of order — a retried pass after
+    // a reconnect, a slow advance overtaken by a faster one — drags the
+    // high-water mark back down, and every message between the two marks is
+    // fetched and announced to the owner a second time.
+    const store = new MailboxCursorStore(storePath);
+    await store.resolve({ account: 'acct-1', mailbox: 'INBOX', serverUidValidity: 1, currentHighestUid: 10, currentMessageCount: 10 });
+    await store.advance({ account: 'acct-1', mailbox: 'INBOX', uidValidity: 1, lastSeenUid: 40 });
+
+    const stale = await store.advance({ account: 'acct-1', mailbox: 'INBOX', uidValidity: 1, lastSeenUid: 25 });
+    expect(stale.lastSeenUid).toBe(40);
+    expect((await store.get('acct-1', 'INBOX'))?.lastSeenUid).toBe(40);
+
+    // And it still moves forward, so the clamp is not merely pinning the cursor.
+    const forward = await store.advance({ account: 'acct-1', mailbox: 'INBOX', uidValidity: 1, lastSeenUid: 41 });
+    expect(forward.lastSeenUid).toBe(41);
+  });
 });
 
 // ---------------------------------------------------------------------------
