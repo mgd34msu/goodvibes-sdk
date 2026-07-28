@@ -64,9 +64,13 @@ import type {
   ImapEnvelope,
   ImapMessageDetail,
 } from './imap-client.js';
+import type { EmailInboxUnreadableResponse, EmailMessageRead } from './email-read-results.js';
 import type { SmtpSendResult } from './smtp-client.js';
 import type { EmailSenderClaim, EmailSenderClaimDescriber } from './sender-claim.js';
 import type { Socket } from 'node:net';
+
+// Re-exported so this module stays the one entry point callers already import.
+export type { EmailInboxUnreadableResponse, EmailMessageRead } from './email-read-results.js';
 
 // ---------------------------------------------------------------------------
 // Email defaults injection
@@ -257,6 +261,16 @@ export interface EmailInboxListResult {
    * equalled the page size would say there is never any more mail.
    */
   readonly total: number;
+  /**
+   * FETCH responses on THIS page the client could not read. Absent means none.
+   *
+   * Here because a short page used to be silent — see
+   * `EmailInboxUnreadableResponse` for the two facts that were being collapsed.
+   * `total` cannot carry it: `total` counts the SEARCH match, and the loss
+   * happens at the FETCH. Omitted when empty, so nothing consuming this shape
+   * today sees a change; a caller that wants to know reads `unreadable?.length`.
+   */
+  readonly unreadable?: readonly EmailInboxUnreadableResponse[] | undefined;
 }
 
 /**
@@ -416,7 +430,14 @@ export class EmailService {
       // function that would quietly keep the tail of it. `total` below reports
       // the full match, so a caller can always see that this is a page.
       const pageUids = uids.slice(-Math.min(limit, IMAP_MAX_FETCH_UIDS));
-      const envelopes: ImapEnvelope[] = await client.fetchEnvelopes(pageUids);
+      // `fetchEnvelopeBatch`, not `fetchEnvelopes`. They run the same fetch;
+      // the difference is that one of them answers the question this method
+      // has to answer. `fetchEnvelopes` returns a list, and its own doc warns
+      // that "omission alone is not evidence of an expunge" — which is exactly
+      // the inference a caller makes when a page comes back short with nothing
+      // saying why. The responses that could not be read travel with the page.
+      const batch = await client.fetchEnvelopeBatch(pageUids);
+      const envelopes: readonly ImapEnvelope[] = batch.envelopes;
 
       // NEWEST FIRST. A search answers in ascending UID order and the page
       // keeps the highest UIDs, so `envelopes` is the newest N with the OLDEST
@@ -484,7 +505,18 @@ export class EmailService {
           readSenderAuthentication(env.authenticationResults),
         ),
       }));
-      return { messages, total: uids.length };
+      return {
+        messages,
+        total: uids.length,
+        ...(batch.unreadable.length > 0
+          ? {
+            unreadable: batch.unreadable.map((problem) => ({
+              uid: problem.uid,
+              detail: problem.detail,
+            })),
+          }
+          : {}),
+      };
     } catch (err) {
       try { await client.logout(); } catch { /* best-effort */ }
       throw err;
@@ -498,8 +530,35 @@ export class EmailService {
    * body is MORE attacker-controlled text than a preview, not less, so it
    * records the same untrusted ingest the listing does — one path into the
    * product, one labelling.
+   *
+   * **`null` means gone, and only gone.** It used to mean gone OR "the server
+   * answered and this client could not read the answer", and the one caller of
+   * this method turns `null` into the sentence "no message with UID n is in
+   * the mailbox — it may have been moved or deleted since it was listed",
+   * which in the second case is a false statement about the owner's mailbox.
+   * An unreadable answer now THROWS, carrying what could not be read, because
+   * every honest thing this signature can say about that case is "not the
+   * message" and a caller has to be able to tell that apart from an expunge.
+   * `readMessageResult` is the same read without the throw, for a caller that
+   * would rather branch than catch.
    */
   async readMessage(uid: number): Promise<ImapMessageDetail | null> {
+    const read = await this.readMessageResult(uid);
+    if (read.outcome === 'read') return read.detail;
+    if (read.outcome === 'gone') return null;
+    throw new Error(
+      `The mail server answered the request for UID ${String(uid)} with `
+      + `${String(read.problems.length)} response(s) this client could not read `
+      + `(${read.problems.map((problem) => problem.detail).join('; ')}). The message has not `
+      + 'been shown to be gone — it is the answer about it that could not be read.',
+    );
+  }
+
+  /**
+   * The same read as `readMessage`, with "gone" and "could not be read" as
+   * separate outcomes instead of one thrown error and one null.
+   */
+  async readMessageResult(uid: number): Promise<EmailMessageRead> {
     const config = this.getValidatedConfig();
     const password = await resolveEmailPassword(config.passwordRef, this.deps.secretsManager);
 
@@ -514,15 +573,23 @@ export class EmailService {
 
     try {
       await client.open();
-      const detail = await client.fetchMessage(uid);
+      const read = await client.readMessageDetail(uid);
       await client.logout();
-      if (detail !== null) {
+      if (read.outcome === 'read') {
         this.recordIngest([{
-          from: detail.from,
-          text: `${detail.subject}\n${detail.bodyText}`.trim(),
+          from: read.detail.from,
+          text: `${read.detail.subject}\n${read.detail.bodyText}`.trim(),
         }]);
+        return read;
       }
-      return detail;
+      if (read.outcome === 'gone') return { outcome: 'gone' };
+      return {
+        outcome: 'unreadable',
+        problems: read.problems.map((problem) => ({
+          uid: problem.uid,
+          detail: problem.detail,
+        })),
+      };
     } catch (err) {
       try { await client.logout(); } catch { /* best-effort */ }
       throw err;

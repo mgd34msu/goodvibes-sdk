@@ -72,6 +72,7 @@ const STATE_BY_REASON: Readonly<Record<InboundCapabilityReason, InboundCapabilit
   'mailbox-unreadable': 'insufficient',
   'uidvalidity-missing': 'insufficient',
   'fetch-refused': 'insufficient',
+  'fetch-unreadable': 'insufficient',
   'local-store-unwritable': 'insufficient',
   'watcher-stopped-unexpectedly': 'insufficient',
 };
@@ -128,6 +129,17 @@ const FIX_BY_REASON: Readonly<Record<InboundCapabilityReason, string>> = {
     'The mailbox opened and the server refused to hand over message data, so '
     + 'arriving mail can be seen and not read. Check that the account is '
     + 'permitted IMAP access and is not restricted to a subset of folders.',
+  'fetch-unreadable':
+    'The mail server is answering the request for message data and the daemon '
+    + 'cannot read the answers it sends, so mail is arriving and none of it can '
+    + 'be handed on. Nothing is lost — the messages are still in the mailbox and '
+    + 'the daemon has not marked them handled — but it has stopped asking, '
+    + 'because asking again was producing the same unreadable answer several '
+    + 'times a second. The detail above is what could not be read; it is a '
+    + 'mismatch between this daemon and this mail server rather than anything '
+    + 'wrong with the account, so it is worth reporting with that detail '
+    + 'attached. Inbound mail retries when the daemon restarts or when inbound '
+    + 'settings change.',
   'local-store-unwritable':
     'The daemon cannot write the file it records handled mail in, so it has '
     + 'stopped reading rather than announce the same message repeatedly or '

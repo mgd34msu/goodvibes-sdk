@@ -511,6 +511,30 @@ export type InboundCapabilityReason =
    *  message data, so arrival can be seen and never read. */
   | 'fetch-refused'
   /**
+   * insufficient: the server ANSWERED the fetch and this client could not read
+   * the answer, for long enough that retrying has stopped being an answer.
+   *
+   * Distinct from `fetch-refused`, which is a refusal — a `NO` or a `BAD`, the
+   * server declining. This is the opposite shape: the server is cooperating,
+   * the two ends do not agree on the wire format, and so every retry produces
+   * the same unreadable response. One of those is a permission problem at the
+   * provider and one is a protocol problem between us and the provider; an
+   * owner sent to check his IMAP access over a malformed FETCH response would
+   * find nothing wrong and conclude the daemon is lying to him.
+   *
+   * A single unreadable answer is NOT this. The cursor stays below the message
+   * and the batch is fetched again, because an answer that could not be read
+   * is not evidence the message is gone — that retry is the correct behaviour
+   * and it is `reconnecting` while it lasts. This reason is what that retrying
+   * escalates to once drains have come back unreadable
+   * `MAX_CONSECUTIVE_UNREADABLE_DRAINS` times in a row with no completed drain
+   * in between, at which point "it will read next time" has been disproved by
+   * the server. Without the escalation the retry is unbounded, and an
+   * unbounded retry of a mailbox that can never be read is a login-per-second
+   * hot loop against a provider that counts connections.
+   */
+  | 'fetch-unreadable'
+  /**
    * insufficient: the daemon's OWN state — the cursor file — cannot be
    * written, and has not been writable for long enough that waiting is no
    * longer a plausible answer.

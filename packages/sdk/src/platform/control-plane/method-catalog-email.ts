@@ -19,6 +19,19 @@ const EMAIL_INBOX_MESSAGE_SCHEMA = objectSchema({
   messageId: STRING_SCHEMA,
 }, ['uid', 'from', 'subject', 'date', 'unread', 'bodyPreview', 'messageId']);
 
+/**
+ * A FETCH response on the returned page that the client could not read.
+ *
+ * Present only when there were any. A page can come back short for two
+ * different reasons — a message expunged between the search and the fetch, or
+ * an answer this client could not read — and `total` cannot tell them apart
+ * because it counts the SEARCH match while the loss happens at the FETCH.
+ */
+const EMAIL_INBOX_UNREADABLE_SCHEMA = objectSchema({
+  uid: NUMBER_SCHEMA,
+  detail: STRING_SCHEMA,
+}, ['detail']);
+
 const EMAIL_ATTACHMENT_SCHEMA = objectSchema({
   filename: STRING_SCHEMA,
   contentType: STRING_SCHEMA,
@@ -186,7 +199,7 @@ export const builtinGatewayEmailMethodDescriptors: readonly GatewayMethodDescrip
     id: 'email.inbox.list',
     title: 'List Email Inbox',
     description:
-      'Return inbox message summaries fetched live from the configured IMAP account, newest first (ordered by server-assigned UID, never by the sender-written Date header). Read-only (EXAMINE / BODY.PEEK); never marks messages read.',
+      'Return inbox message summaries fetched live from the configured IMAP account, newest first (ordered by server-assigned UID, never by the sender-written Date header). Read-only (EXAMINE / BODY.PEEK); never marks messages read. When the server answered for a message and the daemon could not read the answer, the page is short and `unreadable` says so — an omitted message is not by itself evidence that it was deleted.',
     category: 'email',
     scopes: ['read:email'],
     http: { method: 'GET', path: '/api/email/inbox' },
@@ -195,9 +208,14 @@ export const builtinGatewayEmailMethodDescriptors: readonly GatewayMethodDescrip
       since: STRING_SCHEMA,
       unreadOnly: BOOLEAN_SCHEMA,
     }),
+    // `unreadable` is deliberately NOT required: it is absent on every page
+    // that came back whole, which is almost all of them, and a required-but-
+    // empty array would make "nothing went wrong" and "nobody looked" the same
+    // shape on the wire.
     outputSchema: objectSchema({
       messages: arraySchema(EMAIL_INBOX_MESSAGE_SCHEMA),
       total: NUMBER_SCHEMA,
+      unreadable: arraySchema(EMAIL_INBOX_UNREADABLE_SCHEMA),
     }, ['messages', 'total']),
   }),
   methodDescriptor({
