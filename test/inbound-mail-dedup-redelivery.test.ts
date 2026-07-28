@@ -156,7 +156,19 @@ describe('identity is per-source and server-assigned', () => {
 });
 
 describe('a redelivered message produces exactly one notice', () => {
-  test('the same message arriving twice is announced once', async () => {
+  test('a later wake does not re-offer an already-processed message at all', async () => {
+    // The cursor is the FIRST line of defence and dedup is the second, and it
+    // matters which is doing the work here. Once UID 102 is processed the
+    // cursor sits at 102, so the next wake searches `UID SEARCH UID 103:*` and
+    // the only thing that comes back is UID 102 — via the inverted-range quirk
+    // where a range whose start exceeds the mailbox's highest UID matches that
+    // highest UID. It is filtered out above the cursor, so the message is
+    // never offered a second time and dedup is never consulted.
+    //
+    // Asserted explicitly because the first draft of this test assumed the
+    // opposite and passed vacuously: it waited on a cursor advance that the
+    // FIRST delivery had already satisfied, so the second pass never had to
+    // happen for the assertion to hold.
     const harness = await build();
     harness.watcher.start();
     await waitFor(
@@ -167,15 +179,25 @@ describe('a redelivered message produces exactly one notice', () => {
     harness.mailbox.deliver('the only notice the owner should get');
     await waitFor(() => harness.notices.length >= 1, 'the first notice');
 
-    // The same UID offered a second time — an IDLE wake and a poll sweep
-    // overlapping, or a reconnect refetching above the cursor.
+    // Push only once the watcher is back INSIDE an IDLE. An untagged line
+    // arriving between rounds — after one round's subscription is released and
+    // before the next IDLE is issued — has nobody waiting on it, so pushing
+    // eagerly would test the harness's timing rather than the watcher.
+    await waitFor(
+      () => harness.mailbox.commands.filter((l) => /^\S+ IDLE$/.test(l)).length >= 2,
+      'the watcher to re-issue IDLE after the first delivery',
+    );
+    const searchesBefore = harness.mailbox.commands.filter((l) => /UID SEARCH/.test(l)).length;
     harness.mailbox.push('* 2 EXISTS');
     await waitFor(
-      () => harness.cursors.advances.length >= 1,
-      'the second pass to complete',
+      () => harness.mailbox.commands.filter((l) => /UID SEARCH/.test(l)).length > searchesBefore,
+      'the second pass to search the mailbox again',
     );
 
+    // Searched again, found nothing above the cursor, offered nothing.
+    expect(harness.handled).toEqual([102]);
     expect(harness.notices).toEqual([102]);
+    expect(harness.mailbox.commands.some((l) => l.endsWith('UID SEARCH UID 103:*'))).toBe(true);
   });
 
   test('a failure between fetch and completion redelivers AND still notices once', async () => {
