@@ -4347,7 +4347,8 @@ export interface OperatorMethodInputMap {
     // (undocumented)
     "profile.forget": {
         fieldId?: string;
-        lineIndex?: number;
+        section?: string;
+        text?: string;
         authority: string;
     };
     // (undocumented)

@@ -218,7 +218,7 @@ export interface OperatorMethodInputMap {
   "profile.provenance": { fieldId: string; };
   "profile.set": { fieldId: string; value: string; surface: string; said: string; authority: string; };
   "profile.append": { section: string; text: string; surface: string; said: string; authority: string; };
-  "profile.forget": { fieldId?: string; lineIndex?: number; authority: string; };
+  "profile.forget": { fieldId?: string; section?: string; text?: string; authority: string; };
   "profile.undo": { fieldId: string; authority: string; };
   "profile.status": {  };
   "providers.get": { providerId: string; };

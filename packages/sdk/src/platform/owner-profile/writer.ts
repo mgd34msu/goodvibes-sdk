@@ -686,3 +686,53 @@ function refuse(projection: ProfileProjection, reason: string): ProfileEditResul
 
 /** Exported for the store's own duplicate-label check; keeps the grammar in one place. */
 export { parseFieldLine };
+
+/**
+ * Delete one prose line, matched by its exact text within one section.
+ *
+ * Whitespace at the ends is ignored on both sides — that is equality, not a
+ * fuzzy match — and nothing else is. A near-miss delete on the file that holds
+ * his address is worse than a refusal, so an unmatched text removes nothing and
+ * says the line is not there any more, which is both true and the useful thing
+ * to tell him: his file changed under the answer he was working from.
+ *
+ * Two byte-identical lines in one section refuse rather than guess. Removing
+ * "one of them" would report a deletion while the same text stayed in the file,
+ * which is the false-receipt class §9.2 exists to prevent.
+ */
+export function forgetProseByText(
+  projection: ProfileProjection,
+  section: string,
+  text: string,
+): ProfileEditResult {
+  const wanted = text.trim();
+  const target = findProfileSectionByHeading(projection, section);
+  if (target === undefined) {
+    return {
+      ok: false,
+      reason: `Your profile has no ${section} section, so there was nothing to forget.`,
+      lines: projection.rawLines,
+      changes: [],
+    };
+  }
+  const matches = target.prose.filter((line) => line.text.trim() === wanted);
+  if (matches.length === 0) {
+    return {
+      ok: false,
+      reason: `That line is not in ${target.heading} any more, so nothing was removed.`,
+      lines: projection.rawLines,
+      changes: [],
+    };
+  }
+  if (matches.length > 1) {
+    return {
+      ok: false,
+      reason:
+        `${matches.length} lines in ${target.heading} read exactly that, so it is not clear which one you `
+        + 'mean. Nothing was removed — edit the file directly, or tell them apart and ask again.',
+      lines: projection.rawLines,
+      changes: [],
+    };
+  }
+  return forget(projection, { lineIndex: matches[0]!.lineIndex });
+}

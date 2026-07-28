@@ -242,14 +242,32 @@ function createForgetHandler(service: OwnerProfileGatewayService): GatewayMethod
     const fieldId = params.fieldId === undefined || params.fieldId === null
       ? undefined
       : requireFieldId(params.fieldId);
-    const lineIndex = typeof params.lineIndex === 'number' ? params.lineIndex : undefined;
-    if (fieldId === undefined && lineIndex === undefined) {
-      throw new GatewayVerbError('forget needs a fieldId or a lineIndex', 'INVALID_ARGUMENT', 400);
+    // A prose line is named by its section and its exact text, never by its
+    // position — see PROFILE_FORGET_INPUT_SCHEMA for why an index cannot be
+    // made safe here. `lineIndex` is deliberately not read at all: silently
+    // ignoring it would let a caller believe a positional delete had happened.
+    if (params.lineIndex !== undefined) {
+      throw new GatewayVerbError(
+        'forget does not take a lineIndex. Name the line by its section and its exact text instead: '
+        + 'you edit this file yourself, so a position taken from an earlier read may be a different line by now.',
+        'INVALID_ARGUMENT',
+        400,
+      );
+    }
+    const section = typeof params.section === 'string' ? params.section : undefined;
+    const text = typeof params.text === 'string' ? params.text : undefined;
+    if (fieldId === undefined && (section === undefined || text === undefined)) {
+      throw new GatewayVerbError(
+        'forget needs either a fieldId, or a section and the exact text of the line to remove',
+        'INVALID_ARGUMENT',
+        400,
+      );
     }
     return service.forget({
       authority: readAuthority(params.authority),
       ...(fieldId === undefined ? {} : { fieldId }),
-      ...(lineIndex === undefined ? {} : { lineIndex }),
+      ...(section === undefined ? {} : { section }),
+      ...(text === undefined ? {} : { text }),
     });
   };
 }

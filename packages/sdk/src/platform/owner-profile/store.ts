@@ -39,6 +39,7 @@ import { evaluateProfileRemoval, evaluateProfileWrite } from './trust.js';
 import {
   appendProse,
   forget as forgetLines,
+  forgetProseByText,
   persistProfileText,
   profileTextFromLines,
   setField,
@@ -536,6 +537,20 @@ export class OwnerProfileStore {
       fieldId: input.fieldId ?? null,
     });
     if (!decision.allowed) return refusal(decision.reason ?? 'Refused.');
+
+    // A prose line addressed by CONTENT resolves inside the callback, so a
+    // replay after his concurrent edit re-resolves against the new document
+    // instead of reusing an answer computed from the old one. That is the whole
+    // reason the verb takes content rather than a position: a stale index is
+    // perfectly well-formed, so no validation can catch it.
+    if (input.fieldId === undefined && input.text !== undefined) {
+      const section = input.section ?? '';
+      const wanted = input.text;
+      return this.commit(
+        (current) => forgetProseByText(current, section, wanted),
+        { replayable: true },
+      );
+    }
 
     return this.commit((current) => forgetLines(current, {
       ...(input.fieldId === undefined ? {} : { fieldId: input.fieldId }),
