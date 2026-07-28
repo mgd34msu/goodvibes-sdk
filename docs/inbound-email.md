@@ -2151,6 +2151,42 @@ built, and the gate can never be satisfied as written.
 > A defect list is only as durable as the place it is written down. Findings
 > that live in a report are re-found; findings that live in the repo are fixed.
 
+### 13.8 A mutation that does not redden proves nothing until you prove the mutation landed
+
+Mutation testing is how §13.5 and §13.7 were found, and it has a failure mode of
+its own that nearly produced a false finding here.
+
+Converting the last four fake servers to emit real `{N}` literals, four
+mutations were tried against the parser to confirm the new coverage bites:
+
+| Mutation | Result |
+|---|---|
+| `return []` from the parser | all four redden — **blunt**, proves only that the parser is reached |
+| drop the trailing-UID append at the close | all four **stay green** |
+| strip the UID capture from `CONTINUATION_END` | all four **stay green**, and so does the wire-shapes suite |
+| scan for UID only **before** the section marker | **all four redden** |
+
+The middle two look exactly like coverage gaps. They are not. Probing the parser
+directly showed the UID still came back correctly under the second — **the
+mutation did not remove the behaviour**, so it demonstrated nothing about the
+tests. The probe for the third was itself wrong: it hand-built the response array
+without a `{N}`, so it never entered the folded path being mutated.
+
+Only the fourth reproduces the original `parseFetchUids` defect, and under it the
+failures are precisely one shape's worth — 14 of 42 and 3 of 9 — which is the
+trailing shape and nothing else.
+
+> **A mutation that fails to redden means EITHER the test is weak OR the mutation
+> missed, and the two are indistinguishable until you prove the mutation actually
+> changed the behaviour.** Probe the mutated code directly before concluding
+> anything about the tests over it.
+
+This is the same trap as §13.5 one level up. There, a green test was read as
+coverage for a capability it did not exercise. Here, a green test under a
+mutation would have been read as *absence* of coverage that was in fact present.
+Both come from treating a test result as evidence about something the test never
+touched.
+
 ## 14. Related
 
 - `docs/payments.md` — a consumer of this capability.
