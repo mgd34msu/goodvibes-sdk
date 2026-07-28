@@ -63,7 +63,14 @@ export function composeOwnerProfile(
     reloadThrottleMs: config.get('profile.reloadThrottleMs'),
   });
 
-  registerOwnerProfileGatewayMethods(catalog, store);
+  // All three read live, per call, so each is a real toggle rather than a
+  // restart-only one — the same treatment consumerFallback and injectOpenTier
+  // already get below.
+  registerOwnerProfileGatewayMethods(catalog, store, {
+    autonomousWrites: () => config.get('profile.autonomousWrites'),
+    discloseWrites: () => config.get('profile.discloseWrites'),
+    discloseClosedTierReads: () => config.get('profile.discloseClosedTierReads'),
+  });
   const uninstallConsumers = installOwnerProfileConsumers(store, {
     attachProfileFallback: (reader) => config.attachProfileFallback(reader),
     consumerFallbackEnabled: () => config.get('profile.consumerFallback'),

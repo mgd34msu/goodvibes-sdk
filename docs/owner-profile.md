@@ -356,7 +356,7 @@ lines it should and leaves every other byte identical.
 
 ```ts
 interface ProfileLine {
-  readonly lineIndex: number;     // into the raw line array
+  readonly lineIndex: number;     // into the raw line array; internal only, never a verb parameter (§9.2)
   readonly section: string;       // heading text as written
   readonly text: string;          // the line minus its provenance suffix
   readonly provenance?: { surface: ProfileSurface; date: string; said: string };
@@ -594,6 +594,32 @@ retention window. This follows
 record on disk is exactly the dishonesty that decision removed. The response says
 `deleted: true` and names what went. Forgetting something that was not there
 reports that it was not there — it does not report success.
+
+**A prose line is addressed by its content, never by its position.**
+`profile.forget` takes either a `fieldId`, for a mechanical field, or a
+`section` plus the `text` of the line, for a note, a person, a place or a work
+entry. It does **not** take a raw line index, and `lineIndex` is not a parameter
+of any verb.
+
+The reason is §3: the owner is a concurrent writer. A line index is only valid
+against the exact file state that produced it, and between his `profile.read`
+and his `profile.forget` he can add a line in his editor and shift everything
+below it. Positional addressing would then delete the wrong line and report
+success — the same class of false receipt that §9.2 exists to prevent, arriving
+through the front door. It is not theoretical: a review reproduced a raw index
+of `NaN` deleting his title, `4.9` deleting a currency line, and `2` deleting a
+`## Commerce` heading while reporting "removed a note", orphaning every field
+under it.
+
+Content addressing degrades honestly. If the text no longer matches, nothing is
+deleted and the answer is "that is not there any more" — which is true, and
+which tells him his file changed. "Forget that" has to mean forget *that*,
+identified by what it says.
+
+`ProfileLine.lineIndex` (§5.1) stays, because the writer needs it to splice. It
+describes the **in-memory model**, not the reachable surface: the model is
+positional because a text file is, and the verbs are content-addressed because
+the owner is not holding the file still.
 
 ### 9.3 Editing
 

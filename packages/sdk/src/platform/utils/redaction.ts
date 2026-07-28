@@ -69,8 +69,31 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/**
+ * The closed-tier strings a loaded profile wants kept out of anything written
+ * out, in two classes.
+ *
+ * The split exists because §10 (third-party personal data) and the
+ * distinctiveness floor genuinely conflict, and the conflict was reproduced: a
+ * `People` line reading `- Bob Lee` is seven characters, fell under the floor,
+ * and left a session export in the clear. The floor's reasoning is still right
+ * for ordinary values — `currency: USD` must not blank the word USD everywhere —
+ * so the resolution is to key third-party data on its SECTION rather than on
+ * the shape of its value.
+ */
+export interface ProfileRedactionValues {
+  /** Ordinary closed-tier values. Subject to the distinctiveness floor. */
+  readonly guarded: readonly string[];
+  /**
+   * Third-party personal data (`People`). Redacted regardless of length or
+   * shape, because §10 is absolute. Matched on word boundaries so a two-letter
+   * name cannot blank the middle of unrelated words.
+   */
+  readonly absolute: readonly string[];
+}
+
 /** Supplies the closed-tier values present in the loaded profile, if any. */
-export type ProfileRedactionValueReader = () => readonly string[];
+export type ProfileRedactionValueReader = () => ProfileRedactionValues;
 
 let profileValueReader: ProfileRedactionValueReader | null = null;
 let profilePatternCacheKey: string | null = null;
@@ -101,17 +124,36 @@ export function registerProfileRedactionValues(reader: ProfileRedactionValueRead
  */
 function currentProfilePatterns(): readonly RegExp[] {
   if (profileValueReader === null) return [];
-  const values = profileValueReader().filter(isDistinctiveProfileValue);
-  const cacheKey = values.join('\u0000');
+  const { guarded, absolute } = profileValueReader();
+  const guardedValues = guarded.map((value) => value.trim()).filter(isDistinctiveProfileValue);
+  // Third-party data skips the floor entirely; only genuinely empty is dropped.
+  const absoluteValues = absolute.map((value) => value.trim()).filter((value) => value.length > 0);
+  const cacheKey = `${guardedValues.join('\u0000')}\u0001${absoluteValues.join('\u0000')}`;
   if (cacheKey !== profilePatternCacheKey) {
     profilePatternCacheKey = cacheKey;
     // Longest first, so a value contained inside another is not left as a
     // half-redacted fragment of the longer one.
-    profilePatterns = [...values]
-      .sort((a, b) => b.length - a.length)
-      .map((value) => new RegExp(escapeRegExp(value.trim()), 'gi'));
+    const sortByLength = (a: { value: string }, b: { value: string }): number =>
+      b.value.length - a.value.length;
+    profilePatterns = [
+      ...guardedValues.map((value) => ({ value, boundary: false })),
+      ...absoluteValues.map((value) => ({ value, boundary: true })),
+    ]
+      .sort(sortByLength)
+      .map(({ value, boundary }) => (boundary ? boundedPattern(value) : new RegExp(escapeRegExp(value), 'gi')));
   }
   return profilePatterns;
+}
+
+/**
+ * A pattern that only matches the value as a whole token.
+ *
+ * `- Al` as a bare substring pattern would blank the "Al" out of "Also" and
+ * "Already". The lookarounds are on letters and digits only, so a value that
+ * starts or ends with punctuation still matches where it should.
+ */
+function boundedPattern(value: string): RegExp {
+  return new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(value)}(?![\\p{L}\\p{N}])`, 'giu');
 }
 
 function redactTextValue(value: string, key?: string): string {

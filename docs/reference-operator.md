@@ -71461,7 +71461,8 @@ Add one prose bullet to a section, carrying its provenance suffix. Same three-la
     "section",
     "text",
     "surface",
-    "said"
+    "said",
+    "authority"
   ],
   "additionalProperties": false
 }
@@ -71566,6 +71567,9 @@ Delete a field line (or one line by index) and every retained history comment fo
       "type": "string"
     }
   },
+  "required": [
+    "authority"
+  ],
   "additionalProperties": false
 }
 ```
@@ -71976,14 +71980,14 @@ Answer "where did you get that?" for one field: the surface, the date and the ow
 
 #### `profile.read`
 
-Return the whole owner profile, by section, with each section's tier and every mechanical field's validity. This is the answer to "what do you know about me?" and is the ONE read that returns closed-tier content in bulk — which is why it is never callable from a message-composition path.
+Return the whole owner profile, by section, with each section's tier and every mechanical field's validity. This is the answer to "what do you know about me?" and is the ONE read that returns closed-tier content in bulk. It carries its own scope, read:profile.full, so a token issued to a composition path can hold read:profile for the named lookups (get/person/provenance/status) without also being able to ask for everything.
 
 - Title: `Read Owner Profile`
 - Source: `builtin`
 - Access: `authenticated`
 - Transport: `http`, `ws`
 - HTTP: `GET /api/profile`
-- Scopes: `read:profile`
+- Scopes: `read:profile.full`
 - Emits events: none
 - Dangerous: `no`
 - Invokable: `yes`
@@ -72223,7 +72227,8 @@ Record or correct one mechanical field, moving any previous value into a retaine
     "fieldId",
     "value",
     "surface",
-    "said"
+    "said",
+    "authority"
   ],
   "additionalProperties": false
 }
@@ -72411,7 +72416,8 @@ Promote a field's most recent superseded value back to the active line, so a wro
     }
   },
   "required": [
-    "fieldId"
+    "fieldId",
+    "authority"
   ],
   "additionalProperties": false
 }

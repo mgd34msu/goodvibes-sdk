@@ -78,10 +78,15 @@ const FIXTURE = [
   '## People',
   '',
   '- Sarah Whitfield, sister, sarah@example.com',
+  '- Bob Lee',
   '',
   '## Notes',
   '',
   '- Allergic to shellfish',
+  '',
+  '## Boat',
+  '',
+  '- Home is the blue house on the corner of Elm',
   '',
 ].join('\n');
 
@@ -360,5 +365,113 @@ describe('§10 / §14 #19 — third-party personal data', () => {
     expect(store.person('   ')).toEqual([]);
     expect(store.person('Sarah')).toHaveLength(1);
     expect(store.person('Nobody')).toEqual([]);
+  });
+});
+
+describe('closed-tier prose is redacted from EVERY closed section, not four of them', () => {
+  test('a section the owner invented is closed, and its prose is redacted', async () => {
+    await installedStore();
+    // `## Boat` is not a canonical section. `profileSectionTier` makes every
+    // heading except Style closed, and an earlier version collected prose only
+    // from People/Places/Work/Notes — so this line left an export in the clear
+    // while the People lines beside it were redacted.
+    const redacted = redactSensitiveData('log: Home is the blue house on the corner of Elm');
+    expect(redacted).not.toContain('blue house on the corner of Elm');
+    expect(redacted).toContain('[REDACTED_PROFILE]');
+  });
+
+  test('it is gone from a session export too', async () => {
+    await installedStore();
+    const exported = exportToJSON(
+      [{ role: 'user' as const, content: 'Home is the blue house on the corner of Elm' }],
+      undefined,
+      { redact: true },
+    );
+    expect(exported).not.toContain('blue house');
+  });
+
+  test('Style prose stays in the clear — it is the one open section', async () => {
+    await installedStore();
+    expect(redactSensitiveData('Keep replies short unless I ask for detail'))
+      .toContain('Keep replies short unless I ask for detail');
+  });
+});
+
+describe('§10 is absolute: a short People line is redacted despite the floor', () => {
+  test('a seven-character People line does not survive redactSensitiveData', async () => {
+    await installedStore();
+    const redacted = redactSensitiveData('cc Bob Lee on the thread');
+    expect(redacted).not.toContain('Bob Lee');
+    expect(redacted).toContain('[REDACTED_PROFILE]');
+  });
+
+  test('and not redactStructuredData either', async () => {
+    await installedStore();
+    const redacted = redactStructuredData({ note: 'ask Bob Lee about it' }) as { note: string };
+    expect(redacted.note).not.toContain('Bob Lee');
+  });
+
+  test('and not a session export', async () => {
+    await installedStore();
+    const exported = exportToJSON(
+      [{ role: 'assistant' as const, content: 'I will ask Bob Lee.' }],
+      undefined,
+      { redact: true },
+    );
+    expect(exported).not.toContain('Bob Lee');
+  });
+
+  test('the absolute set matches whole tokens, so a short name cannot eat a word', async () => {
+    await installedStore([
+      '## People',
+      '',
+      '- Al',
+      '',
+    ].join('\n'));
+    // `Al` must not blank the "Al" out of "Already" / "Although".
+    const corpus = 'Already although Alberta';
+    expect(redactSensitiveData(corpus)).toBe(corpus);
+    // But the name itself, standing alone, is redacted.
+    expect(redactSensitiveData('ask Al about it')).not.toContain(' Al ');
+  });
+
+  test('the floor still protects ordinary closed-tier values', async () => {
+    await installedStore();
+    expect(redactSensitiveData('the USD amount was standard')).toBe('the USD amount was standard');
+    expect(redactSensitiveData('imperial units, iso dates')).toBe('imperial units, iso dates');
+  });
+});
+
+describe('the redaction value set is not rebuilt on every call', () => {
+  test('a repeated redaction reads the document once per load, not once per call', async () => {
+    const dir = mkTemp();
+    const path = join(dir, 'owner-profile.md');
+    writeFileSync(path, FIXTURE, 'utf-8');
+    const store = new OwnerProfileStore({ path });
+    await store.load();
+
+    let reads = 0;
+    const counting = {
+      status: () => store.status(),
+      get: (fieldId: string) => store.get(fieldId),
+      section: (name: string) => store.section(name),
+      read: () => {
+        reads += 1;
+        return store.read();
+      },
+    };
+    installOwnerProfileConsumers(counting, {
+      attachProfileFallback: () => undefined,
+      consumerFallbackEnabled: () => true,
+      injectOpenTierEnabled: () => true,
+    });
+
+    for (let i = 0; i < 50; i++) redactSensitiveData(`line ${i} with no profile value in it`);
+    expect(reads).toBe(1);
+
+    // A reload is a new generation, so exactly one more read happens.
+    await store.load();
+    redactSensitiveData('another line');
+    expect(reads).toBe(2);
   });
 });

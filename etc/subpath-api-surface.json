@@ -36473,6 +36473,14 @@
       "kind": "type"
     },
     {
+      "name": "ProfileRedactionValues",
+      "kind": "interface",
+      "required": [
+        "absolute",
+        "guarded"
+      ]
+    },
+    {
       "name": "PromptSource",
       "kind": "interface",
       "required": [

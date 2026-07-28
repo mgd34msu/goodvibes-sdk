@@ -22,6 +22,13 @@
  *    answer to the owner, which is exactly the call a composition path must not
  *    make (§10). The absence of a `profile.people.list` is load-bearing, not an
  *    oversight.
+ *  - **`profile.read` carries its own scope**, `read:profile.full`, rather than
+ *    sharing `read:profile` with the named lookups. §11.2 asserts it "is not
+ *    callable from a composition path at all", and while nothing here can decide
+ *    which token a composition path is handed, a separate scope is what makes
+ *    that assertion expressible: the bulk read can be withheld while `get`,
+ *    `person`, `provenance` and `status` are granted. Without it the claim had
+ *    no mechanism behind it whatsoever — every profile read sat at one scope.
  */
 import type { GatewayMethodDescriptor } from './method-catalog-shared.js';
 import {
@@ -156,13 +163,28 @@ export const PROFILE_PROVENANCE_OUTPUT_SCHEMA = objectSchema({
   superseded: arraySchema(PROFILE_SUPERSEDED_SCHEMA),
 }, ['fieldId', 'present', 'handEdited', 'superseded']);
 
+/**
+ * `authority` is REQUIRED on all four write verbs, and the required arrays below
+ * say so because the handler enforces it.
+ *
+ * It shipped in `properties` but in none of the `required` arrays, so the
+ * generated contract, the OpenAPI document and every typed client told callers
+ * the field was optional while `routes/owner-profile.ts` answered 400 without
+ * it — a client that followed the published contract was broken by
+ * construction. `owner-profile-verbs.test.ts` pins all four against the live
+ * descriptors so the two cannot drift apart again.
+ *
+ * Required rather than defaulted because §7 gives `forget` and `undo` an
+ * authority check and nothing else: an omitted authority on a delete was not a
+ * weakened gate, it was no gate.
+ */
 export const PROFILE_SET_INPUT_SCHEMA = objectSchema({
   fieldId: STRING_SCHEMA,
   value: STRING_SCHEMA,
   surface: STRING_SCHEMA,
   said: STRING_SCHEMA,
   authority: STRING_SCHEMA,
-}, ['fieldId', 'value', 'surface', 'said']);
+}, ['fieldId', 'value', 'surface', 'said', 'authority']);
 
 export const PROFILE_APPEND_INPUT_SCHEMA = objectSchema({
   section: STRING_SCHEMA,
@@ -170,18 +192,18 @@ export const PROFILE_APPEND_INPUT_SCHEMA = objectSchema({
   surface: STRING_SCHEMA,
   said: STRING_SCHEMA,
   authority: STRING_SCHEMA,
-}, ['section', 'text', 'surface', 'said']);
+}, ['section', 'text', 'surface', 'said', 'authority']);
 
 export const PROFILE_FORGET_INPUT_SCHEMA = objectSchema({
   fieldId: STRING_SCHEMA,
   lineIndex: NUMBER_SCHEMA,
   authority: STRING_SCHEMA,
-}, []);
+}, ['authority']);
 
 export const PROFILE_UNDO_INPUT_SCHEMA = objectSchema({
   fieldId: STRING_SCHEMA,
   authority: STRING_SCHEMA,
-}, ['fieldId']);
+}, ['fieldId', 'authority']);
 
 export const PROFILE_STATUS_INPUT_SCHEMA = objectSchema({}, []);
 
@@ -189,9 +211,9 @@ export const builtinGatewayOwnerProfileMethodDescriptors: readonly GatewayMethod
   methodDescriptor({
     id: 'profile.read',
     title: 'Read Owner Profile',
-    description: 'Return the whole owner profile, by section, with each section\'s tier and every mechanical field\'s validity. This is the answer to "what do you know about me?" and is the ONE read that returns closed-tier content in bulk — which is why it is never callable from a message-composition path.',
+    description: 'Return the whole owner profile, by section, with each section\'s tier and every mechanical field\'s validity. This is the answer to "what do you know about me?" and is the ONE read that returns closed-tier content in bulk. It carries its own scope, read:profile.full, so a token issued to a composition path can hold read:profile for the named lookups (get/person/provenance/status) without also being able to ask for everything.',
     category: 'profile',
-    scopes: ['read:profile'],
+    scopes: ['read:profile.full'],
     http: { method: 'GET', path: '/api/profile' },
     inputSchema: PROFILE_READ_INPUT_SCHEMA,
     outputSchema: PROFILE_READ_OUTPUT_SCHEMA,

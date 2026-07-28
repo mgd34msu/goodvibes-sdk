@@ -37,7 +37,7 @@
  * input than daemon config, so feeding it into that gate would lower a bar the
  * module documents as high. Recorded here as a decision, not an oversight.
  */
-import { registerProfileRedactionValues } from '../utils/redaction.js';
+import { registerProfileRedactionValues, type ProfileRedactionValues } from '../utils/redaction.js';
 import { registerOpenTierContextBlock, renderOpenTierBlock } from './context-block.js';
 import { registerSignupBaseAddressFallback } from '../google/account-registry.js';
 import { canonicalProfileSection, profileFieldById, PROFILE_FIELDS } from './fields.js';
@@ -252,48 +252,84 @@ export function profileFallbackStatus(
 // ---------------------------------------------------------------------------
 
 /**
- * The closed-tier strings a redactor should recognise.
+ * The closed-tier strings a redactor should recognise, in two classes.
  *
- * Two groups, and the boundary between them is deliberate:
+ * `guarded` is everything ordinary: closed-tier mechanical field values, and
+ * the prose of every CLOSED section. `profileSectionTier` makes every heading
+ * except `Style` closed — including ones the owner invented — and an earlier
+ * version of this function collected prose from only the four canonical
+ * prose-only sections, so `note: Home is the blue house on the corner of Elm`
+ * under a heading of his own left a session export in the clear while `People`
+ * lines beside it were redacted. Closed means closed; the length and
+ * distinctiveness floor in `utils/redaction.ts` is what stops an ordinary short
+ * sentence becoming a corpus-wide pattern, and that floor is the right place
+ * for that judgement rather than this section list.
  *
- *  - Every closed-tier MECHANICAL FIELD value — §11.3's "closed-tier values".
- *  - The prose of the four sections §11.2 names as closed in their entirety:
- *    `People`, `Places`, `Work`, `Notes`. `People` in particular holds facts
- *    about people who never agreed to be in a database, and §10 bars that from
- *    logs, exports, diagnostics and telemetry outright.
+ * `absolute` is `People` only, and it deliberately bypasses that floor. §10 is
+ * unconditional about third-party personal data, and the floor is keyed on the
+ * SHAPE of a value, so a seven-character line like `- Bob Lee` slipped under it
+ * and reached an export. Keying People on its section instead resolves the
+ * conflict in the direction §10 requires, while everything else keeps the
+ * protection against blanking `standard` out of every log line. Redaction
+ * matches these on word boundaries so a very short name cannot eat the middle
+ * of an unrelated word.
  *
- * What is NOT included: prose under a heading the owner invented. Those lines
- * are ordinary sentences of his, and turning "the build is broken" into a
- * global redaction pattern would blank that phrase out of unrelated logs — an
- * over-redaction that destroys the diagnostic the export exists to carry, and
- * does it silently. The registered reader in `utils/redaction.ts` applies its
- * own length and distinctiveness floor on top of this list.
+ * Read through `read()`, not `section()`: the store's generic section accessor
+ * refuses the closed tier on purpose, so no consumer assembling something can
+ * enumerate `People`. Redaction is the opposite kind of caller — it is deciding
+ * what must NOT leave — and `read()` is the disclosure path that returns the
+ * whole document.
  */
-const CLOSED_PROSE_SECTIONS = new Set(['People', 'Places', 'Work', 'Notes']);
-
-export function closedTierRedactionValues(source: ConsumerProfileSource): readonly string[] {
+export function closedTierRedactionValues(source: ConsumerProfileSource): ProfileRedactionValues {
   const document = source.read();
-  if (document.state.kind !== 'loaded') return [];
-  const values: string[] = [];
+  if (document.state.kind !== 'loaded') return EMPTY_REDACTION_VALUES;
+
+  const guarded: string[] = [];
+  const absolute: string[] = [];
   for (const field of PROFILE_FIELDS) {
     if (field.tier !== 'closed') continue;
     const value = source.get(field.id);
-    if (value !== undefined && value.value.trim().length > 0) values.push(value.value.trim());
+    if (value !== undefined && value.value.trim().length > 0) guarded.push(value.value.trim());
   }
-  // Through `read()`, not `section()`: the store's generic section accessor
-  // refuses the closed tier on purpose, so that no consumer assembling
-  // something can enumerate `People`. Redaction is the opposite kind of caller —
-  // it is deciding what must NOT leave — and `read()` is the disclosure path
-  // that returns the whole document.
   for (const section of document.sections) {
-    const canonical = canonicalProfileSection(section.heading);
-    if (canonical === null || !CLOSED_PROSE_SECTIONS.has(canonical)) continue;
+    if (section.tier !== 'closed') continue;
+    const isPeople = canonicalProfileSection(section.heading) === 'People';
     for (const line of section.prose) {
       const text = line.text.replace(/^\s*[-*+]\s+/, '').trim();
-      if (text.length > 0) values.push(text);
+      if (text.length === 0) continue;
+      (isPeople ? absolute : guarded).push(text);
     }
   }
-  return values;
+  return { guarded, absolute };
+}
+
+const EMPTY_REDACTION_VALUES: ProfileRedactionValues = { guarded: [], absolute: [] };
+
+/**
+ * `closedTierRedactionValues`, memoised on the store's load generation.
+ *
+ * `redactSensitiveData` runs on every at-rest write, every exported message and
+ * every `redactedErrorMessage`. Recomputing the value set there means calling
+ * `read()`, which rebuilds a view object per section per call — O(document)
+ * allocation on paths that were O(1), for a set that only changes when the file
+ * is re-read.
+ *
+ * The cache key is the identity of the object `status()` returns. `adopt()`
+ * builds a fresh state object on every successful load, so object identity IS
+ * the load generation — no counter to add to the store and no way for the cache
+ * to survive a reload it should not.
+ */
+function memoizedRedactionValues(source: ConsumerProfileSource): () => ProfileRedactionValues {
+  let cachedFor: unknown = null;
+  let cached: ProfileRedactionValues = EMPTY_REDACTION_VALUES;
+  return (): ProfileRedactionValues => {
+    const generation: unknown = source.status();
+    if (generation !== cachedFor) {
+      cachedFor = generation;
+      cached = closedTierRedactionValues(source);
+    }
+    return cached;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -329,7 +365,7 @@ export function installOwnerProfileConsumers(
   host: OwnerProfileConsumerHost,
 ): () => void {
   host.attachProfileFallback(createConsumerFallbackReader(source, host.consumerFallbackEnabled));
-  registerProfileRedactionValues(() => closedTierRedactionValues(source));
+  registerProfileRedactionValues(memoizedRedactionValues(source));
   registerSignupBaseAddressFallback(() => {
     const email = source.get('contact.email');
     return email !== undefined && email.valid && email.value.trim().length > 0

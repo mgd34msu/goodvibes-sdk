@@ -4342,13 +4342,13 @@ export interface OperatorMethodInputMap {
         text: string;
         surface: string;
         said: string;
-        authority?: string;
+        authority: string;
     };
     // (undocumented)
     "profile.forget": {
         fieldId?: string;
         lineIndex?: number;
-        authority?: string;
+        authority: string;
     };
     // (undocumented)
     "profile.get": {
@@ -4370,14 +4370,14 @@ export interface OperatorMethodInputMap {
         value: string;
         surface: string;
         said: string;
-        authority?: string;
+        authority: string;
     };
     // (undocumented)
     "profile.status": {};
     // (undocumented)
     "profile.undo": {
         fieldId: string;
-        authority?: string;
+        authority: string;
     };
     // (undocumented)
     "providers.get": {
