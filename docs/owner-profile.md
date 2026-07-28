@@ -375,8 +375,15 @@ everything else is.
 
 ### 5.3 Picking up a hand edit
 
-`fs.watch` on the file (prior art: `platform/config/config-file-watcher.ts`). On
-a change event the file is re-read, re-projected, and the model is swapped
+`fs.watch` on the **containing directory**, filtered to the profile's filename —
+never on the file itself. §5.4's atomic write replaces the file's inode, and a
+file-level watch is bound to the old inode, so it goes deaf after the first
+write. The symptom would be subtle and awful: hand edits picked up until the
+first autonomous write, and silently ignored forever after. Measured on this
+machine, a directory watch sees a `rename` event for each of two successive
+atomic replacements; a file watch sees the first and then nothing.
+
+On a change event the file is re-read, re-projected, and the model is swapped
 atomically — a reader sees the old projection or the new one, never a half-built
 one. Where `fs.watch` is unavailable, a `stat` throttled to
 `profile.reloadThrottleMs` (default 2000). **Neither path puts a syscall on a
