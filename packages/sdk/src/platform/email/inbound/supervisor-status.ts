@@ -63,10 +63,23 @@ export interface InboundMailStoreHealth {
 export interface InboundMailRetentionReport {
   readonly cursors: { readonly kept: number; readonly maxCursors: number };
   readonly records: {
+    /** What a read serves: content-valid, inside the retention window, inside the count bound. */
     readonly kept: number;
+    /**
+     * What the FILE holds, malformed entries included.
+     *
+     * Reported beside `kept` because `kept` alone was the defect: it was
+     * computed from `list()`, which filters, so a store holding ten records
+     * under a `maxRecords: 2` policy disclosed "2". The owner was told the
+     * store was bounded while it was not. Any gap between these two numbers is
+     * records the next write or sweep will reap.
+     */
+    readonly stored: number;
     readonly retentionDays: number;
     readonly maxRecords: number;
     readonly maxBodyExcerptChars: number;
+    /** Records write-time bounding removed since this daemon started — the §9.5 disclosure for a reap no sweep report can itemise. */
+    readonly reapedOnWrite: number;
   };
   readonly expectations: { readonly open: number; readonly maxOpen: number };
   /** The last housekeeping pass this process ran, or null before the first. */

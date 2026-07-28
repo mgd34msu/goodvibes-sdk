@@ -38,6 +38,7 @@
  *      its own read paths, but nothing calls those paths on a schedule).
  */
 import { PersistentStore, type PersistentStoreCorruption } from '../../state/persistent-store.js';
+import { withInboundStoreWriteLock } from './store-write-lock.js';
 import {
   MAX_OPEN_EXPECTATIONS,
   validatePersistedExpectation,
@@ -136,12 +137,15 @@ export class PersistedExpectationStore {
     ) => Promise<{ next: VerificationExpectation[]; result: T }>,
   ): Promise<T> {
     const now = this.now();
-    const run = this.writeChain.then(async () => {
+    // The chain orders writers inside THIS process; the lock orders them
+    // across processes. Both, because neither alone is "one writer at a time"
+    // — see store-write-lock.ts for why a second daemon is reachable here.
+    const run = this.writeChain.then(async () => withInboundStoreWriteLock(this.store.lockPath, async () => {
       const { expectations, malformed, corrupt } = await this.readWithDrops(now);
       const { next, result } = await fn(expectations, malformed, now, corrupt);
       await this.store.persist({ version: 1, expectations: next });
       return result;
-    });
+    }));
     this.writeChain = run.then(() => undefined, () => undefined);
     return run;
   }
@@ -166,6 +170,17 @@ export class PersistedExpectationStore {
    * Invalid entries are silently dropped rather than persisted; this is a
    * mirror op, not a disclosure boundary, so no report is produced here —
    * `sweep()` is where drops from the FILE (not from the caller) are itemised.
+   *
+   * `maxOpenExpectations` IS ENFORCED HERE, not only on load and sweep. It was
+   * not, and that is the same defect the record store had one file over:
+   * bounds that live only in the sweep leave the file unbounded between
+   * sweeps, and the sweep here runs on the housekeeper's timer. Passing forty
+   * expectations wrote forty, and the cap only reappeared the next time
+   * something read the file. A store whose cap is a read-time opinion is not a
+   * store with a cap.
+   *
+   * Oldest-by-`openedAt` goes first, the same precedence `sweep()` uses,
+   * because two orders would be two answers to "which one did I lose".
    */
   async replaceAll(expectations: readonly VerificationExpectation[]): Promise<void> {
     const now = this.now();
@@ -174,7 +189,12 @@ export class PersistedExpectationStore {
         .map((entry) => validatePersistedExpectation(entry, now))
         .filter((entry): entry is VerificationExpectation => entry !== null)
         .filter((entry) => Date.parse(entry.expiresAt) > now.getTime());
-      return { next: valid, result: undefined };
+      if (valid.length <= this.policy.maxOpenExpectations) return { next: valid, result: undefined };
+      const oldestFirst = [...valid].sort((a, b) => Date.parse(a.openedAt) - Date.parse(b.openedAt));
+      return {
+        next: oldestFirst.slice(oldestFirst.length - this.policy.maxOpenExpectations),
+        result: undefined,
+      };
     });
   }
 

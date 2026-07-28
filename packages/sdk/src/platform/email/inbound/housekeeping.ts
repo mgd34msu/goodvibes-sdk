@@ -51,13 +51,161 @@ export interface InboundMailHousekeepingReport {
   readonly summary: string;
 }
 
+/**
+ * A report AS PERSISTED, which is not the report as produced.
+ *
+ * WHAT A DISCLOSURE ACTUALLY NEEDS, and why it is less than the report:
+ *
+ * A disclosure log exists to answer "what was removed, and why" for something
+ * that is now gone. Everything it needs is therefore about the REMOVED. The
+ * in-memory `ExpectationSweepReport` also carries `survivors` — the full
+ * `VerificationExpectation` objects that did NOT go — because
+ * `InboundExpectationRegistry.hydrate()` feeds them straight into the live
+ * book at boot. That is a same-process hand-off between two objects, and it
+ * has no business being on disk.
+ *
+ * Writing it anyway made `email-inbound-housekeeping.json` a SECOND COPY of
+ * the expectation store: every recipient alias, service domain and purpose,
+ * duplicated into a file that expiry reaping never touches. The expectation
+ * store reaps an expired grant within its window; the copy of it in the
+ * disclosure log survived for the next twenty sweeps regardless — a store
+ * nobody declared, holding the exact data the declared one is careful about.
+ *
+ * So `survivors` is dropped on the way to disk. `retained` already carries the
+ * count, and a count is what a disclosure needs about the things that stayed:
+ * naming them is not disclosure, it is retention.
+ *
+ * `removed` is kept, because the removed ARE the disclosure — but bounded. A
+ * sweep of a full record store can remove thousands of rows, and twenty of
+ * those reports is a log far larger than the stores it describes. Past
+ * `MAX_DISCLOSED_REMOVALS` the entries are dropped and `removedTotal` says how
+ * many there really were, so the count is never quietly wrong.
+ */
+type DisclosedSweep<T extends { readonly removed: readonly unknown[] }> =
+  Omit<T, 'survivors' | 'removed'> & {
+    readonly removed: readonly T['removed'][number][];
+    /** How many removals the pass actually made, when `removed` was truncated. */
+    readonly removedTotal: number;
+  };
+
+export interface DisclosedHousekeepingReport {
+  readonly sweptAt: number;
+  readonly trigger: HousekeepingTrigger;
+  readonly cursors: DisclosedSweep<CursorSweepReport> | null;
+  readonly records: DisclosedSweep<InboundMailRecordSweepReport> | null;
+  readonly expectations: DisclosedSweep<ExpectationSweepReport> | null;
+  readonly failures: readonly InboundMailSweepFailure[];
+  readonly summary: string;
+}
+
 interface HousekeepingLog extends Record<string, unknown> {
   readonly version: 1;
-  readonly reports: readonly InboundMailHousekeepingReport[];
+  readonly reports: readonly DisclosedHousekeepingReport[];
 }
 
 /** Keep the disclosure log itself bounded — it is persisted state too. */
 const MAX_DISCLOSURE_REPORTS = 20;
+
+/** How many itemised removals one persisted report may carry. See `DisclosedSweep`. */
+const MAX_DISCLOSED_REMOVALS = 100;
+
+/** Bound on any single free-text field in the log: a sweep failure's `detail`, a removal's `note`. */
+const MAX_DISCLOSED_TEXT_CHARS = 512;
+
+/** Bound on the one-line summary. Assembled from bounded parts, bounded anyway — the log is persisted state. */
+const MAX_DISCLOSED_SUMMARY_CHARS = 2_000;
+
+function clampText(value: string, max: number): string {
+  return value.length <= max ? value : value.slice(0, max);
+}
+
+/** Project one store's sweep report onto what the log persists: no survivors, bounded removals, bounded text. */
+function discloseSweep<T extends { readonly removed: readonly { readonly note?: string | undefined }[] }>(
+  report: T | null,
+): DisclosedSweep<T> | null {
+  if (report === null) return null;
+  const { survivors: _survivors, removed, ...rest } = report as T & { survivors?: unknown };
+  return {
+    ...(rest as Omit<T, 'survivors' | 'removed'>),
+    removed: removed.slice(0, MAX_DISCLOSED_REMOVALS).map((entry) => (
+      typeof entry.note === 'string'
+        ? { ...entry, note: clampText(entry.note, MAX_DISCLOSED_TEXT_CHARS) }
+        : entry
+    )),
+    removedTotal: removed.length,
+  } as DisclosedSweep<T>;
+}
+
+/** One full pass's report, projected onto what the log persists. */
+function discloseReport(report: InboundMailHousekeepingReport): DisclosedHousekeepingReport {
+  return {
+    sweptAt: report.sweptAt,
+    trigger: report.trigger,
+    cursors: discloseSweep(report.cursors),
+    records: discloseSweep(report.records),
+    expectations: discloseSweep(report.expectations),
+    failures: report.failures.map((failure) => ({
+      store: failure.store,
+      detail: clampText(failure.detail, MAX_DISCLOSED_TEXT_CHARS),
+    })),
+    summary: clampText(report.summary, MAX_DISCLOSED_SUMMARY_CHARS),
+  };
+}
+
+/**
+ * Validate a report read back from the log BY CONTENT.
+ *
+ * `listDisclosures()` used to hand back `log.reports` on the strength of it
+ * being an array — the only structure here read without validation, in a file
+ * whose own header states the rule (§9: reap, bound, validate by content,
+ * sweep, disclose). A hand-edited or half-written entry then flowed straight
+ * into whatever rendered it.
+ *
+ * Only the fields a reader is entitled to rely on are checked, and anything
+ * failing is dropped rather than repaired — the same rule the three stores
+ * apply to their own records.
+ */
+function validateDisclosedReport(value: unknown): DisclosedHousekeepingReport | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const report = value as Record<string, unknown>;
+  if (typeof report.sweptAt !== 'number' || !Number.isFinite(report.sweptAt)) return null;
+  if (report.trigger !== 'recovery' && report.trigger !== 'periodic' && report.trigger !== 'manual') return null;
+  if (typeof report.summary !== 'string' || report.summary.length > MAX_DISCLOSED_SUMMARY_CHARS) return null;
+  if (!Array.isArray(report.failures) || report.failures.length > MAX_DISCLOSED_REMOVALS) return null;
+  const failures = report.failures.filter((entry): entry is InboundMailSweepFailure => (
+    !!entry && typeof entry === 'object'
+    && typeof (entry as InboundMailSweepFailure).store === 'string'
+    && typeof (entry as InboundMailSweepFailure).detail === 'string'
+    && (entry as InboundMailSweepFailure).detail.length <= MAX_DISCLOSED_TEXT_CHARS
+  ));
+  if (failures.length !== report.failures.length) return null;
+  const sweep = <K extends 'cursors' | 'records' | 'expectations'>(key: K): unknown => {
+    const value = report[key];
+    if (value === null || value === undefined) return null;
+    if (typeof value !== 'object' || Array.isArray(value)) return undefined; // sentinel: invalid
+    const entry = value as Record<string, unknown>;
+    if (!Array.isArray(entry.removed) || entry.removed.length > MAX_DISCLOSED_REMOVALS) return undefined;
+    if (typeof entry.retained !== 'number' || !Number.isFinite(entry.retained)) return undefined;
+    // A log written before survivors were dropped still parses; the field is
+    // simply not carried forward, so reading an old file cannot resurrect the
+    // second copy this projection exists to stop.
+    const { survivors: _survivors, ...rest } = entry;
+    return rest;
+  };
+  const cursors = sweep('cursors');
+  const records = sweep('records');
+  const expectations = sweep('expectations');
+  if (cursors === undefined || records === undefined || expectations === undefined) return null;
+  return {
+    sweptAt: report.sweptAt,
+    trigger: report.trigger,
+    cursors: cursors as DisclosedHousekeepingReport['cursors'],
+    records: records as DisclosedHousekeepingReport['records'],
+    expectations: expectations as DisclosedHousekeepingReport['expectations'],
+    failures,
+    summary: report.summary,
+  };
+}
 
 export interface InboundMailHousekeeperOptions {
   readonly cursors: MailboxCursorStore;
@@ -159,9 +307,16 @@ export class InboundMailHousekeeper {
    * to explain reaping, and refusing to reap because the explanation of the
    * last reap will not parse is the tail wagging the dog.
    */
-  async listDisclosures(): Promise<readonly InboundMailHousekeepingReport[]> {
+  async listDisclosures(): Promise<readonly DisclosedHousekeepingReport[]> {
     const { data: log } = await this.disclosure.loadOrDiscard();
-    return Array.isArray(log?.reports) ? log.reports : [];
+    if (!Array.isArray(log?.reports)) return [];
+    // Validated by content, and bounded on the way in as well as on the way
+    // out: a file claiming ten thousand reports does not become ten thousand
+    // objects in memory before being cut to twenty.
+    return log.reports
+      .slice(-MAX_DISCLOSURE_REPORTS)
+      .map(validateDisclosedReport)
+      .filter((report): report is DisclosedHousekeepingReport => report !== null);
   }
 
   /**
@@ -209,7 +364,11 @@ export class InboundMailHousekeeper {
     // more than it needs the write to have succeeded.
     await attempt('disclosure', () => this.disclosure.persist({
       version: 1,
-      reports: [...existing, report].slice(-MAX_DISCLOSURE_REPORTS),
+      // Projected, never the report itself. See `DisclosedSweep`: the report
+      // carries every surviving expectation for the boot hydrator, and putting
+      // those on disk made this file an unreaped duplicate of the expectation
+      // store.
+      reports: [...existing, discloseReport(report)].slice(-MAX_DISCLOSURE_REPORTS),
     }));
     return report;
   }

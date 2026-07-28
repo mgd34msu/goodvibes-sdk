@@ -31893,6 +31893,9 @@
                     "kept": {
                       "type": "number"
                     },
+                    "stored": {
+                      "type": "number"
+                    },
                     "retentionDays": {
                       "type": "number"
                     },
@@ -31901,13 +31904,18 @@
                     },
                     "maxBodyExcerptChars": {
                       "type": "number"
+                    },
+                    "reapedOnWrite": {
+                      "type": "number"
                     }
                   },
                   "required": [
                     "kept",
+                    "stored",
                     "retentionDays",
                     "maxRecords",
-                    "maxBodyExcerptChars"
+                    "maxBodyExcerptChars",
+                    "reapedOnWrite"
                   ],
                   "additionalProperties": false
                 },

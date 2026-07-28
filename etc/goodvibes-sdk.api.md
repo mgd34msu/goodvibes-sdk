@@ -9996,9 +9996,11 @@ export interface OperatorMethodOutputMap {
             };
             records: {
                 kept: number;
+                stored: number;
                 retentionDays: number;
                 maxRecords: number;
                 maxBodyExcerptChars: number;
+                reapedOnWrite: number;
             };
             expectations: {
                 open: number;
@@ -10009,6 +10011,19 @@ export interface OperatorMethodOutputMap {
                 trigger: string;
                 summary: string;
             };
+        };
+        stores: readonly ({
+            store: string;
+            state: string;
+            detail: string;
+        })[];
+        noticeDelivery: {
+            state: string;
+            reason?: string;
+            detail?: string;
+            fix?: string;
+            since?: string;
+            unannounced?: number;
         };
         health: {
             kind: string;
