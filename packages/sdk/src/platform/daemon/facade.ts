@@ -15,6 +15,7 @@ import type {
 import type { ApprovalBroker, ControlPlaneGateway, SharedSessionBroker } from '../control-plane/index.js';
 import type { GatewayMethodCatalog } from '../control-plane/index.js';
 import { sseIdleTimeoutSeconds } from '../control-plane/index.js';
+import { buildDaemonChannelHealthWatcher } from './facade-channel-health.js';
 import type {
   ChannelReplyPipeline,
   ChannelPluginRegistry,
@@ -133,6 +134,8 @@ export class DaemonServer {
   private readonly surfaceActionHelper: DaemonSurfaceActionHelper;
   private readonly transportEventsHelper: DaemonTransportEventsHelper;
   private readonly httpRouter: DaemonHttpRouter;
+  /** Sweeps channel health and tells the owner over a channel that still works; see facade-channel-health.ts. */
+  private readonly channelHealth: import('../channels/index.js').ChannelHealthWatcher;
   private replyPoller: ReturnType<typeof setInterval> | null = null;
   /** Lifecycle sidecar: clean-shutdown marker, receipts, hourly auto-update. */
   private lifecycle: DaemonLifecycleRuntime | null = null;
@@ -230,6 +233,7 @@ export class DaemonServer {
     this.surfaceActionHelper = collaborators.surfaceActionHelper;
     this.transportEventsHelper = collaborators.transportEventsHelper;
     this.httpRouter = collaborators.httpRouter;
+    this.channelHealth = buildDaemonChannelHealthWatcher(resolved);
     this.clusterCoordinator = buildDaemonClusterCoordinator(config, resolved, collaborators);
 
     // Lifecycle sidecar: clean-shutdown marker, update/crash receipts, and
@@ -446,6 +450,7 @@ export class DaemonServer {
         this.distributedRuntime.start(),
       ]);
       await this.clusterCoordinator.start();
+      this.channelHealth.start(); // after the coordinator, so the first sweep sees the ingress this node actually won rather than calling every surface dead mid-election
       await this.companionChatManager.init();
       // Init the canonical memory store so the daemon is a live single-writer memory service on accept (memory.records.add would else throw "not initialized" on a cold store).
       await this.runtimeServices.memoryStore.init();
@@ -503,6 +508,7 @@ export class DaemonServer {
         this.replyPoller = null;
       }
       this.pendingSurfaceReplies.clear();
+      this.channelHealth.stop();
       this.automationManager.stop();
       void this.clusterCoordinator.stop('daemon start failed');
       try {
@@ -551,6 +557,7 @@ export class DaemonServer {
     if (this.configManager.get('watchers.enabled')) { try { this.watcherRegistry.stopWatcher('daemon-heartbeat', 'daemon-stopped'); } catch (error) { logger.warn('DaemonServer: heartbeat watcher stop failed', { error: summarizeError(error) }); } }
     // Optional-chained: a host that composed its own RuntimeServices without a trigger family must shut down cleanly, not throw. When present, shutdown() is safe even if start() never ran or the family is disabled.
     this.triggerManager?.shutdown();
+    this.channelHealth.stop();
     if (this.replyPoller !== null) {
       clearInterval(this.replyPoller);
       this.replyPoller = null;

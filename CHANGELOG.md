@@ -67,6 +67,61 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   reverting the guard: 41 of its 68 assertions fail without the fix and all 68
   pass with it, so it is a gate rather than decoration.
 
+- **A channel reported `healthy` because its token was in config, not because it
+  worked.** `ChannelStatusSnapshot.state` was computed from credential presence
+  alone, so a Telegram bot whose ingress had stopped kept reporting healthy for
+  as long as its token stayed configured: a message was sent, no reply came, and
+  every surface agreed everything was fine. Four surfaces were worse — Slack,
+  Discord, ntfy and the generic webhook reported healthy whenever their delivery
+  switch was on, without checking for a credential at all. Meanwhile
+  `BuiltinChannelRuntime.telegramIngressStatus()` — the function that knew the
+  answer, including the named reason ingress was inactive — had no caller.
+
+  The reported state now answers whether the channel can send and receive right
+  now. `ChannelHealthState` distinguishes `healthy`, `degraded`, `dead`,
+  `unknown`, `unconfigured` and `disabled`, and every snapshot carries the
+  `ChannelRuntimeObservation` its state was derived from, reason included. One
+  rule resolves it (`resolveChannelHealthState`), so a surface cannot report
+  health without an observation behind it.
+
+  Telegram is read from the ingress supervisor (webhook mode counts as armed —
+  it runs no poll loop by design, and reading `running` alone would have called
+  a correctly registered webhook dead). Slack, Discord and ntfy are read from
+  the provider connection manager. Every other built-in surface receives through
+  a webhook this daemon merely registers and therefore cannot tell a working
+  provider from a silent one — those report `unknown` and say in plain words
+  that configuration is all they know. No invented greens.
+
+- **A credential that is declared but resolves to nothing is now its own
+  state.** Measured on this project's own machine: `daemon/secrets.enc` was
+  `{}`, the Telegram token sat in `agent/secrets.enc` and `tui/secrets.enc`, and
+  `daemon/settings.json` pointed at
+  `goodvibes://secrets/goodvibes/TELEGRAM_BOT_TOKEN`. Every daemon send failed
+  with "Missing Telegram bot token" while the agent's own path sent fine through
+  its own store — and both reported the same health, because a reference is a
+  non-empty string and that was all "configured" ever meant.
+
+  `describeBuiltinSecret` now resolves what it describes, so
+  `ChannelSecretStatus` carries `resolved` alongside `configured` and a `source`
+  of `unresolved`, and the snapshot carries `credentialResolves`. The health
+  state `unresolved` sits between `unconfigured` (nobody believes it works) and
+  `dead` (it resolved and the runtime is down), and the reported reason names
+  the field rather than the symptom. The doctor gains a matching
+  `credentials-resolve` check. It costs a store read — no network, no trial
+  send. An observed working path still outranks it, so a surface reading its
+  credential through a path this describer does not model is never called broken
+  while it is demonstrably carrying traffic.
+
+- **A dead channel now reaches the owner instead of sitting in a field.**
+  `ChannelHealthWatcher` sweeps the registry, and the daemon announces a channel
+  that stops working over a channel that still does — never over the failed one.
+  Recoveries are announced to whoever was told about the failure, a channel that
+  stays dead is repeated on a long interval rather than mentioned once, and
+  `unknown` is not treated as failure so webhook-delivered surfaces do not cry
+  wolf. When nothing survives to carry the notice, that fact is logged at ERROR
+  with the alert, so the log says both that a channel died and that nobody was
+  told.
+
 ### Changed
 
 - `readBodyBounded` moved from `platform/daemon/control-plane.ts` to its sibling
