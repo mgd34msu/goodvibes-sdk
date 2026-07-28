@@ -163,6 +163,49 @@ means *wire it for the first time*, including:
   payments) through the control plane, and exposing it to **nothing** that an
   arriving message can reach.
 
+### 2.3 Registration is an explicit verb, and it did not exist
+
+§2.2 said the book had never been instantiated. It was worse than that, and the
+gap made the whole capability inert: **nothing ever registered an expectation.**
+Verified — `openExpectation` has no production call site anywhere in
+`packages/sdk/src`, and `new VerificationExpectationBook` appears only in tests.
+
+So the chain was: a signup begins, nothing records what is being waited for,
+the mail arrives, the matcher correctly finds no expectation, and the message is
+correctly treated as unexpected and does nothing. Every part worked. The middle
+was missing, which is the same failure shape as a notice that is rendered and
+never sent.
+
+**Ruling (coordinator's, not the owner's): registration is an explicit verb the
+model calls before submitting the signup form.** Not inference, and not a
+watcher that detects a signup and opens one on the workstream's behalf.
+
+The reasoning is the part to build to. An expectation created by inference is
+created **by content** — the page being filled in, or a heuristic reading of it.
+That inverts the authority model this entire document rests on. Expectations
+must be created by the already-authorized workstream, in advance, or
+"mail may satisfy an expectation but may never create work" is decorative
+rather than structural. A verb makes the authorization explicit and auditable:
+the model was already authorized to do the work, it declares what it is about to
+expect, and the daemon holds the record. The same shape as
+`payments.checkout.fillCard` — the model orchestrates, the daemon holds the
+privileged state.
+
+Three verbs, in the email catalog family:
+
+| Verb | Why it exists |
+|---|---|
+| `email.expectation.open` | Declares the service domain, the purpose and the recipient address, with a window defaulting to `expectationWindowMinutes` and hard-capped by `MAX_VERIFICATION_WINDOW_MS`. Returns a handle. A caller cannot exceed the ceiling by asking |
+| `email.expectation.list` | Disclosure. §9 requires persisted state to say what it holds |
+| `email.expectation.cancel` | A signup abandoned before submission must not leave an expectation sitting until expiry |
+
+The constraints are unchanged and all of them are structural rather than
+documented: the inbound path holds a match-only `ExpectationMatcher` and cannot
+reach these verbs; matching stays keyed on `DeliveredRecipient` and never on the
+`To:` header; and an expectation that passes its window **fails with a named
+reason and is reported** through the same observer path §3.4b uses for terminal
+failures, rather than lapsing into silence.
+
 ---
 
 ## 3. Real-time delivery
