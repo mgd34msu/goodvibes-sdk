@@ -62,6 +62,30 @@ const EMAIL_MESSAGE_DETAIL_SCHEMA = objectSchema({
  * honest in both directions: a descriptor advertising an http path no route
  * serves reddens it, and so does one that quietly reappears unmarked.
  */
+/**
+ * An open verification expectation, as the disclosure verbs report it.
+ *
+ * `authority` is on the wire deliberately. It is the literal
+ * `'evidence-only'` on every record, and carrying it means a consumer reads
+ * the grant's scope from the record rather than assuming it from the fact
+ * that a match occurred: satisfying an expectation establishes control of an
+ * address and grants no command authority at all.
+ */
+const EMAIL_EXPECTATION_SCHEMA = objectSchema({
+  id: STRING_SCHEMA,
+  kind: STRING_SCHEMA,
+  serviceDomain: STRING_SCHEMA,
+  recipientAddress: STRING_SCHEMA,
+  purpose: STRING_SCHEMA,
+  openedAt: STRING_SCHEMA,
+  expiresAt: STRING_SCHEMA,
+  authority: STRING_SCHEMA,
+  remainingMs: NUMBER_SCHEMA,
+}, [
+  'id', 'kind', 'serviceDomain', 'recipientAddress', 'purpose',
+  'openedAt', 'expiresAt', 'authority',
+]);
+
 export const builtinGatewayEmailMethodDescriptors: readonly GatewayMethodDescriptor[] = [
   methodDescriptor({
     id: 'email.inbox.list',
@@ -141,5 +165,73 @@ export const builtinGatewayEmailMethodDescriptors: readonly GatewayMethodDescrip
       sentAt: STRING_SCHEMA,
     }, ['messageId', 'sentAt']),
     dangerous: true,
+  }),
+  /**
+   * The three expectation verbs carry NO `http` binding, unlike the mail
+   * verbs above.
+   *
+   * They are not a REST surface. They are how an already-authorized
+   * workstream — an account signup, a purchase — declares in advance that a
+   * specific message is expected at a specific address from a specific
+   * domain, before it submits the form. The callers are inside the daemon,
+   * reaching them over the control plane; nothing external consumes them, and
+   * a descriptor advertising an `/api/...` path that no route serves is
+   * exactly what the route-reconcile gate exists to redden.
+   *
+   * `transport: ['ws']` follows from that and is not decoration. The default
+   * is `['http', 'ws']`, and declaring http while serving no http path is a
+   * method advertising a transport it cannot be reached on — which the
+   * transport-honesty gate catches, correctly. The declaration has to match
+   * the reachability, not the convention.
+   *
+   * Every input `required` array below is declared explicitly and matches
+   * what the handler enforces.
+   */
+  methodDescriptor({
+    id: 'email.expectation.open',
+    transport: ['ws'],
+    title: 'Open Verification Expectation',
+    description:
+      'Register, in advance, that a verification message is expected at one address from one service domain, within a bounded window. Called by the workstream that already holds authority BEFORE it submits the signup or checkout form. Grants evidence-only authority: a matching message proves control of the address and can never start work, widen the expectation or extend its window.',
+    category: 'email',
+    scopes: ['write:email'],
+    access: 'admin',
+    inputSchema: objectSchema({
+      serviceDomain: STRING_SCHEMA,
+      recipientAddress: STRING_SCHEMA,
+      purpose: STRING_SCHEMA,
+      windowMs: NUMBER_SCHEMA,
+      kind: STRING_SCHEMA,
+    }, ['serviceDomain', 'recipientAddress', 'purpose']),
+    outputSchema: EMAIL_EXPECTATION_SCHEMA,
+  }),
+  methodDescriptor({
+    id: 'email.expectation.list',
+    transport: ['ws'],
+    title: 'List Verification Expectations',
+    description:
+      'Return every open verification expectation with its recipient, service domain, purpose and remaining window. Disclosure: an expectation is a live correlation key, and the owner is entitled to see which ones exist.',
+    category: 'email',
+    scopes: ['read:email'],
+    inputSchema: objectSchema({}),
+    outputSchema: objectSchema({
+      expectations: arraySchema(EMAIL_EXPECTATION_SCHEMA),
+      total: NUMBER_SCHEMA,
+    }, ['expectations', 'total']),
+  }),
+  methodDescriptor({
+    id: 'email.expectation.cancel',
+    transport: ['ws'],
+    title: 'Cancel Verification Expectation',
+    description:
+      'Close an expectation the workstream abandoned. A signup dropped before submission otherwise leaves a live correlation key for an address nobody is waiting on, occupying one of the bounded open slots until its window elapses. Cancelling an id that is not open is an answer, not a failure.',
+    category: 'email',
+    scopes: ['write:email'],
+    access: 'admin',
+    inputSchema: objectSchema({ id: STRING_SCHEMA }, ['id']),
+    outputSchema: objectSchema({
+      cancelled: BOOLEAN_SCHEMA,
+      expectation: EMAIL_EXPECTATION_SCHEMA,
+    }, ['cancelled']),
   }),
 ];

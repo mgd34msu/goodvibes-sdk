@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.18.1
- * Methods: 443 total, 392 REST-routed, 51 ws-only invoke.
+ * Methods: 446 total, 392 REST-routed, 54 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -1623,6 +1623,9 @@ export const WEBUI_WS_INVOKE_METHOD_IDS: readonly string[] = [
   "checkpoints.revertHunk",
   "checkpoints.revertHunkPreview",
   "cost.attribution.get",
+  "email.expectation.cancel",
+  "email.expectation.list",
+  "email.expectation.open",
   "flags.graduation.report",
   "fleet.archive",
   "fleet.archived.list",
@@ -1824,6 +1827,9 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "deliveries.get": "rest",
   "deliveries.list": "rest",
   "email.draft.create": "rest",
+  "email.expectation.cancel": "ws-invoke",
+  "email.expectation.list": "ws-invoke",
+  "email.expectation.open": "ws-invoke",
   "email.inbox.list": "rest",
   "email.inbox.read": "rest",
   "email.send": "rest",
@@ -7928,6 +7934,64 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
       "draftId": "sample",
       "uid": 0,
       "mailbox": "sample"
+    }
+  },
+  "email.expectation.cancel": {
+    "input": {
+      "id": "sample"
+    },
+    "output": {
+      "cancelled": false,
+      "expectation": {
+        "id": "sample",
+        "kind": "sample",
+        "serviceDomain": "sample",
+        "recipientAddress": "sample",
+        "purpose": "sample",
+        "openedAt": "sample",
+        "expiresAt": "sample",
+        "authority": "sample",
+        "remainingMs": 0
+      }
+    }
+  },
+  "email.expectation.list": {
+    "input": {},
+    "output": {
+      "expectations": [
+        {
+          "id": "sample",
+          "kind": "sample",
+          "serviceDomain": "sample",
+          "recipientAddress": "sample",
+          "purpose": "sample",
+          "openedAt": "sample",
+          "expiresAt": "sample",
+          "authority": "sample",
+          "remainingMs": 0
+        }
+      ],
+      "total": 0
+    }
+  },
+  "email.expectation.open": {
+    "input": {
+      "serviceDomain": "sample",
+      "recipientAddress": "sample",
+      "purpose": "sample",
+      "windowMs": 0,
+      "kind": "sample"
+    },
+    "output": {
+      "id": "sample",
+      "kind": "sample",
+      "serviceDomain": "sample",
+      "recipientAddress": "sample",
+      "purpose": "sample",
+      "openedAt": "sample",
+      "expiresAt": "sample",
+      "authority": "sample",
+      "remainingMs": 0
     }
   },
   "email.inbox.list": {

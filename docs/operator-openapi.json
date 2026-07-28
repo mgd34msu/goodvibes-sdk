@@ -3,7 +3,7 @@
   "info": {
     "title": "GoodVibes Operator API",
     "version": "1.18.1",
-    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 443 cataloged methods: 392 with dedicated REST bindings, 51 reachable only through the generic invoke endpoint. 97 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
+    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 446 cataloged methods: 392 with dedicated REST bindings, 54 reachable only through the generic invoke endpoint. 97 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
   },
   "servers": [
     {
@@ -93893,6 +93893,9 @@
           "checkpoints.revertHunk",
           "checkpoints.revertHunkPreview",
           "cost.attribution.get",
+          "email.expectation.cancel",
+          "email.expectation.list",
+          "email.expectation.open",
           "flags.graduation.report",
           "fleet.archive",
           "fleet.archiveFinished",
@@ -95542,6 +95545,33 @@
       "access": "admin",
       "rest": "POST /api/email/drafts",
       "typedClientIo": false,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "email.expectation.cancel",
+      "category": "email",
+      "access": "admin",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "email.expectation.list",
+      "category": "email",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "email.expectation.open",
+      "category": "email",
+      "access": "admin",
+      "rest": null,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
