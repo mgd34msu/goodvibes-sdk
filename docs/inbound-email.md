@@ -458,6 +458,26 @@ depends on, so after a restart the watcher would either silently skip messages
 or silently redeliver them. Both are invisible, and both are worse than
 refusing. It refuses.
 
+**"The watcher does not run" means the connection is closed, not merely that
+reading stopped.** This distinction cost a real defect, and is written down
+because it reads as pedantry right up until it bites.
+
+A `fetch-refused` or `uidvalidity-missing` verdict is reached *while the socket
+is still open*, and putting the hour-long re-check wait right there is the
+obvious thing to do. Doing so holds one of the provider's connections — one of
+Gmail's fifteen — for a full hour, on behalf of a mailbox the daemon has already
+decided it cannot read. That is the same limit pressure the `connection-limit`
+verdict exists to absorb, applied by us, against every other mailbox, for
+nothing.
+
+So a verdict is **reported where it is found**, and the wait happens in the run
+loop **after the connection is closed**. The general rule, which applies to
+every long wait this design introduces:
+
+> A state that means "not working" must release what working required. If it
+> does not, it is not that state — it is the same work, holding the same
+> resources, with the reporting changed.
+
 **Ruling: `insufficient` refuses and notifies. It does not silently degrade.**
 `surfaces.email.inbound.onInsufficientCapability` defaults to
 `'refuse-and-notify'`; `'notice-only'` exists as a deliberate, configured
