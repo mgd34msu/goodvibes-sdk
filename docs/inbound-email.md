@@ -163,6 +163,49 @@ means *wire it for the first time*, including:
   payments) through the control plane, and exposing it to **nothing** that an
   arriving message can reach.
 
+### 2.3 Registration is an explicit verb, and it did not exist
+
+§2.2 said the book had never been instantiated. It was worse than that, and the
+gap made the whole capability inert: **nothing ever registered an expectation.**
+Verified — `openExpectation` has no production call site anywhere in
+`packages/sdk/src`, and `new VerificationExpectationBook` appears only in tests.
+
+So the chain was: a signup begins, nothing records what is being waited for,
+the mail arrives, the matcher correctly finds no expectation, and the message is
+correctly treated as unexpected and does nothing. Every part worked. The middle
+was missing, which is the same failure shape as a notice that is rendered and
+never sent.
+
+**Ruling (coordinator's, not the owner's): registration is an explicit verb the
+model calls before submitting the signup form.** Not inference, and not a
+watcher that detects a signup and opens one on the workstream's behalf.
+
+The reasoning is the part to build to. An expectation created by inference is
+created **by content** — the page being filled in, or a heuristic reading of it.
+That inverts the authority model this entire document rests on. Expectations
+must be created by the already-authorized workstream, in advance, or
+"mail may satisfy an expectation but may never create work" is decorative
+rather than structural. A verb makes the authorization explicit and auditable:
+the model was already authorized to do the work, it declares what it is about to
+expect, and the daemon holds the record. The same shape as
+`payments.checkout.fillCard` — the model orchestrates, the daemon holds the
+privileged state.
+
+Three verbs, in the email catalog family:
+
+| Verb | Why it exists |
+|---|---|
+| `email.expectation.open` | Declares the service domain, the purpose and the recipient address, with a window defaulting to `expectationWindowMinutes` and hard-capped by `MAX_VERIFICATION_WINDOW_MS`. Returns a handle. A caller cannot exceed the ceiling by asking |
+| `email.expectation.list` | Disclosure. §9 requires persisted state to say what it holds |
+| `email.expectation.cancel` | A signup abandoned before submission must not leave an expectation sitting until expiry |
+
+The constraints are unchanged and all of them are structural rather than
+documented: the inbound path holds a match-only `ExpectationMatcher` and cannot
+reach these verbs; matching stays keyed on `DeliveredRecipient` and never on the
+`To:` header; and an expectation that passes its window **fails with a named
+reason and is reported** through the same observer path §3.4b uses for terminal
+failures, rather than lapsing into silence.
+
 ---
 
 ## 3. Real-time delivery
@@ -631,11 +674,35 @@ infrastructure the owner does not have.
 
 #### Scope sufficiency applies to both
 
-§3.4a is not a Gmail detail. The Gmail source already refuses
-`metadata-scope-only` before making the call. The IMAP source owes the
-equivalent: a connection that authenticates but cannot fetch bodies fails
-loudly at connect time with the exact remedy, and never delivers empty-bodied
-messages that read as a quiet mailbox.
+§3.4a is not a Gmail detail. Both sources refuse rather than deliver
+empty-bodied messages that read as a quiet mailbox, and both name a remedy the
+owner can act on. **But they do not detect it at the same moment, and this
+paragraph originally claimed they did.**
+
+| | Gmail | IMAP |
+|---|---|---|
+| What is checked | granted scopes | whether the server hands over message data |
+| When | **before the first call** — scopes are declarative | **on the first fetch** — `fetch-refused` |
+| Verdict | `insufficient`, `metadata-scope-only` | `insufficient`, `fetch-refused` |
+
+The asymmetry is the protocol, not laziness. A Gmail token *states* what it may
+do, so it can be checked against nothing. IMAP has no equivalent declaration —
+`CAPABILITY` does not say "you may fetch bodies from this mailbox", and
+permission is discovered only by asking for data. On an **empty mailbox there is
+nothing to ask for**, so a universal connect-time body probe does not exist.
+
+What follows matters for the journey this capability serves: during a signup the
+first fetch **is** the verification mail, so an expectation is already open when
+the refusal is found. §3.4b already covers the outcome — expectations open when
+capability is lost are **failed with a named reason**, never left to expire — so
+the owner is told the truth either way. He is simply told slightly later on IMAP
+than on Gmail.
+
+**Closing most of the gap:** when the mailbox is non-empty at connect, one
+`BODY.PEEK` of a single envelope at the highest UID answers the question before
+any expectation is opened, at the cost of one round trip per connection. That is
+the honest version of "connect-time" for IMAP — available whenever there is
+anything to probe, and impossible when there is not.
 
 ### 3.5 Where it plugs in — the supervisor model, not the webhook model
 
@@ -1035,6 +1102,35 @@ So the rule:
 > imports it. A structurally-equivalent local mirror is not equivalent — it is a
 > second declaration of the same idea that can drift, and it will drift silently,
 > because nothing links the two.
+
+**Three separate defects tonight came from this one root**, which is why it is
+stated as a rule rather than an anecdote:
+
+1. A hand-written `boolean | null` mirror of the IDLE tri-state read `undefined`
+   as falsy, and the watcher silently polled a push-capable server.
+2. Two lanes each declared a structurally-identical `MailboxCursor`. Everything
+   compiled while the store clamped with `Math.max` and the poll loop assigned
+   unconditionally, so a late write would have dragged the high-water mark
+   backwards and **re-announced every message between the two marks**.
+3. `SurfaceAuthorityProbe` typed its parameter `string`, which made the **real**
+   predicate structurally **unassignable** — a function accepting only
+   `AuthoritySurface` cannot stand where one accepting any `string` is required.
+   Passing the genuine check therefore required wrapping it in a shim. That is
+   part of *why* §2.2's defensive check had never run: it could not have. The
+   type carried a comment naming `src/agent/surface-authority.ts`, a path that
+   does not exist, while the predicate lives in
+   `platform/security/untrusted-content.ts` — a drifted type under a comment
+   citing a file that was never there.
+
+**So where a narrowed view is needed, project it from the real declaration
+rather than restating it.** `ExpectationMatcher` began as a hand-authored
+interface and described a method the book does not have — it omitted the
+required `now` — so every caller through it would have been type-checked against
+fiction. As `Pick<VerificationExpectationBook, 'matchCandidate'>` it **cannot
+drift, because there is nothing to keep in sync.**
+
+> Narrowing by projection (`Pick`, `Omit`) beats narrowing by restatement. A
+> restated interface is a second declaration wearing the word "narrow".
 
 Applies equally to `ReceiptTimestamp`, `ValidatedRegistrableDomain`,
 `DeliveredRecipient`, `CardShapeFinding` and `ExpectationMatcher`. Where a
@@ -1552,10 +1648,31 @@ overturn any of them.
     §3.4d's claim that `InboundMailboxMessage` was "already source-agnostic"
     was verified wrong by reading it: it carries `uidValidity`, `uid` and
     `ImapEnvelope`.
-18. **IMAP body capability is probed, not declared**, and an empty mailbox
-    reports `degraded`/`bodies-unproven` rather than claiming a capability
-    nobody demonstrated.
-    `docs/decisions/2026-07-27-imap-body-capability-is-probed-not-declared.md`.
+18. **IMAP body capability is probed, not declared.** One `BODY.PEEK` at
+    connect on a non-empty mailbox, before any expectation is opened. An empty
+    mailbox reports `{ probed: false }` — **visible in status and distinct from
+    probed-ok, but it does NOT change the health verdict.**
+
+    *Corrected.* This ruling previously said an empty mailbox reports
+    `degraded`/`bodies-unproven`, and cited a decision record
+    (`2026-07-27-imap-body-capability-is-probed-not-declared.md`) that **does
+    not exist** — a fifth instance of §13.2, this time citing a document rather
+    than a symbol. The implementing round flagged the contradiction instead of
+    guessing, which is why it surfaced.
+
+    `degraded` is wrong here, and for a reason stronger than the one originally
+    given: **an empty mailbox is the primary case, not an edge case.** A fresh
+    per-signup alias is empty by definition, so every new signup would start
+    permanently amber and stay there until its first message. That is the same
+    alarm-fatigue argument already settled for configured polling — a health
+    indicator that is always yellow is one nobody reads — and it would fire on
+    exactly the journey this capability exists to serve.
+
+    Honesty is preserved without the alarm: the unprobed state is *disclosed*
+    rather than *escalated*. And nothing is lost, because the reactive path
+    still catches a refusal on the first real message, failing the open
+    expectation with a named reason under §3.4b. The owner is told at the moment
+    it matters, rather than warned before there is anything to warn about.
 19. **Externally-sourced calendar event content is untrusted content**, on the
     same read-time-not-arrival-time rule as mail, and the calendar agenda sort
     is deliberately NOT given the mail fix.
@@ -1614,6 +1731,23 @@ built.
 > A requirement that names a function, a field or a type is a claim about the
 > code, and it decays. Re-verify it against the code at the moment it is handed
 > to someone to implement — not at the moment it was written.
+
+**A fourth instance, committed while citing this very rule.** I reported that
+`method-catalog-email.ts` declared no `required` arrays, because grepping it for
+the word `required` returned only a comment. The implementing round read the
+code instead: `objectSchema(properties, required = [], options)` takes it
+**positionally**, so `email.inbox.read` has always declared
+`objectSchema({ uid: NUMBER_SCHEMA }, ['uid'])`, and the catalog and the handlers
+already agreed exactly. There was no defect. I had invented one and dispatched
+it as work.
+
+> **Absence of a grep hit is not absence of the thing.** A negative grep proves a
+> string is missing and nothing more. Before reporting that something is not
+> declared, read the declaration site and the signature it is passed to.
+
+Knowing the failure mode did not prevent repeating it, in the same message that
+cited it. That is the honest lesson: this rule is not self-executing, and the
+only thing that actually catches the class is opening the file.
 
 ## 14. Related
 

@@ -201,9 +201,21 @@ export async function drainMailboxDelta(
         continue;
       }
       try {
+        // The base fields are a straight carry off the envelope: the pipeline
+        // downstream reads `InboundMessageCommon` and never narrows, so what a
+        // source can say has to be said here rather than left for each
+        // consumer to dig out of `envelope`. `date` becomes `claimedDate`
+        // because it is sender-written and is not an ordering key.
         await deps.sink.deliver({
+          source: 'imap',
           account: settings.account,
           mailbox: settings.mailbox,
+          from: envelope.from,
+          subject: envelope.subject,
+          claimedDate: envelope.date,
+          messageId: envelope.messageId,
+          deliveredTo: envelope.deliveredTo,
+          unverifiedToHeaderClaim: envelope.unverifiedToHeaderClaim,
           uidValidity: current.uidValidity,
           uid,
           envelope,
