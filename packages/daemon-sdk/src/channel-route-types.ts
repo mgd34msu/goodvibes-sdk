@@ -81,8 +81,36 @@ export interface SurfaceRegistryLike {
   list(): readonly unknown[];
 }
 
+/**
+ * Inbound mail's health entry, mirrored structurally the way this package
+ * mirrors every SDK type it routes.
+ *
+ * `kind` is the discriminant. It was declared on `InboundMailHealthEntry` and
+ * documented as distinguishing this entry "from a channel's in a mixed list",
+ * and there was no mixed list — the two functions that produce it had zero
+ * callers repo-wide, so email appeared in no health surface at all. This is
+ * the list it was named for.
+ */
+export interface InboundMailHealthLike {
+  readonly kind: 'email-inbound';
+  readonly account: string;
+  readonly mailbox: string;
+  readonly state: string;
+  readonly mode: string;
+  readonly reason: string;
+  readonly enabled: boolean;
+}
+
 export interface DaemonChannelRouteContext {
   readonly channelPlugins: ChannelPluginServiceLike;
+  /**
+   * Inbound mail's health, when this daemon watches a mailbox.
+   *
+   * Optional because an embedder composing routes without the builtin channel
+   * runtime has no mailbox to report on — not because the answer is optional
+   * when there IS one.
+   */
+  readonly inboundMailHealth?: (() => InboundMailHealthLike | null) | undefined;
   readonly channelPolicy: ChannelPolicyServiceLike;
   readonly parseJsonBody: (req: Request) => Promise<JsonRecord | Response>;
   readonly parseOptionalJsonBody: (req: Request) => Promise<JsonRecord | null | Response>;

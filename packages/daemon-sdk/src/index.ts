@@ -74,6 +74,7 @@ export type {
   ChannelSurface,
   ChannelTargetResolutionInput,
   DaemonChannelRouteContext,
+  InboundMailHealthLike,
   SurfaceRegistryLike,
 } from './channel-route-types.js';
 export type {
