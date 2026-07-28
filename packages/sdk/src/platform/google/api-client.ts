@@ -23,6 +23,7 @@
  */
 
 import type { GoogleTokenManager } from './token-manager.js';
+import { collectHistoryDelta, type HistoryDeltaOptions, type HistoryListDeltaResult } from './history-delta.js';
 
 const GMAIL_BASE = 'https://gmail.googleapis.com/gmail/v1/users/me';
 const CALENDAR_BASE = 'https://www.googleapis.com/calendar/v3/calendars';
@@ -345,6 +346,30 @@ export class GoogleApiClient {
         deliveredTo: deliveryHeaderValues(headers),
       },
     };
+  }
+
+  /**
+   * Incremental sync via `users.history.list` — what changed since
+   * `options.startHistoryId`, without re-listing the mailbox.
+   *
+   * Gated on the token's actual granted scopes, checked at call time via
+   * `this.tokens.scopes()` rather than assumed from what setup requested.
+   * With no Gmail read scope present this returns
+   * `unavailable: 'no-gmail-scope'`, never an empty success. A `startHistoryId`
+   * that has aged out of Gmail's retention window returns
+   * `unavailable: 'resync-required'` instead of an empty delta. See
+   * `history-delta.ts` for the full design rationale and the live-docs
+   * citations it is built against.
+   */
+  async historyListDelta(options: HistoryDeltaOptions): Promise<HistoryListDeltaResult> {
+    return collectHistoryDelta(
+      {
+        scopes: () => this.tokens.scopes(),
+        fetchHistoryPage: (params) => this.request(`${GMAIL_BASE}/history?${params.toString()}`),
+        getMessage: (id) => this.getMessage(id),
+      },
+      options,
+    );
   }
 
   /** Send a plain-text message. */
