@@ -21,11 +21,22 @@
  */
 import { describe, test, expect } from 'bun:test';
 import {
+  MERCHANT_RECOURSE_CRITERION,
   classifyMerchant,
   merchantPolicyFromConfig,
   windowForPurchase,
-  resolveRecognisedRetailers,
-} from '../packages/sdk/src/platform/payments/major-retailers.js';
+  type MerchantJudgeInput,
+  type MerchantJudgePort,
+  type MerchantJudgement,
+} from '../packages/sdk/src/platform/payments/merchant-recourse.js';
+import { isThirdPartySale } from '../packages/sdk/src/platform/payments/marketplace-listing.js';
+import { renderPurchaseNotice } from '../packages/sdk/src/platform/payments/message.js';
+import { BudgetLedger } from '../packages/sdk/src/platform/payments/budget.js';
+import {
+  parseCurrencyCode,
+  unsafeOwnerSuppliedTextForTests,
+  type CurrencyCode,
+} from '../packages/sdk/src/platform/payments/types.js';
 import { paymentsConfigDefaults } from '../packages/sdk/src/platform/config/schema-domain-payments.js';
 import { evaluateMarketplaceListing } from '../packages/sdk/src/platform/payments/marketplace-listing.js';
 import { evaluatePaymentTaint } from '../packages/sdk/src/platform/payments/taint-gate.js';
@@ -142,233 +153,233 @@ describe('owner-initiated versus content-initiated', () => {
 // Recourse, and what silence means
 // ───────────────────────────────────────────────────────────────────────────
 
-describe('recourse decides the window', () => {
-  test('a national chain proceeds on silence', () => {
-    const verdict = classifyMerchant({ checkoutHost: 'www.walmart.com' });
+// ───────────────────────────────────────────────────────────────────────────
+// Judgement against a profile — NOT a list
+// ───────────────────────────────────────────────────────────────────────────
+
+/** Records what the judge was asked, so the input surface can be asserted. */
+function stubJudge(reply: (domain: string) => MerchantJudgement): MerchantJudgePort & {
+  readonly calls: MerchantJudgeInput[];
+} {
+  const calls: MerchantJudgeInput[] = [];
+  return {
+    calls,
+    judge: async (input: MerchantJudgeInput) => {
+      calls.push(input);
+      return reply(input.registrableDomain);
+    },
+  };
+}
+
+/** A judge standing in for real-world knowledge, with nothing enumerated in the module. */
+const worldJudge = stubJudge((domain) => {
+  if (domain === 'microcenter.com') {
+    return { qualifies: true, confident: true, recourse: 'an established electronics retailer with a returns process' };
+  }
+  if (domain === 'someartisanshop.co.uk') {
+    return { qualifies: true, confident: true, recourse: 'an established retailer with consumer protections' };
+  }
+  if (domain === 'etsy.com') {
+    return { qualifies: true, confident: true, recourse: 'buyer protection applies', marketplace: 'buyer-protection' };
+  }
+  if (domain === 'ebay.com') {
+    return { qualifies: true, confident: true, recourse: 'buyer protection applies', marketplace: 'per-seller' };
+  }
+  if (domain === 'jeffsgadgets.biz') {
+    return { qualifies: false, confident: true, recourse: 'I could not find any consumer protection or returns process' };
+  }
+  return { qualifies: false, confident: false, recourse: 'I do not recognise this seller' };
+});
+
+describe('the merchant is judged against a profile', () => {
+  test('an established retailer nobody enumerated is judged major', async () => {
+    // The whole point of the correction: this domain is in no list anywhere.
+    const verdict = await classifyMerchant({ checkoutHost: 'shop.someartisanshop.co.uk' }, worldJudge);
+    expect(verdict.isMajor).toBe(true);
+    expect(verdict.basis).toBe('judgement');
+    expect(verdict.reason).toContain('consumer protections');
+  });
+
+  test('Micro Center qualifies — accountability, not size', async () => {
+    const verdict = await classifyMerchant({ checkoutHost: 'www.microcenter.com' }, worldJudge);
     expect(verdict.isMajor).toBe(true);
     expect(windowForPurchase({ aboveBudget: false, merchantIsMajor: true })).toBe('veto');
   });
 
-  test('Micro Center qualifies — the axis is accountability, not size', () => {
-    const verdict = classifyMerchant({ checkoutHost: 'www.microcenter.com' });
-    expect(verdict.isMajor).toBe(true);
-    expect(verdict.qualifier).toBe('specialty-retailer');
-  });
-
-  test('an established online-only retailer qualifies — no stores required', () => {
-    const verdict = classifyMerchant({ checkoutHost: 'www.redbubble.com' });
-    expect(verdict.isMajor).toBe(true);
-    expect(verdict.qualifier).toBe('online-only-retailer');
-  });
-
-  test('jeffsgadgets.biz does not, and the reason names the missing recourse', () => {
-    const verdict = classifyMerchant({ checkoutHost: 'www.jeffsgadgets.biz' });
+  test('jeffsgadgets.biz does not, and it reads as a checkpoint', async () => {
+    const verdict = await classifyMerchant({ checkoutHost: 'www.jeffsgadgets.biz' }, worldJudge);
     expect(verdict.isMajor).toBe(false);
-    expect(verdict.reason).toContain('recourse');
-    // A checkpoint, not an accusation.
     expect(verdict.reason).toContain('not a mark against them');
     expect(windowForPurchase({ aboveBudget: false, merchantIsMajor: false })).toBe('approval');
   });
 
-  test('an unknown domain is not major — default is ask, never assume', () => {
-    expect(classifyMerchant({ checkoutHost: 'store.brand-new-today.example' }).isMajor).toBe(false);
+  test('an unrecognised domain resolves to not-major via unconfidence', async () => {
+    const verdict = await classifyMerchant({ checkoutHost: 'store.brand-new-today.example' }, worldJudge);
+    expect(verdict.isMajor).toBe(false);
+    expect(verdict.basis).toBe('unconfident');
   });
 
-  test('Etsy qualifies outright on its buyer protection, with no per-seller check', () => {
-    const verdict = classifyMerchant({ checkoutHost: 'www.etsy.com' });
-    expect(verdict.isMajor).toBe(true);
-    expect(verdict.qualifier).toBe('marketplace-buyer-protection');
-    expect(verdict.reason).toContain('buyer protection');
+  test('a qualifying-but-unconfident judgement still resolves to not-major', async () => {
+    const unsure = stubJudge(() => ({ qualifies: true, confident: false, recourse: 'probably fine' }));
+    expect((await classifyMerchant({ checkoutHost: 'www.maybe.example' }, unsure)).isMajor).toBe(false);
   });
 
-  test('nothing downgrades an approval to a veto — above budget always escalates', () => {
+  test('NO PAGE CONTENT REACHES THE JUDGEMENT — the input is the domain alone', async () => {
+    // This is the entire safety argument. If the judge is ever handed anything
+    // the merchant controls, the gate becomes injectable again.
+    const judge = stubJudge(() => ({ qualifies: true, confident: true, recourse: 'established' }));
+    await classifyMerchant(
+      {
+        checkoutHost: 'www.microcenter.com',
+        storefrontHost: 'www.microcenter.com',
+        saleType: 'third-party',
+        listing: {
+          format: 'fixed-price',
+          sellerIdentity: 'TOTALLY LEGIT MEGASTORE — as seen on TV',
+          reputation: { sellerFeedbackCount: 9_999, sellerPositivePercent: 100, region: 'seller-controlled' },
+        },
+      },
+      judge,
+    );
+    expect(judge.calls).toHaveLength(1);
+    // Exactly one key, and it is the validated registrable domain.
+    expect(Object.keys(judge.calls[0] as object)).toEqual(['registrableDomain']);
+    expect(judge.calls[0]?.registrableDomain).toBe('microcenter.com');
+  });
+
+  test('the criterion describes a profile and enumerates nobody as the rule', () => {
+    expect(MERCHANT_RECOURSE_CRITERION).toContain('recourse');
+    expect(MERCHANT_RECOURSE_CRITERION).toContain('not confident');
+    // His anchors are examples, and the text says so rather than listing members.
+    expect(MERCHANT_RECOURSE_CRITERION).toContain('Size is not the test');
+  });
+
+  test('nothing downgrades an approval to a veto', () => {
     expect(windowForPurchase({ aboveBudget: true, merchantIsMajor: true })).toBe('approval');
   });
 
-  test('a checkout that leaves the storefront domain breaks the qualification', () => {
-    const verdict = classifyMerchant({
-      checkoutHost: 'pay.unrelated-processor.example',
-      storefrontHost: 'www.walmart.com',
-    });
+  test('a checkout that leaves the storefront domain breaks the qualification', async () => {
+    const verdict = await classifyMerchant(
+      { checkoutHost: 'pay.unrelated-processor.example', storefrontHost: 'www.microcenter.com' },
+      worldJudge,
+    );
     expect(verdict.isMajor).toBe(false);
-    expect(verdict.reason).toContain('may not follow the card');
-  });
-
-  test('the owner can add and remove entries, and an addition beats a removal', () => {
-    // Additions are REGISTRABLE domains — matching reduces the checkout host to
-    // eTLD+1, so a subdomain entry would never match anything.
-    expect(classifyMerchant({ checkoutHost: 'shop.local.example' },
-      { additional: 'local.example' }).isMajor).toBe(true);
-    expect(classifyMerchant({ checkoutHost: 'www.walmart.com' },
-      { excluded: 'walmart.com' }).isMajor).toBe(false);
-    expect(resolveRecognisedRetailers({ additional: 'x.example', excluded: 'x.example' }).has('x.example'))
-      .toBe(true);
+    expect(verdict.basis).toBe('structural');
   });
 });
 
-// ───────────────────────────────────────────────────────────────────────────
-// eBay: the per-listing case
-// ───────────────────────────────────────────────────────────────────────────
+describe('owner overrides are authoritative in both directions', () => {
+  test('an exclusion overrides a positive judgement, without asking the judge', async () => {
+    const judge = stubJudge(() => ({ qualifies: true, confident: true, recourse: 'established' }));
+    const verdict = await classifyMerchant(
+      { checkoutHost: 'www.microcenter.com' }, judge, { excluded: 'microcenter.com' },
+    );
+    expect(verdict.isMajor).toBe(false);
+    expect(verdict.basis).toBe('owner-override');
+    expect(judge.calls).toHaveLength(0);
+  });
 
-describe('eBay is per-listing, not per-domain', () => {
+  test('an addition overrides a negative judgement', async () => {
+    const verdict = await classifyMerchant(
+      { checkoutHost: 'www.jeffsgadgets.biz' }, worldJudge, { additional: 'jeffsgadgets.biz' },
+    );
+    expect(verdict.isMajor).toBe(true);
+    expect(verdict.basis).toBe('owner-override');
+  });
+
+  test('config maps straight onto the policy', () => {
+    const policy = merchantPolicyFromConfig({
+      majorRetailersAdditional: 'a.example',
+      majorRetailersExcluded: 'b.example',
+      ebayMinSellerFeedbackCount: 250,
+      ebayMinSellerPositivePercent: 99,
+    });
+    expect(policy.additional).toBe('a.example');
+    expect(policy.listingThresholds?.minSellerFeedbackCount).toBe(250);
+  });
+});
+
+describe('eBay per-listing conditions are unaffected by the rewrite', () => {
   const goodSeller = {
     sellerFeedbackCount: 4_120,
     sellerPositivePercent: 99.4,
     region: 'platform-widget' as const,
   };
 
-  test('Buy It Now from a solid seller qualifies, and the reason shows the figures', () => {
-    const verdict = classifyMerchant({
-      checkoutHost: 'www.ebay.com',
-      listing: { format: 'fixed-price', reputation: goodSeller },
-    });
+  test('Buy It Now from a solid seller qualifies', async () => {
+    const verdict = await classifyMerchant(
+      { checkoutHost: 'www.ebay.com', listing: { format: 'fixed-price', reputation: goodSeller } },
+      worldJudge,
+    );
     expect(verdict.isMajor).toBe(true);
     expect(verdict.reason).toContain('4120 seller ratings');
-    expect(verdict.reason).toContain('99.4% positive');
   });
 
-  test('an auction is REFUSED outright, not merely escalated', () => {
-    const verdict = classifyMerchant({
-      checkoutHost: 'www.ebay.com',
-      listing: { format: 'auction', reputation: goodSeller },
-    });
+  test('an auction is refused outright', async () => {
+    const verdict = await classifyMerchant(
+      { checkoutHost: 'www.ebay.com', listing: { format: 'auction', reputation: goodSeller } },
+      worldJudge,
+    );
     expect(verdict.refused).toBe(true);
-    expect(verdict.isMajor).toBe(false);
     expect(verdict.reason).toContain('no final price until it ends');
   });
 
-  test('a great seller does not rescue an auction', () => {
-    const verdict = evaluateMarketplaceListing({
-      format: 'auction',
-      reputation: { sellerFeedbackCount: 900_000, sellerPositivePercent: 100, region: 'platform-widget' },
-    });
-    expect(verdict.outcome).toBe('refuse');
-  });
-
-  test('Best Offer and an unreadable format are refused too — price not fixed at decision time', () => {
-    expect(evaluateMarketplaceListing({ format: 'best-offer' }).outcome).toBe('refuse');
-    expect(evaluateMarketplaceListing({ format: 'unknown' }).outcome).toBe('refuse');
-  });
-
-  test('a thin selling record escalates to approval', () => {
-    const verdict = classifyMerchant({
-      checkoutHost: 'www.ebay.com',
-      listing: {
-        format: 'fixed-price',
-        reputation: { sellerFeedbackCount: 12, sellerPositivePercent: 100, region: 'platform-widget' },
+  test('a thin selling record escalates to approval', async () => {
+    const verdict = await classifyMerchant(
+      {
+        checkoutHost: 'www.ebay.com',
+        listing: {
+          format: 'fixed-price',
+          reputation: { sellerFeedbackCount: 12, sellerPositivePercent: 100, region: 'platform-widget' },
+        },
       },
-    });
+      worldJudge,
+    );
     expect(verdict.isMajor).toBe(false);
     expect(verdict.reason).toContain('below 100');
   });
 
-  test('a poor positive percentage escalates to approval', () => {
-    const verdict = evaluateMarketplaceListing({
-      format: 'fixed-price',
-      reputation: { sellerFeedbackCount: 5_000, sellerPositivePercent: 92, region: 'platform-widget' },
-    });
-    expect(verdict.outcome).toBe('requires-approval');
-    expect(verdict.reason).toContain('below 98%');
+  test('an unreadable listing is not assumed fine', async () => {
+    expect((await classifyMerchant({ checkoutHost: 'www.ebay.com' }, worldJudge)).isMajor).toBe(false);
   });
 
-  test('figures from the SELLER-CONTROLLED region are never accepted', () => {
-    // Sellers write their own listing text; they do not write eBay's widget.
-    const verdict = evaluateMarketplaceListing({
-      format: 'fixed-price',
-      reputation: { sellerFeedbackCount: 999_999, sellerPositivePercent: 100, region: 'seller-controlled' },
-    });
-    expect(verdict.outcome).toBe('requires-approval');
-    expect(verdict.reason).toContain('they write themselves');
-  });
-
-  test('an indeterminate region is unreadable, not given the benefit of the doubt', () => {
-    const verdict = evaluateMarketplaceListing({
-      format: 'fixed-price',
-      reputation: { sellerFeedbackCount: 5_000, sellerPositivePercent: 100, region: 'unknown' },
-    });
-    expect(verdict.outcome).toBe('requires-approval');
-  });
-
-  test('missing figures fail closed', () => {
-    expect(evaluateMarketplaceListing({ format: 'fixed-price' }).outcome).toBe('requires-approval');
-    expect(evaluateMarketplaceListing({
-      format: 'fixed-price',
-      reputation: { sellerFeedbackCount: null, sellerPositivePercent: 99, region: 'platform-widget' },
-    }).outcome).toBe('requires-approval');
-  });
-
-  test('the ratchet only tightens — a listing never promotes an unrecognised domain', () => {
-    const verdict = classifyMerchant({
-      checkoutHost: 'www.jeffsgadgets.biz',
-      listing: { format: 'fixed-price', reputation: goodSeller },
-    });
-    expect(verdict.isMajor).toBe(false);
-  });
-
-  test('an eBay listing we could not read at all is not assumed fine', () => {
-    expect(classifyMerchant({ checkoutHost: 'www.ebay.com' }).isMajor).toBe(false);
+  test('a buyer-protection marketplace does not get the per-seller check', async () => {
+    const verdict = await classifyMerchant({ checkoutHost: 'www.etsy.com' }, worldJudge);
+    expect(verdict.isMajor).toBe(true);
+    expect(verdict.reason).toContain('buyer protection');
   });
 });
 
-// ───────────────────────────────────────────────────────────────────────────
-// The config seam — one mapping, so a consumer cannot grow a second copy
-// ───────────────────────────────────────────────────────────────────────────
-
-describe('merchantPolicyFromConfig is the only config→policy mapping', () => {
-  const defaults = paymentsConfigDefaults.payments;
-
-  test('the shipped config defaults carry the thresholds the owner stated', () => {
-    // Guards the drift that a config default and a code default disagree while
-    // both look right in isolation.
-    const policy = merchantPolicyFromConfig(defaults);
-    expect(policy.listingThresholds?.minSellerFeedbackCount).toBe(100);
-    expect(policy.listingThresholds?.minSellerPositivePercent).toBe(98);
+describe('marketplace policy still discriminates', () => {
+  test('unknown sale type counts as third-party', () => {
+    expect(isThirdPartySale(undefined)).toBe(true);
+    expect(isThirdPartySale('first-party')).toBe(false);
   });
 
-  test('an eBay seller is graded against the CONFIGURED bar, not a hardcoded one', () => {
-    const strict = merchantPolicyFromConfig({
-      ...defaults,
-      ebayMinSellerFeedbackCount: 5_000,
-      ebayMinSellerPositivePercent: 99,
-    });
-    const verdict = classifyMerchant({
-      checkoutHost: 'www.ebay.com',
-      listing: {
-        format: 'fixed-price',
-        reputation: { sellerFeedbackCount: 200, sellerPositivePercent: 98.5, region: 'platform-widget' },
-      },
-    }, strict);
-    // Passes the shipped bar (100 / 98%); fails his tightened one.
+  test('first-party-only passes a first-party sale and escalates a third-party one', async () => {
+    const first = await classifyMerchant(
+      { checkoutHost: 'www.etsy.com', listing: { format: 'fixed-price', saleType: 'first-party' } },
+      worldJudge, { marketplaces: 'first-party-only' },
+    );
+    expect(first.isMajor).toBe(true);
+    const third = await classifyMerchant(
+      { checkoutHost: 'www.etsy.com', listing: { format: 'fixed-price', saleType: 'third-party' } },
+      worldJudge, { marketplaces: 'first-party-only' },
+    );
+    expect(third.isMajor).toBe(false);
+  });
+
+  test('first-party-only treats an unstated sale type as third-party', async () => {
+    const verdict = await classifyMerchant(
+      { checkoutHost: 'www.etsy.com', listing: { format: 'fixed-price' } },
+      worldJudge, { marketplaces: 'first-party-only' },
+    );
     expect(verdict.isMajor).toBe(false);
-    expect(verdict.reason).toContain('below 5000');
+    expect(verdict.reason).toContain('could not confirm');
   });
 
-  test('his list overrides travel through the mapping', () => {
-    const policy = merchantPolicyFromConfig({
-      ...defaults,
-      majorRetailersAdditional: 'local.example',
-      majorRetailersExcluded: 'walmart.com',
-    });
-    expect(classifyMerchant({ checkoutHost: 'shop.local.example' }, policy).isMajor).toBe(true);
-    expect(classifyMerchant({ checkoutHost: 'www.walmart.com' }, policy).isMajor).toBe(false);
-  });
-
-  test('no config value can promote an unrecognised storefront', () => {
-    // The knobs tighten or name domains he vouches for. There is no setting that
-    // makes an unknown checkout proceed on silence.
-    const policy = merchantPolicyFromConfig({
-      ...defaults,
-      ebayMinSellerFeedbackCount: 0,
-      ebayMinSellerPositivePercent: 0,
-    });
-    expect(classifyMerchant({ checkoutHost: 'www.jeffsgadgets.biz' }, policy).isMajor).toBe(false);
-    // And a zeroed bar still cannot rescue an auction.
-    expect(classifyMerchant({
-      checkoutHost: 'www.ebay.com',
-      listing: {
-        format: 'auction',
-        reputation: { sellerFeedbackCount: 9_000, sellerPositivePercent: 100, region: 'platform-widget' },
-      },
-    }, policy).refused).toBe(true);
+  test('requires-approval sends every marketplace to approval', async () => {
+    expect((await classifyMerchant({ checkoutHost: 'www.etsy.com' }, worldJudge,
+      { marketplaces: 'requires-approval' })).isMajor).toBe(false);
   });
 });

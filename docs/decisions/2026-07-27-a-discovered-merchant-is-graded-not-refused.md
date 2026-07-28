@@ -84,56 +84,77 @@ later edit can forget to check.
 
 ## The standard: recourse, not recognisability
 
-He framed it first as "what the average person would consider a major retailer",
-then gave the reason behind his own test when he admitted Etsy:
+The organizing principle is **recourse**. He named it when he said Etsy is fine
+"mainly because they have consumer protections", and that established
+online-only retailers like Redbubble count. Recognisability was the proxy;
+recourse is the thing it stood for.
 
-> "mainly because they have consumer protections"
+`jeffsgadgets.biz` fails not because it is small or obscure but because **there
+is nobody to go to.** Micro Center qualifies at two dozen stores; Redbubble
+qualifies with no stores at all.
 
-That reframes the whole thing. **Recognisability was the proxy; recourse is the
-test.** A merchant qualifies when there is a real path to remedy — platform buyer
-protection, an established returns process, an accountable business with
-something to lose. `jeffsgadgets.biz` fails not because it is small but because
-**there is nobody to go to**. Micro Center qualifies at two dozen stores;
-Redbubble qualifies with none.
+## Judgement against a profile — NOT a curated list
 
-Written that way deliberately: a later reader who optimises for "would someone
-recognise this name" will admit any well-marketed storefront and exclude
-McMaster-Carr.
+The first implementation shipped a hardcoded allowlist of retailer domains. He
+rejected it:
 
-## One notification, not two
+> "i didn't fucking say make a list of retailers, i said retailers matching that
+> profile."
 
-He collapsed his own steps 2 and 3 — *"2 and 3 are basically the same step"*. One
-message, sent once, when the item is chosen and the final total is known, before
-payment. Identical content either way: what was found, the validated registrable
-domain, the item, and the total re-rendered from our own parsed integers, never
-merchant text.
+He is right, and the list was wrong on its own terms as well as against his
+instruction:
 
-The grade changes only **what silence means** — major ⇒ veto, silence proceeds;
-not major ⇒ approval, silence denies — and the message states which mode it is in
-and what happens if he does nothing. `renderPurchaseNotice` is a selection
-between the two existing windows at one send site, deliberately not a third
-message type.
+- It **fails closed on every established retailer nobody enumerated.** A real
+  merchant with real recourse would be treated exactly like `jeffsgadgets.biz`
+  for the sole reason of being absent from a file.
+- It requires permanent maintenance and rots silently.
+- It is the same shape as the site-specific adapters this platform already
+  rejected — scaffolding that thinks for the model instead of letting the model
+  think.
 
-The message **names the recourse rather than the verdict**: "Etsy, buyer
-protection applies" is something he can evaluate; "on your approved list" sends
-him off to check a list. An approval reads as a checkpoint, not an accusation
-about the seller.
+So the mechanism is judgement against the profile, and the list is **deleted**,
+not demoted. A fast-path cache was considered and dropped: purchases are
+infrequent and already sit inside a checkout flow with a human notification
+window, so it would buy nothing measurable while creating a second source of
+truth that can disagree with the judgement and rot exactly as the allowlist
+would have.
 
-## Where "use judgement" lives — and it is not at runtime
+## The safety argument rests entirely on the judgement's INPUT
 
-He said "use your best judgement". The judgement is exercised when the list is
-**curated**, and recorded as data with a reason per entry. At runtime it is a
-lookup.
+Two things look similar and are not:
 
-**There is no runtime inference, on purpose.** No heuristics on traffic, page
-quality, certificate age or review counts. Every one of those is controlled by
-whoever built the page, and a purchase gate that reads page-derived legitimacy
-signals is precisely the injection surface the rest of this capability closes. A
-site built to look trustworthy is trivial to produce.
+- **Reading the page to decide whether it looks legitimate** — injectable, and
+  still banned. A storefront built to look trustworthy is trivial to produce.
+- **Judging a validated registrable domain against what is known about the
+  world** — not page-derived at all. The domain comes from the URL that passed
+  link validation and is reduced by `registrableDomain()`. Whether that retailer
+  is established is a fact about the world, not a claim the page makes.
 
-Default is **not-major**, and unknown asks him. A longer list is not a more
-permissive one — the fallback is not refusal, it is asking, so there is no reason
-to extend anyone the benefit of the doubt.
+The earlier reasoning banned runtime judgement wholesale. That was sound
+reasoning applied to the wrong input.
+
+`MerchantJudgeInput` therefore has **exactly one field**, `registrableDomain`.
+That is the structural guarantee: page content cannot reach the judgement
+because the type has nowhere to put it. A test asserts the port is called with
+exactly that key set, driving it with a hostile `sellerIdentity` and
+seller-controlled reputation figures present in the merchant record.
+
+If a future change wants to widen that input, that is a signal to stop.
+
+## Uncertainty resolves to not-major
+
+Unchanged and load-bearing. A judgement that is not confident has the same
+effect on spending as a negative one. The cost of asking about a real retailer
+is one message he answers; the cost of the reverse is money spent somewhere he
+never approved.
+
+## The owner's overrides stay authoritative
+
+`payments.majorRetailersAdditional` and `payments.majorRetailersExcluded` beat
+the judgement in both directions. An exclusion short-circuits before the judge
+is consulted at all. Additions remain his alone — nothing learned, nothing
+inferred from a page, nothing added by an agent — because anything that could
+argue itself onto that list could buy from itself unattended.
 
 ## eBay: per-listing, and auctions refused structurally
 
@@ -174,7 +195,7 @@ not-major, and the notification says why.
 ## Where it lives
 
 - `platform/payments/taint-gate.ts` — origin rule, conditional field checks
-- `platform/payments/major-retailers.ts` — the curated list, the grade, the
+- `platform/payments/merchant-recourse.ts` — the criterion, the judge port, the
   config seam (`merchantPolicyFromConfig`)
 - `platform/payments/marketplace-listing.ts` — the eBay per-listing conditions
 - `platform/payments/message.ts` — `renderPurchaseNotice`, the single send site

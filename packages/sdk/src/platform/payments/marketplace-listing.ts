@@ -69,6 +69,23 @@ export type FigureRegion =
 
 export type ListingSaleFormat = 'fixed-price' | 'auction' | 'best-offer' | 'unknown';
 
+/**
+ * Who is actually selling: the marketplace itself, or a third party trading on
+ * it.
+ *
+ * `'unknown'` is the honest default and is treated as `'third-party'` wherever
+ * the distinction gates anything. `saleType` is read off the page, so a hostile
+ * listing would simply claim to be first-party — the strict default is what
+ * stops that claim from buying leniency. Turning on a policy that trusts this
+ * field requires it to come from a trusted extractor rather than page text.
+ */
+export type SaleType = 'first-party' | 'third-party' | 'unknown';
+
+/** True unless the sale is confidently the marketplace's own. */
+export function isThirdPartySale(saleType: SaleType | undefined): boolean {
+  return (saleType ?? 'unknown') !== 'first-party';
+}
+
 /** Seller-side reputation, as read from the platform's own widget. */
 export interface SellerReputation {
   /** Feedback ratings earned AS A SELLER — not the combined headline score. */
@@ -83,6 +100,22 @@ export interface SellerReputation {
 export interface MarketplaceListing {
   readonly format: ListingSaleFormat;
   readonly reputation?: SellerReputation | undefined;
+  /**
+   * Whether the marketplace or a third party is selling.
+   *
+   * Modelled here — with the checkout domain and the seller identity — so that
+   * flipping marketplaces to approval-required, or splitting first-party from
+   * third-party sales, is a CONFIGURATION edit rather than a rewrite.
+   */
+  readonly saleType?: SaleType | undefined;
+  /**
+   * The seller's name as the listing gives it.
+   *
+   * Page-derived and therefore untrusted: carried for the audit record, never
+   * used to infer majorness, and never rendered raw into a notification (see
+   * security/notice-text.ts).
+   */
+  readonly sellerIdentity?: string | undefined;
 }
 
 export interface MarketplaceListingThresholds {

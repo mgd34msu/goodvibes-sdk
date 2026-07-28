@@ -220,16 +220,23 @@ export function renderPurchaseNotice(input: {
   readonly mode: 'approval' | 'veto';
   readonly expiresInMinutes: number;
   /**
-   * Why this mode, in the owner's terms — from `classifyMerchant`. Appended so
-   * a not-recognised verdict reads as a checkpoint rather than an accusation,
-   * and so he is never left inferring why this one asked and the last one did
-   * not.
+   * Why this merchant qualified, or why it did not — from `classifyMerchant`.
+   *
+   * Always rendered when present, because the verdict alone is not useful to
+   * him. "Etsy, buyer protection applies" is something he can weigh at a
+   * glance; "on your approved list" sends him off to go check a list. On the
+   * other side it reads as a checkpoint — not on the list, so I am asking —
+   * and never implies anything is wrong with the seller.
+   *
+   * Sanitised like every other merchant-adjacent string, and prefixed by us so
+   * the framing cannot be supplied by anything a page controls.
    */
   readonly merchantReason?: string | undefined;
 }): string {
   const body = input.mode === 'approval'
     ? renderApprovalMessage(input.facts, input.expiresInMinutes)
     : renderVetoMessage(input.facts, input.expiresInMinutes);
-  if (input.merchantReason === undefined) return body;
-  return `${body}\n\n  ${sanitizeNoticeField(input.merchantReason, 240)}`;
+  if (input.merchantReason === undefined || input.merchantReason.trim().length === 0) return body;
+  const label = input.mode === 'veto' ? 'Why I can go ahead' : 'Why I am asking';
+  return `${body}\n\n  ${label}: ${sanitizeNoticeField(input.merchantReason, 240)}`;
 }

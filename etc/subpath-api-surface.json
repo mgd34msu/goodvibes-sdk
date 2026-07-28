@@ -21818,10 +21818,6 @@
       "kind": "const"
     },
     {
-      "name": "DEFAULT_RECOGNISED_RETAILERS",
-      "kind": "const"
-    },
-    {
       "name": "DayKey",
       "kind": "type"
     },
@@ -21872,18 +21868,12 @@
       "kind": "const"
     },
     {
-      "name": "MajorRetailerPolicy",
-      "kind": "interface"
+      "name": "MERCHANT_RECOURSE_CRITERION",
+      "kind": "const"
     },
     {
-      "name": "MajorRetailerVerdict",
-      "kind": "interface",
-      "required": [
-        "isMajor",
-        "qualifier",
-        "reason",
-        "registrable"
-      ]
+      "name": "MarketplaceKind",
+      "kind": "type"
     },
     {
       "name": "MarketplaceListing",
@@ -21918,6 +21908,43 @@
       "kind": "interface",
       "required": [
         "checkoutHost"
+      ]
+    },
+    {
+      "name": "MerchantJudgeInput",
+      "kind": "interface",
+      "required": [
+        "registrableDomain"
+      ]
+    },
+    {
+      "name": "MerchantJudgePort",
+      "kind": "interface",
+      "required": [
+        "judge"
+      ]
+    },
+    {
+      "name": "MerchantJudgement",
+      "kind": "interface",
+      "required": [
+        "confident",
+        "qualifies",
+        "recourse"
+      ]
+    },
+    {
+      "name": "MerchantPolicy",
+      "kind": "interface"
+    },
+    {
+      "name": "MerchantVerdict",
+      "kind": "interface",
+      "required": [
+        "basis",
+        "isMajor",
+        "reason",
+        "registrable"
       ]
     },
     {
@@ -22039,18 +22066,6 @@
         "label",
         "quantity"
       ]
-    },
-    {
-      "name": "RetailerEntry",
-      "kind": "interface",
-      "required": [
-        "domain",
-        "qualifier"
-      ]
-    },
-    {
-      "name": "RetailerQualifier",
-      "kind": "type"
     },
     {
       "name": "SHIPPING_TIERS",
@@ -22228,6 +22243,10 @@
       "kind": "function"
     },
     {
+      "name": "isThirdPartySale",
+      "kind": "function"
+    },
+    {
       "name": "isValidTimezone",
       "kind": "function"
     },
@@ -22256,7 +22275,7 @@
       "kind": "function"
     },
     {
-      "name": "parseRetailerList",
+      "name": "parseDomainList",
       "kind": "function"
     },
     {
@@ -22281,10 +22300,6 @@
     },
     {
       "name": "renderVetoMessage",
-      "kind": "function"
-    },
-    {
-      "name": "resolveRecognisedRetailers",
       "kind": "function"
     },
     {
