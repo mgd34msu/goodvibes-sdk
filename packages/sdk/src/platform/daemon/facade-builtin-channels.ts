@@ -54,7 +54,7 @@ export function createBuiltinChannelRuntime(
     shellPaths: runtime.runtimeServices.shellPaths,
     routeBindings: runtime.routeBindings,
     gatewayMethods: runtime.gatewayMethods,
-    deliverSurfaceNotice: (binding, text) => surfaceDeliveryHelper.deliverSurfaceNotice(binding, text),
+    deliverStructuredNotice: (binding, notice) => surfaceDeliveryHelper.deliverStructuredNotice(binding, notice),
   });
   const builtinChannels = new BuiltinChannelRuntime({
     configManager: runtime.configManager,
