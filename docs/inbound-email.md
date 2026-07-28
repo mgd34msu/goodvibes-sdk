@@ -855,13 +855,52 @@ The expected/unexpected distinction already exists and is not reinvented:
 
 ## 6. Dedup
 
-Inbound mail can reach the pipeline twice: an IDLE wake and a fallback poll can
-overlap; a crash between fetch and cursor-advance re-delivers; a reconnect
-refetches above the cursor.
+**The cursor is the first line of defence. Dedup is the second, and its job is
+narrower than this section originally claimed.**
 
-`InboundMessageDedup` from `platform/adapters/inbound-dedup.ts` is reused as-is
-— it is already bounded (2048 entries), already TTL-expiring (10 minutes),
-already order-pruned, and its `claim()` contract is exactly right. The key is
+That original claim — that "a reconnect refetches above the cursor" and dedup
+catches the repeat — is **false**, and it was found by making a vacuous test
+real. The test asserted the watcher redelivers on a plain re-wake and dedup
+suppresses it. It passed while waiting on a cursor advance the *first* delivery
+had already satisfied, so the second pass never ran. Made real, it failed: the
+watcher **does not redeliver on a re-wake at all**. Once UID 102 is processed
+the cursor sits at 102, the next search is `UID SEARCH UID 103:*`, and the only
+thing returned is 102 via the inverted-range quirk (§13.1), which is filtered
+above the cursor. A reconnect correctly finds nothing.
+
+Stating it correctly matters beyond tidiness: **a design document claiming a
+guard exists for a case that cannot occur is how the guard gets deleted by the
+next person who checks.**
+
+So dedup covers exactly two things:
+
+1. **The failure path** — a message claimed and then not successfully processed.
+2. **Genuinely concurrent passes** — an IDLE wake and a fallback poll overlapping
+   on the same message.
+
+`InboundMessageDedup` from `platform/adapters/inbound-dedup.ts` is reused —
+already bounded (2048 entries), already TTL-expiring, already order-pruned, and
+its `claim()` contract is right.
+
+**One method was added to it: `release()`.** §6 originally said "as-is", and this
+is not as-is, so the deviation is recorded rather than absorbed. The alternative
+was a second in-flight cache inside the sink doing the same job as the first —
+the mirror pattern this document has removed four times, and the one that
+already produced a silently-disabled push mode. One mechanism with an honest
+interface beats two that agree by convention.
+
+**Why `release()` is load-bearing, and it is the subtlest point in this
+section.** `claim()` records the key *before* the work runs — that ordering is
+what stops two concurrent deliveries both running the pipeline. The same
+ordering means a failure between claim and completion leaves the key **claimed**,
+so the retry is suppressed as a duplicate of an attempt that never finished.
+
+The failure mode is therefore **silence, not a duplicate**: the owner's
+verification mail vanishes with nothing reporting it. For a capability whose
+entire purpose is telling him mail arrived, that is strictly worse than the
+duplicate storm the guard was written to prevent. A claim-then-fail releases and
+rethrows, so the cursor stays below the message and the next pass genuinely
+retries. The key is
 built with the existing `inboundDedupKey(surface, scope, messageId)`:
 
 ```
@@ -1695,6 +1734,14 @@ overturn any of them.
   20, silently. A caller handing it a larger delta and then advancing a cursor
   skips everything dropped. Being fixed at source; recorded because the shape of
   the bug — a truncating default feeding a cursor — will recur elsewhere.
+- **An untagged line arriving BETWEEN IDLE rounds is lost.** After one round's
+  subscription is released and before the next `IDLE` is issued, nobody is
+  waiting on the socket. This is **not a defect** — the next `EXISTS` or the
+  27-minute re-issue sweep picks the message up — but it is a real property of
+  the transport, and it is written down because someone will otherwise
+  rediscover it as a bug and "fix" it by widening a listener that has nothing to
+  hand its lines to. It is also the concrete reason the sweep is not redundant
+  with push: **push is an optimisation over polling, never a guarantee.**
 
 ### 13.2 Three errors in this document, and the one cause behind them
 
