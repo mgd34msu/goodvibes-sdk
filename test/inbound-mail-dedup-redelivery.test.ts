@@ -17,7 +17,7 @@
  * cursor.
  */
 
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, describe, expect, test } from 'bun:test';
 import { InboundMessageDedup } from '../packages/sdk/src/platform/adapters/inbound-dedup.ts';
 import {
   DEFAULT_INBOUND_MAIL_DEDUP_TTL_MS,
@@ -37,6 +37,7 @@ import {
   FakeClock,
   RecordingObserver,
   fixedRandom,
+  cleanupInboundScratch,
   makeCursorStore,
   waitFor,
   type RecordingCursorStore,
@@ -47,6 +48,8 @@ const MAILBOX = 'INBOX';
 
 interface Live { readonly watcher: InboundMailboxWatcher; readonly mailbox: FakeMailboxServer }
 const live: Live[] = [];
+
+afterAll(() => { cleanupInboundScratch(); });
 
 afterEach(async () => {
   while (live.length > 0) {
