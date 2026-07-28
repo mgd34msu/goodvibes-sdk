@@ -1936,6 +1936,57 @@ is sent rather than discovered when one arrives somewhere unexpected.
 The alternative — a real `owner notice route` concept — is the better answer and
 is a larger change than this round. Recorded for a ruling.
 
+### 13.4 A test can be correct, green, and about something else
+
+The nine vacuous tests §13.3 neighbours were all tests that passed **for the
+wrong reason**. This is a different and harder failure, found by auditing the
+harness rather than the code, and it is the one that let a broken capability
+sit under 8356 green tests.
+
+`test/platform-email-imap-fetch.test.ts:742-744` emits a folded literal with a
+**trailing UID** — the exact wire shape that breaks the watcher — and asserts
+the subject parses. **It passes, and it is correct.**
+
+It passes because it drives `fetchMessage`, which parses via
+`extractFetchSection` (`imap-client.ts:560`). The watcher uses
+`fetchEnvelopes`, which parses via `parseFetchHeaders` + `parseFetchUids`
+(`imap-client.ts:482-483`). Two paths, one tested, and the tested one works.
+
+So a reader asking "do we handle trailing UIDs?" finds that test, sees green,
+and stops. **Coverage for one path reads as coverage for the capability.**
+
+Measured against the real `ImapClient.fetchEnvelopes`:
+
+| Server shape | Result |
+|---|---|
+| Bare lines, UID first — *what the harness emits* | `count=1  subject="Real subject"` |
+| `{N}` literal, UID **before** BODY | `count=1  subject=""` — announced with no sender, no subject, no delivery evidence |
+| `{N}` literal, UID **after** BODY | `count=0` — treated as an expunge, **cursor advances past it** |
+
+Every test in the tree exercising `fetchEnvelopes` uses the first shape
+(`fake-imap-mailbox.ts:219-222`, `platform-email-imap-uid.test.ts:92`,
+`platform-email-imap-delivery-recipient.test.ts:55`). And **there are no direct
+unit tests of `parseFetchHeaders` or `parseFetchUids` at all** — so neither
+parser has coverage independent of a fake server, and a single harness gap
+became zero coverage.
+
+Two rules worth carrying:
+
+> **A test proves something about the path it drives, not about the capability
+> it is named after.** Before treating a green test as coverage, check which
+> function it actually reaches.
+
+> **The acceptance question for a fix is not "does it work" but "does the
+> harness now fail if the defect returns."** A correct fix under a harness that
+> cannot reproduce the defect leaves the regression unguarded — which is the
+> state that produced this section.
+
+Also confirmed **not** defects, recorded so nobody re-investigates: header
+folding is implemented correctly (RFC 5322 unfolding, `imap-headers.ts:70-77`);
+sequence-number-is-not-UID and the inverted `n:*` search range are both
+deliberately emulated by the harness, which are the two things it does better
+than most.
+
 ## 14. Related
 
 - `docs/payments.md` — a consumer of this capability.
