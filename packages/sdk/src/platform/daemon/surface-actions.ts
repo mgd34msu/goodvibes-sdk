@@ -592,6 +592,7 @@ export class DaemonSurfaceActionHelper {
     },
   ): Promise<void> {
     try {
+      // No `ownerDirect`: an ntfy topic is a channel, so the untrusted-content window stays open (security/turn-boundary.ts).
       const result = await manager.postMessageAndWaitForReply(
         sessionId,
         input.body,

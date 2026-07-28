@@ -12,6 +12,7 @@
  * companion helper modules use.
  */
 
+import type { CompanionChatMessageAttachmentInput } from './companion-chat-types.js';
 import type { ConversationManager } from '../core/conversation.js';
 import type { ProviderMessage } from '../providers/interface.js';
 import type { ToolDefinition } from '../types/tools.js';
@@ -357,8 +358,39 @@ export function awaitCompanionReply(
  * queued message into the ACTIVE turn's later tool rounds, which re-read the
  * conversation every round.
  */
+/**
+ * What a caller may say about a message it is posting.
+ *
+ * Shared by `postMessage` and `steerMessage` because a steer is a message with
+ * a queue position, not a different kind of thing — and when the two shapes
+ * drifted apart it was possible to wire provenance into one and forget the
+ * other, which is precisely the class of miss this field exists to prevent.
+ */
+export interface CompanionPostMessageOptions {
+  readonly attachments?: readonly CompanionChatMessageAttachmentInput[] | undefined;
+  readonly metadata?: Record<string, unknown> | undefined;
+  /**
+   * True ONLY from a transport that authenticated the OWNER — it starts a new
+   * untrusted-content turn. A caller that cannot prove who is speaking leaves
+   * it unset; see platform/security/turn-boundary.ts for why that asymmetry
+   * only works in one direction.
+   */
+  readonly ownerDirect?: boolean | undefined;
+}
+
 export interface QueuedCompanionTurn {
   readonly userMessageId: string;
+  /**
+   * True when the transport that posted this message can honestly attest the
+   * OWNER sent it — it authenticated him over the daemon's bearer-token API.
+   *
+   * It rides the queue entry rather than being read at turn-start because a
+   * message can wait here behind an active turn, and by then the call that
+   * knew who sent it is long gone. Absent means "could not establish it",
+   * which is treated as not-the-owner: see platform/security/turn-boundary.ts
+   * for why that asymmetry only works in one direction.
+   */
+  readonly ownerDirect?: boolean | undefined;
   /** Provider-ready user content (attachments resolved at post time). */
   readonly providerContent: Parameters<ConversationManager['addUserMessage']>[0];
   /** In-process tap for this turn's incremental events (rides the queue entry). */

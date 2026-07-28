@@ -1,6 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import type { Page } from 'playwright-core';
+import type { Locator, Page } from 'playwright-core';
 import { BrowserSessionError, BrowserSessionManager, hasDisplay } from './browser-sessions.js';
 import type { BrowserAttachOptions, BrowserLaunchOptions } from './browser-sessions.js';
 import { describeProvisionWork } from './browser-provisioning.js';
@@ -175,15 +175,77 @@ export class BrowserEngine {
    * This is the composition that matters: a page the agent just read must not
    * be able to cause the agent to act outwards. The refusal names what to do
    * instead, which is to take it to the owner.
+   *
+   * `content` is what is about to be submitted, when the caller could work it
+   * out. Supplying it turns the coarse question into the answerable one — does
+   * this submission repeat what was read — which is the difference between a
+   * form filled from the owner's instruction going through and every form on a
+   * browsing session being refused.
    */
-  private requireOutwardEffectAllowed(action: string, description: string): void {
+  private async requireOutwardEffectAllowed(
+    action: string,
+    description: string,
+    content?: Readonly<Record<string, string | undefined>>,
+  ): Promise<void> {
     const decision = this.untrusted.evaluateOutwardEffect({
       action,
       description,
       approval: this.approval,
+      ...(content === undefined ? {} : { content }),
     });
     if (decision.allowed) return;
     throw new UntrustedEffectError(decision.reason ?? 'This action is not available here.', decision.fix ?? 'Ask the owner.');
+  }
+
+  /**
+   * The values in the form this element belongs to, as the fields about to
+   * leave the machine.
+   *
+   * Read live rather than remembered: the page may have filled, rewritten or
+   * defaulted anything since the snapshot, and what matters is what will
+   * actually be posted. Field names come from `name`/`id`, so a refusal can say
+   * which input carried the overlap instead of pointing at an index.
+   *
+   * Password values are read but never returned. A password is high-entropy by
+   * construction, so it contributes nothing to a derivation check, while
+   * putting one into a `TaintFinding` excerpt would print it in a refusal
+   * message — the check would have leaked what it was defending.
+   *
+   * Returns undefined when the values cannot be established: the element is
+   * outside a form, the page is cross-origin-restricted, the evaluate times
+   * out. That is the honest answer, and it drops this call to the coarse rule
+   * rather than to a false "nothing overlaps".
+   */
+  private static async enclosingFormFields(
+    locator: Locator,
+  ): Promise<Readonly<Record<string, string | undefined>> | undefined> {
+    try {
+      const fields = await locator.evaluate((node: Element) => {
+        const owner = (node as HTMLInputElement).form ?? node.closest('form');
+        if (!owner) return null;
+        const out: Record<string, string> = {};
+        let index = 0;
+        for (const control of Array.from(owner.elements)) {
+          const input = control as HTMLInputElement;
+          const type = (input.type ?? '').toLowerCase();
+          if (type === 'password' || type === 'hidden' || type === 'file') continue;
+          if (type === 'checkbox' || type === 'radio') {
+            if (!input.checked) continue;
+          }
+          const value = typeof input.value === 'string' ? input.value : '';
+          if (value.trim().length === 0) continue;
+          index += 1;
+          const name = input.name || input.id || `field ${String(index)}`;
+          out[name] = value;
+        }
+        return out;
+      });
+      if (fields === null) return undefined;
+      return Object.keys(fields).length === 0 ? undefined : fields;
+    } catch {
+      // A page that will not answer is not a page that has proved itself safe.
+      return undefined;
+    }
   }
 
   sessionManager(): BrowserSessionManager {
@@ -355,9 +417,15 @@ export class BrowserEngine {
       // Submitting sends data to whoever runs the site. Whether this element
       // submits was recorded when the page was snapshotted, so this is a fact
       // about the control rather than a guess about the click.
-      this.requireOutwardEffectAllowed(
+      //
+      // The form's current values are what will actually be posted, so they are
+      // the fields the derivation check should see. Read live; undefined when
+      // the element is outside a form or the page will not answer, which drops
+      // this call to the coarse rule rather than to a false clean bill.
+      await this.requireOutwardEffectAllowed(
         'browser.submit',
         `submit the form on ${this.untrusted.originOf(page.url())} by activating ${element.role} "${element.name}"`,
+        await BrowserEngine.enclosingFormFields(locator),
       );
     }
     const urlBefore = page.url();
@@ -398,9 +466,15 @@ export class BrowserEngine {
     const { locator, element } = await resolveRef(page, this.currentSnapshot(sessionId, pageId), args.ref);
     const timeout = args.timeoutMs ?? DEFAULT_ACTION_TIMEOUT_MS;
     if (args.submit === true) {
-      this.requireOutwardEffectAllowed(
+      // The text about to be typed is named explicitly as well as read back off
+      // the form, because the fill has not happened yet at this point: the
+      // guard runs BEFORE anything is entered, so a body lifted from a page
+      // cannot be typed into a field and then submitted while the check looks
+      // at the pre-fill state.
+      await this.requireOutwardEffectAllowed(
         'browser.submit',
         `submit the form on ${this.untrusted.originOf(page.url())} after typing into ${element.role} "${element.name}"`,
+        { ...(await BrowserEngine.enclosingFormFields(locator) ?? {}), [element.name || 'typed text']: args.text },
       );
     }
     if (args.replace === false) {
@@ -442,9 +516,10 @@ export class BrowserEngine {
     const { sessionId, pageId, page } = await this.target(target);
     const { locator, element } = await resolveRef(page, this.currentSnapshot(sessionId, pageId), args.ref);
     if (args.key === 'Enter' || args.key === 'NumpadEnter') {
-      this.requireOutwardEffectAllowed(
+      await this.requireOutwardEffectAllowed(
         'browser.submit',
         `submit the form on ${this.untrusted.originOf(page.url())} by pressing ${args.key} in ${element.role} "${element.name}"`,
+        await BrowserEngine.enclosingFormFields(locator),
       );
     }
     await locator.press(args.key, { timeout: args.timeoutMs ?? DEFAULT_ACTION_TIMEOUT_MS });

@@ -23,6 +23,8 @@
 import { randomUUID } from 'node:crypto';
 import { SDKErrorCodes } from '@pellux/goodvibes-errors';
 import { ConversationManager } from '../core/conversation.js';
+import { startTurnForOwnerInput } from '../security/turn-boundary.js';
+import type { CompanionPostMessageOptions } from './companion-chat-turn-control.js';
 import type { ProviderMessage } from '../providers/interface.js';
 import type {
   CancelCompanionChatTurnInput,
@@ -545,15 +547,9 @@ export class CompanionChatManager {
     sessionId: string,
     content: string,
     clientId = '',
-    options: {
-      readonly attachments?: readonly CompanionChatMessageAttachmentInput[] | undefined;
-      readonly metadata?: Record<string, unknown> | undefined;
-    } = {},
+    options: CompanionPostMessageOptions = {},
   ): Promise<string> {
-    return await this._postMessageInternal(sessionId, content, clientId, {
-      attachments: options.attachments,
-      metadata: options.metadata,
-    });
+    return await this._postMessageInternal(sessionId, content, clientId, { ...options });
   }
 
   async postMessageAndWaitForReply(
@@ -589,6 +585,7 @@ export class CompanionChatManager {
       readonly onTurnEvent?: ((event: CompanionChatTurnEvent) => void) | undefined;
       /** Steer: jump the pending queue (the caller cancels the active turn). */
       readonly steer?: boolean | undefined;
+      readonly ownerDirect?: boolean | undefined;
     } = {},
   ): Promise<string> {
     const session = this.sessions.get(sessionId);
@@ -649,6 +646,7 @@ export class CompanionChatManager {
       userMessageId: messageId,
       providerContent,
       ...(options.onTurnEvent ? { onTurnEvent: options.onTurnEvent } : {}),
+      ...(options.ownerDirect === undefined ? {} : { ownerDirect: options.ownerDirect }),
     };
     const queue = (session.pendingTurns ??= []);
     if (options.steer === true) queue.unshift(entry);
@@ -684,17 +682,10 @@ export class CompanionChatManager {
     sessionId: string,
     content: string,
     clientId = '',
-    options: {
-      readonly attachments?: readonly CompanionChatMessageAttachmentInput[] | undefined;
-      readonly metadata?: Record<string, unknown> | undefined;
-    } = {},
+    options: CompanionPostMessageOptions = {},
   ): Promise<SteerCompanionChatMessageOutput> {
     const activeBefore = this.sessions.get(sessionId)?.activeTurn ?? null;
-    const messageId = await this._postMessageInternal(sessionId, content, clientId, {
-      attachments: options.attachments,
-      metadata: options.metadata,
-      steer: true,
-    });
+    const messageId = await this._postMessageInternal(sessionId, content, clientId, { ...options, steer: true });
     let cancelledTurnId: string | undefined;
     if (activeBefore) {
       try {
@@ -740,6 +731,10 @@ export class CompanionChatManager {
       session.messages[idx] = delivered;
       this._persist(session.meta.id);
     }
+    // The companion/webui turn boundary: this manager runs its own turn loop,
+    // so the one in Orchestrator.runTurn never reached it. See turn-boundary.ts.
+    startTurnForOwnerInput({ ownerDirect: next.ownerDirect === true });
+
     // Deferred from post time (see _postMessageInternal).
     session.conversation.addUserMessage(next.providerContent);
     void this._runTurn(session, next.userMessageId, next.onTurnEvent).catch((error: unknown) => {
