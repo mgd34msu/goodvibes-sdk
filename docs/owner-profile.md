@@ -733,6 +733,52 @@ Modelled on `method-catalog-principals.ts` / `routes/principals.ts`.
 `refuseNonUserRequest()` (`routes/explicit-user-request.ts`), so a caller
 declaring itself not a user request is refused before the authority check.
 
+#### The contract does not protect callers, and that is not a profile bug
+
+Two changes on this feature — `authority` becoming required, then `forget`
+becoming content-addressed — were **breaking changes to consumers that no
+compiler caught**. Both times a surface kept sending the old body and compiled
+clean. That is worth writing down here because the profile verbs are where it was
+found, but the cause is platform-wide and the fix is not this round's to make
+unilaterally.
+
+The SDK's *typed* overload is correct:
+
+```ts
+invoke<TMethodId extends OperatorTypedMethodId>(
+  methodId: TMethodId,
+  ...args: KnownMethodArgs<TMethodId>   // = MethodArgs<OperatorMethodInput<TMethodId>, …>
+): Promise<OperatorMethodOutput<TMethodId>>;
+```
+
+The escape is the overload beneath it:
+
+```ts
+invoke<T = unknown>(methodId: string, input?: Record<string, unknown>, …): Promise<T>;
+```
+
+A *known* method id carrying a *wrong* body fails the typed overload and then
+silently matches the loose one, because `Record<string, unknown>` accepts
+anything. So the type system reports success on exactly the case it exists to
+catch. The surfaces then widen it further — the web UI declares
+`TInput = OperatorMethodInput<TMethodId>` as a **default** rather than a
+constraint, so inference from the argument discards it, and the agent casts
+`payload as never` at the call site, opting out entirely.
+
+**Ruling for this round:** close the local widening, and pin the payloads by
+test. Each surface types its wrapper's input parameter as
+`OperatorMethodInput<TMethodId>` directly instead of inferring it, drops the
+`as never`, and carries a test asserting the body it sends conforms to the
+declared input for that method. That catches this class today without touching a
+published signature.
+
+**Proposed platform change, for the owner to rule on, not adopted here:** make
+`invoke` typed-only and move dynamic invocation to a separately named method, so
+a known id can never fall through to the loose overload. That is a breaking
+change to a published SDK surface affecting every operator method, and it should
+be decided across the platform rather than by whichever feature happened to trip
+over it.
+
 ### 11.2 Open tier vs closed tier — the outbound rule
 
 **Profile content is never bulk-injected into model context.** That is what makes
