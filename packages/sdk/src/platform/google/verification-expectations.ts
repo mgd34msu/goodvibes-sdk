@@ -56,7 +56,6 @@ export {
   hostMatchesServiceDomain,
 } from './verification-extraction.js';
 export type {
-  UntrustedDisplayText,
   VerificationArtifact,
   VerificationExtraction,
 } from './verification-extraction.js';

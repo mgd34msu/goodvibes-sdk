@@ -48,8 +48,18 @@ import { findContentTaint, describeContentTaint, type TaintFinding, type TaintOp
 
 import type { UntrustedContentPort } from '../browser/browser-types.js';
 
-/** Surfaces whose content is written by someone other than the owner. */
-export type UntrustedSurface = 'web-page' | 'email' | 'channel-message' | 'document';
+/**
+ * Surfaces whose content is written by someone other than the owner.
+ *
+ * `'calendar-event'` is its own member rather than a case of `'document'`.
+ * Where a calendar event came from is an inviter's address or a subscription
+ * URL the daemon polls, and that is precisely the fact a reader of the ledger
+ * needs: "content from alice@example.invalid (claimed organizer)" and "content
+ * from a feed at calendars.example.invalid" are different provenance, and
+ * folding both into "document" would erase the difference in the one place it
+ * decides whether a refusal reads as sensible.
+ */
+export type UntrustedSurface = 'web-page' | 'email' | 'channel-message' | 'document' | 'calendar-event';
 
 /** Only the owner, speaking directly to the runtime, can authorize work. */
 export type AuthoritySurface = 'owner-direct' | UntrustedSurface;

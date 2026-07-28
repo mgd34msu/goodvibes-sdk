@@ -34,6 +34,10 @@ import type {
   CalendarGatewayService,
 } from '../control-plane/routes/calendar.js';
 import { parseIcs } from '../calendar/ics-parser.js';
+import {
+  recordCalendarEventIngest,
+  type CalendarUntrustedIngestRecorder,
+} from '../calendar/untrusted-events.js';
 import type { CalendarEvent, EventDateTime } from '../calendar/types.js';
 import type { GoogleApiFailure, GoogleApiResult, CalendarEventRecord } from './api-client.js';
 import { openGoogleConnection, type GoogleConnection, type GoogleConnectionSources } from './connection.js';
@@ -46,6 +50,17 @@ export interface GoogleCalendarGatewayServiceOptions {
   readonly fetch: GoogleFetchPort & GoogleApiFetchPort;
   /** Wall clock, injected so `createdAt` is deterministic under test. */
   readonly now?: () => number;
+  /**
+   * Records that a turn read untrusted event content.
+   *
+   * An event whose organizer is somebody other than the owner was written by
+   * that somebody, and reading it is the same exposure as reading their mail.
+   * Recorded from the READ paths — `listEvents`, `getEvent`, `exportIcs` and
+   * `importIcs` — each of which runs because a caller asked. An event Google
+   * says the owner organized (`organizer.self`) records nothing: he wrote it.
+   * See calendar/untrusted-events.ts.
+   */
+  readonly recordUntrustedIngest?: CalendarUntrustedIngestRecorder | undefined;
 }
 
 const NOT_CONNECTED = [
@@ -165,9 +180,34 @@ export function createGoogleCalendarGatewayService(
     return connection;
   }
 
+  /**
+   * Record that a caller just read these events.
+   *
+   * `organizerIsSelf` is Google's own read-only statement that the owner
+   * organized the event; that and only that keeps an event out of the ledger.
+   */
+  function recordEventsRead(calendarId: string | undefined, events: readonly CalendarEventRecord[]): void {
+    recordCalendarEventIngest({
+      record: options.recordUntrustedIngest,
+      provenance: {
+        kind: 'provider',
+        provider: 'google',
+        ...(calendarId === undefined ? {} : { calendarLabel: calendarId }),
+      },
+      events: events.map((event) => ({
+        summary: event.summary,
+        location: event.location,
+        description: event.description,
+        organizer: event.organizer,
+        organizerIsOwner: event.organizerIsSelf,
+      })),
+      at: new Date(now()).toISOString(),
+    });
+  }
+
   async function readEvents(input: CalendarGatewayListInput): Promise<readonly CalendarEventRecord[]> {
     const { client } = await connect();
-    return unwrap(
+    const events = unwrap(
       await client.listEvents({
         ...(input.calendarId === undefined ? {} : { calendarId: input.calendarId }),
         ...(input.from === undefined ? {} : { timeMin: input.from }),
@@ -175,6 +215,8 @@ export function createGoogleCalendarGatewayService(
         ...(input.limit === undefined ? {} : { maxResults: input.limit }),
       }),
     );
+    recordEventsRead(input.calendarId, events);
+    return events;
   }
 
   return {
@@ -185,6 +227,7 @@ export function createGoogleCalendarGatewayService(
     async getEvent(eventId, calendarId) {
       const { client } = await connect();
       const record = unwrap(await client.getEvent(eventId, calendarId ?? 'primary'));
+      recordEventsRead(calendarId, [record]);
       return toDetail(record);
     },
 
@@ -230,6 +273,14 @@ export function createGoogleCalendarGatewayService(
         );
       }
       const parsed = parseIcs(icsContent);
+      // Somebody else's text, read because the caller asked for it to be
+      // imported — recorded before anything is written to a real calendar.
+      recordCalendarEventIngest({
+        record: options.recordUntrustedIngest,
+        provenance: { kind: 'ics-import' },
+        events: parsed.events,
+        at: new Date(now()).toISOString(),
+      });
       const eventIds: string[] = [];
       const errors: string[] = [];
       for (const diagnostic of parsed.skipped) {
