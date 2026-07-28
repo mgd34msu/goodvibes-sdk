@@ -25,7 +25,6 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./package.json": "./package.json",
     "./auth": {
       "types": "./dist/auth.d.ts",
       "import": "./dist/auth.js"
@@ -34,13 +33,13 @@
       "types": "./dist/browser.d.ts",
       "import": "./dist/browser.js"
     },
-    "./browser/homeassistant": {
-      "types": "./dist/browser-homeassistant.d.ts",
-      "import": "./dist/browser-homeassistant.js"
-    },
     "./browser/agent": {
       "types": "./dist/browser-agent.d.ts",
       "import": "./dist/browser-agent.js"
+    },
+    "./browser/homeassistant": {
+      "types": "./dist/browser-homeassistant.d.ts",
+      "import": "./dist/browser-homeassistant.js"
     },
     "./browser/knowledge": {
       "types": "./dist/browser-knowledge.d.ts",
@@ -197,6 +196,7 @@
       "types": "./dist/operator.d.ts",
       "import": "./dist/operator.js"
     },
+    "./package.json": "./package.json",
     "./peer": {
       "types": "./dist/peer.d.ts",
       "import": "./dist/peer.js"
@@ -241,13 +241,13 @@
       "types": "./dist/platform/channels/index.d.ts",
       "import": "./dist/platform/channels/index.js"
     },
-    "./platform/cluster": {
-      "types": "./dist/platform/cluster/index.d.ts",
-      "import": "./dist/platform/cluster/index.js"
-    },
     "./platform/cloudflare": {
       "types": "./dist/platform/cloudflare/index.d.ts",
       "import": "./dist/platform/cloudflare/index.js"
+    },
+    "./platform/cluster": {
+      "types": "./dist/platform/cluster/index.d.ts",
+      "import": "./dist/platform/cluster/index.js"
     },
     "./platform/companion": {
       "types": "./dist/platform/companion/index.d.ts",
@@ -257,9 +257,17 @@
       "types": "./dist/platform/config/index.d.ts",
       "import": "./dist/platform/config/index.js"
     },
+    "./platform/config/api-keys": {
+      "types": "./dist/platform/config/api-keys.d.ts",
+      "import": "./dist/platform/config/api-keys.js"
+    },
     "./platform/control-plane": {
       "types": "./dist/platform/control-plane/index.d.ts",
       "import": "./dist/platform/control-plane/index.js"
+    },
+    "./platform/control-plane/method-catalog-email": {
+      "types": "./dist/platform/control-plane/method-catalog-email.d.ts",
+      "import": "./dist/platform/control-plane/method-catalog-email.js"
     },
     "./platform/core": {
       "types": "./dist/platform/core/index.d.ts",
@@ -333,10 +341,6 @@
       "types": "./dist/platform/knowledge/home-graph/index.d.ts",
       "import": "./dist/platform/knowledge/home-graph/index.js"
     },
-    "./platform/media": {
-      "types": "./dist/platform/media/index.d.ts",
-      "import": "./dist/platform/media/index.js"
-    },
     "./platform/mcp": {
       "types": "./dist/platform/mcp/index.d.ts",
       "import": "./dist/platform/mcp/index.js"
@@ -344,6 +348,10 @@
     "./platform/mcp/server": {
       "types": "./dist/platform/mcp/server/index.d.ts",
       "import": "./dist/platform/mcp/server/index.js"
+    },
+    "./platform/media": {
+      "types": "./dist/platform/media/index.d.ts",
+      "import": "./dist/platform/media/index.js"
     },
     "./platform/multimodal": {
       "types": "./dist/platform/multimodal/index.d.ts",
@@ -357,13 +365,13 @@
       "types": "./dist/platform/node/runtime-boundary.d.ts",
       "import": "./dist/platform/node/runtime-boundary.js"
     },
-    "./platform/owner-profile": {
-      "types": "./dist/platform/owner-profile/index.d.ts",
-      "import": "./dist/platform/owner-profile/index.js"
-    },
     "./platform/orchestration": {
       "types": "./dist/platform/orchestration/index.d.ts",
       "import": "./dist/platform/orchestration/index.js"
+    },
+    "./platform/owner-profile": {
+      "types": "./dist/platform/owner-profile/index.d.ts",
+      "import": "./dist/platform/owner-profile/index.js"
     },
     "./platform/pairing": {
       "types": "./dist/platform/pairing/index.d.ts",
@@ -405,9 +413,21 @@
       "types": "./dist/platform/runtime/index.d.ts",
       "import": "./dist/platform/runtime/index.js"
     },
+    "./platform/runtime/bootstrap-services": {
+      "types": "./dist/platform/runtime/bootstrap-services.d.ts",
+      "import": "./dist/platform/runtime/bootstrap-services.js"
+    },
     "./platform/runtime/disposal": {
       "types": "./dist/platform/runtime/disposal.d.ts",
       "import": "./dist/platform/runtime/disposal.js"
+    },
+    "./platform/runtime/ecosystem": {
+      "types": "./dist/platform/runtime/ecosystem/index.d.ts",
+      "import": "./dist/platform/runtime/ecosystem/index.js"
+    },
+    "./platform/runtime/emitters": {
+      "types": "./dist/platform/runtime/emitters/index.d.ts",
+      "import": "./dist/platform/runtime/emitters/index.js"
     },
     "./platform/runtime/feature-announcements": {
       "types": "./dist/platform/runtime/feature-announcements.d.ts",
@@ -417,25 +437,13 @@
       "types": "./dist/platform/runtime/feature-flags/index.d.ts",
       "import": "./dist/platform/runtime/feature-flags/index.js"
     },
-    "./platform/runtime/sandbox": {
-      "types": "./dist/platform/runtime/sandbox.d.ts",
-      "import": "./dist/platform/runtime/sandbox.js"
+    "./platform/runtime/fleet": {
+      "types": "./dist/platform/runtime/fleet/index.d.ts",
+      "import": "./dist/platform/runtime/fleet/index.js"
     },
-    "./platform/runtime/ecosystem": {
-      "types": "./dist/platform/runtime/ecosystem/index.d.ts",
-      "import": "./dist/platform/runtime/ecosystem/index.js"
-    },
-    "./platform/runtime/permissions/localhost-fetch-approval": {
-      "types": "./dist/platform/runtime/permissions/localhost-fetch-approval.d.ts",
-      "import": "./dist/platform/runtime/permissions/localhost-fetch-approval.js"
-    },
-    "./platform/runtime/permissions/sandbox-policy": {
-      "types": "./dist/platform/runtime/permissions/sandbox-policy.d.ts",
-      "import": "./dist/platform/runtime/permissions/sandbox-policy.js"
-    },
-    "./platform/runtime/permissions/exec-prompt-wiring": {
-      "types": "./dist/platform/runtime/permissions/exec-prompt-wiring.d.ts",
-      "import": "./dist/platform/runtime/permissions/exec-prompt-wiring.js"
+    "./platform/runtime/fleet/observed": {
+      "types": "./dist/platform/runtime/fleet/observed/source.d.ts",
+      "import": "./dist/platform/runtime/fleet/observed/source.js"
     },
     "./platform/runtime/memory": {
       "types": "./dist/platform/runtime/memory/index.d.ts",
@@ -445,6 +453,30 @@
       "types": "./dist/platform/runtime/memory-spine/index.d.ts",
       "import": "./dist/platform/runtime/memory-spine/index.js"
     },
+    "./platform/runtime/observability": {
+      "types": "./dist/platform/runtime/observability.d.ts",
+      "import": "./dist/platform/runtime/observability.js"
+    },
+    "./platform/runtime/permissions/exec-prompt-wiring": {
+      "types": "./dist/platform/runtime/permissions/exec-prompt-wiring.d.ts",
+      "import": "./dist/platform/runtime/permissions/exec-prompt-wiring.js"
+    },
+    "./platform/runtime/permissions/localhost-fetch-approval": {
+      "types": "./dist/platform/runtime/permissions/localhost-fetch-approval.d.ts",
+      "import": "./dist/platform/runtime/permissions/localhost-fetch-approval.js"
+    },
+    "./platform/runtime/permissions/sandbox-policy": {
+      "types": "./dist/platform/runtime/permissions/sandbox-policy.d.ts",
+      "import": "./dist/platform/runtime/permissions/sandbox-policy.js"
+    },
+    "./platform/runtime/sandbox": {
+      "types": "./dist/platform/runtime/sandbox.d.ts",
+      "import": "./dist/platform/runtime/sandbox.js"
+    },
+    "./platform/runtime/self-update": {
+      "types": "./dist/platform/runtime/self-update.d.ts",
+      "import": "./dist/platform/runtime/self-update.js"
+    },
     "./platform/runtime/session-spine": {
       "types": "./dist/platform/runtime/session-spine/index.d.ts",
       "import": "./dist/platform/runtime/session-spine/index.js"
@@ -453,9 +485,17 @@
       "types": "./dist/platform/runtime/settings.d.ts",
       "import": "./dist/platform/runtime/settings.js"
     },
-    "./platform/runtime/self-update": {
-      "types": "./dist/platform/runtime/self-update.d.ts",
-      "import": "./dist/platform/runtime/self-update.js"
+    "./platform/runtime/state": {
+      "types": "./dist/platform/runtime/state.d.ts",
+      "import": "./dist/platform/runtime/state.js"
+    },
+    "./platform/runtime/store": {
+      "types": "./dist/platform/runtime/store/index.d.ts",
+      "import": "./dist/platform/runtime/store/index.js"
+    },
+    "./platform/runtime/ui": {
+      "types": "./dist/platform/runtime/ui.d.ts",
+      "import": "./dist/platform/runtime/ui.js"
     },
     "./platform/runtime/voice-setup": {
       "types": "./dist/platform/runtime/voice-setup.d.ts",
@@ -489,34 +529,6 @@
       "types": "./dist/platform/templates/index.d.ts",
       "import": "./dist/platform/templates/index.js"
     },
-    "./platform/runtime/observability": {
-      "types": "./dist/platform/runtime/observability.d.ts",
-      "import": "./dist/platform/runtime/observability.js"
-    },
-    "./platform/runtime/fleet": {
-      "types": "./dist/platform/runtime/fleet/index.d.ts",
-      "import": "./dist/platform/runtime/fleet/index.js"
-    },
-    "./platform/runtime/fleet/observed": {
-      "types": "./dist/platform/runtime/fleet/observed/source.d.ts",
-      "import": "./dist/platform/runtime/fleet/observed/source.js"
-    },
-    "./platform/runtime/state": {
-      "types": "./dist/platform/runtime/state.d.ts",
-      "import": "./dist/platform/runtime/state.js"
-    },
-    "./platform/runtime/store": {
-      "types": "./dist/platform/runtime/store/index.d.ts",
-      "import": "./dist/platform/runtime/store/index.js"
-    },
-    "./platform/runtime/emitters": {
-      "types": "./dist/platform/runtime/emitters/index.d.ts",
-      "import": "./dist/platform/runtime/emitters/index.js"
-    },
-    "./platform/runtime/ui": {
-      "types": "./dist/platform/runtime/ui.d.ts",
-      "import": "./dist/platform/runtime/ui.js"
-    },
     "./platform/tools": {
       "types": "./dist/platform/tools/index.d.ts",
       "import": "./dist/platform/tools/index.js"
@@ -524,6 +536,10 @@
     "./platform/tools/exec/sandbox": {
       "types": "./dist/platform/tools/exec/sandbox.d.ts",
       "import": "./dist/platform/tools/exec/sandbox.js"
+    },
+    "./platform/triggers": {
+      "types": "./dist/platform/triggers/index.d.ts",
+      "import": "./dist/platform/triggers/index.js"
     },
     "./platform/types": {
       "types": "./dist/platform/types/index.d.ts",
@@ -541,17 +557,13 @@
       "types": "./dist/platform/voice/index.d.ts",
       "import": "./dist/platform/voice/index.js"
     },
-    "./platform/web-search": {
-      "types": "./dist/platform/web-search/index.d.ts",
-      "import": "./dist/platform/web-search/index.js"
-    },
     "./platform/watchers": {
       "types": "./dist/platform/watchers/index.d.ts",
       "import": "./dist/platform/watchers/index.js"
     },
-    "./platform/triggers": {
-      "types": "./dist/platform/triggers/index.d.ts",
-      "import": "./dist/platform/triggers/index.js"
+    "./platform/web-search": {
+      "types": "./dist/platform/web-search/index.d.ts",
+      "import": "./dist/platform/web-search/index.js"
     },
     "./platform/workflow": {
       "types": "./dist/platform/workflow/index.d.ts",
