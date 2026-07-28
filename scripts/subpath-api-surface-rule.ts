@@ -21,6 +21,17 @@ export interface ExportEntry {
   /** Required (non-optional) member names, for interfaces a consumer implements. */
   readonly required?: readonly string[];
   /**
+   * PUBLIC member names of an exported class.
+   *
+   * A class member is as public as a top-level export once the class is
+   * exported, and nothing tracked them: two new public methods were added to a
+   * subpath-exported class and no gate said anything, because both this report
+   * and the api-extractor rollups recorded exported SYMBOLS, not what those
+   * symbols expose. `text` catches the same change, but only as an opaque
+   * declaration diff; this is what lets the failure message name the method.
+   */
+  readonly publicMembers?: readonly string[];
+  /**
    * The declaration text as emitted into the `.d.ts`, comments stripped and
    * whitespace collapsed. This is what makes a member's TYPE change visible;
    * `name` + `required` alone report `subject: string` and `subject: number`
@@ -122,6 +133,43 @@ export function requiredMembers(symbol: ts.Symbol): string[] | undefined {
 }
 
 /**
+ * The public members an exported class exposes.
+ *
+ * `private`/`protected` members and `#name` private fields are excluded — they
+ * are not surface. The constructor is included as `constructor`, because its
+ * parameter list is what a consumer calls.
+ */
+export function publicClassMembers(symbol: ts.Symbol): string[] | undefined {
+  const declarations = symbol.getDeclarations() ?? [];
+  const names = new Set<string>();
+  let sawClass = false;
+  for (const declaration of declarations) {
+    if (!ts.isClassDeclaration(declaration)) continue;
+    sawClass = true;
+    for (const member of declaration.members) {
+      const modifiers = ts.canHaveModifiers(member) ? ts.getModifiers(member) ?? [] : [];
+      const hidden = modifiers.some(
+        (modifier) => modifier.kind === ts.SyntaxKind.PrivateKeyword || modifier.kind === ts.SyntaxKind.ProtectedKeyword,
+      );
+      if (hidden) continue;
+      if (ts.isConstructorDeclaration(member)) {
+        names.add('constructor');
+        continue;
+      }
+      const memberName = member.name;
+      if (!memberName) continue;
+      if (ts.isPrivateIdentifier(memberName)) continue;
+      if (ts.isIdentifier(memberName) || ts.isStringLiteral(memberName)) {
+        names.add(memberName.text);
+        continue;
+      }
+      if (ts.isComputedPropertyName(memberName)) names.add(memberName.getText());
+    }
+  }
+  return sawClass ? [...names].sort() : undefined;
+}
+
+/**
  * Collapse a declaration to a comparable one-liner.
  *
  * Block comments go first so a doc-only edit does not churn the report; `.d.ts`
@@ -152,12 +200,14 @@ export function buildSnapshot(program: ts.Program, entryPoints: ReadonlyMap<stri
     for (const symbol of exported) {
       const resolved = symbol.getFlags() & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol;
       const required = requiredMembers(resolved);
+      const publicMembers = publicClassMembers(resolved);
       const declarations = resolved.getDeclarations() ?? [];
       const text = declarations.map((declaration) => normalizeDeclarationText(declaration.getText())).join(' ;; ');
       entries.push({
         name: symbol.getName(),
         kind: declarationKind(resolved),
         ...(required && required.length > 0 ? { required } : {}),
+        ...(publicMembers && publicMembers.length > 0 ? { publicMembers } : {}),
         text,
       });
     }
@@ -229,6 +279,17 @@ export function diffSnapshots(before: Snapshot, after: Snapshot): string[] {
       const removedRequired = (was.required ?? []).filter((member) => !(entry.required ?? []).includes(member));
       if (removedRequired.length > 0) {
         lines.push(`  ! ${subpath} ${name} no longer requires member(s): ${removedRequired.join(', ')}`);
+      }
+      const addedPublic = (entry.publicMembers ?? []).filter((member) => !(was.publicMembers ?? []).includes(member));
+      if (addedPublic.length > 0) {
+        lines.push(
+          `  + ${subpath} class ${name} gained PUBLIC member(s): ${addedPublic.join(', ')}`
+          + ' — a class member is as public as a top-level export.',
+        );
+      }
+      const removedPublic = (was.publicMembers ?? []).filter((member) => !(entry.publicMembers ?? []).includes(member));
+      if (removedPublic.length > 0) {
+        lines.push(`  - ${subpath} class ${name} no longer exposes PUBLIC member(s): ${removedPublic.join(', ')}`);
       }
       if (was.text !== entry.text) {
         lines.push(`  ~ ${subpath} ${name} declaration changed:`);
