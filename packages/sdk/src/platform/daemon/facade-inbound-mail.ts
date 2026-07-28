@@ -52,6 +52,7 @@ import type { ConfigManager } from '../config/manager.js';
 import type { RouteBindingManager } from '../channels/index.js';
 import type { SecretsManager } from '../config/secrets.js';
 import type { ShellPathService } from '../runtime/shell-paths.js';
+import type { StructuredNotice } from '../email/inbound-notice.js';
 import type { SurfaceNoticeDelivery } from './types.js';
 
 /** How many accounts one supervisor watches. One, today — see `readWatchedAccount`. */
@@ -63,10 +64,17 @@ export interface InboundMailCompositionOptions {
   readonly shellPaths: Pick<ShellPathService, 'resolveUserPath'>;
   readonly routeBindings: Pick<RouteBindingManager, 'listBindings' | 'getBinding'>;
   readonly gatewayMethods: GatewayMethodCatalog;
-  /** `DaemonSurfaceDeliveryHelper.deliverSurfaceNotice`. */
-  readonly deliverSurfaceNotice: (
+  /**
+   * `DaemonSurfaceDeliveryHelper.deliverStructuredNotice`.
+   *
+   * Takes the STRUCTURE, not a rendered string, so nothing on the inbound path
+   * ever holds channel-formatted text. The helper resolves the surface from the
+   * binding and picks the escaper there — the only code that turns spans into
+   * text is the code that knows where they are going.
+   */
+  readonly deliverStructuredNotice: (
     binding: AutomationRouteBinding | undefined,
-    text: string,
+    notice: StructuredNotice,
   ) => Promise<SurfaceNoticeDelivery>;
   /** Supplied by a composition that has an adopted Google credential. */
   readonly gmail?: GmailSourceBuilder | undefined;
@@ -227,9 +235,9 @@ export function composeInboundMail(
       records,
       notices: {
         resolveBinding: () => resolveNoticeBinding(configManager, options.routeBindings),
-        send: (text) => options.deliverSurfaceNotice(
+        send: (notice) => options.deliverStructuredNotice(
           resolveNoticeBinding(configManager, options.routeBindings) ?? undefined,
-          text,
+          notice,
         ),
       },
       noticeMode: () => readNoticeMode(configManager),

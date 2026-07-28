@@ -71,8 +71,8 @@ import { deliveredRecipientFromDeliveryHeaders } from '../../google/delivery-evi
 import {
   receiptTimestamp,
   renderInboundMailNotice,
-  renderNoticeForChannel,
   type InboundOutcome,
+  type StructuredNotice,
 } from '../inbound-notice.js';
 import type { AutomationRouteBinding } from '../../automation/routes.js';
 import type { ExpectationMatcher } from './expectation-registry.js';
@@ -97,8 +97,17 @@ export type NoticeRouteBinding = Pick<AutomationRouteBinding, 'surfaceKind'>;
 export interface InboundMailNoticeRoute {
   /** The owner's notice route binding, or null when he has none configured. */
   resolveBinding(): NoticeRouteBinding | null;
-  /** `DaemonSurfaceDeliveryHelper.deliverSurfaceNotice`, bound to that binding. */
-  send(text: string): Promise<SurfaceNoticeDelivery>;
+  /**
+   * `DaemonSurfaceDeliveryHelper.deliverStructuredNotice`, bound to that
+   * binding.
+   *
+   * Takes the STRUCTURE, never a rendered string. The intake therefore cannot
+   * pick an escaper, cannot pick the wrong one, and cannot skip escaping — it
+   * never holds a channel-formatted string to pass. That is the same guarantee
+   * the producer has, extended across the port: the only code that turns spans
+   * into text is the code that knows the destination.
+   */
+  send(notice: StructuredNotice): Promise<SurfaceNoticeDelivery>;
 }
 
 export interface InboundMailIntakeDeps {
@@ -208,19 +217,20 @@ export function createInboundMailIntake(
       if (binding === null) {
         noticeStatus = 'no-route-binding';
       } else {
-        // The channel layer owns escaping: this call names the surface the
-        // notice is going to and takes back whatever that surface's escaper
-        // produced. A surface with no escaper registered gets fully
-        // neutralized plain text from that function, never raw span text.
-        const text = renderNoticeForChannel(renderInboundMailNotice({
+        // Structure out, never a string. The delivery helper resolves the
+        // surface from the binding it already holds and renders there, so the
+        // escaper is chosen by the code that knows the destination rather than
+        // here. A surface with no verified escaper gets fully-neutralized plain
+        // text, never raw span concatenation.
+        const notice = renderInboundMailNotice({
           senderDisplay: message.from,
           subject: message.subject,
           deliveredTo,
           outcome: noticeOutcome(match),
           links: [],
           receivedAt,
-        }), binding.surfaceKind);
-        const delivery: SurfaceNoticeDelivery = await deps.notices.send(text);
+        });
+        const delivery: SurfaceNoticeDelivery = await deps.notices.send(notice);
         if (delivery.delivered) {
           noticeStatus = 'delivered';
         } else if (delivery.reason === 'delivery-failed') {
