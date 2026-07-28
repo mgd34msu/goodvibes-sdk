@@ -3762,7 +3762,7 @@
         "list",
         "readContent"
       ],
-      "text": "export interface ArtifactStoreLike { list(): readonly unknown[]; create(input: Record<string, unknown>): Promise<unknown>; get(artifactId: string): unknown | null; readContent(artifactId: string): Promise<{ readonly record: { readonly mimeType: string; readonly filename?: string; }; readonly buffer: ArrayBuffer | Uint8Array; }>; }"
+      "text": "export interface ArtifactStoreLike { list(): readonly unknown[]; create(input: Record<string, unknown>): Promise<unknown>; get(artifactId: string): unknown | null; readContent(artifactId: string): Promise<{ readonly record: { readonly mimeType: string; readonly filename?: string | undefined; }; readonly buffer: ArrayBuffer | Uint8Array; }>; }"
     },
     {
       "name": "ArtifactStoreUploadLike",
@@ -8333,6 +8333,11 @@
         "record"
       ],
       "text": "export interface QueuedChain { record: AgentRecord; queuedAt: number; }"
+    },
+    {
+      "name": "ReviewableCompletionReport",
+      "kind": "type",
+      "text": "export type ReviewableCompletionReport = CompletionReport & { reviewableOutput?: string | undefined; };"
     },
     {
       "name": "ReviewerReport",
@@ -23117,7 +23122,7 @@
     {
       "name": "HomeGraphSnapshotInput",
       "kind": "interface",
-      "text": "export interface HomeGraphSnapshotInput extends HomeGraphSpaceInput { readonly homeId?: string | undefined; readonly title?: string | undefined; readonly capturedAt?: number | undefined; readonly pageAutomation?: HomeGraphPageAutomationOptions | undefined; readonly entities?: readonly HomeGraphObjectInput[] | undefined; readonly devices?: readonly HomeGraphObjectInput[] | undefined; readonly areas?: readonly HomeGraphObjectInput[] | undefined; readonly automations?: readonly HomeGraphObjectInput[] | undefined; readonly scripts?: readonly HomeGraphObjectInput[] | undefined; readonly scenes?: readonly HomeGraphObjectInput[] | undefined; readonly labels?: readonly HomeGraphObjectInput[] | undefined; readonly integrations?: readonly HomeGraphObjectInput[] | undefined; readonly helpers?: readonly HomeGraphObjectInput[] | undefined; readonly metadata?: Record<string, unknown> | undefined; }"
+      "text": "export interface HomeGraphSnapshotInput extends HomeGraphSpaceInput { readonly homeId?: string | undefined; readonly title?: string | undefined; readonly capturedAt?: number | undefined; readonly pageAutomation?: HomeGraphPageAutomationOptions | undefined; readonly entities?: readonly HomeGraphObjectInputSource[] | undefined; readonly devices?: readonly HomeGraphObjectInputSource[] | undefined; readonly areas?: readonly HomeGraphObjectInputSource[] | undefined; readonly automations?: readonly HomeGraphObjectInputSource[] | undefined; readonly scripts?: readonly HomeGraphObjectInputSource[] | undefined; readonly scenes?: readonly HomeGraphObjectInputSource[] | undefined; readonly labels?: readonly HomeGraphObjectInputSource[] | undefined; readonly integrations?: readonly HomeGraphObjectInputSource[] | undefined; readonly helpers?: readonly HomeGraphObjectInputSource[] | undefined; readonly metadata?: Record<string, unknown> | undefined; }"
     },
     {
       "name": "HomeGraphStatus",
@@ -25451,7 +25456,7 @@
     {
       "name": "HomeGraphSnapshotInput",
       "kind": "interface",
-      "text": "export interface HomeGraphSnapshotInput extends HomeGraphSpaceInput { readonly homeId?: string | undefined; readonly title?: string | undefined; readonly capturedAt?: number | undefined; readonly pageAutomation?: HomeGraphPageAutomationOptions | undefined; readonly entities?: readonly HomeGraphObjectInput[] | undefined; readonly devices?: readonly HomeGraphObjectInput[] | undefined; readonly areas?: readonly HomeGraphObjectInput[] | undefined; readonly automations?: readonly HomeGraphObjectInput[] | undefined; readonly scripts?: readonly HomeGraphObjectInput[] | undefined; readonly scenes?: readonly HomeGraphObjectInput[] | undefined; readonly labels?: readonly HomeGraphObjectInput[] | undefined; readonly integrations?: readonly HomeGraphObjectInput[] | undefined; readonly helpers?: readonly HomeGraphObjectInput[] | undefined; readonly metadata?: Record<string, unknown> | undefined; }"
+      "text": "export interface HomeGraphSnapshotInput extends HomeGraphSpaceInput { readonly homeId?: string | undefined; readonly title?: string | undefined; readonly capturedAt?: number | undefined; readonly pageAutomation?: HomeGraphPageAutomationOptions | undefined; readonly entities?: readonly HomeGraphObjectInputSource[] | undefined; readonly devices?: readonly HomeGraphObjectInputSource[] | undefined; readonly areas?: readonly HomeGraphObjectInputSource[] | undefined; readonly automations?: readonly HomeGraphObjectInputSource[] | undefined; readonly scripts?: readonly HomeGraphObjectInputSource[] | undefined; readonly scenes?: readonly HomeGraphObjectInputSource[] | undefined; readonly labels?: readonly HomeGraphObjectInputSource[] | undefined; readonly integrations?: readonly HomeGraphObjectInputSource[] | undefined; readonly helpers?: readonly HomeGraphObjectInputSource[] | undefined; readonly metadata?: Record<string, unknown> | undefined; }"
     },
     {
       "name": "HomeGraphStatus",
@@ -42439,6 +42444,16 @@
       "text": "export interface MemoryFoldSourceReport { readonly label: string; readonly dbPath: string; readonly existed: boolean; readonly importedRecords: number; readonly skippedRecords: number; readonly importedLinks: number; readonly error?: string; }"
     },
     {
+      "name": "MemoryImportResult",
+      "kind": "interface",
+      "required": [
+        "importedLinks",
+        "importedRecords",
+        "skippedRecords"
+      ],
+      "text": "export interface MemoryImportResult { importedRecords: number; skippedRecords: number; importedLinks: number; }"
+    },
+    {
       "name": "MemoryLink",
       "kind": "interface",
       "required": [
@@ -42613,6 +42628,11 @@
         "vectorStats"
       ],
       "text": "export declare class MemoryRegistry { private store; private listeners; constructor(store: MemoryStore); getStore(): MemoryStore; subscribe(fn: () => void): () => void; private notify; add(opts: MemoryAddOptions): Promise<MemoryRecord>; search(filter?: MemorySearchFilter): MemoryRecord[]; searchSemantic(filter?: MemorySearchFilter): MemorySemanticSearchResult[]; honestSearch(filter?: MemorySearchFilter, options?: HonestMemorySearchOptions): HonestMemorySearchResult; rebuildVectors(): MemoryVectorStats; rebuildVectorsAsync(): Promise<MemoryVectorStats>; vectorStats(): MemoryVectorStats; doctor(): Promise<MemoryDoctorReport>; reviewQueue(limit?: number, scope?: MemoryScope): MemoryRecord[]; exportBundle(filter?: MemorySearchFilter): MemoryBundle; importBundle(bundle: MemoryBundle): Promise<MemoryImportResult>; get(id: string): MemoryRecord | null; link(fromId: string, toId: string, relation: string): Promise<MemoryLink | null>; linksFor(id: string): MemoryLink[]; update(id: string, patch: { scope?: MemoryScope; summary?: string; detail?: string; tags?: string[]; validFrom?: number | null; validUntil?: number | null; }): MemoryRecord | null; review(id: string, patch: MemoryReviewPatch): MemoryRecord | null; delete(id: string): boolean; getAll(): MemoryRecord[]; }"
+    },
+    {
+      "name": "MemoryReviewPatch",
+      "kind": "interface",
+      "text": "export interface MemoryReviewPatch { state?: MemoryReviewState | undefined; confidence?: number | undefined; reviewedBy?: string | undefined; staleReason?: string | undefined; }"
     },
     {
       "name": "MemoryReviewState",

@@ -68,10 +68,17 @@ export class StoreSchemaDowngradeError extends Error {
     readonly storeVersion: number,
     readonly supportedVersion: number,
   ) {
+    // The REASON leads and the path trails, deliberately. Consumers surface
+    // this through summarizeError, which clips at MAX_ERROR_LENGTH: with the
+    // path first, a store under a per-run temp directory pushed the
+    // explanation past the limit and the operator saw
+    // "... uses schema v9, but this bu…" — cut mid-word, before the sentence
+    // that says what to do. Every fact is still here; only the order changed,
+    // so what survives the clip is the part a reader can act on.
     super(
-      `${storeName} at ${dbPath} uses schema v${storeVersion}, but this build only understands up to v${supportedVersion} — `
-      + 'it was written by a newer version. Refusing to open so nothing is corrupted; '
-      + 'run the newer version, or restore a snapshot taken by it.',
+      `${storeName} was written by a newer version: it uses schema v${storeVersion} and this build `
+      + `only understands up to v${supportedVersion}. Refusing to open so nothing is corrupted; `
+      + `run the newer version, or restore a snapshot taken by it. Store file: ${dbPath}`,
     );
     this.name = 'StoreSchemaDowngradeError';
   }
