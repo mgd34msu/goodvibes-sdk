@@ -70,6 +70,60 @@ describe('the housekeeper composes all three stores into one itemised report', (
     expect(report.summary).toContain('removed');
   });
 
+  test('a cursor kept because nobody could confirm its account is named in the summary', async () => {
+    // A retained cursor that nothing justified is persisted state held for an
+    // unknown reason, and the summary is the only place a person sees it. A
+    // count that never falls to zero means a caller that can never answer,
+    // which is a fault worth seeing rather than a leak worth ignoring.
+    writeFileSync(cursorPath, JSON.stringify({
+      version: 1,
+      cursors: [{
+        account: 'acct-a',
+        mailbox: 'INBOX',
+        uidValidity: 7,
+        lastSeenUid: 900,
+        updatedAt: new Date().toISOString(),
+      }],
+    }), 'utf-8');
+
+    const housekeeper = new InboundMailHousekeeper({
+      cursors: new MailboxCursorStore(cursorPath, { isAccountConfigured: () => 'unknown' }),
+      records: new InboundMailStore(recordPath),
+      expectations: new PersistedExpectationStore(expectationPath),
+      disclosurePath,
+    });
+    const report = await housekeeper.runRecoverySweep();
+
+    expect(report.cursors?.unresolvedAccounts).toBe(1);
+    expect(report.cursors?.removed).toEqual([]);
+    expect(report.summary).toContain('1 cursor(s) were kept because the configured-account answer was not available');
+  });
+
+  test('a pass where every account answered says nothing about unresolved ones', async () => {
+    // The control: the sentence appears only when there is something to say.
+    writeFileSync(cursorPath, JSON.stringify({
+      version: 1,
+      cursors: [{
+        account: 'acct-a',
+        mailbox: 'INBOX',
+        uidValidity: 7,
+        lastSeenUid: 900,
+        updatedAt: new Date().toISOString(),
+      }],
+    }), 'utf-8');
+
+    const housekeeper = new InboundMailHousekeeper({
+      cursors: new MailboxCursorStore(cursorPath, { isAccountConfigured: () => true }),
+      records: new InboundMailStore(recordPath),
+      expectations: new PersistedExpectationStore(expectationPath),
+      disclosurePath,
+    });
+    const report = await housekeeper.runRecoverySweep();
+
+    expect(report.cursors?.unresolvedAccounts).toBe(0);
+    expect(report.summary).not.toContain('configured-account answer');
+  });
+
   test('a pass that removes nothing still returns a coherent report and a quiet summary', async () => {
     const housekeeper = buildHousekeeper();
     const report = await housekeeper.runRecoverySweep();
@@ -127,9 +181,54 @@ describe('the periodic sweep runs on a timer without a restart', () => {
     expect(disclosures.some((r) => r.trigger === 'periodic')).toBe(true);
   }, 30_000);
 
-  test('start(0) is a no-op rather than a busy loop', () => {
+  /**
+   * `start(0)` used to be asserted with `expect(() => start(0)).not.toThrow()`,
+   * which passes WITH the busy loop installed: delete the `intervalMs <= 0`
+   * guard and `setInterval(fn, 0)` still does not throw, while running a sweep
+   * roughly every millisecond. Not throwing was never the claim — not sweeping
+   * was.
+   *
+   * So the assertion is on the sweeps themselves, over a window long enough
+   * that an ungated `setInterval(fn, 0)` would have run dozens of them.
+   */
+  const NON_INTERVALS: ReadonlyArray<{ label: string; value: number }> = [
+    { label: 'zero', value: 0 },
+    { label: 'negative', value: -1_000 },
+    { label: 'NaN', value: Number.NaN },
+    { label: 'Infinity', value: Number.POSITIVE_INFINITY },
+  ];
+
+  for (const { label, value } of NON_INTERVALS) {
+    test(`start(${label}) installs no timer and sweeps nothing`, async () => {
+      const housekeeper = buildHousekeeper();
+      housekeeper.start(value);
+      try {
+        // No timer object at all, which is the mechanism; the sweep count
+        // below is the consequence, and both are asserted because a timer
+        // installed with a different handler would satisfy only one.
+        expect((housekeeper as unknown as { timer: unknown }).timer).toBeNull();
+        await new Promise((resolve) => { setTimeout(resolve, 120); });
+        expect(housekeeper.getLastReport()).toBeNull();
+        expect(readDisclosures()).toHaveLength(0);
+      } finally {
+        housekeeper.stop();
+      }
+    });
+  }
+
+  test('a real interval DOES sweep in the same window, so the check above is not vacuous', async () => {
+    // The control. Without it, "no sweeps in 120 ms" could be true because
+    // nothing in this harness ever sweeps.
     const housekeeper = buildHousekeeper();
-    expect(() => { housekeeper.start(0); }).not.toThrow();
-    housekeeper.stop();
-  });
+    housekeeper.start(10);
+    try {
+      const deadline = Date.now() + 10_000;
+      while (Date.now() < deadline && housekeeper.getLastReport() === null) {
+        await new Promise((resolve) => { setTimeout(resolve, 5); });
+      }
+    } finally {
+      housekeeper.stop();
+    }
+    expect(housekeeper.getLastReport()?.trigger).toBe('periodic');
+  }, 15_000);
 });

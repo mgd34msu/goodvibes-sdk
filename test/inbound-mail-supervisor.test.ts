@@ -384,22 +384,25 @@ describe('a restart rehydrates before it serves', () => {
   });
 
   test('the recovery sweep runs before the source starts, not after', async () => {
-    const order: string[] = [];
+    // The probe reads the housekeeper INSIDE `onStart`, which is the only
+    // moment that can distinguish the two orderings. Reading it after
+    // `start()` resolves — which this test used to do — passes whichever way
+    // round the supervisor does the work, because by then both have happened.
+    let sweepAtSourceStart = 'source-never-started';
     const rig = buildRig({
       sources: {
         create: async () => new RecordingSource(HEALTHY, { kind: 'push' }, async () => {
-          order.push('source-start');
+          const report = rig.housekeeper.getLastReport();
+          sweepAtSourceStart = report === null ? 'no-sweep-yet' : `swept-${report.trigger}`;
           return null;
         }),
       },
     });
-    // The housekeeper writes a report on every sweep, so its presence at the
-    // moment the source starts is the ordering evidence.
-    const source = await rig.supervisor.start();
-    expect(source.running).toBe(true);
-    order.push(rig.housekeeper.getLastReport() === null ? 'no-sweep' : 'sweep-done');
-    expect(order).toEqual(['source-start', 'sweep-done']);
-    expect(rig.housekeeper.getLastReport()?.trigger).toBe('recovery');
+    const status = await rig.supervisor.start();
+    expect(status.running).toBe(true);
+    // The sweep had already run, and it was the RECOVERY one — not a periodic
+    // pass that happened to land first.
+    expect(sweepAtSourceStart).toBe('swept-recovery');
     await rig.supervisor.stop();
   });
 });
