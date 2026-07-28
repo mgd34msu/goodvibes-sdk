@@ -44,6 +44,10 @@
 
 import { imapMailboxConnectionPort } from './connection.js';
 import { ImapMailSource } from './imap-source.js';
+import {
+  INBOUND_CAPABILITY_POLICY_DEFAULT,
+  type InboundCapabilityPolicy,
+} from './capability-policy.js';
 import { resolveWatcherSettings, systemWatcherClock } from './ports.js';
 import { resolveEmailPassword } from '../email-config.js';
 import {
@@ -114,6 +118,17 @@ export type GmailSourceBuilder = (input: GmailPollIntervals & {
    * defect as the two above — a setting that appears to apply and does not.
    */
   readonly capabilityRecheckMs: number;
+  /**
+   * `surfaces.email.inbound.onInsufficientCapability`.
+   *
+   * Handed in for the same reason the two intervals are: the composition that
+   * can see the config is not the one that knows how to talk to Google, so the
+   * value crosses that boundary explicitly or it never crosses it at all. This
+   * is the key the schema has described since it was added and nothing read —
+   * `notice-only` and `refuse-and-notify` were the same behaviour until this
+   * argument existed.
+   */
+  readonly capabilityPolicy: InboundCapabilityPolicy;
 }) => Promise<InboundMailSource | null>;
 
 export interface InboundMailSourceFactoryDeps {
@@ -172,6 +187,34 @@ const GMAIL_POLL_IDLE_DEFAULT_SECONDS = 60;
  */
 function positiveSeconds(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+/**
+ * `surfaces.email.inbound.onInsufficientCapability`, read at source-create time.
+ *
+ * Read HERE, beside the two poll intervals, for the reason stated above them:
+ * this is already the module that reads `surfaces.email.*` to build a source,
+ * and `create()` runs on every supervisor start, so an owner who changes this
+ * while the daemon is running gets the new behaviour at the next source start
+ * rather than at the next restart.
+ *
+ * The key literal sits INSIDE the `getConfig(...)` call, deliberately, for the
+ * reason `readGmailPollIntervals` states: the repository's own gate in
+ * `test/inbound-email-config-schema.test.ts` decides whether a key is read by
+ * looking for the key's own text inside a config-read call, and a helper taking
+ * the key as an argument would be a genuine read the gate could not see.
+ *
+ * An unrecognised value falls back to the shipped default rather than being
+ * passed on. `ConfigManager.set()` refuses anything outside the enum, so the
+ * only way to get here with something else is a hand-edited config file — and
+ * the safe direction for an unreadable value is the policy that stops rather
+ * than the one that announces mail it can never act on.
+ */
+function readCapabilityPolicy(getConfig: ConfigReader): InboundCapabilityPolicy {
+  const configured = getConfig('surfaces.email.inbound.onInsufficientCapability' as never);
+  return configured === 'notice-only' || configured === 'refuse-and-notify'
+    ? configured
+    : INBOUND_CAPABILITY_POLICY_DEFAULT;
 }
 
 function readGmailPollIntervals(getConfig: ConfigReader): GmailPollIntervals {
@@ -244,6 +287,10 @@ export function createInboundMailSourceFactory(
           // by whoever built `settings`; passed on rather than re-read, so both
           // sources re-probe on the one schedule the owner set.
           capabilityRecheckMs: deps.settings.capabilityRecheckMs,
+          // Read at CREATE time for the same freshness reason as the intervals
+          // above: an owner who switches this while the daemon is running gets
+          // the new behaviour at the next source start.
+          capabilityPolicy: readCapabilityPolicy(deps.getConfig),
         });
       }
 

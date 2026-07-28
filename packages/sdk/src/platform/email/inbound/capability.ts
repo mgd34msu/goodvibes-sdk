@@ -73,6 +73,11 @@ const STATE_BY_REASON: Readonly<Record<InboundCapabilityReason, InboundCapabilit
   'uidvalidity-missing': 'insufficient',
   'mailbox-position-unknown': 'insufficient',
   'fetch-refused': 'insufficient',
+  'gmail-metadata-only': 'insufficient',
+  // Running, and running with less than it wanted — the definition of
+  // `degraded`. Mail IS being announced; what cannot happen is a verification
+  // being satisfied.
+  'gmail-metadata-notice-only': 'degraded',
   'fetch-unreadable': 'insufficient',
   'local-store-unwritable': 'insufficient',
   'watcher-stopped-unexpectedly': 'insufficient',
@@ -141,6 +146,26 @@ const FIX_BY_REASON: Readonly<Record<InboundCapabilityReason, string>> = {
     'The mailbox opened and the server refused to hand over message data, so '
     + 'arriving mail can be seen and not read. Check that the account is '
     + 'permitted IMAP access and is not restricted to a subset of folders.',
+  'gmail-metadata-only':
+    'The connected Google account granted the gmail.metadata scope, which Google '
+    + 'describes as "View your email message metadata such as labels and headers, '
+    + 'but not the email body". Headers can be read and bodies cannot, so no '
+    + 'signup, password reset or order confirmation can be completed from this '
+    + 'mailbox. Re-authorize granting a body-capable scope (gmail.readonly, '
+    + 'gmail.modify, or https://mail.google.com/). To be told that mail arrived '
+    + 'without being able to act on it, set '
+    + 'surfaces.email.inbound.onInsufficientCapability to "notice-only" — that '
+    + 'announces the sender, subject and delivery address of every message and '
+    + 'still completes nothing.',
+  'gmail-metadata-notice-only':
+    'Nothing is broken and nothing will complete. The Google grant excludes '
+    + 'message bodies (gmail.metadata), and '
+    + 'surfaces.email.inbound.onInsufficientCapability is set to "notice-only", '
+    + 'so every arriving message is announced from its sender, subject and '
+    + 'delivery address alone. No verification expectation can be satisfied '
+    + 'while this lasts, so a signup or an order confirmation waiting on a link '
+    + 'in a message body will wait until it expires. Re-authorize granting '
+    + 'gmail.readonly, gmail.modify, or https://mail.google.com/ to restore it.',
   'fetch-unreadable':
     'The mail server is answering the request for message data and the daemon '
     + 'cannot read the answers it sends, so mail is arriving and none of it can '

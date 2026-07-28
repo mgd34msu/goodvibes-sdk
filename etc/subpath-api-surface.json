@@ -16002,12 +16002,7 @@
     },
     {
       "name": "GmailHistoryDelta",
-      "kind": "interface",
-      "required": [
-        "historyId",
-        "messages",
-        "unreadable"
-      ]
+      "kind": "type"
     },
     {
       "name": "GmailHistoryType",
@@ -16025,7 +16020,13 @@
       "name": "GmailMessageBody",
       "kind": "interface",
       "required": [
-        "body",
+        "body"
+      ]
+    },
+    {
+      "name": "GmailMessageMetadata",
+      "kind": "interface",
+      "required": [
         "deliveredTo"
       ]
     },
@@ -16438,6 +16439,7 @@
       "required": [
         "fetchHistoryPage",
         "getMessage",
+        "readMessageMetadata",
         "scopes"
       ]
     },
@@ -16548,6 +16550,10 @@
     {
       "name": "MatchOptions",
       "kind": "interface"
+    },
+    {
+      "name": "MetadataOnlyGrantPolicy",
+      "kind": "type"
     },
     {
       "name": "MintAddressOptions",

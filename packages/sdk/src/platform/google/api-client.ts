@@ -33,6 +33,26 @@ import {
 const GMAIL_BASE = 'https://gmail.googleapis.com/gmail/v1/users/me';
 const CALENDAR_BASE = 'https://www.googleapis.com/calendar/v3/calendars';
 
+/**
+ * The headers `readMessageMetadata` asks for, and the only ones it asks for.
+ *
+ * `metadataHeaders[]` is documented verbatim as "When given and format is
+ * `METADATA`, only include headers specified", so naming them narrows what
+ * crosses this boundary to exactly the fields the notice and the delivery
+ * evidence are built from. Omitting the parameter would return every header on
+ * the message — `Received` chains, `Authentication-Results`, `List-Unsubscribe`,
+ * anything a sender chose to add — none of which anything downstream reads, all
+ * of which would then be in memory and in whatever a caller logged.
+ *
+ * `Delivered-To` and `X-Original-To` are the two `deliveryHeaderValues` reads,
+ * and they are the receiver-written ones — the correlation evidence. `From`,
+ * `To`, `Subject` and `Date` are what the owner's notice shows. Nothing else is
+ * requested, so nothing else can arrive.
+ */
+const METADATA_HEADERS: readonly string[] = [
+  'From', 'To', 'Subject', 'Date', 'Delivered-To', 'X-Original-To',
+];
+
 /** Injected HTTP, so every call is testable without network. */
 export interface GoogleApiFetchPort {
   fetch(url: string, init: RequestInit): Promise<Response>;
@@ -67,8 +87,46 @@ export interface GmailMessageSummary {
   readonly provenance: typeof MAIL_CONTENT_PROVENANCE;
 }
 
-export interface GmailMessageBody extends GmailMessageSummary {
-  readonly body: string;
+/**
+ * A message read under `format=METADATA`: headers and delivery evidence, and
+ * **no body of any kind**.
+ *
+ * Endpoint and parameters read from Google's live reference on 2026-07-28, not
+ * recalled:
+ *   https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.messages/get
+ *
+ *   - `GET https://gmail.googleapis.com/gmail/v1/users/{userId}/messages/{id}`
+ *     with query parameters `format` (enum) and `metadataHeaders[]` (string),
+ *     whose description is verbatim: "When given and format is `METADATA`,
+ *     only include headers specified."
+ *   - Authorization scopes for the method, verbatim and in full:
+ *     `https://mail.google.com/`, `.../auth/gmail.modify`,
+ *     `.../auth/gmail.readonly`, `.../auth/gmail.metadata`. A `gmail.metadata`
+ *     token is therefore authorized to make this call — which is the entire
+ *     reason this type exists.
+ *   - `Message.historyId` is declared **string**, and `internalDate` is a
+ *     string in int64 format. Neither is ever parsed to a `Number` here: a
+ *     decimal uint64 above 2^53 truncates, and a truncated history position is
+ *     a cursor that looks valid and names the wrong record.
+ *
+ * Why this is a SEPARATE type from `GmailMessageBody` rather than one with an
+ * empty `body`
+ * ─────────────────────────────────────────────────────────────────────────
+ * `GmailMessageBody` extends this and adds `body`, so the assignability runs
+ * one way only: a body-bearing message satisfies a metadata-shaped parameter,
+ * and a metadata-only message does NOT satisfy a body-bearing one. Anything
+ * that needs a body — matching a verification link, redacting a body excerpt —
+ * takes `GmailMessageBody` and cannot be handed one of these by accident.
+ *
+ * `snippet` is deliberately EMPTY on this path, and that is not cosmetic. A
+ * snippet is derived from the message body: Gmail should not return one to a
+ * `gmail.metadata` token at all, but "should not" is the provider's promise
+ * rather than this daemon's guarantee, and a body excerpt arriving through the
+ * one path built to carry no body is exactly the shape nobody would look for.
+ * `readMessageMetadata` blanks it unconditionally, so the property holds
+ * whatever Google sends.
+ */
+export interface GmailMessageMetadata extends GmailMessageSummary {
   /**
    * Every `Delivered-To` / `X-Original-To` header on the message, in order.
    *
@@ -77,6 +135,10 @@ export interface GmailMessageBody extends GmailMessageSummary {
    * arrived at. `To:` is sender-controlled and is deliberately kept separate.
    */
   readonly deliveredTo: readonly string[];
+}
+
+export interface GmailMessageBody extends GmailMessageMetadata {
+  readonly body: string;
 }
 
 /**
@@ -356,6 +418,60 @@ export class GoogleApiClient {
     return this.fetchMessage(id, 'full');
   }
 
+  /**
+   * Read one message's HEADERS AND DELIVERY EVIDENCE, with no body.
+   *
+   * `GET .../messages/{id}?format=metadata&metadataHeaders=...`, the request a
+   * `gmail.metadata` token is authorized to make (see `GmailMessageMetadata`
+   * for the live-docs citation). This is the call that gives
+   * `surfaces.email.inbound.onInsufficientCapability: 'notice-only'` something
+   * to actually do: a grant that excludes bodies can still say who sent what,
+   * to which address, and when it landed.
+   *
+   * Deliberately NOT a `format` parameter on `getMessage`. The two calls return
+   * different guarantees and the return TYPE is what carries the difference —
+   * a caller that needs a body gets a compile error rather than a `body` field
+   * that is empty for a reason it cannot see. That is also why this does not
+   * reuse `fetchMessage`: that method's `metadata` overload feeds
+   * `listMessages`, whose summaries keep Gmail's `snippet`, and this path must
+   * blank it.
+   */
+  async readMessageMetadata(id: string): Promise<GoogleApiResult<GmailMessageMetadata>> {
+    const params = new URLSearchParams();
+    params.set('format', 'metadata');
+    for (const header of METADATA_HEADERS) params.append('metadataHeaders', header);
+    const result = await this.request(
+      `${GMAIL_BASE}/messages/${encodeURIComponent(id)}?${params.toString()}`,
+    );
+    if (!result.ok) return result;
+    const record = isRecord(result.value) ? result.value : {};
+    const payload = isRecord(record.payload) ? record.payload : {};
+    const headers = Array.isArray(payload.headers) ? payload.headers : [];
+    const labelIds = Array.isArray(record.labelIds) ? record.labelIds : [];
+
+    return {
+      ok: true,
+      value: {
+        id: readString(record.id, id),
+        threadId: readString(record.threadId),
+        from: headerValue(headers, 'From'),
+        to: headerValue(headers, 'To'),
+        subject: headerValue(headers, 'Subject'),
+        date: headerValue(headers, 'Date'),
+        // Blanked unconditionally rather than carried. A snippet is body-derived
+        // text; Google should not send one to a metadata-only grant, but this
+        // path's whole promise is "no body reached us", and a promise that
+        // depends on the provider keeping its own is not a promise this daemon
+        // can make. Dropping it costs nothing — no consumer of this method reads
+        // a snippet — and it makes the property hold whatever arrives.
+        snippet: '',
+        unread: labelIds.some((label) => label === 'UNREAD'),
+        provenance: MAIL_CONTENT_PROVENANCE,
+        deliveredTo: deliveryHeaderValues(headers),
+      },
+    };
+  }
+
   private async fetchMessage(id: string, format: 'metadata'): Promise<GoogleApiResult<GmailMessageSummary>>;
   private async fetchMessage(id: string, format: 'full'): Promise<GoogleApiResult<GmailMessageBody>>;
   private async fetchMessage(id: string, format: 'metadata' | 'full'): Promise<GoogleApiResult<GmailMessageBody>> {
@@ -418,6 +534,7 @@ export class GoogleApiClient {
       scopes: () => this.tokens.scopes(),
       fetchHistoryPage: (params) => this.request(`${GMAIL_BASE}/history?${params.toString()}`),
       getMessage: (id) => this.getMessage(id),
+      readMessageMetadata: (id) => this.readMessageMetadata(id),
     };
   }
 
