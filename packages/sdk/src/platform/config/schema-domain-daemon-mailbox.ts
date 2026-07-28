@@ -358,9 +358,11 @@ export const daemonMailboxConfigSettings: ConfigSettingDefinition[] = [
     key: 'surfaces.email.inbound.dedupTtlMinutes',
     type: 'number',
     default: 60,
-    description: 'How long an inbound message\'s identity is remembered to suppress a duplicate delivery from a '
-      + 'reconnect or an overlapping poll. Must exceed how long a restart cycle takes, or a crash-restart '
-      + 're-announces mail that was already handled; too long wastes memory on identities that can never recur.',
+    description: 'How long an inbound message\'s identity is remembered, inside the running daemon, so an '
+      + 'overlapping poll or a retried pass does not process it twice. This cache lives in memory only: a '
+      + 'restart destroys it rather than expiring it, so no value here prevents a duplicate across a restart — '
+      + 'the inbound record store does that, by remembering which messages were already announced. Seconds '
+      + 'would be enough for what this covers; a larger value only costs a little memory.',
     ...intRange(5, 1440),
   },
   {

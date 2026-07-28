@@ -656,7 +656,26 @@ export interface InboundMailNote {
     | 'expunge-observed'
     | 'idle-reissued'
     | 'connection-lost'
-    | 'delivery-failed';
+    | 'delivery-failed'
+    /**
+     * The message was recorded and could not be announced, for a reason no
+     * retry can clear. The pass COMPLETED — the cursor moves past the message —
+     * so nothing else in this stream marks it. Where the condition is surfaced
+     * to a person is `notice-health.ts`, which drives the status verb, the
+     * health entry and the log; this note is the per-message event underneath
+     * that.
+     */
+    | 'notice-refused'
+    /**
+     * A store write that ran AFTER the notice had already gone out, and failed.
+     *
+     * Reported rather than thrown, and the distinction is the whole point: a
+     * throw here releases the sink's claim and the message is fetched and
+     * announced AGAIN, so failing loudly on this one buzzes the owner's phone a
+     * second time for a disk error. What is given up instead is a store write,
+     * which is recoverable and which this note is the record of.
+     */
+    | 'post-notice-write-failed';
   readonly detail: string;
   readonly at: string;
 }

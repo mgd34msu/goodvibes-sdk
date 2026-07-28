@@ -102,9 +102,9 @@ const INBOUND_MAIL_OUTCOMES: readonly InboundMailOutcome[] = [
 ];
 
 /**
- * `delivered` / `suppressed` — the two outcomes that never call the transport
- * — plus every reason `deliverSurfaceNotice` refuses with, PROJECTED off
- * `SurfaceNoticeRefusal` rather than restated (§7.3).
+ * `delivered` / `suppressed` / `pending` — the three outcomes that never come
+ * back from the transport — plus every reason `deliverSurfaceNotice` refuses
+ * with, PROJECTED off `SurfaceNoticeRefusal` rather than restated (§7.3).
  *
  * It was restated, and it had already drifted: the hand-written list omitted
  * `empty-text` and `unsupported-delivery-surface`, both of which
@@ -113,8 +113,18 @@ const INBOUND_MAIL_OUTCOMES: readonly InboundMailOutcome[] = [
  * record on load and drop it — so the one case the owner most needs to see
  * ("mail arrived and could not be announced") was the case that vanished.
  * A projection cannot drift, because there is nothing to keep in sync.
+ *
+ * `pending` is the state a record is written in BEFORE the notice is attempted,
+ * and it is what makes the ordering in `intake.ts` possible: the record is the
+ * thing that can fail, so it goes first, and the notice — the one step nothing
+ * can undo — goes after it. A record sitting at `pending` means exactly what it
+ * says: the message was recorded and the notice for it has not resolved. It is
+ * reached in two real situations — the transport is refusing with
+ * `delivery-failed` and the message is being retried, or the daemon died
+ * between the record and the send — and in both of them `pending` is the true
+ * answer where `suppressed` or `delivered` would be a guess.
  */
-export type InboundNoticeStatus = 'delivered' | 'suppressed' | SurfaceNoticeRefusal;
+export type InboundNoticeStatus = 'delivered' | 'suppressed' | 'pending' | SurfaceNoticeRefusal;
 
 /**
  * Every refusal reason, as a map rather than a list.
@@ -136,6 +146,7 @@ const NOTICE_REFUSAL_STATUSES: Readonly<Record<SurfaceNoticeRefusal, true>> = {
 const INBOUND_NOTICE_STATUSES: readonly InboundNoticeStatus[] = [
   'delivered',
   'suppressed',
+  'pending',
   ...(Object.keys(NOTICE_REFUSAL_STATUSES) as readonly SurfaceNoticeRefusal[]),
 ];
 
@@ -224,6 +235,45 @@ export function describeRecordIdentity(record: InboundMailRecord): string {
   return record.source === 'gmail'
     ? `gmail:${record.resourceId}`
     : `imap:${String(record.uidValidity)}:${String(record.uid)}`;
+}
+
+/**
+ * `Pick` distributed across the union, for the same reason `DistributiveOmit`
+ * exists below: a plain `Pick` over a union collapses to the SHARED keys, so
+ * `uid`, `uidValidity` and `resourceId` would all vanish and the resulting
+ * "key" would identify nothing.
+ */
+type DistributivePick<T, K extends PropertyKey> = T extends unknown
+  ? Pick<T, Extract<K, keyof T>>
+  : never;
+
+/**
+ * One message's natural key: the mailbox it landed in, plus the identity the
+ * receiving server assigned it.
+ *
+ * Projected off `InboundMailRecord` rather than restated, so it cannot describe
+ * a field the record does not have. This is the key `record()` upserts on and
+ * `findByMessage()` looks up — deliberately NOT the record `id`, which is a
+ * fresh UUID per write and therefore identifies a WRITE rather than a MESSAGE.
+ *
+ * Never the `Message-ID` header, for the reason `sink.ts` states at length: the
+ * sender writes it, so two different messages can carry the same one, and a key
+ * a sender can choose is a key a sender can collide with.
+ */
+export type InboundMailMessageKey = DistributivePick<
+  InboundMailRecord,
+  'source' | 'account' | 'mailbox' | 'uidValidity' | 'uid' | 'resourceId'
+>;
+
+/** Whether a stored record is a record OF the message this key names. */
+function isSameMessage(record: InboundMailRecord, key: InboundMailMessageKey): boolean {
+  if (record.account !== key.account || record.mailbox !== key.mailbox) return false;
+  if (record.source === 'gmail') {
+    return key.source === 'gmail' && record.resourceId === key.resourceId;
+  }
+  return key.source === 'imap'
+    && record.uidValidity === key.uidValidity
+    && record.uid === key.uid;
 }
 
 /** `file-unreadable` is the whole-file counterpart of `malformed` — see `CursorDiscardReason`. */
@@ -481,6 +531,28 @@ export class InboundMailStore {
   }
 
   /**
+   * The record of ONE message, by the identity the receiving server assigned.
+   *
+   * This is the store's answer to "have I already dealt with this message, and
+   * what happened to it" — a question the in-memory dedup cache cannot answer
+   * across a restart, because it is a `Map` in a process that just died. The
+   * intake asks it before announcing, so a message redelivered because the
+   * cursor had not advanced when the daemon restarted is not announced to the
+   * owner a second time (§6).
+   *
+   * Bounded by the same age filter `list()` applies: a record past the
+   * retention window is not a live fact about this message, and answering with
+   * one would let a 30-day-old row suppress a notice.
+   */
+  async findByMessage(key: InboundMailMessageKey): Promise<InboundMailRecord | null> {
+    const cutoff = this.now() - this.policy.retentionMs;
+    const { records } = await this.readWithDrops();
+    return records.find(
+      (record) => isSameMessage(record, key) && Date.parse(record.receivedAt) >= cutoff,
+    ) ?? null;
+  }
+
+  /**
    * Record one inbound message. The body excerpt is redacted of card shapes and
    * then truncated to the policy cap at write time.
    *
@@ -491,6 +563,16 @@ export class InboundMailStore {
    * bounded by MAX_CARD_SPAN_CHARS so a span starting just inside the cap is
    * always seen whole; anything starting beyond the cap is dropped by the
    * truncation regardless.
+   *
+   * ONE MESSAGE, ONE RECORD. A write whose message key already exists replaces
+   * that row in place and keeps its `id`; it does not append a second row. That
+   * is not tidiness, it is what makes the intake's ordering safe to retry: the
+   * record now goes in BEFORE the notice, in a `pending` state, and every
+   * retried pass — a `delivery-failed` transport, a daemon restarted mid-pass —
+   * writes the same message again. Appending would turn each retry into another
+   * row, and `email.inbound.status` would report five arrivals for one message
+   * while the owner's phone had buzzed once. The `id` is kept so a reference
+   * taken from an earlier read still resolves through `get()`.
    */
   async record(input: InboundMailRecordInput): Promise<InboundMailRecord> {
     // The identity travels as a unit, chosen by the input's own source, so a
@@ -533,7 +615,14 @@ export class InboundMailStore {
       ).slice(0, this.policy.maxBodyExcerptChars),
       receivedAt: input.receivedAt,
     };
-    return this.mutate(async (records) => ({ next: [...records, entry], result: entry }));
+    return this.mutate(async (records) => {
+      const index = records.findIndex((existing) => isSameMessage(existing, input));
+      if (index < 0) return { next: [...records, entry], result: entry };
+      const replacement: InboundMailRecord = { ...entry, id: records[index]!.id };
+      const next = [...records];
+      next[index] = replacement;
+      return { next, result: replacement };
+    });
   }
 
   /**

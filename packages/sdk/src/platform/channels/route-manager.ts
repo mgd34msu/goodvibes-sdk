@@ -118,6 +118,23 @@ export class RouteBindingManager {
     return isFeatureGateEnabled(this.featureFlags, 'route-binding');
   }
 
+  /**
+   * Whether route binding is switched on at all.
+   *
+   * Public because a caller has to be able to tell "you have no bindings" from
+   * "bindings are turned off", and from the outside those are the same answer:
+   * `listBindings()` returns `[]` for both, `getBinding()` returns `undefined`
+   * for both, and `resolve()` returns `undefined` for both. Inbound mail is the
+   * case that made it matter — with `integrations.routeBinding` off it resolved
+   * no notice route, recorded every arriving message as `no-route-binding`, and
+   * went on reporting healthy while announcing nothing. An unrelated flag
+   * turning a capability into a recorder is only diagnosable if the flag's
+   * state is askable.
+   */
+  isRouteBindingEnabled(): boolean {
+    return this.isEnabled();
+  }
+
   private requireEnabled(operation: string): void {
     if (this.isEnabled()) return;
     throw new Error(`route binding is turned off (see the integrations.routeBinding setting); cannot ${operation}`);
