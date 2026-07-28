@@ -48,6 +48,7 @@
     "test:workers": "bun scripts/test.ts test/workers/workers.test.ts",
     "test:workers:wrangler": "bun scripts/test.ts test/workers-wrangler/wrangler.test.ts",
     "any:check": "bun scripts/no-any-types.ts",
+    "architecture:check": "bun scripts/test-tmp-architecture-check.ts",
     "api:check": "bunx api-extractor run --local && bunx api-extractor run --local --config api-extractor.embed.json && git diff --quiet -- etc/goodvibes-sdk.api.md etc/goodvibes-sdk-embed.api.md && bun run api:subpath:check",
     "bundle:check": "bun scripts/bundle-budget.ts",
     "bundle:init": "bun scripts/plugin-bundle.ts init",

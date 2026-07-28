@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { Browser, BrowserContext, Page } from 'playwright-core';
 import { BrowserEngine, UntrustedEffectError } from '../packages/sdk/src/platform/browser/browser-engine.js';
 import { BrowserSessionManager } from '../packages/sdk/src/platform/browser/browser-sessions.js';
@@ -9,6 +11,14 @@ import type {
   UntrustedContentEnvelope,
   UntrustedContentPort,
 } from '../packages/sdk/src/platform/browser/browser-types.js';
+
+// BrowserEngine.screenshot() does a real mkdirSync(screenshotDirectory, ...) —
+// no test here currently calls .screenshot(), so this is not an active leak,
+// but a fixed literal '/tmp/...' string would create that directory in the
+// real host /tmp the moment one did, bypassing the TMPDIR redirection
+// scripts/test.ts sets up for the whole suite. Routing it through tmpdir()
+// keeps it inside this run's sandboxed temp root like everything else.
+const SCREENSHOT_DIRECTORY = join(tmpdir(), 'goodvibes-outward-shots');
 
 /**
  * The composition this file guards: the engine reads a page, and that page's own
@@ -210,7 +220,7 @@ beforeEach(async () => {
       },
     }),
   });
-  engine = new BrowserEngine(sessions, { screenshotDirectory: '/tmp/goodvibes-outward-shots', untrusted });
+  engine = new BrowserEngine(sessions, { screenshotDirectory: SCREENSHOT_DIRECTORY, untrusted });
   await engine.launch({ headless: true });
 });
 
@@ -353,7 +363,7 @@ describe('outward effects after reading a page', () => {
       }),
     });
     const recorded = new BrowserEngine(sessions, {
-      screenshotDirectory: '/tmp/goodvibes-outward-shots',
+      screenshotDirectory: SCREENSHOT_DIRECTORY,
       untrusted: recording,
     });
     await recorded.launch({ headless: true });
