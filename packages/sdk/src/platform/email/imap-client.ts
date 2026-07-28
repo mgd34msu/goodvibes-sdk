@@ -90,16 +90,7 @@
  */
 
 import type { Socket } from 'node:net';
-import {
-  attachmentsFromParts,
-  decodeTextPart,
-  extractBodyStructure,
-  extractFetchSection,
-  hasFetchResponse,
-  parseBodyStructure,
-  selectBodyPart,
-  type ImapBodyPart,
-} from './imap-bodystructure.js';
+import { hasFetchResponse } from './imap-bodystructure.js';
 import {
   DEFAULT_DRAFTS_MAILBOX,
   buildDraftMessage,
@@ -109,9 +100,6 @@ import {
 } from './imap-draft.js';
 import { fetchSection, parseFetchResponses } from './imap-fetch-response.js';
 import {
-  extractAuthenticationResults,
-  extractDeliveryEvidence,
-  extractHeader,
   parseCapabilities,
   parseMailboxStatus,
   parseSearchNumbers,
@@ -119,6 +107,7 @@ import {
   formatImapDate,
   type ImapMailboxStatus,
 } from './imap-headers.js';
+import { readMessageDetail } from './imap-message-read.js';
 import { ImapSession } from './imap-session.js';
 import type {
   ImapAppendDraftInput,
@@ -127,6 +116,7 @@ import type {
   ImapEnvelope,
   ImapEnvelopeBatch,
   ImapMessageDetail,
+  ImapMessageRead,
 } from './imap-types.js';
 
 // Re-exported so the client stays the one entry point callers already import.
@@ -140,6 +130,7 @@ export type {
   ImapFetchProblem,
   ImapMessage,
   ImapMessageDetail,
+  ImapMessageRead,
 } from './imap-types.js';
 import {
   DEFAULT_MAILBOX,
@@ -196,6 +187,7 @@ function buildXOAuth2Token(username: string, bearerToken: string): string {
   const sasl = `user=${username}\x01auth=${bearerToken}\x01\x01`;
   return Buffer.from(sasl).toString('base64');
 }
+
 
 
 export class ImapClient {
@@ -548,54 +540,39 @@ export class ImapClient {
    * message is an ordinary answer to an ordinary question — the caller asked
    * about something that is gone — and reporting it as a server failure would
    * make callers treat a normal outcome as an outage.
+   *
+   * **It also returns null when the server answered and this client could not
+   * read the answer**, and those are opposite facts about the owner's mailbox.
+   * A caller that will tell a person "that message is no longer there" wants
+   * `readMessageDetail`, which is this same fetch with the distinction kept.
+   * This signature stays because it is the shape existing callers hold.
    */
   async fetchMessage(uid: number): Promise<ImapMessageDetail | null> {
-    const session = this.requireReadableMailbox();
+    const read = await this.readMessageDetail(uid);
+    return read.outcome === 'read' ? read.detail : null;
+  }
 
-    const headerLines = await session.command(`UID FETCH ${uid} BODY.PEEK[HEADER]`);
-    if (!hasFetchResponse(headerLines)) return null;
-    const rawHeaders = extractFetchSection(headerLines) ?? '';
-
-    const structureLines = await session.command(`UID FETCH ${uid} BODYSTRUCTURE`);
-    const parts = parseBodyStructure(extractBodyStructure(structureLines));
-
-    const textPart = selectBodyPart(parts, 'plain');
-    const htmlPart = selectBodyPart(parts, 'html');
-    let bodyText = textPart === null ? '' : await this.fetchTextSection(session, uid, textPart);
-    let bodyHtml = htmlPart === null ? '' : await this.fetchTextSection(session, uid, htmlPart);
-
-    if (parts.length === 0) {
-      // The server's own description of the message was unreadable. Falling
-      // back to BODY.PEEK[TEXT] is safe ONLY when the headers say the message
-      // is a single text part — on a multipart message that section is every
-      // part concatenated, including the encoded attachments this method
-      // exists not to download, so it stays unfetched and the body reads empty.
-      const contentType = extractHeader(rawHeaders, 'Content-Type').toLowerCase();
-      if (contentType.length === 0 || contentType.startsWith('text/')) {
-        const lines = await session.command(`UID FETCH ${uid} BODY.PEEK[TEXT]`);
-        const raw = (extractFetchSection(lines) ?? '').replace(/\r\n/g, '\n');
-        if (contentType.startsWith('text/html')) bodyHtml = raw;
-        else bodyText = raw;
-      }
-    }
-
-    const deliveryEvidence = extractDeliveryEvidence(rawHeaders);
-    return {
-      uid,
-      from: extractHeader(rawHeaders, 'From'),
-      subject: extractHeader(rawHeaders, 'Subject'),
-      date: extractHeader(rawHeaders, 'Date'),
-      messageId: extractHeader(rawHeaders, 'Message-ID'),
-      mailbox: this.mailbox,
-      deliveredTo: deliveryEvidence.map((entry) => entry.address),
-      deliveryEvidence,
-      // Display only — see the field docs on ImapEnvelope.
-      unverifiedToHeaderClaim: extractHeader(rawHeaders, 'To'),
-      authenticationResults: extractAuthenticationResults(rawHeaders),
-      bodyText,
-      bodyHtml,
-      attachments: attachmentsFromParts(parts),
-    };
+  /**
+   * Read one whole message by UID, saying which of the three things happened.
+   *
+   * Everything `fetchMessage` documents — read-only, UID and never a sequence
+   * number, attachments described and never downloaded — applies here
+   * unchanged. This is that method with a third answer, not a different fetch.
+   *
+   * The third answer is `unreadable`, and it is reached two ways:
+   *
+   *   - a FETCH response the response reader itself refused (`parseError`),
+   *     which describes nothing about the message it named;
+   *   - a FETCH response that arrived carrying no header section this client
+   *     could locate. That case used to fall through to `?? ''` and build a
+   *     detail with an empty From, an empty Subject and an empty Date, handed
+   *     back as a successful read of a blank message.
+   *
+   * Neither of those is the message being gone, and neither is a blank
+   * message.
+   */
+  async readMessageDetail(uid: number): Promise<ImapMessageRead> {
+    return readMessageDetail(this.requireReadableMailbox(), uid, this.mailbox);
   }
 
   /**
@@ -672,18 +649,6 @@ export class ImapClient {
    * that refuses that part — leaves that one body empty instead of failing a
    * read whose headers and attachment list already succeeded.
    */
-  private async fetchTextSection(
-    session: ImapSession,
-    uid: number,
-    part: ImapBodyPart,
-  ): Promise<string> {
-    try {
-      const lines = await session.command(`UID FETCH ${uid} BODY.PEEK[${part.section}]`);
-      return decodeTextPart(extractFetchSection(lines) ?? '', part.encoding, part.charset);
-    } catch {
-      return '';
-    }
-  }
 
   /**
    * Where a draft should go: the caller's override, else what the server says,

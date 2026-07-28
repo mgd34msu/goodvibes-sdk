@@ -32022,7 +32022,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "email.inbox.list",
         "title": "List Email Inbox",
-        "description": "Return inbox message summaries fetched live from the configured IMAP account, newest first (ordered by server-assigned UID, never by the sender-written Date header). Read-only (EXAMINE / BODY.PEEK); never marks messages read.",
+        "description": "Return inbox message summaries fetched live from the configured IMAP account, newest first (ordered by server-assigned UID, never by the sender-written Date header). Read-only (EXAMINE / BODY.PEEK); never marks messages read. When the server answered for a message and the daemon could not read the answer, the page is short and `unreadable` says so — an omitted message is not by itself evidence that it was deleted.",
         "category": "email",
         "source": "builtin",
         "access": "authenticated",
@@ -32096,6 +32096,24 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "total": {
               "type": "number"
+            },
+            "unreadable": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "uid": {
+                    "type": "number"
+                  },
+                  "detail": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "detail"
+                ],
+                "additionalProperties": false
+              }
             }
           },
           "required": [

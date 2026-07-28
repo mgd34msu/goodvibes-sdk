@@ -112,6 +112,28 @@ export interface ImapMessageDetail extends ImapEnvelope {
 }
 
 /**
+ * The whole answer to "read UID n": what came back, or why nothing did.
+ *
+ * Three outcomes, because there are three things that can happen and the old
+ * `ImapMessageDetail | null` could say only two. `null` meant "the UID is not
+ * in the mailbox" — a perfectly ordinary answer, the message was deleted — and
+ * a server that ANSWERED for the UID in terms this client could not read
+ * arrived as the same `null` and was reported to the caller as "it is no
+ * longer there". That is a false statement about the owner's mailbox: the
+ * message is sitting in it.
+ *
+ * `gone` is the message being absent. `unreadable` is the client being unable
+ * to read what the server sent, and it carries the responses that could not be
+ * read so the answer is diagnosable rather than merely negative. The same
+ * distinction `ImapEnvelopeBatch` draws for a batch fetch, drawn for a single
+ * one.
+ */
+export type ImapMessageRead =
+  | { readonly outcome: 'read'; readonly detail: ImapMessageDetail }
+  | { readonly outcome: 'gone' }
+  | { readonly outcome: 'unreadable'; readonly problems: readonly ImapFetchProblem[] };
+
+/**
  * An attachment as the server described it. METADATA ONLY: this is read out of
  * the message's BODYSTRUCTURE, and no code path in this module fetches an
  * attachment's content.

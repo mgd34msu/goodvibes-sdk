@@ -28,6 +28,10 @@
  */
 
 import { randomUUID } from 'node:crypto';
+import {
+  MAX_EXPECTATION_ID_CHARS,
+  normalizeExpectationId,
+} from './verification-expectation-id.js';
 import { normalizeDomain, normalizeEmailAddress } from './signup-address.js';
 import { describeDeliveryEvidence, type DeliveredRecipient } from './delivery-evidence.js';
 import type { AuthoritySurface } from '../security/untrusted-content.js';
@@ -246,6 +250,10 @@ export const MAX_SERVICE_DOMAIN_CHARS = 253;
 export const MAX_RECIPIENT_ADDRESS_CHARS = 320;
 export const MAX_PURPOSE_CHARS = 512;
 
+// Re-exported so this module stays the one entry point callers already import.
+export { MAX_EXPECTATION_ID_CHARS, normalizeExpectationId } from './verification-expectation-id.js';
+
+
 /**
  * Whether a service domain is one a link could actually be validated against.
  *
@@ -420,10 +428,12 @@ function clampWindow(windowMs: number | undefined): number {
  * must not be able to mint an expectation the live API would have refused.**
  * `authority` must read exactly `'evidence-only'`, `serviceDomain` and
  * `recipientAddress` must normalize to something `openExpectation` would have
- * accepted, and `expiresAt - openedAt` must not exceed
- * `MAX_VERIFICATION_WINDOW_MS` — the same ceiling `clampWindow` enforces on
- * the live path. Returns `null` for anything that fails any check. Never
- * throws, never repairs, never widens a window.
+ * accepted, `id` must be one this daemon would have minted (see
+ * `normalizeExpectationId`, the field that had no bound at all), and
+ * `expiresAt - openedAt` must not exceed `MAX_VERIFICATION_WINDOW_MS` — the
+ * same ceiling `clampWindow` enforces on the live path. Returns `null` for
+ * anything that fails any check. Never throws, never repairs, never widens a
+ * window.
  *
  * Validated against the PRESENT, not only against itself.
  *
@@ -455,8 +465,8 @@ export function validatePersistedExpectation(value: unknown, now: Date = new Dat
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const record = value as Record<string, unknown>;
 
-  const id = typeof record.id === 'string' ? record.id.trim() : '';
-  if (!id) return null;
+  const id = normalizeExpectationId(record.id);
+  if (id === null) return null;
 
   const kind = record.kind;
   if (kind !== 'signup' && kind !== 'login') return null;
@@ -573,6 +583,19 @@ export class VerificationExpectationBook {
     if (purpose.length > MAX_PURPOSE_CHARS) {
       throw new Error(`A verification expectation's purpose must be at most ${String(MAX_PURPOSE_CHARS)} characters.`);
     }
+    // The SAME id rule the load path applies, refused here rather than left to
+    // be dropped later. An id this accepted and `validatePersistedExpectation`
+    // refuses works until the daemon restarts and then vanishes without a word,
+    // because the store re-validates every entry it writes.
+    const askedForId = input.id !== undefined && input.id.trim().length > 0;
+    const suppliedId = askedForId ? normalizeExpectationId(input.id) : null;
+    if (askedForId && suppliedId === null) {
+      throw new Error(
+        `A verification expectation's id must be at most ${String(MAX_EXPECTATION_ID_CHARS)} `
+        + 'characters of letters, digits, dot, underscore, colon or hyphen. Omit it and one is '
+        + 'minted.',
+      );
+    }
 
     const now = input.now ?? new Date();
     this.sweepExpired(now);
@@ -585,7 +608,7 @@ export class VerificationExpectationBook {
     if (existing) this.open.delete(existing.id);
 
     const expectation: VerificationExpectation = {
-      id: input.id?.trim() || randomUUID(),
+      id: suppliedId ?? randomUUID(),
       serviceDomain,
       recipientAddress,
       purpose,

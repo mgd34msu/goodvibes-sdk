@@ -87,6 +87,8 @@ export type {
   EmailDraftInput,
   EmailInboxListInput,
   EmailInboxListResult,
+  EmailInboxUnreadableResponse,
+  EmailMessageRead,
   EmailServiceDeps,
   EmailSocketFactory,
   EmailSummary,
@@ -126,6 +128,7 @@ export type {
   ImapIdleSupport,
   ImapMessage,
   ImapMessageDetail,
+  ImapMessageRead,
   ImapOpenFailureReason,
 } from './imap-client.js';
 

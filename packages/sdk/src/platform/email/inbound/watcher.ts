@@ -92,7 +92,17 @@ export interface InboundMailboxWatcherStatus {
   readonly cursor: MailboxCursor | null;
   /** Non-null once the watcher has stopped for a reason only a change fixes. */
   readonly terminalFailure: InboundMailTerminalFailure | null;
-  /** Consecutive failed connection attempts. 0 while connected. */
+  /**
+   * Consecutive failed reconnect attempts. 0 once a connection has drained.
+   *
+   * Deliberately NOT "0 while connected", which is what it used to say and
+   * what the code used to do. Opening a socket is not progress on its own: a
+   * watcher that connects, fails its drain, disconnects and connects again is
+   * making no progress at all, and resetting the count on the connect turned
+   * an escalating backoff into a flat one that hammered the provider forever.
+   * The count clears when a drain completes — when the connection has done the
+   * thing it exists to do.
+   */
   readonly reconnectAttempts: number;
   /** Completed connections, for telling "flapping" from "up". */
   readonly connections: number;
@@ -154,6 +164,33 @@ function anySignal(signals: readonly AbortSignal[]): {
 const MAX_CONSECUTIVE_LOCAL_FAILURES = 10;
 
 /**
+ * How many drains may end in an unreadable FETCH answer before the mailbox is
+ * called unreadable rather than retried.
+ *
+ * The same ceiling, for the same reason, as the throw path above — and it was
+ * missing, which is the whole of the defect this constant closes. A drain that
+ * ends in `read-failed` because the server's answer could not be parsed is
+ * correct to retry: the message is still in the mailbox, the cursor has not
+ * moved past it, and one torn response on one socket really does clear on the
+ * next connection. What is not correct is retrying it forever. The unreadable
+ * response is produced by the SERVER's wire format and this CLIENT's parser,
+ * neither of which changes between attempts, so a batch that came back
+ * unreadable ten times in a row will come back unreadable the eleventh time,
+ * and the eleven-thousandth.
+ *
+ * The cost of not having this is not merely a stuck mailbox. The retry rides
+ * the reconnect backoff, and the backoff only escalates if it is not being
+ * reset — see `drainOnce`, which is now the only place that resets it. Before
+ * that, a successful TCP connect reset the schedule and every reconnect
+ * restarted from attempt zero: a flat 500 ms of sleep between logins,
+ * indefinitely, against a provider that permits fifteen concurrent
+ * connections. Ten attempts on an escalating backoff spans minutes, which is
+ * long enough for anything genuinely transient and short enough that the owner
+ * hears about anything else the same hour.
+ */
+const MAX_CONSECUTIVE_UNREADABLE_DRAINS = 10;
+
+/**
  * The "nothing was thrown" marker.
  *
  * A sentinel rather than `null` or `undefined`, because both are values a
@@ -184,6 +221,8 @@ export class InboundMailboxWatcher {
   private pendingRecheck = false;
   /** Unexpected throws in a row, with no completed drain in between. */
   private localFailures = 0;
+  /** Drains ending in an unreadable answer in a row, with none completed in between. */
+  private unreadableDrains = 0;
 
   constructor(deps: InboundMailboxWatcherDeps) {
     this.deps = deps;
@@ -418,7 +457,13 @@ export class InboundMailboxWatcher {
     const idle = await resolveIdleSupport(connection.reader);
     const useIdle = this.settings.mode !== 'poll' && idle.supported;
     this.tracker.record(verdictForOpenConnection({ mode: this.settings.mode, idle }));
-    this.connectBackoff.reset();
+    // `connectBackoff` is deliberately NOT reset here. A connection that opens
+    // and then cannot drain has demonstrated nothing about the condition the
+    // backoff exists to space out, and resetting on the open turned every
+    // reconnect into attempt zero — a flat half-second between logins for as
+    // long as the drain kept failing. `drainOnce` resets it, on the completed
+    // drain. `authRetried` does clear here, because a server that accepted
+    // this sign-in HAS disproved the thing that flag remembers.
     this.authRetried = false;
     this.mode = useIdle ? 'idle' : 'polling';
 
@@ -489,6 +534,11 @@ export class InboundMailboxWatcher {
       signal: this.shutdown.signal,
     });
     this.cursor = result.cursor;
+    // Every drain this loop completed counts, not only the one that ended it.
+    // A poll loop that ran for hours and then hit one bad fetch has proved the
+    // connection works; without this the consecutive counters would carry
+    // across those hours as though nothing in between had succeeded.
+    if (result.completedDrains > 0) this.noteDrainCompleted();
     if (result.outcome === 'stopped') return;
     await this.handleDrainFailure({
       outcome: result.outcome === 'read-failed' ? 'read-failed' : 'delivery-failed',
@@ -498,6 +548,7 @@ export class InboundMailboxWatcher {
       cursor: result.cursor,
       error: result.error,
       phase: result.phase,
+      unreadableFetch: result.unreadableFetch,
     });
   }
 
@@ -522,15 +573,30 @@ export class InboundMailboxWatcher {
       signal: this.shutdown.signal,
     });
     this.cursor = report.cursor;
-    if (report.outcome === 'complete') {
-      this.deliveryBackoff.reset();
-      // A completed drain wrote the cursor, so whatever was refusing writes has
-      // stopped refusing. The escalation counts CONSECUTIVE failures for that
-      // reason: one bad minute a week apart must never add up to a permanent
-      // verdict.
-      this.localFailures = 0;
-    }
+    if (report.outcome === 'complete') this.noteDrainCompleted();
     return report;
+  }
+
+  /**
+   * A drain finished the work it was for. Everything that counts consecutive
+   * failures clears here, and ONLY here.
+   *
+   * One place rather than three, because these three counters answer the same
+   * question — "has anything actually worked lately?" — and three copies of
+   * that answer is three chances for one of them to keep counting through a
+   * mailbox that has been healthy for a week. The escalations they feed are
+   * about CONSECUTIVE failures for exactly this reason: one bad minute a week
+   * apart must never add up to a permanent verdict.
+   *
+   * `connectBackoff` belongs in this set and used to sit on the connection
+   * instead. A completed drain is the only evidence that a connection is good
+   * for the thing connections are for.
+   */
+  private noteDrainCompleted(): void {
+    this.deliveryBackoff.reset();
+    this.connectBackoff.reset();
+    this.localFailures = 0;
+    this.unreadableDrains = 0;
   }
 
   private async drain(
@@ -559,6 +625,10 @@ export class InboundMailboxWatcher {
       await this.sleep(this.deliveryBackoff.next());
       return;
     }
+    if (report.outcome === 'read-failed' && report.unreadableFetch) {
+      await this.handleUnreadableDrain(report.error);
+      return;
+    }
     const { verdict, terminal, notice } = classifyReadFailure(
       report.error,
       report.phase ?? 'fetch',
@@ -569,6 +639,39 @@ export class InboundMailboxWatcher {
     }
     this.tracker.record(verdict);
     await this.pauseBeforeReconnect(verdict.reason);
+  }
+
+  /**
+   * A drain that stopped because the server's answer could not be read.
+   *
+   * Retried, and bounded. Retrying is right: the cursor is below the message,
+   * the message is still in the mailbox, and one torn response on one socket
+   * does clear. Bounding it is right for the opposite reason: the response
+   * shape is the server's and the parser is ours, and neither changes between
+   * attempts, so a batch that will not read has no next time in which to read.
+   *
+   * Between the two lies the failure this method exists to make impossible —
+   * a mailbox retrying an unreadable batch forever, delivering nothing,
+   * reporting `degraded`, and opening a connection every few hundred
+   * milliseconds against a provider that counts them. The owner is told once,
+   * with what could not be read, and the watcher stops rather than becoming
+   * the outage.
+   */
+  private async handleUnreadableDrain(error: unknown): Promise<void> {
+    this.unreadableDrains += 1;
+    const text = errorText(error);
+    if (this.unreadableDrains >= MAX_CONSECUTIVE_UNREADABLE_DRAINS) {
+      this.reportTerminal(capabilityVerdict('fetch-unreadable',
+        `${text} This has now happened ${String(this.unreadableDrains)} times in a row with no `
+        + 'drain completing in between, so the answer is not going to become readable by asking '
+        + 'again.'), null);
+      return;
+    }
+    this.tracker.record(capabilityVerdict('reconnecting',
+      `${text} Attempt ${String(this.unreadableDrains)} of `
+      + `${String(MAX_CONSECUTIVE_UNREADABLE_DRAINS)} before the mailbox is reported as one `
+      + 'this daemon cannot read.'));
+    await this.pauseBeforeReconnect('reconnecting');
   }
 
   // -------------------------------------------------------------------------
