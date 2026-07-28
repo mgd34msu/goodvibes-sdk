@@ -257,17 +257,9 @@
       "types": "./dist/platform/config/index.d.ts",
       "import": "./dist/platform/config/index.js"
     },
-    "./platform/config/api-keys": {
-      "types": "./dist/platform/config/api-keys.d.ts",
-      "import": "./dist/platform/config/api-keys.js"
-    },
     "./platform/control-plane": {
       "types": "./dist/platform/control-plane/index.d.ts",
       "import": "./dist/platform/control-plane/index.js"
-    },
-    "./platform/control-plane/method-catalog-email": {
-      "types": "./dist/platform/control-plane/method-catalog-email.d.ts",
-      "import": "./dist/platform/control-plane/method-catalog-email.js"
     },
     "./platform/core": {
       "types": "./dist/platform/core/index.d.ts",
@@ -412,10 +404,6 @@
     "./platform/runtime": {
       "types": "./dist/platform/runtime/index.d.ts",
       "import": "./dist/platform/runtime/index.js"
-    },
-    "./platform/runtime/bootstrap-services": {
-      "types": "./dist/platform/runtime/bootstrap-services.d.ts",
-      "import": "./dist/platform/runtime/bootstrap-services.js"
     },
     "./platform/runtime/disposal": {
       "types": "./dist/platform/runtime/disposal.d.ts",

@@ -12273,16 +12273,6 @@
       "kind": "function"
     }
   ],
-  "./platform/config/api-keys": [
-    {
-      "name": "getConfiguredApiKeys",
-      "kind": "function"
-    },
-    {
-      "name": "resolveApiKeys",
-      "kind": "function"
-    }
-  ],
   "./platform/control-plane": [
     {
       "name": "ARTIFACT_ACQUISITION_MODE_SCHEMA",
@@ -12881,12 +12871,6 @@
     {
       "name": "sseIdleTimeoutSeconds",
       "kind": "function"
-    }
-  ],
-  "./platform/control-plane/method-catalog-email": [
-    {
-      "name": "builtinGatewayEmailMethodDescriptors",
-      "kind": "const"
     }
   ],
   "./platform/core": [
@@ -24403,64 +24387,6 @@
     {
       "name": "ui",
       "kind": "other"
-    }
-  ],
-  "./platform/runtime/bootstrap-services": [
-    {
-      "name": "DETACHED_DAEMON_INSTALL_HINT",
-      "kind": "const"
-    },
-    {
-      "name": "DetachedDaemonChild",
-      "kind": "interface",
-      "required": [
-        "unref"
-      ]
-    },
-    {
-      "name": "DetachedDaemonSpawnOptions",
-      "kind": "interface",
-      "required": [
-        "detached",
-        "stdio"
-      ]
-    },
-    {
-      "name": "HostServiceMode",
-      "kind": "type"
-    },
-    {
-      "name": "HostServiceStatus",
-      "kind": "interface",
-      "required": [
-        "baseUrl",
-        "host",
-        "mode",
-        "port"
-      ]
-    },
-    {
-      "name": "HostServicesConfig",
-      "kind": "interface",
-      "required": [
-        "get"
-      ]
-    },
-    {
-      "name": "HostServicesHandle",
-      "kind": "interface",
-      "required": [
-        "daemonServer",
-        "daemonStatus",
-        "httpListener",
-        "httpListenerStatus",
-        "listRecentControlPlaneEvents",
-        "stop"
-      ]
-    },
-    {
-      "name": "startHostServices",
-      "kind": "function"
     }
   ],
   "./platform/runtime/disposal": [
