@@ -80,6 +80,24 @@
  *      `unavailable: 'metadata-scope-only'`, a third reason distinct from
  *      both `no-gmail-scope` and `resync-required` and from an `ok: true`
  *      success.
+ *
+ *   4. **"Gone" and "we could not read it" are separated, and the delta stops
+ *      for the second.** `history.list` names ids and `messages.get` fetches
+ *      them; the two are separate calls and anything can happen in between. A
+ *      message DELETED in that gap is genuinely absent and is dropped. A
+ *      message we merely failed to fetch — a 429, a 500, a refused token, a
+ *      socket that never answered — is still sitting in the owner's mailbox,
+ *      and both used to arrive here as the same `!fetched.ok` and be dropped
+ *      alike.
+ *
+ *      That collapse is the ambiguity `ImapEnvelopeBatch.unreadable` exists to
+ *      remove on the IMAP side, and it does more damage here, because Gmail's
+ *      history is a FORWARD-ONLY log. A caller that took the resulting empty
+ *      success and advanced its `startHistoryId` past a rate-limited fetch
+ *      could never ask for those records again: the message is not delayed, it
+ *      is unreachable, and nothing anywhere reports a fault. So the delta
+ *      carries `unreadable`, on the same contract and for the same reason, and
+ *      a caller cannot persist the new position without stepping over it.
  */
 
 import type { GoogleApiFailure, GoogleApiResult, GmailMessageBody } from './api-client.js';
@@ -109,6 +127,25 @@ export const GMAIL_BODY_SCOPES: readonly string[] = [
   'https://www.googleapis.com/auth/gmail.readonly',
 ];
 
+/**
+ * The one `messages.get` status that means the message itself is not there.
+ *
+ * Named as a constant because the CLASSIFICATION is the load-bearing part, not
+ * the number: this is the sole status on which a message is dropped from a
+ * delta and the delta is allowed to move past it. Everything else — every
+ * status, and the `null` a transport fault carries — is treated as "we failed
+ * to read it" and holds the delta.
+ *
+ * The list is deliberately narrow rather than exhaustive, and it is narrow in
+ * the safe direction. Widening it is how mail is lost: each status added here
+ * is a new way for a message still sitting in the owner's mailbox to be
+ * stepped over and never asked for again, because Gmail's history is
+ * forward-only. Leaving a genuinely-permanent status OUT costs a delta that
+ * retries and a verdict that stops saying healthy — visible, bounded, and
+ * recoverable. So an unrecognised status is retried, never dropped.
+ */
+const GMAIL_MESSAGE_GONE_STATUS = 404;
+
 /** `historyTypes[]` values, singular form, exactly as Gmail's API expects them. */
 export type GmailHistoryType = 'messageAdded' | 'messageDeleted' | 'labelAdded' | 'labelRemoved';
 
@@ -122,11 +159,63 @@ export interface HistoryDeltaOptions {
   readonly maxResultsPerPage?: number;
 }
 
+/**
+ * A message this delta named and could not read.
+ *
+ * The Gmail counterpart of `ImapFetchProblem`, and deliberately the same idea
+ * rather than a second one: a fetch that failed is not a message that is gone,
+ * on either source. Carries the id the delta named, the status Google answered
+ * with, and Google's own plain-language description. Never message content —
+ * there is none, that is the whole point.
+ */
+export interface GmailFetchProblem {
+  /** The Gmail message id `history.list` named and `messages.get` would not return. */
+  readonly id: string;
+  /** What Google answered, or null for a transport fault that never got a status. */
+  readonly status: number | null;
+  /** Plain language, safe to log and safe to show an owner. */
+  readonly detail: string;
+  /**
+   * Google's own remedial step for this failure, carried rather than rewritten.
+   *
+   * Carried because a caller turning this into an owner-facing verdict needs
+   * it and has nowhere else to get it. On a 401/403 the remedy IS the message
+   * — "re-authorize" — and a verdict that reached the owner saying his mail
+   * had stopped without saying what to do about it would be this module's own
+   * failure mode one layer further out.
+   */
+  readonly fix: string;
+}
+
 export interface GmailHistoryDelta {
-  /** The new high-water mark. Persist this as the next call's `startHistoryId`. */
+  /**
+   * The new high-water mark.
+   *
+   * Persist this as the next call's `startHistoryId` **only when `unreadable`
+   * is empty** — see the field below, which exists to make that condition
+   * something a caller has to look at rather than something it can forget.
+   */
   readonly historyId: string;
   /** Full bodies of messages added since `startHistoryId`, deduped, in `messagesAdded` order. */
   readonly messages: readonly GmailMessageBody[];
+  /**
+   * Messages this delta named and could not fetch. Load-bearing, not diagnostic.
+   *
+   * The same contract `ImapEnvelopeBatch.unreadable` carries, for the same
+   * reason and with the same consequence: while this is non-empty, an id
+   * missing from `messages` is NOT evidence the message is gone, and
+   * `historyId` is NOT a position that has been reached. Gmail's history is a
+   * forward-only log — records at or below a `startHistoryId` are never
+   * returned again — so a caller that advanced past an unread message would
+   * not merely delay it, it would make it permanently unreachable.
+   *
+   * There is no partial advance available here. Unlike a UID, a `historyId` is
+   * one position for the WHOLE delta, so there is no "just below the one that
+   * failed" to move to. The whole delta is therefore unresolved: the caller
+   * keeps its old position and asks again, and dedup absorbs the re-delivery
+   * of whatever did come back this time.
+   */
+  readonly unreadable: readonly GmailFetchProblem[];
 }
 
 export type HistoryUnavailableReason = 'no-gmail-scope' | 'metadata-scope-only' | 'resync-required';
@@ -237,9 +326,14 @@ async function collectAddedMessageIds(
  * Fetch what is new since `options.startHistoryId`, gated on the token's
  * actual granted scopes.
  *
- * Never returns an empty success in place of "not allowed to look" — see the
- * module header. Callers should persist the returned `historyId` as the next
- * call's `startHistoryId` only when `ok` is `true`.
+ * Never returns an empty success in place of "not allowed to look", and never
+ * in place of "we could not read what was there" — see the module header.
+ *
+ * Callers persist the returned `historyId` as the next call's
+ * `startHistoryId` only when `ok` is `true` AND `value.unreadable` is empty.
+ * Both conditions, not just the first: an `ok` delta whose `unreadable` is
+ * non-empty is a delta that has not been fully read, and its `historyId` names
+ * a position nothing has reached.
  */
 export async function collectHistoryDelta(
   deps: HistoryDeltaDeps,
@@ -278,13 +372,25 @@ export async function collectHistoryDelta(
   if (!collected.ok) return collected;
 
   const messages: GmailMessageBody[] = [];
+  const unreadable: GmailFetchProblem[] = [];
   for (const id of collected.ids) {
     const fetched = await deps.getMessage(id);
-    // A message that vanished between history.list and getMessage (deleted in
-    // the interim) is dropped from this delta rather than failing it — it no
-    // longer exists to report on. Everything still present is returned.
-    if (fetched.ok) messages.push(fetched.value);
+    if (fetched.ok) {
+      messages.push(fetched.value);
+      continue;
+    }
+    if (fetched.status === GMAIL_MESSAGE_GONE_STATUS) {
+      // The one failure that really does mean "there is nothing here to
+      // report on": the message was deleted in the gap between history.list
+      // naming it and getMessage being asked for it. Dropped from the delta,
+      // and the delta may advance past it.
+      continue;
+    }
+    // Everything else — a rate limit, a server fault, a refused credential, a
+    // socket that never answered — is a message we FAILED TO READ, which is a
+    // different fact from a message that is gone. It holds the delta.
+    unreadable.push({ id, status: fetched.status, detail: fetched.problem, fix: fetched.fix });
   }
 
-  return { ok: true, value: { historyId: collected.historyId, messages } };
+  return { ok: true, value: { historyId: collected.historyId, messages, unreadable } };
 }

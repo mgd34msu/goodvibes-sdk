@@ -15992,7 +15992,8 @@
       "kind": "interface",
       "required": [
         "historyId",
-        "messages"
+        "messages",
+        "unreadable"
       ]
     },
     {

@@ -170,6 +170,20 @@ export class RecordingCursorStore implements MailboxCursorPort {
   private readonly inner: MailboxCursorStore;
   /** Every `advance`, in call order — the audit for "only after work". */
   readonly advances: number[] = [];
+  /**
+   * Every `resolve`, in call order — the audit for WHERE a cursor was
+   * established, as distinct from where it later ended up.
+   *
+   * The two are easy to confuse, and the difference is the whole of the
+   * backfill defect: a watcher that establishes at UID 0 and then replays the
+   * mailbox ends with the same stored `lastSeenUid` as one that established at
+   * the top and delivered nothing. The end state cannot tell them apart. The
+   * argument passed in here can.
+   */
+  readonly resolves: Array<{
+    readonly currentHighestUid: number;
+    readonly currentMessageCount: number;
+  }> = [];
 
   constructor(inner: MailboxCursorStore) {
     this.inner = inner;
@@ -186,6 +200,10 @@ export class RecordingCursorStore implements MailboxCursorPort {
     readonly currentHighestUid: number;
     readonly currentMessageCount: number;
   }): Promise<CursorResolution> {
+    this.resolves.push({
+      currentHighestUid: input.currentHighestUid,
+      currentMessageCount: input.currentMessageCount,
+    });
     return this.inner.resolve(input);
   }
 

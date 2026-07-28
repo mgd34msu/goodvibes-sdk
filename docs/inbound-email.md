@@ -501,6 +501,52 @@ depends on, so after a restart the watcher would either silently skip messages
 or silently redeliver them. Both are invisible, and both are worse than
 refusing. It refuses.
 
+**A missing `UIDNEXT` is derived, not assumed — and never assumed to be zero.**
+`[UIDNEXT n]` on `EXAMINE` is a SHOULD in RFC 3501, not a MUST, and servers omit
+it. The high-water mark was computed as `(status.uidNext ?? 1) - 1`, so an
+absent `UIDNEXT` established the cursor at UID 0 — below every message that
+exists. The first drain then searched `UID 1:*`, matched the whole mailbox, and
+delivered every message in it to the owner's notification channel as new mail,
+while the note it had just emitted said the opposite in three clauses at once
+("Listening from UID 0 onwards", "*n* message(s) already in the mailbox were not
+read", "starts listening now rather than backfilling"). The `uid-validity-changed`
+arm was worse still: "A rebuilt server index is not a reason to re-announce a
+year of old mail", followed by re-announcing a year of old mail.
+
+This is **not** resolved the way `uidvalidity-missing` is, and the difference is
+the point. Nothing can supply a missing `UIDVALIDITY`, so refusing is the only
+option there. `UIDNEXT` is one core `UID SEARCH` away: the watcher asks
+`UID SEARCH UID 1:*` — the same question put directly, through the same
+`searchAboveCursor` the drain already uses — and takes the highest answer as the
+mark and the count of answers as the skipped total. (The count comes from the
+search rather than `EXISTS` because a server terse enough to omit `UIDNEXT` may
+omit `EXISTS` too, and `exists ?? 0` would then make the note claim nothing was
+skipped while skipping several.) Refusing instead would take inbound mail away
+from every conforming-but-terse server over a field the RFC never required.
+
+Two things are refused rather than derived. A search that **fails** is
+classified exactly as the drain classifies one — a refused `SEARCH` is a
+reconnect, never a capability verdict (§13.1) — so a hiccup on the first
+connection cannot permanently disable a mailbox. A search that **succeeds while
+naming nothing**, on a mailbox whose own `EXISTS` says it holds messages, is a
+contradiction with no trustworthy mark behind it: that is
+`mailbox-position-unknown`, an `insufficient` reason of its own rather than
+`uidvalidity-missing`, which would send the owner to check a field that was
+present and correct. And whichever path runs, **the cursor note describes what
+actually happened**, including that the mark was reached by asking. A note that
+contradicts the behaviour is worse than no note.
+
+The question lives in `mailbox-position.ts`, on the seam `poll-loop.ts` already
+sits on: that file knows how to ask the server what arrived and returns a
+report, and the watcher decides what a failed drain *means* for the capability
+verdict. `resolveMailboxStartPosition` is the same split applied to the position
+question — it knows the protocol and not the verdict vocabulary, and returns a
+discriminated `MailboxStartPosition` so that "we could not establish a position"
+cannot be read as a position. (The split was forced by the 800-line cap, which
+`watcher.ts` sat exactly on. That is the cap doing its job rather than an
+inconvenience: the file had accumulated a second responsibility, and the
+grandfather list is for violations that predate the gate, not for new growth.)
+
 **"The watcher does not run" means the connection is closed, not merely that
 reading stopped.** This distinction cost a real defect, and is written down
 because it reads as pedantry right up until it bites.
@@ -663,6 +709,52 @@ exactly what a **`UIDVALIDITY` change** means for IMAP: the stored position is
 meaningless, so discard it, re-establish at the current high-water mark,
 disclose it, and **do not replay the mailbox**. One rule, two sources, no second
 implementation of "what to do when we lost our place".
+
+#### A message that was not read is never stepped over
+
+`history.list` names message ids and `messages.get` fetches them — two calls,
+with a gap in between. Every failed fetch used to be dropped alike:
+
+```ts
+for (const id of collected.ids) {
+  const fetched = await deps.getMessage(id);
+  if (fetched.ok) messages.push(fetched.value);   // every failure read as "deleted"
+}
+```
+
+The comment above that line named one cause (a message deleted in the interim)
+while the code applied it to all of them, and a `GoogleApiResult` failure covers
+429, 500/503, 401/403 and transport faults. So a rate-limited fetch produced
+`ok: true` with zero messages, the source advanced its cursor to the delta's
+`historyId`, and — because **Gmail's history is a forward-only log** — those
+records could never be requested again. The verification email was never read,
+never announced, never recorded, and the verdict said `healthy`.
+
+That is the identical ambiguity `ImapEnvelopeBatch.unreadable` exists to remove
+on the IMAP side, and it does more damage here: on IMAP the message stays in the
+mailbox and a later search finds it, whereas a `historyId` stepped over is gone
+for good. So it is fixed with the same shape rather than a second one.
+`GmailHistoryDelta` carries `unreadable: readonly GmailFetchProblem[]`, and the
+classification is deliberately narrow in the safe direction:
+
+| What happened | Answer | Cursor |
+|---|---|---|
+| Fetched | in `messages` | may advance |
+| **404** — deleted between `history.list` and `messages.get` | dropped | may advance |
+| Anything else — 429, 5xx, 401/403, transport fault | in `unreadable` | **must not advance** |
+
+Only 404 drops. Every status that is not recognised is retried rather than
+dropped, because each status added to the drop list is a new way for mail still
+sitting in the owner's mailbox to become unreachable, while leaving a genuinely
+permanent status out costs only a delta that retries under a verdict that has
+stopped saying healthy — visible, bounded, recoverable.
+
+`ok: true` is kept rather than failing the whole delta, and that is deliberate
+too: a partly-readable delta hands on what it read. Withholding a verification
+email we *did* fetch because a sibling message was rate-limited would be the
+same silence by a different route. The position simply does not move, the whole
+delta is fetched again, and dedup suppresses the duplicates — the same trade
+already made for a refused delivery.
 
 #### `users.watch` + Pub/Sub remains rejected as primary
 
@@ -1829,6 +1921,21 @@ overturn any of them.
     same read-time-not-arrival-time rule as mail, and the calendar agenda sort
     is deliberately NOT given the mail fix.
     `docs/decisions/2026-07-27-calendar-start-sort-is-not-the-defect.md`.
+20. **A message that was not read is never stepped over, on either source.**
+    §3.4d. "The message is gone" and "we could not read it" are separated at the
+    point they are produced, and only the first lets a cursor move. On IMAP that
+    is `ImapEnvelopeBatch.unreadable`; on Gmail it is
+    `GmailHistoryDelta.unreadable`, one shape rather than two, because a
+    forward-only `historyId` stepped over is unreachable rather than merely
+    delayed. Only a 404 counts as gone; every unrecognised status is retried.
+21. **A missing `UIDNEXT` is derived from `UID SEARCH`, never assumed to be
+    zero.** §3.4b. It is a SHOULD, not a MUST, and servers omit it; establishing
+    at 0 replays the entire mailbox as new mail. Deliberately NOT ruling 15's
+    answer — a missing `UIDVALIDITY` is derivable from nothing, whereas this is
+    one core command away. Refusal is reserved for the case where asking also
+    fails to answer: `mailbox-position-unknown`, its own reason rather than
+    `uidvalidity-missing`. The cursor note states which way the mark was
+    reached; **a note that contradicts the behaviour is worse than no note.**
 
 ### 13.1 Protocol quirks that cost real defects, recorded so they are not relearned
 
@@ -1836,6 +1943,12 @@ overturn any of them.
   RFC 3501 ranges are unordered pairs, so the range inverts rather than being
   empty. Trusting the result verbatim redelivers the newest message on every
   pass, forever. Results are filtered above the cursor, once, in one place.
+- **`[UIDNEXT n]` on `EXAMINE` is a SHOULD, not a MUST.** `parseMailboxStatus`
+  types it `number | null` for that reason. Read through a `?? 1` it becomes the
+  mark 0, which is below every message that exists, and the next `UID SEARCH`
+  matches the whole mailbox — a full replay to the owner's notification channel,
+  under a note claiming nothing was backfilled. Derived from `UID SEARCH UID
+  1:*` instead; see §3.4b.
 - **A refused `FETCH` is `insufficient`; a refused `SEARCH` is only a
   reconnect.** Search refusals are routinely transient, and stopping for an hour
   over one turns a hiccup into silence.
