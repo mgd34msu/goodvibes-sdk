@@ -86,6 +86,101 @@ const EMAIL_EXPECTATION_SCHEMA = objectSchema({
   'openedAt', 'expiresAt', 'authority',
 ]);
 
+/**
+ * One persisted cursor, disclosed.
+ *
+ * `position` is a STRING on both sources deliberately. A Gmail `historyId` is
+ * a decimal uint64 that loses precision the moment it becomes a JS number, and
+ * an IMAP position is two numbers rather than one — a single numeric field
+ * could only be wrong for one of them.
+ */
+const EMAIL_INBOUND_CURSOR_SCHEMA = objectSchema({
+  account: STRING_SCHEMA,
+  mailbox: STRING_SCHEMA,
+  source: STRING_SCHEMA,
+  position: STRING_SCHEMA,
+  updatedAt: STRING_SCHEMA,
+  ageMs: NUMBER_SCHEMA,
+}, ['account', 'mailbox', 'source', 'position', 'updatedAt', 'ageMs']);
+
+/** An open expectation as the inbound status discloses it (§9.2). */
+const EMAIL_INBOUND_EXPECTATION_SCHEMA = objectSchema({
+  id: STRING_SCHEMA,
+  serviceDomain: STRING_SCHEMA,
+  recipientAddress: STRING_SCHEMA,
+  purpose: STRING_SCHEMA,
+  openedAt: STRING_SCHEMA,
+  expiresAt: STRING_SCHEMA,
+  remainingMs: NUMBER_SCHEMA,
+}, ['id', 'serviceDomain', 'recipientAddress', 'purpose', 'openedAt', 'expiresAt', 'remainingMs']);
+
+/**
+ * The source in force, with its latency stated as a SENTENCE.
+ *
+ * Not as a millisecond number: the whole reason `SourceLatency` is on the
+ * source interface is that "real-time" must never be claimed for a poll, and a
+ * consumer handed a raw interval is a consumer that will write that sentence
+ * itself, wrongly. `kind` is optional because nothing is in force before a
+ * source is selected, and a refusal has no source to name.
+ */
+const EMAIL_INBOUND_SOURCE_SCHEMA = objectSchema({
+  kind: STRING_SCHEMA,
+  basis: STRING_SCHEMA,
+  detail: STRING_SCHEMA,
+  latency: STRING_SCHEMA,
+}, ['basis', 'detail', 'latency']);
+
+/** The runtime capability verdict (§3.4b). Absent before anything is probed. */
+const EMAIL_INBOUND_CAPABILITY_SCHEMA = objectSchema({
+  state: STRING_SCHEMA,
+  reason: STRING_SCHEMA,
+  detail: STRING_SCHEMA,
+  fix: STRING_SCHEMA,
+}, ['state', 'reason', 'detail', 'fix']);
+
+/** What each store is holding and what bounds it — the §9 disclosure. */
+const EMAIL_INBOUND_RETENTION_SCHEMA = objectSchema({
+  cursors: objectSchema({
+    kept: NUMBER_SCHEMA,
+    maxCursors: NUMBER_SCHEMA,
+  }, ['kept', 'maxCursors']),
+  records: objectSchema({
+    kept: NUMBER_SCHEMA,
+    retentionDays: NUMBER_SCHEMA,
+    maxRecords: NUMBER_SCHEMA,
+    maxBodyExcerptChars: NUMBER_SCHEMA,
+  }, ['kept', 'retentionDays', 'maxRecords', 'maxBodyExcerptChars']),
+  expectations: objectSchema({
+    open: NUMBER_SCHEMA,
+    maxOpen: NUMBER_SCHEMA,
+  }, ['open', 'maxOpen']),
+  lastSweep: objectSchema({
+    sweptAt: NUMBER_SCHEMA,
+    trigger: STRING_SCHEMA,
+    summary: STRING_SCHEMA,
+  }, ['sweptAt', 'trigger', 'summary']),
+}, ['cursors', 'records', 'expectations']);
+
+/**
+ * Email's health entry — shaped like a channel's, and deliberately NOT one.
+ *
+ * `state`, `enabled`, `id` and `label` line up with `ChannelStatusSnapshot` so
+ * a health view renders it in the same list; `surface` is absent because email
+ * is not a `ChannelSurface`, and widening that union would hand inbound mail
+ * the accounts, delivery and ingress-authorization capabilities §2.1 removes.
+ */
+const EMAIL_INBOUND_HEALTH_SCHEMA = objectSchema({
+  kind: STRING_SCHEMA,
+  id: STRING_SCHEMA,
+  label: STRING_SCHEMA,
+  state: STRING_SCHEMA,
+  enabled: BOOLEAN_SCHEMA,
+  account: STRING_SCHEMA,
+  mailbox: STRING_SCHEMA,
+  mode: STRING_SCHEMA,
+  reason: STRING_SCHEMA,
+}, ['kind', 'id', 'label', 'state', 'enabled', 'account', 'mailbox', 'mode', 'reason']);
+
 export const builtinGatewayEmailMethodDescriptors: readonly GatewayMethodDescriptor[] = [
   methodDescriptor({
     id: 'email.inbox.list',
@@ -233,5 +328,46 @@ export const builtinGatewayEmailMethodDescriptors: readonly GatewayMethodDescrip
       cancelled: BOOLEAN_SCHEMA,
       expectation: EMAIL_EXPECTATION_SCHEMA,
     }, ['cancelled']),
+  }),
+  /**
+   * The inbound watcher's disclosure verb (§9).
+   *
+   * Anything persisted across restarts must say what it holds, and three
+   * things outlive a restart here: the cursors, the inbound records, and the
+   * expectations. This verb is where the owner reads all three, plus what the
+   * watcher is actually doing right now — which source is in force and what
+   * that source COSTS in latency, so "real-time" is never claimed for a poll.
+   *
+   * `transport: ['ws']` for the same reason the expectation verbs carry it:
+   * there is no `/api/email/inbound/status` route, and a descriptor
+   * advertising a transport it cannot be reached on is what the
+   * transport-honesty gate exists to fail.
+   */
+  methodDescriptor({
+    id: 'email.inbound.status',
+    transport: ['ws'],
+    title: 'Inbound Mail Status',
+    description:
+      'Disclose the inbound-mail watcher: whether it is running and why, which source is reading the mailbox and the delay that source actually costs, the current capability verdict, every persisted cursor with its position and age, every open verification expectation with its remaining window, and what each store retains before it is reaped. Read-only.',
+    category: 'email',
+    scopes: ['read:email'],
+    inputSchema: objectSchema({}),
+    outputSchema: objectSchema({
+      enabled: BOOLEAN_SCHEMA,
+      running: BOOLEAN_SCHEMA,
+      mode: STRING_SCHEMA,
+      reason: STRING_SCHEMA,
+      account: STRING_SCHEMA,
+      mailbox: STRING_SCHEMA,
+      source: EMAIL_INBOUND_SOURCE_SCHEMA,
+      capability: EMAIL_INBOUND_CAPABILITY_SCHEMA,
+      cursors: arraySchema(EMAIL_INBOUND_CURSOR_SCHEMA),
+      expectations: arraySchema(EMAIL_INBOUND_EXPECTATION_SCHEMA),
+      retention: EMAIL_INBOUND_RETENTION_SCHEMA,
+      health: EMAIL_INBOUND_HEALTH_SCHEMA,
+    }, [
+      'enabled', 'running', 'mode', 'reason', 'account', 'mailbox',
+      'source', 'cursors', 'expectations', 'retention', 'health',
+    ]),
   }),
 ];

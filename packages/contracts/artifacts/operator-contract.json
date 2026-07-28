@@ -31709,6 +31709,315 @@
         "invokable": true
       },
       {
+        "id": "email.inbound.status",
+        "title": "Inbound Mail Status",
+        "description": "Disclose the inbound-mail watcher: whether it is running and why, which source is reading the mailbox and the delay that source actually costs, the current capability verdict, every persisted cursor with its position and age, every open verification expectation with its remaining window, and what each store retains before it is reaped. Read-only.",
+        "category": "email",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "read:email"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "running": {
+              "type": "boolean"
+            },
+            "mode": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "account": {
+              "type": "string"
+            },
+            "mailbox": {
+              "type": "string"
+            },
+            "source": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string"
+                },
+                "basis": {
+                  "type": "string"
+                },
+                "detail": {
+                  "type": "string"
+                },
+                "latency": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "basis",
+                "detail",
+                "latency"
+              ],
+              "additionalProperties": false
+            },
+            "capability": {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                },
+                "detail": {
+                  "type": "string"
+                },
+                "fix": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "state",
+                "reason",
+                "detail",
+                "fix"
+              ],
+              "additionalProperties": false
+            },
+            "cursors": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "account": {
+                    "type": "string"
+                  },
+                  "mailbox": {
+                    "type": "string"
+                  },
+                  "source": {
+                    "type": "string"
+                  },
+                  "position": {
+                    "type": "string"
+                  },
+                  "updatedAt": {
+                    "type": "string"
+                  },
+                  "ageMs": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "account",
+                  "mailbox",
+                  "source",
+                  "position",
+                  "updatedAt",
+                  "ageMs"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "expectations": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "serviceDomain": {
+                    "type": "string"
+                  },
+                  "recipientAddress": {
+                    "type": "string"
+                  },
+                  "purpose": {
+                    "type": "string"
+                  },
+                  "openedAt": {
+                    "type": "string"
+                  },
+                  "expiresAt": {
+                    "type": "string"
+                  },
+                  "remainingMs": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "id",
+                  "serviceDomain",
+                  "recipientAddress",
+                  "purpose",
+                  "openedAt",
+                  "expiresAt",
+                  "remainingMs"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "retention": {
+              "type": "object",
+              "properties": {
+                "cursors": {
+                  "type": "object",
+                  "properties": {
+                    "kept": {
+                      "type": "number"
+                    },
+                    "maxCursors": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "kept",
+                    "maxCursors"
+                  ],
+                  "additionalProperties": false
+                },
+                "records": {
+                  "type": "object",
+                  "properties": {
+                    "kept": {
+                      "type": "number"
+                    },
+                    "retentionDays": {
+                      "type": "number"
+                    },
+                    "maxRecords": {
+                      "type": "number"
+                    },
+                    "maxBodyExcerptChars": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "kept",
+                    "retentionDays",
+                    "maxRecords",
+                    "maxBodyExcerptChars"
+                  ],
+                  "additionalProperties": false
+                },
+                "expectations": {
+                  "type": "object",
+                  "properties": {
+                    "open": {
+                      "type": "number"
+                    },
+                    "maxOpen": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "open",
+                    "maxOpen"
+                  ],
+                  "additionalProperties": false
+                },
+                "lastSweep": {
+                  "type": "object",
+                  "properties": {
+                    "sweptAt": {
+                      "type": "number"
+                    },
+                    "trigger": {
+                      "type": "string"
+                    },
+                    "summary": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "sweptAt",
+                    "trigger",
+                    "summary"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "cursors",
+                "records",
+                "expectations"
+              ],
+              "additionalProperties": false
+            },
+            "health": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "account": {
+                  "type": "string"
+                },
+                "mailbox": {
+                  "type": "string"
+                },
+                "mode": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "id",
+                "label",
+                "state",
+                "enabled",
+                "account",
+                "mailbox",
+                "mode",
+                "reason"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "enabled",
+            "running",
+            "mode",
+            "reason",
+            "account",
+            "mailbox",
+            "source",
+            "cursors",
+            "expectations",
+            "retention",
+            "health"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "email.inbox.list",
         "title": "List Email Inbox",
         "description": "Return inbox message summaries fetched live from the configured IMAP account, newest first (ordered by server-assigned UID, never by the sender-written Date header). Read-only (EXAMINE / BODY.PEEK); never marks messages read.",
@@ -95044,10 +95353,10 @@
       }
     ],
     "schemaCoverage": {
-      "methods": 446,
-      "typedInputs": 446,
+      "methods": 447,
+      "typedInputs": 447,
       "genericInputs": 0,
-      "typedOutputs": 446,
+      "typedOutputs": 447,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -95056,8 +95365,8 @@
       "withWireEvents": 32
     },
     "validationCoverage": {
-      "methods": 446,
-      "validated": 439,
+      "methods": 447,
+      "validated": 440,
       "skippedGeneric": 0,
       "skippedUntyped": 7
     }

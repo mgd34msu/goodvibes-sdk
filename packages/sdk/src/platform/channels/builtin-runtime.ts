@@ -39,6 +39,8 @@ import { TelegramIngressSupervisor, type TelegramIngressStatus } from './telegra
 import { logger } from '../utils/logger.js';
 import { registerBuiltinChannelPlugins } from './builtin/plugins.js';
 import type { BuiltinChannelRuntimeDeps, ManagedSurface } from './builtin/shared.js';
+import type { InboundMailHealthEntry } from '../email/inbound/health.js';
+import type { InboundMailSupervisorStatus } from '../email/inbound/supervisor.js';
 import {
   authorizeBuiltinActorAction,
   runBuiltinAccountAction,
@@ -187,6 +189,71 @@ export class BuiltinChannelRuntime {
   /** Current inbound Telegram state, including why it is inactive. */
   telegramIngressStatus(): TelegramIngressStatus | null {
     return this.telegramIngress?.status ?? null;
+  }
+
+  // -------------------------------------------------------------------------
+  // Inbound mail (docs/inbound-email.md §3.5)
+  //
+  // Beside the Telegram ingress methods rather than folded into
+  // startIngress()/stopIngress(): each is its OWN cluster surface, and a node
+  // that lost the Telegram election must still read the mailbox it did win.
+  // Starting them together would re-couple exactly what the per-surface split
+  // un-coupled.
+  // -------------------------------------------------------------------------
+
+  /** Arm inbound mail. Says so loudly when a mailbox is wanted and unwatched. */
+  async startInboundMail(): Promise<void> {
+    const supervisor = this.deps.inboundMail;
+    if (!supervisor) {
+      if (this.deps.configManager.get('surfaces.email.inbound.enabled')) {
+        logger.error('Inbound mail is enabled but NO mailbox is being watched', {
+          surface: 'email-inbound',
+          reason: 'this composition supplied no inbound-mail supervisor',
+          action: 'the embedder must pass inboundMail to BuiltinChannelRuntime to watch a mailbox',
+        });
+      }
+      return;
+    }
+    await supervisor.start();
+  }
+
+  /**
+   * Stop reading the mailbox and release its connection.
+   *
+   * Awaited, and it must not resolve early: the ordered cluster handoff tells
+   * the successor node to start only after this promise settles, and two nodes
+   * holding one mailbox both announce every message.
+   */
+  async stopInboundMail(): Promise<void> {
+    await this.deps.inboundMail?.stop();
+  }
+
+  /** Live inbound-mail state, including why it is inactive. Null when unwatched. */
+  inboundMailStatus(): InboundMailSupervisorStatus | null {
+    return this.deps.inboundMail?.status ?? null;
+  }
+
+  /**
+   * Email's health entry, read from the live supervisor.
+   *
+   * Deliberately not a `ChannelStatusSnapshot`: email is not a
+   * `ManagedSurface`, and its state is what the watcher is DOING rather than
+   * whether a credential happens to be present in the config file.
+   */
+  inboundMailHealth(): InboundMailHealthEntry | null {
+    return this.deps.inboundMail?.health() ?? null;
+  }
+
+  /**
+   * Which mailbox this node would watch, for the cluster election.
+   *
+   * Read before the node contests the surface: a node that watches no mailbox
+   * must never win the election for one, because the loser stands down and the
+   * mailbox then goes unread by anybody.
+   */
+  inboundMailIdentity(): { readonly account: string; readonly mailbox: string } | null {
+    const health = this.deps.inboundMail?.health();
+    return health ? { account: health.account, mailbox: health.mailbox } : null;
   }
 
   registerPlugins(): void {

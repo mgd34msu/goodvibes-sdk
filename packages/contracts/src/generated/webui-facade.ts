@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.18.1
- * Methods: 446 total, 392 REST-routed, 54 ws-only invoke.
+ * Methods: 447 total, 392 REST-routed, 55 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -1626,6 +1626,7 @@ export const WEBUI_WS_INVOKE_METHOD_IDS: readonly string[] = [
   "email.expectation.cancel",
   "email.expectation.list",
   "email.expectation.open",
+  "email.inbound.status",
   "flags.graduation.report",
   "fleet.archive",
   "fleet.archived.list",
@@ -1830,6 +1831,7 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "email.expectation.cancel": "ws-invoke",
   "email.expectation.list": "ws-invoke",
   "email.expectation.open": "ws-invoke",
+  "email.inbound.status": "ws-invoke",
   "email.inbox.list": "rest",
   "email.inbox.read": "rest",
   "email.send": "rest",
@@ -7992,6 +7994,82 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
       "expiresAt": "sample",
       "authority": "sample",
       "remainingMs": 0
+    }
+  },
+  "email.inbound.status": {
+    "input": {},
+    "output": {
+      "enabled": false,
+      "running": false,
+      "mode": "sample",
+      "reason": "sample",
+      "account": "sample",
+      "mailbox": "sample",
+      "source": {
+        "kind": "sample",
+        "basis": "sample",
+        "detail": "sample",
+        "latency": "sample"
+      },
+      "capability": {
+        "state": "sample",
+        "reason": "sample",
+        "detail": "sample",
+        "fix": "sample"
+      },
+      "cursors": [
+        {
+          "account": "sample",
+          "mailbox": "sample",
+          "source": "sample",
+          "position": "sample",
+          "updatedAt": "sample",
+          "ageMs": 0
+        }
+      ],
+      "expectations": [
+        {
+          "id": "sample",
+          "serviceDomain": "sample",
+          "recipientAddress": "sample",
+          "purpose": "sample",
+          "openedAt": "sample",
+          "expiresAt": "sample",
+          "remainingMs": 0
+        }
+      ],
+      "retention": {
+        "cursors": {
+          "kept": 0,
+          "maxCursors": 0
+        },
+        "records": {
+          "kept": 0,
+          "retentionDays": 0,
+          "maxRecords": 0,
+          "maxBodyExcerptChars": 0
+        },
+        "expectations": {
+          "open": 0,
+          "maxOpen": 0
+        },
+        "lastSweep": {
+          "sweptAt": 0,
+          "trigger": "sample",
+          "summary": "sample"
+        }
+      },
+      "health": {
+        "kind": "sample",
+        "id": "sample",
+        "label": "sample",
+        "state": "sample",
+        "enabled": false,
+        "account": "sample",
+        "mailbox": "sample",
+        "mode": "sample",
+        "reason": "sample"
+      }
     }
   },
   "email.inbox.list": {
