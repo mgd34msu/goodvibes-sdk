@@ -507,6 +507,32 @@ export type InboundCapabilityReason =
    *  durable cursor can be kept and a restart could not tell new mail from
    *  old. Running anyway would silently skip or silently repeat. */
   | 'uidvalidity-missing'
+  /**
+   * insufficient: the mailbox opened, would not say where it ends, and asking
+   * directly did not settle it either — so there is no high-water mark to
+   * start from.
+   *
+   * `[UIDNEXT n]` on `EXAMINE` is a SHOULD in RFC 3501, not a MUST, and
+   * servers do omit it. That alone is NOT this reason: the watcher derives the
+   * mark from a `UID SEARCH` instead, which is the same question asked
+   * directly, and carries on. This reason is what remains when the derivation
+   * also produces no answer — the mailbox reports messages present and the
+   * search names none of them.
+   *
+   * Distinct from `uidvalidity-missing`, which it otherwise resembles. There,
+   * the missing field is derivable from nothing and refusing is the only
+   * option. Here the refusal comes after asking, and reporting it as
+   * `uidvalidity-missing` would send the owner to check a field that was
+   * present and correct.
+   *
+   * What makes refusing right rather than merely cautious: the alternative is
+   * establishing at UID 0, and UID 0 is below every message that exists. The
+   * first drain would then search `UID 1:*`, match the entire mailbox, and
+   * deliver a year of old mail to the owner's notification channel as new
+   * arrivals. Most failures in this list are quiet; this one is loud, wrong,
+   * and cannot be recalled once sent.
+   */
+  | 'mailbox-position-unknown'
   /** insufficient: the mailbox opened and the server refused to hand over
    *  message data, so arrival can be seen and never read. */
   | 'fetch-refused'

@@ -104,11 +104,27 @@ export interface FakeMailboxOptions {
   readonly login?: 'ok' | 'refused' | 'connection-limit';
   readonly examine?: 'ok' | 'refused';
   readonly fetch?: 'ok' | 'refused';
-  readonly search?: 'ok' | 'refused';
+  /**
+   * `empty` answers every `UID SEARCH` with `OK` and no matches.
+   *
+   * Not the same as `refused`, which is a `NO` the client raises as an error.
+   * This is the server cooperating and naming nothing — the shape that
+   * contradicts a non-zero `EXISTS`, and the only way to reach it is a server
+   * that answers successfully while saying the mailbox is empty.
+   */
+  readonly search?: 'ok' | 'refused' | 'empty';
   /** Answer `IDLE` with NO instead of a `+` continuation. */
   readonly refuseIdle?: boolean;
   /** Omit `[UIDVALIDITY n]` from the EXAMINE response. */
   readonly omitUidValidity?: boolean;
+  /**
+   * Omit `[UIDNEXT n]` from the EXAMINE response.
+   *
+   * RFC 3501 makes the `UIDNEXT` response code a SHOULD on `EXAMINE`, not a
+   * MUST, so a conforming server may leave it out and real ones do. The
+   * watcher must not read its absence as "this mailbox starts at UID 0".
+   */
+  readonly omitUidNext?: boolean;
   /** Stop answering the tagged completion after this many DONEs. */
   readonly stallAfterDoneCount?: number | null;
   /** Messages already in the mailbox at connection time. */
@@ -223,7 +239,9 @@ export async function makeFakeMailbox(
       if (options.omitUidValidity !== true) {
         serverWrite(socket, `* OK [UIDVALIDITY ${uidValidity}] UIDs valid`);
       }
-      serverWrite(socket, `* OK [UIDNEXT ${nextUid}] Predicted next UID`);
+      if (options.omitUidNext !== true) {
+        serverWrite(socket, `* OK [UIDNEXT ${nextUid}] Predicted next UID`);
+      }
       serverWrite(socket, `${tag} OK [READ-ONLY] EXAMINE completed`);
       return;
     }
@@ -245,7 +263,8 @@ export async function makeFakeMailbox(
         serverWrite(socket, `${tag} NO Request failed`);
         return;
       }
-      serverWrite(socket, `* SEARCH ${searchRange(rest).join(' ')}`.trimEnd());
+      const matched = options.search === 'empty' ? [] : searchRange(rest);
+      serverWrite(socket, `* SEARCH ${matched.join(' ')}`.trimEnd());
       serverWrite(socket, `${tag} OK SEARCH completed`);
       return;
     }

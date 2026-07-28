@@ -30,6 +30,19 @@
  * own remedy, and stops polling until the grant changes. It never delivers a
  * body-less message and never reports an empty success in its place.
  *
+ * **The position never moves past a message that was not read.** Gmail's
+ * history is a forward-only log: records at or below a `startHistoryId` are
+ * never returned again, so a cursor that advances over an unfetched message
+ * does not postpone it, it makes it permanently unreachable — silently, and
+ * under a `healthy` verdict, which is the worst shape this delivery path can
+ * take. `collectHistoryDelta` separates a message that is GONE (deleted
+ * between `history.list` and `messages.get`) from one we FAILED TO FETCH (a
+ * rate limit, a server fault, a refused token, a dead socket) and reports the
+ * second in `GmailHistoryDelta.unreadable`. This file refuses to advance while
+ * that is non-empty. It is the same rule, on the same contract, that
+ * `ImapEnvelopeBatch.unreadable` gives the IMAP drain — one idea, expressed
+ * twice only where the identifier differs.
+ *
  * **Losing our place is the same event on both sources.** A 404 on a
  * `startHistoryId` that aged out of Gmail's retention window means exactly what
  * a changed `UIDVALIDITY` means: the stored position names nothing. It goes
@@ -54,6 +67,7 @@ import {
   errorText,
   stateForReason,
 } from './capability.js';
+import { anySignal } from './any-signal.js';
 import type { MailboxCursorStore } from './cursor-store.js';
 import { DEFAULT_INBOUND_WATCHER_SETTINGS } from './ports.js';
 import type {
@@ -136,34 +150,6 @@ export interface GmailMailSourceDeps {
   /** How long an `insufficient` verdict waits before re-probing. Defaults to the watcher's 60 minutes. */
   readonly capabilityRecheckMs?: number | undefined;
   readonly observer?: InboundMailObserver | undefined;
-}
-
-/**
- * Combine several abort signals into one.
- *
- * `watcher.ts` has the same helper and it is private there, so this is a
- * duplicated three-line utility rather than a duplicated type — nothing about
- * the shape of the system is restated by it.
- */
-function anySignal(signals: readonly AbortSignal[]): {
-  readonly signal: AbortSignal;
-  dispose(): void;
-} {
-  const controller = new AbortController();
-  const relay = (): void => { controller.abort(); };
-  for (const signal of signals) {
-    if (signal.aborted) {
-      controller.abort();
-      break;
-    }
-    signal.addEventListener('abort', relay, { once: true });
-  }
-  return {
-    signal: controller.signal,
-    dispose: () => {
-      for (const signal of signals) signal.removeEventListener('abort', relay);
-    },
-  };
 }
 
 export class GmailMailSource implements InboundMailSource {
@@ -364,6 +350,14 @@ export class GmailMailSource implements InboundMailSource {
    * So a refused delivery leaves the whole delta above the cursor and it is
    * fetched again — dedup turns the re-delivery into a suppressed duplicate,
    * which is the failure this design chooses.
+   *
+   * A delta carrying `unreadable` entries takes the same exit for the same
+   * reason. Those are messages Google named and would not hand over, and on a
+   * forward-only history log the cursor moving past them is not a delay, it is
+   * a permanent loss. The one case that DOES let the position move is a
+   * message deleted between `history.list` and `messages.get`, and
+   * `collectHistoryDelta` has already removed those — nothing here has to
+   * re-decide it.
    */
   private async deliver(
     delta: GmailHistoryDelta,
@@ -385,6 +379,23 @@ export class GmailMailSource implements InboundMailSource {
       }
     }
 
+    if (delta.unreadable.length > 0) {
+      // Messages this delta named and Google would not hand over. NOT messages
+      // that are gone — `collectHistoryDelta` has already separated those out
+      // and dropped them. These are still in the mailbox, and Gmail's history
+      // is forward-only, so advancing to `delta.historyId` here would put the
+      // cursor above records that can never be requested again. That is the
+      // whole defect: the verification email nobody is ever told about, under
+      // a `healthy` verdict.
+      //
+      // So the position stays exactly where it was and the delta is fetched
+      // again on the next pass — the same choice the delivery-failure path
+      // above makes, for the same reason, with dedup absorbing the duplicates
+      // among whatever DID come back this time.
+      this.note('fetch-unreadable', this.unreadableDetail(delta));
+      return this.record(this.transientVerdict(this.firstUnreadableFailure(delta)));
+    }
+
     await this.deps.cursors.advanceGmail(
       { account: this.deps.account, mailbox: this.deps.mailbox },
       { historyId: delta.historyId },
@@ -395,6 +406,53 @@ export class GmailMailSource implements InboundMailSource {
         + `${delta.historyId}.`);
     }
     return this.record(capabilityVerdict('polling-configured', this.pollingDetail()));
+  }
+
+  /**
+   * What the owner is told when a delta could not be fully read.
+   *
+   * Says the three things that decide whether this needs acting on: how many
+   * messages were unread, that the position did NOT move, and Google's own
+   * words for why. The count of what was delivered is included because a
+   * partly-read delta is a different situation from one that read nothing, and
+   * a note that omitted it would read like a total outage during a single
+   * rate-limited fetch.
+   */
+  private unreadableDetail(delta: GmailHistoryDelta): string {
+    const reasons = [...new Set(delta.unreadable.map((problem) => problem.detail))].join('; ');
+    const ids = delta.unreadable.map((problem) => problem.id).join(', ');
+    return `${String(delta.unreadable.length)} message(s) in this delta could not be fetched `
+      + `(${ids}): ${reasons}. An answer we could not read is not evidence the message is gone, `
+      + `so the history position stays at the value it already had rather than advancing to `
+      + `${delta.historyId}, and the whole delta is fetched again. `
+      + `${String(delta.messages.length)} message(s) in the same delta were delivered and are `
+      + 'suppressed as duplicates when it is re-fetched.';
+  }
+
+  /**
+   * The first unreadable entry, as the `GoogleApiFailure` `transientVerdict`
+   * already knows how to classify.
+   *
+   * The FIRST rather than a summary, because the verdict turns on the status
+   * and a synthesised "several things went wrong" would carry no status to
+   * turn on — a 401 and a 429 need opposite answers (a new grant versus
+   * waiting), and collapsing them would pick neither.
+   *
+   * `fix` is carried through rather than blanked, because `transientVerdict`
+   * reads it directly on the `credentials-rejected` branch. Blanked, a token
+   * refused mid-delta would reach the owner as "your mail has stopped" with no
+   * remedial step attached — which is this file's own failure mode (`refuse`
+   * carries Google's `problem` and `fix` verbatim for exactly this reason)
+   * reproduced on the neighbouring path.
+   */
+  private firstUnreadableFailure(delta: GmailHistoryDelta): GoogleApiFailure {
+    const first = delta.unreadable[0];
+    return {
+      ok: false,
+      status: first?.status ?? null,
+      problem: first?.detail ?? 'A message in the delta could not be fetched.',
+      fix: first?.fix ?? '',
+    };
   }
 
   /**

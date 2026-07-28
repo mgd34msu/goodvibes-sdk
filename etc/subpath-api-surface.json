@@ -14901,6 +14901,18 @@
       ]
     },
     {
+      "name": "EmailInboxUnreadableResponse",
+      "kind": "interface",
+      "required": [
+        "detail",
+        "uid"
+      ]
+    },
+    {
+      "name": "EmailMessageRead",
+      "kind": "type"
+    },
+    {
       "name": "EmailSenderClaim",
       "kind": "interface",
       "required": [
@@ -15109,6 +15121,10 @@
         "bodyHtml",
         "bodyText"
       ]
+    },
+    {
+      "name": "ImapMessageRead",
+      "kind": "type"
     },
     {
       "name": "ImapOpenError",
@@ -15976,7 +15992,8 @@
       "kind": "interface",
       "required": [
         "historyId",
-        "messages"
+        "messages",
+        "unreadable"
       ]
     },
     {
@@ -16499,6 +16516,10 @@
       "kind": "const"
     },
     {
+      "name": "MAX_EXPECTATION_ID_CHARS",
+      "kind": "const"
+    },
+    {
       "name": "MAX_OPEN_EXPECTATIONS",
       "kind": "const"
     },
@@ -16919,6 +16940,10 @@
     },
     {
       "name": "normalizeEmailAddress",
+      "kind": "function"
+    },
+    {
+      "name": "normalizeExpectationId",
       "kind": "function"
     },
     {

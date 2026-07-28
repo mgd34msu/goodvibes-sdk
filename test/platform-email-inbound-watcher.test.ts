@@ -713,6 +713,179 @@ describe('inbound watcher — the cursor', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+//
+// `[UIDNEXT n]` on EXAMINE is a SHOULD in RFC 3501, not a MUST, and
+// `parseMailboxStatus` types it `number | null` because servers omit it.
+//
+// The defect these gate: the mark was computed as `(status.uidNext ?? 1) - 1`,
+// so an absent UIDNEXT established the cursor at UID 0. UID 0 is below every
+// message that exists, so the first drain searched `UID 1:*`, matched the
+// whole mailbox, and delivered every message in it to the owner's notification
+// channel as new mail — while the note it had just emitted said the opposite
+// in three clauses at once ("Listening from UID 0 onwards", "n message(s) …
+// were not read", "starts listening now rather than backfilling").
+
+describe('inbound watcher — a server that does not report UIDNEXT', () => {
+  const OLD = [message(101, 'a year old'), message(102, 'also old'), message(103, 'old too')];
+
+  test('the whole mailbox is not replayed as new mail', async () => {
+    const harness = await build({ server: { omitUidNext: true, initial: OLD } });
+    harness.watcher.start();
+    await idleReached(harness);
+    await flush();
+
+    // The assertion the defect failed: nothing already in the mailbox reaches
+    // the sink, exactly as it would not if UIDNEXT had been reported.
+    expect(harness.sink.delivered).toEqual([]);
+    expect(harness.sink.uids).toEqual([]);
+  });
+
+  test('the mark is derived from the server rather than assumed to be zero', async () => {
+    const harness = await build({ server: { omitUidNext: true, initial: OLD } });
+    harness.watcher.start();
+    await idleReached(harness);
+    await flush();
+
+    // The cursor is ESTABLISHED at 103 — the same mark `UIDNEXT - 1` would
+    // have given — rather than established at 0 and walked up to 103 by
+    // replaying the mailbox. Asserted on the argument `resolve` received,
+    // because the stored `lastSeenUid` is 103 either way once a backfill
+    // finishes and so cannot tell the two apart.
+    expect(harness.cursors.resolves).toEqual([
+      { currentHighestUid: 103, currentMessageCount: 3 },
+    ]);
+    // Nothing was ever advanced over, which is what "did not walk up to it"
+    // means in the store's own terms.
+    expect(harness.cursors.advances).toEqual([]);
+    expect((await harness.cursors.get(ACCOUNT, MAILBOX))?.lastSeenUid).toBe(103);
+    // And the mark was genuinely asked for: a full-mailbox search was issued.
+    expect(harness.mailbox.commands.some((line) => line.endsWith('UID SEARCH UID 1:*')))
+      .toBe(true);
+  });
+
+  test('the cursor note describes what actually happened, including how it was reached', async () => {
+    const harness = await build({ server: { omitUidNext: true, initial: OLD } });
+    harness.watcher.start();
+    await idleReached(harness);
+    await flush();
+
+    const established = harness.observer.notes.find((note) => note.kind === 'cursor-established');
+    expect(established).toBeDefined();
+    const detail = established?.detail ?? '';
+    // Every clause is now true of the run that produced it.
+    expect(detail).toContain('Listening from UID 103 onwards');
+    expect(detail).toContain('3 message(s) already in the mailbox were not read');
+    expect(detail).toContain('starts listening now rather than backfilling');
+    // And the note does not pretend the mark came from the server's own
+    // UIDNEXT when it did not — a cursor derived by asking is a materially
+    // different provenance and is disclosed as one.
+    expect(detail).toContain('without reporting a UIDNEXT');
+    expect(detail).toContain('UID SEARCH');
+    // The clause the defect emitted must not be reachable any more.
+    expect(detail).not.toContain('Listening from UID 0 onwards');
+  });
+
+  test('the skipped count comes from the search, so it is right even without EXISTS', async () => {
+    // A server terse enough to omit UIDNEXT may be terse elsewhere too, and
+    // `exists ?? 0` would then have made the note claim 0 messages were
+    // skipped while skipping three. The count is taken from the same answer
+    // the mark is.
+    const harness = await build({ server: { omitUidNext: true, initial: OLD } });
+    harness.watcher.start();
+    await idleReached(harness);
+    await flush();
+
+    const established = harness.observer.notes.find((note) => note.kind === 'cursor-established');
+    expect(established?.detail).toContain('it answered 3 message(s)');
+    expect(established?.detail).toContain('the highest being UID 103');
+  });
+
+  test('an empty mailbox establishes at 0 legitimately, and says so truthfully', async () => {
+    // 0 is the CORRECT mark here rather than a fallback: there is nothing
+    // below it to step over, and nothing is skipped.
+    const harness = await build({ server: { omitUidNext: true, initial: [] } });
+    harness.watcher.start();
+    await idleReached(harness);
+    await flush();
+
+    expect((await harness.cursors.get(ACCOUNT, MAILBOX))?.lastSeenUid).toBe(0);
+    expect(harness.sink.delivered).toEqual([]);
+    const established = harness.observer.notes.find((note) => note.kind === 'cursor-established');
+    expect(established?.detail).toContain('Listening from UID 0 onwards');
+    expect(established?.detail).toContain('0 message(s) already in the mailbox were not read');
+    expect(harness.watcher.status.verdict.state).not.toBe('insufficient');
+  });
+
+  test('mail arriving after the derived mark is still delivered', async () => {
+    // The mark has to be usable, not merely safe: a cursor placed correctly
+    // and never advanced past would be the opposite failure.
+    const harness = await build({ server: { omitUidNext: true, initial: OLD } });
+    harness.watcher.start();
+    await idleReached(harness);
+
+    harness.mailbox.deliver('the verification email');
+    await waitFor(() => harness.sink.uids.length >= 1, 'the newly arrived message');
+
+    expect(harness.sink.uids).toEqual([104]);
+    expect((await harness.cursors.get(ACCOUNT, MAILBOX))?.lastSeenUid).toBe(104);
+  });
+
+  test('a search that names nothing while the mailbox reports messages is refused, not zeroed', async () => {
+    // The one case where the derivation cannot answer: the server says the
+    // mailbox holds three messages and its search names none of them. The only
+    // mark available from here is 0, which would replay all three — so the
+    // watcher refuses instead, under a reason that names the real condition.
+    const harness = await build({
+      server: { omitUidNext: true, search: 'empty', initial: OLD },
+    });
+    harness.watcher.start();
+    await waitFor(() => harness.observer.terminals.length >= 1, 'a terminal report');
+
+    expect(harness.watcher.status.verdict.reason).toBe('mailbox-position-unknown');
+    expect(harness.watcher.status.verdict.state).toBe('insufficient');
+    expect(harness.watcher.status.verdict.detail).toContain('3 message(s) present');
+    expect(harness.watcher.status.verdict.fix.length).toBeGreaterThan(0);
+    // And above all: nothing was replayed and no cursor was written at 0.
+    expect(harness.sink.delivered).toEqual([]);
+    expect(await harness.cursors.get(ACCOUNT, MAILBOX)).toBeNull();
+  });
+
+  test('a refused search while deriving is a reconnect, not a capability verdict', async () => {
+    // §13.1: a refused SEARCH is routinely transient. Deriving the mark must
+    // not turn one into a permanent refusal — that would let a hiccup on the
+    // first connection permanently disable the mailbox.
+    const harness = await build({
+      server: { omitUidNext: true, search: 'refused', initial: OLD },
+    });
+    harness.watcher.start();
+    await waitFor(
+      () => harness.watcher.status.verdict.reason === 'reconnecting',
+      'the reconnecting verdict for the refused derivation search',
+    );
+
+    expect(harness.watcher.status.verdict.state).toBe('degraded');
+    expect(harness.observer.terminals).toEqual([]);
+    expect(harness.sink.delivered).toEqual([]);
+  });
+
+  test('a reported UIDNEXT is still trusted, and costs no extra search', async () => {
+    // The control. Nothing about the normal path changes: the mark is
+    // UIDNEXT - 1, and no full-mailbox search is issued to re-derive it.
+    const harness = await build({ server: { initial: OLD } });
+    harness.watcher.start();
+    await idleReached(harness);
+    await flush();
+
+    expect((await harness.cursors.get(ACCOUNT, MAILBOX))?.lastSeenUid).toBe(103);
+    expect(harness.sink.delivered).toEqual([]);
+    expect(harness.mailbox.commands.some((line) => line.endsWith('UID SEARCH UID 1:*')))
+      .toBe(false);
+    const established = harness.observer.notes.find((note) => note.kind === 'cursor-established');
+    expect(established?.detail).not.toContain('without reporting a UIDNEXT');
+  });
+});
+
 function message(uid: number, subject: string): {
   readonly uid: number;
   readonly from: string;
