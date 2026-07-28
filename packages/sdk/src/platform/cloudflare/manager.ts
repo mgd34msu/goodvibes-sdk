@@ -684,7 +684,13 @@ export class CloudflareControlPlaneManager {
     if (!this.options.secretsManager?.set) {
       throw new CloudflareControlPlaneError('SecretsManager is required to store Cloudflare tokens.', 'SECRETS_MANAGER_REQUIRED', 500);
     }
-    await this.options.secretsManager.set(key, value, { scope: 'user', medium: 'secure' });
+    // Daemon tier. Every Cloudflare credential this stores exists so the DAEMON
+    // is reachable — it provisions the tunnel, runs it, and authenticates to its
+    // own edge worker with these. Filed at user scope they were readable only by
+    // whichever client wrote them, and the onboarding wizard filed the same
+    // `CLOUDFLARE_API_TOKEN` at project scope, so which copy the daemon found
+    // depended on its working directory. See config/credential-scope-registry.ts.
+    await this.options.secretsManager.set(key, value, { scope: 'daemon', medium: 'secure' });
   }
 
   private requireUserTokens(client: CloudflareApiClient): NonNullable<CloudflareApiClient['user']>['tokens'] {

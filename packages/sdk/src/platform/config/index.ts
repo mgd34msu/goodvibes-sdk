@@ -186,8 +186,39 @@ export {
 } from './daemon-secret-keys.js';
 export { defaultDaemonSecretHome } from './secrets-store-paths.js';
 export {
+  CREDENTIAL_SCOPE_DECLARATIONS,
+  describeCredentialScope,
+  findCredentialScopeDeclaration,
+  isDaemonNeededSecretKey,
+  listDaemonNeededKeyPrefixes,
+  listExactDaemonNeededKeys,
+} from './credential-scope-registry.js';
+export type {
+  CredentialScopeClass,
+  CredentialScopeDeclaration,
+} from './credential-scope-registry.js';
+export {
+  buildCredentialMigrationReceipt,
+  describeCredentialMigration,
+  migrateDaemonNeededCredentials,
+} from './daemon-credential-migration.js';
+export type {
+  CredentialMigrationEntry,
+  CredentialMigrationOutcome,
+  CredentialMigrationReceipt,
+  CredentialMigrationReport,
+  MigratableSecretStore,
+} from './daemon-credential-migration.js';
+export {
+  ensureCalendarConfigDefaults,
+  ensureConnectorConfigSections,
+  ensureGoogleOAuthConfigDefaults,
+  ensureMailboxConfigDefaults,
+} from './connector-config-sections.js';
+export {
   SecretsManager,
   SecretStoreUnreadableError,
+  describeSecretWriteScope,
   resolveSecretWriteScope,
   secretWriteScopeWasOverridden,
 } from './secrets.js';

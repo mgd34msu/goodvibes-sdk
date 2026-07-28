@@ -11292,6 +11292,10 @@
       "kind": "const"
     },
     {
+      "name": "CREDENTIAL_SCOPE_DECLARATIONS",
+      "kind": "const"
+    },
+    {
       "name": "ConfigError",
       "kind": "class"
     },
@@ -11366,6 +11370,55 @@
         "hostMode",
         "port",
         "tlsMode"
+      ]
+    },
+    {
+      "name": "CredentialMigrationEntry",
+      "kind": "interface",
+      "required": [
+        "fromScope",
+        "key",
+        "outcome"
+      ]
+    },
+    {
+      "name": "CredentialMigrationOutcome",
+      "kind": "type"
+    },
+    {
+      "name": "CredentialMigrationReceipt",
+      "kind": "interface",
+      "required": [
+        "at",
+        "entries",
+        "failed",
+        "migrated",
+        "summary",
+        "version"
+      ]
+    },
+    {
+      "name": "CredentialMigrationReport",
+      "kind": "interface",
+      "required": [
+        "entries",
+        "failed",
+        "migrated",
+        "noop"
+      ]
+    },
+    {
+      "name": "CredentialScopeClass",
+      "kind": "type"
+    },
+    {
+      "name": "CredentialScopeDeclaration",
+      "kind": "interface",
+      "required": [
+        "key",
+        "match",
+        "scope",
+        "why"
       ]
     },
     {
@@ -11671,6 +11724,17 @@
         "get",
         "getConfigPath",
         "setDynamic"
+      ]
+    },
+    {
+      "name": "MigratableSecretStore",
+      "kind": "interface",
+      "required": [
+        "delete",
+        "get",
+        "getFromScope",
+        "listDetailed",
+        "set"
       ]
     },
     {
@@ -12021,6 +12085,10 @@
       "kind": "function"
     },
     {
+      "name": "buildCredentialMigrationReceipt",
+      "kind": "function"
+    },
+    {
       "name": "configKeyScope",
       "kind": "function"
     },
@@ -12073,6 +12141,14 @@
       "kind": "function"
     },
     {
+      "name": "describeCredentialMigration",
+      "kind": "function"
+    },
+    {
+      "name": "describeCredentialScope",
+      "kind": "function"
+    },
+    {
       "name": "describeDaemonConfigMigration",
       "kind": "function"
     },
@@ -12085,11 +12161,35 @@
       "kind": "function"
     },
     {
+      "name": "describeSecretWriteScope",
+      "kind": "function"
+    },
+    {
       "name": "discoverDaemonEndpoint",
       "kind": "function"
     },
     {
+      "name": "ensureCalendarConfigDefaults",
+      "kind": "function"
+    },
+    {
+      "name": "ensureConnectorConfigSections",
+      "kind": "function"
+    },
+    {
+      "name": "ensureGoogleOAuthConfigDefaults",
+      "kind": "function"
+    },
+    {
+      "name": "ensureMailboxConfigDefaults",
+      "kind": "function"
+    },
+    {
       "name": "exchangeOpenAICodexCode",
+      "kind": "function"
+    },
+    {
+      "name": "findCredentialScopeDeclaration",
       "kind": "function"
     },
     {
@@ -12137,6 +12237,10 @@
       "kind": "function"
     },
     {
+      "name": "isDaemonNeededSecretKey",
+      "kind": "function"
+    },
+    {
       "name": "isDaemonOwnedConfigKey",
       "kind": "function"
     },
@@ -12169,6 +12273,10 @@
       "kind": "function"
     },
     {
+      "name": "listDaemonNeededKeyPrefixes",
+      "kind": "function"
+    },
+    {
       "name": "listDaemonOwnedConfigKeys",
       "kind": "function"
     },
@@ -12181,7 +12289,15 @@
       "kind": "function"
     },
     {
+      "name": "listExactDaemonNeededKeys",
+      "kind": "function"
+    },
+    {
       "name": "loadDaemonConfigSnapshot",
+      "kind": "function"
+    },
+    {
+      "name": "migrateDaemonNeededCredentials",
       "kind": "function"
     },
     {
