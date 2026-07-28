@@ -54,6 +54,8 @@ import {
   verdictForOpenConnection,
 } from './capability.js';
 import { runIdleLoop, type IdleWakeSummary } from './idle-watcher.js';
+import { anySignal } from './any-signal.js';
+import { resolveMailboxStartPosition } from './mailbox-position.js';
 import { drainMailboxDelta, runPollLoop, type MailboxDeltaReport } from './poll-loop.js';
 import type { EmailCapabilityFailureNotice, ImapBodyProbeVerdict } from '../imap-client.js';
 import type {
@@ -118,35 +120,6 @@ export interface InboundMailboxWatcherStatus {
    * exists to make impossible to write by accident.
    */
   readonly bodyProbe: ImapBodyProbeVerdict | null;
-}
-
-/**
- * Combine several abort signals into one.
- *
- * The clock takes a single signal and several things can end a wait — a
- * shutdown, a re-probe request, an inner race. Composed here rather than
- * threaded through every sleep, and disposed so a long-lived signal does not
- * accumulate listeners from every wait that ever used it.
- */
-function anySignal(signals: readonly AbortSignal[]): {
-  readonly signal: AbortSignal;
-  dispose(): void;
-} {
-  const controller = new AbortController();
-  const relay = (): void => { controller.abort(); };
-  for (const signal of signals) {
-    if (signal.aborted) {
-      controller.abort();
-      break;
-    }
-    signal.addEventListener('abort', relay, { once: true });
-  }
-  return {
-    signal: controller.signal,
-    dispose: () => {
-      for (const signal of signals) signal.removeEventListener('abort', relay);
-    },
-  };
 }
 
 /**
@@ -426,21 +399,47 @@ export class InboundMailboxWatcher {
       return;
     }
 
+    // Protocol half (incl. why a missing UIDNEXT is derived, never assumed to
+    // be 0) in `mailbox-position.ts`; the verdict policy is here.
+    const position = await resolveMailboxStartPosition({
+      status,
+      wire: connection.wire,
+      mailbox: this.settings.mailbox,
+      timeoutMs: this.settings.operationTimeoutMs,
+      signal: this.shutdown.signal,
+    });
+    if (position.outcome === 'search-failed') {
+      // A refused SEARCH is routinely transient (§13.1) — never terminal here.
+      const search = classifyReadFailure(position.error, 'search');
+      if (search.terminal) {
+        this.reportTerminal(search.verdict, search.notice);
+        return;
+      }
+      this.tracker.record(search.verdict);
+      await this.pauseBeforeReconnect(search.verdict.reason);
+      return;
+    }
+    if (position.outcome === 'position-unknown') {
+      // The mailbox reports messages and names none. The only mark left is 0,
+      // and 0 replays all of them.
+      this.reportTerminal(capabilityVerdict('mailbox-position-unknown', position.detail), null);
+      return;
+    }
+
     const resolution = await this.deps.cursors.resolve({
       account: this.settings.account,
       mailbox: this.settings.mailbox,
       serverUidValidity: status.uidValidity,
-      // The high-water mark is UIDNEXT minus one: the next arriving message
-      // gets UIDNEXT, so everything at or below it already exists.
-      currentHighestUid: Math.max(0, (status.uidNext ?? 1) - 1),
-      currentMessageCount: status.exists ?? 0,
+      currentHighestUid: position.highestUid,
+      currentMessageCount: position.messageCount,
     });
     this.cursor = resolution.cursor;
     if (resolution.kind === 'first-run') {
       this.note('cursor-established',
         `Listening from UID ${resolution.cursor.lastSeenUid} onwards; `
         + `${resolution.skippedMessageCount} message(s) already in the mailbox were `
-        + 'not read. The daemon starts listening now rather than backfilling.');
+        + 'not read. The daemon starts listening now rather than backfilling.'
+        + position.disclosure);
     } else if (resolution.kind === 'uid-validity-changed') {
       this.note('cursor-reset',
         `The mailbox reports a different UIDVALIDITY, so every stored UID names `
@@ -448,7 +447,8 @@ export class InboundMailboxWatcher {
         + `${resolution.cursor.lastSeenUid}; `
         + `${resolution.skippedMessageCount} message(s) already present are not `
         + 'replayed. A rebuilt server index is not a reason to re-announce a '
-        + 'year of old mail.');
+        + 'year of old mail.'
+        + position.disclosure);
     }
 
     // The email layer owns this decision and resolves "the server said

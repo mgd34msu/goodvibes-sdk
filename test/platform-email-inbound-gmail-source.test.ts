@@ -32,6 +32,7 @@ import {
 import {
   MAIL_CONTENT_PROVENANCE,
   type GmailMessageBody,
+  type GoogleApiFailure,
   type GoogleApiResult,
 } from '../packages/sdk/src/platform/google/api-client.ts';
 import { FakeClock, flush, waitFor } from './_helpers/inbound-watcher-harness.ts';
@@ -113,6 +114,16 @@ async function build(input: {
   readonly seedHistoryId?: string | undefined;
   readonly currentHistoryId?: GoogleApiResult<string>;
   readonly expectationOpen?: boolean;
+  /**
+   * Per-id `getMessage` failures, taking precedence over `messages`.
+   *
+   * Needed as its own input because the default below answers 404 for an id it
+   * does not know, and 404 is the one status meaning "genuinely gone". Every
+   * OTHER failure — a rate limit, a server fault, a refused token — has to be
+   * injectable separately, since telling those two apart is the whole of the
+   * behaviour under test.
+   */
+  readonly messageFailures?: Readonly<Record<string, GoogleApiFailure>>;
   readonly deps?: Partial<GmailMailSourceDeps>;
 } = {}): Promise<Harness> {
   const dir = mkdtempSync(join(tmpdir(), 'goodvibes-gmail-source-'));
@@ -144,6 +155,8 @@ async function build(input: {
       },
       getMessage: async (id) => {
         fetchedMessageIds.push(id);
+        const failure = input.messageFailures?.[id];
+        if (failure !== undefined) return failure;
         const message = byId.get(id);
         return message === undefined
           ? { ok: false, status: 404, problem: `no message ${id}`, fix: '' }
@@ -304,6 +317,167 @@ describe('gmail source — delivery', () => {
     const cursor = await harness.store.getGmail(ACCOUNT, LABEL);
     expect(cursor?.historyId).toBe('900');
     expect(harness.notes.map((note) => note.kind)).toContain('cursor-established');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// A message that was not read never gets stepped over — §3.4d
+// ---------------------------------------------------------------------------
+
+/**
+ * The defect these gate: `collectHistoryDelta` dropped EVERY failed
+ * `getMessage` as though the message had been deleted, so a delta whose
+ * fetches were rate-limited came back `ok` with zero messages, the source
+ * advanced the cursor to the delta's `historyId`, and — because Gmail's
+ * history is a forward-only log — those records could never be asked for
+ * again. A verification email arrived, was never read, was never announced,
+ * and the verdict said `healthy`.
+ *
+ * The distinction restored here is the one `ImapEnvelopeBatch.unreadable`
+ * already draws on the IMAP side: a message that is GONE may be dropped and
+ * stepped over; a message we FAILED TO FETCH may be neither.
+ */
+describe('gmail source — a delta that could not be fully read', () => {
+  const RATE_LIMITED: GoogleApiFailure = {
+    ok: false,
+    status: 429,
+    problem: 'Gmail rate limit exceeded for this account.',
+    fix: 'Retry later.',
+  };
+
+  test('a rate-limited fetch leaves the history position exactly where it was', async () => {
+    const harness = await build({
+      seedHistoryId: '100',
+      page: historyPage('200', ['m1', 'm2']),
+      messages: [gmailMessage('m1', 'confirm your account'), gmailMessage('m2', 'two')],
+      messageFailures: { m1: RATE_LIMITED, m2: RATE_LIMITED },
+    });
+
+    const verdict = await harness.source.start(new AbortController().signal);
+
+    // Nothing was readable, so nothing was delivered — that part was always true.
+    expect(harness.sink.delivered).toEqual([]);
+    // This is the fix: the position does NOT move to 200. Had it moved, the
+    // two messages would sit at or below the new startHistoryId and Gmail
+    // would never return them again.
+    const cursor = await harness.store.getGmail(ACCOUNT, LABEL);
+    expect(cursor?.historyId).toBe('100');
+    // And it does not claim to be fine while mail is going unread.
+    expect(verdict.state).not.toBe('healthy');
+    expect(verdict.reason).not.toBe('polling-configured');
+  });
+
+  test('the same delta is fetched again on the next pass, so nothing is stranded', async () => {
+    const harness = await build({
+      seedHistoryId: '100',
+      page: historyPage('200', ['m1']),
+      messages: [gmailMessage('m1', 'confirm your account')],
+      messageFailures: { m1: RATE_LIMITED },
+    });
+
+    await harness.source.start(new AbortController().signal);
+    expect(harness.sink.delivered).toEqual([]);
+    // A genuine second pass, not an assertion about one. Both asks name the
+    // SAME startHistoryId, which is the entire point of not advancing: the
+    // record is still inside the window the next request covers. Had the
+    // cursor moved to 200, this second ask would say 200 and Gmail would never
+    // return m1 again.
+    await harness.source.start(new AbortController().signal);
+
+    const asked = harness.pages.map((params) => params.get('startHistoryId'));
+    expect(asked).toEqual(['100', '100']);
+    expect(harness.fetchedMessageIds).toEqual(['m1', 'm1']);
+  });
+
+  test('a 429 is reported as degraded rather than a quiet successful poll', async () => {
+    const harness = await build({
+      seedHistoryId: '100',
+      page: historyPage('200', ['m1']),
+      messages: [gmailMessage('m1', 'confirm your account')],
+      messageFailures: { m1: RATE_LIMITED },
+    });
+
+    const verdict = await harness.source.start(new AbortController().signal);
+
+    // "not yet", not "cannot" — the delta is still above the cursor.
+    expect(verdict.state).toBe('degraded');
+    expect(verdict.reason).toBe('server-unavailable');
+    expect(verdict.detail).toContain('rate limit');
+
+    const note = harness.notes.find((entry) => entry.kind === 'fetch-unreadable');
+    expect(note).toBeDefined();
+    // The note names the message, says the position did not move, and does not
+    // claim the message is gone.
+    expect(note?.detail).toContain('m1');
+    expect(note?.detail).toContain('rate limit');
+    expect(note?.detail).toContain('stays at the value it already had');
+  });
+
+  test('a token refused mid-delta is insufficient, and still does not advance', async () => {
+    const harness = await build({
+      seedHistoryId: '100',
+      page: historyPage('200', ['m1']),
+      messages: [gmailMessage('m1', 'confirm your account')],
+      messageFailures: {
+        m1: { ok: false, status: 401, problem: 'Invalid credentials', fix: 'Re-authorize.' },
+      },
+    });
+
+    const verdict = await harness.source.start(new AbortController().signal);
+
+    // A refused credential and a rate limit need opposite answers — a new
+    // grant versus waiting — so they must not collapse into one verdict.
+    expect(verdict.state).toBe('insufficient');
+    expect(verdict.reason).toBe('credentials-rejected');
+    // Google's own remedial step reaches the owner. An `insufficient` verdict
+    // says "your mail has stopped and only a change fixes it"; delivering that
+    // with an empty fix would be this file's own failure mode one layer out.
+    expect(verdict.fix).toBe('Re-authorize.');
+    const cursor = await harness.store.getGmail(ACCOUNT, LABEL);
+    expect(cursor?.historyId).toBe('100');
+  });
+
+  test('a message deleted between history.list and getMessage IS stepped over', async () => {
+    // The counterpart, and the reason this cannot be fixed by refusing every
+    // failure: a 404 really does mean the message is not there, and holding
+    // the position below it would freeze the cursor on a record that can never
+    // come back. The default `getMessage` answers 404 for an unknown id, so
+    // 'ghost' is a message history.list named and that no longer exists.
+    const harness = await build({
+      seedHistoryId: '100',
+      page: historyPage('200', ['ghost', 'm2']),
+      messages: [gmailMessage('m2', 'still here')],
+    });
+
+    const verdict = await harness.source.start(new AbortController().signal);
+
+    expect(harness.sink.delivered).toHaveLength(1);
+    const cursor = await harness.store.getGmail(ACCOUNT, LABEL);
+    expect(cursor?.historyId).toBe('200');
+    expect(verdict.state).toBe('healthy');
+    expect(harness.notes.map((note) => note.kind)).not.toContain('fetch-unreadable');
+  });
+
+  test('a partly-readable delta delivers what it read and still holds the position', async () => {
+    const harness = await build({
+      seedHistoryId: '100',
+      page: historyPage('200', ['m1', 'm2']),
+      messages: [gmailMessage('m1', 'one'), gmailMessage('m2', 'confirm your account')],
+      messageFailures: { m2: RATE_LIMITED },
+    });
+
+    await harness.source.start(new AbortController().signal);
+
+    // What was read is handed on immediately — withholding it would delay a
+    // verification email we DID manage to fetch because a sibling 429'd.
+    expect(harness.sink.delivered).toHaveLength(1);
+    // And the position still does not move, because m2 was not read. The
+    // re-delivery of m1 next pass is a duplicate for dedup to suppress, which
+    // is the trade this design makes deliberately.
+    const cursor = await harness.store.getGmail(ACCOUNT, LABEL);
+    expect(cursor?.historyId).toBe('100');
+    const note = harness.notes.find((entry) => entry.kind === 'fetch-unreadable');
+    expect(note?.detail).toContain('1 message(s) in the same delta were delivered');
   });
 });
 

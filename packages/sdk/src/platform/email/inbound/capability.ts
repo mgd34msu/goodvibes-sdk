@@ -71,6 +71,7 @@ const STATE_BY_REASON: Readonly<Record<InboundCapabilityReason, InboundCapabilit
   'credentials-rejected': 'insufficient',
   'mailbox-unreadable': 'insufficient',
   'uidvalidity-missing': 'insufficient',
+  'mailbox-position-unknown': 'insufficient',
   'fetch-refused': 'insufficient',
   'fetch-unreadable': 'insufficient',
   'local-store-unwritable': 'insufficient',
@@ -125,6 +126,17 @@ const FIX_BY_REASON: Readonly<Record<InboundCapabilityReason, string>> = {
     + 'across a restart which messages it has already handled. Point '
     + 'surfaces.email.imap.mailbox at a mailbox on a server that reports one, '
     + 'or report this to the mail provider.',
+  'mailbox-position-unknown':
+    'The mail server opened the mailbox without saying how far it goes (no '
+    + 'UIDNEXT), and when asked directly it listed no messages while still '
+    + 'reporting that the mailbox holds some. Those two answers contradict each '
+    + 'other, so there is no starting point the daemon can trust. It has stopped '
+    + 'rather than start from zero, because starting from zero would treat every '
+    + 'message already in the mailbox as new and announce all of them. Point '
+    + 'surfaces.email.imap.mailbox at a different mailbox on this account to see '
+    + 'whether the problem follows the folder or the server, and report the '
+    + 'contradiction to the mail provider. Inbound mail retries when the daemon '
+    + 'restarts or when inbound settings change.',
   'fetch-refused':
     'The mailbox opened and the server refused to hand over message data, so '
     + 'arriving mail can be seen and not read. Check that the account is '

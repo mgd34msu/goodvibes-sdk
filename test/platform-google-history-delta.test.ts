@@ -288,6 +288,129 @@ describe('historyListDelta: with a granted Gmail scope', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('unreachable');
     expect(result.value.messages.map((m) => m.id)).toEqual(['msg-2']);
+    // Dropped as GONE, which is what a 404 means, and therefore NOT reported
+    // as something that went unread — the delta is complete and its historyId
+    // is a position the caller may take.
+    expect(result.value.unreadable).toEqual([]);
+  });
+
+  test('a fetch that FAILED is reported in `unreadable`, not silently dropped like a 404', async () => {
+    // The defect: every non-ok getMessage was read as "the message is gone".
+    // A 429 is not a deletion — the message is still in the mailbox — and on a
+    // forward-only history log a caller that took this delta's historyId could
+    // never ask for the record again.
+    const page = historyPage({
+      historyId: '152',
+      addedMessageIds: [
+        { id: 'msg-limited', threadId: 'thread-l' },
+        { id: 'msg-ok', threadId: 'thread-o' },
+      ],
+    });
+    const messageOk = gmailMessagePayload({
+      id: 'msg-ok',
+      threadId: 'thread-o',
+      to: 'owner@example.com',
+      deliveredTo: [],
+      from: 'sender@example.com',
+      subject: 'Hi',
+      bodyText: 'hello',
+    });
+    const { port } = fakeFetchPort({
+      history: [jsonResponse(200, page)],
+      messages: {
+        'msg-limited': jsonResponse(429, { error: { message: 'Rate Limit Exceeded' } }),
+        'msg-ok': jsonResponse(200, messageOk),
+      },
+    });
+    const client = new GoogleApiClient(tokenManagerWithScopes(['https://mail.google.com/']), port);
+
+    const result = await client.historyListDelta({ startHistoryId: '100' });
+
+    // Still `ok`, and deliberately so: what WAS read is usable, and refusing
+    // the whole delta would withhold a verification email we did fetch because
+    // a sibling message was rate-limited.
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('unreachable');
+    expect(result.value.messages.map((m) => m.id)).toEqual(['msg-ok']);
+
+    // But the delta now SAYS it is incomplete, which is the fact the caller
+    // needs in order not to advance past msg-limited.
+    expect(result.value.unreadable).toHaveLength(1);
+    const problem = result.value.unreadable[0]!;
+    expect(problem.id).toBe('msg-limited');
+    expect(problem.status).toBe(429);
+    expect(problem.detail.length).toBeGreaterThan(0);
+    // Google's remedial step travels with the problem: a caller building an
+    // owner-facing verdict from this has nowhere else to get one.
+    expect(problem.fix.length).toBeGreaterThan(0);
+    // An id that could not be read must never appear as a message.
+    expect(result.value.messages.map((m) => m.id)).not.toContain('msg-limited');
+  });
+
+  test('a server fault and a refused token are unreadable too, carrying their own status', async () => {
+    const page = historyPage({
+      historyId: '153',
+      addedMessageIds: [
+        { id: 'msg-500', threadId: 'thread-a' },
+        { id: 'msg-403', threadId: 'thread-b' },
+      ],
+    });
+    const { port } = fakeFetchPort({
+      history: [jsonResponse(200, page)],
+      messages: {
+        'msg-500': jsonResponse(500, { error: { message: 'Backend Error' } }),
+        'msg-403': jsonResponse(403, { error: { message: 'Insufficient Permission' } }),
+      },
+    });
+    const client = new GoogleApiClient(tokenManagerWithScopes(['https://mail.google.com/']), port);
+
+    const result = await client.historyListDelta({ startHistoryId: '100' });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('unreachable');
+    expect(result.value.messages).toEqual([]);
+    // Two unread messages, and the STATUS is preserved per entry rather than
+    // flattened — a caller has to tell "wait" from "the grant changed", and it
+    // cannot do that from a count.
+    expect(result.value.unreadable.map((problem) => problem.status).sort()).toEqual([403, 500]);
+    expect(result.value.unreadable.map((problem) => problem.id).sort())
+      .toEqual(['msg-403', 'msg-500']);
+  });
+
+  test('an empty delta and an unread delta are different answers', async () => {
+    // Both come back `ok` with no messages, and before `unreadable` existed
+    // they were the same value. One means "nothing arrived"; the other means
+    // "something arrived and we could not read it". Collapsing them is how a
+    // mailbox goes quiet with nobody noticing.
+    const quiet = fakeFetchPort({
+      history: [jsonResponse(200, historyPage({ historyId: '170', addedMessageIds: [] }))],
+      messages: {},
+    });
+    const unread = fakeFetchPort({
+      history: [jsonResponse(200, historyPage({
+        historyId: '170',
+        addedMessageIds: [{ id: 'msg-x', threadId: 't-x' }],
+      }))],
+      messages: { 'msg-x': jsonResponse(503, { error: { message: 'Service Unavailable' } }) },
+    });
+    const scope = ['https://mail.google.com/'];
+
+    const quietResult = await new GoogleApiClient(tokenManagerWithScopes(scope), quiet.port)
+      .historyListDelta({ startHistoryId: '100' });
+    const unreadResult = await new GoogleApiClient(tokenManagerWithScopes(scope), unread.port)
+      .historyListDelta({ startHistoryId: '100' });
+
+    expect(quietResult.ok).toBe(true);
+    expect(unreadResult.ok).toBe(true);
+    if (!quietResult.ok || !unreadResult.ok) throw new Error('unreachable');
+
+    expect(quietResult.value.messages).toEqual([]);
+    expect(unreadResult.value.messages).toEqual([]);
+    // Same historyId, same empty message list, and the two are still
+    // distinguishable — which is the entire requirement.
+    expect(quietResult.value.historyId).toBe(unreadResult.value.historyId);
+    expect(quietResult.value.unreadable).toEqual([]);
+    expect(unreadResult.value.unreadable).toHaveLength(1);
   });
 });
 
