@@ -1,15 +1,55 @@
 /**
- * Minimal IMAP4rev1 client over an injectable transport socket.
+ * Minimal IMAP4rev1 client over an injected socket.
  *
  * Scope and honest boundaries
  * ────────────────────────────
- * Supported:
- *   - LOGIN with plain credentials (tag AUTH LOGIN user pass)
- *   - EXAMINE <mailbox> (read-only SELECT; messages are never marked \Seen)
- *   - UID SEARCH UNSEEN and UID SEARCH SINCE <date>
- *   - UID FETCH (UID BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE MESSAGE-ID TO
- *     AUTHENTICATION-RESULTS DELIVERED-TO X-ORIGINAL-TO)]) — envelope plus
- *     delivery evidence, addressed and reported by UID
+ * Every line below was checked against the code that sends the bytes. A header
+ * that claims a capability the file does not have is worse than no header: the
+ * claim gets believed, designed against, and depended on. This one previously
+ * advertised "per-await timeouts via AbortSignal" when no AbortSignal existed
+ * anywhere in the module, a `SocketLike` type that was never declared, and a
+ * `LOGIN` wire format with an `AUTH` token that is not sent.
+ *
+ * Commands this client actually sends:
+ *   - `LOGIN "<user>" "<pass>"` — credentials as RFC 3501 quoted strings. No
+ *     `AUTH` verb: the tag is followed directly by LOGIN.
+ *   - `AUTHENTICATE XOAUTH2 <base64>` instead, when `ImapClientOptions.password`
+ *     starts with `Bearer `. Acquiring that token is out of scope.
+ *   - `CAPABILITY`, lazily and at most once, and only when the server
+ *     volunteered no capabilities in its greeting, its login completion or its
+ *     EXAMINE response — see `capabilities()`.
+ *   - `EXAMINE <mailbox>` (read-only SELECT; messages are never marked \Seen)
+ *   - `UID SEARCH UNSEEN`, `UID SEARCH UNSEEN SINCE <date>`, `UID SEARCH ALL`
+ *     and `UID SEARCH SINCE <date>`
+ *   - `UID FETCH <set> (UID BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE
+ *     MESSAGE-ID TO DELIVERED-TO X-ORIGINAL-TO AUTHENTICATION-RESULTS)])` —
+ *     envelope plus delivery evidence, addressed and reported by UID
+ *   - `UID FETCH <uid> BODY.PEEK[TEXT]<0.N>` — bounded plain-text preview
+ *   - `UID FETCH <uid> BODY.PEEK[HEADER]`, `BODYSTRUCTURE`, and the
+ *     text/plain and text/html sections only. Attachments are REPORTED, never
+ *     downloaded — see `fetchMessage`.
+ *   - `LIST "" "*"` — to find the folder the server flags `\Drafts` (RFC 6154)
+ *     rather than appending to a hardcoded name
+ *   - `APPEND <drafts> (\Draft) {n}` — see `appendDraft`
+ *   - `LOGOUT`
+ *
+ * Also true of the wire session underneath (`imap-session.ts`):
+ *   - `{n}` literal continuations on server responses, counted in BYTES
+ *   - a per-operation read deadline on every command, and — through the
+ *     connection handed to `imapConnection()` — a cancellable read with no
+ *     deadline at all, for a caller that must wait in silence
+ *
+ * Not supported here, deliberately:
+ *   - IDLE / NOTIFY push. The wire session does support holding a connection
+ *     and dispatching untagged responses, which is what an IDLE loop is built
+ *     on; the loop itself is not this file's job.
+ *   - STARTTLS upgrade — there is no STARTTLS in this module. Use TLS-direct
+ *     port 993.
+ *   - Attachment CONTENT. Metadata only, from BODYSTRUCTURE.
+ *   - COPY, MOVE, EXPUNGE, STORE, and every other flag or deletion command.
+ *     APPEND is the only write, and it writes only to Drafts.
+ *   - Logging of any kind. This file contains no logger and no console call,
+ *     so credentials cannot leak through it; callers must not log them either.
  *
  * Delivered-to vs To:
  * ────────────────────
@@ -19,20 +59,6 @@
  * This client reports, in descending order of trust: the mailbox it read from,
  * then the top-most Delivered-To/X-Original-To stamped by the delivery agent.
  * The To: header is surfaced only as `unverifiedToHeaderClaim`.
- *   - FETCH BODY.PEEK[TEXT]<0.N> — bounded plain-text body preview
- *   - UID FETCH of one whole message: headers, BODYSTRUCTURE, and only the
- *     text/plain and text/html sections. Attachments are REPORTED, never
- *     downloaded — see `fetchMessage`.
- *   - APPEND of a draft with the \Draft flag, to the folder the server flags
- *     `\Drafts` (RFC 6154) rather than to a hardcoded name — see `appendDraft`
- *   - XOAUTH2 pass-through: if imapPassword starts with 'Bearer ' the client
- *     sends AUTHENTICATE XOAUTH2 with the base64-encoded SASL token; token
- *     acquisition is out of scope.
- *   - {n} literal continuations on server responses, counted in bytes
- *   - A per-operation read deadline on every command, and — through the
- *     connection handed to `imapConnection()` — a cancellable read with no
- *     deadline at all, for a caller that must wait in silence
- *   - LOGOUT
  *
  * Sequence numbers vs UIDs
  * ────────────────────────
@@ -49,24 +75,18 @@
  * `open()` builds the single `ImapSession` that owns the socket for the life
  * of the connection; every other method uses that one. Calling a fetch method
  * before `open()` fails rather than quietly building a second reader with a
- * fresh tag counter and an empty buffer.
- *
- * Not supported here (document boundaries):
- *   - IDLE / NOTIFY push. The wire session underneath does support holding a
- *     connection and dispatching untagged responses, which is what an IDLE
- *     loop is built on; the loop itself is not this file's job.
- *   - STARTTLS upgrade (use TLS-direct port 993)
- *   - Attachment CONTENT — metadata only, deliberately
- *   - COPY, MOVE, EXPUNGE, STORE, and every other flag or deletion command
- *   - Credentials are never logged; callers must not log them either
+ * fresh tag counter and an empty buffer. `open()` reports what the connection
+ * turned out to be able to do, and fails with a named reason — see
+ * `imap-open.ts`.
  *
  * Transport injection
  * ────────────────────
- * Accept a `SocketLike` instead of creating a TLS socket directly so that
- * unit tests can supply a plain net.Socket connected to an in-process fake
- * server.  Production callers pass the result of `createImapTlsSocket()`,
- * which lives in the sibling `email/node` entry so that importing this module
- * never drags a runtime-specific implementation in behind it.
+ * `ImapClientOptions.socket` is a `node:net` `Socket`, already connected. The
+ * client never creates one, so a test supplies a plain socket pointed at an
+ * in-process fake server and production supplies the result of
+ * `createImapTlsSocket()`, which lives in the sibling `email/node` entry so
+ * that importing this module never drags a runtime-specific implementation in
+ * behind it.
  */
 
 import type { Socket } from 'node:net';
@@ -98,10 +118,27 @@ import {
   parseMailboxStatus,
   parseSearchNumbers,
   formatImapDate,
-  type DeliveryEvidence,
   type ImapMailboxStatus,
 } from './imap-headers.js';
 import { ImapSession } from './imap-session.js';
+import type {
+  ImapAppendDraftInput,
+  ImapAppendDraftResult,
+  ImapClientOptions,
+  ImapEnvelope,
+  ImapMessageDetail,
+} from './imap-types.js';
+
+// Re-exported so the client stays the one entry point callers already import.
+export type {
+  ImapAppendDraftInput,
+  ImapAppendDraftResult,
+  ImapAttachmentInfo,
+  ImapClientOptions,
+  ImapEnvelope,
+  ImapMessage,
+  ImapMessageDetail,
+} from './imap-types.js';
 import {
   DEFAULT_MAILBOX,
   formatMailboxName,
@@ -111,6 +148,7 @@ import {
   NOT_OPEN_MESSAGE,
   composeOpenFailure,
   forgetConnection,
+  idleSupportFrom,
   rememberConnection,
   type ImapConnectionReport,
 } from './imap-open.js';
@@ -120,132 +158,17 @@ import {
 export { imapQuoteCredential } from './imap-names.js';
 export {
   ImapOpenError,
+  describeEmailCapabilityFailure,
   imapConnection,
+  ownerMessageForFailure,
+  resolveIdleSupport,
+  type EmailCapabilityFailureNotice,
+  type EmailCapabilityFailureReason,
   type ImapConnectionReport,
+  type ImapIdleDecision,
+  type ImapIdleSupport,
   type ImapOpenFailureReason,
 } from './imap-open.js';
-
-// ---------------------------------------------------------------------------
-// Public types
-// ---------------------------------------------------------------------------
-
-export interface ImapEnvelope {
-  readonly uid: number;
-  readonly from: string;
-  readonly subject: string;
-  readonly date: string;
-  readonly messageId: string;
-  /**
-   * The mailbox this message was fetched from (the EXAMINE target).
-   * Strongest delivery evidence: a per-signup alias mailbox exists only for
-   * that signup, so the sender cannot influence which mailbox we read.
-   */
-  readonly mailbox: string;
-  /**
-   * Delivery evidence addresses, top-most first. Safe to correlate against.
-   * Empty when the delivery agent stamped nothing we can trust — callers must
-   * then fall back to the mailbox, never to `unverifiedToHeaderClaim`.
-   */
-  readonly deliveredTo: readonly string[];
-  /** The same values as `deliveredTo`, with provenance attached. */
-  readonly deliveryEvidence: readonly DeliveryEvidence[];
-  /**
-   * The To: header, verbatim, for DISPLAY ONLY.
-   *
-   * This is authored by whoever sent the message. Anyone can put any address
-   * here, including an address we are waiting on. Correlating on this value
-   * lets a stranger claim a pending verification. Never compare it to an
-   * expected recipient; use `deliveredTo` or `mailbox` for that.
-   */
-  readonly unverifiedToHeaderClaim: string;
-  /**
-   * `Authentication-Results` values, top-most first.
-   *
-   * Written by the receiving mail server, so — like the delivery headers —
-   * only the top-most is beyond the sender's reach. Feeds DISPLAY confidence
-   * on the sender line and nothing else; no permission anywhere reads it.
-   */
-  readonly authenticationResults: readonly string[];
-}
-
-export interface ImapMessage extends ImapEnvelope {
-  readonly bodyPreview: string;
-}
-
-/**
- * One whole message: everything an envelope carries, plus its readable text.
- *
- * Extends `ImapEnvelope` rather than restating it so the provenance rules that
- * govern a listing govern a full read identically — the mailbox it came from,
- * the delivery evidence, the `To:` header still named as an unverified claim,
- * and the sender-authentication results still carrying no authority. A second
- * shape here would be a second, weaker labelling of the same untrusted text.
- *
- * `bodyText` and `bodyHtml` are attacker-controlled: they are whatever the
- * sender wrote. `EmailService.readMessage` records the untrusted ingest for
- * them exactly as the inbox listing does.
- */
-export interface ImapMessageDetail extends ImapEnvelope {
-  /** Decoded text/plain body, '' when the message has none. */
-  readonly bodyText: string;
-  /** Decoded text/html body, '' when the message has none. */
-  readonly bodyHtml: string;
-  /** What is attached, described. Never the attached bytes — see `fetchMessage`. */
-  readonly attachments: readonly ImapAttachmentInfo[];
-}
-
-/**
- * An attachment as the server described it. METADATA ONLY: this is read out of
- * the message's BODYSTRUCTURE, and no code path in this module fetches an
- * attachment's content.
- */
-export interface ImapAttachmentInfo {
-  /** Filename the sender chose. '' when the part carries none. */
-  readonly filename: string;
-  /** Lowercased `type/subtype`, e.g. `application/pdf`. */
-  readonly contentType: string;
-  /** Size in bytes as the server reported it; 0 when it reported none. */
-  readonly sizeBytes: number;
-}
-
-/** The fields an APPENDed draft is built from. */
-export interface ImapAppendDraftInput {
-  readonly to: string;
-  readonly subject: string;
-  readonly body: string;
-  readonly from: string;
-  readonly inReplyTo?: string | undefined;
-  readonly references?: string | undefined;
-  /** Overrides Drafts-folder discovery. */
-  readonly mailbox?: string | undefined;
-}
-
-/** Where an appended draft landed, and under which UID if the server said. */
-export interface ImapAppendDraftResult {
-  /** The APPENDUID the server reported (RFC 4315), or null when it reported none. */
-  readonly uid: number | null;
-  /** The mailbox the draft was appended to, after discovery. */
-  readonly mailbox: string;
-}
-
-export interface ImapClientOptions {
-  /** Pre-connected socket (TLS for prod, plain for tests). */
-  readonly socket: Socket;
-  /** IMAP LOGIN username. */
-  readonly username: string;
-  /** IMAP LOGIN password or 'Bearer <token>' for XOAUTH2 pass-through. */
-  readonly password: string;
-  /** Per-operation timeout in milliseconds. Default: 15 000. */
-  readonly timeoutMs?: number;
-  /** Maximum body preview bytes to fetch. Default: 4096. */
-  readonly maxBodyBytes?: number;
-  /**
-   * Mailbox to EXAMINE and fetch from. Default: 'INBOX'.
-   * Reported back on every envelope as `mailbox` so callers can correlate on
-   * "which alias mailbox did this land in" rather than on message content.
-   */
-  readonly mailbox?: string;
-}
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -253,6 +176,15 @@ export interface ImapClientOptions {
 
 /** Per-operation timeout, and the connect timeout used by the node adapter. */
 export const IMAP_DEFAULT_TIMEOUT_MS = 15_000;
+/**
+ * The most UIDs one `fetchEnvelopes` call will address.
+ *
+ * A bound on the length of a single `UID FETCH` command line, not a page size:
+ * asking for more REFUSES, and never returns a shortened list. Paging is the
+ * caller's business, and it has to be visible at the call site — the previous
+ * shape hid it in a default argument and lost mail through it.
+ */
+export const IMAP_MAX_FETCH_UIDS = 500;
 const DEFAULT_MAX_BODY_BYTES = 4_096;
 
 function buildXOAuth2Token(username: string, bearerToken: string): string {
@@ -360,7 +292,7 @@ export class ImapClient {
     this.readable = true;
     return {
       advertisedCapabilities: this.advertised,
-      supportsIdle: this.advertised.length === 0 ? null : this.advertised.includes('IDLE'),
+      idle: idleSupportFrom(this.advertised),
       mailbox: { ...this.status, name: this.mailbox },
     };
   }
@@ -437,9 +369,23 @@ export class ImapClient {
   }
 
   /**
-   * Fetch envelope headers for an array of UIDs.
-   * Uses BODY.PEEK so messages remain unread.
-   * Returns at most `limit` messages, the highest UIDs, in ascending order.
+   * Fetch envelope headers for the UIDs given. Uses BODY.PEEK so messages
+   * remain unread. Returns one envelope per UID the server answered for, in
+   * the order asked.
+   *
+   * **Every UID asked for is asked for.** This used to take a `limit` that
+   * defaulted to 20 and silently kept only the last N, which is a trap rather
+   * than a bound: a caller handing it a delta of more than twenty UIDs got
+   * twenty back with no error and no signal, and a caller that then advanced a
+   * cursor to the highest UID it saw skipped every dropped message
+   * permanently. There is no way to use a silently-truncating function
+   * correctly without already knowing it truncates. Callers that want a page
+   * slice the UID list themselves, where the slice is visible.
+   *
+   * A hard ceiling remains, because one `UID FETCH` line cannot address an
+   * unbounded set — but it REFUSES rather than trims. Over the ceiling is a
+   * caller that needs to page, and telling it so is the only answer that
+   * cannot lose mail.
    *
    * The `UID` data item is requested explicitly and the returned envelope
    * carries what the server answered. The `* n FETCH` prefix on the response
@@ -451,10 +397,19 @@ export class ImapClient {
    * for it — or falling back to its sequence number — would hand the caller an
    * identifier that names a different message.
    */
-  async fetchEnvelopes(uids: readonly number[], limit = 20): Promise<ImapEnvelope[]> {
+  async fetchEnvelopes(uids: readonly number[]): Promise<ImapEnvelope[]> {
     if (uids.length === 0) return [];
+    if (uids.length > IMAP_MAX_FETCH_UIDS) {
+      throw new Error(
+        `fetchEnvelopes was asked for ${uids.length} UIDs, and at most `
+        + `${IMAP_MAX_FETCH_UIDS} can be fetched in one command. Ask for them in `
+        + `batches of that size or smaller — this refuses rather than returning `
+        + `a subset, because a caller advancing a cursor over a silently `
+        + `shortened result skips the messages it never saw.`,
+      );
+    }
     const session = this.requireReadableMailbox();
-    const bounded = uids.slice(-limit); // take the last N (highest UID = newest)
+    const bounded = uids;
     const set = bounded.join(',');
     const lines = await session.command(
       `UID FETCH ${set} (UID BODY.PEEK[HEADER.FIELDS ` +

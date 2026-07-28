@@ -31903,7 +31903,7 @@ Append a draft message to the configured IMAP Drafts folder. Distinct from the l
 
 #### `email.inbox.list`
 
-Return inbox message summaries fetched live from the configured IMAP account. Read-only (EXAMINE / BODY.PEEK); never marks messages read.
+Return inbox message summaries fetched live from the configured IMAP account, newest first (ordered by server-assigned UID, never by the sender-written Date header). Read-only (EXAMINE / BODY.PEEK); never marks messages read.
 
 - Title: `List Email Inbox`
 - Source: `builtin`

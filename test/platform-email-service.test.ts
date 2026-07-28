@@ -15,6 +15,7 @@ import {
   validateEmailConfig,
   resolveEmailPassword,
 } from '../packages/sdk/src/platform/email/email-service.ts';
+import { describeEmailCapabilityFailure } from '../packages/sdk/src/platform/email/imap-open.ts';
 import { createServer, connect, type Server, type Socket } from 'node:net';
 
 // ---------------------------------------------------------------------------
@@ -136,11 +137,27 @@ describe('resolveEmailPassword', () => {
     expect(calls[0]).toBe('op://Private/Email/password');
   });
 
-  test('throws when secret is not found', async () => {
+  test('a missing secret is a named, terminal capability failure naming the fix', async () => {
     const secrets = makeSecretsManager({});
-    await expect(
-      resolveEmailPassword('goodvibes://secrets/goodvibes/MISSING_KEY', secrets),
-    ).rejects.toThrow('Email password secret could not be resolved');
+    let caught: unknown;
+    try {
+      await resolveEmailPassword('goodvibes://secrets/goodvibes/MISSING_KEY', secrets);
+    } catch (err) {
+      caught = err;
+    }
+
+    const notice = describeEmailCapabilityFailure(caught);
+    expect(notice).not.toBeNull();
+    expect(notice?.reason).toBe('credential-unavailable');
+    // Terminal: waiting does not make a secret appear.
+    expect(notice?.terminal).toBe(true);
+    // The owner is told the step, and which store was actually consulted.
+    expect(notice?.ownerMessage).toContain('email.passwordRef');
+    expect(notice?.ownerMessage).toContain('daemon scope');
+    // ...including that another surface's store is not searched, because doing
+    // so would work on one machine and fail on every other.
+    expect(notice?.ownerMessage).toContain('not visible here');
+    expect(notice?.serverMessage).toContain('MISSING_KEY');
   });
 });
 

@@ -32221,7 +32221,7 @@
       "get": {
         "operationId": "email.inbox.list",
         "summary": "List Email Inbox",
-        "description": "Return inbox message summaries fetched live from the configured IMAP account. Read-only (EXAMINE / BODY.PEEK); never marks messages read.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return inbox message summaries fetched live from the configured IMAP account, newest first (ordered by server-assigned UID, never by the sender-written Date header). Read-only (EXAMINE / BODY.PEEK); never marks messages read.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
         "tags": [
           "email"
         ],

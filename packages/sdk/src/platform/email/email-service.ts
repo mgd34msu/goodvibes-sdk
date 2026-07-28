@@ -42,8 +42,23 @@
  */
 
 import { readSenderAuthentication } from '../google/sender-authentication.js';
-import { ImapClient } from './imap-client.js';
+import { ImapClient, IMAP_MAX_FETCH_UIDS } from './imap-client.js';
 import { SmtpClient, validateSmtpAddress, validateSmtpSubject } from './smtp-client.js';
+import {
+  readEmailConfig,
+  resolveEmailPassword,
+  smtpPasswordRefFor,
+  validateEmailConfig,
+} from './email-config.js';
+
+// Re-exported so the service stays the one entry point callers already import.
+export {
+  EmailCredentialUnavailableError,
+  readEmailConfig,
+  resolveEmailPassword,
+  smtpPasswordRefFor,
+  validateEmailConfig,
+} from './email-config.js';
 import type {
   ImapAppendDraftResult,
   ImapEnvelope,
@@ -218,6 +233,21 @@ export interface EmailInboxListInput {
 }
 
 export interface EmailInboxListResult {
+  /**
+   * The matched messages, **newest first**, capped at `limit`.
+   *
+   * The order is part of the contract rather than an accident of how IMAP
+   * answers a search, because it WAS an accident before and two consumers
+   * disagreed about it: one rendered the array as-is and so showed the newest
+   * page with the oldest message at the top, the other re-sorted client-side
+   * on the `Date:` header. A daemon that does not define an order makes every
+   * consumer invent one, and one of those inventions sorted on a field the
+   * sender writes.
+   *
+   * Ordered by UID, which the receiving server assigns, and never by `Date:`,
+   * which whoever sent the message wrote — a forged date must not be able to
+   * pin a message to the top of the owner's inbox.
+   */
   readonly messages: readonly EmailSummary[];
   /**
    * How many messages MATCHED, before `limit` truncated the list.
@@ -314,111 +344,6 @@ export interface EmailServiceDeps {
 }
 
 // ---------------------------------------------------------------------------
-// Config reading
-// ---------------------------------------------------------------------------
-
-function readString(value: unknown, fallback = ''): string {
-  return typeof value === 'string' ? value : fallback;
-}
-
-function readNumber(value: unknown, fallback: number): number {
-  const n = typeof value === 'number' ? value : parseInt(String(value), 10);
-  return isFinite(n) ? n : fallback;
-}
-
-function readBoolean(value: unknown, fallback = false): boolean {
-  return typeof value === 'boolean' ? value : fallback;
-}
-
-function readSmtpSecurity(value: unknown): SmtpSecurityMode {
-  if (value === 'tls' || value === 'starttls' || value === 'auto') return value;
-  return 'auto';
-}
-
-export function readEmailConfig(getConfig: (key: string) => unknown): EmailConfig {
-  return {
-    enabled: readBoolean(getConfig('email.enabled'), false),
-    imapHost: readString(getConfig('email.imapHost')),
-    imapPort: readNumber(getConfig('email.imapPort'), 993),
-    smtpHost: readString(getConfig('email.smtpHost')),
-    smtpPort: readNumber(getConfig('email.smtpPort'), 587),
-    smtpSecurity: readSmtpSecurity(getConfig('email.smtpSecurity')),
-    username: readString(getConfig('email.username')),
-    passwordRef: readString(getConfig('email.passwordRef')),
-    smtpPasswordRef: readString(getConfig('email.smtpPasswordRef')),
-    fromAddress: readString(getConfig('email.fromAddress')),
-    mailbox: readString(getConfig('email.mailbox')),
-    draftsMailbox: readString(getConfig('email.draftsMailbox')),
-  };
-}
-
-/**
- * Which secret submission authenticates with: the SMTP-specific one when the
- * operator set it, otherwise the mailbox password. Resolved through one helper
- * so `sendMail` and `testConnection` cannot disagree about which credential a
- * send would actually use — a test that passes with the wrong password is worse
- * than no test.
- */
-export function smtpPasswordRefFor(config: EmailConfig): string {
-  return config.smtpPasswordRef.length > 0 ? config.smtpPasswordRef : config.passwordRef;
-}
-
-export function validateEmailConfig(config: EmailConfig): string[] {
-  const errors: string[] = [];
-  if (!config.imapHost) errors.push('email.imapHost is required');
-  if (!config.smtpHost) errors.push('email.smtpHost is required');
-  if (!config.username) errors.push('email.username is required');
-  if (!config.passwordRef) {
-    errors.push('email.passwordRef is required (must be a secret reference, not a raw password)');
-  } else if (!config.passwordRef.startsWith('goodvibes://secrets/')) {
-    errors.push('email.passwordRef must be a goodvibes secret reference (goodvibes://secrets/...)');
-  }
-  // Optional: an empty value means "same password as IMAP", which is the common
-  // case. A non-empty one is held to the same rule as passwordRef — a raw
-  // password here would be a raw password in a settings file.
-  if (config.smtpPasswordRef.length > 0 && !config.smtpPasswordRef.startsWith('goodvibes://secrets/')) {
-    errors.push('email.smtpPasswordRef must be a goodvibes secret reference (goodvibes://secrets/...)');
-  }
-  if (!config.fromAddress) errors.push('email.fromAddress is required');
-  return errors;
-}
-
-// ---------------------------------------------------------------------------
-// Secret resolution
-// ---------------------------------------------------------------------------
-
-/**
- * Extract the storage key from a goodvibes://secrets/goodvibes/<key> ref.
- * For other secret ref types (env, file, bitwarden, etc.) we cannot resolve
- * them directly — the user should configure via the standard secret manager
- * path. We return the raw ref string for those cases so the SecretsManager
- * can attempt its own resolution chain.
- */
-function extractSecretKey(passwordRef: string): string {
-  const prefix = 'goodvibes://secrets/goodvibes/';
-  if (passwordRef.startsWith(prefix)) {
-    return decodeURIComponent(passwordRef.slice(prefix.length));
-  }
-  // Return the full ref for the SecretsManager to resolve
-  return passwordRef;
-}
-
-export async function resolveEmailPassword(
-  passwordRef: string,
-  secretsManager: { readonly get: (key: string) => Promise<string | null> },
-): Promise<string> {
-  const key = extractSecretKey(passwordRef);
-  const value = await secretsManager.get(key);
-  if (!value) {
-    throw new Error(
-      'Email password secret could not be resolved. ' +
-      'Verify that email.passwordRef points to a configured secret.',
-    );
-  }
-  return value;
-}
-
-// ---------------------------------------------------------------------------
 // EmailService
 // ---------------------------------------------------------------------------
 
@@ -459,8 +384,8 @@ export class EmailService {
   }
 
   /**
-   * List the inbox: unread only by default, everything when `unreadOnly` is
-   * false, optionally bounded by a date.
+   * List the inbox, NEWEST FIRST: unread only by default, everything when
+   * `unreadOnly` is false, optionally bounded by a date.
    *
    * Read-only throughout — the mailbox is EXAMINEd and every fetch peeks, so
    * listing mail never marks it read. Returns the matched `total` alongside
@@ -487,19 +412,31 @@ export class EmailService {
       const uids = unreadOnly
         ? await client.searchUnseen(input.since)
         : await client.searchAll(input.since);
-      const envelopes: ImapEnvelope[] = await client.fetchEnvelopes(uids, limit);
+      // Page here, visibly, rather than handing the whole match set to a
+      // function that would quietly keep the tail of it. `total` below reports
+      // the full match, so a caller can always see that this is a page.
+      const pageUids = uids.slice(-Math.min(limit, IMAP_MAX_FETCH_UIDS));
+      const envelopes: ImapEnvelope[] = await client.fetchEnvelopes(pageUids);
 
-      // Fetch a body preview for the newest message OF THIS PAGE (read-only;
-      // BODY.PEEK). The target is taken from `envelopes`, not from the search
-      // results: a search returns ascending order and the page keeps the
-      // highest UIDs, so the first search result is the oldest match and is
+      // NEWEST FIRST. A search answers in ascending UID order and the page
+      // keeps the highest UIDs, so `envelopes` is the newest N with the OLDEST
+      // of them at index 0 — which is the reverse of what anybody displaying a
+      // mailbox wants, and the reverse of what this method's own contract now
+      // promises. Ordered by UID rather than by the `Date:` header, because
+      // the UID is assigned by the receiving server and `Date:` is written by
+      // whoever sent the message: sorting on it would let a forged date pin a
+      // message to the top of the owner's inbox.
+      const page = [...envelopes].reverse();
+
+      // Fetch a body preview for the newest message of this page (read-only;
+      // BODY.PEEK), which is now index 0. Taken from the page rather than from
+      // the search results: the first search result is the oldest match and is
       // usually not on the page at all. Preview text taken from one message
       // and shown against another is worse than no preview — it attributes
       // words to a sender who did not write them, both in the listing and in
       // the untrusted-ingest record below.
       // Failures are non-fatal — the inbox summary is still returned.
-      const previewIndex = envelopes.length - 1;
-      const previewTarget = envelopes[previewIndex];
+      const previewTarget = page[0];
       let newestBodyPreview = '';
       if (previewTarget !== undefined) {
         try {
@@ -521,24 +458,24 @@ export class EmailService {
       // Delivery evidence is carried through deliberately. Dropping it here
       // would leave correlation with nothing but the sender-authored `To:`
       // header, which is the exact hole the evidence exists to close.
-      this.recordIngest(envelopes.map((env, idx) => ({
+      this.recordIngest(page.map((env, idx) => ({
         from: env.from,
         // The preview is fetched for one message only, so that is the one
         // whose words are available here; the rest contribute their subject,
         // which is itself attacker-written. The index is the one the preview
         // was fetched from, so the text is attributed to the sender who wrote
         // it.
-        text: `${env.subject}\n${idx === previewIndex ? newestBodyPreview : ''}`.trim(),
+        text: `${env.subject}\n${idx === 0 ? newestBodyPreview : ''}`.trim(),
       })));
 
-      const messages = envelopes.map((env, idx) => ({
+      const messages = page.map((env, idx) => ({
         uid: env.uid,
         messageId: env.messageId,
         from: env.from,
         subject: env.subject,
         date: env.date,
         unread: unseen === null ? true : unseen.has(env.uid),
-        bodyPreview: idx === previewIndex ? newestBodyPreview : '',
+        bodyPreview: idx === 0 ? newestBodyPreview : '',
         mailbox: env.mailbox,
         deliveredTo: env.deliveredTo,
         unverifiedToHeaderClaim: env.unverifiedToHeaderClaim,
