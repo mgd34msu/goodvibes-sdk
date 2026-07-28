@@ -35,7 +35,19 @@ export type {
   PermissionCheckResult,
 } from './types.js';
 
-type PermissionConfigSnapshot = ReturnType<typeof getConfigSnapshot>;
+/**
+ * The slice of config the permission layer reads — `.permissions` and nothing
+ * else.
+ *
+ * `getConfigSnapshot` returns the whole `GoodVibesConfig`, and this alias used
+ * to be exactly that, so `PermissionConfigReader` declared a dependency on
+ * every config domain in the product while its two consumers (both in this
+ * file) read `getSnapshot().permissions`. A stand-in reader had to produce all
+ * fifty-odd domains to satisfy it. Narrowing costs the real implementation
+ * nothing: `createPermissionConfigReader` still hands back the full snapshot,
+ * which remains assignable.
+ */
+type PermissionConfigSnapshot = Readonly<Pick<ReturnType<typeof getConfigSnapshot>, 'permissions'>>;
 
 export interface PermissionConfigReader {
   isAutoApproveEnabled(): boolean;

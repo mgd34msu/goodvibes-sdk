@@ -17,17 +17,43 @@ import {
 } from '../scripts/generate-webui-facade.ts';
 import type { OperatorMethodContract } from '../packages/contracts/src/types.ts';
 
-function methodContract(id: string, verb: string, path: string): OperatorMethodContract {
+/**
+ * A real OperatorMethodContract, not a cast.
+ *
+ * This started as `{...} as unknown as OperatorMethodContract`, and the cast
+ * was hiding two disagreements with the contract: `source: 'daemon'` is not a
+ * GatewayMethodSource ('builtin' | 'plugin'), and the required `category` was
+ * absent. `satisfies` keeps it honest — a field added upstream now breaks this
+ * fixture instead of being silently absorbed.
+ */
+type ContractVerb = NonNullable<OperatorMethodContract['http']>['method'];
+
+function methodContract(id: string, verb: ContractVerb, path: string): OperatorMethodContract {
   return {
     id,
     title: id,
     description: id,
-    source: 'daemon',
+    category: 'test',
+    source: 'builtin',
     access: 'admin',
     transport: ['http'],
     http: { method: verb, path },
     scopes: [],
-  } as unknown as OperatorMethodContract;
+  } satisfies OperatorMethodContract;
+}
+
+/**
+ * A contract carrying a verb the type system cannot express.
+ *
+ * `buildRoutes` runs against a contract JSON artifact that is read with
+ * `JSON.parse` and asserted to the manifest type, so a verb outside the union
+ * can reach it at runtime even though no well-typed literal can produce one.
+ * The cast is confined to that single field and exists to construct invalid
+ * input for a rejection test — not to make a fixture compile.
+ */
+function methodContractWithUnsupportedVerb(id: string, verb: string, path: string): OperatorMethodContract {
+  const base = methodContract(id, 'GET', path);
+  return { ...base, http: { method: verb as ContractVerb, path } };
 }
 
 describe('isWebuiHttpMethod', () => {
@@ -50,11 +76,14 @@ describe('buildRoutes', () => {
   });
 
   test('throws on a verb outside the union rather than emitting a mistyped facade', () => {
-    expect(() => buildRoutes([methodContract('m.put', 'PUT', '/v1/put')])).toThrow(/PUT/);
+    expect(() => buildRoutes([methodContractWithUnsupportedVerb('m.put', 'PUT', '/v1/put')])).toThrow(/PUT/);
   });
 
   test('a method with no http binding is skipped, not rejected', () => {
-    const wsOnly = { ...methodContract('m.ws', 'GET', '/x'), http: null } as unknown as OperatorMethodContract;
+    // `http` absent is how the contract expresses a ws-only method. It was
+    // written as `http: null` behind a cast, a shape the contract does not
+    // allow.
+    const { http: _unrouted, ...wsOnly } = methodContract('m.ws', 'GET', '/x');
     expect(buildRoutes([wsOnly])).toEqual({});
   });
 });

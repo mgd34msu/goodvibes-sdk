@@ -34,7 +34,18 @@ export type BackgroundPermissionOutcome =
  */
 export async function gateBackgroundToolCall(
   context: { readonly permissionManager?: BackgroundPermissionManager | undefined },
-  record: Pick<AgentRecord, 'id' | 'template'>,
+  /**
+   * `template` is OPTIONAL here, unlike on AgentRecord.
+   *
+   * The body has always treated it as optional — it emits the attribution's
+   * `template` only when the record carries a truthy one, because
+   * PermissionAttribution.template is itself optional. Requiring it came from
+   * `Pick<AgentRecord, 'id' | 'template'>`, not from anything this function
+   * does, and it made every caller that has an id and no archetype invent one.
+   * Widening, so the real caller in orchestrator-runner.ts (which passes a full
+   * AgentRecord) is unaffected.
+   */
+  record: Pick<AgentRecord, 'id'> & { readonly template?: AgentRecord['template'] | undefined },
   toolName: string,
   args: Record<string, unknown>,
 ): Promise<BackgroundPermissionOutcome> {

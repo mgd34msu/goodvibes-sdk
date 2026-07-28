@@ -61,7 +61,7 @@ function makeBlockingContext(): SurfaceAdapterContext {
       listSessions: () => [],
       bindAgent: async () => {},
     } as unknown as SurfaceAdapterContext['sessionBroker'],
-    authorizeSurfaceIngress: async () => ({ allowed: false, reason: 'test-blocked' } as unknown as ChannelPolicyDecision),
+    authorizeSurfaceIngress: async () => ({ allowed: false, reason: 'test-blocked' }),
     parseSurfaceControlCommand: () => null,
     performSurfaceControlCommand: async () => 'ok',
     performInteractiveSurfaceAction: async () => 'ok',
@@ -74,7 +74,7 @@ function makePassingContext(): SurfaceAdapterContext {
   const base = makeBlockingContext();
   return {
     ...base,
-    authorizeSurfaceIngress: async () => ({ allowed: true, reason: '' } as unknown as ChannelPolicyDecision),
+    authorizeSurfaceIngress: async () => ({ allowed: true, reason: '' }),
   };
 }
 

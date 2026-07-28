@@ -8,6 +8,22 @@ import type { ConversationMessageEnvelope } from '../control-plane/conversation-
 import type { SecretsManager } from '../config/secrets.js';
 import type { ServiceRegistry } from '../config/service-registry.js';
 
+/**
+ * What an adapter learns from an ingress authorization.
+ *
+ * Every adapter in packages/sdk/src/platform/adapters reads `allowed` and
+ * `reason` — 19 sites each — and none reads `policy`, `matchedGroupPolicy`,
+ * `matchedScope`, `effectiveRequireMention` or `effectiveAllowedCommands`. The
+ * seam returned the whole `ChannelPolicyDecision`, so every adapter test double
+ * had to produce a full `ChannelPolicyRecord` it would never look at, and the
+ * ones that did not were cast through `unknown` instead — which is how a
+ * decision missing its required `policy` field passed for a real one.
+ *
+ * The production implementation still returns the full decision; it remains
+ * assignable.
+ */
+export type SurfaceIngressDecision = Pick<ChannelPolicyDecision, 'allowed' | 'reason'>;
+
 export interface SurfaceControlCommand {
   readonly action: 'status' | 'cancel' | 'retry';
   readonly id: string;
@@ -75,7 +91,7 @@ export interface SurfaceAdapterContext {
     controlCommand?: string | undefined;
     mentioned?: boolean | undefined;
     metadata?: Record<string, unknown> | undefined;
-  }) => Promise<ChannelPolicyDecision>;
+  }) => Promise<SurfaceIngressDecision>;
   readonly parseSurfaceControlCommand: (text: string) => SurfaceControlCommand | null;
   readonly performSurfaceControlCommand: (command: SurfaceControlCommand) => Promise<string>;
   readonly performInteractiveSurfaceAction: (
@@ -146,7 +162,7 @@ export interface GenericWebhookAdapterContext {
     controlCommand?: string | undefined;
     mentioned?: boolean | undefined;
     metadata?: Record<string, unknown> | undefined;
-  }) => Promise<ChannelPolicyDecision>;
+  }) => Promise<SurfaceIngressDecision>;
   readonly trySpawnAgent: TrySpawnAgentFn;
   readonly surfaceDeliveryEnabled: (surface: Extract<AutomationSurfaceKind, 'webhook'>) => boolean;
   readonly signWebhookPayload: (body: string, secret: string) => string;
