@@ -518,6 +518,113 @@ Consequences that make the refusal honest rather than merely safe:
   a condition the owner already knows about trains him to ignore the channel
   this capability depends on.
 
+### 3.4d Two sources behind one interface — Gmail is first-class
+
+The owner asked whether verification mail arriving on Google would work. The
+honest answer was no: the watcher was IMAP-only. So a user who had already
+adopted Google credentials — as he has — would still be asked to find an IMAP
+host, a username and an app password to get real-time inbound **for a mailbox
+the daemon can already read**. That is friction we invented, in the middle of
+the exact journey this capability exists to serve.
+
+**Ruling: Gmail is a first-class inbound source, and the preferred one when
+Google credentials are present.**
+
+The watcher takes a **mail source**, not an IMAP connection:
+
+```ts
+export type SourceLatency =
+  | { readonly kind: 'push' }
+  | { readonly kind: 'poll'; readonly worstCaseMs: number };
+
+export interface InboundMailSource {
+  readonly kind: 'imap' | 'gmail-history';
+  /** Connect and report capability (§3.4a). Never returns empty-looking success. */
+  start(signal: AbortSignal): Promise<InboundCapabilityVerdict>;
+  /** Run until aborted, delivering to the sink. Push or poll is the source's business. */
+  run(signal: AbortSignal): Promise<void>;
+  /** Disclosed to the owner, so "real-time" is never claimed for polling. */
+  readonly latency: SourceLatency;
+  stop(): Promise<void>;
+}
+```
+
+This costs little, because the seam already exists. `InboundMailboxMessage`,
+`InboundMailSink`, `MailboxCursorPort`, `InboundMailObserver` and
+`InboundCapabilityVerdict` are already source-agnostic — only
+`MailboxConnectionPort`, `MailboxReader` and `MailboxWire` are IMAP-shaped.
+**Expectation matching, taint labelling, dedup, notice rendering, cursor
+persistence and owner disclosure are written once and serve both sources.**
+
+- **IMAP source** — IDLE, wrapping the existing watcher.
+- **Gmail source** — `collectHistoryDelta` over `users.history.list`, already
+  built, with the two-tier scope gate already landed.
+
+#### Selection is automatic
+
+Google adopted **and** the configured mail account is a Gmail account ⇒ the
+Gmail source. Otherwise ⇒ IMAP. **Adopting Google should be the entire setup**;
+no setting has to be found for the common case.
+
+`surfaces.email.inbound.source` — `'auto' | 'gmail' | 'imap'`, default
+**`'auto'`** — exists so either can be forced, per the rule that every flag
+ships as a real configurable feature. But the default requires no configuration
+at all when Google is already connected.
+
+#### What each source costs, stated honestly
+
+| Source | Mechanism | Worst-case delay |
+|---|---|---|
+| IMAP | IDLE — **true push** | Sub-second; bounded by the 27-minute re-issue sweep if a push is ever missed |
+| Gmail | `users.history.list` — **polling** | The poll interval. Nothing faster is possible on this path |
+
+**Gmail is not real-time and this design does not call it that.** It is polling
+with a latency floor, and the number is disclosed rather than dressed up. For a
+verification link during a signup, a few seconds is fine, and an honest number
+is worth more than a marketing word.
+
+The interval is **adaptive**, because the two situations have genuinely
+different needs:
+
+| Setting | Default | Why |
+|---|---|---|
+| `surfaces.email.inbound.gmailPollSecondsExpecting` | **5** | An expectation is open — a signup is mid-flight and someone is waiting. Worst case ~5s. `history.list` costs 2 quota units against a daily budget in the billions, so this is free in practice. Range 2–60 |
+| `surfaces.email.inbound.gmailPollSecondsIdle` | **60** | Nothing is pending, so there is nobody to keep waiting. Range 10–3600 |
+
+The owner's real journey — sign up, wait for verification mail, complete it —
+runs on the fast interval, and the daemon is not polling every five seconds for
+the rest of the week.
+
+#### The cursor is a discriminated union, not a widened record
+
+Gmail's cursor is a `historyId`, not `UIDVALIDITY` + `lastSeenUid`. Rather than
+overload the numeric fields — a `historyId` is a uint64 and does not reliably
+fit a JS number — the persisted cursor discriminates on source, so an
+IMAP-shaped cursor and a Gmail-shaped one cannot be confused or half-filled.
+
+The recovery rule is the same on both sides, which is the useful part.
+**`resync-required`** from Gmail — a 404 on an expired `historyId` — means
+exactly what a **`UIDVALIDITY` change** means for IMAP: the stored position is
+meaningless, so discard it, re-establish at the current high-water mark,
+disclose it, and **do not replay the mailbox**. One rule, two sources, no second
+implementation of "what to do when we lost our place".
+
+#### `users.watch` + Pub/Sub remains rejected as primary
+
+Unchanged, for the reason in §3.1: it needs a public HTTPS endpoint and a GCP
+Pub/Sub topic, which is wrong for a daemon on someone's own machine behind NAT.
+Recorded here as the path to **true push on Gmail** if that ever becomes wanted
+— it is the only way to get sub-second Gmail delivery, and the trade is
+infrastructure the owner does not have.
+
+#### Scope sufficiency applies to both
+
+§3.4a is not a Gmail detail. The Gmail source already refuses
+`metadata-scope-only` before making the call. The IMAP source owes the
+equivalent: a connection that authenticates but cannot fetch bodies fails
+loudly at connect time with the exact remedy, and never delivers empty-bodied
+messages that read as a quiet mailbox.
+
 ### 3.5 Where it plugs in — the supervisor model, not the webhook model
 
 There are two lifecycle shapes in the adapter family, and email must use the
