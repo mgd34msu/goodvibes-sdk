@@ -696,6 +696,15 @@ key is unset.
 That direction matters. A profile that overrode a value he deliberately
 configured would be the drift class in reverse.
 
+**The fallback applies in `ConfigManager.get()` only, never in a bulk listing or
+export path.** `get()` is a single keyed read by a consumer that needs the value
+to do its job. A config dump is a different act: it hands the whole settings
+surface to a caller, and if the fallback applied there, `commerce.shippingAddress`
+would appear in a config listing without passing the closed-tier disclosure rule
+of §11.2. So a bulk read sees the raw stored value — unset — and the profile
+value reaches only the consumer that asked for that one key. A listing may show
+*that* a key resolves from the profile; it does not show the value.
+
 It is a fallback rather than a set of call-site edits for a practical reason as
 well: the payments capability and `daemon.timezone` live on an unmerged branch
 (`wo/payments-spec`) that a live round owns. Editing that branch from here would
