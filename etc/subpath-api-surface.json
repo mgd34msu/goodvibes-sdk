@@ -12273,6 +12273,16 @@
       "kind": "function"
     }
   ],
+  "./platform/config/api-keys": [
+    {
+      "name": "getConfiguredApiKeys",
+      "kind": "function"
+    },
+    {
+      "name": "resolveApiKeys",
+      "kind": "function"
+    }
+  ],
   "./platform/control-plane": [
     {
       "name": "ARTIFACT_ACQUISITION_MODE_SCHEMA",
@@ -12871,6 +12881,12 @@
     {
       "name": "sseIdleTimeoutSeconds",
       "kind": "function"
+    }
+  ],
+  "./platform/control-plane/method-catalog-email": [
+    {
+      "name": "builtinGatewayEmailMethodDescriptors",
+      "kind": "const"
     }
   ],
   "./platform/core": [
@@ -21460,6 +21476,404 @@
       "kind": "function"
     }
   ],
+  "./platform/owner-profile": [
+    {
+      "name": "AppendProfileProseInput",
+      "kind": "interface",
+      "required": [
+        "section",
+        "text"
+      ]
+    },
+    {
+      "name": "DEFAULT_PROFILE_RELOAD_THROTTLE_MS",
+      "kind": "const"
+    },
+    {
+      "name": "ForgetProfileInput",
+      "kind": "interface",
+      "required": [
+        "authority"
+      ]
+    },
+    {
+      "name": "MAX_MACHINE_LINE_CHARS",
+      "kind": "const"
+    },
+    {
+      "name": "MAX_MACHINE_VALUE_CHARS",
+      "kind": "const"
+    },
+    {
+      "name": "OWNER_PROFILE_FILE",
+      "kind": "const"
+    },
+    {
+      "name": "OwnerProfilePathOptions",
+      "kind": "interface"
+    },
+    {
+      "name": "OwnerProfileStore",
+      "kind": "class"
+    },
+    {
+      "name": "OwnerProfileStoreOptions",
+      "kind": "interface"
+    },
+    {
+      "name": "PROFILE_FIELDS",
+      "kind": "const"
+    },
+    {
+      "name": "PROFILE_SECTIONS",
+      "kind": "const"
+    },
+    {
+      "name": "PROFILE_SURFACES",
+      "kind": "const"
+    },
+    {
+      "name": "PROSE_ONLY_SECTIONS",
+      "kind": "const"
+    },
+    {
+      "name": "ParseProfileInput",
+      "kind": "interface",
+      "required": [
+        "exists",
+        "path",
+        "text"
+      ]
+    },
+    {
+      "name": "ProfileChange",
+      "kind": "interface",
+      "required": [
+        "fieldId",
+        "kind",
+        "label",
+        "section",
+        "superseded"
+      ]
+    },
+    {
+      "name": "ProfileDocumentView",
+      "kind": "interface",
+      "required": [
+        "sections",
+        "state"
+      ]
+    },
+    {
+      "name": "ProfileFieldDef",
+      "kind": "interface",
+      "required": [
+        "id",
+        "label",
+        "section",
+        "tier",
+        "validate"
+      ]
+    },
+    {
+      "name": "ProfileFieldValidation",
+      "kind": "interface",
+      "required": [
+        "valid"
+      ]
+    },
+    {
+      "name": "ProfileFieldValidator",
+      "kind": "type"
+    },
+    {
+      "name": "ProfileFieldValue",
+      "kind": "interface",
+      "required": [
+        "fieldId",
+        "label",
+        "lineIndex",
+        "section",
+        "valid",
+        "value"
+      ]
+    },
+    {
+      "name": "ProfileFieldView",
+      "kind": "interface",
+      "required": [
+        "fieldId",
+        "label",
+        "valid",
+        "value"
+      ]
+    },
+    {
+      "name": "ProfileInvalidField",
+      "kind": "interface",
+      "required": [
+        "fieldId",
+        "reason"
+      ]
+    },
+    {
+      "name": "ProfileLine",
+      "kind": "interface",
+      "required": [
+        "lineIndex",
+        "section",
+        "text"
+      ]
+    },
+    {
+      "name": "ProfileLoadState",
+      "kind": "type"
+    },
+    {
+      "name": "ProfilePersistIo",
+      "kind": "interface",
+      "required": [
+        "mkdir",
+        "remove",
+        "rename",
+        "writeFile"
+      ]
+    },
+    {
+      "name": "ProfileProjection",
+      "kind": "interface",
+      "required": [
+        "duplicateFieldLines",
+        "eol",
+        "exists",
+        "fields",
+        "path",
+        "prose",
+        "rawLines",
+        "sections",
+        "superseded"
+      ]
+    },
+    {
+      "name": "ProfileProvenance",
+      "kind": "interface",
+      "required": [
+        "date",
+        "said",
+        "surface"
+      ]
+    },
+    {
+      "name": "ProfileProvenanceReport",
+      "kind": "interface",
+      "required": [
+        "fieldId",
+        "handEdited",
+        "present",
+        "provenance",
+        "superseded"
+      ]
+    },
+    {
+      "name": "ProfileRemovalAttempt",
+      "kind": "interface",
+      "required": [
+        "authority"
+      ]
+    },
+    {
+      "name": "ProfileSection",
+      "kind": "interface",
+      "required": [
+        "canonical",
+        "endLine",
+        "fields",
+        "heading",
+        "headingLine",
+        "prose",
+        "superseded"
+      ]
+    },
+    {
+      "name": "ProfileSectionName",
+      "kind": "type"
+    },
+    {
+      "name": "ProfileSectionView",
+      "kind": "interface",
+      "required": [
+        "fields",
+        "heading",
+        "prose",
+        "tier"
+      ]
+    },
+    {
+      "name": "ProfileSupersededLine",
+      "kind": "interface",
+      "required": [
+        "fieldId",
+        "lineIndex",
+        "previousLine",
+        "section",
+        "supersededOn",
+        "text",
+        "value"
+      ]
+    },
+    {
+      "name": "ProfileSurface",
+      "kind": "type"
+    },
+    {
+      "name": "ProfileTier",
+      "kind": "type"
+    },
+    {
+      "name": "ProfileWriteAttempt",
+      "kind": "interface",
+      "required": [
+        "authority",
+        "said",
+        "value"
+      ]
+    },
+    {
+      "name": "ProfileWriteDecision",
+      "kind": "interface",
+      "required": [
+        "allowed",
+        "reason",
+        "taint"
+      ]
+    },
+    {
+      "name": "ProfileWriteResult",
+      "kind": "interface",
+      "required": [
+        "changes",
+        "disclosure",
+        "ok",
+        "reason"
+      ]
+    },
+    {
+      "name": "ProvenanceSplit",
+      "kind": "interface",
+      "required": [
+        "provenance",
+        "text"
+      ]
+    },
+    {
+      "name": "SetProfileFieldInput",
+      "kind": "interface",
+      "required": [
+        "fieldId",
+        "value"
+      ]
+    },
+    {
+      "name": "UndoProfileInput",
+      "kind": "interface",
+      "required": [
+        "authority",
+        "fieldId"
+      ]
+    },
+    {
+      "name": "canonicalProfileSection",
+      "kind": "function"
+    },
+    {
+      "name": "closedTierFieldIds",
+      "kind": "function"
+    },
+    {
+      "name": "describeProfilePersonRead",
+      "kind": "function"
+    },
+    {
+      "name": "describeProfileRead",
+      "kind": "function"
+    },
+    {
+      "name": "describeProfileWrite",
+      "kind": "function"
+    },
+    {
+      "name": "evaluateProfileRemoval",
+      "kind": "function"
+    },
+    {
+      "name": "evaluateProfileWrite",
+      "kind": "function"
+    },
+    {
+      "name": "findProfileSection",
+      "kind": "function"
+    },
+    {
+      "name": "findProfileSectionByHeading",
+      "kind": "function"
+    },
+    {
+      "name": "isProfileSurface",
+      "kind": "function"
+    },
+    {
+      "name": "normalizeProfileKey",
+      "kind": "function"
+    },
+    {
+      "name": "openTierFieldIds",
+      "kind": "function"
+    },
+    {
+      "name": "ownerProfilePath",
+      "kind": "function"
+    },
+    {
+      "name": "ownerProfilePathForHome",
+      "kind": "function"
+    },
+    {
+      "name": "parseProfileDocument",
+      "kind": "function"
+    },
+    {
+      "name": "persistProfileText",
+      "kind": "function"
+    },
+    {
+      "name": "profileFieldById",
+      "kind": "function"
+    },
+    {
+      "name": "profileFieldForLabel",
+      "kind": "function"
+    },
+    {
+      "name": "profileFieldsForSection",
+      "kind": "function"
+    },
+    {
+      "name": "profileSectionTier",
+      "kind": "function"
+    },
+    {
+      "name": "renderProvenanceSuffix",
+      "kind": "function"
+    },
+    {
+      "name": "resolveOwnerProfilePath",
+      "kind": "function"
+    },
+    {
+      "name": "splitProvenanceSuffix",
+      "kind": "function"
+    }
+  ],
   "./platform/pairing": [
     {
       "name": "AuthenticatedPairingToken",
@@ -23989,6 +24403,64 @@
     {
       "name": "ui",
       "kind": "other"
+    }
+  ],
+  "./platform/runtime/bootstrap-services": [
+    {
+      "name": "DETACHED_DAEMON_INSTALL_HINT",
+      "kind": "const"
+    },
+    {
+      "name": "DetachedDaemonChild",
+      "kind": "interface",
+      "required": [
+        "unref"
+      ]
+    },
+    {
+      "name": "DetachedDaemonSpawnOptions",
+      "kind": "interface",
+      "required": [
+        "detached",
+        "stdio"
+      ]
+    },
+    {
+      "name": "HostServiceMode",
+      "kind": "type"
+    },
+    {
+      "name": "HostServiceStatus",
+      "kind": "interface",
+      "required": [
+        "baseUrl",
+        "host",
+        "mode",
+        "port"
+      ]
+    },
+    {
+      "name": "HostServicesConfig",
+      "kind": "interface",
+      "required": [
+        "get"
+      ]
+    },
+    {
+      "name": "HostServicesHandle",
+      "kind": "interface",
+      "required": [
+        "daemonServer",
+        "daemonStatus",
+        "httpListener",
+        "httpListenerStatus",
+        "listRecentControlPlaneEvents",
+        "stop"
+      ]
+    },
+    {
+      "name": "startHostServices",
+      "kind": "function"
     }
   ],
   "./platform/runtime/disposal": [
