@@ -33,6 +33,8 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync } fr
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
+import { sweepStaleTmpDirs } from './stale-tmp-sweep.ts';
+
 function arg(name: string, fallback: string): string {
   const idx = process.argv.indexOf(`--${name}`);
   return idx >= 0 && process.argv[idx + 1] ? process.argv[idx + 1]! : fallback;
@@ -67,6 +69,18 @@ for (const tool of ['cmake', 'tar', 'curl', 'gzip']) {
     process.exit(1);
   }
 }
+
+// Not a test (no `afterAll`, not part of the automated suite — this runs
+// standalone in the voice-runtime build workflow), but its own `mkdtempSync`
+// below leaks the same way a killed test does: a `finally` block does not run
+// on a signal kill (a CI job timeout, someone Ctrl-C'ing a stuck cmake build),
+// so a previous run's directory is orphaned under the real `os.tmpdir()`
+// forever. Sweep stale ones from a prior killed run before creating this
+// run's own — same mechanism as scripts/test.ts (age-gated, prefix-scoped,
+// never touches a run still actually in flight). Four hours is generous: a
+// whisper.cpp build from source is normally minutes, but this threshold only
+// needs to exceed the slowest realistic build, not the typical one.
+sweepStaleTmpDirs(tmpdir(), 'gv-whisper-build-', 4 * 60 * 60 * 1000);
 
 const work = mkdtempSync(join(tmpdir(), 'gv-whisper-build-'));
 try {

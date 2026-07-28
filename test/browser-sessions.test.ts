@@ -1,7 +1,17 @@
 import { describe, expect, test } from 'bun:test';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { Browser, BrowserContext, Page } from 'playwright-core';
 import { BrowserSessionError, BrowserSessionManager, cdpEndpointCandidates } from '../packages/sdk/src/platform/browser/browser-sessions.js';
 import type { BrowserProvisionIo } from '../packages/sdk/src/platform/browser/browser-types.js';
+
+// BrowserSessionManager.launch() does a real `mkdirSync(profileDirectory, ...)`
+// even with a fully mocked driver (see browser-sessions.ts) — a fixed literal
+// '/tmp/...' string here would create that directory in the real host /tmp,
+// bypassing the TMPDIR redirection scripts/test.ts sets up for the whole
+// suite. Routing it through tmpdir() keeps it inside this run's sandboxed
+// temp root like everything else.
+const PROFILE_ROOT = join(tmpdir(), 'goodvibes-test-profiles');
 
 interface FakeContext {
   readonly closes: string[];
@@ -43,7 +53,7 @@ function readyProvisionIo(): BrowserProvisionIo {
 
 function createManager(closes: string[]): BrowserSessionManager {
   return new BrowserSessionManager({
-    profileRoot: '/tmp/goodvibes-test-profiles',
+    profileRoot: PROFILE_ROOT,
     surfaceRoot: 'test-surface',
     io: readyProvisionIo(),
     loadDriver: () => ({
@@ -134,7 +144,7 @@ describe('browser session ownership', () => {
 
   test('a launch failure explains a profile that is already open', async () => {
     const manager = new BrowserSessionManager({
-      profileRoot: '/tmp/goodvibes-test-profiles',
+      profileRoot: PROFILE_ROOT,
       surfaceRoot: 'test-surface',
       io: readyProvisionIo(),
       loadDriver: () => ({
@@ -159,7 +169,7 @@ describe('browser session ownership', () => {
 
   test('an unreachable endpoint is reported as no browser listening, with the fix', async () => {
     const manager = new BrowserSessionManager({
-      profileRoot: '/tmp/goodvibes-test-profiles',
+      profileRoot: PROFILE_ROOT,
       surfaceRoot: 'test-surface',
       io: readyProvisionIo(),
       loadDriver: () => ({

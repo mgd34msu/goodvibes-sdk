@@ -32,6 +32,7 @@ import {
   run,
   stagePackages,
 } from './release-shared.ts';
+import { sweepStaleTmpDirs } from './stale-tmp-sweep.ts';
 
 // ─── constants ───────────────────────────────────────────────────────────────
 
@@ -39,6 +40,25 @@ const __dirname = resolve(fileURLToPath(import.meta.url), '..');
 const SDK_ROOT = resolve(__dirname, '..');
 const PUBLIC_PACKAGE_DIR = 'packages/sdk';
 const PUBLIC_PACKAGE_NAME = requirePackageName(PUBLIC_PACKAGE_DIR);
+
+/**
+ * This script's own `mkdtempSync(join(tmpdir(), …))` calls (verdaccio storage,
+ * verdaccio config, the install scratch project) are not test directories —
+ * no `afterAll`, not part of the automated suite — but they leak the exact
+ * same way on a signal kill (a CI job timeout, someone Ctrl-C'ing a stuck
+ * `npm install`): the `try/finally`/top-level `.catch()` cleanup below never
+ * runs, and the directory is orphaned under the real `os.tmpdir()` forever.
+ * Sweep stale ones from a prior killed run before creating this run's own,
+ * same mechanism as scripts/test.ts (age-gated, prefix-scoped, never touches
+ * a run still actually in flight). One hour is generous relative to how long
+ * a dry-run publish + smoke install actually takes.
+ */
+const STALE_VERDACCIO_TMP_MS = 60 * 60 * 1000;
+function sweepStaleVerdaccioTmpDirs(): void {
+  for (const prefix of ['verdaccio-storage-', 'verdaccio-config-', 'verdaccio-scratch-']) {
+    sweepStaleTmpDirs(tmpdir(), prefix, STALE_VERDACCIO_TMP_MS);
+  }
+}
 
 function requirePackageName(dir: string): string {
   const name = readPackage(dir).name;
@@ -398,6 +418,7 @@ function cleanup(): void {
 }
 
 async function main(): Promise<void> {
+  sweepStaleVerdaccioTmpDirs();
   verdaccioHandle = await startVerdaccio();
   const { registryUrl, storageDir, configDir } = verdaccioHandle;
 
