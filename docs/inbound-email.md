@@ -1648,10 +1648,31 @@ overturn any of them.
     §3.4d's claim that `InboundMailboxMessage` was "already source-agnostic"
     was verified wrong by reading it: it carries `uidValidity`, `uid` and
     `ImapEnvelope`.
-18. **IMAP body capability is probed, not declared**, and an empty mailbox
-    reports `degraded`/`bodies-unproven` rather than claiming a capability
-    nobody demonstrated.
-    `docs/decisions/2026-07-27-imap-body-capability-is-probed-not-declared.md`.
+18. **IMAP body capability is probed, not declared.** One `BODY.PEEK` at
+    connect on a non-empty mailbox, before any expectation is opened. An empty
+    mailbox reports `{ probed: false }` — **visible in status and distinct from
+    probed-ok, but it does NOT change the health verdict.**
+
+    *Corrected.* This ruling previously said an empty mailbox reports
+    `degraded`/`bodies-unproven`, and cited a decision record
+    (`2026-07-27-imap-body-capability-is-probed-not-declared.md`) that **does
+    not exist** — a fifth instance of §13.2, this time citing a document rather
+    than a symbol. The implementing round flagged the contradiction instead of
+    guessing, which is why it surfaced.
+
+    `degraded` is wrong here, and for a reason stronger than the one originally
+    given: **an empty mailbox is the primary case, not an edge case.** A fresh
+    per-signup alias is empty by definition, so every new signup would start
+    permanently amber and stay there until its first message. That is the same
+    alarm-fatigue argument already settled for configured polling — a health
+    indicator that is always yellow is one nobody reads — and it would fire on
+    exactly the journey this capability exists to serve.
+
+    Honesty is preserved without the alarm: the unprobed state is *disclosed*
+    rather than *escalated*. And nothing is lost, because the reactive path
+    still catches a refusal on the first real message, failing the open
+    expectation with a named reason under §3.4b. The owner is told at the moment
+    it matters, rather than warned before there is anything to warn about.
 19. **Externally-sourced calendar event content is untrusted content**, on the
     same read-time-not-arrival-time rule as mail, and the calendar agenda sort
     is deliberately NOT given the mail fix.
