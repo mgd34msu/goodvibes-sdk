@@ -37,7 +37,7 @@
  *      expired since the last mirror write (the book itself sweeps lazily on
  *      its own read paths, but nothing calls those paths on a schedule).
  */
-import { PersistentStore } from '../../state/persistent-store.js';
+import { PersistentStore, type PersistentStoreCorruption } from '../../state/persistent-store.js';
 import {
   MAX_OPEN_EXPECTATIONS,
   validatePersistedExpectation,
@@ -45,7 +45,8 @@ import {
 } from '../../google/verification-expectations.js';
 import type { HousekeepingTrigger } from './types.js';
 
-export type ExpectationDiscardReason = 'malformed' | 'expired' | 'over-cap';
+/** `file-unreadable` is the whole-file counterpart of `malformed` — see `CursorDiscardReason`. */
+export type ExpectationDiscardReason = 'malformed' | 'file-unreadable' | 'expired' | 'over-cap';
 
 export interface ExpectationDiscard {
   readonly id: string;
@@ -93,6 +94,8 @@ export class PersistedExpectationStore {
   private readonly policy: PersistedExpectationPolicy;
   private readonly now: () => Date;
   private writeChain: Promise<void> = Promise.resolve();
+  /** The last unreadable-file event, latched so status can name it. */
+  private corruption: PersistentStoreCorruption | null = null;
 
   constructor(storeOrPath: PersistentStore<ExpectationSnapshot> | string, options: PersistedExpectationStoreOptions = {}) {
     this.store = typeof storeOrPath === 'string' ? new PersistentStore<ExpectationSnapshot>(storeOrPath) : storeOrPath;
@@ -104,23 +107,38 @@ export class PersistedExpectationStore {
     return this.policy;
   }
 
-  private async readWithDrops(now: Date): Promise<{ expectations: VerificationExpectation[]; malformed: number }> {
-    const raw = await this.store.load();
-    if (!raw || typeof raw !== 'object') return { expectations: [], malformed: 0 };
+  /** The unreadable-file event this store last saw, or null. See `MailboxCursorStore.getCorruption`. */
+  getCorruption(): PersistentStoreCorruption | null {
+    return this.corruption;
+  }
+
+  private async readWithDrops(now: Date): Promise<{
+    expectations: VerificationExpectation[];
+    malformed: number;
+    corrupt: PersistentStoreCorruption | null;
+  }> {
+    const { data: raw, corruption } = await this.store.loadOrDiscard();
+    if (corruption !== null) this.corruption = corruption;
+    if (!raw || typeof raw !== 'object') return { expectations: [], malformed: 0, corrupt: corruption };
     const rawExpectations = Array.isArray(raw.expectations) ? raw.expectations : [];
     const expectations = rawExpectations
       .map((entry) => validatePersistedExpectation(entry, now))
       .filter((entry): entry is VerificationExpectation => entry !== null);
-    return { expectations, malformed: rawExpectations.length - expectations.length };
+    return { expectations, malformed: rawExpectations.length - expectations.length, corrupt: null };
   }
 
   private async mutate<T>(
-    fn: (expectations: VerificationExpectation[], malformed: number, now: Date) => Promise<{ next: VerificationExpectation[]; result: T }>,
+    fn: (
+      expectations: VerificationExpectation[],
+      malformed: number,
+      now: Date,
+      corrupt: PersistentStoreCorruption | null,
+    ) => Promise<{ next: VerificationExpectation[]; result: T }>,
   ): Promise<T> {
     const now = this.now();
     const run = this.writeChain.then(async () => {
-      const { expectations, malformed } = await this.readWithDrops(now);
-      const { next, result } = await fn(expectations, malformed, now);
+      const { expectations, malformed, corrupt } = await this.readWithDrops(now);
+      const { next, result } = await fn(expectations, malformed, now, corrupt);
       await this.store.persist({ version: 1, expectations: next });
       return result;
     });
@@ -167,8 +185,19 @@ export class PersistedExpectationStore {
    * book from it. Idempotent and safe concurrently.
    */
   async sweep(trigger: HousekeepingTrigger = 'manual'): Promise<ExpectationSweepReport> {
-    return this.mutate(async (expectations, malformed, now) => {
+    return this.mutate(async (expectations, malformed, now, corrupt) => {
       const removed: ExpectationDiscard[] = [];
+      if (corrupt !== null) {
+        removed.push({
+          id: '(unreadable)',
+          recipientAddress: '(unknown)',
+          reason: 'file-unreadable',
+          removedAt: now.getTime(),
+          note: `the expectation file could not be read (${corrupt.detail}), so every open `
+            + 'expectation was discarded; nothing can be satisfied by a message that '
+            + 'arrives before a workstream opens a new one',
+        });
+      }
       if (malformed > 0) {
         removed.push({
           id: '(unreadable)',

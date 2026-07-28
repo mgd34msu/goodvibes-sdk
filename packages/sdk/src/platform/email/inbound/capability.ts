@@ -72,6 +72,8 @@ const STATE_BY_REASON: Readonly<Record<InboundCapabilityReason, InboundCapabilit
   'mailbox-unreadable': 'insufficient',
   'uidvalidity-missing': 'insufficient',
   'fetch-refused': 'insufficient',
+  'local-store-unwritable': 'insufficient',
+  'watcher-stopped-unexpectedly': 'insufficient',
 };
 
 /**
@@ -126,6 +128,16 @@ const FIX_BY_REASON: Readonly<Record<InboundCapabilityReason, string>> = {
     'The mailbox opened and the server refused to hand over message data, so '
     + 'arriving mail can be seen and not read. Check that the account is '
     + 'permitted IMAP access and is not restricted to a subset of folders.',
+  'local-store-unwritable':
+    'The daemon cannot write the file it records handled mail in, so it has '
+    + 'stopped reading rather than announce the same message repeatedly or '
+    + 'lose its place at the next restart. This is local: check free space and '
+    + 'write permission on the daemon state directory (~/.goodvibes/daemon).',
+  'watcher-stopped-unexpectedly':
+    'The mailbox watcher stopped with a failure that does not name a cause the '
+    + 'daemon recognises, so it is reported verbatim rather than guessed at. '
+    + 'The detail above is what it said; inbound mail restarts with the daemon '
+    + 'or when inbound settings change.',
 };
 
 /** Build a verdict, taking its state and its fix from its reason. */
@@ -318,6 +330,73 @@ export function classifyReadFailure(
     return { verdict: capabilityVerdict('fetch-refused', text), terminal: true, notice: null };
   }
   return { verdict: capabilityVerdict('reconnecting', text), ...transient };
+}
+
+/**
+ * Filesystem conditions that clear on their own, and the ones that do not.
+ *
+ * Split by errno rather than by message text because the message is the
+ * platform's to phrase and the code is not: `ENOSPC` on a log-rotating machine
+ * is genuinely a wait, while `EACCES` on a state directory is a decision
+ * somebody made and no amount of retrying reverses it. Anything unrecognised
+ * is treated as transient, because the cost of retrying a permanent fault is a
+ * bounded number of retries and the cost of stopping on a transient one is
+ * mail that never arrives.
+ */
+const PERMANENT_STORE_ERRNOS: ReadonlySet<string> = new Set([
+  'EACCES', 'EPERM', 'EROFS', 'EISDIR', 'ENOTDIR', 'ENAMETOOLONG',
+]);
+
+/** Errnos that mean the local filesystem, as opposed to a socket. */
+const STORAGE_ERRNOS: ReadonlySet<string> = new Set([
+  ...PERMANENT_STORE_ERRNOS,
+  'ENOSPC', 'EDQUOT', 'EIO', 'EMFILE', 'ENFILE', 'EBUSY', 'ENOENT', 'EFBIG', 'ETXTBSY',
+]);
+
+function errnoOf(error: unknown): string {
+  if (typeof error !== 'object' || error === null) return '';
+  const code = (error as { code?: unknown }).code;
+  return typeof code === 'string' ? code : '';
+}
+
+/**
+ * Classify a failure that escaped the reading path entirely — a cursor write
+ * that threw, an injected dependency that broke, a bug.
+ *
+ * This is the classifier behind the rule that an unexpected throw is CAUGHT,
+ * named and reported rather than allowed to unwind the run loop into a
+ * `.catch(() => undefined)`. `consecutive` is how many of these have happened
+ * in a row without a completed drain in between: a first `ENOSPC` is a wait,
+ * and the tenth is a condition the owner has to be told about, because at that
+ * point "it will clear on its own" has been disproved by the machine.
+ */
+export function classifyLocalFailure(
+  error: unknown,
+  consecutive: number,
+  giveUpAfter: number,
+): OpenFailureVerdict {
+  const text = errorText(error);
+  const errno = errnoOf(error);
+  const permanent = PERMANENT_STORE_ERRNOS.has(errno);
+  const exhausted = consecutive >= giveUpAfter;
+  if (!permanent && !exhausted) {
+    return {
+      verdict: capabilityVerdict('reconnecting',
+        `The mailbox watcher could not complete a pass: ${text}. `
+        + `Attempt ${String(consecutive)} of ${String(giveUpAfter)} before this is `
+        + 'treated as permanent.'),
+      terminal: false,
+      notice: null,
+    };
+  }
+  // A store write is the only local failure with a fix worth naming, so only a
+  // failure that looks like one borrows that advice. Anything else keeps its
+  // own words: sending an owner to check disk space over an unrelated bug is
+  // the same class of mistake as calling a connection limit a bad password.
+  const reason = STORAGE_ERRNOS.has(errno) || /\bcursor\b/i.test(text)
+    ? 'local-store-unwritable'
+    : 'watcher-stopped-unexpectedly';
+  return { verdict: capabilityVerdict(reason, text), terminal: true, notice: null };
 }
 
 export function errorText(error: unknown): string {

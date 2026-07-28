@@ -65,6 +65,7 @@ import { toASCII } from 'node:punycode';
 import { registrableDomain } from '../security/public-suffix.js';
 import type { LinkRefusalReason } from '../security/link-validation.js';
 import type { DeliveredRecipient } from '../google/delivery-evidence.js';
+import type { InboundCapabilityReason } from './inbound/ports.js';
 
 // ---------------------------------------------------------------------------
 // The notice clock. Branded so a caller cannot pass the sender's own `Date:`
@@ -452,6 +453,85 @@ export function renderInboundMailNotice(input: InboundMailNoticeInput): Structur
   return {
     title: [literal(degraded ? 'New mail — LIMITED VIEW' : 'New mail')],
     fields,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// The other thing the owner is told about: that there will BE no mail.
+// ---------------------------------------------------------------------------
+
+/**
+ * What the owner is told when inbound mail has stopped for good.
+ *
+ * Fields, not a sentence, for the same reason arriving mail is fields: `detail`
+ * carries the MAIL SERVER'S OWN wording, which is attacker-influenceable text
+ * (§7.1) and must reach a channel as an `untrusted` span so the channel escapes
+ * it. `reason` and `fix` are ours — a fixed enum and a fixed sentence from
+ * `capability.ts` — so they are `literal`.
+ */
+export interface InboundMailStoppedNoticeInput {
+  /** Config account id, never an address. */
+  readonly account: string;
+  readonly mailbox: string;
+  /** Our own machine-readable reason. Never server text. */
+  readonly reason: InboundCapabilityReason;
+  /** What the server (or the platform) said. Attacker-influenceable — untrusted. */
+  readonly detail: string;
+  /** The one remedial step, in our words. '' when there is none. */
+  readonly fix: string;
+  /** When this was reached, ISO, from the daemon's own clock. */
+  readonly at: string;
+}
+
+/**
+ * Render "inbound mail has stopped" as structure.
+ *
+ * §3.4b: *a terminal state is announced, not merely recorded.* The tracker that
+ * fires once per transition already existed; its only consumer was a log line,
+ * which is the same "rendered and never sent" shape this round exists to
+ * remove, in the one place where it means no mail will ever arrive again.
+ */
+export function renderInboundMailStoppedNotice(
+  input: InboundMailStoppedNoticeInput,
+): StructuredNotice {
+  const detail = stripControlAndLineBreaks(input.detail);
+  const fix = stripControlAndLineBreaks(input.fix);
+  return {
+    title: [literal('Inbound mail has stopped')],
+    fields: [
+      {
+        label: 'Mailbox',
+        value: [
+          // Owner-written config, not attacker text — but escaped anyway,
+          // because an account id that renders as markup on his phone is a
+          // display bug either way and escaping costs nothing.
+          untrusted(stripControlAndLineBreaks(input.account)),
+          literal(' / '),
+          untrusted(stripControlAndLineBreaks(input.mailbox)),
+        ],
+      },
+      { label: 'Reason', value: [literal(input.reason)] },
+      {
+        label: 'What it said',
+        value: [detail.length > 0 ? untrusted(detail) : literal('(nothing was reported)')],
+      },
+      {
+        label: 'Fix',
+        value: [literal(fix.length > 0
+          ? fix
+          : 'No single remedial step is known for this condition; the detail above is '
+            + 'everything the daemon was told.')],
+      },
+      { label: 'Stopped at', value: [literal(input.at)] },
+      {
+        label: 'Until then',
+        value: [literal(
+          'No mail is being read, so nothing waiting on a verification email will '
+          + 'complete. This is reported once; it is not repeated while the condition '
+          + 'lasts.',
+        )],
+      },
+    ],
   };
 }
 
