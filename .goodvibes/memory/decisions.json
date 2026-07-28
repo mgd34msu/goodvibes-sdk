@@ -254,13 +254,13 @@
     "agent": "engineer"
   },
   {
-    "title": "Merchant grading: recourse is the standard, and initiation never relaxed",
+    "title": "Merchant recourse is JUDGED against a profile, never matched against a list",
     "date": "2026-07-28",
-    "rationale": "Owner overrode the taint gate's blanket refusal of discovered merchants: 'the taint gate is wrong. if i tell you to buy the cheapest X you find online, you will 1) find it, 2) show it to me, and then 3) alert me prior to purchasing if it is not a major retailer' and '2 and 3 are basically the same step'. WHO INITIATES vs WHO CHOOSES THE MERCHANT are separate questions; only the second relaxed. Content-initiated purchases stay refused absolutely with no OwnerApproval escape. merchantDiscovered exists only on OwnerOriginIntent so the compiler enforces it. The standard is RECOURSE not recognisability \u2014 'even etsy is fine, mainly because they have consumer protections... even established online-only retailers like redbubble'; jeffsgadgets.biz fails for having nobody to go to, not for being small. ONE notification when the final total is known; recourse established => veto (silence proceeds), else approval (silence denies); renderPurchaseNotice is the single send site. eBay is per-listing: Buy It Now only, auctions/Best Offer REFUSED structurally (no final total => notify-then-pay cannot execute), seller-side feedback from eBay's own widget, seller-controlled or indeterminate page regions unreadable and fail closed; the check is a ratchet that can only tighten. Judgement lives in list curation as data, never runtime inference from page signals. Default not-major.",
+    "rationale": "Owner correction: 'i didn't fucking say make a list of retailers, i said retailers matching that profile.' A curated allowlist fails closed on every established retailer nobody enumerated, needs permanent maintenance, and is the scaffolding-that-thinks-for-the-model shape this platform rejected. Deleted it; merchant-recourse.ts has MERCHANT_RECOURSE_CRITERION plus an injectable MerchantJudgePort (SDK owns criterion and precedence, daemon supplies the model call). THE SAFETY ARGUMENT IS THE INPUT: reading a page to judge legitimacy is injectable and stays banned, but judging a VALIDATED REGISTRABLE DOMAIN against world knowledge is not page-derived \u2014 the domain comes from a link-validated URL via registrableDomain(). MerchantJudgeInput has exactly ONE field so page content has nowhere to go; a test asserts the key set while a hostile sellerIdentity and seller-controlled reputation are present. No fast-path cache: purchases are infrequent, and a cache is a second source of truth that rots like the list would. Precedence: storefront-domain handoff > owner exclusion > owner addition > marketplace policy > judgement; uncertainty resolves to not-major. Unchanged: content-initiated refused absolutely; eBay Buy-It-Now-only with auctions refused structurally.",
     "alternatives": [
-      "refusing all discovered merchants",
-      "runtime legitimacy scoring of storefronts",
-      "treating eBay as major by domain"
+      "curated allowlist (rejected by owner)",
+      "fast-path cache alongside judgement",
+      "runtime legitimacy scoring from page signals (injectable)"
     ],
     "agent": "engineer"
   }
