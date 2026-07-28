@@ -2671,16 +2671,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
   },
   "artifacts.create": {
     "input": {
-      "kind": "sample",
-      "mimeType": "sample",
-      "filename": "sample",
-      "dataBase64": "sample",
-      "text": "sample",
-      "path": "sample",
-      "uri": "sample",
-      "allowPrivateHosts": false,
-      "retentionMs": 0,
-      "metadata": {}
+      "dataBase64": "sample"
     },
     "output": {
       "artifact": {
@@ -3054,93 +3045,8 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
   },
   "automation.jobs.create": {
     "input": {
-      "id": "sample",
-      "name": "sample",
-      "description": "sample",
-      "prompt": "sample",
-      "kind": "sample",
-      "cron": "sample",
-      "every": "sample",
-      "at": "sample",
-      "timezone": "sample",
-      "staggerMs": 0,
-      "model": "sample",
-      "provider": "sample",
-      "fallbackModels": [
-        "sample"
-      ],
-      "executionIntent": {
-        "riskClass": "safe",
-        "requiresApproval": false,
-        "networkPolicy": "inherit",
-        "filesystemPolicy": "inherit"
-      },
-      "template": "sample",
-      "target": {
-        "kind": "isolated",
-        "sessionId": "sample",
-        "routeId": "sample",
-        "threadId": "sample",
-        "channelId": "sample",
-        "surfaceKind": "tui",
-        "pinnedSessionId": "sample",
-        "preserveThread": false,
-        "createIfMissing": false
-      },
-      "reasoningEffort": "sample",
-      "thinking": "sample",
-      "wakeMode": "sample",
-      "timeoutMs": 0,
-      "toolAllowlist": [
-        "sample"
-      ],
-      "autoApprove": false,
-      "allowUnsafeExternalContent": false,
-      "externalContentSource": "sample",
-      "lightContext": false,
-      "delivery": {
-        "mode": "none",
-        "targets": [
-          {
-            "kind": "none",
-            "surfaceKind": "tui",
-            "address": "sample",
-            "routeId": "sample",
-            "label": "sample"
-          }
-        ],
-        "fallbackTargets": [
-          {
-            "kind": "none",
-            "surfaceKind": "tui",
-            "address": "sample",
-            "routeId": "sample",
-            "label": "sample"
-          }
-        ],
-        "includeSummary": false,
-        "includeTranscript": false,
-        "includeLinks": false,
-        "replyToRouteId": "sample"
-      },
-      "failure": {
-        "action": "retry",
-        "maxConsecutiveFailures": 0,
-        "cooldownMs": 0,
-        "retryPolicy": {
-          "maxAttempts": 0,
-          "delayMs": 0,
-          "strategy": "fixed",
-          "maxDelayMs": 0,
-          "jitterMs": 0
-        },
-        "deadLetterRouteId": "sample",
-        "disableAfterFailures": false,
-        "notifyRouteId": "sample"
-      },
-      "enabled": false,
-      "deleteAfterRun": false,
-      "metadata": {}
+      "kind": "cron",
+      "cron": "sample"
     },
     "output": {
       "id": "sample",
@@ -4345,84 +4251,8 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
   },
   "automation.schedules.create": {
     "input": {
-      "name": "sample",
-      "prompt": "sample",
-      "kind": "sample",
-      "cron": "sample",
-      "every": "sample",
-      "at": "sample",
-      "timezone": "sample",
-      "staggerMs": 0,
-      "model": "sample",
-      "provider": "sample",
-      "fallbackModels": [
-        "sample"
-      ],
-      "template": "sample",
-      "target": {
-        "kind": "isolated",
-        "sessionId": "sample",
-        "routeId": "sample",
-        "threadId": "sample",
-        "channelId": "sample",
-        "surfaceKind": "tui",
-        "pinnedSessionId": "sample",
-        "preserveThread": false,
-        "createIfMissing": false
-      },
-      "reasoningEffort": "sample",
-      "thinking": "sample",
-      "wakeMode": "sample",
-      "timeoutMs": 0,
-      "toolAllowlist": [
-        "sample"
-      ],
-      "autoApprove": false,
-      "allowUnsafeExternalContent": false,
-      "externalContentSource": "sample",
-      "lightContext": false,
-      "delivery": {
-        "mode": "none",
-        "targets": [
-          {
-            "kind": "none",
-            "surfaceKind": "tui",
-            "address": "sample",
-            "routeId": "sample",
-            "label": "sample"
-          }
-        ],
-        "fallbackTargets": [
-          {
-            "kind": "none",
-            "surfaceKind": "tui",
-            "address": "sample",
-            "routeId": "sample",
-            "label": "sample"
-          }
-        ],
-        "includeSummary": false,
-        "includeTranscript": false,
-        "includeLinks": false,
-        "replyToRouteId": "sample"
-      },
-      "failure": {
-        "action": "retry",
-        "maxConsecutiveFailures": 0,
-        "cooldownMs": 0,
-        "retryPolicy": {
-          "maxAttempts": 0,
-          "delayMs": 0,
-          "strategy": "fixed",
-          "maxDelayMs": 0,
-          "jitterMs": 0
-        },
-        "deadLetterRouteId": "sample",
-        "disableAfterFailures": false,
-        "notifyRouteId": "sample"
-      },
-      "enabled": false,
-      "deleteAfterRun": false
+      "kind": "cron",
+      "cron": "sample"
     },
     "output": {
       "id": "sample",
@@ -6547,16 +6377,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
   },
   "channels.targets.resolve": {
     "input": {
-      "target": "sample",
-      "input": "sample",
-      "query": "sample",
-      "accountId": "sample",
-      "preferredKind": "sample",
-      "threadId": "sample",
-      "sessionId": "sample",
-      "createIfMissing": false,
-      "live": false,
-      "metadata": {}
+      "target": "sample"
     },
     "output": {
       "surface": "sample",
@@ -6992,16 +6813,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
   },
   "companion.chat.messages.create": {
     "input": {
-      "body": "sample",
-      "content": "sample",
-      "attachments": [
-        {
-          "artifactId": "sample",
-          "label": "sample",
-          "metadata": {}
-        }
-      ],
-      "metadata": {}
+      "body": "sample"
     },
     "output": {
       "messageId": "sample"
@@ -7009,17 +6821,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
   },
   "companion.chat.messages.edit": {
     "input": {
-      "messageId": "sample",
-      "body": "sample",
-      "content": "sample",
-      "attachments": [
-        {
-          "artifactId": "sample",
-          "label": "sample",
-          "metadata": {}
-        }
-      ],
-      "metadata": {}
+      "body": "sample"
     },
     "output": {
       "sessionId": "sample",
@@ -7083,17 +6885,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
   },
   "companion.chat.messages.steer": {
     "input": {
-      "sessionId": "sample",
-      "body": "sample",
-      "content": "sample",
-      "attachments": [
-        {
-          "artifactId": "sample",
-          "label": "sample",
-          "metadata": {}
-        }
-      ],
-      "metadata": {}
+      "body": "sample"
     },
     "output": {
       "sessionId": "sample",
@@ -7225,10 +7017,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
   },
   "companion.chat.sessions.update": {
     "input": {
-      "title": "sample",
-      "model": "sample",
-      "provider": "sample",
-      "systemPrompt": "sample"
+      "title": "sample"
     },
     "output": {
       "session": {
@@ -11616,11 +11405,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
   },
   "knowledge.projection.materialize": {
     "input": {
-      "kind": "sample",
-      "id": "sample",
-      "limit": 0,
-      "knowledgeSpaceId": "sample",
-      "includeAllSpaces": false
+      "kind": "overview"
     },
     "output": {
       "bundle": {
@@ -11705,11 +11490,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
   },
   "knowledge.projection.render": {
     "input": {
-      "kind": "sample",
-      "id": "sample",
-      "limit": 0,
-      "knowledgeSpaceId": "sample",
-      "includeAllSpaces": false
+      "kind": "overview"
     },
     "output": {
       "id": "sample",
@@ -14380,7 +14161,6 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
   },
   "media.analyze": {
     "input": {
-      "providerId": "sample",
       "artifact": {
         "id": "sample",
         "artifactId": "sample",
@@ -14391,11 +14171,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
         "sizeBytes": 0,
         "sha256": "sample",
         "metadata": {}
-      },
-      "artifactId": "sample",
-      "prompt": "sample",
-      "modelId": "sample",
-      "metadata": {}
+      }
     },
     "output": {
       "providerId": "sample",

@@ -21,7 +21,7 @@ export type StepUpGatewayService = Pick<StepUpService, 'registerCredential' | 'm
 function requireString(params: Record<string, unknown>, key: string): string {
   const value = params[key];
   if (typeof value !== 'string' || value.trim().length === 0) {
-    throw new GatewayVerbError(`${key} is required`, 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError(`${key} is required`, 'INVALID_ARGUMENT', 400, key);
   }
   return value;
 }
@@ -29,7 +29,7 @@ function requireString(params: Record<string, unknown>, key: string): string {
 function optionalUserVerification(value: unknown): UserVerificationRequirement | undefined {
   if (value === undefined) return undefined;
   if (value === 'required' || value === 'preferred' || value === 'discouraged') return value;
-  throw new GatewayVerbError('userVerification must be one of required|preferred|discouraged', 'INVALID_ARGUMENT', 400);
+  throw new GatewayVerbError('userVerification must be one of required|preferred|discouraged', 'INVALID_ARGUMENT', 400, 'userVerification');
 }
 
 function createRegisterHandler(service: StepUpGatewayService): GatewayMethodHandler {
@@ -41,10 +41,10 @@ function createRegisterHandler(service: StepUpGatewayService): GatewayMethodHand
       : Array.isArray(originValue) && originValue.every((o) => typeof o === 'string')
         ? (originValue as string[])
         : undefined;
-    if (origin === undefined) throw new GatewayVerbError('origin is required (string or string[])', 'INVALID_ARGUMENT', 400);
+    if (origin === undefined) throw new GatewayVerbError('origin is required (string or string[])', 'INVALID_ARGUMENT', 400, 'origin');
     const signCountRaw = params['signCount'];
     if (signCountRaw !== undefined && (typeof signCountRaw !== 'number' || !Number.isFinite(signCountRaw) || signCountRaw < 0)) {
-      throw new GatewayVerbError('signCount must be a non-negative number', 'INVALID_ARGUMENT', 400);
+      throw new GatewayVerbError('signCount must be a non-negative number', 'INVALID_ARGUMENT', 400, 'signCount');
     }
     try {
       const credential = await service.registerCredential({
@@ -69,7 +69,7 @@ function createMintHandler(service: StepUpGatewayService): GatewayMethodHandler 
     const params = readInvocationParams(invocation);
     const ttlRaw = params['ttlMs'];
     if (ttlRaw !== undefined && (typeof ttlRaw !== 'number' || !Number.isFinite(ttlRaw))) {
-      throw new GatewayVerbError('ttlMs must be a number', 'INVALID_ARGUMENT', 400);
+      throw new GatewayVerbError('ttlMs must be a number', 'INVALID_ARGUMENT', 400, 'ttlMs');
     }
     return service.mintChallenge({
       ...(typeof params['rendezvousId'] === 'string' ? { rendezvousId: params['rendezvousId'] } : {}),

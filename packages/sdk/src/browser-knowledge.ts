@@ -101,6 +101,32 @@ export type BrowserKnowledgeMethodId =
 
 export type BrowserKnowledgeDomain = typeof KNOWLEDGE_BROWSER_DOMAINS[number];
 
+/**
+ * Fold a path-bound session id into a companion-chat payload.
+ *
+ * Why this needs an assertion rather than a plain spread. The companion-chat
+ * verbs whose required set is conditional — a message needs `body`, `content`
+ * OR `attachments`; a session update needs at least one field to update — are
+ * typed as a base intersected with a union of requirement branches, so the
+ * contract can say what the handler actually refuses instead of calling every
+ * field optional and 400ing at runtime.
+ *
+ * These helpers take `Omit<Input, 'sessionId'>`, and `Omit` cannot see through
+ * the base's open-ended body envelope: the envelope contributes a
+ * `{ [key: string]: unknown }` index signature, `keyof` of an intersection with
+ * one is `string | number`, and omitting a named key from that removes nothing
+ * and keeps nothing. The parameter's named properties were already erased that
+ * way before the requirement branches existed — this is not new, it simply
+ * became visible once the target type had something left to check.
+ *
+ * So the caller's payload cannot be re-proved here. It is checked where it is
+ * written (a direct `invoke('companion.chat.messages.create', …)` gets the full
+ * union), and this helper only adds the id the path already carries.
+ */
+function withSessionId<TInput>(sessionId: string, input: unknown): TInput {
+  return { sessionId, ...(input as Record<string, unknown>) } as TInput;
+}
+
 export interface BrowserKnowledgeSdk extends ScopedBrowserSdk<BrowserKnowledgeMethodId, BrowserKnowledgeDomain> {
   readonly knowledge: {
     ask(input: OperatorMethodInput<'knowledge.ask'>): Promise<OperatorMethodOutput<'knowledge.ask'>>;
@@ -210,12 +236,12 @@ export function createBrowserKnowledgeSdkFromRoutes(
         create: (input) => invoke('companion.chat.sessions.create', input),
         get: (id) => invoke('companion.chat.sessions.get', { sessionId: id }),
         list: (input) => invoke('companion.chat.sessions.list', input),
-        update: (id, input) => invoke('companion.chat.sessions.update', { sessionId: id, ...input }),
+        update: (id, input) => invoke('companion.chat.sessions.update', withSessionId(id, input)),
       },
       messages: {
-        create: (id, input) => invoke('companion.chat.messages.create', { sessionId: id, ...input }),
+        create: (id, input) => invoke('companion.chat.messages.create', withSessionId(id, input)),
         list: (id) => invoke('companion.chat.messages.list', { sessionId: id }),
-        steer: (id, input) => invoke('companion.chat.messages.steer', { sessionId: id, ...input }),
+        steer: (id, input) => invoke('companion.chat.messages.steer', withSessionId(id, input)),
       },
       turns: {
         cancel: (id, input) => invoke('companion.chat.turns.cancel', { sessionId: id, ...(input ?? {}) }),

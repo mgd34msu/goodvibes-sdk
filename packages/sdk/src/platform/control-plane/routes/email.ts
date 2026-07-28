@@ -142,7 +142,7 @@ function readOptionalString(value: unknown): string | undefined {
 function readRequiredString(value: unknown, field: string): string {
   const read = readOptionalString(value);
   if (read === undefined) {
-    throw new GatewayVerbError(`${field} (non-empty string) is required`, 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError(`${field} (non-empty string) is required`, 'INVALID_ARGUMENT', 400, field);
   }
   return read;
 }
@@ -155,7 +155,7 @@ function readRequiredString(value: unknown, field: string): string {
 function readUid(value: unknown): number {
   const parsed = typeof value === 'string' ? Number(value) : value;
   if (typeof parsed !== 'number' || !Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed <= 0) {
-    throw new GatewayVerbError('uid (a positive integer IMAP UID) is required', 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError('uid (a positive integer IMAP UID) is required', 'INVALID_ARGUMENT', 400, 'uid');
   }
   return parsed;
 }
@@ -331,6 +331,7 @@ export function createEmailSendHandler(
         'email.send puts a message on the internet and cannot be recalled. Re-issue with confirm: true once the recipients and body have been reviewed.',
         'CONFIRMATION_REQUIRED',
         400,
+        'confirm',
       );
     }
     refuseNonUserRequest(invocation, 'email.send');

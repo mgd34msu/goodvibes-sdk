@@ -19,4 +19,4 @@
 //
 // Baseline captured after the checkpoints.restorePreview verb landed WITH typed
 // IO entries (2026-07): 334 operator method ids, 237 fully typed, 97 untyped.
-export const FOUNDATION_IO_COVERAGE_BASELINE = 97;
+export const FOUNDATION_IO_COVERAGE_BASELINE = 96;

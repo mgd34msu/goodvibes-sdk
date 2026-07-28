@@ -26,7 +26,7 @@ function requirePrincipal(invocation: GatewayMethodInvocation): void {
 
 function requireString(value: unknown, field: string): string {
   if (typeof value !== 'string' || value.trim().length === 0) {
-    throw new GatewayVerbError(`Missing or invalid ${field}`, 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError(`Missing or invalid ${field}`, 'INVALID_ARGUMENT', 400, field);
   }
   return value;
 }
@@ -45,7 +45,7 @@ function createSessionsCreateHandler(deps: AcpGatewayDeps): GatewayMethodHandler
     const agentId = requireString(params.agentId, 'agentId');
     const cwd = requireString(params.cwd, 'cwd');
     if (!existsSync(cwd) || !statSync(cwd).isDirectory()) {
-      throw new GatewayVerbError(`cwd is not an existing directory: ${cwd}`, 'INVALID_ARGUMENT', 400);
+      throw new GatewayVerbError(`cwd is not an existing directory: ${cwd}`, 'INVALID_ARGUMENT', 400, 'cwd');
     }
     const agent = deps.discover().find((candidate) => candidate.id === agentId);
     if (!agent) {

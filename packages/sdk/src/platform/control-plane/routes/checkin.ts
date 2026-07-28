@@ -26,7 +26,7 @@ function createConfigSetHandler(service: CheckinGatewayService): GatewayMethodHa
     if (typeof params.deliveryChannel === 'string') patch.deliveryChannel = params.deliveryChannel;
     if (typeof params.quietHours === 'string') patch.quietHours = params.quietHours;
     if (params.enabled !== undefined && typeof params.enabled !== 'boolean') {
-      throw new GatewayVerbError('enabled must be a boolean', 'INVALID_ARGUMENT', 400);
+      throw new GatewayVerbError('enabled must be a boolean', 'INVALID_ARGUMENT', 400, 'enabled');
     }
     return { config: await service.setConfig(patch) };
   };

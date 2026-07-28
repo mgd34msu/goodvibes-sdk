@@ -4,6 +4,8 @@ import {
   STRING_SCHEMA,
   arraySchema,
   bodyEnvelopeSchema,
+  branchedSchema,
+  requirementBranch,
   objectSchema,
 } from './method-catalog-shared.js';
 import {
@@ -67,14 +69,26 @@ export const MEDIA_ARTIFACT_SCHEMA = objectSchema({
   metadata: METADATA_SCHEMA,
 }, ['mimeType', 'metadata']);
 
-export const MEDIA_ANALYZE_REQUEST_SCHEMA = bodyEnvelopeSchema({
-  providerId: STRING_SCHEMA,
-  artifact: MEDIA_ARTIFACT_SCHEMA,
-  artifactId: STRING_SCHEMA,
-  prompt: STRING_SCHEMA,
-  modelId: STRING_SCHEMA,
-  metadata: METADATA_SCHEMA,
-});
+/**
+ * The handler builds its artifact from `artifact`, falling back to a bare
+ * `artifactId`, and refuses with `Missing media artifact` when neither is
+ * usable (daemon-sdk/media-routes.ts, handleMediaAnalyze). Either one alone is
+ * a valid call, so the contract is a union rather than a required array.
+ */
+export const MEDIA_ANALYZE_REQUEST_SCHEMA = branchedSchema(
+  bodyEnvelopeSchema({
+    providerId: STRING_SCHEMA,
+    artifact: MEDIA_ARTIFACT_SCHEMA,
+    artifactId: STRING_SCHEMA,
+    prompt: STRING_SCHEMA,
+    modelId: STRING_SCHEMA,
+    metadata: METADATA_SCHEMA,
+  }),
+  [
+    requirementBranch({ artifact: MEDIA_ARTIFACT_SCHEMA }, ['artifact']),
+    requirementBranch({ artifactId: STRING_SCHEMA }, ['artifactId']),
+  ],
+);
 
 export const MEDIA_TRANSFORM_REQUEST_SCHEMA = bodyEnvelopeSchema({
   providerId: STRING_SCHEMA,

@@ -74,6 +74,7 @@ export function toConfigPermissionMode(mode: string): PermissionMode {
         `Invalid permission mode: ${String(mode)} (expected one of plan, normal, accept-edits, auto)`,
         'INVALID_ARGUMENT',
         400,
+        'mode',
       );
   }
 }
@@ -136,7 +137,7 @@ export interface SessionRuntimeControls {
 function requireLocalSessionId(controls: SessionRuntimeControls, params: Record<string, unknown>): string {
   const sessionId = typeof params.sessionId === 'string' ? params.sessionId.trim() : '';
   if (!sessionId) {
-    throw new GatewayVerbError('sessionId is required', 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError('sessionId is required', 'INVALID_ARGUMENT', 400, 'sessionId');
   }
   if (!controls.isLocalSession(sessionId)) {
     throw new GatewayVerbError(
@@ -190,7 +191,7 @@ export function createSessionToolCallCancelHandler(controls: SessionRuntimeContr
     const live = requireLiveTurnControls(controls);
     const callId = typeof params.callId === 'string' ? params.callId.trim() : '';
     if (!callId) {
-      throw new GatewayVerbError('callId is required', 'INVALID_ARGUMENT', 400);
+      throw new GatewayVerbError('callId is required', 'INVALID_ARGUMENT', 400, 'callId');
     }
     if (!live.cancelToolCall(callId)) {
       throw new GatewayVerbError(
@@ -219,10 +220,10 @@ export function createSessionQueuedMessageEditHandler(controls: SessionRuntimeCo
     const messageId = typeof params.messageId === 'string' ? params.messageId.trim() : '';
     const text = typeof params.text === 'string' ? params.text : '';
     if (!messageId) {
-      throw new GatewayVerbError('messageId is required', 'INVALID_ARGUMENT', 400);
+      throw new GatewayVerbError('messageId is required', 'INVALID_ARGUMENT', 400, 'messageId');
     }
     if (!text.trim()) {
-      throw new GatewayVerbError('text must be non-empty', 'INVALID_ARGUMENT', 400);
+      throw new GatewayVerbError('text must be non-empty', 'INVALID_ARGUMENT', 400, 'text');
     }
     if (!live.editQueuedMessage(messageId, text)) {
       throw new GatewayVerbError(
@@ -242,7 +243,7 @@ export function createSessionQueuedMessageDeleteHandler(controls: SessionRuntime
     const live = requireLiveTurnControls(controls);
     const messageId = typeof params.messageId === 'string' ? params.messageId.trim() : '';
     if (!messageId) {
-      throw new GatewayVerbError('messageId is required', 'INVALID_ARGUMENT', 400);
+      throw new GatewayVerbError('messageId is required', 'INVALID_ARGUMENT', 400, 'messageId');
     }
     if (!live.deleteQueuedMessage(messageId)) {
       throw new GatewayVerbError(

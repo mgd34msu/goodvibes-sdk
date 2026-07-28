@@ -69,7 +69,17 @@ function childPath(path: string, key: string): string {
  * with an unrecognized `type`, are treated as permissive (accept).
  */
 function validateValue(value: unknown, schema: Record<string, unknown>, path: string): string | null {
+  // `anyOf` is a constraint ALONGSIDE the rest of the schema, not an
+  // alternative to it. Treating a matching branch as the whole answer — which
+  // this did — meant a schema carrying both `required` and `anyOf` had its
+  // `required` silently skipped for every value that satisfied any branch.
+  // `knowledge.ingest.connector` is exactly that shape: it declares
+  // `required: ['connectorId']` plus an `anyOf` over input/content/path, and
+  // the gate was accepting a call with no `connectorId` at all. So: base
+  // constraints first, then at least one branch must match.
   if (Array.isArray(schema.anyOf)) {
+    const baseDetail = validateBase(value, schema, path);
+    if (baseDetail) return baseDetail;
     for (const branch of schema.anyOf) {
       if (branch && typeof branch === 'object' && validateValue(value, branch as Record<string, unknown>, path) === null) {
         return null;
@@ -77,7 +87,11 @@ function validateValue(value: unknown, schema: Record<string, unknown>, path: st
     }
     return `${schemaLabel(path)} did not match any of the allowed types`;
   }
+  return validateBase(value, schema, path);
+}
 
+/** Every schema keyword except `anyOf` — see validateValue for why they split. */
+function validateBase(value: unknown, schema: Record<string, unknown>, path: string): string | null {
   if (Array.isArray(schema.enum) && !schema.enum.includes(value)) {
     return `${schemaLabel(path)} must be one of ${JSON.stringify(schema.enum)}`;
   }
@@ -117,6 +131,23 @@ function validateValue(value: unknown, schema: Record<string, unknown>, path: st
       for (const key of required) {
         if (typeof key === 'string' && (!(key in record) || record[key] === undefined)) {
           return `${childPath(path, key)} is required`;
+        }
+      }
+      // `dependentRequired` states "if this field is present, these must be too".
+      // It is how a handler that refuses a HALF-supplied pair (companion chat's
+      // provider/model route, which 400s when one arrives without the other)
+      // says so in its contract, without falsely claiming either is required on
+      // its own.
+      const dependents = schema.dependentRequired;
+      if (dependents !== null && typeof dependents === 'object' && !Array.isArray(dependents)) {
+        for (const [trigger, needed] of Object.entries(dependents as Record<string, unknown>)) {
+          if (!(trigger in record) || record[trigger] === undefined) continue;
+          if (!Array.isArray(needed)) continue;
+          for (const key of needed) {
+            if (typeof key === 'string' && (!(key in record) || record[key] === undefined)) {
+              return `${childPath(path, key)} is required when ${childPath(path, trigger)} is present`;
+            }
+          }
         }
       }
       const properties = (schema.properties && typeof schema.properties === 'object')

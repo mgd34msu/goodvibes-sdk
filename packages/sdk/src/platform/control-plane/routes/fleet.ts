@@ -99,7 +99,7 @@ function readFleetQueryFilter(query: Record<string, unknown> | undefined): Fleet
   if (rawKinds) {
     const invalid = rawKinds.filter((k) => !PROCESS_KINDS.includes(k as ProcessKind));
     if (invalid.length > 0) {
-      throw new GatewayVerbError(`Unknown fleet kind(s): ${invalid.join(', ')}`, 'INVALID_ARGUMENT', 400);
+      throw new GatewayVerbError(`Unknown fleet kind(s): ${invalid.join(', ')}`, 'INVALID_ARGUMENT', 400, 'kinds');
     }
     kinds = rawKinds as ProcessKind[];
   }
@@ -107,7 +107,7 @@ function readFleetQueryFilter(query: Record<string, unknown> | undefined): Fleet
   if (rawStates) {
     const invalid = rawStates.filter((s) => !PROCESS_STATES.includes(s as ProcessState));
     if (invalid.length > 0) {
-      throw new GatewayVerbError(`Unknown fleet state(s): ${invalid.join(', ')}`, 'INVALID_ARGUMENT', 400);
+      throw new GatewayVerbError(`Unknown fleet state(s): ${invalid.join(', ')}`, 'INVALID_ARGUMENT', 400, 'states');
     }
     states = rawStates as ProcessState[];
   }
@@ -119,7 +119,7 @@ function clampLimit(raw: unknown, fallback: number, max: number): number {
   if (raw === undefined || raw === null) return fallback;
   const n = typeof raw === 'number' ? raw : Number(raw);
   if (!Number.isFinite(n) || n <= 0) {
-    throw new GatewayVerbError(`Invalid limit: ${String(raw)}`, 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError(`Invalid limit: ${String(raw)}`, 'INVALID_ARGUMENT', 400, 'limit');
   }
   return Math.min(Math.floor(n), max);
 }
@@ -203,8 +203,8 @@ export function createFleetObservedSteerHandler(registry: FleetSteerCapableRegis
     const params = readInvocationParams(invocation);
     const id = typeof params.id === 'string' ? params.id.trim() : '';
     const text = typeof params.text === 'string' ? params.text : '';
-    if (!id) throw new GatewayVerbError('id is required', 'INVALID_ARGUMENT', 400);
-    if (!text) throw new GatewayVerbError('text is required', 'INVALID_ARGUMENT', 400);
+    if (!id) throw new GatewayVerbError('id is required', 'INVALID_ARGUMENT', 400, 'id');
+    if (!text) throw new GatewayVerbError('text is required', 'INVALID_ARGUMENT', 400, 'text');
     const node = registry.getNode(id);
     if (!node) throw new GatewayVerbError(`No fleet node ${id} on this daemon.`, 'FLEET_NODE_NOT_FOUND', 404);
     if (node.kind !== 'observed-external') {
@@ -232,7 +232,7 @@ export function createFleetArchiveHandler(registry: FleetArchiveCapableRegistry)
   return (invocation) => {
     const params = readInvocationParams(invocation);
     const id = typeof params.id === 'string' ? params.id.trim() : '';
-    if (!id) throw new GatewayVerbError('id is required', 'INVALID_ARGUMENT', 400);
+    if (!id) throw new GatewayVerbError('id is required', 'INVALID_ARGUMENT', 400, 'id');
     return requireArchive(registry, 'archive')(id);
   };
 }
@@ -241,7 +241,7 @@ export function createFleetUnarchiveHandler(registry: FleetArchiveCapableRegistr
   return (invocation) => {
     const params = readInvocationParams(invocation);
     const id = typeof params.id === 'string' ? params.id.trim() : '';
-    if (!id) throw new GatewayVerbError('id is required', 'INVALID_ARGUMENT', 400);
+    if (!id) throw new GatewayVerbError('id is required', 'INVALID_ARGUMENT', 400, 'id');
     return { restored: requireArchive(registry, 'unarchive')(id) };
   };
 }
@@ -298,8 +298,8 @@ export function createFleetAttemptsPickHandler(controller: FleetAttemptsControll
     const params = readInvocationParams(invocation);
     const groupId = typeof params.groupId === 'string' ? params.groupId.trim() : '';
     const winnerItemId = typeof params.winnerItemId === 'string' ? params.winnerItemId.trim() : '';
-    if (!groupId) throw new GatewayVerbError('groupId is required', 'INVALID_ARGUMENT', 400);
-    if (!winnerItemId) throw new GatewayVerbError('winnerItemId is required', 'INVALID_ARGUMENT', 400);
+    if (!groupId) throw new GatewayVerbError('groupId is required', 'INVALID_ARGUMENT', 400, 'groupId');
+    if (!winnerItemId) throw new GatewayVerbError('winnerItemId is required', 'INVALID_ARGUMENT', 400, 'winnerItemId');
     // ONE-act pick: without confirm this is the structured confirm PREVIEW —
     // the group (candidates, diffs, any judge proposal) comes back with the
     // refusal so a surface completes choice -> confirm -> applied through this
@@ -389,7 +389,7 @@ export function createFleetConflictsResolveHandler(deps: FleetConflictsDeps): Ga
   return async (invocation) => {
     const params = readInvocationParams(invocation);
     const itemId = typeof params.itemId === 'string' ? params.itemId.trim() : '';
-    if (!itemId) throw new GatewayVerbError('itemId is required', 'INVALID_ARGUMENT', 400);
+    if (!itemId) throw new GatewayVerbError('itemId is required', 'INVALID_ARGUMENT', 400, 'itemId');
     const conflict = collectConflicts(deps).find((candidate) => candidate.itemId === itemId);
     if (!conflict) {
       throw new GatewayVerbError(`Item ${itemId} has no unresolved merge conflict`, 'FAILED_PRECONDITION', 409);
@@ -416,7 +416,7 @@ export function createFleetAttemptsJudgeHandler(controller: FleetAttemptsControl
   return async (invocation) => {
     const params = readInvocationParams(invocation);
     const groupId = typeof params.groupId === 'string' ? params.groupId.trim() : '';
-    if (!groupId) throw new GatewayVerbError('groupId is required', 'INVALID_ARGUMENT', 400);
+    if (!groupId) throw new GatewayVerbError('groupId is required', 'INVALID_ARGUMENT', 400, 'groupId');
     try {
       return await controller.proposeAttemptWinner(groupId);
     } catch (error) {
@@ -440,7 +440,7 @@ export function createFleetGraphGetHandler(controller: FleetAttemptsController):
     const params = readInvocationParams(invocation);
     const workstreamId = typeof params.workstreamId === 'string' ? params.workstreamId.trim() : '';
     if (!workstreamId) {
-      throw new GatewayVerbError('workstreamId is required', 'INVALID_ARGUMENT', 400);
+      throw new GatewayVerbError('workstreamId is required', 'INVALID_ARGUMENT', 400, 'workstreamId');
     }
     const snapshot = controller.getGraphSnapshot?.(workstreamId) ?? null;
     if (!snapshot) {

@@ -26,7 +26,7 @@ export type WorkspacesGatewayService = Pick<
 
 function requireString(value: unknown, field: string): string {
   if (typeof value !== 'string' || value.trim().length === 0) {
-    throw new GatewayVerbError(`${field} is required`, 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError(`${field} is required`, 'INVALID_ARGUMENT', 400, field);
   }
   return value;
 }

@@ -127,7 +127,7 @@ export function createServiceBackedGateway(service: EmailService): EmailGatewayS
       return guard(async () => {
         const since = input.since === undefined ? undefined : new Date(input.since);
         if (since !== undefined && !Number.isFinite(since.getTime())) {
-          throw new GatewayVerbError('since must be a parseable date', 'INVALID_ARGUMENT', 400);
+          throw new GatewayVerbError('since must be a parseable date', 'INVALID_ARGUMENT', 400, 'since');
         }
         const result = await service.listInbox({
           ...(input.limit === undefined ? {} : { limit: input.limit }),
