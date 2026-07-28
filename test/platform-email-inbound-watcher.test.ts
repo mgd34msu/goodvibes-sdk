@@ -563,7 +563,16 @@ describe('inbound watcher — the cursor', () => {
     }
     harness.mailbox.push('* 26 EXISTS');
 
-    await waitFor(() => harness.sink.uids.length >= 25, 'all 25 messages');
+    // Waits on the CURSOR, not on the sink. The cursor advances only after
+    // deliver() resolves, so "25 messages delivered" is one step short of
+    // "25 messages fully processed" — and asserting the cursor on the strength
+    // of the sink count is a race that only loses under I/O pressure. It did:
+    // this read 125 instead of 126 in a full-suite run while passing alone and
+    // under eight concurrent runs of its own file.
+    await waitFor(
+      () => harness.cursors.advances.length >= 25,
+      'all 25 messages processed and their cursor advances committed',
+    );
     expect(harness.sink.uids).toEqual(
       Array.from({ length: 25 }, (_value, index) => 102 + index),
     );
