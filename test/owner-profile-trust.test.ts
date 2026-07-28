@@ -366,12 +366,18 @@ describe('§14.19 — third-party containment: no enumerate-all-people call exis
     const methods = Object.getOwnPropertyNames(OwnerProfileStore.prototype)
       .filter((name) => name !== 'constructor')
       .sort();
+    // `loadSync` and `adoptRead` were added for the synchronous boot read that
+    // closes the pre-load window (docs/owner-profile.md §4.4). Weighed against
+    // §10 before this list was widened: both return `ProfileLoadState`, which
+    // carries counts, section NAMES and invalid-field reasons, never a value.
+    // Verified by loading a profile whose People section holds a unique marker
+    // and asserting neither result contains it.
     expect(methods).toEqual([
-      'adopt', 'append', 'closeWatcher', 'commit', 'forget', 'get', 'load',
-      'markUnavailable', 'matchesLastSeen', 'path', 'person', 'provenance',
-      'provenanceFor', 'read', 'reloadIfChanged', 'scheduleReload', 'section',
-      'sectionByHeading', 'set', 'startPolling', 'status', 'undo', 'unwatch',
-      'viewOf', 'watch', 'writableProjection',
+      'adopt', 'adoptRead', 'append', 'closeWatcher', 'commit', 'forget', 'get',
+      'load', 'loadSync', 'markUnavailable', 'matchesLastSeen', 'path', 'person',
+      'provenance', 'provenanceFor', 'read', 'reloadIfChanged', 'scheduleReload',
+      'section', 'sectionByHeading', 'set', 'startPolling', 'status', 'undo',
+      'unwatch', 'viewOf', 'watch', 'writableProjection',
     ]);
   });
 });
