@@ -709,6 +709,27 @@ settings in the TUI, the agent and the webui.
 `profile.enabled = false` means the file is not loaded and every verb answers
 "profile is disabled" — a stated state, not an empty profile.
 
+### 12.1 Registering the section in each surface
+
+All three surfaces bucket settings automatically by `key.split('.')[0]`, so the
+`profile.*` keys need no per-key registration. But in the TUI and the agent a
+prefix with no matching category is **silently dropped** — `buildSettingGroups`
+guards every push with `if (groups.has(cat))`, and the file's own comments record
+two past cases (`push.*`, `cluster.*`) where a domain vanished from the
+workspace and was reachable only by hand-editing a settings file.
+
+So the registration is mandatory, not cosmetic:
+
+| Surface | Required change |
+|---|---|
+| TUI | add `'profile'` to `SettingsCategory` and to a `SETTINGS_CATEGORY_GROUPS` group in `src/input/settings-modal-types.ts` |
+| Agent | the same two edits in its own `src/input/settings-modal-types.ts` |
+| Webui | regenerate `src/lib/generated/config-schema.ts` from the SDK; add `CATEGORY_LABELS['profile']` in `src/lib/config-redaction.ts` for the display name |
+
+The webui derives its groups with no hand-maintained category list, so it cannot
+drop the domain — but without the label entry the group renders as a Title-Cased
+key rather than a name.
+
 ---
 
 ## 13. Consumers
