@@ -68,6 +68,33 @@ export interface InboundMailSource {
   /** Disclosed to the owner, so "real-time" is never claimed for polling. */
   readonly latency: SourceLatency;
   stop(): Promise<void>;
+  /**
+   * Re-probe now instead of at the next scheduled check.
+   *
+   * Optional, and the optionality is a statement rather than a convenience: a
+   * source with nothing an immediate re-probe would pick up must not be made to
+   * declare a method that does nothing, because a no-op `recheckNow` reads at
+   * the call site exactly like one that works.
+   *
+   * `ImapMailSource` implements it, and what makes it meaningful there is that
+   * `source-factory.ts`'s connection port resolves the host, the port, the
+   * account and the stored password afresh inside every `open()`. An owner who
+   * has just corrected one of those is one reconnect away from finding out;
+   * this is what turns "one reconnect away" into "now" rather than "up to
+   * `capabilityRecheckMinutes` from now".
+   *
+   * What it does NOT do, said here so a call site is not read as more than it
+   * is: it cuts short `InboundMailboxWatcher.waitForRecheck()`, and that wait
+   * exists only after a terminal verdict. On a healthy connected watcher there
+   * is nothing to wake and asking is deliberately a no-op — a settings save is
+   * not a reason to drop a working IDLE connection and rebuild it.
+   *
+   * `GmailMailSource` does not implement it. Its `insufficient` states are
+   * grants changed in Google's console, and no edit to this daemon's settings
+   * clears one — so an immediate re-probe would spend a request to learn what
+   * was already known.
+   */
+  recheckNow?(): void;
 }
 
 /**
