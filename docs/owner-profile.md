@@ -557,6 +557,36 @@ is no value to check for derivation and no owner utterance to quote, and
 demanding either would refuse every legitimate delete or invite a caller to
 invent a quote. Authority is the whole gate here, and it is the right one.
 
+#### Caller-declared authority on deletes is accepted, knowingly
+
+`authority` is a body parameter, so requiring it removes privilege-by-omission —
+a caller that sends nothing can no longer delete his shipping address — but it
+**cannot make a lying caller honest**. For `set` and `append` that residue is
+backstopped by layer 2, which refuses a write whose text overlaps untrusted
+content read this turn. A delete has no text to compare, so layer 1 stands
+alone.
+
+Three options were weighed: accept it, require a second factor the daemon issues
+and the caller echoes, or make deletes owner-surface-only.
+
+**Accepted as-is, and no second factor was added.** Anything able to forge an
+authenticated daemon call can already do considerably worse than delete a line —
+it can read the whole profile, send mail, or drive the browser. A second factor
+on deletes specifically buys nothing against that threat while costing the agent
+the ability to act on "forget that" spoken aloud, which is the interaction the
+capability exists for. Owner-surface-only costs the same and more. The real
+protections are elsewhere and already built: the daemon channel is
+authenticated, untrusted content is structurally barred from the write path
+(§7), and every write is disclosed (§8.2).
+
+Recorded here so it is not re-opened later as an oversight. It is a considered
+acceptance of a named residual risk, not a gap nobody noticed.
+
+**Provenance:** this is a coordinator-level engineering decision, taken to avoid
+queuing a 4am ruling, and it is not one of the owner's four rulings in §1. He
+can overturn it; the reasoning is written out above precisely so that he can
+weigh it rather than re-derive it.
+
 ### Layer 3 — a verbatim quote must exist
 
 An autonomous write must carry a non-empty `said`. A fact learned from a page has
