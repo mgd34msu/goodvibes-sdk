@@ -786,7 +786,10 @@ already order-pruned, and its `claim()` contract is exactly right. The key is
 built with the existing `inboundDedupKey(surface, scope, messageId)`:
 
 ```
-inboundDedupKey('email', `${account}:${mailbox}`, `${uidValidity}:${uid}`)
+// IMAP
+inboundDedupKey('email', `${account}:${mailbox}`, `imap:${uidValidity}:${uid}`)
+// Gmail
+inboundDedupKey('email', `${account}:${mailbox}`, `gmail:${resourceId}`)
 ```
 
 The **UID under its `UIDVALIDITY`** is the identity, not the `Message-ID`
@@ -794,6 +797,20 @@ header. `Message-ID` is written by the sender: two different messages can carry
 the same one, which would let a sender suppress a later message by colliding
 with an earlier one. The UID is assigned by the receiving server and the
 `UIDVALIDITY` qualifier keeps it unambiguous across a mailbox rebuild.
+
+**Ruling: the dedup identity is per-source, and is always the value the
+receiving server assigned.** Gmail has no UID and no `UIDVALIDITY`; its
+server-assigned identity is the message resource id, which is stable for the
+life of the message and is not something a sender writes. So the identity is
+`gmail:<resourceId>` there, and the two are prefixed so they can never collide
+in the shared key space — a bare `${uidValidity}:${uid}` and a bare resource id
+are both opaque strings, and an unprefixed collision between them would suppress
+a real message with no way to notice.
+
+`Message-ID` is refused on **both** sources for the same reason, and the reason
+is worth restating for Gmail specifically: it would be the only identity
+available that looks source-agnostic, which makes it the tempting choice
+precisely where it is least safe.
 
 The module-scoped default TTL of 10 minutes is too short here — a crash-restart
 cycle can exceed it — so the email adapter constructs its own
@@ -1175,14 +1192,32 @@ metadata.
 
 Stated as requirements rather than hopes, because they are load-bearing:
 
-1. **The turn watermark must advance on owner input, not process start.** The
-   in-flight `startTurnForOwnerInput` does this. Without it, one inbound message
-   read in a turn refuses every outward action until the process restarts, and
-   with inbound mail arriving continuously that is permanent.
-2. **Inbound email must never be owner-direct.** `inputOriginIsOwnerDirect`
-   returns `true` for `origin === undefined`. Every inbound-mail-originated
-   invocation must therefore pass an origin with `ownerDirect: false` set
-   explicitly, never omit it.
+1. **The turn watermark must advance on owner input, not process start.**
+   **Satisfied.** `security/turn-boundary.ts` shipped
+   `startTurnForOwnerRequest(explicitUserRequest, ledger)`, which resets the
+   window only when `explicitUserRequest === true`. Without it, one inbound
+   message read in a turn refuses every outward action until the process
+   restarts, and with inbound mail arriving continuously that is permanent.
+
+2. **Inbound email must never be owner-direct.** **Satisfied — by a different
+   mechanism from the one this requirement was written against. The
+   requirement as originally worded must not now be implemented, because it
+   names a function that does not exist.**
+
+   It asked for every inbound-mail invocation to pass an origin carrying
+   `ownerDirect: false` explicitly, because `inputOriginIsOwnerDirect` was
+   understood to return `true` for `origin === undefined` — "nothing routed it
+   in, that is the keyboard". Verified by grepping all of
+   `packages/sdk/src`: `inputOriginIsOwnerDirect`, `startTurnForOwnerInput` and
+   `ownerDirect` appear **nowhere**. The taint round did not ship that shape.
+
+   What shipped keys on an explicit boolean the caller must pass, so there is
+   no absence to be misread as the keyboard and no origin list to keep in sync.
+   Owner-direct is something a caller must now *assert* rather than something
+   inbound mail must remember to *deny*, which is the safer direction. The only
+   obligation left on this round is the trivial one: an arrival path never
+   passes `explicitUserRequest: true`.
+
 3. **No ingest recording off-turn.** §5.1. The two rounds must not both add
    `ledger.record()` calls to the arrival path.
 
@@ -1495,6 +1530,24 @@ overturn any of them.
     `degraded`.** §3.4b.
 15. **`uidvalidity-missing` refuses rather than running without a durable
     cursor.** §3.4b.
+16. **Dedup identity is per-source and always server-assigned**, prefixed
+    `imap:` / `gmail:` so the two opaque forms cannot collide. §6. `Message-ID`
+    is refused on both sources, and is most tempting exactly where it is least
+    safe — Gmail, where it is the only identity that looks source-agnostic.
+17. **The found message is a discriminated union on source**, not a widened
+    record and not a synthesised UID.
+    `docs/decisions/2026-07-27-inbound-message-is-a-discriminated-union.md`.
+    §3.4d's claim that `InboundMailboxMessage` was "already source-agnostic"
+    was verified wrong by reading it: it carries `uidValidity`, `uid` and
+    `ImapEnvelope`.
+18. **IMAP body capability is probed, not declared**, and an empty mailbox
+    reports `degraded`/`bodies-unproven` rather than claiming a capability
+    nobody demonstrated.
+    `docs/decisions/2026-07-27-imap-body-capability-is-probed-not-declared.md`.
+19. **Externally-sourced calendar event content is untrusted content**, on the
+    same read-time-not-arrival-time rule as mail, and the calendar agenda sort
+    is deliberately NOT given the mail fix.
+    `docs/decisions/2026-07-27-calendar-start-sort-is-not-the-defect.md`.
 
 ### 13.1 Protocol quirks that cost real defects, recorded so they are not relearned
 
