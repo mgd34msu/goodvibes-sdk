@@ -664,6 +664,15 @@ no enumerate-all-people call available to a composition path**: `profile.person`
 takes a name, and `profile.read` — which returns everything — is not callable
 from a composition path at all.
 
+**`profile.read` carries its own scope, `read:profile.full`.** Every other read
+verb is `read:profile`. This is what stops "not callable from a composition path"
+being a sentence in a document that no mechanism keeps: a caller holding
+`read:profile` can ask `profile.get` for one field and `profile.person` for one
+named person, and **cannot** enumerate the document. Enumerating it — which is
+what answering "what do you know about me" means — needs a scope that only the
+owner-facing path is issued. Same-scope-as-everything-else was the earlier state,
+and it made the guarantee depend on nobody thinking to call the verb.
+
 For that guarantee to be structural rather than a comment, the store's generic
 `section(name)` accessor **refuses the closed-tier prose sections**. `People` is
 reachable two ways and only two: `person(name)`, which requires a name, and
@@ -684,7 +693,7 @@ Modelled on `method-catalog-principals.ts` / `routes/principals.ts`.
 
 | Verb | Scope | Purpose |
 |---|---|---|
-| `profile.read` | `read:profile` | the whole document, by section |
+| `profile.read` | `read:profile.full` | the whole document, by section |
 | `profile.get` | `read:profile` | one mechanical field |
 | `profile.person` | `read:profile` | one person by name |
 | `profile.provenance` | `read:profile` | provenance + `<!-- was: -->` predecessors |
