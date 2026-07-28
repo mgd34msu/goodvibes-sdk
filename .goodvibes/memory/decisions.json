@@ -233,5 +233,24 @@
       "one escaper tuned for Telegram"
     ],
     "agent": "engineer"
+  },
+  {
+    "title": "Transcript archaeology REJECTED as an authority channel",
+    "date": "2026-07-28",
+    "rationale": "Proposed: the harness-written session transcript (~/.claude/projects/<project>/<session-id>.jsonl) is not written by any agent, so an agent could verify a disputed ruling from it directly. Tried, verified against a real transcript, and REJECTED. Two findings: (1) the owner's AskUserQuestion selections arrive as tool_result records, so a 'not a tool result' criterion discards the very record proving a ruling; (2) DISQUALIFYING \u2014 <task-notification> records are type:user, role:user, isSidechain:false with plain-string content and carry an AGENT'S OWN OUTPUT, as do <system-reminder> and <command-name> blocks. So the technique can manufacture authorization out of an agent's own output. Sharpening criteria cannot fix it: any published criteria are criteria text can be shaped to match. I found the disqualifying evidence and then documented the technique more precisely instead of concluding it was unsafe \u2014 that was the error. WORKING MODEL: the coordinator is the only party that directly witnesses the owner; agents refuse mid-round reversals (correct, stays); contested scope goes into a FRESH agent's founding brief where there is nothing to adjudicate.",
+    "alternatives": [
+      "stricter transcript criteria",
+      "treating found records as primary evidence"
+    ],
+    "agent": "engineer"
+  },
+  {
+    "title": "Use the repo's declared test script, never a guessed runner",
+    "date": "2026-07-28",
+    "rationale": "Same clean webui tree: `bunx vitest run` gave 159 files failed, bare `bun test` gave 157 fail/141 errors, and the declared `bun run test` (bun test --isolate) gave 2168 pass/0 fail. vitest cannot resolve bun:test imports; bare bun test drops --isolate and dies with 'Cannot call beforeEach() after the test run has completed', which reads like a real async bug. Either number reported as a regression is a false alarm against solid work and costs a round. Documented in docs/testing-and-validation.md.",
+    "alternatives": [
+      "inferring the runner from file layout"
+    ],
+    "agent": "engineer"
   }
 ]
