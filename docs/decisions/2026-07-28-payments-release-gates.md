@@ -37,8 +37,14 @@ It is still the duplicated-constant drift class: two copies of a security-
 relevant list, one of which can quietly fall behind.
 
 **Gate:** when the SDK pin carries `./platform/payments`, delete the webui copy
-and import `WEBUI_CARD_ENTRY_CONDITIONS` from the SDK. The pinning test stays —
-it should then assert against the imported constant.
+and import `WEBUI_CARD_ENTRY_CONDITIONS` from the SDK.
+
+**Drift risk closed early (2026-07-28):** `payments-cards.test.ts` now asserts
+the mirrored copy equals the SDK's exported constant whenever that export is
+resolvable, and skips against a published pin rather than failing. Proved by
+mutation — changing one character in the mirror fails it. So the two cannot
+diverge silently while the gate remains open; what is still outstanding is
+deleting the copy.
 
 ## Gate 2 — the notice sanitizer is duplicated
 
@@ -63,9 +69,14 @@ artifact predates the correction and the ruling that replaced it. That round
 deliberately did not re-link, because re-linking can write into an active SDK
 worktree; correct call given the shared-tree hazard.
 
-**Gate:** refresh the overlay from an idle SDK worktree, then confirm the test
-asserting `mayEnterCardDetails('webui') === true` still passes — it should, for
-the right reason now.
+**Gate — DONE (2026-07-28).** Overlay refreshed from `wo/payments-spec@7c6fe559`
+(clean tree) into the webui worktree, replacing the `4b3953c4` artifact. Verified
+afterwards: the export is present, the allowlist still resolves `'webui'`, and
+the suite is 2168 pass / 0 fail. The SDK worktree was idle and stayed clean
+through the link.
+
+The TUI and agent worktrees still hold `file:` tarball links built earlier in the
+round and should be refreshed the same way before their gates are trusted.
 
 ## Why these are gates and not cleanups
 
