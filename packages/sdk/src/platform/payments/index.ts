@@ -6,10 +6,12 @@
  * prompt, a veto prompt or a purchase list is exported here; no surface
  * re-implements a budget, a ladder step, or a window outcome.
  *
- * See docs/payments.md for the design and
- * docs/decisions/2026-07-27-payment-windows-are-deliberately-opposite.md and
- * docs/decisions/2026-07-27-the-cvv-is-stored.md for the two rulings a later
- * round is most likely to try to undo.
+ * See docs/payments.md for the design, and these decision records for the
+ * rulings a later round is most likely to try to undo:
+ *
+ *   2026-07-27-payment-windows-are-deliberately-opposite.md
+ *   2026-07-27-the-cvv-is-stored.md
+ *   2026-07-27-a-discovered-merchant-is-graded-not-refused.md
  */
 
 export {
@@ -71,12 +73,14 @@ export type {
 } from './windows.js';
 
 export { evaluatePaymentTaint, describePaymentTaint } from './taint-gate.js';
-export type { PaymentIntentFields, PaymentTaintDecision } from './taint-gate.js';
+export { describeContentInitiatedRefusal } from './taint-gate.js';
+export type { PaymentIntent, OwnerOriginIntent, ContentOriginIntent, PaymentTaintDecision } from './taint-gate.js';
 
 export {
   renderApprovalMessage,
   renderVetoMessage,
   renderCancellationReport,
+  renderPurchaseNotice,
   formatMinorUnits,
 } from './message.js';
 export type { PurchaseFacts } from './message.js';
@@ -91,6 +95,37 @@ export {
   WEBUI_CARD_ENTRY_CONDITIONS,
 } from './entry-surface.js';
 export type { CardEntrySurface, CardDetailScan, CardEntryDecision } from './entry-surface.js';
+
+export {
+  DEFAULT_RECOGNISED_RETAILERS,
+  classifyMerchant,
+  merchantPolicyFromConfig,
+  parseRetailerList,
+  resolveRecognisedRetailers,
+  windowForPurchase,
+} from './major-retailers.js';
+export type {
+  RetailerQualifier,
+  RetailerEntry,
+  SaleType,
+  MerchantIdentity,
+  MarketplacePolicy,
+  MajorRetailerPolicy,
+  MajorRetailerVerdict,
+} from './major-retailers.js';
+
+export {
+  DEFAULT_MARKETPLACE_LISTING_THRESHOLDS,
+  evaluateMarketplaceListing,
+} from './marketplace-listing.js';
+export type {
+  FigureRegion,
+  ListingSaleFormat,
+  SellerReputation,
+  MarketplaceListing,
+  MarketplaceListingThresholds,
+  MarketplaceListingVerdict,
+} from './marketplace-listing.js';
 
 export { checkPaymentGates } from './gates.js';
 export type { GateInput, GateRefusal } from './gates.js';

@@ -57,6 +57,10 @@ export const paymentsConfigDefaults = {
       approvalMinutes: 60,
     },
     notifyChannels: '',
+    majorRetailersAdditional: '',
+    majorRetailersExcluded: '',
+    ebayMinSellerFeedbackCount: 100,
+    ebayMinSellerPositivePercent: 98,
   },
 };
 
@@ -269,6 +273,40 @@ export const paymentsConfigSettings: ConfigSetting[] = [
     ...intRange(1, 10_080),
   },
 
+  {
+    key: 'payments.majorRetailersAdditional',
+    type: 'string',
+    default: '',
+    description:
+      "Comma-separated REGISTRABLE domains (eTLD+1, e.g. 'microcenter.com', not 'www.microcenter.com') to add to the recognised-retailer list. A purchase at a recognised retailer gets the veto window — you are told and it goes ahead unless you object. Everything else asks for your yes. The test is recourse: is there a real path to remedy if it goes wrong. Additions are yours alone — nothing is learned onto this list, inferred from a page, or added by an agent, because a page that could argue itself onto it could buy from itself unattended.",
+    validate: (value: unknown): boolean => typeof value === 'string',
+    validationHint: 'a comma-separated list of registrable domains',
+  },
+  {
+    key: 'payments.majorRetailersExcluded',
+    type: 'string',
+    default: '',
+    description:
+      'Comma-separated registrable domains to REMOVE from the shipped recognised-retailer list, so purchases there ask for your yes instead of proceeding on silence. A domain listed in both this and the additions is kept, since the addition is the more specific instruction.',
+    validate: (value: unknown): boolean => typeof value === 'string',
+    validationHint: 'a comma-separated list of registrable domains',
+  },
+  {
+    key: 'payments.ebayMinSellerFeedbackCount',
+    type: 'number',
+    default: 100,
+    description:
+      "Minimum feedback ratings earned AS A SELLER before an eBay Buy It Now listing proceeds on silence. eBay's headline score combines buying and selling, so an account with a large number can have earned all of it buying — only the seller-side figure counts. Below this, the purchase asks for your yes. Auctions and Best Offer listings are refused outright regardless, because there is no final price to show you before paying.",
+    ...intRange(0, 1_000_000),
+  },
+  {
+    key: 'payments.ebayMinSellerPositivePercent',
+    type: 'number',
+    default: 98,
+    description:
+      'Minimum positive feedback percentage AS A SELLER before an eBay Buy It Now listing proceeds on silence. Read from eBay\'s own feedback widget, never from the seller\'s listing text — if the figures cannot be attributed to eBay with confidence, the purchase asks for your yes rather than assuming.',
+    ...intRange(0, 100),
+  },
   {
     key: 'payments.notifyChannels',
     type: 'string',
