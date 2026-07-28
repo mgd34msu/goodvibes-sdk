@@ -96,27 +96,11 @@ export {
 } from './entry-surface.js';
 export type { CardEntrySurface, CardDetailScan, CardEntryDecision } from './entry-surface.js';
 
-export {
-  DEFAULT_RECOGNISED_RETAILERS,
-  classifyMerchant,
-  merchantPolicyFromConfig,
-  parseRetailerList,
-  resolveRecognisedRetailers,
-  windowForPurchase,
-} from './major-retailers.js';
-export type {
-  RetailerQualifier,
-  RetailerEntry,
-  SaleType,
-  MerchantIdentity,
-  MarketplacePolicy,
-  MajorRetailerPolicy,
-  MajorRetailerVerdict,
-} from './major-retailers.js';
 
 export {
   DEFAULT_MARKETPLACE_LISTING_THRESHOLDS,
   evaluateMarketplaceListing,
+  isThirdPartySale,
 } from './marketplace-listing.js';
 export type {
   FigureRegion,
@@ -126,6 +110,25 @@ export type {
   MarketplaceListingThresholds,
   MarketplaceListingVerdict,
 } from './marketplace-listing.js';
+
+export {
+  MERCHANT_RECOURSE_CRITERION,
+  classifyMerchant,
+  merchantPolicyFromConfig,
+  parseDomainList,
+  windowForPurchase,
+} from './merchant-recourse.js';
+export type {
+  MarketplaceKind,
+  MarketplacePolicy,
+  MerchantIdentity,
+  MerchantJudgeInput,
+  MerchantJudgePort,
+  MerchantJudgement,
+  MerchantPolicy,
+  MerchantVerdict,
+  SaleType,
+} from './merchant-recourse.js';
 
 export { checkPaymentGates } from './gates.js';
 export type { GateInput, GateRefusal } from './gates.js';

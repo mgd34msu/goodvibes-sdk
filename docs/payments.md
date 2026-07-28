@@ -349,7 +349,7 @@ testable without a browser, a card or a clock.
 3.  RESERVE the pools
 
 3a. GRADE THE MERCHANT on the validated registrable domain that takes the
-    card  (§9.1.1) — a lookup, never a runtime inference
+    card  (§9.1.1) — judgement on the domain alone
     ├─ recourse established  →  the window stays a VETO
     └─ anything else         →  the window becomes an APPROVAL
     Either condition escalates and nothing downgrades: a recognised
@@ -892,7 +892,7 @@ saying is that we ask rather than assume.
 
 **Where "use judgement" lives — and it is not at runtime.** The judgement is
 exercised when the list is **curated**, and recorded as data in
-`payments/major-retailers.ts`. At runtime this is a lookup. There is deliberately
+`payments/merchant-recourse.ts`. At runtime this is a lookup. There is deliberately
 **no runtime inference**: no heuristics on traffic, page quality, certificate age
 or review counts, because every one of those is controlled by whoever built the
 page, and a purchase gate reading page-derived legitimacy signals is the
