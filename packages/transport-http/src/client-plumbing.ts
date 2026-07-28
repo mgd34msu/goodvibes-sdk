@@ -1,3 +1,4 @@
+import type { OmitNamed, RequiredNamedKeys } from '@pellux/goodvibes-contracts';
 import { ContractError } from '@pellux/goodvibes-errors';
 
 const MAX_SCHEMA_PATTERN_CHARS = 512;
@@ -10,9 +11,18 @@ const RISKY_SCHEMA_PATTERN_CHECKS: readonly RegExp[] = [
   /\(\?<[=!]/,
 ];
 
-export type RequiredKeys<T extends object> = {
-  [K in keyof T]-?: {} extends Pick<T, K> ? never : K;
-}[keyof T];
+/**
+ * The required keys of a contract input.
+ *
+ * Delegates to `RequiredNamedKeys` rather than mapping over `keyof T` directly.
+ * A contract input whose schema sets `additionalProperties: true` renders as
+ * `Base & { readonly [key: string]: unknown }`, and `keyof` that intersection is
+ * `string | number` — so a direct mapped type iterates the index keys instead of
+ * the declared ones and yields `never`. That made `MethodArgs` below conclude
+ * "no required fields", and hand the caller an OPTIONAL input argument, for
+ * every open-envelope verb: 139 of the 443 operator methods.
+ */
+export type RequiredKeys<T extends object> = RequiredNamedKeys<T>;
 
 /**
  * Maps a contract input object to the public client method argument tuple.
@@ -28,12 +38,20 @@ export type MethodArgs<TInput, TOptions> =
         : [input: TInput, options?: TOptions]
       : [input: TInput, options?: TOptions];
 
-/** Remove path-bound keys from a contract input before exposing method helpers. */
+/**
+ * Remove path-bound keys from a contract input before exposing method helpers.
+ *
+ * `OmitNamed` rather than `Omit<TInput, Extract<keyof TInput, TKeys>>` for the
+ * same reason as `RequiredKeys` above: against an open envelope, `keyof TInput`
+ * is `string | number`, so the omit removed nothing recognisable and the result
+ * collapsed to the bare index signature — every remaining field, and its
+ * requiredness, silently dropped from the helper's argument type.
+ */
 export type WithoutKeys<TInput, TKeys extends PropertyKey> =
   [TInput] extends [undefined]
     ? undefined
     : TInput extends object
-      ? Omit<TInput, Extract<keyof TInput, TKeys>>
+      ? OmitNamed<TInput, TKeys>
       : TInput;
 
 /**

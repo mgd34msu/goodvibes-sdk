@@ -3,6 +3,7 @@ import type {
   OperatorMethodOutput,
   OperatorTypedMethodId,
 } from '@pellux/goodvibes-contracts/generated/foundation-client-types';
+import type { OmitNamed } from '@pellux/goodvibes-contracts';
 import {
   createScopedBrowserSdk,
   forScopedBrowserSession,
@@ -15,32 +16,18 @@ import {
 } from './browser-scoped.js';
 import type { ServerSentEventHandlers } from './transport-http.js';
 
-/** The named (non-index-signature) properties of T. */
-type NamedProps<T> = {
-  [K in keyof T as string extends K ? never : number extends K ? never : K]: T[K];
-};
-
-/** T's broad string index signature if it has one, otherwise nothing. */
-type IndexPart<T> = string extends keyof T ? { readonly [key: string]: unknown } : unknown;
-
 /**
  * The input type of `TMethodId` minus the key this wrapper supplies from its own
  * positional argument (the id already in the URL path).
  *
- * A plain `Omit<OperatorMethodInput<M>, K>` does NOT do this for any verb whose
- * schema sets `additionalProperties: true`: that renders as
- * `Base & { readonly [key: string]: unknown }`, whose `keyof` is `string |
- * number`, so `Exclude<keyof T, K>` removes nothing and `Pick` keeps no named
- * property. The argument type silently collapses to the bare index signature and
- * every field — including which fields are REQUIRED — is lost. Stripping the
- * index signature before the omit, then re-adding it, keeps both the named
- * shape and the additional-properties escape hatch.
+ * `OmitNamed` rather than a plain `Omit` — see @pellux/goodvibes-contracts'
+ * typed-io-keys.ts: an `additionalProperties: true` verb renders with a broad
+ * index signature, and `Omit` collapses the whole named shape against it.
  */
-type OperatorInputWithout<TMethodId extends OperatorTypedMethodId, TKey extends string> = Omit<
-  NamedProps<OperatorMethodInput<TMethodId>>,
+type OperatorInputWithout<TMethodId extends OperatorTypedMethodId, TKey extends string> = OmitNamed<
+  OperatorMethodInput<TMethodId>,
   TKey
-> &
-  IndexPart<OperatorMethodInput<TMethodId>>;
+>;
 
 export const KNOWLEDGE_BROWSER_ROUTES = {
   'knowledge.ask': { method: 'POST', path: '/api/knowledge/ask' },
