@@ -48,6 +48,7 @@ import type {
   MailboxWire,
   WatcherClock,
 } from './ports.js';
+import { isImapUid, MAX_IMAP_UID } from './source-cursor.js';
 import type { MailboxCursor } from './types.js';
 
 /** Everything one drain of the mailbox needs. */
@@ -120,12 +121,34 @@ export interface MailboxDeltaReport {
  * Issued on the raw wire because `UID SEARCH UID n:*` is not on the client's
  * method surface, and bounded by the operation timeout because a search that
  * never answers is a dead connection wearing a healthy one's clothes.
+ *
+ * REFUSES A CURSOR OUTSIDE THE 32-BIT UID SPACE rather than searching from it.
+ * `source-cursor.ts` and `MailboxCursorStore` between them make such a cursor
+ * unstorable and unwritable, and `parseSearchNumbers` makes it unreadable off
+ * the wire, so this should never fire — it is here because of what the failure
+ * LOOKED like when it could. `UID SEARCH UID 9007199254740992:*` is a range a
+ * server answers perfectly happily, and every UID it returns then fails the
+ * `uid > lastSeenUid` filter below: the drain reports `complete, found: 0`,
+ * the watcher reports healthy, and no mail is ever delivered again. Silence
+ * that reports itself as success is the one failure mode this whole capability
+ * exists to eliminate, so an impossible position is raised as a read failure —
+ * `drainMailboxDelta` turns it into `read-failed` on the `search` phase, which
+ * the caller backs off and discloses — rather than being searched from as if
+ * it were a place.
  */
 export async function searchAboveCursor(
   wire: MailboxWire,
   lastSeenUid: number,
   options: { readonly timeoutMs: number; readonly signal: AbortSignal },
 ): Promise<number[]> {
+  if (!isImapUid(lastSeenUid)) {
+    throw new Error(
+      `Refusing to search above UID ${String(lastSeenUid)}: not an integer in `
+      + `0..${String(MAX_IMAP_UID)} (RFC 3501 §2.3.1.1). No UID a server can issue is above it, `
+      + 'so every message in the mailbox would be filtered out and the drain would report '
+      + 'success having delivered nothing.',
+    );
+  }
   const from = Math.max(1, lastSeenUid + 1);
   const tag = await wire.sendCommand(`UID SEARCH UID ${from}:*`);
   const lines = await wire.awaitTag(tag, {

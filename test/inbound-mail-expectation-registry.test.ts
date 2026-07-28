@@ -96,7 +96,7 @@ describe('a workstream registers an expectation before it submits the form', () 
       purpose: 'confirm the account for example.com',
     });
 
-    const match = registry.matcher.matchCandidate(
+    const match = await registry.matcher.matchCandidate(
       arrival({ deliveredTo: 'signup-a1@alias.test', from: 'no-reply@example.com' }),
       NOW,
     );
@@ -112,7 +112,7 @@ describe('a workstream registers an expectation before it submits the form', () 
       purpose: 'confirm the account for example.com',
     });
 
-    const match = registry.matcher.matchCandidate(
+    const match = await registry.matcher.matchCandidate(
       arrival({ deliveredTo: 'signup-a1@alias.test', from: 'no-reply@evil.test' }),
       NOW,
     );
@@ -131,7 +131,7 @@ describe('a workstream registers an expectation before it submits the form', () 
       purpose: 'confirm the account for example.com',
     });
 
-    const match = registry.matcher.matchCandidate(
+    const match = await registry.matcher.matchCandidate(
       arrival({ deliveredTo: 'someone-else@alias.test', from: 'no-reply@example.com' }),
       NOW,
     );
@@ -146,7 +146,7 @@ describe('a workstream registers an expectation before it submits the form', () 
       purpose: 'confirm the account for example.com',
     });
 
-    const match = registry.matcher.matchCandidate(
+    const match = await registry.matcher.matchCandidate(
       arrival({ deliveredTo: null, from: 'no-reply@example.com' }),
       NOW,
     );
@@ -167,11 +167,21 @@ describe('nothing arriving in mail can create, widen or extend an expectation', 
       for (const key of Object.getOwnPropertyNames(proto)) reachable.add(key);
       proto = Object.getPrototypeOf(proto) as object | null;
     }
-    // The concrete object IS the book, so these exist on it — the protection
-    // is that `ExpectationMatcher` does not NAME them, which the type-level
-    // test asserts. What matters here is that `matchCandidate` is the method
-    // the inbound path actually uses and that it is present.
+    // The two verbs the inbound path is entitled to, and nothing else.
     expect(reachable.has('matchCandidate')).toBe(true);
+    expect(reachable.has('consumeMatch')).toBe(true);
+
+    // The registry now hands over a purpose-built object rather than the book
+    // itself — the seam the consuming match is written through from — so the
+    // insert verbs are unreachable AT RUNTIME, not merely unnameable in the
+    // type. That is strictly stronger than what this test could assert while
+    // the concrete object was the book, and it is asserted here so a later
+    // refactor that goes back to passing the book straight through reddens
+    // instead of quietly restoring the reach.
+    expect(reachable.has('openExpectation')).toBe(false);
+    expect(reachable.has('hydrateExpectation')).toBe(false);
+    expect(reachable.has('closeExpectation')).toBe(false);
+    expect(reachable.has('sweepExpired')).toBe(false);
 
     // And a caller holding the narrowed type cannot reach the rest: the
     // property access below is checked by tsc, not at runtime.
@@ -246,7 +256,7 @@ describe('an expectation that runs out is reported, not lapsed quietly', () => {
     clock.advance(16 * 60_000);
 
     // Asked at the LATER time — the window is closed by then.
-    const match = registry.matcher.matchCandidate(
+    const match = await registry.matcher.matchCandidate(
       arrival({ deliveredTo: 'signup-a1@alias.test', from: 'no-reply@example.com' }),
       clock.now(),
     );
@@ -267,7 +277,7 @@ describe('cancel closes an expectation the workstream abandoned', () => {
     expect(closed?.id).toBe(opened.id);
     expect(registry.list().length).toBe(0);
 
-    const match = registry.matcher.matchCandidate(
+    const match = await registry.matcher.matchCandidate(
       arrival({ deliveredTo: 'signup-a1@alias.test', from: 'no-reply@example.com' }),
       NOW,
     );

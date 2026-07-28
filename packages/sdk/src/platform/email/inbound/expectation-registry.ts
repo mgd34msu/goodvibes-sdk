@@ -51,33 +51,70 @@ import {
   type OpenExpectationInput,
   type SurfaceAuthorityProbe,
   type VerificationExpectation,
+  type VerificationMatch,
 } from '../../google/verification-expectations.js';
 import { surfaceHasCommandAuthority } from '../../security/untrusted-content.js';
 import type { PersistedExpectationStore } from './expectation-store.js';
 
 /**
+ * The book's own `matchCandidate`, so the signature below is projected off the
+ * real method rather than restated beside it.
+ *
+ * This preserves what the previous `Pick<VerificationExpectationBook,
+ * 'matchCandidate'>` was there for, and that rule is worth keeping written
+ * down: the first draft declared `matchCandidate(email, now?: Date)` by hand
+ * and got it wrong — the book's `now` is required — so the narrowed view
+ * described a method the book does not have, and every caller through it would
+ * have been type-checked against fiction. `Parameters<>` and `ReturnType<>`
+ * cannot drift from what they project any more than a `Pick` could.
+ */
+type BookMatchCandidate = VerificationExpectationBook['matchCandidate'];
+
+/**
  * The match-only view of the book that inbound code is given.
  *
- * `VerificationExpectationBook` satisfies this structurally, so nothing is
- * wrapped and nothing is duplicated — the holder simply cannot NAME what it
- * does not have. `openExpectation`, `hydrateExpectation` and `closeExpectation`
- * are absent from the type, so a call to any of them does not compile.
+ * `openExpectation` and `hydrateExpectation` are absent from the type, so a
+ * call to either does not compile — and, since the registry now hands over a
+ * purpose-built object rather than the book itself, they are absent at runtime
+ * too. That is the same reasoning that removes `trySpawnAgent` from the
+ * inbound context, applied to the other capability an arriving message must
+ * never reach: an earlier draft handed the inbound path the whole book, which
+ * would have made inbound code structurally able to register an expectation —
+ * the exact thing §2 forbids.
  *
- * A `Pick` rather than a restated method signature, and that is the rule this
- * round keeps re-learning rather than a stylistic choice. The first draft
- * declared `matchCandidate(email, now?: Date)` by hand and got it wrong — the
- * book's `now` is required — so the narrowed view described a method the book
- * does not have, and every caller through it would have been type-checked
- * against fiction. A `Pick` cannot drift from what it picks.
- *
- * This is the same reasoning that removes `trySpawnAgent` from the inbound
- * context, applied to the other capability an arriving message must never
- * reach. An earlier draft handed the inbound path the whole book, which would
- * have made inbound code structurally able to register an expectation — the
- * exact thing §2 forbids, and nearly through on the very rule this round
- * exists to enforce.
+ * WHY IT IS NO LONGER THE BOOK ITSELF. `matchCandidate` mutates: a `matched`
+ * answer spends the grant, an `expired` one deletes it on the way out, and the
+ * no-match path sweeps every elapsed expectation. `expectation-store.ts`'s own
+ * header names "open, close, **consuming match**" as the three book mutations
+ * that must be mirrored to disk, and the consuming match — the only one the
+ * inbound path actually causes — was the one nothing wrote through. Handing
+ * over the raw book is what made that unfixable: there was no seam between the
+ * mutation and the caller to put the write in.
  */
-export type ExpectationMatcher = Pick<VerificationExpectationBook, 'matchCandidate'>;
+export interface ExpectationMatcher {
+  /**
+   * Ask whether a message satisfies something already open, and mirror to disk
+   * whatever asking changed, before the answer comes back.
+   *
+   * Called with `{ consume: false }` by the intake — see `consumeMatch`.
+   */
+  matchCandidate(...args: Parameters<BookMatchCandidate>): Promise<ReturnType<BookMatchCandidate>>;
+  /**
+   * Spend the grant a `matched` answer named, and write that through.
+   *
+   * Takes the MATCH, not an id: the caller can only spend the expectation the
+   * book itself just handed it, and has no way to name any other. Anything
+   * that is not a `matched` result is a no-op.
+   *
+   * Separate from `matchCandidate` so the intake can decide the outcome,
+   * announce it and record it BEFORE the grant is spent — a pass that throws
+   * part-way then leaves the book exactly as it found it, and the redelivery
+   * correlates again instead of reporting the owner's own verification mail as
+   * unsolicited. `intake.ts` states why that ordering is the fix rather than a
+   * second durable store of matches.
+   */
+  consumeMatch(match: VerificationMatch): Promise<void>;
+}
 
 /** An expectation whose window ran out without a matching message arriving. */
 export interface ExpectationExpiryReport {
@@ -128,6 +165,7 @@ export class InboundExpectationRegistry {
   private readonly now: () => Date;
   private readonly defaultWindowMs: number | undefined;
   private readonly onExpired: ((report: ExpectationExpiryReport) => void) | undefined;
+  private readonly view: ExpectationMatcher;
 
   constructor(options: InboundExpectationRegistryOptions) {
     this.book = new VerificationExpectationBook(
@@ -137,16 +175,38 @@ export class InboundExpectationRegistry {
     this.now = options.now ?? (() => new Date());
     this.defaultWindowMs = options.defaultWindowMs;
     this.onExpired = options.onExpired;
+    this.view = {
+      matchCandidate: async (...args) => {
+        const match = this.book.matchCandidate(...args);
+        // Written through UNCONDITIONALLY rather than only for the kinds
+        // believed to mutate. Predicting which ones do would couple this line
+        // to the order of the book's internal early returns — and a wrong
+        // prediction is precisely the silent miss this fix exists to close.
+        // A question that changed nothing costs one mirror write of unchanged
+        // content; the intake already writes a record per message.
+        await this.persist();
+        return match;
+      },
+      consumeMatch: async (match) => {
+        if (match.kind !== 'matched') return;
+        if (this.book.closeExpectation(match.expectation.id) === null) return;
+        await this.persist();
+      },
+    };
   }
 
   /**
    * The match-only view. Handed to the inbound path; the book itself is not.
    *
-   * Typed as `ExpectationMatcher` at the boundary, so the receiver's static
-   * type carries no way to insert, widen or extend.
+   * A purpose-built object rather than the book, so `openExpectation` and
+   * `hydrateExpectation` are unreachable at runtime as well as unnameable in
+   * the type — and so every book mutation the inbound path can cause has a
+   * seam to be mirrored to disk from. See `ExpectationMatcher`.
+   *
+   * One object, built once, so its identity is stable across reads.
    */
   get matcher(): ExpectationMatcher {
-    return this.book;
+    return this.view;
   }
 
   /**
