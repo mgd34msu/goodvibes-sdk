@@ -5,9 +5,11 @@ import { BrowserSessionError, BrowserSessionManager, hasDisplay } from './browse
 import type { BrowserAttachOptions, BrowserLaunchOptions } from './browser-sessions.js';
 import { describeProvisionWork } from './browser-provisioning.js';
 import { resolveRef, SnapshotStore, StaleElementError, takeSnapshot } from './browser-snapshot.js';
+import { assertCaptureAllowed, fillSecretIntoPage } from './browser-secret-fill.js';
 import type {
   BrowserProvisionReport,
   BrowserSnapshot,
+  CardFieldGuard,
   OwnerApproval,
   UntrustedContentPort,
 } from './browser-types.js';
@@ -53,6 +55,15 @@ export interface BrowserEngineOptions {
    * nothing and screenshots are simply written and reported.
    */
   readonly recordSessionWrite?: ((path: string) => void) | undefined;
+  /**
+   * Keeps card material out of everything a page hands back.
+   *
+   * Optional here so every existing caller keeps working, and NOT optional in
+   * practice: `payments.checkout.fillCard` refuses to type into an engine that
+   * has none. A browser used for ordinary automation needs no guard; a browser
+   * used to pay for something cannot be made to run without one.
+   */
+  readonly cardFieldGuard?: CardFieldGuard | undefined;
 }
 
 /** Fields the extraction contract can ask for. Nothing here can invoke anything. */
@@ -127,6 +138,7 @@ export class BrowserEngine {
   private readonly snapshots = new SnapshotStore();
 
   private readonly untrusted: UntrustedContentPort;
+  private readonly cardGuard: CardFieldGuard | null;
   private approval: OwnerApproval | null;
 
   constructor(
@@ -134,7 +146,26 @@ export class BrowserEngine {
     private readonly options: BrowserEngineOptions,
   ) {
     this.untrusted = options.untrusted;
+    this.cardGuard = options.cardFieldGuard ?? null;
     this.approval = options.approval ?? null;
+  }
+
+  /** Whether this engine can be used to pay for something (see fill-card.ts). */
+  cardFieldGuardInstalled(): boolean {
+    return this.cardGuard !== null;
+  }
+
+  cardFieldGuard(): CardFieldGuard | null {
+    return this.cardGuard;
+  }
+
+  /**
+   * Strip live card material out of anything a page produced. Applied to every
+   * value, name, body text, extracted field and ledger entry leaving this
+   * class, unconditionally — see `CardFieldGuard` in browser-types.ts.
+   */
+  private scrub(sessionId: string, pageId: string, text: string): string {
+    return this.cardGuard === null ? text : this.cardGuard.redact(sessionId, pageId, text);
   }
 
   /**
@@ -311,7 +342,13 @@ export class BrowserEngine {
 
   async snapshot(target: BrowserTarget, args: { readonly limit?: number | undefined } = {}): Promise<Record<string, unknown>> {
     const { sessionId, pageId, page } = await this.target(target);
-    const snapshot = await takeSnapshot(page, sessionId, pageId, args);
+    // The guard goes IN rather than being applied to the result: the snapshot
+    // is also stored for ref resolution, and a stored copy holding the card
+    // would be the same leak one indirection further away.
+    const snapshot = await takeSnapshot(page, sessionId, pageId, {
+      ...args,
+      ...(this.cardGuard === null ? {} : { guard: this.cardGuard }),
+    });
     this.snapshots.set(snapshot);
     // Element names and values are written by the page, so a snapshot is
     // untrusted content just as much as the body text is.
@@ -425,6 +462,45 @@ export class BrowserEngine {
     };
   }
 
+  /**
+   * Type a value the DAEMON holds into a field, reporting only whether it worked.
+   *
+   * The counterpart to `type` for card material, and deliberately not a flag on
+   * it. `value` never came from the model: it is read from the daemon's secret
+   * store in-process and passed here directly, and nothing on the control plane
+   * can supply one or observe one. The mechanics — refusing without a guard,
+   * and discarding the driver's error because it quotes what it tried to type —
+   * live in browser-secret-fill.ts.
+   *
+   * The caller arms the guard before calling this. Not done here because a fill
+   * of several fields arms once for all of them, and arming per field would
+   * leave the earlier ones unprotected while the later ones are typed.
+   */
+  async fillSecret(
+    target: BrowserTarget,
+    args: { readonly ref: string; readonly value: string; readonly timeoutMs?: number | undefined },
+  ): Promise<Record<string, unknown>> {
+    const { sessionId, pageId, page } = await this.target(target);
+    const { element } = await fillSecretIntoPage({
+      page,
+      snapshot: this.currentSnapshot(sessionId, pageId),
+      ref: args.ref,
+      value: args.value,
+      guard: this.cardGuard,
+      timeoutMs: args.timeoutMs ?? DEFAULT_ACTION_TIMEOUT_MS,
+    });
+    // The stored snapshot still holds this element's pre-fill value, and the
+    // next snapshot suppresses it — clearing here means no path can serve a
+    // cached one from before the guard was armed.
+    this.snapshots.clear(sessionId, pageId);
+    return {
+      sessionId,
+      pageId,
+      filledInto: { ref: args.ref, role: element.role, name: element.name },
+      url: page.url(),
+    };
+  }
+
   async select(
     target: BrowserTarget,
     args: { readonly ref: string; readonly values: readonly string[]; readonly timeoutMs?: number | undefined },
@@ -525,7 +601,14 @@ export class BrowserEngine {
       this.recordPageIngest(frame.url());
       frameTexts.push(`\n\n[embedded frame ${this.untrusted.originOf(frame.url())}]\n${frameText.trim()}`);
     }
-    const normalized = `${text}${frameTexts.join('')}`.replace(/\n{3,}/g, '\n\n').trim();
+    // Scrubbed before it is labelled, recorded, or returned. A page is free to
+    // render what was typed into it as ordinary body text, and this is the path
+    // that would hand that straight back.
+    const normalized = this.scrub(
+      sessionId,
+      pageId,
+      `${text}${frameTexts.join('')}`.replace(/\n{3,}/g, '\n\n').trim(),
+    );
     const origin = this.recordPageIngest(page.url(), normalized);
     return {
       sessionId,
@@ -548,6 +631,7 @@ export class BrowserEngine {
     args: { readonly fullPage?: boolean | undefined; readonly path?: string | undefined } = {},
   ): Promise<Record<string, unknown>> {
     const { sessionId, pageId, page } = await this.target(target);
+    assertCaptureAllowed(this.cardGuard, sessionId, pageId);
     mkdirSync(this.options.screenshotDirectory, { recursive: true });
     const fileName = `${sessionId}-${pageId}-${String(Date.now())}.png`;
     // Resolved once, so the path written, the path recorded, and the path
@@ -604,6 +688,7 @@ export class BrowserEngine {
     const { page } = await this.sessions.page(sessionId, args.pageId);
     await page.close();
     this.snapshots.clear(sessionId, args.pageId);
+    this.cardGuard?.disarm(sessionId, args.pageId);
     return { sessionId, closedPageId: args.pageId, pages: await this.sessions.pageList(sessionId) };
   }
 
@@ -683,7 +768,12 @@ export class BrowserEngine {
     // a value lifted out of a form or a table is as good an injection carrier
     // as a paragraph, and recording the origin without the words would leave
     // the derivation check with nothing to compare against.
-    const origin = this.recordPageIngest(page.url(), JSON.stringify(extracted));
+    // Scrubbed as one serialized blob, which covers every field the caller
+    // asked for at once: `value` is the obvious one, and `html` and
+    // `attributes` are the ones a page uses when it wants the number to come
+    // back out somewhere nobody thought to check.
+    const payload = this.scrub(sessionId, pageId, JSON.stringify(extracted));
+    const origin = this.recordPageIngest(page.url(), payload);
     return {
       sessionId,
       pageId,
@@ -696,7 +786,7 @@ export class BrowserEngine {
       // Whatever the page holds is still the page's own words.
       data: this.untrusted.label({
         origin,
-        text: JSON.stringify(extracted),
+        text: payload,
       }),
     };
   }

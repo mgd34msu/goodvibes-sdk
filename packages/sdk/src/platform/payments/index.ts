@@ -77,6 +77,7 @@ export {
   renderApprovalMessage,
   renderVetoMessage,
   renderCancellationReport,
+  renderPurchaseNotice,
   formatMinorUnits,
 } from './message.js';
 export type { PurchaseFacts } from './message.js';
@@ -91,6 +92,36 @@ export {
   WEBUI_CARD_ENTRY_CONDITIONS,
 } from './entry-surface.js';
 export type { CardEntrySurface, CardDetailScan, CardEntryDecision } from './entry-surface.js';
+
+export {
+  DEFAULT_RECOGNISED_RETAILERS,
+  classifyMerchant,
+  parseRetailerList,
+  resolveRecognisedRetailers,
+  windowForPurchase,
+} from './major-retailers.js';
+export type {
+  RetailerQualifier,
+  RetailerEntry,
+  SaleType,
+  MerchantIdentity,
+  MarketplacePolicy,
+  MajorRetailerPolicy,
+  MajorRetailerVerdict,
+} from './major-retailers.js';
+
+export {
+  DEFAULT_MARKETPLACE_LISTING_THRESHOLDS,
+  evaluateMarketplaceListing,
+} from './marketplace-listing.js';
+export type {
+  FigureRegion,
+  ListingSaleFormat,
+  SellerReputation,
+  MarketplaceListing,
+  MarketplaceListingThresholds,
+  MarketplaceListingVerdict,
+} from './marketplace-listing.js';
 
 export { checkPaymentGates } from './gates.js';
 export type { GateInput, GateRefusal } from './gates.js';
@@ -118,3 +149,72 @@ export const CVV_PROMPT_TRADEOFF_WARNING =
   + 'stored, so every purchase stops and waits for you to type it — including purchases that are '
   + 'within budget and would otherwise have gone ahead on their own. The veto window still runs, '
   + 'but nothing completes while you are away.';
+
+// ── Purchase EXECUTION ──────────────────────────────────────────────────────
+//
+// Everything above decides whether to buy. Everything below actually buys,
+// and the seam between them is deliberate: the decision layer is pure and
+// exhaustively tested, and the execution layer reaches it through ports so it
+// can be driven end to end without a browser or a real card.
+
+export { parseMinorUnits, parseQuantity, minorUnitExponent, MAX_PARSEABLE_MINOR_UNITS } from './money-parsing.js';
+
+export { extractCheckout } from './checkout-extraction.js';
+export type { RawCheckoutReading, ExtractedCheckout, ExtractionResult } from './checkout-extraction.js';
+
+export { readCheckoutReadingInput } from './checkout-reading-input.js';
+export type { ReadingInputResult } from './checkout-reading-input.js';
+
+export { CardMaterialRedactor, isCardFieldDescriptor, REDACTED_MARKER } from './card-redaction.js';
+export type { CardFieldKind, FormControlDescriptor } from './card-redaction.js';
+
+export { cardFieldValue, isCardFieldName, CARD_FIELD_NAMES } from './card-material.js';
+export type { CardMaterial, CardMaterialStore, CardFieldName } from './card-material.js';
+
+export {
+  CheckoutRegistry,
+  CheckoutRegistryError,
+  MemoryCheckoutJournal,
+  verdictFor,
+  describeInterruption,
+} from './checkout-registry.js';
+export type {
+  CheckoutJournal,
+  CheckoutPhase,
+  InFlightCheckout,
+  InterruptedVerdict,
+} from './checkout-registry.js';
+
+export type { CheckoutPageDriver, PageIdentity, CheckoutChallenge } from './checkout-page.js';
+
+export { fillCard, FillCardRefusal } from './fill-card.js';
+export type { CardFieldTarget, FillCardRequest, FillCardResult, FillCardDeps } from './fill-card.js';
+
+export { runCheckout, merchantIdentity } from './checkout-flow.js';
+export type {
+  PurchaseRequest,
+  PurchaseRecord,
+  PurchaseLedger,
+  PaymentNotifier,
+  CheckoutFlowDeps,
+  CheckoutControls,
+  CheckoutOutcome,
+} from './checkout-flow.js';
+
+export { createChannelPaymentNotifier, parsePaymentReply } from './notice-delivery.js';
+export type {
+  PaymentNoticeTarget,
+  PaymentNoticeRouter,
+  PaymentReplySource,
+  ChannelPaymentNotifierDeps,
+} from './notice-delivery.js';
+
+export { checkAddress, fillAddresses, renderDestination, addressFieldValue } from './address.js';
+export type {
+  AddressKind,
+  AddressFieldName,
+  AddressFieldTarget,
+  AddressStore,
+  AddressCheck,
+  AddressFillResult,
+} from './address.js';

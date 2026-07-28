@@ -12,6 +12,13 @@
  * answers with metadata and a `materialComplete` flag so a surface can render
  * "CVV not set" without the daemon ever emitting one. See docs/payments.md §3.1.
  *
+ * `payments.checkout.fillCard` is what makes the capability able to buy
+ * anything, and it does NOT weaken the rule above. A card that can never reach
+ * a checkout field cannot buy anything, so the daemon types it — taking a card
+ * id and field targets, and answering with field names and a boolean. The model
+ * orchestrates the purchase and never holds the instrument, which was always
+ * the property that mattered.
+ *
  * Scopes: reads take `read:payments`, writes take `write:payments`. Card
  * creation and deletion are admin-only, because anything that can rewrite the
  * card can redirect where money goes.
@@ -29,6 +36,8 @@ import {
   PAYMENTS_CARDS_DELETE_OUTPUT_SCHEMA,
   PAYMENTS_CARDS_LIST_INPUT_SCHEMA,
   PAYMENTS_CARDS_LIST_OUTPUT_SCHEMA,
+  PAYMENTS_CHECKOUT_FILL_CARD_INPUT_SCHEMA,
+  PAYMENTS_CHECKOUT_FILL_CARD_OUTPUT_SCHEMA,
   PAYMENTS_PURCHASES_LIST_INPUT_SCHEMA,
   PAYMENTS_PURCHASES_LIST_OUTPUT_SCHEMA,
 } from './operator-contract-schemas-payments.js';
@@ -79,6 +88,18 @@ export const builtinGatewayPaymentsMethodDescriptors: readonly GatewayMethodDesc
     http: { method: 'DELETE', path: '/api/payments/cards/{id}' },
     inputSchema: PAYMENTS_CARDS_DELETE_INPUT_SCHEMA,
     outputSchema: PAYMENTS_CARDS_DELETE_OUTPUT_SCHEMA,
+  }),
+  methodDescriptor({
+    id: 'payments.checkout.fillCard',
+    title: 'Fill the Card into a Checkout',
+    description:
+      'Have the daemon type the stored card into the payment fields of an open browser page. Takes the browser session, the page, and a list of {field, ref} targets naming where each part of the card goes — the caller identifies the fields on whatever checkout it is looking at, so the daemon needs no knowledge of any merchant. The response is the list of field NAMES that were filled plus a boolean; it never carries the value, its length, or a masked form, and a failure names the field that did not accept input rather than what was typed into it. Refused unless a purchase decision is already in flight on that exact page and the page is still on the registrable domain the purchase was decided against, so the card is typed as part of an approved checkout or not at all. Also refused when the browser has no card-material redaction installed, because a snapshot taken afterwards would otherwise hand back what was just typed.',
+    category: 'payments',
+    scopes: ['write:payments'],
+    access: 'admin',
+    http: { method: 'POST', path: '/api/payments/checkout/fill-card' },
+    inputSchema: PAYMENTS_CHECKOUT_FILL_CARD_INPUT_SCHEMA,
+    outputSchema: PAYMENTS_CHECKOUT_FILL_CARD_OUTPUT_SCHEMA,
   }),
   methodDescriptor({
     id: 'payments.purchases.list',

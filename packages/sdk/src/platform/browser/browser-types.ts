@@ -170,6 +170,54 @@ export interface BrowserElementRef {
    * routinely, so an element inside one has to be addressable like any other.
    */
   readonly frameChain: readonly string[];
+  /**
+   * This control is a payment field, so its `value` is never reported.
+   *
+   * Present so the absence is legible rather than mysterious: a model that sees
+   * `cardField: true` and no value knows the field exists and is addressable —
+   * it can still be filled, by asking the daemon to type into it — instead of
+   * concluding the snapshot is broken and reading the page another way.
+   */
+  readonly cardField?: boolean | undefined;
+}
+
+/**
+ * Keeping card material out of everything a page hands back.
+ *
+ * ── Why this is a port and not a direct call ──────────────────────────────
+ *
+ * The same reason as `UntrustedContentPort` below: the engine names the
+ * operation it needs and the product supplies the implementation, so
+ * `platform/browser/` carries no payment-capability wiring. The implementation
+ * is `CardMaterialRedactor` in platform/payments/.
+ *
+ * ── What a guard adds, and what its absence prevents ──────────────────────
+ *
+ * The engine works normally without one, and a snapshot still suppresses the
+ * value of any control a page declares to be a payment field — that rule is
+ * structural and needs no state. What a guard adds is the value-based layer:
+ * the exact strings the daemon typed, removed from any page-derived text they
+ * appear in, including text a hostile page synthesised to smuggle them out.
+ *
+ * A card fill REFUSES TO RUN against an engine with no guard installed. That is
+ * the enforcement — not a warning and not a default-on flag. An engine without
+ * one cannot be used to pay for anything, so there is no configuration in which
+ * material is typed and then reportable.
+ */
+export interface CardFieldGuard {
+  /** True while this page holds material that has been typed and not cleared. */
+  hasLiveMaterial: (sessionId: string, pageId: string) => boolean;
+  /**
+   * Remove every live secret from page-derived text.
+   *
+   * Called unconditionally on anything crossing out of the engine, never behind
+   * a "does this contain a secret" test — a check followed by an action is one
+   * refactor away from the check being dropped. Returns the input unchanged
+   * when the page holds nothing.
+   */
+  redact: (sessionId: string, pageId: string, text: string) => string;
+  /** Forget a page's material. Called when a page or a session closes. */
+  disarm: (sessionId: string, pageId: string) => void;
 }
 
 export interface BrowserSnapshot {
