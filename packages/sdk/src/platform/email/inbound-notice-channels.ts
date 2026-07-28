@@ -16,6 +16,7 @@
 import {
   CONTROL_OR_LINE_BREAK,
   REPEATED_SPACE,
+  stripControlAndLineBreaks,
   type NoticeSpan,
   type StructuredNotice,
 } from './inbound-notice.js';
@@ -53,14 +54,44 @@ function neutralizePlainText(text: string): string {
   return defangUrlForms(noMentions).replace(REPEATED_SPACE, ' ').trim();
 }
 
+/**
+ * Flatten spans, neutralising line breaks in every untrusted one FIRST.
+ *
+ * The strip is here rather than inside the escapers because it was inside one
+ * of them. `escapeNtfyField` removed control characters — it has to, headers
+ * cannot carry them — and the other five paths did not, including
+ * `renderNoticeAsPlainText`, the "fully neutralized" fallback an unmapped
+ * surface gets. `PLAIN_TEXT_MARKUP_TRIGGER_CHARS` covers markup metacharacters
+ * and no control characters at all, and `REPEATED_SPACE` collapses spaces, not
+ * newlines. So attacker text carrying `\n` forged a labelled line on five of
+ * six paths.
+ *
+ * The producer strips too (`stripControlAndLineBreaks` at each field it
+ * builds), which is why this is not live for inbound mail today — but the
+ * producer only protects the fields the producer writes, and §11.1 adds
+ * payments as a second producer. One `\n` in an `itemTitle` forges the amount
+ * line. Composed once, here, for the same reason URL defanging is composed at
+ * the dispatch: a new escaper cannot forget what it never had to remember.
+ */
 function flattenSpans(spans: readonly NoticeSpan[], escapeUntrusted: (text: string) => string): string {
-  return spans.map((span) => (span.kind === 'literal' ? span.text : escapeUntrusted(span.text))).join('');
+  return spans
+    .map((span) => (
+      span.kind === 'literal' ? span.text : escapeUntrusted(stripControlAndLineBreaks(span.text))
+    ))
+    .join('');
 }
 
 function flattenNotice(notice: StructuredNotice, escapeUntrusted: (text: string) => string): string {
   const lines = [flattenSpans(notice.title, escapeUntrusted)];
   for (const field of notice.fields) {
-    lines.push(`${field.label}: ${flattenSpans(field.value, escapeUntrusted)}`);
+    // `label` is a bare `string` while `title` and `value` are spans, so it is
+    // the one part of a notice that reaches the wire without passing through
+    // any escaper. Labels are ours by contract and hardcoded today, so this is
+    // not live — but nothing in the type says so, nothing would fail to
+    // compile, and a label carrying a newline forges a line exactly as an
+    // untrusted span would. Line-neutralised for that reason; deliberately NOT
+    // markup-escaped, because our own labels are meant to render as written.
+    lines.push(`${stripControlAndLineBreaks(field.label)}: ${flattenSpans(field.value, escapeUntrusted)}`);
   }
   return lines.join('\n');
 }
@@ -116,7 +147,21 @@ function escapeTelegramMarkdownV2(text: string): string {
 function defangUrlForms(text: string): string {
   return text
     .replace(/(\w+:\/\/)/gi, (scheme) => `${scheme}​`)
-    .replace(/\b(www\.)/gi, (prefix) => `${prefix}​`);
+    .replace(/\b(www\.)/gi, (prefix) => `${prefix}​`)
+    // A URL needs no scheme and no `www.` to be tappable. Telegram, Slack and
+    // Discord all linkify a bare `evil.example/verify?t=1`, and the two rules
+    // above match neither part of it — so an attacker-written subject reached
+    // the owner with a live link on every channel. Matched as "a dotted host
+    // followed by a path or query marker", and the zero-width space goes
+    // before that marker so the host still reads exactly as the mail wrote it.
+    //
+    // WHAT THIS DELIBERATELY DOES NOT MATCH: a bare `evil.example` with no
+    // path. Defanging every dotted token would hit `report.pdf`, `v1.2.3` and
+    // the domain half of an email address, and mangling ordinary text is how a
+    // defanger gets turned off. The residual is a link with no path, which
+    // carries no token.
+    .replace(/\b([a-z0-9][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)+)(?=[/?])/gi,
+      (host) => `${host}​`);
 }
 
 /**

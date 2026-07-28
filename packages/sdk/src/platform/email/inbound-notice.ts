@@ -249,11 +249,24 @@ export interface InboundMailNoticeInput {
  * path open.
  */
 // eslint-disable-next-line no-control-regex
-export const CONTROL_OR_LINE_BREAK = new RegExp('[\\u0000-\\u001F\\u007F\\u2028\\u2029]', 'g');
+export const CONTROL_OR_LINE_BREAK = new RegExp(
+  // U+0085 (NEL) is a line break to a renderer and was not in this class. It
+  // sits outside the C0 range, so "control characters and the two Unicode
+  // separators" missed it by exactly one code point.
+  '[\\u0000-\\u001F\\u007F\\u0085\\u2028\\u2029]',
+  'g',
+);
 
 export const REPEATED_SPACE = / {2,}/g;
 
-function stripControlAndLineBreaks(raw: string): string {
+/**
+ * Collapse control characters and line breaks to spaces.
+ *
+ * Exported because the escaper layer needs the SAME rule: a newline surviving
+ * into a rendered notice forges a labelled line, and the producer stripping it
+ * only protects the fields the producer writes. See `flattenSpans`.
+ */
+export function stripControlAndLineBreaks(raw: string): string {
   return raw.replace(CONTROL_OR_LINE_BREAK, ' ').replace(REPEATED_SPACE, ' ').trim();
 }
 
@@ -407,10 +420,19 @@ function outcomeField(outcome: InboundOutcome): NoticeField {
     case 'capability-degraded':
       return {
         label: 'Outcome',
+        // The capability is UNTRUSTED, not literal. Its only real source is
+        // the server's own wording (`capability.ts` builds it from a refusal),
+        // and §7.1 is explicit that any reason quoting a server is
+        // attacker-chosen. As a literal span it skipped every channel escaper,
+        // so `*text*` in a refusal rendered as markup on Discord and Slack.
+        // Control characters were already stripped here; that made it
+        // line-safe and left it markup-live.
         value: [
+          literal('LIMITED VIEW — this account cannot currently '),
+          untrusted(outcome.missingCapability),
           literal(
-            `LIMITED VIEW — this account cannot currently ${stripControlAndLineBreaks(outcome.missingCapability)}. `
-            + 'Read from envelope fields only; nothing here could match or satisfy a verification.',
+            '. Read from envelope fields only; nothing here could match or '
+            + 'satisfy a verification.',
           ),
         ],
       };
