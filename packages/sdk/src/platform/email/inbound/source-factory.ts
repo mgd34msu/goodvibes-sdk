@@ -61,12 +61,53 @@ import type {
 } from './ports.js';
 import type { InboundMailSourceFactory } from './supervisor.js';
 
-/** What the Gmail arm needs from whoever composed a Google credential. */
-export type GmailSourceBuilder = (input: {
+/**
+ * The Gmail poll cadence, resolved from config into milliseconds.
+ *
+ * A named type rather than two loose numbers because they travel together
+ * through three hops and are trivially swappable at every one of them — the
+ * fast one is five seconds and the slow one is sixty, and nothing about
+ * `(number, number)` would stop a caller getting them the wrong way round.
+ */
+export interface GmailPollIntervals {
+  /** `surfaces.email.inbound.gmailPollSecondsExpecting`, in milliseconds. */
+  readonly pollExpectingMs: number;
+  /** `surfaces.email.inbound.gmailPollSecondsIdle`, in milliseconds. */
+  readonly pollIdleMs: number;
+}
+
+/**
+ * What the Gmail arm needs from whoever composed a Google credential.
+ *
+ * The two poll intervals are handed IN rather than left to the builder, and
+ * that is the fix rather than a nicety. `GmailMailSourceDeps` documents
+ * `pollExpectingMs` and `pollIdleMs` as coming from
+ * `surfaces.email.inbound.gmailPollSecondsExpecting` and `…gmailPollSecondsIdle`,
+ * and nothing anywhere mapped those keys onto those fields: both settings had a
+ * schema row, a validated range, and a description the owner reads in the
+ * settings UI, and not one reader. Leaving the builder to pick its own numbers
+ * would have made that permanent, because the composition that can see the
+ * config is not the one that knows how to talk to Google — so the numbers have
+ * to cross that boundary explicitly or they never cross it at all.
+ *
+ * Resolved once, where config lives, and arriving here already in
+ * milliseconds. A builder that invented its own would be answering a question
+ * the owner has already answered.
+ */
+export type GmailSourceBuilder = (input: GmailPollIntervals & {
   readonly account: string;
   readonly mailbox: string;
   readonly sink: InboundMailSink;
   readonly observer: InboundMailObserver;
+  /**
+   * `surfaces.email.inbound.capabilityRecheckMinutes`, in milliseconds.
+   *
+   * Included because `GmailMailSourceDeps.capabilityRecheckMs` defaults to the
+   * watcher's constant when omitted, and a Gmail source silently re-probing on
+   * a different schedule from the one the owner configured is the same class of
+   * defect as the two above — a setting that appears to apply and does not.
+   */
+  readonly capabilityRecheckMs: number;
 }) => Promise<InboundMailSource | null>;
 
 export interface InboundMailSourceFactoryDeps {
@@ -83,6 +124,53 @@ export interface InboundMailSourceFactoryDeps {
   readonly random?: RandomSource | undefined;
   /** Supplied by a composition that has an adopted Google credential. */
   readonly gmail?: GmailSourceBuilder | undefined;
+}
+
+/** The shipped defaults, so an unset key produces the number the schema promises. */
+const GMAIL_POLL_EXPECTING_DEFAULT_SECONDS = 5;
+const GMAIL_POLL_IDLE_DEFAULT_SECONDS = 60;
+
+/**
+ * The Gmail cadence, read from the owner's settings.
+ *
+ * Read HERE rather than plumbed in from the composition root, because this is
+ * already the module that reads `surfaces.email.*` to build a source — it takes
+ * a `ConfigReader` for exactly that — and a second hop through the caller would
+ * be two places that have to agree about two numbers.
+ *
+ * The schema's 2-60 s and 10-3600 s ranges are NOT restated. `ConfigManager`
+ * refuses a value outside them at `set()`, and `GmailMailSource` floors what it
+ * is handed; a third check here would be a third bound that can drift from the
+ * other two. What this does is the one thing neither of those can: reject a
+ * value that is not a usable number at all, which is what a hand-edited config
+ * file can produce, and fall back to the shipped default rather than passing
+ * `NaN` into an interval.
+ *
+ * The key literals sit INSIDE the `getConfig(...)` calls rather than being
+ * passed to a local helper that reads them, and that is deliberate.
+ * `test/inbound-email-config-schema.test.ts` decides whether a key is read by
+ * looking for the key's own text inside a config-read call — a doc comment
+ * naming it does not count, which is the distinction that caught these two in
+ * the first place. A helper taking the key as an argument would be a genuine
+ * read that the repository's own gate could not see, which is a worse place to
+ * be than an unread key: it would look wired to a reader and unwired to the
+ * check, and the next person to touch it would trust the wrong one.
+ */
+function positiveSeconds(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function readGmailPollIntervals(getConfig: ConfigReader): GmailPollIntervals {
+  return {
+    pollExpectingMs: positiveSeconds(
+      getConfig('surfaces.email.inbound.gmailPollSecondsExpecting' as never),
+      GMAIL_POLL_EXPECTING_DEFAULT_SECONDS,
+    ) * 1_000,
+    pollIdleMs: positiveSeconds(
+      getConfig('surfaces.email.inbound.gmailPollSecondsIdle' as never),
+      GMAIL_POLL_IDLE_DEFAULT_SECONDS,
+    ) * 1_000,
+  };
 }
 
 /**
@@ -133,6 +221,15 @@ export function createInboundMailSourceFactory(
           mailbox: input.mailbox,
           sink: input.sink,
           observer: input.observer,
+          // The owner's own numbers, not the builder's. Read at CREATE time
+          // rather than at factory construction so an interval edited while the
+          // daemon runs is picked up by the next source start, which is the
+          // same freshness rule `liveConnectionPort` applies to the IMAP host.
+          ...readGmailPollIntervals(deps.getConfig),
+          // Already resolved from `surfaces.email.inbound.capabilityRecheckMinutes`
+          // by whoever built `settings`; passed on rather than re-read, so both
+          // sources re-probe on the one schedule the owner set.
+          capabilityRecheckMs: deps.settings.capabilityRecheckMs,
         });
       }
 

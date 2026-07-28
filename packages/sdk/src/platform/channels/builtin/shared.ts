@@ -16,13 +16,21 @@ import type { InboundMailSupervisor } from '../../email/inbound/supervisor.js';
  * What the channel runtime needs from the inbound-mail supervisor, projected
  * off the real class rather than restated (docs/inbound-email.md §7.3).
  *
- * `status` and `health` are getters/methods on the supervisor; picking them
- * keeps the shape and the semantics tied to one declaration, so a change to
- * what `stop()` promises cannot silently fail to reach this seam.
+ * `health` and `recheckNow` are methods on the supervisor; picking them keeps
+ * the shape and the semantics tied to one declaration, so a change to what
+ * `stop()` promises cannot silently fail to reach this seam.
+ *
+ * `status` is deliberately gone. `BuiltinChannelRuntime.inboundMailStatus()`
+ * was its only reader and had no readers of its own, and every field it
+ * returned — `mode`, `reason`, `running` — is already on the health entry that
+ * `/api/channels/status` serves (`health.ts`: `mode` and `reason` are named
+ * fields, `running` is `metadata.running`). Keeping the member so a second
+ * accessor could answer the same question from the same object is how the two
+ * answers start to disagree.
  */
 export type InboundMailRuntimeSupervisor = Pick<
   InboundMailSupervisor,
-  'start' | 'stop' | 'status' | 'health' | 'describeStatus'
+  'start' | 'stop' | 'health' | 'describeStatus' | 'recheckNow'
 >;
 
 export type ManagedSurface =
