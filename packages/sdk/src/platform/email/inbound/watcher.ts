@@ -64,11 +64,11 @@ import type {
   InboundWatcherSettings,
   MailboxConnection,
   MailboxConnectionPort,
-  MailboxCursor,
   MailboxCursorPort,
   RandomSource,
   WatcherClock,
 } from './ports.js';
+import type { MailboxCursor } from './types.js';
 
 export interface InboundMailboxWatcherDeps {
   readonly settings: InboundWatcherSettings;
@@ -275,21 +275,26 @@ export class InboundMailboxWatcher {
     const resolution = await this.deps.cursors.resolve({
       account: this.settings.account,
       mailbox: this.settings.mailbox,
-      uidValidity: status.uidValidity,
-      uidNext: status.uidNext,
-      exists: status.exists,
+      serverUidValidity: status.uidValidity,
+      // The high-water mark is UIDNEXT minus one: the next arriving message
+      // gets UIDNEXT, so everything at or below it already exists.
+      currentHighestUid: Math.max(0, (status.uidNext ?? 1) - 1),
+      currentMessageCount: status.exists ?? 0,
     });
     this.cursor = resolution.cursor;
-    if (resolution.origin === 'established') {
+    if (resolution.kind === 'first-run') {
       this.note('cursor-established',
         `Listening from UID ${resolution.cursor.lastSeenUid} onwards; `
-        + `${resolution.skippedMessages} message(s) already in the mailbox were `
+        + `${resolution.skippedMessageCount} message(s) already in the mailbox were `
         + 'not read. The daemon starts listening now rather than backfilling.');
-    } else if (resolution.origin !== 'stored') {
+    } else if (resolution.kind === 'uid-validity-changed') {
       this.note('cursor-reset',
-        `The stored position was discarded (${resolution.origin}) and re-established `
-        + `at UID ${resolution.cursor.lastSeenUid}. Mail already in the mailbox is `
-        + 'not replayed.');
+        `The mailbox reports a different UIDVALIDITY, so every stored UID names `
+        + `nothing and the position was re-established at UID `
+        + `${resolution.cursor.lastSeenUid}; `
+        + `${resolution.skippedMessageCount} message(s) already present are not `
+        + 'replayed. A rebuilt server index is not a reason to re-announce a '
+        + 'year of old mail.');
     }
 
     // The email layer owns this decision and resolves "the server said

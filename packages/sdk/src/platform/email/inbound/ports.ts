@@ -35,6 +35,8 @@ import type {
   ImapEnvelope,
 } from '../imap-client.js';
 import type { ImapConnection, ImapReadOptions } from '../imap-session.js';
+import type { CursorResolution, MailboxCursorStore } from './cursor-store.js';
+import type { MailboxCursor } from './types.js';
 
 // ---------------------------------------------------------------------------
 // Time and chance
@@ -95,87 +97,85 @@ export const systemWatcherClock: WatcherClock = {
 // The cursor
 // ---------------------------------------------------------------------------
 
-/** Which mailbox a cursor is for. An account id, never an address. */
+/**
+ * Which mailbox a cursor is for. An account id, never an address.
+ *
+ * Local because it is a two-field key with no upstream owner, and it is the
+ * ONLY cursor shape still declared here — see the note on `MailboxCursorPort`.
+ */
 export interface MailboxCursorKey {
   readonly account: string;
   readonly mailbox: string;
 }
 
 /**
- * How far through a mailbox the daemon has got.
+ * What the watcher needs from the persisted cursor: read it, reconcile it,
+ * move it.
  *
- * `uidValidity` is part of the identity, not a decoration: when the server
- * reports a different one, every UID recorded under the old one names nothing.
- */
-export interface MailboxCursor extends MailboxCursorKey {
-  readonly uidValidity: number;
-  /** The highest UID that has been FULLY processed. */
-  readonly lastSeenUid: number;
-  readonly updatedAt: string;
-}
-
-/** What EXAMINE just said, so the store can reconcile against it. */
-export interface MailboxCursorResolveInput extends MailboxCursorKey {
-  readonly uidValidity: number;
-  /** `UIDNEXT` — the UID the next arriving message will be given. */
-  readonly uidNext: number | null;
-  /** `EXISTS` — how many messages the mailbox currently holds. */
-  readonly exists: number | null;
-}
-
-/**
- * How the cursor the watcher is about to work from came to be.
+ * **Shaped so `MailboxCursorStore` satisfies it directly**, with no adapter in
+ * between, and pinned below so it stays that way. That is not a stylistic
+ * preference — it is the mirror rule applied to a seam that had already
+ * drifted without anybody noticing.
  *
- *   - `stored` — resumed from a persisted record; the ordinary case.
- *   - `established` — first run. The mark is set at the current high-water
- *     mark and the mailbox is NOT backfilled: the daemon starts listening
- *     now, it does not retroactively decide about mail that arrived before it
- *     was asked to.
- *   - `uidvalidity-reset` — the server reports a different `UIDVALIDITY`, so
- *     the mailbox was rebuilt and every stored UID is meaningless. Discarded
- *     and re-established, and disclosed. Deliberately not a replay: notifying
- *     about a year of old mail because a server rebuilt an index is a flood,
- *     not a recovery.
- *   - `discarded` — the stored record failed validation and was dropped
- *     rather than repaired.
- */
-export type MailboxCursorOrigin =
-  | 'stored'
-  | 'established'
-  | 'uidvalidity-reset'
-  | 'discarded';
-
-export interface MailboxCursorResolution {
-  readonly cursor: MailboxCursor;
-  readonly origin: MailboxCursorOrigin;
-  /** Messages skipped when a mark was newly established. 0 when resumed. */
-  readonly skippedMessages: number;
-}
-
-/**
- * The persisted cursor, as three operations.
- *
- * `resolve` is separate from `get` because reconciling a stored UID against a
- * freshly reported `UIDVALIDITY` is a decision with a disclosure attached to
- * it, and a watcher that did that arithmetic itself would be re-implementing
- * it in every caller.
+ * This port and the store were written in separate lanes, and until this
+ * wiring they each declared their own `MailboxCursor`. The two declarations
+ * were structurally identical, so everything compiled and no test failed —
+ * and underneath, the two had already disagreed on behaviour: the store
+ * advances with `Math.max(existing.lastSeenUid, input.lastSeenUid)`, so it
+ * never moves a cursor backwards, while the local copy of that update rule in
+ * `poll-loop.ts` assigned the new UID unconditionally. Nothing linked them, so
+ * nothing could report it. The type is now imported from `types.ts`, the
+ * resolution type from `cursor-store.ts`, and the update rule is whatever the
+ * store returns rather than a second computation of it.
  */
 export interface MailboxCursorPort {
   /** The stored cursor, or null when this mailbox has never been watched. */
-  get(key: MailboxCursorKey): Promise<MailboxCursor | null>;
-  /** Reconcile the stored cursor against what EXAMINE reported. */
-  resolve(input: MailboxCursorResolveInput): Promise<MailboxCursorResolution>;
+  get(account: string, mailbox: string): Promise<MailboxCursor | null>;
+  /**
+   * Reconcile the stored cursor against what EXAMINE reported, and persist
+   * the answer. Never a signal to replay: a first run or a changed
+   * `UIDVALIDITY` establishes at the caller's high-water mark.
+   */
+  resolve(input: {
+    readonly account: string;
+    readonly mailbox: string;
+    readonly serverUidValidity: number;
+    readonly currentHighestUid: number;
+    readonly currentMessageCount: number;
+  }): Promise<CursorResolution>;
   /**
    * Record that everything up to and including `lastSeenUid` is fully
    * processed. Called ONCE PER MESSAGE and only after that message's
    * `deliver()` resolved — a crash between fetch and completion therefore
    * re-delivers, and re-delivery is caught by dedup.
+   *
+   * Returns the stored cursor so the caller uses the store's arithmetic
+   * rather than repeating it.
    */
-  advance(key: MailboxCursorKey, position: {
+  advance(input: {
+    readonly account: string;
+    readonly mailbox: string;
     readonly uidValidity: number;
     readonly lastSeenUid: number;
-  }): Promise<void>;
+  }): Promise<MailboxCursor>;
 }
+
+/**
+ * `true` while `MailboxCursorStore` still satisfies `MailboxCursorPort`.
+ *
+ * Not `never` for the failure arm: `never` is assignable to everything, so an
+ * assertion against it would keep compiling while saying nothing.
+ */
+export type MailboxCursorStoreMatchesPort = MailboxCursorStore extends MailboxCursorPort
+  ? true
+  : { readonly drifted: 'MailboxCursorStore no longer satisfies MailboxCursorPort' };
+
+/**
+ * The pin. If the store changes a signature, this stops compiling in the
+ * ordinary build — rather than the watcher silently taking an adapter's word
+ * for where the cursor is.
+ */
+export type MailboxCursorPortIsPinnedToStore = AssertTrue<MailboxCursorStoreMatchesPort>;
 
 // ---------------------------------------------------------------------------
 // The connection

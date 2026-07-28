@@ -43,12 +43,12 @@ import type {
   InboundMailObserver,
   InboundMailSink,
   InboundWatcherSettings,
-  MailboxCursor,
   MailboxCursorPort,
   MailboxReader,
   MailboxWire,
   WatcherClock,
 } from './ports.js';
+import type { MailboxCursor } from './types.js';
 
 /** Everything one drain of the mailbox needs. */
 export interface MailboxDeltaDeps {
@@ -157,7 +157,6 @@ export async function drainMailboxDelta(
   deps: MailboxDeltaDeps,
 ): Promise<MailboxDeltaReport> {
   const { settings, cursor } = deps;
-  const key = { account: settings.account, mailbox: settings.mailbox };
   let current = cursor;
   let delivered = 0;
   let vanished = 0;
@@ -198,7 +197,7 @@ export async function drainMailboxDelta(
       const envelope = byUid.get(uid);
       if (envelope === undefined) {
         vanished += 1;
-        current = await advanceTo(deps, key, current, uid);
+        current = await advanceTo(deps, current, uid);
         continue;
       }
       try {
@@ -230,7 +229,7 @@ export async function drainMailboxDelta(
       }
       delivered += 1;
       // Only now. Everything about "no message is lost" is in this ordering.
-      current = await advanceTo(deps, key, current, uid);
+      current = await advanceTo(deps, current, uid);
     }
   }
 
@@ -240,21 +239,27 @@ export async function drainMailboxDelta(
   return finish('complete', uids.length);
 }
 
+/**
+ * Move the cursor and take the store's answer for where it now is.
+ *
+ * The returned cursor is the STORE'S, not a locally reconstructed one. This
+ * used to build `{ ...current, lastSeenUid: uid }` by hand, which quietly
+ * disagreed with the store: `advance` clamps with
+ * `Math.max(existing.lastSeenUid, input.lastSeenUid)` so a cursor never moves
+ * backwards, and the local copy assigned unconditionally. Two computations of
+ * one rule, neither aware of the other. Now there is one.
+ */
 async function advanceTo(
   deps: MailboxDeltaDeps,
-  key: { readonly account: string; readonly mailbox: string },
   current: MailboxCursor,
   uid: number,
 ): Promise<MailboxCursor> {
-  await deps.cursors.advance(key, {
+  return deps.cursors.advance({
+    account: current.account,
+    mailbox: current.mailbox,
     uidValidity: current.uidValidity,
     lastSeenUid: uid,
   });
-  return {
-    ...current,
-    lastSeenUid: uid,
-    updatedAt: new Date(deps.clock.now()).toISOString(),
-  };
 }
 
 function note(

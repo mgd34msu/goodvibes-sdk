@@ -43,6 +43,22 @@ export function isConversationGateMode(value: unknown): value is ConversationGat
  * the webhook was registered, so it is pre-authorized work by construction.
  */
 export const CONVERSATION_GATE_DEFAULT_SURFACES: readonly string[] = [
+  /**
+   * Inbound mail. Listed even though the inbound-mail watcher never reaches
+   * `gateSurfaceSpawn` — it is handed a purpose-built context with no way to
+   * spawn anything, so the gate is not what protects it today.
+   *
+   * It is here because of what happens to the NEXT person. `isGatedSurface`
+   * fails closed only for a surface it cannot identify: an un-annotated spawn
+   * (`surfaceKind === undefined`) returns true. A known, non-TUI string like
+   * `'email'` skips that branch and falls through to
+   * `gatedSurfaces.includes(...)`, which was false — so an email adapter
+   * written the ordinary way, passing `surface: 'email'`, would let any
+   * message that reads as a work request spawn an agent immediately, skipping
+   * propose-and-wait. A surface name that fails OPEN in a list whose entire
+   * purpose is failing closed is a trap, and it costs one line to close.
+   */
+  'email',
   'ntfy',
   'telegram',
   'slack',
