@@ -31,6 +31,7 @@ import { describe, expect, test } from 'bun:test';
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import ts from 'typescript';
 import { classifyInputSchema } from '../packages/sdk/src/platform/control-plane/invoke-input-validation.js';
 import {
   EXPECTED_ROUTE_REGISTRARS,
@@ -43,6 +44,40 @@ const ROUTES_DIR = resolve(
   dirname(fileURLToPath(import.meta.url)),
   '../packages/sdk/src/platform/control-plane/routes',
 );
+
+/** Registrar names follow this shape; the parser decides what is a declaration. */
+const REGISTRAR_NAME = /^register\w*(?:GatewayMethods|Verbs|VerbGroups)$/;
+
+/**
+ * Every exported `register…` function DECLARED in a directory's TypeScript
+ * files, found by parsing each file and walking its top-level statements.
+ *
+ * The parser is what makes this trustworthy: comments and string literals are
+ * not statements, so prose describing a registrar — including a removed one —
+ * cannot be mistaken for the real thing.
+ */
+function collectExportedRegistrars(directory: string): Set<string> {
+  const found = new Set<string>();
+  for (const file of readdirSync(directory)) {
+    if (!file.endsWith('.ts')) continue;
+    const path = join(directory, file);
+    const source = ts.createSourceFile(
+      path,
+      readFileSync(path, 'utf8'),
+      ts.ScriptTarget.Latest,
+      /* setParentNodes */ true,
+      ts.ScriptKind.TS,
+    );
+    for (const statement of source.statements) {
+      if (!ts.isFunctionDeclaration(statement) || statement.name === undefined) continue;
+      const exported = ts.getModifiers(statement)?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) ?? false;
+      if (!exported) continue;
+      const name = statement.name.text;
+      if (REGISTRAR_NAME.test(name)) found.add(name);
+    }
+  }
+  return found;
+}
 
 /**
  * Input-shaped refusals that legitimately name no field, each with the reason.
@@ -134,18 +169,20 @@ describe('gateway verb required-field conformance', () => {
   });
 
   test('every route registrar is either probed or explicitly accounted for', () => {
-    const found = new Set<string>();
-    for (const file of readdirSync(ROUTES_DIR)) {
-      if (!file.endsWith('.ts')) continue;
-      const source = readFileSync(join(ROUTES_DIR, file), 'utf8');
-      for (const match of source.matchAll(/^export function (register\w*(?:GatewayMethods|Verbs|VerbGroups))\b/gm)) {
-        found.add(match[1] as string);
-      }
-    }
     // A new register*GatewayMethods in routes/ must be added to the probe's
     // registrar list (and to EXPECTED_ROUTE_REGISTRARS) — otherwise its verbs
     // are never invoked and this gate would report green over a family it has
     // never seen.
-    expect([...found].sort()).toEqual([...EXPECTED_ROUTE_REGISTRARS].sort());
+    //
+    // Read with the TypeScript parser rather than a regex over the text. This
+    // is the one part of this gate that inspects source instead of running it,
+    // and a line-anchored `^export function register…` match cannot tell code
+    // from a doc comment, a string literal or a template literal that happens
+    // to contain those words at column 0. That is not a hypothetical: a comment
+    // reading "this family used to be attached by export function
+    // registerLegacyVoiceGatewayMethods" made this test demand that a function
+    // which does not exist be added to the probe. A gate that cries wolf gets
+    // switched off, so it reads declarations, not characters.
+    expect([...collectExportedRegistrars(ROUTES_DIR)].sort()).toEqual([...EXPECTED_ROUTE_REGISTRARS].sort());
   });
 });
