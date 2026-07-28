@@ -87,11 +87,41 @@ function redactServer(server: McpServerConfig): Record<string, unknown> {
   };
 }
 
+/**
+ * The same server record with its `env` VALUES included.
+ *
+ * Admin-only, and deliberately a separate route rather than a flag on the
+ * redacted one: a reader has to ask for the values by name, so a surface that
+ * only ever wanted `envKeys` cannot acquire them by accident.
+ *
+ * It exists because `envKeys` alone made env values readable by nothing at
+ * all. An admin who had set them could not see what was set, could not check a
+ * value against the server it authenticates to, and — since the write path is
+ * a whole-object replace — had no way to resend them when editing an
+ * unrelated field.
+ */
+function revealServer(server: McpServerConfig): Record<string, unknown> {
+  return {
+    ...redactServer(server),
+    env: { ...(server.env ?? {}) },
+  };
+}
+
 function serializeEffectiveConfig(config: McpEffectiveConfig): Record<string, unknown> {
   return {
     locations: config.locations,
     servers: config.servers.map((entry) => ({
       ...redactServer(entry.server),
+      source: entry.source,
+    })),
+  };
+}
+
+function serializeRevealedConfig(config: McpEffectiveConfig): Record<string, unknown> {
+  return {
+    locations: config.locations,
+    servers: config.servers.map((entry) => ({
+      ...revealServer(entry.server),
       source: entry.source,
     })),
   };
@@ -111,6 +141,12 @@ export async function dispatchMcpRoutes(req: Request, context: McpRouteContext):
       security: context.mcpRegistry.listServerSecurity(),
       sandboxBindings: context.mcpRegistry.listServerSandboxBindings(),
     });
+  }
+
+  if (pathname === '/api/mcp/servers/reveal' && req.method === 'GET') {
+    const admin = context.requireAdmin(req);
+    if (admin) return admin;
+    return Response.json(serializeRevealedConfig(context.mcpRegistry.getEffectiveConfig(context.roots)));
   }
 
   if (pathname === '/api/mcp/tools' && req.method === 'GET') {

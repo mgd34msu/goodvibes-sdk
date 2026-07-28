@@ -66,76 +66,16 @@ import {
   MEMORY_PROJECTIONS_GET_OUTPUT_SCHEMA,
 } from './operator-contract-schemas.js';
 
-const MCP_SCOPE_SCHEMA = enumSchema(['project', 'global']);
-const MCP_SERVER_CONFIG_SCHEMA = objectSchema({
-  name: STRING_SCHEMA,
-  command: STRING_SCHEMA,
-  args: arraySchema(STRING_SCHEMA),
-  env: objectSchema({}, [], { additionalProperties: true }),
-  envKeys: arraySchema(STRING_SCHEMA),
-  role: nullableSchema(STRING_SCHEMA),
-  trustMode: nullableSchema(STRING_SCHEMA),
-  allowedPaths: arraySchema(STRING_SCHEMA),
-  allowedHosts: arraySchema(STRING_SCHEMA),
-}, ['name', 'command']);
-const MCP_CONFIG_SOURCE_SCHEMA = objectSchema({
-  scope: STRING_SCHEMA,
-  kind: STRING_SCHEMA,
-  path: STRING_SCHEMA,
-  writable: BOOLEAN_SCHEMA,
-}, ['scope', 'kind', 'path', 'writable']);
-const MCP_CONFIG_SERVER_SCHEMA = objectSchema({
-  name: STRING_SCHEMA,
-  command: STRING_SCHEMA,
-  args: arraySchema(STRING_SCHEMA),
-  envKeys: arraySchema(STRING_SCHEMA),
-  role: nullableSchema(STRING_SCHEMA),
-  trustMode: nullableSchema(STRING_SCHEMA),
-  allowedPaths: arraySchema(STRING_SCHEMA),
-  allowedHosts: arraySchema(STRING_SCHEMA),
-  source: MCP_CONFIG_SOURCE_SCHEMA,
-}, ['name', 'command', 'args', 'envKeys', 'role', 'trustMode', 'allowedPaths', 'allowedHosts', 'source']);
-const MCP_RELOAD_SERVER_SCHEMA = objectSchema({
-  name: STRING_SCHEMA,
-  action: enumSchema(['added', 'changed', 'removed', 'unchanged']),
-  connected: BOOLEAN_SCHEMA,
-}, ['name', 'action', 'connected']);
-const MCP_RELOAD_RESULT_SCHEMA = objectSchema({
-  added: NUMBER_SCHEMA,
-  changed: NUMBER_SCHEMA,
-  removed: NUMBER_SCHEMA,
-  unchanged: NUMBER_SCHEMA,
-  servers: arraySchema(MCP_RELOAD_SERVER_SCHEMA),
-}, ['added', 'changed', 'removed', 'unchanged', 'servers']);
-const MCP_CONFIG_RESPONSE_SCHEMA = objectSchema({
-  locations: arraySchema(MCP_CONFIG_SOURCE_SCHEMA),
-  servers: arraySchema(MCP_CONFIG_SERVER_SCHEMA),
-}, ['locations', 'servers']);
-const MCP_CONFIG_MUTATION_RESPONSE_SCHEMA = objectSchema({
-  scope: MCP_SCOPE_SCHEMA,
-  path: STRING_SCHEMA,
-  removed: BOOLEAN_SCHEMA,
-  reload: MCP_RELOAD_RESULT_SCHEMA,
-  config: MCP_CONFIG_RESPONSE_SCHEMA,
-}, ['scope', 'path', 'reload', 'config']);
-const MCP_SERVER_STATUS_SCHEMA = objectSchema({
-  name: STRING_SCHEMA,
-  connected: BOOLEAN_SCHEMA,
-}, ['name', 'connected']);
-const MCP_SERVERS_RESPONSE_SCHEMA = objectSchema({
-  servers: arraySchema(MCP_SERVER_STATUS_SCHEMA),
-  security: arraySchema(objectSchema({}, [], { additionalProperties: true })),
-  sandboxBindings: arraySchema(objectSchema({}, [], { additionalProperties: true })),
-}, ['servers', 'security', 'sandboxBindings']);
-const MCP_TOOL_SCHEMA = objectSchema({
-  qualifiedName: STRING_SCHEMA,
-  serverName: STRING_SCHEMA,
-  toolName: STRING_SCHEMA,
-  description: STRING_SCHEMA,
-}, ['qualifiedName', 'serverName', 'toolName', 'description']);
-const MCP_TOOLS_RESPONSE_SCHEMA = objectSchema({
-  tools: arraySchema(MCP_TOOL_SCHEMA),
-}, ['tools']);
+import {
+  MCP_CONFIG_MUTATION_RESPONSE_SCHEMA,
+  MCP_CONFIG_RESPONSE_SCHEMA,
+  MCP_RELOAD_RESULT_SCHEMA,
+  MCP_REVEAL_RESPONSE_SCHEMA,
+  MCP_SCOPE_SCHEMA,
+  MCP_SERVER_CONFIG_SCHEMA,
+  MCP_SERVERS_RESPONSE_SCHEMA,
+  MCP_TOOLS_RESPONSE_SCHEMA,
+} from './method-catalog-runtime-mcp.js';
 
 /**
  * `snapshotMetrics()`'s shape (see platform/runtime/metrics.ts): process-wide
@@ -191,6 +131,18 @@ export const builtinGatewayRuntimeMethodDescriptors: readonly GatewayMethodDescr
     events: [runtimeEventId('mcp')],
     inputSchema: EMPTY_OBJECT_SCHEMA,
     outputSchema: MCP_SERVERS_RESPONSE_SCHEMA,
+  }),
+  methodDescriptor({
+    id: 'mcp.servers.reveal',
+    title: 'MCP Servers Reveal',
+    description: 'Return effective MCP config with environment VALUES included, not just envKeys. Admin only — the redacted mcp.config.get view is what every other caller should use.',
+    category: 'mcp',
+    scopes: ['read:mcp'],
+    access: 'admin',
+    http: { method: 'GET', path: '/api/mcp/servers/reveal' },
+    events: [runtimeEventId('mcp')],
+    inputSchema: EMPTY_OBJECT_SCHEMA,
+    outputSchema: MCP_REVEAL_RESPONSE_SCHEMA,
   }),
   methodDescriptor({
     id: 'mcp.tools.list',

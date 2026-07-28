@@ -10,17 +10,42 @@
  * as a boolean, so a configured-but-unresolvable reference (e.g. a broken
  * `op://` ref) is honestly `configured: true, usable: false`.
  *
- * Enumeration is over STORED keys only (SecretsManager.listDetailed filtered to
- * non-env sources) — never a `process.env` dump — so it cannot leak the names of
- * unrelated environment variables. A caller-named single-key probe (`get`) may
- * consult env for that one named key only.
+ * Enumeration is never a `process.env` dump. It covers STORED keys, plus the
+ * env-backed keys whose names are KNOWN credential names — the provider env
+ * vars this SDK itself publishes in BUILTIN_PROVIDER_ENV_KEYS. Every other
+ * environment variable stays invisible, so `PATH`, `AWS_PROFILE` and the rest
+ * of the shell can still never be enumerated over the wire.
+ *
+ * That intersection is what dropping every env record was reaching for, and it
+ * was too wide a cut. `get()` consults env, so a provider key configured only
+ * as `ANTHROPIC_API_KEY` answered `configured: true` from `get` while being
+ * absent from `list` altogether — the two disagreeing about the same
+ * credential. `list` is what a setup screen renders, so a key that was working
+ * read as missing, which is the report that sends someone to re-enter a
+ * credential they already have.
  */
 
 import type {
   CredentialStatusProviderLike,
   CredentialStatusRecord,
 } from '@pellux/goodvibes-daemon-sdk';
+import { BUILTIN_PROVIDER_ENV_KEYS } from '../providers/builtin-catalog.js';
 import type { SecretsManager } from './secrets.js';
+
+/**
+ * Every environment variable name this SDK itself treats as a credential.
+ *
+ * Derived from the provider catalog rather than restated, so a provider added
+ * there becomes enumerable here without a second edit, and so this set can
+ * never drift into covering a name the catalog does not call a credential.
+ */
+function knownCredentialEnvNames(): ReadonlySet<string> {
+  const names = new Set<string>();
+  for (const envVars of Object.values(BUILTIN_PROVIDER_ENV_KEYS)) {
+    for (const name of envVars) names.add(name);
+  }
+  return names;
+}
 
 /** The SecretsManager surface this adapter needs (keeps callers free to inject a stub). */
 type SecretsMetadataSource = Pick<SecretsManager, 'get' | 'list' | 'listDetailed'>;
@@ -44,11 +69,23 @@ export function createCredentialStatusProvider(
   return {
     async list(): Promise<readonly CredentialStatusRecord[]> {
       const detailed = await secrets.listDetailed();
-      // STORED keys only — filter out the bulk env enumeration so we never leak
-      // the names of unrelated environment variables over the wire.
-      const stored = detailed.filter((record) => record.source !== 'env');
+      // Stored keys, plus env-backed keys whose NAME this SDK publishes as a
+      // credential. The bulk env enumeration is still filtered out — the
+      // intersection is the whole point, and it is what keeps unrelated
+      // environment variable names off the wire.
+      const knownEnvNames = knownCredentialEnvNames();
+      const storedKeys = new Set(
+        detailed.filter((record) => record.source !== 'env').map((record) => record.key),
+      );
+      const visible = detailed.filter((record) =>
+        record.source !== 'env'
+          // A key that is BOTH stored and present in env already has a stored
+          // record carrying overriddenByEnv; emitting the env record too would
+          // list the same credential twice.
+          || (knownEnvNames.has(record.key) && !storedKeys.has(record.key)),
+      );
       const records: CredentialStatusRecord[] = [];
-      for (const record of stored) {
+      for (const record of visible) {
         records.push({
           key: record.key,
           configured: true,

@@ -262,8 +262,36 @@ export async function fetchFireworksModelIds(apiKey: string): Promise<string[]> 
   return ids;
 }
 
-/** Fetch the live model list from Anthropic's GET /v1/models endpoint. */
-export async function fetchAnthropicModelIds(apiKey: string): Promise<string[]> {
+/**
+ * One model as Anthropic's GET /v1/models reports it.
+ *
+ * `/v1/models` carries the per-model token limits alongside the id, so the
+ * authoritative output cap can be read from the provider rather than guessed
+ * from a hand-maintained table that goes stale the day a model ships.
+ */
+export interface AnthropicLiveModel {
+  readonly id: string;
+  /** The model's max output tokens (`max_tokens`), when the API reported one. */
+  readonly maxOutputTokens?: number | undefined;
+  /** The model's context window (`max_input_tokens`), when the API reported one. */
+  readonly maxInputTokens?: number | undefined;
+}
+
+function positiveInteger(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0
+    ? Math.floor(value)
+    : undefined;
+}
+
+/**
+ * Fetch the live model list from Anthropic's GET /v1/models endpoint, with
+ * each entry's reported token limits.
+ *
+ * A field the API omits comes back undefined rather than defaulted, so a
+ * caller can tell "the provider did not say" from "the provider said zero"
+ * and fall back to its offline table only in the first case.
+ */
+export async function fetchAnthropicModels(apiKey: string): Promise<AnthropicLiveModel[]> {
   const res = await fetchWithTimeout('https://api.anthropic.com/v1/models?limit=1000', {
     headers: {
       'x-api-key': apiKey,
@@ -273,11 +301,26 @@ export async function fetchAnthropicModelIds(apiKey: string): Promise<string[]> 
   if (!res.ok) {
     throw new Error(`Anthropic /v1/models returned ${res.status} ${res.statusText}`);
   }
-  const body = await res.json() as { data?: Array<{ id?: unknown }> };
-  const ids = (body.data ?? [])
-    .map((entry) => (typeof entry.id === 'string' ? entry.id : null))
-    .filter((id): id is string => id !== null);
-  return ids;
+  const body = await res.json() as {
+    data?: Array<{ id?: unknown; max_tokens?: unknown; max_input_tokens?: unknown }>;
+  };
+  const models: AnthropicLiveModel[] = [];
+  for (const entry of body.data ?? []) {
+    if (typeof entry.id !== 'string' || !entry.id) continue;
+    const maxOutputTokens = positiveInteger(entry.max_tokens);
+    const maxInputTokens = positiveInteger(entry.max_input_tokens);
+    models.push({
+      id: entry.id,
+      ...(maxOutputTokens === undefined ? {} : { maxOutputTokens }),
+      ...(maxInputTokens === undefined ? {} : { maxInputTokens }),
+    });
+  }
+  return models;
+}
+
+/** Fetch the live model list from Anthropic's GET /v1/models endpoint. */
+export async function fetchAnthropicModelIds(apiKey: string): Promise<string[]> {
+  return (await fetchAnthropicModels(apiKey)).map((model) => model.id);
 }
 
 /** Fetch the live model list from OpenAI's GET /v1/models endpoint, filtered to chat-capable ids. */
