@@ -116,6 +116,7 @@ export type {
   ImapAppendDraftInput,
   ImapAppendDraftResult,
   ImapAttachmentInfo,
+  ImapBodyProbeVerdict,
   ImapClientOptions,
   ImapConnectionReport,
   ImapEnvelope,

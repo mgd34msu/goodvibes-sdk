@@ -15013,6 +15013,10 @@
       ]
     },
     {
+      "name": "ImapBodyProbeVerdict",
+      "kind": "type"
+    },
+    {
       "name": "ImapClient",
       "kind": "class"
     },
@@ -15030,6 +15034,7 @@
       "kind": "interface",
       "required": [
         "advertisedCapabilities",
+        "bodyProbe",
         "idle",
         "mailbox"
       ]
