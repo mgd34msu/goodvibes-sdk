@@ -75,8 +75,10 @@ this round's to fix.
   `gmailPollSecondsIdle` — were declared, validated, UI-rendered and **read by
   nothing**. A `flags-are-features` violation.
 
-## M8 — persistence hygiene — NOT STARTED
-The item this file exists because of.
+## M8 — persistence hygiene — FIXED
+The item this file exists because of. All four parts closed; each verified by a
+mutation reverting it in the harmful direction, in
+`test/inbound-mail-persistence-hygiene.test.ts`.
 
 - **Bounds are sweep-only, and the sweep is 6-hourly.** `record-store.ts:330`
   is `next: [...records, entry]` — `record()` applies neither `maxRecords` nor
@@ -103,6 +105,37 @@ The item this file exists because of.
   `purpose` validated, and `MAX_OPEN_EXPECTATIONS = 32` bounds count only, so a
   32 MB expectation file was a valid one. **Partially closed since** — `id`,
   `purpose`, `serviceDomain` and `recipientAddress` are now bounded.
+
+**What the fix turned out to be, per part.**
+
+1. `record()` applies both bounds, age first then count, with the same
+   oldest-first precedence `sweep()` uses. `email.inbound.status` now reports
+   `stored` (counted from the file, malformed rows included) beside `kept`, plus
+   `reapedOnWrite` — §9.5 requires a reap to be disclosed, and a write-time reap
+   is one no sweep report can itemise.
+2. The persisted log is a projection: `survivors` dropped (`retained` already
+   carries the count a disclosure needs about what stayed), removals kept but
+   capped at 100 with `removedTotal` recording the true number, free text
+   bounded, and `listDisclosures()` validating by content.
+3. 0600 files / 0700 directories, fsync before the rename and on the directory
+   after it, an age-gated sweep for orphaned temp files, and
+   `acquireCrossProcessLock` across the whole read-modify-write in all three
+   stores. **The single-instance question was answered, not assumed**: the
+   daemon is not single-instance by construction — `requirePortAvailable`
+   guards only the configured port, the port is configuration, and the store
+   paths derive from `$HOME` with no port in them, so two daemons on two ports
+   share every file and neither refuses to start. `lifecycle-marker.ts` records
+   a pid but is a crash-receipt marker, not a mutex.
+4. Two gaps remained and two more were found by writing the test rather than by
+   reading for them. Remaining: `noticeFailureReason` (unbounded, and the one
+   field on the record a remote server writes — `intake.ts` fills it from
+   `delivery.error`) and `InboundLinkVerdict.reason` (unbounded under a 64-entry
+   cap, which is an unbounded record). Found: `account` and `mailbox` were
+   bounded on the load path and clamped nowhere on the write path, so an
+   oversized value was written whole and then failed its own validation on the
+   next load — a record built from megabyte fields was 2 MB on disk; and
+   `PersistedExpectationStore.replaceAll` did not enforce `maxOpenExpectations`
+   at all, which is bullet 1's defect in the neighbouring store.
 
 ## M9 — redaction shrinkage leaked card digits — FIXED, severity corrected
 `record-store.ts:293-304` claimed the overshoot meant a straddling span was
