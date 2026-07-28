@@ -33,6 +33,7 @@ import {
   RecordingSink,
   fixedRandom,
   flush,
+  nudgeUntil,
   waitFor,
   type RecordingCursorStore,
 } from './_helpers/inbound-watcher-harness.ts';
@@ -158,7 +159,14 @@ describe('inbound watcher — IDLE', () => {
     // only reason to search afterwards is the EXISTS from the handshake.
     harness.mailbox.expunge(101);
 
-    await waitFor(() => harness.sink.uids.includes(103), 'UID 103 delivered');
+    await nudgeUntil(
+      harness.mailbox,
+      () => harness.sink.uids.includes(103),
+      'UID 103 delivered',
+      // EXPUNGE, not EXISTS: the search this test asserts must come from the
+      // handshake announcement, so the nudge may not supply one of its own.
+      { line: '* 1 EXPUNGE' },
+    );
     expect(harness.sink.subjects).toEqual(['slipped in during DONE']);
     expect(count(harness.mailbox.commands, SEARCH_COMMAND)).toBeGreaterThan(searchesBefore);
   });
@@ -180,7 +188,7 @@ describe('inbound watcher — IDLE', () => {
     await idleReached(harness);
 
     harness.mailbox.deliver('arrived on a trailing-UID server');
-    await waitFor(() => harness.sink.uids.includes(102), 'UID 102 delivered');
+    await nudgeUntil(harness.mailbox, () => harness.sink.uids.includes(102), 'UID 102 delivered');
 
     expect(harness.sink.subjects).toEqual(['arrived on a trailing-UID server']);
     expect(harness.sink.delivered[0]?.envelope.from).toBe('sender102@sender.test');
@@ -202,7 +210,13 @@ describe('inbound watcher — IDLE', () => {
     // on it would find nothing; treated as a wake-up it finds UID 104.
     harness.mailbox.push('* 2 EXISTS');
 
-    await waitFor(() => harness.sink.uids.length > 0, 'a message delivered');
+    await nudgeUntil(
+      harness.mailbox,
+      () => harness.sink.uids.length > 0,
+      'a message delivered',
+      // The same undersized total the test is about, re-sent verbatim.
+      { line: '* 2 EXISTS' },
+    );
     expect(harness.sink.uids).toEqual([104]);
     expect(harness.sink.uids).not.toContain(2);
     expect(harness.mailbox.commands.some((line) => line.endsWith('UID SEARCH UID 104:*')))
@@ -221,9 +235,13 @@ describe('inbound watcher — IDLE', () => {
     harness.mailbox.expunge(101);
     // Wait for the IDLE to be torn down and re-issued, which proves the
     // EXPUNGE was seen and acted on rather than simply not arriving yet.
-    await waitFor(
+    await nudgeUntil(
+      harness.mailbox,
       () => count(harness.mailbox.commands, IDLE_COMMAND) >= 2,
       'the IDLE to be re-issued after the EXPUNGE',
+      // EXPUNGE only. An EXISTS nudge would cause exactly the refetch this
+      // test exists to prove does not happen.
+      { line: '* 1 EXPUNGE' },
     );
     await flush();
 
@@ -626,7 +644,15 @@ describe('inbound watcher — the cursor', () => {
     harness.mailbox.deliver('processed on the second attempt');
 
     // First attempt: fetched, refused between fetch and completion.
-    await waitFor(() => harness.sink.attempts.length >= 1, 'the first delivery attempt');
+    await nudgeUntil(
+      harness.mailbox,
+      () => harness.sink.attempts.length >= 1,
+      'the first delivery attempt',
+      // The cursor is refused here, so a duplicate wake re-delivers and the
+      // exact-equality assertions below would fail. A long interval keeps this
+      // a recovery from a lost edge rather than a second stimulus.
+      { intervalMs: 500 },
+    );
     expect((await harness.cursors.get(ACCOUNT, MAILBOX))?.lastSeenUid)
       .toBe(101);
     expect(harness.cursors.advances).toEqual([]);
@@ -655,6 +681,14 @@ describe('inbound watcher — the cursor', () => {
       harness.mailbox.deliverQuietly(`bulk ${index}`);
     }
     harness.mailbox.push('* 26 EXISTS');
+    // The wake is driven until it takes; the cursor assertion below is the
+    // real subject of the test.
+    await nudgeUntil(
+      harness.mailbox,
+      () => harness.sink.uids.length > 0,
+      'the bulk delta to start arriving',
+      { line: '* 26 EXISTS' },
+    );
 
     // Waits on the CURSOR, not on the sink. The cursor advances only after
     // deliver() resolves, so "25 messages delivered" is one step short of
@@ -825,7 +859,11 @@ describe('inbound watcher — a server that does not report UIDNEXT', () => {
     await idleReached(harness);
 
     harness.mailbox.deliver('the verification email');
-    await waitFor(() => harness.sink.uids.length >= 1, 'the newly arrived message');
+    await nudgeUntil(
+      harness.mailbox,
+      () => harness.sink.uids.length >= 1,
+      'the newly arrived message',
+    );
 
     expect(harness.sink.uids).toEqual([104]);
     expect((await harness.cursors.get(ACCOUNT, MAILBOX))?.lastSeenUid).toBe(104);
