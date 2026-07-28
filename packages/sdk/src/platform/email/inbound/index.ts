@@ -109,6 +109,7 @@ export {
 } from './housekeeping.js';
 export {
   createInboundTerminalFailureAnnouncer,
+  type InboundNoticeDelivery,
   type InboundTerminalFailureAnnouncer,
   type InboundTerminalFailureAnnouncerOptions,
 } from './terminal-notice.js';
