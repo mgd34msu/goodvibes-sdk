@@ -31,7 +31,6 @@ import { promises as fs, statSync, watch, type FSWatcher } from 'node:fs';
 import { basename, dirname } from 'node:path';
 import { summarizeError } from '../utils/error-display.js';
 import { logger } from '../utils/logger.js';
-import type { AuthoritySurface, UntrustedContentLedger } from '../security/untrusted-content.js';
 import { parseProfileDocument, findProfileSectionByHeading } from './document.js';
 import { describeProfileWrite } from './disclosure.js';
 import { PROFILE_SECTIONS, profileFieldById, profileSectionTier } from './fields.js';
@@ -45,8 +44,19 @@ import {
   setField,
   undo as undoLines,
   type ProfileEditResult,
-  type ProfilePersistIo,
 } from './writer.js';
+import type {
+  AppendProfileProseInput,
+  ForgetProfileInput,
+  OwnerProfileStoreOptions,
+  ProfileDocumentView,
+  ProfileFieldView,
+  ProfileProvenanceReport,
+  ProfileSectionView,
+  SetProfileFieldInput,
+  UndoProfileInput,
+  WriteIdentity,
+} from './store-types.js';
 import type {
   ProfileFieldValue,
   ProfileInvalidField,
@@ -55,9 +65,6 @@ import type {
   ProfileProjection,
   ProfileProvenance,
   ProfileSection,
-  ProfileSupersededLine,
-  ProfileSurface,
-  ProfileTier,
   ProfileWriteResult,
 } from './types.js';
 
@@ -66,83 +73,6 @@ export const DEFAULT_PROFILE_RELOAD_THROTTLE_MS = 2000;
 
 /** Collapse the burst of events one save produces into a single reload. */
 const WATCH_DEBOUNCE_MS = 25;
-
-export interface OwnerProfileStoreOptions {
-  /** Explicit path; otherwise resolved from the daemon home. */
-  readonly path?: string | undefined;
-  /** `profile.enabled`. False means the file is never opened. */
-  readonly enabled?: boolean | undefined;
-  readonly reloadThrottleMs?: number | undefined;
-  readonly now?: (() => Date) | undefined;
-  /** Ledger for the derivation check; defaults to the process ledger. */
-  readonly ledger?: UntrustedContentLedger | undefined;
-  /** Injected file operations, so a test can interrupt a write. */
-  readonly persistIo?: ProfilePersistIo | undefined;
-  /** Called after every reload the watcher causes. */
-  readonly onReload?: ((state: ProfileLoadState) => void) | undefined;
-}
-
-/** One field as `profile.read` presents it. */
-export interface ProfileFieldView {
-  readonly fieldId: string;
-  readonly label: string;
-  readonly value: string;
-  readonly valid: boolean;
-  readonly invalidReason?: string | undefined;
-  readonly provenance?: ProfileProvenance | undefined;
-}
-
-export interface ProfileSectionView {
-  readonly heading: string;
-  readonly tier: ProfileTier;
-  readonly fields: readonly ProfileFieldView[];
-  readonly prose: readonly ProfileLine[];
-}
-
-/** What `profile.read` answers: the whole document, by section. */
-export interface ProfileDocumentView {
-  readonly state: ProfileLoadState;
-  readonly sections: readonly ProfileSectionView[];
-}
-
-/** What `profile.provenance` answers for one field. */
-export interface ProfileProvenanceReport {
-  readonly fieldId: string;
-  readonly present: boolean;
-  readonly provenance: ProfileProvenance | null;
-  /** True when the field is there but carries no suffix: he wrote or edited it. */
-  readonly handEdited: boolean;
-  /** Every `<!-- was: … -->` predecessor, oldest first. */
-  readonly superseded: readonly ProfileSupersededLine[];
-}
-
-interface WriteIdentity {
-  readonly authority: AuthoritySurface;
-  readonly surface: ProfileSurface;
-  readonly said: string;
-  readonly date?: string | undefined;
-}
-
-export interface SetProfileFieldInput extends WriteIdentity {
-  readonly fieldId: string;
-  readonly value: string;
-}
-
-export interface AppendProfileProseInput extends WriteIdentity {
-  readonly section: string;
-  readonly text: string;
-}
-
-export interface ForgetProfileInput {
-  readonly authority: AuthoritySurface;
-  readonly fieldId?: string | undefined;
-  readonly lineIndex?: number | undefined;
-}
-
-export interface UndoProfileInput {
-  readonly authority: AuthoritySurface;
-  readonly fieldId: string;
-}
 
 export class OwnerProfileStore {
   private readonly filePath: string;
@@ -161,6 +91,14 @@ export class OwnerProfileStore {
   private reloading = false;
   /** The stat of the file this store itself last wrote, so its own write is not a change. */
   private ownWrite: { mtimeMs: number; size: number } | null = null;
+  /**
+   * The stat of the file content the current projection reflects.
+   *
+   * A write compares against this to notice that the owner edited the file
+   * underneath it. Distinct from `ownWrite`, which answers the watcher's
+   * different question ("was that event mine?").
+   */
+  private lastSeen: FileStat | null = null;
 
   constructor(options: OwnerProfileStoreOptions = {}) {
     this.options = options;
@@ -194,11 +132,18 @@ export class OwnerProfileStore {
       return this.state;
     }
 
+    // Stat BEFORE the read: if the file changes while it is being read, this
+    // baseline is the older one, so the next write notices and reloads rather
+    // than believing its projection is current.
+    const seen = statOf(this.filePath);
     let bytes: Buffer;
     try {
       bytes = await fs.readFile(this.filePath);
     } catch (error) {
-      if (isNotFound(error)) return this.adopt(parseProfileDocument({ path: this.filePath, text: '', exists: false }));
+      if (isNotFound(error)) {
+        this.lastSeen = seen;
+        return this.adopt(parseProfileDocument({ path: this.filePath, text: '', exists: false }));
+      }
       return this.markUnavailable(summarizeError(error));
     }
 
@@ -218,7 +163,14 @@ export class OwnerProfileStore {
       return this.markUnavailable(`its bytes are not valid UTF-8 (${summarizeError(error)})`);
     }
 
+    this.lastSeen = seen;
     return this.adopt(parseProfileDocument({ path: this.filePath, text, exists: true }));
+  }
+
+  /** True when the file on disk is still the content the projection reflects. */
+  private matchesLastSeen(current: FileStat): boolean {
+    const seen = this.lastSeen;
+    return seen !== null && seen.mtimeMs === current.mtimeMs && seen.size === current.size;
   }
 
   /** Build the status from a finished projection, then swap both in one step. */
@@ -432,14 +384,26 @@ export class OwnerProfileStore {
    * An empty or whitespace-only name returns nothing rather than everything —
    * "he named nobody" must not degrade into "give me all of them", which is the
    * shape this kind of guard usually fails in.
+   *
+   * Two things make that hold rather than nearly hold:
+   *
+   *  - The name must contain a LETTER OR DIGIT. `person('-')` used to return
+   *    every line in the section: `ProfileLine.text` keeps the `- ` list marker,
+   *    and the word-boundary alternative `(^|[^\p{L}\p{N}])` matches at index 0
+   *    of every bullet, so one character of punctuation was a complete
+   *    enumerate-all call. Rejecting empty-after-trim is not the same test.
+   *  - Matching runs against the line with its list marker STRIPPED, so the
+   *    marker cannot participate in a boundary match at all. Belt and braces:
+   *    either fix alone closes the measured case, and the pair closes the shape.
    */
   person(name: string): readonly ProfileLine[] {
     const trimmed = name.trim();
     if (trimmed.length === 0) return [];
+    if (!/[\p{L}\p{N}]/u.test(trimmed)) return [];
     const section = this.sectionByHeading('People');
     if (section === undefined) return [];
     const pattern = new RegExp(`(^|[^\\p{L}\\p{N}])${escapeRegExp(trimmed)}([^\\p{L}\\p{N}]|$)`, 'iu');
-    return section.prose.filter((line) => pattern.test(line.text));
+    return section.prose.filter((line) => pattern.test(withoutListMarker(line.text)));
   }
 
   /** Provenance for one field, plus every superseded predecessor. */
@@ -532,7 +496,7 @@ export class OwnerProfileStore {
     if (!decision.allowed) return refusal(decision.reason ?? 'Refused.');
 
     const provenance = this.provenanceFor(input);
-    return this.commit(setField(projection.value, {
+    return this.commit((current) => setField(current, {
       fieldId: input.fieldId,
       value: input.value,
       provenance,
@@ -554,10 +518,11 @@ export class OwnerProfileStore {
     });
     if (!decision.allowed) return refusal(decision.reason ?? 'Refused.');
 
-    return this.commit(appendProse(projection.value, {
+    const provenance = this.provenanceFor(input);
+    return this.commit((current) => appendProse(current, {
       section: input.section,
       text: input.text,
-      provenance: this.provenanceFor(input),
+      provenance,
     }));
   }
 
@@ -572,10 +537,10 @@ export class OwnerProfileStore {
     });
     if (!decision.allowed) return refusal(decision.reason ?? 'Refused.');
 
-    return this.commit(forgetLines(projection.value, {
+    return this.commit((current) => forgetLines(current, {
       ...(input.fieldId === undefined ? {} : { fieldId: input.fieldId }),
       ...(input.lineIndex === undefined ? {} : { lineIndex: input.lineIndex }),
-    }));
+    }), { replayable: input.lineIndex === undefined });
   }
 
   /** Promote the most recent superseded value back to an active line. */
@@ -586,7 +551,7 @@ export class OwnerProfileStore {
     const decision = evaluateProfileRemoval({ authority: input.authority, fieldId: input.fieldId });
     if (!decision.allowed) return refusal(decision.reason ?? 'Refused.');
 
-    return this.commit(undoLines(projection.value, input.fieldId));
+    return this.commit((current) => undoLines(current, input.fieldId));
   }
 
   private provenanceFor(input: WriteIdentity): ProfileProvenance {
@@ -612,17 +577,85 @@ export class OwnerProfileStore {
   }
 
   /**
-   * Persist an edit, then re-project from the lines just written.
+   * Compute an edit against the CURRENT file, persist it, then re-project.
    *
-   * Re-projecting in memory rather than re-reading is correct because those are
-   * exactly the bytes that reached the disk, and it keeps a write off the read
-   * path too. If the persist throws, the in-memory model is left untouched: the
-   * file on disk and the model still agree, which is the invariant that matters.
+   * ## Why this takes an operation rather than a finished edit
+   *
+   * §3 says the daemon is the single writer, and that is what makes a
+   * rename-based atomic write sufficient with no lock. It is not true. The
+   * OWNER is a second writer by design — §4.5 exists precisely so he can open
+   * the file and change it — and a write computed from a projection loaded
+   * minutes ago joins the whole document, so every line he changed in between is
+   * overwritten by a stale copy. It is silent: he gets a success receipt and his
+   * edits are simply gone, which is the worst failure this design can have in a
+   * file whose entire premise is that his edits win.
+   *
+   * ## The rule
+   *
+   * Detect, reload, REPLAY — do not clobber, and do not merely refuse. The
+   * file's stat is compared against what this store last saw; if it moved, the
+   * document is re-read, re-projected, and the operation is re-run against the
+   * fresh projection so his edit and this write both survive. The stat is
+   * re-checked immediately before the rename, and a write that keeps losing the
+   * race is refused rather than forced.
+   *
+   * This is not a lock and does not claim to be. It closes the minutes-wide
+   * window (a stale projection) and narrows the remaining one to the few
+   * milliseconds between the final stat and the rename. Two DAEMONS writing
+   * concurrently would still need a real lock; the owner editing his own file
+   * while the daemon runs is the case this design actually has, and it is now
+   * handled rather than assumed away.
    */
-  private async commit(edit: ProfileEditResult): Promise<ProfileWriteResult> {
+  private async commit(
+    operate: (projection: ProfileProjection) => ProfileEditResult,
+    options: { readonly replayable?: boolean } = {},
+  ): Promise<ProfileWriteResult> {
+    const replayable = options.replayable !== false;
+    const start = this.projection;
+    if (start === null) return refusal('Your profile has not been loaded, so nothing was recorded.');
+    let edit = operate(start);
     if (!edit.ok) {
       return { ok: false, reason: edit.reason, changes: [], disclosure: '' };
     }
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const onDisk = statOf(this.filePath);
+      if (this.matchesLastSeen(onDisk)) break;
+
+      // Someone else — him — wrote to this file since the projection was built.
+      const reloaded = await this.load();
+      if (reloaded.kind !== 'loaded' || this.projection === null) {
+        return refusal(
+          reloaded.kind === 'unavailable'
+            ? reloaded.reason
+            : 'Your profile changed while this was being written and could not be re-read, so nothing was recorded.',
+        );
+      }
+      if (!replayable) {
+        // A line-index delete cannot be replayed: the index it named referred to
+        // the old document, and re-running it would remove whatever now sits at
+        // that position. Refusing is the only honest answer.
+        return refusal(
+          'Your profile changed while this was being written, and the line to remove was identified by '
+          + 'position, so it may no longer be the same line. Nothing was removed — look at the profile and ask again.',
+        );
+      }
+      edit = operate(this.projection);
+      if (!edit.ok) return { ok: false, reason: edit.reason, changes: [], disclosure: '' };
+      logger.info('owner-profile: replayed a write over a concurrent edit', {
+        path: this.filePath,
+        attempt: attempt + 1,
+        changes: edit.changes.map((change) => change.fieldId ?? change.section),
+      });
+    }
+
+    if (!this.matchesLastSeen(statOf(this.filePath))) {
+      return refusal(
+        'Your profile is being changed faster than this write could be applied, so nothing was recorded. '
+        + 'Try again in a moment.',
+      );
+    }
+
     const text = profileTextFromLines(edit.lines);
     try {
       await persistProfileText(this.filePath, text, this.options.persistIo);
@@ -641,6 +674,7 @@ export class OwnerProfileStore {
     }
 
     this.ownWrite = statOf(this.filePath);
+    this.lastSeen = this.ownWrite;
     this.adopt(parseProfileDocument({ path: this.filePath, text, exists: true }));
     logger.info('owner-profile: wrote', {
       path: this.filePath,
@@ -689,5 +723,27 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/** A prose line without its bullet or numbered-list marker. */
+function withoutListMarker(text: string): string {
+  return text.replace(/^\s*([-*+]|\d+[.)])\s+/, '');
+}
+
 /** Re-exported so a caller holding a field id can name it without a second import. */
 export { profileFieldById };
+
+/**
+ * The store's own input and view shapes, which live in `store-types.ts` because
+ * this file hit the 800-line cap. Re-exported here so `store.js` remains the one
+ * import path for them and nothing downstream had to move.
+ */
+export type {
+  AppendProfileProseInput,
+  ForgetProfileInput,
+  OwnerProfileStoreOptions,
+  ProfileDocumentView,
+  ProfileFieldView,
+  ProfileProvenanceReport,
+  ProfileSectionView,
+  SetProfileFieldInput,
+  UndoProfileInput,
+} from './store-types.js';

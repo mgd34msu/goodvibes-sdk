@@ -368,10 +368,10 @@ describe('§14.19 — third-party containment: no enumerate-all-people call exis
       .sort();
     expect(methods).toEqual([
       'adopt', 'append', 'closeWatcher', 'commit', 'forget', 'get', 'load',
-      'markUnavailable', 'path', 'person', 'provenance', 'provenanceFor', 'read',
-      'reloadIfChanged', 'scheduleReload', 'section', 'sectionByHeading', 'set',
-      'startPolling', 'status', 'undo', 'unwatch', 'viewOf', 'watch',
-      'writableProjection',
+      'markUnavailable', 'matchesLastSeen', 'path', 'person', 'provenance',
+      'provenanceFor', 'read', 'reloadIfChanged', 'scheduleReload', 'section',
+      'sectionByHeading', 'set', 'startPolling', 'status', 'undo', 'unwatch',
+      'viewOf', 'watch', 'writableProjection',
     ]);
   });
 });

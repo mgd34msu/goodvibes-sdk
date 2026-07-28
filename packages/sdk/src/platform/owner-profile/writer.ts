@@ -17,6 +17,7 @@ import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import { dirname } from 'node:path';
 import {
+  PROVENANCE_MARKER,
   findProfileSection,
   findProfileSectionByHeading,
   joinProfileLines,
@@ -27,6 +28,7 @@ import {
 } from './document.js';
 import {
   canonicalProfileSection,
+  normalizeProfileKey,
   profileFieldById,
   type ProfileSectionName,
 } from './fields.js';
@@ -112,6 +114,59 @@ function renderLine(prefix: string, value: string, provenance: ProfileProvenance
 }
 
 /**
+ * Make a verbatim quote safe to sit inside a provenance suffix.
+ *
+ * `said` is the field an injected instruction shapes most easily — it is
+ * whatever the caller claims the owner uttered. A quote that itself ends in a
+ * well-formed suffix wins on read, because `splitProvenanceSuffix` matches from
+ * the RIGHT: the forged tail is further right than the one just appended. The
+ * result is a line whose value is truncated at the forgery point and whose
+ * provenance reports a surface and date nobody wrote. That is a provenance
+ * FORGERY primitive, and provenance is the safeguard the autonomous model rests
+ * on, so it has to be closed rather than narrowed.
+ *
+ * Trailing suffixes are stripped repeatedly, since stripping one can expose
+ * another. The loop is bounded by the string shrinking each pass.
+ */
+function sanitizeSaid(said: string): string {
+  let text = said.replace(/[\r\n]+/g, ' ').trim();
+  for (let pass = 0; pass < 8; pass += 1) {
+    const stripped = splitProvenanceSuffix(text).text.trim();
+    if (stripped === text) break;
+    text = stripped;
+  }
+  return text;
+}
+
+/**
+ * Neutralise a quote that would still forge provenance after rendering.
+ *
+ * Stripping trailing suffixes cannot catch a suffix in the MIDDLE of a quote
+ * that the closing `"` then completes. Rather than reason about that case, the
+ * rendered line is checked: if reading it back does not return the provenance
+ * just written, the marker inside the quote is downgraded to a plain hyphen so
+ * no suffix can form. His words survive and stay readable; only the em dash
+ * that would have been parsed as machinery changes.
+ */
+function renderVerifiedLine(
+  prefix: string,
+  value: string,
+  provenance: ProfileProvenance | null,
+): string {
+  const line = renderLine(prefix, value, provenance);
+  if (provenance === null) return line;
+  const readBack = splitProvenanceSuffix(line).provenance;
+  if (readBack !== null
+    && readBack.surface === provenance.surface
+    && readBack.date === provenance.date
+    && readBack.said === provenance.said) {
+    return line;
+  }
+  const defused = provenance.said.split(PROVENANCE_MARKER).join(' - ');
+  return renderLine(prefix, value, { ...provenance, said: defused });
+}
+
+/**
  * Render a line under the machine-write caps.
  *
  * The value is capped first because it is the part with a stated limit; when the
@@ -124,14 +179,14 @@ function renderCappedLine(
   provenance: ProfileProvenance | null,
 ): string {
   const value = sanitizeForLine(rawValue).slice(0, MAX_MACHINE_VALUE_CHARS);
-  const said = provenance === null ? '' : provenance.said.replace(/[\r\n]+/g, ' ').trim();
+  const said = provenance === null ? '' : sanitizeSaid(provenance.said);
   const full = provenance === null ? null : { ...provenance, said };
-  let line = renderLine(prefix, value, full);
+  let line = renderVerifiedLine(prefix, value, full);
   if (line.length <= MAX_MACHINE_LINE_CHARS) return line;
 
   if (full !== null) {
     const shorter = Math.max(0, said.length - (line.length - MAX_MACHINE_LINE_CHARS));
-    line = renderLine(prefix, value, { ...full, said: said.slice(0, shorter) });
+    line = renderVerifiedLine(prefix, value, { ...full, said: said.slice(0, shorter) });
     if (line.length <= MAX_MACHINE_LINE_CHARS) return line;
   }
   const trimmedValue = value.slice(0, Math.max(0, value.length - (line.length - MAX_MACHINE_LINE_CHARS)));
@@ -207,8 +262,17 @@ function insertWasComment(
 ): LineEdit {
   const eol = projection.eol;
   const historyIndexes = section.superseded.map((entry) => entry.lineIndex);
-  const anchor = Math.max(...fieldLineIndexes(projection, section), ...historyIndexes);
+  const anchors = [...fieldLineIndexes(projection, section), ...historyIndexes];
   const line = withEol(comment, eol);
+
+  // `Math.max()` of nothing is -Infinity, which splices to index 0 and puts the
+  // history comment above the document's title — outside any section, where it
+  // is never re-tracked as history on reload. `provenance` then reports no
+  // predecessor, `undo` says there is nothing to go back to, and `forget` leaves
+  // the superseded value on disk permanently. A section with no fields and no
+  // history has one honest anchor: its own heading.
+  if (anchors.length === 0) return insertUnderHeading(projection, section, comment);
+  const anchor = Math.max(...anchors);
 
   if (historyIndexes.includes(anchor)) {
     return { kind: 'insert', at: anchor + 1, lines: [line] };
@@ -247,7 +311,14 @@ export function setField(projection: ProfileProjection, input: SetFieldInput): P
   }
 
   const existing = projection.fields.get(def.id);
-  const section = findProfileSection(projection, def.section);
+  // Resolve to the section that ACTUALLY HOLDS the field when there is one.
+  // `findProfileSection` returns the first heading matching the canonical name,
+  // and a document with the heading twice can put the field under the second —
+  // in which case the first is empty, its anchors are empty, and the history
+  // comment lands nowhere useful.
+  const section = existing === undefined
+    ? findProfileSection(projection, def.section)
+    : (sectionContaining(projection, existing.lineIndex) ?? findProfileSection(projection, def.section));
   const label = existing?.label ?? def.label;
   const line = renderCappedLine(`${label}: `, input.value, input.provenance);
   const change: ProfileChange = {
@@ -371,8 +442,21 @@ export interface ForgetInput {
 export function forget(projection: ProfileProjection, input: ForgetInput): ProfileEditResult {
   if (input.fieldId === undefined) {
     const at = input.lineIndex;
-    if (at === undefined || at < 0 || at >= projection.rawLines.length) {
+    // `NaN` fails BOTH bounds comparisons, so a range check alone waves it
+    // through and `splice(NaN, 1)` removes index 0 — his title. A fraction
+    // splices at its floor, so `4.9` deletes line 4. Integrality is the check
+    // that actually holds.
+    if (at === undefined || !Number.isInteger(at) || at < 0 || at >= projection.rawLines.length) {
       return refuse(projection, 'There is no such line in your profile.');
+    }
+    const text = stripEol(projection.rawLines[at] ?? '', projection.eol);
+    // Removing a heading orphans every field under it — they silently join the
+    // section above — while the receipt claims a note was removed.
+    if (/^##\s+/.test(text)) {
+      return refuse(projection, 'That line is a section heading, not a note. Remove the lines under it instead.');
+    }
+    if (text.trim().length === 0) {
+      return refuse(projection, 'That line is blank, so there was nothing to forget.');
     }
     const section = projection.sections.find((entry) => at > entry.headingLine && at < entry.endLine);
     const change: ProfileChange = {
@@ -394,12 +478,26 @@ export function forget(projection: ProfileProjection, input: ForgetInput): Profi
   if (def === undefined) return refuse(projection, `"${input.fieldId}" is not a profile field.`);
   const existing = projection.fields.get(def.id);
   const history = projection.superseded.get(def.id) ?? [];
-  if (existing === undefined && history.length === 0) {
+  // Every line carrying this field, not just the active one:
+  //  - a DUPLICATE further down is prose to the parser but still the value in
+  //    the file, so removing only the active line reports success while the
+  //    value survives — a false receipt on a delete;
+  //  - a line under a heading he RENAMED is not in the model at all, so the
+  //    old code said "nothing to forget" about a value `read()` still served.
+  const strays = [
+    ...(projection.duplicateFieldLines.get(def.id) ?? []),
+    ...unrecognisedSectionFieldLines(projection, def.id),
+  ];
+  const targets = [...new Set([
+    ...history.map((entry) => entry.lineIndex),
+    ...(existing === undefined ? [] : [existing.lineIndex]),
+    ...strays,
+  ])];
+  if (targets.length === 0) {
     return refuse(projection, `Your profile has no ${def.label} recorded, so there was nothing to forget.`);
   }
 
-  const edits: LineEdit[] = history.map((entry) => ({ kind: 'remove', at: entry.lineIndex }));
-  if (existing !== undefined) edits.push({ kind: 'remove', at: existing.lineIndex });
+  const edits: LineEdit[] = targets.map((at) => ({ kind: 'remove', at }));
   const change: ProfileChange = {
     kind: 'forget',
     fieldId: def.id,
@@ -534,6 +632,48 @@ export function profileTextFromLines(lines: readonly string[]): string {
 
 function stripEol(line: string, eol: '\n' | '\r\n'): string {
   return eol === '\r\n' && line.endsWith('\r') ? line.slice(0, -1) : line;
+}
+
+/** The section a raw line index falls inside, or `undefined` for the preamble. */
+function sectionContaining(
+  projection: ProfileProjection,
+  lineIndex: number,
+): ProfileSection | undefined {
+  return projection.sections.find(
+    (section) => lineIndex > section.headingLine && lineIndex < section.endLine,
+  );
+}
+
+/**
+ * Lines that read as `<label>: value` for this field under a heading the parser
+ * does not recognise as a section.
+ *
+ * This is the `## Shopping` case: he renamed `## Commerce`, so `shipping
+ * address:` under it is prose to the model while `read()` still shows it and the
+ * file still holds it. Saying "nothing to forget" there is honest about the
+ * model and dishonest about the document, and the document is what he asked
+ * about.
+ *
+ * Scoped to UNRECOGNISED headings on purpose. A `shipping address:` line under a
+ * known prose section like `Notes` is his own prose in a section that means
+ * something else, and reaching into it would widen a delete past what he named.
+ */
+function unrecognisedSectionFieldLines(
+  projection: ProfileProjection,
+  fieldId: string,
+): number[] {
+  const def = profileFieldById(fieldId);
+  if (def === undefined) return [];
+  const wanted = normalizeProfileKey(def.label);
+  const found: number[] = [];
+  for (const section of projection.sections) {
+    if (section.canonical !== null) continue;
+    for (const line of section.prose) {
+      const parsed = parseFieldLine(splitProvenanceSuffix(line.text).text);
+      if (parsed !== null && normalizeProfileKey(parsed.label) === wanted) found.push(line.lineIndex);
+    }
+  }
+  return found;
 }
 
 function todayIso(): string {

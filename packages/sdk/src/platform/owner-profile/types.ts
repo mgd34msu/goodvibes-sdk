@@ -131,6 +131,14 @@ export interface ProfileProjection {
   readonly prose: ReadonlyMap<string, readonly ProfileLine[]>;
   /** Superseded history keyed by field id, oldest first. */
   readonly superseded: ReadonlyMap<string, readonly ProfileSupersededLine[]>;
+  /**
+   * Extra lines that parse as a field which is already active, keyed by field id.
+   *
+   * The first occurrence wins and these stay prose, so they remain visible. They
+   * are tracked because a delete that removed only the ACTIVE line would leave
+   * the value in the file while reporting success — a false receipt on a delete.
+   */
+  readonly duplicateFieldLines: ReadonlyMap<string, readonly number[]>;
 }
 
 /** A mechanical field whose value did not validate, with the reason. */
