@@ -24,6 +24,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { classifyLocalFailure } from '../packages/sdk/src/platform/email/inbound/capability.ts';
 import { MailboxCursorStore } from '../packages/sdk/src/platform/email/inbound/cursor-store.ts';
 import { InboundMailHousekeeper } from '../packages/sdk/src/platform/email/inbound/housekeeping.ts';
 import { InboundMailStore } from '../packages/sdk/src/platform/email/inbound/record-store.ts';
@@ -228,5 +229,75 @@ describe('housekeeping sweeps each store independently and names the ones that f
     expect(disclosures).toHaveLength(1);
     expect(disclosures[0]?.failures).toHaveLength(1);
     expect(disclosures[0]?.failures[0]?.store).toBe('records');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The errno classification the EISDIR scenario only ever used as a mechanism
+// ---------------------------------------------------------------------------
+
+/**
+ * The tests above force a sweep to throw by putting a directory where the JSON
+ * belongs. That is EISDIR used as a MECHANISM — nothing above asserts what the
+ * daemon then decides about it, so the errno set could be edited without a
+ * single test noticing.
+ *
+ * The consequence of dropping one is real but bounded, which is why this is a
+ * gap rather than a blocker: `classifyLocalFailure` escalates on
+ * `permanent || exhausted`, so an errno that falls out of the permanent set is
+ * still escalated once the consecutive count reaches the ceiling. Slower, not
+ * silent — the owner is still told, ten attempts later instead of at once.
+ * These assertions pin the distinction so a change to it has to be deliberate.
+ */
+describe('a local failure is classified by errno, and the set is not editable in silence', () => {
+  function errored(code: string): Error {
+    return Object.assign(new Error(`sweep failed: ${code}`), { code });
+  }
+
+  test('a permanent store errno is terminal on the FIRST attempt', () => {
+    // No amount of retrying reverses a directory sitting where a file belongs,
+    // or a permission somebody set.
+    for (const code of ['EISDIR', 'EACCES', 'EPERM', 'EROFS', 'ENOTDIR', 'ENAMETOOLONG']) {
+      const { verdict, terminal } = classifyLocalFailure(errored(code), 1, 10);
+      expect({ code, terminal, reason: verdict.reason }).toEqual({
+        code, terminal: true, reason: 'local-store-unwritable',
+      });
+    }
+  });
+
+  test('a transient storage errno waits, then escalates at the ceiling', () => {
+    // A full disk during a log rotation clears on its own; the tenth one has
+    // been disproved by the machine.
+    const first = classifyLocalFailure(errored('ENOSPC'), 1, 10);
+    expect(first.terminal).toBe(false);
+    expect(first.verdict.reason).toBe('reconnecting');
+    expect(first.verdict.detail).toContain('Attempt 1 of 10');
+
+    const last = classifyLocalFailure(errored('ENOSPC'), 10, 10);
+    expect(last.terminal).toBe(true);
+    expect(last.verdict.reason).toBe('local-store-unwritable');
+  });
+
+  test('an errno that is not storage at all keeps its own name at the ceiling', () => {
+    // Sending an owner to check disk space over an unrelated bug is the same
+    // class of mistake as calling a connection limit a bad password.
+    const { verdict, terminal } = classifyLocalFailure(errored('ECONNRESET'), 10, 10);
+    expect(terminal).toBe(true);
+    expect(verdict.reason).toBe('watcher-stopped-unexpectedly');
+  });
+
+  test('a failure that merely mentions the cursor is treated as store-unwritable', () => {
+    const { verdict } = classifyLocalFailure(new Error('the cursor could not be written'), 10, 10);
+    expect(verdict.reason).toBe('local-store-unwritable');
+  });
+
+  test('every permanent errno is also a storage errno — the sets cannot drift apart', () => {
+    // `STORAGE_ERRNOS` is built by spreading `PERMANENT_STORE_ERRNOS`, so a
+    // permanent errno that did not name `local-store-unwritable` would mean
+    // the two had been split by hand.
+    for (const code of ['EISDIR', 'EACCES', 'EPERM', 'EROFS', 'ENOTDIR', 'ENAMETOOLONG']) {
+      expect(classifyLocalFailure(errored(code), 10, 10).verdict.reason)
+        .toBe('local-store-unwritable');
+    }
   });
 });
