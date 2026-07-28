@@ -51,6 +51,7 @@ import {
   KNOWLEDGE_USAGE_OUTPUT_SCHEMA,
 } from './operator-contract-schemas-knowledge.js';
 import {
+  PROJECT_PLANNING_DECISION_INPUT_SCHEMA,
   PROJECT_PLANNING_DECISION_OUTPUT_SCHEMA,
   PROJECT_PLANNING_DECISIONS_OUTPUT_SCHEMA,
   PROJECT_PLANNING_EVALUATION_SCHEMA,
@@ -59,6 +60,7 @@ import {
   PROJECT_PLANNING_STATE_OUTPUT_SCHEMA,
   PROJECT_PLANNING_STATUS_SCHEMA,
   PROJECT_WORK_PLAN_MUTATION_OUTPUT_SCHEMA,
+  PROJECT_WORK_PLAN_TASK_INPUT_SCHEMA,
   PROJECT_WORK_PLAN_SNAPSHOT_SCHEMA,
   PROJECT_WORK_PLAN_TASK_OUTPUT_SCHEMA,
 } from './operator-contract-schemas-project-planning.js';
@@ -767,7 +769,7 @@ export const builtinGatewayKnowledgeMethodDescriptors: readonly GatewayMethodDes
     inputSchema: bodyEnvelopeSchema({
       projectId: STRING_SCHEMA,
       knowledgeSpaceId: STRING_SCHEMA,
-      decision: JSON_RECORD_SCHEMA,
+      decision: PROJECT_PLANNING_DECISION_INPUT_SCHEMA,
     }, ['decision']),
     outputSchema: PROJECT_PLANNING_DECISION_OUTPUT_SCHEMA,
   }),
@@ -861,7 +863,7 @@ export const builtinGatewayKnowledgeMethodDescriptors: readonly GatewayMethodDes
       projectId: STRING_SCHEMA,
       knowledgeSpaceId: STRING_SCHEMA,
       workPlanId: STRING_SCHEMA,
-      task: JSON_RECORD_SCHEMA,
+      task: PROJECT_WORK_PLAN_TASK_INPUT_SCHEMA,
     }, ['task']),
     outputSchema: PROJECT_WORK_PLAN_MUTATION_OUTPUT_SCHEMA,
   }),

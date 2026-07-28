@@ -8951,18 +8951,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
   },
   "homeassistant.homeGraph.ingestHomeGraphArtifact": {
     "input": {
-      "installationId": "sample",
-      "knowledgeSpaceId": "sample",
-      "artifactId": "sample",
-      "path": "sample",
-      "uri": "sample",
-      "title": "sample",
-      "tags": [
-        "sample"
-      ],
-      "target": {},
-      "allowPrivateHosts": false,
-      "metadata": {}
+      "artifactId": "sample"
     },
     "output": {
       "ok": false,
@@ -9178,13 +9167,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
   },
   "homeassistant.homeGraph.linkHomeGraphKnowledge": {
     "input": {
-      "installationId": "sample",
-      "knowledgeSpaceId": "sample",
-      "sourceId": "sample",
-      "nodeId": "sample",
-      "target": {},
-      "relation": "sample",
-      "metadata": {}
+      "sourceId": "sample"
     },
     "output": {
       "ok": false,
@@ -9794,14 +9777,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
   },
   "homeassistant.homeGraph.reviewHomeGraphFact": {
     "input": {
-      "installationId": "sample",
-      "knowledgeSpaceId": "sample",
-      "issueId": "sample",
-      "nodeId": "sample",
-      "sourceId": "sample",
-      "action": "sample",
-      "value": {},
-      "reviewer": "sample"
+      "issueId": "sample"
     },
     "output": {
       "ok": false,
@@ -10034,13 +10010,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
   },
   "homeassistant.homeGraph.unlinkHomeGraphKnowledge": {
     "input": {
-      "installationId": "sample",
-      "knowledgeSpaceId": "sample",
-      "sourceId": "sample",
-      "nodeId": "sample",
-      "target": {},
-      "relation": "sample",
-      "metadata": {}
+      "sourceId": "sample"
     },
     "output": {
       "ok": false,
@@ -12116,7 +12086,21 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
     "input": {
       "projectId": "sample",
       "knowledgeSpaceId": "sample",
-      "decision": {}
+      "decision": {
+        "id": "sample",
+        "title": "sample",
+        "context": "sample",
+        "decision": "sample",
+        "alternatives": [
+          "sample"
+        ],
+        "reasoning": "sample",
+        "consequences": [
+          "sample"
+        ],
+        "status": "sample",
+        "createdAt": 0
+      }
     },
     "output": {
       "ok": false,
@@ -12949,7 +12933,37 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
       "projectId": "sample",
       "knowledgeSpaceId": "sample",
       "workPlanId": "sample",
-      "task": {}
+      "task": {
+        "taskId": "sample",
+        "title": "sample",
+        "notes": "sample",
+        "owner": "sample",
+        "status": "sample",
+        "priority": 0,
+        "order": 0,
+        "source": "sample",
+        "tags": [
+          "sample"
+        ],
+        "parentTaskId": "sample",
+        "chainId": "sample",
+        "phaseId": "sample",
+        "agentId": "sample",
+        "turnId": "sample",
+        "decisionId": "sample",
+        "sourceMessageId": "sample",
+        "linkedArtifactIds": [
+          "sample"
+        ],
+        "linkedSourceIds": [
+          "sample"
+        ],
+        "linkedNodeIds": [
+          "sample"
+        ],
+        "originSurface": "sample",
+        "createdAt": 0
+      }
     },
     "output": {
       "ok": false,
