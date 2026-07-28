@@ -5763,6 +5763,62 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       "mailbox": "sample"
     }
   },
+  "email.expectation.cancel": {
+    "methodId": "email.expectation.cancel",
+    "http": null,
+    "status": 200,
+    "body": {
+      "cancelled": false,
+      "expectation": {
+        "id": "sample",
+        "kind": "sample",
+        "serviceDomain": "sample",
+        "recipientAddress": "sample",
+        "purpose": "sample",
+        "openedAt": "sample",
+        "expiresAt": "sample",
+        "authority": "sample",
+        "remainingMs": 0
+      }
+    }
+  },
+  "email.expectation.list": {
+    "methodId": "email.expectation.list",
+    "http": null,
+    "status": 200,
+    "body": {
+      "expectations": [
+        {
+          "id": "sample",
+          "kind": "sample",
+          "serviceDomain": "sample",
+          "recipientAddress": "sample",
+          "purpose": "sample",
+          "openedAt": "sample",
+          "expiresAt": "sample",
+          "authority": "sample",
+          "remainingMs": 0
+        }
+      ],
+      "total": 0
+    }
+  },
+  "email.expectation.open": {
+    "methodId": "email.expectation.open",
+    "http": null,
+    "status": 200,
+    "body": {
+      "id": "sample",
+      "kind": "sample",
+      "serviceDomain": "sample",
+      "recipientAddress": "sample",
+      "purpose": "sample",
+      "openedAt": "sample",
+      "expiresAt": "sample",
+      "authority": "sample",
+      "remainingMs": 0
+    }
+  },
   "email.inbox.list": {
     "methodId": "email.inbox.list",
     "http": {
