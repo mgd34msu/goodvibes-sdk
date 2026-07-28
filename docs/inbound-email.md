@@ -671,6 +671,98 @@ The rules the renderer enforces, and which its tests assert:
   single most useful fact — it says which account this is about, from evidence
   the sender could not forge.
 
+### 7.1 Which fields are attacker-chosen — the audit
+
+A defect found in review makes the case for doing this as a list rather than by
+intuition. `deliveredTo` was given weaker sanitization than the subject line, on
+the reasoning that a delivery header "cannot be forged by the sender". The
+header cannot be forged — the receiving server stamps it truthfully — but what
+it truthfully stamps is **the envelope recipient the sender chose**, and this
+design runs on per-signup aliases, which means catch-all or plus-addressing,
+which means the local part is the sender's to pick. Mail addressed to
+`[Approved](https://evil.example)@ourdomain.com` rendered a clickable attacker
+link in the owner's notice, on the one row the notice exists to make
+trustworthy.
+
+The lesson generalizes: **an address is not safe because part of it is
+verified.** Every field is attacker-chosen until a specific reason says
+otherwise, and the reason is written down.
+
+| Field | Origin | Verdict |
+|---|---|---|
+| `subject` | `Subject:` header | **Attacker-chosen.** Sender writes it verbatim |
+| `senderDisplay` | `From:` header | **Attacker-chosen.** Display name is free text |
+| `deliveredTo` local part | envelope recipient | **Attacker-chosen** under catch-all/plus-addressing |
+| `deliveredTo` domain | our own domain | Ours — but escaped anyway, at no cost |
+| `outcome.purpose` | the registering workstream | **Attacker-chosen unless drawn from a fixed vocabulary.** A signup flow that lifted a service name off a web page is passing untrusted text through an authorized caller |
+| `outcome.serviceDomain` | expectation, validated | Validated ASCII hostname. Escaped anyway |
+| `outcome.reason` | refusal | Ours **only if** it is a fixed enum member. Any reason quoting a server's wording is attacker-chosen |
+| `links[].host` | extracted + validated | Registrable domain, hostname-shaped. Escaped anyway |
+| `receivedAt` | **our clock** | Ours — **and this is load-bearing.** `ImapEnvelope.date` is `extractHeader(raw, 'Date')`, a string the sender wrote. The notice timestamp must come from our own receipt time, never from that header |
+| `authenticationResults` | receiving server | Only the top-most is beyond the sender's reach; carries no authority anywhere and is escaped if shown |
+
+Two of those rows are ones nobody would have guessed: an address, and a
+timestamp.
+
+### 7.2 Escaping belongs to the channel, not to the producer
+
+The renderer as first specified returned **one string for every channel**. That
+is the architectural error underneath the defect above, and fixing the character
+set does not fix it.
+
+A single trigger-character set has to be the union of what is dangerous on every
+channel the notice might reach. Telegram MarkdownV2 reserves
+`_*[]()~`>#+-=|{}.!`; Discord adds `@everyone`/`@here`; Slack uses `<url|text>`
+and `<!channel>`; an HTML notice needs entity escaping instead; ntfy carries
+plain text but puts fields in HTTP headers, where a newline is the injection.
+A set tuned for one is silently wrong on another, and it goes wrong **the day a
+channel is added**, in a module nobody edited.
+
+Stripping is also lossy in the wrong direction: the owner sees a mangled subject
+and cannot tell whether the mail said that or we did.
+
+So the producer emits **structure**, and each channel escapes at the last
+moment:
+
+```ts
+export type NoticeSpan =
+  | { readonly kind: 'literal'; readonly text: string }    // our words, safe by construction
+  | { readonly kind: 'untrusted'; readonly text: string }; // someone else's, escaped by the channel
+
+export interface NoticeField {
+  readonly label: string;                    // always ours
+  readonly value: readonly NoticeSpan[];
+}
+
+export interface StructuredNotice {
+  readonly title: readonly NoticeSpan[];
+  readonly fields: readonly NoticeField[];
+}
+```
+
+`renderInboundMailNotice` returns a `StructuredNotice`. Each channel's delivery
+path owns a `renderNotice(notice: StructuredNotice): string` that escapes
+`untrusted` spans per its own syntax — **escapes, not strips**, so
+`[Approved](https://evil.example)` reaches the owner as that exact literal text
+rather than as a link or as mangled spaces. He sees what the mail actually said,
+and it does nothing.
+
+Why this is the right shape:
+
+- **The producer cannot get it wrong**, because it never holds a channel-format
+  string. Forgetting to escape is not a mistake that can be made in the wrong
+  place; the only code that turns spans into text is the code that knows the
+  syntax.
+- **Adding a channel is a bounded, visible task** — implement one escaper —
+  rather than an invisible widening of a shared character set.
+- **Untrusted-ness travels with the value.** A field passed through three
+  functions is still tagged `untrusted` at the end.
+
+`deliverSurfaceNotice(binding, text)` takes a plain string and stays as it is;
+the channel renderer runs immediately before it. Until every channel has an
+escaper, the fallback renderer emits **plain text with all markup neutralized**
+— the conservative behavior, chosen explicitly rather than inherited.
+
 Routing is configurable (§8). The default is the owner's existing notice route
 binding, so this inherits whatever he already uses rather than introducing a
 second notion of "where to find me".
@@ -850,6 +942,39 @@ the config schema. Neither list overlaps.
 
 ## 11. Consumers
 
+### 11.1 Cross-round requirement for payments
+
+§7.1 and §7.2 apply to the payments notices with more force than they apply
+here, and this is raised as a requirement on that round rather than a
+suggestion.
+
+Payments already rules that approval and veto messages are rendered from
+structured fields and never from page text. That ruling is right and it is not
+sufficient, because "structured field" is where this defect lived: the merchant
+name and the item title **are** structured fields, and both are lifted straight
+off a merchant's web page. They are as attacker-chosen as an email subject.
+
+Three things make it worse there than here:
+
+1. **The owner acts on it under time pressure.** The veto window's whole design
+   is silence-means-proceed, so a notice that misleads him for ten minutes
+   spends his money. Here, a misleading notice is merely misleading.
+2. **Money is attached.** A rendered link in a purchase notice is a phishing
+   target the owner has already been primed to trust, because he is expecting a
+   message about a purchase he authorized.
+3. **The total is the one field he checks.** An item title carrying markup can
+   restyle, obscure or visually displace the amount in the same message —
+   Telegram will happily bold, strike through, or spoiler-tag whatever it is
+   handed. The number he reads must not be positionable by the merchant.
+
+So the payments round needs: the same `StructuredNotice` and per-channel
+escaper, `merchantName` and `itemTitle` tagged `untrusted`, and the amount
+emitted as a `literal` span that no untrusted span can be interleaved with.
+A test asserting a merchant name containing markup cannot alter how the total
+renders.
+
+## 11.2 Consumers
+
 The payments capability is a consumer, not a peer: order confirmations and
 delivery notices arrive by mail. It gets them through the **expectation**
 mechanism — a purchase that was approved registers an expectation scoped to the
@@ -903,6 +1028,13 @@ before the fix lands.
 | 33 | A watcher in reconnect backoff does NOT fail expectations | "Not yet" is not "cannot" |
 | 34 | Insufficient capability notifies once per transition, not once per probe | Repeated probes, one notice |
 | 35 | The inbound path cannot register or hydrate an expectation | Type-level + source-level assertion (§2.1) |
+| 36 | The producer cannot emit a channel-formatted string | `renderInboundMailNotice` returns `StructuredNotice`; type-level test |
+| 37 | Each channel escapes rather than strips | `[Approved](https://evil)` arrives as that literal text, not a link and not mangled |
+| 38 | Per-channel escapers cover their own syntax | Telegram MarkdownV2, Discord mentions, Slack `<url\|text>`, HTML entities, ntfy header newline — one case each |
+| 39 | An untrusted span cannot reach output unescaped on any channel | Table-driven across every registered escaper |
+| 40 | A channel with no escaper falls back to fully-neutralized plain text | Not to the raw string |
+| 41 | The notice timestamp comes from our clock, not the `Date:` header | Sender-supplied date differs from receipt time |
+| 42 | An expectation purpose lifted from untrusted text is escaped | Not trusted for being supplied by an authorized caller |
 
 ---
 
@@ -925,6 +1057,15 @@ overturn any of them.
 8. **Insufficient capability refuses and notifies; it never silently
    degrades.** §3.4b. `notice-only` exists but is only ever entered by
    configuration.
+9. **Escaping belongs to the channel, not the producer.** §7.2. The producer
+   emits `StructuredNotice`; each channel escapes its own syntax. This replaces
+   the single-string renderer, which was mine and was wrong.
+10. **Every notice field is attacker-chosen until a written reason says
+    otherwise.** §7.1. Including addresses, and including timestamps.
+11. **Four numeric ranges** chosen without design guidance and needing the same
+    confirmation as the defaults: `maxBackoffSeconds` `[10,3600]`,
+    `dedupTtlMinutes` `[5,1440]`, `retentionDays` `[1,365]`,
+    `maxRecords` `[100,100000]`.
 
 ## 14. Related
 
