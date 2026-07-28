@@ -100,7 +100,20 @@ export {
 } from './watcher.js';
 
 export { MailboxCursorStore, validateMailboxCursor } from './cursor-store.js';
-export { InboundMailStore, validateInboundMailRecord } from './record-store.js';
+export {
+  InboundMailStore,
+  validateInboundMailRecord,
+  type InboundMailMessageKey,
+  type InboundNoticeStatus,
+} from './record-store.js';
+export {
+  createInboundNoticeHealth,
+  describeNoticeRefusal,
+  type InboundNoticeHealth,
+  type InboundNoticeHealthOptions,
+  type InboundNoticeRefusalEvent,
+  type InboundNoticeRefusalState,
+} from './notice-health.js';
 export { PersistedExpectationStore } from './expectation-store.js';
 export {
   InboundMailHousekeeper,
@@ -142,8 +155,13 @@ export {
   type InboundMailNoticeRoute,
   type InboundNoticeMode,
   type NoticeRouteBinding,
+  type NoticeRouteResolution,
 } from './intake.js';
-export { describeInboundMailHealth, type InboundMailHealthEntry } from './health.js';
+export {
+  describeInboundMailHealth,
+  type InboundMailHealthEntry,
+  type InboundMailHealthInput,
+} from './health.js';
 export {
   InboundMailSupervisor,
   type InboundMailSourceFactory,

@@ -558,7 +558,14 @@ describe('a terminal failure is announced to the owner, once per transition', ()
       // `EmailCredentialUnavailableError`, which is terminal.
       secretsManager: { get: async () => null } as never,
       shellPaths: { resolveUserPath: (_scope: string, name: string) => join(dir, name) } as never,
-      routeBindings: { listBindings: () => [], getBinding: () => undefined } as never,
+      routeBindings: {
+        // The gate is ON with no bindings stored — the fresh-install shape.
+        // `resolveNoticeRoute` now asks, so that it can tell this apart from
+        // the gate being off, which answers `[]` identically.
+        isRouteBindingEnabled: () => true,
+        listBindings: () => [],
+        getBinding: () => undefined,
+      } as never,
       gatewayMethods: { get: () => undefined, register: () => undefined } as never,
       deliverStructuredNotice: async (_binding, notice) => {
         sent.push(notice);
