@@ -31468,7 +31468,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "email.inbox.list",
         "title": "List Email Inbox",
-        "description": "Return inbox message summaries fetched live from the configured IMAP account. Read-only (EXAMINE / BODY.PEEK); never marks messages read.",
+        "description": "Return inbox message summaries fetched live from the configured IMAP account, newest first (ordered by server-assigned UID, never by the sender-written Date header). Read-only (EXAMINE / BODY.PEEK); never marks messages read.",
         "category": "email",
         "source": "builtin",
         "access": "authenticated",

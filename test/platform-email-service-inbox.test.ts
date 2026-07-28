@@ -207,9 +207,11 @@ describe('EmailService.listInbox', () => {
 
     expect(fake.commands.some((line) => line.includes('SEARCH ALL'))).toBe(true);
     expect(result.messages).toHaveLength(3);
-    // Only sequence 1 came back from SEARCH UNSEEN, so the other two are read.
-    // Reporting all three as unread would be a fabricated flag.
-    expect(result.messages.map((message) => message.unread)).toEqual([true, false, false]);
+    // Newest first, so UID 3 leads and UID 1 — the only one SEARCH UNSEEN
+    // returned — is last. Reporting all three as unread would be a fabricated
+    // flag, so the unseen set is asked for separately.
+    expect(result.messages.map((message) => message.uid)).toEqual([3, 2, 1]);
+    expect(result.messages.map((message) => message.unread)).toEqual([false, false, true]);
   });
 
   test('total counts the match, not the page', async () => {
