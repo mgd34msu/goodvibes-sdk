@@ -13,6 +13,8 @@ import { resolveReachableBaseUrl } from '../utils/reachable-base-url.js';
 import type { SharedApprovalRecord } from '../control-plane/index.js';
 import type { PendingSurfaceReply, SurfaceNoticeDelivery, SurfaceNoticeRefusal } from './types.js';
 import { summarizeError } from '../utils/error-display.js';
+import { renderNoticeForSurface } from '../email/inbound-notice-channels.js';
+import type { StructuredNotice } from '../email/inbound-notice.js';
 import { resolveSecretInput } from '../config/secret-refs.js';
 import {
   deliverDiscordAgentReply,
@@ -297,6 +299,36 @@ export class DaemonSurfaceDeliveryHelper {
    * `deliverSurfaceProgress` remains only as the fallback for a surface whose
    * plugin is not registered at all (an embedder with its own registry).
    */
+  /**
+   * Deliver a notice that is still STRUCTURE, escaping it for whatever surface
+   * the binding points at.
+   *
+   * This is the entry point anything holding a `StructuredNotice` must use,
+   * and the reason it exists rather than leaving callers to render first is
+   * that the destination is not knowable at the call site. The binding is
+   * resolved here, so the escaper is chosen from the surface the message will
+   * actually land on — a caller cannot pick the wrong one, and cannot skip
+   * escaping, because it never holds a string to pass.
+   *
+   * That is the same structural-over-conventional rule the inbound-mail path
+   * runs on elsewhere: the producer (`renderInboundMailNotice`) cannot emit a
+   * channel-formatted string, and this is the only place one is made.
+   *
+   * A surface with no verified escaper gets fully-neutralized plain text, not
+   * the raw span concatenation — see `noticeChannelForSurface`.
+   */
+  async deliverStructuredNotice(
+    binding: RouteBinding | undefined,
+    notice: StructuredNotice,
+  ): Promise<SurfaceNoticeDelivery> {
+    if (!binding) {
+      // Refused for the same reason and by the same name as below; rendering
+      // first would mean escaping text for a surface that does not exist.
+      return this.deliverSurfaceNotice(binding, '');
+    }
+    return this.deliverSurfaceNotice(binding, renderNoticeForSurface(notice, binding.surfaceKind));
+  }
+
   async deliverSurfaceNotice(binding: RouteBinding | undefined, text: string): Promise<SurfaceNoticeDelivery> {
     const refuse = (reason: SurfaceNoticeRefusal, error?: string): SurfaceNoticeDelivery => {
       // ERROR, not warn, and never a silent `return false`: a notice the owner

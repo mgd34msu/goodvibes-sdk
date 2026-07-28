@@ -16,19 +16,28 @@ import { describe, expect, test } from 'bun:test';
 import {
   receiptTimestamp,
   renderInboundMailNotice,
-  renderNoticeAsPlainText,
-  renderNoticeForChannel,
   type InboundMailNoticeInput,
   type InboundOutcome,
   type NoticeChannel,
   type StructuredNotice,
   type ValidatedLinkSummary,
 } from '../packages/sdk/src/platform/email/inbound-notice.ts';
+import {
+  renderNoticeAsPlainText,
+  renderNoticeForChannel,
+} from '../packages/sdk/src/platform/email/inbound-notice-channels.ts';
 import { deliveredRecipientFromAliasMailbox } from '../packages/sdk/src/platform/google/delivery-evidence.ts';
 
 const T0 = new Date('2026-07-27T12:00:00.000Z');
 const INERT: InboundOutcome = { kind: 'inert' };
 const ALL_CHANNELS: readonly NoticeChannel[] = ['telegram', 'discord', 'slack', 'html', 'ntfy'];
+
+/**
+ * The zero-width space the defanging escapers insert. Named rather than
+ * inlined, because an invisible character in an expectation string is
+ * unreadable in a diff and impossible to spot when it is missing.
+ */
+const Z = '\u200B';
 
 function baseInput(overrides: Partial<InboundMailNoticeInput> = {}): InboundMailNoticeInput {
   return {
@@ -143,18 +152,21 @@ describe('escape, not strip: attacker markup arrives as literal inert text, unma
     const payload = '[Approved](https://evil.example)';
     const notice = renderInboundMailNotice(baseInput({ subject: `Please see ${payload}` }));
     const text = renderNoticeForChannel(notice, 'telegram');
-    // Every original character survives, escaped rather than stripped: '.' is
-    // itself MarkdownV2-reserved, so the correctly-escaped form has a
-    // backslash before it too — this is Telegram's OWN rule, not a
-    // simplification made here.
-    expect(text).toContain('\\[Approved\\]\\(https://evil\\.example\\)');
+    // Every original character survives. The send site sets no `parse_mode`
+    // (channels/telegram/api.ts sendMessage), so Telegram parses no markdown
+    // and there is nothing to backslash-escape — brackets and parens are
+    // already inert. What IS live is client-side auto-linking, so the scheme
+    // is broken with a zero-width space: the owner reads the URL and cannot
+    // tap it.
+    expect(text).toContain(`[Approved](https://${Z}evil.example)`);
     expect(text).not.toContain('Please see  '); // not mangled into stripped spaces
+    expect(text).not.toContain('\\['); // no backslash noise for syntax nothing parses
   });
 
   test('[Approved](https://evil.example) in the SENDER arrives as literal text on Telegram, not a link', () => {
     const notice = renderInboundMailNotice(baseInput({ senderDisplay: '[Approved](https://evil.example)@ourdomain.com' }));
     const text = renderNoticeForChannel(notice, 'telegram');
-    expect(text).toContain('\\[Approved\\]\\(https://evil\\.example\\)@ourdomain\\.com');
+    expect(text).toContain(`[Approved](https://${Z}evil.example)@${Z}ourdomain.com`);
   });
 
   test('[Approved](https://evil.example) in DELIVERED-TO arrives as literal text on Telegram, not a link', () => {
@@ -165,7 +177,7 @@ describe('escape, not strip: attacker markup arrives as literal inert text, unma
     const evidence = deliveredRecipientFromAliasMailbox('[Approved](https://evil.example)@ourdomain.com');
     const notice = renderInboundMailNotice(baseInput({ deliveredTo: evidence }));
     const text = renderNoticeForChannel(notice, 'telegram');
-    expect(text).toContain('\\[approved\\]\\(https://evil\\.example\\)@ourdomain\\.com');
+    expect(text).toContain(`[approved](https://${Z}evil.example)@${Z}ourdomain.com`);
   });
 
   test('@everyone does not become a mention on Discord, and the text is still legible', () => {
@@ -201,22 +213,33 @@ describe('escape, not strip: attacker markup arrives as literal inert text, unma
     expect(text).toContain('&lt;!channel&gt;');
   });
 
-  test('a delivered-to underscore reaches Telegram as an escaped-but-visible underscore', () => {
+  test('a delivered-to underscore reaches Telegram verbatim, with no escape noise', () => {
+    // An underscore is MarkdownV2 syntax and is NOT syntax in a message sent
+    // without a parse_mode. Escaping it would show the owner `first\_last`
+    // for an address that contains no backslash.
     const evidence = deliveredRecipientFromAliasMailbox('owner+first_last@ourdomain.com');
     const notice = renderInboundMailNotice(baseInput({ deliveredTo: evidence }));
     const text = renderNoticeForChannel(notice, 'telegram');
-    expect(text).toContain('first\\_last');
+    expect(text).toContain('first_last');
+    expect(text).not.toContain('first\\_last');
   });
 });
 
 describe('per-channel escapers cover their own syntax (one case each)', () => {
-  test('Telegram MarkdownV2 reserved characters are all backslash-escaped', () => {
-    const notice = renderInboundMailNotice(baseInput({ subject: '_*[]()~`>#+-=|{}.!' }));
+  test('Telegram gets the characters it actually interprets defanged, and the rest verbatim', () => {
+    // Verified at the send site rather than assumed: sendMessage posts no
+    // parse_mode, so MarkdownV2 reserved characters are ordinary text and
+    // arrive unchanged. The live risks are auto-linked URLs and @mentions.
+    const notice = renderInboundMailNotice(baseInput({
+      subject: '_*[]()~`>#+-=|{}.! visit https://evil.example or @someone',
+    }));
     const text = renderNoticeForChannel(notice, 'telegram');
     const subjectLine = text.split('\n').find((l) => l.startsWith('Subject:'))!;
-    for (const ch of ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']) {
-      expect(subjectLine).toContain(`\\${ch}`);
-    }
+
+    expect(subjectLine).toContain('_*[]()~`>#+-=|{}.!');
+    expect(subjectLine).not.toContain('\\');
+    expect(subjectLine).toContain(`https://${Z}evil.example`);
+    expect(subjectLine).toContain(`@${Z}someone`);
   });
 
   test('Discord markdown/mention forms are neutralized in one pass', () => {
@@ -273,7 +296,11 @@ describe('an untrusted span cannot reach output unescaped on any registered esca
   // where there is nothing to neutralize. Each payload here is a real
   // trigger for the channel it is tested against.
   const perChannelDangerousPayloads: Readonly<Record<NoticeChannel, readonly string[]>> = {
-    telegram: ['[Approved](https://evil.example)', '*bold*', '_italic_', '~strike~', '`code`'],
+    // Telegram's send site sets no parse_mode, so markdown is NOT a trigger
+    // there — `*bold*` arrives as `*bold*` and is inert. Asserting it must be
+    // neutralized would be asserting escape noise. What is live is the
+    // client's own entity detection: URLs and mentions.
+    telegram: ['https://evil.example', '@everyone'],
     discord: ['[Approved](https://evil.example)', '*bold*', '_italic_', '~strike~', '`code`', '@everyone', '@here'],
     slack: ['<https://evil.example|click>', '<!channel>', '<@U12345>'],
     html: ['<script>alert(1)</script>', '<img src=x onerror=alert(1)>', `"quoted"`, `it's`],
@@ -417,8 +444,9 @@ describe('outcome.purpose is untrusted even though the call that supplied it was
     }));
     const telegramText = renderNoticeForChannel(notice, 'telegram');
     expect(telegramText).toContain('GitHub');
-    expect(telegramText).toContain('\\*GitHub\\*');
-    expect(telegramText).toContain('\\[click here\\]\\(https://evil\\.example\\)');
+    // Verbatim: nothing parses it, so nothing is escaped.
+    expect(telegramText).toContain('*GitHub*');
+    expect(telegramText).toContain(`[click here](https://${Z}evil.example)`);
   });
 
   test('the purpose span is tagged untrusted', () => {
