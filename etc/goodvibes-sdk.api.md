@@ -19425,6 +19425,7 @@ export interface TurnInputOrigin {
     readonly messageId?: string | undefined;
     // (undocumented)
     readonly metadata?: Readonly<Record<string, unknown>> | undefined;
+    readonly ownerDirect?: boolean | undefined;
     // (undocumented)
     readonly source?: string | undefined;
     // (undocumented)
@@ -19750,7 +19751,7 @@ export type WrfcState = 'pending' | 'engineering' | 'integrating' | 'reviewing' 
 
 // Warnings were encountered during analysis:
 //
-// packages/sdk/src/events/turn.ts:144:134 - (ae-forgotten-export) The symbol "TurnCompletedMetadata" needs to be exported by the entry point index.d.ts
+// packages/sdk/src/events/turn.ts:157:134 - (ae-forgotten-export) The symbol "TurnCompletedMetadata" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 

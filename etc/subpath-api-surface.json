@@ -8072,6 +8072,8 @@
       "kind": "interface",
       "required": [
         "action",
+        "contentFingerprint",
+        "expiresAt",
         "grantedAt",
         "surface"
       ]
@@ -32789,6 +32791,14 @@
       ]
     },
     {
+      "name": "ApprovalMismatch",
+      "kind": "type"
+    },
+    {
+      "name": "ApprovalSurface",
+      "kind": "type"
+    },
+    {
       "name": "AuthSession",
       "kind": "interface",
       "required": [
@@ -32832,7 +32842,27 @@
       ]
     },
     {
+      "name": "MIN_SHARED_CHARS",
+      "kind": "const"
+    },
+    {
+      "name": "MIN_SHARED_WORDS",
+      "kind": "const"
+    },
+    {
       "name": "OPERATOR_SESSION_COOKIE_NAME",
+      "kind": "const"
+    },
+    {
+      "name": "OWNER_ADDRESS_CONFIG_KEYS",
+      "kind": "const"
+    },
+    {
+      "name": "OWNER_APPROVAL_TTL_MS",
+      "kind": "const"
+    },
+    {
+      "name": "OWNER_DIRECT_INPUT_SOURCES",
       "kind": "const"
     },
     {
@@ -32869,8 +32899,25 @@
       "kind": "interface",
       "required": [
         "action",
+        "contentFingerprint",
+        "expiresAt",
         "grantedAt",
         "surface"
+      ]
+    },
+    {
+      "name": "OwnerApprovalStore",
+      "kind": "class"
+    },
+    {
+      "name": "OwnerConfigReader",
+      "kind": "type"
+    },
+    {
+      "name": "OwnerRemedy",
+      "kind": "interface",
+      "required": [
+        "gesture"
       ]
     },
     {
@@ -32899,6 +32946,30 @@
     {
       "name": "SpawnTokenManager",
       "kind": "class"
+    },
+    {
+      "name": "TaintFinding",
+      "kind": "interface",
+      "required": [
+        "excerpt",
+        "field",
+        "kind",
+        "origin",
+        "surface"
+      ]
+    },
+    {
+      "name": "TaintOptions",
+      "kind": "interface"
+    },
+    {
+      "name": "TaintSource",
+      "kind": "interface",
+      "required": [
+        "origin",
+        "surface",
+        "text"
+      ]
     },
     {
       "name": "TokenAuditReport",
@@ -32991,6 +33062,14 @@
       ]
     },
     {
+      "name": "UntrustedExposure",
+      "kind": "interface",
+      "required": [
+        "origin",
+        "surface"
+      ]
+    },
+    {
       "name": "UntrustedIngest",
       "kind": "interface",
       "required": [
@@ -33016,7 +33095,27 @@
       "kind": "function"
     },
     {
+      "name": "checkOwnerApproval",
+      "kind": "function"
+    },
+    {
       "name": "createUntrustedContentPort",
+      "kind": "function"
+    },
+    {
+      "name": "describeContentTaint",
+      "kind": "function"
+    },
+    {
+      "name": "describeExposures",
+      "kind": "function"
+    },
+    {
+      "name": "describeUntrustedSource",
+      "kind": "function"
+    },
+    {
+      "name": "describeWhoControls",
       "kind": "function"
     },
     {
@@ -33028,6 +33127,14 @@
       "kind": "function"
     },
     {
+      "name": "findContentTaint",
+      "kind": "function"
+    },
+    {
+      "name": "fingerprintOutwardContent",
+      "kind": "function"
+    },
+    {
       "name": "getProcessUntrustedContentLedger",
       "kind": "function"
     },
@@ -33036,11 +33143,23 @@
       "kind": "function"
     },
     {
+      "name": "inputOriginIsOwnerDirect",
+      "kind": "function"
+    },
+    {
       "name": "isOperatorAdmin",
       "kind": "function"
     },
     {
+      "name": "isSendToOwnerOnly",
+      "kind": "function"
+    },
+    {
       "name": "labelUntrustedContent",
+      "kind": "function"
+    },
+    {
+      "name": "normalizeOwnerAddress",
       "kind": "function"
     },
     {
@@ -33049,6 +33168,26 @@
     },
     {
       "name": "resetProcessUntrustedContentLedgerForTests",
+      "kind": "function"
+    },
+    {
+      "name": "resolveOwnerAddresses",
+      "kind": "function"
+    },
+    {
+      "name": "splitRecipients",
+      "kind": "function"
+    },
+    {
+      "name": "startTurnForOwnerInput",
+      "kind": "function"
+    },
+    {
+      "name": "startTurnForOwnerRequest",
+      "kind": "function"
+    },
+    {
+      "name": "stripQuotedRegions",
       "kind": "function"
     },
     {
