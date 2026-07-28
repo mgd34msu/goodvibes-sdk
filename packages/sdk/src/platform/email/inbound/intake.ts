@@ -244,21 +244,17 @@ export function createInboundMailIntake(
       }
     }
 
-    if (message.source === 'gmail') {
-      note(deps.observer, message, 'delta-drained',
-        'This message was announced but NOT recorded: the inbound record store keys every record '
-        + 'on a positive UIDVALIDITY and UID, and a Gmail message has neither. Its history is '
-        + 'therefore unavailable to email.inbound.status until the store carries a '
-        + 'source-discriminated identity.',
-        receivedAt.iso);
-      return;
-    }
+    // The identity is the message's own, not a shape assumed from one source.
+    // Until the record store carried a discriminated identity, this path
+    // returned early for Gmail and nothing was ever recorded for it.
+    const identity = message.source === 'gmail'
+      ? { source: 'gmail' as const, resourceId: message.resourceId, historyId: message.historyId }
+      : { source: 'imap' as const, uidValidity: message.uidValidity, uid: message.uid };
 
     await deps.records.record({
+      ...identity,
       account: message.account,
       mailbox: message.mailbox,
-      uidValidity: message.uidValidity,
-      uid: message.uid,
       senderDisplay: message.from,
       subject: message.subject,
       deliveredToAddress: deliveredTo?.address ?? null,
@@ -267,10 +263,16 @@ export function createInboundMailIntake(
       outcome: recordOutcome(match),
       noticeStatus,
       ...(noticeFailureReason === undefined ? {} : { noticeFailureReason }),
-      // Envelope pass: no body was fetched, so nothing is retained. An empty
-      // excerpt is the truth; a summary assembled from headers would be a
+      // Whatever the source actually has. Gmail's history delta carries the
+      // body; IMAP's envelope pass does not, and an empty excerpt is the
+      // truth there — a summary assembled from headers would be a
       // body-shaped field holding something that is not the body.
-      body: '',
+      //
+      // The store redacts card shapes out of this before persisting (§11.0),
+      // so passing Gmail's real body is what puts that path in service. It
+      // had never executed: every Gmail record was discarded before reaching
+      // it.
+      body: message.source === 'gmail' ? message.body : '',
       receivedAt: receivedAt.iso,
     });
   };
