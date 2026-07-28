@@ -160,6 +160,17 @@ export interface MatrixSurfaceConfig {
   setupVersion: number;
 }
 
+/**
+ * Which mechanism reads the mailbox (docs/inbound-email.md §3.4d).
+ *
+ * `auto` picks Gmail when Google credentials have been adopted and the
+ * configured account is a Gmail account, and IMAP otherwise — so connecting
+ * Google is the whole of the setup. The two are not equivalent: IMAP holds an
+ * IDLE connection and is true push, while Gmail is polled and its worst case
+ * is the poll interval.
+ */
+export type InboundEmailSource = 'auto' | 'gmail' | 'imap';
+
 /** How the inbound-mail watcher receives new mail for a configured mailbox. */
 export type InboundEmailMode = 'idle' | 'poll' | 'auto';
 
@@ -184,6 +195,12 @@ export interface InboundEmailConfig {
    * type — the same convention `DaemonCalendarConfig.calendars` already uses.
    */
   accounts: string;
+  source: InboundEmailSource;
+  /** Gmail poll interval while an expectation is open. Ignored on IMAP. */
+  gmailPollSecondsExpecting: number;
+  /** Gmail poll interval with nothing pending. Ignored on IMAP. */
+  gmailPollSecondsIdle: number;
+  /** IMAP only: the Gmail source has no IDLE to hold and is always polled. */
   mode: InboundEmailMode;
   pollIntervalSeconds: number;
   idleReissueMinutes: number;
