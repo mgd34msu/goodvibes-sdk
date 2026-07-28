@@ -504,7 +504,7 @@ export class InboundMailStore {
           id: '(unreadable)',
           account: '(unknown)',
           mailbox: '(unknown)',
-          uid: 0,
+          messageRef: '(unreadable)',
           reason: 'file-unreadable',
           removedAt: now,
           note: `the inbound record file could not be read (${corrupt.detail}), so its `
