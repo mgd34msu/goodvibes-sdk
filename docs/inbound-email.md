@@ -1828,7 +1828,7 @@ overturn any of them.
   hand its lines to. It is also the concrete reason the sweep is not redundant
   with push: **push is an optimisation over polling, never a guarantee.**
 
-### 13.2 Three errors in this document, and the one cause behind them
+### 13.2 Errors found in this document, and the one cause behind them
 
 Recorded because the cause is more useful than the corrections, and because a
 design document that hides its own defects teaches the next reader to trust it
@@ -1880,6 +1880,61 @@ it as work.
 Knowing the failure mode did not prevent repeating it, in the same message that
 cited it. That is the honest lesson: this rule is not self-executing, and the
 only thing that actually catches the class is opening the file.
+
+### 13.3 A further six, found by implementing the document
+
+Reported by the lane that built the supervisor, and each verified before being
+recorded here. They are listed because §13.2's whole point is that a document
+which hides its own defects earns more trust than it deserves.
+
+1. **§2.1's `InboundMailContext` does not exist.** `grep` across `packages/` and
+   `test/` finds no `interface` or `type` by that name — only prose referring to
+   it. So of the three guards §2.1 claims, **one shipped**: the source-level ban
+   (`test/platform-email-inbound-backoff.test.ts`, "no file under
+   platform/email/inbound references a spawn capability"). The runtime
+   own-property assertion and the type-level non-assignability test do not
+   exist. §2.1's second half **did** ship — `'email'` is in
+   `CONVERSATION_GATE_DEFAULT_SURFACES`.
+2. **§3.5's "folds into the standard `ChannelStatusSnapshot`" is impossible.**
+   That type's `surface` field is `ChannelSurface`, which has no `'email'` — and
+   widening it is exactly what the `ManagedSurface` ruling forbids. The two
+   instructions contradicted each other; the constraint won, via
+   `Omit<ChannelStatusSnapshot, 'surface' | 'accountId'> & {…}`.
+3. **§9 names `resolveSurfaceDirectory(homeDirectory, 'daemon', …)`; the daemon
+   composition root reaches storage through `ShellPathService.resolveUserPath`.**
+   Same `~/.goodvibes/daemon/` destination, different named mechanism. The
+   implementation follows the composition root rather than the document.
+4. **§7.3's own rule was violated in shipped code.** `InboundNoticeStatus` was a
+   hand-written mirror of `SurfaceNoticeRefusal` missing `empty-text` and
+   `unsupported-delivery-surface` — so a notice refused for either was
+   **discarded by `validateInboundMailRecord` on the next load**, and "mail
+   arrived and could not be announced" vanished at restart. The section
+   forbidding restated types was itself undermined by a restated type.
+5. **§9.3 never says no Gmail message can be recorded at all.**
+   `validateInboundMailRecord` requires `uidValidity` and `uid` as positive
+   integers, which a Gmail message has neither of — so on the source automatic
+   selection makes primary, nothing is ever persisted. Same root as §13.2's
+   dedup-identity error, never carried into the record store. Being fixed.
+6. **§8's `notice.route: 'default'` names a concept the platform does not
+   have.** There is no owner-notice-route key and no route-manager notion of a
+   default. See below.
+
+#### The `default` notice route — an interpretation, flagged as one
+
+`default` is implemented as **the most recently seen route binding** (highest
+`lastSeenAt`): the channel the owner last actually reached the daemon on. With
+no bindings at all it resolves to `null`, the notice is refused as
+`no-route-binding`, recorded, and disclosed — **never sent somewhere invented.**
+
+This is a reading, not a specification, and it is the one place in this round
+where an interpretation was chosen rather than found. Two things make it safe
+enough to ship pending a ruling: it can only ever resolve to a channel he
+demonstrably uses, and the resolved route is **disclosed in
+`email.inbound.status`**, so where his notices will go is answerable before one
+is sent rather than discovered when one arrives somewhere unexpected.
+
+The alternative — a real `owner notice route` concept — is the better answer and
+is a larger change than this round. Recorded for a ruling.
 
 ## 14. Related
 
