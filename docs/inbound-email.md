@@ -440,9 +440,23 @@ Three runtime states, all distinct and all surfaced in health:
 
 | State | Meaning | Watcher |
 |---|---|---|
-| `healthy` | Full capability | Running, IDLE or polling |
-| `degraded` | Reduced but still serving its purpose — e.g. no `IDLE`, so polling | **Running.** Expectations still work |
-| `insufficient` | Cannot read the mailbox, or cannot fetch bodies | **Not running** |
+| `healthy` | Full capability — **including polling the owner explicitly configured** | Running, IDLE or polling |
+| `degraded` | Reduced in a way he did not choose — e.g. IDLE unavailable, so *falling back* to polling | **Running.** Expectations still work |
+| `insufficient` | Cannot read the mailbox, cannot fetch bodies, or cannot keep a durable cursor | **Not running** |
+
+**Configured polling is `healthy`, not `degraded`** (reason
+`polling-configured`). A permanent amber light on a working configuration the
+owner deliberately chose is the same alarm fatigue the notify-once rule exists
+to prevent — a health indicator that is always yellow is one nobody reads.
+*Fallback* polling stays `degraded`, because that genuinely is a reduced state
+he did not ask for. The distinction is between "this is what you chose" and
+"this is less than you asked for".
+
+**`uidvalidity-missing` is an `insufficient` reason.** A server that answers
+`EXAMINE` without reporting `UIDVALIDITY` cannot support the durable cursor §4
+depends on, so after a restart the watcher would either silently skip messages
+or silently redeliver them. Both are invisible, and both are worse than
+refusing. It refuses.
 
 **Ruling: `insufficient` refuses and notifies. It does not silently degrade.**
 `surfaces.email.inbound.onInsufficientCapability` defaults to
@@ -1274,6 +1288,28 @@ overturn any of them.
 13. **Card shapes in email are redacted, not refused.** §11.0. Refusing mail for
     containing long digit runs would break order confirmations, which are the
     consumer this capability exists to serve.
+14. **Configured polling reports `healthy`; only fallback polling is
+    `degraded`.** §3.4b.
+15. **`uidvalidity-missing` refuses rather than running without a durable
+    cursor.** §3.4b.
+
+### 13.1 Protocol quirks that cost real defects, recorded so they are not relearned
+
+- **`UID SEARCH UID 105:*` returns 104** when 104 is the highest UID present.
+  RFC 3501 ranges are unordered pairs, so the range inverts rather than being
+  empty. Trusting the result verbatim redelivers the newest message on every
+  pass, forever. Results are filtered above the cursor, once, in one place.
+- **A refused `FETCH` is `insufficient`; a refused `SEARCH` is only a
+  reconnect.** Search refusals are routinely transient, and stopping for an hour
+  over one turns a hiccup into silence.
+- **The IDLE re-issue also runs a cheap `UID SEARCH` sweep** — one per 27
+  minutes. It closes the hole where a push was never sent, or was sent while
+  nothing was listening. Push is an optimization over polling, never a guarantee
+  to be trusted alone.
+- **`fetchEnvelopes(uids, limit)` keeps only the last `limit` UIDs**, default
+  20, silently. A caller handing it a larger delta and then advancing a cursor
+  skips everything dropped. Being fixed at source; recorded because the shape of
+  the bug — a truncating default feeding a cursor — will recur elsewhere.
 
 ## 14. Related
 
