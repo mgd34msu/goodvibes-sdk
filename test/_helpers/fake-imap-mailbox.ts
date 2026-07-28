@@ -77,6 +77,8 @@ export interface FakeMailboxServer {
   readonly commands: readonly string[];
   /** How many client connections have been accepted. */
   readonly connectionCount: number;
+  /** How many client sockets are open RIGHT NOW. */
+  readonly liveConnections: number;
   /** UIDs currently in the mailbox. */
   readonly uids: readonly number[];
   /** Add a message; announce it with `* n EXISTS` to anyone connected. */
@@ -273,6 +275,7 @@ export async function makeFakeMailbox(
     get port() { return server.address.port; },
     get commands() { return commands; },
     get connectionCount() { return connectionCount; },
+    get liveConnections() { return live.size; },
     get uids() { return messages.map((message) => message.uid); },
     deliver: (subject = 'Hello') => add(subject, true),
     deliverQuietly: (subject = 'Hello') => add(subject, false),
