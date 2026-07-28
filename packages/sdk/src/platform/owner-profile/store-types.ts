@@ -96,7 +96,32 @@ export interface AppendProfileProseInput extends WriteIdentity {
 
 export interface ForgetProfileInput {
   readonly authority: AuthoritySurface;
+  /** A mechanical field, by id. Every line carrying it goes, history included. */
   readonly fieldId?: string | undefined;
+  /**
+   * A prose line, addressed by the section it sits under plus its exact text.
+   *
+   * Content rather than position, because the owner is a concurrent writer
+   * (docs/owner-profile.md §3, §9.2): an index is only valid against the exact
+   * file state that produced it, and between his `profile.read` and his
+   * `profile.forget` he can insert a line in his editor and shift everything
+   * below. A positional delete then removes the wrong line and reports success.
+   * Resolution happens inside the commit callback, against the projection the
+   * edit is actually computed from, so a replay after a concurrent edit
+   * re-resolves rather than reusing a stale answer.
+   */
+  readonly section?: string | undefined;
+  readonly text?: string | undefined;
+  /**
+   * INTERNAL. A raw line index, retained because the writer splices by index
+   * and the core module's own tests address lines that way.
+   *
+   * Deliberately NOT a parameter of any verb — `PROFILE_FORGET_INPUT_SCHEMA`
+   * does not accept it and `routes/owner-profile.ts` does not read it, so it is
+   * unreachable from the control plane. A caller that supplies it gets the
+   * non-replayable path: `commit` refuses rather than replaying, because the
+   * index named a document that no longer exists.
+   */
   readonly lineIndex?: number | undefined;
 }
 

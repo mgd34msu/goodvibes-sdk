@@ -71539,7 +71539,7 @@ Add one prose bullet to a section, carrying its provenance suffix. Same three-la
 
 #### `profile.forget`
 
-Delete a field line (or one line by index) and every retained history comment for that field. No tombstone, no deleted flag, no retention window — delete means delete. Forgetting something that was not there reports that honestly instead of returning success. Authority-gated exactly like a write: an injection that cannot add a fact must not be able to remove one.
+Delete a mechanical field and every retained history comment for it, or one prose line addressed by its section plus its exact text. Never by line position: the owner edits this file himself, so an index taken from an earlier read may name a different line by the time the delete arrives. Text that no longer matches removes nothing and says so, rather than deleting the nearest thing. No tombstone, no deleted flag, no retention window — delete means delete. Forgetting something that was not there reports that honestly instead of returning success. Authority-gated exactly like a write: an injection that cannot add a fact must not be able to remove one.
 
 - Title: `Forget Profile Line`
 - Source: `builtin`
@@ -71560,8 +71560,11 @@ Delete a field line (or one line by index) and every retained history comment fo
     "fieldId": {
       "type": "string"
     },
-    "lineIndex": {
-      "type": "number"
+    "section": {
+      "type": "string"
+    },
+    "text": {
+      "type": "string"
     },
     "authority": {
       "type": "string"

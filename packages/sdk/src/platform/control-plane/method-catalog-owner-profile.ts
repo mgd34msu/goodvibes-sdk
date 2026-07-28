@@ -194,9 +194,27 @@ export const PROFILE_APPEND_INPUT_SCHEMA = objectSchema({
   authority: STRING_SCHEMA,
 }, ['section', 'text', 'surface', 'said', 'authority']);
 
+/**
+ * A prose line is addressed by its CONTENT — its section plus its exact text —
+ * and never by its position. `lineIndex` is not a parameter here or of any
+ * other verb.
+ *
+ * §3: the owner is a concurrent writer. An index is only valid against the file
+ * state that produced it, and between his `profile.read` and his
+ * `profile.forget` he can add a line in his editor and shift everything below
+ * it. The positional delete then removes the wrong line and reports success —
+ * the false-receipt class §9.2 exists to prevent, arriving through the front
+ * door. No validation can catch it, because a stale index is perfectly
+ * well-formed; only content addressing closes it.
+ *
+ * `ProfileLine.lineIndex` stays in the in-memory model and in read output — the
+ * writer splices by it — but §5.1 is explicit that it describes the model, not
+ * the reachable surface.
+ */
 export const PROFILE_FORGET_INPUT_SCHEMA = objectSchema({
   fieldId: STRING_SCHEMA,
-  lineIndex: NUMBER_SCHEMA,
+  section: STRING_SCHEMA,
+  text: STRING_SCHEMA,
   authority: STRING_SCHEMA,
 }, ['authority']);
 
@@ -271,7 +289,7 @@ export const builtinGatewayOwnerProfileMethodDescriptors: readonly GatewayMethod
   methodDescriptor({
     id: 'profile.forget',
     title: 'Forget Profile Line',
-    description: 'Delete a field line (or one line by index) and every retained history comment for that field. No tombstone, no deleted flag, no retention window — delete means delete. Forgetting something that was not there reports that honestly instead of returning success. Authority-gated exactly like a write: an injection that cannot add a fact must not be able to remove one.',
+    description: 'Delete a mechanical field and every retained history comment for it, or one prose line addressed by its section plus its exact text. Never by line position: the owner edits this file himself, so an index taken from an earlier read may name a different line by the time the delete arrives. Text that no longer matches removes nothing and says so, rather than deleting the nearest thing. No tombstone, no deleted flag, no retention window — delete means delete. Forgetting something that was not there reports that honestly instead of returning success. Authority-gated exactly like a write: an injection that cannot add a fact must not be able to remove one.',
     category: 'profile',
     scopes: ['write:profile'],
     http: { method: 'POST', path: '/api/profile/forget' },

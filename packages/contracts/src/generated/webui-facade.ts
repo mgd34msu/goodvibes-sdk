@@ -15857,7 +15857,8 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
   "profile.forget": {
     "input": {
       "fieldId": "sample",
-      "lineIndex": 0,
+      "section": "sample",
+      "text": "sample",
       "authority": "sample"
     },
     "output": {
