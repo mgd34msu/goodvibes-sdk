@@ -107,6 +107,7 @@ export {
   ownerMessageForFailure,
   resolveIdleSupport,
   IMAP_DEFAULT_TIMEOUT_MS,
+  IMAP_MAX_FETCH_UIDS,
 } from './imap-client.js';
 
 export type {

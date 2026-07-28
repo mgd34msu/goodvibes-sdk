@@ -5,11 +5,13 @@
  */
 
 import { afterEach, describe, expect, test } from 'bun:test';
+import type { Socket } from 'node:net';
 import {
   ImapClient,
   imapConnection,
   ImapOpenError,
   imapQuoteCredential,
+  IMAP_MAX_FETCH_UIDS,
 } from '../packages/sdk/src/platform/email/imap-client.ts';
 import {
   describeEmailCapabilityFailure,
@@ -1204,5 +1206,335 @@ describe('ImapClient open() reports capability, and names its failures', () => {
     expect(notice?.reason).toBe('connection-failed');
     expect(notice?.terminal).toBe(false);
     expect(notice?.ownerMessage).toContain('retried automatically');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// A refusal means what it says, not what step it arrived at
+// ---------------------------------------------------------------------------
+
+describe('ImapClient refusal classification', () => {
+  let fakeServer: FakeServer | null = null;
+
+  afterEach(() => {
+    fakeServer?.close();
+    fakeServer = null;
+  });
+
+  /** Answers LOGIN and EXAMINE with whatever the test dictates. */
+  function refusing(options: {
+    readonly login?: (tag: string) => string;
+    readonly examine?: (tag: string) => string;
+  }): (sock: Socket) => void {
+    return (sock) => {
+      serverWrite(sock, '* OK IMAP4rev1 Fake Server ready');
+      sock.on('error', () => { /* teardown races are not failures */ });
+      sock.on('data', (chunk) => {
+        for (const line of chunk.toString().split(/\r\n/)) {
+          if (!line.trim()) continue;
+          const tag = line.split(' ')[0] ?? 'A0001';
+          if (line.includes('LOGIN')) {
+            serverWrite(sock, (options.login ?? ((t) => `${t} OK LOGIN completed`))(tag));
+          } else if (line.includes('EXAMINE')) {
+            serverWrite(sock, (options.examine ?? ((t) => `${t} OK [READ-ONLY] EXAMINE completed`))(tag));
+          }
+        }
+      });
+    };
+  }
+
+  async function failureOf(script: (sock: Socket) => void): Promise<ImapOpenError> {
+    fakeServer = await makeFakeImapServer(script);
+    const client = new ImapClient({
+      socket: await connectSocket(fakeServer.address.port),
+      username: 'user@example.test',
+      password: 'secret',
+      mailbox: 'Alias-42',
+      timeoutMs: 3000,
+    });
+    try {
+      await client.open();
+    } catch (err) {
+      return err as ImapOpenError;
+    }
+    throw new Error('open() unexpectedly succeeded');
+  }
+
+  test('a connection-limit refusal at LOGIN is about the server, and is not terminal', async () => {
+    // Gmail answers exactly this when a token already has fifteen IMAP
+    // connections open — which we reach on the owner's own account, because a
+    // watcher holds one permanently and every request opens another. Read as a
+    // rejected credential it stops the watcher forever, and the symptom is a
+    // mailbox that looks quiet while mail piles up behind it.
+    const failure = await failureOf(refusing({
+      login: (tag) => `${tag} NO [LIMIT] Too many simultaneous connections`,
+    }));
+
+    expect(failure.reason).toBe('server-unavailable');
+    expect(failure.terminal).toBe(false);
+    expect(failure.reason).not.toBe('authentication-rejected');
+    expect(failure.notice.ownerMessage).toContain('not a problem with the account');
+    expect(failure.serverMessage).toContain('Too many simultaneous connections');
+  });
+
+  test('a too-many-connections refusal with no response code is read from its wording', async () => {
+    const failure = await failureOf(refusing({
+      login: (tag) => `${tag} NO Too many connections for this account, try again later`,
+    }));
+
+    expect(failure.reason).toBe('server-unavailable');
+    expect(failure.terminal).toBe(false);
+  });
+
+  test('a rejected credential at LOGIN stays terminal', async () => {
+    const failure = await failureOf(refusing({
+      login: (tag) => `${tag} NO [AUTHENTICATIONFAILED] Invalid credentials (Failure)`,
+    }));
+
+    expect(failure.reason).toBe('authentication-rejected');
+    expect(failure.terminal).toBe(true);
+  });
+
+  test('a bad-credential refusal with no response code is still terminal', async () => {
+    const failure = await failureOf(refusing({
+      login: (tag) => `${tag} NO Invalid username or password`,
+    }));
+
+    expect(failure.reason).toBe('authentication-rejected');
+    expect(failure.terminal).toBe(true);
+  });
+
+  test('an ambiguous refusal at LOGIN defaults to non-terminal', async () => {
+    // Nothing in the refusal says what it was about. Guessing terminal stops
+    // mail until a human notices; guessing transient costs a retry. The
+    // asymmetry decides it.
+    const failure = await failureOf(refusing({
+      login: (tag) => `${tag} NO Request failed`,
+    }));
+
+    expect(failure.terminal).toBe(false);
+    expect(failure.reason).toBe('server-unavailable');
+  });
+
+  test('a capacity refusal at EXAMINE is also the server, not a missing folder', async () => {
+    const failure = await failureOf(refusing({
+      examine: (tag) => `${tag} NO [UNAVAILABLE] Server busy, please retry`,
+    }));
+
+    expect(failure.reason).toBe('server-unavailable');
+    expect(failure.terminal).toBe(false);
+  });
+
+  test('a folder that is not there is still a terminal mailbox failure', async () => {
+    const failure = await failureOf(refusing({
+      examine: (tag) => `${tag} NO [NONEXISTENT] Unknown Mailbox: Alias-42 (Failure)`,
+    }));
+
+    expect(failure.reason).toBe('mailbox-unavailable');
+    expect(failure.terminal).toBe(true);
+  });
+
+  test('a credential that cannot be sent at all is terminal without reaching the server', async () => {
+    fakeServer = await makeFakeImapServer(refusing({}));
+    const client = new ImapClient({
+      socket: await connectSocket(fakeServer.address.port),
+      username: 'user@example.test',
+      password: 'has\r\na newline',
+      timeoutMs: 3000,
+    });
+
+    let caught: unknown;
+    try {
+      await client.open();
+    } catch (err) {
+      caught = err;
+    }
+    const failure = caught as ImapOpenError;
+    expect(failure.reason).toBe('authentication-rejected');
+    expect(failure.terminal).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Nothing is silently dropped
+// ---------------------------------------------------------------------------
+
+describe('ImapClient.fetchEnvelopes asks for everything it is given', () => {
+  let fakeServer: FakeServer | null = null;
+
+  afterEach(() => {
+    fakeServer?.close();
+    fakeServer = null;
+  });
+
+  /** Answers a UID FETCH with one response per requested UID. */
+  function serveUids(): (sock: Socket) => void {
+    return (sock) => {
+      serverWrite(sock, '* OK IMAP4rev1 Fake Server ready');
+      sock.on('error', () => { /* teardown races are not failures */ });
+      sock.on('data', (chunk) => {
+        for (const line of chunk.toString().split(/\r\n/)) {
+          if (!line.trim()) continue;
+          const tag = line.split(' ')[0] ?? 'A0001';
+          if (line.includes('LOGIN')) serverWrite(sock, `${tag} OK LOGIN completed`);
+          else if (line.includes('EXAMINE')) serverWrite(sock, `${tag} OK [READ-ONLY] EXAMINE completed`);
+          else if (line.includes('UID FETCH')) {
+            const requested = (/UID FETCH ([\d,]+)/.exec(line)?.[1] ?? '')
+              .split(',')
+              .map((value) => parseInt(value, 10))
+              .filter((value) => value > 0);
+            requested.forEach((uid, index) => {
+              serverWrite(sock, `* ${index + 1} FETCH (UID ${uid} BODY[HEADER.FIELDS (SUBJECT)] `);
+              serverWrite(sock, `Subject: message ${uid}`);
+              serverWrite(sock, ')');
+            });
+            serverWrite(sock, `${tag} OK FETCH completed`);
+          }
+        }
+      });
+    };
+  }
+
+  async function open(port: number): Promise<ImapClient> {
+    const client = new ImapClient({
+      socket: await connectSocket(port),
+      username: 'user@example.test',
+      password: 'secret',
+      timeoutMs: 3000,
+    });
+    await client.open();
+    return client;
+  }
+
+  test('twenty-five UIDs come back as twenty-five envelopes, not twenty', async () => {
+    fakeServer = await makeFakeImapServer(serveUids());
+    const client = await open(fakeServer.address.port);
+    const uids = Array.from({ length: 25 }, (_, index) => 1000 + index);
+
+    const envelopes = await client.fetchEnvelopes(uids);
+
+    // The old shape defaulted to a limit of 20 and kept the LAST twenty, with
+    // no error and no signal.
+    expect(envelopes).toHaveLength(25);
+    expect(envelopes.map((envelope) => envelope.uid)).toEqual(uids);
+  });
+
+  test('a cursor advanced from the result cannot skip a message', async () => {
+    fakeServer = await makeFakeImapServer(serveUids());
+    const client = await open(fakeServer.address.port);
+    const delta = Array.from({ length: 25 }, (_, index) => 500 + index);
+
+    const envelopes = await client.fetchEnvelopes(delta);
+    const seen = new Set(envelopes.map((envelope) => envelope.uid));
+
+    // Every UID asked about was accounted for, so advancing to the highest one
+    // cannot step over a message that was never returned.
+    const missed = delta.filter((uid) => !seen.has(uid));
+    expect(missed).toEqual([]);
+    expect(Math.max(...envelopes.map((envelope) => envelope.uid)))
+      .toBe(Math.max(...delta));
+  });
+
+  test('more UIDs than one command can address is refused, never trimmed', async () => {
+    fakeServer = await makeFakeImapServer(serveUids());
+    const client = await open(fakeServer.address.port);
+    const tooMany = Array.from({ length: IMAP_MAX_FETCH_UIDS + 1 }, (_, index) => index + 1);
+
+    await expect(client.fetchEnvelopes(tooMany)).rejects.toThrow(/batches/);
+    // And it did not quietly return a subset instead.
+    await expect(client.fetchEnvelopes(tooMany)).rejects.toThrow(/refuses rather than/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// A command that stays in flight does not accumulate the mailbox
+// ---------------------------------------------------------------------------
+
+describe('ImapSession line retention', () => {
+  let fakeServer: FakeServer | null = null;
+
+  afterEach(() => {
+    fakeServer?.close();
+    fakeServer = null;
+  });
+
+  test('a long-lived command can decline to retain untagged lines it does not read', async () => {
+    let idleTag = '';
+    fakeServer = await makeFakeImapServer((sock) => {
+      serverWrite(sock, '* OK IMAP4rev1 Fake Server ready');
+      sock.on('error', () => { /* teardown races are not failures */ });
+      sock.on('data', (chunk) => {
+        for (const line of chunk.toString().split(/\r\n/)) {
+          if (!line.trim()) continue;
+          const tag = line.split(' ')[0] ?? 'A0001';
+          if (line.includes('LOGIN')) serverWrite(sock, `${tag} OK LOGIN completed`);
+          else if (line.includes('EXAMINE')) serverWrite(sock, `${tag} OK [READ-ONLY] EXAMINE completed`);
+          else if (line.includes('IDLE')) {
+            idleTag = tag;
+            serverWrite(sock, '+ idling');
+            // The traffic a busy mailbox produces during one IDLE round.
+            for (let n = 1; n <= 200; n += 1) serverWrite(sock, `* ${n} EXISTS`);
+          } else if (line.trim() === 'DONE') {
+            serverWrite(sock, `${idleTag} OK IDLE terminated`);
+          }
+        }
+      });
+    });
+
+    const client = new ImapClient({
+      socket: await connectSocket(fakeServer.address.port),
+      username: 'user@example.test',
+      password: 'secret',
+      timeoutMs: 3000,
+    });
+    await client.open();
+    const connection = imapConnection(client);
+
+    const seen: string[] = [];
+    connection.onUntagged((line) => { seen.push(line); });
+
+    const tag = await connection.sendCommand('IDLE', { retainUntagged: false });
+    await connection.awaitContinuation(tag);
+    await connection.waitForUntagged((line) => line === '* 200 EXISTS', { timeoutMs: 2000 });
+    await connection.sendRawLine('DONE');
+    const lines = await connection.awaitTag(tag);
+
+    // The subscriber got everything...
+    expect(seen.filter((line) => line.endsWith('EXISTS'))).toHaveLength(200);
+    // ...and the command retained none of it. Only its own completion, which
+    // is what `awaitTag` is for. A twenty-seven-minute IDLE on a busy mailbox
+    // would otherwise grow this array for the whole round.
+    expect(lines).toEqual([`${tag} OK IDLE terminated`]);
+  });
+
+  test('an ordinary command still collects its whole response', async () => {
+    fakeServer = await makeFakeImapServer((sock) => {
+      serverWrite(sock, '* OK IMAP4rev1 Fake Server ready');
+      sock.on('error', () => { /* teardown races are not failures */ });
+      sock.on('data', (chunk) => {
+        for (const line of chunk.toString().split(/\r\n/)) {
+          if (!line.trim()) continue;
+          const tag = line.split(' ')[0] ?? 'A0001';
+          if (line.includes('LOGIN')) serverWrite(sock, `${tag} OK LOGIN completed`);
+          else if (line.includes('EXAMINE')) serverWrite(sock, `${tag} OK [READ-ONLY] EXAMINE completed`);
+          else if (line.includes('SEARCH')) {
+            serverWrite(sock, '* SEARCH 11 12 13');
+            serverWrite(sock, `${tag} OK SEARCH completed`);
+          }
+        }
+      });
+    });
+
+    const client = new ImapClient({
+      socket: await connectSocket(fakeServer.address.port),
+      username: 'user@example.test',
+      password: 'secret',
+      timeoutMs: 3000,
+    });
+    await client.open();
+
+    // Opting out is per command; the default is unchanged, and a search that
+    // lost its untagged line would return nothing.
+    expect(await client.searchUnseen()).toEqual([11, 12, 13]);
   });
 });
