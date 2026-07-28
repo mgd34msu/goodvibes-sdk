@@ -48,7 +48,10 @@ function run(command: string, args: readonly string[]): void {
  * build still looks the same to whoever is watching it.
  */
 function buildAndListEmitted(): Set<string> {
-  const stdout = execFileSync('bunx', ['tsc', '-b', '--force', '--listEmittedFiles'], {
+  // tsconfig.build.json, not the root solution: the root also references
+  // tsconfig.tests.json, which emits nothing and whose diagnostics belong to
+  // `bun run typecheck`. A red test tree must not stop the packages building.
+  const stdout = execFileSync('bunx', ['tsc', '-b', '--force', 'tsconfig.build.json', '--listEmittedFiles'], {
     cwd: SDK_ROOT,
     encoding: 'utf8',
     // Errors still go straight to the terminal; only stdout is captured.
