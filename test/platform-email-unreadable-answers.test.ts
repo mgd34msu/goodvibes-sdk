@@ -47,6 +47,14 @@ interface FakeOptions {
   readonly headerless: readonly number[];
   /** UIDs the server answers nothing at all for — a genuine expunge. */
   readonly absent?: readonly number[];
+  /**
+   * UIDs answered with a ZERO-LENGTH literal: `BODY[HEADER.FIELDS (...)] {0}`.
+   *
+   * Legal, and what a real server sends for a message carrying NONE of the
+   * header fields that were asked for. RFC 3501 §4.3: `{0}` announces zero
+   * bytes to follow.
+   */
+  readonly zeroLiteral?: readonly number[];
 }
 
 function headerBlock(uid: number): string {
@@ -105,6 +113,15 @@ async function startFakeImap(options: FakeOptions): Promise<FakeServer> {
             if (options.headerless.includes(uid)) {
               // A response that names its UID and carries no header section.
               reply(`* ${String(seq)} FETCH (UID ${String(uid)})`);
+              continue;
+            }
+            if ((options.zeroLiteral ?? []).includes(uid)) {
+              socket.write(
+                `* ${String(seq)} FETCH (UID ${String(uid)} `
+                + `BODY[HEADER.FIELDS (FROM SUBJECT DATE MESSAGE-ID TO DELIVERED-TO `
+                + `X-ORIGINAL-TO AUTHENTICATION-RESULTS)] {0}\r\n`,
+              );
+              socket.write(')\r\n');
               continue;
             }
             const block = headerBlock(uid);
@@ -278,5 +295,48 @@ describe('readMessage tells "gone" apart from "could not be read"', () => {
     expect(detail?.uid).toBe(101);
     expect(detail?.from).toBe('sender101@sender.test');
     expect(detail?.subject).toBe('Message 101');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The zero-length literal
+// ---------------------------------------------------------------------------
+
+describe('a `{0}` header section is an empty answer, not a missing message', () => {
+  test('a message carrying none of the requested headers is still LISTED', async () => {
+    // `{0}` is legal and means "zero bytes follow" (RFC 3501 §4.3). A server
+    // answering BODY[HEADER.FIELDS (...)] for a message that has none of those
+    // fields sends exactly this.
+    //
+    // The defect it guards: the reader used to fall through to the literal
+    // branch, which leaves `literalBytesRemaining` at zero — so the owner line,
+    // the `* n FETCH (` line itself, was never routed and the whole response
+    // was dropped. A dropped response is indistinguishable from an expunge, so
+    // this message vanished from the page and, in the watcher, the cursor
+    // stepped straight over it.
+    fake = await startFakeImap({ present: [101, 102, 103], headerless: [], zeroLiteral: [102] });
+    const result = await buildService(fake.port).listInbox({ unreadOnly: false, limit: 10 });
+
+    // 102 is present — with nothing in it, which is the truth about it.
+    expect(result.messages.map((message) => message.uid)).toEqual([103, 102, 101]);
+    expect(result.messages.find((message) => message.uid === 102)?.subject).toBe('');
+    expect(result.total).toBe(3);
+  });
+
+  test('an empty answer is not reported as unreadable either', async () => {
+    // The response WAS read. Reporting it as unreadable would be the same
+    // conflation running the other way.
+    fake = await startFakeImap({ present: [101, 102], headerless: [], zeroLiteral: [102] });
+    const result = await buildService(fake.port).listInbox({ unreadOnly: false, limit: 10 });
+
+    expect(result.unreadable).toBeUndefined();
+  });
+
+  test('the messages around it are unaffected', async () => {
+    fake = await startFakeImap({ present: [101, 102, 103], headerless: [], zeroLiteral: [102] });
+    const result = await buildService(fake.port).listInbox({ unreadOnly: false, limit: 10 });
+
+    expect(result.messages.find((message) => message.uid === 103)?.subject).toBe('Message 103');
+    expect(result.messages.find((message) => message.uid === 101)?.from).toBe('sender101@sender.test');
   });
 });
