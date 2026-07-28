@@ -41,6 +41,7 @@
  * bun/node transport lives in the sibling `email/node` entry.
  */
 
+import { ensureMailboxConfigDefaults } from '../config/connector-config-sections.js';
 import { readSenderAuthentication } from '../google/sender-authentication.js';
 import { ImapClient } from './imap-client.js';
 import { SmtpClient, validateSmtpAddress, validateSmtpSubject } from './smtp-client.js';
@@ -57,21 +58,6 @@ import type { Socket } from 'node:net';
 // Email defaults injection
 // ---------------------------------------------------------------------------
 
-/** Email section defaults — injected once per ConfigManager instance. */
-const EMAIL_DEFAULTS = {
-  enabled: false,
-  imapHost: '',
-  imapPort: 993,
-  smtpHost: '',
-  smtpPort: 587,
-  smtpSecurity: 'auto' as const,
-  username: '',
-  passwordRef: '',
-  smtpPasswordRef: '',
-  fromAddress: '',
-  mailbox: '',
-  draftsMailbox: '',
-} as const;
 
 /**
  * Inject the email config section into the ConfigManager's live config
@@ -88,12 +74,9 @@ const EMAIL_DEFAULTS = {
 export function ensureEmailConfigDefaults(
   configManager: object,
 ): void {
-  // Use the internal config object via an opaque cast. This is the sanctioned
-  // extension pattern for categories absent from the built-in schema.
-  const cm = configManager as unknown as { config: Record<string, unknown> };
-  if (cm.config && !('email' in cm.config)) {
-    cm.config['email'] = { ...EMAIL_DEFAULTS };
-  }
+  // One definition of the section, in config/connector-config-sections.ts,
+  // beside the two sections it is always seeded alongside.
+  ensureMailboxConfigDefaults(configManager);
 }
 
 // ---------------------------------------------------------------------------

@@ -8,6 +8,7 @@
  */
 
 import { OAuthFlowError, refreshAccessToken, revokeToken } from './oauth-flow.js';
+import { daemonSecretKeyFor } from '../config/daemon-secret-keys.js';
 import type {
   CalendarProviderId,
   Clock,
@@ -21,14 +22,29 @@ import type {
 
 const DEFAULT_REFRESH_LEEWAY_MS = 60_000;
 
+/**
+ * The three key names, DERIVED rather than spelled out.
+ *
+ * They used to be built by hand as `GOODVIBES_CALENDAR_<PROVIDER>_TOKENS`. The
+ * string was right, and being right by coincidence was the problem: nothing
+ * connected it to a daemon-owned config path, so the routing did not recognise
+ * it as daemon-owned and a refresh token for a calendar the DAEMON polls on a
+ * schedule was filed in whichever surface silo ran `/calendar connect`. The
+ * connector's own client secret was daemon-owned by derivation, so the two
+ * halves of one connection lived in different tiers.
+ *
+ * `daemonSecretKeyFor` produces the identical string and, unlike a template
+ * literal, makes the credential daemon-owned by construction — the same call
+ * the Google connector's key set already uses.
+ */
 function tokenKey(provider: CalendarProviderId): string {
-  return `GOODVIBES_CALENDAR_${provider.toUpperCase()}_TOKENS`;
+  return daemonSecretKeyFor(`calendar.${provider}.tokens`);
 }
 function accountKey(provider: CalendarProviderId): string {
-  return `GOODVIBES_CALENDAR_${provider.toUpperCase()}_ACCOUNT`;
+  return daemonSecretKeyFor(`calendar.${provider}.account`);
 }
 function statusKey(provider: CalendarProviderId): string {
-  return `GOODVIBES_CALENDAR_${provider.toUpperCase()}_STATUS`;
+  return daemonSecretKeyFor(`calendar.${provider}.status`);
 }
 
 const ALL_PROVIDERS: readonly CalendarProviderId[] = ['google', 'microsoft'];

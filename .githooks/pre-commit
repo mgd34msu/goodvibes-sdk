@@ -30,6 +30,20 @@ if ! bun run line:check; then
   exit 1
 fi
 
+echo "[pre-commit] running credential-scope:check — a stored credential must be classified"
+
+if ! bun run credential-scope:check; then
+  echo "" >&2
+  echo "[pre-commit] BLOCKED: credential-scope-check failed (see above)." >&2
+  echo "" >&2
+  echo "  A credential nothing classifies is a credential nothing can route, and" >&2
+  echo "  that is how a capability ends up silently dead on the daemon while" >&2
+  echo "  working credentials sit on the same disk." >&2
+  echo "" >&2
+  echo "  Bypass (emergency only): git commit --no-verify" >&2
+  exit 1
+fi
+
 echo "[pre-commit] running api:check to catch public-surface drift"
 
 if ! bun run build >/dev/null 2>&1; then

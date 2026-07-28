@@ -75,7 +75,11 @@ function pipelineHarness(surfaceKind = 'ntfy') {
         traceId: `trace-${sequence}`,
         source: 'test',
         agentId,
-      }, { agentId, progress: text });
+        // Owner-audience: these tests are about dedup and delta, and their
+        // statuses are prose a reader can act on. Tool-activity progress is
+        // `operator` and never reaches this machinery — see
+        // channels/render-audience.ts.
+      }, { agentId, progress: text, audience: 'owner' });
       // The bus dispatch is async; let the pipeline's handler settle.
       await new Promise((resolve) => { setTimeout(resolve, 0); });
     },
