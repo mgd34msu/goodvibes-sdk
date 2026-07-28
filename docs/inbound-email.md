@@ -365,6 +365,33 @@ Correctness details that are easy to get wrong and are therefore specified:
   refreshed) and then stops, reports `failed` with the reason, and waits for a
   configuration change. Retrying a bad password on a backoff loop is how an
   account gets locked.
+- **A timeout is not a rejection.** A `LOGIN` that is never answered is a
+  network stall, not a bad credential, and classifying it by the phase it
+  timed out in would make it terminal and stop the watcher retrying forever.
+  Terminal classification is reserved for an actual server refusal (`NO` /
+  `BAD`) and for a credential string that cannot be sent at all.
+- **A terminal state is announced, not merely recorded.** A watcher that stops
+  permanently because the credential was genuinely rejected says so on an
+  authoritative channel, naming the exact step to fix it. Silent permanent
+  death is the failure this entire round exists to eliminate: an inbox that
+  looks quiet while verification mail piles up behind a locked door.
+
+### 3.4c Credentials are read at daemon scope
+
+The watcher runs in the daemon, so it reads credentials at **daemon scope**,
+and it does not fall back to a surface-local store.
+
+This is not hypothetical. The owner hit a live failure where the daemon
+reported no email capability at all, because `/google adopt` in the agent wrote
+credentials to the agent's own secret store while the daemon reads a different
+one. A separate round is fixing that generally — a credential the daemon needs
+is written at daemon scope regardless of which surface captured it.
+
+A fallback that searches a surface-local store would paper over exactly that
+bug, and would do it invisibly: the daemon would work on the machine where the
+agent happened to run and fail everywhere else, for reasons nobody could see.
+So a credential absent at daemon scope is a **capability failure with a named
+reason** (§3.4a), reported as such, not a cue to go looking elsewhere.
 
 ### 3.4a Capability sufficiency is a precondition, not a Gmail detail
 
