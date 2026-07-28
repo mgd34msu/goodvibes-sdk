@@ -60,7 +60,16 @@ export function imapMailboxConnectionPort(
       });
       let report;
       try {
-        report = await client.open();
+        const opened = await client.open();
+        // The connect-time body probe belongs HERE, not inside `open()`
+        // itself: `open()` is the general ImapClient entry, shared by every
+        // ad hoc caller (`EmailService` included), and probing on every one
+        // of those would spend a round trip nobody asked for. Only a
+        // long-lived watcher needs the answer before it opens an expectation
+        // nobody can satisfy, so only this wiring — the watcher's own
+        // connection port — calls it, and folds the result into the report
+        // the watcher actually reads.
+        report = { ...opened, bodyProbe: await client.probeBodyAccess() };
       } catch (error) {
         try {
           socket.destroy();

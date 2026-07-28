@@ -1537,4 +1537,159 @@ describe('ImapSession line retention', () => {
     // lost its untagged line would return nothing.
     expect(await client.searchUnseen()).toEqual([11, 12, 13]);
   });
+
+  // ---------------------------------------------------------------------
+  // probeBodyAccess() — the connect-time BODY.PEEK probe
+  // ---------------------------------------------------------------------
+  //
+  // `docs/inbound-email.md` §3.4d, "Scope sufficiency applies to both": IMAP
+  // has no declaration of body access the way a Gmail scope grant has, so the
+  // only way to know whether the server will hand over message content is to
+  // ask for some — once, at connect time, before an expectation for a real
+  // message could ever be opened.
+  describe('probeBodyAccess', () => {
+    function serverWithExamine(input: {
+      readonly exists: number;
+      readonly uidNext: number;
+      readonly onFetch: (sock: Socket, tag: string, rest: string) => void;
+    }): Promise<FakeServer> {
+      return makeFakeImapServer((sock) => {
+        serverWrite(sock, '* OK IMAP4rev1 Fake Server ready');
+        sock.on('data', (chunk) => {
+          for (const line of chunk.toString().split(/\r\n/)) {
+            if (!line.trim()) continue;
+            const tag = line.split(' ')[0] ?? 'A0001';
+            const rest = line.slice(tag.length + 1);
+            if (/^LOGIN\b/i.test(rest)) {
+              serverWrite(sock, `${tag} OK LOGIN completed`);
+            } else if (/^EXAMINE\b/i.test(rest)) {
+              serverWrite(sock, `* ${input.exists} EXISTS`);
+              serverWrite(sock, '* OK [UIDVALIDITY 42] UIDs valid');
+              serverWrite(sock, `* OK [UIDNEXT ${input.uidNext}] Predicted next UID`);
+              serverWrite(sock, `${tag} OK [READ-ONLY] EXAMINE completed`);
+            } else if (/^UID FETCH\b/i.test(rest)) {
+              input.onFetch(sock, tag, rest);
+            }
+          }
+        });
+      });
+    }
+
+    test('a non-empty mailbox that serves the byte yields probed-ok, in one round trip', async () => {
+      const fetchCommands: string[] = [];
+      fakeServer = await serverWithExamine({
+        exists: 1,
+        uidNext: 102,
+        onFetch: (sock, tag, rest) => {
+          fetchCommands.push(rest);
+          serverWrite(sock, '* 1 FETCH (UID 101 BODY[TEXT]<0.1> "H")');
+          serverWrite(sock, `${tag} OK FETCH completed`);
+        },
+      });
+
+      const client = new ImapClient({
+        socket: await connectSocket(fakeServer.address.port),
+        username: 'user@example.test',
+        password: 'secret',
+        timeoutMs: 3000,
+      });
+      await client.open();
+      const verdict = await client.probeBodyAccess();
+
+      expect(verdict).toEqual({ probed: true, ok: true });
+      // Exactly one round trip: one UID FETCH, addressed at the highest UID
+      // EXAMINE already reported (uidNext - 1), no separate SEARCH first.
+      expect(fetchCommands).toHaveLength(1);
+      expect(fetchCommands[0]).toContain('UID FETCH 101');
+      expect(fetchCommands[0]).toContain('BODY.PEEK[TEXT]');
+    });
+
+    test('a non-empty mailbox that refuses the fetch yields probed-refused, before any expectation could be opened', async () => {
+      const fetchCommands: string[] = [];
+      fakeServer = await serverWithExamine({
+        exists: 1,
+        uidNext: 102,
+        onFetch: (sock, tag, rest) => {
+          fetchCommands.push(rest);
+          serverWrite(sock, `${tag} NO Server error fetching message data`);
+        },
+      });
+
+      const client = new ImapClient({
+        socket: await connectSocket(fakeServer.address.port),
+        username: 'user@example.test',
+        password: 'secret',
+        timeoutMs: 3000,
+      });
+      await client.open();
+      const verdict = await client.probeBodyAccess();
+
+      expect(fetchCommands).toHaveLength(1);
+      if (!verdict.probed || verdict.ok) {
+        throw new Error(`expected a refused probe, got ${JSON.stringify(verdict)}`);
+      }
+      expect(verdict.detail).toContain('IMAP command failed');
+      expect(verdict.detail).toContain('Server error fetching message data');
+    });
+
+    test('an empty mailbox is not-probed: nothing is fetched, and it is not "ok"', async () => {
+      const fetchCommands: string[] = [];
+      fakeServer = await serverWithExamine({
+        exists: 0,
+        uidNext: 101,
+        onFetch: (_sock, _tag, rest) => {
+          fetchCommands.push(rest);
+        },
+      });
+
+      const client = new ImapClient({
+        socket: await connectSocket(fakeServer.address.port),
+        username: 'user@example.test',
+        password: 'secret',
+        timeoutMs: 3000,
+      });
+      await client.open();
+      const verdict = await client.probeBodyAccess();
+
+      // Genuinely nothing to probe: no FETCH was ever sent.
+      expect(fetchCommands).toHaveLength(0);
+      // Asserted on the discriminant directly, not via truthiness: a
+      // not-probed verdict and a probed-ok verdict must never be confusable
+      // by `if (verdict)` or `if (verdict.ok)` — the field does not exist
+      // here at all.
+      expect(verdict.probed).toBe(false);
+      expect('ok' in verdict).toBe(false);
+      expect(verdict).toEqual({ probed: false });
+      expect(verdict).not.toEqual({ probed: true, ok: true });
+    });
+
+    test('a plain open() never probes — the field reads not-probed until the inbound watcher asks', async () => {
+      fakeServer = await makeFakeImapServer((sock) => {
+        serverWrite(sock, '* OK IMAP4rev1 Fake Server ready');
+        sock.on('data', (chunk) => {
+          for (const line of chunk.toString().split(/\r\n/)) {
+            if (!line.trim()) continue;
+            const tag = line.split(' ')[0] ?? 'A0001';
+            if (line.includes('LOGIN')) serverWrite(sock, `${tag} OK LOGIN completed`);
+            else if (line.includes('EXAMINE')) {
+              serverWrite(sock, '* 5 EXISTS');
+              serverWrite(sock, '* OK [UIDVALIDITY 1] UIDs valid');
+              serverWrite(sock, '* OK [UIDNEXT 6] Predicted next UID');
+              serverWrite(sock, `${tag} OK [READ-ONLY] EXAMINE completed`);
+            }
+          }
+        });
+      });
+
+      const client = new ImapClient({
+        socket: await connectSocket(fakeServer.address.port),
+        username: 'user@example.test',
+        password: 'secret',
+        timeoutMs: 3000,
+      });
+      const report = await client.open();
+
+      expect(report.bodyProbe).toEqual({ probed: false });
+    });
+  });
 });
