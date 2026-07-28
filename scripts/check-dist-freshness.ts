@@ -14,6 +14,7 @@
  */
 
 import { readdirSync, statSync } from 'node:fs';
+import type { Dirent } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { packageDirs } from './release-shared.ts';
@@ -39,7 +40,7 @@ if (targetPackages.length === 0) {
  */
 function newestMtime(dir: string): number {
   let max = 0;
-  let entries: ReturnType<typeof readdirSync>;
+  let entries: Dirent[];
   try {
     entries = readdirSync(dir, { withFileTypes: true });
   } catch {

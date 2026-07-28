@@ -236,7 +236,7 @@ describe('WorkspaceCheckpointManager', () => {
     expect(allIds).toContain(cp1!.id);
     expect(allIds).toContain(racingCheckpoint!.id);
     expect(restoreResult.safetyCheckpointId).not.toBeNull();
-    expect(allIds).toContain(restoreResult.safetyCheckpointId);
+    expect(allIds).toContain(restoreResult.safetyCheckpointId!);
     expect(all).toHaveLength(3);
   });
 

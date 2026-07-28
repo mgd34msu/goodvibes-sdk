@@ -27,6 +27,7 @@ import {
 import { parseJsonRecord } from '../packages/sdk/src/platform/adapters/helpers.js';
 import { handleNtfySurfacePayload } from '../packages/sdk/src/platform/adapters/ntfy/index.js';
 import type { SurfaceAdapterContext } from '../packages/sdk/src/platform/adapters/types.js';
+import type { ChannelPolicyDecision } from '../packages/sdk/src/platform/channels/types.js';
 
 // ---------------------------------------------------------------------------
 // Minimal SurfaceAdapterContext stub — only the fields used by the paths under
@@ -60,7 +61,7 @@ function makeBlockingContext(): SurfaceAdapterContext {
       listSessions: () => [],
       bindAgent: async () => {},
     } as unknown as SurfaceAdapterContext['sessionBroker'],
-    authorizeSurfaceIngress: async () => ({ allowed: false, reason: 'test-blocked' }),
+    authorizeSurfaceIngress: async () => ({ allowed: false, reason: 'test-blocked' } as unknown as ChannelPolicyDecision),
     parseSurfaceControlCommand: () => null,
     performSurfaceControlCommand: async () => 'ok',
     performInteractiveSurfaceAction: async () => 'ok',
@@ -73,7 +74,7 @@ function makePassingContext(): SurfaceAdapterContext {
   const base = makeBlockingContext();
   return {
     ...base,
-    authorizeSurfaceIngress: async () => ({ allowed: true, reason: '' }),
+    authorizeSurfaceIngress: async () => ({ allowed: true, reason: '' } as unknown as ChannelPolicyDecision),
   };
 }
 

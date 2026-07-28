@@ -290,8 +290,8 @@ function makeDeps(overrides: Partial<ProcessRegistryDeps> = {}): ProcessRegistry
     watcherRegistry: { list: () => [], stopWatcher: () => null } as unknown as Pick<WatcherRegistry, 'list' | 'stopWatcher'>,
     workflow: {
       workflowManager: { list: () => [], cancel: () => false } as unknown as Pick<WorkflowManager, 'list' | 'cancel'>,
-      triggerManager: { list: () => [], remove: () => false, disable: () => false } as unknown as Pick<TriggerManager, 'list' | 'remove' | 'disable'>,
-      scheduleManager: { list: () => [], remove: () => false, disable: () => false } as unknown as Pick<ScheduleManager, 'list' | 'remove' | 'disable'>,
+      triggerManager: { list: () => [], remove: () => false, disable: () => false, enable: () => false } as unknown as Pick<TriggerManager, 'list' | 'remove' | 'disable' | 'enable'>,
+      scheduleManager: { list: () => [], remove: () => false, disable: () => false, enable: () => false } as unknown as Pick<ScheduleManager, 'list' | 'remove' | 'disable' | 'enable'>,
     },
     timers,
     now: () => T0,
@@ -322,16 +322,16 @@ describe('registry — observed rows fold in but never own a lifecycle', () => {
   });
 
   test('steer dispatches to the source; kill/interrupt are refused (stop never owned)', () => {
-    let steered: { id: string; text: string } | null = null;
+    const steeredCalls: Array<{ id: string; text: string }> = [];
     const source: Pick<ObservedAgentSource, 'list' | 'steer'> = {
       list: () => [observedRow()],
-      steer: (row, text) => { steered = { id: observedNodeId(row.pid), text }; return { queued: true, messageId: 'm1' }; },
+      steer: (row, text) => { steeredCalls.push({ id: observedNodeId(row.pid), text }); return { queued: true, messageId: 'm1' }; },
     };
     const registry = createProcessRegistry(makeDeps({ observedAgents: source }));
     const id = observedNodeId(500);
     const result = registry.steer(id, 'please rebase');
     expect(result.queued).toBe(true);
-    expect(steered).toEqual({ id, text: 'please rebase' });
+    expect(steeredCalls).toEqual([{ id, text: 'please rebase' }]);
     // Stop is never offered on a foreign row.
     expect(registry.kill(id)).toEqual([]);
     expect(registry.interrupt(id)).toBe(false);

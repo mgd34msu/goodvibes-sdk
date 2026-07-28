@@ -58,7 +58,7 @@ async function captureTurnCompleted(run: (bus: RuntimeEventBus) => void): Promis
   return seen[0]!;
 }
 
-const CTX = { sessionId: 's-1', source: 'test' };
+const CTX = { sessionId: 's-1', source: 'test', traceId: 'trace-1' };
 
 describe('emitTurnCompleted — metadata.memory.recordIds stamping', () => {
   test('a turn with memory injections serves the ids on the wire payload', async () => {

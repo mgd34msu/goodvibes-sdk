@@ -23,6 +23,7 @@ import { PersistentStore } from '../packages/sdk/src/platform/state/persistent-s
 import { RouteBindingManager } from '../packages/sdk/src/platform/channels/index.ts';
 import type { PermissionPromptRequest } from '../packages/sdk/src/platform/permissions/prompt.ts';
 import type { SharedSessionRecord } from '../packages/sdk/src/platform/control-plane/session-types.ts';
+import type { SurfaceKind } from '../packages/sdk/src/events/surfaces.ts';
 
 const disposables = trackDisposables();
 
@@ -51,7 +52,7 @@ function makeBroker(): SharedSessionBroker {
   );
 }
 
-function participant(surfaceId: string, surfaceKind = 'tui') {
+function participant(surfaceId: string, surfaceKind: SurfaceKind = 'tui') {
   return { surfaceKind, surfaceId, lastSeenAt: Date.now() };
 }
 

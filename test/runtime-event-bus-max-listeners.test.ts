@@ -53,14 +53,18 @@ describe('below-cap registration (production mode)', () => {
   });
 
   afterEach(() => {
-    process.env['NODE_ENV'] = origEnv;
+    if (origEnv === undefined) {
+      delete process.env['NODE_ENV'];
+    } else {
+      process.env['NODE_ENV'] = origEnv;
+    }
     warnSpy.mockRestore();
   });
 
   test('registering up to the cap does not warn', () => {
     const bus = new RuntimeEventBus();
     // Register exactly MAX_LISTENERS listeners (at the boundary, warn fires at > MAX)
-    registerN(bus, 'SESSION_CREATED', MAX_LISTENERS);
+    registerN(bus, 'SESSION_STARTED', MAX_LISTENERS);
     const warnCalls = warnSpy.mock.calls.filter(
       (c) => typeof c[0] === 'string' && (c[0] as string).includes('listener leak')
     );
@@ -79,17 +83,21 @@ describe('overflow in production mode — warn, allow', () => {
   });
 
   afterEach(() => {
-    process.env['NODE_ENV'] = origEnv;
+    if (origEnv === undefined) {
+      delete process.env['NODE_ENV'];
+    } else {
+      process.env['NODE_ENV'] = origEnv;
+    }
     warnSpy.mockRestore();
   });
 
   test('(cap+1)th on() registration succeeds and logs a warning', () => {
     const bus = new RuntimeEventBus();
     // Fill to cap
-    registerN(bus, 'SESSION_CREATED', MAX_LISTENERS);
+    registerN(bus, 'SESSION_STARTED', MAX_LISTENERS);
     // One more should warn but NOT throw
     expect(() => {
-      bus.on<SessionEvent>('SESSION_CREATED', makeListener() as Parameters<typeof bus.on>[1]);
+      bus.on<SessionEvent>('SESSION_STARTED', makeListener() as Parameters<typeof bus.on>[1]);
     }).not.toThrow();
     // Warning must have been emitted
     const leakWarns = warnSpy.mock.calls.filter(
@@ -124,24 +132,28 @@ describe('overflow in development mode — throw RangeError', () => {
   });
 
   afterEach(() => {
-    process.env['NODE_ENV'] = origEnv;
+    if (origEnv === undefined) {
+      delete process.env['NODE_ENV'];
+    } else {
+      process.env['NODE_ENV'] = origEnv;
+    }
   });
 
   test('on() throws RangeError on overflow in dev mode', () => {
     const bus = new RuntimeEventBus();
-    registerN(bus, 'SESSION_CREATED', MAX_LISTENERS);
+    registerN(bus, 'SESSION_STARTED', MAX_LISTENERS);
     expect(() => {
-      bus.on<SessionEvent>('SESSION_CREATED', makeListener() as Parameters<typeof bus.on>[1]);
+      bus.on<SessionEvent>('SESSION_STARTED', makeListener() as Parameters<typeof bus.on>[1]);
     }).toThrow(RangeError);
   });
 
   test('thrown RangeError message references the event type and cap', () => {
     const bus = new RuntimeEventBus();
-    registerN(bus, 'SESSION_CREATED', MAX_LISTENERS);
-    const caught = (() => { try { bus.on<SessionEvent>('SESSION_CREATED', makeListener() as Parameters<typeof bus.on>[1]); } catch (e) { return e; } })();
+    registerN(bus, 'SESSION_STARTED', MAX_LISTENERS);
+    const caught = (() => { try { bus.on<SessionEvent>('SESSION_STARTED', makeListener() as Parameters<typeof bus.on>[1]); } catch (e) { return e; } })();
     expect(caught).toBeInstanceOf(RangeError);
     const msg = (caught as RangeError).message;
-    expect(msg).toContain('SESSION_CREATED');
+    expect(msg).toContain('SESSION_STARTED');
     expect(msg).toContain(String(MAX_LISTENERS));
   });
 
@@ -158,17 +170,17 @@ describe('overflow in development mode — throw RangeError', () => {
   test('dev-mode throw does not leave the listener registered', () => {
     const cap = 3;
     const bus = new RuntimeEventBus({ maxListeners: cap });
-    registerN(bus, 'SESSION_CREATED', cap);
+    registerN(bus, 'SESSION_STARTED', cap);
     // This should throw — listener must NOT be added
     try {
-      bus.on<SessionEvent>('SESSION_CREATED', makeListener() as Parameters<typeof bus.on>[1]);
+      bus.on<SessionEvent>('SESSION_STARTED', makeListener() as Parameters<typeof bus.on>[1]);
     } catch {
       // expected
     }
     // Register one more valid listener — if state is corrupt this will also throw
     // when it should not.
     expect(() => {
-      bus.on<SessionEvent>('SESSION_CREATED', makeListener() as Parameters<typeof bus.on>[1]);
+      bus.on<SessionEvent>('SESSION_STARTED', makeListener() as Parameters<typeof bus.on>[1]);
     }).toThrow(RangeError); // still at cap+1 (cap+rejected+1 would overflow too)
   });
 });
@@ -183,7 +195,11 @@ describe('config override via maxListeners constructor option', () => {
   });
 
   afterEach(() => {
-    process.env['NODE_ENV'] = origEnv;
+    if (origEnv === undefined) {
+      delete process.env['NODE_ENV'];
+    } else {
+      process.env['NODE_ENV'] = origEnv;
+    }
     warnSpy.mockRestore();
   });
 
@@ -192,7 +208,7 @@ describe('config override via maxListeners constructor option', () => {
     const customCap = 200;
     const bus = new RuntimeEventBus({ maxListeners: customCap });
     // Register up to the default MAX (100) — should not warn with the higher cap
-    registerN(bus, 'SESSION_CREATED', MAX_LISTENERS);
+    registerN(bus, 'SESSION_STARTED', MAX_LISTENERS);
     const leakWarns = warnSpy.mock.calls.filter(
       (c) => typeof c[0] === 'string' && (c[0] as string).includes('listener leak')
     );
@@ -204,10 +220,10 @@ describe('config override via maxListeners constructor option', () => {
     const customCap = 150;
     const bus = new RuntimeEventBus({ maxListeners: customCap });
     // Fill to new cap exactly
-    registerN(bus, 'SESSION_CREATED', customCap);
+    registerN(bus, 'SESSION_STARTED', customCap);
     // One more should warn
     expect(() => {
-      bus.on<SessionEvent>('SESSION_CREATED', makeListener() as Parameters<typeof bus.on>[1]);
+      bus.on<SessionEvent>('SESSION_STARTED', makeListener() as Parameters<typeof bus.on>[1]);
     }).not.toThrow();
     const leakWarns = warnSpy.mock.calls.filter(
       (c) => typeof c[0] === 'string' && (c[0] as string).includes('listener leak')
@@ -219,9 +235,9 @@ describe('config override via maxListeners constructor option', () => {
     process.env['NODE_ENV'] = 'development';
     const smallCap = 5;
     const bus = new RuntimeEventBus({ maxListeners: smallCap });
-    registerN(bus, 'SESSION_CREATED', smallCap);
+    registerN(bus, 'SESSION_STARTED', smallCap);
     expect(() => {
-      bus.on<SessionEvent>('SESSION_CREATED', makeListener() as Parameters<typeof bus.on>[1]);
+      bus.on<SessionEvent>('SESSION_STARTED', makeListener() as Parameters<typeof bus.on>[1]);
     }).toThrow(RangeError);
   });
 });

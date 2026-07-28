@@ -9,6 +9,17 @@ import {
  * HTTP access log — verifies that instrumentedFetch records request/response
  * details and that the fetch-with-timeout module exports the correct surface.
  */
+
+/**
+ * Bun's `typeof fetch` carries a `preconnect` namespace member alongside the
+ * call signature (bun-types globals.d.ts). A plain replacement function has
+ * only the call signature, so it needs `preconnect` attached before it can
+ * stand in for `globalThis.fetch`.
+ */
+function stubFetch(impl: (input: string | URL | Request, init?: RequestInit) => Promise<Response>): typeof fetch {
+  return Object.assign(impl, { preconnect: () => {} });
+}
+
 describe('http access log', () => {
   const originalFetch = globalThis.fetch;
 
@@ -33,20 +44,20 @@ describe('http access log', () => {
       status: 200,
       headers: { 'content-type': 'application/json' },
     });
-    globalThis.fetch = async () => stubResponse;
+    globalThis.fetch = stubFetch(async () => stubResponse);
     const res = await instrumentedFetch('http://example.com/api');
     expect(res.status).toBe(200);
   });
 
   test('fetchWithTimeout returns the response and respects the caller signal', async () => {
     const stubResponse = new Response(JSON.stringify({ pong: true }), { status: 200 });
-    globalThis.fetch = async () => stubResponse;
+    globalThis.fetch = stubFetch(async () => stubResponse);
     const res = await fetchWithTimeout('http://example.com/ping', {}, 5_000);
     expect(res.status).toBe(200);
   });
 
   test('fetchWithTimeout aborts when the caller signal fires', async () => {
-    globalThis.fetch = async (_url, init) => {
+    globalThis.fetch = stubFetch(async (_url, init) => {
       // Simulate a slow fetch that respects the signal
       await new Promise<void>((_resolve, reject) => {
         const sig = init?.signal;
@@ -54,7 +65,7 @@ describe('http access log', () => {
         sig?.addEventListener('abort', () => reject(sig.reason), { once: true });
       });
       return new Response('', { status: 200 });
-    };
+    });
     const controller = new AbortController();
     controller.abort();
     const caught = await fetchWithTimeout('http://example.com/slow', { signal: controller.signal }, 5_000).catch(
@@ -65,7 +76,7 @@ describe('http access log', () => {
 
   test('fetchWithTimeout propagates AbortError when aborted mid-call', async () => {
     // real mid-call abort — signal fires AFTER fetch starts, not before.
-    globalThis.fetch = async (_url, init) => {
+    globalThis.fetch = stubFetch(async (_url, init) => {
       return new Promise<Response>((_resolve, reject) => {
         const sig = init?.signal;
         if (sig?.aborted) { reject(new DOMException('AbortError', 'AbortError')); return; }
@@ -73,7 +84,7 @@ describe('http access log', () => {
           reject(new DOMException('The operation was aborted.', 'AbortError'));
         }, { once: true });
       });
-    };
+    });
     const controller = new AbortController();
     const fetchPromise = fetchWithTimeout('http://example.com/slow', { signal: controller.signal }, 5_000);
     // Yield to allow the fetch to start before aborting

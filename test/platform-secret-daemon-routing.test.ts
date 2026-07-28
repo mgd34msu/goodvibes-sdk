@@ -53,7 +53,7 @@ import {
  * them, because a password whose host and user are stranded elsewhere is not a
  * usable credential either.
  */
-const DAEMON_MAIL_AND_CALENDAR_CREDENTIAL_PATHS: readonly string[] = [
+const DAEMON_MAIL_AND_CALENDAR_CREDENTIAL_PATHS: string[] = [
   'surfaces.email.password',
   'surfaces.email.imap.password',
   'surfaces.email.imapPassword',
@@ -62,7 +62,7 @@ const DAEMON_MAIL_AND_CALENDAR_CREDENTIAL_PATHS: readonly string[] = [
 ];
 
 /** Correctly-routed from the start. Kept here so a regression shows up as a diff, not a silence. */
-const ALREADY_CORRECT_PATHS: readonly string[] = [
+const ALREADY_CORRECT_PATHS: string[] = [
   'surfaces.slack.botToken',
   'email.passwordRef',
   'calendar.google.clientSecretRef',
@@ -222,7 +222,7 @@ describe('the real SecretsManager', () => {
  * trying to follow it.
  */
 describe('the keys the handlers tell operators to set are declared', () => {
-  const OPERATOR_FACING_KEYS: readonly string[] = [
+  const OPERATOR_FACING_KEYS: string[] = [
     // "CalDAV is not configured. Set surfaces.calendar.caldavUrl and surfaces.calendar.caldavUser."
     'surfaces.calendar.caldavUrl',
     'surfaces.calendar.caldavUser',
@@ -238,7 +238,7 @@ describe('the keys the handlers tell operators to set are declared', () => {
     'surfaces.email.imapPassword',
   ];
 
-  const schemaKeys = new Set(CONFIG_SCHEMA.map((setting) => setting.key));
+  const schemaKeys: Set<string> = new Set(CONFIG_SCHEMA.map((setting) => setting.key));
 
   test.each(OPERATOR_FACING_KEYS)('%s is in CONFIG_SCHEMA, so the settings modal can show it', (key) => {
     expect(

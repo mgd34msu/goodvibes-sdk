@@ -24,7 +24,7 @@ function makeProposal(items: ProposalWorkItem[], overrides: Partial<PlanProposal
   return {
     id: 'prop-1',
     task: 'Build the thing',
-    strategy: 'parallel',
+    strategy: 'cohort',
     rationale: 'because',
     phases: [{ id: 'phase-exec', title: 'Execute', order: 1 }],
     workItems: items,
@@ -101,7 +101,7 @@ describe('fromPlanProposal — provenance', () => {
     expect(spec.provenance).toEqual({
       decomposedBy: 'agent',
       proposalId: 'prop-1',
-      strategy: 'parallel',
+      strategy: 'cohort',
       agentCostUsd: 0.42,
       elapsedMs: 1234,
     });
@@ -110,7 +110,7 @@ describe('fromPlanProposal — provenance', () => {
   test('omits absent optional provenance fields (heuristic, no cost)', () => {
     const proposal = makeProposal([proposalItem({ id: 'a', title: 'A', brief: 'a' })], { decomposedBy: 'heuristic' });
     const spec = fromPlanProposal(proposal, cfg);
-    expect(spec.provenance).toEqual({ decomposedBy: 'heuristic', proposalId: 'prop-1', strategy: 'parallel' });
+    expect(spec.provenance).toEqual({ decomposedBy: 'heuristic', proposalId: 'prop-1', strategy: 'cohort' });
   });
 });
 

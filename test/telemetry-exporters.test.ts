@@ -27,7 +27,7 @@ describe('telemetry exporters', () => {
   test('console exporter logs stderr write failures', async () => {
     const warnings: Array<{ message: string; data?: Record<string, unknown> }> = [];
     logger.warn = ((message, data) => {
-      warnings.push({ message, data });
+      warnings.push({ message, ...(data !== undefined ? { data } : {}) });
     }) as LoggerWarn;
     stderr.write = () => {
       throw new Error('stderr unavailable');
@@ -47,7 +47,7 @@ describe('telemetry exporters', () => {
   test('local ledger exporter logs file write failures', async () => {
     const warnings: Array<{ message: string; data?: Record<string, unknown> }> = [];
     logger.warn = ((message, data) => {
-      warnings.push({ message, data });
+      warnings.push({ message, ...(data !== undefined ? { data } : {}) });
     }) as LoggerWarn;
     const dir = makeTempDir();
 
@@ -65,7 +65,7 @@ describe('telemetry exporters', () => {
   test('local ledger exporter logs serialization drops', async () => {
     const warnings: Array<{ message: string; data?: Record<string, unknown> }> = [];
     logger.warn = ((message, data) => {
-      warnings.push({ message, data });
+      warnings.push({ message, ...(data !== undefined ? { data } : {}) });
     }) as LoggerWarn;
     const dir = makeTempDir();
     const filePath = join(dir, 'spans.jsonl');
@@ -84,7 +84,7 @@ describe('telemetry exporters', () => {
   test('local ledger event recorder logs ledger write failures', () => {
     const warnings: Array<{ message: string; data?: Record<string, unknown> }> = [];
     logger.warn = ((message, data) => {
-      warnings.push({ message, data });
+      warnings.push({ message, ...(data !== undefined ? { data } : {}) });
     }) as LoggerWarn;
     const dir = makeTempDir();
 

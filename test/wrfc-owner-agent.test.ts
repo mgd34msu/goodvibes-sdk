@@ -40,6 +40,13 @@ describe('WRFC owner agent orchestration', () => {
     const bus = new RuntimeEventBus();
     const runRecords: AgentRecord[] = [];
     const messageBus = { registerAgent: () => {} };
+    // ConfigManager.get/getCategory are generic over `ConfigKey`/`keyof GoodVibesConfig`
+    // with a per-key conditional return type — a by-string-key stub can't be typed
+    // against that generic signature directly (TypeScript hits its own recursion
+    // limit, "Excessive stack depth", comparing two such generic conditional
+    // signatures). Casting the whole mock once at the boundary sidesteps that
+    // compiler limitation; ConfigManager's own methods work around the same
+    // expressiveness gap internally with `as ConfigValue<K>`.
     const configManager = {
       get: (key: string): unknown => {
         if (key === 'wrfc.scoreThreshold') return 9.9;
@@ -58,7 +65,7 @@ describe('WRFC owner agent orchestration', () => {
         }
         return undefined;
       },
-    };
+    } as unknown as Pick<import('../packages/sdk/src/platform/config/manager.js').ConfigManager, 'get' | 'getCategory'>;
 
     const manager = new AgentManager({
       archetypeLoader: { loadArchetype: () => null },
@@ -175,6 +182,13 @@ describe('WRFC owner agent orchestration', () => {
     const bus = new RuntimeEventBus();
     const runRecords: AgentRecord[] = [];
     const messageBus = { registerAgent: () => {} };
+    // ConfigManager.get/getCategory are generic over `ConfigKey`/`keyof GoodVibesConfig`
+    // with a per-key conditional return type — a by-string-key stub can't be typed
+    // against that generic signature directly (TypeScript hits its own recursion
+    // limit, "Excessive stack depth", comparing two such generic conditional
+    // signatures). Casting the whole mock once at the boundary sidesteps that
+    // compiler limitation; ConfigManager's own methods work around the same
+    // expressiveness gap internally with `as ConfigValue<K>`.
     const configManager = {
       get: (key: string): unknown => {
         if (key === 'wrfc.scoreThreshold') return 9.9;
@@ -193,7 +207,7 @@ describe('WRFC owner agent orchestration', () => {
         }
         return undefined;
       },
-    };
+    } as unknown as Pick<import('../packages/sdk/src/platform/config/manager.js').ConfigManager, 'get' | 'getCategory'>;
 
     const manager = new AgentManager({
       archetypeLoader: { loadArchetype: () => null },
@@ -230,7 +244,12 @@ describe('WRFC owner agent orchestration', () => {
     await flushMicrotasks(20);
 
     expect(chain.state).toBe('engineering');
-    expect(owner.status).toBe('running');
+    // Cast (workaround, not a narrowing bug fix): TS narrows `owner.status` to
+    // the literal 'completed' from the direct assignment above and does not
+    // account for the WrfcController reverting it back to 'running' via the
+    // AGENT_COMPLETED event handled during `flushMicrotasks` — a function-call
+    // side effect its flow analysis can't see.
+    expect(owner.status as AgentRecord['status']).toBe('running');
     expect(owner.completedAt).toBeUndefined();
     expect(owner.wrfcRole).toBe('owner');
     expect(owner.wrfcPhaseOrder).toBe(0);
@@ -245,6 +264,13 @@ describe('WRFC owner agent orchestration', () => {
     const bus = new RuntimeEventBus();
     const runRecords: AgentRecord[] = [];
     const messageBus = { registerAgent: () => {} };
+    // ConfigManager.get/getCategory are generic over `ConfigKey`/`keyof GoodVibesConfig`
+    // with a per-key conditional return type — a by-string-key stub can't be typed
+    // against that generic signature directly (TypeScript hits its own recursion
+    // limit, "Excessive stack depth", comparing two such generic conditional
+    // signatures). Casting the whole mock once at the boundary sidesteps that
+    // compiler limitation; ConfigManager's own methods work around the same
+    // expressiveness gap internally with `as ConfigValue<K>`.
     const configManager = {
       get: (key: string): unknown => {
         if (key === 'wrfc.scoreThreshold') return 9.9;
@@ -263,7 +289,7 @@ describe('WRFC owner agent orchestration', () => {
         }
         return undefined;
       },
-    };
+    } as unknown as Pick<import('../packages/sdk/src/platform/config/manager.js').ConfigManager, 'get' | 'getCategory'>;
 
     const manager = new AgentManager({
       archetypeLoader: { loadArchetype: () => null },
@@ -306,6 +332,13 @@ describe('WRFC owner agent orchestration', () => {
     const bus = new RuntimeEventBus();
     const runRecords: AgentRecord[] = [];
     const messageBus = { registerAgent: () => {} };
+    // ConfigManager.get/getCategory are generic over `ConfigKey`/`keyof GoodVibesConfig`
+    // with a per-key conditional return type — a by-string-key stub can't be typed
+    // against that generic signature directly (TypeScript hits its own recursion
+    // limit, "Excessive stack depth", comparing two such generic conditional
+    // signatures). Casting the whole mock once at the boundary sidesteps that
+    // compiler limitation; ConfigManager's own methods work around the same
+    // expressiveness gap internally with `as ConfigValue<K>`.
     const configManager = {
       get: (key: string): unknown => {
         if (key === 'wrfc.scoreThreshold') return 9.9;
@@ -324,7 +357,7 @@ describe('WRFC owner agent orchestration', () => {
         }
         return undefined;
       },
-    };
+    } as unknown as Pick<import('../packages/sdk/src/platform/config/manager.js').ConfigManager, 'get' | 'getCategory'>;
 
     const manager = new AgentManager({
       archetypeLoader: { loadArchetype: () => null },
@@ -371,6 +404,13 @@ describe('WRFC owner agent orchestration', () => {
   test('unexpected owner completion keeps the WRFC owner active until the chain is terminal', async () => {
     const bus = new RuntimeEventBus();
     const messageBus = { registerAgent: () => {} };
+    // ConfigManager.get/getCategory are generic over `ConfigKey`/`keyof GoodVibesConfig`
+    // with a per-key conditional return type — a by-string-key stub can't be typed
+    // against that generic signature directly (TypeScript hits its own recursion
+    // limit, "Excessive stack depth", comparing two such generic conditional
+    // signatures). Casting the whole mock once at the boundary sidesteps that
+    // compiler limitation; ConfigManager's own methods work around the same
+    // expressiveness gap internally with `as ConfigValue<K>`.
     const configManager = {
       get: (key: string): unknown => {
         if (key === 'wrfc.scoreThreshold') return 9.9;
@@ -389,7 +429,7 @@ describe('WRFC owner agent orchestration', () => {
         }
         return undefined;
       },
-    };
+    } as unknown as Pick<import('../packages/sdk/src/platform/config/manager.js').ConfigManager, 'get' | 'getCategory'>;
     const manager = new AgentManager({
       archetypeLoader: { loadArchetype: () => null },
       messageBus,

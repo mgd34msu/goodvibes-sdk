@@ -30,6 +30,16 @@ import { createHttpTransport } from '../packages/transport-http/dist/index.js';
 import { getOperatorContract } from '../packages/contracts/dist/index.js';
 import { GoodVibesSdkError } from '../packages/errors/dist/index.js';
 
+/**
+ * Bun's `typeof fetch` carries a `preconnect` namespace member alongside the
+ * call signature (bun-types globals.d.ts). A plain replacement function has
+ * only the call signature, so it needs `preconnect` attached before it can
+ * stand in wherever `typeof fetch` is required.
+ */
+function stubFetch(impl: () => Promise<Response>): typeof fetch {
+  return Object.assign(impl, { preconnect: () => {} });
+}
+
 /** Namespaces whose methods are consumed IN-PROCESS by a product (the TUI) via DirectTransport. */
 const DIRECT_TRANSPORT_NAMESPACES = ['sessions', 'fleet'] as const;
 
@@ -139,7 +149,7 @@ interface ParityViolation { readonly id: string; readonly reason: string }
 
 /** Contract-internal transport-declaration honesty (http AND ws legs). */
 function findTransportHonestyViolations(
-  methods: readonly { id: string; transport?: readonly string[]; http?: unknown; invokable?: boolean }[],
+  methods: readonly { id: string; transport?: readonly string[]; http?: unknown; invokable?: boolean | undefined }[],
 ): ParityViolation[] {
   const violations: ParityViolation[] = [];
   for (const m of methods) {
@@ -344,7 +354,7 @@ describe('S2b parity gate — DirectTransport routing (effect-based)', () => {
       const { client, calls } = makeSpyClient();
       const fn = (client.sessions as unknown as Record<string, (...a: unknown[]) => unknown>)[mappedMethod];
       expect(typeof fn, `${wireId} → sessions.${mappedMethod} must exist`).toBe('function');
-      void fn(...routing!.args);
+      void fn!(...routing!.args);
       // The RIGHT underlying method fired — a mis-wire (e.g. list→getSession) fails here.
       expect(calls, `${wireId} → sessions.${mappedMethod} must fire ${routing!.effect}`).toContain(routing!.effect);
     }
@@ -363,7 +373,7 @@ describe('S2b parity gate — DirectTransport routing (effect-based)', () => {
 
 describe('S2b parity gate — cataloged-but-not-invokable is honest', () => {
   test('a method with no http binding is not HTTP-invokable via the contract-driven client', () => {
-    const transport = createHttpTransport({ baseUrl: 'http://127.0.0.1:3210', fetch: async () => new Response('{}') });
+    const transport = createHttpTransport({ baseUrl: 'http://127.0.0.1:3210', fetch: stubFetch(async () => new Response('{}')) });
     const contract = {
       operator: { methods: [{ id: 'internal.only', description: 'internal', http: null }] },
     } as unknown as ReturnType<typeof getOperatorContract>;
@@ -372,7 +382,7 @@ describe('S2b parity gate — cataloged-but-not-invokable is honest', () => {
   });
 
   test('HTTP parity is automatic: listOperations enumerates every contract method', () => {
-    const transport = createHttpTransport({ baseUrl: 'http://127.0.0.1:3210', fetch: async () => new Response('{}') });
+    const transport = createHttpTransport({ baseUrl: 'http://127.0.0.1:3210', fetch: stubFetch(async () => new Response('{}')) });
     const contract = getOperatorContract();
     const client = createOperatorRemoteClient(transport, contract);
     expect(client.listOperations()).toHaveLength(contract.operator.methods.length);

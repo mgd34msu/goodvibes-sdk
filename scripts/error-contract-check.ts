@@ -66,7 +66,9 @@ function assert(condition: unknown, message: string): asserts condition {
 function extractSdkErrorKindUnion(source: string): string {
   const match = source.match(/export\s+type\s+SDKErrorKind\s*=\s*([\s\S]*?);/);
   assert(match, 'packages/errors/src/index.ts must export SDKErrorKind');
-  return match[1];
+  const union = match[1];
+  assert(union !== undefined, 'SDKErrorKind export matched but its union body did not capture');
+  return union;
 }
 
 function assertErrorKindContract(): void {

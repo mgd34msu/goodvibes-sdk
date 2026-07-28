@@ -9,10 +9,10 @@ describe('retry events', () => {
 
   test('emitTransportRetryScheduled emits on the transport channel', async () => {
     const { emitTransportRetryScheduled } = await import('../packages/sdk/src/platform/runtime/emitters/transport.js');
-    const { EventEmitter } = await import('node:events');
-    const bus = new EventEmitter() as Parameters<typeof emitTransportRetryScheduled>[0];
+    const { RuntimeEventBus } = await import('../packages/sdk/src/platform/runtime/events/index.js');
+    const bus = new RuntimeEventBus();
     const events: unknown[] = [];
-    bus.on('transport', (e: unknown) => events.push(e));
+    bus.onDomain('transport', (e: unknown) => events.push(e));
     emitTransportRetryScheduled(bus, { source: 'test', traceId: 'trace-1' } as Parameters<typeof emitTransportRetryScheduled>[1], {
       transportId: 'tcp-1',
       attempt: 1,
@@ -20,6 +20,10 @@ describe('retry events', () => {
       backoffMs: 1000,
       reason: 'connection refused',
     });
+    // RuntimeEventBus.emit() defers each listener to its own queueMicrotask
+    // (contract pinned by runtime-event-bus-dispatch-contract.test.ts) — flush
+    // the microtask queue before asserting the listener has run.
+    await Promise.resolve();
     expect(events.length).toBe(1);
     const envelope = events[0] as { payload: { type: string; backoffMs: number } };
     expect(envelope.payload.type).toBe('TRANSPORT_RETRY_SCHEDULED');
@@ -34,14 +38,17 @@ describe('retry events', () => {
     let callCount = 0;
     const transport = createHttpJsonTransport({
       baseUrl: 'https://example.com',
-      fetchImpl: async () => {
-        callCount += 1;
-        if (callCount === 1) {
-          return new Response(JSON.stringify({ error: 'unavailable' }), { status: 503 });
-        }
-        return new Response(JSON.stringify({ ok: true }), { status: 200 });
-      },
-      retry: { maxAttempts: 2, initialDelayMs: 0, maxDelayMs: 0 },
+      fetchImpl: Object.assign(
+        async () => {
+          callCount += 1;
+          if (callCount === 1) {
+            return new Response(JSON.stringify({ error: 'unavailable' }), { status: 503 });
+          }
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        },
+        { preconnect: (_url: string | URL, _options?: { dns?: boolean; tcp?: boolean; http?: boolean; https?: boolean }) => {} },
+      ),
+      retry: { maxAttempts: 2, baseDelayMs: 0, maxDelayMs: 0 },
       onRetryScheduled: (info) => { scheduledEvents.push(info); },
       onRetryExecuted: (info) => { executedEvents.push(info); },
     });
@@ -54,15 +61,17 @@ describe('retry events', () => {
 
   test('emitTransportRetryExecuted emits on the transport channel', async () => {
     const { emitTransportRetryExecuted } = await import('../packages/sdk/src/platform/runtime/emitters/transport.js');
-    const { EventEmitter } = await import('node:events');
-    const bus = new EventEmitter() as Parameters<typeof emitTransportRetryExecuted>[0];
+    const { RuntimeEventBus } = await import('../packages/sdk/src/platform/runtime/events/index.js');
+    const bus = new RuntimeEventBus();
     const events: unknown[] = [];
-    bus.on('transport', (e: unknown) => events.push(e));
+    bus.onDomain('transport', (e: unknown) => events.push(e));
     emitTransportRetryExecuted(bus, { source: 'test', traceId: 'trace-1' } as Parameters<typeof emitTransportRetryExecuted>[1], {
       transportId: 'tcp-1',
       attempt: 2,
       maxAttempts: 3,
     });
+    // See note above: RuntimeEventBus defers listener dispatch to queueMicrotask.
+    await Promise.resolve();
     expect(events.length).toBe(1);
     const envelope = events[0] as { payload: { type: string; attempt: number } };
     expect(envelope.payload.type).toBe('TRANSPORT_RETRY_EXECUTED');

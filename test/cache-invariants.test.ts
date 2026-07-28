@@ -22,7 +22,10 @@ import { ControlPlaneGateway } from '../packages/sdk/src/platform/control-plane/
 // ---------------------------------------------------------------------------
 // ProviderRegistry has a heavy constructor; we test the invariants by importing
 // the class directly from source and constructing a minimal stub.
-import { ProviderRegistry } from '../packages/sdk/src/platform/providers/registry.js';
+import { ProviderRegistry, type ProviderRegistryOptions } from '../packages/sdk/src/platform/providers/registry.js';
+import type { DiscoveredServer } from '../packages/sdk/src/platform/discovery/scanner.js';
+import type { DomainDispatch } from '../packages/sdk/src/platform/runtime/store/index.js';
+import type { ControlPlaneDomainState } from '../packages/sdk/src/platform/runtime/store/domains/control-plane.js';
 import { ProviderCapabilityRegistry } from '../packages/sdk/src/platform/providers/capabilities.js';
 
 // Each registry gets its own persistence root: setModelContextCap persists
@@ -216,9 +219,9 @@ describe('I2(c): recentEvents ring buffer ordering', () => {
     const events = (gw as unknown as { recentEvents: Array<{ event: string }> }).recentEvents;
     expect(events.length).toBe(3);
     // newest first: event-2, event-1, event-0
-    expect(events[0].event).toBe('test-event-2');
-    expect(events[1].event).toBe('test-event-1');
-    expect(events[2].event).toBe('test-event-0');
+    expect(events[0]!.event).toBe('test-event-2');
+    expect(events[1]!.event).toBe('test-event-1');
+    expect(events[2]!.event).toBe('test-event-0');
   });
 
   test('count >= cap (600 events in 500-slot ring) — newest-first, length capped at 500', () => {
@@ -228,8 +231,8 @@ describe('I2(c): recentEvents ring buffer ordering', () => {
     const events = (gw as unknown as { recentEvents: Array<{ event: string }> }).recentEvents;
     expect(events.length).toBe(500);
     // newest first: event-599, event-598, ...
-    expect(events[0].event).toBe('test-event-599');
-    expect(events[499].event).toBe('test-event-100');
+    expect(events[0]!.event).toBe('test-event-599');
+    expect(events[499]!.event).toBe('test-event-100');
   });
 
   test('getSnapshot totals.recentEvents uses _recentEventsCount (O(1), no array alloc)', () => {

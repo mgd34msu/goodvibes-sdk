@@ -56,17 +56,18 @@ describe('WorkspaceCheckpointManager retention/gc', () => {
     const gitDir = join(root, '.goodvibes', 'checkpoints', 'git');
     const beforeBytes = objectStoreBytes(root, gitDir);
 
+    expect(ids).toHaveLength(5);
     const result = await manager.gc();
     expect(result.deletedCount).toBe(2);
-    expect(new Set(result.deletedIds)).toEqual(new Set([ids[0], ids[1]]));
+    expect(new Set(result.deletedIds)).toEqual(new Set([ids[0]!, ids[1]!]));
 
     const remaining = await manager.list();
-    expect(remaining.map((c) => c.id).sort()).toEqual([ids[2], ids[3], ids[4]].sort());
+    expect(remaining.map((c) => c.id).sort()).toEqual([ids[2]!, ids[3]!, ids[4]!].sort());
 
-    for (const prunedId of [ids[0], ids[1]]) {
+    for (const prunedId of [ids[0]!, ids[1]!]) {
       expect(() => runGit(root, ['--git-dir', gitDir, 'rev-parse', '--verify', '--quiet', `${CHECKPOINT_REF_PREFIX}${prunedId}`])).toThrow();
     }
-    for (const survivingId of [ids[2], ids[3], ids[4]]) {
+    for (const survivingId of [ids[2]!, ids[3]!, ids[4]!]) {
       expect(() => runGit(root, ['--git-dir', gitDir, 'rev-parse', '--verify', '--quiet', `${CHECKPOINT_REF_PREFIX}${survivingId}`])).not.toThrow();
     }
 

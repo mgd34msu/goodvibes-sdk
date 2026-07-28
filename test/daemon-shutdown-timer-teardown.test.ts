@@ -124,7 +124,7 @@ function siteOf(stack: string): string {
     if (!match) continue;
     if (/daemon-shutdown-timer-teardown|node:internal/.test(line)) continue;
     const fn = /at\s+(?:async\s+)?([^\s(]+)\s*\(/.exec(line)?.[1] ?? '';
-    const file = match[1].replace(/^.*\/(test|packages|src)\//, '$1/');
+    const file = (match[1] ?? '').replace(/^.*\/(test|packages|src)\//, '$1/');
     return fn ? `${fn} (${file})` : file;
   }
   return '<unknown site>';

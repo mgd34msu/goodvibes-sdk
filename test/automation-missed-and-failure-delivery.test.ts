@@ -217,7 +217,7 @@ describe('runs source filters by "since" (item 3)', () => {
       { id: 'spanning', jobId: 'j', status: 'failed', queuedAt: 1_000, endedAt: 9_000 },
       { id: 'recent', jobId: 'j', status: 'missed', queuedAt: 8_000 },
     ]);
-    const res = handlers.getAutomationRuns(new URL('http://d/api/automation/runs?since=5000'));
+    const res = await handlers.getAutomationRuns(new URL('http://d/api/automation/runs?since=5000'));
     const body = await res.json() as { runs: { id: string }[] };
     expect(body.runs.map((r) => r.id).sort()).toEqual(['recent', 'spanning']);
   });
@@ -227,7 +227,7 @@ describe('runs source filters by "since" (item 3)', () => {
       { id: 'a', jobId: 'j', status: 'completed', queuedAt: 1_000 },
       { id: 'b', jobId: 'j', status: 'failed', queuedAt: 2_000 },
     ]);
-    const res = handlers.getAutomationRuns(new URL('http://d/api/automation/runs'));
+    const res = await handlers.getAutomationRuns(new URL('http://d/api/automation/runs'));
     const body = await res.json() as { runs: { id: string }[] };
     expect(body.runs.map((r) => r.id).sort()).toEqual(['a', 'b']);
   });

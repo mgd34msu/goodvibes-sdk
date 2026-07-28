@@ -66,7 +66,7 @@ describe('config persists only user-set keys', () => {
     const configDir = tempConfigDir();
     // Seed a file the OLD whole-config writer would have produced: every
     // default frozen on disk, plus one genuine user change.
-    const frozen = structuredClone(DEFAULT_CONFIG) as Record<string, Record<string, unknown>>;
+    const frozen = structuredClone(DEFAULT_CONFIG) as unknown as Record<string, Record<string, unknown>>;
     frozen.provider = { ...frozen.provider, model: 'anthropic:my-model' };
     writeFileSync(join(configDir, 'settings.json'), JSON.stringify(frozen, null, 2) + '\n', 'utf-8');
 
@@ -87,7 +87,7 @@ describe('config persists only user-set keys', () => {
       if (domain === 'provider') continue;
       // No surviving domain is byte-identical to its full default (that would
       // be a frozen default left behind).
-      expect(value).not.toEqual((DEFAULT_CONFIG as Record<string, unknown>)[domain]);
+      expect(value).not.toEqual((DEFAULT_CONFIG as unknown as Record<string, unknown>)[domain]);
     }
   });
 

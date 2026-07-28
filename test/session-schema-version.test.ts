@@ -85,7 +85,7 @@ describe('SessionManager schemaVersion', () => {
     const mutableLogger = logger as unknown as {
       warn(msg: string, data?: Record<string, unknown>): void;
     };
-    mutableLogger.warn = (msg, data) => warnings.push({ message: msg, data });
+    mutableLogger.warn = (msg, data) => warnings.push({ message: msg, ...(data !== undefined ? { data } : {}) });
 
     try {
       const mgr = new SessionManager('/unused', { sessionsDir: dir });

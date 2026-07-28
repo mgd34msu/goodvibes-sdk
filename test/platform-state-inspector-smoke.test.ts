@@ -32,7 +32,7 @@ describe('platform/runtime/inspection/state-inspector — behavior smoke', () =>
 
   test('subscribe returns an object with id and unsubscribe function', () => {
     const inspector = createStateInspector({ domains: [] });
-    const sub = inspector.subscribe(() => {});
+    const sub = inspector.subscribe(() => {}, 'smoke-test-subscriber');
     expect(typeof sub.id).toBe('string');
     // Exercise unsubscribe without error
     sub.unsubscribe();

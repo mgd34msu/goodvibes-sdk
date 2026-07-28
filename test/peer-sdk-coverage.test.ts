@@ -19,10 +19,20 @@ function createJsonResponse(body: unknown, status = 200): Response {
   });
 }
 
+/**
+ * Bun's `typeof fetch` carries a `preconnect` namespace member alongside the
+ * call signature (bun-types globals.d.ts). A plain replacement function has
+ * only the call signature, so it needs `preconnect` attached before it can
+ * stand in wherever `typeof fetch` is required.
+ */
+function stubFetch(impl: (input: string | URL | Request, init?: RequestInit) => Promise<Response>): typeof fetch {
+  return Object.assign(impl, { preconnect: () => {} });
+}
+
 function makeTransport(fetch: (input: string | URL | Request, init?: RequestInit) => Promise<Response>) {
   return createHttpTransport({
     baseUrl: 'http://127.0.0.1:3210',
-    fetch,
+    fetch: stubFetch(fetch),
   });
 }
 
@@ -98,12 +108,12 @@ describe('createPeerRemoteClient — shorthand methods', () => {
     const sdk = createPeerSdk({
       baseUrl: 'http://127.0.0.1:3210',
       validateResponses: false,
-      fetch: async (input, _init) => {
+      fetch: stubFetch(async (input, _init) => {
         calls.push(String(input));
         return createJsonResponse({ verified: true });
-      },
+      }),
     });
-    const result = await sdk.pairing.verify({ requestId: 'pair-1', code: '123456' });
+    const result = await sdk.pairing.verify({ requestId: 'pair-1', challenge: '123456' });
     expect(calls[0]).toContain('pair');
     expect(result).toMatchObject({ verified: true });
   });
@@ -113,10 +123,10 @@ describe('createPeerRemoteClient — shorthand methods', () => {
     const sdk = createPeerSdk({
       baseUrl: 'http://127.0.0.1:3210',
       validateResponses: false,
-      fetch: async (input, _init) => {
+      fetch: stubFetch(async (input, _init) => {
         calls.push(String(input));
         return createJsonResponse({ ok: true });
-      },
+      }),
     });
     const result = await sdk.peer.heartbeat({ peerId: 'node-a' });
     expect(calls[0]).toContain('heartbeat');
@@ -128,10 +138,10 @@ describe('createPeerRemoteClient — shorthand methods', () => {
     const sdk = createPeerSdk({
       baseUrl: 'http://127.0.0.1:3210',
       validateResponses: false,
-      fetch: async (input, _init) => {
+      fetch: stubFetch(async (input, _init) => {
         calls.push(String(input));
         return createJsonResponse({ work: null });
-      },
+      }),
     });
     const result = await sdk.work.pull({ peerId: 'node-a' });
     expect(calls[0]).toContain('work');
@@ -143,10 +153,10 @@ describe('createPeerRemoteClient — shorthand methods', () => {
     const sdk = createPeerSdk({
       baseUrl: 'http://127.0.0.1:3210',
       validateResponses: false,
-      fetch: async (input, _init) => {
+      fetch: stubFetch(async (input, _init) => {
         calls.push(String(input));
         return createJsonResponse({ snapshot: {} });
-      },
+      }),
     });
     const result = await sdk.operator.snapshot();
     expect(calls[0]).toContain('remote');
@@ -159,7 +169,7 @@ describe('createPeerSdk — getOperation is accessible', () => {
     const sdk = createPeerSdk({
       baseUrl: 'http://127.0.0.1:3210',
       validateResponses: false,
-      fetch: async () => createJsonResponse({ ok: true }),
+      fetch: stubFetch(async () => createJsonResponse({ ok: true })),
     });
     const endpoint = sdk.getOperation('pair.request');
     expect(endpoint.id).toBe('pair.request');

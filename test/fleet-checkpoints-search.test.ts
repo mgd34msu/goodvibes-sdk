@@ -259,9 +259,9 @@ describe('fleet/checkpoints/search — checkpoints.list / create / diff / restor
     expect(created.status).toBe(200);
     expect(created.json.noop).toBe(false);
     expect(created.json.checkpoint).not.toBeNull();
-    expect(created.json.checkpoint.kind).toBe('manual');
-    expect(created.json.checkpoint.label).toBe('fleet-search test checkpoint');
-    const checkpointId: string = created.json.checkpoint.id;
+    expect(created.json.checkpoint!.kind).toBe('manual');
+    expect(created.json.checkpoint!.label).toBe('fleet-search test checkpoint');
+    const checkpointId: string = created.json.checkpoint!.id;
 
     const list = await invokeVerb<CheckpointsListResponse>('checkpoints.list');
     expect(list.status).toBe(200);
@@ -295,7 +295,8 @@ describe('fleet/checkpoints/search — checkpoints.list / create / diff / restor
     const created = await invokeVerb<CheckpointsCreateResponse>('checkpoints.create', { body: { kind: 'manual', label: 'diff base' } });
     expect(created.status).toBe(200);
     expect(created.json.noop).toBe(false);
-    const checkpointId: string = created.json.checkpoint.id;
+    expect(created.json.checkpoint).not.toBeNull();
+    const checkpointId: string = created.json.checkpoint!.id;
 
     // Modify an EXISTING already-checkpointed (tracked) file rather than
     // creating a brand-new untracked one: a plain `git diff <commit>`
@@ -337,7 +338,8 @@ describe('fleet/checkpoints/search — checkpoints.list / create / diff / restor
     touchWorkspaceFile();
     const created = await invokeVerb<CheckpointsCreateResponse>('checkpoints.create', { body: { kind: 'manual', label: 'refusal target', paths: [] } });
     expect(created.status).toBe(200);
-    const checkpointId: string = created.json.checkpoint.id;
+    expect(created.json.checkpoint).not.toBeNull();
+    const checkpointId: string = created.json.checkpoint!.id;
 
     const refused = await invokeVerb<CheckpointsRestoreResponse>('checkpoints.restore', { body: { id: checkpointId, safetyCheckpoint: false } });
     // Honest, actionable, NON-destructive: a 200 body, not a thrown error.
@@ -357,7 +359,8 @@ describe('fleet/checkpoints/search — checkpoints.list / create / diff / restor
     const created = await invokeVerb<CheckpointsCreateResponse>('checkpoints.create', { body: { kind: 'manual', label: 'confirm target', paths: [] } });
     expect(created.status).toBe(200);
     expect(created.json.noop).toBe(false);
-    const checkpointId: string = created.json.checkpoint.id;
+    expect(created.json.checkpoint).not.toBeNull();
+    const checkpointId: string = created.json.checkpoint!.id;
 
     const restored = await invokeVerb<CheckpointsRestoreResponse>('checkpoints.restore', { body: { id: checkpointId, safetyCheckpoint: false, confirm: true } });
     expect(restored.status).toBe(200);
@@ -372,7 +375,8 @@ describe('fleet/checkpoints/search — checkpoints.list / create / diff / restor
     touchWorkspaceFile();
     const created = await invokeVerb<CheckpointsCreateResponse>('checkpoints.create', { body: { kind: 'manual', label: 'preview target', paths: [] } });
     expect(created.status).toBe(200);
-    const checkpointId: string = created.json.checkpoint.id;
+    expect(created.json.checkpoint).not.toBeNull();
+    const checkpointId: string = created.json.checkpoint!.id;
 
     // Preview is read-only and returns a token + a preview of what would change.
     const preview = await invokeVerb<CheckpointsRestorePreviewResponse>('checkpoints.restorePreview', { body: { id: checkpointId } });
@@ -409,7 +413,8 @@ describe('fleet/checkpoints/search — checkpoints.list / create / diff / restor
   test('checkpoints.restore rejects a bogus confirmToken with an honest 400 naming the remedy', async () => {
     touchWorkspaceFile();
     const created = await invokeVerb<CheckpointsCreateResponse>('checkpoints.create', { body: { kind: 'manual', label: 'bogus token target', paths: [] } });
-    const checkpointId: string = created.json.checkpoint.id;
+    expect(created.json.checkpoint).not.toBeNull();
+    const checkpointId: string = created.json.checkpoint!.id;
 
     const { status, json } = await invokeVerb<CheckpointsRestoreResponse>('checkpoints.restore', { body: { id: checkpointId, confirmToken: 'not-a-real-token' } });
     expect(status).toBe(400);
@@ -422,10 +427,12 @@ describe('fleet/checkpoints/search — checkpoints.list / create / diff / restor
     touchWorkspaceFile();
     const first = await invokeVerb<CheckpointsCreateResponse>('checkpoints.create', { body: { kind: 'manual', label: 'session cp 1', sessionId } });
     expect(first.status).toBe(200);
-    expect(first.json.checkpoint.sessionId).toBe(sessionId);
+    expect(first.json.checkpoint).not.toBeNull();
+    expect(first.json.checkpoint!.sessionId).toBe(sessionId);
     touchWorkspaceFile();
     const second = await invokeVerb<CheckpointsCreateResponse>('checkpoints.create', { body: { kind: 'manual', label: 'session cp 2', sessionId } });
     expect(second.json.noop).toBe(false);
+    expect(second.json.checkpoint).not.toBeNull();
 
     const filtered = await invokeVerb<CheckpointsListResponse>('checkpoints.list', { body: { sessionId } });
     expect(filtered.status).toBe(200);
@@ -436,7 +443,7 @@ describe('fleet/checkpoints/search — checkpoints.list / create / diff / restor
     expect(changes.status).toBe(200);
     expect(changes.json.sessionId).toBe(sessionId);
     expect(changes.json.checkpointCount).toBeGreaterThanOrEqual(2);
-    expect(changes.json.to).toBe(second.json.checkpoint.id);
+    expect(changes.json.to).toBe(second.json.checkpoint!.id);
     expect(Array.isArray(changes.json.files)).toBe(true);
   });
 

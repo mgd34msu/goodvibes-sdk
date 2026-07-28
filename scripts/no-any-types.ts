@@ -28,6 +28,7 @@
 //   bun scripts/no-any-types.ts
 
 import { readdirSync, readFileSync, statSync } from 'node:fs';
+import type { Dirent } from 'node:fs';
 import { resolve, relative, extname, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -117,7 +118,7 @@ function stripStringLiterals(line: string): string {
 
 function walkSourceFiles(dir: string): string[] {
   const results: string[] = [];
-  let entries: ReturnType<typeof readdirSync>;
+  let entries: Dirent[];
   try {
     entries = readdirSync(dir, { withFileTypes: true });
   } catch {
@@ -171,6 +172,7 @@ for (const root of SCAN_ROOTS) {
     const lines = content.split('\n');
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
+      if (line === undefined) continue;
       if (isLineCommentOrDoc(line)) continue;
       const stripped = stripStringLiterals(line);
       // Strip inline comment from end

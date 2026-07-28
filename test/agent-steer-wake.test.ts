@@ -1,9 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 import { AgentManager, type AgentRecord } from '../packages/sdk/src/platform/tools/agent/manager.js';
+import type { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 
 function makeManager(runAgent: (record: AgentRecord) => Promise<void>) {
   return new AgentManager({
-    configManager: { get: () => null },
+    configManager: { get: () => null } as unknown as Pick<ConfigManager, 'get'>,
     messageBus: { registerAgent() {} },
     archetypeLoader: { loadArchetype: () => null },
     executor: { runAgent },

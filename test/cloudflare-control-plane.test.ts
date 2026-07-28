@@ -388,14 +388,17 @@ describe('CloudflareControlPlaneManager', () => {
         expect(apiToken).toBe('cf-token');
         return client;
       },
-      fetch: async (url, init) => {
-        const headers = new Headers(init?.headers);
-        verifyRequests.push({
-          url: String(url),
-          ...(headers.get('authorization') ? { authorization: headers.get('authorization')! } : {}),
-        });
-        return new Response(JSON.stringify({ ok: true }), { status: 200 });
-      },
+      fetch: Object.assign(
+        async (url: URL | RequestInfo, init?: RequestInit) => {
+          const headers = new Headers(init?.headers);
+          verifyRequests.push({
+            url: String(url),
+            ...(headers.get('authorization') ? { authorization: headers.get('authorization')! } : {}),
+          });
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        },
+        { preconnect: (_url: string | URL, _options?: { dns?: boolean; tcp?: boolean; http?: boolean; https?: boolean }) => {} },
+      ),
     });
 
     const result = await manager.provision({
@@ -407,10 +410,14 @@ describe('CloudflareControlPlaneManager', () => {
     });
 
     expect(result.ok).toBe(true);
-    expect(result.worker.baseUrl).toBe('https://goodvibes-batch-worker.goodvibes-test.workers.dev');
+    expect(result.worker).toBeDefined();
+    expect(result.queues).toBeDefined();
+    const { worker, queues } = result;
+    if (!worker || !queues) throw new Error('expected worker and queues to be provisioned');
+    expect(worker.baseUrl).toBe('https://goodvibes-batch-worker.goodvibes-test.workers.dev');
     expect(result.generatedSecrets?.workerClientToken).toBe('gv-cf-11111111222243338444555555555555');
-    expect(result.queues.queueName).toBe('goodvibes-batch');
-    expect(result.queues.deadLetterQueueName).toBe('goodvibes-batch-dlq');
+    expect(queues.queueName).toBe('goodvibes-batch');
+    expect(queues.deadLetterQueueName).toBe('goodvibes-batch-dlq');
     expect(calls.queueCreates).toEqual(['goodvibes-batch-dlq', 'goodvibes-batch']);
     expect(calls.workerUpdates[0]?.scriptName).toBe('goodvibes-batch-worker');
     expect(calls.secretUpdates.map((entry) => entry.name)).toEqual(['GOODVIBES_OPERATOR_TOKEN', 'GOODVIBES_WORKER_TOKEN']);

@@ -60,7 +60,7 @@ function jsonRequest(url: string, body: unknown): Request {
   });
 }
 
-function protobufRequest(url: string, bytes: Uint8Array = new Uint8Array([0x0a, 0x00])): Request {
+function protobufRequest(url: string, bytes: Uint8Array<ArrayBuffer> = new Uint8Array([0x0a, 0x00])): Request {
   return new Request(url, {
     method: 'POST',
     headers: { 'content-type': 'application/x-protobuf' },
@@ -70,7 +70,7 @@ function protobufRequest(url: string, bytes: Uint8Array = new Uint8Array([0x0a, 
 
 const encoder = new TextEncoder();
 
-function concatBytes(...chunks: readonly Uint8Array[]): Uint8Array {
+function concatBytes(...chunks: readonly Uint8Array[]): Uint8Array<ArrayBuffer> {
   const length = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
   const out = new Uint8Array(length);
   let offset = 0;
@@ -81,7 +81,7 @@ function concatBytes(...chunks: readonly Uint8Array[]): Uint8Array {
   return out;
 }
 
-function varint(value: number | bigint): Uint8Array {
+function varint(value: number | bigint): Uint8Array<ArrayBuffer> {
   let next = BigInt(value);
   const bytes: number[] = [];
   do {
@@ -93,23 +93,23 @@ function varint(value: number | bigint): Uint8Array {
   return new Uint8Array(bytes);
 }
 
-function fieldTag(fieldNumber: number, wireType: number): Uint8Array {
+function fieldTag(fieldNumber: number, wireType: number): Uint8Array<ArrayBuffer> {
   return varint((fieldNumber << 3) | wireType);
 }
 
-function lengthDelimited(fieldNumber: number, body: Uint8Array): Uint8Array {
+function lengthDelimited(fieldNumber: number, body: Uint8Array): Uint8Array<ArrayBuffer> {
   return concatBytes(fieldTag(fieldNumber, 2), varint(body.length), body);
 }
 
-function stringField(fieldNumber: number, value: string): Uint8Array {
+function stringField(fieldNumber: number, value: string): Uint8Array<ArrayBuffer> {
   return lengthDelimited(fieldNumber, encoder.encode(value));
 }
 
-function bytesField(fieldNumber: number, value: Uint8Array): Uint8Array {
+function bytesField(fieldNumber: number, value: Uint8Array): Uint8Array<ArrayBuffer> {
   return lengthDelimited(fieldNumber, value);
 }
 
-function protobufLogsPayload(): Uint8Array {
+function protobufLogsPayload(): Uint8Array<ArrayBuffer> {
   const anyBody = stringField(1, 'hello from protobuf');
   const logRecord = lengthDelimited(5, anyBody);
   const scopeLogs = lengthDelimited(2, logRecord);
@@ -117,7 +117,7 @@ function protobufLogsPayload(): Uint8Array {
   return lengthDelimited(1, resourceLogs);
 }
 
-function protobufTracesPayload(): Uint8Array {
+function protobufTracesPayload(): Uint8Array<ArrayBuffer> {
   const traceId = new Uint8Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
   const spanId = new Uint8Array([16, 17, 18, 19, 20, 21, 22, 23]);
   const span = concatBytes(
@@ -130,7 +130,7 @@ function protobufTracesPayload(): Uint8Array {
   return lengthDelimited(1, resourceSpans);
 }
 
-function protobufMetricsPayload(): Uint8Array {
+function protobufMetricsPayload(): Uint8Array<ArrayBuffer> {
   const gauge = lengthDelimited(1, new Uint8Array());
   const metric = concatBytes(
     stringField(1, 'protobuf.metric'),

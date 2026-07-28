@@ -6,9 +6,14 @@ import { prepareConversationForTurn } from '../packages/sdk/src/platform/core/or
 function providerRegistry() {
   return {
     getCurrentModel: () => ({
-      displayName: 'test-model',
+      id: 'test-model',
       provider: 'test',
-      capabilities: { multimodal: false },
+      registryKey: 'test:test-model',
+      displayName: 'test-model',
+      description: 'test model',
+      capabilities: { toolCalling: false, codeEditing: false, reasoning: false, multimodal: false },
+      contextWindow: 128_000,
+      selectable: true,
     }),
   };
 }

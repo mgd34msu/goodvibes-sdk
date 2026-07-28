@@ -21,7 +21,7 @@ describe('DEFAULT_CONFIG runtime section', () => {
   });
 
   test('DEFAULT_CONFIG.runtime.companionChatLimiter.perSessionLimit uses the documented default', () => {
-    const config = DEFAULT_CONFIG as Record<string, unknown>;
+    const config = DEFAULT_CONFIG as unknown as Record<string, unknown>;
     const runtime = config['runtime'] as Record<string, unknown>;
     const limiter = runtime['companionChatLimiter'] as Record<string, unknown>;
     expect(typeof limiter['perSessionLimit']).toBe('number');
@@ -45,7 +45,7 @@ describe('DEFAULT_CONFIG registers every recently-added domain', () => {
   }
 
   test('worktree.setup carries empty-array defaults', () => {
-    const worktree = (DEFAULT_CONFIG as Record<string, unknown>)['worktree'] as Record<string, unknown>;
+    const worktree = (DEFAULT_CONFIG as unknown as Record<string, unknown>)['worktree'] as Record<string, unknown>;
     const setup = worktree['setup'] as Record<string, unknown>;
     expect(Array.isArray(setup['commands'])).toBe(true);
     expect(setup['commands']).toEqual([]);
@@ -67,7 +67,7 @@ describe('DEFAULT_CONFIG registers every recently-added domain', () => {
   });
 
   test('learning.consolidation schema defaults exactly equal DEFAULT_MEMORY_CONSOLIDATION_CONFIG (no drift)', () => {
-    const learning = (DEFAULT_CONFIG as Record<string, unknown>)['learning'] as Record<string, unknown>;
+    const learning = (DEFAULT_CONFIG as unknown as Record<string, unknown>)['learning'] as Record<string, unknown>;
     const consolidation = learning['consolidation'] as Record<string, unknown>;
     // The config-surface mirror must never drift from the behavioral contract's
     // fallback, or a user who sets nothing would resolve a different policy than
@@ -130,7 +130,7 @@ describe('ConfigManager resolves all runtime.* schema keys', () => {
       const manager = makeConfigManager();
       const setting = CONFIG_SCHEMA.find((s) => s.key === key)!;
       const value = manager.get(key as Parameters<typeof manager.get>[0]);
-      expect(value).toBe(setting.default);
+      expect(value).toBe(setting.default as typeof value);
     });
   }
 });

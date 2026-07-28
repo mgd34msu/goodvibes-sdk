@@ -93,7 +93,7 @@ describe('the credentials land in the daemon secret tier', () => {
 });
 
 describe('a node that wins a handover can actually serve the account', () => {
-  test.each(CONFIG_PATHS.filter(([, path]) => path !== NODE_LOCAL_CONNECTOR_PATH))(
+  test.each(CONFIG_PATHS.filter(([, path]) => (path as string) !== NODE_LOCAL_CONNECTOR_PATH))(
     'GOOGLE_CONFIG_KEYS.%s replicates to the other nodes',
     (_name, path) => {
       expect(

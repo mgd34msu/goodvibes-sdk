@@ -18,6 +18,7 @@ import type {
   CompanionProviderChunk,
 } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
 import type { CompanionChatRouteContext } from '../packages/sdk/src/platform/companion/companion-chat-route-types.js';
+import type { ArtifactDescriptor } from '../packages/sdk/src/platform/artifacts/types.js';
 import type { ProviderMessage } from '../packages/sdk/src/platform/providers/interface.js';
 
 const disposables = trackDisposables();
@@ -89,7 +90,7 @@ function makeRequest(method: string, url: string, body?: unknown): Request {
   return new Request(url, {
     method,
     headers: body ? { 'content-type': 'application/json' } : {},
-    body: body ? JSON.stringify(body) : undefined,
+    ...(body ? { body: JSON.stringify(body) } : {}),
   });
 }
 
@@ -369,7 +370,7 @@ describe('companion-chat-routes: post message and events', () => {
   test('POST message persists artifact attachments and exposes them to events/provider prompt', async () => {
     const providerCalls: ProviderMessage[][] = [];
     const publisher = makeEventPublisher();
-    const artifact = {
+    const artifact: ArtifactDescriptor = {
       id: 'artifact-note',
       kind: 'document',
       mimeType: 'text/plain',

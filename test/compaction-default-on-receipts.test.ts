@@ -144,7 +144,7 @@ describe('compaction receipt event', () => {
       {
         sessionId: 's', trigger: 'auto', strategy: 'structured', tokensBefore: 9000, tokensAfter: 2000,
         messagesBefore: 40, messagesAfter: 1, qualityScore: 0.82, qualityGrade: 'B', lowQuality: false,
-        instructionsReinjected: true, validationPassed: true, outcome: 'applied',
+        instructionsReinjected: true, validationPassed: true, outcome: 'applied', sectionsIncluded: ['summary'],
       },
     );
     expect(emitted).toHaveLength(1);

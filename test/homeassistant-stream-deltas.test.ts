@@ -75,7 +75,7 @@ function buildStreamingRoutes(
     chatManager,
     parseJsonBody: async (req: Request) => await req.json() as Record<string, unknown>,
     resolveDefaultProviderModel: () => ({ provider: 'openai', model: 'gpt-5.5' }),
-  } as ConstructorParameters<typeof HomeAssistantConversationRoutes>[0]);
+  } as unknown as ConstructorParameters<typeof HomeAssistantConversationRoutes>[0]);
 }
 
 function makeRoutesForCancel(hooks: {
@@ -121,7 +121,7 @@ function makeRoutesForCancel(hooks: {
     chatManager,
     parseJsonBody: async (req: Request) => await req.json() as Record<string, unknown>,
     resolveDefaultProviderModel: () => ({ provider: 'openai', model: 'gpt-5.5' }),
-  } as ConstructorParameters<typeof HomeAssistantConversationRoutes>[0]);
+  } as unknown as ConstructorParameters<typeof HomeAssistantConversationRoutes>[0]);
 }
 
 describe('Home Assistant conversation stream deltas', () => {

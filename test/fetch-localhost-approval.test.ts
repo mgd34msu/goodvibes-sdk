@@ -72,9 +72,9 @@ describe('localhost dev-server fetch — ask once, allow for this project', () =
     };
 
     const first = await executeFetchInput({ urls: [{ url }] }, deps);
-    expect(first.results[0]?.error).toBeUndefined();
-    expect(first.results[0]?.content).toContain('hello from the dev server');
-    expect(first.results[0]?.host_trust_tier).toBe('localhost');
+    expect(first.results?.[0]?.error).toBeUndefined();
+    expect(first.results?.[0]?.content).toContain('hello from the dev server');
+    expect(first.results?.[0]?.host_trust_tier).toBe('localhost');
 
     // Exactly one ask, attributed as the one-tap localhost approval.
     expect(asks.length).toBe(1);
@@ -87,7 +87,7 @@ describe('localhost dev-server fetch — ask once, allow for this project', () =
 
     // Same runtime: a second fetch never re-asks.
     const second = await executeFetchInput({ urls: [{ url }] }, deps);
-    expect(second.results[0]?.error).toBeUndefined();
+    expect(second.results?.[0]?.error).toBeUndefined();
     expect(asks.length).toBe(1);
 
     // "Restart": a fresh ConfigManager reloads the persisted approval; an
@@ -100,8 +100,8 @@ describe('localhost dev-server fetch — ask once, allow for this project', () =
         throw new Error('must not re-ask after the persisted approval');
       },
     });
-    expect(afterRestart.results[0]?.error).toBeUndefined();
-    expect(afterRestart.results[0]?.content).toContain('hello from the dev server');
+    expect(afterRestart.results?.[0]?.error).toBeUndefined();
+    expect(afterRestart.results?.[0]?.content).toContain('hello from the dev server');
   });
 
   test('a denied ask refuses the fetch with the setting named and persists nothing', async () => {
@@ -122,8 +122,8 @@ describe('localhost dev-server fetch — ask once, allow for this project', () =
       approveLocalhostFetch: approval,
     });
     expect(askCount).toBe(1);
-    expect(result.results[0]?.error).toContain('fetch.allowLocalhost');
-    expect(result.results[0]?.host_trust_tier).toBe('localhost');
+    expect(result.results?.[0]?.error).toContain('fetch.allowLocalhost');
+    expect(result.results?.[0]?.host_trust_tier).toBe('localhost');
     expect(configManager.get('fetch.allowLocalhost')).toBe(false);
     expect(() => readFileSync(projectSettingsPath, 'utf-8')).toThrow();
   });
@@ -131,8 +131,8 @@ describe('localhost dev-server fetch — ask once, allow for this project', () =
   test('without an approval seam, an unapproved localhost fetch is refused with an honest reason', async () => {
     const { url } = startDevServer();
     const result = await executeFetchInput({ urls: [{ url }] }, {});
-    expect(result.results[0]?.error).toContain('not approved for this project');
-    expect(result.results[0]?.error).toContain('fetch.allowLocalhost');
+    expect(result.results?.[0]?.error).toContain('not approved for this project');
+    expect(result.results?.[0]?.error).toContain('fetch.allowLocalhost');
   });
 });
 
@@ -147,16 +147,16 @@ describe('private-IP / metadata blocking — silent and absolute', () => {
       },
     });
     expect(asked).toBe(false);
-    expect(result.results[0]?.host_trust_tier).toBe('blocked');
-    expect(result.results[0]?.error).toMatch(/Request blocked: .*metadata endpoint/i);
+    expect(result.results?.[0]?.host_trust_tier).toBe('blocked');
+    expect(result.results?.[0]?.error).toMatch(/Request blocked: .*metadata endpoint/i);
     expect(result.summary.failed).toBe(1);
   });
 
   test('private IPs stay blocked even with localhost approved', async () => {
     for (const url of ['http://10.0.0.5:1/', 'http://192.168.1.1:1/', 'http://172.16.0.9:1/']) {
       const result = await executeFetchInput({ urls: [{ url }] }, { isLocalhostAllowed: () => true });
-      expect(result.results[0]?.host_trust_tier).toBe('blocked');
-      expect(result.results[0]?.error).toMatch(/Request blocked/);
+      expect(result.results?.[0]?.host_trust_tier).toBe('blocked');
+      expect(result.results?.[0]?.error).toMatch(/Request blocked/);
     }
   });
 
@@ -166,8 +166,8 @@ describe('private-IP / metadata blocking — silent and absolute', () => {
     // other localhost target (never silently fetched).
     for (const url of ['http://2130706433:1/', 'http://0x7f000001:1/']) {
       const result = await executeFetchInput({ urls: [{ url }] }, {});
-      expect(result.results[0]?.host_trust_tier).toBe('localhost');
-      expect(result.results[0]?.error).toContain('not approved for this project');
+      expect(result.results?.[0]?.host_trust_tier).toBe('localhost');
+      expect(result.results?.[0]?.error).toContain('not approved for this project');
     }
   });
 
@@ -175,8 +175,8 @@ describe('private-IP / metadata blocking — silent and absolute', () => {
     const result = await executeFetchInput({ urls: [{ url: 'http://169.254.169.254/' }] }, {
       featureFlags: { isEnabled: () => false },
     });
-    expect(result.results[0]?.host_trust_tier).toBe('blocked');
-    expect(result.results[0]?.error).toMatch(/metadata endpoint/i);
+    expect(result.results?.[0]?.host_trust_tier).toBe('blocked');
+    expect(result.results?.[0]?.error).toMatch(/metadata endpoint/i);
   });
 });
 

@@ -3,28 +3,28 @@ import { WrfcController } from '../packages/sdk/src/platform/agents/wrfc-control
 import { AgentMessageBus } from '../packages/sdk/src/platform/agents/message-bus.js';
 import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.js';
 import { createAgentTool, AgentManager, type AgentRecord } from '../packages/sdk/src/platform/tools/agent/index.js';
+import type { ConfigManager } from '../packages/sdk/src/platform/config/index.js';
 
-function createConfigManager() {
-  return {
-    get: (key: string): unknown => {
-      if (key === 'wrfc.scoreThreshold') return 9.9;
-      if (key === 'wrfc.maxFixAttempts') return 3;
-      if (key === 'wrfc.autoCommit') return false;
-      if (key === 'agents.maxActive') return 20;
-      return undefined;
-    },
-    getCategory: (category: string): unknown => {
-      if (category === 'wrfc') {
-        return {
-          scoreThreshold: 9.9,
-          maxFixAttempts: 3,
-          autoCommit: false,
-          gates: [],
-        };
-      }
-      return undefined;
-    },
-  };
+function createConfigManager(): Pick<ConfigManager, 'get' | 'getCategory'> {
+  const get = ((key: string): unknown => {
+    if (key === 'wrfc.scoreThreshold') return 9.9;
+    if (key === 'wrfc.maxFixAttempts') return 3;
+    if (key === 'wrfc.autoCommit') return false;
+    if (key === 'agents.maxActive') return 20;
+    return undefined;
+  }) as ConfigManager['get'];
+  const getCategory = ((category: string): unknown => {
+    if (category === 'wrfc') {
+      return {
+        scoreThreshold: 9.9,
+        maxFixAttempts: 3,
+        autoCommit: false,
+        gates: [],
+      };
+    }
+    return undefined;
+  }) as ConfigManager['getCategory'];
+  return { get, getCategory };
 }
 
 function createHarness() {

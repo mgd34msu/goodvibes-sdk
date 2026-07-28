@@ -81,7 +81,7 @@ describe('ElevenLabs streaming TTS provider', () => {
     process.env.ELEVENLABS_API_KEY = 'test-key';
     delete process.env.XI_API_KEY;
     globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-      captured = { input, init };
+      captured = { input, ...(init !== undefined ? { init } : {}) };
       const body = new ReadableStream<Uint8Array>({
         start(controller) {
           controller.enqueue(new Uint8Array([10, 11]));

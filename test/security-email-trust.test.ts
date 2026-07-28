@@ -202,7 +202,7 @@ describe('unsolicited verification-shaped mail can never cause an action', () =>
     });
     // A forged To: naming the alias must not be a substitute.
     const result = book.matchCandidate(
-      candidate({ deliveredToAddress: undefined, toHeaderClaim: 'owner+gv-github-com-k3n9x2p4@example.com' }),
+      candidate({ toHeaderClaim: 'owner+gv-github-com-k3n9x2p4@example.com' }),
       NOW,
     );
     expect(result.kind).toBe('no-delivery-evidence');

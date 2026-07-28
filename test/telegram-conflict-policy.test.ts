@@ -83,7 +83,7 @@ describe('getWebhookInfo is the authority, not the description', () => {
 });
 
 describe('nothing is ever terminal', () => {
-  const everyShape: readonly (Parameters<typeof classifyTelegramConflict>[0])[] = [
+  const everyShape: (Parameters<typeof classifyTelegramConflict>[0])[] = [
     { description: WEBHOOK_DESCRIPTION, webhookUrl: 'https://example.com/hook', clustered: false, attempt: 1 },
     { description: WEBHOOK_DESCRIPTION, webhookUrl: 'https://example.com/hook', clustered: true, attempt: 99 },
     { description: WEBHOOK_DESCRIPTION, webhookUrl: null, clustered: false, attempt: 99 },

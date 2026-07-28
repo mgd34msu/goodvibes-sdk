@@ -90,7 +90,7 @@ try {
       auth: !DRY_RUN,
       registry: REGISTRY,
       packageName,
-      authEnv: sharedAuthEnv ?? undefined,
+      ...(sharedAuthEnv ? { authEnv: sharedAuthEnv } : {}),
     });
   }
 } finally {

@@ -133,11 +133,11 @@ describe('AmazonBedrockProvider.refreshModels', () => {
       },
       () =>
         withTempDir(async (dir) => {
-          let seenAuth: string | null = null;
+          const seenAuth: { value: string | null } = { value: null };
           await withMockedFetch(
             (url, init) => {
               expect(url).toBe('https://bedrock.us-east-1.amazonaws.com/foundation-models');
-              seenAuth = headerValue(init, 'authorization');
+              seenAuth.value = headerValue(init, 'authorization');
               return new Response(
                 JSON.stringify({
                   modelSummaries: [
@@ -195,8 +195,8 @@ describe('AmazonBedrockProvider.refreshModels', () => {
               expect(provider.models).not.toContain('anthropic.claude-embed-v1');
             },
           );
-          expect(seenAuth).toContain('AWS4-HMAC-SHA256');
-          expect(seenAuth).toContain('/us-east-1/bedrock/aws4_request');
+          expect(seenAuth.value).toContain('AWS4-HMAC-SHA256');
+          expect(seenAuth.value).toContain('/us-east-1/bedrock/aws4_request');
         }),
     ));
 
@@ -205,10 +205,10 @@ describe('AmazonBedrockProvider.refreshModels', () => {
       { AWS_BEARER_TOKEN_BEDROCK: 'bedrock-bearer-abc', AWS_ACCESS_KEY_ID: undefined, AWS_SECRET_ACCESS_KEY: undefined, AWS_PROFILE: undefined },
       () =>
         withTempDir(async (dir) => {
-          let seenAuth: string | null = null;
+          const seenAuth: { value: string | null } = { value: null };
           await withMockedFetch(
             (_url, init) => {
-              seenAuth = headerValue(init, 'authorization');
+              seenAuth.value = headerValue(init, 'authorization');
               return new Response(
                 JSON.stringify({
                   modelSummaries: [
@@ -229,7 +229,7 @@ describe('AmazonBedrockProvider.refreshModels', () => {
               await provider.refreshModels();
             },
           );
-          expect(seenAuth).toBe('Bearer bedrock-bearer-abc');
+          expect(seenAuth.value).toBe('Bearer bedrock-bearer-abc');
         }),
     ));
 
@@ -288,11 +288,11 @@ describe('AmazonBedrockMantleProvider.refreshModels', () => {
       },
       () =>
         withTempDir(async (dir) => {
-          let seenAuth: string | null = null;
+          const seenAuth: { value: string | null } = { value: null };
           await withMockedFetch(
             (url, init) => {
               expect(url).toBe('https://bedrock.us-east-1.amazonaws.com/foundation-models');
-              seenAuth = headerValue(init, 'authorization');
+              seenAuth.value = headerValue(init, 'authorization');
               return new Response(
                 JSON.stringify({
                   modelSummaries: [
@@ -353,8 +353,8 @@ describe('AmazonBedrockMantleProvider.refreshModels', () => {
           // Confirms auth came from the provider's existing configured-credential
           // resolution (the same SigV4 signer AmazonBedrockProvider uses via
           // getAuthHeaders), not a new/duplicated signing path.
-          expect(seenAuth).toContain('AWS4-HMAC-SHA256');
-          expect(seenAuth).toContain('/us-east-1/bedrock/aws4_request');
+          expect(seenAuth.value).toContain('AWS4-HMAC-SHA256');
+          expect(seenAuth.value).toContain('/us-east-1/bedrock/aws4_request');
         }),
     ));
 
@@ -363,10 +363,10 @@ describe('AmazonBedrockMantleProvider.refreshModels', () => {
       { AWS_BEARER_TOKEN_BEDROCK: 'bedrock-bearer-abc', AWS_ACCESS_KEY_ID: undefined, AWS_SECRET_ACCESS_KEY: undefined, AWS_PROFILE: undefined },
       () =>
         withTempDir(async (dir) => {
-          let seenAuth: string | null = null;
+          const seenAuth: { value: string | null } = { value: null };
           await withMockedFetch(
             (_url, init) => {
-              seenAuth = headerValue(init, 'authorization');
+              seenAuth.value = headerValue(init, 'authorization');
               return new Response(
                 JSON.stringify({
                   modelSummaries: [
@@ -387,7 +387,7 @@ describe('AmazonBedrockMantleProvider.refreshModels', () => {
               await provider.refreshModels();
             },
           );
-          expect(seenAuth).toBe('Bearer bedrock-bearer-abc');
+          expect(seenAuth.value).toBe('Bearer bedrock-bearer-abc');
         }),
     ));
 

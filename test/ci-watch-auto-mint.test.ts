@@ -17,19 +17,26 @@ import {
 } from '../packages/sdk/src/platform/ci-watch/auto-watch.ts';
 import { CiWatchService } from '../packages/sdk/src/platform/ci-watch/service.ts';
 import { runCiWatchPollPass } from '../packages/sdk/src/platform/ci-watch/poller.ts';
+import type { CiWatchStore } from '../packages/sdk/src/platform/ci-watch/subscriptions.ts';
 import type { CiJob, CiWatchSubscription, FixSessionBrief } from '../packages/sdk/src/platform/ci-watch/types.ts';
 
-/** In-memory watch store (the subscriptions seam). */
-function memoryStore() {
+/**
+ * In-memory watch store (the subscriptions seam). CiWatchStore is a concrete
+ * class with a private field, so no object literal is structurally
+ * assignable to it — cast the fake through `unknown`. See the `store`-field
+ * note in the bucket-3 engineer report: CiWatchServiceDeps.store forces
+ * every test double through this cast.
+ */
+function memoryStore(): CiWatchStore {
   let subs: CiWatchSubscription[] = [];
   return {
     load: async () => [...subs],
     save: async (next: CiWatchSubscription[]) => { subs = [...next]; },
     get current() { return subs; },
-  };
+  } as unknown as CiWatchStore;
 }
 
-function job(name: string, conclusion: string | null, status = 'completed'): CiJob {
+function job(name: string, conclusion: string | null, status: CiJob['status'] = 'completed'): CiJob {
   return { name, status, conclusion, url: `https://ci.example/${name}` };
 }
 

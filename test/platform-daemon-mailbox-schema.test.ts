@@ -37,6 +37,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Glob } from 'bun';
 import { CONFIG_SCHEMA, DEFAULT_CONFIG } from '../packages/sdk/src/platform/config/schema.ts';
+import type { ConfigKey } from '../packages/sdk/src/platform/config/schema-types.ts';
 import { isDaemonOwnedConfigKey } from '../packages/sdk/src/platform/config/config-ownership.ts';
 import {
   daemonSecretKeyFor,
@@ -76,11 +77,11 @@ describe('every mailbox key the daemon reads has a settings row', () => {
     expect(read.length).toBeGreaterThan(10);
   });
 
-  test.each(read)(
+  test.each([...read])(
     '%s is a CONFIG_SCHEMA key, so the settings modal has a row for it',
-    (key) => {
+    (key: string) => {
       expect(
-        schemaKeys.has(key),
+        schemaKeys.has(key as ConfigKey),
         `${key} is read by platform code but declared in no schema, so the settings modal cannot show it and any instruction naming it sends the operator nowhere`,
       ).toBe(true);
     },

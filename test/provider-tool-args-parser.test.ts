@@ -59,7 +59,7 @@ describe('provider streamed tool argument parsing', () => {
       '',
     ].join('\n');
 
-    globalThis.fetch = (async () => new Response(sse, { status: 200 })) as typeof globalThis.fetch;
+    globalThis.fetch = (async (_input: RequestInfo | URL) => new Response(sse, { status: 200 })) as typeof globalThis.fetch;
     try {
       const provider = new AnthropicProvider('test-key');
       const response = await provider.chat({

@@ -59,7 +59,7 @@ function request(path: string, body?: unknown): Request {
   return new Request(`http://127.0.0.1:3421${path}`, {
     method: body ? 'POST' : 'GET',
     headers: body ? { 'content-type': 'application/json' } : {},
-    body: body ? JSON.stringify(body) : undefined,
+    ...(body ? { body: JSON.stringify(body) } : {}),
   });
 }
 

@@ -25,7 +25,7 @@ describe('otlp logger', () => {
       tasks: { runningIds: [] },
       agents: { activeAgentIds: [] },
       telemetry: { sessionMetrics: { inputTokens: 0, outputTokens: 0 } },
-    } as Parameters<typeof buildOtlpMetricDocumentFromState>[0];
+    } as unknown as Parameters<typeof buildOtlpMetricDocumentFromState>[0];
     const aggregates = {
       totalEvents: 0,
       totalSpans: 0,

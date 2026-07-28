@@ -39,7 +39,6 @@ async function bundleEntrypoint(entrypoint: string): Promise<string> {
     format: 'esm',
     minify: false,
     packages: 'external',
-    write: false,
   });
   expect(result.success, result.logs.map((log) => log.message).join('\n')).toBe(true);
   const [output] = result.outputs;

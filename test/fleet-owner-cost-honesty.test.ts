@@ -44,8 +44,8 @@ function makeDeps(o: Partial<ProcessRegistryDeps> = {}): ProcessRegistryDeps {
     watcherRegistry: { list: () => [], stopWatcher: () => null },
     workflow: {
       workflowManager: { list: () => [], cancel: () => false },
-      triggerManager: { list: () => [], remove: () => false, disable: () => false },
-      scheduleManager: { list: () => [], remove: () => false, disable: () => false },
+      triggerManager: { list: () => [], remove: () => false, enable: () => false, disable: () => false },
+      scheduleManager: { list: () => [], remove: () => false, enable: () => false, disable: () => false },
     },
     now: () => T0 + 5_000, ...o,
   };

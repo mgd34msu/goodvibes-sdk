@@ -137,7 +137,7 @@ describe('POST /config runtime.workingDir — HTTP integration', () => {
 
     const ctx = makeSystemContext(daemonHome, workingDir, swapManager);
     const req = makeRequest('/api/config', { key: 'runtime.workingDir', value: newDir });
-    const handlers = createDaemonSystemRouteHandlers(ctx as Parameters<typeof createDaemonSystemRouteHandlers>[0], req);
+    const handlers = createDaemonSystemRouteHandlers(ctx as unknown as Parameters<typeof createDaemonSystemRouteHandlers>[0]);
     const response = await handlers.postConfig(req);
     expect(response.status).toBe(200);
 
@@ -157,7 +157,7 @@ describe('POST /config runtime.workingDir — HTTP integration', () => {
     });
     const ctx = makeSystemContext(daemonHome, workingDir, swapManager);
     const req = makeRequest('/api/config', { key: 'runtime.workingDir', value: '' });
-    const handlers = createDaemonSystemRouteHandlers(ctx as Parameters<typeof createDaemonSystemRouteHandlers>[0], req);
+    const handlers = createDaemonSystemRouteHandlers(ctx as unknown as Parameters<typeof createDaemonSystemRouteHandlers>[0]);
     const response = await handlers.postConfig(req);
     expect(response.status).toBe(400);
     const body = await response.json() as Record<string, unknown>;
@@ -178,7 +178,7 @@ describe('POST /config runtime.workingDir — HTTP integration', () => {
     const ctx = makeSystemContext(daemonHome, workingDir, swapManager);
     // request a subdir of a file — mkdir will fail
     const req = makeRequest('/api/config', { key: 'runtime.workingDir', value: join(filePath, 'subdir') });
-    const handlers = createDaemonSystemRouteHandlers(ctx as Parameters<typeof createDaemonSystemRouteHandlers>[0], req);
+    const handlers = createDaemonSystemRouteHandlers(ctx as unknown as Parameters<typeof createDaemonSystemRouteHandlers>[0]);
     const response = await handlers.postConfig(req);
     expect(response.status).toBe(400);
     const body = await response.json() as Record<string, unknown>;

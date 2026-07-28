@@ -20,7 +20,7 @@ import { OpenAICompatProvider } from '../packages/sdk/src/platform/providers/ope
  */
 type Piece = string | { readonly reasoning: string };
 
-function sseServer(pieces: readonly Piece[], extra: { readonly toolCall?: boolean } = {}): Server {
+function sseServer(pieces: readonly Piece[], extra: { readonly toolCall?: boolean } = {}): Server<undefined> {
   return Bun.serve({
     port: 0,
     fetch() {
@@ -56,7 +56,7 @@ function sseServer(pieces: readonly Piece[], extra: { readonly toolCall?: boolea
   });
 }
 
-function providerFor(server: Server): OpenAICompatProvider {
+function providerFor(server: Server<undefined>): OpenAICompatProvider {
   return new OpenAICompatProvider({
     name: 'inline-reasoning-test',
     baseURL: `http://127.0.0.1:${server.port}/v1`,
@@ -71,7 +71,7 @@ function providerFor(server: Server): OpenAICompatProvider {
 }
 
 describe('OpenAICompatProvider.chat splits inline reasoning out of the answer', () => {
-  let server: Server | undefined;
+  let server: Server<undefined> | undefined;
   afterEach(() => {
     server?.stop(true);
     server = undefined;

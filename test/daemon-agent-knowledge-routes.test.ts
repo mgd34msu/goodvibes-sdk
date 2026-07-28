@@ -70,7 +70,7 @@ describe('daemon Agent knowledge route wiring', () => {
     // its injected runtime-services object. The daemon must still create an
     // isolated Agent knowledge service instead of wiring undefined handlers or
     // falling back to regular Knowledge/Wiki.
-    delete (runtimeServices as Partial<typeof runtimeServices>).agentKnowledgeService;
+    delete (runtimeServices as { -readonly [K in keyof typeof runtimeServices]?: typeof runtimeServices[K] }).agentKnowledgeService;
 
     // KNOWN SURVIVORS — the CompanionChatManager GC sweep and the batch
     // manager tick this daemon builds. `DaemonServer.stop()` opens with

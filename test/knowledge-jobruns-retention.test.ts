@@ -20,11 +20,11 @@ describe('job-run history retention (bounded memory + disk)', () => {
     await store.init();
     // 520 settled runs + 3 active ones.
     for (let i = 0; i < 520; i++) {
-      await store.upsertJobRun({ jobId: `job-${i % 5}`, status: 'completed', mode: 'incremental', result: {}, metadata: {} });
+      await store.upsertJobRun({ jobId: `job-${i % 5}`, status: 'completed', mode: 'background', result: {}, metadata: {} });
     }
     const active: string[] = [];
     for (let i = 0; i < 3; i++) {
-      const run = await store.upsertJobRun({ jobId: 'job-live', status: 'running', mode: 'incremental', result: {}, metadata: {} });
+      const run = await store.upsertJobRun({ jobId: 'job-live', status: 'running', mode: 'background', result: {}, metadata: {} });
       active.push(run.id);
     }
     const retained = store.listJobRuns(10_000);
@@ -43,7 +43,7 @@ describe('job-run history retention (bounded memory + disk)', () => {
     const { store } = createStores();
     await store.init();
     for (let i = 0; i < 600; i++) {
-      await store.upsertJobRun({ jobId: 'job-a', status: 'completed', mode: 'incremental', result: {}, metadata: {} });
+      await store.upsertJobRun({ jobId: 'job-a', status: 'completed', mode: 'background', result: {}, metadata: {} });
     }
     const dbPath = (store as unknown as { sqlite: { dbPath: string } }).sqlite.dbPath;
     const reloaded = new KnowledgeStore({ dbPath });

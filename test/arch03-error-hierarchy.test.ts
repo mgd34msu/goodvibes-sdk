@@ -199,8 +199,8 @@ describe('TaskNotCancellableError hierarchy', () => {
 // ---------------------------------------------------------------------------
 
 describe('VersionMismatchError hierarchy', () => {
-  const localVer = { major: 1, minor: 0, patch: 0 } as const;
-  const peerVer = { major: 2, minor: 0, patch: 0 } as const;
+  const localVer = { major: 1, minor: 0, patch: 0, label: '1.0.0' } as const;
+  const peerVer = { major: 2, minor: 0, patch: 0, label: '2.0.0' } as const;
 
   it('is instanceof GoodVibesSdkError and Error', () => {
     const err = new VersionMismatchError('major_version_mismatch', localVer, peerVer, 'Major version mismatch');

@@ -42,10 +42,10 @@ export function makeMockOtel(): MockOtelResult {
 
   const meter: OtelMeter = {
     createCounter: (name) => ({
-      add: (value, attrs) => { counters.push({ name, value, attrs }); },
+      add: (value, attrs) => { counters.push({ name, value, ...(attrs !== undefined ? { attrs } : {}) }); },
     }),
     createHistogram: (_name) => ({
-      record: (value, attrs) => { histRecords.push({ value, attrs }); },
+      record: (value, attrs) => { histRecords.push({ value, ...(attrs !== undefined ? { attrs } : {}) }); },
     }),
   };
 

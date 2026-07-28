@@ -43,6 +43,21 @@ if ! bun run build >/dev/null 2>&1; then
   exit 1
 fi
 
+# `bun run build` compiles tsconfig.build.json — the eleven packages, and only
+# them. It does NOT typecheck test/ or scripts/; before tsconfig.tests.json
+# existed, nothing did. `bun run typecheck` covers the full solution and judges
+# each project by its OUTPUT as well as its exit code, because a `tsc --build`
+# has been observed printing diagnostics while exiting 0.
+if ! bun run typecheck; then
+  echo "" >&2
+  echo "[pre-commit] BLOCKED: typecheck failed (see above)." >&2
+  echo "" >&2
+  echo "  This covers test/ and scripts/ as well as packages/*/src." >&2
+  echo "" >&2
+  echo "  Bypass (emergency only): git commit --no-verify" >&2
+  exit 1
+fi
+
 if ! bun run api:check; then
   echo "" >&2
   echo "[pre-commit] BLOCKED: etc/goodvibes-sdk.api.md is out of sync with current source." >&2

@@ -3,10 +3,55 @@ import { mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { ArtifactStore } from '../packages/sdk/src/platform/artifacts/store.ts';
+import type { ArtifactCreateInput, ArtifactStreamCreateInput } from '../packages/sdk/src/platform/artifacts/types.ts';
 import { createDaemonMediaRouteHandlers } from '../packages/daemon-sdk/src/media-routes.ts';
 import { createDaemonKnowledgeRouteHandlers } from '../packages/daemon-sdk/src/knowledge-routes.ts';
 import type { DaemonKnowledgeRouteContext } from '../packages/daemon-sdk/src/knowledge-route-types.ts';
+import type { ArtifactStoreLike } from '../packages/daemon-sdk/src/media-route-types.ts';
+import type { ArtifactStoreUploadLike } from '../packages/daemon-sdk/src/artifact-upload.ts';
 import { HomeGraphRoutes } from '../packages/sdk/src/platform/daemon/http/home-graph-routes.ts';
+
+/**
+ * ArtifactStore.readContent() returns a `filename?: string` field that can be
+ * `undefined`, but ArtifactStoreLike declares it without `| undefined` in its
+ * return type. Under exactOptionalPropertyTypes those are different types, so
+ * this adapter narrows the concrete store down to the route-facing interface
+ * instead of widening the production ArtifactStoreLike type.
+ *
+ * Also forwards getMaxBytes/createFromStream (ArtifactStoreUploadLike) — the
+ * multipart upload path (createArtifactFromUploadRequest) calls these as
+ * optional members; without them the early 413-oversize check is silently
+ * skipped.
+ */
+function asArtifactStoreLike(store: ArtifactStore): ArtifactStoreLike & Pick<ArtifactStoreUploadLike, 'getMaxBytes' | 'createFromStream'> {
+  return {
+    list() {
+      return store.list();
+    },
+    create(input) {
+      return store.create(input as ArtifactCreateInput);
+    },
+    get(artifactId) {
+      return store.get(artifactId);
+    },
+    async readContent(artifactId) {
+      const { record, buffer } = await store.readContent(artifactId);
+      return {
+        record: {
+          mimeType: record.mimeType,
+          ...(record.filename !== undefined ? { filename: record.filename } : {}),
+        },
+        buffer,
+      };
+    },
+    getMaxBytes() {
+      return store.getMaxBytes();
+    },
+    createFromStream(input) {
+      return store.createFromStream(input as ArtifactStreamCreateInput);
+    },
+  };
+}
 
 const tempDirs: string[] = [];
 
@@ -104,7 +149,7 @@ describe('artifact uploads and ingest', () => {
   test('POST /api/artifacts accepts multipart file uploads without JSON parsing', async () => {
     const store = createStore('multipart-artifact');
     const handlers = createDaemonMediaRouteHandlers({
-      artifactStore: store,
+      artifactStore: asArtifactStoreLike(store),
       configManager: { get: () => false },
       mediaProviders: {} as never,
       multimodalService: {} as never,
@@ -133,7 +178,7 @@ describe('artifact uploads and ingest', () => {
   test('POST /api/artifacts accepts raw binary uploads with metadata in the URL', async () => {
     const store = createStore('raw-artifact');
     const handlers = createDaemonMediaRouteHandlers({
-      artifactStore: store,
+      artifactStore: asArtifactStoreLike(store),
       configManager: { get: () => false },
       mediaProviders: {} as never,
       multimodalService: {} as never,
@@ -160,7 +205,7 @@ describe('artifact uploads and ingest', () => {
   test('POST /api/artifacts rejects multipart uploads that exceed the artifact cap while spooling', async () => {
     const store = new ArtifactStore({ rootDir: tempDir('multipart-limit'), maxBytes: 1024 });
     const handlers = createDaemonMediaRouteHandlers({
-      artifactStore: store,
+      artifactStore: asArtifactStoreLike(store),
       configManager: { get: () => false },
       mediaProviders: {} as never,
       multimodalService: {} as never,
@@ -219,12 +264,13 @@ describe('artifact uploads and ingest', () => {
       body: form,
     }));
     const body = await response.json() as { artifactId: string };
+    const capturedInput = captured as Record<string, unknown> | null;
 
     expect(response.status).toBe(201);
     expect(body.artifactId).toStartWith('artifact-');
-    expect(captured?.artifactId).toBe(body.artifactId);
-    expect(captured?.title).toBe('Washer warranty');
-    expect(captured?.tags).toEqual(['homeassistant', 'warranty']);
+    expect(capturedInput?.artifactId).toBe(body.artifactId);
+    expect(capturedInput?.title).toBe('Washer warranty');
+    expect(capturedInput?.tags).toEqual(['homeassistant', 'warranty']);
   });
 
   test('knowledge artifact ingest accepts raw binary upload metadata from the URL', async () => {
@@ -258,12 +304,13 @@ describe('artifact uploads and ingest', () => {
       headers: { 'Content-Type': 'application/pdf' },
     }));
     const body = await response.json() as { artifactId: string };
+    const capturedInput = captured as Record<string, unknown> | null;
 
     expect(response.status).toBe(201);
     expect(body.artifactId).toStartWith('artifact-');
-    expect(captured?.artifactId).toBe(body.artifactId);
-    expect(captured?.title).toBe('Manual');
-    expect(captured?.tags).toEqual(['manual', 'upload']);
+    expect(capturedInput?.artifactId).toBe(body.artifactId);
+    expect(capturedInput?.title).toBe('Manual');
+    expect(capturedInput?.tags).toEqual(['manual', 'upload']);
   });
 
   test('Home Graph artifact ingest accepts multipart upload and forwards the stored artifact id', async () => {
@@ -292,11 +339,12 @@ describe('artifact uploads and ingest', () => {
       body: form,
     }));
     const body = await response?.json() as { artifactId: string };
+    const capturedInput = captured as Record<string, unknown> | null;
 
     expect(response?.status).toBe(200);
     expect(body.artifactId).toStartWith('artifact-');
-    expect(captured?.artifactId).toBe(body.artifactId);
-    expect(captured?.installationId).toBe('home-1');
-    expect(captured?.target).toEqual({ kind: 'ha_device', id: 'device-1' });
+    expect(capturedInput?.artifactId).toBe(body.artifactId);
+    expect(capturedInput?.installationId).toBe('home-1');
+    expect(capturedInput?.target).toEqual({ kind: 'ha_device', id: 'device-1' });
   });
 });

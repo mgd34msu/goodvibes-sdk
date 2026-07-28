@@ -183,7 +183,7 @@ describe('HTTP handler: GET /api/memory/review-queue (Item 7)', () => {
       runtimeStore: null,
       runtimeBus: null as unknown as never,
     };
-    return { handlers: createDaemonIntegrationRouteHandlers(context as Parameters<typeof createDaemonIntegrationRouteHandlers>[0]), memoryRegistry };
+    return { handlers: createDaemonIntegrationRouteHandlers(context as unknown as Parameters<typeof createDaemonIntegrationRouteHandlers>[0]), memoryRegistry };
   }
 
   test('returns all records with no scope query param', async () => {

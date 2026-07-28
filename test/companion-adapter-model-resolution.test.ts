@@ -29,7 +29,7 @@ function makeRecordingProvider(name: string): LLMProvider & { recordedModel: str
     async chat(params: ChatRequest): Promise<ChatResponse> {
       stub.recordedModel = params.model;
       stub.recordedTools = params.tools;
-      return { content: 'ok', stopReason: 'completed', toolCalls: [] };
+      return { content: 'ok', stopReason: 'completed', toolCalls: [], usage: { inputTokens: 0, outputTokens: 0 } };
     },
   };
   return stub;

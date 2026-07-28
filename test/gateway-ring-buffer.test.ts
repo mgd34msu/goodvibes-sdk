@@ -123,8 +123,10 @@ function makeGateway(): ControlPlaneGateway {
 function pushMessages(gateway: ControlPlaneGateway, count: number): void {
   for (let i = 0; i < count; i++) {
     gateway.publishSurfaceMessage({
-      kind: 'info',
-      text: `msg-${i}`,
+      surface: 'tui',
+      level: 'info',
+      title: `msg-${i}`,
+      body: `msg-${i}`,
     });
   }
 }
@@ -150,9 +152,9 @@ describe('ControlPlaneGateway — recentMessages ring buffer', () => {
     pushMessages(gateway, 3);
     const msgs = gateway.listSurfaceMessages(10);
     // Newest (msg-2) should be first
-    expect(msgs[0]!.text).toBe('msg-2');
-    expect(msgs[1]!.text).toBe('msg-1');
-    expect(msgs[2]!.text).toBe('msg-0');
+    expect(msgs[0]!.body).toBe('msg-2');
+    expect(msgs[1]!.body).toBe('msg-1');
+    expect(msgs[2]!.body).toBe('msg-0');
   });
 
   it('is hard-bounded at 200 entries', () => {
@@ -167,9 +169,9 @@ describe('ControlPlaneGateway — recentMessages ring buffer', () => {
     const msgs = gateway.listSurfaceMessages(201);
     expect(msgs).toHaveLength(200);
     // Newest first: msg-200
-    expect(msgs[0]!.text).toBe('msg-200');
+    expect(msgs[0]!.body).toBe('msg-200');
     // Oldest retained: msg-1 (msg-0 was evicted)
-    expect(msgs[199]!.text).toBe('msg-1');
+    expect(msgs[199]!.body).toBe('msg-1');
   });
 
   it('getSnapshot().totals.surfaceMessages reflects bounded count', () => {
@@ -183,7 +185,7 @@ describe('ControlPlaneGateway — recentMessages ring buffer', () => {
     const msgs = gateway.listSurfaceMessages(10);
     expect(msgs).toHaveLength(10);
     // Newest first: msg-49
-    expect(msgs[0]!.text).toBe('msg-49');
+    expect(msgs[0]!.body).toBe('msg-49');
   });
 
   it('each message has required id and createdAt fields', () => {

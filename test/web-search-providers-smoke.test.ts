@@ -19,13 +19,17 @@ import { createTavilySearchProvider } from '../packages/sdk/src/platform/web-sea
 function makeContext() {
   return {
     env: {} as Record<string, string | undefined>,
-    serviceRegistry: { get: (_id: string) => undefined },
+    serviceRegistry: { get: (_id: string) => null },
     // Hermetic fetcher so this smoke test never touches the network. Without it
     // providers fall back to real fetch; most endpoints error fast, but the
     // Firecrawl POST can hang past the 5s test timeout when the host is slow or
     // unreachable in CI. Returning an empty JSON payload lets every provider
     // resolve deterministically and fast.
-    fetcher: async () => ({ results: [{ status: 200, content: '{}' }] }),
+    fetcher: async () => ({
+      success: true,
+      summary: { total: 1, succeeded: 1, failed: 0 },
+      results: [{ url: 'https://example.com', status: 200, content: '{}' }],
+    }),
   };
 }
 
@@ -79,7 +83,10 @@ describe('platform/web-search/providers — behavior smoke', () => {
   test('createDuckDuckGoProvider returns correct provider shape and search() returns a Promise', async () => {
     const provider = createDuckDuckGoProvider({
       fetcher: async () => ({
+        success: true,
+        summary: { total: 2, succeeded: 2, failed: 0 },
         results: [{
+          url: 'https://duckduckgo.com/html/?q=x',
           status: 200,
           content: `
             <td valign="top">1.&nbsp;</td>
@@ -88,6 +95,7 @@ describe('platform/web-search/providers — behavior smoke', () => {
             <span class="link-text">example.com/result</span>
           `,
         }, {
+          url: 'https://api.duckduckgo.com/?q=x&format=json',
           status: 200,
           content: JSON.stringify({ AbstractText: 'Example instant answer', AbstractURL: 'https://example.com/answer' }),
         }],

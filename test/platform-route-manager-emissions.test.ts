@@ -190,6 +190,7 @@ describe('RouteBindingManager.removeBinding — emissions', () => {
     await flush();
 
     expect(listingAfterRemove).not.toBeNull();
-    expect((listingAfterRemove as AutomationRouteBinding[]).find((b) => b.id === binding.id)).toBeUndefined();
+    const finalListing = listingAfterRemove as unknown as AutomationRouteBinding[];
+    expect(finalListing.find((b) => b.id === binding.id)).toBeUndefined();
   });
 });

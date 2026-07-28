@@ -16,8 +16,8 @@ import type { OpsEvent } from '../packages/sdk/src/events/ops.js';
 import type { RuntimeEventEnvelope } from '../packages/sdk/src/platform/runtime/events/index.ts';
 
 function makeSessionEnvelope() {
-  const payload = { type: 'SESSION_CREATED', sessionId: 'sess-listener-errors' } as SessionEvent;
-  return createEventEnvelope('SESSION_CREATED', payload, {
+  const payload: SessionEvent = { type: 'SESSION_STARTED', sessionId: 'sess-listener-errors', profileId: 'default', workingDir: '/tmp/listener-errors-test' };
+  return createEventEnvelope('SESSION_STARTED', payload, {
     sessionId: 'sess-listener-errors',
     traceId: 'listener-errors',
     source: 'test',
@@ -34,39 +34,39 @@ describe('listener_errors_total counter', () => {
     const { listenerErrorsTotal } = await import('../packages/sdk/src/platform/runtime/metrics.js');
     const bus = new RuntimeEventBus();
 
-    const before = listenerErrorsTotal.value({ event_type: 'SESSION_CREATED' });
+    const before = listenerErrorsTotal.value({ event_type: 'SESSION_STARTED' });
 
-    bus.on<SessionEvent>('SESSION_CREATED', () => {
+    bus.on<SessionEvent>('SESSION_STARTED', () => {
       throw new Error('-crash');
     });
 
     bus.emit('session', makeSessionEnvelope());
     await drainMicrotasks();
 
-    expect(listenerErrorsTotal.value({ event_type: 'SESSION_CREATED' })).toBe(before + 1);
+    expect(listenerErrorsTotal.value({ event_type: 'SESSION_STARTED' })).toBe(before + 1);
   });
 
   test('non-throwing listener does not increment listener_errors_total', async () => {
     const { listenerErrorsTotal } = await import('../packages/sdk/src/platform/runtime/metrics.js');
     const bus = new RuntimeEventBus();
 
-    const before = listenerErrorsTotal.value({ event_type: 'SESSION_CREATED' });
+    const before = listenerErrorsTotal.value({ event_type: 'SESSION_STARTED' });
 
-    bus.on<SessionEvent>('SESSION_CREATED', () => { /* no-op */ });
+    bus.on<SessionEvent>('SESSION_STARTED', () => { /* no-op */ });
 
     bus.emit('session', makeSessionEnvelope());
     await drainMicrotasks();
 
-    expect(listenerErrorsTotal.value({ event_type: 'SESSION_CREATED' })).toBe(before);
+    expect(listenerErrorsTotal.value({ event_type: 'SESSION_STARTED' })).toBe(before);
   });
 
   test('counter increments once per throw, even for same listener throwing multiple times', async () => {
     const { listenerErrorsTotal } = await import('../packages/sdk/src/platform/runtime/metrics.js');
     const bus = new RuntimeEventBus();
 
-    const before = listenerErrorsTotal.value({ event_type: 'SESSION_CREATED' });
+    const before = listenerErrorsTotal.value({ event_type: 'SESSION_STARTED' });
 
-    bus.on<SessionEvent>('SESSION_CREATED', () => {
+    bus.on<SessionEvent>('SESSION_STARTED', () => {
       throw new Error('-repeated');
     });
 
@@ -76,7 +76,7 @@ describe('listener_errors_total counter', () => {
     bus.emit('session', makeSessionEnvelope());
     await drainMicrotasks(10);
 
-    expect(listenerErrorsTotal.value({ event_type: 'SESSION_CREATED' })).toBe(before + 3);
+    expect(listenerErrorsTotal.value({ event_type: 'SESSION_STARTED' })).toBe(before + 3);
   });
 });
 
@@ -90,7 +90,7 @@ describe('OPS_LISTENER_MISBEHAVING OpsEvent emission', () => {
       (env) => { opsEvents.push(env as RuntimeEventEnvelope<'OPS_LISTENER_MISBEHAVING', OpsEvent>); }
     );
 
-    bus.on<SessionEvent>('SESSION_CREATED', () => {
+    bus.on<SessionEvent>('SESSION_STARTED', () => {
       throw new Error('misbehave-first');
     });
 
@@ -100,7 +100,7 @@ describe('OPS_LISTENER_MISBEHAVING OpsEvent emission', () => {
     expect(opsEvents.length).toBe(1);
     expect(opsEvents[0]!.payload.type).toBe('OPS_LISTENER_MISBEHAVING');
     const payload = opsEvents[0]!.payload as Extract<OpsEvent, { type: 'OPS_LISTENER_MISBEHAVING' }>;
-    expect(payload.eventType).toBe('SESSION_CREATED');
+    expect(payload.eventType).toBe('SESSION_STARTED');
     expect(payload.errorMessage).toBe('misbehave-first');
     expect(payload.errorCount).toBe(1);
   });
@@ -115,7 +115,7 @@ describe('OPS_LISTENER_MISBEHAVING OpsEvent emission', () => {
     );
 
     // Register one listener that will always throw.
-    bus.on<SessionEvent>('SESSION_CREATED', () => {
+    bus.on<SessionEvent>('SESSION_STARTED', () => {
       throw new Error('misbehave-repeat');
     });
 
@@ -135,7 +135,7 @@ describe('OPS_LISTENER_MISBEHAVING OpsEvent emission', () => {
 
     bus.on<OpsEvent>('OPS_LISTENER_MISBEHAVING', (env) => { opsEvents.push(env); });
 
-    bus.on<SessionEvent>('SESSION_CREATED', () => { /* well-behaved */ });
+    bus.on<SessionEvent>('SESSION_STARTED', () => { /* well-behaved */ });
 
     bus.emit('session', makeSessionEnvelope());
     await drainMicrotasks(5);
@@ -149,7 +149,7 @@ describe('OPS_LISTENER_MISBEHAVING OpsEvent emission', () => {
 
     bus.onDomain('ops', (env) => { domainEvents.push(env); });
 
-    bus.on<SessionEvent>('SESSION_CREATED', () => {
+    bus.on<SessionEvent>('SESSION_STARTED', () => {
       throw new Error('domain-obs-check');
     });
 

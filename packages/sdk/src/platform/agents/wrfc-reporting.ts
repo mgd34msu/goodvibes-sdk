@@ -12,7 +12,14 @@ const REVIEW_BRIEF_FILE_LIMIT = 8;
 const REVIEW_BRIEF_TEXT_LIMIT = 220;
 const REVIEWABLE_OUTPUT_LIMIT = 16_000;
 
-type ReviewableCompletionReport = CompletionReport & {
+/**
+ * The report shape `parseEngineerCompletionReport` returns.
+ *
+ * Exported because it IS the return type of an exported function: without the
+ * keyword a caller could hold the value but never name the type, and had to
+ * recover it as `Parameters<typeof buildReviewTask>[2]`.
+ */
+export type ReviewableCompletionReport = CompletionReport & {
   reviewableOutput?: string | undefined;
 };
 

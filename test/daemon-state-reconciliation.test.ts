@@ -583,6 +583,7 @@ describe('session GC keeps sessions with pending inputs active', () => {
     const backdateSession = (broker: SharedSessionBroker, sessionId: string, idleMs: number) => {
       const s = (broker as unknown as { sessions: Map<string, SharedSessionRecord> }).sessions;
       const session = s.get(sessionId);
+      if (!session) throw new Error(`expected a session record for ${sessionId}`);
       s.set(sessionId, { ...session, lastActivityAt: Date.now() - idleMs });
     };
     backdateSession(broker, sess.id, 5000);
@@ -648,10 +649,10 @@ describe('SharedSessionBroker idle-session GC sweep', () => {
     const sessions = (broker as unknown as { sessions: Map<string, SharedSessionRecord> }).sessions;
     sessions.set(session.id, { ...session, messageCount: 5 });
 
-    let closedPayload: unknown = null;
+    let closedPayload: { readonly id?: string; readonly reason?: string } | null = null;
     // publishUpdate wraps all events as ('session-update', { event, payload })
     broker.setEventPublisher((event: string, payload: unknown) => {
-      if (event === 'session-update' && typeof payload === 'object' && payload !== null && 'event' in payload && (payload as Record<string, unknown>).event === 'session-closed') closedPayload = (payload as Record<string, unknown>).payload;
+      if (event === 'session-update' && typeof payload === 'object' && payload !== null && 'event' in payload && (payload as Record<string, unknown>).event === 'session-closed') closedPayload = (payload as Record<string, unknown>).payload as { readonly id?: string; readonly reason?: string } | null;
     });
 
     backdateSession(broker, session.id, 2);
@@ -659,7 +660,7 @@ describe('SharedSessionBroker idle-session GC sweep', () => {
 
     const afterSweep = broker.getSession(session.id);
     expect(afterSweep?.status).toBe('closed');
-    expect(closedPayload?.reason).toBe('idle-long');
+    expect((closedPayload as { readonly id?: string; readonly reason?: string } | null)?.reason).toBe('idle-long');
   });
 
   test('session with active agent is never GCd regardless of idle time', async () => {
@@ -678,16 +679,17 @@ describe('SharedSessionBroker idle-session GC sweep', () => {
     const broker = makeBroker(1, 24 * 60 * 60 * 1000);
     const session = await broker.createSession({ title: 'Ghost Events' });
 
-    let closedPayload: unknown = null;
+    let closedPayload: { readonly id?: string; readonly reason?: string } | null = null;
     // publishUpdate wraps all events as ('session-update', { event, payload })
     broker.setEventPublisher((event: string, payload: unknown) => {
-      if (event === 'session-update' && typeof payload === 'object' && payload !== null && 'event' in payload && (payload as Record<string, unknown>).event === 'session-closed') closedPayload = (payload as Record<string, unknown>).payload;
+      if (event === 'session-update' && typeof payload === 'object' && payload !== null && 'event' in payload && (payload as Record<string, unknown>).event === 'session-closed') closedPayload = (payload as Record<string, unknown>).payload as { readonly id?: string; readonly reason?: string } | null;
     });
 
     backdateSession(broker, session.id, 2);
     (broker as unknown as { gcSweep(): void }).gcSweep();
 
-    expect(closedPayload?.reason).toBe('idle-empty');
-    expect(closedPayload?.id).toBe(session.id);
+    const finalClosedPayload = closedPayload as { readonly id?: string; readonly reason?: string } | null;
+    expect(finalClosedPayload?.reason).toBe('idle-empty');
+    expect(finalClosedPayload?.id).toBe(session.id);
   });
 });

@@ -18,28 +18,30 @@ import { randomUUID } from 'node:crypto';
 import { createDaemonRuntimeSessionRouteHandlers } from '../packages/daemon-sdk/src/runtime-session-routes.js';
 import type { DaemonRuntimeRouteContext } from '../packages/daemon-sdk/src/runtime-route-types.js';
 
+type SessionBroker = DaemonRuntimeRouteContext['sessionBroker'];
+type SubmitMessageInput = Parameters<SessionBroker['submitMessage']>[0];
+type SteerMessageInput = Parameters<SessionBroker['steerMessage']>[0];
+type FollowUpMessageInput = Parameters<SessionBroker['followUpMessage']>[0];
+type CreateSessionInput = Parameters<SessionBroker['createSession']>[0];
+type AppendCompanionInput = Parameters<SessionBroker['appendCompanionMessage']>[1];
+type PublishConversationFollowupParams = Parameters<DaemonRuntimeRouteContext['publishConversationFollowup']>;
+
 function makeRequest(method: string, url: string, body?: unknown): Request {
   return new Request(url, {
     method,
     headers: body ? { 'content-type': 'application/json' } : {},
-    body: body ? JSON.stringify(body) : undefined,
+    ...(body ? { body: JSON.stringify(body) } : {}),
   });
 }
 
 type AppendCompanionCall = {
   sessionId: string;
-  input: {
-    messageId: string;
-    body: string;
-    timestamp: number;
-    source: string;
-    metadata?: Readonly<Record<string, unknown>>;
-  };
+  input: AppendCompanionInput;
 };
 
 type FollowupEvent = {
-  sessionId: string;
-  envelope: { messageId: string; body: string; source: string; timestamp: number; metadata?: Readonly<Record<string, unknown>> };
+  sessionId: PublishConversationFollowupParams[0];
+  envelope: PublishConversationFollowupParams[1];
 };
 
 interface MockSessionRecord {
@@ -60,14 +62,14 @@ function makeContext(opts: {
   const persistedMessages = opts.persistedMessages ?? new Map<string, unknown[]>();
 
   return {
-    parseJsonBody: async (req) => {
+    parseJsonBody: async (req: Request) => {
       try {
         return await req.json() as Record<string, unknown>;
       } catch {
         return new Response('Bad JSON', { status: 400 });
       }
     },
-    parseOptionalJsonBody: async (req) => {
+    parseOptionalJsonBody: async (req: Request) => {
       const text = await req.text();
       if (!text) return null;
       try {
@@ -76,11 +78,11 @@ function makeContext(opts: {
         return new Response('Bad JSON', { status: 400 });
       }
     },
-    recordApiResponse: (_req, _path, response) => response,
+    recordApiResponse: (_req: Request, _path: string, response: Response) => response,
     requireAdmin: () => null,
     sessionBroker: {
       start: async () => {},
-      submitMessage: async (input) => {
+      submitMessage: async (input: SubmitMessageInput) => {
         const sessionId = input.sessionId ?? randomUUID();
         const session: MockSessionRecord = sessions.get(sessionId) ?? { id: sessionId, status: 'active', messageCount: 0 };
         sessions.set(sessionId, session);
@@ -94,7 +96,7 @@ function makeContext(opts: {
           userMessage: null,
         };
       },
-      steerMessage: async (input) => {
+      steerMessage: async (input: SteerMessageInput) => {
         const sessionId = input.sessionId ?? randomUUID();
         const session: MockSessionRecord = sessions.get(sessionId) ?? { id: sessionId, status: 'active', messageCount: 0 };
         sessions.set(sessionId, session);
@@ -108,7 +110,7 @@ function makeContext(opts: {
           userMessage: null,
         };
       },
-      followUpMessage: async (input) => {
+      followUpMessage: async (input: FollowUpMessageInput) => {
         const sessionId = input.sessionId ?? randomUUID();
         const session: MockSessionRecord = sessions.get(sessionId) ?? { id: sessionId, status: 'active', messageCount: 0 };
         sessions.set(sessionId, session);
@@ -123,15 +125,15 @@ function makeContext(opts: {
         };
       },
       bindAgent: async () => {},
-      createSession: async (input) => ({ id: input.id ?? randomUUID() }),
-      getSession: (sessionId) => sessions.get(sessionId) ?? null,
-      getMessages: (sessionId) => persistedMessages.get(sessionId) ?? [],
+      createSession: async (input: CreateSessionInput) => ({ id: input.id ?? randomUUID() }),
+      getSession: (sessionId: string) => sessions.get(sessionId) ?? null,
+      getMessages: (sessionId: string) => persistedMessages.get(sessionId) ?? [],
       getInputs: () => [],
-      closeSession: async (sessionId) => sessions.get(sessionId) ?? null,
-      reopenSession: async (sessionId) => sessions.get(sessionId) ?? null,
+      closeSession: async (sessionId: string) => sessions.get(sessionId) ?? null,
+      reopenSession: async (sessionId: string) => sessions.get(sessionId) ?? null,
       cancelInput: async () => null,
       completeAgent: async () => {},
-      appendCompanionMessage: async (sessionId, input) => {
+      appendCompanionMessage: async (sessionId: string, input: AppendCompanionInput) => {
         appendCalls.push({ sessionId, input });
         // Simulate persistence: store a synthetic message record
         const bucket = persistedMessages.get(sessionId) ?? [];
@@ -161,9 +163,9 @@ function makeContext(opts: {
       setEnabled: async () => null,
       runNow: async () => ({ id: randomUUID(), status: 'running' }),
     },
-    normalizeAtSchedule: (at) => at,
-    normalizeEverySchedule: (interval) => interval,
-    normalizeCronSchedule: (expr) => expr,
+    normalizeAtSchedule: (at: number) => at,
+    normalizeEverySchedule: (interval: string | number) => interval,
+    normalizeCronSchedule: (expr: string) => expr,
     routeBindings: { start: async () => {}, getBinding: () => undefined },
     trySpawnAgent: () => ({
       id: randomUUID(),
@@ -179,10 +181,10 @@ function makeContext(opts: {
     configManager: { get: () => undefined },
     runtimeStore: null,
     runtimeDispatch: null,
-    publishConversationFollowup: (sessionId, envelope) => {
+    publishConversationFollowup: (sessionId: PublishConversationFollowupParams[0], envelope: PublishConversationFollowupParams[1]) => {
       followupEvents.push({ sessionId, envelope } as FollowupEvent);
     },
-    openSessionEventStream: (_req, _sessionId) => new Response('stream', { status: 200 }),
+    openSessionEventStream: (_req: Request, _sessionId: string) => new Response('stream', { status: 200 }),
   } as unknown as DaemonRuntimeRouteContext;
 }
 
@@ -223,13 +225,15 @@ describe('companion-followup-persistence: kind=message persists before emitting'
     await handlers.postSharedSessionMessage(sessionId, req);
 
     expect(appendCalls).toHaveLength(1);
-    expect(appendCalls[0].sessionId).toBe(sessionId);
-    expect(appendCalls[0].input.body).toBe('hello from companion');
-    expect(appendCalls[0].input.source).toBe('companion-followup');
-    expect(typeof appendCalls[0].input.messageId).toBe('string');
-    expect(appendCalls[0].input.messageId).toMatch(/^companion-/);
-    expect(typeof appendCalls[0].input.timestamp).toBe('number');
-    expect(appendCalls[0].input.timestamp).toBeGreaterThanOrEqual(before);
+    const call = appendCalls[0];
+    if (!call) throw new Error('expected an appendCompanionMessage call');
+    expect(call.sessionId).toBe(sessionId);
+    expect(call.input.body).toBe('hello from companion');
+    expect(call.input.source).toBe('companion-followup');
+    expect(typeof call.input.messageId).toBe('string');
+    expect(call.input.messageId).toMatch(/^companion-/);
+    expect(typeof call.input.timestamp).toBe('number');
+    expect(call.input.timestamp).toBeGreaterThanOrEqual(before);
   });
 
   test('appendCompanionMessage persists routing metadata', async () => {
@@ -246,12 +250,16 @@ describe('companion-followup-persistence: kind=message persists before emitting'
     });
     await handlers.postSharedSessionMessage(sessionId, req);
 
-    expect(appendCalls[0].input.metadata?.routing).toEqual({
+    const call = appendCalls[0];
+    const followupEvent = followupEvents[0];
+    if (!call) throw new Error('expected an appendCompanionMessage call');
+    if (!followupEvent) throw new Error('expected a followup event');
+    expect(call.input.metadata?.routing).toEqual({
       providerId: 'openai',
       modelId: 'openai:gpt-5.5',
       providerSelection: 'concrete',
     });
-    expect(followupEvents[0].envelope.metadata?.routing).toEqual(appendCalls[0].input.metadata?.routing);
+    expect(followupEvent.envelope.metadata?.routing).toEqual(call.input.metadata?.routing);
   });
 
   test('GET /api/sessions/:id/messages returns the persisted message', async () => {
@@ -300,8 +308,10 @@ describe('companion-followup-persistence: kind=message persists before emitting'
     expect(getBody.session.participants).toEqual([]);
     expect(getBody.session.metadata).toEqual({});
     expect(getBody.messages).toHaveLength(1);
-    expect(getBody.messages[0].body).toBe('hello from companion');
-    expect(getBody.messages[0].role).toBe('user');
+    const message = getBody.messages[0];
+    if (!message) throw new Error('expected a persisted message');
+    expect(message.body).toBe('hello from companion');
+    expect(message.role).toBe('user');
   });
 
   test('conversation.followup.companion event fires with matching messageId', async () => {
@@ -314,27 +324,31 @@ describe('companion-followup-persistence: kind=message persists before emitting'
     await handlers.postSharedSessionMessage(sessionId, req);
 
     expect(followupEvents).toHaveLength(1);
-    expect(followupEvents[0].sessionId).toBe(sessionId);
-    expect(followupEvents[0].envelope.body).toBe('hello from companion');
-    expect(followupEvents[0].envelope.source).toBe('companion-followup');
+    const followupEvent = followupEvents[0];
+    if (!followupEvent) throw new Error('expected a followup event');
+    expect(followupEvent.sessionId).toBe(sessionId);
+    expect(followupEvent.envelope.body).toBe('hello from companion');
+    expect(followupEvent.envelope.source).toBe('companion-followup');
 
     // messageId must be the same in both persistence call and event
-    expect(appendCalls[0].input.messageId).toBe(followupEvents[0].envelope.messageId);
+    const call = appendCalls[0];
+    if (!call) throw new Error('expected an appendCompanionMessage call');
+    expect(call.input.messageId).toBe(followupEvent.envelope.messageId);
   });
 
   test('appendCompanionMessage is called before event emission (persistence-first)', async () => {
     // Track order of calls
     const callOrder: Array<'append' | 'event'> = [];
     const ctx = makeContext({ sessions, persistedMessages });
-    (ctx as Record<string, unknown>).sessionBroker = {
-      ...(ctx as Record<string, unknown>).sessionBroker as object,
-      appendCompanionMessage: async (sid: string, input: { messageId: string; body: string; timestamp: number; source: string }) => {
+    (ctx as unknown as Record<string, unknown>).sessionBroker = {
+      ...(ctx as unknown as Record<string, unknown>).sessionBroker as object,
+      appendCompanionMessage: async (sid: string, input: AppendCompanionInput) => {
         callOrder.push('append');
         appendCalls.push({ sessionId: sid, input });
         return null;
       },
     };
-    (ctx as Record<string, unknown>).publishConversationFollowup = (sid: string, envelope: { messageId: string; body: string; timestamp: number; source: string }) => {
+    (ctx as unknown as Record<string, unknown>).publishConversationFollowup = (sid: PublishConversationFollowupParams[0], envelope: PublishConversationFollowupParams[1]) => {
       callOrder.push('event');
       followupEvents.push({ sessionId: sid, envelope });
     };
@@ -366,7 +380,11 @@ describe('companion-followup-persistence: kind=message persists before emitting'
     // Both persistence call and event must use the same generated messageId
     expect(appendCalls).toHaveLength(1);
     expect(followupEvents).toHaveLength(1);
-    expect(appendCalls[0].input.messageId).toBe(followupEvents[0].envelope.messageId);
+    const call = appendCalls[0];
+    const followupEvent = followupEvents[0];
+    if (!call) throw new Error('expected an appendCompanionMessage call');
+    if (!followupEvent) throw new Error('expected a followup event');
+    expect(call.input.messageId).toBe(followupEvent.envelope.messageId);
   });
 
   test('returns 404 for unknown session — no persistence attempted', async () => {

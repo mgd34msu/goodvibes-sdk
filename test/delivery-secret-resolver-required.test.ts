@@ -32,7 +32,7 @@ import type { ConfigManager } from '../packages/sdk/src/platform/config/manager.
 import type { ServiceRegistry } from '../packages/sdk/src/platform/config/service-registry.ts';
 import type { ArtifactStore } from '../packages/sdk/src/platform/artifacts/index.ts';
 import type { SecretsManager } from '../packages/sdk/src/platform/config/secrets.ts';
-import type { RouteBindingManager } from '../packages/sdk/src/platform/channels/route-bindings.ts';
+import type { RouteBindingManager } from '../packages/sdk/src/platform/channels/route-manager.ts';
 
 const SECRET_REF = 'goodvibes://secrets/goodvibes/TELEGRAM_BOT_TOKEN';
 

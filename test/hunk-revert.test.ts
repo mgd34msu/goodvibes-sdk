@@ -172,7 +172,7 @@ describe('checkpoints.revertHunk handlers (confirm gate)', () => {
 
   test('unconfirmed apply returns a non-error refusal and writes nothing', async () => {
     const apply = createCheckpointsRevertHunkHandler(manager(), new RestoreTokenStore());
-    const res = (await apply({ body: { path: 'f.ts', hunk: FORWARD_HUNK } })) as { receipt: unknown; refused: boolean; refusal: { previewMethod: string } };
+    const res = (await apply({ body: { path: 'f.ts', hunk: FORWARD_HUNK }, context: { admin: true } })) as { receipt: unknown; refused: boolean; refusal: { previewMethod: string } };
     expect(res.refused).toBe(true);
     expect(res.receipt).toBeNull();
     expect(res.refusal.previewMethod).toBe('checkpoints.revertHunkPreview');
@@ -182,14 +182,14 @@ describe('checkpoints.revertHunk handlers (confirm gate)', () => {
   test('a preview token authorizes exactly one apply, then is spent', async () => {
     const tokens = new RestoreTokenStore();
     const preview = createCheckpointsRevertHunkPreviewHandler(manager(), tokens);
-    const p = (await preview({ body: { path: 'f.ts', hunk: FORWARD_HUNK } })) as { applies: boolean; token: string };
+    const p = (await preview({ body: { path: 'f.ts', hunk: FORWARD_HUNK }, context: { admin: true } })) as { applies: boolean; token: string };
     expect(p.applies).toBe(true);
     expect(typeof p.token).toBe('string');
 
     const events: WorkspaceEvent[] = [];
     const emit: CheckpointsEventSink = (e) => events.push(e);
     const apply = createCheckpointsRevertHunkHandler(manager(), tokens, emit);
-    const ok = (await apply({ body: { path: 'f.ts', hunk: FORWARD_HUNK, confirmToken: p.token } })) as { receipt: { reverted: boolean }; refused: boolean };
+    const ok = (await apply({ body: { path: 'f.ts', hunk: FORWARD_HUNK, confirmToken: p.token }, context: { admin: true } })) as { receipt: { reverted: boolean }; refused: boolean };
     expect(ok.refused).toBe(false);
     expect(ok.receipt.reverted).toBe(true);
     expect(readFileSync(join(root, 'f.ts'), 'utf8')).toBe(OLD_CONTENT);
@@ -197,14 +197,14 @@ describe('checkpoints.revertHunk handlers (confirm gate)', () => {
     expect(events[0]!.type).toBe('HUNK_REVERTED');
 
     // Token is single-use: a second apply with the same token is a 400.
-    await expect(apply({ body: { path: 'f.ts', hunk: FORWARD_HUNK, confirmToken: p.token } })).rejects.toBeInstanceOf(GatewayVerbError);
+    await expect(apply({ body: { path: 'f.ts', hunk: FORWARD_HUNK, confirmToken: p.token }, context: { admin: true } })).rejects.toBeInstanceOf(GatewayVerbError);
   });
 
   test('a stale hunk under confirm:true is a 409 conflict', async () => {
     writeFileSync(join(root, 'f.ts'), OLD_CONTENT, 'utf8');
     const apply = createCheckpointsRevertHunkHandler(manager(), new RestoreTokenStore());
     try {
-      await apply({ body: { path: 'f.ts', hunk: FORWARD_HUNK, confirm: true } });
+      await apply({ body: { path: 'f.ts', hunk: FORWARD_HUNK, confirm: true }, context: { admin: true } });
       throw new Error('expected a conflict');
     } catch (err) {
       expect(err).toBeInstanceOf(GatewayVerbError);

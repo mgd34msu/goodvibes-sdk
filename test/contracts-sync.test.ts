@@ -14,18 +14,18 @@ describe('contracts package', () => {
     const operator = getOperatorContract();
     const peer = getPeerContract();
 
-    expect(FOUNDATION_METADATA.productVersion).toBe(operator.product.version);
-    expect(FOUNDATION_METADATA.operatorMethodCount).toBe(operator.operator.methods.length);
-    expect(FOUNDATION_METADATA.operatorEventCount).toBe(operator.operator.events.length);
-    expect(FOUNDATION_METADATA.peerEndpointCount).toBe(peer.endpoints.length);
+    expect(FOUNDATION_METADATA.productVersion as string).toBe(operator.product.version);
+    expect(FOUNDATION_METADATA.operatorMethodCount as number).toBe(operator.operator.methods.length);
+    expect(FOUNDATION_METADATA.operatorEventCount as number).toBe(operator.operator.events.length);
+    expect(FOUNDATION_METADATA.peerEndpointCount as number).toBe(peer.endpoints.length);
   });
 
   test('generated ids stay aligned with artifact contents', () => {
     const operator = getOperatorContract();
     const peer = getPeerContract();
 
-    expect(OPERATOR_METHOD_IDS.length).toBe(operator.operator.methods.length);
-    expect(PEER_ENDPOINT_IDS.length).toBe(peer.endpoints.length);
+    expect(OPERATOR_METHOD_IDS.length as number).toBe(operator.operator.methods.length);
+    expect(PEER_ENDPOINT_IDS.length as number).toBe(peer.endpoints.length);
   });
 
   test('runtime event domains expose the canonical vocabulary', () => {
