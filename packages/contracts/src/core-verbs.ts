@@ -314,6 +314,15 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     // third-party-data rule closes. See docs/owner-profile.md §10 and §11.1.
     'append', 'forget', 'undo', 'provenance', 'person',
   ],
+  'admin-unredacted-read': [
+    // `mcp.servers.reveal` returns effective MCP config with environment
+    // VALUES included, where `mcp.config.get` returns the redacted view every
+    // other caller should use. It is not `get`: the two answer the same
+    // question at different exposure, and giving them the same verb would make
+    // the admin-only one look like an ordinary read at the call site — which
+    // is exactly the confusion the redaction exists to prevent. Admin-gated.
+    'reveal',
+  ],
   'payments-checkout': [
     // Driving a real checkout on a real merchant's page. Neither word is a CRUD
     // operation on a resource this catalog owns.

@@ -4,6 +4,7 @@ import type { MinimalModelDefinition, SyntheticModelInfo } from './model-catalog
 import { logger } from '../utils/logger.js';
 import { inferFallbackContextWindow } from './context-window-fallback.js';
 import { type ModelsDevReasoningOption, parseReasoningOptions } from './reasoning-effort.js';
+import type { ModelCapabilityFacts, ModelCapabilityFactsSource } from './capabilities.js';
 import { resolveReasoningEffortSpec } from './reasoning-effort-families.js';
 
 export interface CatalogProvider {
@@ -41,6 +42,13 @@ export interface CatalogModel {
    * empty array means the catalog said this model has no configurable levels.
    */
   reasoningOptions?: ModelsDevReasoningOption[] | undefined;
+  /**
+   * The feed's per-model `modalities.input` list, carried verbatim — e.g.
+   * `['text', 'image', 'pdf']`. This is the catalog's own answer to "does this
+   * model accept images", which is what `multimodal` should be read from.
+   * Absent means the entry carried no modality block at all.
+   */
+  inputModalities?: readonly string[] | undefined;
 }
 
 export interface PricingCatalog {
@@ -181,10 +189,19 @@ export function createModelCatalog(registry: ModelCatalogRegistry): ModelCatalog
 
 export function getCatalogModelDefinitionsFrom(models: readonly CatalogModel[]): MinimalModelDefinition[] {
   return models.map((model): MinimalModelDefinition => {
-    const providerLower = model.provider.toLowerCase();
     const isFree = model.tier === 'free';
-    const isGoogle = providerLower.includes('google') || providerLower.includes('gemini');
-    const isOpenAI = providerLower.includes('openai');
+    // Same principle as `reasoning` below, applied to image input: the
+    // catalog's own per-model answer decides. This used to read
+    // `isGoogle || isOpenAI`, which called every Anthropic model text-only
+    // and every OpenAI embedding model multimodal — vendors ship both kinds.
+    // `modalities.input` is populated for every entry in the live feed, so
+    // the undefined branch is a malformed-entry fallback rather than a
+    // routine path; a fallback that guessed by vendor would reintroduce the
+    // bug, so an entry that says nothing is reported as saying nothing.
+    const inputModalities = model.inputModalities;
+    const isMultimodal = inputModalities !== undefined
+      ? inputModalities.includes('image')
+      : false;
     // The catalog's own per-model answer decides, rather than the vendor the
     // model happens to come from: OpenAI, Anthropic and Google all ship models
     // with `reasoning: false`, and offering those an effort picker was a lie.
@@ -210,7 +227,7 @@ export function getCatalogModelDefinitionsFrom(models: readonly CatalogModel[]):
         toolCalling: true,
         codeEditing: true,
         reasoning: hasReasoning,
-        multimodal: isGoogle || isOpenAI,
+        multimodal: isMultimodal,
       },
       contextWindow: hasCatalogContextWindow
         ? model.contextWindow!
@@ -221,6 +238,54 @@ export function getCatalogModelDefinitionsFrom(models: readonly CatalogModel[]):
       ...(reasoningEffort ? { reasoningEffort } : {}),
     };
   });
+}
+
+/**
+ * Build a `ModelCapabilityFactsSource` over the catalog, so the capability
+ * registry reads each model's real context window, output cap and reasoning
+ * support instead of a hand-maintained per-model table.
+ *
+ * Lookup prefers the `providerId:modelId` pair, because the same model id is
+ * served by several providers at different limits (an OpenRouter mirror and
+ * the first-party endpoint do not always agree). A bare-id match is the
+ * fallback for callers that only have the id.
+ *
+ * A field the catalog does not carry is left undefined rather than defaulted,
+ * so the registry falls through to its static tables instead of recording a
+ * zero as though the provider had reported one.
+ */
+export function modelCapabilityFactsFromCatalog(
+  models: readonly CatalogModel[],
+): ModelCapabilityFactsSource {
+  const byPair = new Map<string, ModelCapabilityFacts>();
+  const byId = new Map<string, ModelCapabilityFacts>();
+
+  for (const model of models) {
+    const catalogSpec = parseReasoningOptions(model.reasoningOptions);
+    const hasReasoning = model.reasoning === true
+      || (catalogSpec !== undefined && catalogSpec.kind !== 'unavailable');
+    const facts: ModelCapabilityFacts = {
+      ...(model.contextWindow != null && model.contextWindow > 0
+        ? { maxContextTokens: model.contextWindow }
+        : {}),
+      ...(model.maxOutputTokens != null && model.maxOutputTokens > 0
+        ? { maxOutputTokens: model.maxOutputTokens }
+        : {}),
+      // Only a positive statement is made. `reasoning: false` in the feed is
+      // an answer, so it is carried; an entry that says nothing at all leaves
+      // the field undefined and the static tables decide.
+      ...(model.reasoning !== undefined || catalogSpec !== undefined
+        ? { reasoningControls: hasReasoning }
+        : {}),
+    };
+    byPair.set(`${model.providerId}:${model.id}`, facts);
+    // First provider to publish an id wins the bare-id slot; the pair lookup
+    // above is the one that is actually correct when providers disagree.
+    if (!byId.has(model.id)) byId.set(model.id, facts);
+  }
+
+  return (providerId: string, modelId: string): ModelCapabilityFacts | undefined =>
+    byPair.get(`${providerId}:${modelId}`) ?? byId.get(modelId);
 }
 
 export type { MinimalModelDefinition, SyntheticModelInfo } from './model-catalog-synthetic.js';

@@ -45,6 +45,7 @@ interface ModelsDevModel {
   tool_call?: boolean | undefined;
   structured_output?: boolean | undefined;
   open_weights?: boolean | undefined;
+  modalities?: { input?: string[] | undefined; output?: string[] | undefined } | undefined;
 }
 
 type ModelsDevResponse = Record<string, CatalogProviderShape>;
@@ -60,8 +61,13 @@ const CATALOG_FETCH_TIMEOUT_MS = 30_000;
  * array, which decides what reasoning levels each model really accepts.
  * Version-2 caches predate the field, so they are discarded and refetched
  * rather than left to fall through to the curated family table for a day.
+ *
+ * Version 4: `inputModalities` carries the feed's per-model `modalities.input`
+ * list, which decides `multimodal` per model instead of by vendor. Version-3
+ * caches predate the field; left in place they would report every model as
+ * text-only for a day, so they are discarded and refetched.
  */
-const CATALOG_CACHE_VERSION = 3;
+const CATALOG_CACHE_VERSION = 4;
 
 export function getCatalogCachePath(cacheDir: string): string {
   return join(cacheDir, 'model-catalog.json');
@@ -170,6 +176,12 @@ function transformModelsDevResponse(json: ModelsDevResponse): CatalogModel[] {
       const limit = modelData.limit;
       const supportsReasoning = modelData.reasoning === true;
       const reasoningOptions = getReasoningOptions(modelData.reasoning_options);
+      // The feed's own answer to what this model accepts as input. Undefined
+      // when the entry carried no modality block, which is distinct from an
+      // entry that carried one listing text only.
+      const inputModalities = Array.isArray(modelData.modalities?.input)
+        ? getStringArray(modelData.modalities.input)
+        : undefined;
 
       // Honest pricing: a missing cost stays null (unpriced). Coercing to $0
       // made absent-from-catalog models look free downstream.
@@ -207,6 +219,7 @@ function transformModelsDevResponse(json: ModelsDevResponse): CatalogModel[] {
         maxOutputTokens,
         ...(supportsReasoning ? { reasoning: true } : {}),
         ...(reasoningOptions !== undefined ? { reasoningOptions } : {}),
+        ...(inputModalities !== undefined ? { inputModalities } : {}),
       });
     }
   }

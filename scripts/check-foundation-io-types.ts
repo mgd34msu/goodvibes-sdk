@@ -569,6 +569,11 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   { methodId: 'browser.tabs.close', ...descriptorSchemas('browser.tabs.close') },
   { methodId: 'browser.history.back', ...descriptorSchemas('browser.history.back') },
   { methodId: 'browser.history.forward', ...descriptorSchemas('browser.history.forward') },
+  // Admin-only MCP env reveal. Typed rather than added to the untyped
+  // baseline: a caller reading credential values should get the same
+  // compile-time shape as any other verb, and the sibling mcp.* verbs being
+  // untyped is no reason to add a ninety-eighth.
+  { methodId: 'mcp.servers.reveal', ...descriptorSchemas('mcp.servers.reveal') },
 ];
 
 const fileText = readFileSync(FOUNDATION_TYPES_PATH, 'utf8');
