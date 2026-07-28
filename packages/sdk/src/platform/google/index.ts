@@ -227,6 +227,11 @@ export {
   type GoogleApiFailure,
   type GoogleApiResult,
   type GmailMessageSummary,
+  // `GmailMessageBody` extends this, so without it an exported interface names
+  // an unexported parent. It is also the return type of
+  // `GoogleApiClient.readMessageMetadata`, which a consumer could not otherwise
+  // write down.
+  type GmailMessageMetadata,
   type GmailMessageBody,
   type CalendarEventRecord,
   type SendMailInput,
@@ -248,6 +253,9 @@ export {
   collectHistoryDelta,
   type GmailHistoryType,
   type HistoryDeltaOptions,
+  // The value `HistoryDeltaOptions.onMetadataOnlyGrant` takes. Unexported, a
+  // caller could set the option and not name its type.
+  type MetadataOnlyGrantPolicy,
   type GmailHistoryDelta,
   type HistoryUnavailableReason,
   type HistoryDeltaUnavailable,

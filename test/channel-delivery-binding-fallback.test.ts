@@ -147,8 +147,16 @@ describe('ntfy delivery resolves the topic from the binding (item 1)', () => {
     const strategy = createNtfyDeliveryStrategy(fakeConfigManager({}), fakeServiceRegistry(), fakeArtifactStore);
     const request = baseRequest({ target: { kind: 'surface', surfaceKind: 'ntfy' } });
 
+    // Measured as a DELTA around the call, not as an absolute count.
+    // `fetchWithTimeout` is a module-level function and the spy is patched onto
+    // the module, so any other file's work running in this process lands on the
+    // same mock — this assertion was seen receiving 10 calls it did not make,
+    // green on rerun. The property under test is "this strategy fetched
+    // nothing", which a delta states exactly and an absolute count only
+    // approximates when nothing else is running.
+    const before = spy.mock.calls.length;
     await expect(strategy.deliver(request)).rejects.toThrow('Missing ntfy topic');
-    expect(spy).not.toHaveBeenCalled();
+    expect(spy.mock.calls.length, 'the strategy must not have fetched anything').toBe(before);
   });
 });
 

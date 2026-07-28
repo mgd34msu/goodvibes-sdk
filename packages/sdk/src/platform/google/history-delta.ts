@@ -33,11 +33,12 @@
  *     own description excludes the body. `gmail.readonly` is "View your
  *     email messages and settings," `gmail.modify` adds compose/send, and
  *     `https://mail.google.com/` is full access; all three include the body.
- *     So a token holding only `gmail.metadata` can list what changed but
- *     this module cannot do anything useful with that: the whole point of a
- *     delta here is new message bodies to match against verification
- *     expectations, and metadata-only can never produce one. See the
- *     `metadata-scope-only` outcome below.
+ *     So a token holding only `gmail.metadata` can list what changed and can
+ *     read each named message's HEADERS — `users.messages.get` accepts
+ *     `gmail.metadata` and its `format=METADATA` returns headers without a
+ *     body — but it can never produce a body. What that is worth depends on
+ *     what the caller wants, so this module no longer decides for it: see
+ *     `HistoryDeltaOptions.onMetadataOnlyGrant`.
  *   - **The too-old case, verbatim from the docs**: "Supplying an invalid or
  *     out of date startHistoryId typically returns an HTTP 404 error code. A
  *     historyId is typically valid for at least a week, but in some rare
@@ -69,17 +70,36 @@
  *      fall back to a full mailbox listing and re-establish the cursor from
  *      a fresh `historyId`, rather than degrading into "no new messages".
  *
- *   3. **A metadata-only grant is gated too, and gated separately from "no
- *      scope at all".** A body-less delta and a delta with bodies are
- *      opposite facts in exactly the same way an empty delta and "not
- *      allowed to look" are: a caller that mistook one for the other would
- *      believe a verification email's link was checked when the body it
- *      lived in was never fetched. So `historyListDelta` never calls
- *      `history.list` at all for a metadata-only token — there is nothing
- *      useful it could do with the result — and instead returns
- *      `unavailable: 'metadata-scope-only'`, a third reason distinct from
- *      both `no-gmail-scope` and `resync-required` and from an `ok: true`
- *      success.
+ *   3. **A metadata-only grant is gated too, gated separately from "no scope
+ *      at all", and never silently downgraded.** A body-less delta and a
+ *      delta with bodies are opposite facts in exactly the same way an empty
+ *      delta and "not allowed to look" are: a caller that mistook one for the
+ *      other would believe a verification email's link was checked when the
+ *      body it lived in was never fetched.
+ *
+ *      So a metadata-only grant NEVER produces the same shape a body-capable
+ *      one does. What it produces instead is the caller's choice, made
+ *      explicitly through `HistoryDeltaOptions.onMetadataOnlyGrant`:
+ *
+ *        - `'refuse'` (**the default, and the behaviour of every caller that
+ *          does not pass the option**) returns
+ *          `unavailable: 'metadata-scope-only'` without calling `history.list`
+ *          at all — a third reason distinct from both `no-gmail-scope` and
+ *          `resync-required` and from an `ok: true` success.
+ *        - `'fetch-metadata'` runs the delta over `messages.get?format=metadata`
+ *          and returns an `ok` delta whose `bodies` field reads
+ *          `'withheld-metadata-only'`. That field is the discriminant of
+ *          `GmailHistoryDelta`, so a caller cannot reach `.body` on those
+ *          messages at all — there is no such property on the arm — and
+ *          "these came back without bodies" is something the type system
+ *          makes it handle rather than something a comment asks it to
+ *          remember.
+ *
+ *      The default is `'refuse'` on purpose. The setting it serves —
+ *      `surfaces.email.inbound.onInsufficientCapability` — ships as
+ *      `'refuse-and-notify'`, and a module that quietly started answering `ok`
+ *      for a grant it used to refuse would have changed what that unset key
+ *      means from underneath the owner.
  *
  *   4. **"Gone" and "we could not read it" are separated, and the delta stops
  *      for the second.** `history.list` names ids and `messages.get` fetches
@@ -100,7 +120,12 @@
  *      a caller cannot persist the new position without stepping over it.
  */
 
-import type { GoogleApiFailure, GoogleApiResult, GmailMessageBody } from './api-client.js';
+import type {
+  GoogleApiFailure,
+  GoogleApiResult,
+  GmailMessageBody,
+  GmailMessageMetadata,
+} from './api-client.js';
 
 /**
  * Scopes that authorize `users.history.list` itself, per Google's live
@@ -149,6 +174,17 @@ const GMAIL_MESSAGE_GONE_STATUS = 404;
 /** `historyTypes[]` values, singular form, exactly as Gmail's API expects them. */
 export type GmailHistoryType = 'messageAdded' | 'messageDeleted' | 'labelAdded' | 'labelRemoved';
 
+/**
+ * What to do when the token carries `gmail.metadata` and no body-capable scope.
+ *
+ * Not a boolean, and not inferred. The two answers are genuinely different
+ * products — one is "inbound mail does not run", the other is "inbound mail
+ * runs and can never satisfy a verification" — and which one the owner gets is
+ * a setting he chose, so the call that acts on it says which one it is asking
+ * for.
+ */
+export type MetadataOnlyGrantPolicy = 'refuse' | 'fetch-metadata';
+
 export interface HistoryDeltaOptions {
   /** The last high-water mark this caller has fully processed. */
   readonly startHistoryId: string;
@@ -157,6 +193,11 @@ export interface HistoryDeltaOptions {
   readonly historyTypes?: readonly GmailHistoryType[];
   /** Per-page size, 1-500. Google defaults to 100 when omitted. */
   readonly maxResultsPerPage?: number;
+  /**
+   * **Defaults to `'refuse'`** — see module header note 3. Omitting this is the
+   * behaviour every caller had before the metadata path existed, unchanged.
+   */
+  readonly onMetadataOnlyGrant?: MetadataOnlyGrantPolicy;
 }
 
 /**
@@ -187,7 +228,8 @@ export interface GmailFetchProblem {
   readonly fix: string;
 }
 
-export interface GmailHistoryDelta {
+/** Everything both delta arms carry, regardless of whether bodies came back. */
+interface GmailHistoryDeltaCommon {
   /**
    * The new high-water mark.
    *
@@ -196,8 +238,6 @@ export interface GmailHistoryDelta {
    * something a caller has to look at rather than something it can forget.
    */
   readonly historyId: string;
-  /** Full bodies of messages added since `startHistoryId`, deduped, in `messagesAdded` order. */
-  readonly messages: readonly GmailMessageBody[];
   /**
    * Messages this delta named and could not fetch. Load-bearing, not diagnostic.
    *
@@ -217,6 +257,43 @@ export interface GmailHistoryDelta {
    */
   readonly unreadable: readonly GmailFetchProblem[];
 }
+
+/**
+ * What a delta came back with, discriminated on whether bodies were available.
+ *
+ * A union rather than a `bodies` flag beside a single `messages` array, and the
+ * difference is the whole point: on the `'withheld-metadata-only'` arm the
+ * messages are `GmailMessageMetadata`, which **has no `body` property at all**.
+ * A consumer that reaches for `.body` without narrowing gets a compile error
+ * rather than an empty string — and an empty string is precisely the value that
+ * would let a body-less message be treated as a message whose body said nothing.
+ *
+ * Assignability runs one way — `GmailMessageBody` extends
+ * `GmailMessageMetadata` — so the `'available'` arm is the strictly stronger one
+ * and nothing can be widened into it by accident.
+ */
+export type GmailHistoryDelta =
+  | (GmailHistoryDeltaCommon & {
+    /** Bodies were fetched. `messages` carries them. */
+    readonly bodies: 'available';
+    /** Full bodies of messages added since `startHistoryId`, deduped, in `messagesAdded` order. */
+    readonly messages: readonly GmailMessageBody[];
+  })
+  | (GmailHistoryDeltaCommon & {
+    /**
+     * The grant excluded bodies and the caller asked for headers anyway
+     * (`onMetadataOnlyGrant: 'fetch-metadata'`).
+     *
+     * Nothing on this arm may satisfy a verification expectation. A
+     * verification link lives in a body; an expectation satisfied on headers
+     * alone would be satisfied on evidence nobody read. Enforcing that is the
+     * consumer's job — this type's job is to make the condition impossible to
+     * walk past on the way there.
+     */
+    readonly bodies: 'withheld-metadata-only';
+    /** Headers and delivery evidence only. No body, and no snippet — see `GmailMessageMetadata`. */
+    readonly messages: readonly GmailMessageMetadata[];
+  });
 
 export type HistoryUnavailableReason = 'no-gmail-scope' | 'metadata-scope-only' | 'resync-required';
 
@@ -245,6 +322,18 @@ export interface HistoryDeltaDeps {
   readonly fetchHistoryPage: (params: URLSearchParams) => Promise<GoogleApiResult<unknown>>;
   /** Fetch one full message by id — reuses `GoogleApiClient.getMessage`, including its provenance and delivery-evidence handling. */
   readonly getMessage: (id: string) => Promise<GoogleApiResult<GmailMessageBody>>;
+  /**
+   * Fetch one message's headers and delivery evidence by id, with no body —
+   * `GoogleApiClient.readMessageMetadata`, the `format=metadata` call a
+   * `gmail.metadata` token is authorized to make.
+   *
+   * Required rather than optional. An optional member would make a port that
+   * omits it compile, and the only thing this module could then do on a
+   * metadata-only grant is fall back to refusing — which is the shape of a
+   * feature that silently is not there. A port that cannot do this should fail
+   * to build, not fail to work.
+   */
+  readonly readMessageMetadata: (id: string) => Promise<GoogleApiResult<GmailMessageMetadata>>;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -352,12 +441,18 @@ export async function collectHistoryDelta(
     };
   }
 
-  if (!hasAnyScope(granted, GMAIL_BODY_SCOPES)) {
-    // Only `gmail.metadata` is present. It authorizes the history.list call
-    // itself, but its own scope description excludes the message body, and a
-    // body-less delta cannot match a verification expectation or serve any
-    // other purpose this module exists for. Refuse before making the call at
-    // all, rather than making it and returning a delta with empty bodies.
+  const bodiesAvailable = hasAnyScope(granted, GMAIL_BODY_SCOPES);
+
+  if (!bodiesAvailable && (options.onMetadataOnlyGrant ?? 'refuse') === 'refuse') {
+    // Only `gmail.metadata` is present, and the caller did not ask for the
+    // metadata path. It authorizes the history.list call itself, but its own
+    // scope description excludes the message body, so a delta fetched here
+    // could not match a verification expectation. Refuse before making the call
+    // at all, rather than making it and returning a delta with empty bodies.
+    //
+    // This is the DEFAULT arm: a caller that passes no `onMetadataOnlyGrant`
+    // gets exactly the behaviour this module had before the metadata path
+    // existed.
     return {
       ok: false,
       unavailable: 'metadata-scope-only',
@@ -371,26 +466,57 @@ export async function collectHistoryDelta(
   const collected = await collectAddedMessageIds(deps, options);
   if (!collected.ok) return collected;
 
-  const messages: GmailMessageBody[] = [];
   const unreadable: GmailFetchProblem[] = [];
-  for (const id of collected.ids) {
-    const fetched = await deps.getMessage(id);
-    if (fetched.ok) {
-      messages.push(fetched.value);
-      continue;
+
+  /**
+   * One id, fetched by whichever call the grant permits.
+   *
+   * Split out so the drop/hold rule below is written ONCE for both paths. The
+   * classification — 404 means gone and may be stepped over, everything else
+   * means unread and holds the delta — is the property this module exists to
+   * keep, and two copies of it is how one of them ends up widened.
+   */
+  const drain = async <T>(
+    fetch: (id: string) => Promise<GoogleApiResult<T>>,
+  ): Promise<T[]> => {
+    const collectedMessages: T[] = [];
+    for (const id of collected.ids) {
+      const fetched = await fetch(id);
+      if (fetched.ok) {
+        collectedMessages.push(fetched.value);
+        continue;
+      }
+      if (fetched.status === GMAIL_MESSAGE_GONE_STATUS) {
+        // The one failure that really does mean "there is nothing here to
+        // report on": the message was deleted in the gap between history.list
+        // naming it and the fetch being asked for it. Dropped from the delta,
+        // and the delta may advance past it.
+        continue;
+      }
+      // Everything else — a rate limit, a server fault, a refused credential, a
+      // socket that never answered — is a message we FAILED TO READ, which is a
+      // different fact from a message that is gone. It holds the delta.
+      unreadable.push({ id, status: fetched.status, detail: fetched.problem, fix: fetched.fix });
     }
-    if (fetched.status === GMAIL_MESSAGE_GONE_STATUS) {
-      // The one failure that really does mean "there is nothing here to
-      // report on": the message was deleted in the gap between history.list
-      // naming it and getMessage being asked for it. Dropped from the delta,
-      // and the delta may advance past it.
-      continue;
-    }
-    // Everything else — a rate limit, a server fault, a refused credential, a
-    // socket that never answered — is a message we FAILED TO READ, which is a
-    // different fact from a message that is gone. It holds the delta.
-    unreadable.push({ id, status: fetched.status, detail: fetched.problem, fix: fetched.fix });
+    return collectedMessages;
+  };
+
+  if (!bodiesAvailable) {
+    const messages = await drain((id) => deps.readMessageMetadata(id));
+    return {
+      ok: true,
+      value: {
+        bodies: 'withheld-metadata-only',
+        historyId: collected.historyId,
+        messages,
+        unreadable,
+      },
+    };
   }
 
-  return { ok: true, value: { historyId: collected.historyId, messages, unreadable } };
+  const messages = await drain((id) => deps.getMessage(id));
+  return {
+    ok: true,
+    value: { bodies: 'available', historyId: collected.historyId, messages, unreadable },
+  };
 }

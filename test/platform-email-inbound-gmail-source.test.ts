@@ -94,6 +94,8 @@ interface Harness {
   readonly terminals: InboundMailTerminalFailure[];
   readonly pages: URLSearchParams[];
   readonly fetchedMessageIds: string[];
+  /** Ids fetched through `format=metadata`, kept apart from body fetches. */
+  readonly metadataFetchedIds: string[];
   /** Mutable, so a test can open and close an expectation mid-run. */
   readonly state: { expectationOpen: boolean };
 }
@@ -141,6 +143,7 @@ async function build(input: {
   const terminals: InboundMailTerminalFailure[] = [];
   const pages: URLSearchParams[] = [];
   const fetchedMessageIds: string[] = [];
+  const metadataFetchedIds: string[] = [];
   const byId = new Map((input.messages ?? []).map((message) => [message.id, message]));
   const state = { expectationOpen: input.expectationOpen ?? false };
 
@@ -162,6 +165,28 @@ async function build(input: {
           ? { ok: false, status: 404, problem: `no message ${id}`, fix: '' }
           : { ok: true, value: message };
       },
+      /**
+       * The `format=metadata` call, faked from the SAME message fixtures with
+       * the body and the snippet removed — which is the shape Google returns
+       * under a `gmail.metadata` grant, and which `readMessageMetadata` in
+       * `api-client.ts` produces.
+       *
+       * Recorded in its own list rather than in `fetchedMessageIds`, so a test
+       * can assert WHICH call was made. "It fetched the message" and "it
+       * fetched the message without its body" are the two facts this whole
+       * path turns on, and one shared counter cannot tell them apart.
+       */
+      readMessageMetadata: async (id) => {
+        metadataFetchedIds.push(id);
+        const failure = input.messageFailures?.[id];
+        if (failure !== undefined) return failure;
+        const message = byId.get(id);
+        if (message === undefined) {
+          return { ok: false, status: 404, problem: `no message ${id}`, fix: '' };
+        }
+        const { body: _body, ...metadata } = message;
+        return { ok: true, value: { ...metadata, snippet: '' } };
+      },
     },
     currentHistoryId: async () => input.currentHistoryId ?? { ok: true, value: '900' },
     cursors: store,
@@ -177,7 +202,10 @@ async function build(input: {
     ...(input.deps ?? {}),
   });
   running.push(() => source.stop());
-  return { source, clock, sink, store, notes, terminals, pages, fetchedMessageIds, state };
+  return {
+    source, clock, sink, store, notes, terminals, pages,
+    fetchedMessageIds, metadataFetchedIds, state,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -212,6 +240,109 @@ describe('gmail source — capability sufficiency', () => {
     // after a delta of empty bodies came back.
     expect(harness.pages).toEqual([]);
     expect(harness.fetchedMessageIds).toEqual([]);
+    expect(harness.metadataFetchedIds).toEqual([]);
+    // Its own reason, no longer borrowing IMAP's `fetch-refused`. The two are
+    // opposite situations — `fetch-refused` is minted from a FAILED envelope
+    // fetch, so nothing is readable there, and here everything except the body
+    // is — and `onInsufficientCapability` has to tell them apart.
+    expect(verdict.reason).toBe('gmail-metadata-only');
+  });
+
+  /**
+   * `notice-only`, on the one condition it can serve.
+   *
+   * This is what the setting selects: the mailbox is polled, every message is
+   * delivered from its headers, and the verdict says `degraded` rather than
+   * `healthy` — because mail is moving and nothing it carries can complete a
+   * signup.
+   */
+  test('under notice-only a metadata-only grant DELIVERS envelope-only messages', async () => {
+    const harness = await build({
+      scopes: [METADATA_SCOPE],
+      seedHistoryId: '100',
+      page: historyPage('150', ['m-1', 'm-2']),
+      messages: [gmailMessage('m-1', 'Verify your email'), gmailMessage('m-2', 'Order shipped')],
+      deps: { capabilityPolicy: 'notice-only' },
+    });
+
+    const verdict = await harness.source.start(new AbortController().signal);
+
+    // Delivered, not refused.
+    expect(harness.sink.delivered).toHaveLength(2);
+    // Through the metadata call, and through the body call for nothing.
+    expect(harness.metadataFetchedIds).toEqual(['m-1', 'm-2']);
+    expect(harness.fetchedMessageIds).toEqual([]);
+
+    for (const message of harness.sink.delivered) {
+      if (message.source !== 'gmail') throw new Error('expected a Gmail message');
+      expect(message.bodyAvailability).toBe('metadata-only');
+      expect(message.body).toBe('');
+      // The envelope fields the schema promises survive intact.
+      expect(message.from).toBe('noreply@service.test');
+      expect(message.deliveredTo).toEqual(['owner+signup@example.test']);
+    }
+
+    // Degraded, not healthy and not insufficient — it is running with less than
+    // it wanted.
+    expect(verdict.state).toBe('degraded');
+    expect(verdict.reason).toBe('gmail-metadata-notice-only');
+    expect(verdict.detail).toContain('but not the email body');
+    expect(verdict.detail).toContain('no verification expectation can be satisfied');
+    // Not a terminal failure: the source keeps polling.
+    expect(harness.terminals).toEqual([]);
+    // The cursor advanced, because the delta was fully read.
+    expect((await harness.store.getGmail(ACCOUNT, LABEL))?.historyId).toBe('150');
+  });
+
+  /**
+   * The control for the test above, and the reason this is not "notice-only
+   * makes everything work".
+   *
+   * `notice-only` on a condition that leaves NOTHING readable behaves exactly
+   * as `refuse-and-notify`, and the verdict says so rather than degrading in
+   * silence — an owner who set it and then heard nothing would conclude no mail
+   * arrived, when what happened is that his setting could not apply.
+   */
+  test('under notice-only a grant with NO Gmail scope still refuses, and the verdict says why', async () => {
+    const harness = await build({
+      scopes: [],
+      seedHistoryId: '100',
+      deps: { capabilityPolicy: 'notice-only' },
+    });
+
+    const verdict = await harness.source.start(new AbortController().signal);
+
+    expect(verdict.state).toBe('insufficient');
+    expect(harness.sink.delivered).toEqual([]);
+    expect(harness.terminals).toHaveLength(1);
+
+    // The degradation is stated, not silent: it names the setting, says it does
+    // not apply here, and names the one condition it does apply to.
+    expect(verdict.detail).toContain('surfaces.email.inbound.onInsufficientCapability');
+    expect(verdict.detail).toContain('does not apply to this condition');
+    expect(verdict.detail).toContain('gmail.metadata');
+    // And it reaches the owner through the terminal notice, not only the status
+    // line — that notice is the surface he actually reads when mail stops.
+    expect(harness.terminals[0]?.detail).toBe(verdict.detail);
+  });
+
+  test('the shipped default still refuses a metadata-only grant when no policy is passed', async () => {
+    // `surfaces.email.inbound.onInsufficientCapability` ships as
+    // `refuse-and-notify`, and an omitted dependency must produce the shipped
+    // behaviour rather than the permissive one.
+    const harness = await build({
+      scopes: [METADATA_SCOPE],
+      seedHistoryId: '100',
+      page: historyPage('150', ['m-1']),
+      messages: [gmailMessage('m-1', 'Verify your email')],
+    });
+
+    const verdict = await harness.source.start(new AbortController().signal);
+
+    expect(verdict.state).toBe('insufficient');
+    expect(harness.sink.delivered).toEqual([]);
+    expect(harness.metadataFetchedIds).toEqual([]);
+    expect(harness.pages).toEqual([]);
   });
 
   test('the two scope failures are distinct verdicts, not one collapsed refusal', async () => {
