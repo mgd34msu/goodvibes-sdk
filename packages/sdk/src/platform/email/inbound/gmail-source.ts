@@ -67,6 +67,11 @@ import {
   errorText,
   stateForReason,
 } from './capability.js';
+import {
+  INBOUND_CAPABILITY_POLICY_DEFAULT,
+  resolveInboundCapabilityPolicy,
+  type InboundCapabilityPolicy,
+} from './capability-policy.js';
 import { anySignal } from './any-signal.js';
 import type { MailboxCursorStore } from './cursor-store.js';
 import { DEFAULT_INBOUND_WATCHER_SETTINGS } from './ports.js';
@@ -81,7 +86,12 @@ import type {
 } from './ports.js';
 import { isHistoryId } from './source-cursor.js';
 import type { InboundMailSource, SourceLatency } from './source.js';
-import type { GmailMessageBody, GoogleApiFailure, GoogleApiResult } from '../../google/api-client.js';
+import type {
+  GmailMessageBody,
+  GmailMessageMetadata,
+  GoogleApiFailure,
+  GoogleApiResult,
+} from '../../google/api-client.js';
 import {
   collectHistoryDelta,
   type GmailHistoryDelta,
@@ -151,6 +161,17 @@ export interface GmailMailSourceDeps {
   readonly pollIdleMs: number;
   /** How long an `insufficient` verdict waits before re-probing. Defaults to the watcher's 60 minutes. */
   readonly capabilityRecheckMs?: number | undefined;
+  /**
+   * `surfaces.email.inbound.onInsufficientCapability`, read at source-create
+   * time by `source-factory.ts`.
+   *
+   * Optional, defaulting to `INBOUND_CAPABILITY_POLICY_DEFAULT` — the value the
+   * schema ships — so an omitted dependency produces the shipped behaviour
+   * rather than the permissive one. That direction matters: the weaker policy
+   * announces mail it can never act on, and nothing should be able to select it
+   * by forgetting to pass a field.
+   */
+  readonly capabilityPolicy?: InboundCapabilityPolicy | undefined;
   readonly observer?: InboundMailObserver | undefined;
 }
 
@@ -162,6 +183,7 @@ export class GmailMailSource implements InboundMailSource {
   private readonly pollExpectingMs: number;
   private readonly pollIdleMs: number;
   private readonly capabilityRecheckMs: number;
+  private readonly capabilityPolicy: InboundCapabilityPolicy;
   private readonly halt = new AbortController();
   private terminal: InboundMailTerminalFailure | null = null;
 
@@ -177,6 +199,7 @@ export class GmailMailSource implements InboundMailSource {
       1_000,
       Math.floor(deps.capabilityRecheckMs ?? DEFAULT_INBOUND_WATCHER_SETTINGS.capabilityRecheckMs),
     );
+    this.capabilityPolicy = deps.capabilityPolicy ?? INBOUND_CAPABILITY_POLICY_DEFAULT;
     this.tracker = new CapabilityStateTracker({
       account: deps.account,
       mailbox: deps.mailbox,
@@ -285,6 +308,11 @@ export class GmailMailSource implements InboundMailSource {
       startHistoryId: cursor.historyId,
       labelId: this.deps.mailbox,
       historyTypes: ['messageAdded'],
+      // The one place the owner's policy changes what is ASKED FOR rather than
+      // what is done with the answer. Under `refuse-and-notify` — the shipped
+      // value — this stays `'refuse'` and `collectHistoryDelta` never calls
+      // Google at all for a body-less grant, exactly as before.
+      onMetadataOnlyGrant: this.capabilityPolicy === 'notice-only' ? 'fetch-metadata' : 'refuse',
     });
 
     if (result.ok) return this.deliver(result.value, signal);
@@ -365,14 +393,35 @@ export class GmailMailSource implements InboundMailSource {
     delta: GmailHistoryDelta,
     signal: AbortSignal,
   ): Promise<InboundCapabilityVerdict> {
-    for (const message of delta.messages) {
+    // The delta is narrowed ONCE, here, and every message carries the answer as
+    // its own field from this point on. Doing it in one place is the point: the
+    // alternative is each downstream step re-deriving "were bodies available"
+    // from the shape it was handed, and the step that derives it wrongly is the
+    // one deciding whether a verification expectation is satisfied.
+    //
+    // Building the whole list before delivering any of it also keeps the
+    // narrowing out of the loop, so there is no arm of the union reachable
+    // inside the delivery path at all.
+    const messages: readonly GmailInboundMessage[] = delta.bodies === 'available'
+      ? delta.messages.map((message) => this.toInboundMessage(
+        message,
+        delta.historyId,
+        { availability: 'full', text: message.body },
+      ))
+      : delta.messages.map((message) => this.toInboundMessage(
+        message,
+        delta.historyId,
+        { availability: 'metadata-only' },
+      ));
+
+    for (const message of messages) {
       if (signal.aborted) return this.verdict;
       try {
-        await this.deps.sink.deliver(this.toInboundMessage(message, delta.historyId));
+        await this.deps.sink.deliver(message);
       } catch (error) {
         this.note('delivery-failed',
-          `Message ${message.id} was not processed, so the history position stays where it was and `
-          + `the whole delta will be fetched again: ${errorText(error)}`);
+          `Message ${message.resourceId} was not processed, so the history position stays where it `
+          + `was and the whole delta will be fetched again: ${errorText(error)}`);
         // Deliberately no backoff. The stated worst case is the poll interval,
         // and stretching the interval because a sink refused would make that
         // number untrue — the sink's problem is not a reason to notice the
@@ -407,7 +456,36 @@ export class GmailMailSource implements InboundMailSource {
         `${String(delta.messages.length)} message(s) delivered; history position advanced to `
         + `${delta.historyId}.`);
     }
+    // A drained metadata-only delta is NOT healthy. Mail is moving and nothing
+    // it carries can complete a signup, so the verdict says `degraded` with the
+    // reason that names why — not `polling-configured`, which is the verdict for
+    // a source doing exactly what it was asked to do.
+    if (delta.bodies === 'withheld-metadata-only') return this.record(this.noticeOnlyVerdict());
     return this.record(capabilityVerdict('polling-configured', this.pollingDetail()));
+  }
+
+  /**
+   * The verdict while `notice-only` is in force over a body-less Google grant.
+   *
+   * Built through `resolveInboundCapabilityPolicy` rather than written out
+   * here, so the sentence the owner reads about which policy is in force comes
+   * from the one function that decides it. A second sentence composed at this
+   * call site is the mirror that drifts.
+   */
+  private noticeOnlyVerdict(): InboundCapabilityVerdict {
+    const policy = resolveInboundCapabilityPolicy(
+      this.capabilityPolicy,
+      'gmail-metadata-notice-only',
+    );
+    // `capabilityVerdict` supplies the state and the remedial step from the two
+    // tables in `capability.ts`, so this call site cannot hand the owner a
+    // different fix for the same reason than the terminal notice would.
+    return capabilityVerdict(
+      'gmail-metadata-notice-only',
+      'The connected Google account granted only the gmail.metadata scope, which Google '
+      + 'describes as "View your email message metadata such as labels and headers, but not the '
+      + `email body". ${this.pollingDetail()} ${policy.statusSentence}`,
+    );
   }
 
   /**
@@ -470,18 +548,28 @@ export class GmailMailSource implements InboundMailSource {
    * new announcement at all.
    */
   private refuse(result: HistoryDeltaUnavailable): InboundCapabilityVerdict {
-    // `InboundCapabilityReason` has no Gmail-scope member and this round does
-    // not own `ports.ts`, so the two conditions are mapped onto the nearest
-    // existing reasons that carry the right STATE and the right meaning:
-    // `mailbox-unreadable` for "signed in and this mailbox cannot be read at
-    // all", `fetch-refused` for "readable, and message data is withheld". The
-    // detail and the fix are Gmail's own words either way, so nothing the owner
-    // reads is IMAP-flavoured. Flagged for two purpose-built reasons.
-    const reason = result.unavailable === 'no-gmail-scope' ? 'mailbox-unreadable' : 'fetch-refused';
+    // `no-gmail-scope` keeps `mailbox-unreadable` — "signed in and this mailbox
+    // cannot be read at all" is exactly what it is, and there is no Gmail-shaped
+    // distinction to draw. `metadata-scope-only` no longer borrows
+    // `fetch-refused`: it has its own reason now, because the two are opposite
+    // situations and a policy has to tell them apart. `fetch-refused` is minted
+    // from a FAILED envelope fetch, so when it fires nothing is readable;
+    // `gmail-metadata-only` is the one condition where EVERYTHING except the
+    // body is readable, which is why `notice-only` can mean something here and
+    // nowhere else. The detail and the fix stay Gmail's own words either way.
+    const reason = result.unavailable === 'no-gmail-scope'
+      ? 'mailbox-unreadable'
+      : 'gmail-metadata-only';
+    // What the owner's setting actually selected for THIS condition, and — when
+    // it selected nothing — the sentence saying so. Appended rather than
+    // branched on: `statusSentence` is never empty, so the owner is told which
+    // policy is in force whether or not it degraded, and there is no `if` here
+    // that could be written the wrong way round.
+    const policy = resolveInboundCapabilityPolicy(this.capabilityPolicy, reason);
     const verdict: InboundCapabilityVerdict = {
       state: stateForReason(reason),
       reason,
-      detail: result.problem,
+      detail: `${result.problem} ${policy.statusSentence}`,
       fix: result.fix,
     };
     // The tracker's own answer to "was this a transition", so the owner is told
@@ -491,7 +579,11 @@ export class GmailMailSource implements InboundMailSource {
       account: this.deps.account,
       mailbox: this.deps.mailbox,
       reason,
-      detail: result.problem,
+      // The SAME detail the verdict carries, policy sentence included. The
+      // terminal notice is the surface the owner actually reads when mail
+      // stops, so a sentence that reached only the status line would reach him
+      // in the place he is not looking.
+      detail: verdict.detail,
       fix: result.fix,
       at: new Date(this.deps.clock.now()).toISOString(),
       // No `EmailCapabilityFailureNotice`: that record is minted by the IMAP
@@ -532,7 +624,29 @@ export class GmailMailSource implements InboundMailSource {
     return capabilityVerdict('reconnecting', failure.problem);
   }
 
-  private toInboundMessage(message: GmailMessageBody, historyId: string): GmailInboundMessage {
+  /**
+   * One delta message as the pipeline's own shape.
+   *
+   * Takes `GmailMessageMetadata`, which `GmailMessageBody` extends, so both
+   * delta arms pass one in and neither can reach a `body` property through this
+   * parameter.
+   *
+   * The body arrives as its own discriminated argument rather than being read
+   * off `message` or inferred from a boolean flag. That is what makes "full"
+   * and "we have text" impossible to state separately: `'full'` is the only
+   * shape that carries a `text`, and `'metadata-only'` has nowhere to put one.
+   * Sniffing the property instead would decide "does this have a body" from
+   * whether a field happens to be present, and a body-capable grant returning a
+   * genuinely empty message would then be indistinguishable from a metadata-only
+   * one — which is the confusion the whole round exists to remove.
+   */
+  private toInboundMessage(
+    message: GmailMessageMetadata,
+    historyId: string,
+    body:
+      | { readonly availability: 'full'; readonly text: string }
+      | { readonly availability: 'metadata-only' },
+  ): GmailInboundMessage {
     return {
       source: 'gmail',
       account: this.deps.account,
@@ -553,7 +667,11 @@ export class GmailMailSource implements InboundMailSource {
       unverifiedToHeaderClaim: message.to,
       resourceId: message.id,
       historyId,
-      body: message.body,
+      // `''` on the metadata arm because there is no text to put there — the
+      // argument type has no field for one. `bodyAvailability` below is what
+      // tells every downstream reader which of the two an empty string means.
+      body: body.availability === 'full' ? body.text : '',
+      bodyAvailability: body.availability,
       via: 'poll',
     };
   }

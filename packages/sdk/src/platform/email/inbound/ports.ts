@@ -26,11 +26,12 @@
  * effects the ports below describe — a store write, a delivered notice, a
  * status change — and no others, because there is nothing else to call.
  */
+import type { ImapBodyProbe } from '../imap-body-probe.js';
 
 import { IMAP_MAX_FETCH_UIDS } from '../imap-client.js';
-import type { ImapBodyProbe } from '../imap-body-probe.js';
 import type {
-  EmailCapabilityFailureNotice,
+  // `EmailCapabilityFailureNotice` left with `InboundMailTerminalFailure`,
+  // which was its only reader here — see `capability-types.ts`.
   ImapClient,
   ImapConnectionReport,
   ImapEnvelope,
@@ -422,8 +423,30 @@ export interface GmailInboundMessage extends InboundMessageCommon {
    * does not, and that asymmetry is deliberate rather than an oversight — a
    * batch of headers is cheap and a batch of bodies is not, so the IMAP body
    * fetch stays the pipeline's step and is a no-op on this variant.
+   *
+   * **`''` does not mean "the body was empty."** It means the body is not here.
+   * `bodyAvailability` says which of the two produced it; read that first.
    */
   readonly body: string;
+  /**
+   * Whether `body` is the message's actual body or a stand-in for one that was
+   * never fetched.
+   *
+   * `'metadata-only'` means the grant was `gmail.metadata` — headers
+   * authorized, bodies excluded — and `onInsufficientCapability` is
+   * `notice-only`, so the message came through `messages.get?format=metadata`.
+   *
+   * **A `'metadata-only'` message may never satisfy a verification
+   * expectation**: the delivery-evidence address that gates a match is a
+   * header, so one would otherwise match on evidence nobody read. `intake.ts`
+   * enforces that and explains it.
+   *
+   * Required, not optional. `bunx tsc -b` does not typecheck `test/`, so an
+   * optional field left unset would read `undefined`, be falsy, and be treated
+   * as a full body — the one direction this must never fail in. `intake.ts`
+   * re-checks at run time for the sites the compiler is not looking at.
+   */
+  readonly bodyAvailability: 'full' | 'metadata-only';
   /**
    * Always `'poll'`. There is no Gmail push on this path: `users.watch` +
    * Pub/Sub needs a public HTTPS endpoint and a GCP topic, which a daemon
@@ -463,72 +486,30 @@ export interface InboundMailSink {
 // ---------------------------------------------------------------------------
 
 /**
- * The watcher's state and the reason for it.
+ * The capability vocabulary — the watcher's three states, the reasons behind
+ * them, a verdict, a transition, and a terminal failure.
  *
- * Declared in `capability-reasons.ts` — the union carries the argument for
- * each reason's state and remedy, which is most of its length — and re-exported
- * here because `ports.ts` is the name every consumer imports.
+ * Moved to `capability-types.ts` and re-exported here unchanged, so every
+ * existing `from './ports.js'` import keeps working. It left because this file
+ * holds the whole inbound seam and had eleven lines under the 800-line cap,
+ * and because three modules — `capability.ts`, `capability-policy.ts` and
+ * `terminal-notice.ts` — depend on that vocabulary and on nothing else in here.
  */
 export type {
   InboundCapabilityReason,
   InboundCapabilityState,
-} from './capability-reasons.js';
-// Imported as well as re-exported: a re-export publishes the names without
-// binding them in this module, and the verdict shapes below refer to both.
+  InboundCapabilityTransition,
+  InboundCapabilityVerdict,
+  InboundMailTerminalFailure,
+} from './capability-types.js';
+
+// `export … from` re-exports without binding the names locally, and
+// `InboundMailObserver` below refers to two of them. Imported as well, so the
+// declarations further down read exactly as they did before the move.
 import type {
-  InboundCapabilityReason,
-  InboundCapabilityState,
-} from './capability-reasons.js';
-
-/** A state with the evidence for it attached. */
-export interface InboundCapabilityVerdict {
-  readonly state: InboundCapabilityState;
-  readonly reason: InboundCapabilityReason;
-  /**
-   * Plain-language detail, carrying the SERVER'S OWN wording where the server
-   * said anything. Never a message body, never a credential.
-   */
-  readonly detail: string;
-  /** The one remedial step, when there is exactly one. '' when there is not. */
-  readonly fix: string;
-}
-
-/** A transition between verdicts. Emitted once per transition, never per probe. */
-export interface InboundCapabilityTransition {
-  readonly account: string;
-  readonly mailbox: string;
-  readonly from: InboundCapabilityVerdict | null;
-  readonly to: InboundCapabilityVerdict;
-  readonly at: string;
-}
-
-/**
- * A failure that will not clear on its own.
- *
- * Surfaced rather than merely recorded, because silent permanent death is the
- * failure this whole capability exists to eliminate. The supervisor routes it
- * to an authoritative channel with `fix` as the exact step.
- */
-export interface InboundMailTerminalFailure {
-  readonly account: string;
-  readonly mailbox: string;
-  readonly reason: InboundCapabilityReason;
-  readonly detail: string;
-  /** The owner-facing sentence. One per failure — see `capability.ts`. */
-  readonly fix: string;
-  readonly at: string;
-  /**
-   * The routable record the email modules produce, when the failure carried
-   * one.
-   *
-   * `ImapOpenError` and `EmailCredentialUnavailableError` both expose it, and
-   * `describeEmailCapabilityFailure` reads it off either structurally — so a
-   * missing credential and a rejected one reach the owner by one path, and a
-   * supervisor does not import both modules to tell them apart. Null for
-   * failures raised here rather than there.
-   */
-  readonly notice: EmailCapabilityFailureNotice | null;
-}
+  InboundCapabilityTransition,
+  InboundMailTerminalFailure,
+} from './capability-types.js';
 
 /** Something worth recording that is not a state change. Never a body. */
 export interface InboundMailNote {

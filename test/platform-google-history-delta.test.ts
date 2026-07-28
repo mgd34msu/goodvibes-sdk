@@ -217,7 +217,13 @@ describe('historyListDelta: scope gate', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('unreachable: asserted true above');
     expect(result.value.messages).toHaveLength(1);
-    expect(result.value.messages[0]!.body).toBe('a real body');
+    // The delta yields `GmailMessageBody | GmailMessageMetadata`; only the
+    // first carries a body, and a metadata-only result here would be the very
+    // defect this asserts against — so its presence is checked, not assumed.
+    const delivered = result.value.messages[0]!;
+    expect('body' in delivered, 'expected a body, not a metadata-only message').toBe(true);
+    if (!('body' in delivered)) throw new Error('unreachable: asserted above');
+    expect(delivered.body).toBe('a real body');
   });
 });
 
@@ -257,6 +263,8 @@ describe('historyListDelta: with a granted Gmail scope', () => {
     const fetched = result.value.messages[0]!;
     expect(fetched.id).toBe('msg-1');
     expect(fetched.provenance).toBe('untrusted-external');
+    expect('body' in fetched, 'expected a body, not a metadata-only message').toBe(true);
+    if (!('body' in fetched)) throw new Error('unreachable: asserted above');
     expect(fetched.body).toBe('Your code is 482913.');
     // Delivery evidence (receiver-written) is kept as its own field, separate
     // from the sender-controlled `to` header, and the two must not collapse.

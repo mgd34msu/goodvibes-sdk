@@ -775,7 +775,14 @@ paragraph originally claimed they did.**
 |---|---|---|
 | What is checked | granted scopes | whether the server hands over message data |
 | When | **before the first call** — scopes are declarative | **on the first fetch** — `fetch-refused` |
-| Verdict | `insufficient`, `metadata-scope-only` | `insufficient`, `fetch-refused` |
+| Verdict | `insufficient`, `gmail-metadata-only` | `insufficient`, `fetch-refused` |
+| Envelope fields still readable? | **yes** — headers are authorized | **no** — the envelope fetch is what failed |
+
+That last row is why `surfaces.email.inbound.onInsufficientCapability:
+'notice-only'` applies to the Gmail column and to nothing else. It reads
+`gmail-metadata-only` rather than borrowing IMAP's `fetch-refused` for exactly
+that reason: the two are opposite situations, and a policy that had to tell them
+apart while both were called `fetch-refused` could not.
 
 The asymmetry is the protocol, not laziness. A Gmail token *states* what it may
 do, so it can be checked against nothing. IMAP has no equivalent declaration —
@@ -1431,7 +1438,7 @@ wearing a feature's clothes.
 | `surfaces.email.inbound.retentionDays` | number | **`30`** | How long inbound records are kept before reaping. Long enough to explain "why did I get that message", short enough to bound the store. |
 | `surfaces.email.inbound.maxRecords` | number | **`5000`** | The hard bound. Whichever of age or count binds first, wins. |
 | `surfaces.email.inbound.capabilityRecheckMinutes` | number | **`60`** | How often a mailbox reporting insufficient capability is re-probed (§3.4b). Fixing a scope must not require a daemon restart, and must not produce a tight retry loop. Range 5–1440. |
-| `surfaces.email.inbound.onInsufficientCapability` | `'refuse-and-notify' \| 'notice-only'` | **`'refuse-and-notify'`** | §3.4b. `notice-only` is a deliberate downgrade in which expectations can never be satisfied — so signup and order confirmation stop working — and is never entered automatically. |
+| `surfaces.email.inbound.onInsufficientCapability` | `'refuse-and-notify' \| 'notice-only'` | **`'refuse-and-notify'`** | §3.4b. `notice-only` is a deliberate downgrade in which expectations can never be satisfied — so signup and order confirmation stop working — and is never entered automatically. It applies to **one** condition: a Google `gmail.metadata` grant, where headers are authorized and bodies are not. Every other insufficient reason leaves no envelope fields to announce, so `notice-only` behaves as `refuse-and-notify` there and the verdict says which is in force (§13.11). |
 
 **Every default above is mine, not the owner's, and needs his confirmation** —
 fourteen of them now, counting the two capability settings —
@@ -2630,9 +2637,38 @@ filled in `composeInboundMail`, and the effect — both intervals read back off 
 running Gmail source, the short one after an expectation is opened — is asserted
 in `test/inbound-mail-gmail-reachability.test.ts`.
 
-`onInsufficientCapability` remains inert. It is mentioned once in
-`inbound-notice.ts` and read nowhere, so `notice-only` and `refuse-and-notify`
-are the same behaviour today.
+`onInsufficientCapability` is now read too, and closing it needed a path built
+before the key could honestly be wired. `notice-only` promises to keep announcing
+arriving mail from envelope fields alone, and nothing could do that: on IMAP,
+`fetch-refused` is minted from a *failed* envelope fetch, so when it fires there
+are no envelopes, and every other `insufficient` reason is "cannot log in",
+"cannot open the mailbox" or "cannot keep a cursor". Wiring the key without the
+path would have made the settings UI offer a behaviour the daemon answered with
+silence — the V9 failure below with a switch on it.
+
+The one condition where mail can be seen arriving without being readable is a
+Google `gmail.metadata` grant: headers are authorized, bodies are not. So
+`GoogleApiClient.readMessageMetadata` issues `messages.get?format=metadata`,
+`collectHistoryDelta` takes that path under `onMetadataOnlyGrant:
+'fetch-metadata'` and returns a delta whose `bodies` field reads
+`withheld-metadata-only`, and `intake.ts` routes those messages to the
+`capability-degraded` notice outcome — which had existed, been rendered and been
+tested with **zero producers**.
+
+Two consequences are load-bearing rather than incidental:
+
+- **A metadata-only message can never satisfy a verification expectation.**
+  `matchCandidate` gates on the delivery-evidence address and nothing else, and
+  that address is a *header*, so a metadata-only message would otherwise match an
+  open expectation and consume it on evidence nobody read — the verification link
+  lives in the body that was never fetched. The intake therefore does not consult
+  the expectation book at all on that path.
+- **`notice-only` degrades to `refuse-and-notify` on every other reason, and says
+  so.** `resolveInboundCapabilityPolicy` (`capability-policy.ts`) owns that rule
+  and returns the sentence, which rides on the capability verdict's `detail` and
+  reaches the owner through the status line and the terminal notice. An owner who
+  set `notice-only` and then heard nothing would conclude no mail arrived, when
+  what happened is that his setting could not apply.
 
 This is the failure mode §13.7's V9 row describes, one level up: the schema half
 of the coverage is thorough enough that the missing half does not show. A

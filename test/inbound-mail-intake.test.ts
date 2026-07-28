@@ -171,6 +171,13 @@ function gmailMessage(overrides: Partial<GmailInboundMessage> = {}): GmailInboun
     resourceId: '18f0a2b3c4d5e6f7',
     historyId: '9876543210',
     body: 'Receipt attached.',
+    // Stated rather than defaulted. `GmailInboundMessage.bodyAvailability` is a
+    // required field, and this rig had to be corrected when it became one —
+    // `bunx tsc -b` does not typecheck `test/`, so the omission compiled and
+    // was caught only by `intake.ts`'s run-time guard. The guard is the reason
+    // that omission surfaced instead of being read as `undefined` and treated
+    // as a full body.
+    bodyAvailability: 'full',
     via: 'poll',
     ...overrides,
   };

@@ -54,6 +54,13 @@ const NEXT_HISTORY_ID = '900250';
 const MESSAGE_ID = 'msg-verification-1';
 
 const GMAIL_READONLY = 'https://www.googleapis.com/auth/gmail.readonly';
+/**
+ * Headers yes, bodies no — "View your email message metadata such as labels and
+ * headers, but not the email body", Google's own description, verbatim. The one
+ * condition `surfaces.email.inbound.onInsufficientCapability: 'notice-only'`
+ * can serve.
+ */
+const GMAIL_METADATA = 'https://www.googleapis.com/auth/gmail.metadata';
 
 const tmpRoots: string[] = [];
 const sweepers: { stopSweeping(): void }[] = [];
@@ -129,6 +136,25 @@ function googleFetch(options: {
         });
       }
       if (url.startsWith(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${MESSAGE_ID}`)) {
+        const headers = [
+          { name: 'From', value: 'no-reply@service.test' },
+          { name: 'To', value: WATCHED_ADDRESS },
+          { name: 'Delivered-To', value: WATCHED_ADDRESS },
+          { name: 'Subject', value: 'Confirm your address' },
+          { name: 'Date', value: 'Mon, 27 Jul 2026 10:00:00 +0000' },
+        ];
+        // The fake honours `format`, because the difference between the two IS
+        // the metadata path. One that returned a body for `format=metadata`
+        // would make a caller that asked correctly indistinguishable from one
+        // that asked for `full` and got away with it.
+        if (new URL(url).searchParams.get('format') === 'metadata') {
+          return json({
+            id: MESSAGE_ID,
+            threadId: 'thread-1',
+            labelIds: ['INBOX', 'UNREAD'],
+            payload: { mimeType: 'multipart/alternative', headers },
+          });
+        }
         return json({
           id: MESSAGE_ID,
           threadId: 'thread-1',
@@ -136,13 +162,7 @@ function googleFetch(options: {
           snippet: 'Confirm your address',
           payload: {
             mimeType: 'text/plain',
-            headers: [
-              { name: 'From', value: 'no-reply@service.test' },
-              { name: 'To', value: WATCHED_ADDRESS },
-              { name: 'Delivered-To', value: WATCHED_ADDRESS },
-              { name: 'Subject', value: 'Confirm your address' },
-              { name: 'Date', value: 'Mon, 27 Jul 2026 10:00:00 +0000' },
-            ],
+            headers,
             body: { data: Buffer.from('Visit https://service.test/confirm/abc to confirm.', 'utf8').toString('base64url') },
           },
         });
@@ -304,6 +324,73 @@ describe('the Gmail inbound path is reachable from the daemon composition', () =
     const delivered = rig.notices.filter((entry) => entry.notice !== undefined);
     expect(delivered.length).toBeGreaterThan(0);
     expect(JSON.stringify(delivered)).toContain('Confirm your address');
+
+    await rig.supervisor.stop();
+  });
+
+  /**
+   * `notice-only` over a `gmail.metadata` grant, through the WHOLE production
+   * composition.
+   *
+   * Every hop is real here: `ConfigManager` value → `source-factory.ts` reading
+   * the key → `GmailSourceBuilder` in `facade-inbound-mail.ts` → the
+   * `GmailMailSource` constructor → `collectHistoryDelta` →
+   * `messages.get?format=metadata` → the intake → the rendered notice.
+   *
+   * That last-but-two hop is why this test is in this file rather than beside
+   * the unit tests. The facade's builder is a pass-through of `input.*`, and
+   * replacing `capabilityPolicy: input.capabilityPolicy` with a hardcoded
+   * `'refuse-and-notify'` left every other test in the repository green — it
+   * was found by mutating the line, not by reading it. Nothing but an
+   * end-to-end run asserts that hop.
+   */
+  test('notice-only over a metadata grant announces from headers, end to end', async () => {
+    const rig = compose({
+      scope: GMAIL_METADATA,
+      config: { 'surfaces.email.inbound.onInsufficientCapability': 'notice-only' },
+    });
+
+    await rig.supervisor.start();
+    // First pass establishes the position without backfilling; the second is
+    // the one with a cursor to read a delta against.
+    await rig.supervisor.start();
+
+    const snapshot = await rig.supervisor.describeStatus();
+    expect(snapshot.source.kind).toBe('gmail');
+    // Running, and honest about running with less than it wanted.
+    expect(snapshot.capability?.state).toBe('degraded');
+    expect(snapshot.capability?.reason).toBe('gmail-metadata-notice-only');
+
+    // The owner was told, from envelope fields alone.
+    const delivered = rig.notices.filter((entry) => entry.notice !== undefined);
+    expect(delivered.length).toBeGreaterThan(0);
+    const text = JSON.stringify(delivered);
+    expect(text).toContain('Confirm your address');
+    expect(text).toContain('LIMITED VIEW');
+    expect(text).toContain('read message bodies under the granted scope');
+    // And the body genuinely never crossed the boundary: the message fetch went
+    // out as format=metadata, so the confirm link was never fetched and cannot
+    // appear in what he read.
+    expect(text).not.toContain('service.test/confirm');
+
+    await rig.supervisor.stop();
+  });
+
+  /**
+   * The control. The SAME grant with the shipped default refuses instead —
+   * so the test above is the setting working, not the grant being enough.
+   */
+  test('the same metadata grant under the shipped default refuses and announces nothing', async () => {
+    const rig = compose({ scope: GMAIL_METADATA });
+
+    await rig.supervisor.start();
+    await rig.supervisor.start();
+
+    const snapshot = await rig.supervisor.describeStatus();
+    expect(snapshot.capability?.state).toBe('insufficient');
+    expect(snapshot.capability?.reason).toBe('gmail-metadata-only');
+    expect(rig.notices.filter((entry) => entry.notice !== undefined)
+      .filter((entry) => JSON.stringify(entry).includes('Confirm your address'))).toEqual([]);
 
     await rig.supervisor.stop();
   });

@@ -430,6 +430,12 @@ export function composeInboundMail(
       // refused grant is re-asked at one interval rather than two. Also handed
       // in, from the `settings` this file resolved and passed to the factory.
       capabilityRecheckMs: input.capabilityRecheckMs,
+      // `surfaces.email.inbound.onInsufficientCapability`, read once by
+      // `source-factory.ts` at CREATE time and handed in — one key, one reader,
+      // the rule the two poll intervals are annotated with above. Re-reading it
+      // here would be a second answer to a question that decides whether the
+      // daemon announces mail it can never act on.
+      capabilityPolicy: input.capabilityPolicy,
       observer,
     });
   };
