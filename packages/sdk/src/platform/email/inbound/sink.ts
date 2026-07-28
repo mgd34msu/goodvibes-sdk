@@ -112,7 +112,11 @@ export interface InboundMailSinkObserver {
   suppressed?(event: {
     readonly account: string;
     readonly mailbox: string;
-    readonly uid: number;
+    /**
+     * The scoped dedup key, which already carries the source-qualified
+     * identity. Deliberately NOT a `uid`: a Gmail message has no UID, and a
+     * field only one source can fill is one the other has to fake.
+     */
     readonly key: string;
     readonly reason: InboundMailSuppression;
   }): void;
@@ -147,14 +151,19 @@ export class DedupingInboundMailSink implements InboundMailSink {
   }
 
   async deliver(message: InboundMailboxMessage): Promise<void> {
+    // Derived from the message's own discriminant, never assumed. Hardcoding
+    // 'imap' here compiled fine while the message type was a single shape, and
+    // it would have keyed every Gmail message as `imap:undefined:undefined` —
+    // which `inboundMailSourceIdentity` returns '' for, which `claim` treats as
+    // "cannot dedupe, process it". Silent total loss of dedup on the Gmail
+    // path, which is the owner's path. The union is what caught it.
+    const id: InboundMailSourceId = message.source === 'gmail'
+      ? { source: 'gmail', messageId: message.resourceId }
+      : { source: 'imap', uidValidity: message.uidValidity, uid: message.uid };
     const key = inboundMailDedupKey({
       account: message.account,
       mailbox: message.mailbox,
-      id: {
-        source: 'imap',
-        uidValidity: message.uidValidity,
-        uid: message.uid,
-      },
+      id,
     });
 
     if (!this.deps.dedup.claim(key)) {
@@ -166,7 +175,6 @@ export class DedupingInboundMailSink implements InboundMailSink {
         this.deps.observer?.suppressed?.({
           account: message.account,
           mailbox: message.mailbox,
-          uid: message.uid,
           key,
           reason: 'duplicate',
         });
