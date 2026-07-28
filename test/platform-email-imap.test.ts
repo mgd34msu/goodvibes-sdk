@@ -25,6 +25,21 @@ import {
   type FakeServer,
 } from './_helpers/fake-imap-server.ts';
 
+import {
+  FETCH_WIRE_SHAPES,
+  writeFetchSectionResponse,
+  type FetchWireShape,
+} from './_helpers/imap-fetch-framing.ts';
+
+/**
+ * The framing the fake servers in this file answer FETCH with.
+ *
+ * §13.5 names this file as a problem site. Every FETCH here wrote the header
+ * block as bare response lines with no `{n}` count — the one framing no RFC
+ * 3501 server sends — so the assertions were about a shape that never arrives.
+ */
+let activeShape: FetchWireShape = FETCH_WIRE_SHAPES[0]!;
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -182,12 +197,17 @@ describe('ImapClient protocol', () => {
           else if (line.includes('FETCH') && line.includes('HEADER')) {
             // Sequence number 1, UID 3 — the two differ, as they do in any
             // mailbox something has been deleted from.
-            serverWrite(sock, '* 1 FETCH (UID 3 BODY[HEADER.FIELDS (FROM SUBJECT DATE MESSAGE-ID)] ');
-            serverWrite(sock, 'From: Alice <alice@example.test>');
-            serverWrite(sock, 'Subject: Hello world');
-            serverWrite(sock, 'Date: Mon, 10 Jun 2026 09:00:00 +0000');
-            serverWrite(sock, 'Message-ID: <abc123@example.test>');
-            serverWrite(sock, ')');
+            writeFetchSectionResponse(sock, {
+              seq: 1,
+              uid: 3,
+              section: 'BODY[HEADER.FIELDS (FROM SUBJECT DATE MESSAGE-ID)]',
+              payload: 'From: Alice <alice@example.test>\r\n'
+                + 'Subject: Hello world\r\n'
+                + 'Date: Mon, 10 Jun 2026 09:00:00 +0000\r\n'
+                + 'Message-ID: <abc123@example.test>\r\n\r\n',
+              uidPosition: activeShape.uidPosition,
+              sectionEncoding: activeShape.sectionEncoding,
+            });
             serverWrite(sock, `${tag} OK FETCH completed`);
           }
         }
@@ -794,7 +814,10 @@ describe('ImapClient UID addressing', () => {
   /** Sequence 1,2,3 hold UIDs 101,205,307 — a mailbox things were deleted from. */
   const UID_BY_SEQ: Readonly<Record<number, number>> = { 1: 101, 2: 205, 3: 307 };
 
-  test('search and fetch speak UID, and the envelope reports the real UID', async () => {
+  test.each(FETCH_WIRE_SHAPES)(
+    'search and fetch speak UID, and the envelope reports the real UID — $name',
+    async (shape) => {
+    activeShape = shape;
     const seen: string[] = [];
     fakeServer = await makeFakeImapServer((sock) => {
       serverWrite(sock, '* OK IMAP4rev1 Fake Server ready');
@@ -811,10 +834,15 @@ describe('ImapClient UID addressing', () => {
             serverWrite(sock, `${tag} OK SEARCH completed`);
           } else if (line.includes('FETCH')) {
             for (const [seq, uid] of Object.entries(UID_BY_SEQ)) {
-              serverWrite(sock, `* ${seq} FETCH (UID ${uid} BODY[HEADER.FIELDS (FROM SUBJECT)] `);
-              serverWrite(sock, `From: sender-${uid}@example.test`);
-              serverWrite(sock, `Subject: message ${uid}`);
-              serverWrite(sock, ')');
+              writeFetchSectionResponse(sock, {
+                seq: Number(seq),
+                uid,
+                section: 'BODY[HEADER.FIELDS (FROM SUBJECT)]',
+                payload: `From: sender-${uid}@example.test\r\n`
+                  + `Subject: message ${uid}\r\n\r\n`,
+                uidPosition: activeShape.uidPosition,
+                sectionEncoding: activeShape.sectionEncoding,
+              });
             }
             serverWrite(sock, `${tag} OK FETCH completed`);
           }
@@ -843,7 +871,8 @@ describe('ImapClient UID addressing', () => {
     expect(seen.some((line) => line.includes('UID SEARCH UNSEEN'))).toBe(true);
     expect(seen.some((line) => line.includes('UID FETCH 101,205,307'))).toBe(true);
     expect(seen.some((line) => line.includes('(UID BODY.PEEK[HEADER.FIELDS'))).toBe(true);
-  });
+    },
+  );
 
   test('the EXAMINE response is kept, so a stored UID can be qualified by its UIDVALIDITY', async () => {
     fakeServer = await makeFakeImapServer((sock) => {
@@ -895,9 +924,14 @@ describe('ImapClient UID addressing', () => {
           else if (line.includes('EXAMINE')) serverWrite(sock, `${tag} OK [READ-ONLY] EXAMINE completed`);
           else if (line.includes('FETCH')) {
             // 205 was expunged between the search and the fetch.
-            serverWrite(sock, '* 1 FETCH (UID 101 BODY[HEADER.FIELDS (FROM SUBJECT)] ');
-            serverWrite(sock, 'Subject: message 101');
-            serverWrite(sock, ')');
+            writeFetchSectionResponse(sock, {
+              seq: 1,
+              uid: 101,
+              section: 'BODY[HEADER.FIELDS (FROM SUBJECT)]',
+              payload: 'Subject: message 101\r\n\r\n',
+              uidPosition: activeShape.uidPosition,
+              sectionEncoding: activeShape.sectionEncoding,
+            });
             serverWrite(sock, `${tag} OK FETCH completed`);
           }
         }
@@ -1384,9 +1418,14 @@ describe('ImapClient.fetchEnvelopes asks for everything it is given', () => {
               .map((value) => parseInt(value, 10))
               .filter((value) => value > 0);
             requested.forEach((uid, index) => {
-              serverWrite(sock, `* ${index + 1} FETCH (UID ${uid} BODY[HEADER.FIELDS (SUBJECT)] `);
-              serverWrite(sock, `Subject: message ${uid}`);
-              serverWrite(sock, ')');
+              writeFetchSectionResponse(sock, {
+                seq: index + 1,
+                uid,
+                section: 'BODY[HEADER.FIELDS (SUBJECT)]',
+                payload: `Subject: message ${uid}\r\n\r\n`,
+                uidPosition: activeShape.uidPosition,
+                sectionEncoding: activeShape.sectionEncoding,
+              });
             });
             serverWrite(sock, `${tag} OK FETCH completed`);
           }
