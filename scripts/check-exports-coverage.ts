@@ -68,6 +68,10 @@ function declaredPlatformSubpaths(): ReadonlySet<string> {
 }
 
 function moduleDirectories(): readonly string[] {
+  // A missing directory returns empty rather than throwing, so the count
+  // tripwire below reports "this check is looking in the wrong place" instead
+  // of a stack trace. Both fail; only one tells the reader what to fix.
+  if (!existsSync(PLATFORM_DIR)) return [];
   return readdirSync(PLATFORM_DIR).filter((entry) => {
     const full = join(PLATFORM_DIR, entry);
     return statSync(full).isDirectory() && existsSync(join(full, 'index.ts'));
@@ -76,10 +80,11 @@ function moduleDirectories(): readonly string[] {
 
 function main(): void {
   const declared = declaredPlatformSubpaths();
+  const modules = moduleDirectories();
   const undeclared: string[] = [];
   const staleAllowlist: string[] = [];
 
-  for (const name of moduleDirectories()) {
+  for (const name of modules) {
     if (declared.has(name)) {
       if (name in INTENTIONALLY_INTERNAL) staleAllowlist.push(name);
       continue;
@@ -89,6 +94,50 @@ function main(): void {
   }
 
   const problems: string[] = [];
+
+  // A scan that finds nothing must fail, not pass. Both consumer-side audits in
+  // this round produced confident wrong answers from a drifted matcher, and a
+  // check whose only failure mode is "found no problems" cannot tell "clean"
+  // from "looked in the wrong place". The floor is deliberately far below the
+  // real count — it is a tripwire for a broken scan, not a ratchet on module
+  // count.
+  const MIN_PLAUSIBLE_MODULES = 20;
+  if (modules.length < MIN_PLAUSIBLE_MODULES || declared.size < MIN_PLAUSIBLE_MODULES) {
+    problems.push(
+      `The scan found ${modules.length} module director(ies) and ${declared.size} declared`,
+      `subpath(s), both of which should be well above ${MIN_PLAUSIBLE_MODULES}. That means this`,
+      'check is looking in the wrong place or its matcher has drifted, not that the',
+      'surface is clean. Fix the scan before trusting a pass.',
+    );
+  }
+
+  // The opposite failure: an entry that names a file the package does not ship.
+  // It resolves in the map and then fails at import time, which is a worse
+  // symptom than a missing entry because the map itself looks correct. Only
+  // checkable once dist exists, so it is skipped rather than guessed before a
+  // build.
+  const SDK_DIR = join(ROOT, 'packages/sdk');
+  if (existsSync(join(SDK_DIR, 'dist'))) {
+    const manifest = JSON.parse(readFileSync(PACKAGE_JSON, 'utf8')) as {
+      exports: Record<string, { import?: string; types?: string } | string>;
+    };
+    const missingTargets: string[] = [];
+    for (const [subpath, value] of Object.entries(manifest.exports)) {
+      if (subpath === './package.json' || typeof value === 'string') continue;
+      for (const target of [value.import, value.types]) {
+        if (target === undefined) continue;
+        if (!existsSync(join(SDK_DIR, target))) missingTargets.push(`${subpath} -> ${target}`);
+      }
+    }
+    if (missingTargets.length > 0) {
+      problems.push(
+        'These exports entries name a file the package does not ship. They resolve in',
+        'the map and then fail at import time, which is harder to spot than a missing',
+        'entry because the map itself looks right:',
+        ...missingTargets.map((entry) => `  - ${entry}`),
+      );
+    }
+  }
 
   if (undeclared.length > 0) {
     problems.push(
