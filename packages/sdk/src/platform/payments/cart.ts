@@ -24,6 +24,7 @@
  * Detection errs toward refusing, on purpose: a false refusal costs him a manual
  * purchase, a false accept costs him a charge nobody is watching.
  */
+import { sanitizeNoticeField } from '../security/notice-text.js';
 import type { MinorUnits } from './types.js';
 
 export interface CartLine {
@@ -87,11 +88,16 @@ export function assertCartMatchesRequest(
   if (unexpected.length > 0) {
     parts.push(
       `the cart contains ${unexpected.length} line(s) you did not ask for `
-      + `(${unexpected.map((line) => line.label).join(', ')})`,
+      // The merchant chose these labels, and this reason is delivered to a
+      // channel. Neutralised, not interpolated raw — see security/notice-text.ts.
+      + `(${unexpected.map((line) => sanitizeNoticeField(line.label, 60)).join(', ')})`,
     );
   }
   if (missing.length > 0) {
-    parts.push(`it is missing ${missing.map((line) => line.label).join(', ')}`);
+    // These are the OWNER's labels, but they are sanitized too: a guarantee
+    // that holds only while every call site threads provenance correctly is not
+    // a guarantee.
+    parts.push(`it is missing ${missing.map((line) => sanitizeNoticeField(line.label, 60)).join(', ')}`);
   }
   return {
     ok: false,
@@ -146,7 +152,10 @@ export function detectRecurringCharge(orderSummaryText: string): RecurringCheck 
     recurring: true,
     matched,
     reason:
-      `Refused: this checkout looks like it sets up a recurring charge (${matched.join(', ')}). `
+      // `matched` is text lifted straight off the merchant's order summary —
+      // the most directly attacker-chosen string in this module.
+      `Refused: this checkout looks like it sets up a recurring charge `
+      + `(${matched.map((hit) => sanitizeNoticeField(hit, 40)).join(', ')}). `
       + 'A daily budget cannot describe something that renews on its own, and I have no way to '
       + 'stop the next one. Buy this one yourself if you want it.',
   };
