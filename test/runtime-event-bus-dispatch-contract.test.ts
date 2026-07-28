@@ -17,10 +17,10 @@ async function flushMicrotasks(rounds = 8): Promise<void> {
   for (let i = 0; i < rounds; i++) await Promise.resolve();
 }
 
-function agentEnvelope(agentId: string): ReturnType<typeof createEventEnvelope> {
+function agentEnvelope(agentId: string) {
   return createEventEnvelope(
-    'AGENT_COMPLETED',
-    { type: 'AGENT_COMPLETED', agentId, durationMs: 0 },
+    'AGENT_COMPLETED' as const,
+    { type: 'AGENT_COMPLETED' as const, agentId, durationMs: 0 },
     { sessionId: 'contract', traceId: 'contract', source: 'contract' },
   );
 }

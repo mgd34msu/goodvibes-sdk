@@ -35,6 +35,7 @@
 //   bun scripts/check-line-cap.ts
 
 import { readdirSync, readFileSync, statSync } from 'node:fs';
+import type { Dirent } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import {
   MAX_SOURCE_LINES,
@@ -59,7 +60,7 @@ function isTestSource(relPath: string): boolean {
 }
 
 function walkSourceFiles(dir: string, root: string): FileLineCount[] {
-  let entries: ReturnType<typeof readdirSync>;
+  let entries: Dirent[];
   try {
     entries = readdirSync(dir, { withFileTypes: true });
   } catch {
@@ -97,7 +98,7 @@ function walkSourceFiles(dir: string, root: string): FileLineCount[] {
 /** Auto-discover packages/*\/src directories (relative to root). */
 function discoverPackageSrcDirs(root: string): string[] {
   const packagesDir = join(root, 'packages');
-  let entries: ReturnType<typeof readdirSync>;
+  let entries: Dirent[];
   try {
     entries = readdirSync(packagesDir, { withFileTypes: true });
   } catch {

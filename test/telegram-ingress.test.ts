@@ -347,7 +347,7 @@ describe('telegram ingress — polled updates reach the shared handler', () => {
       await waitFor(() => h.telegram.countOf('sendMessage') > 0, 'an onboarding reply');
       expect(h.spawned).toHaveLength(0);
       const sent = h.telegram.calls.find((call) => call.method === 'sendMessage');
-      expect(String(sent?.text ?? sent?.body.text)).toContain('GoodVibes is connected');
+      expect(String(sent?.body.text)).toContain('GoodVibes is connected');
     } finally { await h.supervisor.stop(); h.cleanup(); }
   });
 

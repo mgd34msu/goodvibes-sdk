@@ -31,7 +31,7 @@ describe('createConsoleObserver — debug level', () => {
     try {
       obs.onTransportActivity?.({ direction: 'send', url: 'http://localhost/api', kind: 'http' });
       expect(capture.messages).toHaveLength(1);
-      expect(String(capture.messages[0][0])).toMatch(/transport send http http:\/\/localhost\/api/);
+      expect(String(capture.messages[0]![0])).toMatch(/transport send http http:\/\/localhost\/api/);
     } finally {
       capture.restore();
     }
@@ -49,8 +49,8 @@ describe('createConsoleObserver — debug level', () => {
         durationMs: 42,
       });
       expect(capture.messages).toHaveLength(1);
-      expect(String(capture.messages[0][0])).toMatch(/status=200/);
-      expect(String(capture.messages[0][0])).toMatch(/42ms/);
+      expect(String(capture.messages[0]![0])).toMatch(/status=200/);
+      expect(String(capture.messages[0]![0])).toMatch(/42ms/);
     } finally {
       capture.restore();
     }
@@ -71,9 +71,9 @@ describe('createConsoleObserver — debug level', () => {
     const obs = createConsoleObserver({ level: 'debug' });
     const capture = captureConsole('debug', /event runtime\.turn\.start/);
     try {
-      obs.onEvent?.({ type: 'runtime.turn.start' } as Parameters<NonNullable<typeof obs.onEvent>>[0]);
+      obs.onEvent?.({ type: 'runtime.turn.start' } as unknown as Parameters<NonNullable<typeof obs.onEvent>>[0]);
       expect(capture.messages).toHaveLength(1);
-      expect(String(capture.messages[0][0])).toMatch(/event runtime.turn.start/);
+      expect(String(capture.messages[0]![0])).toMatch(/event runtime.turn.start/);
     } finally {
       capture.restore();
     }
@@ -83,7 +83,7 @@ describe('createConsoleObserver — debug level', () => {
     const obs = createConsoleObserver({ level: 'info' });
     const capture = captureConsole('debug', /event runtime\.turn\.start/);
     try {
-      obs.onEvent?.({ type: 'runtime.turn.start' } as Parameters<NonNullable<typeof obs.onEvent>>[0]);
+      obs.onEvent?.({ type: 'runtime.turn.start' } as unknown as Parameters<NonNullable<typeof obs.onEvent>>[0]);
       expect(capture.messages).toHaveLength(0);
     } finally {
       capture.restore();
@@ -140,10 +140,10 @@ function makeMockOtel(): {
 
   const meter: OtelMeter = {
     createCounter: (name) => ({
-      add: (value, attrs) => { counters.push({ name, value, attrs }); },
+      add: (value, attrs) => { counters.push({ name, value, ...(attrs !== undefined ? { attrs } : {}) }); },
     }),
     createHistogram: (_name) => ({
-      record: (value, attrs) => { histRecords.push({ value, attrs }); },
+      record: (value, attrs) => { histRecords.push({ value, ...(attrs !== undefined ? { attrs } : {}) }); },
     }),
   };
 
@@ -180,9 +180,9 @@ describe('createOpenTelemetryObserver — onTransportActivity', () => {
       durationMs: 55,
     });
     expect(histRecords).toHaveLength(1);
-    expect(histRecords[0].value).toBe(55);
-    expect((histRecords[0].attrs as Record<string, unknown>)['kind']).toBe('http');
-    expect((histRecords[0].attrs as Record<string, unknown>)['status']).toBe(200);
+    expect(histRecords[0]!.value).toBe(55);
+    expect((histRecords[0]!.attrs as Record<string, unknown>)['kind']).toBe('http');
+    expect((histRecords[0]!.attrs as Record<string, unknown>)['status']).toBe(200);
   });
 
   test('recv without durationMs does NOT record histogram entry', () => {
@@ -218,8 +218,8 @@ describe('createOpenTelemetryObserver — onTransportActivity', () => {
       durationMs: 100,
     });
     expect(histRecords).toHaveLength(1);
-    expect((histRecords[0].attrs as Record<string, unknown>)['kind']).toBe('sse');
-    expect('status' in (histRecords[0].attrs ?? {})).toBe(false);
+    expect((histRecords[0]!.attrs as Record<string, unknown>)['kind']).toBe('sse');
+    expect('status' in (histRecords[0]!.attrs ?? {})).toBe(false);
   });
 });
 
@@ -228,7 +228,7 @@ describe('createOpenTelemetryObserver — onEvent', () => {
     const { tracer, meter, spans } = makeMockOtel();
     const obs = createOpenTelemetryObserver(tracer, meter);
     const initialSpans = spans.length;
-    expect(() => obs.onEvent?.({ type: 'runtime.turn.start' } as Parameters<NonNullable<typeof obs.onEvent>>[0])).not.toThrow();
+    expect(() => obs.onEvent?.({ type: 'runtime.turn.start' } as unknown as Parameters<NonNullable<typeof obs.onEvent>>[0])).not.toThrow();
     // onEvent is intentionally a no-op — no new spans
     expect(spans.length).toBe(initialSpans);
   });

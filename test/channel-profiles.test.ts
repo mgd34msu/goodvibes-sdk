@@ -97,7 +97,7 @@ describe('channel intake enrichment', () => {
     expect(filled).toEqual({ task: 'x', model: 'm', provider: 'p' });
     const preserved = applyChannelProfileToSpawn({ task: 'x', model: 'explicit' }, { model: 'm' });
     expect(preserved.model).toBe('explicit');
-    expect(applyChannelProfileToSpawn({ task: 'x' }, null)).toEqual({ task: 'x' });
+    expect(applyChannelProfileToSpawn({ task: 'x' } as { task: string; model?: string; provider?: string }, null)).toEqual({ task: 'x' });
   });
 
   test('attribution resolves a known sender and stamps honest unknown otherwise', async () => {

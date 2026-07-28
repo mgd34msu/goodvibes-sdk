@@ -164,6 +164,8 @@ describe('EmailService.getStatus', () => {
   test('EmailSummary includes bodyPreview field', () => {
     // Verify the type shape — bodyPreview is always present, empty string by default
     const summary: import('../packages/sdk/src/platform/email/email-service.ts').EmailSummary = {
+      uid: 1,
+      messageId: '<msg-1@example.test>',
       from: 'a@b.test',
       subject: 'Hi',
       date: '2026-01-01',

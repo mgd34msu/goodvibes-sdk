@@ -29,6 +29,7 @@ function makeItem(overrides: Partial<WorkItem> & { id: string }): WorkItem {
   return {
     title: 'item',
     task: 'do work',
+    dependsOn: [],
     currentPhaseId: null,
     state: 'pending',
     allAgentIds: [],
@@ -149,12 +150,12 @@ describe('registry integration — nesting + kill/steer dispatch', () => {
           return true;
         },
       },
-      processManager: { list: () => [], stop: () => false, getStatus: () => null },
+      processManager: { list: () => [], stop: () => false, getStatus: () => undefined },
       watcherRegistry: { list: () => [], stopWatcher: () => null },
       workflow: {
         workflowManager: { list: () => [], cancel: () => false },
-        triggerManager: { list: () => [], remove: () => false, disable: () => false },
-        scheduleManager: { list: () => [], remove: () => false, disable: () => false },
+        triggerManager: { list: () => [], remove: () => false, enable: () => false, disable: () => false },
+        scheduleManager: { list: () => [], remove: () => false, enable: () => false, disable: () => false },
       },
       messageBus: { send: () => true },
     });
@@ -212,12 +213,12 @@ describe('registry integration — nesting + kill/steer dispatch', () => {
       agentManager: { list: () => [liveAgent], cancel: () => true },
       wrfcController: { listChains: () => [] },
       orchestrationEngine: { listWorkstreams: () => [workstream], kill: () => true },
-      processManager: { list: () => [], stop: () => false, getStatus: () => null },
+      processManager: { list: () => [], stop: () => false, getStatus: () => undefined },
       watcherRegistry: { list: () => [], stopWatcher: () => null },
       workflow: {
         workflowManager: { list: () => [], cancel: () => false },
-        triggerManager: { list: () => [], remove: () => false, disable: () => false },
-        scheduleManager: { list: () => [], remove: () => false, disable: () => false },
+        triggerManager: { list: () => [], remove: () => false, enable: () => false, disable: () => false },
+        scheduleManager: { list: () => [], remove: () => false, enable: () => false, disable: () => false },
       },
       messageBus: {
         send: (from: string, to: string, text: string) => {

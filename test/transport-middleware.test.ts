@@ -40,6 +40,16 @@ function createFetchStub(factory: (input: RequestInfo | URL, init?: RequestInit)
   return factory as unknown as typeof fetch;
 }
 
+/**
+ * Bun's `typeof fetch` carries a `preconnect` namespace member alongside the
+ * call signature (bun-types globals.d.ts). A plain replacement function has
+ * only the call signature, so it needs `preconnect` attached before it can
+ * stand in wherever `typeof globalThis.fetch` is required.
+ */
+function stubFetch(impl: (...args: Parameters<typeof fetch>) => Promise<Response>): typeof fetch {
+  return Object.assign(impl, { preconnect: () => {} });
+}
+
 // ---------------------------------------------------------------------------
 // composeMiddleware: execution order
 // ---------------------------------------------------------------------------
@@ -288,9 +298,9 @@ describe('sdk.use() — full SDK facade integration', () => {
   test('sdk.use() appends middleware that runs on operator transport requests', async () => {
     const { createGoodVibesSdk } = await import('../packages/sdk/src/client.js');
     const intercepted: string[] = [];
-    const fetchStub: typeof globalThis.fetch = async (input) => {
+    const fetchStub = stubFetch(async () => {
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
-    };
+    });
     const sdk = createGoodVibesSdk({
       baseUrl: 'https://api.example.com',
       fetch: fetchStub,
@@ -309,9 +319,9 @@ describe('sdk.use() — full SDK facade integration', () => {
   test('multiple sdk.use() calls compose in order', async () => {
     const { createGoodVibesSdk } = await import('../packages/sdk/src/client.js');
     const order: string[] = [];
-    const fetchStub: typeof globalThis.fetch = async () => {
+    const fetchStub = stubFetch(async () => {
       return new Response('{}', { status: 200 });
-    };
+    });
     const sdk = createGoodVibesSdk({
       baseUrl: 'https://api.example.com',
       fetch: fetchStub,
@@ -326,9 +336,9 @@ describe('sdk.use() — full SDK facade integration', () => {
   test('middleware option in createGoodVibesSdk is applied on first request', async () => {
     const { createGoodVibesSdk } = await import('../packages/sdk/src/client.js');
     let middlewareRan = false;
-    const fetchStub: typeof globalThis.fetch = async () => {
+    const fetchStub = stubFetch(async () => {
       return new Response('{}', { status: 200 });
-    };
+    });
     const sdk = createGoodVibesSdk({
       baseUrl: 'https://api.example.com',
       fetch: fetchStub,
@@ -353,17 +363,17 @@ describe('middleware error wrap: HttpStatusError from middleware', () => {
     const { createHttpJsonTransport } = await import('../packages/transport-http/src/http-core.js');
     const { HttpStatusError, GoodVibesSdkError } = await import('./_helpers/dist-errors.js');
 
-    const fetchStub: typeof globalThis.fetch = async () => {
+    const fetchStub = stubFetch(async () => {
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
-    };
+    });
     const transport = createHttpJsonTransport({
       baseUrl: 'https://api.example.com',
       fetch: fetchStub,
     });
 
-    async function myMw(_ctx: Parameters<typeof transport.use>[0] extends (mw: infer M) => void ? Parameters<M>[0] : never, _next: () => Promise<void>): Promise<void> {
+    async function myMw(_ctx: TransportContext, _next: () => Promise<void>): Promise<void> {
       throw new HttpStatusError('Unauthorized from middleware', {
-        category: 'auth',
+        category: 'authentication',
         source: 'transport',
         recoverable: false,
       });
@@ -373,7 +383,7 @@ describe('middleware error wrap: HttpStatusError from middleware', () => {
     const caught = await transport.requestJson('/v1/test').catch((e: unknown) => e);
 
     expect(caught instanceof GoodVibesSdkError).toBe(true);
-    const err = caught as GoodVibesSdkError;
+    const err = caught as InstanceType<typeof GoodVibesSdkError>;
     expect(err.category).toBe('unknown');
     // cause should include middleware identity
     const cause = (err as { cause?: unknown }).cause as { middleware?: string } | undefined;
@@ -384,9 +394,9 @@ describe('middleware error wrap: HttpStatusError from middleware', () => {
     const { createHttpJsonTransport } = await import('../packages/transport-http/src/http-core.js');
     const { GoodVibesSdkError } = await import('./_helpers/dist-errors.js');
 
-    const fetchStub: typeof globalThis.fetch = async () => {
+    const fetchStub = stubFetch(async () => {
       return new Response('{}', { status: 200 });
-    };
+    });
     const transport = createHttpJsonTransport({
       baseUrl: 'https://api.example.com',
       fetch: fetchStub,
@@ -400,7 +410,7 @@ describe('middleware error wrap: HttpStatusError from middleware', () => {
     const caught = await transport.requestJson('/v1/test').catch((e: unknown) => e);
 
     expect(caught instanceof GoodVibesSdkError).toBe(true);
-    const err = caught as GoodVibesSdkError;
+    const err = caught as InstanceType<typeof GoodVibesSdkError>;
     expect(err.category).toBe('unknown');
     const cause = (err as { cause?: unknown }).cause as { middleware?: string } | undefined;
     expect(cause?.middleware).toBe('loggerMw');

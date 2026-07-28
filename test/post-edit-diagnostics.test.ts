@@ -29,8 +29,14 @@ function makeProjectDir(): string {
   return root;
 }
 
+// Shared by both createWriteTool (needs only `get`) and createEditTool (needs
+// `get` + `getWorkingDirectory`); implementing both here satisfies either
+// caller's narrower Pick<ConfigManager, ...> requirement structurally.
 function onConfig(mode: 'on' | 'off') {
-  return { get: (k: string) => (k === 'diagnostics.postEdit' ? mode : undefined) } as unknown as Parameters<typeof createWriteTool>[0]['configManager'];
+  return {
+    get: (k: string) => (k === 'diagnostics.postEdit' ? mode : undefined),
+    getWorkingDirectory: () => null,
+  } as unknown as NonNullable<Parameters<typeof createEditTool>[1]>['configManager'];
 }
 
 // ── provider unit ────────────────────────────────────────────────────────────

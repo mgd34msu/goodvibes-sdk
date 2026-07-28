@@ -45,6 +45,9 @@ type AutomationRunLike = {
   readonly agentId?: string | undefined;
   readonly status: string;
   readonly startedAt?: number | undefined;
+  // Present in the canonical copy in daemon-sdk and missing here — the same
+  // copy-paste drift as createJob/updateJob below, found the same way.
+  readonly endedAt?: number | undefined;
   readonly queuedAt: number;
   readonly continuationMode?: string | undefined;
 };
@@ -195,6 +198,24 @@ export interface DaemonRuntimeRouteContext extends Omit<
     getStatus(agentId: string): AgentRecordLike | null;
     cancel(agentId: string): void;
   };
+  /**
+   * Omitted from the canonical above and re-declared here, with this layer's
+   * precise input types.
+   *
+   * `createJob`/`updateJob` deliberately differ from the canonical, which
+   * declares them as `Record<string, unknown>` because daemon-sdk's handlers
+   * call them with a parsed JSON body.
+   * `createDaemonRuntimeRouteHandlers` in runtime-routes.ts is the bridge: it
+   * wraps this context's manager and runs the body through
+   * `parseCreateAutomationJobInput` before calling through.
+   *
+   * Every OTHER method here must stay identical to the canonical, so that a
+   * method added upstream is required here too;
+   * test/platform-http-context-inheritance.test.ts pins that, minus the two
+   * adapted methods. It could not pin anything before, because `test/` was
+   * never typechecked — and in the meantime `AutomationRunLike` below had
+   * silently lost a field the canonical copy has.
+   */
   readonly automationManager: {
     listJobs(): AutomationJobLike[];
     listRuns(): AutomationRunLike[];

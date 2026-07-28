@@ -121,8 +121,8 @@ describe('adapters/code-index — registry integration (degrade-to-today)', () =
       watcherRegistry: { list: () => [], stopWatcher: () => null } as unknown as Pick<WatcherRegistry, 'list' | 'stopWatcher'>,
       workflow: {
         workflowManager: { list: () => [], cancel: () => false } as unknown as Pick<WorkflowManager, 'list' | 'cancel'>,
-        triggerManager: { list: () => [], remove: () => false, disable: () => false } as unknown as Pick<TriggerManager, 'list' | 'remove' | 'disable'>,
-        scheduleManager: { list: () => [], remove: () => false, disable: () => false } as unknown as Pick<ScheduleManager, 'list' | 'remove' | 'disable'>,
+        triggerManager: { list: () => [], remove: () => false, enable: () => false, disable: () => false } as unknown as Pick<TriggerManager, 'list' | 'remove' | 'enable' | 'disable'>,
+        scheduleManager: { list: () => [], remove: () => false, enable: () => false, disable: () => false } as unknown as Pick<ScheduleManager, 'list' | 'remove' | 'enable' | 'disable'>,
       },
       timers,
       now: () => T0,

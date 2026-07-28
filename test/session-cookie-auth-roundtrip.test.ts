@@ -124,6 +124,13 @@ function makeControlRouteHandlers(
     if (result.kind === 'shared-token') {
       return { principalId: 'shared-token', principalKind: 'token' as const, admin: true, scopes: [] };
     }
+    // Mirrors ControlPlaneGateway.describeAuthenticatedPrincipal (control-plane.ts):
+    // a pairing token is a distinct token-kind principal, not a user session —
+    // it has no `roles`/`username`, so it must be handled before the fallthrough
+    // that reads those fields off the remaining 'session' branch.
+    if (result.kind === 'pairing-token') {
+      return { principalId: `pairing:${result.tokenId}`, principalKind: 'token' as const, admin: true, scopes: [] };
+    }
     const admin = result.roles.includes('admin');
     return { principalId: result.username, principalKind: 'user' as const, admin, scopes: [] };
   };
@@ -161,7 +168,7 @@ function makeControlRouteHandlers(
       return { username: result.username, roles: [...result.roles] };
     },
     login: () => Response.json({ error: 'not used by this fixture' }, { status: 500 }),
-  }, req);
+  });
 }
 
 // ---------------------------------------------------------------------------

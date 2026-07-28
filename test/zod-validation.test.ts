@@ -15,13 +15,19 @@ import { invokeContractRoute, createHttpTransport } from '../packages/transport-
 // ---------------------------------------------------------------------------
 
 function createJsonFetch(body: unknown, status = 200): typeof fetch {
-  return (_url, _init) =>
+  const impl = (_url: RequestInfo | URL, _init?: RequestInit) =>
     Promise.resolve(
       new Response(JSON.stringify(body), {
         status,
         headers: { 'Content-Type': 'application/json' },
       }),
     ) as ReturnType<typeof fetch>;
+  // Bun's `typeof fetch` includes a `preconnect` static method that plain mock
+  // functions don't have. Attach a no-op stub so this test double satisfies the
+  // type without pretending to implement real preconnect behavior.
+  return Object.assign(impl, {
+    preconnect: (_url: string | URL, _options?: { dns?: boolean; tcp?: boolean; http?: boolean; https?: boolean }) => {},
+  });
 }
 
 function makeTransport(responseBody: unknown) {
@@ -31,7 +37,7 @@ function makeTransport(responseBody: unknown) {
   });
 }
 
-const LOGIN_ROUTE = { method: 'POST', path: '/api/control-plane/invoke/control.auth.login' };
+const LOGIN_ROUTE = { id: 'control.auth.login', method: 'POST', path: '/api/control-plane/invoke/control.auth.login' };
 
 // ---------------------------------------------------------------------------
 // 1. Happy path — valid response passes through unchanged
@@ -118,7 +124,7 @@ describe('zod-validation: contract violations', () => {
     await expect(
       invokeContractRoute(
         makeTransport(badSnapshot),
-        { method: 'GET', path: '/api/control-plane/invoke/accounts.snapshot' },
+        { id: 'accounts.snapshot', method: 'GET', path: '/api/control-plane/invoke/accounts.snapshot' },
         {},
         { responseSchema: AccountsSnapshotResponseSchema },
       ),
@@ -131,7 +137,7 @@ describe('zod-validation: contract violations', () => {
     await expect(
       invokeContractRoute(
         makeTransport(badStatus),
-        { method: 'GET', path: '/api/status' },
+        { id: 'control.status', method: 'GET', path: '/api/status' },
         {},
         { responseSchema: ControlStatusResponseSchema },
       ),
@@ -195,7 +201,7 @@ describe('zod-validation: schema correctness', () => {
 
     const result = await invokeContractRoute(
       makeTransport(validBody),
-      { method: 'GET', path: '/api/custom' },
+      { id: 'test.custom', method: 'GET', path: '/api/custom' },
       {},
       { responseSchema: customSchema },
     );

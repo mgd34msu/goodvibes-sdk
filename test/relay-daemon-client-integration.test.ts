@@ -78,10 +78,14 @@ describe('typed operator client over the relay', () => {
     const sdk = createOperatorSdk({ baseUrl: 'https://relay.invalid', fetchImpl: client.fetch, authToken: 'operator-token-xyz' });
     const result = await sdk.approvals.list();
 
-    expect(result).toEqual(expected!.body);
+    expect(result).toEqual(expected!.body as typeof result);
     // The tunneled request carried the operator's auth token (invisible to the
     // relay) and was tagged as arriving via relay.
-    expect(sawAuth).toBe('Bearer operator-token-xyz');
+    // `sawAuth` is reassigned inside the `standUpDaemon` request-handler closure
+    // above; TS's control-flow analysis can't see across that boundary, so its
+    // narrowed type here is stuck at the `null` initializer.
+    expect(sawAuth).not.toBeNull();
+    expect(sawAuth as unknown as string).toBe('Bearer operator-token-xyz');
     expect(sawViaHeader).toBe(true);
 
     client.close();

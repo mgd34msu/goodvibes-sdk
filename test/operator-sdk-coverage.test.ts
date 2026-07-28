@@ -26,10 +26,23 @@ function createJsonResponse(body: unknown, status = 200): Response {
   });
 }
 
+/**
+ * Bun's `typeof fetch` includes a `preconnect` static method that plain mock
+ * functions don't have. Attach a no-op stub so test doubles satisfy the type
+ * without pretending to implement real preconnect behavior.
+ */
+function withPreconnect(
+  impl: (input: string | URL | Request, init?: RequestInit) => Promise<Response>,
+): typeof globalThis.fetch {
+  return Object.assign(impl, {
+    preconnect: (_url: string | URL, _options?: { dns?: boolean; tcp?: boolean; http?: boolean; https?: boolean }) => {},
+  });
+}
+
 function makeTransport(fetch: (input: string | URL | Request, init?: RequestInit) => Promise<Response>) {
   return createHttpTransport({
     baseUrl: 'http://127.0.0.1:3210',
-    fetch,
+    fetch: withPreconnect(fetch),
   });
 }
 
@@ -84,7 +97,7 @@ describe('createOperatorRemoteClient — invoke throws for missing HTTP binding'
         ],
       },
     };
-    const client = createOperatorRemoteClient(transport, contract as ReturnType<typeof getOperatorContract>);
+    const client = createOperatorRemoteClient(transport, contract as unknown as ReturnType<typeof getOperatorContract>);
     // requireMethodRoute throws synchronously when method.http is null
     expect(() => client.invoke('internal.only' as never)).toThrow(GoodVibesSdkError);
     const caught = (() => { try { client.invoke('internal.only' as never); } catch (e) { return e; } })();
@@ -103,10 +116,10 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
     const sdk = createOperatorSdk({
       validateResponses: false,
       baseUrl: 'http://127.0.0.1:3210',
-      fetch: async (input, _init) => {
+      fetch: withPreconnect(async (input, _init) => {
         calls.push(String(input));
         return createJsonResponse({ id: 'session-1', status: 'active', messages: [] });
-      },
+      }),
     });
     const result = await sdk.sessions.get('session-1');
     expect(calls[0]).toContain('/sessions/session-1');
@@ -118,10 +131,10 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
     const sdk = createOperatorSdk({
       validateResponses: false,
       baseUrl: 'http://127.0.0.1:3210',
-      fetch: async (input, _init) => {
+      fetch: withPreconnect(async (input, _init) => {
         calls.push(String(input));
         return createJsonResponse({ id: 'msg-1' });
-      },
+      }),
     });
     const result = await sdk.sessions.messages.create('session-1', { role: 'user', content: 'hello' });
     expect(calls[0]).toContain('/sessions/session-1/messages');
@@ -133,10 +146,10 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
     const sdk = createOperatorSdk({
       validateResponses: false,
       baseUrl: 'http://127.0.0.1:3210',
-      fetch: async (input, _init) => {
+      fetch: withPreconnect(async (input, _init) => {
         calls.push(String(input));
         return createJsonResponse({ cancelled: true });
-      },
+      }),
     });
     const result = await sdk.sessions.inputs.cancel('session-1', 'input-1');
     expect(calls[0]).toContain('session-1');
@@ -149,10 +162,10 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
     const sdk = createOperatorSdk({
       validateResponses: false,
       baseUrl: 'http://127.0.0.1:3210',
-      fetch: async (input, _init) => {
+      fetch: withPreconnect(async (input, _init) => {
         calls.push(String(input));
         return createJsonResponse({ closed: true });
-      },
+      }),
     });
     const result = await sdk.sessions.close('session-1');
     expect(calls[0]).toContain('session-1');
@@ -164,10 +177,10 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
     const sdk = createOperatorSdk({
       validateResponses: false,
       baseUrl: 'http://127.0.0.1:3210',
-      fetch: async (input, _init) => {
+      fetch: withPreconnect(async (input, _init) => {
         calls.push(String(input));
         return createJsonResponse({ reopened: true });
-      },
+      }),
     });
     const result = await sdk.sessions.reopen('session-1');
     expect(calls[0]).toContain('session-1');
@@ -179,10 +192,10 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
     const sdk = createOperatorSdk({
       validateResponses: false,
       baseUrl: 'http://127.0.0.1:3210',
-      fetch: async (input, _init) => {
+      fetch: withPreconnect(async (input, _init) => {
         calls.push(String(input));
         return createJsonResponse({ id: 'task-1' });
-      },
+      }),
     });
     const result = await sdk.tasks.get('task-1');
     expect(calls[0]).toContain('task-1');
@@ -194,10 +207,10 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
     const sdk = createOperatorSdk({
       validateResponses: false,
       baseUrl: 'http://127.0.0.1:3210',
-      fetch: async (input, _init) => {
+      fetch: withPreconnect(async (input, _init) => {
         calls.push(String(input));
         return createJsonResponse({ cancelled: true });
-      },
+      }),
     });
     const result = await sdk.tasks.cancel('task-1');
     expect(calls[0]).toContain('task-1');
@@ -209,10 +222,10 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
     const sdk = createOperatorSdk({
       validateResponses: false,
       baseUrl: 'http://127.0.0.1:3210',
-      fetch: async (input, _init) => {
+      fetch: withPreconnect(async (input, _init) => {
         calls.push(String(input));
         return createJsonResponse({ retried: true });
-      },
+      }),
     });
     const result = await sdk.tasks.retry('task-1');
     expect(calls[0]).toContain('task-1');
@@ -224,10 +237,10 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
     const sdk = createOperatorSdk({
       validateResponses: false,
       baseUrl: 'http://127.0.0.1:3210',
-      fetch: async (input, _init) => {
+      fetch: withPreconnect(async (input, _init) => {
         calls.push(String(input));
         return createJsonResponse({ claimed: true });
-      },
+      }),
     });
     const result = await sdk.approvals.claim('approval-1');
     expect(calls[0]).toContain('approval-1');
@@ -239,10 +252,10 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
     const sdk = createOperatorSdk({
       validateResponses: false,
       baseUrl: 'http://127.0.0.1:3210',
-      fetch: async (input, _init) => {
+      fetch: withPreconnect(async (input, _init) => {
         calls.push(String(input));
         return createJsonResponse({ approved: true });
-      },
+      }),
     });
     const result = await sdk.approvals.approve('approval-1');
     expect(calls[0]).toContain('approval-1');
@@ -254,10 +267,10 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
     const sdk = createOperatorSdk({
       validateResponses: false,
       baseUrl: 'http://127.0.0.1:3210',
-      fetch: async (input, _init) => {
+      fetch: withPreconnect(async (input, _init) => {
         calls.push(String(input));
         return createJsonResponse({ denied: true });
-      },
+      }),
     });
     const result = await sdk.approvals.deny('approval-1');
     expect(calls[0]).toContain('approval-1');
@@ -269,10 +282,10 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
     const sdk = createOperatorSdk({
       validateResponses: false,
       baseUrl: 'http://127.0.0.1:3210',
-      fetch: async (input, _init) => {
+      fetch: withPreconnect(async (input, _init) => {
         calls.push(String(input));
         return createJsonResponse({ cancelled: true });
-      },
+      }),
     });
     const result = await sdk.approvals.cancel('approval-1');
     expect(calls[0]).toContain('approval-1');
@@ -284,10 +297,10 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
     const sdk = createOperatorSdk({
       validateResponses: false,
       baseUrl: 'http://127.0.0.1:3210',
-      fetch: async (input, _init) => {
+      fetch: withPreconnect(async (input, _init) => {
         calls.push(String(input));
         return createJsonResponse({ id: 'provider-1' });
-      },
+      }),
     });
     const result = await sdk.providers.get('provider-1');
     expect(calls[0]).toContain('provider-1');
@@ -299,10 +312,10 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
     const sdk = createOperatorSdk({
       validateResponses: false,
       baseUrl: 'http://127.0.0.1:3210',
-      fetch: async (input, _init) => {
+      fetch: withPreconnect(async (input, _init) => {
         calls.push(String(input));
         return createJsonResponse({ usage: [] });
-      },
+      }),
     });
     const result = await sdk.providers.usage('provider-1');
     expect(calls[0]).toContain('provider-1');
@@ -314,10 +327,10 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
     const sdk = createOperatorSdk({
       validateResponses: false,
       baseUrl: 'http://127.0.0.1:3210',
-      fetch: async (input, _init) => {
+      fetch: withPreconnect(async (input, _init) => {
         calls.push(String(input));
         return createJsonResponse({ id: 'method-1' });
-      },
+      }),
     });
     const result = await sdk.control.methods.get('method-1');
     expect(calls[0]).toContain('method-1');
@@ -334,7 +347,7 @@ describe('createOperatorSdk — validateResponses option', () => {
     const sdk = createOperatorSdk({
       baseUrl: 'http://127.0.0.1:3210',
       validateResponses: false,
-      fetch: async () => createJsonResponse({ custom_field: 'no_zod_here', capturedAt: 0, providers: [], configuredCount: 0, issueCount: 0 }),
+      fetch: withPreconnect(async () => createJsonResponse({ custom_field: 'no_zod_here', capturedAt: 0, providers: [], configuredCount: 0, issueCount: 0 })),
     });
     // Should not throw even if response shape is unexpected — Zod is bypassed
     const result = await sdk.accounts.snapshot();
@@ -345,7 +358,7 @@ describe('createOperatorSdk — validateResponses option', () => {
     const sdk = createOperatorSdk({
       baseUrl: 'http://127.0.0.1:3210',
       validateResponses: true,
-      fetch: async () => createJsonResponse({ capturedAt: Date.now(), providers: [], configuredCount: 0, issueCount: 0 }),
+      fetch: withPreconnect(async () => createJsonResponse({ capturedAt: Date.now(), providers: [], configuredCount: 0, issueCount: 0 })),
     });
     const result = await sdk.accounts.snapshot();
     expect(result).toMatchObject({ configuredCount: 0, issueCount: 0 });
@@ -354,7 +367,7 @@ describe('createOperatorSdk — validateResponses option', () => {
   test('getOperation is accessible on OperatorSdk', () => {
     const sdk = createOperatorSdk({
       baseUrl: 'http://127.0.0.1:3210',
-      fetch: async () => createJsonResponse({ ok: true }),
+      fetch: withPreconnect(async () => createJsonResponse({ ok: true })),
     });
     expect(() => sdk.getOperation('accounts.snapshot')).not.toThrow();
     const method = sdk.getOperation('accounts.snapshot');
@@ -514,7 +527,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
       calls.push(String(input));
       return createJsonResponse({ ok: true });
     });
-    const result = await client.sessions.followUp({ sessionId: 's-1', task: 'continue' });
+    const result = await client.sessions.followUp({ sessionId: 's-1', body: 'continue' });
     expect(calls[0]).toContain('follow');
     expect(result).toMatchObject({ ok: true });
   });
@@ -525,7 +538,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
       calls.push(String(input));
       return createJsonResponse({ ok: true });
     });
-    const result = await client.sessions.steer({ sessionId: 's-1', guidance: 'go left' });
+    const result = await client.sessions.steer({ sessionId: 's-1', body: 'go left' });
     expect(calls[0]).toContain('steer');
     expect(result).toMatchObject({ ok: true });
   });
@@ -558,7 +571,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
       calls.push(String(input));
       return createJsonResponse({ taskId: 'task-1' });
     });
-    const result = await client.tasks.create({ task: 'do it', sessionId: 's-1', routing: { target: 'main' } });
+    const result = await client.tasks.create({ task: 'do it', sessionId: 's-1' });
     expect(calls[0]).toContain('task');
     expect(result).toMatchObject({ taskId: 'task-1' });
   });
@@ -587,8 +600,11 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
 
   test('tasks.status throws for no HTTP binding (internal-only route)', () => {
     const client = makeSrcClient(async () => createJsonResponse({ ok: true }));
-    // tasks.status has no HTTP binding in the contract — requireMethodRoute throws
-    expect(() => client.tasks.status()).toThrow(GoodVibesSdkError);
+    // tasks.status requires an `agentId` input at the type level; this test
+    // deliberately omits it (a real caller forgetting the required field) to
+    // prove the SDK rejects rather than sending a malformed request.
+    const status = client.tasks.status as unknown as () => Promise<unknown>;
+    expect(() => status()).toThrow(GoodVibesSdkError);
   });
 
   test('tasks.cancel builds path from taskId', async () => {
@@ -880,7 +896,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
       calls.push(String(input));
       return createJsonResponse({ ok: true });
     });
-    const result = await client.telemetry.otlp.traces({ resourceSpans: [] });
+    const result = await client.telemetry.otlp.traces({ limit: 10 });
     expect(calls[0]).toContain('otlp');
     expect(result).toMatchObject({ ok: true });
   });
@@ -891,7 +907,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
       calls.push(String(input));
       return createJsonResponse({ ok: true });
     });
-    const result = await client.telemetry.otlp.logs({ resourceLogs: [] });
+    const result = await client.telemetry.otlp.logs({ limit: 10 });
     expect(calls[0]).toContain('otlp');
     expect(result).toMatchObject({ ok: true });
   });
@@ -902,7 +918,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
       calls.push(String(input));
       return createJsonResponse({ ok: true });
     });
-    const result = await client.telemetry.otlp.metrics({ resourceMetrics: [] });
+    const result = await client.telemetry.otlp.metrics({ limit: 10 });
     expect(calls[0]).toContain('otlp');
     expect(result).toMatchObject({ ok: true });
   });

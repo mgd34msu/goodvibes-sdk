@@ -59,14 +59,14 @@ describe('SecretsManager key-mismatch guards', () => {
   test('a write is refused when the keyfile changed under a cached key, and the old store survives', async () => {
     const dirs = makeScratch();
     const sm = makeManager(dirs);
-    await sm.set('FIRST_SECRET', 'first-value', { scope: 'user', mode: 'secure' });
+    await sm.set('FIRST_SECRET', 'first-value', { scope: 'user', medium: 'secure' });
     const storeBytesBefore = readFileSync(dirs.store, 'utf-8');
 
     // Simulate an external keyfile regeneration while sm keeps its cached key.
     writeFileSync(dirs.keyfile, `${randomBytes(32).toString('hex')}\n`, { encoding: 'utf-8', mode: 0o600 });
 
-    await expect(sm.set('SECOND_SECRET', 'second-value', { scope: 'user', mode: 'secure' })).rejects.toThrow(SecretStoreUnreadableError);
-    await expect(sm.set('SECOND_SECRET', 'second-value', { scope: 'user', mode: 'secure' })).rejects.toThrow(/no longer matches the keyfile/);
+    await expect(sm.set('SECOND_SECRET', 'second-value', { scope: 'user', medium: 'secure' })).rejects.toThrow(SecretStoreUnreadableError);
+    await expect(sm.set('SECOND_SECRET', 'second-value', { scope: 'user', medium: 'secure' })).rejects.toThrow(/no longer matches the keyfile/);
     // The refused write must not have clobbered the store on disk.
     expect(readFileSync(dirs.store, 'utf-8')).toBe(storeBytesBefore);
   });
@@ -74,11 +74,11 @@ describe('SecretsManager key-mismatch guards', () => {
   test('a missing keyfile is restored from the cached key so stores stay readable across restarts', async () => {
     const dirs = makeScratch();
     const sm = makeManager(dirs);
-    await sm.set('FIRST_SECRET', 'first-value', { scope: 'user', mode: 'secure' });
+    await sm.set('FIRST_SECRET', 'first-value', { scope: 'user', medium: 'secure' });
     const originalKey = readFileSync(dirs.keyfile, 'utf-8');
 
     unlinkSync(dirs.keyfile);
-    await sm.set('SECOND_SECRET', 'second-value', { scope: 'user', mode: 'secure' });
+    await sm.set('SECOND_SECRET', 'second-value', { scope: 'user', medium: 'secure' });
 
     // Keyfile restored with the SAME key, and a fresh manager (fresh cache) reads both values.
     expect(existsSync(dirs.keyfile)).toBe(true);
@@ -91,7 +91,7 @@ describe('SecretsManager key-mismatch guards', () => {
   test('a key mismatch reads back as a precise fingerprint reason, not a bare auth failure', async () => {
     const dirs = makeScratch();
     const writer = makeManager(dirs);
-    await writer.set('ORPHANED_SECRET', 'value', { scope: 'user', mode: 'secure' });
+    await writer.set('ORPHANED_SECRET', 'value', { scope: 'user', medium: 'secure' });
     const writerKey = loadOrCreateKeyfile(dirs.keyfile);
 
     // The keyfile is replaced; a fresh process now holds a different key.
@@ -120,7 +120,7 @@ describe('SecretsManager key-mismatch guards', () => {
   test('stores written before the fingerprint field still decrypt (no keyId → normal decrypt path)', async () => {
     const dirs = makeScratch();
     const sm = makeManager(dirs);
-    await sm.set('PLAIN_OLD_SECRET', 'old-value', { scope: 'user', mode: 'secure' });
+    await sm.set('PLAIN_OLD_SECRET', 'old-value', { scope: 'user', medium: 'secure' });
 
     // Strip keyId from the envelope to simulate a store written by an older SDK.
     const envelope = JSON.parse(readFileSync(dirs.store, 'utf-8')) as Record<string, unknown>;

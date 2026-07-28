@@ -22,6 +22,19 @@ import { trackGlobalStubs } from './_helpers/global-stubs.ts';
 const disposables = trackDisposables();
 const stubs = trackGlobalStubs();
 
+/**
+ * Bun's `typeof fetch` includes a `preconnect` static method that plain mock
+ * functions don't have. Attach a no-op stub so test doubles satisfy the type
+ * without pretending to implement real preconnect behavior.
+ */
+function withPreconnect(
+  impl: (input: string | URL | Request, init?: RequestInit) => Promise<Response>,
+): typeof globalThis.fetch {
+  return Object.assign(impl, {
+    preconnect: (_url: string | URL, _options?: { dns?: boolean; tcp?: boolean; http?: boolean; https?: boolean }) => {},
+  });
+}
+
 // --------------------------------------------------------------------------
 // trackDisposables — method detection
 // --------------------------------------------------------------------------
@@ -53,8 +66,8 @@ describe('trackDisposables — explicit disposers and bare callbacks', () => {
 
   test('an explicit disposer overrides method detection', () => {
     const target = { dispose: () => seen.push('WRONG-auto') };
-    disposables.add(target, () => seen.push('explicit'));
-    disposables.defer(() => seen.push('deferred'));
+    disposables.add(target, () => { seen.push('explicit'); });
+    disposables.defer(() => { seen.push('deferred'); });
     expect(seen).toEqual([]);
   });
 
@@ -99,7 +112,7 @@ describe('trackGlobalStubs — restores process-wide globals after each test', (
   const realNow = Date.now;
 
   test('fetch and Date.now are replaced inside the test', () => {
-    stubs.fetch((async () => new Response('stubbed')) as typeof globalThis.fetch);
+    stubs.fetch(withPreconnect(async () => new Response('stubbed')));
     stubs.freezeNow(1_234_000);
     expect(globalThis.fetch).not.toBe(realFetch);
     expect(Date.now()).toBe(1_234_000);
@@ -114,7 +127,7 @@ describe('trackGlobalStubs — restores process-wide globals after each test', (
 
   test('a throwing test still gets its globals restored', async () => {
     const local = trackGlobalStubs();
-    local.fetch((async () => new Response('x')) as typeof globalThis.fetch);
+    local.fetch(withPreconnect(async () => new Response('x')));
     expect(globalThis.fetch).not.toBe(realFetch);
     // Simulate the failure path that leaves hand-written restores unreached.
     try {

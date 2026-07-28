@@ -25,6 +25,7 @@ import type { OrchestrationEvent } from '../packages/sdk/src/platform/orchestrat
 import type { PhaseRunnerAgentManagerLike } from '../packages/sdk/src/platform/orchestration/phase-runner.js';
 import type { AgentRecord } from '../packages/sdk/src/platform/tools/agent/manager.js';
 import type { PlanProposal, WorkItem as ProposalWorkItem } from '../packages/sdk/src/platform/core/plan-proposal.js';
+import type { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 import { engineerReportOutput, makeRecord, reviewerReportOutput } from './_helpers/orchestration-harness.js';
 
 const ctx = { sessionId: 'test', traceId: 'test', source: 'test' } as const;
@@ -85,11 +86,11 @@ function makeHarness(): Harness {
 }
 
 /** A config manager exposing one always-passing fixture gate that logs its cwd. */
-function makeGateConfig(logPath: string): { get: (k: string) => unknown; getCategory: (c: string) => unknown } {
+function makeGateConfig(logPath: string): Pick<ConfigManager, 'get' | 'getCategory'> {
   const gates = [{ name: 'marker', command: `pwd >> ${JSON.stringify(logPath)}`, enabled: true }];
   return {
-    get: (k: string) => (k === 'wrfc.transportRetryLimit' ? 0 : k === 'wrfc.commitScope' ? 'scoped' : undefined),
-    getCategory: (c: string) => (c === 'wrfc' ? { gates, commitScope: 'scoped', transportRetryLimit: 0 } : undefined),
+    get: ((k: string) => (k === 'wrfc.transportRetryLimit' ? 0 : k === 'wrfc.commitScope' ? 'scoped' : undefined)) as ConfigManager['get'],
+    getCategory: ((c: string) => (c === 'wrfc' ? { gates, commitScope: 'scoped', transportRetryLimit: 0 } : undefined)) as unknown as ConfigManager['getCategory'],
   };
 }
 
@@ -111,7 +112,7 @@ function proposalItem(o: Partial<ProposalWorkItem> & { id: string; title: string
 }
 function makeProposal(items: ProposalWorkItem[]): PlanProposal {
   return {
-    id: 'prop', task: 'goal', strategy: 'parallel', rationale: 'r',
+    id: 'prop', task: 'goal', strategy: 'cohort', rationale: 'r',
     phases: [{ id: 'p', title: 'Execute', order: 1 }], workItems: items, createdAt: 1, source: 'planner-agent',
   };
 }

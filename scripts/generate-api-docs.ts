@@ -2,23 +2,34 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import type {
+  OperatorContractManifest,
+  OperatorEventContract,
+  OperatorMethodContract,
+  PeerContractManifest,
+} from '../packages/contracts/src/types.ts';
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SDK_ROOT = resolve(__dirname, '..');
 const CHECK_ONLY = process.argv.includes('--check');
 
+// The artifacts are generated FROM these types by refresh-contract-artifacts.ts,
+// so reading them back through the same declarations makes this generator fail to
+// compile when the contract shape moves under it. Until this file was brought
+// under `tsc`, every field access below was `any`.
 const operatorContract = JSON.parse(
   readFileSync(resolve(SDK_ROOT, 'packages/contracts/artifacts/operator-contract.json'), 'utf8'),
-);
+) as OperatorContractManifest;
 const peerContract = JSON.parse(
   readFileSync(resolve(SDK_ROOT, 'packages/contracts/artifacts/peer-contract.json'), 'utf8'),
-);
+) as PeerContractManifest;
 
-function ensureDir(path) {
+function ensureDir(path: string): void {
   mkdirSync(dirname(path), { recursive: true });
 }
 
-function writeIfChanged(path, content) {
-  let current = null;
+function writeIfChanged(path: string, content: string): boolean {
+  let current: string | null = null;
   try {
     current = readFileSync(path, 'utf8');
   } catch {
@@ -33,28 +44,29 @@ function writeIfChanged(path, content) {
   return true;
 }
 
-function stringify(value) {
+function stringify(value: unknown): string {
   return `\`${String(value)}\``;
 }
 
-function codeFence(value, language = 'json') {
+function codeFence(value: string, language = 'json'): string {
   return `\`\`\`${language}\n${value}\n\`\`\``;
 }
 
-function list(items) {
+function list(items: readonly unknown[] | undefined): string {
   if (!items || items.length === 0) return 'none';
   return items.map((item) => `\`${item}\``).join(', ');
 }
 
-function schemaBlock(schema) {
+function schemaBlock(schema: unknown): string {
   if (!schema) return 'none';
   return codeFence(JSON.stringify(schema, null, 2));
 }
 
-function byKey(items, key) {
-  const grouped = new Map();
+function byKey<T>(items: readonly T[], key: keyof T & string): Array<[string, T[]]> {
+  const grouped = new Map<string, T[]>();
   for (const item of items) {
-    const group = item[key] ?? 'uncategorized';
+    const raw = item[key];
+    const group = typeof raw === 'string' ? raw : 'uncategorized';
     const existing = grouped.get(group) ?? [];
     existing.push(item);
     grouped.set(group, existing);
@@ -62,8 +74,8 @@ function byKey(items, key) {
   return Array.from(grouped.entries()).sort((a, b) => String(a[0]).localeCompare(String(b[0])));
 }
 
-function renderOperatorReference() {
-  const lines = [];
+function renderOperatorReference(): string {
+  const lines: string[] = [];
   lines.push('# Operator API Reference');
   lines.push('');
   lines.push('Generated from the synced GoodVibes operator contract artifact.');
@@ -104,7 +116,7 @@ function renderOperatorReference() {
   lines.push('');
   lines.push('## Methods');
   lines.push('');
-  for (const [category, methods] of byKey(operatorContract.operator.methods, 'category')) {
+  for (const [category, methods] of byKey<OperatorMethodContract>(operatorContract.operator.methods, 'category')) {
     lines.push(`### ${category}`);
     lines.push('');
     for (const method of methods.sort((a, b) => a.id.localeCompare(b.id))) {
@@ -134,7 +146,7 @@ function renderOperatorReference() {
   }
   lines.push('## Events');
   lines.push('');
-  for (const [category, events] of byKey(operatorContract.operator.events, 'category')) {
+  for (const [category, events] of byKey<OperatorEventContract>(operatorContract.operator.events, 'category')) {
     lines.push(`### ${category}`);
     lines.push('');
     for (const event of events.sort((a, b) => a.id.localeCompare(b.id))) {
@@ -158,8 +170,8 @@ function renderOperatorReference() {
   return `${lines.join('\n')}\n`;
 }
 
-function renderPeerReference() {
-  const lines = [];
+function renderPeerReference(): string {
+  const lines: string[] = [];
   lines.push('# Peer API Reference');
   lines.push('');
   lines.push('Generated from the synced GoodVibes peer contract artifact.');
@@ -200,17 +212,21 @@ function renderPeerReference() {
   }
   lines.push('## Contract metadata');
   lines.push('');
-  lines.push(peerContract.metadata?.note ?? 'none');
+  // `metadata` is a Record<string, unknown> in the contract type, so `note` is
+  // `unknown`: the previous `?? 'none'` would have stringified a non-string
+  // value into the published docs instead of falling back.
+  const metadataNote = peerContract.metadata['note'];
+  lines.push(typeof metadataNote === 'string' ? metadataNote : 'none');
   lines.push('');
   return `${lines.join('\n')}\n`;
 }
 
-function renderRuntimeEventReference() {
-  const lines = [];
-  const domains = new Map();
+function renderRuntimeEventReference(): string {
+  const lines: string[] = [];
+  const domains = new Map<string, OperatorEventContract[]>();
   for (const event of operatorContract.operator.events) {
     for (const domain of event.domains ?? []) {
-      const existing = domains.get(domain) ?? [];
+      const existing: OperatorEventContract[] = domains.get(domain) ?? [];
       existing.push(event);
       domains.set(domain, existing);
     }

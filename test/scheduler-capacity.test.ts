@@ -44,11 +44,16 @@ function makeContext(capacity: CapacitySnapshot): DaemonRuntimeRouteContext {
       followUpMessage: async () => { throw new Error('not expected'); },
       bindAgent: async () => {},
       createSession: async () => ({ id: 'stub' }),
+      register: async () => ({ record: { id: 'stub' }, reopened: false }),
       getSession: () => null,
       getMessages: () => [],
       getInputs: () => [],
+      getInputsSince: () => [],
+      markInputDelivered: async () => null,
       closeSession: async () => null,
       reopenSession: async () => null,
+      detachParticipant: async () => null,
+      deleteSession: async () => 'not-found' as const,
       cancelInput: async () => null,
       completeAgent: async () => {},
       appendCompanionMessage: async () => {},
@@ -98,7 +103,7 @@ describe('Arch #3 — GET /api/runtime/scheduler: empty state', () => {
       oldestQueuedAgeMs: null,
     });
     const handlers = createDaemonRuntimeAutomationRouteHandlers(ctx);
-    const res = handlers.getSchedulerCapacity();
+    const res = await handlers.getSchedulerCapacity(new Request('http://localhost/api/runtime/scheduler'));
     expect(res.status).toBe(200);
     const body = await res.json() as Record<string, unknown>;
     expect(typeof body['slotsTotal']).toBe('number');
@@ -119,7 +124,7 @@ describe('Arch #3 — GET /api/runtime/scheduler: empty state', () => {
       oldestQueuedAgeMs: null,
     });
     const handlers = createDaemonRuntimeAutomationRouteHandlers(ctx);
-    const res = handlers.getSchedulerCapacity();
+    const res = await handlers.getSchedulerCapacity(new Request('http://localhost/api/runtime/scheduler'));
     const body = await res.json() as Record<string, unknown>;
     expect(body['slotsTotal']).toBe(4);
   });
@@ -134,7 +139,7 @@ describe('Arch #3 — GET /api/runtime/scheduler: live state', () => {
       oldestQueuedAgeMs: null,
     });
     const handlers = createDaemonRuntimeAutomationRouteHandlers(ctx);
-    const res = handlers.getSchedulerCapacity();
+    const res = await handlers.getSchedulerCapacity(new Request('http://localhost/api/runtime/scheduler'));
     const body = await res.json() as Record<string, unknown>;
     expect(body['slotsInUse']).toBe(2);
     expect(body['queueDepth']).toBe(0);
@@ -149,7 +154,7 @@ describe('Arch #3 — GET /api/runtime/scheduler: live state', () => {
       oldestQueuedAgeMs: oldestAgeMs,
     });
     const handlers = createDaemonRuntimeAutomationRouteHandlers(ctx);
-    const res = handlers.getSchedulerCapacity();
+    const res = await handlers.getSchedulerCapacity(new Request('http://localhost/api/runtime/scheduler'));
     const body = await res.json() as Record<string, unknown>;
     expect(body['slotsInUse']).toBe(4);
     expect(body['queueDepth']).toBe(3);
@@ -164,7 +169,7 @@ describe('Arch #3 — GET /api/runtime/scheduler: live state', () => {
       oldestQueuedAgeMs: null,
     });
     const handlers = createDaemonRuntimeAutomationRouteHandlers(ctx);
-    const res = handlers.getSchedulerCapacity();
+    const res = await handlers.getSchedulerCapacity(new Request('http://localhost/api/runtime/scheduler'));
     const body = await res.json() as Record<string, unknown>;
     expect(body['oldestQueuedAgeMs']).toBeNull();
   });
@@ -179,7 +184,7 @@ describe('Arch #3 — GET /api/runtime/scheduler: HTTP route wiring', () => {
       oldestQueuedAgeMs: 5000,
     });
     const handlers = createDaemonRuntimeAutomationRouteHandlers(ctx);
-    const res = handlers.getSchedulerCapacity();
+    const res = await handlers.getSchedulerCapacity(new Request('http://localhost/api/runtime/scheduler'));
     expect(res.status).toBe(200);
     const body = await res.json() as Record<string, unknown>;
     // Verify all four documented fields are present

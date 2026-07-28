@@ -63,7 +63,7 @@ function makeHandlers(configManager: ConfigStub, body: Record<string, unknown>):
       stopWatcher: () => null,
       runWatcherNow: async () => null,
     },
-  } as never, new Request('http://127.0.0.1/config')) as ReturnType<typeof createDaemonSystemRouteHandlers>;
+  } as never) as ReturnType<typeof createDaemonSystemRouteHandlers>;
 }
 
 const DAEMON_PATH = '/home/tester/.goodvibes/daemon/settings.json';

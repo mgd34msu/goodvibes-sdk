@@ -542,7 +542,8 @@ describe('semantic knowledge/wiki enrichment: answer quality', () => {
     const concreteTasks = store.listRefinementTasks(10, { spaceId: concreteSpaceId });
     expect(concreteTasks).toHaveLength(1);
     expect(answer.answer.refinementTaskIds).toEqual([concreteTasks[0]!.id]);
-    const gap = store.getNode(concreteTasks[0]!.gapId);
+    expect(concreteTasks[0]!.gapId).toBeDefined();
+    const gap = store.getNode(concreteTasks[0]!.gapId!);
     expect(gap?.metadata.knowledgeSpaceId).toBe(concreteSpaceId);
     expect(answer.answer.refinementTaskIds).toContain(concreteTasks[0]!.id);
     expect(store.listRefinementTasks(10, { spaceId: 'homeassistant' })
@@ -756,11 +757,13 @@ describe('semantic knowledge/wiki enrichment: answer quality', () => {
     expect(answer.answer.gaps).toHaveLength(0);
     expect(answer.answer.sources[0]?.id).toBe(officialSourceId);
     expect(answer.answer.linkedObjects.map((node) => node.title)).toEqual(['LG webOS Smart TV']);
-    expect(answer.answer.facts.map((fact) => fact.title)).toContain('Display and picture specifications');
-    expect(answer.answer.facts.every((fact) => fact.linkedObjectIds?.length === 1)).toBe(true);
+    expect(answer.answer.facts).toBeDefined();
+    const homeGraphFacts = answer.answer.facts!;
+    expect(homeGraphFacts.map((fact) => fact.title)).toContain('Display and picture specifications');
+    expect(homeGraphFacts.every((fact) => fact.linkedObjectIds?.length === 1)).toBe(true);
     expect(answer.answer.refinement?.status).toBe('repaired');
     expect(answer.answer.refinement?.acceptedSourceIds).toContain(officialSourceId);
-    expect(answer.answer.refinement?.promotedFactCount).toBe(answer.answer.facts.length);
+    expect(answer.answer.refinement?.promotedFactCount).toBe(homeGraphFacts.length);
     expect(answer.answer.refinement?.pageRefreshRequested).toBe(true);
     expect(answer.answer.refinement?.pageRefreshed).toBe(true);
     expect(answer.answer.text).toContain('Dolby Vision');
@@ -830,11 +833,12 @@ describe('semantic knowledge/wiki enrichment: answer quality', () => {
       includeLinkedObjects: true,
     });
     const page = await service.refreshDevicePassport({ installationId: 'house', deviceId: 'tv' });
+    expect(answer.answer.facts).toBeDefined();
     const answerText = [
       answer.answer.text,
       ...answer.answer.sources.map((source) => source.title ?? ''),
       ...answer.answer.linkedObjects.map((node) => node.title),
-      ...answer.answer.facts.map((fact) => `${fact.title} ${fact.summary ?? ''}`),
+      ...answer.answer.facts!.map((fact) => `${fact.title} ${fact.summary ?? ''}`),
       page.markdown,
     ].join('\n');
 

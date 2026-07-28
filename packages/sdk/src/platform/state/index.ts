@@ -29,6 +29,12 @@ export type {
   MemoryDoctorReport,
   MemoryScope,
   MemoryReviewState,
+  // The return type of MemoryStore.importBundle and the patch type its review
+  // API takes. Both are exported from memory-store.ts and both were missing
+  // here, so a caller reaching them through this barrel — the only path the
+  // package publishes — could name neither.
+  MemoryImportResult,
+  MemoryReviewPatch,
   MemoryTemporalStatus,
   ProvenanceLink,
   ProvenanceLinkKind,

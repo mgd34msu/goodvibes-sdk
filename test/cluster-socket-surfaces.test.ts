@@ -55,8 +55,8 @@ function harness(options: {
     isRunning: options.running ?? (() => true),
     reportInert: (surface, action) => { inert.push({ surface, action }); },
     logger: {
-      info: (message, meta) => { info.push({ message, meta }); },
-      debug: (message, meta) => { debug.push({ message, meta }); },
+      info: (message, meta) => { info.push({ message, ...(meta !== undefined ? { meta } : {}) }); },
+      debug: (message, meta) => { debug.push({ message, ...(meta !== undefined ? { meta } : {}) }); },
     },
     setTimer: (fn, ms) => { pending = fn; delays.push(ms); return () => { pending = null; }; },
     retryMs: 1_000,
@@ -208,7 +208,14 @@ describe('socket surfaces — the identity must be real', () => {
       });
       await supervisor.begin();
       for (let attempt = 0; attempt < 3; attempt += 1) {
-        const fire: (() => void) | null = pending;
+        // Cast (not a narrowing bug fix, a narrowing bug WORKAROUND): TS's flow
+        // analysis loses track of the non-null branch of `pending` across loop
+        // iterations because the only reassignment it can see in this scope is
+        // `pending = null` below — the `pending = fn` assignment happens inside
+        // the `setTimer` callback, which TS does not treat as re-widening the
+        // type here. Without the cast, `fire`'s inferred type narrows to exactly
+        // `null`, so `fire?.()` reduces to calling `never` and fails to compile.
+        const fire = pending as (() => void) | null;
         pending = null;
         fire?.();
         await Promise.resolve();

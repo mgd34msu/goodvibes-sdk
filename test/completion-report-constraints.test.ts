@@ -78,7 +78,7 @@ describe('Engineer report — malformed constraints not an array', () => {
 describe('Engineer report — mixed well-formed and malformed constraint entries', () => {
   test('well-formed entries pass through, malformed are filtered out', () => {
     const wellFormed: Constraint = { id: 'c1', text: 'must be pure', source: 'prompt' };
-    const malformedCases: Array<Record<string, unknown>> = [
+    const malformedCases: unknown[] = [
       { text: 'missing id', source: 'prompt' },          // missing id
       { id: 'c3', source: 'prompt' },                    // missing text (empty string edge: text field absent)
       { id: 'c4', text: 'bad source', source: 'unknown' }, // invalid source value

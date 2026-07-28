@@ -10,6 +10,7 @@ import { AgentManager, AGENT_TEMPLATES } from '../packages/sdk/src/platform/tool
 import { ToolRegistry } from '../packages/sdk/src/platform/tools/registry.js';
 import type { Tool } from '../packages/sdk/src/platform/types/tools.js';
 import { PLANNER_DECOMPOSITION_TOOLS } from '../packages/sdk/src/platform/agents/planner-decomposition-runner.js';
+import type { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 
 const FORBIDDEN = ['write', 'edit', 'exec', 'delegate', 'agent'];
 
@@ -29,7 +30,7 @@ describe('planner template is read-only', () => {
 
   test('a spawned planner agent resolves to the read-only tool set', () => {
     const manager = new AgentManager({
-      configManager: { get: () => null },
+      configManager: { get: (() => null) as unknown as ConfigManager['get'] },
       messageBus: { registerAgent() {} },
       archetypeLoader: { loadArchetype: () => null },
       executor: { async runAgent() { /* capture only; never run a turn */ } },

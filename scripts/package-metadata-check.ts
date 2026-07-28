@@ -115,7 +115,9 @@ function collectGeneratedFoundationTypeNames(): readonly string[] {
     resolve(SDK_ROOT, 'packages/contracts/src/generated/foundation-client-types.ts'),
     'utf8',
   );
-  return [...source.matchAll(/^export\s+(?:interface|type)\s+([A-Za-z0-9_]+)/gm)].map((match) => match[1]);
+  return [...source.matchAll(/^export\s+(?:interface|type)\s+([A-Za-z0-9_]+)/gm)]
+    .map((match) => match[1])
+    .filter((name): name is string => name !== undefined);
 }
 
 function assertContractsGeneratedTypesReexported(): void {

@@ -36,7 +36,7 @@ describe('transport-http structured throws', () => {
   test('createStreamError via SSE produces GoodVibesSdkError with kind network', async () => {
     const transport = createHttpTransport({
       baseUrl: 'http://127.0.0.1:3210',
-      fetch: async () => new Response('service unavailable', { status: 503 }),
+      fetch: createFetchStub(async () => new Response('service unavailable', { status: 503 })),
     });
     const caught = await openServerSentEventStream(transport.fetchImpl, transport.buildUrl('/api/stream'), {}).catch((e: unknown) => e);
     expect(caught).toBeInstanceOf(GoodVibesSdkError);

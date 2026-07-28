@@ -38,7 +38,7 @@ describe('router-e2e control — GET /status (happy path)', () => {
 
     expect(res).not.toBeNull();
     expect(res!.status).toBe(200);
-    expect(capturedRequest).toBe(loginRequest);
+    expect(capturedRequest as Request | null).toBe(loginRequest);
     expect(await res!.json()).toEqual({ authenticated: true });
   });
 

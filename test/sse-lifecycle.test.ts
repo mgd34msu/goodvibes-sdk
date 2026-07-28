@@ -8,15 +8,16 @@ describe('sse lifecycle', () => {
 
   test('emitStreamSubscriberConnected emits correct payload', async () => {
     const { emitStreamSubscriberConnected } = await import('../packages/sdk/src/platform/runtime/emitters/transport.js');
-    const { EventEmitter } = await import('node:events');
-    const bus = new EventEmitter() as Parameters<typeof emitStreamSubscriberConnected>[0];
+    const { RuntimeEventBus } = await import('../packages/sdk/src/platform/runtime/events/index.js');
+    const bus = new RuntimeEventBus();
     const events: unknown[] = [];
-    bus.on('transport', (e: unknown) => events.push(e));
-    emitStreamSubscriberConnected(bus, { source: 'test', traceId: 'trace-1' } as Parameters<typeof emitStreamSubscriberConnected>[1], {
+    bus.onDomain('transport', (e: unknown) => events.push(e));
+    emitStreamSubscriberConnected(bus, { sessionId: 'sess-1', source: 'test', traceId: 'trace-1' }, {
       streamId: 'stream-abc',
       subscriberId: 'sub-001',
       streamType: 'events',
     });
+    await new Promise<void>((r) => setTimeout(r, 0));
     expect(events.length).toBe(1);
     const envelope = events[0] as { payload: { type: string; streamId: string; subscriberId: string } };
     expect(envelope.payload.type).toBe('STREAM_SUBSCRIBER_CONNECTED');
@@ -26,16 +27,17 @@ describe('sse lifecycle', () => {
 
   test('emitStreamSubscriberDisconnected emits optional reason', async () => {
     const { emitStreamSubscriberDisconnected } = await import('../packages/sdk/src/platform/runtime/emitters/transport.js');
-    const { EventEmitter } = await import('node:events');
-    const bus = new EventEmitter() as Parameters<typeof emitStreamSubscriberDisconnected>[0];
+    const { RuntimeEventBus } = await import('../packages/sdk/src/platform/runtime/events/index.js');
+    const bus = new RuntimeEventBus();
     const events: unknown[] = [];
-    bus.on('transport', (e: unknown) => events.push(e));
-    emitStreamSubscriberDisconnected(bus, { source: 'test', traceId: 'trace-2' } as Parameters<typeof emitStreamSubscriberDisconnected>[1], {
+    bus.onDomain('transport', (e: unknown) => events.push(e));
+    emitStreamSubscriberDisconnected(bus, { sessionId: 'sess-1', source: 'test', traceId: 'trace-2' }, {
       streamId: 'stream-abc',
       subscriberId: 'sub-001',
       streamType: 'events',
       reason: 'client closed',
     });
+    await new Promise<void>((r) => setTimeout(r, 0));
     const envelope = events[0] as { payload: { type: string; reason?: string } };
     expect(envelope.payload.type).toBe('STREAM_SUBSCRIBER_DISCONNECTED');
     expect(envelope.payload.reason).toBe('client closed');
@@ -58,7 +60,7 @@ describe('sse lifecycle', () => {
 
     const gateway = new ControlPlaneGateway({
       runtimeBus: bus as NonNullable<typeof bus>,
-      featureFlags: { isEnabled: () => true } as unknown as Parameters<typeof ControlPlaneGateway>[0]['featureFlags'],
+      featureFlags: { isEnabled: () => true } as unknown as NonNullable<ConstructorParameters<typeof ControlPlaneGateway>[0]>['featureFlags'],
     });
 
     const transportEvents: { type: string }[] = [];

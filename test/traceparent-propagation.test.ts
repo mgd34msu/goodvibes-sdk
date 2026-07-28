@@ -201,11 +201,14 @@ describe('HTTP transport: traceparent not present when OTel absent', () => {
   test('no traceparent header in outgoing HTTP requests when OTel is absent', async () => {
     const { createHttpJsonTransport } = await import('../packages/transport-http/src/http-core.js');
     let capturedHeaders: Record<string, string> = {};
-    const fetch: typeof globalThis.fetch = async (_input, init) => {
-      const h = new Headers(init?.headers as HeadersInit);
-      h.forEach((value, key) => { capturedHeaders[key] = value; });
-      return new Response(JSON.stringify({ ok: true }), { status: 200 });
-    };
+    const fetch = Object.assign(
+      async (_input: URL | RequestInfo, init?: RequestInit) => {
+        const h = new Headers(init?.headers as HeadersInit);
+        h.forEach((value, key) => { capturedHeaders[key] = value; });
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      },
+      { preconnect: (_url: string | URL, _options?: { dns?: boolean; tcp?: boolean; http?: boolean; https?: boolean }) => {} },
+    );
     const transport = createHttpJsonTransport({
       baseUrl: 'https://api.example.com',
       fetch,
@@ -409,14 +412,17 @@ describe('SSE transport: traceparent in fetch headers when OTel is present', () 
       };
 
     let capturedHeaders: Record<string, string> = {};
-    const fetchSpy: typeof globalThis.fetch = async (_input, init) => {
-      const h = new Headers(init?.headers as HeadersInit);
-      h.forEach((value, key) => { capturedHeaders[key] = value; });
-      return new Response(new ReadableStream({ start(c) { c.close(); } }), {
-        status: 200,
-        headers: { 'Content-Type': 'text/event-stream' },
-      });
-    };
+    const fetchSpy = Object.assign(
+      async (_input: URL | RequestInfo, init?: RequestInit) => {
+        const h = new Headers(init?.headers as HeadersInit);
+        h.forEach((value, key) => { capturedHeaders[key] = value; });
+        return new Response(new ReadableStream({ start(c) { c.close(); } }), {
+          status: 200,
+          headers: { 'Content-Type': 'text/event-stream' },
+        });
+      },
+      { preconnect: (_url: string | URL, _options?: { dns?: boolean; tcp?: boolean; http?: boolean; https?: boolean }) => {} },
+    );
 
     const connector = createEventSourceConnector(
       'http://127.0.0.1:3210',

@@ -45,7 +45,20 @@ function makeHarness(reader?: HomeGraphGroundingReader): Harness {
     createSession: (input: { systemPrompt: string }) => session(input.systemPrompt),
     updateSession: (_id: string, input: { systemPrompt: string }) => session(input.systemPrompt),
   } as unknown as CompanionChatManager;
-  const binding: AutomationRouteBinding = { id: 'bind-1', metadata: {} } as unknown as AutomationRouteBinding;
+  // A real binding. Behind the cast this was `{ id, metadata }`, missing all
+  // seven required fields — including the surface it routes to, which is the
+  // thing the grounding under test keys off.
+  const binding: AutomationRouteBinding = {
+    id: 'bind-1',
+    kind: 'channel',
+    surfaceKind: 'homeassistant',
+    surfaceId: 'ha-1',
+    externalId: 'entity.living_room',
+    lastSeenAt: 0,
+    createdAt: 0,
+    updatedAt: 0,
+    metadata: {},
+  };
   const routeBindings = {
     start: async () => {},
     upsertBinding: async () => binding,

@@ -14,7 +14,9 @@ import { createEventEnvelope } from '../packages/sdk/src/platform/runtime/event-
 import type { AgentRecord } from '../packages/sdk/src/platform/tools/agent/manager.js';
 import type { AgentManagerLike } from '../packages/sdk/src/platform/agents/wrfc-config.js';
 import type { WrfcChain } from '../packages/sdk/src/platform/agents/wrfc-types.js';
+import type { WorkflowEvent } from '../packages/sdk/src/events/workflows.js';
 import type { CommitWorkingTreeResult } from '../packages/sdk/src/platform/agents/worktree.js';
+import type { ConfigManager } from '../packages/sdk/src/platform/config/index.js';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -40,8 +42,6 @@ async function flushMicrotasks(rounds = 8): Promise<void> {
 /** Build a minimal AgentRecord. */
 function makeRecord(overrides: Partial<AgentRecord> & { id: string; task: string }): AgentRecord {
   return {
-    id: overrides.id,
-    task: overrides.task,
     template: overrides.template ?? 'engineer',
     tools: [],
     status: 'running',
@@ -221,8 +221,8 @@ function createHarness(overrides?: {
     mkdirSync(join(projectRoot, '.git'), { recursive: true });
   }
 
-  const configManager = {
-    get: (key: string): unknown => {
+  const configManager: Pick<ConfigManager, 'get' | 'getCategory'> = {
+    get: ((key: string): unknown => {
       if (key === 'wrfc.scoreThreshold') return threshold;
       if (key === 'wrfc.maxFixAttempts') return maxFixAttempts;
       if (key === 'wrfc.autoCommit') return autoCommit;
@@ -230,8 +230,8 @@ function createHarness(overrides?: {
       if (key === 'wrfc.transportRetryDelayMs') return transportRetryDelayMs;
       if (key === 'wrfc.commitScope') return commitScope;
       return undefined;
-    },
-    getCategory: (category: string): unknown => {
+    }) as ConfigManager['get'],
+    getCategory: ((category: string): unknown => {
       if (category === 'wrfc') {
         return {
           scoreThreshold: threshold,
@@ -244,7 +244,7 @@ function createHarness(overrides?: {
         };
       }
       return undefined;
-    },
+    }) as ConfigManager['getCategory'],
   };
 
   const agentManager: AgentManagerLike = {
@@ -561,7 +561,7 @@ describe('WrfcController — happy path', () => {
     expect(h.directCommitMessages[0]).toContain('implement auto commit feature'); // untruncated body
     // 'all' scope calls commitWorkingTree with no paths argument — the legacy full-tree sweep.
     expect(h.directCommitPaths).toEqual([undefined]);
-    expect(h.mergedAgentIds).toEqual([chain.engineerAgentId]);
+    expect(h.mergedAgentIds).toEqual([chain.engineerAgentId!]);
     expect(h.mergedAgentIds).not.toContain(reviewerRecord.id);
     expect(h.cleanedAgentIds).toEqual(expect.arrayContaining(chain.allAgentIds));
     expect(h.workflowEvents.map((e) => e.type)).toContain('WORKFLOW_AUTO_COMMITTED');
@@ -699,7 +699,7 @@ describe('WrfcController — happy path', () => {
     await flushMicrotasks(20);
 
     const writerIds = [
-      ...chain.subtasks!.map((subtask) => subtask.engineerAgentId),
+      ...chain.subtasks!.map((subtask) => subtask.engineerAgentId!),
       integrator.id,
     ];
     expect(chain.state).toBe('passed');
@@ -723,7 +723,9 @@ describe('WrfcController — happy path', () => {
     ];
     const chain = h.controller.createChain(ownerRecord);
 
-    const [limiterSubtask, loggerSubtask] = chain.subtasks!;
+    const subtasks = chain.subtasks!;
+    const limiterSubtask = subtasks[0]!;
+    const loggerSubtask = subtasks[1]!;
     h.setOutput(limiterSubtask.engineerAgentId!, engineerReportOutput('initial limiter implementation', [
       { id: 'c1', text: 'support burst capacity', source: 'prompt' },
     ]));
@@ -999,20 +1001,21 @@ describe('WrfcController — gate failure', () => {
     const workflowEvents: Array<{ type: string; chainId?: string }> = [];
 
     busWithGate.onDomain('workflows', (envelope) => {
+      const chainId = (envelope as unknown as Record<string, unknown>).chainId as string | undefined;
       workflowEvents.push({
         type: envelope.type,
-        chainId: (envelope as unknown as Record<string, unknown>).chainId as string | undefined,
+        ...(chainId !== undefined ? { chainId } : {}),
       });
     });
 
-    const configManager = {
-      get: (key: string): unknown => {
+    const configManager: Pick<ConfigManager, 'get' | 'getCategory'> = {
+      get: ((key: string): unknown => {
         if (key === 'wrfc.scoreThreshold') return 9.9;
         if (key === 'wrfc.maxFixAttempts') return 3;
         if (key === 'wrfc.autoCommit') return false;
         return undefined;
-      },
-      getCategory: (category: string): unknown => {
+      }) as ConfigManager['get'],
+      getCategory: ((category: string): unknown => {
         if (category === 'wrfc') {
           return {
             scoreThreshold: 9.9,
@@ -1023,7 +1026,7 @@ describe('WrfcController — gate failure', () => {
           };
         }
         return undefined;
-      },
+      }) as ConfigManager['getCategory'],
     };
 
     const agentManager: AgentManagerLike = {
@@ -1106,14 +1109,14 @@ describe('WrfcController — gate failure', () => {
     const agentStore = new Map<string, AgentRecord>();
     const spawnedRecords: AgentRecord[] = [];
 
-    const configManager = {
-      get: (key: string): unknown => {
+    const configManager: Pick<ConfigManager, 'get' | 'getCategory'> = {
+      get: ((key: string): unknown => {
         if (key === 'wrfc.scoreThreshold') return 9.9;
         if (key === 'wrfc.maxFixAttempts') return 3;
         if (key === 'wrfc.autoCommit') return false;
         return undefined;
-      },
-      getCategory: (category: string): unknown => {
+      }) as ConfigManager['get'],
+      getCategory: ((category: string): unknown => {
         if (category === 'wrfc') {
           return {
             scoreThreshold: 9.9,
@@ -1123,7 +1126,7 @@ describe('WrfcController — gate failure', () => {
           };
         }
         return undefined;
-      },
+      }) as ConfigManager['getCategory'],
     };
 
     const agentManager: AgentManagerLike = {
@@ -1612,10 +1615,10 @@ describe('WrfcController — state machine', () => {
     const h = createHarness();
     const stateChanges: Array<{ from: string; to: string }> = [];
 
-    h.bus.on<{ type: 'WORKFLOW_STATE_CHANGED'; from: string; to: string }>(
+    h.bus.on<Extract<WorkflowEvent, { type: 'WORKFLOW_STATE_CHANGED' }>>(
       'WORKFLOW_STATE_CHANGED',
       (envelope) => {
-        const { from, to } = envelope.payload as { from: string; to: string };
+        const { from, to } = envelope.payload;
         stateChanges.push({ from, to });
       },
     );
@@ -1659,6 +1662,9 @@ function makeImportableChain(overrides: Partial<WrfcChain> & { id: string }): Wr
     createdAt: Date.now(),
     reviewScores: [],
     ownerDecisions: [],
+    ownerTerminalEmitted: false,
+    constraints: [],
+    constraintsEnumerated: false,
     ...overrides,
   };
 }

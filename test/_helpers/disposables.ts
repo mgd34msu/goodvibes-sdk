@@ -72,12 +72,12 @@ function autoDisposer(value: unknown): Disposer {
   if (value !== null && typeof value === 'object') {
     for (const method of DISPOSE_METHODS) {
       if (hasMethod(value, method)) {
-        return () => (value as Record<string, () => MaybePromise<void>>)[method]();
+        return () => (value as Record<string, () => MaybePromise<void>>)[method]!();
       }
     }
     const symbolDispose = (Symbol as { dispose?: symbol }).dispose;
     if (symbolDispose && hasMethod(value, symbolDispose as unknown as string)) {
-      return () => (value as unknown as Record<symbol, () => void>)[symbolDispose]();
+      return () => (value as unknown as Record<symbol, () => void>)[symbolDispose]!();
     }
   }
   throw new Error(

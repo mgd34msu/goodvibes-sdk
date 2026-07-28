@@ -88,6 +88,7 @@ function makeMinimalRunContext(overrides: {
 }): AgentOrchestratorRunContext {
   const provider: LLMProvider = overrides.provider ?? {
     name: 'test-provider',
+    models: ['test-model'],
     async chat() {
       return {
         content: 'All done.',
@@ -146,6 +147,7 @@ function makeMinimalRunContext(overrides: {
         selectable: true,
       }],
       getContextWindowForModel: () => 128_000,
+      recordContextWindowRejection: () => {},
     },
     resolveProviderForRecord: () => ({
       provider,
@@ -199,6 +201,7 @@ describe('runAgentTask — conversation-snapshot bridge call sites', () => {
       const releasedIds: string[] = [];
       const failingProvider: LLMProvider = {
         name: 'test-provider',
+        models: ['test-model'],
         async chat() {
           throw new Error('provider exploded');
         },

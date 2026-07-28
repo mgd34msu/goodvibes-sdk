@@ -12,12 +12,15 @@ import {
 } from './release-shared.ts';
 
 type PackageManifestLike = Record<string, unknown> & {
-  readonly dependencies?: Record<string, unknown>;
-  readonly devDependencies?: Record<string, unknown>;
+  // `| undefined` matches PackageManifest in release-shared.ts, whose
+  // normalizers assign undefined to drop a dependency group from the staged
+  // manifest. Without it, exactOptionalPropertyTypes rejects the real argument.
+  readonly dependencies?: Record<string, unknown> | undefined;
+  readonly devDependencies?: Record<string, unknown> | undefined;
   readonly exports?: unknown;
-  readonly peerDependencies?: Record<string, unknown>;
-  readonly optionalDependencies?: Record<string, unknown>;
-  readonly scripts?: Record<string, unknown>;
+  readonly peerDependencies?: Record<string, unknown> | undefined;
+  readonly optionalDependencies?: Record<string, unknown> | undefined;
+  readonly scripts?: Record<string, unknown> | undefined;
 };
 
 function assertNoWorkspaceRanges(manifest: PackageManifestLike, label: string): void {

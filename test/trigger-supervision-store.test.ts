@@ -223,7 +223,9 @@ describe('persisted state is content-validated, never existence-validated', () =
       grants: [],
       eventLog: [],
     };
-    const result = validateSnapshot({ ...body, checksum: checksumOf(body) });
+    // body deliberately carries a TriggerRecord missing state/observations/runs/etc
+    // — proving the shape check refuses it even once the checksum matches.
+    const result = validateSnapshot({ ...body, checksum: checksumOf(body as unknown as Parameters<typeof checksumOf>[0]) });
     expect('invalid' in result && result.invalid).toContain('shape validation');
   });
 });

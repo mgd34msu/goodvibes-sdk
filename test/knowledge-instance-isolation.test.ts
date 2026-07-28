@@ -10,6 +10,7 @@ import {
   REGULAR_KNOWLEDGE_DB_FILE,
 } from '../packages/sdk/src/platform/knowledge/store-config.js';
 import { HomeGraphService, KnowledgeService, KnowledgeStore } from '../packages/sdk/src/platform/knowledge/index.js';
+import type { MemoryAddOptions, MemoryRecord, MemoryStore } from '../packages/sdk/src/platform/state/index.js';
 import { trackDisposables } from './_helpers/disposables.ts';
 
 /**
@@ -40,16 +41,16 @@ describe('knowledge instance isolation', () => {
     const homeGraphStore = new KnowledgeStore({ configManager, dbFileName: HOME_GRAPH_KNOWLEDGE_DB_FILE });
     const regularService = disposables.add(new KnowledgeService(regularStore, artifactStore, undefined, {
       memoryRegistry: {
-        add: async () => {},
+        add: async (_opts: MemoryAddOptions): Promise<MemoryRecord> => { throw new Error('not exercised in this isolation test'); },
         getAll: () => [],
-        getStore: () => null,
+        getStore: () => null as unknown as MemoryStore,
       },
     }));
     const agentService = disposables.add(new KnowledgeService(agentStore, artifactStore, undefined, {
       memoryRegistry: {
-        add: async () => {},
+        add: async (_opts: MemoryAddOptions): Promise<MemoryRecord> => { throw new Error('not exercised in this isolation test'); },
         getAll: () => [],
-        getStore: () => null,
+        getStore: () => null as unknown as MemoryStore,
       },
     }));
     const homeGraphService = disposables.add(new HomeGraphService(homeGraphStore, artifactStore));

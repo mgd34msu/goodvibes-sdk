@@ -69,8 +69,11 @@ describe('the envelope', () => {
       expect(result.envelope).toBeNull();
       // keyGen changes which key is expected, so it fails at a different gate —
       // both are refusals, which is the property under test.
+      const { rejected } = result;
+      expect(rejected).not.toBeNull();
+      if (rejected === null) throw new Error('expected a rejection reason');
       expect(['signature-did-not-verify', 'generation-not-accepted', 'malformed-field'])
-        .toContain(result.rejected);
+        .toContain(rejected);
     }
     const bodyTampered = JSON.parse(raw) as Record<string, unknown>;
     bodyTampered['body'] = { uptimeMs: 999 };

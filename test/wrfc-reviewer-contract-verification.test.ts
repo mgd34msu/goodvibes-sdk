@@ -9,10 +9,13 @@
  * wrong-interface / wrong-units deliverable is REJECTED even at a perfect score.
  */
 import { describe, expect, test } from 'bun:test';
-import { buildReviewTask } from '../packages/sdk/src/platform/agents/wrfc-reporting.ts';
+import {
+  buildReviewTask,
+  type ReviewableCompletionReport,
+} from '../packages/sdk/src/platform/agents/wrfc-reporting.ts';
 import { buildReviewerConstraintAddendum } from '../packages/sdk/src/platform/agents/wrfc-prompt-addenda.ts';
 import { parseCompletionReport } from '../packages/sdk/src/platform/agents/completion-report.ts';
-import type { ReviewableCompletionReport } from '../packages/sdk/src/platform/agents/wrfc-reporting.ts';
+
 
 const report: ReviewableCompletionReport = {
   version: 1,

@@ -301,8 +301,16 @@ function handleGlobals(): Response {
   });
 }
 
-const handler: ExportedHandler<Env> = {
-  async fetch(request, _env, _ctx): Promise<Response> {
+// `@cloudflare/workers-types` exports its own nominal `Response` class (used
+// internally by `ExportedHandlerFetchHandler`), distinct from the ambient
+// global DOM `Response` this file's handlers construct and return. Both are
+// the same Web-standard Response at runtime under Miniflare; the mismatch is
+// a compile-time-only artifact of two differently-sourced type declarations,
+// so the object literal is typed against the DOM globals here and bridged
+// once at the default export, rather than laundering every handler's
+// `new Response(...)`/`Response.json(...)` call through a cast.
+const handler = {
+  async fetch(request: Request, _env: Env, _ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
     try {
@@ -334,4 +342,4 @@ const handler: ExportedHandler<Env> = {
   },
 };
 
-export default handler;
+export default handler as unknown as ExportedHandler<Env>;

@@ -60,9 +60,9 @@ describe('runSecurity — security mode', () => {
     expect(secrets.count).toBe(1);
     expect(secrets.findings).toHaveLength(1);
     // The finding should point to the fixture file
-    expect(secrets.findings[0].file).toContain('config.ts');
+    expect(secrets.findings[0]!.file).toContain('config.ts');
     // Should identify the token_assignment pattern
-    expect(secrets.findings[0].pattern).toBe('token_assignment');
+    expect(secrets.findings[0]!.pattern).toBe('token_assignment');
   });
 
   test('reports zero findings on clean code with no secrets', async () => {

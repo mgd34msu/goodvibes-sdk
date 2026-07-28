@@ -34,7 +34,7 @@ import {
 
 const RID = 'rid_test_rendezvous_0001';
 
-async function completeHandshake(daemonStaticPubRaw: Uint8Array, daemonPair: { publicKey: CryptoKey; privateKey: CryptoKey }) {
+async function completeHandshake(daemonStaticPubRaw: Uint8Array<ArrayBuffer>, daemonPair: { publicKey: CryptoKey; privateKey: CryptoKey }) {
   const ridBytes = encodeUtf8(RID);
   const { state, message1 } = await startInitiatorHandshake(daemonStaticPubRaw, ridBytes);
   const { keys: daemonKeys, message2 } = await respondToHandshake(daemonPair, ridBytes, message1);
@@ -83,7 +83,7 @@ describe('relay E2E handshake + secure channel', () => {
     const server = new RelaySecureChannel(daemonKeys, 'daemon');
 
     const frame = await client.seal(encodeUtf8('sensitive'));
-    frame[frame.length - 1] ^= 0xff; // flip a ciphertext/tag byte
+    frame[frame.length - 1]! ^= 0xff; // flip a ciphertext/tag byte
     await expect(server.open(frame)).rejects.toThrow();
   });
 

@@ -133,7 +133,7 @@ describe('exec guard — shell-ast-normalization is on by default', () => {
 
   test('disabling the flag at runtime forces the baseline matcher', async () => {
     const mgr = createFeatureFlagManager();
-    mgr.disable('shell-ast-normalization', 'test: force baseline');
+    mgr.disable('shell-ast-normalization');
     const result = await guardExecCommand('kill -TERM 12345', ALL_COMMAND_CLASSES, mgr);
     expect(result.astModeActive).toBe(false);
     expect(result.allowed).toBe(true);

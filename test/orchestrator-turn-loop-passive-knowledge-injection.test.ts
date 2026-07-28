@@ -45,6 +45,8 @@ import type { ModelDefinition } from '../packages/sdk/src/platform/providers/reg
 import type { HelperModel } from '../packages/sdk/src/platform/config/helper-model.js';
 import type { MemoryRecord } from '../packages/sdk/src/platform/state/memory-store.js';
 import type { TurnKnowledgeRegistrySource, TurnInjectionRecord } from '../packages/sdk/src/platform/agents/turn-knowledge-injection.js';
+import type { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
+import { UNKNOWN_MODEL_PRICING } from '../packages/sdk/src/platform/providers/model-pricing.js';
 
 const BASE_SYSTEM_PROMPT = 'You are the goodvibes assistant.';
 // getSystemPrompt() output is always passed through appendGoodVibesRuntimeAwarenessPrompt
@@ -104,6 +106,8 @@ interface TestContextOverrides {
   alreadyInjectedIds?: Set<string>;
   turnSequence?: { value: number };
   turnInjectionRecords?: TurnInjectionRecord[];
+  executeToolCalls?: OrchestratorTurnLoopContext['executeToolCalls'];
+  configManagerGet?: (key: string) => unknown;
 }
 
 /** Builds a fully mockable OrchestratorTurnLoopContext, mirroring the pattern
@@ -141,9 +145,24 @@ function makeContext(opts: TestContextOverrides): {
     hookDispatcher: null,
     requestRender: () => {},
     runtimeBus: null,
-    agentManager: { list: () => [], spawn: async () => 'noop-agent-id' },
+    agentManager: {
+      list: () => [],
+      spawn: () => ({
+        id: 'noop-agent-id',
+        task: 'noop',
+        template: 'engineer',
+        tools: [],
+        status: 'pending',
+        startedAt: Date.now(),
+        toolCallCount: 0,
+        orchestrationDepth: 0,
+        executionProtocol: 'direct',
+        reviewMode: 'none',
+        communicationLane: 'parent-only',
+      }),
+    },
     configManager: {
-      get: (key: string) => {
+      get: opts.configManagerGet ?? ((key: string) => {
         if (key === 'display.stream') return false;
         if (key === 'cache.hitRateWarningThreshold') return 0;
         if (key === 'cache.monitorHitRate') return false;
@@ -152,8 +171,8 @@ function makeContext(opts: TestContextOverrides): {
         if (key === 'agents.passiveInjection.relevanceFloor') return 95;
         if (key === 'agents.passiveInjection.codeLimit') return 3;
         return undefined;
-      },
-    },
+      }),
+    } as unknown as Pick<ConfigManager, 'get'>,
     providerRegistry: {
       require: () => wrappedProvider,
       getCurrentModel: () => FAKE_MODEL,
@@ -167,6 +186,7 @@ function makeContext(opts: TestContextOverrides): {
       getContextWindowForModel: () => opts.contextWindow ?? 0,
       recordContextWindowRejection: () => {},
       reconcileObservedContextWindow: () => {},
+      resolveModelPricing: () => UNKNOWN_MODEL_PRICING,
     },
     favoritesStore: undefined,
     cacheHitTracker: { getMetrics: () => ({ turns: 0, hitRate: 0, cacheReadTokens: 0, cacheWriteTokens: 0, totalInputTokens: 0 }) },
@@ -178,7 +198,7 @@ function makeContext(opts: TestContextOverrides): {
     content: undefined,
     turnId: 'test-turn',
     emitterContext: () => ({ sessionId: 'test-session', traceId: 'test-trace', source: 'test' }),
-    executeToolCalls: async (_id, calls) => calls.map((call) => ({ callId: call.id, success: true, output: 'ok' })),
+    executeToolCalls: opts.executeToolCalls ?? (async (_id, calls) => calls.map((call) => ({ callId: call.id, success: true, output: 'ok' }))),
     checkContextWindowPreflight: async () => 'ok',
     normalizeUsage: (usage) => usage,
     estimateFreshTurnInputTokens: () => 0,
@@ -196,6 +216,7 @@ function makeContext(opts: TestContextOverrides): {
     usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
     memoryRegistry: opts.memoryRegistry,
     isPassiveKnowledgeInjectionEnabled: () => opts.enabled ?? true,
+    isPassiveCodeInjectionEnabled: () => false,
     passiveKnowledgeInjectionBudgetTokens: opts.budgetTokens,
     passiveKnowledgeInjectionRelevanceFloor: opts.relevanceFloor,
     getAlreadyInjectedKnowledgeIds: () => [...alreadyInjectedIds],
@@ -392,14 +413,14 @@ describe('orchestrator-turn-loop — main-session per-turn passive knowledge inj
       memoryRegistry,
       contextWindow,
       budgetTokens: 800,
+      executeToolCalls: async (_id, calls) => calls.map((call) => ({
+        callId: call.id,
+        success: true,
+        // ~1500 estimated tokens (estimateTokens ~= chars/4) — comfortably enough to blow
+        // through the 510-token threshold once added to the base+block cost.
+        output: 'x '.repeat(3000),
+      })),
     });
-    context.executeToolCalls = async (_id, calls) => calls.map((call) => ({
-      callId: call.id,
-      success: true,
-      // ~1500 estimated tokens (estimateTokens ~= chars/4) — comfortably enough to blow
-      // through the 510-token threshold once added to the base+block cost.
-      output: 'x '.repeat(3000),
-    }));
 
     await executeOrchestratorTurnLoop(context);
 
@@ -496,9 +517,7 @@ describe('orchestrator-turn-loop — main-session per-turn passive knowledge inj
       // agents.contextCompactThreshold) actually runs instead of being skipped —
       // a contextWindow of 0 would hide the threshold-NaN regression entirely.
       contextWindow: 100_000,
-    });
-    context.configManager = {
-      get: (key: string) => {
+      configManagerGet: (key: string) => {
         if (key === 'display.stream') return false;
         if (key === 'cache.hitRateWarningThreshold') return 0;
         if (key === 'cache.monitorHitRate') return false;
@@ -506,7 +525,7 @@ describe('orchestrator-turn-loop — main-session per-turn passive knowledge inj
         // not model — the exact shape a partial embedder-supplied config takes.
         return undefined;
       },
-    };
+    });
 
     await executeOrchestratorTurnLoop(context);
 

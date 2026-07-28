@@ -25,6 +25,7 @@ import type { SharedSessionSubmission } from '../packages/sdk/src/platform/contr
 import type { PermissionRequestHandler } from '../packages/sdk/src/platform/permissions/prompt.ts';
 import type { TurnEvent } from '../packages/sdk/src/events/turn.ts';
 import type { ToolEvent } from '../packages/sdk/src/events/tools.ts';
+import type { McpServerConfig } from '../packages/sdk/src/platform/mcp/config.ts';
 
 interface RecordedUpdate {
   sessionId: string;
@@ -58,10 +59,10 @@ function makeFakeSubstrate(runtimeSessionId: string, activeAgentId?: string): {
   submitted: string[];
   cancelled: string[];
   cancelledAgents: string[];
-  mcpServers: { value: readonly { name: string; command: string }[] | undefined };
+  mcpServers: { value: readonly McpServerConfig[] | undefined };
   stopped: { value: boolean };
   permissionHandlers: PermissionRequestHandler[];
-  factory: (options: { workspace: string; requestPermission: PermissionRequestHandler; mcpServers?: readonly { name: string; command: string }[] | undefined }) => Promise<EmbeddedSession>;
+  factory: (options: { workspace: string; requestPermission: PermissionRequestHandler; mcpServers?: readonly McpServerConfig[] | undefined }) => Promise<EmbeddedSession>;
   emitTurn: (event: TurnEvent) => void;
   emitTool: (event: ToolEvent) => void;
 } {
@@ -69,7 +70,7 @@ function makeFakeSubstrate(runtimeSessionId: string, activeAgentId?: string): {
   const submitted: string[] = [];
   const cancelled: string[] = [];
   const cancelledAgents: string[] = [];
-  const mcpServers: { value: readonly { name: string; command: string }[] | undefined } = { value: undefined };
+  const mcpServers: { value: readonly McpServerConfig[] | undefined } = { value: undefined };
   const stopped = { value: false };
   const permissionHandlers: PermissionRequestHandler[] = [];
   const emitTurn = (event: TurnEvent): void => {
@@ -81,7 +82,7 @@ function makeFakeSubstrate(runtimeSessionId: string, activeAgentId?: string): {
   const factory = async (options: {
     workspace: string;
     requestPermission: PermissionRequestHandler;
-    mcpServers?: readonly { name: string; command: string }[] | undefined;
+    mcpServers?: readonly McpServerConfig[] | undefined;
   }): Promise<EmbeddedSession> => {
     permissionHandlers.push(options.requestPermission);
     mcpServers.value = options.mcpServers;
@@ -155,13 +156,15 @@ describe('initialize reports honest capabilities', () => {
     const agent = new GoodVibesAcpAgent(conn);
     const response = await agent.initialize({ protocolVersion: 1 });
     expect(response.protocolVersion).toBe(1);
-    expect(response.agentCapabilities.loadSession).toBe(false);
-    expect(response.agentCapabilities.promptCapabilities).toEqual({
+    expect(response.agentCapabilities).toBeDefined();
+    const agentCapabilities = response.agentCapabilities!;
+    expect(agentCapabilities.loadSession).toBe(false);
+    expect(agentCapabilities.promptCapabilities).toEqual({
       image: false,
       audio: false,
       embeddedContext: false,
     });
-    expect(response.agentCapabilities.mcpCapabilities).toEqual({ http: false, sse: false });
+    expect(agentCapabilities.mcpCapabilities).toEqual({ http: false, sse: false });
     expect(response.authMethods).toEqual([]);
   });
 

@@ -322,10 +322,13 @@ describe('workspaces.* gateway verbs', () => {
 
   test('registering a broad root surfaces an honest 400', async () => {
     const catalog = makeCatalog();
-    const error = await catalog
-      .invoke('workspaces.registrations.add', { ...ctx, body: { root: HOME } })
-      .catch((e: unknown) => e as { status?: number });
-    expect(error.status).toBe(400);
+    try {
+      await catalog.invoke('workspaces.registrations.add', { ...ctx, body: { root: HOME } });
+      throw new Error('expected workspaces.registrations.add to reject for an overly broad root');
+    } catch (caught: unknown) {
+      const error = caught as { status?: number };
+      expect(error.status).toBe(400);
+    }
   });
 });
 

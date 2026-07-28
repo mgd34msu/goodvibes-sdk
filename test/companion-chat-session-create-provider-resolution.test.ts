@@ -84,7 +84,7 @@ function makePostRequest(body?: unknown): Request {
   return new Request('http://localhost/api/companion/chat/sessions', {
     method: 'POST',
     headers: body !== undefined ? { 'content-type': 'application/json' } : {},
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
 }
 
@@ -162,9 +162,9 @@ describe('companion-chat session-create: resolver returns null → 400', () => {
   test('resolver returns null → no session row created', async () => {
     const resolver = () => null;
     const ctx = makeContext(manager, resolver);
-    const sessionsBefore = manager.sessions.size;
+    const sessionsBefore = manager.listSessions().totals.sessions;
     await dispatchCompanionChatRoutes(makePostRequest({}), ctx);
-    expect(manager.sessions.size).toBe(sessionsBefore);
+    expect(manager.listSessions().totals.sessions).toBe(sessionsBefore);
   });
 
   test('partial explicit route (only model supplied) → 400 INVALID_MODEL_ROUTE', async () => {

@@ -82,7 +82,7 @@ function siteOf(stack: string): string {
     if (!match) continue;
     if (/daemon-unbound-teardown|node:internal/.test(line)) continue;
     const fn = /at\s+(?:async\s+)?([^\s(]+)\s*\(/.exec(line)?.[1] ?? '';
-    return `${fn} (${match[1].replace(/^.*\/(test|packages|src)\//, '$1/')})`;
+    return `${fn} (${match[1]!.replace(/^.*\/(test|packages|src)\//, '$1/')})`;
   }
   return '<unknown site>';
 }

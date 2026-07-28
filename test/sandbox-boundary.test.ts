@@ -92,7 +92,7 @@ describe('platform/runtime/sandbox — behavior smoke', () => {
     const profiles = listSandboxProfiles(makeConfigManager());
     expect(profiles).toBeInstanceOf(Array);
     expect(profiles.length).toBeGreaterThan(0);
-    const first = profiles[0] as Record<string, unknown>;
+    const first = profiles[0] as unknown as Record<string, unknown>;
     expect(typeof first.id).toBe('string');
     expect(typeof first.label).toBe('string');
     expect(typeof first.kind).toBe('string');
@@ -102,7 +102,7 @@ describe('platform/runtime/sandbox — behavior smoke', () => {
   test('listSandboxPresets returns an array containing secure-balanced', () => {
     const presets = listSandboxPresets();
     expect(presets).toBeInstanceOf(Array);
-    const ids = (presets as Array<Record<string, unknown>>).map((p) => p.id);
+    const ids = (presets as unknown as Array<Record<string, unknown>>).map((p) => p.id);
     expect(ids).toContain('secure-balanced');
     expect(presets.every((preset) => preset.config.replJavaScriptCommand === 'bun')).toBe(true);
   });
@@ -124,7 +124,7 @@ describe('platform/runtime/sandbox — behavior smoke', () => {
   test('getSandboxPreset returns the preset for secure-balanced with id and label', () => {
     const preset = getSandboxPreset('secure-balanced');
     expect(preset).not.toBeNull();
-    const p = preset as Record<string, unknown>;
+    const p = preset as unknown as Record<string, unknown>;
     expect(p.id).toBe('secure-balanced');
     expect(typeof p.label).toBe('string');
   });

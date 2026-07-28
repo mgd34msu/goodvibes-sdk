@@ -16,6 +16,7 @@ import {
   OperatorMcpServer,
   readLines,
   SESSION_LIFECYCLE_METHOD_IDS,
+  type OperatorMcpInvoker,
 } from '../packages/sdk/src/platform/mcp/server/index.ts';
 
 const contract = getOperatorContract();
@@ -65,7 +66,7 @@ async function rpc(server: OperatorMcpServer, message: unknown): Promise<Record<
 }
 
 describe('OperatorMcpServer protocol', () => {
-  function makeServer(invoke = async () => ({ ok: true })): OperatorMcpServer {
+  function makeServer(invoke: OperatorMcpInvoker = async () => ({ ok: true })): OperatorMcpServer {
     return createOperatorMcpServer({
       contract,
       invoke,
@@ -106,9 +107,10 @@ describe('OperatorMcpServer protocol', () => {
       method: 'tools/call',
       params: { name: 'skills_list', arguments: {} },
     });
-    expect(seen).toEqual({ methodId: 'skills.list', input: {} });
+    expect(seen as { methodId: string; input: Record<string, unknown> } | null).toEqual({ methodId: 'skills.list', input: {} });
     const content = (res?.result as { content: { type: string; text: string }[] }).content;
-    expect(JSON.parse(content[0].text)).toEqual({ skills: [] });
+    expect(content[0]).toBeDefined();
+    expect(JSON.parse(content[0]!.text)).toEqual({ skills: [] });
   });
 
   test('tools/call on an unknown tool returns an isError result, not a crash', async () => {
@@ -131,7 +133,8 @@ describe('OperatorMcpServer protocol', () => {
     });
     const result = res?.result as { isError?: boolean; content: { text: string }[] };
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('daemon unreachable');
+    expect(result.content[0]).toBeDefined();
+    expect(result.content[0]!.text).toContain('daemon unreachable');
   });
 
   test('malformed JSON returns a JSON-RPC parse error', async () => {

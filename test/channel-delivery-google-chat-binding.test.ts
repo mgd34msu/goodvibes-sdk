@@ -37,6 +37,19 @@ function fakeServiceRegistry(secrets: Record<string, string | undefined> = {}): 
 
 const fakeArtifactStore = {} as unknown as ArtifactStore;
 
+/**
+ * Bun's `typeof fetch` includes a `preconnect` static method that plain mock
+ * functions don't have. Attach a no-op stub so test doubles satisfy the type
+ * without pretending to implement real preconnect behavior.
+ */
+function withPreconnect(
+  impl: (input: string | URL | Request, init?: RequestInit) => Promise<Response>,
+): typeof globalThis.fetch {
+  return Object.assign(impl, {
+    preconnect: (_url: string | URL, _options?: { dns?: boolean; tcp?: boolean; http?: boolean; https?: boolean }) => {},
+  });
+}
+
 function requestWithBindingMetadata(metadata: Record<string, unknown>): ChannelDeliveryRequest {
   return {
     target: { kind: 'surface', surfaceKind: 'google-chat' },
@@ -65,10 +78,10 @@ describe('google chat delivery resolves the webhook from the route binding', () 
 
   function mockFetch(): void {
     spy = spyOn(globalThis, 'fetch').mockImplementation(
-      async () => new Response(JSON.stringify({ name: 'spaces/AAAA/messages/msg-1' }), {
+      withPreconnect(async () => new Response(JSON.stringify({ name: 'spaces/AAAA/messages/msg-1' }), {
         status: 200,
         headers: { 'content-type': 'application/json' },
-      }),
+      })),
     ) as unknown as Mock<typeof fetch>;
   }
 

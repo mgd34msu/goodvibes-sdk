@@ -9,6 +9,13 @@ import {
 } from '../packages/sdk/src/platform/config/index.js';
 import type { LLMProvider } from '../packages/sdk/src/platform/providers/interface.js';
 import type { ModelDefinition } from '../packages/sdk/src/platform/providers/registry-types.js';
+import type { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
+import type { ResolvedModelPricing } from '../packages/sdk/src/platform/providers/model-pricing.js';
+
+/** None of these tests exercise cost attribution — every route reports unpriced. */
+function resolveModelPricingStub(): ResolvedModelPricing {
+  return { status: 'unknown' };
+}
 
 function model(provider = 'openai', id = 'gpt-4.1-mini'): ModelDefinition {
   return {
@@ -46,10 +53,11 @@ function provider(name: string, content = 'ok'): LLMProvider {
 describe('tool LLM routing', () => {
   test('disabled tool LLM chat throws instead of returning an empty string', async () => {
     const toolLLM = new ToolLLM({
-      configManager: { get: () => false },
+      configManager: { get: (() => false) as ConfigManager['get'] },
       providerRegistry: {
         getCurrentModel: () => model(),
         getForModel: () => provider('openai'),
+        resolveModelPricing: resolveModelPricingStub,
       },
     });
 
@@ -59,16 +67,17 @@ describe('tool LLM routing', () => {
   test('explicit tool route validates provider-qualified model ownership', () => {
     const deps = {
       configManager: {
-        get: (key: string) => {
+        get: ((key: string) => {
           if (key === 'tools.llmEnabled') return true;
           if (key === 'tools.llmProvider') return 'openai';
           if (key === 'tools.llmModel') return 'anthropic:claude-3-5-haiku';
           return '';
-        },
+        }) as ConfigManager['get'],
       },
       providerRegistry: {
         getCurrentModel: () => model(),
         getForModel: () => provider('openai'),
+        resolveModelPricing: resolveModelPricingStub,
       },
     };
 
@@ -92,12 +101,12 @@ describe('tool LLM routing', () => {
     };
     const toolLLM = new ToolLLM({
       configManager: {
-        get: (key: string) => {
+        get: ((key: string) => {
           if (key === 'tools.llmEnabled') return true;
           if (key === 'tools.llmProvider') return 'openai';
           if (key === 'tools.llmModel') return 'gpt-4.1-mini';
           return '';
-        },
+        }) as ConfigManager['get'],
       },
       providerRegistry: {
         getCurrentModel: () => model(),
@@ -105,6 +114,7 @@ describe('tool LLM routing', () => {
           lookup = { modelId, provider: providerId };
           return routedProvider;
         },
+        resolveModelPricing: resolveModelPricingStub,
       },
     });
 
@@ -127,11 +137,12 @@ describe('tool LLM routing', () => {
     };
     const toolLLM = new ToolLLM({
       configManager: {
-        get: (key: string) => key === 'tools.llmEnabled',
+        get: ((key: string) => key === 'tools.llmEnabled') as ConfigManager['get'],
       },
       providerRegistry: {
         getCurrentModel: () => model(),
         getForModel: () => badProvider,
+        resolveModelPricing: resolveModelPricingStub,
       },
     });
 
@@ -143,14 +154,15 @@ describe('helper model routing', () => {
   test('helperOnly preserves optional helper absence as explicit null', async () => {
     const helper = new HelperModel({
       configManager: {
-        get: () => false,
-        getCategory: () => undefined,
+        get: (() => false) as ConfigManager['get'],
+        getCategory: (() => undefined) as unknown as ConfigManager['getCategory'],
       },
       providerRegistry: {
         getCurrentModel: () => {
           throw new Error('must not fall back to current model');
         },
         getForModel: () => provider('openai'),
+        resolveModelPricing: resolveModelPricingStub,
       },
     });
 
@@ -160,12 +172,13 @@ describe('helper model routing', () => {
   test('disabled non-optional helper chat throws instead of using the main model', async () => {
     const helper = new HelperModel({
       configManager: {
-        get: () => false,
-        getCategory: () => undefined,
+        get: (() => false) as ConfigManager['get'],
+        getCategory: (() => undefined) as unknown as ConfigManager['getCategory'],
       },
       providerRegistry: {
         getCurrentModel: () => model(),
         getForModel: () => provider('openai'),
+        resolveModelPricing: resolveModelPricingStub,
       },
     });
 
@@ -175,12 +188,13 @@ describe('helper model routing', () => {
   test('enabled helper with no dedicated route does not fall back to main model', async () => {
     const helper = new HelperModel({
       configManager: {
-        get: (key: string) => key === 'helper.enabled',
-        getCategory: () => undefined,
+        get: ((key: string) => key === 'helper.enabled') as ConfigManager['get'],
+        getCategory: (() => undefined) as unknown as ConfigManager['getCategory'],
       },
       providerRegistry: {
         getCurrentModel: () => model(),
         getForModel: () => provider('openai'),
+        resolveModelPricing: resolveModelPricingStub,
       },
     });
 
@@ -190,20 +204,21 @@ describe('helper model routing', () => {
   test('per-provider helper route rejects provider/model conflicts without trying later routes', () => {
     const router = new HelperRouter({
       configManager: {
-        get: (key: string) => {
+        get: ((key: string) => {
           if (key === 'helper.globalProvider') return 'openai';
           if (key === 'helper.globalModel') return 'gpt-4.1-mini';
           return '';
-        },
-        getCategory: () => ({
+        }) as ConfigManager['get'],
+        getCategory: (() => ({
           providers: {
             openai: { provider: 'openai', model: 'anthropic:claude-3-5-haiku' },
           },
-        }),
+        })) as ConfigManager['getCategory'],
       },
       providerRegistry: {
         getCurrentModel: () => model('openai', 'gpt-4.1'),
         getForModel: () => provider('openai'),
+        resolveModelPricing: resolveModelPricingStub,
       },
     });
 
@@ -219,17 +234,18 @@ describe('helper model routing', () => {
     };
     const helper = new HelperModel({
       configManager: {
-        get: (key: string) => {
+        get: ((key: string) => {
           if (key === 'helper.enabled') return true;
           if (key === 'helper.globalProvider') return 'openai';
           if (key === 'helper.globalModel') return 'gpt-4.1-mini';
           return '';
-        },
-        getCategory: () => undefined,
+        }) as ConfigManager['get'],
+        getCategory: (() => undefined) as unknown as ConfigManager['getCategory'],
       },
       providerRegistry: {
         getCurrentModel: () => model(),
         getForModel: () => failingProvider,
+        resolveModelPricing: resolveModelPricingStub,
       },
     });
 
@@ -250,17 +266,18 @@ describe('helper model routing', () => {
     };
     const helper = new HelperModel({
       configManager: {
-        get: (key: string) => {
+        get: ((key: string) => {
           if (key === 'helper.enabled') return true;
           if (key === 'helper.globalProvider') return 'openai';
           if (key === 'helper.globalModel') return 'gpt-4.1-mini';
           return '';
-        },
-        getCategory: () => undefined,
+        }) as ConfigManager['get'],
+        getCategory: (() => undefined) as unknown as ConfigManager['getCategory'],
       },
       providerRegistry: {
         getCurrentModel: () => model(),
         getForModel: () => badProvider,
+        resolveModelPricing: resolveModelPricingStub,
       },
     });
 

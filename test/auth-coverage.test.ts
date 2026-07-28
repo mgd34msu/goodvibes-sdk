@@ -190,9 +190,9 @@ describe('createGoodVibesAuthClient — observer onAuthTransition', () => {
     const client = createGoodVibesAuthClient(makeOperator(), tokenStore, undefined, observer);
     await client.login({ username: 'alice', password: 'secret' });
     expect(transitions).toHaveLength(1);
-    expect(transitions[0].from).toBe('anonymous');
-    expect(transitions[0].to).toBe('token');
-    expect(transitions[0].reason).toBe('login');
+    expect(transitions[0]!.from).toBe('anonymous');
+    expect(transitions[0]!.to).toBe('token');
+    expect(transitions[0]!.reason).toBe('login');
   });
 
   test('login fires onAuthTransition from token → token on re-login', async () => {
@@ -204,8 +204,8 @@ describe('createGoodVibesAuthClient — observer onAuthTransition', () => {
     const client = createGoodVibesAuthClient(makeOperator(), tokenStore, undefined, observer);
     await client.login({ username: 'alice', password: 'secret' });
     expect(transitions).toHaveLength(1);
-    expect(transitions[0].from).toBe('token');
-    expect(transitions[0].to).toBe('token');
+    expect(transitions[0]!.from).toBe('token');
+    expect(transitions[0]!.to).toBe('token');
   });
 
   test('clearToken fires onAuthTransition from token → anonymous', async () => {
@@ -217,9 +217,9 @@ describe('createGoodVibesAuthClient — observer onAuthTransition', () => {
     const client = createGoodVibesAuthClient(makeOperator(), tokenStore, undefined, observer);
     await client.clearToken();
     expect(transitions).toHaveLength(1);
-    expect(transitions[0].from).toBe('token');
-    expect(transitions[0].to).toBe('anonymous');
-    expect(transitions[0].reason).toBe('logout');
+    expect(transitions[0]!.from).toBe('token');
+    expect(transitions[0]!.to).toBe('anonymous');
+    expect(transitions[0]!.reason).toBe('logout');
   });
 
   test('clearToken fires onAuthTransition from anonymous → anonymous when no token', async () => {
@@ -231,8 +231,8 @@ describe('createGoodVibesAuthClient — observer onAuthTransition', () => {
     const client = createGoodVibesAuthClient(makeOperator(), tokenStore, undefined, observer);
     await client.clearToken();
     expect(transitions).toHaveLength(1);
-    expect(transitions[0].from).toBe('anonymous');
-    expect(transitions[0].to).toBe('anonymous');
+    expect(transitions[0]!.from).toBe('anonymous');
+    expect(transitions[0]!.to).toBe('anonymous');
   });
 
   test('observer that throws on onAuthTransition is reported but does not propagate into login', async () => {

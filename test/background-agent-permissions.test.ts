@@ -131,7 +131,7 @@ describe('background permission gate — subagent attribution rides on the ask',
 
   test('template is omitted from attribution when the record has none', async () => {
     const { manager, asks } = makeManager('prompt', 'inherit', true);
-    await gateBackgroundToolCall({ permissionManager: manager }, { id: 'agent-7' }, 'write', { path: 'a.ts' });
+    await gateBackgroundToolCall({ permissionManager: manager }, { id: 'agent-7', template: '' }, 'write', { path: 'a.ts' });
     expect(asks[0]!.attribution).toEqual({ kind: 'background-agent', agentId: 'agent-7' });
   });
 });

@@ -10,6 +10,19 @@ function createJsonResponse(body: unknown, status = 200): Response {
   });
 }
 
+/**
+ * Bun's `typeof fetch` includes a `preconnect` static method that plain mock
+ * functions don't have. Attach a no-op stub so test doubles satisfy the type
+ * without pretending to implement real preconnect behavior.
+ */
+function withPreconnect(
+  impl: (input: string | URL | Request, init?: RequestInit) => Promise<Response>,
+): typeof globalThis.fetch {
+  return Object.assign(impl, {
+    preconnect: (_url: string | URL, _options?: { dns?: boolean; tcp?: boolean; http?: boolean; https?: boolean }) => {},
+  });
+}
+
 describe('peer sdk', () => {
   test('resolves templated peer contract paths', async () => {
     const calls: Array<{ url: string; init?: RequestInit }> = [];
@@ -17,10 +30,10 @@ describe('peer sdk', () => {
       baseUrl: 'http://127.0.0.1:3210',
       authToken: 'peer-token',
       validateResponses: false,
-      fetch: async (input, init) => {
-        calls.push({ url: String(input), init });
+      fetch: withPreconnect(async (input, init) => {
+        calls.push({ url: String(input), ...(init !== undefined ? { init } : {}) });
         return createJsonResponse({ ok: true });
-      },
+      }),
     });
 
     await sdk.work.complete('work-1', {
@@ -30,6 +43,8 @@ describe('peer sdk', () => {
 
     expect(calls).toHaveLength(1);
     const call = calls[0];
+    expect(call).toBeDefined();
+    if (!call) throw new Error('expected a recorded fetch call');
     expect(call.url).toBe('http://127.0.0.1:3210/api/remote/work/work-1/complete');
     expect(call.init?.method).toBe('POST');
     expect(call.init?.body).toBe(JSON.stringify({
@@ -39,15 +54,36 @@ describe('peer sdk', () => {
   });
 
   test('supports simple pairing requests', async () => {
+    // Real shape of the `pair.request` contract response: `{ request, challenge }`,
+    // not a bare `{ requestId }` — see packages/contracts/src/generated/peer-contract.ts.
+    const mockResponse = {
+      request: {
+        id: 'req-1',
+        peerKind: 'node' as const,
+        requestedId: 'node-a',
+        label: 'runner-a',
+        capabilities: [] as string[],
+        commands: [] as string[],
+        requestedBy: 'remote' as const,
+        status: 'pending' as const,
+        challengePreview: 'chal-preview',
+        createdAt: 1_700_000_000_000,
+        updatedAt: 1_700_000_000_000,
+        expiresAt: 1_700_000_060_000,
+        metadata: {} as Record<string, never>,
+      },
+      challenge: 'test-challenge',
+    };
     const sdk = createPeerSdk({
       baseUrl: 'http://127.0.0.1:3210',
       validateResponses: false,
-      fetch: async () => createJsonResponse({ requestId: 'pair-1' }),
+      fetch: withPreconnect(async () => createJsonResponse(mockResponse)),
     });
 
     await expect(sdk.pairing.request({
-      peerId: 'node-a',
+      peerKind: 'node',
+      requestedId: 'node-a',
       label: 'runner-a',
-    })).resolves.toEqual({ requestId: 'pair-1' });
+    })).resolves.toEqual(mockResponse);
   });
 });

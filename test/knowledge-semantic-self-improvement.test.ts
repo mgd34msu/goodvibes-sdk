@@ -498,7 +498,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
   });
 
   test('web gap repair can accept high-confidence subject sources without model numbers', async () => {
-    const ingested: Array<{ url: string; metadata?: Record<string, unknown> }> = [];
+    const ingested: Array<{ url: string; metadata?: Record<string, unknown> | undefined }> = [];
     const repairer = createWebKnowledgeGapRepairer({
       searchService: {
         async search(request) {
@@ -810,7 +810,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
     expect(Date.now() - startedAt).toBeLessThan(1_500);
     expect(result.closedGaps).toBe(1);
     expect(result.promotedFactCount).toBeGreaterThanOrEqual(3);
-    expect(store.listNodes(100).filter((node) => node.kind === 'fact' && node.metadata.extractor === 'repair-promotion')).toHaveLength(result.promotedFactCount);
+    expect(store.listNodes(100).filter((node) => node.kind === 'fact' && node.metadata.extractor === 'repair-promotion')).toHaveLength(result.promotedFactCount ?? 0);
   });
 
   test('self-improvement promotes already-indexed source facts by linking them to the repair subject', async () => {
@@ -863,11 +863,12 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
       }),
     });
     await store.upsertEdge({ fromKind: 'node', fromId: device.id, toKind: 'node', toId: gap.id, relation: 'has_gap' });
-    const goodFacts = await Promise.all([
+    const goodFactPairs: Array<[string, string]> = [
       ['Display and picture specifications', 'Display and picture specifications: 4K UHD resolution, HDR10, Dolby Vision, and 120 Hz refresh rate.'],
       ['Input and output ports', 'Input and output ports: HDMI inputs, HDMI eARC, USB ports, Ethernet, optical audio output, RF antenna input, and RS-232C/external control.'],
       ['Audio capabilities', 'Audio capabilities: 2 x 10W speakers.'],
-    ].map(([title, summary], index) => store.upsertNode({
+    ];
+    const goodFacts = await Promise.all(goodFactPairs.map(([title, summary], index) => store.upsertNode({
       kind: 'fact',
       slug: `existing-official-lg-fact-${index}`,
       title,
@@ -990,7 +991,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
     const source = await store.upsertSource({
       id: 'source-goodvibes-homeassistant-doc',
       connectorId: 'url',
-      sourceType: 'webpage',
+      sourceType: 'url',
       title: 'Navigation Menu',
       canonicalUri: 'https://github.com/mgd34msu/goodvibes-homeassistant',
       tags: ['github'],

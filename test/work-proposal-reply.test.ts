@@ -166,7 +166,7 @@ describe('findProposalForReply', () => {
   function record(overrides: Partial<WorkProposalRecord>): WorkProposalRecord {
     return {
       id: 'wp_1', createdAt: 1, expiresAt: 2, status: 'pending',
-      surfaceKind: 'ntfy', task: 't', summary: 's', ...overrides,
+      surfaceKind: 'ntfy', task: 't', summary: 's', delivered: true, ...overrides,
     };
   }
 

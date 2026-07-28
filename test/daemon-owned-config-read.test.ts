@@ -105,7 +105,9 @@ describe('reads route by ownership', () => {
     });
     expect(entry.source).toBe('local');
     expect(entry.value).toBe('written_offline');
-    expect(entry.store).toBe(agent.getDaemonTierPath());
+    const daemonTierPath = agent.getDaemonTierPath();
+    expect(daemonTierPath).not.toBeNull();
+    expect(entry.store).toBe(daemonTierPath!);
   });
 
   test('an unreachable daemon throws rather than answering with a default', async () => {

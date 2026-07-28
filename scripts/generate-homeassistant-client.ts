@@ -105,7 +105,9 @@ function pyType(schema: JsonSchema | undefined): string {
       if (t === 'Any') return 'Any';
       if (!branches.includes(t)) branches.push(t);
     }
-    return branches.length === 1 ? branches[0] : branches.join(' | ');
+    // join(' | ') on a one-element array yields that element, so the previous
+    // special case for length === 1 produced an identical string.
+    return branches.join(' | ');
   }
 
   const enumValues = record['enum'];

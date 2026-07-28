@@ -15,8 +15,11 @@ import { trackDisposables } from './_helpers/disposables.ts';
 import type {
   MemoryConsolidationRegistry,
   MemoryRecord,
-  MemoryReviewPatch,
 } from '../packages/sdk/src/platform/state/index.js';
+// MemoryReviewPatch is defined in memory-store.ts but not re-exported from the
+// state/index.ts barrel (index.ts re-exports MemoryReviewState from the same
+// module but omits MemoryReviewPatch) — import it directly from its module.
+import type { MemoryReviewPatch } from '../packages/sdk/src/platform/state/memory-store.js';
 
 const NOW = 1_700_000_000_000;
 const HOUR = 60 * 60 * 1000;
