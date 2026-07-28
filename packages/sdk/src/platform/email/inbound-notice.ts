@@ -156,13 +156,27 @@ const CONTROL_OR_LINE_BREAK = new RegExp('[\\u0000-\\u001F\\u007F\\u2028\\u2029]
  *   - backtick / asterisk / underscore / tilde / pipe: code, bold, italic,
  *     strikethrough, and spoiler markers in Telegram MarkdownV2, Discord
  *     markdown, and Slack mrkdwn.
- *   - angle brackets / square brackets: link and mention syntax
- *     (`<http://x|text>` in Slack, `[text](url)` in Telegram/Discord).
+ *   - angle brackets / square brackets / parentheses: link and mention
+ *     syntax (`<http://x|text>` in Slack, `[text](url)` in Telegram/Discord).
+ *     Parentheses are listed explicitly — `[` removal already breaks the
+ *     `[text](url)` pair on its own, but leaving that as the only thing
+ *     stopping `(url)` from surviving is an implicit dependency between two
+ *     character sets that a later edit to either one could break silently.
  *   - ampersand: HTML-entity interpretation some delivery paths apply.
  * Replaced with a space rather than deleted, so removing a trigger character
  * cannot mash two words together into a different word.
  */
-const MARKUP_TRIGGER_CHARS = /[`*_~|<>[\]&]/g;
+const MARKUP_TRIGGER_CHARS = /[`*_~|<>[\]&()]/g;
+
+/**
+ * The same set MINUS underscore, for the delivery-evidence address (see
+ * `sanitizeEvidenceField`): underscore is genuinely common in a real address
+ * local part and is the weakest of these triggers — unpaired, it renders
+ * literally; paired, it is at worst cosmetic italics, never a link or a
+ * mention. Every other trigger here can build clickable markup or a mention
+ * form and gets removed the same as it would from any other attacker text.
+ */
+const EVIDENCE_MARKUP_TRIGGER_CHARS = /[`*~|<>[\]&()]/g;
 
 /** Collapses the runs of spaces the two replacements above can produce. */
 const REPEATED_SPACE = / {2,}/g;
@@ -198,21 +212,31 @@ function sanitizeField(raw: string, maxLength: number): string {
 }
 
 /**
- * The lighter sanitize used for a DELIVERY-EVIDENCE address (`deliveredTo`).
- * Unlike subject/sender, this value is not attacker-chosen free text — it is
- * the mailbox actually fetched from or the top-most delivery header, which
- * the sender cannot forge (see platform/google/delivery-evidence.ts) — and it
- * is, per the design, "the single most useful fact" the owner reads. Running
- * it through the full markup neutralizer would mangle characters that are
- * legitimate in a real address (`_`, `~`, and a bare `@`), reducing the one
- * value the notice is built to make trustworthy. Control characters and line
- * breaks are still removed (an address is still attacker-INFLUENCED insofar
- * as the sender picks who the alias resolves through), and length is still
- * capped, but no markup stripping and no mention-breaking apply.
+ * The sanitize used for a DELIVERY-EVIDENCE address (`deliveredTo`).
+ *
+ * What the evidence actually proves, precisely: `deliveredRecipientFromAliasMailbox`
+ * / `deliveredRecipientFromDeliveryHeaders` (platform/google/delivery-evidence.ts)
+ * guarantee the address was genuinely stamped by the mailbox fetched from or
+ * the top-most delivery header — the sender cannot FORGE which mailbox this
+ * says the message arrived at. That is not the same claim as "the sender
+ * cannot influence this string". This design is built on per-signup alias
+ * mailboxes, which means a catch-all domain or plus-addressing — and under
+ * either, the local part in front of `@` is exactly the string whoever sent
+ * the mail chose to address it to. `Delivered-To` records that choice
+ * truthfully. So this is attacker-chosen text, same as subject or sender,
+ * and gets the same markup/mention treatment; the only thing that
+ * distinguishes it is which characters are worth keeping for legibility.
+ *
+ * Underscore is kept — see `EVIDENCE_MARKUP_TRIGGER_CHARS` — because it is
+ * common in a real local part and the weakest possible trigger. Every other
+ * markup character, and the `@everyone`/`@here` mention form, are removed or
+ * broken exactly as they are for any other attacker-controlled field.
  */
 function sanitizeEvidenceField(raw: string, maxLength: number): string {
   const noControlChars = raw.replace(CONTROL_OR_LINE_BREAK, ' ');
-  const collapsed = noControlChars.replace(REPEATED_SPACE, ' ').trim();
+  const noMarkup = noControlChars.replace(EVIDENCE_MARKUP_TRIGGER_CHARS, ' ');
+  const noMentionForms = breakMentionForms(noMarkup);
+  const collapsed = noMentionForms.replace(REPEATED_SPACE, ' ').trim();
   if (collapsed.length <= maxLength) return collapsed;
   return `${collapsed.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
 }
