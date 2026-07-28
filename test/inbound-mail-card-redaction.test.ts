@@ -128,6 +128,55 @@ describe('a card number in an email never reaches disk', () => {
     const records = await store.list();
     expect(records[0]!.bodyExcerpt.length).toBeLessThanOrEqual(cap);
   });
+
+  test('several cards in one body do not slide a later one back inside the cap', async () => {
+    // The case the scan window was REMOVED for, and the one nothing covered.
+    //
+    // The old implementation scanned `cap + MAX_CARD_SPAN_CHARS` and sliced to
+    // `cap`, on the reasoning that the overshoot always sees a boundary span
+    // whole. That is true for ONE span and false for several, because
+    // redaction SHORTENS: each `4111 1111 1111 1111` (nineteen characters)
+    // becomes `[redacted:pan]` (fourteen), so every one of them pulls
+    // everything after it five characters leftwards. A later card straddling
+    // the far edge of the window is seen only in PART, so it does not match,
+    // so it is left raw — and the accumulated shortening then drags those raw
+    // digits back inside the final `slice(0, cap)`, where they are persisted
+    // verbatim.
+    //
+    // Measured against the removed implementation, this exact body put ELEVEN
+    // readable digits of the second card on disk. It is reachable today on the
+    // Gmail path, which is what the note in `record()` is about.
+    const cap = 300;
+    /** The overshoot the old code used: the longest single written card span. */
+    const OLD_WINDOW = 19 + 18;
+    const GROUPED = '4111 1111 1111 1111';
+    const SECOND = '5555444433332222';
+    /** Eight groupeds shorten the string by forty characters — more than the window. */
+    const head = Array.from({ length: 8 }, () => `charge ${GROUPED};`).join(' ');
+    /** Positioned so eleven of the second card's digits fall inside the old window. */
+    const pad = cap + OLD_WINDOW - head.length - 11;
+    expect(pad).toBeGreaterThan(0);
+    const body = `${head}${'.'.repeat(pad)}${SECOND} tail`;
+
+    const store = new InboundMailStore(storePath, { policy: { maxBodyExcerptChars: cap } });
+    await store.record(recordInput({ body }));
+
+    expectNoCardOnDisk();
+    // The second card is checked by RUN rather than by whole value: the leak
+    // this reproduces is a readable PREFIX, so asserting only on all sixteen
+    // digits would pass while eleven of them sat on disk.
+    const contents = rawFile();
+    for (let length = SECOND.length; length >= 6; length -= 1) {
+      const run = SECOND.slice(0, length);
+      if (contents.includes(run)) {
+        throw new Error(
+          `the persisted store contains ${String(length)} digits of the second card: ${run}`,
+        );
+      }
+    }
+    const records = await store.list();
+    expect(records[0]!.bodyExcerpt.length).toBeLessThanOrEqual(cap);
+  });
 });
 
 describe('mail is redacted, NOT refused', () => {
