@@ -24,6 +24,7 @@
  */
 import { randomUUID } from 'node:crypto';
 import { PersistentStore } from '../../state/persistent-store.js';
+import { redactCardShapes } from '../../security/card-shapes.js';
 import {
   isNonEmptyTrimmedString,
   isNonNegativeInteger,
@@ -32,6 +33,17 @@ import {
   MAX_BODY_EXCERPT_CHARS,
   type HousekeepingTrigger,
 } from './types.js';
+
+/**
+ * Longest a single card-shaped span can be in written form: nineteen digits
+ * with a separator between every pair. The redaction window overshoots the
+ * excerpt cap by this much so a span starting just inside the cap is always
+ * seen whole rather than half-detected.
+ */
+const MAX_CARD_SPAN_CHARS = 19 + 18;
+
+/** What `validateInboundMailRecord` accepts for `subject`; redaction must not exceed it. */
+const MAX_SUBJECT_CHARS = 998;
 
 /** Correlates to `VerificationMatch['kind']` in verification-expectations.ts, plus link-only outcomes that never reach expectation matching. */
 export type InboundMailOutcome =
@@ -278,7 +290,18 @@ export class InboundMailStore {
     return records.find((r) => r.id === id) ?? null;
   }
 
-  /** Record one inbound message. The body excerpt is truncated to the policy cap at write time. */
+  /**
+   * Record one inbound message. The body excerpt is redacted of card shapes and
+   * then truncated to the policy cap at write time.
+   *
+   * Redaction happens BEFORE the truncation, over a window slightly longer than
+   * the cap. Truncating first and redacting the result would leave a card
+   * number that straddles the cap boundary as a still-readable prefix of up to
+   * eighteen digits — a shorter leak, not a redaction. The window overshoot is
+   * bounded by MAX_CARD_SPAN_CHARS so a span starting just inside the cap is
+   * always seen whole; anything starting beyond the cap is dropped by the
+   * truncation regardless.
+   */
   async record(input: InboundMailRecordInput): Promise<InboundMailRecord> {
     const entry: InboundMailRecord = {
       id: randomUUID(),
@@ -287,14 +310,21 @@ export class InboundMailStore {
       uidValidity: input.uidValidity,
       uid: input.uid,
       senderDisplay: input.senderDisplay,
-      subject: input.subject,
+      // The subject is persisted alongside the excerpt AND rendered to the
+      // owner in the notice, so it is the same exposure by a different field.
+      // Re-clamped after redacting because a marker is longer than the digits
+      // it replaces, and a subject over 998 chars fails validation on load —
+      // taking the whole record with it.
+      subject: redactCardShapes(input.subject).slice(0, MAX_SUBJECT_CHARS),
       deliveredToAddress: input.deliveredToAddress,
       deliveryEvidenceSource: input.deliveryEvidenceSource,
       links: input.links,
       outcome: input.outcome,
       noticeStatus: input.noticeStatus,
       ...(input.noticeFailureReason ? { noticeFailureReason: input.noticeFailureReason } : {}),
-      bodyExcerpt: input.body.slice(0, this.policy.maxBodyExcerptChars),
+      bodyExcerpt: redactCardShapes(
+        input.body.slice(0, this.policy.maxBodyExcerptChars + MAX_CARD_SPAN_CHARS),
+      ).slice(0, this.policy.maxBodyExcerptChars),
       receivedAt: input.receivedAt,
     };
     return this.mutate(async (records) => ({ next: [...records, entry], result: entry }));
