@@ -1364,8 +1364,15 @@ follow that shape rather than a new one:
   an `unref()`'d interval, persisting a bounded disclosure log.
 
 All three live under `~/.goodvibes/daemon/`, addressed through
-`resolveSurfaceDirectory(homeDirectory, 'daemon', …)` — the surface-scoped
-storage mechanism, not a hand-built path.
+`ShellPathService.resolveUserPath('daemon', name)` — the mechanism the daemon
+composition root actually uses (`daemon/facade-inbound-mail.ts`), not a
+hand-built path.
+
+**This paragraph named `resolveSurfaceDirectory(homeDirectory, 'daemon', …)`
+for most of the round.** §13.3 item 3 recorded the discrepancy and this section
+was left uncorrected, so the document catalogued an error it went on repeating —
+which is worse than never noticing, because the catalogue implies it was
+handled.
 
 ### 9.1 The cursor store
 
@@ -1395,12 +1402,33 @@ The override is narrow and keeps what the original reasoning protects:
   expectation never gets a fresh window. Restarting cannot extend a grant, which
   is what "a grant nobody remembers issuing" was guarding against.
 - Anything already expired is **reaped on load**, before it can match anything.
-- Records are validated by content on load: `id`, `serviceDomain`,
-  `recipientAddress` and `purpose` re-validated by the same functions
-  `openExpectation` uses, `authority` must read exactly `'evidence-only'`, and
-  `expiresAt - openedAt` must not exceed `MAX_VERIFICATION_WINDOW_MS`. A record
-  failing any check is discarded. **A file on disk cannot mint an expectation
-  the live API would have refused.**
+- Records are validated by content on load, by the same functions
+  `openExpectation` uses: `authority` must read exactly `'evidence-only'`;
+  `openedAt` must **not be in the future**; the window must be at least
+  `MIN_VERIFICATION_WINDOW_MS` and at most `MAX_VERIFICATION_WINDOW_MS`;
+  `serviceDomain` must be a **registrable domain** by the public-suffix data —
+  a bare TLD like `com` and a multi-label public suffix like `co.uk` are both
+  refused; and `purpose`, `serviceDomain`, `recipientAddress` and `id` are
+  length-bounded. A record failing any check is discarded.
+
+  **This list is what the section originally claimed, and it was not true when
+  written.** The window check was a *delta only* — neither timestamp compared to
+  the present — so a record dated `openedAt: 2999-01-01` with a 30-minute delta
+  validated, survived the sweep and hydrated, while a live grant can never
+  exceed an hour. And `serviceDomain` had no hostname validation at all, so
+  `"com"` passed **on the load path and on the live `email.expectation.open`
+  verb alike**, and `hostMatchesServiceDomain`'s `endsWith('.' + registered)`
+  turned it into a wildcard. The full chain was executed: planted record →
+  hydrates → unsolicited mail from an unrelated sender → `matched` → a
+  verification link returned from the attacker's host. **One permanent
+  wildcard-TLD grant from one edit of a 0644 file.**
+
+  The claim *"a file on disk cannot mint an expectation the live API would have
+  refused"* is therefore **earned, not assumed** — and it was still false for
+  `id` after the first hardening pass, which bounded three fields and left the
+  fourth, so thirty-two 1 MB ids re-persisted a 32 MB well-formed file. A
+  guarantee stated in a design document is a hypothesis until something tries to
+  break it.
 - `MAX_OPEN_EXPECTATIONS = 32` is enforced on load, not only on open.
 - Swept on load and on the periodic sweep; `sweepExpired` already exists.
 - Disclosed: open expectations are listed in status, with their recipient,
@@ -1979,7 +2007,7 @@ rule in §3.4b and then leaves four paths that break it.
 
 ### 13.5 A test can be correct, green, and about something else
 
-The nine vacuous tests §13.3 neighbours were all tests that passed **for the
+The nine vacuous tests catalogued in §13.7 were all tests that passed **for the
 wrong reason**. This is a different and harder failure, found by auditing the
 harness rather than the code, and it is the one that let a broken capability
 sit under 8356 green tests.
@@ -2088,6 +2116,40 @@ helper became zero coverage for the read the whole capability depends on. The
 fake now emits byte-counted literals, takes `uidPosition`, answers in sequence
 order rather than the order asked, and carries non-ASCII subjects so the literal
 arithmetic is exercised for real.
+
+### 13.7 The nine vacuous tests, recorded so they can be re-checked
+
+A refutation review found these. They lived only in that review's report, and a
+later confirmation pass **could not re-check them because the list was not in
+the repo** — §13.5 cross-referenced "the nine vacuous tests" and no such
+enumeration existed anywhere in the tree. A finding that exists only in a
+transcript is a finding that expires. They are recorded here so the next pass
+can verify each one rather than take my word for it.
+
+| # | Test | Why it cannot fail |
+|---|---|---|
+| V1 | `inbound-mail-supervisor.test.ts:386` "recovery sweep runs before the source starts" | `getLastReport()` is read **after** `start()` resolves, so the sweep has run either way. Reverse the order and it still passes. The probe must read inside `onStart` |
+| V2 | `inbound-mail-expectation-registry.test.ts:158` "the matcher carries no way to insert" | Asserts `reachable.has('matchCandidate') === true` and `Object.keys(x).length >= 0` — **neither says anything about absence**. This is gate #11's runtime own-property assertion and gate #35, and it asserts nothing |
+| V3 | `platform-email-inbound-gmail-source.test.ts:409` "no source module imports an expectation registry" | Haystack is `lines.filter(l => l.startsWith('import '))`, so a multi-line import contributes only `import {` — the `from './x.js'` line is excluded. Multi-line is the dominant style in those very files |
+| V4 | `inbound-mail-housekeeping.test.ts:130` "start(0) is a no-op rather than a busy loop" | `expect(() => start(0)).not.toThrow()`. Delete the guard and `setInterval(fn, 0)` still does not throw — **the test passes with the busy loop installed** |
+| V5 | `platform-email-inbound-gmail-source.test.ts:379` | Terminates in `expect(true).toBe(true)`. A hang-gate, not an assertion |
+| V6 | `inbound-mail-dedup-redelivery.test.ts:234` "a suppressed duplicate still advances the cursor" | Touches no cursor. The suppression half is real; the cursor half is untested. Misnamed |
+| V7 | `inbound-mail-supervisor.test.ts:530` "the health entry carries no channel surface" | `'surface' in health` against a literal that never had the key — a type-level fact (`Omit<>`) asserted at runtime |
+| V8 | `surface-card-gate.test.ts:518` | Real data, but the check is per-**file** ("contains both strings somewhere"), not per-call-site. A file with one gated and one ungated spawn passes |
+| V9 | `inbound-email-config-schema.test.ts` | Tests that three settings can be *set*. Nothing asserts they take effect, and nothing reads them — coverage illusion for gate #28 |
+
+**Gates in §12 with no corresponding test at all:** 11, 14, 15, 25, 28, 31, 32,
+33, 35 (type half), 36 (type half), 52 (second half).
+
+Two are worth naming. **#25** — "the expectation book is instantiated in
+production with a real authority probe, **boot wiring assertion**" — has nothing
+importing `composeInboundMail`, so the entire boot-wiring file has zero
+coverage. **#14** is *unconstructible* in the harness: `fake-imap-mailbox.ts`
+mints `Message-ID: <uid-N@example.test>` per UID, so a collision cannot be
+built, and the gate can never be satisfied as written.
+
+> A defect list is only as durable as the place it is written down. Findings
+> that live in a report are re-found; findings that live in the repo are fixed.
 
 ## 14. Related
 
