@@ -73,6 +73,14 @@ export interface PurchaseFacts {
   readonly shippingTier: ShippingTier;
   readonly stepDown: ShippingStepDown | null;
   readonly poolsAfter: PoolSnapshot;
+  /**
+   * Where it is going, rendered from the STORED address.
+   *
+   * A correct total to the wrong address is still a wrong order, and the veto
+   * notice is the last point at which he can catch it. Null only when the
+   * checkout asked for no address at all.
+   */
+  readonly destination?: string | null | undefined;
 }
 
 /** Minor units per major unit. Three-decimal currencies are handled explicitly. */
@@ -174,6 +182,9 @@ function amountLines(facts: PurchaseFacts): string[] {
     );
   }
   lines.push(`  TOTAL:    ${formatMinorUnits(facts.totalMinorUnits, facts.currency)}`);
+  if (facts.destination !== undefined && facts.destination !== null) {
+    lines.push(``, `  Ships to: ${facts.destination}`);
+  }
   return lines;
 }
 
@@ -194,4 +205,42 @@ export function renderCancellationReport(facts: PurchaseFacts): string {
     ``,
     `The checkout was abandoned and the budget I was holding is back.`,
   ].join('\n');
+}
+
+/**
+ * The ONE purchase notice, and the only send site.
+ *
+ * The owner collapsed "show it to him" and "alert him if it is not a major
+ * retailer" into a single step — "2 and 3 are basically the same step". So there
+ * is one message, sent once, when the item is chosen and the final total is
+ * known, before payment. The retailer only changes what SILENCE means.
+ *
+ * Both branches carry identical content: what was found, the validated
+ * registrable domain, the item, and the total re-rendered from our own parsed
+ * integers. Never merchant text.
+ *
+ * This exists so the selection is a branch at one call site rather than an
+ * invitation to add a third message type. `renderApprovalMessage` and
+ * `renderVetoMessage` stay separate because their SILENCE RULES are opposite and
+ * must never be unified — see
+ * docs/decisions/2026-07-27-payment-windows-are-deliberately-opposite.md — but
+ * callers should reach for this, not for either of them directly.
+ */
+export function renderPurchaseNotice(input: {
+  readonly facts: PurchaseFacts;
+  readonly mode: 'approval' | 'veto';
+  readonly expiresInMinutes: number;
+  /**
+   * Why this mode, in the owner's terms — from `classifyMerchant`. Appended so
+   * a not-recognised verdict reads as a checkpoint rather than an accusation,
+   * and so he is never left inferring why this one asked and the last one did
+   * not.
+   */
+  readonly merchantReason?: string | undefined;
+}): string {
+  const body = input.mode === 'approval'
+    ? renderApprovalMessage(input.facts, input.expiresInMinutes)
+    : renderVetoMessage(input.facts, input.expiresInMinutes);
+  if (input.merchantReason === undefined) return body;
+  return `${body}\n\n  ${sanitizeNoticeField(input.merchantReason, 240)}`;
 }

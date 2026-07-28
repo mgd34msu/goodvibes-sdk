@@ -145,6 +145,14 @@ describe('the payments module never emits card material', () => {
       // keeps this rule meaningful for every other module rather than widening
       // the pattern until it stops catching anything.
       if (file === 'entry-surface.ts') continue;
+      // The three modules that exist to HANDLE card material, added with
+      // `payments.checkout.fillCard`. The capability has to type the card into a
+      // checkout or it cannot buy anything, so exactly these three name the
+      // fields — and each is held to a stricter rule in the test below, which
+      // asserts none of them can log, serialize or echo what it holds. The
+      // exemption is by name rather than by widening the pattern, so every
+      // decision module in this directory is still covered by the rule above.
+      if (file === 'card-material.ts' || file === 'card-redaction.ts' || file === 'fill-card.ts') continue;
       const text = await Bun.file(`${dir}${file}`).text();
       const code = text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
       // The decision modules deal in amounts, tiers and last4. None of them has
@@ -152,6 +160,30 @@ describe('the payments module never emits card material', () => {
       if (/\b(cvv|cvc|securityCode|cardNumber|\bpan\b)\b/i.test(code)) offenders.push(file);
     }
     expect(offenders).toEqual([]);
+  });
+
+  test('the modules that DO hold card material cannot log, serialize or echo it', async () => {
+    const dir = new URL('../packages/sdk/src/platform/payments/', import.meta.url).pathname;
+    for (const file of ['card-material.ts', 'card-redaction.ts', 'fill-card.ts']) {
+      const text = await Bun.file(`${dir}${file}`).text();
+      const code = text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+      // Nothing writes it anywhere a human or a file could read it later.
+      expect(code).not.toMatch(/console\./);
+      expect(code).not.toMatch(/\blog(ger)?\s*\./i);
+      expect(code).not.toMatch(/JSON\.stringify/);
+      // Nothing throws it. An error message is a read path exactly like a
+      // response field, and fill-card.ts discards the driver's own error for
+      // precisely this reason.
+      expect(code).not.toMatch(/throw new [A-Za-z]*Error\([^)]*\$\{\s*(value|material\.)/);
+    }
+
+    // And the result type has no property that could carry a value at all.
+    const fillSource = await Bun.file(`${dir}fill-card.ts`).text();
+    const resultBlock = /export interface FillCardResult \{([\s\S]*?)\}/.exec(fillSource)?.[1] ?? '';
+    expect(resultBlock).not.toBe('');
+    expect(resultBlock).toMatch(/filled: readonly CardFieldName\[\]/);
+    expect(resultBlock).not.toMatch(/\bvalue\b|\bnumber:\s*string|\bcvv\b/);
   });
 
   test('the facts a prompt is rendered from carry last4 only', async () => {

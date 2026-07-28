@@ -61,6 +61,12 @@ export interface PaymentsConfig {
   shippingAddress: PaymentsAddressConfig;
   /** Ordered command-authority channels. Email is never accepted here. */
   notifyChannels: string;           // default: ''
+  /** Registrable domains added to / removed from the recognised-retailer list. */
+  majorRetailersAdditional: string; // default: ''
+  majorRetailersExcluded: string;   // default: ''
+  /** eBay per-listing bar; seller-side figures only. */
+  ebayMinSellerFeedbackCount: number;   // default: 100
+  ebayMinSellerPositivePercent: number; // default: 98
   windows: PaymentsWindowsConfig;
 }
 
@@ -99,6 +105,10 @@ export type PaymentsConfigKey =
   | 'payments.shippingAddress.region'
   | 'payments.shippingAddress.postalCode'
   | 'payments.shippingAddress.country'
+  | 'payments.majorRetailersAdditional'
+  | 'payments.majorRetailersExcluded'
+  | 'payments.ebayMinSellerFeedbackCount'
+  | 'payments.ebayMinSellerPositivePercent'
   | 'payments.notifyChannels';
 
 /** The value type each payments key carries, for `ConfigValue<K>`. */
@@ -130,5 +140,9 @@ export interface PaymentsConfigValueMap {
   'payments.shippingAddress.region': string;
   'payments.shippingAddress.postalCode': string;
   'payments.shippingAddress.country': string;
+  'payments.majorRetailersAdditional': string;
+  'payments.majorRetailersExcluded': string;
+  'payments.ebayMinSellerFeedbackCount': number;
+  'payments.ebayMinSellerPositivePercent': number;
   'payments.notifyChannels': string;
 }
