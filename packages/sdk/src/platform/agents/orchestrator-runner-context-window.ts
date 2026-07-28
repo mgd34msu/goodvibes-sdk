@@ -37,6 +37,7 @@ import type { AgentRecord } from '../tools/agent/index.js';
 import type { LLMProvider } from '../providers/interface.js';
 import { buildLayeredOrchestratorSystemPrompt } from './orchestrator-prompts.js';
 import type { AgentOrchestratorRunContext } from './orchestrator-runner.js';
+import { setAgentProgress } from './progress-audience.js';
 
 /** Fraction of the context window at which compaction is triggered (default fallback). */
 const CONTEXT_COMPACT_THRESHOLD = 0.85;
@@ -139,7 +140,7 @@ export function applyContextWindowAwareness(
     `[AgentOrchestrator] context-window awareness: estimated ${totalEstimate} tokens exceeds ${threshold} (${Math.round(compactThreshold * 100)}% of ${modelWindow}) - compacting`,
     { agentId: record.id, turn, msgTokens, sysTokens, toolTokens, contextWindow: modelWindow },
   );
-  record.progress = `Turn ${turn} · Compacting context…`;
+  setAgentProgress(record, `Turn ${turn} · Compacting context…`, 'operator');
 
   if (modelWindow <= MIN_WINDOW_FOR_LLM_COMPACT) {
     conversation.replaceMessagesForLLM(compactSmallWindow(messages));

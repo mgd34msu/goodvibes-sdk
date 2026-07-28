@@ -36,6 +36,14 @@ export type AgentEvent =
       agentId: string;
       taskId?: string;
       progress: string;
+      /**
+       * Who `progress` was written for. Absent means `operator`, and an
+       * `operator` line is never rendered into a reply on a channel — see
+       * platform/agents/progress-audience.ts. The channel renderer reads this
+       * field and nothing else to decide, so a progress line that forgets to
+       * declare an audience stays on the machine rather than reaching a phone.
+       */
+      audience?: 'owner' | 'operator' | undefined;
       parentAgentId?: string | undefined;
       wrfcId?: string | undefined;
       wrfcRole?: 'owner' | 'orchestrator' | 'engineer' | 'reviewer' | 'fixer' | 'integrator' | 'verifier' | undefined;

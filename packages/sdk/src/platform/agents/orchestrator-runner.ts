@@ -25,7 +25,7 @@ import type { ProcessManager } from '../tools/shared/process-manager.js';
 import type { FeatureFlagManager } from '../runtime/feature-flags/manager.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import { emitCommunicationConsumed } from '../runtime/emitters/index.js';
-import { maybeCompactAfterModelContextWarning, summarizeToolArgs } from './orchestrator-utils.js';
+import { maybeCompactAfterModelContextWarning, setAgentProgress, summarizeToolArgs, type ProgressAudience } from './orchestrator-utils.js';
 import { buildLayeredOrchestratorSystemPrompt, buildOrchestratorSystemPrompt } from './orchestrator-prompts.js';
 import { completeOrRegenerate, recoverEmptyConversationalReply } from './conversational-reply-recovery.js';
 import {
@@ -80,7 +80,7 @@ export interface AgentOrchestratorRunContext {
   readonly runtimeBus: RuntimeEventBus | null;
   readonly featureFlagManager: FeatureFlagManager | null;
   readonly emitterContext: (agentId: string) => EmitterContext;
-  readonly emitAgentProgress: (recordId: string, progress: string) => void;
+  readonly emitAgentProgress: (recordId: string, progress: string, audience: ProgressAudience) => void;
   readonly emitOrchestrationProgress: (record: AgentRecord, progress: string) => void;
   readonly emitAgentStarted: (recordId: string) => void;
   readonly emitAgentCancelledEvent: (recordId: string, reason: string) => void;
@@ -220,10 +220,11 @@ async function executeToolCalls(
   for (const originalCall of toolCalls) {
     const call = { ...originalCall, arguments: { ...originalCall.arguments } };
     const argsSummary = summarizeToolArgs(call.arguments as Record<string, unknown>);
-    record.progress = `Turn ${turn} · ${call.name}${argsSummary}`;
+    // The tool trace: for the TUI's activity surfaces, never for a channel.
+    setAgentProgress(record, `Turn ${turn} · ${call.name}${argsSummary}`, 'operator');
     record.toolCallCount++;
-    context.emitAgentProgress(record.id, record.progress);
-    context.emitOrchestrationProgress(record, record.progress);
+    context.emitAgentProgress(record.id, record.progress ?? '', 'operator');
+    context.emitOrchestrationProgress(record, record.progress ?? '');
 
     if (call.name === 'exec' || call.name === 'precision_exec') {
       call.arguments = structuredClone(call.arguments);
@@ -374,7 +375,7 @@ export async function runAgentTask(
   record: AgentRecord,
 ): Promise<void> {
   record.status = 'running';
-  record.progress = 'Initialising…';
+  setAgentProgress(record, 'Initialising…', 'operator');
   record.usage = {
     inputTokens: record.usage?.inputTokens ?? 0,
     outputTokens: record.usage?.outputTokens ?? 0,
@@ -386,8 +387,8 @@ export async function runAgentTask(
     reasoningSummaryCount: record.usage?.reasoningSummaryCount ?? 0,
   };
   context.emitAgentStarted(record.id);
-  context.emitAgentProgress(record.id, record.progress);
-  context.emitOrchestrationProgress(record, record.progress);
+  context.emitAgentProgress(record.id, record.progress ?? '', 'operator');
+  context.emitOrchestrationProgress(record, record.progress ?? '');
 
   let session: AgentSession | null = null;
   let conversation: ConversationManager | null = null;
@@ -461,9 +462,9 @@ export async function runAgentTask(
     let continueLoop = true;
     let turn = 0;
     const turnBudget = resolveRunTurnBudget(context, record);
-    record.progress = 'Turn 1 · Thinking…';
-    context.emitAgentProgress(record.id, record.progress);
-    context.emitOrchestrationProgress(record, record.progress);
+    setAgentProgress(record, 'Turn 1 · Thinking…', 'operator');
+    context.emitAgentProgress(record.id, record.progress ?? '', 'operator');
+    context.emitOrchestrationProgress(record, record.progress ?? '');
 
     const callHistory: string[] = [];
     const LOOP_SYSTEM_THRESHOLD = 3;
@@ -708,9 +709,9 @@ export async function runAgentTask(
                 `[AgentOrchestrator] context-window awareness: context size exceeded on turn ${turn} - emergency compaction and retry`,
                 { agentId: record.id, error: chatErr instanceof Error ? chatErr.message : String(chatErr) },
               );
-              record.progress = `Turn ${turn} · Context exceeded, compacting…`;
-              context.emitAgentProgress(record.id, record.progress);
-              context.emitOrchestrationProgress(record, record.progress);
+              setAgentProgress(record, `Turn ${turn} · Context exceeded, compacting…`, 'operator');
+              context.emitAgentProgress(record.id, record.progress ?? '', 'operator');
+              context.emitOrchestrationProgress(record, record.progress ?? '');
               const currentMessages = conversation.getMessagesForLLM();
               const compacted = compactSmallWindow(
                 currentMessages,
@@ -733,9 +734,9 @@ export async function runAgentTask(
               context.providerOptimizer?.recordFallbackTransition(previousRouteId, activeRouteId, reason);
               record.model = activeRouteId;
               record.provider = activeRoute.provider.name;
-              record.progress = `Model fallback → ${activeRouteId}`;
-              context.emitAgentProgress(record.id, record.progress);
-              context.emitOrchestrationProgress(record, record.progress);
+              setAgentProgress(record, `Model fallback → ${activeRouteId}`, 'owner'); // their reply, not the machine
+              context.emitAgentProgress(record.id, record.progress ?? '', 'owner');
+              context.emitOrchestrationProgress(record, record.progress ?? '');
             } else if (isNetworkTransportError(chatErr) && networkAttempt < NETWORK_RETRY_DELAYS_MS.length) {
               const delayMs = NETWORK_RETRY_DELAYS_MS[networkAttempt]!;
               const delaySec = Math.round(delayMs / 1000);
@@ -743,9 +744,9 @@ export async function runAgentTask(
                 `Agent ${record.id}: network error on turn ${turn}, retrying in ${delaySec}s (attempt ${networkAttempt + 1}/${NETWORK_RETRY_DELAYS_MS.length})`,
                 { error: chatErr instanceof Error ? chatErr.message : String(chatErr) },
               );
-              record.progress = `Network error, retrying in ${delaySec}s…`;
-              context.emitAgentProgress(record.id, record.progress);
-              context.emitOrchestrationProgress(record, record.progress);
+              setAgentProgress(record, `Network error, retrying in ${delaySec}s…`, 'owner'); // owed the reason it is late
+              context.emitAgentProgress(record.id, record.progress ?? '', 'owner');
+              context.emitOrchestrationProgress(record, record.progress ?? '');
               networkAttempt++;
               await new Promise<void>((resolve) => {
                 const timer = setTimeout(resolve, delayMs);
@@ -763,9 +764,9 @@ export async function runAgentTask(
                 `Agent ${record.id}: rate limited on turn ${turn}, retrying in ${delaySec}s (attempt ${rateLimitAttempt + 1}/${RATE_LIMIT_MAX_RETRIES})`,
                 { error: chatErr instanceof Error ? chatErr.message : String(chatErr) },
               );
-              record.progress = `Rate limited, retrying in ${delaySec}s…`;
-              context.emitAgentProgress(record.id, record.progress);
-              context.emitOrchestrationProgress(record, record.progress);
+              setAgentProgress(record, `Rate limited, retrying in ${delaySec}s…`, 'owner'); // as the network retry
+              context.emitAgentProgress(record.id, record.progress ?? '', 'owner');
+              context.emitOrchestrationProgress(record, record.progress ?? '');
               rateLimitAttempt++;
               await new Promise<void>((resolve) => {
                 const timer = setTimeout(resolve, RATE_LIMIT_RETRY_DELAY_MS);
@@ -783,7 +784,7 @@ export async function runAgentTask(
           throw new Error(`Agent ${record.id}: chat retry loop exceeded ${maxChatRetryIterations} iterations`);
         }
         record.streamingContent = undefined;
-        record.progress = `Turn ${turn} · Thinking…`;
+        setAgentProgress(record, `Turn ${turn} · Thinking…`, 'operator');
       }
 
       // Honest "consumed at boundary" signal, emitted here (not at drain time
@@ -821,7 +822,7 @@ export async function runAgentTask(
         response, conversation, record, turn,
         contextWindowAwarenessEnabled: context.featureFlagManager?.isEnabled('agent-context-window-awareness') ?? true,
         emitProgress: (progress) => {
-          context.emitAgentProgress(record.id, progress);
+          context.emitAgentProgress(record.id, progress, 'operator');
           context.emitOrchestrationProgress(record, progress);
         },
       });
@@ -896,7 +897,7 @@ export async function runAgentTask(
             `You have already executed this exact call (${worstTool}) ${worstCount} times with identical arguments. The results from your previous calls are already in your conversation history. Review them and proceed to the next step.`,
           );
         }
-        record.progress = `Turn ${turn} · Thinking…`;
+        setAgentProgress(record, `Turn ${turn} · Thinking…`, 'operator');
       } else {
         continueLoop = completeOrRegenerate(record, conversation, response);
       }

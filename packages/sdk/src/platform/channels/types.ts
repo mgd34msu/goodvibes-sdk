@@ -4,6 +4,8 @@
  * Shared channel and route-binding contracts for omnichannel control surfaces.
  */
 
+import type { ChannelRenderAudience } from './render-audience.js';
+
 export type ChannelSurface =
   | 'tui'
   | 'web'
@@ -481,6 +483,12 @@ export interface ChannelAllowlistEditResult {
 export interface ChannelRenderEvent {
   readonly id: string;
   readonly kind: ChannelRenderEventKind;
+  /**
+   * Who this line is written for. Absent falls back to the kind's default,
+   * which denies for every diagnostic kind — see channels/render-audience.ts.
+   * `eventLine()` renders nothing that is not the owner's.
+   */
+  readonly audience?: ChannelRenderAudience | undefined;
   readonly phase: ChannelRenderPhase;
   readonly ts: number;
   readonly text?: string | undefined;

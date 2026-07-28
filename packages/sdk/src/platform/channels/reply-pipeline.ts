@@ -15,6 +15,7 @@ import { logger } from '../utils/logger.js';
 import { markEventsDelivered, selectUndeliveredEvents } from './reply-delta.js';
 import { buildRenderedText, normalizeChannelRenderEventFromRuntime } from './reply-render.js';
 import { DEFAULT_POLICY } from './reply-policy.js';
+import type { ChannelRenderAudience } from './render-audience.js';
 
 export { normalizeChannelRenderEventFromRuntime } from './reply-render.js';
 
@@ -262,14 +263,28 @@ export class ChannelReplyPipeline {
     return this.buffers.get(agentId)?.pending ?? null;
   }
 
-  async deliverProgress(agentId: string, explicitText?: string, force = false): Promise<ChannelRenderResult | null> {
-    return await this.runExclusive(agentId, async () => await this.deliverProgressExclusive(agentId, explicitText, force));
+  /**
+   * `audience` classifies `explicitText` only — the buffered events carry their
+   * own. It defaults to `operator` for the same reason the field does
+   * everywhere else: a caller who hands over a status string without saying who
+   * wrote it is handing over `AgentRecord.progress`, which is the orchestrator's
+   * running tool name and a scrap of its arguments. That reached the owner's
+   * phone as `registry — email send`. See agents/progress-audience.ts.
+   */
+  async deliverProgress(
+    agentId: string,
+    explicitText?: string,
+    force = false,
+    audience: ChannelRenderAudience = 'operator',
+  ): Promise<ChannelRenderResult | null> {
+    return await this.runExclusive(agentId, async () => await this.deliverProgressExclusive(agentId, explicitText, force, audience));
   }
 
   private async deliverProgressExclusive(
     agentId: string,
     explicitText: string | undefined,
     force: boolean,
+    audience: ChannelRenderAudience,
   ): Promise<ChannelRenderResult | null> {
     const state = this.buffers.get(agentId);
     if (!state) return null;
@@ -281,7 +296,10 @@ export class ChannelReplyPipeline {
     // made the owner's primary channel the only one with no "what is happening
     // now" at all — and it was inert anyway, because the progress phase used to
     // discard explicitText entirely. buildRenderedText bounds it to one line.
-    const explicit = explicitText ?? '';
+    // ...as long as it was written FOR the reader. Operator status is dropped
+    // here rather than filtered downstream, so it never enters the rendered
+    // body, never sets `lastDeliveredText`, and never consumes a delivery slot.
+    const explicit = audience === 'owner' ? explicitText ?? '' : '';
     // Delta only. Rendering the whole accumulated buffer on every tick is what
     // made each notification re-send everything that came before it, so line
     // counts climbed 3 -> 10 -> 13 while the reader learned nothing new.

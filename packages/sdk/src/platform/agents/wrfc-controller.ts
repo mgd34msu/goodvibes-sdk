@@ -21,6 +21,7 @@ import type {
   WrfcSubtask,
 } from './wrfc-types.js';
 import { WrfcWorkmap } from './wrfc-workmap.js';
+import { setAgentProgress } from './progress-audience.js';
 import { AgentWorktree, type CommitWorkingTreeResult } from './worktree.js';
 import { completePlanItemsForAgent } from './wrfc-plan-sync.js';
 import type { ConfigManager } from '../config/manager.js';
@@ -518,7 +519,7 @@ export class WrfcController {
       record.wrfcSubtaskId = subtaskId;
     }
     if (role === 'owner') {
-      record.progress = this.ownerProgress(chain);
+      setAgentProgress(record, this.ownerProgress(chain), 'operator'); // chain id + phase: bookkeeping
     }
     if (isAgentInFlight(record)) {
       emitAgentProgress(this.runtimeBus, {
@@ -528,7 +529,7 @@ export class WrfcController {
         agentId: record.id,
       }, {
         agentId: record.id,
-        progress: record.progress ?? `WRFC ${role} phase`,
+        progress: record.progress ?? `WRFC ${role} phase`, audience: 'operator',
         ...(record.parentAgentId ? { parentAgentId: record.parentAgentId } : {}),
         wrfcId: chain.id,
         wrfcRole: role,
@@ -572,7 +573,7 @@ export class WrfcController {
     this.applyWrfcAgentMetadata(chain, owner, 'owner');
     owner.status = 'running';
     delete owner.completedAt;
-    owner.progress = reason ? `${this.ownerProgress(chain)} - ${reason}` : this.ownerProgress(chain);
+    setAgentProgress(owner, reason ? `${this.ownerProgress(chain)} - ${reason}` : this.ownerProgress(chain), 'operator');
     emitAgentRunning(this.runtimeBus, {
       sessionId: this.sessionId,
       traceId: `${this.sessionId}:wrfc-owner-active:${chain.id}`,
@@ -591,8 +592,7 @@ export class WrfcController {
       agentId: owner.id,
     }, {
       agentId: owner.id,
-      progress: owner.progress,
-      wrfcId: chain.id,
+      progress: owner.progress ?? '', audience: 'operator', wrfcId: chain.id,
       wrfcRole: 'owner',
       wrfcPhaseOrder: owner.wrfcPhaseOrder,
     });
@@ -1792,7 +1792,7 @@ export class WrfcController {
     if (owner) {
       owner.status = 'cancelled';
       owner.completedAt = Date.now();
-      owner.progress = narration;
+      setAgentProgress(owner, narration, 'operator');
       // Roll up member usage onto the owner (same as completeOwnerAgent) so the
       // owner row shows the chain's real, priceable token totals at cancel time
       // instead of the never-updated spawn-time zeros.
@@ -2716,7 +2716,7 @@ export class WrfcController {
     this.applyWrfcAgentMetadata(chain, owner, 'owner');
     owner.status = status;
     owner.completedAt = Date.now();
-    owner.progress = message;
+    setAgentProgress(owner, message, 'operator'); // reader gets it via fullOutput
     owner.fullOutput = message;
     // The owner never runs an LLM turn itself (it only supervises phase
     // children), so its own usage/toolCallCount stay at the spawn-time zero
