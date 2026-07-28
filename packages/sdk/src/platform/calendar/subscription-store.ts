@@ -18,9 +18,18 @@
  * stage and detail.
  *
  * PURE of ambient IO — no direct fs/network/process; all IO is injected.
+ *
+ * A feed is externally-controlled input, so `events()`/`allEvents()` record an
+ * untrusted ingest through the injected `recordUntrustedIngest`. The refresh
+ * path deliberately records NOTHING: arrival is not ingest (see
+ * untrusted-events.ts and docs/decisions/2026-07-27-arrival-is-not-ingest.md).
  */
 
 import { parseIcs } from './ics-parser.js';
+import {
+  recordCalendarEventIngest,
+  type CalendarUntrustedIngestRecorder,
+} from './untrusted-events.js';
 import type {
   CalendarEvent,
   CalendarSubscription,
@@ -46,6 +55,22 @@ export interface SubscriptionStoreOptions {
   readonly fetcher: FeedFetcher;
   readonly clock?: Clock;
   readonly defaultRefreshIntervalMs?: number;
+  /**
+   * Records that a turn read untrusted event content.
+   *
+   * A subscribed feed is continuous externally-controlled input: whoever can
+   * write to the calendar behind the URL writes the summaries, descriptions,
+   * locations and attendee names this store hands out.
+   *
+   * **Called from `events()` and `allEvents()` — the READS — and from nowhere
+   * else.** `refresh()`, `refreshDue()` and `applyFetch()` are arrival: they run
+   * because a timer said so, with nobody watching. Recording there would write
+   * into whatever turn happened to be open and refuse that turn's outward
+   * action over an event nothing asked for, which hands anyone who can put an
+   * entry on a subscribed calendar a remote off switch. See
+   * docs/decisions/2026-07-27-arrival-is-not-ingest.md.
+   */
+  readonly recordUntrustedIngest?: CalendarUntrustedIngestRecorder;
 }
 
 export interface AddSubscriptionInput {
@@ -128,11 +153,30 @@ export class SubscriptionStore {
   private readonly clock: Clock;
   private readonly defaultInterval: number;
   private readonly records = new Map<string, SubscriptionRecord>();
+  private readonly recordUntrustedIngest?: CalendarUntrustedIngestRecorder;
 
   constructor(options: SubscriptionStoreOptions) {
     this.fetcher = options.fetcher;
     this.clock = options.clock ?? (() => Date.now());
     this.defaultInterval = clampInterval(options.defaultRefreshIntervalMs, DEFAULT_REFRESH_INTERVAL_MS);
+    if (options.recordUntrustedIngest) this.recordUntrustedIngest = options.recordUntrustedIngest;
+  }
+
+  /**
+   * Record that the caller just read this subscription's event content.
+   *
+   * The ONLY place this store records an ingest, and it is reached only from a
+   * read. The feed URL is masked before it becomes an origin: a Google/Outlook
+   * "secret address" grants read access, and an origin surfaces into refusal
+   * text an operator sees.
+   */
+  private recordRead(record: SubscriptionRecord): void {
+    recordCalendarEventIngest({
+      record: this.recordUntrustedIngest,
+      provenance: { kind: 'subscription', name: record.name, maskedUrl: maskFeedUrl(record.url) },
+      events: record.events,
+      at: new Date(this.clock()).toISOString(),
+    });
   }
 
   /**
@@ -214,14 +258,24 @@ export class SubscriptionStore {
     return this.records.has(name);
   }
 
-  /** Events from the most recent successful parse of the named subscription. */
+  /**
+   * Events from the most recent successful parse of the named subscription.
+   *
+   * A READ, so this is where the untrusted ingest is recorded — someone asked
+   * for the content and is about to look at it.
+   */
   events(name: string): readonly CalendarEvent[] {
-    return this.records.get(name)?.events ?? [];
+    const record = this.records.get(name);
+    if (!record) return [];
+    this.recordRead(record);
+    return record.events;
   }
 
   /** All subscriptions' events, each tagged with its source subscription name. */
   allEvents(): { readonly name: string; readonly events: readonly CalendarEvent[] }[] {
-    return [...this.records.values()].map((r) => ({ name: r.name, events: r.events }));
+    const records = [...this.records.values()];
+    for (const record of records) this.recordRead(record);
+    return records.map((r) => ({ name: r.name, events: r.events }));
   }
 
   /**

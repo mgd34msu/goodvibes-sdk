@@ -268,6 +268,18 @@ export interface MergedCalendarEvent extends CalendarEvent {
   readonly calendarId?: string;
   /** A display label for the owning calendar/account, for source-labeled views. */
   readonly calendarLabel?: string;
+  /**
+   * True only when the PROVIDER states the owner organized this event —
+   * Google's `organizer.self`, Microsoft Graph's `isOrganizer`. Both are
+   * read-only and both mean "the organizer corresponds to the calendar this
+   * copy appears on".
+   *
+   * Absent means the provider said nothing, which is read as somebody else's.
+   * This is what decides whether the event's text is recorded as untrusted
+   * content when a turn reads it (see untrusted-events.ts): an event the owner
+   * created himself is not externally sourced; everything else is.
+   */
+  readonly organizerIsOwner?: boolean;
 }
 
 /** One connected calendar as listed from a provider (calendarList / me/calendars). */

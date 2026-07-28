@@ -28,6 +28,10 @@ import {
   listGraphEvents,
 } from './microsoft-graph-api.js';
 import { compareMergedCalendarEventsByStart } from './merged-calendar-model.js';
+import {
+  recordCalendarEventIngest,
+  type CalendarUntrustedIngestRecorder,
+} from './untrusted-events.js';
 import type {
   AuthCodeFlowStart,
   CalendarProviderId,
@@ -56,6 +60,14 @@ export interface CalendarConnectorOptions {
   /** Injected delay for device-code polling; defaults to a real timer. */
   readonly sleep?: Sleep;
   readonly refreshLeewayMs?: number;
+  /**
+   * Records that a turn read untrusted event content.
+   *
+   * Called from `listEvents` — a read someone asked for — and from nowhere
+   * else. An event the provider says the owner organized is not recorded; an
+   * invitation somebody else sent is. See untrusted-events.ts.
+   */
+  readonly recordUntrustedIngest?: CalendarUntrustedIngestRecorder;
 }
 
 /** A time window for event listing, as ISO strings. */
@@ -71,12 +83,14 @@ export class CalendarConnector {
   private readonly listenerFactory?: LoopbackListenerFactory;
   private readonly sleep: Sleep;
   private readonly store: CalendarTokenStore;
+  private readonly recordUntrustedIngest?: CalendarUntrustedIngestRecorder;
 
   constructor(options: CalendarConnectorOptions) {
     this.secrets = options.secrets;
     this.fetchImpl = options.fetchImpl;
     this.clock = options.clock ?? (() => Date.now());
     if (options.listenerFactory) this.listenerFactory = options.listenerFactory;
+    if (options.recordUntrustedIngest) this.recordUntrustedIngest = options.recordUntrustedIngest;
     this.sleep = options.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
     const storeOptions: CalendarTokenStoreOptions = {
       secrets: options.secrets,
@@ -186,6 +200,19 @@ export class CalendarConnector {
             end: window.timeMax,
           });
       out.push(...events);
+      // Recorded here, at the READ, and per calendar so the label in an origin
+      // names the calendar the invitation landed on. Nothing records at fetch
+      // time on a timer — see untrusted-events.ts.
+      recordCalendarEventIngest({
+        record: this.recordUntrustedIngest,
+        provenance: {
+          kind: 'provider',
+          provider: config.provider,
+          calendarLabel: calendar.name,
+        },
+        events,
+        at: new Date(this.clock()).toISOString(),
+      });
     }
     return [...out].sort(compareMergedCalendarEventsByStart);
   }
