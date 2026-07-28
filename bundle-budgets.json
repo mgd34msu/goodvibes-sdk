@@ -246,8 +246,8 @@
     "rationale": "external-calendar export (ICS parser + RRULE subset + feed store + OAuth 2.0 Google/Microsoft connectivity); measured 1716 B gzip @ v1.0.0 release verification; headroom max(ceil(1716*1.2)=2060, 1716+50=1766) -> 2060 (1.2x dominates)"
   },
   "./platform/channels": {
-    "gzip_bytes": 524,
-    "rationale": "grew when getBuiltinSetupSchema + CHANNEL_SETUP_VERSION were exported through this entry (the authoritative per-channel setup declaration, so consumers stop duplicating it), pulling builtin/setup-schema.ts into the entry; measured 436 B gzip @ channel-setup-exports commit; headroom max(ceil(436*1.2)=524, 436+50=486) -> 524 (1.2x dominates)"
+    "gzip_bytes": 716,
+    "rationale": "grew again when channel HEALTH was exported through this entry — resolveChannelHealthState, isChannelFailing/isChannelWorking, observedRuntime/unobservableRuntime and ChannelHealthWatcher — pulling health.ts and health-watcher.ts into it. Exported deliberately: a consumer that classifies a reported state itself, instead of using the rule that produced it, is how a dead channel came to read as healthy. Previously 524 (436 B measured) for getBuiltinSetupSchema + CHANNEL_SETUP_VERSION; measured 596 B gzip @ channel-health-runtime commit; headroom max(ceil(596*1.2)=716, 596+50=646) -> 716 (1.2x dominates)"
   },
   "./platform/cloudflare": {
     "gzip_bytes": 217,
