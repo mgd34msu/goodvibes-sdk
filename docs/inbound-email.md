@@ -1639,6 +1639,23 @@ built.
 > code, and it decays. Re-verify it against the code at the moment it is handed
 > to someone to implement — not at the moment it was written.
 
+**A fourth instance, committed while citing this very rule.** I reported that
+`method-catalog-email.ts` declared no `required` arrays, because grepping it for
+the word `required` returned only a comment. The implementing round read the
+code instead: `objectSchema(properties, required = [], options)` takes it
+**positionally**, so `email.inbox.read` has always declared
+`objectSchema({ uid: NUMBER_SCHEMA }, ['uid'])`, and the catalog and the handlers
+already agreed exactly. There was no defect. I had invented one and dispatched
+it as work.
+
+> **Absence of a grep hit is not absence of the thing.** A negative grep proves a
+> string is missing and nothing more. Before reporting that something is not
+> declared, read the declaration site and the signature it is passed to.
+
+Knowing the failure mode did not prevent repeating it, in the same message that
+cited it. That is the honest lesson: this rule is not self-executing, and the
+only thing that actually catches the class is opening the file.
+
 ## 14. Related
 
 - `docs/payments.md` — a consumer of this capability.
