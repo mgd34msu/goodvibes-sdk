@@ -64,9 +64,13 @@ import type {
   ImapEnvelope,
   ImapMessageDetail,
 } from './imap-client.js';
+import type { EmailInboxUnreadableResponse, EmailMessageRead } from './email-read-results.js';
 import type { SmtpSendResult } from './smtp-client.js';
 import type { EmailSenderClaim, EmailSenderClaimDescriber } from './sender-claim.js';
 import type { Socket } from 'node:net';
+
+// Re-exported so this module stays the one entry point callers already import.
+export type { EmailInboxUnreadableResponse, EmailMessageRead } from './email-read-results.js';
 
 // ---------------------------------------------------------------------------
 // Email defaults injection
@@ -258,49 +262,16 @@ export interface EmailInboxListResult {
    */
   readonly total: number;
   /**
-   * FETCH responses on THIS page that the client could not read, when there
-   * were any. Absent means there were none.
+   * FETCH responses on THIS page the client could not read. Absent means none.
    *
-   * Here because a short page used to be silent. A page of UIDs 101/102/103
-   * with 102 unreadable came back as two messages and `total: 3`, and nothing
-   * anywhere said which of the two possible things had happened: 102 was
-   * expunged between the search and the fetch (ordinary, nothing to report),
-   * or 102 is sitting in the mailbox and this client could not read the
-   * server's answer about it (not ordinary, and the message is missing from a
-   * list the owner is reading as complete). `total` cannot carry that, because
-   * it counts the SEARCH match and the loss happens at the FETCH.
-   *
-   * Optional and omitted when empty, so nothing consuming this shape today
-   * sees a change; a caller that wants to know reads `unreadable?.length`.
+   * Here because a short page used to be silent — see
+   * `EmailInboxUnreadableResponse` for the two facts that were being collapsed.
+   * `total` cannot carry it: `total` counts the SEARCH match, and the loss
+   * happens at the FETCH. Omitted when empty, so nothing consuming this shape
+   * today sees a change; a caller that wants to know reads `unreadable?.length`.
    */
   readonly unreadable?: readonly EmailInboxUnreadableResponse[] | undefined;
 }
-
-/**
- * One FETCH response in a listing that the client could not read.
- *
- * A reason and, where it was legible, the UID it named — never message
- * content, since the whole point is that the content could not be read.
- */
-export interface EmailInboxUnreadableResponse {
-  /** The UID the response named, or null when it named none legibly. */
-  readonly uid: number | null;
-  /** Plain language, safe to log and safe to show an owner. */
-  readonly detail: string;
-}
-
-/**
- * What `EmailService.readMessage` found: the message, its absence, or this
- * client's inability to read the server's answer.
- *
- * `gone` and `unreadable` used to be one answer (`null`) and are opposite
- * claims about the owner's mailbox — see `ImapMessageRead`, which this mirrors
- * at the service boundary.
- */
-export type EmailMessageRead =
-  | { readonly outcome: 'read'; readonly detail: ImapMessageDetail }
-  | { readonly outcome: 'gone' }
-  | { readonly outcome: 'unreadable'; readonly problems: readonly EmailInboxUnreadableResponse[] };
 
 /**
  * The fields a draft is composed from. `from` is the only optional one —
