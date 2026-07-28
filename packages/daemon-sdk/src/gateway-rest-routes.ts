@@ -164,6 +164,7 @@ export const GATEWAY_REST_ROUTES: readonly GatewayRestRoute[] = [
   // The daemon types the stored card into an open checkout page. Takes a card
   // id and field targets, answers with field names and a boolean — no request
   // or response on this route carries card material in either direction.
+  route('POST', '/api/payments/checkout/begin', 'payments.checkout.begin'),
   route('POST', '/api/payments/checkout/fill-card', 'payments.checkout.fillCard'),
   route('GET', '/api/payments/purchases', 'payments.purchases.list'),
   // browser.* — real browser control over the platform engine. The engine was

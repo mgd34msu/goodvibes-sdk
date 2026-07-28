@@ -1,109 +1,173 @@
 /**
- * taint-gate.ts — a payment whose target, amount or item derives from untrusted
- * content is refused outright.
+ * taint-gate.ts — who may INITIATE a purchase, and who may choose the merchant.
  *
- * No owner-address exemption. No disclose-instead-of-refuse fallback. No
- * approval path around it. This is the one gate in the capability with no
- * downstream branch at all.
+ * These are two different questions and the owner ruled them differently. This
+ * module used to conflate them, refusing any purchase whose merchant came from
+ * page content and documenting that as a feature. He overrode that:
  *
- * ── Why this does not call evaluateOutwardEffect ──────────────────────────
+ *   "the taint gate is wrong. if i tell you to buy the cheapest X you find
+ *    online, you will 1) find it, 2) show it to me, and then 3) alert me prior
+ *    to purchasing if it is not a major retailer - use your best judgement on
+ *    what you consider a major retailer"
  *
- * `security/untrusted-content.ts` exposes `evaluateOutwardEffect`, which is what
+ * ══ What relaxed, and what did not ════════════════════════════════════════
+ *
+ * RELAXED — **who chooses the merchant** on a purchase he initiated. "Buy the
+ * cheapest X you can find" is his instruction; the item and the intent are his,
+ * and only the storefront was found on a page. That now proceeds, with the
+ * merchant graded by `merchant-judgement.ts` into a veto (silence proceeds) or an
+ * approval (silence denies).
+ *
+ * NOT RELAXED — **who initiates.** Content-initiated purchases are refused
+ * absolutely. An email or a web page saying "buy X from Y" cannot start a
+ * purchase, cannot name a merchant, and cannot set an amount. There is no
+ * owner-approval escape hatch, for the same reason this module has always argued
+ * for money: the approval is exactly the step an injection is trying to reach.
+ *
+ * The distinction is carried in the TYPE rather than checked at runtime.
+ * `merchantDiscovered` exists only on `OwnerOriginIntent`, so "a discovered
+ * merchant is permissible only on an owner-origin intent" is a fact the compiler
+ * enforces rather than a rule a later edit can forget.
+ *
+ * ══ Why this does not call evaluateOutwardEffect ══════════════════════════
+ *
+ * `security/untrusted-content.ts` exposes `evaluateOutwardEffect`, which
  * `email.send` uses. It accepts an `OwnerApproval` and, when one matches the
- * action, returns `allowed: true` FOR TAINTED CONTENT:
+ * action, returns `allowed: true` FOR TAINTED CONTENT. That escape hatch is
+ * right for email — the owner can decide to forward something a stranger wrote —
+ * and wrong for money. The reliable way to guarantee it cannot fire is to not be
+ * on that code path, so this module calls `findContentTaint` directly. A test
+ * passes a valid `OwnerApproval` for the same action and asserts a
+ * content-initiated purchase is still refused.
  *
- *     if (input.approval && input.approval.action === input.request.action) {
- *       return { allowed: true, ... };
- *     }
+ * ══ Which fields are checked ══════════════════════════════════════════════
  *
- * That escape hatch is right for email — the owner can decide to forward
- * something a stranger wrote — and wrong for money, where the same escape hatch
- * is exactly the step an injection is trying to reach. The reliable way to
- * guarantee it cannot fire is to not be on that code path, so this module calls
- * `findContentTaint` directly. There is a test that passes a valid OwnerApproval
- * for the same action and asserts the payment is still refused.
+ * ALWAYS — `item` and `requestedMax`. These come from him or the purchase does
+ * not exist. A page that supplies the thing to buy, or the ceiling to buy it
+ * under, is initiating a purchase whatever else is true.
  *
- * ── Which fields are checked, and which deliberately are not ──────────────
+ * CONDITIONALLY — `merchant` and `checkoutUrl`. Checked when he NAMED the
+ * merchant, because then it has to be his. Not checked when
+ * `merchantDiscovered` is set, because there the storefront came off a page by
+ * design, and grading it — not refusing it — is the safeguard.
  *
- * CHECKED — the fields that decide WHETHER and WHERE money moves. These come
- * from the owner or they do not exist:
- *
- *   merchant      exact containment (short, high-signal — the whole value is
- *                 the payload, exactly like a recipient address)
- *   checkoutUrl   exact containment
- *   item          the length thresholds
- *   requestedMax  the length thresholds, when the request states a limit
- *
- * NOT CHECKED — the merchant's own quoted numbers. The price, tax, fees and
- * shipping costs are READ FROM THE MERCHANT by definition. Taint-checking them
- * would refuse every purchase, and a check that is permanently tripped gets
- * removed — the precise failure mode content-taint.ts was written to avoid. The
- * defence for those numbers is not taint, it is the BUDGET: a page that inflates
- * a price hits the daily item budget or the per-purchase ceiling and needs an
- * approval, and that approval shows our own re-rendered number (message.ts).
- *
- * A deliberate consequence: "buy me the cheapest X you can find online" is
- * refused, because the merchant was chosen from page content rather than named
- * by the owner. He names the merchant, or there is no purchase. That is a
- * feature of the design and is tested as one.
+ * NEVER — the merchant's quoted price, tax, fees and shipping. They are read
+ * from the merchant by definition; checking them would refuse every purchase and
+ * the check would be removed within a release. The BUDGET is their defence: an
+ * inflated price hits the daily budget or the per-purchase ceiling and needs an
+ * approval, showing our own re-rendered number.
  */
 import { findContentTaint, type TaintFinding } from '../security/content-taint.js';
 import type { UntrustedContentLedger } from '../security/untrusted-content.js';
 
-export interface PaymentIntentFields {
-  /** The merchant the OWNER named. Not one discovered on a page. */
+/**
+ * A purchase the OWNER asked for.
+ *
+ * `merchantDiscovered` says whether the storefront was found while browsing
+ * rather than named by him. It lives only on this variant — a content-origin
+ * intent never reaches the point of choosing a merchant.
+ */
+export interface OwnerOriginIntent {
+  readonly origin: 'owner';
+  readonly merchantDiscovered: boolean;
   readonly merchant: string | undefined;
-  /** The checkout url, when one was supplied rather than reached by navigation. */
   readonly checkoutUrl: string | undefined;
-  /** What he asked to buy, in his words. */
   readonly item: string | undefined;
-  /** A spend limit stated in the request, if any. */
   readonly requestedMax: string | undefined;
 }
+
+/**
+ * A purchase something else asked for — a page, an email, a channel message.
+ *
+ * Deliberately has no `merchantDiscovered` field. Every intent of this shape is
+ * refused, so it never gets to choose anything.
+ */
+export interface ContentOriginIntent {
+  readonly origin: 'content';
+  readonly merchant: string | undefined;
+  readonly checkoutUrl: string | undefined;
+  readonly item: string | undefined;
+  readonly requestedMax: string | undefined;
+}
+
+export type PaymentIntent = OwnerOriginIntent | ContentOriginIntent;
 
 export interface PaymentTaintDecision {
   readonly allowed: boolean;
   readonly findings: readonly TaintFinding[];
   readonly reason: string | null;
+  /** Which fields were examined, so a decision can be reconstructed later. */
+  readonly checkedFields: readonly string[];
 }
 
 /**
- * Refuse a payment whose intent derives from untrusted content.
+ * The refusal for a purchase nothing of his initiated.
+ *
+ * Terminal. No approval, no downgrade, no notification-based rescue.
+ */
+export function describeContentInitiatedRefusal(): string {
+  return (
+    'Refused: nothing you said started this purchase. It came from content that arrived '
+    + 'from outside — a page, a message, or a mailbox — and content from outside cannot decide '
+    + 'that money moves, however reasonable it looks. If you want this, ask me for it yourself '
+    + 'and I will find it and price it against your budget.'
+  );
+}
+
+/**
+ * Evaluate a payment intent against the untrusted content read this turn.
  *
  * `ledger` is the process-wide untrusted-content ledger — the same one the
- * browser's page reads and the mail surface's body reads both record into, so a
- * "read a stranger's page, then buy something" composition is visible here as
- * ONE act rather than two unrelated ones.
+ * browser's page reads and the mail surface's body reads both record into, so
+ * "read a stranger's page, then buy something" is visible here as one act.
  */
 export function evaluatePaymentTaint(input: {
-  readonly intent: PaymentIntentFields;
+  readonly intent: PaymentIntent;
   readonly ledger: UntrustedContentLedger;
 }): PaymentTaintDecision {
+  // ── The line that does not move ─────────────────────────────────────────
+  if (input.intent.origin === 'content') {
+    return {
+      allowed: false,
+      findings: [],
+      reason: describeContentInitiatedRefusal(),
+      checkedFields: [],
+    };
+  }
+
+  const intent = input.intent;
   const sources = input.ledger.taintSourcesThisTurn();
-  if (sources.length === 0) {
-    return { allowed: true, findings: [], reason: null };
-  }
 
+  // What must be his, always. A page supplying the thing to buy — or the
+  // ceiling to buy it under — is initiating a purchase whatever else is true.
   const fields: Record<string, string | undefined> = {
-    merchant: input.intent.merchant,
-    checkoutUrl: input.intent.checkoutUrl,
-    item: input.intent.item,
-    requestedMax: input.intent.requestedMax,
+    item: intent.item,
+    requestedMax: intent.requestedMax,
   };
+  const exactMatchFields: string[] = [];
 
-  const findings = findContentTaint(fields, sources, {
-    // The merchant and the checkout url are WHERE the money goes. Length
-    // thresholds are the wrong instrument for a field whose entire value is the
-    // payload, so both are tested by containment.
-    exactMatchFields: ['merchant', 'checkoutUrl'],
-    // No reply exemption and no quote stripping: there is no legitimate payment
-    // shape that quotes a stranger's text.
-  });
-
-  if (findings.length === 0) {
-    return { allowed: true, findings: [], reason: null };
+  // Where the money goes only has to be his when HE chose it. When the merchant
+  // was discovered it came off a page by design, and merchant-judgement.ts grades
+  // it into a veto or an approval rather than refusing it.
+  if (!intent.merchantDiscovered) {
+    fields['merchant'] = intent.merchant;
+    fields['checkoutUrl'] = intent.checkoutUrl;
+    // Short, high-signal fields whose entire value is the payload — length
+    // thresholds are the wrong instrument, so both are tested by containment.
+    exactMatchFields.push('merchant', 'checkoutUrl');
   }
-  return { allowed: false, findings, reason: describePaymentTaint(findings) };
+
+  const checkedFields = Object.keys(fields).filter((key) => fields[key] !== undefined);
+
+  if (sources.length === 0) {
+    return { allowed: true, findings: [], reason: null, checkedFields };
+  }
+
+  const findings = findContentTaint(fields, sources, { exactMatchFields });
+  if (findings.length === 0) {
+    return { allowed: true, findings: [], reason: null, checkedFields };
+  }
+  return { allowed: false, findings, reason: describePaymentTaint(findings), checkedFields };
 }
 
 /**
@@ -121,6 +185,6 @@ export function describePaymentTaint(findings: readonly TaintFinding[]): string 
     `Refused this purchase: its ${fields} derives from content read from ${first.surface} `
     + `(${first.origin}), which anyone can write. The overlapping text is "${first.excerpt}". `
     + 'Content that arrived from outside cannot decide what gets bought or who gets paid. '
-    + 'Tell me the merchant and the item yourself, and I will price it against your budget.'
+    + 'Tell me the item yourself and I will find it and price it against your budget.'
   );
 }

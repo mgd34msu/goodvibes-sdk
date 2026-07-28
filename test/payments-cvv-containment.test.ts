@@ -152,7 +152,15 @@ describe('the payments module never emits card material', () => {
       // asserts none of them can log, serialize or echo what it holds. The
       // exemption is by name rather than by widening the pattern, so every
       // decision module in this directory is still covered by the rule above.
-      if (file === 'card-material.ts' || file === 'card-redaction.ts' || file === 'fill-card.ts') continue;
+      if (
+        file === 'card-material.ts'
+        || file === 'card-redaction.ts'
+        || file === 'fill-card.ts'
+        // Names the card FIELD NAMES in a refusal ("name one of: number,
+        // expiry, ... cvv"), and holds no material itself — it delegates to
+        // fill-card.ts. Held to the same stricter rule below regardless.
+        || file === 'payments-gateway-service.ts'
+      ) continue;
       const text = await Bun.file(`${dir}${file}`).text();
       const code = text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
       // The decision modules deal in amounts, tiers and last4. None of them has
@@ -164,7 +172,7 @@ describe('the payments module never emits card material', () => {
 
   test('the modules that DO hold card material cannot log, serialize or echo it', async () => {
     const dir = new URL('../packages/sdk/src/platform/payments/', import.meta.url).pathname;
-    for (const file of ['card-material.ts', 'card-redaction.ts', 'fill-card.ts']) {
+    for (const file of ['card-material.ts', 'card-redaction.ts', 'fill-card.ts', 'payments-gateway-service.ts']) {
       const text = await Bun.file(`${dir}${file}`).text();
       const code = text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 

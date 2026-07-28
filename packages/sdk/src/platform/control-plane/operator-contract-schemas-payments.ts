@@ -241,3 +241,118 @@ export const PAYMENTS_CHECKOUT_FILL_CARD_OUTPUT_SCHEMA = objectSchema(
   },
   ['ok', 'filled', 'failedField', 'reason'],
 );
+
+
+// ---------------------------------------------------------------------------
+// payments.checkout.begin
+// ---------------------------------------------------------------------------
+
+/**
+ * One line item, as the caller read it off the page.
+ *
+ * Every amount is a STRING here on purpose. The daemon parses these to integer
+ * minor units with its own parser, which refuses anything ambiguous; accepting
+ * a number would mean trusting whoever did the reading to have parsed
+ * "1.299,00" the same way we would, and that is the exact mistake that costs a
+ * factor of a thousand.
+ */
+const CHECKOUT_LINE_SCHEMA = objectSchema(
+  { label: STRING_SCHEMA, quantity: STRING_SCHEMA, unitPrice: STRING_SCHEMA },
+  ['label', 'quantity', 'unitPrice'],
+);
+
+const CHECKOUT_FEE_SCHEMA = objectSchema(
+  { label: STRING_SCHEMA, amount: STRING_SCHEMA },
+  ['label', 'amount'],
+);
+
+const CHECKOUT_SHIPPING_OPTION_SCHEMA = objectSchema(
+  { label: STRING_SCHEMA, cost: STRING_SCHEMA },
+  ['label', 'cost'],
+);
+
+/** What the owner asked for, so the cart can be checked against it. */
+const REQUESTED_LINE_SCHEMA = objectSchema(
+  { label: STRING_SCHEMA, quantity: NUMBER_SCHEMA },
+  ['label', 'quantity'],
+);
+
+const ADDRESS_FIELD_TARGET_SCHEMA = objectSchema(
+  {
+    kind: enumSchema(['shipping', 'billing']),
+    field: enumSchema(['name', 'line1', 'line2', 'city', 'region', 'postalCode', 'country']),
+    ref: STRING_SCHEMA,
+  },
+  ['kind', 'field', 'ref'],
+);
+
+const CARD_TARGET_SCHEMA = objectSchema(
+  {
+    field: enumSchema(['number', 'expiry', 'expiryMonth', 'expiryYear', 'cvv', 'cardholderName']),
+    ref: STRING_SCHEMA,
+  },
+  ['field', 'ref'],
+);
+
+/**
+ * Beginning a checkout.
+ *
+ * Note which `required` entries are present. The handler refuses without every
+ * one of them, and a catalog that declared fewer would produce a 400 no
+ * consumer could have predicted from the schema — the omission found in
+ * method-catalog-email.ts, where the handler enforces `uid` and the descriptor
+ * declares nothing.
+ */
+export const PAYMENTS_CHECKOUT_BEGIN_INPUT_SCHEMA = objectSchema(
+  {
+    sessionId: STRING_SCHEMA,
+    pageId: STRING_SCHEMA,
+    merchantDomain: STRING_SCHEMA,
+    checkoutUrl: STRING_SCHEMA,
+    /** The owner's own words for what he asked to buy. Never a page title. */
+    item: STRING_SCHEMA,
+    cardId: STRING_SCHEMA,
+    requestedLines: { ...arraySchema(REQUESTED_LINE_SCHEMA), minItems: 1 },
+    lines: { ...arraySchema(CHECKOUT_LINE_SCHEMA), minItems: 1 },
+    tax: STRING_SCHEMA,
+    fees: arraySchema(CHECKOUT_FEE_SCHEMA),
+    shippingOptions: { ...arraySchema(CHECKOUT_SHIPPING_OPTION_SCHEMA), minItems: 1 },
+    statedTotal: STRING_SCHEMA,
+    currency: STRING_SCHEMA,
+    orderSummaryText: STRING_SCHEMA,
+    cardFields: { ...arraySchema(CARD_TARGET_SCHEMA), minItems: 1 },
+    addressFields: arraySchema(ADDRESS_FIELD_TARGET_SCHEMA),
+    shippingTargets: arraySchema(STRING_SCHEMA),
+    placeOrderTarget: STRING_SCHEMA,
+    preferredTier: enumSchema(['normal', 'fast', 'fastest']),
+    expirySeparator: STRING_SCHEMA,
+    twoDigitYear: BOOLEAN_SCHEMA,
+    requestedMax: STRING_SCHEMA,
+  },
+  [
+    'sessionId', 'pageId', 'merchantDomain', 'checkoutUrl', 'item', 'cardId',
+    'requestedLines', 'lines', 'shippingOptions', 'cardFields', 'placeOrderTarget',
+  ],
+);
+
+/**
+ * What comes back.
+ *
+ * Amounts are integers WE computed, never the merchant's text, and there is no
+ * field here that could carry card material.
+ */
+export const PAYMENTS_CHECKOUT_BEGIN_OUTPUT_SCHEMA = objectSchema(
+  {
+    outcome: STRING_SCHEMA,
+    purchaseId: nullableSchema(STRING_SCHEMA),
+    reason: nullableSchema(STRING_SCHEMA),
+    merchantOrderId: nullableSchema(STRING_SCHEMA),
+    totalMinorUnits: nullableSchema(NUMBER_SCHEMA),
+    currency: nullableSchema(STRING_SCHEMA),
+    shippingTierUsed: nullableSchema(STRING_SCHEMA),
+    steppedDown: BOOLEAN_SCHEMA,
+    /** Set when 3-D Secure, a CAPTCHA or an OTP interrupted the submit. */
+    challengeStep: nullableSchema(STRING_SCHEMA),
+  },
+  ['outcome', 'purchaseId', 'reason', 'merchantOrderId', 'totalMinorUnits', 'currency', 'shippingTierUsed', 'steppedDown', 'challengeStep'],
+);

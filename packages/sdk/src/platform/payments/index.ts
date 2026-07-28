@@ -71,7 +71,8 @@ export type {
 } from './windows.js';
 
 export { evaluatePaymentTaint, describePaymentTaint } from './taint-gate.js';
-export type { PaymentIntentFields, PaymentTaintDecision } from './taint-gate.js';
+export { describeContentInitiatedRefusal } from './taint-gate.js';
+export type { PaymentIntent, OwnerOriginIntent, ContentOriginIntent, PaymentTaintDecision } from './taint-gate.js';
 
 export {
   renderApprovalMessage,
@@ -94,21 +95,22 @@ export {
 export type { CardEntrySurface, CardDetailScan, CardEntryDecision } from './entry-surface.js';
 
 export {
-  DEFAULT_RECOGNISED_RETAILERS,
   classifyMerchant,
-  parseRetailerList,
-  resolveRecognisedRetailers,
   windowForPurchase,
-} from './major-retailers.js';
+  parseDomainList,
+  merchantPolicyFromConfig,
+  MERCHANT_RECOURSE_CRITERION,
+} from './merchant-recourse.js';
 export type {
-  RetailerQualifier,
-  RetailerEntry,
-  SaleType,
+  MerchantJudgeInput,
+  MerchantJudgePort,
+  MerchantJudgement,
   MerchantIdentity,
+  MerchantVerdict,
+  MerchantPolicy,
+  MarketplaceKind,
   MarketplacePolicy,
-  MajorRetailerPolicy,
-  MajorRetailerVerdict,
-} from './major-retailers.js';
+} from './merchant-recourse.js';
 
 export {
   DEFAULT_MARKETPLACE_LISTING_THRESHOLDS,
@@ -218,3 +220,12 @@ export type {
   AddressCheck,
   AddressFillResult,
 } from './address.js';
+
+export { renderPurchaseReport, renderConfirmationReport } from './message.js';
+export {
+  correlatePurchaseMail,
+  extractConfirmationFacts,
+  senderRegistrableDomain,
+  CONFIRMATION_WINDOW_MS,
+} from './order-correlation.js';
+export type { InboundMailFacts, CorrelationResult, ConfirmationFacts } from './order-correlation.js';

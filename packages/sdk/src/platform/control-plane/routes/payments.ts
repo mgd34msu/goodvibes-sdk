@@ -122,6 +122,14 @@ export interface PaymentsGatewayService {
    * merchant it was decided against, and types. It MUST NOT return any part of
    * the material, and MUST NOT include any of it in a thrown error.
    */
+  /**
+   * Run a purchase against an open browser page.
+   *
+   * The implementation owns the whole decision order; this module only shapes
+   * the call. Amounts arrive as STRINGS and are parsed by the daemon, so no
+   * number on this path was parsed by a caller.
+   */
+  beginCheckout(input: PaymentBeginCheckoutInput): Promise<PaymentBeginResultView>;
   fillCardIntoCheckout(input: {
     readonly sessionId: string;
     readonly pageId: string;
@@ -131,6 +139,49 @@ export interface PaymentsGatewayService {
   }): Promise<PaymentFillCardResult>;
   listPurchases(input: { readonly limit: number; readonly dayKey: string | undefined }):
     Promise<{ purchases: readonly PaymentPurchaseView[]; total: number }>;
+}
+
+/** The shape `payments.checkout.begin` hands the service, already validated. */
+export interface PaymentBeginCheckoutInput {
+  readonly sessionId: string;
+  readonly pageId: string;
+  readonly merchantDomain: string;
+  readonly checkoutUrl: string;
+  readonly item: string;
+  readonly cardId: string;
+  readonly requestedLines: readonly { readonly label: string; readonly quantity: number }[];
+  readonly reading: {
+    readonly lines: readonly { readonly label: string; readonly quantity: string; readonly unitPrice: string }[];
+    readonly tax: string | null;
+    readonly fees: readonly { readonly label: string; readonly amount: string }[];
+    readonly shippingOptions: readonly { readonly label: string; readonly cost: string }[];
+    readonly statedTotal: string | null;
+    readonly currency: string | null;
+    readonly orderSummaryText: string;
+  };
+  readonly controls: {
+    readonly cardFields: readonly { readonly field: string; readonly ref: string }[];
+    readonly addressFields: readonly { readonly kind: string; readonly field: string; readonly ref: string }[];
+    readonly shippingTargets: readonly string[];
+    readonly placeOrderTarget: string;
+    readonly expirySeparator: string | undefined;
+    readonly twoDigitYear: boolean | undefined;
+  };
+  readonly preferredTier: string | undefined;
+  readonly requestedMax: string | undefined;
+}
+
+/** What a begin reports. Amounts are integers the daemon computed. */
+export interface PaymentBeginResultView {
+  readonly outcome: string;
+  readonly purchaseId: string | null;
+  readonly reason: string | null;
+  readonly merchantOrderId: string | null;
+  readonly totalMinorUnits: number | null;
+  readonly currency: string | null;
+  readonly shippingTierUsed: string | null;
+  readonly steppedDown: boolean;
+  readonly challengeStep: string | null;
 }
 
 /** What a fill reports. Field names and a boolean — nothing that holds a value. */
@@ -266,6 +317,117 @@ function sanitizeFillResult(result: PaymentFillCardResult): PaymentFillCardResul
   };
 }
 
+function readStringArray(value: unknown, field: string): readonly string[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) throw new GatewayVerbError(`${field} must be an array of strings.`, 'VALIDATION_FAILED', 400);
+  return value.map((entry, index) => readString(entry, `${field}[${String(index)}]`));
+}
+
+function readObjectArray(value: unknown, field: string, required: boolean): readonly Record<string, unknown>[] {
+  if (value === undefined && !required) return [];
+  if (!Array.isArray(value) || (required && value.length === 0)) {
+    throw new GatewayVerbError(`${field} is required and must be a non-empty array.`, 'VALIDATION_FAILED', 400);
+  }
+  return value.map((entry, index) => {
+    if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
+      throw new GatewayVerbError(`${field}[${String(index)}] must be an object.`, 'VALIDATION_FAILED', 400);
+    }
+    return entry as Record<string, unknown>;
+  });
+}
+
+function optionalString(value: unknown): string | null {
+  return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+/**
+ * `payments.checkout.begin`.
+ *
+ * Validates shape and nothing else. Every judgement about MEANING — whether an
+ * amount parses, whether the cart matches, whether the budget covers it — is
+ * the service's, because those are the decisions that must not be reachable by
+ * a caller that skipped this route.
+ */
+export function createPaymentsCheckoutBeginHandler(service: PaymentsGatewayService): GatewayMethodHandler {
+  return async (invocation) => {
+    const params = readInvocationParams(invocation);
+
+    const requestedLines = readObjectArray(params['requestedLines'], 'requestedLines', true).map((entry, index) => ({
+      label: readString(entry['label'], `requestedLines[${String(index)}].label`),
+      quantity: readInteger(entry['quantity'], `requestedLines[${String(index)}].quantity`),
+    }));
+
+    const lines = readObjectArray(params['lines'], 'lines', true).map((entry, index) => ({
+      label: readString(entry['label'], `lines[${String(index)}].label`),
+      quantity: readString(entry['quantity'], `lines[${String(index)}].quantity`),
+      unitPrice: readString(entry['unitPrice'], `lines[${String(index)}].unitPrice`),
+    }));
+
+    const fees = readObjectArray(params['fees'], 'fees', false).map((entry, index) => ({
+      label: readString(entry['label'], `fees[${String(index)}].label`),
+      amount: readString(entry['amount'], `fees[${String(index)}].amount`),
+    }));
+
+    const shippingOptions = readObjectArray(params['shippingOptions'], 'shippingOptions', true).map((entry, index) => ({
+      label: readString(entry['label'], `shippingOptions[${String(index)}].label`),
+      cost: readString(entry['cost'], `shippingOptions[${String(index)}].cost`),
+    }));
+
+    const cardFields = readObjectArray(params['cardFields'], 'cardFields', true).map((entry, index) => ({
+      field: readString(entry['field'], `cardFields[${String(index)}].field`),
+      ref: readString(entry['ref'], `cardFields[${String(index)}].ref`),
+    }));
+
+    const addressFields = readObjectArray(params['addressFields'], 'addressFields', false).map((entry, index) => ({
+      kind: readString(entry['kind'], `addressFields[${String(index)}].kind`),
+      field: readString(entry['field'], `addressFields[${String(index)}].field`),
+      ref: readString(entry['ref'], `addressFields[${String(index)}].ref`),
+    }));
+
+    const twoDigit = params['twoDigitYear'];
+    const result = await service.beginCheckout({
+      sessionId: readString(params['sessionId'], 'sessionId'),
+      pageId: readString(params['pageId'], 'pageId'),
+      merchantDomain: readString(params['merchantDomain'], 'merchantDomain'),
+      checkoutUrl: readString(params['checkoutUrl'], 'checkoutUrl'),
+      item: readString(params['item'], 'item'),
+      cardId: readString(params['cardId'], 'cardId'),
+      requestedLines,
+      reading: {
+        lines,
+        tax: optionalString(params['tax']),
+        fees,
+        shippingOptions,
+        statedTotal: optionalString(params['statedTotal']),
+        currency: optionalString(params['currency']),
+        orderSummaryText: typeof params['orderSummaryText'] === 'string' ? params['orderSummaryText'] : '',
+      },
+      controls: {
+        cardFields,
+        addressFields,
+        shippingTargets: readStringArray(params['shippingTargets'], 'shippingTargets'),
+        placeOrderTarget: readString(params['placeOrderTarget'], 'placeOrderTarget'),
+        expirySeparator: optionalString(params['expirySeparator']) ?? undefined,
+        twoDigitYear: typeof twoDigit === 'boolean' ? twoDigit : undefined,
+      },
+      preferredTier: optionalString(params['preferredTier']) ?? undefined,
+      requestedMax: optionalString(params['requestedMax']) ?? undefined,
+    });
+
+    return {
+      outcome: String(result.outcome),
+      purchaseId: result.purchaseId ?? null,
+      reason: result.reason ?? null,
+      merchantOrderId: result.merchantOrderId ?? null,
+      totalMinorUnits: result.totalMinorUnits ?? null,
+      currency: result.currency ?? null,
+      shippingTierUsed: result.shippingTierUsed ?? null,
+      steppedDown: result.steppedDown === true,
+      challengeStep: result.challengeStep ?? null,
+    };
+  };
+}
+
 export function createPaymentsCheckoutFillCardHandler(service: PaymentsGatewayService): GatewayMethodHandler {
   return async (invocation) => {
     const params = readInvocationParams(invocation);
@@ -346,6 +508,7 @@ export function registerPaymentsGatewayMethods(
   attach('payments.cards.list', createPaymentsCardsListHandler(service));
   attach('payments.cards.create', createPaymentsCardsCreateHandler(service));
   attach('payments.cards.delete', createPaymentsCardsDeleteHandler(service));
+  attach('payments.checkout.begin', createPaymentsCheckoutBeginHandler(service));
   attach('payments.checkout.fillCard', createPaymentsCheckoutFillCardHandler(service));
   attach('payments.purchases.list', createPaymentsPurchasesListHandler(service));
 }
