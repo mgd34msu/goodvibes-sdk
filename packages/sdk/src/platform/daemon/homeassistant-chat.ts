@@ -95,6 +95,12 @@ export async function postHomeAssistantChatMessage(
 ): Promise<HomeAssistantChatPostResult> {
   const resolution = await resolveHomeAssistantChatSession(runtime, input);
   const clientId = options.clientId ?? `homeassistant:${input.surfaceId}:${input.conversationId}`;
+  // No `ownerDirect` on either post below, deliberately. A Home Assistant
+  // surface is a room: anyone within earshot of the speaker can address it, and
+  // a voice pipeline reports WHICH device heard something, never who said it.
+  // The daemon genuinely cannot establish the owner here, so it does not claim
+  // to — the window stays open and outward effects stay judged on derivation.
+  // Wiring this honestly would need speaker identification, not a flag.
   if (options.wait === false) {
     const messageId = await runtime.chatManager.postMessage(resolution.session.id, formatHomeAssistantUserMessage(input), clientId);
     return { ...resolution, messageId };

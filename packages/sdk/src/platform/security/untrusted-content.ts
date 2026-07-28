@@ -85,6 +85,34 @@ export type AuthoritySurface = 'owner-direct' | UntrustedSurface;
  * There is deliberately no middle tier. A middle tier is where "this one is
  * probably fine" lives, and the whole class of attack here is content that
  * looks fine.
+ *
+ * ── A tier that was proposed, and declined (2026-07) ──────────────────────
+ *
+ * The obvious middle tier has a name and it will be proposed again, so it is
+ * written down here with the reason it lost.
+ *
+ * The proposal: weigh content the owner ASKED to be read — "read my inbox" —
+ * differently from content that arrived unbidden. It is appealing because it
+ * targets real friction: the owner instructed the read, so the read feels
+ * authorized, and the refusals that follow it feel like the guard second-
+ * guessing him.
+ *
+ * It was declined. His asking the agent to open his mailbox is authority over
+ * the READ; it confers nothing on what is INSIDE. The messages there were still
+ * written by strangers, and a stranger's instruction does not become the
+ * owner's because the owner opened the envelope. Worse, the tier would be
+ * widest exactly where the attack lands: mail he asked to be read is the
+ * ordinary case, so almost every real injection would arrive pre-authorized.
+ *
+ * The friction it aimed at was real and was removed a different way, without a
+ * tier: give the turn a beginning so exposure has a scope, retain the text so
+ * derivation can be tested instead of assumed, pass the outgoing fields so the
+ * question is answerable, stop recording reads that read nothing, and exempt
+ * sends whose every recipient is the owner. That reaches zero friction on
+ * legitimate work while a body lifted out of a message is still refused —
+ * which is what the tier was supposed to buy and could not.
+ *
+ * If this comes up again: the answer is more precision, not a softer tier.
  */
 export type SurfaceTrustTier = 'owner-direct' | 'untrusted';
 
