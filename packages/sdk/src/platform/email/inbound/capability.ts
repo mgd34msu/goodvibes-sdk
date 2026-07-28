@@ -289,6 +289,20 @@ export function classifyOpenFailure(error: unknown): OpenFailureVerdict {
     ? text
     : `${failure.message} ${failure.serverMessage}`.trim();
 
+  // ── WORKAROUND, not the real classification ──────────────────────────────
+  // This check exists because `composeOpenFailure` in `imap-open.ts` marks
+  // EVERY server refusal at LOGIN as `authentication-rejected`, and that
+  // reason is terminal. Gmail answers a simultaneous-connection refusal at
+  // exactly that point, so a caller that believed the reason would stop the
+  // watcher permanently on a condition that clears by itself in seconds.
+  // Re-reading the provider's own wording ahead of the reason is a second
+  // classifier disagreeing with the first, which is worth having only until
+  // the first one is right.
+  //
+  // Remove this block when the foundation round teaches `composeOpenFailure`
+  // to distinguish a refused credential from a refused connection, and read
+  // the corrected reason instead. Leaving both would mean two classifiers
+  // that can drift apart, and the wrong one winning is silent.
   if (isConnectionLimitRefusal(wording)) {
     return {
       verdict: capabilityVerdict('connection-limit', wording),

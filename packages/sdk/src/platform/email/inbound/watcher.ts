@@ -141,6 +141,8 @@ export class InboundMailboxWatcher {
   private terminal: InboundMailTerminalFailure | null = null;
   private authRetried = false;
   private connectionCount = 0;
+  /** Set when a verdict only a change can clear was reported this pass. */
+  private pendingRecheck = false;
 
   constructor(deps: InboundMailboxWatcherDeps) {
     this.deps = deps;
@@ -218,6 +220,7 @@ export class InboundMailboxWatcher {
         connection = await this.deps.connections.open();
       } catch (error) {
         await this.handleOpenFailure(error);
+        await this.settleTerminal();
         continue;
       }
       this.connectionCount += 1;
@@ -227,7 +230,30 @@ export class InboundMailboxWatcher {
         this.mode = 'inactive';
         await connection.close().catch(() => undefined);
       }
+      // After the socket is released, never while holding it — see
+      // `settleTerminal`.
+      await this.settleTerminal();
     }
+  }
+
+  /**
+   * Wait out the capability re-check, when the last attempt ended in a verdict
+   * only a change can clear.
+   *
+   * Deliberately outside the `finally` that closes the connection, and this
+   * placement is the whole point of the method. An `insufficient` watcher does
+   * not run — and one that sat on an open IMAP connection for an hour while
+   * refusing to read from it would still be holding one of the provider's
+   * simultaneous-connection slots. Gmail allows fifteen and `EmailService`
+   * takes a fresh one per request, so spending one on a mailbox we have
+   * already decided we cannot read is the same limit pressure with none of
+   * the benefit, and it would make our own `connection-limit` verdict more
+   * likely on every other mailbox.
+   */
+  private async settleTerminal(): Promise<void> {
+    if (!this.pendingRecheck) return;
+    this.pendingRecheck = false;
+    await this.waitForRecheck();
   }
 
   /**
@@ -237,7 +263,7 @@ export class InboundMailboxWatcher {
   private async serve(connection: MailboxConnection): Promise<void> {
     const status = connection.report.mailbox;
     if (status.uidValidity === null) {
-      await this.stopOnTerminal(capabilityVerdict(
+      this.reportTerminal(capabilityVerdict(
         'uidvalidity-missing',
         `The server opened '${this.settings.mailbox}' without reporting a UIDVALIDITY.`,
       ));
@@ -403,7 +429,7 @@ export class InboundMailboxWatcher {
     }
     const { verdict, terminal } = classifyReadFailure(report.error, report.phase ?? 'fetch');
     if (terminal) {
-      await this.stopOnTerminal(verdict);
+      this.reportTerminal(verdict);
       return;
     }
     this.tracker.record(verdict);
@@ -432,7 +458,7 @@ export class InboundMailboxWatcher {
       return;
     }
     if (terminal) {
-      await this.stopOnTerminal(verdict);
+      this.reportTerminal(verdict);
       return;
     }
     this.tracker.record(verdict);
@@ -442,15 +468,18 @@ export class InboundMailboxWatcher {
   }
 
   /**
-   * Report a condition only a change can clear, then wait for that change.
+   * Report a condition only a change can clear, and arm the wait for it.
    *
    * Three things happen and all three matter: the state goes `insufficient`
    * (so the watcher stops rather than looking armed), the observer is told
    * ONCE for this transition (so an hourly re-probe does not become an hourly
    * alarm), and the wait is interruptible (so `recheckNow()` after a config
    * change retries immediately).
+   *
+   * The waiting itself is left to `settleTerminal`, which runs after the
+   * connection has been released.
    */
-  private async stopOnTerminal(verdict: InboundCapabilityVerdict): Promise<void> {
+  private reportTerminal(verdict: InboundCapabilityVerdict): void {
     const announced = this.tracker.record(verdict);
     this.mode = 'inactive';
     const failure: InboundMailTerminalFailure = {
@@ -462,6 +491,7 @@ export class InboundMailboxWatcher {
       at: new Date(this.deps.clock.now()).toISOString(),
     };
     this.terminal = failure;
+    this.pendingRecheck = true;
     if (announced) {
       try {
         this.deps.observer?.terminalFailure?.(failure);
@@ -469,7 +499,6 @@ export class InboundMailboxWatcher {
         // A notification route that throws must not become a second failure.
       }
     }
-    await this.waitForRecheck();
   }
 
   /**
