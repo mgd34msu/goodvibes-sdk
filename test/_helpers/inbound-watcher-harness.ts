@@ -11,6 +11,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { FakeMailboxServer } from './fake-imap-mailbox.ts';
 import { MailboxCursorStore } from '../../packages/sdk/src/platform/email/inbound/cursor-store.ts';
 import type { CursorResolution } from '../../packages/sdk/src/platform/email/inbound/cursor-store.ts';
 import type { MailboxCursor } from '../../packages/sdk/src/platform/email/inbound/types.ts';
@@ -361,4 +362,71 @@ export function scriptedRandom(values: readonly number[]): () => number {
     index += 1;
     return value;
   };
+}
+
+// ---------------------------------------------------------------------------
+// Driving a wake that can be missed
+// ---------------------------------------------------------------------------
+
+/**
+ * Wait for `predicate`, re-sending `line` if the original wake was lost.
+ *
+ * THE RACE THIS EXISTS FOR. `runIdleRound` opens its line COLLECTOR before
+ * sending `IDLE`, but the waiter that actually ends the round —
+ * `waitForUntagged(isIdleWakeLine, …)` — is not registered until `waitForWake`
+ * runs, which is after the server's `+ idling` continuation comes back. So
+ * there is a window in which an untagged line is seen by the collector and by
+ * nobody who can act on it.
+ *
+ * A test that observes `mailbox.commands` to decide the watcher is idling is
+ * reading a SERVER-side fact and using it as a proxy for a CLIENT-side one.
+ * They are correctly ordered and not simultaneous, and under the I/O pressure
+ * of a full-suite run the gap opens. `clock.waitForSleepers(1)` is closer —
+ * the re-issue timer IS armed client-side — but it is armed one line BEFORE
+ * the untagged waiter, so it does not close the window either.
+ *
+ * When the edge is lost the only recovery is the 27-minute IDLE re-issue,
+ * which runs on a `FakeClock` these tests do not advance. So a lost wake does
+ * not present as slowness; it presents as a hard timeout at the deadline.
+ *
+ * A FALLBACK, NOT A SECOND STIMULUS. Nothing is sent until `intervalMs` has
+ * passed with the predicate still false, so in the ordinary case — the edge
+ * lands immediately — this behaves exactly like `waitFor` and sends nothing at
+ * all. That matters: a test whose cursor deliberately does not advance would
+ * re-deliver the same message on a duplicate wake, and the assertion is
+ * usually an exact `toEqual`.
+ *
+ * Re-sending is faithful to IMAP rather than a trick. `* n EXISTS` reports the
+ * mailbox's current message count and servers re-send it whenever they like; a
+ * client that only ever woke on the first would be broken against real
+ * servers. `line` is explicit because it must MATCH THE STIMULUS: nudging an
+ * EXPUNGE test with EXISTS would provoke the very refetch it asserts does not
+ * happen.
+ */
+export async function nudgeUntil(
+  mailbox: Pick<FakeMailboxServer, 'push' | 'uids'>,
+  predicate: () => boolean,
+  what: string,
+  options: {
+    /** Defaults to re-announcing the mailbox's current message count. */
+    readonly line?: string | undefined;
+    /** How long to wait before the first re-send. */
+    readonly intervalMs?: number | undefined;
+    readonly timeoutMs?: number | undefined;
+  } = {},
+): Promise<void> {
+  const intervalMs = options.intervalMs ?? 100;
+  const timeoutMs = options.timeoutMs ?? 3_000;
+  const deadline = Date.now() + timeoutMs;
+  // Starts "just nudged", so the caller's own stimulus gets the first window.
+  let lastNudge = Date.now();
+  while (Date.now() < deadline) {
+    if (predicate()) return;
+    if (Date.now() - lastNudge >= intervalMs) {
+      mailbox.push(options.line ?? `* ${String(mailbox.uids.length)} EXISTS`);
+      lastNudge = Date.now();
+    }
+    await new Promise<void>((resolve) => { setTimeout(resolve, 5); });
+  }
+  throw new Error(`Timed out after ${String(timeoutMs)} ms waiting for: ${what}`);
 }

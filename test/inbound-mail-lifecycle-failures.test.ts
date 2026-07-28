@@ -59,6 +59,7 @@ import {
   fixedRandom,
   flush,
   makeCursorStore,
+  nudgeUntil,
   waitFor,
 } from './_helpers/inbound-watcher-harness.ts';
 
@@ -301,7 +302,18 @@ describe('a cursor-store write that fails does not end inbound mail in silence',
       );
       await clock.waitForSleepers(1, 'the IDLE re-issue timer');
       mailbox.deliver('mail that cannot be recorded');
-      await waitFor(() => refusing.advanceAttempts >= 1, 'the first refused cursor write');
+      await nudgeUntil(
+        mailbox,
+        () => refusing.advanceAttempts >= 1,
+        'the first refused cursor write',
+        // The cursor write is REFUSED here, so the cursor never advances and a
+        // duplicate wake would re-deliver UID 102 — which `sink.uids` asserts
+        // exactly. A long interval keeps this a recovery from a lost edge.
+        // `clock.waitForSleepers` above proves the re-issue timer is armed,
+        // but that timer is armed one line BEFORE the untagged waiter, so it
+        // does not close the window on its own.
+        { intervalMs: 500 },
+      );
       expect(sink.uids).toEqual([102]);
 
       // 1. It is caught and named, rather than unwinding into silence.
