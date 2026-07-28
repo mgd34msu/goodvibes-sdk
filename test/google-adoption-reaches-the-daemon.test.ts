@@ -26,8 +26,8 @@
  * daemon shows that they did.
  */
 
-import { describe, expect, test } from 'bun:test';
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { afterAll, describe, expect, test } from 'bun:test';
+import { rmSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ConfigManager } from '../packages/sdk/src/platform/config/manager.ts';
@@ -44,13 +44,34 @@ import { ensureEmailConfigDefaults } from '../packages/sdk/src/platform/email/in
 import type { GoogleConfigPort, GoogleFilePort, GoogleSecretPort } from '../packages/sdk/src/platform/google/types.ts';
 import { readFileSync, existsSync } from 'node:fs';
 
+/**
+ * Every throwaway home this file creates, reaped when it finishes.
+ *
+ * `mkdtempSync` leaves the directory behind. One suite run is nothing; the
+ * suites run constantly, and /tmp is a tmpfs with a fixed inode table — this
+ * repo's test scratch had taken 51,306 top-level directories and pushed the
+ * table to 100% used, at which point every `mkdtempSync` in every suite fails
+ * with ENOSPC while `df -h` still reports 24% free. Cleaning up is cheap and it
+ * is the difference between a suite that reports defects and one that reports
+ * the disk.
+ */
+const CREATED_HOMES: string[] = [];
+afterAll(() => {
+  for (const home of CREATED_HOMES) {
+    try { rmSync(home, { recursive: true, force: true }); } catch { /* best effort */ }
+  }
+});
+
+
 /** Fake, structurally valid, and obviously not a real credential. */
 const FAKE_CLIENT_ID = '111222333444-testonlyclientid.apps.googleusercontent.com';
 const FAKE_CLIENT_SECRET = 'TEST-ONLY-not-a-real-client-secret';
 const FAKE_REFRESH_TOKEN = '1//TEST-ONLY-not-a-real-refresh-token';
 
 function throwawayHome(): string {
-  return mkdtempSync(join(tmpdir(), 'gv-google-adopt-'));
+  const created = mkdtempSync(join(tmpdir(), 'gv-google-adopt-'));
+  CREATED_HOMES.push(created);
+  return created;
 }
 
 /** Credentials another tool already left on this machine. */
