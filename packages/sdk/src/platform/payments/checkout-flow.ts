@@ -67,17 +67,17 @@
 import { assertCartMatchesRequest, detectRecurringCharge, type RequestedLine } from './cart.js';
 import { checkPaymentGates, type GateInput } from './gates.js';
 import { decidePurchase, type BudgetDraw } from './decide.js';
-import { evaluatePaymentTaint, type PaymentIntentFields } from './taint-gate.js';
+import { evaluatePaymentTaint, type OwnerOriginIntent } from './taint-gate.js';
 import { extractCheckout, type ExtractedCheckout, type RawCheckoutReading } from './checkout-extraction.js';
 import {
   classifyMerchant,
   windowForPurchase,
-  type MajorRetailerPolicy,
-  type MajorRetailerVerdict,
-  type SaleType,
-} from './major-retailers.js';
+  type MerchantJudgePort,
+  type MerchantPolicy,
+  type MerchantVerdict,
+} from './merchant-recourse.js';
 import type { MarketplaceListing } from './marketplace-listing.js';
-import { renderCancellationReport, renderPurchaseNotice } from './message.js';
+import { renderCancellationReport, renderPurchaseNotice, renderPurchaseReport } from './message.js';
 import { validateLinkTarget } from '../security/link-validation.js';
 import { registrableDomain } from '../security/public-suffix.js';
 import {
@@ -100,6 +100,7 @@ import {
 import type { CardMaterialStore } from './card-material.js';
 import type { CardMaterialRedactor } from './card-redaction.js';
 import type { CheckoutChallenge, CheckoutPageDriver } from './checkout-page.js';
+import type { PurchaseRecord } from './purchase-record.js';
 import type { CheckoutRegistry } from './checkout-registry.js';
 import type { UntrustedContentLedger } from '../security/untrusted-content.js';
 import { dayKey } from './day.js';
@@ -121,6 +122,15 @@ export interface PurchaseRequest {
   readonly item: OwnerSuppliedText;
   readonly requestedLines: readonly RequestedLine[];
   readonly cardId: string;
+  /**
+   * Whether the owner NAMED this storefront or we found it while browsing.
+   *
+   * `false` puts the merchant and the checkout url through the taint check — he
+   * named them, so they have to be his. `true` skips that check by design and
+   * hands the domain to the judge instead, which is the safeguard he asked for:
+   * "alert me prior to purchasing if it is not a major retailer".
+   */
+  readonly merchantDiscovered?: boolean | undefined;
   readonly preferredTier: ShippingTier;
   /** A limit he stated in the request, if any. Taint-checked, never page text. */
   readonly requestedMax?: string | undefined;
@@ -134,7 +144,7 @@ export interface PurchaseRequest {
   readonly storefrontHost?: string | undefined;
   /** Page-derived, carried for the audit record. Never used to infer majorness. */
   readonly sellerIdentity?: string | undefined;
-  readonly saleType?: SaleType | undefined;
+  readonly saleType?: 'first-party' | 'third-party' | 'unknown' | undefined;
   /**
    * The specific listing, on marketplaces where recourse is per-seller.
    *
@@ -145,44 +155,7 @@ export interface PurchaseRequest {
   readonly listing?: MarketplaceListing | undefined;
 }
 
-/** One completed purchase, as the audit ledger stores it. */
-export interface PurchaseRecord {
-  readonly purchaseId: string;
-  readonly atUtc: string;
-  readonly dayKey: string;
-  readonly timezone: string;
-  readonly merchantDomain: string;
-  readonly item: string;
-  readonly currency: string;
-  readonly itemMinorUnits: MinorUnits;
-  readonly taxMinorUnits: MinorUnits;
-  readonly feesMinorUnits: MinorUnits;
-  readonly shippingMinorUnits: MinorUnits;
-  readonly totalMinorUnits: MinorUnits;
-  readonly shippingTierRequested: string;
-  readonly shippingTierUsed: string;
-  readonly steppedDown: boolean;
-  readonly itemPoolDraw: MinorUnits;
-  readonly overagePoolDraw: MinorUnits;
-  readonly tolerancePoolDraw: MinorUnits;
-  readonly cardLast4: string;
-  readonly windowKind: string;
-  readonly windowOutcome: string;
-  readonly answeredBy: string | null;
-  readonly outcome: string;
-  readonly refusalReason: string | null;
-  readonly merchantOrderId: string | null;
-  readonly refundedAt: string | null;
-  /**
-   * Whether the merchant carried established recourse, and on what grounds.
-   *
-   * Recorded because it is the fact that decided what SILENCE meant on this
-   * purchase, and a ledger that showed the outcome without it would leave him
-   * unable to reconstruct why one purchase asked and another did not.
-   */
-  readonly merchantRecognised: boolean;
-  readonly merchantQualifier: string | null;
-}
+export type { PurchaseRecord } from './purchase-record.js';
 
 export interface PurchaseLedger {
   record(entry: PurchaseRecord): Promise<void>;
@@ -243,7 +216,10 @@ export interface CheckoutFlowDeps {
    * a page — a storefront built to look trustworthy is the easiest thing in the
    * world to produce.
    */
-  readonly retailerPolicy?: MajorRetailerPolicy | undefined;
+  /** Judges the merchant's recourse from its validated domain alone. */
+  readonly merchantJudge: MerchantJudgePort;
+  /** Owner-authored overrides from daemon config. */
+  readonly merchantPolicy?: MerchantPolicy | undefined;
 }
 
 /**
@@ -327,7 +303,14 @@ export async function runCheckout(
   // against everything untrusted this turn has read. The merchant's own quoted
   // NUMBERS are deliberately not checked — they are read from the merchant by
   // definition, and their defence is the budget. See taint-gate.ts.
-  const intent: PaymentIntentFields = {
+  const intent: OwnerOriginIntent = {
+    // `runCheckout` is only ever reached from an owner-direct turn — gate 0
+    // above refuses anything else — so the origin is 'owner' by construction.
+    // A content-initiated purchase cannot build this value at all:
+    // ContentOriginIntent has no merchantDiscovered and is refused with no
+    // approval path. See taint-gate.ts.
+    origin: 'owner',
+    merchantDiscovered: request.merchantDiscovered ?? false,
     merchant: request.merchantDomain,
     checkoutUrl: request.checkoutUrl,
     item: request.item,
@@ -350,20 +333,23 @@ export async function runCheckout(
   // Run on the VALIDATED host, before any money math, so a listing we will not
   // buy at all — an auction, a Best Offer — stops here rather than after a
   // budget question that could never have applied to it.
-  const merchantVerdict: MajorRetailerVerdict = classifyMerchant(
+  // Judged on the validated registrable domain ALONE, by an injected judge —
+  // never a curated list. Everything else a page says about a merchant is
+  // written by that merchant, so a judgement over it is one the attacker
+  // writes. See merchant-recourse.ts.
+  const merchantVerdict: MerchantVerdict = await classifyMerchant(
     {
       checkoutHost: link.host,
       ...(request.storefrontHost === undefined ? {} : { storefrontHost: request.storefrontHost }),
-      ...(request.sellerIdentity === undefined ? {} : { sellerIdentity: request.sellerIdentity }),
       ...(request.saleType === undefined ? {} : { saleType: request.saleType }),
       ...(request.listing === undefined ? {} : { listing: request.listing }),
     },
-    deps.retailerPolicy ?? {},
+    deps.merchantJudge,
+    deps.merchantPolicy ?? {},
   );
   if (merchantVerdict.refused === true) {
-    // Terminal, and deliberately not an approval. There is no final total to
-    // show him, so the flow he authorised — show the total, then wait — has
-    // nothing to run on.
+    // Terminal, and deliberately not an approval: there is no final total to
+    // show him, so the flow he authorised has nothing to run on.
     return refused('listing-not-purchasable', merchantVerdict.reason);
   }
 
@@ -750,10 +736,30 @@ export async function runCheckout(
     merchantOrderId: submission.orderId,
     refundedAt: null,
     merchantRecognised: merchantVerdict.isMajor,
-    merchantQualifier: merchantVerdict.qualifier,
+    merchantQualifier: merchantVerdict.basis,
   };
   await deps.purchases.record(record);
   await registry.close(request.purchaseId);
+
+  // ── 11. Tell him it happened ────────────────────────────────────────────
+  //
+  // At charge time, not when the store gets round to emailing. He would
+  // otherwise get a veto notice, ten minutes of silence, a charge, and nothing
+  // — with the store's receipt later landing as mail he has to place himself.
+  //
+  // Sent through the same router as the notice. A delivery failure here is
+  // reported and does NOT unwind the purchase: the card has been charged, and
+  // an exception thrown after the money moved would leave the ledger and the
+  // world disagreeing about whether it did.
+  try {
+    await notifier.deliver({
+      kind: 'veto',
+      message: renderPurchaseReport({ facts, merchantOrderId: submission.orderId }),
+    });
+  } catch {
+    // Nothing to unwind and nothing to retry. The purchase is recorded, and
+    // `payments.purchases.list` is the durable answer to "what did you buy".
+  }
 
   return { kind: 'purchased', record, orderId: submission.orderId };
 }

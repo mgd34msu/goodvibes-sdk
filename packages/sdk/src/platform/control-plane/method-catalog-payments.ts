@@ -36,6 +36,8 @@ import {
   PAYMENTS_CARDS_DELETE_OUTPUT_SCHEMA,
   PAYMENTS_CARDS_LIST_INPUT_SCHEMA,
   PAYMENTS_CARDS_LIST_OUTPUT_SCHEMA,
+  PAYMENTS_CHECKOUT_BEGIN_INPUT_SCHEMA,
+  PAYMENTS_CHECKOUT_BEGIN_OUTPUT_SCHEMA,
   PAYMENTS_CHECKOUT_FILL_CARD_INPUT_SCHEMA,
   PAYMENTS_CHECKOUT_FILL_CARD_OUTPUT_SCHEMA,
   PAYMENTS_PURCHASES_LIST_INPUT_SCHEMA,
@@ -88,6 +90,18 @@ export const builtinGatewayPaymentsMethodDescriptors: readonly GatewayMethodDesc
     http: { method: 'DELETE', path: '/api/payments/cards/{id}' },
     inputSchema: PAYMENTS_CARDS_DELETE_INPUT_SCHEMA,
     outputSchema: PAYMENTS_CARDS_DELETE_OUTPUT_SCHEMA,
+  }),
+  methodDescriptor({
+    id: 'payments.checkout.begin',
+    title: 'Buy What Is In This Checkout',
+    description:
+      "Run a purchase against an open browser page, end to end: the caller reports the checkout's line items, tax, fees and delivery options AS STRINGS plus the refs of the card, address, delivery and place-order controls, and the daemon does the rest. It parses every amount into integer minor units with its own parser (refusing anything ambiguous rather than guessing), checks the cart against what was actually asked for, refuses a recurring charge, runs the taint gate, applies the daily item budget, the per-purchase ceiling and the overage pool, walks the shipping ladder down one rung at a time when the pool cannot cover the preferred tier, sends ONE notice to the configured command-authority channels and runs the window — above budget an approval where silence denies, within budget a veto where silence proceeds — then fills the stored shipping and billing addresses, types the stored card, submits once, records the purchase, debits the budget and reports the completed purchase. Nothing here knows any merchant's markup: the caller identifies the controls on whatever page it is looking at. Every number the owner is shown is re-rendered from the integers this daemon parsed, never from merchant text, and no response field can carry card material.",
+    category: 'payments',
+    scopes: ['write:payments'],
+    access: 'admin',
+    http: { method: 'POST', path: '/api/payments/checkout/begin' },
+    inputSchema: PAYMENTS_CHECKOUT_BEGIN_INPUT_SCHEMA,
+    outputSchema: PAYMENTS_CHECKOUT_BEGIN_OUTPUT_SCHEMA,
   }),
   methodDescriptor({
     id: 'payments.checkout.fillCard',

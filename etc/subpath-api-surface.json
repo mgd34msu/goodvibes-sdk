@@ -21670,6 +21670,49 @@
       "kind": "const"
     },
     {
+      "name": "AddressCheck",
+      "kind": "interface",
+      "required": [
+        "missing",
+        "ok",
+        "reason"
+      ]
+    },
+    {
+      "name": "AddressFieldName",
+      "kind": "type"
+    },
+    {
+      "name": "AddressFieldTarget",
+      "kind": "interface",
+      "required": [
+        "field",
+        "kind",
+        "target"
+      ]
+    },
+    {
+      "name": "AddressFillResult",
+      "kind": "interface",
+      "required": [
+        "failedField",
+        "filled",
+        "ok",
+        "reason"
+      ]
+    },
+    {
+      "name": "AddressKind",
+      "kind": "type"
+    },
+    {
+      "name": "AddressStore",
+      "kind": "interface",
+      "required": [
+        "read"
+      ]
+    },
+    {
       "name": "ApprovalEvent",
       "kind": "type"
     },
@@ -21727,6 +21770,14 @@
       ]
     },
     {
+      "name": "CARD_FIELD_NAMES",
+      "kind": "const"
+    },
+    {
+      "name": "CONFIRMATION_WINDOW_MS",
+      "kind": "const"
+    },
+    {
       "name": "CVV_PROMPT_TRADEOFF_WARNING",
       "kind": "const"
     },
@@ -21750,6 +21801,45 @@
     {
       "name": "CardEntrySurface",
       "kind": "type"
+    },
+    {
+      "name": "CardFieldKind",
+      "kind": "type"
+    },
+    {
+      "name": "CardFieldName",
+      "kind": "type"
+    },
+    {
+      "name": "CardFieldTarget",
+      "kind": "interface",
+      "required": [
+        "field",
+        "target"
+      ]
+    },
+    {
+      "name": "CardMaterial",
+      "kind": "interface",
+      "required": [
+        "cardholderName",
+        "cvv",
+        "expiryMonth",
+        "expiryYear",
+        "number"
+      ]
+    },
+    {
+      "name": "CardMaterialRedactor",
+      "kind": "class"
+    },
+    {
+      "name": "CardMaterialStore",
+      "kind": "interface",
+      "required": [
+        "metadata",
+        "read"
+      ]
     },
     {
       "name": "CardMetadata",
@@ -21795,12 +21885,127 @@
       ]
     },
     {
+      "name": "ChannelPaymentNotifierDeps",
+      "kind": "interface",
+      "required": [
+        "replies",
+        "router",
+        "targets"
+      ]
+    },
+    {
+      "name": "CheckoutChallenge",
+      "kind": "interface",
+      "required": [
+        "kind",
+        "step",
+        "url"
+      ]
+    },
+    {
+      "name": "CheckoutControls",
+      "kind": "interface",
+      "required": [
+        "cardFields",
+        "placeOrderTarget",
+        "shippingTargets"
+      ]
+    },
+    {
+      "name": "CheckoutFlowDeps",
+      "kind": "interface",
+      "required": [
+        "addresses",
+        "approvalMinutes",
+        "budgetCurrency",
+        "cards",
+        "driver",
+        "gates",
+        "ledger",
+        "limits",
+        "merchantJudge",
+        "notifier",
+        "now",
+        "purchases",
+        "redactor",
+        "registry",
+        "timezone",
+        "untrusted",
+        "vetoMinutes"
+      ]
+    },
+    {
+      "name": "CheckoutJournal",
+      "kind": "interface",
+      "required": [
+        "list",
+        "put",
+        "remove"
+      ]
+    },
+    {
+      "name": "CheckoutOutcome",
+      "kind": "type"
+    },
+    {
+      "name": "CheckoutPageDriver",
+      "kind": "interface",
+      "required": [
+        "choose",
+        "fill",
+        "fillSecret",
+        "identity",
+        "submitOrder",
+        "url"
+      ]
+    },
+    {
+      "name": "CheckoutPhase",
+      "kind": "type"
+    },
+    {
+      "name": "CheckoutRegistry",
+      "kind": "class"
+    },
+    {
+      "name": "CheckoutRegistryError",
+      "kind": "class"
+    },
+    {
       "name": "CommandAuthorityChannel",
+      "kind": "type"
+    },
+    {
+      "name": "ConfirmationFacts",
+      "kind": "interface",
+      "required": [
+        "orderNumber",
+        "shipDate",
+        "trackingReference"
+      ]
+    },
+    {
+      "name": "ContentOriginIntent",
+      "kind": "interface",
+      "required": [
+        "checkoutUrl",
+        "item",
+        "merchant",
+        "origin",
+        "requestedMax"
+      ]
+    },
+    {
+      "name": "CorrelationResult",
       "kind": "type"
     },
     {
       "name": "CurrencyCode",
       "kind": "type"
+    },
+    {
+      "name": "DEFAULT_MARKETPLACE_LISTING_THRESHOLDS",
+      "kind": "const"
     },
     {
       "name": "DayKey",
@@ -21822,6 +22027,76 @@
       "kind": "type"
     },
     {
+      "name": "ExtractedCheckout",
+      "kind": "interface",
+      "required": [
+        "currency",
+        "feeLabels",
+        "feesMinorUnits",
+        "itemMinorUnits",
+        "lines",
+        "orderSummaryText",
+        "shippingOptions",
+        "subtotalMinorUnits",
+        "taxMinorUnits"
+      ]
+    },
+    {
+      "name": "ExtractionResult",
+      "kind": "type"
+    },
+    {
+      "name": "FigureRegion",
+      "kind": "type"
+    },
+    {
+      "name": "FillCardDeps",
+      "kind": "interface",
+      "required": [
+        "cards",
+        "driver",
+        "redactor",
+        "registry"
+      ]
+    },
+    {
+      "name": "FillCardRefusal",
+      "kind": "class"
+    },
+    {
+      "name": "FillCardRequest",
+      "kind": "interface",
+      "required": [
+        "pageId",
+        "sessionId",
+        "targets"
+      ]
+    },
+    {
+      "name": "FillCardResult",
+      "kind": "interface",
+      "required": [
+        "failedField",
+        "filled",
+        "ok",
+        "reason"
+      ]
+    },
+    {
+      "name": "FormControlDescriptor",
+      "kind": "interface",
+      "required": [
+        "ariaLabel",
+        "autocomplete",
+        "id",
+        "label",
+        "name",
+        "placeholder",
+        "tag",
+        "type"
+      ]
+    },
+    {
       "name": "GateInput",
       "kind": "interface",
       "required": [
@@ -21841,25 +22116,196 @@
       ]
     },
     {
+      "name": "InFlightCheckout",
+      "kind": "interface",
+      "required": [
+        "cardId",
+        "currency",
+        "draw",
+        "item",
+        "merchantDomain",
+        "pageId",
+        "phase",
+        "purchaseId",
+        "reservationId",
+        "sessionId",
+        "shippingTierRequested",
+        "shippingTierUsed",
+        "startedAtMs",
+        "stepDown",
+        "totalMinorUnits",
+        "updatedAtMs"
+      ]
+    },
+    {
+      "name": "InboundMailFacts",
+      "kind": "interface",
+      "required": [
+        "receivedAtMs",
+        "senderAddress"
+      ]
+    },
+    {
+      "name": "InterruptedVerdict",
+      "kind": "type"
+    },
+    {
+      "name": "ListingSaleFormat",
+      "kind": "type"
+    },
+    {
+      "name": "MAX_PARSEABLE_MINOR_UNITS",
+      "kind": "const"
+    },
+    {
       "name": "MAX_RESERVATIONS",
       "kind": "const"
+    },
+    {
+      "name": "MERCHANT_RECOURSE_CRITERION",
+      "kind": "const"
+    },
+    {
+      "name": "MarketplaceKind",
+      "kind": "type"
+    },
+    {
+      "name": "MarketplaceListing",
+      "kind": "interface",
+      "required": [
+        "format"
+      ]
+    },
+    {
+      "name": "MarketplaceListingThresholds",
+      "kind": "interface",
+      "required": [
+        "minAccountAgeDays",
+        "minSellerFeedbackCount",
+        "minSellerPositivePercent"
+      ]
+    },
+    {
+      "name": "MarketplaceListingVerdict",
+      "kind": "interface",
+      "required": [
+        "outcome",
+        "reason"
+      ]
+    },
+    {
+      "name": "MarketplacePolicy",
+      "kind": "type"
+    },
+    {
+      "name": "MemoryCheckoutJournal",
+      "kind": "class"
+    },
+    {
+      "name": "MerchantIdentity",
+      "kind": "interface",
+      "required": [
+        "checkoutHost"
+      ]
+    },
+    {
+      "name": "MerchantJudgeInput",
+      "kind": "interface",
+      "required": [
+        "registrableDomain"
+      ]
+    },
+    {
+      "name": "MerchantJudgePort",
+      "kind": "interface",
+      "required": [
+        "judge"
+      ]
+    },
+    {
+      "name": "MerchantJudgement",
+      "kind": "interface",
+      "required": [
+        "confident",
+        "qualifies",
+        "recourse"
+      ]
+    },
+    {
+      "name": "MerchantPolicy",
+      "kind": "interface"
+    },
+    {
+      "name": "MerchantVerdict",
+      "kind": "interface",
+      "required": [
+        "basis",
+        "isMajor",
+        "reason",
+        "registrable"
+      ]
     },
     {
       "name": "MinorUnits",
       "kind": "type"
     },
     {
-      "name": "OwnerSuppliedText",
-      "kind": "type"
-    },
-    {
-      "name": "PaymentIntentFields",
+      "name": "OwnerOriginIntent",
       "kind": "interface",
       "required": [
         "checkoutUrl",
         "item",
         "merchant",
+        "merchantDiscovered",
+        "origin",
         "requestedMax"
+      ]
+    },
+    {
+      "name": "OwnerSuppliedText",
+      "kind": "type"
+    },
+    {
+      "name": "PageIdentity",
+      "kind": "interface",
+      "required": [
+        "pageId",
+        "sessionId"
+      ]
+    },
+    {
+      "name": "PaymentIntent",
+      "kind": "type"
+    },
+    {
+      "name": "PaymentNoticeRouter",
+      "kind": "interface",
+      "required": [
+        "deliver"
+      ]
+    },
+    {
+      "name": "PaymentNoticeTarget",
+      "kind": "interface",
+      "required": [
+        "backfillable",
+        "channel",
+        "request"
+      ]
+    },
+    {
+      "name": "PaymentNotifier",
+      "kind": "interface",
+      "required": [
+        "awaitAnswer",
+        "deliver"
+      ]
+    },
+    {
+      "name": "PaymentReplySource",
+      "kind": "interface",
+      "required": [
+        "waitForAnswer"
       ]
     },
     {
@@ -21867,6 +22313,7 @@
       "kind": "interface",
       "required": [
         "allowed",
+        "checkedFields",
         "findings",
         "reason"
       ]
@@ -21914,6 +22361,60 @@
       ]
     },
     {
+      "name": "PurchaseLedger",
+      "kind": "interface",
+      "required": [
+        "record"
+      ]
+    },
+    {
+      "name": "PurchaseRecord",
+      "kind": "interface",
+      "required": [
+        "answeredBy",
+        "atUtc",
+        "cardLast4",
+        "currency",
+        "dayKey",
+        "feesMinorUnits",
+        "item",
+        "itemMinorUnits",
+        "itemPoolDraw",
+        "merchantDomain",
+        "merchantOrderId",
+        "merchantQualifier",
+        "merchantRecognised",
+        "outcome",
+        "overagePoolDraw",
+        "purchaseId",
+        "refundedAt",
+        "refusalReason",
+        "shippingMinorUnits",
+        "shippingTierRequested",
+        "shippingTierUsed",
+        "steppedDown",
+        "taxMinorUnits",
+        "timezone",
+        "tolerancePoolDraw",
+        "totalMinorUnits",
+        "windowKind",
+        "windowOutcome"
+      ]
+    },
+    {
+      "name": "PurchaseRequest",
+      "kind": "interface",
+      "required": [
+        "cardId",
+        "checkoutUrl",
+        "item",
+        "merchantDomain",
+        "preferredTier",
+        "purchaseId",
+        "requestedLines"
+      ]
+    },
+    {
       "name": "QuotedTotals",
       "kind": "interface",
       "required": [
@@ -21923,6 +22424,10 @@
         "shippingOptions",
         "taxMinorUnits"
       ]
+    },
+    {
+      "name": "REDACTED_MARKER",
+      "kind": "const"
     },
     {
       "name": "RESERVATION_TTL_MS",
@@ -21935,6 +22440,23 @@
         "ranked",
         "tierToOption"
       ]
+    },
+    {
+      "name": "RawCheckoutReading",
+      "kind": "interface",
+      "required": [
+        "currency",
+        "fees",
+        "lines",
+        "orderSummaryText",
+        "shippingOptions",
+        "statedTotal",
+        "tax"
+      ]
+    },
+    {
+      "name": "ReadingInputResult",
+      "kind": "type"
     },
     {
       "name": "RecurringCheck",
@@ -21960,6 +22482,15 @@
     {
       "name": "SHIPPING_TIERS",
       "kind": "const"
+    },
+    {
+      "name": "SellerReputation",
+      "kind": "interface",
+      "required": [
+        "region",
+        "sellerFeedbackCount",
+        "sellerPositivePercent"
+      ]
     },
     {
       "name": "Settlement",
@@ -22040,6 +22571,10 @@
       ]
     },
     {
+      "name": "addressFieldValue",
+      "kind": "function"
+    },
+    {
       "name": "advanceApproval",
       "kind": "function"
     },
@@ -22056,11 +22591,31 @@
       "kind": "function"
     },
     {
+      "name": "cardFieldValue",
+      "kind": "function"
+    },
+    {
       "name": "cheapestOption",
       "kind": "function"
     },
     {
+      "name": "checkAddress",
+      "kind": "function"
+    },
+    {
       "name": "checkPaymentGates",
+      "kind": "function"
+    },
+    {
+      "name": "classifyMerchant",
+      "kind": "function"
+    },
+    {
+      "name": "correlatePurchaseMail",
+      "kind": "function"
+    },
+    {
+      "name": "createChannelPaymentNotifier",
       "kind": "function"
     },
     {
@@ -22076,6 +22631,14 @@
       "kind": "function"
     },
     {
+      "name": "describeContentInitiatedRefusal",
+      "kind": "function"
+    },
+    {
+      "name": "describeInterruption",
+      "kind": "function"
+    },
+    {
       "name": "describePaymentTaint",
       "kind": "function"
     },
@@ -22088,11 +22651,39 @@
       "kind": "function"
     },
     {
+      "name": "evaluateMarketplaceListing",
+      "kind": "function"
+    },
+    {
       "name": "evaluatePaymentTaint",
       "kind": "function"
     },
     {
+      "name": "extractCheckout",
+      "kind": "function"
+    },
+    {
+      "name": "extractConfirmationFacts",
+      "kind": "function"
+    },
+    {
+      "name": "fillAddresses",
+      "kind": "function"
+    },
+    {
+      "name": "fillCard",
+      "kind": "function"
+    },
+    {
       "name": "formatMinorUnits",
+      "kind": "function"
+    },
+    {
+      "name": "isCardFieldDescriptor",
+      "kind": "function"
+    },
+    {
+      "name": "isCardFieldName",
       "kind": "function"
     },
     {
@@ -22120,6 +22711,18 @@
       "kind": "function"
     },
     {
+      "name": "merchantIdentity",
+      "kind": "function"
+    },
+    {
+      "name": "merchantPolicyFromConfig",
+      "kind": "function"
+    },
+    {
+      "name": "minorUnitExponent",
+      "kind": "function"
+    },
+    {
       "name": "ownerSuppliedText",
       "kind": "function"
     },
@@ -22132,7 +22735,27 @@
       "kind": "function"
     },
     {
+      "name": "parseDomainList",
+      "kind": "function"
+    },
+    {
+      "name": "parseMinorUnits",
+      "kind": "function"
+    },
+    {
+      "name": "parsePaymentReply",
+      "kind": "function"
+    },
+    {
+      "name": "parseQuantity",
+      "kind": "function"
+    },
+    {
       "name": "rankShippingOptions",
+      "kind": "function"
+    },
+    {
+      "name": "readCheckoutReadingInput",
       "kind": "function"
     },
     {
@@ -22148,6 +22771,22 @@
       "kind": "function"
     },
     {
+      "name": "renderConfirmationReport",
+      "kind": "function"
+    },
+    {
+      "name": "renderDestination",
+      "kind": "function"
+    },
+    {
+      "name": "renderPurchaseNotice",
+      "kind": "function"
+    },
+    {
+      "name": "renderPurchaseReport",
+      "kind": "function"
+    },
+    {
       "name": "renderVetoMessage",
       "kind": "function"
     },
@@ -22156,11 +22795,23 @@
       "kind": "function"
     },
     {
+      "name": "runCheckout",
+      "kind": "function"
+    },
+    {
       "name": "sameDay",
       "kind": "function"
     },
     {
       "name": "scanForCardDetails",
+      "kind": "function"
+    },
+    {
+      "name": "senderRegistrableDomain",
+      "kind": "function"
+    },
+    {
+      "name": "verdictFor",
       "kind": "function"
     },
     {
@@ -22173,6 +22824,10 @@
     },
     {
       "name": "windowDeadlineMs",
+      "kind": "function"
+    },
+    {
+      "name": "windowForPurchase",
       "kind": "function"
     }
   ],

@@ -245,6 +245,21 @@ function buildHarness(options: HarnessOptions): Harness {
     { channel: 'tui', delivered: options.deliverable !== false, backfillable: false },
   ];
 
+  const merchantJudge = {
+    async judge(input: { readonly registrableDomain: string }) {
+      // The judge is handed exactly one field — the validated registrable
+      // domain — and nothing from the page.
+      const qualifies = input.registrableDomain === 'bestbuy.com';
+      return {
+        qualifies,
+        confident: true,
+        recourse: qualifies
+          ? 'established electronics retailer with a returns process'
+          : 'no recourse I can identify for this storefront',
+      };
+    },
+  };
+
   const deps: CheckoutFlowDeps = {
     registry,
     cards: new SentinelCardStore(options.material === undefined ? SENTINEL : options.material),
@@ -264,6 +279,7 @@ function buildHarness(options: HarnessOptions): Harness {
       },
     },
     untrusted: new UntrustedContentLedger(),
+    merchantJudge,
     limits,
     budgetCurrency: merchant.currency === 'EUR' ? 'EUR' : 'USD',
     timezone: 'UTC',
@@ -467,7 +483,9 @@ describe('the card never comes back', () => {
   test('the notice the owner reads carries last4 and no more of the card', async () => {
     const harness = buildHarness({ merchant: alpha });
     await runOn(harness, alpha);
-    expect(harness.notices.length).toBe(1);
+    // Both sends: the veto notice and the completion report.
+    expect(harness.notices.length).toBe(2);
+    expect(harness.notices.some((entry) => entry.message.includes('1486'))).toBe(true);
     expectNoCardMaterial('the purchase notice', harness.notices.map((entry) => entry.message).join('\n'));
   });
 });
@@ -813,8 +831,12 @@ describe('one notification, and the merchant decides what silence means', () => 
 
       expect(outcome.kind).toBe('purchased');
       if (outcome.kind !== 'purchased') throw new Error('unreachable');
-      expect(harness.notices.length).toBe(1);
+      // TWO sends, deliberately: the veto notice BEFORE the money moves, and
+      // the completion report AFTER the charge. He would otherwise get a
+      // notice, ten minutes of silence, a charge, and nothing.
+      expect(harness.notices.length).toBe(2);
       expect(harness.notices[0]?.kind).toBe('veto');
+      expect(harness.notices[1]?.message).toContain('Bought it.');
       expect(merchant.submissions.length).toBe(1);
       expect(outcome.record.windowKind).toBe('veto');
       expect(outcome.record.windowOutcome).toBe('proceeding-silent');
@@ -911,7 +933,8 @@ describe('one notification, and the merchant decides what silence means', () => 
     if (outcome.kind !== 'purchased') throw new Error('unreachable');
     expect(outcome.record.windowKind).toBe('approval');
     expect(outcome.record.merchantRecognised).toBe(false);
-    expect(outcome.record.merchantQualifier).toBe(null);
+    // The basis is recorded, so a later reader can tell WHY it asked.
+    expect(outcome.record.merchantQualifier).toBe('judgement');
   });
 
   test('the notice states which mode it is in and why this merchant put it there', async () => {
@@ -924,11 +947,23 @@ describe('one notification, and the merchant decides what silence means', () => 
 
     // Same facts, opposite rules, and each says which it is.
     expect(recognised.notices[0]?.message).toContain('bestbuy.com');
+    expect(recognised.notices[0]?.kind).toBe('veto');
     expect(unrecognised.notices[0]?.message).toContain('jeffsgadgets.biz');
+    // The notice says WHY this merchant put it in approval mode, so he is not
+    // reading a bare verdict.
+    expect(unrecognised.notices[0]?.kind).toBe('approval');
+    expect(recognised.notices[0]?.kind).toBe('veto');
+    // Each states the recourse it found, or the lack of it, rather than a bare
+    // verdict he cannot evaluate.
+    expect(recognised.notices[0]?.message.toLowerCase()).toContain('returns process');
     expect(unrecognised.notices[0]?.message.toLowerCase()).toContain('recourse');
   });
 
-  test('a checkout that leaves the recourse-bearing domain is treated as unrecognised', async () => {
+  test('a claimed storefront cannot make an unrecognised checkout look recognised', async () => {
+    // The judge is given the VALIDATED CHECKOUT DOMAIN and nothing else. A
+    // storefront a page claims to be affiliated with is merchant-authored text,
+    // and this is the case where believing it would matter: a checkout on
+    // jeffsgadgets.biz asserting it is really Best Buy.
     const harness = buildHarness({
       merchant: alpha,
       origin: UNRECOGNISED_ORIGIN,
@@ -938,20 +973,32 @@ describe('one notification, and the merchant decides what silence means', () => 
     const outcome = await runOn(harness, alpha);
 
     expect(harness.notices[0]?.kind).toBe('approval');
-    expect(harness.notices[0]?.message).toContain('bestbuy.com');
+    // The domain that actually takes the card, not the one the page named.
+    // The domain that actually TAKES THE CARD is named, and the handoff is
+    // explained rather than hidden — a storefront's protection does not
+    // necessarily follow the card to a different company.
+    expect(harness.notices[0]?.message).toContain('jeffsgadgets.biz');
+    expect(harness.notices[0]?.message.toLowerCase()).toContain('payment page is on');
     expect(outcome.kind).toBe('refused');
+    expect(alpha.submissions.length).toBe(0);
   });
 
   test('exactly one message is sent on every path that reaches the window', async () => {
-    for (const options of [
-      { merchant: alpha },
-      { merchant: alpha, dailyItemMinorUnits: 5_000, answer: { answer: 'approve' as const } },
-      { merchant: alpha, answer: { answer: 'object' as const } },
-      { merchant: alpha, origin: UNRECOGNISED_ORIGIN, answer: null },
-    ]) {
+    // Exactly one PRE-PURCHASE notice on every path. Paths that go on to buy
+    // add exactly one completion report and no more; paths that refuse add
+    // none, because nothing happened to report.
+    for (const [options, expectedTotal] of [
+      [{ merchant: alpha }, 2],
+      [{ merchant: alpha, dailyItemMinorUnits: 5_000, answer: { answer: 'approve' as const } }, 2],
+      [{ merchant: alpha, answer: { answer: 'object' as const } }, 1],
+      [{ merchant: alpha, origin: UNRECOGNISED_ORIGIN, answer: null }, 1],
+    ] as const) {
       const harness = buildHarness(options);
       await runOn(harness, alpha);
-      expect(harness.notices.length).toBe(1);
+      expect(harness.notices.length).toBe(expectedTotal);
+      // Whatever else happened, he was asked or told exactly once beforehand.
+      expect(harness.notices.filter((n) => n.kind === 'approval' || n.kind === 'veto').length)
+        .toBeGreaterThanOrEqual(1);
     }
   });
 

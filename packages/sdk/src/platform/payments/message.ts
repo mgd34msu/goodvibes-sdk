@@ -244,3 +244,88 @@ export function renderPurchaseNotice(input: {
   if (input.merchantReason === undefined) return body;
   return `${body}\n\n  ${sanitizeNoticeField(input.merchantReason, 240)}`;
 }
+
+/**
+ * The report after the charge goes through.
+ *
+ * ══ Why this is not email-driven ══════════════════════════════════════════
+ *
+ * The daemon knows it charged the card. It does not need a store to tell it,
+ * and it must not wait for one: a confirmation can take minutes or hours, some
+ * stores send nothing at all, and mail can be broken independently of payments.
+ * A report that depended on any of that would leave him with a veto notice, ten
+ * minutes of silence, a charge, and then nothing.
+ *
+ * So this fires at the moment the submit is confirmed, from facts this process
+ * already holds, and every number in it is re-rendered from our own integers.
+ *
+ * The shipping tier is reported as the one ACTUALLY used, with the step-down
+ * spelled out when there was one. He approved a purchase; a delivery option was
+ * then chosen inside the budget he set, and he should not learn which from the
+ * parcel arriving later than he expected.
+ */
+export function renderPurchaseReport(input: {
+  readonly facts: PurchaseFacts;
+  /** The merchant's own order reference, when the page showed one. */
+  readonly merchantOrderId: string | null;
+}): string {
+  const { facts } = input;
+  const lines = [
+    `Bought it.`,
+    ``,
+    `  ${renderItem(facts.item)}`,
+    `  from ${renderMerchant(facts.merchantDomain)}`,
+    ``,
+    ...amountLines(facts),
+    ``,
+    `  Paid with the card ending ${sanitizeNoticeField(facts.cardLast4, 8)}`,
+  ];
+  if (input.merchantOrderId !== null && input.merchantOrderId.trim().length > 0) {
+    // The merchant chose this string, so it is neutralised like any other
+    // field that came off their page.
+    lines.push(`  Their order number: ${sanitizeNoticeField(input.merchantOrderId, 40)}`);
+  }
+  lines.push(`  Daily item budget left: ${formatMinorUnits(facts.poolsAfter.item.remaining, facts.currency)}`);
+  return lines.join('\n');
+}
+
+/**
+ * The follow-up once the store's own confirmation turns up.
+ *
+ * ══ The body is never in here ═════════════════════════════════════════════
+ *
+ * A confirmation email arrives from outside, at the exact moment he is
+ * expecting one, which makes it the single most attractive thing for an
+ * attacker to forge. Its body is not rendered, not quoted, and not summarised.
+ * What reaches him is a small set of STRUCTURED fields — an order number, a
+ * ship date, a tracking reference — each neutralised, plus our own record of
+ * what was bought, which the email cannot influence at all.
+ *
+ * The email also carries no authority. It cannot confirm that a purchase
+ * happened; our ledger already knows that. All it can do is add a reference
+ * number to a message he was going to get anyway.
+ */
+export function renderConfirmationReport(input: {
+  readonly facts: PurchaseFacts;
+  readonly confirmation: {
+    readonly orderNumber: string | null;
+    readonly shipDate: string | null;
+    readonly trackingReference: string | null;
+  };
+  /** The registrable domain the mail actually came from, computed by us. */
+  readonly senderDomain: string;
+}): string {
+  const lines = [
+    `${renderMerchant(input.senderDomain)} confirmed the order.`,
+    ``,
+    `  ${renderItem(input.facts.item)}`,
+    `  ${formatMinorUnits(input.facts.totalMinorUnits, input.facts.currency)} charged to the card ending `
+      + `${sanitizeNoticeField(input.facts.cardLast4, 8)}`,
+  ];
+  const { orderNumber, shipDate, trackingReference } = input.confirmation;
+  if (orderNumber !== null) lines.push(`  Order number: ${sanitizeNoticeField(orderNumber, 40)}`);
+  if (shipDate !== null) lines.push(`  Ships: ${sanitizeNoticeField(shipDate, 40)}`);
+  if (trackingReference !== null) lines.push(`  Tracking: ${sanitizeNoticeField(trackingReference, 60)}`);
+  lines.push(``, `This is the order you approved. The amount above is the one I calculated, not the one the email states.`);
+  return lines.join('\n');
+}
