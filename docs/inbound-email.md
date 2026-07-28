@@ -1025,6 +1025,114 @@ the config schema. Neither list overlaps.
 
 ## 11. Consumers
 
+### 11.0 Card-shaped content arriving on a remote channel is refused
+
+**Provenance, stated plainly: this is a coordinator ruling, not an owner
+quote.** The owner's ruling it enforces is his own — card details are entered
+only at a local terminal or the webui, never over a remote messaging channel.
+What follows is the daemon-side enforcement of that.
+
+The payments round built the outbound half in `goodvibes-agent`: no card-entry
+prompt is offered toward a remote surface, and outbound card-shaped content is
+refused before reaching a provider. It reported the **inbound** half as not
+implementable there, and verified rather than asserted it — the agent is
+adopt-only, has no inbound channel path at all, `no-inbound-consumers.test.ts`
+fails the build if one is added, and `unified-inbox.ts` marks the seam as
+awaiting a daemon contract. That is correct, and it lands the inbound gate here.
+
+**The requirement.** A message arriving on any remote messaging channel that
+carries card-shaped content is refused. Not stored — it never reaches the
+payments store, config, or any secret tier. Not logged, not transcribed, not
+placed in a notice body: nowhere it can be read later. The refusal reply names
+only the matched **shapes**, never the digits, matching the precedent the agent
+round set outbound. And no card-entry prompt is ever offered on a remote
+channel, because **prompting is itself the harm** — it invites him to type a
+card number into Telegram, where it lands in a third party's history nobody can
+erase.
+
+**The distinction a later reader will try to collapse, so it is written in these
+terms:** approvals and vetoes for purchases **do** work over remote channels —
+that is the owner's explicit ruling and it stays. Remote surfaces have authority
+to **say yes or no about a purchase**; they have **no path for entering the
+instrument**. Authority over a decision is not a channel for a secret. These two
+must not be unified.
+
+#### Where the check goes
+
+`SurfaceActions.authorizeSurfaceIngress`
+(`platform/daemon/surface-actions.ts:179`) — the single shared hook that all
+nineteen remote adapter call sites already pass through. The file argues for
+this placement itself, having put work-proposal and approval-reply consumption
+there *"on the shared ingress hook every surface adapter already calls — which
+is what makes agreement answerable over whatever channel the proposal went out
+on, with no per-adapter wiring"*.
+
+Per-surface would be wrong for the reason the agent round learned firsthand: a
+fix applied per-adapter leaves the other seventeen open.
+
+**It runs first** — before `evaluateIngress`, before proposal-reply resolution,
+before approval-reply resolution. Everything downstream may store, log or
+transcribe, so the check must precede all of it.
+
+One consequence, deliberate: a message that would have been an approval or a
+veto is refused if it carries card shapes. **The refusal reply is always
+delivered**, even though the content is dropped — this is the one case where
+silence would do harm, because an unheard objection inside a veto window
+elapses into a completed purchase. He is told immediately, on the same channel,
+and can resend without the digits.
+
+#### Detection, and the shape of its result
+
+```ts
+export type CardShapeKind = 'pan' | 'security-code' | 'expiry';
+
+export interface CardShapeFinding {
+  readonly kind: CardShapeKind;
+  readonly startIndex: number;
+  readonly length: number;
+  // Deliberately no value, text or digits field — see below.
+}
+
+export function detectCardShapes(text: string): readonly CardShapeFinding[];
+```
+
+The finding carries **position and kind, never the matched characters**. This is
+§7.3 again: the digits are not something a caller must remember not to log —
+they are not reachable from the result at all. A refusal message composed from
+findings is structurally incapable of quoting a card number.
+
+Rules:
+
+- **`pan`** — a run of 13–19 digits after stripping internal spaces and hyphens,
+  passing the Luhn check. Luhn alone is the discriminator; a known issuer prefix
+  is deliberately **not** additionally required, since that would miss valid
+  cards from less common networks. The trade is asymmetric and decided
+  accordingly: a false positive costs one refused message with a clear
+  explanation, while a false negative puts a real card number into a third
+  party's message history permanently.
+- **`security-code`** and **`expiry`** — never refused on shape alone. Three or
+  four bare digits, and `MM/YY`, are far too common, and refusing them would
+  make the channel unusable. They count only in card context (`cvv`, `cvc`,
+  `security code`, `card`, `expiry`) or alongside a `pan` finding.
+
+A message is refused if any `pan` is found, or if a `security-code` or `expiry`
+finding occurs in card context.
+
+#### This applies to inbound mail too, and that is a finding about this design
+
+The inbound record store (§9.3) persists a **bounded body excerpt for thirty
+days**. A card number in an email would therefore be written to disk and kept —
+by this round's own machinery, in a store this round introduced. Nobody asked
+for that and it is exactly the exposure this section exists to prevent.
+
+Email is not gated the way remote channels are: mail is not refused for
+containing digits, because order confirmations legitimately carry long numbers
+and refusing them would break the consumer this capability exists to serve. The
+answer is **redaction, not refusal**. `detectCardShapes` runs over the excerpt
+before it is persisted and matched spans are replaced. The message is still
+recorded, still notified, still able to satisfy an expectation; only the digits
+fail to reach disk.
+
 ### 11.1 Cross-round requirement for payments
 
 §7.1 and §7.2 apply to the payments notices with more force than they apply
@@ -1118,6 +1226,16 @@ before the fix lands.
 | 40 | A channel with no escaper falls back to fully-neutralized plain text | Not to the raw string |
 | 41 | The notice timestamp comes from our clock, not the `Date:` header | Sender-supplied date differs from receipt time |
 | 42 | An expectation purpose lifted from untrusted text is escaped | Not trusted for being supplied by an authorized caller |
+| 43 | A plausible card number on a remote channel is refused | Luhn-valid 13–19 digit run |
+| 44 | The refused value is absent from config, secrets and the payments store | Asserted against each tier, not inferred |
+| 45 | The refused value is absent from logs and transcript | Capture both; assert no digit substring |
+| 46 | The refusal reply contains none of the digits | Names shapes only |
+| 47 | `CardShapeFinding` cannot carry the matched characters | Type-level test |
+| 48 | The gate runs before policy, proposal and approval resolution | Ordering assertion in `authorizeSurfaceIngress` |
+| 49 | A refusal is still delivered when the message would have been a veto | Silence would elapse into a purchase |
+| 50 | All nineteen remote adapter call sites are covered by the shared hook | Source-level enumeration, not per-adapter tests |
+| 51 | Bare 3–4 digits and a bare `MM/YY` are NOT refused | False-positive guard; channel stays usable |
+| 52 | A card number in an email is redacted before the excerpt is persisted | Mail still recorded and still satisfies its expectation |
 
 ---
 
@@ -1149,6 +1267,13 @@ overturn any of them.
     confirmation as the defaults: `maxBackoffSeconds` `[10,3600]`,
     `dedupTtlMinutes` `[5,1440]`, `retentionDays` `[1,365]`,
     `maxRecords` `[100,100000]`.
+12. **Luhn alone decides a `pan`, without requiring a known issuer prefix.**
+    §11.0. Chosen because the trade is asymmetric: a false positive costs one
+    refused message, a false negative costs a permanent card number in someone
+    else's message history.
+13. **Card shapes in email are redacted, not refused.** §11.0. Refusing mail for
+    containing long digit runs would break order confirmations, which are the
+    consumer this capability exists to serve.
 
 ## 14. Related
 
