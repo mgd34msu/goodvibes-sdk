@@ -243,11 +243,10 @@ export interface InboundMailSupervisorDeps {
   readonly mailbox: string;
   readonly sources: InboundMailSourceFactory;
   /**
-   * The two facts `selectInboundMailSource` needs that this module cannot
-   * know: whether Google credentials are adopted on this machine, and whether
-   * the configured mail account is a Gmail one. Asked at `start()` so a
-   * credential adopted after boot is seen on the next start rather than at the
-   * next restart.
+   * The facts `selectInboundMailSource` needs and this module cannot know: is a
+   * Gmail source available, is the mail account a Gmail one, and — when the
+   * first is false — why. Asked at `start()`, so a credential adopted after
+   * boot is seen on the next start rather than the next restart.
    */
   readonly selectionFacts: () => Promise<Omit<InboundSourceSelectionInput, 'configured'>>;
   readonly cursors: MailboxCursorStore;
@@ -404,10 +403,12 @@ export class InboundMailSupervisor {
     this.degradations = degradations;
 
     const facts = await this.deps.selectionFacts();
+    // Spread whole, not field by field: `selectionFacts` answers exactly the
+    // selector's input minus `configured`, so `gmailUnavailable` — the REASON
+    // behind a false `googleAdopted` — cannot be dropped by a copied field list.
     const selection = selectInboundMailSource({
       configured: this.deps.config.get('surfaces.email.inbound.source'),
-      googleAdopted: facts.googleAdopted,
-      mailAccountIsGmail: facts.mailAccountIsGmail,
+      ...facts,
     });
     this.selection = selection;
     if (selection.kind === 'refused') {
