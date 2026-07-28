@@ -247,6 +247,50 @@ export const MAX_RECIPIENT_ADDRESS_CHARS = 320;
 export const MAX_PURPOSE_CHARS = 512;
 
 /**
+ * The bound on an expectation's `id`, and the shape one may take.
+ *
+ * The field the bounds above did not cover, and therefore the field through
+ * which the whole point of them was reachable. Every other string here was
+ * bounded and `id` was validated only as "a non-empty string after trimming":
+ * a one-megabyte `id` passed, thirty-two records carrying one survived a real
+ * `sweep('recovery')` as `retained: 32, removed: 0`, and the store re-persisted
+ * a 32 MB file that is entirely well-formed and will be read back and
+ * re-persisted at every boot for as long as it exists. Bounding three fields
+ * out of four bounds nothing.
+ *
+ * 128 characters against a `randomUUID`'s 36, because callers may supply their
+ * own `id` at `openExpectation` and a workstream-shaped identifier is longer
+ * than a UUID and still nothing like a megabyte.
+ *
+ * The character set is the second half and matters as much as the length. An
+ * `id` is a Map key in the live book and is echoed verbatim into
+ * `email.inbound.status`, so it reaches a terminal and a log line; letters,
+ * digits, `.`, `_`, `:` and `-` cover a UUID and every hand-written id in this
+ * repo while excluding newlines, control characters, quotes and everything
+ * else that makes a status line say something other than what happened. A
+ * `randomUUID` satisfies it exactly, so anything refused here was never minted
+ * by this daemon.
+ */
+export const MAX_EXPECTATION_ID_CHARS = 128;
+const EXPECTATION_ID_SHAPE = /^[A-Za-z0-9._:-]+$/;
+
+/**
+ * An `id` as it will be stored, or null when it is not one this daemon would
+ * ever have minted.
+ *
+ * One function, used by BOTH the live verb and the load path, because the
+ * §9.2 property is that a file on disk cannot mint an expectation the live API
+ * would have refused — and the inverse is just as load-bearing: an `id` the
+ * live API accepts and the load path refuses is an expectation that survives
+ * until the next restart and then silently disappears.
+ */
+export function normalizeExpectationId(value: unknown): string | null {
+  const id = typeof value === 'string' ? value.trim() : '';
+  if (id.length === 0 || id.length > MAX_EXPECTATION_ID_CHARS) return null;
+  return EXPECTATION_ID_SHAPE.test(id) ? id : null;
+}
+
+/**
  * Whether a service domain is one a link could actually be validated against.
  *
  * `normalizeDomain` only trims, lowercases and strips a trailing dot and port
@@ -420,10 +464,13 @@ function clampWindow(windowMs: number | undefined): number {
  * must not be able to mint an expectation the live API would have refused.**
  * `authority` must read exactly `'evidence-only'`, `serviceDomain` and
  * `recipientAddress` must normalize to something `openExpectation` would have
- * accepted, and `expiresAt - openedAt` must not exceed
- * `MAX_VERIFICATION_WINDOW_MS` — the same ceiling `clampWindow` enforces on
- * the live path. Returns `null` for anything that fails any check. Never
- * throws, never repairs, never widens a window.
+ * accepted, `id` must be one this daemon would have minted (see
+ * `normalizeExpectationId` — it was the one string field with no bound at all,
+ * and thirty-two records carrying a one-megabyte id each re-persisted a
+ * perfectly well-formed 32 MB file), and `expiresAt - openedAt` must not
+ * exceed `MAX_VERIFICATION_WINDOW_MS` — the same ceiling `clampWindow`
+ * enforces on the live path. Returns `null` for anything that fails any check.
+ * Never throws, never repairs, never widens a window.
  *
  * Validated against the PRESENT, not only against itself.
  *
@@ -455,8 +502,8 @@ export function validatePersistedExpectation(value: unknown, now: Date = new Dat
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const record = value as Record<string, unknown>;
 
-  const id = typeof record.id === 'string' ? record.id.trim() : '';
-  if (!id) return null;
+  const id = normalizeExpectationId(record.id);
+  if (id === null) return null;
 
   const kind = record.kind;
   if (kind !== 'signup' && kind !== 'login') return null;
@@ -573,6 +620,21 @@ export class VerificationExpectationBook {
     if (purpose.length > MAX_PURPOSE_CHARS) {
       throw new Error(`A verification expectation's purpose must be at most ${String(MAX_PURPOSE_CHARS)} characters.`);
     }
+    // The SAME id rule the load path applies, refused here rather than left to
+    // be dropped later. An id this accepted and `validatePersistedExpectation`
+    // refuses is an expectation that works until the daemon restarts and then
+    // vanishes without a word — the store re-validates every entry it writes,
+    // so the drop happens silently at the mirror write.
+    const suppliedId = input.id === undefined || input.id.trim().length === 0
+      ? null
+      : normalizeExpectationId(input.id);
+    if (suppliedId === null && input.id !== undefined && input.id.trim().length > 0) {
+      throw new Error(
+        `A verification expectation's id must be at most ${String(MAX_EXPECTATION_ID_CHARS)} `
+        + 'characters of letters, digits, dot, underscore, colon or hyphen. Omit it and one is '
+        + 'minted.',
+      );
+    }
 
     const now = input.now ?? new Date();
     this.sweepExpired(now);
@@ -585,7 +647,7 @@ export class VerificationExpectationBook {
     if (existing) this.open.delete(existing.id);
 
     const expectation: VerificationExpectation = {
-      id: input.id?.trim() || randomUUID(),
+      id: suppliedId ?? randomUUID(),
       serviceDomain,
       recipientAddress,
       purpose,
