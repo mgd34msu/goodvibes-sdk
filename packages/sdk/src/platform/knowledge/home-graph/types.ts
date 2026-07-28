@@ -116,20 +116,55 @@ export interface HomeGraphObjectInput {
   readonly metadata?: Record<string, unknown> | undefined;
 }
 
+/**
+ * What a CALLER may hand in for one object — camelCase, or the raw Home
+ * Assistant wire spelling.
+ *
+ * `normalizeHomeGraphObjectInput` reads every alias below (`entity_id`,
+ * `device_id`, `area_id`, `platform`, `domain`, `original_name`, `unique_id`,
+ * `slug`, `label_ids`, `attributes`) and has since it was written — accepting a
+ * Home Assistant snapshot unmodified is the point of it. The snapshot fields
+ * were nonetheless typed as `HomeGraphObjectInput`, which names none of them,
+ * so passing a real snapshot did not typecheck. It went unnoticed because the
+ * only callers passing the wire shape were tests, and `test/` was not
+ * typechecked; the first attempt to make one compile deleted `platform` from a
+ * fixture and broke the assertion that depended on it.
+ *
+ * The normalizer still RETURNS `HomeGraphObjectInput` — camelCase only. This
+ * type is the input side alone.
+ */
+export interface HomeGraphObjectInputSource extends HomeGraphObjectInput {
+  readonly entity_id?: string | undefined;
+  readonly device_id?: string | undefined;
+  readonly area_id?: string | undefined;
+  readonly integration_id?: string | undefined;
+  /** Home Assistant's integration name for an entity, e.g. `webostv`. */
+  readonly platform?: string | undefined;
+  readonly domain?: string | undefined;
+  readonly originalName?: string | undefined;
+  readonly original_name?: string | undefined;
+  readonly uniqueId?: string | undefined;
+  readonly unique_id?: string | undefined;
+  readonly slug?: string | undefined;
+  readonly labelIds?: readonly string[] | undefined;
+  readonly label_ids?: readonly string[] | undefined;
+  readonly attributes?: Record<string, unknown> | undefined;
+}
+
 export interface HomeGraphSnapshotInput extends HomeGraphSpaceInput {
   readonly homeId?: string | undefined;
   readonly title?: string | undefined;
   readonly capturedAt?: number | undefined;
   readonly pageAutomation?: HomeGraphPageAutomationOptions | undefined;
-  readonly entities?: readonly HomeGraphObjectInput[] | undefined;
-  readonly devices?: readonly HomeGraphObjectInput[] | undefined;
-  readonly areas?: readonly HomeGraphObjectInput[] | undefined;
-  readonly automations?: readonly HomeGraphObjectInput[] | undefined;
-  readonly scripts?: readonly HomeGraphObjectInput[] | undefined;
-  readonly scenes?: readonly HomeGraphObjectInput[] | undefined;
-  readonly labels?: readonly HomeGraphObjectInput[] | undefined;
-  readonly integrations?: readonly HomeGraphObjectInput[] | undefined;
-  readonly helpers?: readonly HomeGraphObjectInput[] | undefined;
+  readonly entities?: readonly HomeGraphObjectInputSource[] | undefined;
+  readonly devices?: readonly HomeGraphObjectInputSource[] | undefined;
+  readonly areas?: readonly HomeGraphObjectInputSource[] | undefined;
+  readonly automations?: readonly HomeGraphObjectInputSource[] | undefined;
+  readonly scripts?: readonly HomeGraphObjectInputSource[] | undefined;
+  readonly scenes?: readonly HomeGraphObjectInputSource[] | undefined;
+  readonly labels?: readonly HomeGraphObjectInputSource[] | undefined;
+  readonly integrations?: readonly HomeGraphObjectInputSource[] | undefined;
+  readonly helpers?: readonly HomeGraphObjectInputSource[] | undefined;
   readonly metadata?: Record<string, unknown> | undefined;
 }
 

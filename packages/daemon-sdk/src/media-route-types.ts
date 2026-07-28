@@ -40,7 +40,12 @@ export interface ArtifactStoreLike {
   create(input: Record<string, unknown>): Promise<unknown>;
   get(artifactId: string): unknown | null;
   readContent(artifactId: string): Promise<{
-    readonly record: { readonly mimeType: string; readonly filename?: string };
+    // `| undefined` is required: the real ArtifactRecord declares
+    // `filename?: string | undefined`, and under exactOptionalPropertyTypes
+    // `filename?: string` is a DIFFERENT type — an ArtifactStore could not
+    // satisfy this interface as written. Surfaced by typechecking test/ for the
+    // first time; a test rig had to adapt around it.
+    readonly record: { readonly mimeType: string; readonly filename?: string | undefined };
     readonly buffer: ArrayBuffer | Uint8Array;
   }>;
 }

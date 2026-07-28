@@ -50,17 +50,42 @@ function stable(value: unknown): string {
   return JSON.stringify(value, null, 2);
 }
 
+/**
+ * The verbs the emitted `WebuiHttpMethod` union names.
+ *
+ * Declared once and used both to TYPE `RouteRow.method` and to EMIT the union,
+ * so the two cannot drift. Before this, `RouteRow.method` was `string` while the
+ * emitted union was a hard-coded literal: a contract route using any other verb
+ * would have been written into a facade that types the field as one of these
+ * four, and nothing here would have said so.
+ */
+export const WEBUI_HTTP_METHODS = ['GET', 'POST', 'PATCH', 'DELETE'] as const;
+
+export type WebuiHttpMethodName = (typeof WEBUI_HTTP_METHODS)[number];
+
+export function isWebuiHttpMethod(value: string): value is WebuiHttpMethodName {
+  return (WEBUI_HTTP_METHODS as readonly string[]).includes(value);
+}
+
 export interface RouteRow {
-  readonly method: string;
+  readonly method: WebuiHttpMethodName;
   readonly path: string;
 }
 
 export function buildRoutes(methods: readonly OperatorMethodContract[]): Record<string, RouteRow> {
   const routes: Record<string, RouteRow> = {};
   for (const method of methods) {
-    if (method.http) {
-      routes[method.id] = { method: method.http.method, path: method.http.path };
+    if (!method.http) continue;
+    const verb = method.http.method;
+    if (!isWebuiHttpMethod(verb)) {
+      // Loud, not silent: emitting this route would produce a facade whose
+      // declared type does not describe the value it carries.
+      throw new Error(
+        `generate-webui-facade: ${method.id} uses HTTP method "${verb}", which is not in the emitted `
+        + `WebuiHttpMethod union (${WEBUI_HTTP_METHODS.join(' | ')}). Add it to WEBUI_HTTP_METHODS or fix the contract.`,
+      );
     }
+    routes[method.id] = { method: verb, path: method.http.path };
   }
   return routes;
 }
@@ -114,7 +139,7 @@ export function render(contract: OperatorContractManifest): string {
     ` * Methods: ${methods.length} total, ${restCount} REST-routed, ${wsInvokeIds.length} ws-only invoke.`,
     ` */`,
     ``,
-    `export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';`,
+    `export type WebuiHttpMethod = ${WEBUI_HTTP_METHODS.map((verb) => `'${verb}'`).join(' | ')};`,
     ``,
     `export interface WebuiRouteDefinition {`,
     `  readonly method: WebuiHttpMethod;`,
