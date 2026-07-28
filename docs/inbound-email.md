@@ -1128,6 +1128,46 @@ The general rule, which is the durable part:
 > what the platform is capable of parsing. Read the send call before choosing a
 > defence, and record the send-site fact that justifies the choice.
 
+#### Bare URL auto-linking needed handling on every channel, not just Telegram
+
+The ruling above said Telegram needs URL defanging *because* it has no
+`parse_mode`. That was too narrow, and the correction came from a test written
+to prove a property disproving it instead: a "no surface emits the raw live
+form" assertion failed on **Slack**.
+
+`escapeSlackMrkdwn` handles `&<>` and `` *_~` `` and leaves `https://`
+untouched — and Slack mrkdwn linkifies it. The same is true of Discord, of ntfy
+clients, and of the plain-text fallback. **None of them need markup to make a
+URL tappable.** §7 requires links to reach the owner as a registrable domain
+plus a verdict, so a live URL sitting in an attacker-written subject contradicts
+that on **every** surface, not only the one where it was first noticed.
+
+Defanging is therefore composed at the **channel dispatch**, so a newly added
+escaper cannot forget it, and repeated in the plain-text fallback because that
+path does not go through the dispatch. Same structural-over-conventional rule as
+the producer never holding a channel-format string: the safe thing happens
+because there is no path around it.
+
+#### A specific handler must be a superset of the fallback, never a substitute
+
+ntfy — a **mapped** surface — was receiving weaker treatment than an
+**unmapped** one. Its escaper stripped control characters, while the plain-text
+fallback also broke mention forms. So recognising a surface actively reduced its
+protection.
+
+That inverts the purpose of the mapping table, and it is a defect that hides
+indefinitely, because a mapped surface *looks* handled — the table is the very
+thing a reviewer checks to confirm coverage.
+
+> **Being recognised must never mean being protected less.** A per-channel
+> handler adds to the fallback's neutralisation; it never replaces it. Any
+> mapping that can be weaker than no mapping is a hole shaped like a feature.
+
+Markdown is still deliberately left alone on ntfy, and for a send-site reason
+rather than an oversight: `publish()` sets Title, Priority, Tags and Click with
+no Markdown header, so `*bold*` is inert there and escaping it would mangle what
+the owner reads.
+
 ### 7.3 Make the unsafe value unconstructible, not merely validated
 
 The strongest defence produced in this round deserves a name, because it is a
