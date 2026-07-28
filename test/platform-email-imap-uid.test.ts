@@ -15,7 +15,7 @@
  * untrusted content written by that message's sender.
  */
 
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { connect, type Socket } from 'node:net';
 import { EmailService } from '../packages/sdk/src/platform/email/email-service.ts';
 import {
@@ -85,19 +85,34 @@ async function startFakeImap(commands: string[]): Promise<FakeServer> {
             .split(',')
             .map((value) => parseInt(value, 10))
             .filter((value) => value > 0);
-          for (const uid of requested) {
+          // Sequence order, NOT the order the client asked in. A real server
+          // answers a UID FETCH in sequence order regardless of how the set
+          // was written, and a client that relies on request order reads the
+          // right count of messages with the wrong contents.
+          const ordered = [...requested].sort(
+            (a, b) => (messageByUid(a)?.seq ?? 0) - (messageByUid(b)?.seq ?? 0),
+          );
+          for (const uid of ordered) {
             const message = messageByUid(uid);
             if (message === undefined) continue; // no such UID: no FETCH response
             if (line.includes('HEADER.FIELDS')) {
-              serverWrite(sock, `* ${message.seq} FETCH (UID ${message.uid} BODY[HEADER.FIELDS (FROM SUBJECT)] `);
-              serverWrite(sock, `From: ${message.from}`);
-              serverWrite(sock, `Subject: ${message.subject}`);
-              serverWrite(sock, ')');
+              writeFetchSectionResponse(sock, {
+                seq: message.seq,
+                uid: message.uid,
+                section: 'BODY[HEADER.FIELDS (FROM SUBJECT)]',
+                payload: `From: ${message.from}\r\nSubject: ${message.subject}\r\n\r\n`,
+                uidPosition: activeShape.uidPosition,
+                sectionEncoding: activeShape.sectionEncoding,
+              });
             } else if (line.includes('BODY.PEEK[HEADER]')) {
-              serverWrite(sock, `* ${message.seq} FETCH (UID ${message.uid} BODY[HEADER] `);
-              serverWrite(sock, `From: ${message.from}`);
-              serverWrite(sock, `Subject: ${message.subject}`);
-              serverWrite(sock, ')');
+              writeFetchSectionResponse(sock, {
+                seq: message.seq,
+                uid: message.uid,
+                section: 'BODY[HEADER]',
+                payload: `From: ${message.from}\r\nSubject: ${message.subject}\r\n\r\n`,
+                uidPosition: activeShape.uidPosition,
+                sectionEncoding: activeShape.sectionEncoding,
+              });
             } else if (line.includes('BODYSTRUCTURE')) {
               serverWrite(sock, `* ${message.seq} FETCH (UID ${message.uid} BODYSTRUCTURE NIL)`);
             } else {
@@ -133,6 +148,23 @@ interface RecordedIngest {
   readonly content?: string | undefined;
 }
 
+import {
+  FETCH_WIRE_SHAPES,
+  writeFetchSectionResponse,
+  type FetchWireShape,
+} from './_helpers/imap-fetch-framing.ts';
+
+/**
+ * The framing this suite's fake server answers FETCH with.
+ *
+ * §13.5 names this file as a problem site: it wrote the header block as bare
+ * response lines with no `{n}` count, which no RFC 3501 server does, so its
+ * assertions about UID-versus-sequence-number were all made against a framing
+ * that never arrives. The shapes are now driven from the shared table.
+ */
+let activeShape: FetchWireShape = FETCH_WIRE_SHAPES[0]!;
+
+
 function buildService(port: number): {
   readonly service: EmailService;
   readonly ingests: RecordedIngest[];
@@ -159,7 +191,9 @@ function buildService(port: number): {
   return { service, ingests };
 }
 
-describe('list then read, where UID and sequence number differ', () => {
+for (const shape of FETCH_WIRE_SHAPES) {
+describe(`list then read, where UID and sequence number differ — ${shape.name}`, () => {
+  beforeEach(() => { activeShape = shape; });
   let fake: FakeServer | null = null;
   afterEach(() => { fake?.close(); fake = null; });
 
@@ -220,3 +254,4 @@ describe('list then read, where UID and sequence number differ', () => {
     expect(withBody[0]?.content).toContain('body of 307');
   });
 });
+}

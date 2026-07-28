@@ -9,7 +9,7 @@
  * goes to the folder the server named.
  */
 
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { createServer, connect, type Server, type Socket } from 'node:net';
 import { EmailService } from '../packages/sdk/src/platform/email/email-service.ts';
 import {
@@ -116,9 +116,14 @@ async function startFakeImap(): Promise<FakeServer> {
             .filter((value) => value > 0);
           requested.forEach((uid, index) => {
             const headers = HEADERS_BY_UID[uid] ?? ['From: nobody@example.test'];
-            socket.write(`* ${index + 1} FETCH (UID ${uid} BODY[HEADER.FIELDS (FROM)] \r\n`);
-            socket.write(`${headers.join('\r\n')}\r\n`);
-            socket.write(')\r\n');
+            writeFetchSectionResponse(socket, {
+              seq: index + 1,
+              uid,
+              section: 'BODY[HEADER.FIELDS (FROM)]',
+              payload: `${headers.join('\r\n')}\r\n\r\n`,
+              uidPosition: activeShape.uidPosition,
+              sectionEncoding: activeShape.sectionEncoding,
+            });
           });
           reply(`${tag} OK FETCH completed`);
         } else if (/UID FETCH/.test(line)) {
@@ -158,6 +163,24 @@ interface RecordedIngest {
   readonly at: string;
 }
 
+import {
+  FETCH_WIRE_SHAPES,
+  writeFetchSectionResponse,
+  type FetchWireShape,
+} from './_helpers/imap-fetch-framing.ts';
+
+/**
+ * The framing the envelope FETCH comes back in.
+ *
+ * This file DOES emit `{n}` literals — but only through `sectionReply`, which
+ * serves `readMessage`'s body and header sections. The `listInbox` path, which
+ * is `fetchEnvelopes`, wrote bare response lines. A literal elsewhere in the
+ * same file is exactly what makes a gap like this survive a reading: the file
+ * looks converted.
+ */
+let activeShape: FetchWireShape = FETCH_WIRE_SHAPES[0]!;
+
+
 function buildService(port: number): {
   readonly service: EmailService;
   readonly ingests: RecordedIngest[];
@@ -184,7 +207,9 @@ function buildService(port: number): {
   return { service, ingests };
 }
 
-describe('EmailService.listInbox', () => {
+for (const shape of FETCH_WIRE_SHAPES) {
+describe(`EmailService.listInbox — ${shape.name}`, () => {
+  beforeEach(() => { activeShape = shape; });
   let fake: FakeServer | null = null;
   afterEach(() => { fake?.close(); fake = null; });
 
@@ -244,6 +269,8 @@ describe('EmailService.listInbox', () => {
     expect(fake.commands.some((line) => line.includes('SEARCH ALL'))).toBe(false);
   });
 });
+
+}
 
 describe('EmailService.readMessage', () => {
   let fake: FakeServer | null = null;
