@@ -273,7 +273,9 @@ describe('§14.13 — an unreadable file degrades loudly, never to an empty prof
     const store = await loadBytes(new Uint8Array([0x23, 0x23, 0x20, 0x41, 0x0a, 0x80]));
     expect(store.status().kind).toBe('unavailable');
     expect(store.get('identity.name')).toBeUndefined();
-    expect(store.section('Identity')).toBeUndefined();
+    // Style is the open-tier section, so it is the one that WOULD be served if
+    // this store were serving anything at all.
+    expect(store.section('Style')).toBeUndefined();
     expect(store.person('Sarah')).toEqual([]);
     // read() carries the unavailable STATE rather than presenting zero sections
     // as though the profile were simply empty.
@@ -309,8 +311,10 @@ describe('§14.13 — an unreadable file degrades loudly, never to an empty prof
     const state = await store.load();
 
     expect(state.kind).toBe('loaded');
-    expect(store.section('Notes')?.prose[0]?.text).toBe('- Café');
-    expect(store.section('Notes')?.prose[0]?.provenance?.said).toBe('café');
+    // Via read(): Notes is closed tier, so section() does not serve it.
+    const notes = store.read().sections.find((section) => section.heading === 'Notes');
+    expect(notes?.prose[0]?.text).toBe('- Café');
+    expect(notes?.prose[0]?.provenance?.said).toBe('café');
   });
 
   test('a file that is simply not there is loaded and empty, not unavailable', async () => {
