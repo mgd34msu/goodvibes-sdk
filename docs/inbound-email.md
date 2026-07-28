@@ -1137,13 +1137,32 @@ findings is structurally incapable of quoting a card number.
 
 Rules:
 
-- **`pan`** — a run of 13–19 digits after stripping internal spaces and hyphens,
-  passing the Luhn check. Luhn alone is the discriminator; a known issuer prefix
-  is deliberately **not** additionally required, since that would miss valid
-  cards from less common networks. The trade is asymmetric and decided
-  accordingly: a false positive costs one refused message with a clear
-  explanation, while a false negative puts a real card number into a third
-  party's message history permanently.
+- **`pan`** — 13–19 digits, passing the Luhn check. Luhn alone is the
+  discriminator; a known issuer prefix is deliberately **not** additionally
+  required, since that would miss valid cards from less common networks. The
+  trade is asymmetric and decided accordingly: a false positive costs one
+  refused message with a clear explanation, while a false negative puts a real
+  card number into a third party's message history permanently.
+
+  **This rule originally read "a run of 13–19 digits after stripping internal
+  spaces and hyphens", and that is not implementable — it misses cards.** A
+  separator-joined run is not one number. Taking the maximal run whole welds
+  `4111111111111111 07/29` into an eighteen-digit string that fails Luhn, so a
+  card pasted with its expiry after it — the single most likely way a person
+  sends one — **was not detected at all**. The implementation caught this in its
+  own tests.
+
+  So a run is analysed as a **sequence of digit groups**: each single group of
+  13–19, the whole run, and contiguous group windows where every group is 4–6
+  digits. The 4-digit floor is load-bearing: without it,
+  `555 123 4567 555 987 6543` yields six Luhn candidates and refuses a message
+  containing two phone numbers roughly half the time.
+
+  Deliberately **not** caught: a card buried inside a longer unbroken digit
+  string, e.g. 25 solid digits containing a valid 16. Sliding a window at digit
+  granularity would fire on about one in ten arbitrary tracking numbers. The
+  threat model is the owner pasting his own card, not an adversary evading the
+  check.
 - **`security-code`** and **`expiry`** — never refused on shape alone. Three or
   four bare digits, and `MM/YY`, are far too common, and refusing them would
   make the channel unusable. They count only in card context (`cvv`, `cvc`,
@@ -1166,6 +1185,32 @@ answer is **redaction, not refusal**. `detectCardShapes` runs over the excerpt
 before it is persisted and matched spans are replaced. The message is still
 recorded, still notified, still able to satisfy an expectation; only the digits
 fail to reach disk.
+
+**The subject is redacted too, and this paragraph originally missed it.** The
+subject is persisted in the same record *and* rendered to the owner in the
+notice — the same exposure through a second field, and the more visible one.
+Redacting it requires re-clamping to the field's length limit, because a
+redaction marker is longer than the three digits it replaces, and an
+over-length subject fails `validateInboundMailRecord` on load — which discards
+**the whole record**, turning a redaction into a lost message.
+
+#### One adapter does not pass through this hook, on purpose
+
+The nineteen call sites are pinned by an enumeration test, so a new adapter
+that skips `authorizeSurfaceIngress` fails rather than shipping ungated.
+
+`adapters/github/index.ts` is a recorded exception: it never calls
+`authorizeSurfaceIngress` at all, going from an HMAC-verified webhook body
+straight to `trySpawnAgent`. It is not gated here, because it is not a remote
+messaging channel — no `ChannelPolicyDecision`, no owner-facing reply channel to
+deliver a refusal on, and its content is issue and pull-request text rather than
+something the owner types. It is named in the enumeration test so this is a
+decision on the record rather than an oversight.
+
+Separately, and outside this round: that GitHub webhook content reaches
+`trySpawnAgent` without passing the shared ingress hook at all means it also
+bypasses the conversation gate. That is worth its own look by whoever owns the
+GitHub integration.
 
 ### 11.1 Cross-round requirement for payments
 
