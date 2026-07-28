@@ -71,7 +71,7 @@ function makeUserAuth(): UserAuthManager {
 function makeServeMock() {
   const calls: Array<{ port: number; hostname: string }> = [];
   const factory = (options: Record<string, unknown>) => {
-    calls.push({ port: options.port, hostname: options.hostname });
+    calls.push({ port: options.port as number, hostname: options.hostname as string });
     return {
       stop: (_force?: boolean) => {},
       port: options.port,
@@ -86,7 +86,7 @@ function makeHttpListener(cm: ConfigManager, serveMock: ReturnType<typeof makeSe
     configManager: cm,
     userAuth: makeUserAuth(),
     serveFactory: serveMock.factory,
-  } as unknown as Parameters<InstanceType<typeof import('../packages/sdk/src/platform/daemon/http-listener.js').HttpListener>['start']>[0] extends never ? never : ConstructorParameters<typeof import('../packages/sdk/src/platform/daemon/http-listener.js').HttpListener>[0]), disposeListener);
+  } as unknown as ConstructorParameters<typeof HttpListener>[0]), disposeListener);
 }
 
 async function startListener(listener: HttpListener) {
@@ -122,10 +122,10 @@ describe('CM1: ConfigManager.subscribe — basic notification', () => {
 describe('CM2: ConfigManager.subscribe — correct argument shape', () => {
   test('callback receives (newValue, oldValue)', () => {
     const cm = makeConfigManager({ port: 3422 });
-    let captured: [number, number] | null = null;
-    cm.subscribe('httpListener.port', (newVal, oldVal) => { captured = [newVal, oldVal]; });
+    const captured: { value: [number, number] | null } = { value: null };
+    cm.subscribe('httpListener.port', (newVal, oldVal) => { captured.value = [newVal, oldVal]; });
     cm.set('httpListener.port', 7777);
-    expect(captured).toEqual([7777, 3422]);
+    expect(captured.value).toEqual([7777, 3422]);
   });
 });
 

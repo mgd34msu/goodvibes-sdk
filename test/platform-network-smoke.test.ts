@@ -52,7 +52,7 @@ describe('platform/runtime/network — behavior smoke', () => {
   });
 
   test('applyOutboundTlsToFetchInit preserves method in the returned init object', () => {
-    const init = applyOutboundTlsToFetchInit(makeConfig(), { method: 'GET' });
+    const init = applyOutboundTlsToFetchInit('https://example.test/', { method: 'GET' }, makeConfig());
     expect((init as RequestInit).method).toBe('GET');
   });
 

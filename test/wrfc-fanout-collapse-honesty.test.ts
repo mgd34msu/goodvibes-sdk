@@ -24,6 +24,7 @@ import { createEventEnvelope } from '../packages/sdk/src/platform/runtime/event-
 import type { AgentRecord } from '../packages/sdk/src/platform/tools/agent/manager.js';
 import type { AgentManagerLike } from '../packages/sdk/src/platform/agents/wrfc-config.js';
 import type { Constraint, ConstraintFinding, EngineerReport, ReviewerReport } from '../packages/sdk/src/platform/agents/completion-report.js';
+import type { ConfigManager } from '../packages/sdk/src/platform/config/index.js';
 
 // --------------------------------------------------------------------------
 // Pure detector helpers
@@ -112,7 +113,7 @@ function reviewerOutput(score: number, findings: ConstraintFinding[], overrides:
 
 function makeRecord(overrides: Partial<AgentRecord> & { id: string; task: string }): AgentRecord {
   return {
-    id: overrides.id, task: overrides.task, template: overrides.template ?? 'engineer', tools: [],
+    template: overrides.template ?? 'engineer', tools: [],
     status: 'running', startedAt: Date.now(), toolCallCount: 0, orchestrationDepth: 0,
     executionProtocol: 'direct', reviewMode: 'none', communicationLane: 'parent-only', ...overrides,
   };
@@ -129,15 +130,15 @@ function createHarness() {
   const workflowEvents: Array<{ type: string }> = [];
   bus.onDomain('workflows', (envelope) => { workflowEvents.push({ type: envelope.type }); });
 
-  const configManager = {
-    get: (key: string): unknown => {
+  const configManager: Pick<ConfigManager, 'get' | 'getCategory'> = {
+    get: ((key: string): unknown => {
       if (key === 'wrfc.scoreThreshold') return 9.9;
       if (key === 'wrfc.maxFixAttempts') return 3;
       if (key === 'wrfc.autoCommit') return false;
       return undefined;
-    },
-    getCategory: (category: string): unknown =>
-      category === 'wrfc' ? { scoreThreshold: 9.9, maxFixAttempts: 3, autoCommit: false, gates: [] } : undefined,
+    }) as ConfigManager['get'],
+    getCategory: ((category: string): unknown =>
+      category === 'wrfc' ? { scoreThreshold: 9.9, maxFixAttempts: 3, autoCommit: false, gates: [] } : undefined) as ConfigManager['getCategory'],
   };
 
   const agentManager: AgentManagerLike = {

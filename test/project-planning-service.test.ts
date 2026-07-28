@@ -9,6 +9,7 @@ import {
 } from '../packages/sdk/src/platform/knowledge/index.js';
 import { KnowledgeStore } from '../packages/sdk/src/platform/knowledge/store.js';
 import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.js';
+import type { PlannerEvent } from '../packages/sdk/src/events/planner.js';
 
 const tmpRoots: string[] = [];
 
@@ -102,13 +103,13 @@ describe('project planning service', () => {
     const service = createService(bus);
     const events: string[] = [];
     const snapshots: ProjectWorkPlanSnapshot[] = [];
-    const unsubscribeCreated = bus.on('WORK_PLAN_TASK_CREATED', ({ payload }) => {
+    const unsubscribeCreated = bus.on<Extract<PlannerEvent, { type: 'WORK_PLAN_TASK_CREATED' }>>('WORK_PLAN_TASK_CREATED', ({ payload }) => {
       events.push(`${payload.type}:${payload.task.title}`);
     });
-    const unsubscribeStatus = bus.on('WORK_PLAN_TASK_STATUS_CHANGED', ({ payload }) => {
+    const unsubscribeStatus = bus.on<Extract<PlannerEvent, { type: 'WORK_PLAN_TASK_STATUS_CHANGED' }>>('WORK_PLAN_TASK_STATUS_CHANGED', ({ payload }) => {
       events.push(`${payload.type}:${payload.previousStatus}->${payload.status}`);
     });
-    const unsubscribeSnapshot = bus.on('WORK_PLAN_SNAPSHOT_INVALIDATED', ({ payload }) => {
+    const unsubscribeSnapshot = bus.on<Extract<PlannerEvent, { type: 'WORK_PLAN_SNAPSHOT_INVALIDATED' }>>('WORK_PLAN_SNAPSHOT_INVALIDATED', ({ payload }) => {
       snapshots.push(payload.snapshot as ProjectWorkPlanSnapshot);
     });
 

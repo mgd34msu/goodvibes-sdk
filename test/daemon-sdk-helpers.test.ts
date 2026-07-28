@@ -32,7 +32,7 @@ import {
   summarizeErrorForRecord,
 } from '../packages/daemon-sdk/src/error-response.js';
 import { estimateJsonByteLengthWithinLimit } from '../packages/daemon-sdk/src/remote-routes.js';
-import { GoodVibesSdkError } from '../packages/errors/dist/index.js';
+import { GoodVibesSdkError, type DaemonErrorCategory } from '../packages/errors/dist/index.js';
 
 // ---------------------------------------------------------------------------
 // route-helpers.ts
@@ -483,7 +483,7 @@ describe('error-response — buildErrorResponseBody — structured body passthro
 });
 
 describe('error-response — buildErrorResponseBody — message-inferred categories', () => {
-  const cases: Array<[string, string]> = [
+  const cases: Array<[string, DaemonErrorCategory]> = [
     ['invalid api_key provided', 'authentication'],
     ['access denied by policy', 'authorization'],
     ['billing quota exceeded', 'billing'],

@@ -55,7 +55,7 @@ function parseSite(stack: string): string {
     const match = REPO_FILE.exec(line);
     if (match) {
       const fn = /at\s+(?:async\s+)?([^\s(]+)\s*\(/.exec(line)?.[1] ?? '';
-      const file = match[1].replace(/^.*\/(test|packages|src)\//, '$1/');
+      const file = match[1]!.replace(/^.*\/(test|packages|src)\//, '$1/');
       return fn ? `${fn} (${file})` : file;
     }
   }
@@ -83,7 +83,7 @@ function parseOrigin(stack: string): string {
     if (SELF.test(line)) continue;
     const t = TEST_FILE.exec(line);
     if (t) {
-      lastKnownTestFile = t[1].replace(/^.*\/test\//, 'test/');
+      lastKnownTestFile = t[1]!.replace(/^.*\/test\//, 'test/');
       return lastKnownTestFile;
     }
   }
@@ -91,7 +91,7 @@ function parseOrigin(stack: string): string {
     if (SELF.test(line)) continue;
     const r = REPO_FILE.exec(line);
     if (r) {
-      const product = r[1].replace(/^.*\/(test|packages|src)\//, '$1/');
+      const product = r[1]!.replace(/^.*\/(test|packages|src)\//, '$1/');
       return `${product} [via ${lastKnownTestFile}]`;
     }
   }

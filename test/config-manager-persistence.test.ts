@@ -39,15 +39,15 @@ describe('ConfigManager persistence', () => {
     const manager = new ConfigManager({ configDir });
 
     manager.mergeCategory('helper', { testEntry: 'disabled' } as never);
-    expect((manager.getCategory('helper') as Record<string, string>)['testEntry']).toBe('disabled');
+    expect((manager.getCategory('helper') as unknown as Record<string, string>)['testEntry']).toBe('disabled');
 
     manager.removeCategoryKey('helper', 'testEntry');
-    expect('testEntry' in (manager.getCategory('helper') as Record<string, string>)).toBe(false);
+    expect('testEntry' in (manager.getCategory('helper') as unknown as Record<string, string>)).toBe(false);
 
     // The removal must survive a reload from disk — this is the exact path
     // that silently kept stale overrides alive across restarts.
     const reloaded = new ConfigManager({ configDir });
-    expect('testEntry' in (reloaded.getCategory('helper') as Record<string, string>)).toBe(false);
+    expect('testEntry' in (reloaded.getCategory('helper') as unknown as Record<string, string>)).toBe(false);
   });
 
   test('removeCategoryKey on an absent key is a no-op and does not throw', () => {

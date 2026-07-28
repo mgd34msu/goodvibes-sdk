@@ -248,7 +248,7 @@ describe('probe execution stays declarative', () => {
       io,
     );
     expect(result).toBe('clean');
-    expect(seen).toEqual({ command: 'git', args: ['status', '--porcelain'] });
+    expect(seen as { command: string; args: readonly string[] } | null).toEqual({ command: 'git', args: ['status', '--porcelain'] });
   });
 
   test('a missing file is an observation, not a probe failure', async () => {

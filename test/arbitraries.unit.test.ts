@@ -29,7 +29,11 @@ describe('FIXTURE_EVENTS — required-field drift guard', () => {
     const violations: string[] = [];
 
     for (const event of FIXTURE_EVENTS) {
-      const required = REQUIRED_FIELDS_BY_TYPE[event.type];
+      // REQUIRED_FIELDS_BY_TYPE is now keyed by the production event union, so
+      // indexing it with a plain string needs the narrowing. An event type that
+      // is not a real union member yields undefined and is skipped below, which
+      // the 'every fixture type is a known event type' case elsewhere covers.
+      const required = REQUIRED_FIELDS_BY_TYPE[event.type as keyof typeof REQUIRED_FIELDS_BY_TYPE];
       if (!required) continue; // no required-field spec — skip
 
       for (const field of required) {

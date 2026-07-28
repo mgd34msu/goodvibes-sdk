@@ -9,7 +9,7 @@ describe('Cloudflare Worker batch bridge', () => {
     const calls: Array<{ url: string; init?: RequestInit }> = [];
     const originalFetch = globalThis.fetch;
     globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-      calls.push({ url: String(input), init });
+      calls.push({ url: String(input), ...(init !== undefined ? { init } : {}) });
       return Response.json({ job: { id: 'batch-job-1' } }, { status: 202 });
     }) as typeof fetch;
     try {
@@ -58,9 +58,11 @@ describe('Cloudflare Worker batch bridge', () => {
     );
     expect(res.status).toBe(202);
     expect(messages).toHaveLength(1);
-    expect(messages[0]?.type).toBe('batch.tick');
-    expect(messages[0]?.force).toBe(true);
-    expect(typeof messages[0]?.enqueuedAt).toBe('number');
+    const message = messages[0];
+    expect(message?.type).toBe('batch.tick');
+    if (message?.type !== 'batch.tick') throw new Error('expected a batch.tick queue payload');
+    expect(message.force).toBe(true);
+    expect(typeof message.enqueuedAt).toBe('number');
   });
 
   test('requires a worker token for non-health endpoints by default', async () => {

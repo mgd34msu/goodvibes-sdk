@@ -126,10 +126,10 @@ describe('router-e2e automation — runs (happy path)', () => {
   });
 
   test('POST /api/automation/runs/:id/cancel cancels the run', async () => {
-    let capturedAction: string | null = null;
+    const capturedAction: { value: string | null } = { value: null };
     const handlers = makeAutomationHandlers({
       automationRunAction: (runId, action) => {
-        capturedAction = action;
+        capturedAction.value = action;
         return Response.json({ ok: true, runId, action });
       },
     });
@@ -139,7 +139,7 @@ describe('router-e2e automation — runs (happy path)', () => {
     expect(res!.status).toBe(200);
     const body = await res!.json() as Record<string, unknown>;
     expect(body.ok).toBe(true);
-    expect(capturedAction).toBe('cancel');
+    expect(capturedAction.value).toBe('cancel');
   });
 });
 
@@ -166,10 +166,10 @@ describe('router-e2e automation — failure paths', () => {
   });
 
   test('DELETE /api/automation/jobs/:id removes job', async () => {
-    let capturedId: string | null = null;
+    const capturedId: { value: string | null } = { value: null };
     const handlers = makeAutomationHandlers({
       deleteAutomationJob: (jobId, _req) => {
-        capturedId = jobId;
+        capturedId.value = jobId;
         return Response.json({ ok: true, jobId });
       },
     });
@@ -177,6 +177,6 @@ describe('router-e2e automation — failure paths', () => {
     const res = await dispatchAutomationRoutes(req, handlers);
     expect(res).not.toBeNull();
     expect(res!.status).toBe(200);
-    expect(capturedId).toBe('job-abc');
+    expect(capturedId.value).toBe('job-abc');
   });
 });

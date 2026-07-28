@@ -17,6 +17,7 @@ import { createProviderApi, type ProviderApiDependencies } from '../packages/sdk
 import { buildDefaultExecution } from '../packages/sdk/src/platform/automation/manager-runtime-helpers.js';
 import { buildSharedSessionAgentSpawnRoutingInput } from '../packages/sdk/src/platform/control-plane/session-intents.js';
 import { AgentManager } from '../packages/sdk/src/platform/tools/agent/manager.js';
+import type { ConfigManager } from '../packages/sdk/src/platform/config/index.js';
 
 function makeModel(provider: string, id: string, overrides: Partial<ModelDefinition> = {}): ModelDefinition {
   return {
@@ -52,7 +53,8 @@ describe('media/builtin-image-understanding.ts — bare model id resolution', ()
     const mediaProvider = createBuiltinImageUnderstandingProvider(registry, {
       readContent: async () => { throw new Error('not used — dataBase64 supplied directly'); },
     });
-    const result = await mediaProvider.analyze({
+    expect(mediaProvider.analyze).toBeDefined();
+    const result = await mediaProvider.analyze!({
       artifact: { mimeType: 'image/png', dataBase64: 'ZmFrZQ==', metadata: {} },
       modelId: 'vision-model',
       metadata: {},
@@ -73,7 +75,8 @@ describe('media/builtin-image-understanding.ts — bare model id resolution', ()
     const mediaProvider = createBuiltinImageUnderstandingProvider(registry, {
       readContent: async () => { throw new Error('not used'); },
     });
-    await expect(mediaProvider.analyze({
+    expect(mediaProvider.analyze).toBeDefined();
+    await expect(mediaProvider.analyze!({
       artifact: { mimeType: 'image/png', dataBase64: 'ZmFrZQ==', metadata: {} },
       modelId: 'shared-vision',
       metadata: {},
@@ -93,6 +96,7 @@ describe('providers/provider-api.ts — bare model id resolution', () => {
         getSyntheticModelInfoFromCatalog: () => null,
         getCostFromCatalog: () => ({ input: 0, output: 0 }),
         getPricingForModel: () => null,
+        resolveModelPricing: () => ({ status: 'unknown' }),
         getCatalogModelDefinitions: () => [],
         has: () => true,
         require: () => ({ name: models[0]!.provider }) as LLMProvider,
@@ -119,7 +123,7 @@ describe('providers/provider-api.ts — bare model id resolution', () => {
       },
       benchmarkStore: {
         getBenchmarks: () => undefined,
-        refreshBenchmarks: async () => 0,
+        refreshBenchmarks: async () => {},
       },
     };
   }
@@ -208,7 +212,7 @@ describe('tools/agent/manager.ts AgentManager.spawn() — bare model id resoluti
   test('a unique bare model id auto-qualifies when providerRegistry is configured', () => {
     const models = [makeModel('anthropic', 'claude-fable-5')];
     const manager = new AgentManager({
-      configManager: { get: () => null },
+      configManager: { get: ((_key: string): unknown => undefined) as ConfigManager['get'] },
       messageBus: { registerAgent() {} },
       archetypeLoader: { loadArchetype: () => null },
       providerRegistry: { listModels: () => models },
@@ -224,7 +228,7 @@ describe('tools/agent/manager.ts AgentManager.spawn() — bare model id resoluti
   test('an ambiguous bare model id is rejected with the real candidates when providerRegistry is configured', () => {
     const models = [makeModel('anthropic', 'shared-name'), makeModel('openai', 'shared-name')];
     const manager = new AgentManager({
-      configManager: { get: () => null },
+      configManager: { get: ((_key: string): unknown => undefined) as ConfigManager['get'] },
       messageBus: { registerAgent() {} },
       archetypeLoader: { loadArchetype: () => null },
       providerRegistry: { listModels: () => models },

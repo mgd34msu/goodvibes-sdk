@@ -22,10 +22,10 @@ describe('semantic knowledge/wiki enrichment: web repair and subject links', () 
   test('web gap repair ingests at least two distinct sources for answer gaps', async () => {
     const ingested: Array<{
       url: string;
-      knowledgeSpaceId?: string;
-      title?: string;
-      tags?: readonly string[];
-      metadata?: Record<string, unknown>;
+      knowledgeSpaceId?: string | undefined;
+      title?: string | undefined;
+      tags?: readonly string[] | undefined;
+      metadata?: Record<string, unknown> | undefined;
     }> = [];
     const repairer = createWebKnowledgeGapRepairer({
       searchService: {
@@ -125,7 +125,7 @@ describe('semantic knowledge/wiki enrichment: web repair and subject links', () 
 
   test('web gap repair escalates targeted searches and caps accepted sources at five', async () => {
     const queries: string[] = [];
-    const ingested: Array<{ url: string; metadata?: Record<string, unknown> }> = [];
+    const ingested: Array<{ url: string; metadata?: Record<string, unknown> | undefined }> = [];
     const repairer = createWebKnowledgeGapRepairer({
       searchService: {
         async search(request) {

@@ -51,7 +51,11 @@ const methods = contract.operator.methods;
 describe('webui facade — REST vs ws disposition', () => {
   test('WEBUI_METHOD_ROUTES is exactly the REST-bound methods, verbatim', () => {
     const expected = buildRoutes(methods);
-    expect(WEBUI_METHOD_ROUTES).toEqual(expected);
+    // buildRoutes()'s RouteRow types `method` as a bare `string` (scripts/generate-webui-facade.ts);
+    // the generated WEBUI_METHOD_ROUTES narrows it to the literal WebuiHttpMethod union. Both sides
+    // are produced from the same contract data at runtime, so this is a safe narrowing view for the
+    // deep-equality check, not a behavior change.
+    expect(WEBUI_METHOD_ROUTES).toEqual(expected as typeof WEBUI_METHOD_ROUTES);
     // Cross-check a couple against the raw contract so the expectation is grounded.
     for (const method of methods) {
       if (method.http) {

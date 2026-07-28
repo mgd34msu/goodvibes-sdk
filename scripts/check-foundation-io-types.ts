@@ -524,7 +524,7 @@ function extractEntry(map: 'OperatorMethodInputMap' | 'OperatorMethodOutputMap',
   const mapEnd = fileText.indexOf('\n}', mapStart);
   const mapBody = fileText.slice(mapStart, mapEnd);
   const match = mapBody.match(re);
-  return match ? match[1] : null;
+  return match?.[1] ?? null;
 }
 
 let drifted = false;

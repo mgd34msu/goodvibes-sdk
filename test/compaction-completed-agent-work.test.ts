@@ -24,8 +24,6 @@ import type { WrfcChain } from '../packages/sdk/src/platform/agents/wrfc-types.t
 /** Build a minimal AgentRecord (mirrors test/wrfc-controller.test.ts's makeRecord helper). */
 function makeRecord(overrides: Partial<AgentRecord> & { id: string; task: string }): AgentRecord {
   return {
-    id: overrides.id,
-    task: overrides.task,
     template: overrides.template ?? 'engineer',
     tools: [],
     status: 'completed',
@@ -42,7 +40,6 @@ function makeRecord(overrides: Partial<AgentRecord> & { id: string; task: string
 /** Build a minimal WrfcChain (mirrors test/wrfc-phantom-fixes.test.ts's inline literals). */
 function makeChain(overrides: Partial<WrfcChain> & { id: string }): WrfcChain {
   return {
-    id: overrides.id,
     state: 'passed',
     task: 'chain task',
     ownerAgentId: `${overrides.id}-owner`,

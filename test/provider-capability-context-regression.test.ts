@@ -28,6 +28,19 @@ afterEach(() => {
   globalThis.fetch = originalFetch;
 });
 
+/**
+ * Bun's `typeof fetch` includes a `preconnect` static method that plain mock
+ * functions don't have. Attach a no-op stub so test doubles satisfy the type
+ * without pretending to implement real preconnect behavior.
+ */
+function withPreconnect(
+  impl: (input: string | URL | Request, init?: RequestInit) => Promise<Response>,
+): typeof globalThis.fetch {
+  return Object.assign(impl, {
+    preconnect: (_url: string | URL, _options?: { dns?: boolean; tcp?: boolean; http?: boolean; https?: boolean }) => {},
+  });
+}
+
 // ---------------------------------------------------------------------------
 // S01: configured_cap is authoritative over a fuzzy OpenRouter match
 // ---------------------------------------------------------------------------
@@ -70,7 +83,7 @@ function makeServiceWithFuzzyCache(tmp: string): ModelLimitsService {
     'utf-8',
   );
   // Guard against any background refresh attempting a real network call.
-  globalThis.fetch = async () => new Response(JSON.stringify({ data: [] }), { status: 200 });
+  globalThis.fetch = withPreconnect(async () => new Response(JSON.stringify({ data: [] }), { status: 200 }));
   const service = new ModelLimitsService({ cachePath });
   service.init();
   return service;

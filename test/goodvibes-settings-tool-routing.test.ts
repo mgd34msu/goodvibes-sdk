@@ -153,7 +153,12 @@ describe('a running daemon owns its keys in both directions', () => {
     }).execute({ mode: 'set', key: 'surfaces.telegram.defaultChatId', value: '12345', confirm: true });
 
     expect(result.success).toBe(true);
-    expect(posted).toEqual({ key: 'surfaces.telegram.defaultChatId', value: '12345' });
+    // `posted` is reassigned inside the `fetchImpl` closure above, which TS's
+    // control-flow analysis can't see across the `await` — its narrowed type
+    // here is stuck at the initializer (`null`). Assert non-null, then read it
+    // through its declared type rather than the falsely-narrowed one.
+    expect(posted).not.toBeNull();
+    expect(posted as unknown as Record<string, unknown>).toEqual({ key: 'surfaces.telegram.defaultChatId', value: '12345' });
     const output = parseOutput(result);
     expect(output['appliedBy']).toBe('daemon');
     expect(output['persistedTo']).toBe('/daemon/settings.json');

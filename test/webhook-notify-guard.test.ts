@@ -37,7 +37,11 @@ describe('WebhookNotifier delivery suppression', () => {
   });
 
   afterEach(() => {
-    process.env['NODE_ENV'] = origNodeEnv;
+    if (origNodeEnv === undefined) {
+      delete process.env['NODE_ENV'];
+    } else {
+      process.env['NODE_ENV'] = origNodeEnv;
+    }
     if (origOverride === undefined) {
       delete process.env['GOODVIBES_SUPPRESS_NOTIFY'];
     } else {

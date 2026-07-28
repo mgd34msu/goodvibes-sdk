@@ -30,7 +30,7 @@ describe('Home Assistant integration client', () => {
     const calls: Array<{ readonly url: string; readonly init?: RequestInit }> = [];
     globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
       const url = input instanceof Request ? input.url : String(input);
-      calls.push({ url, init });
+      calls.push({ url, ...(init !== undefined ? { init } : {}) });
       const parsed = new URL(url);
       if (parsed.pathname === '/api/states') {
         return Response.json([{ entity_id: 'light.kitchen', state: 'on', attributes: { friendly_name: 'Kitchen' } }]);
@@ -78,7 +78,7 @@ describe('Home Assistant channel surface', () => {
         };
         return values[key];
       },
-    };
+    } as unknown as ConfigManager;
 
     const manifest = buildHomeAssistantManifest({ configManager: config });
     const tools = listHomeAssistantTools();
@@ -98,7 +98,7 @@ describe('Home Assistant channel surface', () => {
     const calls: Array<{ readonly url: string; readonly init?: RequestInit }> = [];
     globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
       const url = input instanceof Request ? input.url : String(input);
-      calls.push({ url, init });
+      calls.push({ url, ...(init !== undefined ? { init } : {}) });
       return Response.json({ message: 'Event goodvibes_message fired.' });
     }) as typeof fetch;
 
@@ -327,7 +327,7 @@ describe('Home Assistant channel surface', () => {
       chatManager,
       parseJsonBody: async (req: Request) => await req.json() as Record<string, unknown>,
       resolveDefaultProviderModel: () => ({ provider: 'openai', model: 'gpt-5.5' }),
-    } as ConstructorParameters<typeof HomeAssistantConversationRoutes>[0]);
+    } as unknown as ConstructorParameters<typeof HomeAssistantConversationRoutes>[0]);
 
     const response = await routes.handle(new Request('http://daemon.local/api/homeassistant/conversation', {
       method: 'POST',
@@ -428,7 +428,7 @@ describe('Home Assistant channel surface', () => {
       },
       parseJsonBody: async (req: Request) => await req.json() as Record<string, unknown>,
       resolveDefaultProviderModel: () => ({ provider: 'openai', model: 'gpt-5.5' }),
-    } as ConstructorParameters<typeof HomeAssistantConversationRoutes>[0]);
+    } as unknown as ConstructorParameters<typeof HomeAssistantConversationRoutes>[0]);
 
     const response = await routes.handle(new Request('http://daemon.local/api/homeassistant/conversation', {
       method: 'POST',

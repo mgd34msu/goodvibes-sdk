@@ -9,7 +9,6 @@
  * proving the on-the-wire body parses back into the OTLP shape.
  */
 import { describe, expect, test, afterAll } from 'bun:test';
-import type { Server } from 'bun';
 import {
   buildTracePayload,
   buildLogsPayload,
@@ -165,7 +164,7 @@ describe('exportDecisions gating', () => {
 
 describe('exportDecisions POST round-trip', () => {
   const received: Array<{ path: string; body: unknown }> = [];
-  const server: Server = Bun.serve({
+  const server = Bun.serve({
     port: 0,
     async fetch(req) {
       const url = new URL(req.url);
@@ -183,7 +182,7 @@ describe('exportDecisions POST round-trip', () => {
       { mode: 'prompt' },
     );
     expect(r.exported).toBe(true);
-    expect(r.signals.sort()).toEqual(['log', 'span']);
+    expect([...r.signals].sort()).toEqual(['log', 'span']);
 
     const traces = received.find((x) => x.path === '/v1/traces');
     const logs = received.find((x) => x.path === '/v1/logs');

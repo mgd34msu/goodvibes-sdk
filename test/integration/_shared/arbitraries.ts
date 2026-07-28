@@ -10,6 +10,7 @@
 
 import fc from 'fast-check';
 
+import type { AnyRuntimeEvent } from '../../../packages/sdk/src/events/domain-map.js';
 import type { SessionEvent } from '../../../packages/sdk/src/events/session.js';
 import type { TurnEvent } from '../../../packages/sdk/src/events/turn.js';
 import type { AgentEvent } from '../../../packages/sdk/src/events/agents.js';
@@ -21,7 +22,7 @@ import type { PluginEvent } from '../../../packages/sdk/src/events/plugins.js';
 import type { McpEvent } from '../../../packages/sdk/src/events/mcp.js';
 import type { TransportEvent } from '../../../packages/sdk/src/events/transport.js';
 import type { CompactionEvent } from '../../../packages/sdk/src/events/compaction.js';
-import type { UIEvent } from '../../../packages/sdk/src/events/ui.js';
+import type { GoodVibesUIEvent as UIEvent } from '../../../packages/sdk/src/events/ui.js';
 import type { OpsEvent } from '../../../packages/sdk/src/events/ops.js';
 import type { ForensicsEvent } from '../../../packages/sdk/src/events/forensics.js';
 import type { SecurityEvent } from '../../../packages/sdk/src/events/security.js';
@@ -171,11 +172,28 @@ export const KNOWN_EVENT_TYPES = new Set<string>([
 // Required-field map
 // ---------------------------------------------------------------------------
 
+/** The union member whose discriminant is `T`. */
+type EventOfType<T extends AnyRuntimeEvent['type']> = Extract<AnyRuntimeEvent, { type: T }>;
+
 /**
  * Minimum required fields per event type (excludes `type` itself).
  * Fields marked optional in the source are NOT listed here.
+ *
+ * TYPED against the production union rather than `Record<string, string[]>`.
+ * As a loose record this was a second hand-written table that only ever got
+ * compared to the fixtures below — two mirrors of each other, both free to
+ * drift away from the events they describe, and both did: this table said
+ * `LLM_RESPONSE_RECEIVED` requires `content` while the event has carried
+ * `contentSummary` since it was redacted. The drift guard compared mirror to
+ * mirror and stayed green. Nothing here was ever checked against production
+ * because `test/` was not typechecked.
+ *
+ * Now a key that is not a real event type, or a field name that is not a member
+ * of that event, is a compile error.
  */
-export const REQUIRED_FIELDS_BY_TYPE: Partial<Record<string, readonly string[]>> = {
+export const REQUIRED_FIELDS_BY_TYPE: {
+  [T in AnyRuntimeEvent['type']]?: readonly (keyof EventOfType<T> & string)[];
+} = {
   SESSION_STARTED: ['sessionId', 'profileId', 'workingDir'],
   SESSION_LOADING: ['sessionId', 'path'],
   SESSION_RESUMED: ['sessionId', 'turnCount'],
@@ -190,7 +208,11 @@ export const REQUIRED_FIELDS_BY_TYPE: Partial<Record<string, readonly string[]>>
   STREAM_DELTA: ['turnId', 'content', 'accumulated'],
   STREAM_RETRY: ['turnId', 'provider', 'attempt', 'maxAttempts', 'delayMs', 'reason'],
   STREAM_END: ['turnId'],
-  LLM_RESPONSE_RECEIVED: ['turnId', 'provider', 'model', 'content', 'toolCallCount', 'inputTokens', 'outputTokens'],
+  // `contentSummary`, not `content`: the field was renamed when the response
+  // body became a redacted summary. This entry kept saying `content`, and so
+  // did the fixture, so the drift guard compared one stale table to another
+  // and passed.
+  LLM_RESPONSE_RECEIVED: ['turnId', 'provider', 'model', 'contentSummary', 'toolCallCount', 'inputTokens', 'outputTokens'],
   TOOL_BATCH_READY: ['turnId', 'toolCalls'],
   TOOLS_DONE: ['turnId'],
   POST_HOOKS_DONE: ['turnId'],
@@ -399,7 +421,7 @@ export const FIXTURE_EVENTS: ReadonlyArray<{ type: string } & Record<string, unk
   { type: 'STREAM_DELTA', turnId: 't1', content: 'hi', accumulated: 'hi' } satisfies TurnEvent,
   { type: 'STREAM_END', turnId: 't1' } satisfies TurnEvent,
   { type: 'STREAM_RETRY', turnId: 't1', provider: 'anthropic', attempt: 1, maxAttempts: 3, delayMs: 1000, reason: 'connection reset' } satisfies TurnEvent,
-  { type: 'LLM_RESPONSE_RECEIVED', turnId: 't1', provider: 'anthropic', model: 'claude-4', content: 'hi', toolCallCount: 0, inputTokens: 10, outputTokens: 5 } satisfies TurnEvent,
+  { type: 'LLM_RESPONSE_RECEIVED', turnId: 't1', provider: 'anthropic', model: 'claude-4', contentSummary: 'hi', toolCallCount: 0, inputTokens: 10, outputTokens: 5 } satisfies TurnEvent,
   { type: 'TOOL_BATCH_READY', turnId: 't1', toolCalls: ['bash'] } satisfies TurnEvent,
   { type: 'TOOLS_DONE', turnId: 't1' } satisfies TurnEvent,
   { type: 'POST_HOOKS_DONE', turnId: 't1' } satisfies TurnEvent,
@@ -495,9 +517,9 @@ export const FIXTURE_EVENTS: ReadonlyArray<{ type: string } & Record<string, unk
   { type: 'MCP_AUTH_REQUIRED', serverId: 'mcp1', authType: 'oauth' } satisfies McpEvent,
   { type: 'MCP_RECONNECTING', serverId: 'mcp1', attempt: 1, maxAttempts: 5 } satisfies McpEvent,
   { type: 'MCP_DISCONNECTED', serverId: 'mcp1', willRetry: true } satisfies McpEvent,
-  { type: 'MCP_SCHEMA_QUARANTINED', serverId: 'mcp1', reason: 'hash_mismatch' } satisfies McpEvent,
+  { type: 'MCP_SCHEMA_QUARANTINED', serverId: 'mcp1', reason: 'incompatible' } satisfies McpEvent,
   { type: 'MCP_SCHEMA_QUARANTINE_APPROVED', serverId: 'mcp1', operatorId: 'op1' } satisfies McpEvent,
-  { type: 'MCP_POLICY_UPDATED', serverId: 'mcp1', role: 'readonly', trustMode: 'prompt', allowedPaths: [], allowedHosts: [] } satisfies McpEvent,
+  { type: 'MCP_POLICY_UPDATED', serverId: 'mcp1', role: 'general', trustMode: 'ask-on-risk', allowedPaths: [], allowedHosts: [] } satisfies McpEvent,
   // transport
   { type: 'TRANSPORT_INITIALIZING', transportId: 'tr1', protocol: 'sse' } satisfies TransportEvent,
   { type: 'TRANSPORT_AUTHENTICATING', transportId: 'tr1' } satisfies TransportEvent,

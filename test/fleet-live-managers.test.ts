@@ -12,6 +12,7 @@ import { AgentManager } from '../packages/sdk/src/platform/tools/agent/manager.j
 import { ProcessManager } from '../packages/sdk/src/platform/tools/shared/process-manager.js';
 import { createWorkflowServices } from '../packages/sdk/src/platform/tools/workflow/index.js';
 import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.js';
+import type { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 
 async function until(predicate: () => boolean, timeoutMs = 5_000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
@@ -23,7 +24,14 @@ async function until(predicate: () => boolean, timeoutMs = 5_000): Promise<void>
 
 function makeAgentManager(bus: RuntimeEventBus): AgentManager {
   const manager = new AgentManager({
-    configManager: { get: () => null },
+    // `get` is generic over `ConfigKey` with a per-key conditional return type
+    // (`ConfigValue<K>`). Typing the stub's own signature that way makes the
+    // checker compare two such generic conditionals structurally and it gives
+    // up: "Excessive stack depth comparing types 'ConfigValue<?>' and
+    // 'ConfigValue<?>'" (TS2321). Casting the stub object once at the boundary
+    // avoids the comparison while still naming the real member type, so a
+    // rename or removal of ConfigManager.get still breaks this file.
+    configManager: { get: () => null } as unknown as Pick<ConfigManager, 'get'>,
     messageBus: { registerAgent() { /* no-op */ } },
     archetypeLoader: { loadArchetype: () => null },
     executor: {

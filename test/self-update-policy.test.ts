@@ -67,7 +67,7 @@ function fetchStub(routes: Record<string, string | Buffer | { status: number }>)
     return {
       ok: true, status: 200, url, headers: { get: () => null },
       text: async () => buffer.toString('utf-8'),
-      arrayBuffer: async () => buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength),
+      arrayBuffer: async () => buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer,
     };
   };
 }

@@ -21,6 +21,8 @@ import {
   signBundle,
 } from '../packages/sdk/src/platform/runtime/permissions/index.js';
 import { PermissionManager } from '../packages/sdk/src/platform/permissions/manager.js';
+import type { PermissionConfigReader } from '../packages/sdk/src/platform/permissions/manager.js';
+import type { PolicyRuntimeState } from '../packages/sdk/src/platform/runtime/permissions/policy-runtime.js';
 import { createPluginLifecycleManager } from '../packages/sdk/src/platform/runtime/plugins/index.js';
 import { createMcpLifecycleManager } from '../packages/sdk/src/platform/runtime/mcp/index.js';
 import { createShellPlanRuntime } from '../packages/sdk/src/platform/runtime/shell-command-ops.js';
@@ -51,8 +53,10 @@ import type { AutomationRouteStore } from '../packages/sdk/src/platform/automati
 import type { AutomationRouteBinding } from '../packages/sdk/src/platform/automation/routes.js';
 import type { AutomationJob } from '../packages/sdk/src/platform/automation/jobs.js';
 import type { AutomationRun } from '../packages/sdk/src/platform/automation/runs.js';
-import type { LLMProvider } from '../packages/sdk/src/platform/providers/interface.js';
+import type { LLMProvider, ChatResponse } from '../packages/sdk/src/platform/providers/interface.js';
 import type { AgentRecord } from '../packages/sdk/src/platform/tools/agent/manager.js';
+import type { ServiceSecretField } from '../packages/sdk/src/platform/config/service-registry.js';
+import type { ConfigKey, ConfigValue } from '../packages/sdk/src/platform/config/schema-types.js';
 
 const flags = (enabledIds: readonly string[]) => ({
   isEnabled(id: string): boolean {
@@ -60,12 +64,21 @@ const flags = (enabledIds: readonly string[]) => ({
   },
 });
 
+function chatResponse(content: string): ChatResponse {
+  return {
+    content,
+    toolCalls: [],
+    usage: { inputTokens: 0, outputTokens: 0 },
+    stopReason: 'completed',
+  };
+}
+
 function withTempDir<T>(fn: (dir: string) => T): T {
   const dir = mkdtempSync(join(tmpdir(), 'goodvibes-flags-'));
   try {
     const result = fn(dir);
-    if (result && typeof (result as PromiseLike<unknown>).then === 'function') {
-      return (result as Promise<unknown>).finally(() => {
+    if (result && typeof (result as unknown as PromiseLike<unknown>).then === 'function') {
+      return (result as unknown as Promise<unknown>).finally(() => {
         rmSync(dir, { recursive: true, force: true });
       }) as T;
     }
@@ -185,7 +198,7 @@ function makeMemoryRouteStore(): AutomationRouteStore {
   } as unknown as AutomationRouteStore;
 }
 
-function makePolicyRuntimeState() {
+function makePolicyRuntimeState(): Pick<PolicyRuntimeState, 'recordPermissionRequest' | 'recordPermissionDecision' | 'getRegistry'> {
   const policy = {
     rules: [{
       id: 'deny-read',
@@ -201,12 +214,12 @@ function makePolicyRuntimeState() {
     getRegistry() {
       return {
         getCurrent: () => policy,
-      };
+      } as unknown as ReturnType<PolicyRuntimeState['getRegistry']>;
     },
   };
 }
 
-function makePermissionConfigReader() {
+function makePermissionConfigReader(): PermissionConfigReader {
   return {
     isAutoApproveEnabled: () => false,
     getWorkingDirectory: () => '/tmp/goodvibes-test',
@@ -215,7 +228,7 @@ function makePermissionConfigReader() {
         mode: 'prompt' as const,
         tools: {},
       },
-    }),
+    }) as unknown as ReturnType<PermissionConfigReader['getSnapshot']>,
   };
 }
 
@@ -398,7 +411,7 @@ describe('feature flag safe-default gates', () => {
 
   test('fetch-sanitization forces safe-text for unknown hosts requesting none', async () => {
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = (async () =>
+    globalThis.fetch = (async (_input: RequestInfo | URL) =>
       new Response('<script>ignore me</script><p>visible</p>', {
         status: 200,
         headers: { 'content-type': 'text/html' },
@@ -427,7 +440,7 @@ describe('feature flag safe-default gates', () => {
   test('sanitization kill switch leaves content raw but never relaxes host blocking', async () => {
     const originalFetch = globalThis.fetch;
     let called = false;
-    globalThis.fetch = (async () => {
+    globalThis.fetch = (async (_input: RequestInfo | URL) => {
       called = true;
       return new Response('<script>unsanitized</script><p>raw</p>', {
         status: 200,
@@ -560,8 +573,8 @@ describe('feature flag safe-default gates', () => {
 
   test('integration-delivery-slo flows through notifier factory configuration', async () => {
     const notifier = await Notifier.fromConfig({
-      resolveSecret: async (service: string, name: string) =>
-        service === 'slack' && name === 'webhookUrl' ? 'https://hooks.slack.test/test' : undefined,
+      resolveSecret: async (service: string, name: ServiceSecretField) =>
+        service === 'slack' && name === 'webhookUrl' ? 'https://hooks.slack.test/test' : null,
     }, { featureFlags: flags(['integration-delivery-slo']) });
 
     expect(notifier.getQueueStatus()).toEqual([
@@ -624,14 +637,16 @@ describe('feature flag safe-default gates', () => {
   test('provider-optimizer can select agent routes when optimizer mode is active', () => {
     const selectedProvider: LLMProvider = {
       name: 'openai',
+      models: ['gpt-test'],
       async chat() {
-        return { content: 'ok' };
+        return chatResponse('ok');
       },
     };
     const otherProvider: LLMProvider = {
       name: 'anthropic',
+      models: ['claude-test'],
       async chat() {
-        return { content: 'other' };
+        return chatResponse('other');
       },
     };
     const optimizer = {
@@ -673,7 +688,7 @@ describe('feature flag safe-default gates', () => {
     (orchestrator as unknown as { toolDeps: { providerOptimizer: typeof optimizer } }).toolDeps = { providerOptimizer: optimizer };
     const route = (orchestrator as unknown as {
       resolveProviderForRecord(
-        providerRegistry: typeof providerRegistry,
+        registry: typeof providerRegistry,
         record: AgentRecord,
         currentModel: { id: string; provider: string; registryKey: string },
       ): { provider: LLMProvider; modelId: string; requestedModelId: string };
@@ -691,14 +706,16 @@ describe('feature flag safe-default gates', () => {
   test('agent fallback routes honor provider-qualified registry keys', () => {
     const openaiProvider: LLMProvider = {
       name: 'openai',
+      models: ['gpt-test'],
       async chat() {
-        return { content: 'primary' };
+        return chatResponse('primary');
       },
     };
     const anthropicProvider: LLMProvider = {
       name: 'anthropic',
+      models: ['claude-test'],
       async chat() {
-        return { content: 'fallback' };
+        return chatResponse('fallback');
       },
     };
     const providerRegistry = {
@@ -735,7 +752,7 @@ describe('feature flag safe-default gates', () => {
     const orchestrator = new AgentOrchestrator({ messageBus: new AgentMessageBus() });
     const routes = (orchestrator as unknown as {
       resolveFallbackModelRoutes(
-        providerRegistry: typeof providerRegistry,
+        registry: typeof providerRegistry,
         record: AgentRecord,
         currentModel: { id: string; provider: string; registryKey: string },
         primaryRequestedModelId: string,
@@ -796,8 +813,9 @@ describe('feature flag safe-default gates', () => {
   test('agent model overrides resolve a unique bare model id and reach the real provider lookup', () => {
     const resolvedProvider: LLMProvider = {
       name: 'openai',
+      models: ['gpt-test'],
       async chat() {
-        return { content: 'ok' };
+        return chatResponse('ok');
       },
     };
     const providerRegistry = {
@@ -823,7 +841,7 @@ describe('feature flag safe-default gates', () => {
     const orchestrator = new AgentOrchestrator({ messageBus: new AgentMessageBus() });
     const route = (orchestrator as unknown as {
       resolveProviderForRecord(
-        providerRegistry: typeof providerRegistry,
+        registry: typeof providerRegistry,
         record: AgentRecord,
         currentModel: { id: string; provider: string; registryKey: string },
       ): { provider: LLMProvider; modelId: string; requestedModelId: string };
@@ -869,7 +887,7 @@ describe('feature flag safe-default gates', () => {
     const orchestrator = new AgentOrchestrator({ messageBus: new AgentMessageBus() });
     expect(() => (orchestrator as unknown as {
       resolveProviderForRecord(
-        providerRegistry: typeof providerRegistry,
+        registry: typeof providerRegistry,
         record: AgentRecord,
         currentModel: { id: string; provider: string; registryKey: string },
       ): { provider: LLMProvider; modelId: string; requestedModelId: string };
@@ -913,7 +931,7 @@ describe('feature flag safe-default gates', () => {
     const orchestrator = new AgentOrchestrator({ messageBus: new AgentMessageBus() });
     const resolver = orchestrator as unknown as {
       resolveProviderForRecord(
-        providerRegistry: typeof providerRegistry,
+        registry: typeof providerRegistry,
         record: AgentRecord,
         currentModel: { id: string; provider: string; registryKey: string },
       ): { provider: LLMProvider; modelId: string; requestedModelId: string };
@@ -945,7 +963,7 @@ describe('feature flag safe-default gates', () => {
     const orchestrator = new AgentOrchestrator({ messageBus: new AgentMessageBus() });
     expect(() => (orchestrator as unknown as {
       resolveFallbackModelRoutes(
-        providerRegistry: typeof providerRegistry,
+        registry: typeof providerRegistry,
         record: AgentRecord,
         currentModel: { id: string; provider: string; registryKey: string },
         primaryRequestedModelId: string,
@@ -970,7 +988,7 @@ describe('feature flag safe-default gates', () => {
     const orchestrator = new AgentOrchestrator({ messageBus: new AgentMessageBus() });
     expect(() => (orchestrator as unknown as {
       resolveFallbackModelRoutes(
-        providerRegistry: typeof providerRegistry,
+        registry: typeof providerRegistry,
         record: AgentRecord,
         currentModel: { id: string; provider: string; registryKey: string },
         primaryRequestedModelId: string,
@@ -1007,7 +1025,7 @@ describe('feature flag safe-default gates', () => {
     const orchestrator = new AgentOrchestrator({ messageBus: new AgentMessageBus() });
     expect(() => (orchestrator as unknown as {
       resolveFallbackModelRoutes(
-        providerRegistry: typeof providerRegistry,
+        registry: typeof providerRegistry,
         record: AgentRecord,
         currentModel: { id: string; provider: string; registryKey: string },
         primaryRequestedModelId: string,
@@ -1021,7 +1039,7 @@ describe('feature flag safe-default gates', () => {
   });
 
   test('agent manager rejects unqualified model routes before enqueueing records', () => {
-    const configManager = { get: () => null };
+    const configManager = { get: () => null } as unknown as Pick<ConfigManager, 'get'>;
     const manager = new AgentManager({
       configManager,
       messageBus: { registerAgent() {} },

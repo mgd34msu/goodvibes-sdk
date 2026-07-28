@@ -53,19 +53,32 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
+/**
+ * Bun's `typeof fetch` includes a `preconnect` static method that plain mock
+ * functions don't have. Attach a no-op stub so test doubles satisfy the type
+ * without pretending to implement real preconnect behavior.
+ */
+function withPreconnect(
+  impl: (input: string | URL | Request, init?: RequestInit) => Promise<Response>,
+): typeof globalThis.fetch {
+  return Object.assign(impl, {
+    preconnect: (_url: string | URL, _options?: { dns?: boolean; tcp?: boolean; http?: boolean; https?: boolean }) => {},
+  });
+}
+
 /** Build a stateful mock fetch that returns 401 on the first call, then 200. */
 function makeStatefulFetch(successBody: object): {
   fetch: typeof globalThis.fetch;
   callCount: () => number;
 } {
   let calls = 0;
-  const fetchImpl: typeof globalThis.fetch = async (_input, _init) => {
+  const fetchImpl = withPreconnect(async (_input, _init) => {
     calls += 1;
     if (calls === 1) {
       return jsonResponse({ error: 'Unauthorized' }, 401);
     }
     return jsonResponse(successBody);
-  };
+  });
   return { fetch: fetchImpl, callCount: () => calls };
 }
 
@@ -112,8 +125,8 @@ describe('transport integration: reactive 401 retry via middleware', () => {
 describe('transport integration: failed refresh produces terminal auth error', () => {
   it('throws GoodVibesSdkError with kind=auth when refresh fails', async () => {
     // Mock fetch always returns 401.
-    const alwaysUnauthorized: typeof globalThis.fetch = async () =>
-      jsonResponse({ error: 'Unauthorized' }, 401);
+    const alwaysUnauthorized = withPreconnect(async () =>
+      jsonResponse({ error: 'Unauthorized' }, 401));
 
     const store = createMemoryTokenStore('bad-token');
 
@@ -158,13 +171,13 @@ describe('transport integration: pre-flight refresh fires within leeway', () => 
     const sdk = createGoodVibesSdk({
       baseUrl: 'https://daemon.example.com',
       tokenStore: store,
-      fetch: async (_input, init) => {
+      fetch: withPreconnect(async (_input, init) => {
         const headers = init?.headers instanceof Headers
           ? init.headers
           : new Headers(init?.headers as HeadersInit);
         fetchCalls.push(headers.get('authorization') ?? '(none)');
         return jsonResponse(makeSnapshotResponse());
-      },
+      }),
       autoRefresh: {
         autoRefresh: true,
         refreshLeewayMs: 60_000,
@@ -199,7 +212,7 @@ describe('transport integration: concurrent 401s collapse to one refresh', () =>
     const store = createMemoryTokenStore('stale-token');
 
     // First N calls return 401; after barrier is released, all succeed.
-    const mockFetch: typeof globalThis.fetch = async () => {
+    const mockFetch = withPreconnect(async () => {
       fetchCount += 1;
       if (fetchCount <= 2) {
         // First two calls are the concurrent initial attempts — both 401.
@@ -207,7 +220,7 @@ describe('transport integration: concurrent 401s collapse to one refresh', () =>
       }
       // Retry calls (after refresh) succeed.
       return jsonResponse(makeSnapshotResponse());
-    };
+    });
 
     const sdk = createGoodVibesSdk({
       baseUrl: 'https://daemon.example.com',
@@ -253,7 +266,7 @@ describe('transport integration: consumer middleware sees fresh token after pre-
     const sdk = createGoodVibesSdk({
       baseUrl: 'https://daemon.example.com',
       tokenStore: store,
-      fetch: async () => jsonResponse(makeSnapshotResponse()),
+      fetch: withPreconnect(async () => jsonResponse(makeSnapshotResponse())),
       autoRefresh: {
         autoRefresh: true,
         refreshLeewayMs: 60_000,

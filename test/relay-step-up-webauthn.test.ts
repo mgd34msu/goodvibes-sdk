@@ -75,7 +75,7 @@ function rawToDer(raw: Uint8Array): Uint8Array<ArrayBuffer> {
   return new Uint8Array([0x30, body.length, ...body]) as Uint8Array<ArrayBuffer>;
 }
 
-async function sha256(data: Uint8Array): Promise<Uint8Array<ArrayBuffer>> {
+async function sha256(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
   return new Uint8Array(await crypto.subtle.digest('SHA-256', data)) as Uint8Array<ArrayBuffer>;
 }
 

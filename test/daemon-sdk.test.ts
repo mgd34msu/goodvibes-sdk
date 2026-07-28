@@ -186,7 +186,7 @@ describe('daemon sdk', () => {
         list: () => [{ id: 'discord' }],
       },
     });
-    expect(await channelHandlers.getSurfaces().json()).toEqual({
+    expect(await (await channelHandlers.getSurfaces()).json()).toEqual({
       surfaces: [{ id: 'discord' }],
     });
 
@@ -201,6 +201,8 @@ describe('daemon sdk', () => {
         getAll: () => ({ demo: true }),
         setDynamic: () => undefined,
       },
+      credentialStatus: null,
+      swapManager: null,
       integrationHelpers: null,
       inspectInboundTls: (surface) => ({ surface, mode: 'off' }),
       inspectOutboundTls: () => ({ mode: 'system' }),
@@ -233,10 +235,11 @@ describe('daemon sdk', () => {
         stopWatcher: () => null,
         runWatcherNow: async () => null,
       },
-    }, new Request('http://127.0.0.1/api/system/status'));
+    });
     expect(typeof systemHandlers.getServiceStatus).toBe('function'); // getServiceStatus is a function
 
     const knowledgeHandlers = createDaemonKnowledgeRouteHandlers({
+      artifactStore: { create: async () => ({}) },
       configManager: { get: () => false },
       inspectGraphqlAccess: () => ({ requiredScopes: [] }),
       normalizeAtSchedule: (at) => ({ kind: 'at', at }),
@@ -252,6 +255,7 @@ describe('daemon sdk', () => {
         querySources: () => ({ total: 0, items: [] }),
         queryNodes: () => ({ total: 0, items: [] }),
         queryIssues: () => ({ total: 0, items: [] }),
+        reviewIssue: async () => ({}),
         getItemScoped: () => null,
         listConnectors: () => [],
         getConnector: () => null,
@@ -269,6 +273,10 @@ describe('daemon sdk', () => {
         listJobs: () => [],
         getJob: () => null,
         listJobRuns: () => [],
+        listRefinementTasks: () => [],
+        getRefinementTask: () => null,
+        runRefinement: async () => ({}),
+        cancelRefinementTask: async () => null,
         listSchedules: () => [],
         getSchedule: () => null,
         ingestUrl: async () => ({}),
@@ -278,6 +286,7 @@ describe('daemon sdk', () => {
         importUrlsFromFile: async () => ({}),
         ingestConnectorInput: async () => ({}),
         searchScoped: () => [],
+        ask: async () => ({}),
         buildPacket: async () => ({}),
         decideConsolidationCandidate: async () => ({}),
         runJob: async () => ({}),
@@ -294,7 +303,7 @@ describe('daemon sdk', () => {
         execute: async () => ({ data: { status: 'ok' } }),
       },
     });
-    expect(await knowledgeHandlers.getKnowledgeGraphqlSchema().json()).toMatchObject({
+    expect(await (await knowledgeHandlers.getKnowledgeGraphqlSchema()).json()).toMatchObject({
       schema: 'type Query { status: String! }',
     });
 
@@ -326,6 +335,13 @@ describe('daemon sdk', () => {
         getStatus: async () => ({ providers: [] }),
         listVoices: async () => [],
         synthesize: async () => ({}),
+        synthesizeStream: async () => ({
+          providerId: 'test-provider',
+          mimeType: 'audio/wav',
+          format: 'wav',
+          chunks: (async function* () {})(),
+          metadata: {},
+        }),
         transcribe: async () => ({}),
         openRealtimeSession: async () => ({}),
       },
@@ -334,7 +350,7 @@ describe('daemon sdk', () => {
         search: async () => ({}),
       },
     });
-    expect(await mediaHandlers.getArtifacts().json()).toEqual({
+    expect(await (await mediaHandlers.getArtifacts()).json()).toEqual({
       artifacts: [{ id: 'artifact-1' }],
     });
   });

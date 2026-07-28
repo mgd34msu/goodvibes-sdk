@@ -66,7 +66,9 @@ describe('state persistence failures', () => {
       store.persist({ value: 'third' }),
     ]);
 
-    expect(['first', 'second', 'third']).toContain((await store.load())?.value);
+    const loaded = await store.load();
+    expect(loaded).not.toBeNull();
+    expect(['first', 'second', 'third']).toContain(loaded!.value);
     expect(readdirSync(dir).filter((entry) => entry.includes('.tmp'))).toEqual([]);
   });
 
@@ -82,7 +84,9 @@ describe('state persistence failures', () => {
       store.save({ value: 'third' }),
     ]);
 
-    expect(['first', 'second', 'third']).toContain((await store.load())?.value);
+    const loaded = await store.load();
+    expect(loaded).not.toBeNull();
+    expect(['first', 'second', 'third']).toContain(loaded!.value);
     expect(readdirSync(dir).filter((entry) => entry.includes('.tmp'))).toEqual([]);
   });
 
@@ -289,6 +293,7 @@ describe('state persistence failures', () => {
         provider: 'test',
         registryKey: 'test:model',
         displayName: 'Test Model',
+        description: 'Test model fixture',
         capabilities: { toolCalling: false, codeEditing: false, reasoning: false, multimodal: false },
         contextWindow: 4096,
         selectable: true,
@@ -336,6 +341,7 @@ describe('state persistence failures', () => {
         provider: 'test',
         registryKey: 'test:model',
         displayName: 'Test Model',
+        description: 'Test model fixture',
         capabilities: { toolCalling: false, codeEditing: false, reasoning: false, multimodal: false },
         contextWindow: 4096,
         selectable: true,

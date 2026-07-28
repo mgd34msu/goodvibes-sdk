@@ -29,6 +29,7 @@ import {
 } from '../packages/sdk/src/platform/core/orchestrator-context-runtime.js';
 import type { ModelDefinition } from '../packages/sdk/src/platform/providers/registry-types.js';
 import type { ConversationManager } from '../packages/sdk/src/platform/core/conversation.js';
+import type { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 
 // ---------------------------------------------------------------------------
 // Registry harness (test doubles, mirrors provider-registry-canonical-api.test.ts)
@@ -235,7 +236,7 @@ function makeSharedDeps(stub: ConversationStub, model: ModelDefinition, config: 
     conversation: stub.conversation,
     requestRender: () => {},
     hookDispatcher: null,
-    configManager: { get: (key: string) => config[key] },
+    configManager: { get: (key: string) => config[key] } as unknown as Pick<ConfigManager, 'get'>,
     providerRegistry: makeRegistryStub(model),
     sessionLineageTracker: { getEntries: () => [], getCompactionCount: () => 0, getOriginalTask: () => null },
     sessionId: 'test-session',

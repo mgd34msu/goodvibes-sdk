@@ -126,9 +126,9 @@ describe('HttpListener parseJsonBody body-size cap', () => {
 import { DaemonHttpRouter } from '../packages/sdk/src/platform/daemon/http/router.ts';
 
 function makeRouter(): DaemonHttpRouter {
-  const ctx = new Proxy({} as Parameters<typeof DaemonHttpRouter>[0], {
+  const ctx = new Proxy({} as ConstructorParameters<typeof DaemonHttpRouter>[0], {
     get: (_target, key) => {
-      if (key === 'configManager') return new ConfigManager({});
+      if (key === 'configManager') return new ConfigManager({ configDir: tempDir('router') });
       if (key === 'telemetryApi') return null;
       return undefined;
     },

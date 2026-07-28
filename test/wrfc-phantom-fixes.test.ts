@@ -48,8 +48,6 @@ async function flushMicrotasks(rounds = 10): Promise<void> {
 
 function makeRecord(overrides: Partial<AgentRecord> & { id: string; task: string }): AgentRecord {
   return {
-    id: overrides.id,
-    task: overrides.task,
     template: overrides.template ?? 'engineer',
     tools: [],
     status: 'running',
@@ -163,6 +161,13 @@ function createHarness(overrides?: {
   const agentHeartbeatTimeoutMs = overrides?.agentHeartbeatTimeoutMs ?? 0;
   const projectRoot = overrides?.projectRoot ?? '/tmp/test-project';
 
+  // ConfigManager.get/getCategory are generic over `ConfigKey`/`keyof GoodVibesConfig`
+  // with a per-key conditional return type — a by-string-key stub can't be typed
+  // against that generic signature directly (TypeScript hits its own recursion
+  // limit, "Excessive stack depth", comparing two such generic conditional
+  // signatures). Casting the whole mock once at the boundary sidesteps that
+  // compiler limitation; ConfigManager's own methods work around the same
+  // expressiveness gap internally with `as ConfigValue<K>`.
   const configManager = {
     get: (key: string): unknown => {
       if (key === 'wrfc.scoreThreshold') return threshold;
@@ -183,7 +188,7 @@ function createHarness(overrides?: {
       }
       return undefined;
     },
-  };
+  } as unknown as Pick<import('../packages/sdk/src/platform/config/manager.js').ConfigManager, 'get' | 'getCategory'>;
 
   const agentManager: AgentManagerLike = {
     spawn: (input) => {
@@ -482,11 +487,11 @@ describe('Item 3: serializeChain / deserializeChain / importChain', () => {
     const envelope = JSON.parse(json!) as { schemaVersion: number; chain: unknown };
     expect(envelope.schemaVersion).toBe(CURRENT_WRFC_CHAIN_SCHEMA_VERSION);
     expect(envelope.chain).toBeDefined();
-    expect((envelope.chain as { id: string }).id).toBe(chainId);
+    expect((envelope.chain as { id: string }).id).toBe(chainId!);
 
     const parsed = controller.deserializeChain(json!);
     expect(parsed).not.toBeNull();
-    expect(parsed!.id).toBe(chainId);
+    expect(parsed!.id).toBe(chainId!);
     expect(parsed!.task).toBe('Build feature X');
     expect(parsed!.ownerAgentId).toBe('owner-1');
   });
@@ -684,7 +689,7 @@ describe('Item 3: serializeChain / deserializeChain / importChain', () => {
     const imported = ctrl2.getChain(originalChainId!);
     expect(imported).not.toBeNull();
     expect(imported!.task).toBe('Round-trip task');
-    expect(imported!.id).toBe(originalChainId);
+    expect(imported!.id).toBe(originalChainId!);
   });
 });
 

@@ -90,8 +90,6 @@ function eventData(event: { type: string; payload: Record<string, unknown> }): R
 
 function makeRecord(overrides: Partial<AgentRecord> & { id: string; task: string }): AgentRecord {
   return {
-    id: overrides.id,
-    task: overrides.task,
     template: overrides.template ?? 'engineer',
     tools: [],
     status: 'running',
@@ -162,7 +160,7 @@ function createHarness(opts?: {
       }
       return undefined;
     },
-  };
+  } as unknown as ConstructorParameters<typeof WrfcController>[2]['configManager'];
 
   const agentManager: AgentManagerLike = {
     spawn: (input) => {
@@ -580,7 +578,7 @@ function createGateHarness(gateName: string) {
       }
       return undefined;
     },
-  };
+  } as unknown as ConstructorParameters<typeof WrfcController>[2]['configManager'];
 
   const agentManager: AgentManagerLike = {
     spawn: (input) => {

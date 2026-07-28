@@ -21,7 +21,7 @@ describe('sdk auth helpers', () => {
     const sdk = createGoodVibesSdk({
       baseUrl: 'http://127.0.0.1:3210',
       tokenStore,
-      fetch: async (_input, init) => {
+      fetch: (async (_input: RequestInfo | URL, init?: RequestInit) => {
         const headers = init?.headers instanceof Headers ? init.headers : new Headers(init?.headers);
         seenAuth.push(headers.get('authorization') ?? '');
         const body = init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : {};
@@ -35,7 +35,7 @@ describe('sdk auth helpers', () => {
         }
         // Return a minimal valid accounts.snapshot response so Zod validation passes.
         return createJsonResponse({ capturedAt: Date.now(), providers: [], configuredCount: 0, issueCount: 0 });
-      },
+      }) as unknown as typeof fetch,
     });
 
     const login = await sdk.auth.login({ username: 'alice', password: 'secret' });

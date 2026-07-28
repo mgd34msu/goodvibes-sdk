@@ -1,7 +1,15 @@
 import { describe, expect, test } from 'bun:test';
-import type { Locator, Page } from 'playwright-core';
 import { resolveRef, SnapshotStore, StaleElementError } from '../packages/sdk/src/platform/browser/browser-snapshot.js';
 import type { BrowserSnapshot } from '../packages/sdk/src/platform/browser/browser-types.js';
+
+/**
+ * `playwright-core` is only hoisted under packages/sdk/node_modules, not the
+ * repo root, so test/ (which sits at the root) cannot resolve it directly.
+ * Derive the Page/Locator shapes from resolveRef's own signature instead of
+ * importing the module a second time from a location that can't see it.
+ */
+type Page = Parameters<typeof resolveRef>[0];
+type Locator = Awaited<ReturnType<typeof resolveRef>>['locator'];
 
 function snapshotWith(url: string): BrowserSnapshot {
   return {

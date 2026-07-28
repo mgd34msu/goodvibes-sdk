@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import {
   createGoodVibesAuthClient,
   createMemoryTokenStore,
-  type GoodVibesTokenStore,
+  type GoodVibesExpiringTokenStore,
 } from '../packages/sdk/src/auth.js';
 import type { AutoRefreshOptions } from '../packages/sdk/src/auth.js';
 import { GoodVibesSdkError } from '../packages/errors/src/index.js';
@@ -121,7 +121,7 @@ describe('pre-flight: leeway triggers refresh when token is near expiry', () => 
 
     const refreshCalls: string[] = [];
     // Override the store to track setToken calls (proxy)
-    const proxyStore: GoodVibesTokenStore = {
+    const proxyStore: GoodVibesExpiringTokenStore = {
       getToken: () => store.getToken(),
       setToken: async (t) => {
         refreshCalls.push('setToken');
@@ -131,10 +131,10 @@ describe('pre-flight: leeway triggers refresh when token is near expiry', () => 
         refreshCalls.push('clearToken');
         return store.clearToken();
       },
-      getTokenEntry: () => store.getTokenEntry!(),
-      setTokenEntry: async (t, exp) => {
+      getTokenEntry: () => store.getTokenEntry(),
+      setTokenEntry: async (t: string | null, exp: number | undefined) => {
         refreshCalls.push('setTokenEntry');
-        return store.setTokenEntry!(t, exp);
+        return store.setTokenEntry(t, exp);
       },
     };
 
@@ -306,7 +306,7 @@ describe('reactive 401 terminal: double 401 throws auth error', () => {
 
     expect(threw).toBe(true);
     expect(observedErrors).toHaveLength(1);
-    expect(observedErrors[0].kind).toBe('auth');
+    expect(observedErrors[0]!.kind).toBe('auth');
   });
 
   it('reports failed refresh attempts before clearing to anonymous', async () => {
@@ -341,8 +341,8 @@ describe('reactive 401 terminal: double 401 throws auth error', () => {
 
     expect(await store.getToken()).toBeNull();
     expect(observedErrors).toHaveLength(1);
-    expect(observedErrors[0].code).toBe('SDK_AUTH_REFRESH_FAILED');
-    expect(observedErrors[0].recoverable).toBe(true);
+    expect(observedErrors[0]!.code).toBe('SDK_AUTH_REFRESH_FAILED');
+    expect(observedErrors[0]!.recoverable).toBe(true);
     expect(transitions).toContainEqual({
       from: 'token',
       to: 'anonymous',

@@ -71,11 +71,15 @@ function makeRegistry(provider: LLMProvider): Pick<ProviderRegistry, 'getCurrent
 
 describe('daemon batch defaults', () => {
   test('batch and Cloudflare are off by default', () => {
-    const config = DEFAULT_CONFIG as Record<string, Record<string, unknown>>;
-    expect(config.batch.mode).toBe('off');
-    expect(config.batch.queueBackend).toBe('local');
-    expect(config.cloudflare.enabled).toBe(false);
-    expect(config.cloudflare.freeTierMode).toBe(true);
+    const config = DEFAULT_CONFIG as unknown as Record<string, Record<string, unknown>>;
+    const batch = config.batch;
+    const cloudflare = config.cloudflare;
+    expect(batch).toBeDefined();
+    expect(cloudflare).toBeDefined();
+    expect(batch!.mode).toBe('off');
+    expect(batch!.queueBackend).toBe('local');
+    expect(cloudflare!.enabled).toBe(false);
+    expect(cloudflare!.freeTierMode).toBe(true);
   });
 });
 

@@ -26,7 +26,7 @@ function fakeMessageStream(opts: {
       for (const event of opts.events) yield event;
     },
     finalMessage: async () => ({ content: opts.finalContent, usage: opts.finalUsage }),
-    response: opts.response,
+    ...(opts.response !== undefined ? { response: opts.response } : {}),
   };
 }
 

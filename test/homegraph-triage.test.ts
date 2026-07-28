@@ -81,10 +81,18 @@ const TRIAGE_SNAPSHOT = {
     { id: 'hallway-motion', name: 'Hallway Motion', areaId: 'entry' },
     { id: 'living-room-tv', name: 'Living Room TV', manufacturer: 'Sony', model: 'Bravia', areaId: 'living-room' },
   ],
+  // HomeGraphObjectInput (packages/sdk/src/platform/knowledge/home-graph/types.ts)
+  // declares camelCase fields (entityId/deviceId/areaId); normalizeHomeGraphObjectInput
+  // also accepts raw Home-Assistant snake_case (entity_id/device_id/area_id/attributes)
+  // at runtime, but that is a wider Record<string, unknown> fallback the *element*
+  // type here does not carry. Expressed in the declared camelCase shape, with the
+  // HA `attributes` bag placed under `metadata.attributes` — exactly where
+  // normalizeHomeGraphObjectInput would have merged it to, so the triage/quality
+  // code (which reads node.metadata.attributes.device_class) sees the same result.
   entities: [
-    { entity_id: 'binary_sensor.front_door', device_id: 'front-door-sensor', area_id: 'entry', attributes: { friendly_name: 'Front Door', device_class: 'door' } },
-    { entity_id: 'binary_sensor.hallway_motion', device_id: 'hallway-motion', area_id: 'entry', attributes: { friendly_name: 'Hallway Motion', device_class: 'motion' } },
-    { entity_id: 'media_player.living_room_tv', device_id: 'living-room-tv', area_id: 'living-room', attributes: { friendly_name: 'Living Room TV' } },
+    { entityId: 'binary_sensor.front_door', deviceId: 'front-door-sensor', areaId: 'entry', metadata: { attributes: { friendly_name: 'Front Door', device_class: 'door' } } },
+    { entityId: 'binary_sensor.hallway_motion', deviceId: 'hallway-motion', areaId: 'entry', metadata: { attributes: { friendly_name: 'Hallway Motion', device_class: 'motion' } } },
+    { entityId: 'media_player.living_room_tv', deviceId: 'living-room-tv', areaId: 'living-room', metadata: { attributes: { friendly_name: 'Living Room TV' } } },
   ],
 };
 

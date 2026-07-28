@@ -21,6 +21,7 @@ import type {
   CompanionProviderChunk,
 } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
 import { GoodVibesSdkError } from '../packages/errors/src/index.js';
+import type { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -95,7 +96,7 @@ describe('RL1: per-session rate limit — (N+1)-th message throws', () => {
 describe('RL6: runtime configManager overrides per-session limit', () => {
   test('uses configManager value when it returns a positive integer', () => {
     let configValue: number | undefined = 5;
-    const configManager = { get: (_key: string) => configValue };
+    const configManager = { get: (_key: string) => configValue } as unknown as Pick<ConfigManager, 'get'>;
 
     const limiter = new CompanionChatRateLimiter({
       perSessionLimit: 2, // constructor-time baseline
@@ -111,7 +112,7 @@ describe('RL6: runtime configManager overrides per-session limit', () => {
   });
 
   test('falls back to constructor baseline when configManager returns non-positive', () => {
-    const configManager = { get: (_key: string) => 0 }; // 0 is not a positive integer
+    const configManager = { get: (_key: string) => 0 } as unknown as Pick<ConfigManager, 'get'>; // 0 is not a positive integer
 
     const limiter = new CompanionChatRateLimiter({
       perSessionLimit: 2,
@@ -126,7 +127,7 @@ describe('RL6: runtime configManager overrides per-session limit', () => {
   });
 
   test('falls back to DEFAULT when configManager returns undefined', () => {
-    const configManager = { get: (_key: string) => undefined };
+    const configManager = { get: (_key: string) => undefined } as unknown as Pick<ConfigManager, 'get'>;
 
     const limiter = new CompanionChatRateLimiter({ configManager });
     // Default per-session limit = DEFAULT_MESSAGES_PER_MINUTE_PER_SESSION (10)

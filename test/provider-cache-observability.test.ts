@@ -88,7 +88,7 @@ describe('provider cache observability', () => {
       const cachePath = join(tmp, 'model-limits.json');
       writeFileSync(cachePath, JSON.stringify({ version: 1, fetchedAt: Date.now(), ttlMs: 1000, models: [] }), 'utf-8');
 
-      globalThis.fetch = async () => new Response(JSON.stringify({ data: [] }), { status: 200 });
+      globalThis.fetch = (async () => new Response(JSON.stringify({ data: [] }), { status: 200 })) as unknown as typeof fetch;
       new ModelLimitsService({ cachePath }).init();
 
       expect(warningMessages(warnSpy)).toContain('[model-limits] Ignoring malformed cache');
@@ -101,7 +101,7 @@ describe('provider cache observability', () => {
   test('benchmark cache warns when persisted shape is malformed', () => {
     const tmp = mkdtempSync(join(tmpdir(), 'gv-provider-benchmarks-'));
     const warnSpy = spyOn(logger, 'warn') as Mock<typeof logger.warn>;
-    globalThis.fetch = async () => new Response(JSON.stringify({ models: [] }), { status: 200 });
+    globalThis.fetch = (async () => new Response(JSON.stringify({ models: [] }), { status: 200 })) as unknown as typeof fetch;
     try {
       const cachePath = join(tmp, 'benchmarks.json');
       writeFileSync(cachePath, JSON.stringify({ version: 1, fetchedAt: Date.now(), ttlMs: 1000 }), 'utf-8');
@@ -141,9 +141,9 @@ describe('provider cache observability', () => {
       const provider = new GitHubCopilotProvider({
         tokenCachePath,
         env: { COPILOT_GITHUB_TOKEN: 'gh-test-token' },
-        fetchFn: async () => {
+        fetchFn: (async () => {
           throw new Error('stop after cache read');
-        },
+        }) as unknown as typeof fetch,
       });
 
       await provider.chat({ model: 'gpt-4o', messages: [{ role: 'user', content: 'hello' }] }).catch(() => undefined);
@@ -157,7 +157,7 @@ describe('provider cache observability', () => {
 
   test('remote provider catalog fetch warns about malformed provider entries while keeping valid models', async () => {
     const warnSpy = spyOn(logger, 'warn') as Mock<typeof logger.warn>;
-    globalThis.fetch = async () => new Response(JSON.stringify({
+    globalThis.fetch = (async () => new Response(JSON.stringify({
       good: {
         name: 'Good Provider',
         env: [],
@@ -173,7 +173,7 @@ describe('provider cache observability', () => {
       badProvider: null,
       badModels: { name: 'Bad Models', models: [] },
       badModelEntry: { name: 'Bad Model Entry', models: { broken: null } },
-    }), { status: 200 });
+    }), { status: 200 })) as unknown as typeof fetch;
     try {
       const models = await fetchCatalog();
 

@@ -13,9 +13,11 @@ import {
   emitAgentCompleted,
   emitAgentFailed,
 } from '../../packages/sdk/src/platform/runtime/emitters/agents.js';
-import type { AgentInput, AgentRecord } from '../../packages/sdk/src/platform/tools/agent/manager.js';
+import type { AgentRecord } from '../../packages/sdk/src/platform/tools/agent/manager.js';
+import type { AgentInput } from '../../packages/sdk/src/platform/tools/agent/schema.js';
 import type { PhaseRunnerAgentManagerLike, WrfcWorktreeOps } from '../../packages/sdk/src/platform/orchestration/index.js';
 import type { CommitWorkingTreeResult } from '../../packages/sdk/src/platform/agents/worktree.js';
+import type { ConfigManager } from '../../packages/sdk/src/platform/config/index.js';
 
 /** Drain the microtask queue fully (RuntimeEventBus + Promise chains use queueMicrotask). */
 export async function flushMicrotasks(rounds = 12): Promise<void> {
@@ -26,8 +28,6 @@ export async function flushMicrotasks(rounds = 12): Promise<void> {
 
 export function makeRecord(overrides: Partial<AgentRecord> & { id: string; task: string }): AgentRecord {
   return {
-    id: overrides.id,
-    task: overrides.task,
     template: overrides.template ?? 'engineer',
     tools: [],
     status: 'running',
@@ -228,9 +228,8 @@ export function createOrchestrationHarness(): OrchestrationTestHarness {
 }
 
 /** Config manager stub: no gates configured, transport retry disabled (deterministic, fast tests). */
-export function makeFakeConfigManager(): { get: (key: string) => unknown; getCategory: (category: string) => unknown } {
-  return {
-    get: (key: string) => (key === 'wrfc.transportRetryLimit' ? 0 : undefined),
-    getCategory: () => undefined,
-  };
+export function makeFakeConfigManager(): Pick<ConfigManager, 'get' | 'getCategory'> {
+  const get = ((key: string): unknown => (key === 'wrfc.transportRetryLimit' ? 0 : undefined)) as ConfigManager['get'];
+  const getCategory = ((_category: string): unknown => undefined) as ConfigManager['getCategory'];
+  return { get, getCategory };
 }

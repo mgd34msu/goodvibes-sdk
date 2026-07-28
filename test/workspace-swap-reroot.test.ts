@@ -188,7 +188,7 @@ describe('WorkspaceSwapManager — real MemoryStore disk isolation', () => {
     // Snapshot workspace1 records before swap
     const ws1RecordsBefore = memoryStore.search();
     expect(ws1RecordsBefore.length).toBe(1);
-    expect(ws1RecordsBefore[0].summary).toBe('workspace1-record');
+    expect(ws1RecordsBefore[0]!.summary).toBe('workspace1-record');
 
     // Build swap manager that reroots the real MemoryStore
     const mgr = new WorkspaceSwapManager(workspace1, {
@@ -220,7 +220,7 @@ describe('WorkspaceSwapManager — real MemoryStore disk isolation', () => {
     // workspace2 store has exactly the post-swap record
     const ws2Records = memoryStore.search();
     expect(ws2Records.length).toBe(1);
-    expect(ws2Records[0].summary).toBe('workspace2-record');
+    expect(ws2Records[0]!.summary).toBe('workspace2-record');
 
     // workspace1 disk isolation: read the ws1 store directly from its file
     // to confirm the post-swap write did NOT land there
@@ -232,7 +232,7 @@ describe('WorkspaceSwapManager — real MemoryStore disk isolation', () => {
     const ws1RecordsAfter = ws1Verify.search();
     // workspace1 must still have exactly the pre-swap record (no post-swap write)
     expect(ws1RecordsAfter.length).toBe(1);
-    expect(ws1RecordsAfter[0].summary).toBe('workspace1-record');
+    expect(ws1RecordsAfter[0]!.summary).toBe('workspace1-record');
     ws1Verify.close();
 
     memoryStore.close();

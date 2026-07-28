@@ -73,6 +73,9 @@ function makeChain(overrides: Partial<WrfcChain> & { id: string }): WrfcChain {
     createdAt: T0,
     reviewScores: [],
     ownerDecisions: [],
+    ownerTerminalEmitted: false,
+    constraints: [],
+    constraintsEnumerated: false,
     ...overrides,
   };
 }
@@ -146,6 +149,7 @@ function makeApproval(overrides: Partial<SharedApprovalRecord> & { id: string })
 function makeSession(overrides: Partial<SharedSessionRecord> & { id: string }): SharedSessionRecord {
   return {
     kind: 'tui',
+    project: 'unknown',
     title: 'session',
     status: 'active',
     createdAt: T0,
@@ -169,8 +173,8 @@ function makeDeps(overrides: Partial<ProcessRegistryDeps> = {}): ProcessRegistry
     watcherRegistry: { list: () => [], stopWatcher: () => null },
     workflow: {
       workflowManager: { list: () => [], cancel: () => false },
-      triggerManager: { list: () => [], remove: () => false, disable: () => false },
-      scheduleManager: { list: () => [], remove: () => false, disable: () => false },
+      triggerManager: { list: () => [], remove: () => false, disable: () => false, enable: () => false },
+      scheduleManager: { list: () => [], remove: () => false, disable: () => false, enable: () => false },
     },
     now: () => T0 + 5_000,
     ...overrides,
@@ -495,8 +499,8 @@ describe('fleet registry — adapter mapping', () => {
     const registry = createProcessRegistry(makeDeps({
       workflow: {
         workflowManager: { list: () => [workflow, cancelled], cancel: () => false },
-        triggerManager: { list: () => [trigger], remove: () => false, disable: () => false },
-        scheduleManager: { list: () => [schedule], remove: () => false, disable: () => false },
+        triggerManager: { list: () => [trigger], remove: () => false, disable: () => false, enable: () => false },
+        scheduleManager: { list: () => [schedule], remove: () => false, disable: () => false, enable: () => false },
       },
     }));
     const wfNode = nodeById(registry, 'wf-1');
@@ -1126,6 +1130,10 @@ describe('fleet registry — control dispatch', () => {
             calls.push(`trigger.disable:${id}`);
             return true;
           },
+          enable: (id: string) => {
+            calls.push(`trigger.enable:${id}`);
+            return true;
+          },
         },
         scheduleManager: {
           list: () => [schedule],
@@ -1135,6 +1143,10 @@ describe('fleet registry — control dispatch', () => {
           },
           disable: (name: string) => {
             calls.push(`schedule.disable:${name}`);
+            return true;
+          },
+          enable: (name: string) => {
+            calls.push(`schedule.enable:${name}`);
             return true;
           },
         },
@@ -1315,7 +1327,11 @@ describe('fleet registry — steer', () => {
     const opts = bus.calls[0]?.opts as { kind: string; ttlMs: number; id: string };
     expect(opts.kind).toBe('steer');
     expect(opts.ttlMs).toBeGreaterThan(5 * 60 * 1000); // must materially outlive AgentMessageBus's own 5-min default
-    expect(opts.id).toBe(result.queued ? result.messageId : undefined);
+    if (result.queued) {
+      expect(opts.id).toBe(result.messageId);
+    } else {
+      throw new Error('expected result.queued to be true (checked above)');
+    }
     registry.dispose();
   });
 
@@ -1338,8 +1354,8 @@ describe('fleet registry — steer', () => {
       wrfcController: { listChains: () => [chain] },
       workflow: {
         workflowManager: { list: () => [], cancel: () => false },
-        triggerManager: { list: () => [trigger], remove: () => false, disable: () => false },
-        scheduleManager: { list: () => [], remove: () => false, disable: () => false },
+        triggerManager: { list: () => [trigger], remove: () => false, disable: () => false, enable: () => false },
+        scheduleManager: { list: () => [], remove: () => false, disable: () => false, enable: () => false },
       },
       messageBus: fakeMessageBus(),
     }));

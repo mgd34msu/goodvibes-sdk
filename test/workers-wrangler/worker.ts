@@ -16,9 +16,7 @@
  */
 
 import type { ExportedHandler, ExecutionContext } from '@cloudflare/workers-types';
-// @ts-expect-error resolved by wrangler's esbuild pipeline, not tsc
 import { createWebGoodVibesSdk } from '../../packages/sdk/dist/web.js';
-// @ts-expect-error resolved by wrangler's esbuild pipeline, not tsc
 import * as SdkErrors from '../../packages/sdk/dist/errors.js';
 
 interface Env {}
@@ -99,7 +97,7 @@ async function handleTransportSuccess(): Promise<Response> {
   const sdk = createWebGoodVibesSdk({
     baseUrl: 'http://127.0.0.1:9999',
     authToken: 'test-token',
-    fetch: mockFetch,
+    fetch: mockFetch as unknown as typeof fetch,
     retry: { maxAttempts: 1 },
   });
 
@@ -129,7 +127,7 @@ async function handleTransportError(): Promise<Response> {
   const sdk = createWebGoodVibesSdk({
     baseUrl: 'http://127.0.0.1:9999',
     authToken: 'test-token',
-    fetch: mockFetch,
+    fetch: mockFetch as unknown as typeof fetch,
     retry: { maxAttempts: 1 },
   });
 
@@ -220,8 +218,13 @@ function handleGlobals(): Response {
   });
 }
 
-const handler: ExportedHandler<Env> = {
-  async fetch(request, _env, _ctx): Promise<Response> {
+// The handler's `fetch` returns the global (DOM/bun) Response type, not
+// @cloudflare/workers-types' Response (which additionally requires a
+// `webSocket` property). At runtime under Miniflare/wrangler dev these are
+// interchangeable — only the type declarations collide — so the exported
+// object is asserted to the workers-types shape rather than typed directly.
+const handler = {
+  async fetch(request: Request, _env: Env, _ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
     try {
@@ -255,4 +258,4 @@ const handler: ExportedHandler<Env> = {
   },
 };
 
-export default handler;
+export default handler as unknown as ExportedHandler<Env>;

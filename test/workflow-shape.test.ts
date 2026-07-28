@@ -25,7 +25,7 @@ type Job = Record<string, unknown> & {
   permissions?: Record<string, string>;
   environment?: unknown;
 };
-type Workflow = { on?: unknown; jobs?: Record<string, Job>; concurrency?: Record<string, unknown> };
+type Workflow = { on?: unknown; jobs?: Record<string, Job>; concurrency?: Record<string, unknown>; permissions?: Record<string, string> };
 
 function load(name: string): Workflow {
   return Bun.YAML.parse(readFileSync(resolve(WF_DIR, name), 'utf8')) as Workflow;

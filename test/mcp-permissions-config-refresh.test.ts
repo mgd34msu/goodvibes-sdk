@@ -50,11 +50,11 @@ describe('McpPermissionManager.registerServer — config refresh', () => {
   test('role and mode follow the refreshed config', () => {
     const manager = new McpPermissionManager();
     register(manager, { role: 'general', mode: 'ask-on-risk' });
-    register(manager, { role: 'filesystem', mode: 'trusted' });
+    register(manager, { role: 'filesystem', mode: 'allow-all' });
 
     const profile = manager.getServerPermissions('files')?.profile;
     expect(profile?.role).toBe('filesystem');
-    expect(profile?.mode).toBe('trusted');
+    expect(profile?.mode).toBe('allow-all');
   });
 
   test('a runtime trust level survives a config refresh', () => {

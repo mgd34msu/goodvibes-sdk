@@ -307,6 +307,8 @@ describe('S2a — auth still gates every entry point when the flag is ON', () =>
     // Sanity pin: enabling the gateway does not make the streaming surface public —
     // the control SSE (its shared entry gate) still refuses a principal-less request.
     const { gateway } = makeStockGateway();
-    expect(gateway.isEnabled()).toBe(true);
+    // isEnabled() is private; getSnapshot() is the public surface that reflects
+    // it — a disabled gateway's snapshot carries `disabled: true` and nothing else.
+    expect((gateway.getSnapshot() as { disabled?: boolean }).disabled).not.toBe(true);
   });
 });

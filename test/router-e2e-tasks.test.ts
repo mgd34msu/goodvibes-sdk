@@ -67,7 +67,7 @@ describe('router-e2e tasks — POST /task (happy path)', () => {
     expect(res!.status).toBe(200);
     const body = await res!.json() as Record<string, unknown>;
     expect(body.id).toBe('task-abc');
-    expect(capturedId).toBe('task-abc');
+    expect(capturedId as unknown as string).toBe('task-abc');
   });
 
   test('POST /api/tasks/:id/cancel delegates runtimeTaskAction with cancel', async () => {
@@ -82,7 +82,7 @@ describe('router-e2e tasks — POST /task (happy path)', () => {
     const res = await dispatchTaskRoutes(req, handlers);
     expect(res).not.toBeNull();
     expect(res!.status).toBe(200);
-    expect(capturedAction).toBe('cancel');
+    expect(capturedAction as unknown as string).toBe('cancel');
   });
 
   test('POST /api/tasks/:id/retry delegates runtimeTaskAction with retry', async () => {
@@ -97,7 +97,7 @@ describe('router-e2e tasks — POST /task (happy path)', () => {
     const res = await dispatchTaskRoutes(req, handlers);
     expect(res).not.toBeNull();
     expect(res!.status).toBe(200);
-    expect(capturedAction).toBe('retry');
+    expect(capturedAction as unknown as string).toBe('retry');
   });
 
   test('GET /task/:id retrieves task status', async () => {
@@ -114,7 +114,7 @@ describe('router-e2e tasks — POST /task (happy path)', () => {
     expect(res!.status).toBe(200);
     const body = await res!.json() as Record<string, unknown>;
     expect(body.status).toBe('completed');
-    expect(capturedId).toBe('task-xyz');
+    expect(capturedId as unknown as string).toBe('task-xyz');
   });
 });
 

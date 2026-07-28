@@ -188,7 +188,7 @@ describe('AudioSink contract — bounded waitForDrain on exit', () => {
     // 500 ms was a number only an idle machine can promise for it. Widened to a
     // value that still separates "returned inside its own budget" from "waited
     // for the drain" without asking the host to be idle.
-    expect(waitForDrainMs).toBe(30);
+    expect(waitForDrainMs as number | null).toBe(30);
     expect(elapsed).toBeLessThan(10_000);
   });
 });

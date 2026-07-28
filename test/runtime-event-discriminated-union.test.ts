@@ -46,7 +46,7 @@ void _agentCompletedNoUsage;
 
 /** Verify AGENT_COMPLETED's usage field narrows to the AgentUsage token-count shape without cast. */
 type _AssertAgentCompletedUsageShape = _AgentCompleted extends {
-  usage?: { inputTokens: number; outputTokens: number; cacheReadTokens?: number; cacheWriteTokens?: number } | undefined;
+  usage?: { inputTokens: number; outputTokens: number; cacheReadTokens?: number | undefined; cacheWriteTokens?: number | undefined } | undefined;
 } ? true : never;
 const _assertAgentCompletedUsageShape: _AssertAgentCompletedUsageShape = true;
 void _assertAgentCompletedUsageShape;
@@ -159,6 +159,8 @@ function exhaustiveTurnSwitch(event: TurnEvent): string {
       return event.turnId;
     case 'STREAM_RETRY':
       return event.provider;
+    case 'LLM_REQUEST_STARTED':
+      return event.model;
     case 'LLM_RESPONSE_RECEIVED':
       return event.model;
     case 'TOOL_BATCH_READY':
@@ -200,6 +202,10 @@ function exhaustiveWorkflowSwitch(event: WorkflowEvent): string {
     case 'WORKFLOW_AUTO_COMMITTED':
       return event.chainId;
     case 'WORKFLOW_CASCADE_ABORTED':
+      return event.reason;
+    case 'WORKFLOW_CONSTRAINTS_ENUMERATED':
+      return event.chainId;
+    case 'WORKFLOW_SCORE_REGRESSION':
       return event.reason;
     default: {
       const _exhaustiveCheck: never = event;
@@ -287,7 +293,9 @@ describe('discriminated union — TurnEvent', () => {
       { type: 'STREAM_START', turnId: 't1' },
       { type: 'STREAM_DELTA', turnId: 't1', content: 'hi', accumulated: 'hi' },
       { type: 'STREAM_END', turnId: 't1' },
-      { type: 'LLM_RESPONSE_RECEIVED', turnId: 't1', provider: 'anthropic', model: 'claude-4', content: 'hi', toolCallCount: 0, inputTokens: 10, outputTokens: 5 },
+      { type: 'STREAM_RETRY', turnId: 't1', provider: 'anthropic', attempt: 1, maxAttempts: 3, delayMs: 100, reason: 'transport error' },
+      { type: 'LLM_REQUEST_STARTED', turnId: 't1', provider: 'anthropic', model: 'claude-4', promptSummary: 'hello' },
+      { type: 'LLM_RESPONSE_RECEIVED', turnId: 't1', provider: 'anthropic', model: 'claude-4', contentSummary: 'hi', toolCallCount: 0, inputTokens: 10, outputTokens: 5 },
       { type: 'TOOL_BATCH_READY', turnId: 't1', toolCalls: ['bash'] },
       { type: 'TOOLS_DONE', turnId: 't1' },
       { type: 'POST_HOOKS_DONE', turnId: 't1' },
@@ -352,6 +360,8 @@ describe('discriminated union — WorkflowEvent', () => {
       { type: 'WORKFLOW_CHAIN_FAILED', chainId: 'c1', reason: 'max retries' },
       { type: 'WORKFLOW_AUTO_COMMITTED', chainId: 'c1' },
       { type: 'WORKFLOW_CASCADE_ABORTED', chainId: 'c1', reason: 'user cancelled' },
+      { type: 'WORKFLOW_CONSTRAINTS_ENUMERATED', chainId: 'c1', constraints: [{ id: 'con-1', text: 'must pass lint', source: 'prompt' }] },
+      { type: 'WORKFLOW_SCORE_REGRESSION', chainId: 'c1', reason: 'score dropped below threshold' },
     ];
     for (const event of events) {
       expect(exhaustiveWorkflowSwitch(event)).not.toBe('unknown');

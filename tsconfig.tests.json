@@ -1,0 +1,40 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": true,
+    "allowImportingTsExtensions": true,
+    "lib": ["ES2024", "ESNext.Disposable", "DOM"],
+    "types": ["node", "bun"],
+    // playwright-core is a devDependency of packages/sdk, so bun installs it
+    // under packages/sdk/node_modules and it is NOT resolvable from `test/` at
+    // the repo root. packages/sdk/src imports its types directly, and so do the
+    // browser tests; without this the tests project reported TS2307 for a
+    // package that is installed and that production compiles against.
+    "paths": {
+      "playwright-core": ["./packages/sdk/node_modules/playwright-core/index.d.ts"]
+    }
+  },
+  "include": ["test/**/*.ts", "scripts/**/*.ts"],
+  // test/types/** is the CONSUMER-vantage type-test project. It resolves
+  // everything through the package NAME with `paths` remapping, which is the
+  // only vantage point from which a declaration-emit gap is visible, and it is
+  // compiled by tsconfig.type-tests.json instead. Compiling it here as well
+  // pulls node_modules/@pellux/goodvibes-sdk into this program and makes
+  // neighbouring inferred types unnameable (TS2883). `bun run typecheck` runs
+  // both projects, so nothing is dropped by excluding it here.
+  "exclude": ["test/types/**"],
+  "references": [
+    { "path": "./packages/contracts" },
+    { "path": "./packages/errors" },
+    { "path": "./packages/daemon-sdk" },
+    { "path": "./packages/transport-core" },
+    { "path": "./packages/transport-http" },
+    { "path": "./packages/transport-realtime" },
+    { "path": "./packages/operator-sdk" },
+    { "path": "./packages/peer-sdk" },
+    { "path": "./packages/sdk" },
+    { "path": "./packages/terminal-shell" },
+    { "path": "./packages/toolchain" }
+  ]
+}

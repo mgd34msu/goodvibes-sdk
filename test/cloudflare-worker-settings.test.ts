@@ -285,6 +285,9 @@ function workerSettingsClient(overrides: {
   readonly updateSchedule?: (body: readonly { readonly cron: string }[]) => Promise<{ readonly schedules: readonly { readonly cron: string }[] }>;
 }): CloudflareApiClient {
   return {
+    accounts: {
+      get: async () => ({ id: 'test-account', name: 'test-account' }),
+    },
     workers: {
       subdomains: {
         get: async () => ({ subdomain: await (overrides.readAccountSubdomain?.() ?? Promise.resolve('')) }),

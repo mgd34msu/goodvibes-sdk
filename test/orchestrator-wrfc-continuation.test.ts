@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { ConversationManager } from '../packages/sdk/src/platform/core/conversation.js';
+import type { ConversationMessageSnapshot } from '../packages/sdk/src/platform/core/conversation.js';
 import { handleToolResponseOutcome } from '../packages/sdk/src/platform/core/orchestrator-turn-helpers.js';
 import {
   buildWrfcWorkflowRoutingPrompt,
@@ -8,13 +9,19 @@ import {
   userProhibitsDelegation,
 } from '../packages/sdk/src/platform/core/wrfc-routing.js';
 import type { ToolCall, ToolResult } from '../packages/sdk/src/platform/types/tools.js';
+import type { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 
 function createProviderRegistry() {
   return {
     getCurrentModel: () => ({
-      displayName: 'test-model',
+      id: 'test-model',
       provider: 'test',
-      capabilities: { multimodal: false },
+      registryKey: 'test:test-model',
+      displayName: 'test-model',
+      description: 'test model',
+      capabilities: { toolCalling: true, codeEditing: true, reasoning: false, multimodal: false },
+      contextWindow: 128_000,
+      selectable: true,
     }),
   };
 }
@@ -128,7 +135,7 @@ describe('orchestrator WRFC spawn continuation contract', () => {
       conversation,
       agentManager: { list: () => [], spawn: () => { throw new Error('not used'); } },
       planManager: null,
-      configManager: { get: () => undefined },
+      configManager: { get: () => undefined } as unknown as Pick<ConfigManager, 'get'>,
       providerRegistry: createProviderRegistry(),
       runtimeBus: null,
       emitterContext: () => ({ sessionId: 'test', traceId: 'test', source: 'test' }),
@@ -184,7 +191,7 @@ describe('orchestrator WRFC spawn continuation contract', () => {
       conversation,
       agentManager: { list: () => [], spawn: () => { throw new Error('not used'); } },
       planManager: null,
-      configManager: { get: () => undefined },
+      configManager: { get: () => undefined } as unknown as Pick<ConfigManager, 'get'>,
       providerRegistry: createProviderRegistry(),
       runtimeBus: null,
       emitterContext: () => ({ sessionId: 'test', traceId: 'test', source: 'test' }),
@@ -220,7 +227,8 @@ describe('orchestrator WRFC spawn continuation contract', () => {
     expect(executedCalls).toHaveLength(1);
     expect(executedCalls[0]!.arguments.authoritativeTask).toBe('make a token bucket rate limiter');
     const assistantToolCall = conversation.getMessageSnapshot()
-      .find((message) => message.role === 'assistant' && message.toolCalls?.length);
+      .find((message): message is Extract<ConversationMessageSnapshot, { role: 'assistant' }> =>
+        message.role === 'assistant' && !!message.toolCalls?.length);
     expect(assistantToolCall?.toolCalls?.[0]?.arguments.authoritativeTask).toBe('make a token bucket rate limiter');
   });
 
@@ -236,7 +244,7 @@ describe('orchestrator WRFC spawn continuation contract', () => {
       conversation,
       agentManager: { list: () => [], spawn: () => { throw new Error('not used'); } },
       planManager: null,
-      configManager: { get: () => undefined },
+      configManager: { get: () => undefined } as unknown as Pick<ConfigManager, 'get'>,
       providerRegistry: createProviderRegistry(),
       runtimeBus: null,
       emitterContext: () => ({ sessionId: 'test', traceId: 'test', source: 'test' }),

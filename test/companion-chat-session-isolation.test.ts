@@ -43,7 +43,7 @@ function makeTrackingPublisher(): CompanionChatEventPublisher & { events: Publis
   return {
     events,
     publishEvent(event, payload, filter?) {
-      events.push({ event, payload, filter });
+      events.push({ event, payload, ...(filter !== undefined ? { filter } : {}) });
     },
   };
 }

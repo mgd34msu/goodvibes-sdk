@@ -29,10 +29,14 @@ export interface PackageManifest extends Record<string, unknown> {
   version?: string;
   files?: readonly string[];
   repository?: unknown;
-  dependencies?: Record<string, unknown>;
-  devDependencies?: Record<string, unknown>;
-  peerDependencies?: Record<string, unknown>;
-  optionalDependencies?: Record<string, unknown>;
+  // `| undefined` is load-bearing under exactOptionalPropertyTypes: the
+  // normalizers below deliberately assign undefined to drop a dependency group
+  // from the staged manifest (JSON.stringify omits it), and that is not the same
+  // as the property being absent from the type.
+  dependencies?: Record<string, unknown> | undefined;
+  devDependencies?: Record<string, unknown> | undefined;
+  peerDependencies?: Record<string, unknown> | undefined;
+  optionalDependencies?: Record<string, unknown> | undefined;
 }
 
 export interface PackageStage {
@@ -126,9 +130,11 @@ function stageSdkSecurityMitigationAssets(stageDir: string): void {
   );
 }
 
-function normalizeDependencyGroup(group: unknown, rootVersion: string): unknown {
+function normalizeDependencyGroup(group: unknown, rootVersion: string): Record<string, unknown> | undefined {
+  // A manifest dependency group is an object or absent, so returning undefined
+  // for anything else is the same value the previous `return group` produced.
   if (!group || typeof group !== 'object') {
-    return group;
+    return undefined;
   }
   const next: Record<string, unknown> = {};
   for (const [name, value] of Object.entries(group)) {
@@ -163,9 +169,11 @@ function applySdkVendorMitigations(manifest: PackageManifest): PackageManifest {
   };
 }
 
-function omitPackageName(group: unknown, name: string): unknown {
-  if (!group || typeof group !== 'object') return group;
-  const next = Object.fromEntries(Object.entries(group).filter(([entry]) => entry !== name));
+function omitPackageName(group: unknown, name: string): Record<string, unknown> | undefined {
+  if (!group || typeof group !== 'object') return undefined;
+  const next: Record<string, unknown> = Object.fromEntries(
+    Object.entries(group).filter(([entry]) => entry !== name),
+  );
   return Object.keys(next).length > 0 ? next : undefined;
 }
 
@@ -296,8 +304,8 @@ export function cleanupAuthEnv(authEnv: AuthEnv): void {
 export function run(command: string, args: readonly string[], cwd: string, options: RunOptions = {}): string {
   const ownedAuthEnv = options.auth && !options.authEnv
     ? createAuthEnv(options.env, {
-      registry: options.registry,
-      packageName: options.packageName,
+      ...(options.registry !== undefined ? { registry: options.registry } : {}),
+      ...(options.packageName !== undefined ? { packageName: options.packageName } : {}),
     })
     : undefined;
   const childEnv = options.auth

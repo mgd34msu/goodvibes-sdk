@@ -33,6 +33,8 @@ import {
 
 function makeSummary(overrides: Partial<EmailSummary> = {}): EmailSummary {
   return {
+    uid: 1,
+    messageId: '<test-message-1@example.com>',
     from: 'sender@example.com',
     subject: 'Test subject',
     date: '2024-01-01T10:00:00Z',

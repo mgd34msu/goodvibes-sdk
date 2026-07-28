@@ -21,6 +21,7 @@
 //   bun scripts/check-internal-identifiers.ts
 
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import type { Dirent } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import {
   checkNoInternalIdentifiers,
@@ -59,7 +60,7 @@ function walkTextFiles(target: string, root: string): InternalIdentifierCandidat
   }
 
   if (!stat.isDirectory()) return [];
-  let entries: ReturnType<typeof readdirSync>;
+  let entries: Dirent[];
   try {
     entries = readdirSync(target, { withFileTypes: true });
   } catch {

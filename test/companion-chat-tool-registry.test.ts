@@ -96,7 +96,7 @@ function makeRecordingPublisher(): { publisher: CompanionChatEventPublisher; eve
   const events: PublishedEvent[] = [];
   const publisher: CompanionChatEventPublisher = {
     publishEvent(event, payload, filter) {
-      events.push({ event, payload, filter });
+      events.push({ event, payload, ...(filter !== undefined ? { filter } : {}) });
     },
   };
   return { publisher, events };

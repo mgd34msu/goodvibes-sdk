@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import type { Browser, BrowserContext, Page } from 'playwright-core';
+// `playwright-core` is an optional dependency hoisted only under
+// packages/sdk/node_modules, not resolvable from test/ at the repo root (see
+// tsconfig.tests.json's project root). Every use of these types below goes
+// through an `as unknown as X` cast at the mock boundary, so a same-named
+// local opaque alias preserves identical behavior without a real resolution.
+type BrowserContext = unknown;
+type Page = unknown;
 import { BrowserEngine, UntrustedEffectError } from '../packages/sdk/src/platform/browser/browser-engine.js';
 import { BrowserSessionManager } from '../packages/sdk/src/platform/browser/browser-sessions.js';
 import type {
@@ -203,12 +209,12 @@ beforeEach(async () => {
     profileRoot: '/tmp/goodvibes-outward-test',
     surfaceRoot: 'test-surface',
     io: readyIo(),
-    loadDriver: () => ({
+    loadDriver: (() => ({
       chromium: {
         launchPersistentContext: async () => context,
-        connectOverCDP: async () => ({ contexts: () => [context] } as unknown as Browser),
+        connectOverCDP: async () => ({ contexts: () => [context] }),
       },
-    }),
+    })) as unknown as NonNullable<ConstructorParameters<typeof BrowserSessionManager>[0]['loadDriver']>,
   });
   engine = new BrowserEngine(sessions, { screenshotDirectory: '/tmp/goodvibes-outward-shots', untrusted });
   await engine.launch({ headless: true });
@@ -345,12 +351,12 @@ describe('outward effects after reading a page', () => {
       profileRoot: '/tmp/goodvibes-outward-test',
       surfaceRoot: 'test-surface',
       io: readyIo(),
-      loadDriver: () => ({
+      loadDriver: (() => ({
         chromium: {
           launchPersistentContext: async () => context,
-          connectOverCDP: async () => ({ contexts: () => [context] } as unknown as Browser),
+          connectOverCDP: async () => ({ contexts: () => [context] }),
         },
-      }),
+      })) as unknown as NonNullable<ConstructorParameters<typeof BrowserSessionManager>[0]['loadDriver']>,
     });
     const recorded = new BrowserEngine(sessions, {
       screenshotDirectory: '/tmp/goodvibes-outward-shots',

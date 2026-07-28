@@ -17,6 +17,7 @@
 // Exits non-zero and prints file:line with context if any marker is found.
 
 import { readdirSync, readFileSync, statSync } from 'node:fs';
+import type { Dirent } from 'node:fs';
 import { resolve, relative, extname, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -55,7 +56,7 @@ function isExempt(absPath: string): boolean {
 
 function walkSourceFiles(dir: string): string[] {
   const results: string[] = [];
-  let entries: ReturnType<typeof readdirSync>;
+  let entries: Dirent[];
   try {
     entries = readdirSync(dir, { withFileTypes: true });
   } catch {
@@ -107,14 +108,18 @@ for (const root of SCAN_ROOTS) {
     }
     const lines = content.split('\n');
     for (let i = 0; i < lines.length; i++) {
-      const m = MARKER_RE.exec(lines[i]);
+      const line = lines[i];
+      if (line === undefined) continue;
+      const m = MARKER_RE.exec(line);
       if (m) {
         findings.push({
           rel: relative(REPO_ROOT, absPath).replace(/\\/g, '/'),
           line: i + 1,
           col: m.index + 1,
-          marker: m[1],
-          text: lines[i].trimEnd(),
+          // Group 1 spans the whole match for this pattern, so m[0] is the
+          // same string; it is typed non-optional where m[1] is not.
+          marker: m[1] ?? m[0],
+          text: line.trimEnd(),
         });
       }
     }

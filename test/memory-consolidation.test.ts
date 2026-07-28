@@ -14,9 +14,11 @@ import type {
   MemoryConsolidationRegistry,
   MemoryConsolidationUsageSignal,
   MemoryRecord,
-  MemoryReviewPatch,
   ResolvedMemoryConsolidationConfig,
 } from '../packages/sdk/src/platform/state/index.js';
+// MemoryReviewPatch is a real exported type (memory-store.ts) but is not
+// re-exported from the state barrel (state/index.ts) — pull it from source.
+import type { MemoryReviewPatch } from '../packages/sdk/src/platform/state/memory-store.js';
 import { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 
 /**

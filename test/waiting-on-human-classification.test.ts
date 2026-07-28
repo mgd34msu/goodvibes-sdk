@@ -31,7 +31,7 @@ const T0 = 1_750_000_000_000;
 
 function makeItem(overrides: Partial<WorkItem> & { id: string }): WorkItem {
   return {
-    title: 'item', task: 'do work', currentPhaseId: null, state: 'pending',
+    title: 'item', task: 'do work', dependsOn: [], currentPhaseId: null, state: 'pending',
     allAgentIds: [], visits: new Map(), touchedPaths: [], usage: emptyWorkItemUsage(),
     transportRetryCount: 0, createdAt: T0, ...overrides,
   };

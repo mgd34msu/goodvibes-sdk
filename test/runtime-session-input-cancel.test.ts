@@ -42,6 +42,7 @@ function makeContext(inputs: Map<string, InputRecord>): DaemonRuntimeRouteContex
       followUpMessage: async () => { throw new Error('not expected'); },
       bindAgent: async () => {},
       createSession: async () => ({ id: 'stub-session' }),
+      register: async () => { throw new Error('not expected'); },
       getSession: (sessionId) => (
         sessionId === 'test-session'
           ? { id: 'test-session', status: 'open', messageCount: 0 }
@@ -49,8 +50,12 @@ function makeContext(inputs: Map<string, InputRecord>): DaemonRuntimeRouteContex
       ),
       getMessages: () => [],
       getInputs: () => [],
+      getInputsSince: () => [],
+      markInputDelivered: async () => null,
       closeSession: async () => null,
       reopenSession: async () => null,
+      detachParticipant: async () => null,
+      deleteSession: async () => 'not-found' as const,
       cancelInput: async (_sessionId, inputId) => {
         const input = inputs.get(inputId);
         if (!input) return null;

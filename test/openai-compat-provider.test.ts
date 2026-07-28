@@ -37,7 +37,7 @@ import type { ProviderRuntimeMetadataDeps } from '../packages/sdk/src/platform/p
  * services, no subscriptions. Enough to exercise the auth-mode/configured
  * derivation without pulling in real secret-store/service-registry plumbing. */
 const STUB_RUNTIME_DEPS: ProviderRuntimeMetadataDeps = {
-  secretsManager: { listDetailed: async () => [] },
+  secretsManager: { get: async () => null, listDetailed: async () => [] },
   serviceRegistry: { getAll: () => ({}), inspect: async () => null },
   subscriptionManager: { get: () => null, getPending: () => null },
 };
@@ -116,8 +116,9 @@ describe('OpenAICompatProvider — empty apiKey construction', () => {
     // mode is 'anonymous' only when allowAnonymous && !this.configured — proves
     // the substituted placeholder never leaked into the internal `configured`
     // flag (it's still derived from the ORIGINAL empty apiKey).
-    expect(runtime.auth.mode).toBe('anonymous');
-    expect(runtime.auth.configured).toBe(true);
+    expect(runtime.auth).toBeDefined();
+    expect(runtime.auth!.mode).toBe('anonymous');
+    expect(runtime.auth!.configured).toBe(true);
   });
 
   test('a real (non-empty) apiKey is passed through unchanged and reports api-key mode', async () => {
@@ -130,8 +131,9 @@ describe('OpenAICompatProvider — empty apiKey construction', () => {
     });
     expect(provider.isConfigured()).toBe(true);
     const runtime = await provider.describeRuntime(STUB_RUNTIME_DEPS);
-    expect(runtime.auth.mode).toBe('api-key');
-    expect(runtime.auth.configured).toBe(true);
+    expect(runtime.auth).toBeDefined();
+    expect(runtime.auth!.mode).toBe('api-key');
+    expect(runtime.auth!.configured).toBe(true);
   });
 
   test('empty apiKey with allowAnonymous false reports unconfigured (no throw, but genuinely not usable)', async () => {
@@ -144,7 +146,8 @@ describe('OpenAICompatProvider — empty apiKey construction', () => {
     });
     expect(provider.isConfigured()).toBe(false);
     const runtime = await provider.describeRuntime(STUB_RUNTIME_DEPS);
-    expect(runtime.auth.configured).toBe(false);
+    expect(runtime.auth).toBeDefined();
+    expect(runtime.auth!.configured).toBe(false);
   });
 });
 
@@ -176,7 +179,7 @@ describe('createDiscoveredProvider — every discovered server type constructs w
 // ── Error diagnostic message format: request phase and stream phase ──────────
 
 describe('OpenAICompatProvider.chat — error diagnostic message format', () => {
-  let server: Server | undefined;
+  let server: Server<undefined> | undefined;
   afterAll(() => {
     server?.stop(true);
   });

@@ -16,14 +16,27 @@ function createJsonResponse(body: unknown, status = 200): Response {
   });
 }
 
-const fetchStub = async () => createJsonResponse({ ok: true });
+/**
+ * Bun's `typeof fetch` includes a `preconnect` static method that plain mock
+ * functions don't have. Attach a no-op stub so test doubles satisfy the type
+ * without pretending to implement real preconnect behavior.
+ */
+function withPreconnect(
+  impl: (input: string | URL | Request, init?: RequestInit) => Promise<Response>,
+): typeof globalThis.fetch {
+  return Object.assign(impl, {
+    preconnect: (_url: string | URL, _options?: { dns?: boolean; tcp?: boolean; http?: boolean; https?: boolean }) => {},
+  });
+}
+
+const fetchStub = withPreconnect(async () => createJsonResponse({ ok: true }));
 
 describe('sdk platform integrations', () => {
   test('creates a generic composed sdk surface', () => {
     const sdk = createGoodVibesSdk({
       baseUrl: 'http://127.0.0.1:3210',
       authToken: 'token-123',
-      fetch: fetchStub as typeof fetch,
+      fetch: fetchStub,
     });
 
     expect(sdk.operator.transport.baseUrl).toBe('http://127.0.0.1:3210');
@@ -38,7 +51,7 @@ describe('sdk platform integrations', () => {
     });
     try {
       const sdk = createBrowserGoodVibesSdk({
-        fetch: fetchStub as typeof fetch,
+        fetch: fetchStub,
       });
 
       expect(sdk.operator.transport.baseUrl).toBe('https://goodvibes.example.com');
@@ -58,7 +71,7 @@ describe('sdk platform integrations', () => {
     });
     try {
       const sdk = createWebGoodVibesSdk({
-        fetch: fetchStub as typeof fetch,
+        fetch: fetchStub,
       });
 
       expect(sdk.operator.transport.baseUrl).toBe('https://goodvibes.example.com');
@@ -76,7 +89,7 @@ describe('sdk platform integrations', () => {
     const sdk = createReactNativeGoodVibesSdk({
       baseUrl: 'https://goodvibes.example.com',
       authToken: 'token-123',
-      fetch: fetchStub as typeof fetch,
+      fetch: fetchStub,
       WebSocketImpl: FakeWebSocket as unknown as typeof WebSocket,
     });
 
@@ -89,7 +102,7 @@ describe('sdk platform integrations', () => {
     const sdk = createExpoGoodVibesSdk({
       baseUrl: 'https://goodvibes.example.com',
       authToken: 'token-123',
-      fetch: fetchStub as typeof fetch,
+      fetch: fetchStub,
       WebSocketImpl: FakeWebSocket as unknown as typeof WebSocket,
     });
 

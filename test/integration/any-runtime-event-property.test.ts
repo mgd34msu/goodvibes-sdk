@@ -57,6 +57,16 @@ function validationError(message: string, received: unknown): EventValidationErr
  *   - `type` is a string and is a known event type
  *   - required discriminant-specific fields are present
  */
+/**
+ * REQUIRED_FIELDS_BY_TYPE is keyed by the production event union now, so a
+ * plain `string` cannot index it. This narrows once, in one place; an event
+ * type that is not a real union member yields undefined, which every caller
+ * below already handles.
+ */
+function requiredFieldsFor(type: string): readonly string[] | undefined {
+  return REQUIRED_FIELDS_BY_TYPE[type as keyof typeof REQUIRED_FIELDS_BY_TYPE];
+}
+
 function validateAnyRuntimeEvent(
   value: unknown,
 ): { ok: true; event: { type: string } } | { ok: false; error: EventValidationError } {
@@ -72,7 +82,7 @@ function validateAnyRuntimeEvent(
     return { ok: false, error: validationError(`Unknown event type: ${t}`, value) };
   }
   // Check required fields per type (representative sample covering each domain)
-  const missing = REQUIRED_FIELDS_BY_TYPE[t]?.filter((f) => !(f in obj)) ?? [];
+  const missing = requiredFieldsFor(t)?.filter((f) => !(f in obj)) ?? [];
   if (missing.length > 0) {
     return {
       ok: false,
@@ -131,7 +141,7 @@ describe('AnyRuntimeEvent — JSON round-trip property', () => {
         fc.constantFrom(...FIXTURE_EVENTS),
         (event) => {
           const restored = roundTrip(event) as Record<string, unknown>;
-          const requiredFields = REQUIRED_FIELDS_BY_TYPE[event.type] ?? [];
+          const requiredFields = requiredFieldsFor(event.type) ?? [];
           return requiredFields.every((field) => field in restored);
         },
       ),
@@ -194,13 +204,13 @@ describe('AnyRuntimeEvent — validation rejects malformed events', () => {
   test('fast-check: known type with missing required fields → validation error', () => {
     // Pick events that have at least one required field to drop
     const eventsWithRequiredFields = FIXTURE_EVENTS.filter(
-      (e) => (REQUIRED_FIELDS_BY_TYPE[e.type]?.length ?? 0) > 0,
+      (e) => (requiredFieldsFor(e.type)?.length ?? 0) > 0,
     );
     fc.assert(
       fc.property(
         fc.constantFrom(...eventsWithRequiredFields),
         (event) => {
-          const requiredFields = REQUIRED_FIELDS_BY_TYPE[event.type]!;
+          const requiredFields = requiredFieldsFor(event.type)!;
           // Drop the first required field
           const truncated: Record<string, unknown> = { ...event };
           delete truncated[requiredFields[0]!];
