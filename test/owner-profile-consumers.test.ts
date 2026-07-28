@@ -37,7 +37,10 @@ import {
   registerSignupBaseAddressFallback,
   resolveSignupBaseAddress,
 } from '../packages/sdk/src/platform/google/account-registry.ts';
-import { OWNER_ADDRESS_CONFIG_KEYS } from '../packages/sdk/src/platform/security/owner-identity.ts';
+import {
+  OWNER_ADDRESS_CONFIG_KEYS,
+  resolveOwnerAddresses,
+} from '../packages/sdk/src/platform/security/owner-identity.ts';
 import { registerProfileRedactionValues } from '../packages/sdk/src/platform/utils/redaction.ts';
 import { registerOpenTierContextBlock } from '../packages/sdk/src/platform/owner-profile/context-block.ts';
 
@@ -326,17 +329,98 @@ describe('§13.2 / §13.3 — the two direct consumers, and the one deliberately
 describe('closed-tier value set for redaction', () => {
   test('collects closed-tier field values and People lines, and nothing open-tier', async () => {
     const store = await loadedStore();
-    const values = closedTierRedactionValues(store);
-    expect(values).toContain('200 Office Way, Lansing, MI 48933, US');
-    expect(values).toContain('owner@example.com');
-    expect(values).toContain('22:00-07:00');
-    expect(values).toContain('Sarah, sister, sarah@example.com');
+    const { guarded, absolute } = closedTierRedactionValues(store);
+    expect(guarded).toContain('200 Office Way, Lansing, MI 48933, US');
+    expect(guarded).toContain('owner@example.com');
+    expect(guarded).toContain('22:00-07:00');
+    // People is third-party data: absolute, never subject to the floor.
+    expect(absolute).toContain('Sarah, sister, sarah@example.com');
+    expect(guarded).not.toContain('Sarah, sister, sarah@example.com');
     // Open tier is in context already and must never become a redaction pattern.
-    expect(values).not.toContain('Mars/Olympus');
+    expect(guarded).not.toContain('Mars/Olympus');
+    expect(absolute).not.toContain('Mars/Olympus');
   });
 
   test('an unloaded profile contributes nothing', () => {
     const store = new OwnerProfileStore({ path: join(mkTemp(), 'nope.md'), enabled: false });
-    expect(closedTierRedactionValues(store)).toEqual([]);
+    expect(closedTierRedactionValues(store)).toEqual({ guarded: [], absolute: [] });
+  });
+});
+
+describe('the two halves of "inert until the payments branch merges" are not the same', () => {
+  test('daemon.timezone is LIVE now, because the daemon section already exists', async () => {
+    const store = await loadedStore();
+    const config = freshConfig();
+
+    // Not a schema key, so nothing legitimately reads it yet — but `resolvePath`
+    // only walks as far as the PARENT section, and `daemon` exists. So the read
+    // returns undefined, `isUnsetConfigValue` says unset, and the fallback fires.
+    // Recorded here because the design table called this row inert and it is not.
+    // The behaviour is the wanted one: the day `daemon.timezone` lands with an
+    // empty default, nothing changes.
+    expect(() => config.get('daemon.timezone' as never)).not.toThrow();
+    expect(config.get('daemon.timezone' as never)).toBeUndefined();
+
+    installOwnerProfileConsumers(store, {
+      attachProfileFallback: (reader) => config.attachProfileFallback(reader),
+      consumerFallbackEnabled: () => true,
+      injectOpenTierEnabled: () => true,
+    });
+
+    // The fixture's timezone is invalid, so it falls back as if unset (§4.3).
+    expect(config.get('daemon.timezone' as never)).toBeUndefined();
+
+    // With a valid one it resolves, which is the behaviour the row is for.
+    const valid = await loadedStore(FIXTURE.replace('timezone: Mars/Olympus', 'timezone: America/Detroit'));
+    const config2 = freshConfig();
+    installOwnerProfileConsumers(valid, {
+      attachProfileFallback: (reader) => config2.attachProfileFallback(reader),
+      consumerFallbackEnabled: () => true,
+      injectOpenTierEnabled: () => true,
+    });
+    expect(config2.get('daemon.timezone' as never)).toBe('America/Detroit');
+  });
+
+  test('payments.* genuinely throws, so those rows really are inert', () => {
+    const config = freshConfig();
+    for (const key of ['payments.currency', 'payments.shippingAddress.city']) {
+      expect(() => config.get(key as never)).toThrow(/section 'payments' does not exist/);
+    }
+  });
+});
+
+describe('§13.3 — the taint exemption must never be fed from the profile', () => {
+  test('no owner-address config key is a fallback row, asserted not assumed', () => {
+    const fallbackKeys = new Set(CONSUMER_FALLBACKS.map((row) => row.configKey));
+    for (const key of OWNER_ADDRESS_CONFIG_KEYS) {
+      expect(
+        fallbackKeys.has(key),
+        `${key} gates the send-to-owner-only exemption to the content-taint rule and must not `
+        + 'resolve through the owner profile: a profile written autonomously from conversation is a '
+        + 'weaker input than daemon config, and routing it here would lower a bar owner-identity.ts '
+        + 'documents as high (docs/owner-profile.md §13.3).',
+      ).toBe(false);
+    }
+  });
+
+  test('and resolveOwnerAddresses reads none of them from a profile-backed manager', async () => {
+    const store = await loadedStore();
+    const config = freshConfig();
+    installOwnerProfileConsumers(store, {
+      attachProfileFallback: (reader) => config.attachProfileFallback(reader),
+      consumerFallbackEnabled: () => true,
+      injectOpenTierEnabled: () => true,
+    });
+    // contact.email is owner@example.com in the fixture. If any owner-address
+    // key ever fell back to it, the exemption would fire on a value the owner
+    // never wrote into daemon config.
+    const addresses = resolveOwnerAddresses((key) => {
+      try {
+        return config.get(key as never);
+      } catch {
+        return undefined;
+      }
+    });
+    expect([...addresses]).toEqual([]);
   });
 });

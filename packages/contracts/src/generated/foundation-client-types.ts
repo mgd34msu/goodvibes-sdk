@@ -216,10 +216,10 @@ export interface OperatorMethodInputMap {
   "profile.get": { fieldId: string; };
   "profile.person": { name: string; };
   "profile.provenance": { fieldId: string; };
-  "profile.set": { fieldId: string; value: string; surface: string; said: string; authority?: string; };
-  "profile.append": { section: string; text: string; surface: string; said: string; authority?: string; };
-  "profile.forget": { fieldId?: string; lineIndex?: number; authority?: string; };
-  "profile.undo": { fieldId: string; authority?: string; };
+  "profile.set": { fieldId: string; value: string; surface: string; said: string; authority: string; };
+  "profile.append": { section: string; text: string; surface: string; said: string; authority: string; };
+  "profile.forget": { fieldId?: string; lineIndex?: number; authority: string; };
+  "profile.undo": { fieldId: string; authority: string; };
   "profile.status": {  };
   "providers.get": { providerId: string; };
   "providers.list": {  };

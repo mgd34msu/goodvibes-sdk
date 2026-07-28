@@ -70260,7 +70260,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "section",
             "text",
             "surface",
-            "said"
+            "said",
+            "authority"
           ],
           "additionalProperties": false
         },
@@ -70361,6 +70362,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               "type": "string"
             }
           },
+          "required": [
+            "authority"
+          ],
           "additionalProperties": false
         },
         "outputSchema": {
@@ -70756,7 +70760,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "profile.read",
         "title": "Read Owner Profile",
-        "description": "Return the whole owner profile, by section, with each section's tier and every mechanical field's validity. This is the answer to \"what do you know about me?\" and is the ONE read that returns closed-tier content in bulk — which is why it is never callable from a message-composition path.",
+        "description": "Return the whole owner profile, by section, with each section's tier and every mechanical field's validity. This is the answer to \"what do you know about me?\" and is the ONE read that returns closed-tier content in bulk. It carries its own scope, read:profile.full, so a token issued to a composition path can hold read:profile for the named lookups (get/person/provenance/status) without also being able to ask for everything.",
         "category": "profile",
         "source": "builtin",
         "access": "authenticated",
@@ -70765,7 +70769,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "ws"
         ],
         "scopes": [
-          "read:profile"
+          "read:profile.full"
         ],
         "http": {
           "method": "GET",
@@ -70999,7 +71003,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "fieldId",
             "value",
             "surface",
-            "said"
+            "said",
+            "authority"
           ],
           "additionalProperties": false
         },
@@ -71179,7 +71184,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             }
           },
           "required": [
-            "fieldId"
+            "fieldId",
+            "authority"
           ],
           "additionalProperties": false
         },

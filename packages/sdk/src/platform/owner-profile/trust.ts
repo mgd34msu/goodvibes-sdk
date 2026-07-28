@@ -40,7 +40,7 @@ import {
   type AuthoritySurface,
   type UntrustedContentLedger,
 } from '../security/untrusted-content.js';
-import { profileFieldById } from './fields.js';
+import { canonicalProfileSection, profileFieldById } from './fields.js';
 
 export interface ProfileWriteAttempt {
   /** The surface claiming to make this write. */
@@ -51,6 +51,16 @@ export interface ProfileWriteAttempt {
   readonly value: string;
   /** The owner's verbatim words. Empty is refused by layer 3. */
   readonly said: string;
+  /**
+   * The section heading a prose bullet will land under, when there is one.
+   *
+   * Checked because `appendProse` CREATES `## <section>` when no existing
+   * heading matches, so an unchecked section is a second way for text lifted
+   * off a page to reach the file — as structure rather than as a claim, but
+   * reaching it all the same. Omitted for a mechanical field, which lands in a
+   * section chosen by the field registry rather than by the caller.
+   */
+  readonly section?: string | undefined;
   /** Defaults to the process ledger, which is what production wants. */
   readonly ledger?: UntrustedContentLedger | undefined;
 }
@@ -111,13 +121,57 @@ function noAuthority(action: string, authority: AuthoritySurface, verb: string):
 function findProfileTaint(
   value: string,
   said: string,
+  section: string | undefined,
   ledger: UntrustedContentLedger,
 ): readonly TaintFinding[] {
-  const sources = ledger.taintSourcesThisTurn();
-  if (sources.length === 0) return [];
-  const lengthBased = findContentTaint({ value, said }, sources, {});
-  if (lengthBased.length > 0) return lengthBased;
-  return findContentTaint({ value }, sources, { exactMatchFields: ['value'] });
+  // Pass 1 — length-based derivation, over a window one turn boundary wide.
+  //
+  // NOT `taintSourcesThisTurn()`. The gateway starts a turn as the first
+  // statement of `invokeGatewayMethodCall`, before dispatch, so a `profile.set`
+  // that declares `explicitUserRequest: true` moved the watermark past the page
+  // it had just read and this check then saw an empty corpus. Measured: the
+  // same write refused with the page in the window was ALLOWED after one
+  // `startTurnForOwnerRequest(true)`. The window that survives the boundary the
+  // gated call itself crosses is the smallest honest one.
+  //
+  // `section` rides pass 1 rather than pass 2 on purpose: a canonical heading
+  // is one short word, and exact containment of "Notes" against any page that
+  // happens to use that word would refuse every legitimate note. The 8-word /
+  // 40-character thresholds here cannot fire on a short heading, and do fire on
+  // a sentence lifted off a page and used as one.
+  const recent = ledger.taintSourcesSinceLastTurnBoundary();
+  if (recent.length > 0) {
+    const lengthBased = findContentTaint(
+      section === undefined ? { value, said } : { value, said, section },
+      recent,
+      {},
+    );
+    if (lengthBased.length > 0) return lengthBased;
+  }
+
+  // Pass 2 — exact containment, over EVERYTHING retained.
+  //
+  // A value that appears verbatim inside something a stranger wrote is not a
+  // coincidence however many turns ago it was read, and scoping this one to a
+  // turn would let an attacker defeat it by waiting. It is safe to widen only
+  // because it is exact: the fuzzy check above stays bounded so it cannot start
+  // refusing ordinary work and get itself switched off.
+  //
+  // A non-canonical section is included here too — a made-up heading lifted
+  // verbatim is the case pass 1's length floor cannot see — while a canonical
+  // one is left out for the "Notes" reason above.
+  const retained = ledger.taintSourcesRetained();
+  if (retained.length === 0) return [];
+  const madeUpSection = section !== undefined && canonicalProfileSection(section) === null
+    ? section
+    : undefined;
+  return madeUpSection === undefined
+    ? findContentTaint({ value }, retained, { exactMatchFields: ['value'] })
+    : findContentTaint(
+      { value, section: madeUpSection },
+      retained,
+      { exactMatchFields: ['value', 'section'] },
+    );
 }
 
 /**
@@ -138,7 +192,7 @@ export function evaluateProfileWrite(input: ProfileWriteAttempt): ProfileWriteDe
 
   // Layer 2 — derivation, which does not take the caller's word for layer 1.
   const ledger = input.ledger ?? getProcessUntrustedContentLedger();
-  const taint = findProfileTaint(input.value, input.said, ledger);
+  const taint = findProfileTaint(input.value, input.said, input.section, ledger);
   if (taint.length > 0) {
     return refuse(describeContentTaint(describeTarget(input.fieldId), taint), taint);
   }

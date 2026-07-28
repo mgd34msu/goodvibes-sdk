@@ -205,6 +205,20 @@ const MAX_RETAINED_INGESTS = 1_000;
 export class UntrustedContentLedger {
   private readonly ingests: UntrustedIngest[] = [];
   private turnStartIndex = 0;
+  /**
+   * Where the CURRENT turn's predecessor began.
+   *
+   * Kept because a turn boundary must not be able to erase evidence for a
+   * decision that is about to be made. `startTurnForOwnerRequest` runs as the
+   * first statement of `invokeGatewayMethodCall`, before dispatch — so a verb
+   * that carries `explicitUserRequest: true` moves this watermark past
+   * everything read up to that moment and THEN asks what was read. For an
+   * outward-effect check that is harmless (the send is the same turn's work);
+   * for a check about where a value came from it is fatal, because the call
+   * being judged cleared the evidence against itself. See
+   * {@link UntrustedContentLedger.taintSourcesSinceLastTurnBoundary}.
+   */
+  private previousTurnStartIndex = 0;
 
   record(ingest: UntrustedIngest): void {
     this.ingests.push(
@@ -216,11 +230,13 @@ export class UntrustedContentLedger {
       const discarded = this.ingests.length - MAX_RETAINED_INGESTS;
       this.ingests.splice(0, discarded);
       this.turnStartIndex = Math.max(0, this.turnStartIndex - discarded);
+      this.previousTurnStartIndex = Math.max(0, this.previousTurnStartIndex - discarded);
     }
   }
 
   /** Called when a new owner turn begins: the previous turn's exposure ends. */
   startTurn(): void {
+    this.previousTurnStartIndex = this.turnStartIndex;
     this.turnStartIndex = this.ingests.length;
   }
 
@@ -242,15 +258,55 @@ export class UntrustedContentLedger {
 
   /** The retained untrusted text of this turn, for a derivation check. */
   taintSourcesThisTurn(): readonly TaintSource[] {
-    return this.ingestedThisTurn()
-      .filter((entry): entry is UntrustedIngest & { content: string } => typeof entry.content === 'string')
-      .map((entry) => ({ surface: entry.surface, origin: entry.origin, text: entry.content }));
+    return toTaintSources(this.ingestedThisTurn());
   }
 
   /** True when any ingest this turn carried its text, so derivation is checkable. */
   hasTaintSourcesThisTurn(): boolean {
     return this.taintSourcesThisTurn().length > 0;
   }
+
+  /**
+   * This turn's retained text PLUS the turn the current boundary displaced.
+   *
+   * For a caller asking "could this value have come from something a stranger
+   * wrote", `taintSourcesThisTurn()` is the wrong window, and not by a little:
+   * the gateway starts a turn before it dispatches, so a request that declares
+   * itself an owner request moves the watermark past the page it just read and
+   * the check that follows sees nothing. Measured, before this existed: the
+   * identical write refused with the page in the window was allowed after one
+   * `startTurnForOwnerRequest(true)`.
+   *
+   * One boundary back is the smallest window that survives the boundary the
+   * gated call itself crosses. It is deliberately not "everything retained" —
+   * that window is offered separately below, because widening the FUZZY
+   * derivation check to a week of pages is how a gate starts refusing
+   * legitimate work and gets switched off.
+   */
+  taintSourcesSinceLastTurnBoundary(): readonly TaintSource[] {
+    return toTaintSources(this.ingests.slice(this.previousTurnStartIndex));
+  }
+
+  /**
+   * Every retained source, ignoring turn boundaries entirely.
+   *
+   * For an EXACT-containment check only. A value that appears verbatim inside
+   * something a stranger wrote is not a coincidence however long ago it was
+   * read, and that check cannot be defeated by waiting a turn. Do not run a
+   * length- or shingle-based check over this window: the retention cap is a
+   * thousand ingests, and an 8-word overlap with a week of web pages is
+   * ordinary rather than evidence.
+   */
+  taintSourcesRetained(): readonly TaintSource[] {
+    return toTaintSources(this.ingests);
+  }
+}
+
+/** Ingests that carried their text, as taint sources. */
+function toTaintSources(ingests: readonly UntrustedIngest[]): readonly TaintSource[] {
+  return ingests
+    .filter((entry): entry is UntrustedIngest & { content: string } => typeof entry.content === 'string')
+    .map((entry) => ({ surface: entry.surface, origin: entry.origin, text: entry.content }));
 }
 
 /** An outward effect: something that reaches the world outside this machine. */

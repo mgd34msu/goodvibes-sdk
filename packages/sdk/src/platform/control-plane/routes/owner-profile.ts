@@ -35,17 +35,19 @@
  * surface the caller never claimed. See routes/explicit-user-request.ts for why
  * an ABSENT claim proceeds and only an explicit `false` refuses.
  *
- * ## `authority`, when the caller does not declare one
+ * ## `authority` is required on every write
  *
- * An absent `authority` is read as `owner-direct`, for the same reason an
- * absent `explicitUserRequest` proceeds: no live transport populates it, and
- * requiring it would make the write verbs answer 403 forever. It is not a hole,
- * because the two gates that do NOT trust the caller's self-description still
- * run — the derivation check against the ledger, and the requirement that a
- * verbatim owner utterance exists. What IS refused, hard, is a caller that
- * declares an untrusted surface, and a caller that supplies a surface name
- * nobody recognises: an unknown string is a 400, never a silent promotion to
- * owner-direct.
+ * It is a body parameter, not a transport-populated context field, so requiring
+ * it refuses nobody who was going to succeed and closes the case where omitting
+ * it granted the one tier that carries write authority. See {@link readAuthority}.
+ *
+ * ## Policy vs mechanism
+ *
+ * The owner's three switches — `profile.autonomousWrites`,
+ * `profile.discloseWrites`, `profile.discloseClosedTierReads` — are applied by
+ * `owner-profile-policy.ts`, which wraps the store for writes, and by the read
+ * handlers below for the read receipt. The trust gate is not policy and is not
+ * here: it lives in the store, and nothing in this file can turn it off.
  */
 import type { GatewayMethodCatalog } from '../method-catalog.js';
 import type { GatewayMethodHandler, GatewayMethodInvocation } from '../method-catalog-shared.js';
@@ -61,6 +63,11 @@ import {
   type OwnerProfileStore,
   type ProfileSurface,
 } from '../../owner-profile/index.js';
+import {
+  applyOwnerProfilePolicy,
+  PERMISSIVE_OWNER_PROFILE_POLICY,
+  type OwnerProfilePolicy,
+} from './owner-profile-policy.js';
 
 /** The read/write surface of the store these verbs need. */
 export type OwnerProfileGatewayService = Pick<
@@ -97,15 +104,28 @@ function requireFieldId(value: unknown): string {
 }
 
 /**
- * The authority the caller claims. Absent ⇒ `owner-direct` (see the file
- * header); an unrecognised string is refused rather than defaulted, so a typo
- * or a probe can never resolve to the one tier that carries write authority.
+ * The authority the caller claims. REQUIRED, and never defaulted.
+ *
+ * An earlier version read an absent `authority` as `owner-direct`, on the same
+ * reasoning `explicit-user-request.ts` uses for its own field. That reasoning
+ * does not transfer, and the difference matters: `explicitUserRequest` lives in
+ * an invocation CONTEXT no transport populates, so requiring it would refuse
+ * every real caller. `authority` is a body parameter of these verbs — any
+ * caller already constructing `{fieldId, value, surface, said}` can state it —
+ * so requiring it costs one word and removes a hole rather than a capability.
+ *
+ * The hole was not theoretical for removals. §7 gives `forget` and `undo`
+ * layer 1 and nothing else, on purpose, so an omitted `authority` there was not
+ * a weakened gate, it was no gate: a caller that sent no authority at all
+ * deleted the owner's shipping address.
+ *
+ * An unrecognised string is refused rather than defaulted, so a typo or a probe
+ * can never resolve to the one tier that carries write authority.
  */
 function readAuthority(value: unknown): AuthoritySurface {
-  if (value === undefined || value === null) return 'owner-direct';
   if (typeof value !== 'string' || !(AUTHORITY_SURFACES as readonly string[]).includes(value)) {
     throw new GatewayVerbError(
-      `authority must be one of ${AUTHORITY_SURFACES.join(', ')}`,
+      `authority is required and must be one of ${AUTHORITY_SURFACES.join(', ')}`,
       'INVALID_ARGUMENT',
       400,
     );
@@ -137,32 +157,45 @@ function createStatusHandler(service: OwnerProfileGatewayService): GatewayMethod
   return () => service.status();
 }
 
-function createGetHandler(service: OwnerProfileGatewayService): GatewayMethodHandler {
+function createGetHandler(
+  service: OwnerProfileGatewayService,
+  policy: OwnerProfilePolicy,
+): GatewayMethodHandler {
   return (invocation) => {
     const fieldId = requireFieldId(readInvocationParams(invocation).fieldId);
     const field = service.get(fieldId);
     const def = profileFieldById(fieldId);
+    // A closed-tier read is disclosed unless he turned the receipts off; an
+    // open-tier one never is, because the open tier is already in context and a
+    // receipt for it would be noise. The VALUE is returned either way — the
+    // setting governs whether he is told, not whether the consumer is served.
+    const disclose = field !== undefined
+      && def?.tier === 'closed'
+      && policy.discloseClosedTierReads();
     return {
       fieldId,
       present: field !== undefined,
       ...(field === undefined ? {} : { field }),
-      // A closed-tier read is disclosed; an open-tier one is not, because the
-      // open tier is already in context and a receipt for it would be noise.
-      disclosure: field !== undefined && def?.tier === 'closed' ? describeProfileRead([fieldId]) : '',
+      disclosure: disclose ? describeProfileRead([fieldId]) : '',
     };
   };
 }
 
-function createPersonHandler(service: OwnerProfileGatewayService): GatewayMethodHandler {
+function createPersonHandler(
+  service: OwnerProfileGatewayService,
+  policy: OwnerProfilePolicy,
+): GatewayMethodHandler {
   return (invocation) => {
     const name = requireString(readInvocationParams(invocation).name, 'name');
     const lines = service.person(name);
+    // Disclosed only when something was actually found: "Used Sarah's details"
+    // for a Sarah who is not in the profile would be a false receipt. `People`
+    // is closed tier, so the same switch governs it.
+    const disclose = lines.length > 0 && policy.discloseClosedTierReads();
     return {
       name,
       lines,
-      // Disclosed only when something was actually found: "Used Sarah's details"
-      // for a Sarah who is not in the profile would be a false receipt.
-      disclosure: lines.length > 0 ? describeProfilePersonRead(name) : '',
+      disclosure: disclose ? describeProfilePersonRead(name) : '',
     };
   };
 }
@@ -239,21 +272,31 @@ function createUndoHandler(service: OwnerProfileGatewayService): GatewayMethodHa
   };
 }
 
+/**
+ * Attach the nine handlers.
+ *
+ * `policy` defaults to permissive so a caller that has no config to read from —
+ * a test, a narrow embed — behaves exactly as the schema defaults describe.
+ * The daemon passes live predicates, so all three switches take effect on the
+ * next call rather than on the next restart.
+ */
 export function registerOwnerProfileGatewayMethods(
   catalog: GatewayMethodCatalog,
   service: OwnerProfileGatewayService,
+  policy: OwnerProfilePolicy = PERMISSIVE_OWNER_PROFILE_POLICY,
 ): void {
+  const governed = applyOwnerProfilePolicy(service, policy);
   const attach = (id: string, handler: GatewayMethodHandler): void => {
     const descriptor = catalog.get(id);
     if (descriptor) catalog.register(descriptor, handler, { replace: true });
   };
-  attach('profile.read', createReadHandler(service));
-  attach('profile.get', createGetHandler(service));
-  attach('profile.person', createPersonHandler(service));
-  attach('profile.provenance', createProvenanceHandler(service));
-  attach('profile.set', createSetHandler(service));
-  attach('profile.append', createAppendHandler(service));
-  attach('profile.forget', createForgetHandler(service));
-  attach('profile.undo', createUndoHandler(service));
-  attach('profile.status', createStatusHandler(service));
+  attach('profile.read', createReadHandler(governed));
+  attach('profile.get', createGetHandler(governed, policy));
+  attach('profile.person', createPersonHandler(governed, policy));
+  attach('profile.provenance', createProvenanceHandler(governed));
+  attach('profile.set', createSetHandler(governed));
+  attach('profile.append', createAppendHandler(governed));
+  attach('profile.forget', createForgetHandler(governed));
+  attach('profile.undo', createUndoHandler(governed));
+  attach('profile.status', createStatusHandler(governed));
 }
