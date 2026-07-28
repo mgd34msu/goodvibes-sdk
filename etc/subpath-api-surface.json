@@ -14840,6 +14840,21 @@
       ]
     },
     {
+      "name": "EmailCapabilityFailureNotice",
+      "kind": "interface",
+      "required": [
+        "mailbox",
+        "ownerMessage",
+        "reason",
+        "serverMessage",
+        "terminal"
+      ]
+    },
+    {
+      "name": "EmailCapabilityFailureReason",
+      "kind": "type"
+    },
+    {
       "name": "EmailConfig",
       "kind": "interface",
       "required": [
@@ -14953,6 +14968,10 @@
       "kind": "const"
     },
     {
+      "name": "IMAP_MAX_FETCH_UIDS",
+      "kind": "const"
+    },
+    {
       "name": "ImapAppendDraftInput",
       "kind": "interface",
       "required": [
@@ -15011,8 +15030,8 @@
       "kind": "interface",
       "required": [
         "advertisedCapabilities",
-        "mailbox",
-        "supportsIdle"
+        "idle",
+        "mailbox"
       ]
     },
     {
@@ -15030,6 +15049,18 @@
         "uid",
         "unverifiedToHeaderClaim"
       ]
+    },
+    {
+      "name": "ImapIdleDecision",
+      "kind": "interface",
+      "required": [
+        "reason",
+        "supported"
+      ]
+    },
+    {
+      "name": "ImapIdleSupport",
+      "kind": "type"
     },
     {
       "name": "ImapMailboxStatus",
@@ -15179,6 +15210,10 @@
       "kind": "function"
     },
     {
+      "name": "describeEmailCapabilityFailure",
+      "kind": "function"
+    },
+    {
       "name": "describeSenderClaimNeutrally",
       "kind": "function"
     },
@@ -15227,6 +15262,10 @@
       "kind": "function"
     },
     {
+      "name": "ownerMessageForFailure",
+      "kind": "function"
+    },
+    {
       "name": "parseAppendUid",
       "kind": "function"
     },
@@ -15244,6 +15283,10 @@
     },
     {
       "name": "resolveEmailPassword",
+      "kind": "function"
+    },
+    {
+      "name": "resolveIdleSupport",
       "kind": "function"
     },
     {
