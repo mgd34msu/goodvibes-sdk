@@ -99,7 +99,12 @@ export {
   type InboundMailboxWatcherStatus,
 } from './watcher.js';
 
-export { MailboxCursorStore, validateMailboxCursor } from './cursor-store.js';
+export {
+  MailboxCursorStore,
+  validateMailboxCursor,
+  type AccountConfiguredAnswer,
+  type CursorSweepReport,
+} from './cursor-store.js';
 export { InboundMailStore, validateInboundMailRecord } from './record-store.js';
 export { PersistedExpectationStore } from './expectation-store.js';
 export {
@@ -115,8 +120,13 @@ export {
 } from './terminal-notice.js';
 export {
   InboundExpectationRegistry,
+  ExpectationMailboxUnreadableError,
+  type ExpectationCapabilityProbe,
+  type ExpectationExpiryReason,
+  type ExpectationExpiryReport,
   type ExpectationMatcher,
   type DisclosedExpectation,
+  type InboundExpectationRegistryOptions,
 } from './expectation-registry.js';
 export {
   createInboundMailDedup,

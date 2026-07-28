@@ -156,6 +156,85 @@ describe('a corrupt, oversized, or stale record is discarded, not repaired', () 
     expect((await store.list()).map((c) => c.account)).toEqual(['kept']);
   });
 
+  /**
+   * "The config has not loaded yet" is not "this account is gone".
+   *
+   * The reap predicate answered `boolean`, so a caller that could not yet know
+   * had to pick one — and picking `false` costs mail with no trace. The cursor
+   * is reaped; the next `resolve()` answers `first-run` at the mailbox's
+   * CURRENT high-water mark; every message in between is skipped, not
+   * replayed; and the owner is told the mailbox started fresh, which is
+   * exactly what a genuine first run looks like. Seeded at UID 900 against a
+   * mailbox at 1500, that is 600 messages nobody ever sees.
+   *
+   * These drive that whole sequence rather than asserting the predicate in
+   * isolation, because the damage is in the sequence.
+   */
+  describe('an unanswerable configured-account question keeps the cursor', () => {
+    test("'unknown' retains the cursor and discloses that it was not confirmed", async () => {
+      seed([validCursor({ account: 'acct-a', lastSeenUid: 900 })]);
+      const store = new MailboxCursorStore(storePath, { isAccountConfigured: () => 'unknown' });
+
+      const report = await store.runRecoverySweep();
+
+      expect(report.removed).toEqual([]);
+      expect(report.retained).toBe(1);
+      // Kept, and SAID to have been kept for a reason nobody could confirm.
+      expect(report.unresolvedAccounts).toBe(1);
+      expect(readStored()).toHaveLength(1);
+      expect((await store.list()).map((c) => c.account)).toEqual(['acct-a']);
+    });
+
+    test('and the position survives, so resolve() resumes rather than starting fresh', async () => {
+      seed([validCursor({ account: 'acct-a', mailbox: 'INBOX', uidValidity: 7, lastSeenUid: 900 })]);
+      const store = new MailboxCursorStore(storePath, { isAccountConfigured: () => 'unknown' });
+      await store.runRecoverySweep();
+
+      // The mailbox moved on to 1500 while nobody could answer. Resuming means
+      // 901..1500 are still to be read; a first run means they are gone, and
+      // the two are indistinguishable from the answer alone.
+      const resolution = await store.resolve({
+        account: 'acct-a',
+        mailbox: 'INBOX',
+        serverUidValidity: 7,
+        currentHighestUid: 1500,
+        currentMessageCount: 600,
+      });
+
+      expect(resolution.kind).toBe('resumed');
+      expect(resolution.cursor.lastSeenUid).toBe(900);
+    });
+
+    test('a definite no still reaps, so the sentinel did not disable the rule', async () => {
+      seed([validCursor({ account: 'gone' }), validCursor({ account: 'kept' })]);
+      const store = new MailboxCursorStore(storePath, {
+        isAccountConfigured: (account) => account === 'kept',
+      });
+      const report = await store.runRecoverySweep();
+      expect(report.removed.map((r) => r.account)).toEqual(['gone']);
+      expect(report.unresolvedAccounts).toBe(0);
+    });
+
+    test('the three answers are three outcomes in one pass', async () => {
+      seed([
+        validCursor({ account: 'yes' }),
+        validCursor({ account: 'no' }),
+        validCursor({ account: 'dont-know' }),
+      ]);
+      const store = new MailboxCursorStore(storePath, {
+        isAccountConfigured: (account) => {
+          if (account === 'yes') return true;
+          if (account === 'no') return false;
+          return 'unknown';
+        },
+      });
+      const report = await store.runRecoverySweep();
+      expect(report.removed.map((r) => r.account)).toEqual(['no']);
+      expect(report.unresolvedAccounts).toBe(1);
+      expect((await store.list()).map((c) => c.account).sort()).toEqual(['dont-know', 'yes']);
+    });
+  });
+
   test('the defensive count cap reaps the oldest cursors past the bound', async () => {
     const seeds = Array.from({ length: 5 }, (_, i) =>
       validCursor({ account: `acct-${String(i)}`, updatedAt: new Date(Date.now() - (5 - i) * 60_000).toISOString() }));

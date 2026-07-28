@@ -53,6 +53,18 @@ export interface FakeMessage {
   readonly from: string;
   readonly subject: string;
   readonly deliveredTo: string;
+  /**
+   * The `Message-ID` header. Defaults to `<uid-N@example.test>`, which is
+   * distinct per UID.
+   *
+   * Overridable because the default made §12 gate #14 — "a `Message-ID`
+   * collision cannot suppress a message" — UNCONSTRUCTIBLE: minting one id per
+   * UID meant a collision could not be built, so the gate could never be
+   * satisfied and the property it protects went untested. `Message-ID` is
+   * sender-controlled, and a harness that cannot forge it cannot exercise the
+   * one thing that matters about it.
+   */
+  readonly messageId?: string;
 }
 
 /** How the server answers the "can you push?" question. */
@@ -146,10 +158,15 @@ export interface FakeMailboxServer {
   readonly liveConnections: number;
   /** UIDs currently in the mailbox. */
   readonly uids: readonly number[];
-  /** Add a message; announce it with `* n EXISTS` to anyone connected. */
-  deliver(subject?: string): FakeMessage;
+  /**
+   * Add a message; announce it with `* n EXISTS` to anyone connected.
+   *
+   * `messageId` forges the `Message-ID` header — pass the SAME one twice to
+   * build the collision gate #14 demands.
+   */
+  deliver(subject?: string, messageId?: string): FakeMessage;
   /** Add a message WITHOUT announcing it — mail that arrived while down. */
-  deliverQuietly(subject?: string): FakeMessage;
+  deliverQuietly(subject?: string, messageId?: string): FakeMessage;
   /** Remove a message and announce `* n EXPUNGE` with its sequence number. */
   expunge(uid: number): void;
   /** Write a raw untagged line to every live connection. */
@@ -311,7 +328,7 @@ export async function makeFakeMailbox(
     `From: ${message.from}\r\n`
     + `Subject: ${message.subject}\r\n`
     + 'Date: Mon, 27 Jul 2026 09:00:00 +0000\r\n'
-    + `Message-ID: <uid-${message.uid}@example.test>\r\n`
+    + `Message-ID: ${message.messageId ?? `<uid-${message.uid}@example.test>`}\r\n`
     + `Delivered-To: ${message.deliveredTo}\r\n`
     + '\r\n';
 
@@ -364,12 +381,13 @@ export async function makeFakeMailbox(
     return all.filter((uid) => uid >= low && uid <= high);
   };
 
-  const add = (subject: string, announce: boolean): FakeMessage => {
+  const add = (subject: string, announce: boolean, messageId?: string): FakeMessage => {
     const message: FakeMessage = {
       uid: nextUid,
       from: `sender${nextUid}@sender.test`,
       subject,
       deliveredTo: 'watched@example.test',
+      ...(messageId === undefined ? {} : { messageId }),
     };
     nextUid += 1;
     messages = [...messages, message];
@@ -388,8 +406,8 @@ export async function makeFakeMailbox(
     get connectionCount() { return connectionCount; },
     get liveConnections() { return live.size; },
     get uids() { return messages.map((message) => message.uid); },
-    deliver: (subject = 'Hello') => add(subject, true),
-    deliverQuietly: (subject = 'Hello') => add(subject, false),
+    deliver: (subject = 'Hello', messageId?: string) => add(subject, true, messageId),
+    deliverQuietly: (subject = 'Hello', messageId?: string) => add(subject, false, messageId),
     expunge: (uid: number) => {
       const index = messages.findIndex((message) => message.uid === uid);
       if (index === -1) return;
