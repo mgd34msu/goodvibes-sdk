@@ -1083,6 +1083,51 @@ escaping stands on its own.
 Sources: `https://github.com/discord/discord-api-docs/issues/6096`,
 `https://gist.github.com/matthewzring/9f7bbfd102003963f9be7dbcf7d40e51`.
 
+#### The per-channel mapping is set by the send path, not by the channel's capabilities
+
+**Correction, and it is mine.** This section originally mapped Telegram to
+MarkdownV2 escaping. Verified against the code: `telegram/api.ts` `sendMessage`
+posts `chat_id`, `text`, `disable_web_page_preview` and an optional
+`message_thread_id` — **no `parse_mode`** — and `parse_mode` appears nowhere in
+`packages/sdk/src` outside this module's own comments.
+
+With `parse_mode` omitted Telegram performs **no entity parsing**. So
+MarkdownV2 escaping would inject literal backslashes into the owner's notice —
+`Confirm your account\.` — making it harder to read while preventing nothing.
+The mapping described what Telegram *can* do rather than what this codebase
+*asks it to do*.
+
+**What Telegram actually needs is different, not less.** With no `parse_mode`
+the live vectors are the ones markdown escaping never touches:
+
+- **Client-side auto-linkification of bare URLs.** An `https://evil.example`
+  sitting in an attacker-written **subject** becomes clickable in the client
+  with no markup involved. §7 already requires *links* to render as registrable
+  domain plus verdict; this closes the same hole for URLs embedded in free text.
+- **`@username` mentions**, auto-linked to profiles. `breakMentionForms`
+  already covers this.
+
+So the Telegram path neutralizes bare URL forms and mention forms inside
+`untrusted` spans, and does not escape markup. **The comment at that mapping
+must name the trigger for change:** if `parse_mode` is ever added to
+`sendMessage`, the escaper becomes required and the plain path becomes wrong.
+
+Verified per channel, from the send path rather than the channel's
+documentation:
+
+| Channel | Send path | Treatment |
+|---|---|---|
+| Discord | `payload.content` — always parses markdown, no opt-in | **Escape.** Masked links render on bot and webhook paths |
+| Slack | body lands in a `{ type: 'mrkdwn' }` block | **Escape.** `mrkdwn` is interpreted |
+| Telegram | `sendMessage` with **no `parse_mode`** | **Neutralize URL and mention forms.** Do not escape markup |
+| html / ntfy | not yet traced | **Unmapped.** If ntfy's title goes in an HTTP header the injection is a newline, not markup — a different defence |
+
+The general rule, which is the durable part:
+
+> A channel's escaping is decided by **how this codebase sends to it**, not by
+> what the platform is capable of parsing. Read the send call before choosing a
+> defence, and record the send-site fact that justifies the choice.
+
 ### 7.3 Make the unsafe value unconstructible, not merely validated
 
 The strongest defence produced in this round deserves a name, because it is a
