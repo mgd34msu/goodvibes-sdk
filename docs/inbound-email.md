@@ -2187,6 +2187,44 @@ mutation would have been read as *absence* of coverage that was in fact present.
 Both come from treating a test result as evidence about something the test never
 touched.
 
+#### The inverse: a mutation in the SAFE direction hides the defect it is testing for
+
+§13.8 above is about a mutation that fails to redden and looks like a coverage
+gap. There is an inverse, and it was hit while fixing the terminal-notice
+announcer.
+
+The obvious mutation for "is the once-per-transition latch tested?" is to delete
+the latch. Delete it, and the tests **pass** — because removing a latch produces
+*more* sends, and more sends is the safe direction for a notice. So
+"delete it and see" would have reported the guard as covered while the real
+defect — the latch being set **before** the send, so a refused delivery latched
+a notice the owner never got — sat untouched underneath it.
+
+> A mutation must move the behaviour toward the **failure being guarded
+> against**, not merely away from the current implementation. Deleting a guard
+> tests whether the guard is reachable. Only inverting it toward the harm tests
+> whether the guard is *right*.
+
+Two other rules earned in the same fix:
+
+- **A log line that reports a local variable must not be worded as a report
+  about the world.** The announcer logged `announced: announced !== key` — a
+  statement about a local, phrased as a statement about the owner. Even with the
+  latch moved, that line would still have lied. Three faults occupied those same
+  lines: the latch, the discarded result, and the log's wording.
+- **A port that cannot say whether it delivered will eventually be assumed to
+  have delivered.** `send` was typed `Promise<unknown>`, which is what made the
+  defect writable. Typed as `Promise<InboundNoticeDelivery>`, a caller that
+  ignores the outcome no longer compiles.
+
+And the detail worth the most: **the correct pattern already existed one file
+away.** `intake.ts` uses the same port for arriving mail and was always right —
+it awaits, branches on `delivery.delivered`, and records `no-route-binding`
+honestly. The announcer diverged from it on the strength of its own comment,
+*"its result is deliberately unread"*. That comment was the defect's rationale
+rather than its description, which is the most dangerous shape a comment can
+take: it does not merely fail to describe the code, it **justifies** it.
+
 ## 14. Related
 
 - `docs/payments.md` — a consumer of this capability.
