@@ -29,6 +29,11 @@ import {
   selectBodyPart,
   type ImapBodyPart,
 } from './imap-bodystructure.js';
+import {
+  assessFetchedBody,
+  bodyCapabilityFailure,
+  declaredTextOctets,
+} from './imap-body-probe.js';
 import { parseFetchResponses } from './imap-fetch-response.js';
 import {
   extractAuthenticationResults,
@@ -130,11 +135,20 @@ async function fetchTextSection(
  * The three outcomes are `read`, `gone` and `unreadable` — see
  * `unreadableHeaderResponses` for how the last two are told apart, which is the
  * whole reason this returns a result rather than a nullable message.
+ *
+ * `enforceBodyReadable` adds a FOURTH answer that is not an outcome at all: it
+ * raises. See the block at the end of the function for why a withheld body is
+ * not one of the three — it is a fact about the account rather than about this
+ * message, and returning it as a `read` with an empty body is exactly the
+ * "quiet mailbox" impostor `imap-body-probe.ts` exists to catch. Off unless a
+ * caller asks, because the ordinary mail reader leaves a section it could not
+ * fetch empty and returns the rest.
  */
 export async function readMessageDetail(
   session: ImapSession,
   uid: number,
   mailbox: string,
+  enforceBodyReadable = false,
 ): Promise<ImapMessageRead> {
   const headerLines = await session.command(`UID FETCH ${uid} BODY.PEEK[HEADER]`);
   const problems = unreadableHeaderResponses(headerLines, uid);
@@ -162,6 +176,28 @@ export async function readMessageDetail(
       const raw = (extractFetchSection(lines) ?? '').replace(/\r\n/g, '\n');
       if (contentType.startsWith('text/html')) bodyHtml = raw;
       else bodyText = raw;
+    }
+  }
+
+  // The runtime half of the body-capability check. The connect-time probe
+  // cannot run on an empty mailbox, so the same declared-versus-returned
+  // comparison runs again on a message actually read: a body that comes back
+  // empty for a message whose own BODYSTRUCTURE declared a text part with
+  // octets in it is a withheld body, not an empty message, and the difference
+  // is the whole of "an inbox that looks quiet".
+  if (enforceBodyReadable) {
+    const readability = assessFetchedBody({
+      responded: true,
+      declaredOctets: declaredTextOctets(parts),
+      returnedBytes: bodyText.length + bodyHtml.length,
+      subject: `UID ${uid} in '${mailbox}'`,
+    });
+    if (readability.kind === 'unfetchable') {
+      throw bodyCapabilityFailure({
+        mailbox,
+        summary: readability.detail,
+        serverMessage: '',
+      });
     }
   }
 

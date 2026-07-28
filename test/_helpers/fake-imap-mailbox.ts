@@ -125,6 +125,19 @@ export interface FakeMailboxOptions {
    * that answers successfully while saying the mailbox is empty.
    */
   readonly search?: 'ok' | 'refused' | 'empty';
+  /**
+   * How the server answers the connect-time body probe — the sequence-number
+   * `FETCH n (UID BODYSTRUCTURE)` / `FETCH n BODY.PEEK[]<0.N>` pair.
+   *
+   *   - `ok` — a text/plain part of 120 octets, and 120-odd bytes back.
+   *   - `refused` — `NO` with wording that names nothing about itself, which
+   *     is what a server that will not show message content actually sends.
+   *   - `withheld` — declares the same 120 octets and returns NIL. The quiet
+   *     mailbox impostor: every command succeeds and nothing comes back.
+   *   - `zero-octet-body` — declares 0 octets and returns NIL. A legitimately
+   *     empty message, which is NOT a capability failure.
+   */
+  readonly bodyProbe?: 'ok' | 'refused' | 'withheld' | 'zero-octet-body';
   /** Answer `IDLE` with NO instead of a `+` continuation. */
   readonly refuseIdle?: boolean;
   /** Omit `[UIDVALIDITY n]` from the EXAMINE response. */
@@ -283,6 +296,42 @@ export async function makeFakeMailbox(
       const matched = options.search === 'empty' ? [] : searchRange(rest);
       serverWrite(socket, `* SEARCH ${matched.join(' ')}`.trimEnd());
       serverWrite(socket, `${tag} OK SEARCH completed`);
+      return;
+    }
+
+    // The body probe addresses a message by SEQUENCE number, so this has to be
+    // matched before the UID form and must not be answered by it.
+    if (/^FETCH\b/i.test(rest)) {
+      const probe = options.bodyProbe ?? 'ok';
+      if (probe === 'refused') {
+        serverWrite(socket, `${tag} NO Not permitted`);
+        return;
+      }
+      const seq = parseInt(/^FETCH (\d+)/i.exec(rest)?.[1] ?? '0', 10);
+      const message = messages[seq - 1];
+      if (message === undefined) {
+        serverWrite(socket, `${tag} OK FETCH completed`);
+        return;
+      }
+      const octets = probe === 'zero-octet-body' ? 0 : 120;
+      if (/BODYSTRUCTURE/i.test(rest)) {
+        serverWrite(socket,
+          `* ${seq} FETCH (UID ${message.uid} BODYSTRUCTURE ("TEXT" "PLAIN" `
+          + `("CHARSET" "UTF-8") NIL NIL "7BIT" ${octets} 4))`);
+        serverWrite(socket, `${tag} OK FETCH completed`);
+        return;
+      }
+      if (probe === 'ok') {
+        serverWrite(socket, `* ${seq} FETCH (UID ${message.uid} BODY[]<0> `);
+        serverWrite(socket, `From: ${message.from}`);
+        serverWrite(socket, `Subject: ${message.subject}`);
+        serverWrite(socket, '');
+        serverWrite(socket, 'Body text the server was willing to hand over.');
+        serverWrite(socket, ')');
+      } else {
+        serverWrite(socket, `* ${seq} FETCH (UID ${message.uid} BODY[]<0> NIL)`);
+      }
+      serverWrite(socket, `${tag} OK FETCH completed`);
       return;
     }
 

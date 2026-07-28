@@ -15,7 +15,9 @@ import {
   InboundMailboxWatcher,
   imapMailboxConnectionPort,
   resolveWatcherSettings,
+  verdictForBodyReadability,
   IDLE_REISSUE_ADVISORY_BOUND_MS,
+  IMAP_BODY_PROBE_BYTES,
   type InboundWatcherSettings,
   type MailboxCursor,
 } from '../packages/sdk/src/platform/email/inbound/index.ts';
@@ -625,6 +627,158 @@ describe('inbound watcher — connect-time body probe', () => {
     // reactive path remains the answer for this (currently empty) mailbox.
     expect(harness.watcher.status.verdict.state).not.toBe('insufficient');
     expect(harness.observer.terminals).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+/**
+ * The IMAP half of the rule the Gmail source already keeps: a connection that
+ * authenticates but cannot fetch bodies fails loudly at connect time, and never
+ * delivers empty-bodied messages that read as a quiet mailbox.
+ *
+ * Gmail can compare scopes, because Google publishes what a grant covers. IMAP
+ * has no scopes and no such statement, so the equivalent is evidence — one
+ * message read, and what came back checked against what the server itself said
+ * was there.
+ */
+describe('inbound watcher — can it read message content at all', () => {
+  test('a refused body fetch is insufficient at connect time, with a remedy', async () => {
+    const harness = await build({
+      server: { bodyProbe: 'refused', initial: [message(101, 'a')] },
+    });
+    harness.watcher.start();
+    await waitFor(() => harness.observer.terminals.length >= 1, 'a terminal report');
+
+    const verdict = harness.watcher.status.verdict;
+    expect(verdict.reason).toBe('bodies-unfetchable');
+    expect(verdict.state).toBe('insufficient');
+    // Not `fetch-refused`: that one means the server said no to handing over
+    // message DATA and points at IMAP access and folder restrictions. This one
+    // is about what the account may READ, and the fix has to say so.
+    expect(verdict.detail).toContain('Not permitted');
+
+    const failure = harness.observer.terminals[0];
+    expect(failure?.reason).toBe('bodies-unfetchable');
+    expect(failure?.fix).toContain('access');
+    expect(failure?.fix.length).toBeGreaterThan(0);
+
+    // The watcher does not run: nothing is searched for and nothing is
+    // delivered, rather than a listener sitting on a mailbox it cannot read.
+    expect(count(harness.mailbox.commands, SEARCH_COMMAND)).toBe(0);
+    expect(harness.sink.delivered).toEqual([]);
+    expect(harness.watcher.status.mode).toBe('inactive');
+  });
+
+  test('an empty body for a message the server said has content is the same verdict', async () => {
+    // The quiet-mailbox impostor, and the reason a refusal-only check is not
+    // enough: every command succeeds, and the body comes back empty for a
+    // message whose own BODYSTRUCTURE declared 120 octets of text. From the
+    // outside that is indistinguishable from a mailbox nobody wrote to — which
+    // is exactly what a metadata-only grant looked like on the Gmail side.
+    const harness = await build({
+      server: { bodyProbe: 'withheld', initial: [message(101, 'a')] },
+    });
+    harness.watcher.start();
+    await waitFor(() => harness.observer.terminals.length >= 1, 'a terminal report');
+
+    expect(harness.watcher.status.verdict.reason).toBe('bodies-unfetchable');
+    expect(harness.watcher.status.verdict.state).toBe('insufficient');
+    expect(harness.watcher.status.verdict.detail).toContain('120');
+    expect(harness.observer.terminals[0]?.fix).toContain('access');
+    expect(count(harness.mailbox.commands, SEARCH_COMMAND)).toBe(0);
+    expect(harness.sink.delivered).toEqual([]);
+  });
+
+  test('an empty mailbox is unproven and degraded — the watcher still runs', async () => {
+    // A freshly created signup alias is empty by definition, so refusing here
+    // would break the exact journey this capability exists to serve. Claiming
+    // `healthy` would assert a capability nobody has demonstrated. It runs, and
+    // says plainly that it has not proven it can read message content yet.
+    const harness = await build({ server: { initial: [] } });
+    const connection = await imapMailboxConnectionPort({
+      connect: () => openMailboxSocket(harness.mailbox.port),
+      username: 'watched@example.test',
+      password: 'an-app-password',
+      mailbox: MAILBOX,
+      timeoutMs: 2_000,
+    }).open();
+    const reading = connection.bodyCapability;
+    await connection.close();
+
+    expect(reading.kind).toBe('unproven');
+    const verdict = verdictForBodyReadability(reading);
+    expect(verdict?.reason).toBe('bodies-unproven');
+    expect(verdict?.state).toBe('degraded');
+    // The owner-facing text must not claim a capability was verified: it says
+    // what it has NOT been able to prove, and never reports bytes it read.
+    expect(verdict?.detail).toContain('not yet proven');
+    expect(verdict?.detail).not.toMatch(/\bRead \d+ byte/);
+    expect(verdict?.fix).toContain('first message that arrives');
+
+    // And the watcher runs: it reaches IDLE and delivers mail that arrives.
+    harness.watcher.start();
+    await idleReached(harness);
+    expect(harness.watcher.status.running).toBe(true);
+    expect(harness.watcher.status.mode).toBe('idle');
+    harness.mailbox.deliver('arrived after the empty probe');
+    await waitFor(() => harness.sink.delivered.length >= 1, 'the delivered message');
+    expect(harness.observer.terminals).toEqual([]);
+  });
+
+  test('the WATCHER reports unproven body access, not merely the connection', async () => {
+    // The reading existing on `MailboxConnection.bodyCapability` is not the
+    // capability working: `serve()` has to hand it to
+    // `verdictForOpenConnection`, or the tracker records `idle-push`/`healthy`
+    // and the owner gets a green light for a watcher that has never once shown
+    // it can read a message. That gap is what this asserts against — the check
+    // is present, compiles, and passes every other test in this file with the
+    // argument dropped, and only this assertion notices.
+    const harness = await build({ server: { initial: [] } });
+    harness.watcher.start();
+    await idleReached(harness);
+
+    expect(harness.watcher.status.verdict.reason).toBe('bodies-unproven');
+    expect(harness.watcher.status.verdict.state).toBe('degraded');
+    expect(harness.watcher.status.verdict.detail).toContain('not yet proven');
+    // Degraded, not stopped: it holds IDLE and still delivers. `insufficient`
+    // here would refuse to watch the empty signup alias this exists to serve.
+    expect(harness.watcher.status.running).toBe(true);
+    expect(harness.observer.terminals).toEqual([]);
+  });
+
+  test('a message with a legitimately zero-octet body is not a failure', async () => {
+    // Nothing came back and nothing was declared, so nothing was learned. That
+    // is `unproven`, not a withheld body — treating it as a failure would stop
+    // a working watcher over a message somebody sent with an empty body.
+    const harness = await build({
+      server: { bodyProbe: 'zero-octet-body', initial: [message(101, 'a')] },
+    });
+    harness.watcher.start();
+    await idleReached(harness);
+
+    expect(harness.observer.terminals).toEqual([]);
+    expect(harness.watcher.status.running).toBe(true);
+    harness.mailbox.deliver('arrived after a zero-octet probe');
+    await waitFor(() => harness.sink.delivered.length >= 1, 'the delivered message');
+  });
+
+  test('a server that hands over a body passes the probe and reaches healthy', async () => {
+    const harness = await build({ server: { initial: [message(101, 'a')] } });
+    harness.watcher.start();
+    await idleReached(harness);
+
+    expect(harness.watcher.status.verdict.state).toBe('healthy');
+    expect(harness.watcher.status.verdict.reason).toBe('idle-push');
+    expect(harness.observer.terminals).toEqual([]);
+
+    // Bounded and read-only. An unbounded fetch would pull whatever a stranger
+    // attached, and a plain BODY[ would mark the owner's mail read.
+    const probes = harness.mailbox.commands.filter((line) => /^\S+ FETCH \d/.test(line));
+    expect(probes.length).toBe(2);
+    expect(probes[0]).toContain('(UID BODYSTRUCTURE)');
+    expect(probes[1]).toContain(`BODY.PEEK[]<0.${IMAP_BODY_PROBE_BYTES}>`);
+    for (const line of probes) expect(line.includes(' BODY[')).toBe(false);
   });
 });
 

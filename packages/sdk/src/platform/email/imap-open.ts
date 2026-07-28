@@ -61,6 +61,7 @@ const TERMINAL_REASONS: ReadonlySet<string> = new Set([
   'authentication-rejected',
   'mailbox-unavailable',
   'credential-unavailable',
+  'bodies-unfetchable',
 ]);
 
 /**
@@ -369,10 +370,18 @@ export async function resolveIdleSupport(
  * is the same fact from one step earlier: there is nothing to sign in with.
  * It is called out separately because its fix is different from a rejected
  * password — the secret is missing rather than wrong.
+ *
+ * `bodies-unfetchable` sits alongside them from one step LATER: the credential
+ * worked, the mailbox opened, and the server will not hand over what is inside
+ * a message. It is deliberately not `mailbox-unavailable` and deliberately not
+ * a refused fetch — the server answered, and answered with nothing — because
+ * its remedy is different from both: the account's access rights, not the
+ * folder name and not the password.
  */
 export type EmailCapabilityFailureReason =
   | ImapOpenFailureReason
-  | 'credential-unavailable';
+  | 'credential-unavailable'
+  | 'bodies-unfetchable';
 
 /**
  * A terminal failure that must reach the owner, not merely a log line.
@@ -416,6 +425,12 @@ export function ownerMessageForFailure(
       return `Sign-in worked, but the folder '${mailbox}' could not be opened. `
         + 'Nothing will be read from it until email.mailbox names a folder that '
         + 'exists on the server.';
+    case 'bodies-unfetchable':
+      return `This account can sign in and open '${mailbox}' but is not `
+        + 'permitted to read message content, so check this account\'s access '
+        + `rights on '${mailbox}' — and where the provider offers a restricted `
+        + 'or metadata-only app password, replace it with one that may read '
+        + 'message content.';
     case 'server-unavailable':
       return 'The mail server refused the connection for now — it reported a '
         + 'limit or a fault of its own, not a problem with the account. The '
