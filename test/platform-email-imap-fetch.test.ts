@@ -28,6 +28,14 @@ import {
   selectDraftsMailbox,
 } from '../packages/sdk/src/platform/email/imap-draft.ts';
 import { takeUtf8Bytes } from '../packages/sdk/src/platform/email/imap-session.ts';
+import {
+  IMAP_BODY_PROBE_BYTES,
+  ImapBodyCapabilityError,
+  assessFetchedBody,
+  declaredTextOctets,
+  probeMailboxBody,
+} from '../packages/sdk/src/platform/email/imap-body-probe.ts';
+import { describeEmailCapabilityFailure } from '../packages/sdk/src/platform/email/imap-open.ts';
 
 // ---------------------------------------------------------------------------
 // Fake server
@@ -779,5 +787,294 @@ describe('FETCH responses from servers that vary the shape', () => {
     const client = await openClient(fake.port);
     const detail = await client.fetchMessage(8);
     expect(detail?.bodyText).toBe('short body');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The body-capability probe, and the invariant that outlives it
+// ---------------------------------------------------------------------------
+
+/**
+ * A session that answers scripted replies, so the probe's own logic is under
+ * test rather than a server's. `command` either resolves with response lines
+ * or throws, exactly as `ImapSession.command` does for a `NO`.
+ */
+function scriptedSession(
+  answer: (command: string) => readonly string[],
+): { command(text: string): Promise<string[]>; readonly commands: string[] } {
+  const commands: string[] = [];
+  return {
+    commands,
+    async command(text: string): Promise<string[]> {
+      commands.push(text);
+      return [...answer(text)];
+    },
+  };
+}
+
+const PROBE_STRUCTURE_120 = (uid: number): string[] => [
+  `* 3 FETCH (UID ${uid} BODYSTRUCTURE ("TEXT" "PLAIN" ("CHARSET" "UTF-8") `
+  + 'NIL NIL "7BIT" 120 4))',
+  'A0005 OK FETCH completed',
+];
+
+const PROBE_STRUCTURE_ZERO = (uid: number): string[] => [
+  `* 3 FETCH (UID ${uid} BODYSTRUCTURE ("TEXT" "PLAIN" ("CHARSET" "UTF-8") `
+  + 'NIL NIL "7BIT" 0 0))',
+  'A0005 OK FETCH completed',
+];
+
+const PROBE_BODY_PRESENT = (uid: number): string[] => [
+  `* 3 FETCH (UID ${uid} BODY[]<0> `,
+  'From: sender@example.test',
+  '',
+  'Your verification code is inside this body.',
+  ')',
+  'A0006 OK FETCH completed',
+];
+
+const PROBE_BODY_EMPTY = (uid: number): string[] => [
+  `* 3 FETCH (UID ${uid} BODY[]<0> NIL)`,
+  'A0006 OK FETCH completed',
+];
+
+describe('assessFetchedBody — declared octets against returned bytes', () => {
+  test('bytes came back, so the capability is demonstrated', () => {
+    const reading = assessFetchedBody({
+      responded: true,
+      declaredOctets: 120,
+      returnedBytes: 118,
+      subject: "UID 7 in 'INBOX'",
+    });
+    expect(reading.outcome).toBe('readable');
+  });
+
+  test('nothing came back for a message the server SAID has content: withheld', () => {
+    // This is the whole point of fetching BODYSTRUCTURE alongside the body.
+    // Without the declaration there is no way to tell this from a quiet
+    // mailbox, and a quiet mailbox is what a broken one looks like.
+    const reading = assessFetchedBody({
+      responded: true,
+      declaredOctets: 120,
+      returnedBytes: 0,
+      subject: "UID 7 in 'INBOX'",
+    });
+    expect(reading.outcome).toBe('unreadable');
+    expect(reading.detail).toContain('120');
+  });
+
+  test('a message that declares no text content is not a failure', () => {
+    const reading = assessFetchedBody({
+      responded: true,
+      declaredOctets: 0,
+      returnedBytes: 0,
+      subject: "UID 7 in 'INBOX'",
+    });
+    expect(reading.outcome).toBe('unproven');
+  });
+
+  test('a message that vanished before it was read proves nothing either way', () => {
+    const reading = assessFetchedBody({
+      responded: false,
+      declaredOctets: 120,
+      returnedBytes: 0,
+      subject: "UID 7 in 'INBOX'",
+    });
+    expect(reading.outcome).toBe('unproven');
+  });
+});
+
+describe('declaredTextOctets', () => {
+  test('takes the readable parts and ignores what is only described', () => {
+    const parts = parseBodyStructure(MULTIPART_STRUCTURE);
+    // text/plain 120, text/html 200, and a 24 000-byte PDF that is never
+    // fetched and must not be counted as evidence of anything.
+    expect(declaredTextOctets(parts)).toBe(200);
+  });
+
+  test('an unreadable structure declares nothing', () => {
+    expect(declaredTextOctets(parseBodyStructure('(((('))).toBe(0);
+  });
+});
+
+describe('probeMailboxBody', () => {
+  test('reads the newest message and reports the capability as demonstrated', async () => {
+    const session = scriptedSession((command) =>
+      /BODYSTRUCTURE/.test(command) ? PROBE_STRUCTURE_120(137) : PROBE_BODY_PRESENT(137));
+
+    const reading = await probeMailboxBody(session, { exists: 3, mailbox: 'INBOX' });
+
+    expect(reading.outcome).toBe('readable');
+    expect(reading.detail).toContain('UID 137');
+    // TWO round trips, and the two command FORMS are the whole reason this is
+    // one probe rather than the two it replaced.
+    //
+    // The first is sequence-addressed, because it is what supplies the declared
+    // octet count the comparison needs. The second is UID-addressed — `UID
+    // FETCH 137`, not `FETCH 3` — because that is the form the real drain uses,
+    // so a server that refuses UID-addressed fetches is caught here at connect
+    // rather than on the first message that matters. Rewriting the second as a
+    // sequence fetch would still satisfy every other assertion in this file and
+    // would silently drop that case.
+    //
+    // Read-only and bounded throughout: a plain BODY[ would mark the owner's
+    // mail read, and an unbounded fetch would pull whatever a stranger attached
+    // down a connection that is not yet declared healthy.
+    expect(session.commands).toEqual([
+      'FETCH 3 (UID BODYSTRUCTURE)',
+      `UID FETCH 137 BODY.PEEK[]<0.${IMAP_BODY_PROBE_BYTES}>`,
+    ]);
+    for (const command of session.commands) {
+      expect(command.includes(' BODY[')).toBe(false);
+    }
+  });
+
+  test('an empty section for a declared text part is a withheld body', async () => {
+    const session = scriptedSession((command) =>
+      /BODYSTRUCTURE/.test(command) ? PROBE_STRUCTURE_120(137) : PROBE_BODY_EMPTY(137));
+
+    const reading = await probeMailboxBody(session, { exists: 3, mailbox: 'INBOX' });
+
+    expect(reading.outcome).toBe('unreadable');
+    expect(reading.detail).toContain('120');
+  });
+
+  test('a legitimately zero-octet body is not a failure', async () => {
+    const session = scriptedSession((command) =>
+      /BODYSTRUCTURE/.test(command) ? PROBE_STRUCTURE_ZERO(137) : PROBE_BODY_EMPTY(137));
+
+    const reading = await probeMailboxBody(session, { exists: 3, mailbox: 'INBOX' });
+    expect(reading.outcome).toBe('unproven');
+  });
+
+  test('an empty mailbox is unproven, and does not claim to have been verified', async () => {
+    const session = scriptedSession(() => []);
+    const reading = await probeMailboxBody(session, { exists: 0, mailbox: 'INBOX' });
+
+    expect(reading.outcome).toBe('unproven');
+    expect(reading.detail).toContain('not yet proven');
+    // Nothing was asked of the server, because there was nothing to ask about.
+    expect(session.commands).toEqual([]);
+  });
+
+  test('a message expunged between EXAMINE and the probe proves nothing', async () => {
+    // EXISTS is a snapshot. RFC 3501 says a FETCH for a message that is gone
+    // is answered OK with no untagged response at all, and treating that as a
+    // withheld body would condemn a working mailbox over ordinary churn.
+    const session = scriptedSession(() => ['A0005 OK FETCH completed']);
+    const reading = await probeMailboxBody(session, { exists: 3, mailbox: 'INBOX' });
+
+    expect(reading.outcome).toBe('unproven');
+    // It stopped there rather than fetching a body for a message that is gone.
+    expect(session.commands).toEqual(['FETCH 3 (UID BODYSTRUCTURE)']);
+  });
+
+  test('a refusal that names nothing about itself is a capability failure', async () => {
+    const session = {
+      async command(text: string): Promise<string[]> {
+        if (/BODYSTRUCTURE/.test(text)) return PROBE_STRUCTURE_120(137);
+        throw new Error('IMAP command failed: A0006 NO Not permitted');
+      },
+    };
+
+    const error = await probeMailboxBody(session, { exists: 3, mailbox: 'INBOX' })
+      .then(() => null, (thrown: unknown) => thrown);
+
+    expect(error).toBeInstanceOf(ImapBodyCapabilityError);
+    const notice = describeEmailCapabilityFailure(error);
+    expect(notice?.reason).toBe('bodies-unfetchable');
+    expect(notice?.terminal).toBe(true);
+    // The server's own words are carried, and the remedy names access rights
+    // rather than sending the owner to change a password that works.
+    expect(notice?.serverMessage).toContain('Not permitted');
+    expect(notice?.ownerMessage).toContain('access');
+  });
+
+  test('a refusal the server DID characterise is left to the existing classifier', async () => {
+    // `NO [LIMIT]` is Gmail's too-many-connections answer. Calling that "this
+    // account cannot read bodies" would put a false and very specific
+    // explanation in front of the owner and stop the watcher permanently.
+    const session = {
+      async command(text: string): Promise<string[]> {
+        if (/BODYSTRUCTURE/.test(text)) return PROBE_STRUCTURE_120(137);
+        throw new Error('IMAP command failed: A0006 NO [LIMIT] Too many simultaneous connections');
+      },
+    };
+
+    const error = await probeMailboxBody(session, { exists: 3, mailbox: 'INBOX' })
+      .then(() => null, (thrown: unknown) => thrown);
+
+    expect(error).not.toBeInstanceOf(ImapBodyCapabilityError);
+    expect(describeEmailCapabilityFailure(error)).toBeNull();
+  });
+
+  test('a timeout is a reconnect, not a verdict about the account', async () => {
+    const session = {
+      async command(): Promise<string[]> {
+        throw new Error('IMAP command timed out after 15000ms');
+      },
+    };
+
+    const error = await probeMailboxBody(session, { exists: 3, mailbox: 'INBOX' })
+      .then(() => null, (thrown: unknown) => thrown);
+
+    expect(error).not.toBeInstanceOf(ImapBodyCapabilityError);
+  });
+});
+
+describe('fetchMessage enforces the same invariant on a real read', () => {
+  let fake: FakeServer | null = null;
+
+  afterEach(() => {
+    fake?.close();
+    fake = null;
+  });
+
+  /** Headers, a structure declaring 120 + 200 octets, and empty sections. */
+  async function withheldBodyServer(): Promise<FakeServer> {
+    return startFakeImap((ctx) => {
+      if (ctx.line.includes('BODY.PEEK[HEADER]')) {
+        writeSection(ctx, 'HEADER', MULTIPART_HEADERS);
+      } else if (ctx.line.includes('BODYSTRUCTURE')) {
+        ctx.reply(`* 1 FETCH (UID 42 BODYSTRUCTURE ${MULTIPART_STRUCTURE})`);
+        ctx.reply(`${ctx.tag} OK FETCH completed`);
+      } else {
+        ctx.reply('* 1 FETCH (UID 42 BODY[1.1] NIL)');
+        ctx.reply(`${ctx.tag} OK FETCH completed`);
+      }
+    });
+  }
+
+  async function openEnforcingClient(port: number): Promise<ImapClient> {
+    const client = new ImapClient({
+      socket: await connectSocket(port),
+      username: 'owner@example.test',
+      password: 'app-password',
+      timeoutMs: 3000,
+      enforceBodyReadable: true,
+    });
+    await client.open();
+    return client;
+  }
+
+  test('an empty body for a declared text part raises rather than reading blank', async () => {
+    fake = await withheldBodyServer();
+    const client = await openEnforcingClient(fake.port);
+
+    const error = await client.fetchMessage(42).then(() => null, (thrown: unknown) => thrown);
+
+    expect(error).toBeInstanceOf(ImapBodyCapabilityError);
+    expect(describeEmailCapabilityFailure(error)?.reason).toBe('bodies-unfetchable');
+  });
+
+  test('without the option the same read is unchanged — blank, and no throw', async () => {
+    // The default stays what the mail reader already relied on; the inbound
+    // path opts in, because there an unreadable body is not a cosmetic gap.
+    fake = await withheldBodyServer();
+    const client = await openClient(fake.port);
+
+    const detail = await client.fetchMessage(42);
+    expect(detail?.bodyText).toBe('');
+    expect(detail?.subject).toBe('Déjeuner');
   });
 });

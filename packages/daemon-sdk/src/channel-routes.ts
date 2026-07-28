@@ -314,7 +314,26 @@ export function createDaemonChannelRouteHandlers(
       return Response.json(updated);
     },
     getChannelPolicyAudit: (limit) => Response.json({ audit: context.channelPolicy.listAudit(limit) }),
-    getChannelStatus: () => context.channelPlugins.listStatus().then((channels) => Response.json({ channels })),
+    // Channels AND inbound mail, on one surface.
+    //
+    // `channels` keeps its exact shape so nothing consuming it changes.
+    // `health` is the unified answer to "is anything that receives messages
+    // working": every channel tagged `kind: 'channel'`, plus inbound mail
+    // under its own `kind`. Email is deliberately NOT forced into
+    // `ChannelStatusSnapshot` — its states describe what a watcher is doing
+    // rather than whether a credential is present, and flattening the two
+    // would either lie or dilute the channel model. A discriminated union is
+    // what the `kind` field was declared for.
+    getChannelStatus: () => context.channelPlugins.listStatus().then((channels) => {
+      const inboundMail = context.inboundMailHealth?.() ?? null;
+      return Response.json({
+        channels,
+        health: [
+          ...channels.map((entry) => ({ kind: 'channel' as const, channel: entry })),
+          ...(inboundMail === null ? [] : [inboundMail]),
+        ],
+      });
+    }),
     getChannelDirectory: (surface, url) => context.channelPlugins.queryDirectory(
       surface as ChannelSurface,
       {

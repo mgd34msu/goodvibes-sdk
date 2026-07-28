@@ -5763,6 +5763,157 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       "mailbox": "sample"
     }
   },
+  "email.expectation.cancel": {
+    "methodId": "email.expectation.cancel",
+    "http": null,
+    "status": 200,
+    "body": {
+      "cancelled": false,
+      "expectation": {
+        "id": "sample",
+        "kind": "sample",
+        "serviceDomain": "sample",
+        "recipientAddress": "sample",
+        "purpose": "sample",
+        "openedAt": "sample",
+        "expiresAt": "sample",
+        "authority": "sample",
+        "remainingMs": 0
+      }
+    }
+  },
+  "email.expectation.list": {
+    "methodId": "email.expectation.list",
+    "http": null,
+    "status": 200,
+    "body": {
+      "expectations": [
+        {
+          "id": "sample",
+          "kind": "sample",
+          "serviceDomain": "sample",
+          "recipientAddress": "sample",
+          "purpose": "sample",
+          "openedAt": "sample",
+          "expiresAt": "sample",
+          "authority": "sample",
+          "remainingMs": 0
+        }
+      ],
+      "total": 0
+    }
+  },
+  "email.expectation.open": {
+    "methodId": "email.expectation.open",
+    "http": null,
+    "status": 200,
+    "body": {
+      "id": "sample",
+      "kind": "sample",
+      "serviceDomain": "sample",
+      "recipientAddress": "sample",
+      "purpose": "sample",
+      "openedAt": "sample",
+      "expiresAt": "sample",
+      "authority": "sample",
+      "remainingMs": 0
+    }
+  },
+  "email.inbound.status": {
+    "methodId": "email.inbound.status",
+    "http": null,
+    "status": 200,
+    "body": {
+      "enabled": false,
+      "running": false,
+      "mode": "sample",
+      "reason": "sample",
+      "account": "sample",
+      "mailbox": "sample",
+      "source": {
+        "kind": "sample",
+        "basis": "sample",
+        "detail": "sample",
+        "latency": "sample"
+      },
+      "capability": {
+        "state": "sample",
+        "reason": "sample",
+        "detail": "sample",
+        "fix": "sample"
+      },
+      "cursors": [
+        {
+          "account": "sample",
+          "mailbox": "sample",
+          "source": "sample",
+          "position": "sample",
+          "updatedAt": "sample",
+          "ageMs": 0
+        }
+      ],
+      "expectations": [
+        {
+          "id": "sample",
+          "serviceDomain": "sample",
+          "recipientAddress": "sample",
+          "purpose": "sample",
+          "openedAt": "sample",
+          "expiresAt": "sample",
+          "remainingMs": 0
+        }
+      ],
+      "retention": {
+        "cursors": {
+          "kept": 0,
+          "maxCursors": 0
+        },
+        "records": {
+          "kept": 0,
+          "stored": 0,
+          "retentionDays": 0,
+          "maxRecords": 0,
+          "maxBodyExcerptChars": 0,
+          "reapedOnWrite": 0
+        },
+        "expectations": {
+          "open": 0,
+          "maxOpen": 0
+        },
+        "lastSweep": {
+          "sweptAt": 0,
+          "trigger": "sample",
+          "summary": "sample"
+        }
+      },
+      "stores": [
+        {
+          "store": "sample",
+          "state": "sample",
+          "detail": "sample"
+        }
+      ],
+      "noticeDelivery": {
+        "state": "sample",
+        "reason": "sample",
+        "detail": "sample",
+        "fix": "sample",
+        "since": "sample",
+        "unannounced": 0
+      },
+      "health": {
+        "kind": "sample",
+        "id": "sample",
+        "label": "sample",
+        "state": "sample",
+        "enabled": false,
+        "account": "sample",
+        "mailbox": "sample",
+        "mode": "sample",
+        "reason": "sample"
+      }
+    }
+  },
   "email.inbox.list": {
     "methodId": "email.inbox.list",
     "http": {
@@ -5782,7 +5933,13 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           "messageId": "sample"
         }
       ],
-      "total": 0
+      "total": 0,
+      "unreadable": [
+        {
+          "uid": 0,
+          "detail": "sample"
+        }
+      ]
     }
   },
   "email.inbox.read": {

@@ -10,7 +10,7 @@
  * never from the sender-authored To: header.
  */
 
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { connect, createServer, type Server, type Socket } from 'node:net';
 import { ImapClient, type ImapEnvelope } from '../packages/sdk/src/platform/email/imap-client.ts';
 
@@ -24,6 +24,25 @@ interface FakeServer {
   readonly commands: readonly string[];
   close(): void;
 }
+
+
+import {
+  FETCH_WIRE_SHAPES,
+  writeFetchSectionResponse,
+  type FetchWireShape,
+} from './_helpers/imap-fetch-framing.ts';
+
+/**
+ * The framing the fake server answers FETCH with, for the suite currently
+ * running.
+ *
+ * Module-level rather than a parameter threaded through fourteen call sites:
+ * every test here funnels through `fetchOneEnvelope`, so one variable and a
+ * `beforeEach` covers all of them across all three shapes. This file used to
+ * send bare response lines exclusively — the one framing no RFC 3501 server
+ * produces — so every assertion in it was about a shape that never arrives.
+ */
+let activeShape: FetchWireShape = FETCH_WIRE_SHAPES[0]!;
 
 /**
  * Serves a canned header block for any HEADER.FIELDS fetch.
@@ -49,9 +68,19 @@ function startFakeImapServer(headerLines: readonly string[]): Promise<FakeServer
             sock.write('* SEARCH 4\r\n');
             sock.write(`${tag} OK SEARCH completed\r\n`);
           } else if (line.includes('FETCH') && line.includes('HEADER')) {
-            sock.write('* 4 FETCH (BODY[HEADER.FIELDS (FROM SUBJECT DATE MESSAGE-ID TO DELIVERED-TO X-ORIGINAL-TO)] \r\n');
-            for (const header of headerLines) sock.write(`${header}\r\n`);
-            sock.write(')\r\n');
+            // Sequence number 2, UID 4: the client asked by UID and must report
+            // the UID it asked for, never the sequence number in the response
+            // prefix.
+            // Sequence number 2, UID 4 — and framed the way the shape under
+            // test asks for, rather than as bare lines.
+            writeFetchSectionResponse(sock, {
+              seq: 2,
+              uid: 4,
+              section: 'BODY[HEADER.FIELDS (FROM SUBJECT DATE MESSAGE-ID TO DELIVERED-TO X-ORIGINAL-TO)]',
+              payload: `${headerLines.map((header) => `${header}\r\n`).join('')}\r\n`,
+              uidPosition: activeShape.uidPosition,
+              sectionEncoding: activeShape.sectionEncoding,
+            });
             sock.write(`${tag} OK FETCH completed\r\n`);
           } else if (line.includes('LOGOUT')) {
             sock.write('* BYE logging out\r\n');
@@ -112,8 +141,11 @@ async function fetchOneEnvelope(
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('ImapClient delivery-recipient evidence', () => {
+for (const shape of FETCH_WIRE_SHAPES) {
+describe(`ImapClient delivery-recipient evidence — ${shape.name}`, () => {
   let cleanup: (() => void) | null = null;
+
+  beforeEach(() => { activeShape = shape; });
 
   afterEach(() => {
     cleanup?.();
@@ -310,3 +342,4 @@ describe('ImapClient delivery-recipient evidence', () => {
     expect(run.commands.every((c) => !/\bSELECT\b/.test(c))).toBe(true);
   });
 });
+}

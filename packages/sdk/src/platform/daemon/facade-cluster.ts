@@ -35,6 +35,7 @@
  */
 import {
   ClusterCoordinator,
+  inboxSurface,
   ntfySurface,
   readClusterSettings,
   telegramSurface,
@@ -176,6 +177,91 @@ function reportInert(surface: string, action: string): void {
   logger.error(`${surface} is enabled but this node will NOT receive its messages`, { surface, action });
 }
 
+/**
+ * Inbound mail as a leadership gate.
+ *
+ * Clustering defaults off, but when the owner opts in, two nodes both holding
+ * an IDLE connection to the same mailbox would both fetch and both notify —
+ * the same message announced twice by a capability whose entire value is being
+ * told exactly once. `stopInboundMail()` does not resolve until the source has
+ * genuinely stopped and released its connection, which is the property the
+ * ordered handoff depends on.
+ *
+ * The surface is `inbox`, discriminated by account and mailbox: two mailboxes
+ * on one machine are two elections, and a node watching the signup alias must
+ * not stand down for a node watching the owner's personal mailbox.
+ */
+function inboundMailGate(
+  builtinChannels: BuiltinChannelRuntime,
+  surface: ClusterSurfaceKey,
+): ClusterConsumerGate {
+  return {
+    id: 'email-inbound',
+    surface,
+    start: async () => {
+      await builtinChannels.startInboundMail();
+    },
+    stop: async () => {
+      await builtinChannels.stopInboundMail();
+    },
+  };
+}
+
+/**
+ * Telegram ingress, registered only when this node can actually serve it.
+ *
+ * Extracted from `registerDaemonClusterSurfaces` for a structural reason, not
+ * a stylistic one: the inert branch inside it ends the surface's registration
+ * with an early `return`, and while that `return` sat in the middle of the
+ * top-level function it also skipped every surface registered AFTER Telegram.
+ * A new gate added below it would have been silently unregistered on any
+ * machine whose Telegram token failed to resolve — a condition that produces
+ * no error and looks exactly like a healthy node. Inside its own function the
+ * `return` can only end Telegram's registration, which is all it ever meant.
+ */
+async function registerTelegramSurface(
+  coordinator: ClusterCoordinator,
+  config: ConfigManager,
+  collaborators: DaemonFacadeCollaborators,
+): Promise<void> {
+  if (!config.get('surfaces.telegram.enabled')) return;
+  const botId = await collaborators.builtinChannels.resolveServableTelegramBotId();
+  if (!botId) {
+    reportInert('telegram', 'no Telegram bot token resolved; set surfaces.telegram.botToken '
+      + '(a goodvibes://secrets/... reference is fine) or the TELEGRAM_BOT_TOKEN environment variable');
+    return;
+  }
+  const surface = telegramSurface(botId);
+  coordinator.register(telegramIngressGate(collaborators.builtinChannels, surface));
+  // Late-bound because the runtime is built before the coordinator exists: a
+  // Telegram 409 naming another consumer has to reach leadership, not a log.
+  // Routed at the Telegram surface specifically — a conflict over one bot
+  // token is no reason to give up an unrelated ntfy topic.
+  collaborators.builtinChannels.setConsumerConflictHandler(
+    (detail) => coordinator.reportConsumerConflict(detail, surface),
+  );
+}
+
+/** Inbound mail, registered only when a supervisor was composed for it. */
+function registerInboundMailSurface(
+  coordinator: ClusterCoordinator,
+  config: ConfigManager,
+  collaborators: DaemonFacadeCollaborators,
+): void {
+  if (!config.get('surfaces.email.inbound.enabled')) return;
+  const mailbox = collaborators.builtinChannels.inboundMailIdentity();
+  if (mailbox === null) {
+    reportInert('email-inbound', 'inbound mail is enabled and this build composed no inbound-mail '
+      + 'supervisor, so no mailbox is watched; the embedder must pass inboundMail to '
+      + 'BuiltinChannelRuntime');
+    return;
+  }
+  coordinator.register(inboundMailGate(
+    collaborators.builtinChannels,
+    inboxSurface(`email:${mailbox.account}:${mailbox.mailbox}`),
+  ));
+}
+
 /** Register a gate for every inbound surface this node can actually serve. */
 export async function registerDaemonClusterSurfaces(
   coordinator: ClusterCoordinator,
@@ -221,21 +307,10 @@ export async function registerDaemonClusterSurfaces(
     });
   }
 
-  if (config.get('surfaces.telegram.enabled')) {
-    const botId = await collaborators.builtinChannels.resolveServableTelegramBotId();
-    if (!botId) {
-      reportInert('telegram', 'no Telegram bot token resolved; set surfaces.telegram.botToken '
-        + '(a goodvibes://secrets/... reference is fine) or the TELEGRAM_BOT_TOKEN environment variable');
-      return;
-    }
-    const surface = telegramSurface(botId);
-    coordinator.register(telegramIngressGate(collaborators.builtinChannels, surface));
-    // Late-bound because the runtime is built before the coordinator exists: a
-    // Telegram 409 naming another consumer has to reach leadership, not a log.
-    // Routed at the Telegram surface specifically — a conflict over one bot
-    // token is no reason to give up an unrelated ntfy topic.
-    collaborators.builtinChannels.setConsumerConflictHandler(
-      (detail) => coordinator.reportConsumerConflict(detail, surface),
-    );
-  }
+  // Every remaining surface registers through its own function, so no branch
+  // inside one can end the registration of another. Telegram is awaited
+  // because deciding whether it is servable resolves a credential; inbound
+  // mail's servability is a composition fact and needs no I/O.
+  await registerTelegramSurface(coordinator, config, collaborators);
+  registerInboundMailSurface(coordinator, config, collaborators);
 }

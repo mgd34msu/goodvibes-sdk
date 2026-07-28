@@ -98,6 +98,13 @@ function makeHarness(options: {
   readonly config?: Record<string, unknown>;
   readonly secrets?: Record<string, string>;
   readonly registrySecret?: string | null;
+  /**
+   * The conflict-retry jitter fraction. Defaults to 0 so a test waits for the
+   * backoff floor and nothing else — the production default is `Math.random`,
+   * and a test that has to wait out an unobservable five-second draw is
+   * rolling dice rather than asserting recovery.
+   */
+  readonly conflictJitterFraction?: () => number;
 } = {}): Harness {
   const dir = mkdtempSync(join(tmpdir(), 'gv-tg-'));
   const offsetPath = join(dir, 'telegram-offset.json');
@@ -124,6 +131,7 @@ function makeHarness(options: {
     offsetFilePath: offsetPath,
     createApi: (token) => new TelegramBotApi(token, telegram.fetch),
     onConcurrentConsumerConflict: (detail) => { conflicts.push(detail); },
+    conflictJitterFraction: options.conflictJitterFraction ?? ((): number => 0),
     buildSurfaceAdapterContext: () => ({
       serviceRegistry: { resolveSecret: async () => null },
       configManager: { get: (key: string) => config[key] },
@@ -387,17 +395,62 @@ describe('telegram ingress — polled updates reach the shared handler', () => {
 
 describe('telegram ingress — errors are classified, not blindly retried', () => {
   test('a 409 conflict clears the webhook and resumes rather than backing off', async () => {
-    const h = makeHarness();
+    // Jitter pinned to zero, so the only wait here is the backoff floor. With
+    // the production draw this test raced a 0–5 s random delay against a 5 s
+    // timeout and failed roughly one run in five — indistinguishable, at the
+    // moment it mattered, from recovery actually being broken.
+    const h = makeHarness({ conflictJitterFraction: () => 0 });
     h.telegram.queue('getUpdates',
       () => apiError(409, 'Conflict: can\'t use getUpdates method while webhook is active'),
       () => ok([textUpdate(201, 'after the conflict cleared')]),
     );
     try {
       await h.supervisor.start();
-      await waitFor(() => h.spawned.length > 0, 'recovery from the webhook conflict');
+      await waitFor(() => h.spawned.length > 0, 'recovery from the webhook conflict', 20_000);
       // Recovery is an actual deleteWebhook, not just a sleep: the startup call
       // plus one conflict recovery.
       expect(h.telegram.countOf('deleteWebhook')).toBeGreaterThanOrEqual(2);
+    } finally { await h.supervisor.stop(); h.cleanup(); }
+    // Generous ceiling: the expected wait is the 1 s backoff floor, so this can
+    // only be reached by recovery failing, never by the runner being busy.
+  }, TEST_BUDGET_MS);
+
+  test('a conflict retry is staggered, so two consumers do not settle into lockstep', async () => {
+    // The other half of pinning the jitter: with the draw injected, deleting
+    // the stagger outright would otherwise pass every test. This asserts a
+    // LOWER bound on the delay, which load can only ever push further past.
+    const draws: string[] = [];
+    const h = makeHarness({
+      conflictJitterFraction: () => { draws.push('conflict'); return 0.9; },
+    });
+    h.telegram.queue('getUpdates',
+      () => apiError(409, 'Conflict: can\'t use getUpdates method while webhook is active'),
+      () => ok([textUpdate(202, 'after the staggered retry')]),
+    );
+    const startedAt = Date.now();
+    try {
+      await h.supervisor.start();
+      await waitFor(() => h.spawned.length > 0, 'the staggered recovery', 30_000);
+      // 1 s backoff floor + 0.9 × 5 s of stagger. Anything that skips the
+      // stagger arrives well before this.
+      expect(Date.now() - startedAt).toBeGreaterThanOrEqual(5_000);
+      expect(draws.length).toBeGreaterThanOrEqual(1);
+    } finally { await h.supervisor.stop(); h.cleanup(); }
+  }, TEST_BUDGET_MS);
+
+  test('a non-conflict failure is not staggered — the jitter is for competing consumers only', async () => {
+    const draws: string[] = [];
+    const h = makeHarness({
+      conflictJitterFraction: () => { draws.push('drawn'); return 0; },
+    });
+    h.telegram.queue('getUpdates',
+      () => apiError(500, 'Internal Server Error'),
+      () => ok([textUpdate(203, 'after the server error')]),
+    );
+    try {
+      await h.supervisor.start();
+      await waitFor(() => h.spawned.length > 0, 'recovery from a server error', 20_000);
+      expect(draws).toEqual([]);
     } finally { await h.supervisor.stop(); h.cleanup(); }
   }, TEST_BUDGET_MS);
 

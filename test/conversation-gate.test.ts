@@ -14,6 +14,7 @@
 import { describe, expect, test } from 'bun:test';
 import {
   CONVERSATION_GATE_DEFAULTS,
+  CONVERSATION_GATE_DEFAULT_SURFACES,
   classifyInboundIntent,
   isGatedSurface,
   parseWorkProposalReply,
@@ -260,6 +261,21 @@ describe('isGatedSurface', () => {
 
   test('an unknown/undeclared surface is gated, so a new adapter cannot silently opt out', () => {
     expect(isGatedSurface(config, undefined)).toBe(true);
+  });
+
+  test('email is gated, so a mail adapter written the ordinary way cannot spawn work', () => {
+    // The fail-closed rule only covers a surface the gate cannot identify:
+    // `undefined` returns true above. 'email' is a known, non-TUI string, so
+    // it skips that branch entirely and falls through to
+    // `gatedSurfaces.includes(...)` — which was false. An adapter passing
+    // `surface: 'email'` would therefore have let any message that reads as a
+    // work request spawn an agent immediately, skipping propose-and-wait.
+    //
+    // Nothing in the inbound-mail design reaches this gate: the watcher is
+    // handed a context with no spawn capability in it at all. This covers the
+    // person who wires email the ordinary way later, without reading that.
+    expect(isGatedSurface(config, 'email')).toBe(true);
+    expect(CONVERSATION_GATE_DEFAULT_SURFACES).toContain('email');
   });
 
   test('mode off disables the gate entirely', () => {

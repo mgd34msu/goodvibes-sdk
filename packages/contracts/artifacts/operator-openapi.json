@@ -3,7 +3,7 @@
   "info": {
     "title": "GoodVibes Operator API",
     "version": "1.18.1",
-    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 459 cataloged methods: 408 with dedicated REST bindings, 51 reachable only through the generic invoke endpoint. 97 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
+    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 463 cataloged methods: 408 with dedicated REST bindings, 55 reachable only through the generic invoke endpoint. 97 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
   },
   "servers": [
     {
@@ -32221,7 +32221,7 @@
       "get": {
         "operationId": "email.inbox.list",
         "summary": "List Email Inbox",
-        "description": "Return inbox message summaries fetched live from the configured IMAP account. Read-only (EXAMINE / BODY.PEEK); never marks messages read.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return inbox message summaries fetched live from the configured IMAP account, newest first (ordered by server-assigned UID, never by the sender-written Date header). Read-only (EXAMINE / BODY.PEEK); never marks messages read. When the server answered for a message and the daemon could not read the answer, the page is short and `unreadable` says so — an omitted message is not by itself evidence that it was deleted.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
         "tags": [
           "email"
         ],
@@ -32274,6 +32274,24 @@
                     },
                     "total": {
                       "type": "number"
+                    },
+                    "unreadable": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "uid": {
+                            "type": "number"
+                          },
+                          "detail": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "detail"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "required": [
@@ -96218,6 +96236,10 @@
           "checkpoints.revertHunk",
           "checkpoints.revertHunkPreview",
           "cost.attribution.get",
+          "email.expectation.cancel",
+          "email.expectation.list",
+          "email.expectation.open",
+          "email.inbound.status",
           "flags.graduation.report",
           "fleet.archive",
           "fleet.archiveFinished",
@@ -97867,6 +97889,42 @@
       "access": "admin",
       "rest": "POST /api/email/drafts",
       "typedClientIo": false,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "email.expectation.cancel",
+      "category": "email",
+      "access": "admin",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "email.expectation.list",
+      "category": "email",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "email.expectation.open",
+      "category": "email",
+      "access": "admin",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "email.inbound.status",
+      "category": "email",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },

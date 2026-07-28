@@ -161,6 +161,66 @@ export interface MatrixSurfaceConfig {
 }
 
 /**
+ * Which mechanism reads the mailbox (docs/inbound-email.md §3.4d).
+ *
+ * `auto` picks Gmail when Google credentials have been adopted and the
+ * configured account is a Gmail account, and IMAP otherwise — so connecting
+ * Google is the whole of the setup. The two are not equivalent: IMAP holds an
+ * IDLE connection and is true push, while Gmail is polled and its worst case
+ * is the poll interval.
+ */
+export type InboundEmailSource = 'auto' | 'gmail' | 'imap';
+
+/** How the inbound-mail watcher receives new mail for a configured mailbox. */
+export type InboundEmailMode = 'idle' | 'poll' | 'auto';
+
+/** How much inbound mail generates an owner notice. */
+export type InboundEmailNoticeMode = 'all' | 'expected-only' | 'none';
+
+/** What the watcher does when a mailbox reports it cannot supply what inbound mail requires. */
+export type InboundEmailCapabilityPolicy = 'refuse-and-notify' | 'notice-only';
+
+/**
+ * The inbound-mail watcher's own configuration — the `inbound` section of
+ * `surfaces.email` (see the individual settings declared below).
+ * See `docs/inbound-email.md` §8 for the ruled defaults and §2 for why this
+ * capability carries no command authority.
+ */
+export interface InboundEmailConfig {
+  enabled: boolean;
+  /**
+   * JSON-encoded array of configured mailbox account identifiers to watch,
+   * e.g. `["primary"]`. Stored as a JSON string rather than a native array
+   * because the hand-rolled `ConfigSettingDefinition` format has no array
+   * type — the same convention `DaemonCalendarConfig.calendars` already uses.
+   */
+  accounts: string;
+  source: InboundEmailSource;
+  /** Gmail poll interval while an expectation is open. Ignored on IMAP. */
+  gmailPollSecondsExpecting: number;
+  /** Gmail poll interval with nothing pending. Ignored on IMAP. */
+  gmailPollSecondsIdle: number;
+  /** IMAP only: the Gmail source has no IDLE to hold and is always polled. */
+  mode: InboundEmailMode;
+  pollIntervalSeconds: number;
+  idleReissueMinutes: number;
+  reconnect: {
+    maxBackoffSeconds: number;
+  };
+  notice: {
+    /** A route binding id, or the literal `'default'` to inherit the owner's existing notice route. */
+    route: string;
+    mode: InboundEmailNoticeMode;
+  };
+  expectationWindowMinutes: number;
+  dedupTtlMinutes: number;
+  retentionDays: number;
+  maxRecords: number;
+  capabilityRecheckMinutes: number;
+  onInsufficientCapability: InboundEmailCapabilityPolicy;
+}
+
+/**
  * The daemon's own mailbox — the account it reads and sends AS, rather than a
  * chat service it talks TO. Both key spellings are declared because both are
  * genuinely read; see schema-domain-daemon-mailbox.ts for which reader uses
@@ -197,6 +257,8 @@ export interface DaemonMailboxConfig {
     password: string;
     secure: boolean;
   };
+  /** The inbound-mail watcher's own settings; see InboundEmailConfig. */
+  inbound: InboundEmailConfig;
 }
 
 /** The daemon's own calendar, reached over CalDAV. */

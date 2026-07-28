@@ -51,6 +51,7 @@ import { builtinGatewayControlAutomationMethodDescriptors } from '../packages/sd
 import { builtinGatewayAcpMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-acp.ts';
 import { builtinGatewayBrowserMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-browser.ts';
 import { builtinGatewayOwnerProfileMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-owner-profile.ts';
+import { builtinGatewayEmailMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-email.ts';
 import { builtinGatewayPermissionRuleMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-permission-rules.ts';
 import { builtinGatewayControlCoreMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-core.ts';
 import { builtinGatewayControlLiveTurnMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-live-turn.ts';
@@ -255,6 +256,7 @@ const CATALOG_DESCRIPTORS = [
   ...builtinGatewayAcpMethodDescriptors,
   ...builtinGatewayBrowserMethodDescriptors,
   ...builtinGatewayOwnerProfileMethodDescriptors,
+  ...builtinGatewayEmailMethodDescriptors,
 ];
 
 function descriptorSchemas(methodId: string): { input: Record<string, unknown>; output: Record<string, unknown> } {
@@ -381,6 +383,18 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   { methodId: 'control.status', ...descriptorSchemas('control.status') },
   // Approval actions (decision fields travel over HTTP: rememberTier, deny
   // reason, modifiedArgs; responses carry the recorded block):
+  // The inbound-mail expectation verbs. Typed rather than left to the broad
+  // fallback because these carry authority-shaped arguments -- the address and
+  // domain a later message will be correlated against -- and a consumer that
+  // gets `unknown` back has no signal about what it must send.
+  { methodId: 'email.expectation.open', ...descriptorSchemas('email.expectation.open') },
+  { methodId: 'email.expectation.list', ...descriptorSchemas('email.expectation.list') },
+  { methodId: 'email.expectation.cancel', ...descriptorSchemas('email.expectation.cancel') },
+  // The inbound watcher's disclosure verb. Typed rather than left to the broad
+  // `unknown` fallback for the same reason: §9 requires persisted state to say
+  // what it holds, and a consumer of that disclosure should get a compile-time
+  // shape for the cursors, expectations and retention bounds it is reading.
+  { methodId: 'email.inbound.status', ...descriptorSchemas('email.inbound.status') },
   { methodId: 'approvals.claim', ...descriptorSchemas('approvals.claim') },
   { methodId: 'approvals.approve', ...descriptorSchemas('approvals.approve') },
   { methodId: 'approvals.deny', ...descriptorSchemas('approvals.deny') },

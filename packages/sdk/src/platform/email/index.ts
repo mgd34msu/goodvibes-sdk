@@ -87,6 +87,8 @@ export type {
   EmailDraftInput,
   EmailInboxListInput,
   EmailInboxListResult,
+  EmailInboxUnreadableResponse,
+  EmailMessageRead,
   EmailServiceDeps,
   EmailSocketFactory,
   EmailSummary,
@@ -101,18 +103,34 @@ export type {
 
 export {
   ImapClient,
+  ImapOpenError,
+  describeEmailCapabilityFailure,
   imapQuoteCredential,
+  ownerMessageForFailure,
+  resolveIdleSupport,
   IMAP_DEFAULT_TIMEOUT_MS,
+  IMAP_MAX_FETCH_UIDS,
 } from './imap-client.js';
 
 export type {
+  EmailCapabilityFailureNotice,
+  EmailCapabilityFailureReason,
   ImapAppendDraftInput,
   ImapAppendDraftResult,
   ImapAttachmentInfo,
+  ImapBodyProbe,
+  ImapBodyUnreadableEvidence,
   ImapClientOptions,
+  ImapConnectionReport,
   ImapEnvelope,
+  ImapEnvelopeBatch,
+  ImapFetchProblem,
+  ImapIdleDecision,
+  ImapIdleSupport,
   ImapMessage,
   ImapMessageDetail,
+  ImapMessageRead,
+  ImapOpenFailureReason,
 } from './imap-client.js';
 
 export {
@@ -125,6 +143,7 @@ export {
 export type {
   DeliveryEvidence,
   DeliveryEvidenceSource,
+  ImapMailboxStatus,
 } from './imap-headers.js';
 
 export {

@@ -145,6 +145,14 @@ export function createServiceBackedGateway(service: EmailService): EmailGatewayS
             messageId: message.messageId,
           })),
           total: result.total,
+          ...(result.unreadable !== undefined && result.unreadable.length > 0
+            ? {
+              unreadable: result.unreadable.map((problem) => ({
+                ...(problem.uid === null ? {} : { uid: problem.uid }),
+                detail: problem.detail,
+              })),
+            }
+            : {}),
         };
       });
     },

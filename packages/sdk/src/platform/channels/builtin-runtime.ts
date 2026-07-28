@@ -39,6 +39,7 @@ import { TelegramIngressSupervisor, type TelegramIngressStatus } from './telegra
 import { logger } from '../utils/logger.js';
 import { registerBuiltinChannelPlugins } from './builtin/plugins.js';
 import type { BuiltinChannelRuntimeDeps, ManagedSurface } from './builtin/shared.js';
+import type { InboundMailHealthEntry } from '../email/inbound/health.js';
 import {
   authorizeBuiltinActorAction,
   runBuiltinAccountAction,
@@ -70,6 +71,8 @@ export class BuiltinChannelRuntime {
   private telegramIngress: TelegramIngressSupervisor | null = null;
   private telegramConfigUnsubscribes: Array<() => void> = [];
   private telegramRestartTimer: ReturnType<typeof setTimeout> | null = null;
+  private inboundMailConfigUnsubscribes: Array<() => void> = [];
+  private inboundMailRecheckTimer: ReturnType<typeof setTimeout> | null = null;
   private consumerConflictHandler: ((detail: string) => void) | null = null;
 
   /**
@@ -187,6 +190,122 @@ export class BuiltinChannelRuntime {
   /** Current inbound Telegram state, including why it is inactive. */
   telegramIngressStatus(): TelegramIngressStatus | null {
     return this.telegramIngress?.status ?? null;
+  }
+
+  // -------------------------------------------------------------------------
+  // Inbound mail (docs/inbound-email.md §3.5)
+  //
+  // Beside the Telegram ingress methods rather than folded into
+  // startIngress()/stopIngress(): each is its OWN cluster surface, and a node
+  // that lost the Telegram election must still read the mailbox it did win.
+  // Starting them together would re-couple exactly what the per-surface split
+  // un-coupled.
+  // -------------------------------------------------------------------------
+
+  /** Arm inbound mail. Says so loudly when a mailbox is wanted and unwatched. */
+  async startInboundMail(): Promise<void> {
+    const supervisor = this.deps.inboundMail;
+    if (!supervisor) {
+      if (this.deps.configManager.get('surfaces.email.inbound.enabled')) {
+        logger.error('Inbound mail is enabled but NO mailbox is being watched', {
+          surface: 'email-inbound',
+          reason: 'this composition supplied no inbound-mail supervisor',
+          action: 'the embedder must pass inboundMail to BuiltinChannelRuntime to watch a mailbox',
+        });
+      }
+      return;
+    }
+    this.watchInboundMailConfig();
+    await supervisor.start();
+  }
+
+  /**
+   * Re-probe the mailbox when a setting the running source re-reads changes.
+   *
+   * These five keys and no others, because the list is not "everything about
+   * email" — it is exactly what `source-factory.ts`'s connection port resolves
+   * again inside every `open()`. A corrected host, port or account is therefore
+   * picked up by the reconnect this triggers, and an owner is told within
+   * seconds whether the correction worked instead of waiting out
+   * `capabilityRecheckMinutes`. Both spellings of host and account are watched
+   * because `readSurfaceEmailSettings` genuinely reads both, and subscribing to
+   * the one the owner did not edit is a subscription that never fires.
+   *
+   * What is deliberately NOT here: `surfaces.email.inbound.accounts`, `.mode`,
+   * `.source` and the mailbox. Those decide which source is BUILT and which
+   * mailbox it opens, so acting on them means a restart, not a re-probe —
+   * `recheckNow()` on a running source cannot change what that source is. Wiring
+   * them here would look like they took effect and they would not, which is the
+   * failure this whole item is about, reproduced one level up.
+   *
+   * The password is not here either, and cannot be: it lives in the secrets
+   * store, which has no change subscription. The reconnect still re-resolves it,
+   * so a rotated password is picked up by any recheck — it just does not cause
+   * one.
+   *
+   * Coalesced the same way the Telegram watcher coalesces its restart: saving a
+   * settings page writes several keys, and one re-probe per key would be four
+   * reconnections against a mail server for one edit.
+   */
+  private watchInboundMailConfig(): void {
+    if (this.inboundMailConfigUnsubscribes.length > 0) return;
+    const keys = [
+      'surfaces.email.imap.host',
+      'surfaces.email.imapHost',
+      'surfaces.email.imap.port',
+      'surfaces.email.user',
+      'surfaces.email.username',
+    ] as const;
+    const recheck = (): void => {
+      if (this.inboundMailRecheckTimer) clearTimeout(this.inboundMailRecheckTimer);
+      this.inboundMailRecheckTimer = setTimeout(() => {
+        this.inboundMailRecheckTimer = null;
+        this.deps.inboundMail?.recheckNow();
+      }, 250);
+      (this.inboundMailRecheckTimer as unknown as { unref?: () => void }).unref?.();
+    };
+    for (const key of keys) {
+      this.inboundMailConfigUnsubscribes.push(this.deps.configManager.subscribe(key, recheck));
+    }
+  }
+
+  /**
+   * Stop reading the mailbox and release its connection.
+   *
+   * Awaited, and it must not resolve early: the ordered cluster handoff tells
+   * the successor node to start only after this promise settles, and two nodes
+   * holding one mailbox both announce every message.
+   */
+  async stopInboundMail(): Promise<void> {
+    if (this.inboundMailRecheckTimer) {
+      clearTimeout(this.inboundMailRecheckTimer);
+      this.inboundMailRecheckTimer = null;
+    }
+    for (const unsubscribe of this.inboundMailConfigUnsubscribes.splice(0)) unsubscribe();
+    await this.deps.inboundMail?.stop();
+  }
+
+  /**
+   * Email's health entry, read from the live supervisor.
+   *
+   * Deliberately not a `ChannelStatusSnapshot`: email is not a
+   * `ManagedSurface`, and its state is what the watcher is DOING rather than
+   * whether a credential happens to be present in the config file.
+   */
+  inboundMailHealth(): InboundMailHealthEntry | null {
+    return this.deps.inboundMail?.health() ?? null;
+  }
+
+  /**
+   * Which mailbox this node would watch, for the cluster election.
+   *
+   * Read before the node contests the surface: a node that watches no mailbox
+   * must never win the election for one, because the loser stands down and the
+   * mailbox then goes unread by anybody.
+   */
+  inboundMailIdentity(): { readonly account: string; readonly mailbox: string } | null {
+    const health = this.deps.inboundMail?.health();
+    return health ? { account: health.account, mailbox: health.mailbox } : null;
   }
 
   registerPlugins(): void {

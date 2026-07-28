@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.18.1
- * Methods: 459 total, 408 REST-routed, 51 ws-only invoke.
+ * Methods: 463 total, 408 REST-routed, 55 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -1687,6 +1687,10 @@ export const WEBUI_WS_INVOKE_METHOD_IDS: readonly string[] = [
   "checkpoints.revertHunk",
   "checkpoints.revertHunkPreview",
   "cost.attribution.get",
+  "email.expectation.cancel",
+  "email.expectation.list",
+  "email.expectation.open",
+  "email.inbound.status",
   "flags.graduation.report",
   "fleet.archive",
   "fleet.archived.list",
@@ -1888,6 +1892,10 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "deliveries.get": "rest",
   "deliveries.list": "rest",
   "email.draft.create": "rest",
+  "email.expectation.cancel": "ws-invoke",
+  "email.expectation.list": "ws-invoke",
+  "email.expectation.open": "ws-invoke",
+  "email.inbound.status": "ws-invoke",
   "email.inbox.list": "rest",
   "email.inbox.read": "rest",
   "email.send": "rest",
@@ -8010,6 +8018,157 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
       "mailbox": "sample"
     }
   },
+  "email.expectation.cancel": {
+    "input": {
+      "id": "sample"
+    },
+    "output": {
+      "cancelled": false,
+      "expectation": {
+        "id": "sample",
+        "kind": "sample",
+        "serviceDomain": "sample",
+        "recipientAddress": "sample",
+        "purpose": "sample",
+        "openedAt": "sample",
+        "expiresAt": "sample",
+        "authority": "sample",
+        "remainingMs": 0
+      }
+    }
+  },
+  "email.expectation.list": {
+    "input": {},
+    "output": {
+      "expectations": [
+        {
+          "id": "sample",
+          "kind": "sample",
+          "serviceDomain": "sample",
+          "recipientAddress": "sample",
+          "purpose": "sample",
+          "openedAt": "sample",
+          "expiresAt": "sample",
+          "authority": "sample",
+          "remainingMs": 0
+        }
+      ],
+      "total": 0
+    }
+  },
+  "email.expectation.open": {
+    "input": {
+      "serviceDomain": "sample",
+      "recipientAddress": "sample",
+      "purpose": "sample",
+      "windowMs": 0,
+      "kind": "sample"
+    },
+    "output": {
+      "id": "sample",
+      "kind": "sample",
+      "serviceDomain": "sample",
+      "recipientAddress": "sample",
+      "purpose": "sample",
+      "openedAt": "sample",
+      "expiresAt": "sample",
+      "authority": "sample",
+      "remainingMs": 0
+    }
+  },
+  "email.inbound.status": {
+    "input": {},
+    "output": {
+      "enabled": false,
+      "running": false,
+      "mode": "sample",
+      "reason": "sample",
+      "account": "sample",
+      "mailbox": "sample",
+      "source": {
+        "kind": "sample",
+        "basis": "sample",
+        "detail": "sample",
+        "latency": "sample"
+      },
+      "capability": {
+        "state": "sample",
+        "reason": "sample",
+        "detail": "sample",
+        "fix": "sample"
+      },
+      "cursors": [
+        {
+          "account": "sample",
+          "mailbox": "sample",
+          "source": "sample",
+          "position": "sample",
+          "updatedAt": "sample",
+          "ageMs": 0
+        }
+      ],
+      "expectations": [
+        {
+          "id": "sample",
+          "serviceDomain": "sample",
+          "recipientAddress": "sample",
+          "purpose": "sample",
+          "openedAt": "sample",
+          "expiresAt": "sample",
+          "remainingMs": 0
+        }
+      ],
+      "retention": {
+        "cursors": {
+          "kept": 0,
+          "maxCursors": 0
+        },
+        "records": {
+          "kept": 0,
+          "stored": 0,
+          "retentionDays": 0,
+          "maxRecords": 0,
+          "maxBodyExcerptChars": 0,
+          "reapedOnWrite": 0
+        },
+        "expectations": {
+          "open": 0,
+          "maxOpen": 0
+        },
+        "lastSweep": {
+          "sweptAt": 0,
+          "trigger": "sample",
+          "summary": "sample"
+        }
+      },
+      "stores": [
+        {
+          "store": "sample",
+          "state": "sample",
+          "detail": "sample"
+        }
+      ],
+      "noticeDelivery": {
+        "state": "sample",
+        "reason": "sample",
+        "detail": "sample",
+        "fix": "sample",
+        "since": "sample",
+        "unannounced": 0
+      },
+      "health": {
+        "kind": "sample",
+        "id": "sample",
+        "label": "sample",
+        "state": "sample",
+        "enabled": false,
+        "account": "sample",
+        "mailbox": "sample",
+        "mode": "sample",
+        "reason": "sample"
+      }
+    }
+  },
   "email.inbox.list": {
     "input": {
       "limit": 0,
@@ -8028,7 +8187,13 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "messageId": "sample"
         }
       ],
-      "total": 0
+      "total": 0,
+      "unreadable": [
+        {
+          "uid": 0,
+          "detail": "sample"
+        }
+      ]
     }
   },
   "email.inbox.read": {
