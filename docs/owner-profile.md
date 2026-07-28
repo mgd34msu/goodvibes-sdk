@@ -848,6 +848,30 @@ change to a published SDK surface affecting every operator method, and it should
 be decided across the platform rather than by whichever feature happened to trip
 over it.
 
+#### The two exports gates, and which one survives the merge
+
+Three lanes independently built a gate for the same defect — a module that
+exists but is not declared in the `exports` map, so no consumer of the published
+package can import it. Two survive: `check-exports-coverage.ts` here and
+`check-subpath-declared.ts` on the payments branches. They ask the identical
+question and will collide on merge.
+
+**Ruling: one file survives, under the payments branches' name.**
+`check-subpath-declared.ts` says what it checks; `check-exports-coverage.ts`
+does not. But the implementation kept is this one, because it is a strict
+superset: it carries an `INTENTIONALLY_INTERNAL` allowlist that forces a
+*reason* rather than silence, a non-vacuity tripwire so a scan that finds
+nothing fails instead of passing, and a declared-but-not-shipped check for the
+nastier inverse — an entry that resolves in the map and fails at import time
+while the map itself looks right. It is also wired into `validate`, not only
+exposed as a script. The other file's top-level-only rationale is better argued
+than mine and its header reasoning should be carried across.
+
+Worth recording: both implementations independently found the **same five**
+daemon-owned modules as legitimately internal. Two people reaching the same
+allowlist without conferring is the strongest evidence available that the
+allowlist is right and not just convenient.
+
 ### 11.2 Open tier vs closed tier — the outbound rule
 
 **Profile content is never bulk-injected into model context.** That is what makes
