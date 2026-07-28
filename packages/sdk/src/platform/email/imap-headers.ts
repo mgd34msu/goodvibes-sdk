@@ -164,7 +164,16 @@ export function extractAuthenticationResults(rawHeaders: string): string[] {
 // Response parsing
 // ---------------------------------------------------------------------------
 
-export function parseSequenceNumbers(searchResponse: readonly string[]): number[] {
+/**
+ * The numbers in a `* SEARCH ...` response, in the order the server gave them.
+ *
+ * A server answers `SEARCH` with sequence numbers and `UID SEARCH` with UIDs,
+ * in the same untagged `* SEARCH` line either way — the wire shape carries no
+ * mark of which it is. The caller knows which command it sent, so the name
+ * here says "numbers" rather than claiming one or the other. This client only
+ * ever sends `UID SEARCH`.
+ */
+export function parseSearchNumbers(searchResponse: readonly string[]): number[] {
   const nums: number[] = [];
   for (const line of searchResponse) {
     if (!line.startsWith('* SEARCH')) continue;
@@ -175,6 +184,34 @@ export function parseSequenceNumbers(searchResponse: readonly string[]): number[
     }
   }
   return nums;
+}
+
+/**
+ * The `UID` data item of each FETCH response, keyed by the response's own
+ * sequence number.
+ *
+ * `* 3 FETCH (UID 307 BODY[...] ...)` maps 3 → 307. The `3` is a sequence
+ * number even when the command was `UID FETCH`, which is exactly why the two
+ * have to be read separately and joined rather than assumed equal.
+ *
+ * Only the data-item list ahead of the first `BODY`/`BODYSTRUCTURE` token is
+ * searched, so a `UID 12` written inside a message body cannot be read back as
+ * the message's UID.
+ */
+export function parseFetchUids(fetchLines: readonly string[]): Record<number, number> {
+  const result: Record<number, number> = {};
+  for (const line of fetchLines) {
+    const start = /^\* (\d+) FETCH/.exec(line);
+    if (start === null) continue;
+    const bodyAt = line.indexOf('BODY');
+    const items = bodyAt === -1 ? line : line.slice(0, bodyAt);
+    const uidMatch = /\bUID (\d+)/.exec(items);
+    if (uidMatch === null) continue;
+    const seqNum = parseInt(start[1] ?? '0', 10);
+    const uid = parseInt(uidMatch[1] ?? '0', 10);
+    if (seqNum > 0 && uid > 0) result[seqNum] = uid;
+  }
+  return result;
 }
 
 export function parseFetchHeaders(fetchLines: readonly string[]): Record<number, string> {
@@ -242,6 +279,95 @@ export function parseFetchBody(fetchLines: readonly string[]): Record<number, st
     }
   }
   return result;
+}
+
+// ---------------------------------------------------------------------------
+// Capabilities
+// ---------------------------------------------------------------------------
+
+/**
+ * The capability atoms a server named, from anywhere it named them.
+ *
+ * Servers advertise in three places and no server uses all three: inside the
+ * greeting as `* OK [CAPABILITY ...]`, as an untagged `* CAPABILITY ...` line,
+ * and inside a tagged completion as `... OK [CAPABILITY ...]`. All three are
+ * read here so a caller does not have to ask again for something the server
+ * already volunteered.
+ *
+ * Atoms are upper-cased and de-duplicated, order preserved. An empty result
+ * means the server said nothing — which is NOT the same as "supports nothing",
+ * and callers must not read it that way.
+ */
+export function parseCapabilities(lines: readonly string[]): string[] {
+  const found: string[] = [];
+  const seen = new Set<string>();
+  const add = (raw: string): void => {
+    for (const atom of raw.trim().split(/\s+/)) {
+      const upper = atom.toUpperCase();
+      if (upper.length === 0 || seen.has(upper)) continue;
+      seen.add(upper);
+      found.push(upper);
+    }
+  };
+
+  for (const line of lines) {
+    const bracketed = /\[CAPABILITY ([^\]]*)\]/i.exec(line);
+    if (bracketed !== null) add(bracketed[1] ?? '');
+    const untagged = /^\* CAPABILITY (.*)$/i.exec(line);
+    if (untagged !== null) add(untagged[1] ?? '');
+  }
+  return found;
+}
+
+// ---------------------------------------------------------------------------
+// Mailbox status, as EXAMINE reports it
+// ---------------------------------------------------------------------------
+
+/**
+ * What the server said about the mailbox when it was EXAMINEd.
+ *
+ * `uidValidity` is the field that matters most and is the one most easily
+ * ignored: when it changes, every UID recorded under the old value names
+ * nothing, because the mailbox was recreated. Anything keeping a UID across
+ * connections has to store this alongside it.
+ *
+ * Every field is null when the server did not report it. Nothing here is
+ * defaulted to zero — a missing UIDVALIDITY is not the same fact as
+ * `UIDVALIDITY 0`, and a caller that has to tell the difference cannot if we
+ * invent one.
+ */
+export interface ImapMailboxStatus {
+  /** `* n EXISTS` — how many messages the mailbox holds. */
+  readonly exists: number | null;
+  /** `* OK [UIDVALIDITY n]` — the generation the UIDs below belong to. */
+  readonly uidValidity: number | null;
+  /** `* OK [UIDNEXT n]` — the UID the next arriving message will be given. */
+  readonly uidNext: number | null;
+  /** True when the completion carried `[READ-ONLY]`, as EXAMINE's does. */
+  readonly readOnly: boolean;
+}
+
+/** Read an EXAMINE (or SELECT) response into its mailbox facts. */
+export function parseMailboxStatus(lines: readonly string[]): ImapMailboxStatus {
+  let exists: number | null = null;
+  let uidValidity: number | null = null;
+  let uidNext: number | null = null;
+  let readOnly = false;
+
+  for (const line of lines) {
+    const existsMatch = /^\* (\d+) EXISTS\b/.exec(line);
+    if (existsMatch !== null) {
+      exists = parseInt(existsMatch[1] ?? '0', 10);
+      continue;
+    }
+    const validity = /\[UIDVALIDITY (\d+)\]/.exec(line);
+    if (validity !== null) uidValidity = parseInt(validity[1] ?? '0', 10);
+    const next = /\[UIDNEXT (\d+)\]/.exec(line);
+    if (next !== null) uidNext = parseInt(next[1] ?? '0', 10);
+    if (line.includes('[READ-ONLY]')) readOnly = true;
+  }
+
+  return { exists, uidValidity, uidNext, readOnly };
 }
 
 // ---------------------------------------------------------------------------

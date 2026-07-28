@@ -105,6 +105,22 @@ async function startFakeImap(): Promise<FakeServer> {
         } else if (/ LIST /.test(line)) {
           reply('* LIST (\\HasNoChildren \\Drafts) "/" "[Gmail]/Drafts"');
           reply(`${tag} OK LIST completed`);
+        } else if (/UID FETCH/.test(line) && line.includes('HEADER.FIELDS')) {
+          // One FETCH response per requested UID, each carrying its own UID
+          // data item. The `* n` prefix is a SEQUENCE number even here, so it
+          // is deliberately not the UID: a client that reported the prefix
+          // would report the wrong identifier.
+          const requested = (/UID FETCH ([\d,]+)/.exec(line)?.[1] ?? '')
+            .split(',')
+            .map((value) => parseInt(value, 10))
+            .filter((value) => value > 0);
+          requested.forEach((uid, index) => {
+            const headers = HEADERS_BY_UID[uid] ?? ['From: nobody@example.test'];
+            socket.write(`* ${index + 1} FETCH (UID ${uid} BODY[HEADER.FIELDS (FROM)] \r\n`);
+            socket.write(`${headers.join('\r\n')}\r\n`);
+            socket.write(')\r\n');
+          });
+          reply(`${tag} OK FETCH completed`);
         } else if (/UID FETCH/.test(line)) {
           const uid = parseInt(/UID FETCH (\d+)/.exec(line)?.[1] ?? '0', 10);
           const headers = HEADERS_BY_UID[uid];
@@ -118,19 +134,6 @@ async function startFakeImap(): Promise<FakeServer> {
           } else {
             sectionReply('the whole body\r\n', 'TEXT', tag);
           }
-        } else if (/FETCH/.test(line) && line.includes('HEADER')) {
-          const blocks = [1, 2, 3]
-            .map((uid) => (HEADERS_BY_UID[uid] ?? ['From: nobody@example.test']).join('\r\n'))
-            .join('\r\n\r\n');
-          socket.write('* 1 FETCH (BODY[HEADER.FIELDS (FROM)] \r\n');
-          socket.write(`${blocks}\r\n`);
-          socket.write(')\r\n');
-          reply(`${tag} OK FETCH completed`);
-        } else if (/FETCH/.test(line)) {
-          socket.write('* 1 FETCH (BODY[TEXT]<0> \r\n');
-          socket.write('preview text\r\n');
-          socket.write(')\r\n');
-          reply(`${tag} OK FETCH completed`);
         } else {
           reply(`${tag} OK completed`);
         }

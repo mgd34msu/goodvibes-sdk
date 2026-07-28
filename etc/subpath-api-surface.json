@@ -15007,6 +15007,15 @@
       ]
     },
     {
+      "name": "ImapConnectionReport",
+      "kind": "interface",
+      "required": [
+        "advertisedCapabilities",
+        "mailbox",
+        "supportsIdle"
+      ]
+    },
+    {
       "name": "ImapEnvelope",
       "kind": "interface",
       "required": [
@@ -15020,6 +15029,16 @@
         "subject",
         "uid",
         "unverifiedToHeaderClaim"
+      ]
+    },
+    {
+      "name": "ImapMailboxStatus",
+      "kind": "interface",
+      "required": [
+        "exists",
+        "readOnly",
+        "uidNext",
+        "uidValidity"
       ]
     },
     {
@@ -15037,6 +15056,14 @@
         "bodyHtml",
         "bodyText"
       ]
+    },
+    {
+      "name": "ImapOpenError",
+      "kind": "class"
+    },
+    {
+      "name": "ImapOpenFailureReason",
+      "kind": "type"
     },
     {
       "name": "SMTP_DEFAULT_TIMEOUT_MS",

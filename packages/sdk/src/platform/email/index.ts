@@ -101,6 +101,7 @@ export type {
 
 export {
   ImapClient,
+  ImapOpenError,
   imapQuoteCredential,
   IMAP_DEFAULT_TIMEOUT_MS,
 } from './imap-client.js';
@@ -110,9 +111,11 @@ export type {
   ImapAppendDraftResult,
   ImapAttachmentInfo,
   ImapClientOptions,
+  ImapConnectionReport,
   ImapEnvelope,
   ImapMessage,
   ImapMessageDetail,
+  ImapOpenFailureReason,
 } from './imap-client.js';
 
 export {
@@ -125,6 +128,7 @@ export {
 export type {
   DeliveryEvidence,
   DeliveryEvidenceSource,
+  ImapMailboxStatus,
 } from './imap-headers.js';
 
 export {

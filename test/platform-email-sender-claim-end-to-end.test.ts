@@ -61,7 +61,7 @@ async function startFakeImap(headerBlock: readonly string[]): Promise<FakeServer
           write(socket, '* SEARCH 1');
           write(socket, `${tag} OK SEARCH completed`);
         } else if (line.includes('FETCH') && line.includes('HEADER')) {
-          socket.write('* 1 FETCH (BODY[HEADER.FIELDS (FROM SUBJECT DATE MESSAGE-ID TO DELIVERED-TO X-ORIGINAL-TO AUTHENTICATION-RESULTS)] \r\n');
+          socket.write('* 1 FETCH (UID 1 BODY[HEADER.FIELDS (FROM SUBJECT DATE MESSAGE-ID TO DELIVERED-TO X-ORIGINAL-TO AUTHENTICATION-RESULTS)] \r\n');
           for (const header of headerBlock) write(socket, header);
           write(socket, ')');
           write(socket, `${tag} OK FETCH completed`);
