@@ -1,15 +1,55 @@
 /**
- * Minimal IMAP4rev1 client over an injectable transport socket.
+ * Minimal IMAP4rev1 client over an injected socket.
  *
  * Scope and honest boundaries
  * ────────────────────────────
- * Supported:
- *   - LOGIN with plain credentials (tag AUTH LOGIN user pass)
- *   - EXAMINE <mailbox> (read-only SELECT; messages are never marked \Seen)
- *   - UID SEARCH UNSEEN and UID SEARCH SINCE <date>
- *   - UID FETCH (UID BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE MESSAGE-ID TO
- *     AUTHENTICATION-RESULTS DELIVERED-TO X-ORIGINAL-TO)]) — envelope plus
- *     delivery evidence, addressed and reported by UID
+ * Every line below was checked against the code that sends the bytes. A header
+ * that claims a capability the file does not have is worse than no header: the
+ * claim gets believed, designed against, and depended on. This one previously
+ * advertised "per-await timeouts via AbortSignal" when no AbortSignal existed
+ * anywhere in the module, a `SocketLike` type that was never declared, and a
+ * `LOGIN` wire format with an `AUTH` token that is not sent.
+ *
+ * Commands this client actually sends:
+ *   - `LOGIN "<user>" "<pass>"` — credentials as RFC 3501 quoted strings. No
+ *     `AUTH` verb: the tag is followed directly by LOGIN.
+ *   - `AUTHENTICATE XOAUTH2 <base64>` instead, when `ImapClientOptions.password`
+ *     starts with `Bearer `. Acquiring that token is out of scope.
+ *   - `CAPABILITY`, lazily and at most once, and only when the server
+ *     volunteered no capabilities in its greeting, its login completion or its
+ *     EXAMINE response — see `capabilities()`.
+ *   - `EXAMINE <mailbox>` (read-only SELECT; messages are never marked \Seen)
+ *   - `UID SEARCH UNSEEN`, `UID SEARCH UNSEEN SINCE <date>`, `UID SEARCH ALL`
+ *     and `UID SEARCH SINCE <date>`
+ *   - `UID FETCH <set> (UID BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE
+ *     MESSAGE-ID TO DELIVERED-TO X-ORIGINAL-TO AUTHENTICATION-RESULTS)])` —
+ *     envelope plus delivery evidence, addressed and reported by UID
+ *   - `UID FETCH <uid> BODY.PEEK[TEXT]<0.N>` — bounded plain-text preview
+ *   - `UID FETCH <uid> BODY.PEEK[HEADER]`, `BODYSTRUCTURE`, and the
+ *     text/plain and text/html sections only. Attachments are REPORTED, never
+ *     downloaded — see `fetchMessage`.
+ *   - `LIST "" "*"` — to find the folder the server flags `\Drafts` (RFC 6154)
+ *     rather than appending to a hardcoded name
+ *   - `APPEND <drafts> (\Draft) {n}` — see `appendDraft`
+ *   - `LOGOUT`
+ *
+ * Also true of the wire session underneath (`imap-session.ts`):
+ *   - `{n}` literal continuations on server responses, counted in BYTES
+ *   - a per-operation read deadline on every command, and — through the
+ *     connection handed to `imapConnection()` — a cancellable read with no
+ *     deadline at all, for a caller that must wait in silence
+ *
+ * Not supported here, deliberately:
+ *   - IDLE / NOTIFY push. The wire session does support holding a connection
+ *     and dispatching untagged responses, which is what an IDLE loop is built
+ *     on; the loop itself is not this file's job.
+ *   - STARTTLS upgrade — there is no STARTTLS in this module. Use TLS-direct
+ *     port 993.
+ *   - Attachment CONTENT. Metadata only, from BODYSTRUCTURE.
+ *   - COPY, MOVE, EXPUNGE, STORE, and every other flag or deletion command.
+ *     APPEND is the only write, and it writes only to Drafts.
+ *   - Logging of any kind. This file contains no logger and no console call,
+ *     so credentials cannot leak through it; callers must not log them either.
  *
  * Delivered-to vs To:
  * ────────────────────
@@ -19,20 +59,6 @@
  * This client reports, in descending order of trust: the mailbox it read from,
  * then the top-most Delivered-To/X-Original-To stamped by the delivery agent.
  * The To: header is surfaced only as `unverifiedToHeaderClaim`.
- *   - FETCH BODY.PEEK[TEXT]<0.N> — bounded plain-text body preview
- *   - UID FETCH of one whole message: headers, BODYSTRUCTURE, and only the
- *     text/plain and text/html sections. Attachments are REPORTED, never
- *     downloaded — see `fetchMessage`.
- *   - APPEND of a draft with the \Draft flag, to the folder the server flags
- *     `\Drafts` (RFC 6154) rather than to a hardcoded name — see `appendDraft`
- *   - XOAUTH2 pass-through: if imapPassword starts with 'Bearer ' the client
- *     sends AUTHENTICATE XOAUTH2 with the base64-encoded SASL token; token
- *     acquisition is out of scope.
- *   - {n} literal continuations on server responses, counted in bytes
- *   - A per-operation read deadline on every command, and — through the
- *     connection handed to `imapConnection()` — a cancellable read with no
- *     deadline at all, for a caller that must wait in silence
- *   - LOGOUT
  *
  * Sequence numbers vs UIDs
  * ────────────────────────
@@ -49,24 +75,18 @@
  * `open()` builds the single `ImapSession` that owns the socket for the life
  * of the connection; every other method uses that one. Calling a fetch method
  * before `open()` fails rather than quietly building a second reader with a
- * fresh tag counter and an empty buffer.
- *
- * Not supported here (document boundaries):
- *   - IDLE / NOTIFY push. The wire session underneath does support holding a
- *     connection and dispatching untagged responses, which is what an IDLE
- *     loop is built on; the loop itself is not this file's job.
- *   - STARTTLS upgrade (use TLS-direct port 993)
- *   - Attachment CONTENT — metadata only, deliberately
- *   - COPY, MOVE, EXPUNGE, STORE, and every other flag or deletion command
- *   - Credentials are never logged; callers must not log them either
+ * fresh tag counter and an empty buffer. `open()` reports what the connection
+ * turned out to be able to do, and fails with a named reason — see
+ * `imap-open.ts`.
  *
  * Transport injection
  * ────────────────────
- * Accept a `SocketLike` instead of creating a TLS socket directly so that
- * unit tests can supply a plain net.Socket connected to an in-process fake
- * server.  Production callers pass the result of `createImapTlsSocket()`,
- * which lives in the sibling `email/node` entry so that importing this module
- * never drags a runtime-specific implementation in behind it.
+ * `ImapClientOptions.socket` is a `node:net` `Socket`, already connected. The
+ * client never creates one, so a test supplies a plain socket pointed at an
+ * in-process fake server and production supplies the result of
+ * `createImapTlsSocket()`, which lives in the sibling `email/node` entry so
+ * that importing this module never drags a runtime-specific implementation in
+ * behind it.
  */
 
 import type { Socket } from 'node:net';
@@ -111,6 +131,7 @@ import {
   NOT_OPEN_MESSAGE,
   composeOpenFailure,
   forgetConnection,
+  idleSupportFrom,
   rememberConnection,
   type ImapConnectionReport,
 } from './imap-open.js';
@@ -120,8 +141,15 @@ import {
 export { imapQuoteCredential } from './imap-names.js';
 export {
   ImapOpenError,
+  describeEmailCapabilityFailure,
   imapConnection,
+  ownerMessageForFailure,
+  resolveIdleSupport,
+  type EmailCapabilityFailureNotice,
+  type EmailCapabilityFailureReason,
   type ImapConnectionReport,
+  type ImapIdleDecision,
+  type ImapIdleSupport,
   type ImapOpenFailureReason,
 } from './imap-open.js';
 
@@ -360,7 +388,7 @@ export class ImapClient {
     this.readable = true;
     return {
       advertisedCapabilities: this.advertised,
-      supportsIdle: this.advertised.length === 0 ? null : this.advertised.includes('IDLE'),
+      idle: idleSupportFrom(this.advertised),
       mailbox: { ...this.status, name: this.mailbox },
     };
   }

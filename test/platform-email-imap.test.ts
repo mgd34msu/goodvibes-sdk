@@ -11,6 +11,10 @@ import {
   ImapOpenError,
   imapQuoteCredential,
 } from '../packages/sdk/src/platform/email/imap-client.ts';
+import {
+  describeEmailCapabilityFailure,
+  resolveIdleSupport,
+} from '../packages/sdk/src/platform/email/imap-open.ts';
 import { formatImapDate } from '../packages/sdk/src/platform/email/imap-headers.ts';
 import {
   connectSocket,
@@ -1074,7 +1078,7 @@ describe('ImapClient open() reports capability, and names its failures', () => {
 
     const report = await client.open();
 
-    expect(report.supportsIdle).toBe(true);
+    expect(report.idle).toEqual({ known: true, supported: true });
     expect(report.advertisedCapabilities).toContain('UIDPLUS');
     expect(report.mailbox.name).toBe('Alias-42');
     expect(report.mailbox.uidValidity).toBe(1387556432);
@@ -1104,16 +1108,101 @@ describe('ImapClient open() reports capability, and names its failures', () => {
     const client = await build(fakeServer.address.port);
 
     const report = await client.open();
-    // Unknown, which is not the same fact as "does not support IDLE".
-    expect(report.supportsIdle).toBeNull();
+    // Unknown, which is not the same fact as "does not support IDLE" — and the
+    // shape does not let it be mistaken for one. `report.idle.supported` does
+    // not exist until `known` has been narrowed, so a watcher cannot read the
+    // unknown case as falsy by accident.
+    expect(report.idle).toEqual({ known: false });
     expect(report.advertisedCapabilities).toEqual([]);
     // Nothing was asked for during open — ordinary mail operations pay nothing.
     expect(seen.some((line) => line.includes('CAPABILITY'))).toBe(false);
+
+    // THE CASE THE TRI-STATE EXISTS FOR: a server that volunteered nothing in
+    // its greeting still reaches IDLE, because the unknown is resolved by
+    // actually asking rather than by assuming the answer is no.
+    const decision = await resolveIdleSupport(client);
+    expect(decision).toEqual({ supported: true, reason: 'advertised' });
 
     expect(await client.capabilities()).toContain('IDLE');
     expect(seen.filter((line) => line.includes('CAPABILITY'))).toHaveLength(1);
     // Asked once, cached after.
     await client.capabilities();
     expect(seen.filter((line) => line.includes('CAPABILITY'))).toHaveLength(1);
+  });
+
+  test('a server that will not list its capabilities polls, and says why', async () => {
+    fakeServer = await makeFakeImapServer(script({
+      // Answers CAPABILITY with a bare OK: no atoms at all.
+      capabilityReply: (tag) => [`${tag} OK CAPABILITY completed`],
+    }));
+    const client = await build(fakeServer.address.port);
+
+    const report = await client.open();
+    expect(report.idle).toEqual({ known: false });
+
+    const decision = await resolveIdleSupport(client);
+    // Not silently false: false WITH the reason, so the surfaced status can
+    // say it is polling because the server would not say, rather than leaving
+    // the owner to assume his provider cannot do better.
+    expect(decision).toEqual({ supported: false, reason: 'server-would-not-say' });
+  });
+
+  test('a server that lists capabilities without IDLE is a real no', async () => {
+    fakeServer = await makeFakeImapServer(script({
+      greeting: '* OK [CAPABILITY IMAP4rev1 UIDPLUS] Fake Server ready',
+    }));
+    const client = await build(fakeServer.address.port);
+
+    const report = await client.open();
+    expect(report.idle).toEqual({ known: true, supported: false });
+    expect(await resolveIdleSupport(client))
+      .toEqual({ supported: false, reason: 'not-advertised' });
+  });
+
+  test('a terminal failure carries an owner-facing notice that names the fix', async () => {
+    fakeServer = await makeFakeImapServer(script({
+      loginReply: (tag) => `${tag} NO [AUTHENTICATIONFAILED] Invalid credentials (Failure)`,
+    }));
+    const client = await build(fakeServer.address.port);
+
+    let caught: unknown;
+    try {
+      await client.open();
+    } catch (err) {
+      caught = err;
+    }
+
+    // A supervisor routes this record; it does not re-derive the failure from a
+    // message string, which is how a terminal failure ends as a log line
+    // nobody reads while the inbox looks quiet.
+    const notice = describeEmailCapabilityFailure(caught);
+    expect(notice).not.toBeNull();
+    expect(notice?.reason).toBe('authentication-rejected');
+    expect(notice?.terminal).toBe(true);
+    expect(notice?.mailbox).toBe('Alias-42');
+    expect(notice?.ownerMessage).toContain('email.passwordRef');
+    expect(notice?.ownerMessage).toContain('daemon scope');
+    expect(notice?.ownerMessage).toContain('not retried');
+    expect(notice?.serverMessage).toContain('AUTHENTICATIONFAILED');
+  });
+
+  test('a retryable failure says so, and does not ask the owner to do anything', async () => {
+    fakeServer = await makeFakeImapServer((sock) => {
+      sock.on('error', () => { /* teardown races are not failures */ });
+      // No greeting at all.
+    });
+    const client = await build(fakeServer.address.port, 150);
+
+    let caught: unknown;
+    try {
+      await client.open();
+    } catch (err) {
+      caught = err;
+    }
+
+    const notice = describeEmailCapabilityFailure(caught);
+    expect(notice?.reason).toBe('connection-failed');
+    expect(notice?.terminal).toBe(false);
+    expect(notice?.ownerMessage).toContain('retried automatically');
   });
 });

@@ -1,6 +1,6 @@
 /**
- * Opening a connection: what it turned out to be able to do, and the three
- * distinct ways it can fail to become readable.
+ * Opening a connection: what it turned out to be able to do, the ways it can
+ * fail to become readable, and what the owner is told when it does.
  *
  * Split out of `imap-client.ts` to keep that file under the repository's
  * per-file line cap, and because these types are what a caller reasons about
@@ -55,6 +55,12 @@ export class ImapOpenError extends Error {
   readonly mailbox: string;
   /** False only for `connection-failed`: nothing else is worth retrying. */
   readonly terminal: boolean;
+  /**
+   * The routable record. A supervisor reads this and delivers it; it does not
+   * have to re-derive from a message string what the failure was, and a
+   * terminal failure therefore cannot end as a log line nobody reads.
+   */
+  readonly notice: EmailCapabilityFailureNotice;
 
   constructor(input: {
     readonly reason: ImapOpenFailureReason;
@@ -72,6 +78,13 @@ export class ImapOpenError extends Error {
     this.serverMessage = input.serverMessage;
     this.mailbox = input.mailbox;
     this.terminal = input.reason !== 'connection-failed';
+    this.notice = {
+      reason: input.reason,
+      terminal: this.terminal,
+      mailbox: input.mailbox,
+      ownerMessage: ownerMessageForFailure(input.reason, input.mailbox),
+      serverMessage: input.serverMessage,
+    };
   }
 }
 
@@ -90,14 +103,158 @@ export interface ImapConnectionReport {
    */
   readonly advertisedCapabilities: readonly string[];
   /**
-   * Whether `IDLE` (RFC 2177) was advertised. `null` means the server said
-   * nothing about its capabilities, which is not the same as "no". A watcher
-   * choosing between push and polling must resolve a `null` by calling
-   * `capabilities()`, never by treating it as false.
+   * Whether `IDLE` (RFC 2177) was advertised — as two cases, not three values.
+   *
+   * A tri-state whose third value can be read as falsy looks careful and
+   * behaves carelessly: `if (report.supportsIdle)` would compile and would
+   * quietly mean "poll forever against a server that supports push". This
+   * shape does not permit that. `.supported` does not exist until `.known` has
+   * been narrowed to true, so a caller either handles "the server said
+   * nothing" or does not compile.
+   *
+   * The way to handle it is `resolveIdleSupport(client)`, which answers the
+   * unknown case by actually asking.
    */
-  readonly supportsIdle: boolean | null;
+  readonly idle: ImapIdleSupport;
   /** The mailbox that was EXAMINEd, and what the server said about it. */
   readonly mailbox: ImapMailboxStatus & { readonly name: string };
+}
+
+/**
+ * What the server said about IDLE, in a shape that cannot be read as a boolean
+ * by accident.
+ *
+ * Two cases, not three values: either the server told us (`known: true`, with
+ * the answer) or it told us nothing (`known: false`, with no answer to read).
+ * `supported` is deliberately absent from the second case rather than present
+ * and undefined — present-and-undefined is falsy, which is the exact mistake
+ * this shape exists to make impossible.
+ */
+export type ImapIdleSupport =
+  | { readonly known: true; readonly supported: boolean }
+  | { readonly known: false };
+
+/** Build the IDLE case from a capability set, empty meaning "said nothing". */
+export function idleSupportFrom(capabilities: readonly string[]): ImapIdleSupport {
+  if (capabilities.length === 0) return { known: false };
+  return { known: true, supported: capabilities.includes('IDLE') };
+}
+
+/** Whether IDLE can be used, and how that was established. */
+export interface ImapIdleDecision {
+  readonly supported: boolean;
+  /**
+   * `advertised` — the server named IDLE.
+   * `not-advertised` — the server listed its capabilities and IDLE was not one.
+   * `server-would-not-say` — it never listed them, even when asked. Polling is
+   *   the right fallback, and the reason belongs in the surfaced status so the
+   *   owner can see WHY it is polling rather than assume the provider cannot
+   *   do better.
+   */
+  readonly reason: 'advertised' | 'not-advertised' | 'server-would-not-say';
+}
+
+/**
+ * Resolve IDLE support, asking the server when it volunteered nothing.
+ *
+ * This is the accessor the watcher goes through. It exists so that "the server
+ * said nothing" is answered by a `CAPABILITY` command rather than by a
+ * shrug — an unknown resolved into a real answer, or into a named reason for
+ * not having one.
+ */
+export async function resolveIdleSupport(
+  client: Pick<ImapClient, 'capabilities'>,
+): Promise<ImapIdleDecision> {
+  const capabilities = await client.capabilities();
+  if (capabilities.length === 0) {
+    return { supported: false, reason: 'server-would-not-say' };
+  }
+  return capabilities.includes('IDLE')
+    ? { supported: true, reason: 'advertised' }
+    : { supported: false, reason: 'not-advertised' };
+}
+
+// ---------------------------------------------------------------------------
+// Surfacing a failure to the owner
+// ---------------------------------------------------------------------------
+
+/**
+ * Why a mailbox capability is unavailable, in a form a supervisor can route.
+ *
+ * `credential-unavailable` sits alongside the three open failures because it
+ * is the same fact from one step earlier: there is nothing to sign in with.
+ * It is called out separately because its fix is different from a rejected
+ * password — the secret is missing rather than wrong.
+ */
+export type EmailCapabilityFailureReason =
+  | ImapOpenFailureReason
+  | 'credential-unavailable';
+
+/**
+ * A terminal failure that must reach the owner, not merely a log line.
+ *
+ * A watcher that stops permanently has to say so somewhere authoritative and
+ * name the step that fixes it. Silence is the failure this whole capability
+ * exists to end: an inbox that looks quiet while mail piles up in it is
+ * indistinguishable, from the outside, from an inbox with no mail in it.
+ */
+export interface EmailCapabilityFailureNotice {
+  readonly reason: EmailCapabilityFailureReason;
+  /** True when retrying cannot help; something has to change first. */
+  readonly terminal: boolean;
+  /** The mailbox this was about, or '' when it was not about one. */
+  readonly mailbox: string;
+  /** One or two sentences for the owner, naming the step that fixes it. */
+  readonly ownerMessage: string;
+  /** The server's own words, or the underlying failure text. '' when neither. */
+  readonly serverMessage: string;
+}
+
+/** The owner-facing sentence for each reason, naming the step that fixes it. */
+export function ownerMessageForFailure(
+  reason: EmailCapabilityFailureReason,
+  mailbox: string,
+): string {
+  switch (reason) {
+    case 'credential-unavailable':
+      return 'No mail password is stored where the daemon reads secrets. Nothing '
+        + 'will be read until the secret named by email.passwordRef exists at '
+        + 'daemon scope. A credential saved by another surface is not visible '
+        + 'here and is deliberately not searched for — reading one would work on '
+        + 'the machine that saved it and fail everywhere else.';
+    case 'authentication-rejected':
+      return 'The mail server rejected the sign-in. Nothing will be read until '
+        + 'the stored password is replaced: put a working password in the secret '
+        + 'named by email.passwordRef, at daemon scope, and reconnect. The '
+        + 'rejected credential is not retried, because repeated rejected '
+        + 'sign-ins are how an account gets locked.';
+    case 'mailbox-unavailable':
+      return `Sign-in worked, but the folder '${mailbox}' could not be opened. `
+        + 'Nothing will be read from it until email.mailbox names a folder that '
+        + 'exists on the server.';
+    case 'connection-failed':
+      return 'Could not reach the mail server. This is retried automatically, so '
+        + 'no change is needed unless it keeps happening.';
+  }
+}
+
+/**
+ * Read the routable notice off a failure, whatever threw it.
+ *
+ * Structural rather than `instanceof`, so a credential failure raised before
+ * any socket exists — in a module this one must not import — is routed by the
+ * same path as an open failure.
+ */
+export function describeEmailCapabilityFailure(
+  error: unknown,
+): EmailCapabilityFailureNotice | null {
+  if (typeof error !== 'object' || error === null) return null;
+  const candidate = (error as { readonly notice?: unknown }).notice;
+  if (typeof candidate !== 'object' || candidate === null) return null;
+  const notice = candidate as Partial<EmailCapabilityFailureNotice>;
+  if (typeof notice.reason !== 'string' || typeof notice.ownerMessage !== 'string') return null;
+  if (typeof notice.terminal !== 'boolean') return null;
+  return notice as EmailCapabilityFailureNotice;
 }
 
 /**

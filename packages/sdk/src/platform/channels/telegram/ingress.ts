@@ -76,6 +76,17 @@ export interface TelegramIngressDeps {
    * stand down to, and the competing consumer is frequently transient anyway.
    */
   readonly onConcurrentConsumerConflict?: ((detail: string) => void) | undefined;
+  /**
+   * Where the conflict-retry jitter comes from: a fraction in [0, 1) scaled by
+   * `CONFLICT_JITTER_MS`. Defaults to `Math.random`.
+   *
+   * A seam rather than a hidden `Math.random()` call because a test that has
+   * to wait out an unobservable random delay is not testing recovery, it is
+   * rolling dice: with a five-second spread and a five-second test timeout,
+   * one run in five failed on the draw alone, and every one of those failures
+   * looked exactly like a regression in recovery.
+   */
+  readonly conflictJitterFraction?: (() => number) | undefined;
 }
 
 /**
@@ -123,6 +134,19 @@ export class TelegramIngressSupervisor {
   };
 
   constructor(private readonly deps: TelegramIngressDeps) {}
+
+  /**
+   * The fraction the conflict jitter is drawn from, clamped into [0, 1).
+   *
+   * Clamped rather than trusted: a seam that a caller can set to 5 would turn
+   * a five-second stagger into a twenty-five-second one, and the point of the
+   * jitter is to break lockstep, not to extend an outage.
+   */
+  private conflictJitterFraction(): number {
+    const draw = this.deps.conflictJitterFraction?.() ?? Math.random();
+    if (!Number.isFinite(draw) || draw <= 0) return 0;
+    return draw >= 1 ? 0.999_999 : draw;
+  }
 
   get status(): TelegramIngressStatus {
     return this.currentStatus;
@@ -302,7 +326,7 @@ export class TelegramIngressSupervisor {
         // lockstep and spend the rest of the day terminating each other's long
         // poll at the same instant. Only ever adds delay, never removes it.
         const jitter = error instanceof TelegramApiError && error.errorCode === 409
-          ? Math.floor(Math.random() * CONFLICT_JITTER_MS)
+          ? Math.floor(this.conflictJitterFraction() * CONFLICT_JITTER_MS)
           : 0;
         await this.delay((dictated ?? backoffMs) + jitter);
         backoffMs = Math.min(backoffMs * 2, BACKOFF_MAX_MS);
