@@ -733,7 +733,20 @@ no enumerate-all-people call available to a composition path**: `profile.person`
 takes a name, and `profile.read` — which returns everything — is not callable
 from a composition path at all.
 
-**`profile.read` carries its own scope, `read:profile.full`.** Every other read
+**The name is flat on purpose.** It was briefly `read:profile.full`, which was
+the only dotted scope in the entire platform and invented a hierarchy the
+matcher does not implement: `scopeMatches` grants on an exact match, on `*`, or
+on a `prefix:*` wildcard, and nothing else. So `.full` read as "profile, but
+more" while giving its holder *no* access to the plain `read:profile` verbs — a
+token minted with what looked like the superset would have taken 403s on
+`profile.get`, `profile.person`, `profile.provenance` and `profile.status`.
+Today that is masked, because `getGrantedGatewayScopes` unions every scope the
+catalog declares and real tokens hold both; it would have surfaced the first
+time a caller passed an explicit list to `gateway.ts`, which accepts one. Two
+flat unrelated names make the two capabilities what they actually are, and a
+caller wanting both lists both.
+
+**`profile.read` carries its own scope, `read:profile-document`.** Every other read
 verb is `read:profile`. This is what stops "not callable from a composition path"
 being a sentence in a document that no mechanism keeps: a caller holding
 `read:profile` can ask `profile.get` for one field and `profile.person` for one
@@ -762,7 +775,7 @@ Modelled on `method-catalog-principals.ts` / `routes/principals.ts`.
 
 | Verb | Scope | Purpose |
 |---|---|---|
-| `profile.read` | `read:profile.full` | the whole document, by section |
+| `profile.read` | `read:profile-document` | the whole document, by section |
 | `profile.get` | `read:profile` | one mechanical field |
 | `profile.person` | `read:profile` | one person by name |
 | `profile.provenance` | `read:profile` | provenance + `<!-- was: -->` predecessors |
