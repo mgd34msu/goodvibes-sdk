@@ -328,6 +328,34 @@ could not open the file."
 Content can therefore never be silently dropped, because there is no path that
 discards a line it did not understand.
 
+#### "Not loaded yet" is not one of the states
+
+There are exactly three: **loaded**, **disabled**, and **unavailable with a
+reason**. A live run found a fourth leaking out — `composeOwnerProfile` fires
+`void store.load().then(…)` and returns synchronously, so for the first
+milliseconds of daemon life every verb answered *"Your profile has not been
+loaded yet"*.
+
+That is the same dishonesty as returning an empty profile, wearing a different
+sentence. "I have not got round to opening the file" is not an answer to "what do
+you know about me", and it is worse further down: the consumer fallback is
+installed in that window but resolves nothing, so `checkin.quietHours` and
+`daemon.timezone` read as *unset* rather than as their profile values, and a
+first turn landing there gets no open-tier block at all. Nothing logs it. The
+owner would see his check-in fire at the wrong hour once after a restart and have
+no way to connect it to anything.
+
+**The store exposes a `ready` promise, and every verb and every consumer read
+awaits it before answering.** Boot is not blocked — composition stays
+synchronous — but no caller is ever handed the pre-load state. It collapses to
+one of the three real answers. A load that is genuinely still in flight makes the
+caller wait for a single small file read, which is the honest cost and is
+measured in milliseconds.
+
+This is the class of defect only a live run finds. Every stubbed test constructs
+a loaded store, so the window does not exist for it, and four refusal tests were
+passing on this message rather than on the gate they were written to prove.
+
 ### 4.5 His edits are authoritative
 
 - A line he deletes stays deleted. Nothing restores it, and nothing re-learns it
@@ -615,6 +643,21 @@ Content addressing degrades honestly. If the text no longer matches, nothing is
 deleted and the answer is "that is not there any more" — which is true, and
 which tells him his file changed. "Forget that" has to mean forget *that*,
 identified by what it says.
+
+**The list marker is syntax, not content, and is normalised on both sides.**
+`ProfileLine.text` keeps the leading `- `, so a naive `text.trim() === wanted`
+requires a caller to pass `- Allergic to shellfish` and finds nothing for
+`Allergic to shellfish`. That is the wrong boundary: the owner says "forget that
+I'm allergic to shellfish", and the marker is a markdown artefact he never
+uttered. The matcher strips a leading list marker (`-`, `*`, `+`, or an ordered
+`1.`) from the stored line and from the wanted text before comparing, so both
+forms find the same line. Nothing else changes, and it cannot widen a match into
+the wrong line, because ambiguity is already refused.
+
+**Two lines reading identically are refused, never guessed.** The answer names
+how many matched and the file is untouched. Deleting the wrong one of two
+identical lines is unrecoverable; asking is not, and it is not a burden because
+the disambiguating information — which one he meant — is only in his head.
 
 `ProfileLine.lineIndex` (§5.1) stays, because the writer needs it to splice. It
 describes the **in-memory model**, not the reachable surface: the model is
