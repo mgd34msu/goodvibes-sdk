@@ -785,6 +785,62 @@ Why this is the right shape:
 - **Untrusted-ness travels with the value.** A field passed through three
   functions is still tagged `untrusted` at the end.
 
+**Discord masked links are what make this required rather than precautionary**,
+and it was verified rather than assumed. `[text](url)` **does** render in
+bot-sent messages, webhook messages and embeds. It does **not** render in
+messages a human types into the client — a trade-off Discord made specifically
+to stop people hiding malicious URLs behind innocent text.
+
+The daemon delivers over the bot and webhook paths, which are precisely the
+paths where masked links work. So bracket and paren escaping is not
+cheap-if-unneeded insurance; it is the control that stops a mail sender's chosen
+text from arriving in the owner's Discord as a clickable link reading whatever
+they want. It is documented as necessary, with the finding beside it, because
+**an escaper that looks optional gets deleted by the next person tidying up**.
+
+Noted and deliberately **not** relied on: Discord runs its own filter that
+blocks a URL appearing in the *text* portion of a masked link. That is their
+mitigation, not a contract with us; it can change without notice, and it does
+not cover the general case of arbitrary attacker-chosen display text. Our
+escaping stands on its own.
+
+Sources: `https://github.com/discord/discord-api-docs/issues/6096`,
+`https://gist.github.com/matthewzring/9f7bbfd102003963f9be7dbcf7d40e51`.
+
+### 7.3 Make the unsafe value unconstructible, not merely validated
+
+The strongest defence produced in this round deserves a name, because it is a
+better class of protection than sanitizing and it generalizes well past email.
+
+`receivedAt` is a branded `ReceiptTimestamp` whose only constructor takes a real
+`Date` the daemon observed. A sender's `Date:` header is a `string`, so it
+cannot be passed — not "is rejected by validation", but **has no path into the
+type at all**. The check cannot be forgotten, because there is nowhere to forget
+it.
+
+The codebase already had one instance, and it is the reason the expectation
+mechanism can be trusted at all: `DeliveredRecipient` does not export its brand
+symbol, so a value can only originate from the mailbox actually fetched from or
+a delivery header the receiving agent stamped. No quantity of sender-written
+text produces one.
+
+Stated so it gets reused:
+
+> Where an attacker-supplied value could be mistaken for an observed one, do not
+> validate the attacker's version — make it **impossible to construct**. Give
+> the observed value a brand whose only constructor takes the observation
+> itself.
+
+Candidates wherever this design reaches: an observed receipt time versus a
+claimed `Date:`; a delivery-verified recipient versus a claimed `To:`; a
+validated registrable domain versus a claimed link host. **And in payments,
+which is a consumer of this work: a merchant's claimed total must not be
+constructible as our validated total.** Same defect shape, money attached.
+
+Sanitizing is still the right tool for text that must be displayed. Branding is
+for values that carry authority, where the answer is not "clean it" but "you
+cannot have this from there".
+
 `deliverSurfaceNotice(binding, text)` takes a plain string and stays as it is;
 the channel renderer runs immediately before it. Until every channel has an
 escaper, the fallback renderer emits **plain text with all markup neutralized**
