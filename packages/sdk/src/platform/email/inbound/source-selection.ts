@@ -44,7 +44,22 @@ export type InboundMailSourceKind = 'imap' | 'gmail';
 export interface InboundSourceSelectionInput {
   /** `surfaces.email.inbound.source`, already read by the caller. */
   readonly configured: InboundEmailSource;
-  /** Whether Google credentials have actually been adopted on this machine. */
+  /**
+   * Whether a Gmail source is available to read with.
+   *
+   * NOT "whether Google credentials are adopted", which is what this was
+   * called and what its messages claimed. The only caller
+   * (`composeInboundMail`) sets it from `options.gmail !== undefined` — the
+   * presence of a Gmail SOURCE BUILDER — and no composition in this repo
+   * passes one, so it is always false. An owner who has connected Google was
+   * told "no Google credentials have been adopted", which sent him to look for
+   * a credential that was already there.
+   *
+   * The two facts are not separated because the selector cannot separate them:
+   * it is handed one boolean. So the name says what the boolean actually is,
+   * and the messages name both possibilities rather than asserting the one
+   * that was never checked.
+   */
   readonly googleAdopted: boolean;
   /**
    * Whether the configured mail account is a Gmail account.
@@ -125,10 +140,15 @@ export function selectInboundMailSource(
       return {
         kind: 'refused',
         reason: 'gmail-forced-without-google',
-        detail: 'surfaces.email.inbound.source is set to "gmail", and no Google credentials have been '
-          + 'adopted on this machine, so there is no token to call the Gmail API with.',
-        fix: 'Connect Google, or set surfaces.email.inbound.source to "imap" (or back to "auto") to '
-          + 'read the mailbox over IMAP instead.',
+        detail: 'surfaces.email.inbound.source is set to "gmail", and this daemon has no Gmail source '
+          + 'to read with — either no Google credentials have been adopted on this machine, or the '
+          + 'Gmail reader is not wired into this build. The two are reported together because the '
+          + 'selector is told one fact, not both, and naming only the first would send an owner who '
+          + 'HAS connected Google looking for a credential that is already there.',
+        fix: 'Connect Google if you have not. If Google is already connected, this is the daemon '
+          + 'missing its Gmail reader rather than anything you can change — set '
+          + 'surfaces.email.inbound.source to "imap" (or back to "auto") to read the mailbox over '
+          + 'IMAP meanwhile.',
       };
     }
     if (!input.mailAccountIsGmail) {
@@ -157,8 +177,10 @@ export function selectInboundMailSource(
       kind: 'selected',
       source: 'imap',
       basis: 'google-not-adopted',
-      detail: 'Inbound mail is read over IMAP because no Google credentials have been adopted. '
-        + 'IMAP holds an IDLE connection, which is push: new mail is noticed within about a second.',
+      detail: 'Inbound mail is read over IMAP because no Gmail source is available — either Google '
+        + 'is not connected on this machine, or the Gmail reader is not wired into this build. '
+        + 'IMAP holds an IDLE connection, which is push: new mail is noticed within about a second, '
+        + 'so this is the better of the two paths either way.',
     };
   }
   if (!input.mailAccountIsGmail) {

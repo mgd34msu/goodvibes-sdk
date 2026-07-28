@@ -38,14 +38,6 @@ import {
 // rather than owning it, which is the point (§7.3).
 import type { SurfaceNoticeRefusal } from '../../daemon/types.js';
 
-/**
- * Longest a single card-shaped span can be in written form: nineteen digits
- * with a separator between every pair. The redaction window overshoots the
- * excerpt cap by this much so a span starting just inside the cap is always
- * seen whole rather than half-detected.
- */
-const MAX_CARD_SPAN_CHARS = 19 + 18;
-
 /** What `validateInboundMailRecord` accepts for `subject`; redaction must not exceed it. */
 const MAX_SUBJECT_CHARS = 998;
 
@@ -484,13 +476,12 @@ export class InboundMailStore {
    * Record one inbound message. The body excerpt is redacted of card shapes and
    * then truncated to the policy cap at write time.
    *
-   * Redaction happens BEFORE the truncation, over a window slightly longer than
-   * the cap. Truncating first and redacting the result would leave a card
-   * number that straddles the cap boundary as a still-readable prefix of up to
-   * eighteen digits — a shorter leak, not a redaction. The window overshoot is
-   * bounded by MAX_CARD_SPAN_CHARS so a span starting just inside the cap is
-   * always seen whole; anything starting beyond the cap is dropped by the
-   * truncation regardless.
+   * Redaction happens BEFORE the truncation, over the WHOLE body rather than
+   * a window. Truncating first and redacting the result would leave a card
+   * number straddling the cap as a still-readable prefix of up to eighteen
+   * digits — a shorter leak, not a redaction. A window sized to one span is
+   * not enough either, because redaction shortens and several of them slide
+   * later text back inside the cap; see the note at the call site.
    */
   async record(input: InboundMailRecordInput): Promise<InboundMailRecord> {
     // The identity travels as a unit, chosen by the input's own source, so a
@@ -528,9 +519,35 @@ export class InboundMailStore {
       outcome: input.outcome,
       noticeStatus: input.noticeStatus,
       ...(input.noticeFailureReason ? { noticeFailureReason: input.noticeFailureReason } : {}),
+      // SCAN, THEN TRUNCATE — and scan everything that could reach the
+      // excerpt, not a window sized to one span.
+      //
+      // This used to scan `cap + MAX_CARD_SPAN_CHARS` and slice to `cap`, on
+      // the reasoning that the overshoot means a span starting just inside the
+      // cap is always seen whole. That reasoning is sound for ONE span and
+      // wrong for several, because redaction SHORTENS: `[redacted:pan]` is
+      // fourteen characters against a nineteen-digit grouped PAN's
+      // thirty-seven, so every redaction pulls everything after it leftwards.
+      // Enough of them and a span that sat beyond the window — seen only in
+      // part, so not matched, so left raw — slides back inside the final
+      // `slice(0, cap)` and is persisted verbatim. Fifteen digits of a
+      // sixteen-digit number, with the sixteenth recoverable by check digit.
+      //
+      // Not reachable today: `intake.ts` passes `body: ''`. It is the
+      // designated path for the body-fetch round, and the comment that used to
+      // sit here asserting safety is exactly what would have stopped anyone
+      // re-deriving it.
+      //
+      // The fix is to remove the window, not to widen it. The body is already
+      // bounded upstream by the fetch's own byte cap, and `MAX_BODY_EXCERPT_CHARS`
+      // bounds what is kept, so scanning the whole of what we were handed costs
+      // nothing measurable and leaves no boundary to reason about. The second
+      // pass over the truncated result is belt and braces: after this, the
+      // stored string provably contains no detectable card shape, whatever the
+      // first pass did to the offsets.
       bodyExcerpt: redactCardShapes(
-        input.body.slice(0, this.policy.maxBodyExcerptChars + MAX_CARD_SPAN_CHARS),
-      ).slice(0, this.policy.maxBodyExcerptChars),
+        redactCardShapes(input.body).slice(0, this.policy.maxBodyExcerptChars),
+      ),
       receivedAt: input.receivedAt,
     };
     return this.mutate(async (records) => ({ next: [...records, entry], result: entry }));
