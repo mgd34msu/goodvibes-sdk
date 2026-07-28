@@ -31,6 +31,7 @@ import { randomUUID } from 'node:crypto';
 import { normalizeDomain, normalizeEmailAddress } from './signup-address.js';
 import { describeDeliveryEvidence, type DeliveredRecipient } from './delivery-evidence.js';
 import type { AuthoritySurface } from '../security/untrusted-content.js';
+import { registrableDomain } from '../security/public-suffix.js';
 
 // ──────────────────────────────────────────────────────────────────
 // Types
@@ -227,6 +228,45 @@ export const DEFAULT_VERIFICATION_WINDOW_MS = 15 * 60 * 1_000;
 /** Hard ceiling. No caller can open an indefinite window. */
 export const MAX_VERIFICATION_WINDOW_MS = 60 * 60 * 1_000;
 export const MIN_VERIFICATION_WINDOW_MS = 1_000;
+
+/**
+ * Field length bounds.
+ *
+ * `MAX_OPEN_EXPECTATIONS` bounds the COUNT of records and nothing bounded
+ * their size, so a single expectation carrying a one-megabyte `purpose`
+ * validated, and thirty-two of them made a thirty-two megabyte file that is
+ * entirely well-formed. A store that reaps and bounds by count while accepting
+ * unbounded fields is bounded in the axis nobody attacks.
+ *
+ * 253 is the DNS name limit; 320 is the RFC 5321 maximum for an address; a
+ * purpose is a sentence a workstream wrote about itself, and 512 is generous
+ * for that.
+ */
+export const MAX_SERVICE_DOMAIN_CHARS = 253;
+export const MAX_RECIPIENT_ADDRESS_CHARS = 320;
+export const MAX_PURPOSE_CHARS = 512;
+
+/**
+ * Whether a service domain is one a link could actually be validated against.
+ *
+ * `normalizeDomain` only trims, lowercases and strips a trailing dot and port
+ * — it performs no hostname validation at all, so `"com"` survived it intact
+ * on BOTH the load path and the live verb. That mattered because
+ * `hostMatchesServiceDomain` accepts any host ending in `.${serviceDomain}`:
+ * an expectation scoped to `"com"` authorises a link at every `.com` host in
+ * existence. One edit of a 0644 file, or one call to the open verb, minted a
+ * wildcard-TLD grant.
+ *
+ * `registrableDomain` answers the real question — is there a label BELOW a
+ * public suffix — and returns null for a bare TLD, for a multi-label public
+ * suffix like `co.uk`, and for a single label. Used rather than a regex
+ * because the set of public suffixes is data, not a pattern: `co.uk` is a
+ * suffix and `co.com` is not, and no regex knows the difference.
+ */
+export function isRegistrableServiceDomain(domain: string): boolean {
+  if (domain.length === 0 || domain.length > MAX_SERVICE_DOMAIN_CHARS) return false;
+  return registrableDomain(domain) !== null;
+}
 /** Bound on concurrently open expectations, so a loop cannot grow the hole. */
 export const MAX_OPEN_EXPECTATIONS = 32;
 
@@ -385,14 +425,33 @@ function clampWindow(windowMs: number | undefined): number {
  * the live path. Returns `null` for anything that fails any check. Never
  * throws, never repairs, never widens a window.
  *
- * Deliberately does NOT check whether `expiresAt` is already in the past —
- * that is a separate rule (expired records are reaped on load, before they
- * can match anything) and belongs to the store's own sweep, not to content
- * validation. Keeping the two checks separate mirrors every other persisted
- * store in this codebase (`device-grants.ts`'s `validateGrant` does not check
- * expiry either; `list()`/`sweep()` do).
+ * Validated against the PRESENT, not only against itself.
+ *
+ * The window used to be checked as a delta alone — `expiresAt - openedAt`
+ * within the ceiling — and the `now` parameter was accepted and ignored. A
+ * record dated `openedAt: 2999-01-01` with a thirty-minute window therefore
+ * had a perfectly valid delta, validated, survived the sweep (which only
+ * reaps records already EXPIRED, and this one expires in the year 2999) and
+ * hydrated into a live expectation that never ages out. `openExpectation`
+ * computes `expiresAt = now + clampWindow(...)`, so a live grant cannot
+ * outlive the hour — which made the load path strictly weaker than the API it
+ * claims to mirror, and falsified §9.2's guarantee that "a file on disk cannot
+ * mint an expectation the live API would have refused".
+ *
+ * The earlier reasoning for leaving expiry to the sweep — that
+ * `device-grants.ts` does the same — held only for records in the PAST, which
+ * a sweep does catch. A future-dated record is caught by neither, and that is
+ * the gap. Both ends are checked here now:
+ *
+ *   - `expiresAt` must be in the future, or the record is already spent;
+ *   - `openedAt` must NOT be in the future, or the record describes a grant
+ *     that has not been issued yet;
+ *   - the delta must sit within [MIN, MAX], the same bounds `clampWindow`
+ *     enforces on the live path — `<= 0` used to be the only floor, so the
+ *     load path accepted a one-millisecond window the API would have raised
+ *     to a second.
  */
-export function validatePersistedExpectation(value: unknown, _now: Date = new Date()): VerificationExpectation | null {
+export function validatePersistedExpectation(value: unknown, now: Date = new Date()): VerificationExpectation | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const record = value as Record<string, unknown>;
 
@@ -405,15 +464,17 @@ export function validatePersistedExpectation(value: unknown, _now: Date = new Da
   if (record.authority !== 'evidence-only') return null;
 
   const purpose = typeof record.purpose === 'string' ? record.purpose.trim() : '';
-  if (!purpose) return null;
+  if (!purpose || purpose.length > MAX_PURPOSE_CHARS) return null;
 
   const rawServiceDomain = typeof record.serviceDomain === 'string' ? record.serviceDomain : '';
   const serviceDomain = normalizeDomain(rawServiceDomain);
-  if (!serviceDomain) return null;
+  // Not merely non-empty: a bare TLD normalises to itself and authorises every
+  // host beneath it. See `isRegistrableServiceDomain`.
+  if (!isRegistrableServiceDomain(serviceDomain)) return null;
 
   const rawRecipient = typeof record.recipientAddress === 'string' ? record.recipientAddress : '';
   const recipientAddress = normalizeEmailAddress(rawRecipient);
-  if (!recipientAddress.includes('@')) return null;
+  if (!recipientAddress.includes('@') || recipientAddress.length > MAX_RECIPIENT_ADDRESS_CHARS) return null;
 
   const openedAtRaw = typeof record.openedAt === 'string' ? record.openedAt : '';
   const expiresAtRaw = typeof record.expiresAt === 'string' ? record.expiresAt : '';
@@ -421,8 +482,27 @@ export function validatePersistedExpectation(value: unknown, _now: Date = new Da
   const expiresAtMs = Date.parse(expiresAtRaw);
   if (!Number.isFinite(openedAtMs) || !Number.isFinite(expiresAtMs)) return null;
 
+  // A grant that has not been issued yet is not a grant.
+  //
+  // This one check is what closes the future-dating hole, and it is
+  // deliberately the ONLY absolute-time check here. Refusing an already-EXPIRED
+  // record at this layer as well would be strictly stronger and was the first
+  // thing I wrote — but it takes the `expired` classification away from
+  // `sweep()`, which then reports a merely-spent record as malformed. The
+  // owner would be told his store was corrupt when a signup simply timed out,
+  // and §9's disclosure is worth more than a redundant check: a past-expiry
+  // record is already caught by the sweep and by `hydrateExpectation`.
+  //
+  // A future-dated record was caught by NEITHER — it is not malformed by
+  // delta and it is not expired — which is precisely why it survived. With
+  // `openedAt` pinned to the past, the delta ceiling bounds `expiresAt`: a
+  // record claiming to expire in 2999 can only do so by also claiming to have
+  // opened in 2999 (refused here) or by declaring a delta of centuries
+  // (refused below).
+  if (openedAtMs > now.getTime()) return null;
+
   const windowMs = expiresAtMs - openedAtMs;
-  if (windowMs <= 0 || windowMs > MAX_VERIFICATION_WINDOW_MS) return null;
+  if (windowMs < MIN_VERIFICATION_WINDOW_MS || windowMs > MAX_VERIFICATION_WINDOW_MS) return null;
 
   return {
     id,
@@ -475,9 +555,24 @@ export class VerificationExpectationBook {
     const serviceDomain = normalizeDomain(input.serviceDomain);
     const recipientAddress = normalizeEmailAddress(input.recipientAddress);
     const purpose = input.purpose.trim();
-    if (!serviceDomain) throw new Error('A verification expectation requires the service domain the agent signed up at.');
-    if (!recipientAddress.includes('@')) throw new Error('A verification expectation requires the exact recipient address used at signup.');
+    // The SAME domain rule the load path applies. `"com"` used to pass here
+    // too — this half of the defect was reachable through the live verb with
+    // no file edit at all, and an expectation scoped to a bare TLD authorises
+    // a link at every host beneath it.
+    if (!isRegistrableServiceDomain(serviceDomain)) {
+      throw new Error(
+        `A verification expectation needs a registrable service domain — a name with a label below `
+        + `a public suffix, like 'github.com'. '${serviceDomain || input.serviceDomain}' is a public `
+        + `suffix or is not a hostname, and scoping an expectation to one would authorise every host beneath it.`,
+      );
+    }
+    if (!recipientAddress.includes('@') || recipientAddress.length > MAX_RECIPIENT_ADDRESS_CHARS) {
+      throw new Error('A verification expectation requires the exact recipient address used at signup.');
+    }
     if (!purpose) throw new Error('A verification expectation requires a stated purpose.');
+    if (purpose.length > MAX_PURPOSE_CHARS) {
+      throw new Error(`A verification expectation's purpose must be at most ${String(MAX_PURPOSE_CHARS)} characters.`);
+    }
 
     const now = input.now ?? new Date();
     this.sweepExpired(now);
