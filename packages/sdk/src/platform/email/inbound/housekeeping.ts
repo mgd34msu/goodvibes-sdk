@@ -14,7 +14,7 @@
  * was reaped and why, so a deletion is never indistinguishable from data
  * loss.
  */
-import { PersistentStore } from '../../state/persistent-store.js';
+import { PersistentStore, persistentStoreOrphansReclaimed } from '../../state/persistent-store.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { logger } from '../../utils/logger.js';
 import type { CursorSweepReport, MailboxCursorStore } from './cursor-store.js';
@@ -81,7 +81,7 @@ export interface InboundMailHousekeepingReport {
  * `MAX_DISCLOSED_REMOVALS` the entries are dropped and `removedTotal` says how
  * many there really were, so the count is never quietly wrong.
  */
-type DisclosedSweep<T extends { readonly removed: readonly unknown[] }> =
+export type DisclosedSweep<T extends { readonly removed: readonly unknown[] }> =
   Omit<T, 'survivors' | 'removed'> & {
     readonly removed: readonly T['removed'][number][];
     /** How many removals the pass actually made, when `removed` was truncated. */
@@ -105,6 +105,24 @@ interface HousekeepingLog extends Record<string, unknown> {
 
 /** Keep the disclosure log itself bounded — it is persisted state too. */
 const MAX_DISCLOSURE_REPORTS = 20;
+
+/**
+ * How long a disclosure entry is kept, in addition to the count cap.
+ *
+ * BOTH BOUNDS, because the count cap alone is an age cap only by accident. A
+ * daemon sweeping every six hours fills twenty entries in five days, so the
+ * count looks like it reaps by age — but the reaping is done by ARRIVALS, and a
+ * store nothing writes to has none. A mailbox that goes quiet, a surface
+ * switched off, a daemon that stops running: in every one of those the twentieth
+ * entry is the last one written and it stays forever, which is the same
+ * "persisted state with no GC" the log exists to record about other files.
+ *
+ * §9's rule is that anything persisted reaps on a clock as well as on a bound,
+ * and ninety days is the same order as the record store's own retention: long
+ * enough that "what happened to my mail last month" is answerable, short enough
+ * that nothing here is indefinite.
+ */
+export const DEFAULT_DISCLOSURE_RETENTION_MS = 90 * 24 * 60 * 60_000;
 
 /** How many itemised removals one persisted report may carry. See `DisclosedSweep`. */
 const MAX_DISCLOSED_REMOVALS = 100;
@@ -165,7 +183,7 @@ function discloseReport(report: InboundMailHousekeepingReport): DisclosedHouseke
  * failing is dropped rather than repaired — the same rule the three stores
  * apply to their own records.
  */
-function validateDisclosedReport(value: unknown): DisclosedHousekeepingReport | null {
+export function validateDisclosedHousekeepingReport(value: unknown): DisclosedHousekeepingReport | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const report = value as Record<string, unknown>;
   if (typeof report.sweptAt !== 'number' || !Number.isFinite(report.sweptAt)) return null;
@@ -213,6 +231,8 @@ export interface InboundMailHousekeeperOptions {
   readonly expectations: PersistedExpectationStore;
   /** Where the disclosure log is written. */
   readonly disclosurePath: string;
+  /** Age bound on the log's own entries. Defaults to `DEFAULT_DISCLOSURE_RETENTION_MS`. */
+  readonly disclosureRetentionMs?: number | undefined;
   readonly now?: (() => number) | undefined;
 }
 
@@ -270,7 +290,17 @@ function summarize(
     ? ''
     : ` ${String(failures.length)} store(s) could not be swept: `
       + `${failures.map((failure) => `${failure.store} (${failure.detail})`).join('; ')}.`;
-  return `${head} Retained ${retained}.${corrupt}${unresolved}${failed}`;
+  // Deleting files with nothing anywhere saying so is the exact objection this
+  // round raised against silent write-time bounding. `PersistentStore` reclaims
+  // temp files left by a process killed mid-write, and this is where that gets
+  // said out loud. Process-wide and cumulative, so it is worded as such — it
+  // includes stores this housekeeper does not own.
+  const orphans = persistentStoreOrphansReclaimed();
+  const reclaimed = orphans === 0
+    ? ''
+    : ` ${String(orphans)} orphaned temporary file(s) left by an interrupted write `
+      + 'have been reclaimed by this daemon since it started.';
+  return `${head} Retained ${retained}.${corrupt}${unresolved}${failed}${reclaimed}`;
 }
 
 /**
@@ -283,6 +313,7 @@ export class InboundMailHousekeeper {
   private readonly records: InboundMailStore;
   private readonly expectations: PersistedExpectationStore;
   private readonly disclosure: PersistentStore<HousekeepingLog>;
+  private readonly disclosureRetentionMs: number;
   private readonly now: () => number;
   private timer: ReturnType<typeof setInterval> | null = null;
   private lastReport: InboundMailHousekeepingReport | null = null;
@@ -292,6 +323,7 @@ export class InboundMailHousekeeper {
     this.records = options.records;
     this.expectations = options.expectations;
     this.disclosure = new PersistentStore<HousekeepingLog>(options.disclosurePath);
+    this.disclosureRetentionMs = options.disclosureRetentionMs ?? DEFAULT_DISCLOSURE_RETENTION_MS;
     this.now = options.now ?? (() => Date.now());
   }
 
@@ -315,8 +347,9 @@ export class InboundMailHousekeeper {
     // objects in memory before being cut to twenty.
     return log.reports
       .slice(-MAX_DISCLOSURE_REPORTS)
-      .map(validateDisclosedReport)
-      .filter((report): report is DisclosedHousekeepingReport => report !== null);
+      .map(validateDisclosedHousekeepingReport)
+      .filter((report): report is DisclosedHousekeepingReport => report !== null)
+      .filter((report) => this.now() - report.sweptAt <= this.disclosureRetentionMs);
   }
 
   /**
@@ -368,6 +401,12 @@ export class InboundMailHousekeeper {
       // carries every surviving expectation for the boot hydrator, and putting
       // those on disk made this file an unreaped duplicate of the expectation
       // store.
+      //
+      // `existing` came back from `listDisclosures()`, which drops entries past
+      // `disclosureRetentionMs`. So the age bound is not merely a read-time
+      // filter — every sweep physically rewrites the file without them, which
+      // is the same "the bound applies on the write" rule the record store now
+      // follows and for the same reason.
       reports: [...existing, discloseReport(report)].slice(-MAX_DISCLOSURE_REPORTS),
     }));
     return report;

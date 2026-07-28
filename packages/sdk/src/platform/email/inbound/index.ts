@@ -121,7 +121,16 @@ export {
 } from './notice-health.js';
 export { PersistedExpectationStore } from './expectation-store.js';
 export {
+  DEFAULT_DISCLOSURE_RETENTION_MS,
   InboundMailHousekeeper,
+  // Exported because the disclosure log is a FILE on the owner's disk, not an
+  // internal of this class. Anything else that reads it — a doctor verb, a
+  // surface rendering "what was reaped" — would otherwise parse persisted state
+  // with no validator, which is the exact defect this round closed inside
+  // `listDisclosures()`. The safe path has to be the reachable one.
+  validateDisclosedHousekeepingReport,
+  type DisclosedHousekeepingReport,
+  type DisclosedSweep,
   type InboundMailHousekeepingReport,
   type InboundMailSweepFailure,
 } from './housekeeping.js';
