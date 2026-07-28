@@ -1,0 +1,165 @@
+/**
+ * inbound-mail-intake.test.ts
+ *
+ * What the supervisor's sink handler does with a message, and specifically the
+ * one decision that decides whether the owner hears about mail at all: which
+ * failures put the message back and which declare it done.
+ *
+ * The sink claims a message BEFORE the work runs, so a thrown error is what
+ * releases the claim and leaves the cursor below the message. Throwing is
+ * therefore how a message gets another chance, and returning is how it is
+ * declared handled. Get that backwards in either direction and the failure is
+ * silent: a transport blip that resolves swallows the notice forever, and a
+ * structural refusal that throws pins the cursor on a message which fails
+ * identically on every future pass while the mailbox never drains.
+ *
+ * Also covered: a refusal is RECORDED. `InboundNoticeStatus` used to be a
+ * hand-written mirror of `SurfaceNoticeRefusal` that omitted `empty-text` and
+ * `unsupported-delivery-surface`, so a record carrying either would have been
+ * discarded by its own validator on the next load — the one case the owner
+ * most needs ("mail arrived and could not be announced") was the case that
+ * vanished at restart.
+ */
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import {
+  createInboundMailIntake,
+  InboundMailStore,
+  InboundNoticeTransportError,
+  type InboundNoticeMode,
+} from '../packages/sdk/src/platform/email/inbound/index.ts';
+import { VerificationExpectationBook } from '../packages/sdk/src/platform/google/verification-expectations.ts';
+import type { ImapInboundMessage } from '../packages/sdk/src/platform/email/inbound/ports.ts';
+import type { SurfaceNoticeDelivery } from '../packages/sdk/src/platform/daemon/types.ts';
+
+const NOW = new Date('2026-07-27T12:00:00.000Z');
+
+let dir: string;
+
+beforeEach(() => {
+  dir = mkdtempSync(join(tmpdir(), 'gv-inbound-intake-'));
+});
+
+afterEach(() => {
+  rmSync(dir, { recursive: true, force: true });
+});
+
+function message(overrides: Partial<ImapInboundMessage> = {}): ImapInboundMessage {
+  return {
+    source: 'imap',
+    account: 'primary',
+    mailbox: 'INBOX',
+    from: 'noreply@github.com',
+    subject: 'Verify your email',
+    claimedDate: 'Mon, 27 Jul 2026 11:59:00 +0000',
+    messageId: '<abc@github.com>',
+    deliveredTo: ['owner+gv-github-com@example.com'],
+    unverifiedToHeaderClaim: 'owner@example.com',
+    uidValidity: 42,
+    uid: 137,
+    envelope: {} as ImapInboundMessage['envelope'],
+    via: 'idle',
+    ...overrides,
+  };
+}
+
+function rig(options: {
+  readonly delivery: SurfaceNoticeDelivery;
+  readonly mode?: InboundNoticeMode;
+  readonly binding?: { readonly surfaceKind: 'telegram' } | null;
+}) {
+  const sent: string[] = [];
+  const records = new InboundMailStore(join(dir, 'records.json'));
+  const intake = createInboundMailIntake({
+    // The real book, with no expectation open: the honest `no-expectation`
+    // verdict, which is what most arriving mail produces.
+    expectations: new VerificationExpectationBook({ surfaceHasCommandAuthority: () => false }),
+    records,
+    notices: {
+      resolveBinding: () => (options.binding === undefined ? { surfaceKind: 'telegram' } : options.binding),
+      send: async (text) => { sent.push(text); return options.delivery; },
+    },
+    noticeMode: () => options.mode ?? 'all',
+    now: () => NOW,
+  });
+  return { intake, records, sent };
+}
+
+describe('which failures put the message back', () => {
+  test('a transport failure throws, so the sink releases its claim and the cursor stays put', async () => {
+    const { intake, records } = rig({
+      delivery: { delivered: false, reason: 'delivery-failed', error: 'socket hang up' },
+    });
+    await expect(intake(message())).rejects.toBeInstanceOf(InboundNoticeTransportError);
+    // Nothing recorded: the message is not handled, so there is no outcome yet.
+    expect(await records.list()).toHaveLength(0);
+  });
+
+  test('a structural refusal is recorded and does NOT throw, so the mailbox drains', async () => {
+    const { intake, records } = rig({
+      delivery: { delivered: false, reason: 'surface-delivery-disabled' },
+    });
+    await intake(message());
+    const stored = await records.list();
+    expect(stored).toHaveLength(1);
+    expect(stored[0]!.noticeStatus).toBe('surface-delivery-disabled');
+  });
+
+  test('a refusal the old hand-written status list omitted survives a reload', async () => {
+    const { intake, records } = rig({
+      delivery: { delivered: false, reason: 'unsupported-delivery-surface' },
+    });
+    await intake(message());
+    expect((await records.list())[0]!.noticeStatus).toBe('unsupported-delivery-surface');
+    // The validator re-checks every field on load. Before the projection fix
+    // this status was not in the accepted set, so the record was discarded
+    // here and the owner lost the fact that mail could not be announced.
+    const reloaded = new InboundMailStore(join(dir, 'records.json'));
+    expect(await reloaded.list()).toHaveLength(1);
+    expect((await reloaded.list())[0]!.noticeStatus).toBe('unsupported-delivery-surface');
+  });
+
+  test('no notice route is recorded as such, with the message still declared handled', async () => {
+    const { intake, records, sent } = rig({ delivery: { delivered: true }, binding: null });
+    await intake(message());
+    expect(sent).toEqual([]);
+    expect((await records.list())[0]!.noticeStatus).toBe('no-route-binding');
+  });
+});
+
+describe('what is recorded', () => {
+  test('a delivered notice records the delivery evidence, never the To: header claim', async () => {
+    const { intake, records, sent } = rig({ delivery: { delivered: true } });
+    await intake(message());
+    expect(sent).toHaveLength(1);
+    const stored = (await records.list())[0]!;
+    expect(stored.noticeStatus).toBe('delivered');
+    expect(stored.deliveredToAddress).toBe('owner+gv-github-com@example.com');
+    expect(stored.deliveryEvidenceSource).toBe('delivered-to-header');
+    expect(stored.outcome).toBe('no-expectation');
+  });
+
+  test('a message with no delivery evidence is recorded as such rather than correlated on To:', async () => {
+    const { intake, records } = rig({ delivery: { delivered: true } });
+    await intake(message({ deliveredTo: [] }));
+    const stored = (await records.list())[0]!;
+    expect(stored.deliveredToAddress).toBeNull();
+    expect(stored.deliveryEvidenceSource).toBe('none');
+    expect(stored.outcome).toBe('no-delivery-evidence');
+  });
+
+  test('notice.mode "none" announces nothing and records the suppression', async () => {
+    const { intake, records, sent } = rig({ delivery: { delivered: true }, mode: 'none' });
+    await intake(message());
+    expect(sent).toEqual([]);
+    expect((await records.list())[0]!.noticeStatus).toBe('suppressed');
+  });
+
+  test('notice.mode "expected-only" stays quiet for unsolicited mail', async () => {
+    const { intake, sent } = rig({ delivery: { delivered: true }, mode: 'expected-only' });
+    await intake(message());
+    expect(sent).toEqual([]);
+  });
+});

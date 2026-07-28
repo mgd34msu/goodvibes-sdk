@@ -33,6 +33,9 @@ import {
   MAX_BODY_EXCERPT_CHARS,
   type HousekeepingTrigger,
 } from './types.js';
+// Type-only, and erased at build time: this file names the refusal vocabulary
+// rather than owning it, which is the point (§7.3).
+import type { SurfaceNoticeRefusal } from '../../daemon/types.js';
 
 /**
  * Longest a single card-shaped span can be in written form: nineteen digits
@@ -63,22 +66,42 @@ const INBOUND_MAIL_OUTCOMES: readonly InboundMailOutcome[] = [
   'no-delivery-evidence',
 ];
 
-/** Mirrors the reasons `deliverSurfaceNotice` refuses with (§7), plus the two outcomes that never call it. */
-export type InboundNoticeStatus =
-  | 'delivered'
-  | 'suppressed'
-  | 'no-route-binding'
-  | 'surface-delivery-disabled'
-  | 'no-deliverable-target'
-  | 'delivery-failed';
+/**
+ * `delivered` / `suppressed` — the two outcomes that never call the transport
+ * — plus every reason `deliverSurfaceNotice` refuses with, PROJECTED off
+ * `SurfaceNoticeRefusal` rather than restated (§7.3).
+ *
+ * It was restated, and it had already drifted: the hand-written list omitted
+ * `empty-text` and `unsupported-delivery-surface`, both of which
+ * `deliverSurfaceNotice` really does return. A notice refused for either of
+ * them could not be recorded — `validateInboundMailRecord` would reject the
+ * record on load and drop it — so the one case the owner most needs to see
+ * ("mail arrived and could not be announced") was the case that vanished.
+ * A projection cannot drift, because there is nothing to keep in sync.
+ */
+export type InboundNoticeStatus = 'delivered' | 'suppressed' | SurfaceNoticeRefusal;
+
+/**
+ * Every refusal reason, as a map rather than a list.
+ *
+ * A `Record<SurfaceNoticeRefusal, true>` is exhaustive by the compiler: adding
+ * a reason to `SurfaceNoticeRefusal` stops this object compiling, which is the
+ * whole reason the validator's accepted set is derived from it instead of
+ * being a second literal list beside the type.
+ */
+const NOTICE_REFUSAL_STATUSES: Readonly<Record<SurfaceNoticeRefusal, true>> = {
+  'no-route-binding': true,
+  'empty-text': true,
+  'unsupported-delivery-surface': true,
+  'surface-delivery-disabled': true,
+  'no-deliverable-target': true,
+  'delivery-failed': true,
+};
 
 const INBOUND_NOTICE_STATUSES: readonly InboundNoticeStatus[] = [
   'delivered',
   'suppressed',
-  'no-route-binding',
-  'surface-delivery-disabled',
-  'no-deliverable-target',
-  'delivery-failed',
+  ...(Object.keys(NOTICE_REFUSAL_STATUSES) as readonly SurfaceNoticeRefusal[]),
 ];
 
 /** A link's registrable domain plus verdict only — never the raw URL the message assembled (§7). */
