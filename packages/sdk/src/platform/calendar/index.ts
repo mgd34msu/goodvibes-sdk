@@ -27,6 +27,20 @@
 
 export { parseIcs } from './ics-parser.js';
 export { describeRecurrence, expandEvent } from './rrule.js';
+
+// Externally-sourced event content is untrusted content. The policy — what
+// counts as external, what an origin says, what text is retained — lives in one
+// module, and every read path in this package records through it. Arrival never
+// records; see untrusted-events.ts.
+export {
+  calendarEventIngestText,
+  calendarEventIsExternallySourced,
+  calendarEventOrigin,
+  recordCalendarEventIngest,
+  type CalendarEventProvenance,
+  type CalendarUntrustedIngestRecorder,
+  type UntrustedCalendarEventFields,
+} from './untrusted-events.js';
 export {
   SubscriptionStore,
   maskFeedUrl,

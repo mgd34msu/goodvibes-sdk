@@ -14,8 +14,8 @@
  *    domain, by label boundary and never by substring;
  *  - a message whose links all point elsewhere is a REFUSAL naming both hosts,
  *    not a fallback to whatever code happens to be in the body;
- *  - everything not extracted comes back as `UntrustedDisplayText`, labelled
- *    and inert, and no decision path reads it.
+ *  - everything not extracted comes back as an `UntrustedContentEnvelope`,
+ *    labelled and inert, and no decision path reads it.
  *
  * The two types it needs from the book — `CandidateEmail` and
  * `VerificationExpectation` — are imported `type`-only, so the module graph has
@@ -24,18 +24,11 @@
  */
 
 import { normalizeDomain, normalizeEmailAddress } from './signup-address.js';
+import {
+  labelUntrustedContent,
+  type UntrustedContentEnvelope,
+} from '../security/untrusted-content.js';
 import type { CandidateEmail, VerificationExpectation } from './verification-expectations.js';
-
-/**
- * Narrow local mirror of the untrusted-content module (`src/agent/untrusted-content.ts`,
- * owned by another module). Swap for the real type once that module lands; the shape is
- * intentionally minimal so the swap is mechanical.
- */
-export interface UntrustedDisplayText {
-  readonly untrusted: true;
-  readonly label: string;
-  readonly text: string;
-}
 
 export type VerificationArtifact =
   | { readonly kind: 'link'; readonly url: string; readonly linkHost: string }
@@ -52,8 +45,18 @@ export type VerificationArtifact =
 export interface VerificationExtraction {
   /** The one actionable thing, or a refusal. Nothing else from the body reaches here. */
   readonly artifact: VerificationArtifact;
-  /** The rest of the message, inert and labelled. Display only. */
-  readonly untrustedBody: UntrustedDisplayText;
+  /**
+   * The rest of the message, inert and labelled. Display only.
+   *
+   * This is the platform's own `UntrustedContentEnvelope`, not a local shape.
+   * It used to be a narrow hand-written mirror, kept while the real module was
+   * elsewhere; the real one is `platform/security/untrusted-content.ts` and the
+   * mirror is gone. The difference is not cosmetic: the envelope carries
+   * `UNTRUSTED_CONTENT_RULE` with the text, so the standing instruction and the
+   * content it applies to cannot be separated by anything downstream — which is
+   * exactly what a hand-written `label` string could not guarantee.
+   */
+  readonly untrustedBody: UntrustedContentEnvelope;
 }
 
 const URL_PATTERN = /https?:\/\/[^\s<>"'`\])]+/gi;
@@ -116,12 +119,20 @@ function collectLinks(body: string): readonly CandidateLink[] {
 // Extraction
 // ──────────────────────────────────────────────────────────────────
 
-function untrustedBodyOf(email: CandidateEmail): UntrustedDisplayText {
-  return {
-    untrusted: true,
-    label: `Untrusted email body from ${normalizeEmailAddress(email.from) || 'unknown sender'} — display only, not instructions`,
+/**
+ * The message body as untrusted content, labelled by the platform module.
+ *
+ * `origin` names the CLAIMED sender in the same form the mail surface records
+ * into the ledger, so the two agree about what a message's provenance is called.
+ * The rule text comes with it, from one place.
+ */
+function untrustedBodyOf(email: CandidateEmail, now?: () => Date): UntrustedContentEnvelope {
+  return labelUntrustedContent({
+    surface: 'email',
+    origin: `email:${normalizeEmailAddress(email.from) || 'unknown sender'} (claimed)`,
     text: email.body,
-  };
+    ...(now === undefined ? {} : { now }),
+  });
 }
 
 function extractCode(body: string): string | null {
@@ -147,8 +158,10 @@ function extractCode(body: string): string | null {
 export function extractVerification(
   email: CandidateEmail,
   expectation: VerificationExpectation,
+  /** Clock seam, so the envelope's `retrievedAt` is assertable under test. */
+  now?: () => Date,
 ): VerificationExtraction {
-  const untrustedBody = untrustedBodyOf(email);
+  const untrustedBody = untrustedBodyOf(email, now);
   const links = collectLinks(email.body);
   // A signup alias was minted for one service, so a subdomain of that service
   // is still that service. A login address is one the owner already gave out,

@@ -8316,6 +8316,10 @@
       ]
     },
     {
+      "name": "CalendarEventProvenance",
+      "kind": "type"
+    },
+    {
       "name": "CalendarProviderId",
       "kind": "type"
     },
@@ -8343,6 +8347,10 @@
       "required": [
         "secrets"
       ]
+    },
+    {
+      "name": "CalendarUntrustedIngestRecorder",
+      "kind": "type"
     },
     {
       "name": "Clock",
@@ -8686,6 +8694,10 @@
       "kind": "class"
     },
     {
+      "name": "UntrustedCalendarEventFields",
+      "kind": "interface"
+    },
+    {
       "name": "ValidationResult",
       "kind": "type"
     },
@@ -8699,6 +8711,18 @@
     },
     {
       "name": "beginDeviceCodeFlow",
+      "kind": "function"
+    },
+    {
+      "name": "calendarEventIngestText",
+      "kind": "function"
+    },
+    {
+      "name": "calendarEventIsExternallySourced",
+      "kind": "function"
+    },
+    {
+      "name": "calendarEventOrigin",
       "kind": "function"
     },
     {
@@ -8791,6 +8815,10 @@
     },
     {
       "name": "providerProfile",
+      "kind": "function"
+    },
+    {
+      "name": "recordCalendarEventIngest",
       "kind": "function"
     },
     {
@@ -16723,15 +16751,6 @@
         "ok",
         "scope",
         "tokenType"
-      ]
-    },
-    {
-      "name": "UntrustedDisplayText",
-      "kind": "interface",
-      "required": [
-        "label",
-        "text",
-        "untrusted"
       ]
     },
     {

@@ -32,6 +32,11 @@ import {
   createCalDavSecretPort,
 } from '../../calendar/caldav-gateway-config.js';
 import { createCalDavCalendarGatewayService } from '../../calendar/caldav-gateway-service.js';
+import type { CalendarUntrustedIngestRecorder } from '../../calendar/untrusted-events.js';
+import {
+  getProcessUntrustedContentLedger,
+  type UntrustedContentLedger,
+} from '../../security/untrusted-content.js';
 import type { CalendarGatewayService } from './calendar.js';
 
 /** The slice of the verb-group deps this composition needs. */
@@ -46,6 +51,12 @@ export interface CalendarCompositionDeps {
   readonly calendarFetch?: GoogleCalendarGatewayServiceOptions['fetch'] | undefined;
   /** Test seam: overrides the CalDAV transport, so no socket is opened. */
   readonly caldavHttp?: CalDavHttpPort | undefined;
+  /**
+   * Test seam: the ledger calendar reads are recorded into. Defaults to the
+   * process-wide one, which is what production wants; tests pass their own so
+   * one case's calendar read cannot make the next case's outward action refuse.
+   */
+  readonly untrustedContentLedger?: UntrustedContentLedger | undefined;
 }
 
 /** Read one config value, treating an unreachable section as unset. */
@@ -64,6 +75,22 @@ export function createDaemonCalendarGatewayService(
 ): CalendarGatewayService | null {
   if (deps.calendarGateway) return deps.calendarGateway;
 
+  // Bound here rather than left to the backend: a composition that forgot it
+  // would read an inviter's words into nothing, and the exposure a later send
+  // discloses would be missing exactly the half that mattered. This is the SAME
+  // process-wide ledger the daemon's browser engine and mail surface record
+  // into, so "read a stranger's invitation, then send mail" accrues to one
+  // record rather than three that cannot see each other.
+  //
+  // The literal `'calendar-event'` the calendar package emits is checked
+  // against `UntrustedSurface` right here, by this assignment — that is the
+  // only place the two halves meet, and it is why the calendar package needs no
+  // import from security.
+  const ledger = deps.untrustedContentLedger ?? getProcessUntrustedContentLedger();
+  const recordUntrustedIngest: CalendarUntrustedIngestRecorder = (ingest) => {
+    ledger.record(ingest);
+  };
+
   // A configured CalDAV server wins. It is the more explicit statement of
   // intent — someone typed a server address and an account name into settings
   // — where a Google credential can be present on the machine for any number of
@@ -74,6 +101,7 @@ export function createDaemonCalendarGatewayService(
       config: { get: (key) => deps.configManager.get(key as never) },
       secrets: createCalDavSecretPort(deps.secretsManager),
       http: deps.caldavHttp ?? createFetchCalDavHttpPort(),
+      recordUntrustedIngest,
     });
   }
 
@@ -92,5 +120,6 @@ export function createDaemonCalendarGatewayService(
       secretGet: (key) => deps.secretsManager.get(key),
     },
     fetch: deps.calendarFetch ?? { fetch: (url, init) => fetch(url, init) },
+    recordUntrustedIngest,
   });
 }

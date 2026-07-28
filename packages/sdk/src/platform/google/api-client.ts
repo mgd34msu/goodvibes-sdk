@@ -119,6 +119,32 @@ export interface CalendarEventRecord {
   readonly location: string;
   readonly description: string;
   readonly htmlLink: string;
+  /**
+   * The organizer's address as Google reported it, absent when Google named
+   * none.
+   *
+   * Claimed, never verified — the same standing as a `From:` header. Carried so
+   * a read of this event can be recorded against the party who wrote its text
+   * rather than against "the calendar"; it is not part of any gateway response.
+   *
+   * Optional because this interface is a CONTRACT a caller may implement, not
+   * only a shape this client produces. A required field would have broken every
+   * such implementation, and the reading side already treats "said nothing"
+   * correctly: absent means nobody was named, which is not a claim of
+   * ownership.
+   */
+  readonly organizer?: string;
+  /**
+   * Google Calendar API v3, Events resource, `organizer.self`: "Whether the
+   * organizer corresponds to the calendar on which this copy of the event
+   * appears. Read-only. The default is False."
+   *
+   * `true` means the owner organized it, so it is not externally sourced.
+   * Anything else — `false`, or absent because Google or an implementer said
+   * nothing — reads as somebody else's, which is the direction that fails
+   * towards recording rather than towards silence.
+   */
+  readonly organizerIsSelf?: boolean;
 }
 
 export interface SendMailInput {
@@ -574,5 +600,19 @@ function toCalendarEvent(value: unknown): CalendarEventRecord | null {
     location: readString(value.location),
     description: readString(value.description),
     htmlLink: readString(value.htmlLink),
+    ...organizerOf(value.organizer),
+  };
+}
+
+/**
+ * The organizer half of a Google event, omitted entirely when Google named
+ * nobody — so "absent" stays distinguishable from "named, but not the owner".
+ */
+function organizerOf(value: unknown): { organizer?: string; organizerIsSelf?: boolean } {
+  if (!isRecord(value)) return {};
+  const email = readString(value.email).trim();
+  return {
+    ...(email.length > 0 ? { organizer: email } : {}),
+    ...(value.self === true ? { organizerIsSelf: true } : {}),
   };
 }
