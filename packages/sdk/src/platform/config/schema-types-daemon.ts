@@ -94,3 +94,29 @@ export interface RuntimeConfig {
     maxCostUsd: number;
   };
 }
+
+/**
+ * The daemon process's own configuration — whether it runs, how it is hosted,
+ * and where on earth it thinks it is.
+ *
+ * `timezone` is the platform's only notion of the daemon's location. It is
+ * general rather than owned by any one feature: anything that resets on a
+ * calendar day reads it, starting with the payment capability's daily budgets.
+ * Empty means UTC. See docs/payments.md §4.
+ */
+export interface DaemonProcessConfig {
+  enabled: boolean;         // default: true — run the local session daemon (loopback only)
+  embedInProcess: boolean;  // default: false — detached process, not inside a surface
+  timezone: string;         // default: '' — IANA name; empty means UTC
+}
+
+export type DaemonProcessConfigKey =
+  | 'daemon.enabled'
+  | 'daemon.embedInProcess'
+  | 'daemon.timezone';
+
+export interface DaemonProcessConfigValueMap {
+  'daemon.enabled': boolean;
+  'daemon.embedInProcess': boolean;
+  'daemon.timezone': string;
+}

@@ -19,6 +19,7 @@ import {
 import {
   builtinGatewayEmailMethodDescriptors,
 } from './method-catalog-email.js';
+import { builtinGatewayPaymentsMethodDescriptors } from './method-catalog-payments.js';
 import {
   builtinGatewayCalendarMethodDescriptors,
 } from './method-catalog-calendar.js';
@@ -123,6 +124,7 @@ const BUILTIN_GATEWAY_METHODS: readonly GatewayMethodDescriptor[] = [
   ...builtinGatewayCostMethodDescriptors,
   ...builtinGatewayPermissionRuleMethodDescriptors,
   ...builtinGatewayEmailMethodDescriptors,
+  ...builtinGatewayPaymentsMethodDescriptors,
   ...builtinGatewayCalendarMethodDescriptors,
   ...builtinGatewayBrowserMethodDescriptors,
   ...builtinGatewayRuntimeMethodDescriptors,

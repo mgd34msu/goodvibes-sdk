@@ -1,5 +1,6 @@
 import type { Frame, FrameLocator, Locator, Page } from 'playwright-core';
-import type { BrowserElementRef, BrowserSnapshot } from './browser-types.js';
+import { isCardFieldDescriptor } from '../security/card-fields.js';
+import type { BrowserElementRef, BrowserSnapshot, CardFieldGuard } from './browser-types.js';
 
 /**
  * Snapshot-and-ref addressing.
@@ -24,6 +25,23 @@ interface RawElement {
   readonly depth: number;
   /** True when activating this control submits a form — an outward effect. */
   readonly submits: boolean;
+  /**
+   * The attributes that identify a payment field, collected but NOT judged here.
+   *
+   * This function is serialized and evaluated inside the page, so it cannot
+   * import anything — a classification written here could never be tested
+   * against real inputs, only read. So the raw attributes come back and
+   * `isCardFieldDescriptor` decides in-process, where a test can drive it.
+   */
+  readonly control?: {
+    readonly type: string;
+    readonly autocomplete: string;
+    readonly name: string;
+    readonly id: string;
+    readonly placeholder: string;
+    readonly ariaLabel: string;
+    readonly label: string;
+  };
 }
 
 /**
@@ -210,6 +228,15 @@ function collectElements(limit: number): RawElement[] {
       checked: type === 'checkbox' || type === 'radio' ? Boolean(input.checked) : null,
       depth: depthOf(element),
       submits: submitsForm(element),
+      control: {
+        type,
+        autocomplete: element.getAttribute('autocomplete') ?? '',
+        name: element.getAttribute('name') ?? '',
+        id: element.getAttribute('id') ?? '',
+        placeholder: element.getAttribute('placeholder') ?? '',
+        ariaLabel: element.getAttribute('aria-label') ?? '',
+        label: isFormControl ? (input.labels?.[0]?.textContent ?? '').slice(0, 160) : '',
+      },
     });
   }
   return results;
@@ -303,11 +330,29 @@ async function frameChainFor(frame: Frame): Promise<readonly string[] | null> {
   return chain;
 }
 
+/**
+ * Snapshots are a read path back to a card number, and this is where it closes.
+ *
+ * `payments.checkout.fillCard` has the daemon type the owner's card into a
+ * page so the model never holds it. Ten seconds later the model can call
+ * `action:"snapshot"` and read `value` off every form control on that page —
+ * including the one just filled. Without the two steps below, the containment
+ * is theatre.
+ *
+ *   STRUCTURAL   a control the page itself declares to be a payment field
+ *                never reports a value, filled or not, guard or no guard.
+ *   VALUE-BASED  while material is live, the exact strings typed are removed
+ *                from every name and value reported, wherever they appear.
+ *
+ * Both, because each covers the other's gap: the classification is defeated by
+ * a page that misnames its fields, and the value matching only exists when a
+ * guard is installed — which is why the fill refuses to run without one.
+ */
 export async function takeSnapshot(
   page: Page,
   sessionId: string,
   pageId: string,
-  options: { readonly limit?: number | undefined } = {},
+  options: { readonly limit?: number | undefined; readonly guard?: CardFieldGuard | undefined } = {},
 ): Promise<BrowserSnapshot> {
   const limit = Math.max(1, Math.min(MAX_ELEMENTS, options.limit ?? MAX_ELEMENTS));
   const raw: (RawElement & { readonly frameChain: readonly string[] })[] = [];
@@ -319,19 +364,47 @@ export async function takeSnapshot(
     raw.push(...collected.map((element) => ({ ...element, frameChain: chain })));
   }
   snapshotCounter += 1;
-  const elements: BrowserElementRef[] = raw.map((element, index) => ({
-    ref: `e${String(index + 1)}`,
-    role: element.role,
-    name: element.name.slice(0, MAX_NAME_LENGTH),
-    tag: element.tag,
-    selector: element.selector,
-    value: element.value ?? undefined,
-    disabled: element.disabled || undefined,
-    checked: element.checked ?? undefined,
-    depth: element.depth,
-    submits: element.submits,
-    frameChain: element.frameChain,
-  }));
+  const scrub = (text: string): string =>
+    options.guard === undefined ? text : options.guard.redact(sessionId, pageId, text);
+
+  const elements: BrowserElementRef[] = raw.map((element, index) => {
+    // A payment field's value is never reported. Not masked, not truncated —
+    // absent, exactly as a password field's already is.
+    // Built defensively: `element` comes back from `frame.evaluate`, so its
+    // shape is whatever that frame produced. A host-backed frame, an older
+    // driver, or a frame whose evaluate partially failed can all hand back a
+    // record with no `control` — and a classifier that threw on one would take
+    // out EVERY snapshot, not just the payment case it was added for.
+    const control = element.control ?? undefined;
+    const cardField = isCardFieldDescriptor({
+      tag: element.tag,
+      type: control?.type ?? '',
+      autocomplete: control?.autocomplete ?? '',
+      name: control?.name ?? '',
+      id: control?.id ?? '',
+      placeholder: control?.placeholder ?? '',
+      ariaLabel: control?.ariaLabel ?? '',
+      label: control?.label ?? '',
+    });
+    const value = cardField || element.value === null ? undefined : scrub(element.value);
+    return {
+      ref: `e${String(index + 1)}`,
+      role: element.role,
+      // The name is scrubbed too: a page is free to copy what was typed into a
+      // label, an aria-label or a placeholder, and every one of those becomes
+      // this field.
+      name: scrub(element.name).slice(0, MAX_NAME_LENGTH),
+      tag: element.tag,
+      selector: element.selector,
+      value,
+      disabled: element.disabled || undefined,
+      checked: element.checked ?? undefined,
+      depth: element.depth,
+      submits: element.submits,
+      frameChain: element.frameChain,
+      ...(cardField ? { cardField: true } : {}),
+    };
+  });
   return {
     sessionId,
     pageId,

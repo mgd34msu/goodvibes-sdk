@@ -235,19 +235,22 @@ describe('§13.1 — rows for keys that do not exist yet are inert', () => {
     expect(keys).toContain('payments.billingAddress.postalCode');
     expect(keys).toContain('payments.shippingAddress.line1');
 
+    // These two rows WERE inert, and are not any more: the payments lane has
+    // merged, so schema-domain-payments.ts declares payments.currency and
+    // schema-domain-daemon-location.ts declares daemon.timezone. The row set
+    // above is unchanged — which was the point of declaring rows ahead of the
+    // keys — and the rows simply went live when their keys arrived.
     const schemaKeys = new Set(CONFIG_SCHEMA.map((entry) => entry.key as string));
-    expect(schemaKeys.has('daemon.timezone')).toBe(false);
-    expect(schemaKeys.has('payments.currency')).toBe(false);
+    expect(schemaKeys.has('daemon.timezone')).toBe(true);
+    expect(schemaKeys.has('payments.currency')).toBe(true);
 
-    // A report over the map must not throw on the rows whose section does not
-    // exist — resolvePath() throws for those, and the status helper catches it.
     const config = freshConfig();
     const status = profileFallbackStatus(store, (key) => config.get(key as never));
     const byKey = new Map(status.map((row) => [row.configKey, row]));
     expect(byKey.get('checkin.quietHours')?.keyExists).toBe(true);
     expect(byKey.get('checkin.quietHours')?.resolvesFromProfile).toBe(true);
-    expect(byKey.get('payments.currency')?.keyExists).toBe(false);
-    expect(byKey.get('payments.currency')?.resolvesFromProfile).toBe(false);
+    expect(byKey.get('payments.currency')?.keyExists).toBe(true);
+    expect(byKey.get('payments.currency')?.resolvesFromProfile).toBe(true);
     // A status report names keys and fields; it never carries a value.
     expect(JSON.stringify(status)).not.toContain('22:00-07:00');
   });
@@ -347,19 +350,21 @@ describe('closed-tier value set for redaction', () => {
   });
 });
 
-describe('the two halves of "inert until the payments branch merges" are not the same', () => {
-  test('daemon.timezone is LIVE now, because the daemon section already exists', async () => {
+describe('the two halves of "inert until the payments branch merges", now that it has', () => {
+  test('daemon.timezone resolves from the profile, as it did before the key existed', async () => {
     const store = await loadedStore();
     const config = freshConfig();
 
-    // Not a schema key, so nothing legitimately reads it yet — but `resolvePath`
-    // only walks as far as the PARENT section, and `daemon` exists. So the read
-    // returns undefined, `isUnsetConfigValue` says unset, and the fallback fires.
-    // Recorded here because the design table called this row inert and it is not.
-    // The behaviour is the wanted one: the day `daemon.timezone` lands with an
-    // empty default, nothing changes.
-    expect(() => config.get('daemon.timezone' as never)).not.toThrow();
-    expect(config.get('daemon.timezone' as never)).toBeUndefined();
+    // This row used to read `undefined` because the key was undeclared and
+    // `resolvePath` only walked as far as the `daemon` section. It is a real
+    // schema key now, with an empty-string default meaning UTC — and the note
+    // this test carried predicted exactly that: "the day daemon.timezone lands
+    // with an empty default, nothing changes." Nothing did. `isUnsetConfigValue`
+    // treats '' as unset, so the fallback still fires; only the spelling of
+    // "unset" moved from undefined to ''.
+    const anyKeyConfig = config as unknown as { get(key: string): unknown };
+    expect(() => anyKeyConfig.get('daemon.timezone')).not.toThrow();
+    expect(anyKeyConfig.get('daemon.timezone')).toBe('');
 
     installOwnerProfileConsumers(store, {
       attachProfileFallback: (reader) => config.attachProfileFallback(reader),
@@ -368,7 +373,7 @@ describe('the two halves of "inert until the payments branch merges" are not the
     });
 
     // The fixture's timezone is invalid, so it falls back as if unset (§4.3).
-    expect(config.get('daemon.timezone' as never)).toBeUndefined();
+    expect(anyKeyConfig.get('daemon.timezone')).toBe('');
 
     // With a valid one it resolves, which is the behaviour the row is for.
     const valid = await loadedStore(FIXTURE.replace('timezone: Mars/Olympus', 'timezone: America/Detroit'));
@@ -385,11 +390,18 @@ describe('the two halves of "inert until the payments branch merges" are not the
     expect(anyKeyConfig2.get('daemon.timezone')).toBe('America/Detroit');
   });
 
-  test('payments.* genuinely throws, so those rows really are inert', () => {
-    const config = freshConfig();
-    for (const key of ['payments.currency', 'payments.shippingAddress.city']) {
-      expect(() => config.get(key as never)).toThrow(/section 'payments' does not exist/);
-    }
+  test('payments.* no longer throws, because the payments section now exists', () => {
+    // The other half of the pair, after the merge that this describe block was
+    // named for. `payments.currency` is a declared key with a default, so it
+    // reads; `payments.shippingAddress.city` is not declared as a scalar key,
+    // but its SECTION exists now, so resolvePath walks to the parent and
+    // returns undefined instead of throwing. Neither is inert any more, and
+    // the assertion says so rather than being deleted for going green the
+    // wrong way.
+    const anyKeyConfig = freshConfig() as unknown as { get(key: string): unknown };
+    expect(() => anyKeyConfig.get('payments.currency')).not.toThrow();
+    expect(anyKeyConfig.get('payments.currency')).toBe('USD');
+    expect(() => anyKeyConfig.get('payments.shippingAddress.city')).not.toThrow();
   });
 });
 

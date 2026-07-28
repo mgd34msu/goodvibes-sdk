@@ -5,119 +5,37 @@ import { BrowserSessionError, BrowserSessionManager, hasDisplay } from './browse
 import type { BrowserAttachOptions, BrowserLaunchOptions } from './browser-sessions.js';
 import { describeProvisionWork } from './browser-provisioning.js';
 import { resolveRef, SnapshotStore, StaleElementError, takeSnapshot } from './browser-snapshot.js';
+import { assertCaptureAllowed, fillSecretIntoPage } from './browser-secret-fill.js';
 import type {
   BrowserProvisionReport,
   BrowserSnapshot,
+  CardFieldGuard,
   OwnerApproval,
   UntrustedContentPort,
 } from './browser-types.js';
 
-const DEFAULT_NAVIGATION_TIMEOUT_MS = 30_000;
-const DEFAULT_ACTION_TIMEOUT_MS = 15_000;
-const DEFAULT_TEXT_LIMIT = 20_000;
 
-/**
- * Schemes a page may be sent to.
- *
- * `javascript:` is refused outright. A javascript: URL is not navigation, it is
- * script injection into whatever is currently loaded, and it is exactly how a
- * bookmarklet ended up executing somewhere it was never meant to. Script that
- * needs to run in a page goes through action:"evaluate", which is scoped to a
- * page this engine controls and is reported as such.
- */
-const ALLOWED_URL_SCHEMES = new Set(['http:', 'https:', 'file:', 'about:']);
+// The engine's option/target types, its error and the two pure helpers moved
+// to browser-engine-contract.ts when the untrusted-content boundary and the
+// card-field guard together took this file past the 800-line cap. Re-exported
+// below so the platform/browser barrel's surface is unchanged.
+import {
+  DEFAULT_ACTION_TIMEOUT_MS,
+  DEFAULT_NAVIGATION_TIMEOUT_MS,
+  DEFAULT_TEXT_LIMIT,
+  normalizeUrl,
+  readElementData,
+  UntrustedEffectError,
+} from './browser-engine-contract.js';
+import type {
+  BrowserEngineOptions,
+  BrowserExtractField,
+  BrowserTarget,
+} from './browser-engine-contract.js';
 
-export interface BrowserTarget {
-  readonly sessionId?: string | undefined;
-  readonly pageId?: string | undefined;
-}
+export { UntrustedEffectError };
+export type { BrowserEngineOptions, BrowserExtractField, BrowserTarget };
 
-export interface BrowserEngineOptions {
-  /** Where screenshots are written. Must be a directory the product's read path can open. */
-  readonly screenshotDirectory: string;
-  /**
-   * The product's untrusted-content contract. Required, and deliberately not
-   * defaulted: an engine with no port would read pages and label nothing, which
-   * is the boundary silently absent rather than a compile error. The
-   * implementation is expected to be backed by the process-wide ledger every
-   * other surface that reads stranger-written text also writes to — the email
-   * surface most of all — so "read a page, then send a message" is visible as
-   * one composition rather than two unrelated acts.
-   */
-  readonly untrusted: UntrustedContentPort;
-  /** An owner approval covering an outward action in this turn, when one exists. */
-  readonly approval?: OwnerApproval | null;
-  /**
-   * Records that this session wrote a file, so the product's read path can open
-   * it afterwards. Optional: a surface with no session write ledger passes
-   * nothing and screenshots are simply written and reported.
-   */
-  readonly recordSessionWrite?: ((path: string) => void) | undefined;
-}
-
-/** Fields the extraction contract can ask for. Nothing here can invoke anything. */
-export type BrowserExtractField = 'text' | 'html' | 'value' | 'attributes';
-
-/**
- * Runs in the page. Fixed, shipped in this file, and never assembled from
- * caller input: the caller only chooses which of these fields it wants.
- */
-function readElementData(element: Element, fields: string[]): Record<string, unknown> {
-  const data: Record<string, unknown> = { tag: element.tagName.toLowerCase() };
-  for (const field of fields) {
-    if (field === 'text') {
-      const text = (element as HTMLElement).innerText ?? element.textContent ?? '';
-      data.text = text.replace(/\s+/g, ' ').trim().slice(0, 20_000);
-    } else if (field === 'html') {
-      data.html = element.outerHTML.slice(0, 20_000);
-    } else if (field === 'value') {
-      const input = element as HTMLInputElement;
-      const type = (element.getAttribute('type') ?? '').toLowerCase();
-      data.value = type === 'password' ? null : (input.value ?? null);
-    } else if (field === 'attributes') {
-      const attributes: Record<string, string> = {};
-      for (const attribute of Array.from(element.attributes)) {
-        attributes[attribute.name] = attribute.value.slice(0, 2_000);
-      }
-      data.attributes = attributes;
-    }
-  }
-  return data;
-}
-
-export class UntrustedEffectError extends Error {
-  constructor(message: string, readonly fix: string) {
-    super(message);
-    this.name = 'UntrustedEffectError';
-  }
-}
-
-function normalizeUrl(rawUrl: string): string {
-  const trimmed = rawUrl.trim();
-  if (!trimmed) {
-    throw new BrowserSessionError('No url was given to navigate to.', 'Pass url:"https://example.com".');
-  }
-  const candidate = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed) ? trimmed : `https://${trimmed}`;
-  let parsed: URL;
-  try {
-    parsed = new URL(candidate);
-  } catch {
-    throw new BrowserSessionError(`"${rawUrl}" is not a usable URL.`, 'Pass a full URL such as https://example.com.');
-  }
-  if (parsed.protocol === 'javascript:') {
-    throw new BrowserSessionError(
-      'Navigating to a javascript: URL is not supported, because it runs script against whatever page is currently open instead of loading a page.',
-      'Use action:"evaluate" to run script in a page this tool controls.',
-    );
-  }
-  if (!ALLOWED_URL_SCHEMES.has(parsed.protocol)) {
-    throw new BrowserSessionError(
-      `The ${parsed.protocol} scheme is not supported by the browser tool.`,
-      'Use an http, https, file, or about URL.',
-    );
-  }
-  return parsed.toString();
-}
 
 /**
  * The browser capability itself: provisioning, sessions, and every page
@@ -127,6 +45,7 @@ export class BrowserEngine {
   private readonly snapshots = new SnapshotStore();
 
   private readonly untrusted: UntrustedContentPort;
+  private readonly cardGuard: CardFieldGuard | null;
   private approval: OwnerApproval | null;
 
   constructor(
@@ -134,7 +53,26 @@ export class BrowserEngine {
     private readonly options: BrowserEngineOptions,
   ) {
     this.untrusted = options.untrusted;
+    this.cardGuard = options.cardFieldGuard ?? null;
     this.approval = options.approval ?? null;
+  }
+
+  /** Whether this engine can be used to pay for something (see fill-card.ts). */
+  cardFieldGuardInstalled(): boolean {
+    return this.cardGuard !== null;
+  }
+
+  cardFieldGuard(): CardFieldGuard | null {
+    return this.cardGuard;
+  }
+
+  /**
+   * Strip live card material out of anything a page produced. Applied to every
+   * value, name, body text, extracted field and ledger entry leaving this
+   * class, unconditionally — see `CardFieldGuard` in browser-types.ts.
+   */
+  private scrub(sessionId: string, pageId: string, text: string): string {
+    return this.cardGuard === null ? text : this.cardGuard.redact(sessionId, pageId, text);
   }
 
   /**
@@ -373,7 +311,13 @@ export class BrowserEngine {
 
   async snapshot(target: BrowserTarget, args: { readonly limit?: number | undefined } = {}): Promise<Record<string, unknown>> {
     const { sessionId, pageId, page } = await this.target(target);
-    const snapshot = await takeSnapshot(page, sessionId, pageId, args);
+    // The guard goes IN rather than being applied to the result: the snapshot
+    // is also stored for ref resolution, and a stored copy holding the card
+    // would be the same leak one indirection further away.
+    const snapshot = await takeSnapshot(page, sessionId, pageId, {
+      ...args,
+      ...(this.cardGuard === null ? {} : { guard: this.cardGuard }),
+    });
     this.snapshots.set(snapshot);
     // Element names and values are written by the page, so a snapshot is
     // untrusted content just as much as the body text is.
@@ -499,6 +443,45 @@ export class BrowserEngine {
     };
   }
 
+  /**
+   * Type a value the DAEMON holds into a field, reporting only whether it worked.
+   *
+   * The counterpart to `type` for card material, and deliberately not a flag on
+   * it. `value` never came from the model: it is read from the daemon's secret
+   * store in-process and passed here directly, and nothing on the control plane
+   * can supply one or observe one. The mechanics — refusing without a guard,
+   * and discarding the driver's error because it quotes what it tried to type —
+   * live in browser-secret-fill.ts.
+   *
+   * The caller arms the guard before calling this. Not done here because a fill
+   * of several fields arms once for all of them, and arming per field would
+   * leave the earlier ones unprotected while the later ones are typed.
+   */
+  async fillSecret(
+    target: BrowserTarget,
+    args: { readonly ref: string; readonly value: string; readonly timeoutMs?: number | undefined },
+  ): Promise<Record<string, unknown>> {
+    const { sessionId, pageId, page } = await this.target(target);
+    const { element } = await fillSecretIntoPage({
+      page,
+      snapshot: this.currentSnapshot(sessionId, pageId),
+      ref: args.ref,
+      value: args.value,
+      guard: this.cardGuard,
+      timeoutMs: args.timeoutMs ?? DEFAULT_ACTION_TIMEOUT_MS,
+    });
+    // The stored snapshot still holds this element's pre-fill value, and the
+    // next snapshot suppresses it — clearing here means no path can serve a
+    // cached one from before the guard was armed.
+    this.snapshots.clear(sessionId, pageId);
+    return {
+      sessionId,
+      pageId,
+      filledInto: { ref: args.ref, role: element.role, name: element.name },
+      url: page.url(),
+    };
+  }
+
   async select(
     target: BrowserTarget,
     args: { readonly ref: string; readonly values: readonly string[]; readonly timeoutMs?: number | undefined },
@@ -600,7 +583,14 @@ export class BrowserEngine {
       this.recordPageIngest(frame.url());
       frameTexts.push(`\n\n[embedded frame ${this.untrusted.originOf(frame.url())}]\n${frameText.trim()}`);
     }
-    const normalized = `${text}${frameTexts.join('')}`.replace(/\n{3,}/g, '\n\n').trim();
+    // Scrubbed before it is labelled, recorded, or returned. A page is free to
+    // render what was typed into it as ordinary body text, and this is the path
+    // that would hand that straight back.
+    const normalized = this.scrub(
+      sessionId,
+      pageId,
+      `${text}${frameTexts.join('')}`.replace(/\n{3,}/g, '\n\n').trim(),
+    );
     const origin = this.recordPageIngest(page.url(), normalized);
     return {
       sessionId,
@@ -623,6 +613,7 @@ export class BrowserEngine {
     args: { readonly fullPage?: boolean | undefined; readonly path?: string | undefined } = {},
   ): Promise<Record<string, unknown>> {
     const { sessionId, pageId, page } = await this.target(target);
+    assertCaptureAllowed(this.cardGuard, sessionId, pageId);
     mkdirSync(this.options.screenshotDirectory, { recursive: true });
     const fileName = `${sessionId}-${pageId}-${String(Date.now())}.png`;
     // Resolved once, so the path written, the path recorded, and the path
@@ -679,6 +670,7 @@ export class BrowserEngine {
     const { page } = await this.sessions.page(sessionId, args.pageId);
     await page.close();
     this.snapshots.clear(sessionId, args.pageId);
+    this.cardGuard?.disarm(sessionId, args.pageId);
     return { sessionId, closedPageId: args.pageId, pages: await this.sessions.pageList(sessionId) };
   }
 
@@ -758,7 +750,12 @@ export class BrowserEngine {
     // a value lifted out of a form or a table is as good an injection carrier
     // as a paragraph, and recording the origin without the words would leave
     // the derivation check with nothing to compare against.
-    const origin = this.recordPageIngest(page.url(), JSON.stringify(extracted));
+    // Scrubbed as one serialized blob, which covers every field the caller
+    // asked for at once: `value` is the obvious one, and `html` and
+    // `attributes` are the ones a page uses when it wants the number to come
+    // back out somewhere nobody thought to check.
+    const payload = this.scrub(sessionId, pageId, JSON.stringify(extracted));
+    const origin = this.recordPageIngest(page.url(), payload);
     return {
       sessionId,
       pageId,
@@ -771,7 +768,7 @@ export class BrowserEngine {
       // Whatever the page holds is still the page's own words.
       data: this.untrusted.label({
         origin,
-        text: JSON.stringify(extracted),
+        text: payload,
       }),
     };
   }

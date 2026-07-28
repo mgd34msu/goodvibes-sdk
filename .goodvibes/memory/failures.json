@@ -1,0 +1,14 @@
+[
+  {
+    "date": "2026-07-27",
+    "approach": "Running the SDK's full test suite as a background command with unbounded captured output",
+    "reason": "One run streamed ~47GB into a single task .output file and filled the host's 63G /tmp tmpfs, after which no process could open a file and the Bash tool itself failed with ENOSPC before running anything.",
+    "suggestion": "Always pipe chatty commands through `| tail -N`. Recovery when the tool is already wedged: the Write tool can still truncate an existing file (O_TRUNC frees blocks before writing), so Read one line of the largest task .output and overwrite it. Agent .output paths are symlinks into $HOME and refuse Write; background COMMAND outputs are real files in /tmp and are the ones to truncate."
+  },
+  {
+    "date": "2026-07-27",
+    "approach": "Letting SDK/agent test suites leak per-run temp directories into /tmp",
+    "reason": "Suites create mkdtemp dirs under /tmp and do not always clean them; 11,383 gv-* directories had accumulated. Combined with tmpfs's inode budget this produced intermittent ENOSPC where df showed ~50G free and ~500k inodes free, yet new file creation failed \u2014 including the Bash tool's own output file, which wedges the tool before the command runs.",
+    "suggestion": "Diagnose with `df -i` as well as `df -h`; free space alone is misleading. Bash still executes the command before its cwd-marker write fails, so output is usable even when the call reports an error. Sweep with `find /tmp -maxdepth 1 -name 'gv-*' -mmin +120 -exec rm -rf {} +` \u2014 age-bounded so a live run is never touched. Root fix is per-suite cleanup in the test harnesses."
+  }
+]

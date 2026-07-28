@@ -167,6 +167,20 @@ export const GATEWAY_REST_ROUTES: readonly GatewayRestRoute[] = [
   route('GET', '/api/email/inbox/{uid}', 'email.inbox.read'),
   route('POST', '/api/email/drafts', 'email.draft.create'),
   route('POST', '/api/email/send', 'email.send'),
+
+  // payments.* — the daemon holds the card and charges it, so every surface
+  // reads and writes this over the wire. Card material goes IN through
+  // cards.create and has no read route by design; see routes/payments.ts.
+  route('GET', '/api/payments/budget', 'payments.budget.status'),
+  route('GET', '/api/payments/cards', 'payments.cards.list'),
+  route('POST', '/api/payments/cards', 'payments.cards.create'),
+  route('DELETE', '/api/payments/cards/{id}', 'payments.cards.delete'),
+  // The daemon types the stored card into an open checkout page. Takes a card
+  // id and field targets, answers with field names and a boolean — no request
+  // or response on this route carries card material in either direction.
+  route('POST', '/api/payments/checkout/begin', 'payments.checkout.begin'),
+  route('POST', '/api/payments/checkout/fill-card', 'payments.checkout.fillCard'),
+  route('GET', '/api/payments/purchases', 'payments.purchases.list'),
   // browser.* — real browser control over the platform engine. The engine was
   // hoisted into the SDK and the daemon could link it, but no verb and no path
   // existed, so a daemon-only caller had nothing to invoke: with no surface

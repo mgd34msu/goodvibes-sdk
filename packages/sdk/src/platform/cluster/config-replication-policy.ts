@@ -67,6 +67,24 @@ export const REPLICATED_CONFIG_DOMAINS: readonly string[] = [
   'atRest.',
   // Paired phones belong to the operator, not to one machine.
   'device.',
+  // Spending limits belong to the OPERATOR, not to whichever machine is holding
+  // the surface. A node that takes over a handover without them would either
+  // refuse every purchase or, far worse, fall back to defaults — and the whole
+  // safety story here is that a number he set is the number that binds.
+  //
+  // What crosses the wire is the budget, the windows, the shipping preference
+  // and card METADATA (label, brand, last4). Card material is not config: the
+  // number, expiry and CVV live in the daemon secret store and replicate, if at
+  // all, by the secret path with the rest of the daemon's credentials.
+  //
+  // KNOWN LIMIT, recorded rather than hidden: this replicates the LIMITS, not
+  // the SPEND. Today's totals live in the payments spend ledger, which is not
+  // config and does not cross here, so a node that takes over mid-day starts
+  // from a clean daily budget and could spend it again. Payments therefore
+  // refuse on a node that is not the elected payments leader; see
+  // docs/payments.md §5.1. Replicating the ledger itself is the real fix and is
+  // not attempted in this round.
+  'payments.',
   // The operator's mailbox and calendar belong to the operator, not to the
   // machine that happens to be holding the surface this minute. A node that
   // takes over a handover has to be able to read and send as them, or the
@@ -168,7 +186,25 @@ function underAny(path: string, domains: readonly string[]): boolean {
  * later adds inside a replicated domain is still refused without anyone having
  * to remember to list it.
  */
+/**
+ * Daemon-owned keys ruled on individually because their DOMAIN goes the other
+ * way.
+ */
+export const REPLICATED_CONFIG_KEYS: readonly string[] = [
+  // `daemon.*` is otherwise node-local — it answers "does THIS machine run a
+  // daemon". The timezone answers where the operator is, and the group has to
+  // agree on it: the payment capability rolls its daily budgets over at
+  // midnight in this zone, so two nodes on different zones would disagree about
+  // what day it is. A handover across that disagreement either hands back a
+  // fresh daily budget or retroactively overspends one, and neither is visible
+  // to the operator, who set one zone and was shown one zone.
+  'daemon.timezone',
+];
+
 export function classifyDaemonConfigPath(path: string): ConfigPathClassification {
+  if (REPLICATED_CONFIG_KEYS.includes(path)) {
+    return { path, replication: 'replicated', reason: 'the group must agree on what day it is' };
+  }
   if (isPortConfigKey(path)) {
     return { path, replication: 'node-local', reason: 'the schema marks this a port, and a port belongs to a machine' };
   }

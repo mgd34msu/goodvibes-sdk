@@ -27,6 +27,11 @@ import type {
   PermissionMode,
 } from './schema-types.js';
 import type { ProfileConfigKey, ProfileConfigValue } from './schema-types-owner-profile.js';
+// The payments and daemon-process domains map their keys through a value MAP
+// rather than a clause per key. Both clauses were written against the inline
+// ConfigValue that used to live in schema-types.ts, and move here with it.
+import type { PaymentsConfigValueMap } from './schema-types-payments.js';
+import type { DaemonProcessConfigValueMap } from './schema-types-daemon.js';
 
 /** Maps a ConfigKey to its value type. */
 export type ConfigValue<K extends ConfigKey> =
@@ -113,6 +118,8 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'tts.llmModel' ? string :
   K extends 'tts.speed' ? number :
   K extends 'release.channel' ? 'stable' | 'preview' :
+  K extends keyof PaymentsConfigValueMap ? PaymentsConfigValueMap[K] :
+  K extends keyof DaemonProcessConfigValueMap ? DaemonProcessConfigValueMap[K] :
   K extends 'daemon.enabled' ? boolean :
   K extends 'daemon.embedInProcess' ? boolean :
   K extends 'danger.httpListener' ? boolean :
