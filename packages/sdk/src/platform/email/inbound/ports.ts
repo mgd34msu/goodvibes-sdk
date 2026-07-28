@@ -30,9 +30,11 @@
 import { IMAP_MAX_FETCH_UIDS } from '../imap-client.js';
 import type {
   EmailCapabilityFailureNotice,
+  ImapClient,
+  ImapConnectionReport,
   ImapEnvelope,
-  ImapIdleSupport,
 } from '../imap-client.js';
+import type { ImapConnection, ImapReadOptions } from '../imap-session.js';
 
 // ---------------------------------------------------------------------------
 // Time and chance
@@ -186,6 +188,13 @@ export interface MailboxCursorPort {
  * fetch envelopes and ask what the server can do. It cannot append, cannot
  * write a flag and cannot select a different mailbox, because none of those
  * appear here.
+ *
+ * This is a NARROWING rather than a mirror — there is no upstream type with
+ * this shape to import — so it is pinned instead: `MailboxReaderMatchesClient`
+ * below fails to compile if `ImapClient` stops satisfying it, and
+ * `test/types/inbound-reader-matches-client.ts` checks that through the
+ * package's public entry the way a consumer would. A narrowing nothing links
+ * to its source is the same drift hazard as a copy, just slower.
  */
 export interface MailboxReader {
   /** The server's capability atoms, asked for if it did not volunteer them. */
@@ -203,6 +212,48 @@ export interface MailboxReader {
 }
 
 /**
+ * `true` while `ImapClient` satisfies `MailboxReader`, and a message otherwise.
+ *
+ * Deliberately not `never` for the failure case: `never` is assignable to
+ * everything, so an assertion written against it would keep compiling while
+ * saying nothing — which is the same class of mistake as the mirrored
+ * tri-state this whole pin exists because of.
+ */
+export type MailboxReaderMatchesClient = ImapClient extends MailboxReader
+  ? true
+  : { readonly drifted: 'ImapClient no longer satisfies MailboxReader' };
+
+/** Compiles only while its argument is exactly `true`. */
+type AssertTrue<T extends true> = T;
+
+/**
+ * The pin itself.
+ *
+ * `MailboxReader` is a NARROWING of `ImapClient` rather than a mirror of some
+ * upstream type — there is nothing with that shape to import instead — which
+ * makes it the one port here that can still drift. If `fetchEnvelopes` gains a
+ * parameter or narrows its return, this line stops compiling, and it stops
+ * compiling in the ordinary build rather than in a check somebody has to
+ * remember to run.
+ *
+ * It lives in the source, not in `test/types/`, for a concrete reason: that
+ * program typechecks the BUILT surface through package-name imports, and
+ * `platform/email/inbound` is not a subpath export — a long-lived listener
+ * that holds a socket is not part of the mail service's public surface.
+ * Reaching it from there would mean either a relative import that drags
+ * unbuilt source into a program with no node types, or making the path public
+ * to test it.
+ *
+ * The cost of not having this: the runtime symptom of that drift is a watcher
+ * that fetches nothing and reports itself healthy. One commit ago the same
+ * class of gap — a hand-written copy of `ImapConnectionReport` whose
+ * `supportsIdle: boolean | null` field silently became `undefined` after an
+ * upstream rename — made the watcher poll a push-capable server, and the
+ * tests failed on the symptom rather than the cause.
+ */
+export type MailboxReaderIsPinnedToClient = AssertTrue<MailboxReaderMatchesClient>;
+
+/**
  * One open, authenticated, EXAMINEd connection to a mailbox.
  *
  * `wire` is the raw session, needed because IDLE cannot be expressed as "send
@@ -218,62 +269,38 @@ export interface MailboxConnection {
   close(): Promise<void>;
 }
 
-/** What `open()` reports. Structurally `ImapConnectionReport`. */
-export interface MailboxOpenReport {
-  readonly advertisedCapabilities: readonly string[];
-  /**
-   * What the server said about `IDLE`, as two cases rather than three values.
-   *
-   * The real `ImapIdleSupport` type, imported rather than mirrored. A local
-   * copy of a shape whose whole purpose is to be un-ignorable is a copy that
-   * can drift into being ignorable again — and it did: while this field was a
-   * hand-written `boolean | null`, a rename upstream left it reading
-   * `undefined`, which is falsy, and the watcher silently polled a
-   * push-capable server. That is the exact defect the two-case shape exists to
-   * make impossible, so the shape is taken from its owner.
-   */
-  readonly idle: ImapIdleSupport;
-  readonly mailbox: {
-    readonly name: string;
-    readonly exists: number | null;
-    readonly uidValidity: number | null;
-    readonly uidNext: number | null;
-    readonly readOnly: boolean;
-  };
-}
+/**
+ * What `open()` reports — the upstream type itself, not a copy of its shape.
+ *
+ * This was a hand-written mirror, and the mirror is what broke. It carried
+ * `supportsIdle: boolean | null` alongside an upstream field that had become a
+ * two-case object; after the rename the local field simply read `undefined`,
+ * `undefined` is falsy, and the watcher silently polled a server that supports
+ * push. Nothing linked the two declarations, so nothing could report the drift
+ * — the tests failed twenty minutes later on a symptom, not the cause.
+ *
+ * The general rule this taught, which applies to every structural protection
+ * in this design: a type that makes a wrong state unrepresentable protects
+ * only the code that IMPORTS it. A structurally-equivalent local copy is a
+ * second declaration of the same idea and can drift silently. So an alias,
+ * which keeps this directory's vocabulary while leaving exactly one
+ * definition.
+ */
+export type MailboxOpenReport = ImapConnectionReport;
 
 /** How long a single wire wait may last, and what may cancel it. */
-export interface MailboxWireReadOptions {
-  /** `null` means no deadline at all; bound the wait with `signal` instead. */
-  readonly timeoutMs?: number | null;
-  readonly signal?: AbortSignal | undefined;
-}
+export type MailboxWireReadOptions = ImapReadOptions;
 
 /**
- * The wire operations IDLE is built from. Structurally `ImapConnection` from
- * `imap-session.ts`, restated here so this directory depends on a shape rather
- * than on that file's identity.
+ * The wire operations IDLE is built from — again the upstream type, aliased.
+ *
+ * The one option worth knowing about at this layer: `sendCommand` takes
+ * `retainUntagged: false`, and the IDLE call site passes it. An IDLE is
+ * outstanding for twenty-seven minutes and its completion is read for status
+ * rather than for lines, so retaining every untagged response that arrives in
+ * that window grows a buffer nothing reads. Subscribers are unaffected.
  */
-export interface MailboxWire {
-  onUntagged(listener: (line: string) => void): () => void;
-  /**
-   * Send a tagged command and return its tag.
-   *
-   * `retainUntagged: false` stops the command's own line buffer accumulating
-   * untagged responses. IDLE passes it: an IDLE is outstanding for
-   * twenty-seven minutes and every untagged line that arrives in that window
-   * would otherwise be retained against a command that will never read them.
-   * Subscribers still see everything.
-   */
-  sendCommand(text: string, options?: { readonly retainUntagged?: boolean }): Promise<string>;
-  sendRawLine(text: string): Promise<void>;
-  awaitContinuation(tag: string, options?: MailboxWireReadOptions): Promise<void>;
-  awaitTag(tag: string, options?: MailboxWireReadOptions): Promise<string[]>;
-  waitForUntagged(
-    matches: (line: string) => boolean,
-    options?: MailboxWireReadOptions,
-  ): Promise<string>;
-}
+export type MailboxWire = ImapConnection;
 
 /** Opens connections to one mailbox. One call, one fresh connection. */
 export interface MailboxConnectionPort {
