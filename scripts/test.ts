@@ -1,10 +1,10 @@
 import { execFileSync } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
-import { mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { sweepStaleTmpDirs } from './stale-tmp-sweep.ts';
+import { makeRunTmpDirName, RUN_TMP_PREFIX, STALE_RUN_MS, testTmpEnv, TEST_TMP_ROOT } from './test-run-tmp.ts';
 import { withWorkspaceLock } from './workspace-lock.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -27,8 +27,10 @@ const args = process.argv.slice(2);
  *
  * The fix is a single per-run PARENT inside the system temp dir: this run's
  * leftovers are one directory, removed with the run, and an age-based sweep
- * reclaims what a signal-killed run could not remove itself. Thousands of
- * unowned siblings become one owned subtree.
+ * (scripts/stale-tmp-sweep.ts, params in scripts/test-run-tmp.ts — shared with
+ * scripts/leak-scan.ts, the other direct-`bun test` entry point) reclaims what
+ * a signal-killed run could not remove itself. Thousands of unowned siblings
+ * become one owned subtree.
  *
  * It deliberately does NOT live inside the checkout. `tmpdir()` is expected to
  * be somewhere no project rooted above it, and tests rely on that: pointing it
@@ -39,41 +41,7 @@ const args = process.argv.slice(2);
  * package.json, an editorconfig — is a property tests are entitled to assume
  * absent.
  */
-const TEST_TMP_ROOT = tmpdir();
-const RUN_TMP_PREFIX = 'goodvibes-sdk-testrun-';
-const RUN_TMP_DIR = join(TEST_TMP_ROOT, `${RUN_TMP_PREFIX}${process.pid}-${randomBytes(4).toString('hex')}`);
-/** Entries older than this are from a run that is long gone. */
-const STALE_RUN_MS = 60 * 60 * 1000;
-
-/**
- * Reclaim per-run directories left by a previous run that could not clean up
- * after itself. Age-based, so a sibling run started moments ago is never
- * touched — several checkouts of this repository are routinely under test at
- * the same time, and so are other projects sharing this temp dir.
- */
-function sweepStaleRunDirs(): void {
-  let entries: string[];
-  try {
-    entries = readdirSync(TEST_TMP_ROOT);
-  } catch {
-    return;
-  }
-  const now = Date.now();
-  for (const name of entries) {
-    if (!name.startsWith(RUN_TMP_PREFIX)) continue;
-    const path = join(TEST_TMP_ROOT, name);
-    try {
-      if (now - statSync(path).mtimeMs <= STALE_RUN_MS) continue;
-    } catch {
-      continue; // vanished between listing and stat
-    }
-    try {
-      rmSync(path, { recursive: true, force: true });
-    } catch {
-      // Best effort — another run may have reclaimed it first.
-    }
-  }
-}
+const RUN_TMP_DIR = join(TEST_TMP_ROOT, makeRunTmpDirName());
 
 function defaultTestArgs(): readonly string[] {
   const testRoot = resolve(SDK_ROOT, 'test');
@@ -140,7 +108,7 @@ function hasExplicitTimeout(): boolean {
 
 await withWorkspaceLock('test', () => {
   const testArgs = resolveTestArgs();
-  sweepStaleRunDirs();
+  sweepStaleTmpDirs(TEST_TMP_ROOT, RUN_TMP_PREFIX, STALE_RUN_MS);
   rmSync(RUN_TMP_DIR, { recursive: true, force: true });
   mkdirSync(RUN_TMP_DIR, { recursive: true });
   try {
@@ -150,9 +118,7 @@ await withWorkspaceLock('test', () => {
       stdio: 'inherit',
       env: {
         ...process.env,
-        TMPDIR: RUN_TMP_DIR,
-        TMP: RUN_TMP_DIR,
-        TEMP: RUN_TMP_DIR,
+        ...testTmpEnv(RUN_TMP_DIR),
       },
     });
   } finally {
