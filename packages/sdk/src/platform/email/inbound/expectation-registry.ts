@@ -111,10 +111,13 @@ import type { InboundCapabilityReason, InboundCapabilityVerdict } from './ports.
  * The floor stops a one-minute window from arming a two-second timer, which
  * would be a wake-up every two seconds for the life of the daemon to reap a
  * list that is empty almost always. The ceiling stops the hour-long maximum
- * window from pushing the cadence past a minute, because `capabilityChanged`
- * and the gateway verbs can retire expectations at any moment and a sweep that
- * runs rarely makes `list()` disagree with the truth for longer than anything
- * reading it would expect.
+ * window from pushing the cadence past a minute, because this interval is also
+ * how LATE the owner hears about an expiry: `sweep()` is the only path that
+ * turns an elapsed window into an `onExpired` report, and no read produces one,
+ * so nothing else ever will. What a slow cadence costs is the announcement and
+ * not the accuracy — `list()` and `hasOpen()` answer correctly the whole time,
+ * because an elapsed expectation is filtered out of a read rather than waiting
+ * for a sweep to remove it.
  */
 export function expectationSweepIntervalMs(defaultWindowMs: number): number {
   const window = Number.isFinite(defaultWindowMs) && defaultWindowMs > 0
@@ -441,6 +444,33 @@ export class InboundExpectationRegistry {
     const expectation = this.book.openExpectation(request);
     await this.persist();
     return expectation;
+  }
+
+  /**
+   * Whether anything is being waited on right now.
+   *
+   * For the callers that want a boolean and nothing else — the Gmail source's
+   * poll-cadence predicate is the one this exists for. It asks before every
+   * sleep, which at the shipped `gmailPollSecondsExpecting` is every five
+   * seconds for as long as a signup is mid-flight.
+   *
+   * That predicate used to be `expectations.list().length > 0`, and the length
+   * was the harmless half. `list()` reached `VerificationExpectationBook.list`,
+   * which called `sweepExpired` and discarded what it removed — so the fast
+   * probe REAPED the expectation that had just run out and threw the record of
+   * it away, and `sweep()` (every thirty seconds at the shipped window, and the
+   * only path that maps an expiry through `describeExpiry`, persists it and
+   * fires `onExpired`) arrived to find nothing left to report. A verification
+   * that never came ended in silence — the single outcome `onExpired` and
+   * `startSweeping` exist to make impossible.
+   *
+   * So this asks the book a question and changes nothing: `book.hasOpen`
+   * filters where `book.list` used to reap. It is not merely cheaper than
+   * building the list; it is the reason the reporting path still has something
+   * to report.
+   */
+  hasOpen(): boolean {
+    return this.book.hasOpen(this.now());
   }
 
   /** Open expectations with their remaining window, for disclosure. */
