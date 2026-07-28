@@ -27373,6 +27373,95 @@
       "kind": "function"
     }
   ],
+  "./platform/runtime/path-shadow": [
+    {
+      "name": "CommandCopy",
+      "kind": "interface",
+      "required": [
+        "command",
+        "directory",
+        "ownership",
+        "path",
+        "pathIndex",
+        "resolvedPath"
+      ]
+    },
+    {
+      "name": "CommandShadowReport",
+      "kind": "interface",
+      "required": [
+        "command",
+        "copies",
+        "installDirNotOnPath",
+        "shadowing"
+      ]
+    },
+    {
+      "name": "ShadowOwnership",
+      "kind": "type"
+    },
+    {
+      "name": "ShadowRemoval",
+      "kind": "interface",
+      "required": [
+        "command",
+        "kind"
+      ]
+    },
+    {
+      "name": "ShadowScanInput",
+      "kind": "interface",
+      "required": [
+        "commands",
+        "homeDir",
+        "installDir",
+        "isExecutableFile",
+        "pathEntries",
+        "realPath"
+      ]
+    },
+    {
+      "name": "ShadowScanResult",
+      "kind": "interface",
+      "required": [
+        "hasProblem",
+        "reports",
+        "shadowed"
+      ]
+    },
+    {
+      "name": "describeShadowReport",
+      "kind": "function"
+    },
+    {
+      "name": "describeShadowScan",
+      "kind": "function"
+    },
+    {
+      "name": "isWithinDirectory",
+      "kind": "function"
+    },
+    {
+      "name": "owningPackageName",
+      "kind": "function"
+    },
+    {
+      "name": "removableShadows",
+      "kind": "function"
+    },
+    {
+      "name": "scanCommandShadows",
+      "kind": "function"
+    },
+    {
+      "name": "splitPathEntries",
+      "kind": "function"
+    },
+    {
+      "name": "versionLineIdentifiesCommand",
+      "kind": "function"
+    }
+  ],
   "./platform/runtime/permissions/exec-prompt-wiring": [
     {
       "name": "ExecPromptAnswer",
