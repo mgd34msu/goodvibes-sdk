@@ -42,6 +42,11 @@
 import { createInboundMailDedup, DedupingInboundMailSink } from './sink.js';
 import { capabilityVerdict } from './capability.js';
 import { describeInboundMailHealth, type InboundMailHealthEntry } from './health.js';
+import {
+  describeNoticeRefusal,
+  type InboundNoticeHealth,
+  type InboundNoticeRefusalState,
+} from './notice-health.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { describeSourceLatency, type InboundMailSource } from './source.js';
 import {
@@ -186,6 +191,26 @@ export interface InboundMailStatusSnapshot {
   readonly retention: InboundMailRetentionReport;
   /** One entry per persisted store, always all three. See `InboundMailStoreHealth`. */
   readonly stores: readonly InboundMailStoreHealth[];
+  /**
+   * Whether arriving mail is reaching the owner, and what is stopping it.
+   *
+   * `state: 'ok'` means notices are getting through OR nothing has been refused
+   * yet — deliberately one value, because "nothing refused" and "refusals
+   * cleared" are the same fact about right now. `state: 'refused'` carries the
+   * condition, its remedial step, when it started and how many messages have
+   * been recorded without a notice under it. A capability quietly demoted to a
+   * recorder is precisely what this field exists to make unmissable.
+   */
+  readonly noticeDelivery:
+    | { readonly state: 'ok' }
+    | {
+      readonly state: 'refused';
+      readonly reason: string;
+      readonly detail: string;
+      readonly fix: string;
+      readonly since: string;
+      readonly unannounced: number;
+    };
   readonly health: InboundMailHealthEntry;
 }
 
@@ -239,6 +264,20 @@ export interface InboundMailSupervisorDeps {
   readonly housekeeper: InboundMailHousekeeper;
   /** What a found message goes through. Injected: the supervisor owns lifecycle, not intake. */
   readonly handle: (message: InboundMailboxMessage) => Promise<void>;
+  /**
+   * Whether arriving mail is actually reaching the owner.
+   *
+   * Written by the intake, read here. A structural notice refusal completes the
+   * pass — the cursor advances and the message is never re-announced — so the
+   * watcher goes on looking perfectly healthy while every message it finds goes
+   * unannounced. That is the condition this reads, and it is why `health()`
+   * reports `degraded` for it and `status.reason` says so in words.
+   *
+   * Optional so a supervisor can be exercised without one, in which case it
+   * behaves exactly as before. The composition root passes the same instance it
+   * gives the intake.
+   */
+  readonly noticeHealth?: Pick<InboundNoticeHealth, 'get'> | undefined;
   readonly observer?: InboundMailObserver | undefined;
   readonly now?: (() => number) | undefined;
 }
@@ -270,8 +309,27 @@ export class InboundMailSupervisor {
     this.now = deps.now ?? (() => Date.now());
   }
 
+  /**
+   * What this supervisor is doing, with any notice refusal folded into the
+   * sentence.
+   *
+   * Appended here rather than at `settle()` because the two facts arrive at
+   * different times: the mode is decided when the source starts, and whether
+   * the owner is being told is decided per message, long afterwards. A status
+   * that reported the first and not the second is exactly the reading that let
+   * a mailbox whose every notice was refused go on saying `idle`.
+   */
   get status(): InboundMailSupervisorStatus {
-    return this.currentStatus;
+    const refusal = this.noticeRefusal();
+    if (refusal === null) return this.currentStatus;
+    return {
+      ...this.currentStatus,
+      reason: `${this.currentStatus.reason} ${describeNoticeRefusal(refusal)}`,
+    };
+  }
+
+  private noticeRefusal(): InboundNoticeRefusalState | null {
+    return this.deps.noticeHealth?.get() ?? null;
   }
 
   /** The last capability verdict reached, or null before any probe. */
@@ -483,14 +541,16 @@ export class InboundMailSupervisor {
 
   /** Email's health entry, read from live state (never from config presence). */
   health(): InboundMailHealthEntry {
+    const status = this.status;
     return describeInboundMailHealth({
       account: this.deps.account,
       mailbox: this.deps.mailbox,
       enabled: Boolean(this.deps.config.get('surfaces.email.inbound.enabled')),
-      running: this.currentStatus.running,
-      mode: this.currentStatus.mode,
-      reason: this.currentStatus.reason,
+      running: status.running,
+      mode: status.mode,
+      reason: status.reason,
       verdict: this.verdict,
+      noticeRefusal: this.noticeRefusal(),
     });
   }
 
@@ -526,11 +586,13 @@ export class InboundMailSupervisor {
     const stores = this.describeStores(unavailable);
     const lastSweep = this.deps.housekeeper.getLastReport();
     const recordPolicy = this.deps.records.getPolicy();
+    const status = this.status;
+    const refusal = this.noticeRefusal();
     return {
       enabled: Boolean(this.deps.config.get('surfaces.email.inbound.enabled')),
-      running: this.currentStatus.running,
-      mode: this.currentStatus.mode,
-      reason: this.currentStatus.reason,
+      running: status.running,
+      mode: status.mode,
+      reason: status.reason,
       account: this.deps.account,
       mailbox: this.deps.mailbox,
       source: this.describeSource(),
@@ -567,6 +629,16 @@ export class InboundMailSupervisor {
           },
       },
       stores,
+      noticeDelivery: refusal === null
+        ? { state: 'ok' }
+        : {
+          state: 'refused',
+          reason: refusal.reason,
+          detail: refusal.detail,
+          fix: refusal.fix,
+          since: refusal.since,
+          unannounced: refusal.unannounced,
+        },
       health: this.health(),
     };
   }
@@ -625,10 +697,21 @@ export class InboundMailSupervisor {
   /**
    * The dedup window, in milliseconds.
    *
-   * Read from config rather than left at the module default because the value
-   * has a correctness floor: it must outlast a restart cycle, or a message
-   * fetched just before the daemon's hourly auto-restart comes back after it
-   * with its claim already expired and is announced twice.
+   * Read from config so the window is tunable, and NOT because it has a
+   * correctness floor. It used to say it did — "it must outlast a restart
+   * cycle" — and that was structurally false: the cache is built fresh three
+   * lines above, inside `runStart()`, which also runs on a config-change
+   * restart and on a cluster-gate handoff. A restart does not expire the claim,
+   * it destroys the cache, and no value here changes that. A floor guarding a
+   * property the mechanism cannot provide at any setting is a floor guarding
+   * nothing.
+   *
+   * What the window genuinely bounds is two passes inside ONE process arriving
+   * at the same message — an IDLE wake overlapping a fallback poll, or a retry
+   * after a failed pass. Those are seconds apart, so any sane value works and
+   * the default is generous rather than critical. What actually stops a
+   * restart-crossing duplicate ANNOUNCEMENT is the record store: `intake.ts`
+   * reads the message's own record before announcing, and that survives.
    */
   private dedupTtlMs(): number {
     const minutes = this.deps.config.get('surfaces.email.inbound.dedupTtlMinutes');

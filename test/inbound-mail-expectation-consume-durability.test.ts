@@ -93,7 +93,7 @@ function intakeFor(options: {
     expectations: options.registry.matcher,
     records: options.records,
     notices: {
-      resolveBinding: () => ({ surfaceKind: 'telegram' }),
+      resolveBinding: () => ({ kind: 'bound', binding: { surfaceKind: 'telegram' } }),
       send: options.send ?? (async () => ({ delivered: true })),
     },
     noticeMode: () => 'all',
@@ -243,12 +243,16 @@ describe('a pass that does not complete leaves the book exactly as it found it',
       serviceDomain: 'service.test', recipientAddress: ALIAS, purpose: 'Create an account',
     });
 
+    let sends = 0;
     const intake = createInboundMailIntake({
       expectations: registry.matcher,
-      records: { record: async () => { throw new Error('disk full'); } } as never,
+      records: {
+        findByMessage: async () => null,
+        record: async () => { throw new Error('disk full'); },
+      } as never,
       notices: {
-        resolveBinding: () => ({ surfaceKind: 'telegram' }),
-        send: async () => ({ delivered: true }),
+        resolveBinding: () => ({ kind: 'bound', binding: { surfaceKind: 'telegram' } }),
+        send: async () => { sends += 1; return { delivered: true }; },
       },
       noticeMode: () => 'all',
       now: () => NOW,
@@ -256,6 +260,9 @@ describe('a pass that does not complete leaves the book exactly as it found it',
 
     await expect(intake(mail(101))).rejects.toThrow(/disk full/);
     expect(registry.list()).toHaveLength(1);
+    // And the write that failed happened BEFORE the notice, so the owner was
+    // not told about a message this pass is going to hand back for retry.
+    expect(sends).toBe(0);
   });
 
   test('a structural refusal DOES complete the pass, so the grant is spent', async () => {

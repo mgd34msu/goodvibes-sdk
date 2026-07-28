@@ -1022,10 +1022,48 @@ is worth restating for Gmail specifically: it would be the only identity
 available that looks source-agnostic, which makes it the tempting choice
 precisely where it is least safe.
 
-The module-scoped default TTL of 10 minutes is too short here — a crash-restart
-cycle can exceed it — so the email adapter constructs its own
-`InboundMessageDedup` instance with an email-appropriate TTL (§7) rather than
-sharing `ntfyInboundDedup`.
+The email adapter constructs its own `InboundMessageDedup` instance rather than
+sharing `ntfyInboundDedup`, so one surface's traffic cannot evict another's
+under the shared entry cap.
+
+**Correction: this cache is in-memory, and the TTL never covered a restart.**
+The original text here — and the comment in `sink.ts`, and the "correctness
+floor" comment on `dedupTtlMs()`, and the `dedupTtlMinutes` row in §8 — all said
+the window "must exceed a restart cycle" and that "an hour covers the
+auto-update restart". That was structurally false at every setting.
+`InboundMailSupervisor.runStart()` builds a fresh `createInboundMailDedup(...)`,
+and `runStart()` is what a process restart, a config change and a cluster-gate
+handoff all reach. A restart does not expire the claim; it destroys the object
+holding it. A floor guarding a property the mechanism cannot provide at any
+value is a floor guarding nothing, so the config key's stated basis is corrected
+too.
+
+What the window genuinely covers is the two cases listed above — an IDLE wake
+overlapping a fallback poll, and a retry after a failed pass — both of which
+happen inside one process, seconds apart. The value is therefore generous rather
+than load-bearing.
+
+**What covers the restart is the record store.** The sequence the false claim
+was written for is real: UID 205 is announced, the daemon's hourly auto-update
+restarts it before the cursor advance lands, the cursor is still at 204, and the
+message comes back into an empty cache. The durable answer already existed —
+the inbound record store is keyed by the identity the receiving server assigned
+and says what happened to the notice — so `intake.ts` asks `findByMessage`
+whether this exact message was already announced before announcing it, and a
+record reading `delivered` suppresses the second notice.
+
+Persisting the dedup cache itself was the alternative, and it is the worse one.
+The claim is taken BEFORE the work, so a durable claim that survives a crash
+suppresses the retry and the message is lost silently — the failure this section
+already rules is worse than a duplicate. Persisting only on success narrows the
+window to "notice sent, completion not yet durable", which is exactly the window
+the record store closes, using state that already reaps, bounds, validates by
+content, sweeps and discloses (§9.3) rather than a fourth store that would need
+all five rules written again.
+
+Every path where the record store cannot answer — a discarded file, a reaped
+record, a record still at `pending` — leads to announcing. That is deliberate:
+the failure direction has to be the duplicate, never the silence.
 
 ---
 
@@ -1389,7 +1427,7 @@ wearing a feature's clothes.
 | `surfaces.email.inbound.notice.route` | route binding \| `'default'` | **`'default'`** | Inherits the owner's existing notice routing. A second place to configure "where to reach me" is a second place to get it wrong. |
 | `surfaces.email.inbound.notice.mode` | `'all' \| 'expected-only' \| 'none'` | **`'all'`** | He asked to be told about mail. `expected-only` exists for a high-volume mailbox; `none` is available and disclosed, but silence is not a default. |
 | `surfaces.email.inbound.expectationWindowMinutes` | number | **`15`** | Matches `DEFAULT_VERIFICATION_WINDOW_MS` already shipped. Range 1–60, hard-capped by the existing `MAX_VERIFICATION_WINDOW_MS`. |
-| `surfaces.email.inbound.dedupTtlMinutes` | number | **`60`** | Must exceed a restart cycle, or a crash re-delivers as a duplicate. An hour covers the auto-update restart. |
+| `surfaces.email.inbound.dedupTtlMinutes` | number | **`60`** | How long one process remembers a message it handled, so an overlapping poll or a retried pass does not process it twice. In-memory only: a restart destroys the cache rather than expiring it, so no value here prevents a restart-crossing duplicate — the record store does that (§6). Seconds would cover what this covers; the default is generous, not load-bearing. |
 | `surfaces.email.inbound.retentionDays` | number | **`30`** | How long inbound records are kept before reaping. Long enough to explain "why did I get that message", short enough to bound the store. |
 | `surfaces.email.inbound.maxRecords` | number | **`5000`** | The hard bound. Whichever of age or count binds first, wins. |
 | `surfaces.email.inbound.capabilityRecheckMinutes` | number | **`60`** | How often a mailbox reporting insufficient capability is re-probed (§3.4b). Fixing a scope must not require a daemon restart, and must not produce a tight retry loop. Range 5–1440. |
@@ -2337,6 +2375,94 @@ honestly. The announcer diverged from it on the strength of its own comment,
 *"its result is deliberately unread"*. That comment was the defect's rationale
 rather than its description, which is the most dangerous shape a comment can
 take: it does not merely fail to describe the code, it **justifies** it.
+
+### 13.9 Three more, and all three are the same rule applied one step further along
+
+A refutation pass over the finished capability confirmed three defects. What
+makes them worth recording together is that every one of them is a rule this
+document had already stated, applied to one collaborator and not to the one
+beside it.
+
+**The notice was sent before the record was written.** §13.5's round fixed the
+*consume* ordering on the rule "a pass either completes, or it leaves the book
+exactly as it found it". The notice is the step in that handler that genuinely
+cannot be undone — a message on the owner's phone is not retractable — and the
+rule was not applied to it. So: `notices.send` ran, `records.record` threw
+(ENOSPC, a read-only state directory), the intake threw, the sink released its
+claim, the cursor stayed put, and the next pass **announced the same message
+again**. Every pass; five redeliveries produced five notices and zero records.
+Dedup could not suppress any of it, because releasing the claim is exactly how
+the retry is enabled — the guard against duplicate notices was the mechanism
+producing them.
+
+The fix is the ordering: the record goes first, in a new `pending` state,
+because it is the step that can fail; the notice goes last. Two corollaries came
+with it and both are load-bearing.
+
+> **Everything that can fail goes in front of the irreversible step, and nothing
+> after it may throw.** A throw after the send releases the claim and
+> re-announces, so the second record write and the `consumeMatch` are attempted,
+> reported through the observer on failure, and swallowed. What that gives up is
+> named rather than glossed: a record left at `pending` (disclosed) and a grant
+> left open (bounded by its own window, disclosed by `onExpired`). Both are
+> recoverable and announce themselves. A duplicate notice is neither.
+
+> **Writing before an irreversible step means the write must be idempotent by
+> the thing's own identity.** `record()` appended, so every retried pass would
+> have added a row and `email.inbound.status` would have reported five arrivals
+> where the phone buzzed once. It now upserts on the message key — the mailbox
+> plus the id the receiving server assigned — keeping the existing record id.
+
+**The dedup cache was in-memory and three places said otherwise.** §6, `sink.ts`
+and `dedupTtlMs()` all asserted the TTL "must outlast a restart cycle". The
+cache is rebuilt inside `runStart()`, so a restart destroys it rather than
+expiring it, and no value made the claim true. Corrected in all four places
+(the §8 table row included), and the property the comments wanted is now
+delivered by the mechanism that can: the intake asks the record store whether
+this exact message was already announced. The reasoning for choosing that over
+persisting the cache is in §6 — a durable claim taken *before* the work
+converts a duplicate into silence, which is the trade this document already
+ruled the wrong way round.
+
+> **A comment that justifies code rather than describing it is the shape to
+> distrust** — §13.8 already recorded this for the announcer's "deliberately
+> unread", and it recurred here verbatim. Both times the comment named a
+> property the code did not have, and both times it was the comment that stopped
+> anyone checking.
+
+**A structural notice refusal was invisible.** The retryable/permanent split is
+right and was deliberately chosen: retrying `no-route-binding` forever would pin
+the cursor on a message that fails identically on every pass. But "not retried"
+was implemented as "return normally", and returning normally is
+indistinguishable from success everywhere upstream — the cursor advanced, the
+supervisor reported `idle`, and the health entry reported `healthy` while every
+message that arrived was announced to nobody. The same class as §3.4b's terminal
+failure ending at a log line, one seam further along.
+
+Two triggers reached it, and the second is the one worth naming: `listBindings()`
+returns `[]` whenever the `route-binding` feature gate is off, so an unrelated
+flag turned inbound mail into a recorder, reporting as a fresh install that had
+simply never connected a channel.
+
+`notice-health.ts` latches the condition, counts the messages going unannounced
+under it, logs once per condition rather than once per message, and drives
+`status.reason`, the health entry (`degraded`) and a `noticeDelivery` field on
+`email.inbound.status`. `RouteBindingManager.isRouteBindingEnabled()` is public
+so the gate-off case can name itself.
+
+> **A refusal that cannot be announced through the broken path must still be
+> announced.** `terminal-notice.ts` reaches the owner by sending him a notice;
+> that is unavailable here, because the thing being reported IS the notice route
+> refusing, and a notice about it would be refused identically. The honest
+> surfaces are the ones that do not depend on the broken path — the status verb,
+> the health entry, the log — and all three are driven rather than one.
+
+> **`healthy` must mean the capability is doing its job, not that its socket is
+> open.** Every input `describeInboundMailHealth` was built from described the
+> connection to the mail server, and all of them were satisfied while nothing
+> was being delivered. That is the same fault the function's own docstring
+> already criticised in `ChannelStatusSnapshot` — computed from configuration
+> rather than from behaviour — reproduced one field short.
 
 ## 14. Related
 

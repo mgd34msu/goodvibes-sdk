@@ -194,6 +194,30 @@ const EMAIL_INBOUND_HEALTH_SCHEMA = objectSchema({
   reason: STRING_SCHEMA,
 }, ['kind', 'id', 'label', 'state', 'enabled', 'account', 'mailbox', 'mode', 'reason']);
 
+/** One persisted store's readability, as `describeStores` reports it. */
+const EMAIL_INBOUND_STORE_SCHEMA = objectSchema({
+  store: STRING_SCHEMA,
+  state: STRING_SCHEMA,
+  detail: STRING_SCHEMA,
+}, ['store', 'state', 'detail']);
+
+/**
+ * Whether arriving mail is actually reaching the owner.
+ *
+ * `state: 'ok'` carries nothing else, which is why every other field is
+ * optional here: a refusal has a reason, a fix, a start time and a count, and
+ * "notices are getting through" has none of those and must not be padded with
+ * empty strings that read as facts.
+ */
+const EMAIL_INBOUND_NOTICE_DELIVERY_SCHEMA = objectSchema({
+  state: STRING_SCHEMA,
+  reason: STRING_SCHEMA,
+  detail: STRING_SCHEMA,
+  fix: STRING_SCHEMA,
+  since: STRING_SCHEMA,
+  unannounced: NUMBER_SCHEMA,
+}, ['state']);
+
 export const builtinGatewayEmailMethodDescriptors: readonly GatewayMethodDescriptor[] = [
   methodDescriptor({
     id: 'email.inbox.list',
@@ -366,7 +390,7 @@ export const builtinGatewayEmailMethodDescriptors: readonly GatewayMethodDescrip
     transport: ['ws'],
     title: 'Inbound Mail Status',
     description:
-      'Disclose the inbound-mail watcher: whether it is running and why, which source is reading the mailbox and the delay that source actually costs, the current capability verdict, every persisted cursor with its position and age, every open verification expectation with its remaining window, and what each store retains before it is reaped. Read-only.',
+      'Disclose the inbound-mail watcher: whether it is running and why, which source is reading the mailbox and the delay that source actually costs, the current capability verdict, every persisted cursor with its position and age, every open verification expectation with its remaining window, whether each store could be read, whether arriving mail is actually being announced to the owner, and what each store retains before it is reaped. Read-only.',
     category: 'email',
     scopes: ['read:email'],
     inputSchema: objectSchema({}),
@@ -382,10 +406,16 @@ export const builtinGatewayEmailMethodDescriptors: readonly GatewayMethodDescrip
       cursors: arraySchema(EMAIL_INBOUND_CURSOR_SCHEMA),
       expectations: arraySchema(EMAIL_INBOUND_EXPECTATION_SCHEMA),
       retention: EMAIL_INBOUND_RETENTION_SCHEMA,
+      // Both were served by the handler and undeclared here, which is the same
+      // fault the descriptor's own comment names for transports: a disclosure
+      // the consumer cannot see the shape of is one it will not read.
+      stores: arraySchema(EMAIL_INBOUND_STORE_SCHEMA),
+      noticeDelivery: EMAIL_INBOUND_NOTICE_DELIVERY_SCHEMA,
       health: EMAIL_INBOUND_HEALTH_SCHEMA,
     }, [
       'enabled', 'running', 'mode', 'reason', 'account', 'mailbox',
-      'source', 'cursors', 'expectations', 'retention', 'health',
+      'source', 'cursors', 'expectations', 'retention', 'stores',
+      'noticeDelivery', 'health',
     ]),
   }),
 ];
