@@ -18,7 +18,6 @@ export {
   DEFAULT_BACKOFF_POLICY,
   backoffWindowMs,
   fullJitterDelayMs,
-  isConnectionLimitRefusal,
   type BackoffPolicy,
 } from './backoff.js';
 
@@ -31,8 +30,6 @@ export {
   resolveIdleSupport,
   stateForReason,
   verdictForOpenConnection,
-  type IdleSupportResolution,
-  type OpenFailureShape,
   type OpenFailureVerdict,
 } from './capability.js';
 

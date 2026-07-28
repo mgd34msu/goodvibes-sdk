@@ -146,34 +146,3 @@ export class BackoffSchedule {
     this.failures = 0;
   }
 }
-
-/**
- * Whether a server's refusal is the provider saying "not right now, you have
- * too many connections open" rather than "no".
- *
- * This matters more than it looks. Gmail permits 15 concurrent IMAP
- * connections and `EmailService` opens a fresh one per request on top of the
- * one the watcher holds permanently, so an owner doing anything with his mail
- * while the watcher runs can push us over it. The refusal arrives at LOGIN,
- * which the open path classifies as a rejected CREDENTIAL — and a credential
- * rejection is terminal, so a watcher that believed it would stop permanently
- * on a condition that clears by itself in seconds.
- *
- * Matched on the provider's own wording because there is no code for it that
- * every provider sends: Gmail's `[LIMIT]`, Dovecot's "Maximum number of
- * connections from user+IP exceeded", and the RFC 5530 `[INUSE]` response code
- * all mean the same thing and share no substring.
- */
-const CONNECTION_LIMIT_PATTERNS: readonly RegExp[] = [
-  /too many simultaneous connections/i,
-  /maximum number of connections/i,
-  /\[LIMIT\]/i,
-  /\[INUSE\]/i,
-  /connection limit/i,
-  /too many connections/i,
-  /exceeded the maximum number/i,
-];
-
-export function isConnectionLimitRefusal(message: string): boolean {
-  return CONNECTION_LIMIT_PATTERNS.some((pattern) => pattern.test(message));
-}

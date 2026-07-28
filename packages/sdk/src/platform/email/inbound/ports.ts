@@ -27,7 +27,12 @@
  * status change — and no others, because there is nothing else to call.
  */
 
-import type { ImapEnvelope } from '../imap-client.js';
+import { IMAP_MAX_FETCH_UIDS } from '../imap-client.js';
+import type {
+  EmailCapabilityFailureNotice,
+  ImapEnvelope,
+  ImapIdleSupport,
+} from '../imap-client.js';
 
 // ---------------------------------------------------------------------------
 // Time and chance
@@ -186,15 +191,15 @@ export interface MailboxReader {
   /** The server's capability atoms, asked for if it did not volunteer them. */
   capabilities(): Promise<readonly string[]>;
   /**
-   * Envelope headers for the given UIDs.
+   * Envelope headers for the given UIDs. Every UID asked for is asked for.
    *
-   * `limit` must be passed as the batch's own length by every caller: the
-   * underlying client keeps only the LAST `limit` UIDs, so a default smaller
-   * than the batch silently drops the oldest of a delta — and a cursor that
-   * then advanced past them would lose exactly the messages a reconnect
-   * exists to recover.
+   * There is no `limit`, and its absence is the point: the client used to keep
+   * only the last N and now refuses a batch above `IMAP_MAX_FETCH_UIDS`
+   * instead. Refusing is right — a caller advancing a cursor over a silently
+   * shortened result skips the messages it never saw — and it makes batching
+   * the CALLER's job, which is why `deltaBatchSize` exists and is clamped.
    */
-  fetchEnvelopes(uids: readonly number[], limit: number): Promise<ImapEnvelope[]>;
+  fetchEnvelopes(uids: readonly number[]): Promise<ImapEnvelope[]>;
 }
 
 /**
@@ -217,10 +222,17 @@ export interface MailboxConnection {
 export interface MailboxOpenReport {
   readonly advertisedCapabilities: readonly string[];
   /**
-   * Whether `IDLE` was advertised. `null` means the server said NOTHING about
-   * its capabilities, which is not the same as "no" — see `capability.ts`.
+   * What the server said about `IDLE`, as two cases rather than three values.
+   *
+   * The real `ImapIdleSupport` type, imported rather than mirrored. A local
+   * copy of a shape whose whole purpose is to be un-ignorable is a copy that
+   * can drift into being ignorable again — and it did: while this field was a
+   * hand-written `boolean | null`, a rename upstream left it reading
+   * `undefined`, which is falsy, and the watcher silently polled a
+   * push-capable server. That is the exact defect the two-case shape exists to
+   * make impossible, so the shape is taken from its owner.
    */
-  readonly supportsIdle: boolean | null;
+  readonly idle: ImapIdleSupport;
   readonly mailbox: {
     readonly name: string;
     readonly exists: number | null;
@@ -244,7 +256,16 @@ export interface MailboxWireReadOptions {
  */
 export interface MailboxWire {
   onUntagged(listener: (line: string) => void): () => void;
-  sendCommand(text: string): Promise<string>;
+  /**
+   * Send a tagged command and return its tag.
+   *
+   * `retainUntagged: false` stops the command's own line buffer accumulating
+   * untagged responses. IDLE passes it: an IDLE is outstanding for
+   * twenty-seven minutes and every untagged line that arrives in that window
+   * would otherwise be retained against a command that will never read them.
+   * Subscribers still see everything.
+   */
+  sendCommand(text: string, options?: { readonly retainUntagged?: boolean }): Promise<string>;
   sendRawLine(text: string): Promise<void>;
   awaitContinuation(tag: string, options?: MailboxWireReadOptions): Promise<void>;
   awaitTag(tag: string, options?: MailboxWireReadOptions): Promise<string[]>;
@@ -325,8 +346,24 @@ export type InboundCapabilityReason =
   | 'polling-capability-unknown'
   /** degraded: the socket dropped; waiting out a backoff before retrying. */
   | 'reconnecting'
-  /** degraded: the provider's simultaneous-connection limit was hit. */
-  | 'connection-limit'
+  /**
+   * degraded: the server refused for a reason about ITSELF rather than the
+   * account — a connection limit, a capacity refusal, a temporary fault.
+   *
+   * Named after what the server actually claimed, not after the commonest
+   * cause. Calling a `[SERVERBUG]` a connection limit would put a specific and
+   * false explanation in front of the owner, and the detail carries the
+   * server's own wording precisely so it does not have to be guessed at.
+   */
+  | 'server-unavailable'
+  /**
+   * insufficient: no credential is stored where the daemon reads secrets.
+   *
+   * Distinct from a refused one because the fix is different — the secret is
+   * missing rather than wrong — and telling an owner to replace a password he
+   * never stored sends him looking for the wrong thing.
+   */
+  | 'credentials-missing'
   /** insufficient: the credential was refused. */
   | 'credentials-rejected'
   /** insufficient: signed in, and the mailbox would not open for reading. */
@@ -373,8 +410,20 @@ export interface InboundMailTerminalFailure {
   readonly mailbox: string;
   readonly reason: InboundCapabilityReason;
   readonly detail: string;
+  /** The owner-facing sentence. One per failure — see `capability.ts`. */
   readonly fix: string;
   readonly at: string;
+  /**
+   * The routable record the email modules produce, when the failure carried
+   * one.
+   *
+   * `ImapOpenError` and `EmailCredentialUnavailableError` both expose it, and
+   * `describeEmailCapabilityFailure` reads it off either structurally — so a
+   * missing credential and a rejected one reach the owner by one path, and a
+   * supervisor does not import both modules to tell them apart. Null for
+   * failures raised here rather than there.
+   */
+  readonly notice: EmailCapabilityFailureNotice | null;
 }
 
 /** Something worth recording that is not a state change. Never a body. */
@@ -439,16 +488,19 @@ export interface InboundWatcherSettings {
   /** Reconnect backoff ceiling. Default 5 minutes. */
   readonly maxBackoffMs: number;
   /**
-   * The ceiling used after a simultaneous-connection refusal.
+   * The ceiling used after the server refused on its own account.
    *
-   * Longer than the ordinary one because that limit is not cleared by asking
-   * again sooner — the connections holding it are ours and the provider's, and
-   * hammering it only keeps it occupied.
+   * Longer than the ordinary one because none of those conditions is cleared
+   * by asking again sooner — a connection limit is held partly by our own
+   * connections, and a server fault is somebody else's to fix.
    */
-  readonly connectionLimitBackoffMs: number;
+  readonly serverUnavailableBackoffMs: number;
   /** How often an `insufficient` verdict is re-probed. Default 60 minutes. */
   readonly capabilityRecheckMs: number;
-  /** How many UIDs are fetched in one FETCH. Default 50. */
+  /**
+   * How many UIDs are fetched in one FETCH. Default 50, hard-capped at
+   * `IMAP_MAX_FETCH_UIDS` because the client refuses a larger batch outright.
+   */
   readonly deltaBatchSize: number;
 }
 
@@ -464,7 +516,7 @@ export const DEFAULT_INBOUND_WATCHER_SETTINGS: Omit<
   idleReissueMs: 27 * 60_000,
   operationTimeoutMs: 15_000,
   maxBackoffMs: 300_000,
-  connectionLimitBackoffMs: 900_000,
+  serverUnavailableBackoffMs: 900_000,
   capabilityRecheckMs: 60 * 60_000,
   deltaBatchSize: 50,
 };
@@ -487,6 +539,13 @@ export function resolveWatcherSettings(
     mailbox: input.mailbox,
     idleReissueMs: Math.max(1_000, Math.min(merged.idleReissueMs, reissueCeiling)),
     pollIntervalMs: Math.max(1_000, merged.pollIntervalMs),
-    deltaBatchSize: Math.max(1, Math.floor(merged.deltaBatchSize)),
+    // Clamped, not trusted: `fetchEnvelopes` REFUSES a batch above this rather
+    // than trimming it, so a batch size configured above the ceiling would not
+    // fetch fewer messages — it would fetch none, and the delta would stall
+    // behind an error on every pass.
+    deltaBatchSize: Math.min(
+      IMAP_MAX_FETCH_UIDS,
+      Math.max(1, Math.floor(merged.deltaBatchSize)),
+    ),
   };
 }
