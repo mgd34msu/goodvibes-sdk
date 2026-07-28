@@ -23931,10 +23931,10 @@ export function requestJsonRaw<T>(fetchImpl: typeof fetch, url: string, init?: R
 // @public (undocumented)
 export function requireContractRoute<TRoute extends ContractRouteLike>(routes: readonly TRoute[], routeId: string, kind: string): TRoute;
 
-// @public (undocumented)
-export type RequiredKeys<T extends object> = {
-    [K in keyof T]-?: {} extends Pick<T, K> ? never : K;
-}[keyof T];
+// Warning: (ae-forgotten-export) The symbol "RequiredNamedKeys" needs to be exported by the entry point index.d.ts
+//
+// @public
+export type RequiredKeys<T extends object> = RequiredNamedKeys<T>;
 
 // @public
 export function resolveAuthToken(authToken: string | null | undefined, getAuthToken?: AuthTokenResolver): Promise<string | null>;
@@ -25383,10 +25383,12 @@ export class WebSocketTransportError extends GoodVibesSdkError {
     });
 }
 
+// Warning: (ae-forgotten-export) The symbol "OmitNamed" needs to be exported by the entry point index.d.ts
+//
 // @public
 export type WithoutKeys<TInput, TKeys extends PropertyKey> = [
 TInput
-] extends [undefined] ? undefined : TInput extends object ? Omit<TInput, Extract<keyof TInput, TKeys>> : TInput;
+] extends [undefined] ? undefined : TInput extends object ? OmitNamed<TInput, TKeys> : TInput;
 
 // @public (undocumented)
 export type WorkflowEvent = {

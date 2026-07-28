@@ -69,6 +69,16 @@ export type {
   RuntimeDomainEventType,
   RuntimeEventTypedDomain,
 } from './generated/foundation-client-types.js';
+// Key helpers for the typed-IO shapes above. Reach for these instead of `Omit`
+// or a `keyof`-driven mapped type on an operator method input: 139 of the 443
+// inputs render with a broad index signature, which silently degrades both.
+// See typed-io-keys.ts for the mechanism.
+export type {
+  IndexPart,
+  NamedProps,
+  OmitNamed,
+  RequiredNamedKeys,
+} from './typed-io-keys.js';
 export { OPERATOR_CONTRACT } from './generated/operator-contract.js';
 export { OPERATOR_METHOD_IDS } from './generated/operator-method-ids.js';
 export type { OperatorMethodId } from './generated/operator-method-ids.js';

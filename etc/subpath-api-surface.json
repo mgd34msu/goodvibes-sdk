@@ -2599,6 +2599,10 @@
       "kind": "type"
     },
     {
+      "name": "IndexPart",
+      "kind": "type"
+    },
+    {
       "name": "JsonPrimitive",
       "kind": "type"
     },
@@ -2639,12 +2643,20 @@
       "kind": "const"
     },
     {
+      "name": "NamedProps",
+      "kind": "type"
+    },
+    {
       "name": "OPERATOR_CONTRACT",
       "kind": "const"
     },
     {
       "name": "OPERATOR_METHOD_IDS",
       "kind": "const"
+    },
+    {
+      "name": "OmitNamed",
+      "kind": "type"
     },
     {
       "name": "OperatorContractManifest",
@@ -2874,6 +2886,10 @@
     {
       "name": "RUNTIME_EVENT_DOMAINS",
       "kind": "const"
+    },
+    {
+      "name": "RequiredNamedKeys",
+      "kind": "type"
     },
     {
       "name": "RuntimeDomainEventPayload",
