@@ -8,6 +8,7 @@ import type {
   ChannelSurface,
 } from '../types.js';
 import type { BuiltinChannelRuntimeDeps } from './shared.js';
+import { resolveBuiltinConfigSecret } from './surfaces.js';
 
 interface BuiltinAccountContext {
   readonly deps: BuiltinChannelRuntimeDeps;
@@ -361,6 +362,22 @@ export async function resolveBuiltinAccount(
     : null;
 }
 
+/**
+ * Describe one credential field — both whether it is DECLARED and whether the
+ * declaration resolves.
+ *
+ * It used to report only the first. A config value is present whether it is a
+ * literal token or a `goodvibes://secrets/...` reference, so a reference naming
+ * a key that is absent from the store this process reads counted as configured,
+ * and everything downstream treated the surface as set up. Measured on this
+ * project's own machine: the daemon's `surfaces.telegram.botToken` referenced
+ * `goodvibes/TELEGRAM_BOT_TOKEN` while the daemon's store was `{}` and the token
+ * sat in the agent's and the TUI's stores. Sends failed with "Missing Telegram
+ * bot token"; the reported health said fine.
+ *
+ * Resolution is cheap — a store read, no network, no send attempt — so there is
+ * no excuse for inferring it from presence.
+ */
 async function describeBuiltinSecret(
   deps: BuiltinChannelRuntimeDeps,
   field: string,
@@ -374,18 +391,25 @@ async function describeBuiltinSecret(
     ? await deps.serviceRegistry.resolveSecret(serviceName, serviceField)
     : null;
   const configPresent = hasConfiguredValue(configValue);
+  // Only resolve what is declared: an absent value has nothing to look up.
+  const configResolved = configPresent ? await resolveBuiltinConfigSecret(deps, configValue) : null;
   const envPresent = envKeys.some((key) => hasConfiguredValue(process.env[key]));
   return {
     field,
     label,
     configured: Boolean(serviceValue || configPresent || envPresent),
+    resolved: Boolean(serviceValue || configResolved || envPresent),
     source: serviceValue
       ? 'service-registry'
-      : configPresent
+      : configResolved
         ? 'config'
         : envPresent
           ? 'env'
-          : 'missing',
+          // Declared, and it resolved to nothing here. The one source value the
+          // old shape could not say, and the one that explains a silent channel.
+          : configPresent
+            ? 'unresolved'
+            : 'missing',
   };
 }
 

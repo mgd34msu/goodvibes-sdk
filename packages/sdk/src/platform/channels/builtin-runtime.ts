@@ -13,13 +13,15 @@ import type {
   ChannelResolvedTarget,
   ChannelRenderRequest,
   ChannelRenderResult,
+  ChannelRuntimeObservation,
   ChannelSurface,
   ChannelTargetResolveOptions,
   ChannelToolDescriptor,
 } from './types.js';
 import type { ChannelPlugin } from './plugin-registry.js';
-import type { ProviderRuntimeSurface } from './provider-runtime.js';
+import type { ProviderRuntimeStatus, ProviderRuntimeSurface } from './provider-runtime.js';
 import { buildBuiltinAccount, resolveBuiltinAccount } from './builtin/accounts.js';
+import { observeBuiltinRuntime } from './builtin/health.js';
 import {
   buildBuiltinContractHooks,
   editBuiltinAllowlist,
@@ -184,14 +186,37 @@ export class BuiltinChannelRuntime {
     await this.telegramIngress?.stop();
   }
 
-  /** Current inbound Telegram state, including why it is inactive. */
+  /**
+   * Current inbound Telegram state, including why it is inactive.
+   *
+   * Read by `observeSurfaceRuntime`, which is what every Telegram status
+   * snapshot is now derived from. It previously had no caller at all while the
+   * reported state was computed from the token's presence, so a bot whose poll
+   * loop had stopped reported healthy — this function knew, and nobody asked.
+   */
   telegramIngressStatus(): TelegramIngressStatus | null {
     return this.telegramIngress?.status ?? null;
+  }
+
+  /**
+   * What this node can see of a surface's live path.
+   *
+   * Public because health is worth asking about outside a status sweep — the
+   * health watcher and the doctor report both want the same answer, and two
+   * answers to one question is how the reported state drifted from reality in
+   * the first place.
+   */
+  observeSurfaceRuntime(surface: ChannelSurface): ChannelRuntimeObservation {
+    return observeBuiltinRuntime({
+      telegramIngressStatus: () => this.telegramIngressStatus(),
+      providerRuntimeStatus: (providerSurface) => this.deps.providerRuntime?.status(providerSurface) ?? null,
+    }, surface);
   }
 
   registerPlugins(): void {
     registerBuiltinChannelPlugins({
       deps: this.deps,
+      observeRuntime: (surface) => this.observeSurfaceRuntime(surface),
       buildAccount: (surface) => this.buildAccount(surface),
       resolveAccount: (surface, accountId) => this.resolveAccount(surface, accountId),
       listCapabilities: (surface) => this.listCapabilities(surface),
@@ -230,6 +255,7 @@ export class BuiltinChannelRuntime {
       buildAccount: (surface: ChannelSurface) => this.buildAccount(surface),
       resolveAccount: (surface: ChannelSurface, accountId: string) => this.resolveAccount(surface, accountId),
       resolveTarget: (surface: ChannelSurface, options: ChannelTargetResolveOptions) => this.resolveTarget(surface, options),
+      observeRuntime: (surface: ChannelSurface) => this.observeSurfaceRuntime(surface),
     };
   }
 
@@ -536,7 +562,7 @@ export class BuiltinChannelRuntime {
     return resolveBuiltinSessionTarget(target);
   }
 
-  private providerRuntimeStatus(surface: ProviderRuntimeSurface): unknown {
+  private providerRuntimeStatus(surface: ProviderRuntimeSurface): ProviderRuntimeStatus | null {
     return providerRuntimeStatusForSurface(this.deps, surface);
   }
 
