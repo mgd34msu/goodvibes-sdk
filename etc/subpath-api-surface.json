@@ -11607,6 +11607,10 @@
       ]
     },
     {
+      "name": "GOODVIBES_URI_PREFIX",
+      "kind": "const"
+    },
+    {
       "name": "GoodVibesConfig",
       "kind": "interface",
       "required": [
@@ -11727,13 +11731,17 @@
       ]
     },
     {
+      "name": "MalformedSecretRefError",
+      "kind": "class"
+    },
+    {
       "name": "MigratableSecretStore",
       "kind": "interface",
       "required": [
-        "delete",
+        "deleteFromScope",
         "get",
         "getFromScope",
-        "listDetailed",
+        "listDetailedForMigration",
         "set"
       ]
     },
@@ -12201,6 +12209,10 @@
       "kind": "function"
     },
     {
+      "name": "describeMalformedSecretRef",
+      "kind": "function"
+    },
+    {
       "name": "describePlaintextSweep",
       "kind": "function"
     },
@@ -12357,6 +12369,10 @@
       "kind": "function"
     },
     {
+      "name": "looksLikeSecretRef",
+      "kind": "function"
+    },
+    {
       "name": "migrateDaemonNeededCredentials",
       "kind": "function"
     },
@@ -12370,6 +12386,10 @@
     },
     {
       "name": "migrateLegacyFeatureToggles",
+      "kind": "function"
+    },
+    {
+      "name": "migrateOnSurfaceStart",
       "kind": "function"
     },
     {
@@ -12454,6 +12474,10 @@
     },
     {
       "name": "secretWriteScopeWasOverridden",
+      "kind": "function"
+    },
+    {
+      "name": "siblingSurfaceSecretStores",
       "kind": "function"
     },
     {

@@ -4,6 +4,8 @@ import { readFileSync } from 'node:fs';
 import { resolve as resolvePath } from 'node:path';
 import { summarizeError } from '../utils/error-display.js';
 import { logger } from '../utils/logger.js';
+import { GOODVIBES_URI_PREFIX } from './secret-ref-refusal.js';
+
 
 export type SecretProviderSource =
   | 'env'
@@ -123,6 +125,10 @@ export interface SecretRefResolutionOptions {
   readonly resolveLocalSecret?: ((key: string) => Promise<string | null>) | undefined;
   readonly runCommand?: SecretCommandRunner | undefined;
   readonly homeDirectory?: string | undefined;
+  /** Names the setting in a refusal, so an operator is not handed a 401 to chase. */
+  readonly configKey?: string | undefined;
+  /** Assert a reference-SHAPED value is a literal. Off by default; secret-ref-refusal.ts. */
+  readonly treatUnparseableRefAsLiteral?: boolean | undefined;
 }
 
 export interface SecretRefResolution {
@@ -142,7 +148,6 @@ export const BUILTIN_SECRET_PROVIDER_SOURCES: readonly SecretProviderSource[] = 
 ];
 
 const JSON_REF_PREFIX = 'secretref:';
-const GOODVIBES_URI_PREFIX = 'goodvibes://';
 const GOODVIBES_URI_PROTOCOL = 'goodvibes:';
 const GOODVIBES_SECRETS_HOST = 'secrets';
 
@@ -843,24 +848,4 @@ export async function resolveSecretRef(
   }
 }
 
-export async function resolveSecretInput(
-  input: unknown,
-  options: SecretRefResolutionOptions = {},
-): Promise<string | null> {
-  const ref = normalizeSecretRef(input);
-  if (ref) {
-    try {
-      return (await resolveSecretRef(ref, options)).value;
-    } catch (error) {
-      logger.warn('Secret reference resolution failed', {
-        source: ref.source,
-        ref: describeSecretRef(ref),
-        error: summarizeError(error),
-      });
-      return null;
-    }
-  }
-  if (typeof input !== 'string') return null;
-  const trimmed = input.trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
+export { resolveSecretInput } from './secret-ref-refusal.js';

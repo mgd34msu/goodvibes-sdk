@@ -365,6 +365,53 @@ function checkDeclarationsCoverConvention(): Finding[] {
   return findings;
 }
 
+/**
+ * Every bare credential name the channel account surface declares must be
+ * classified.
+ *
+ * These are the names an operator's credential is actually stored under —
+ * `TELEGRAM_BOT_TOKEN`, not the derived `GOODVIBES_SURFACES_TELEGRAM_BOT_TOKEN`
+ * — and nothing derives them, so nothing could notice one going undeclared.
+ * TELEGRAM_BOT_TOKEN was: the derived spelling migrated and the bare one, the
+ * spelling the config reference points at and the one on the owner's disk,
+ * never moved from any surface because the registry did not recognise it.
+ *
+ * Read out of the source rather than from a list kept here, so adding a channel
+ * without classifying its credential fails the build.
+ */
+function checkChannelSecretNamesAreClassified(): Finding[] {
+  const accountsPath = resolve(REPO_ROOT, 'packages/sdk/src/platform/channels/builtin/accounts.ts');
+  let source: string;
+  try {
+    source = readFileSync(accountsPath, 'utf-8');
+  } catch {
+    return [];
+  }
+
+  const findings: Finding[] = [];
+  const seen = new Set<string>();
+  // `describeBuiltinSecret(deps, slot, label, value, ['NAME', ...], surface, ...)`
+  const nameList = /describeBuiltinSecret\([\s\S]{0,400}?\[([^\]]*)\]/g;
+  let match: RegExpExecArray | null;
+  while ((match = nameList.exec(source)) !== null) {
+    for (const quoted of match[1]!.matchAll(/'([A-Z][A-Z0-9_]{2,})'/g)) {
+      const name = quoted[1]!;
+      if (seen.has(name)) continue;
+      seen.add(name);
+      if (isClassified(name)) continue;
+      findings.push({
+        file: 'packages/sdk/src/platform/config/credential-scope-registry.ts',
+        line: 0,
+        snippet: name,
+        reason:
+          `"${name}" is a credential the channel account surface stores under, and nothing classifies it. `
+          + 'Nothing derives a bare name, so it will never migrate off a surface silo — declare it in CREDENTIAL_SCOPE_DECLARATIONS.',
+      });
+    }
+  }
+  return findings;
+}
+
 function main(): void {
   const files: string[] = [];
   for (const dir of SCAN_DIRS) walk(resolve(REPO_ROOT, dir), files);
@@ -374,6 +421,7 @@ function main(): void {
   const findings = [
     ...files.flatMap((file) => checkFile(file, constants)),
     ...checkDeclarationsCoverConvention(),
+    ...checkChannelSecretNamesAreClassified(),
   ];
   if (findings.length === 0) {
     console.log(`credential-scope-check: OK — every secret write in ${files.length} file(s) names a classified credential or states its scope.`);

@@ -178,13 +178,19 @@ export {
 } from './openai-codex-auth.js';
 export type { OpenAICodexLoginStart, OpenAICodexTokenResult } from './openai-codex-auth.js';
 export * from './secret-refs.js';
+export {
+  GOODVIBES_URI_PREFIX,
+  MalformedSecretRefError,
+  describeMalformedSecretRef,
+  looksLikeSecretRef,
+} from './secret-ref-refusal.js';
 export { createCredentialStatusProvider } from './credential-status.js';
 export {
   daemonSecretKeyFor,
   isDaemonOwnedSecretKey,
   listDaemonOwnedSecretKeys,
 } from './daemon-secret-keys.js';
-export { defaultDaemonSecretHome } from './secrets-store-paths.js';
+export { defaultDaemonSecretHome, siblingSurfaceSecretStores } from './secrets-store-paths.js';
 export {
   CREDENTIAL_SCOPE_DECLARATIONS,
   describeCredentialScope,
@@ -201,6 +207,7 @@ export {
   buildCredentialMigrationReceipt,
   describeCredentialMigration,
   migrateDaemonNeededCredentials,
+  migrateOnSurfaceStart,
 } from './daemon-credential-migration.js';
 export type {
   CredentialMigrationEntry,
