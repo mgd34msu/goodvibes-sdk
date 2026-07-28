@@ -446,6 +446,29 @@ Every write takes an `AuthoritySurface`
 by construction, with that module's own reasoning: there is deliberately no
 middle tier.
 
+**`authority` is required on every write verb and is never defaulted.** An
+earlier version read an absent `authority` as `owner-direct`, reasoning that no
+live transport populates it. That reasoning does not hold here: `authority` is a
+body parameter of these verbs, so any caller can send it or omit it. And for
+`forget` and `undo` the authority check is the *only* gate — there is no value
+to check for derivation and no utterance to quote — so an omitted authority on a
+delete was not a weakened gate, it was no gate. A caller that sent nothing at all
+could remove his shipping address. Absent now refuses.
+
+Each surface answers honestly rather than uniformly:
+
+| Surface | What it sends | Why |
+|---|---|---|
+| TUI | hardcoded `owner-direct` | the only input reaching these calls is him typing on his own machine |
+| Web UI | hardcoded `owner-direct` | the same — his own typing in his own settings page |
+| Agent | the model states it per write | the agent genuinely can be handed a purported fact by an email, a page, a channel message or a document, and the SDK must be told which so it can refuse |
+
+The contract has to declare it required too. A schema listing `authority` as
+optional while the handler throws without it publishes a lie, and a generated
+client that follows the contract is broken by construction. A test pins
+`authority` in the required array of all four write descriptors, because a
+contract and a handler that disagree is the drift this platform keeps paying for.
+
 There is **no propose path at all**. He declined propose-first, so no API lets a
 non-owner source stage a fact for later approval. A queue an untrusted source can
 write to is a write.
