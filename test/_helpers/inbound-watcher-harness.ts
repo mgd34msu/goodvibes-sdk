@@ -8,7 +8,7 @@
  * and the 5-minute backoff ceiling are asserted by moving a number.
  */
 
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { MailboxCursorStore } from '../../packages/sdk/src/platform/email/inbound/cursor-store.ts';
@@ -208,14 +208,59 @@ export class RecordingCursorStore implements MailboxCursorPort {
  * Seeding goes through `resolve` + `advance` rather than writing the file by
  * hand, so a seeded test starts from a state the store itself can produce.
  */
+/**
+ * ONE scratch directory for this whole test process, cleared by the suites
+ * that use it.
+ *
+ * `makeCursorStore` used to `mkdtemp` per call and hand the path back for the
+ * caller to delete. Every caller forgot, and one night's runs left 53
+ * `goodvibes-inbound-cursor-*` directories behind — a share of the leak that
+ * exhausted this host's tmpfs inodes (1,046,761 of 1,048,576 used while disk
+ * sat at 24%, so `df -h` looked healthy and every write failed anyway).
+ *
+ * One directory per PROCESS rather than per store, so a suite building thirty
+ * stores costs one inode instead of thirty.
+ *
+ * TWO cleanup mechanisms were tried here before this one, and BOTH silently
+ * did nothing — which is worth recording, because each looked obviously
+ * correct:
+ *
+ *   - an `afterEach` registered at this module's top level does not apply to
+ *     the suite that imports it;
+ *   - `process.on('exit')` is never fired by bun's test runner at all
+ *     (verified with a probe: the handler does not run).
+ *
+ * So cleanup is `cleanupInboundScratch`, called from an `afterAll` in each
+ * suite that uses this helper — the one place cleanup demonstrably runs. A
+ * source-level test would be the way to stop a future suite forgetting; for
+ * two files, the call plus this note is proportionate.
+ */
+let scratchRoot: string | null = null;
+let scratchCounter = 0;
+
+function scratchFile(name: string): string {
+  if (scratchRoot === null) {
+    scratchRoot = mkdtempSync(join(tmpdir(), 'goodvibes-inbound-cursor-'));
+  }
+  scratchCounter += 1;
+  return join(scratchRoot, `${String(scratchCounter)}-${name}`);
+}
+
+/** Remove this process's scratch directory. Safe to call more than once. */
+export function cleanupInboundScratch(): void {
+  if (scratchRoot === null) return;
+  rmSync(scratchRoot, { recursive: true, force: true });
+  scratchRoot = null;
+}
+
 export async function makeCursorStore(seed?: {
   readonly account: string;
   readonly mailbox: string;
   readonly uidValidity: number;
   readonly lastSeenUid: number;
 }): Promise<{ store: RecordingCursorStore; dir: string }> {
-  const dir = mkdtempSync(join(tmpdir(), 'goodvibes-inbound-cursor-'));
-  const inner = new MailboxCursorStore(join(dir, 'cursors.json'));
+  const path = scratchFile('cursors.json');
+  const inner = new MailboxCursorStore(path);
   if (seed !== undefined) {
     await inner.resolve({
       account: seed.account,
@@ -225,7 +270,7 @@ export async function makeCursorStore(seed?: {
       currentMessageCount: 0,
     });
   }
-  return { store: new RecordingCursorStore(inner), dir };
+  return { store: new RecordingCursorStore(inner), dir: path };
 }
 
 
