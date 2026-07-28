@@ -21,8 +21,8 @@
  * it could succeed.
  */
 
-import { describe, expect, test } from 'bun:test';
-import { mkdtempSync } from 'node:fs';
+import { afterAll, describe, expect, test } from 'bun:test';
+import { rmSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { SecretsManager } from '../packages/sdk/src/platform/config/secrets.ts';
@@ -44,8 +44,29 @@ import {
 import { daemonSecretKeyFor } from '../packages/sdk/src/platform/config/daemon-secret-keys.ts';
 import type { SecretRecord, SecretScope } from '../packages/sdk/src/platform/config/secrets.ts';
 
+/**
+ * Every throwaway home this file creates, reaped when it finishes.
+ *
+ * `mkdtempSync` leaves the directory behind. One suite run is nothing; the
+ * suites run constantly, and /tmp is a tmpfs with a fixed inode table — this
+ * repo's test scratch had taken 51,306 top-level directories and pushed the
+ * table to 100% used, at which point every `mkdtempSync` in every suite fails
+ * with ENOSPC while `df -h` still reports 24% free. Cleaning up is cheap and it
+ * is the difference between a suite that reports defects and one that reports
+ * the disk.
+ */
+const CREATED_HOMES: string[] = [];
+afterAll(() => {
+  for (const home of CREATED_HOMES) {
+    try { rmSync(home, { recursive: true, force: true }); } catch { /* best effort */ }
+  }
+});
+
+
 function throwawayHome(): string {
-  return mkdtempSync(join(tmpdir(), 'gv-credscope-'));
+  const created = mkdtempSync(join(tmpdir(), 'gv-credscope-'));
+  CREATED_HOMES.push(created);
+  return created;
 }
 
 function manager(root: string, surfaceRoot: string): SecretsManager {
@@ -370,7 +391,7 @@ describe('the migration over the real SecretsManager, not a fake', () => {
 // of the stand-in.
 // ---------------------------------------------------------------------------
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 
 /** Write a surface tier's real store file directly, since `set` now routes away from it. */
 function strandInSurfaceStore(root: string, surfaceRoot: string, key: string, value: string): string {
