@@ -217,6 +217,21 @@ export function loadWritableMcpConfig(roots: McpConfigRoots, scope: McpConfigSco
   return readMcpConfigAtPath(location.path);
 }
 
+/**
+ * Write a server entry, creating or replacing it by name.
+ *
+ * `env` is the one field an omitted value PRESERVES rather than clears.
+ *
+ * Every other field is a full replacement, which is right: the caller can see
+ * what it is replacing. `env` it cannot — the read side reports `envKeys` and
+ * never the values, so an admin editing an unrelated field (a URL, an
+ * allowedHost) round-trips the server object with `env` missing and silently
+ * destroys credentials nobody could have known to resend. That is a wipe
+ * caused by the read redaction, not by anything the admin asked for.
+ *
+ * Supplying `env` still replaces it wholesale, so clearing or removing a
+ * variable stays possible and stays explicit: send the map you want.
+ */
 export function upsertMcpServerConfig(
   roots: McpConfigRoots,
   scope: McpConfigScope,
@@ -225,8 +240,13 @@ export function upsertMcpServerConfig(
   assertServerConfig(server);
   const location = writableMcpConfigLocation(roots, scope);
   const current = readMcpConfigAtPath(location.path);
+  const existing = current.servers.find((entry) => entry.name === server.name);
   const nextServers = current.servers.filter((entry) => entry.name !== server.name);
-  nextServers.push({ ...server });
+  const preservedEnv = server.env === undefined ? existing?.env : undefined;
+  nextServers.push({
+    ...server,
+    ...(preservedEnv === undefined ? {} : { env: { ...preservedEnv } }),
+  });
   nextServers.sort((a, b) => a.name.localeCompare(b.name));
   const config = { servers: nextServers };
   writeMcpConfigFile(location.path, config);

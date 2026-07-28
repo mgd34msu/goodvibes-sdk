@@ -11,12 +11,21 @@
  * so nothing masked the at-rest copy.
  *
  * This module supplies:
- *   - redactAtRestLine: run the SAME secret/credential patterns
- *     (redactSensitiveData) over a serialized JSON line before it is appended.
+ *   - redactAtRestLine: run the secret/credential patterns
+ *     (redactCredentialsOnly) over a serialized JSON line before it is appended.
  *     The patterns replace only the matched secret substrings with
  *     JSON-safe `[REDACTED_*]` markers, so the line stays valid JSON and its
  *     non-secret content stays readable — a redacted record never pretends the
  *     content was not there, it shows the marker.
+ *
+ *     Credentials ONLY, deliberately. utils/redaction.ts also carries
+ *     home-path anonymisation, and the egress helper (redactSensitiveData)
+ *     applies both — correctly, because a session export goes to someone who
+ *     is not the owner. These files do not go anywhere: they sit on his disk,
+ *     inside the very directory those patterns rewrite. Anonymising him from
+ *     himself turned `/home/mike/Projects/x` into `/home/[REDACTED]/Projects/x`
+ *     at write time and irreversibly, which costs the journal the one detail
+ *     that makes a stale entry worth reading and protects nobody.
  *   - enforceFileRetention: an age + total-size cap over a set of append-only
  *     files, deleting oldest-first. A production caller invokes it at a natural
  *     lifecycle point (the checkpoint-gc lesson: retention that is defined but
@@ -26,7 +35,7 @@
  */
 import { statSync, existsSync, unlinkSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { redactSensitiveData } from '../utils/redaction.js';
+import { redactCredentialsOnly } from '../utils/redaction.js';
 
 /** Resolved at-rest policy the journal + ledger writers consult. */
 export interface AtRestPolicy {
@@ -83,12 +92,14 @@ export function resolveAtRestPolicy(get?: (key: string) => unknown): AtRestPolic
 
 /**
  * Redact secret/credential patterns in a serialized JSON line. Reuses
- * redactSensitiveData so the pattern set is the single source shared with the
- * telemetry egress; the replacements are JSON-safe markers, so the result stays
- * a valid, parseable line.
+ * redactCredentialsOnly so the credential pattern set stays a single source
+ * shared with the telemetry egress, without also applying that egress helper's
+ * home-path anonymisation to a file that never leaves this machine. The
+ * replacements are JSON-safe markers, so the result stays a valid, parseable
+ * line.
  */
 export function redactAtRestLine(line: string): string {
-  return redactSensitiveData(line);
+  return redactCredentialsOnly(line);
 }
 
 export interface RetentionOutcome {

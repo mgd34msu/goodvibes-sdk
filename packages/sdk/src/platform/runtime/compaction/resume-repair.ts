@@ -26,8 +26,14 @@ import type { RepairAction, ResumeRepairResult } from './types.js';
 // ---------------------------------------------------------------------------
 
 /**
- * Maximum tokens allowed in a resumed session before overflow truncation.
- * Set conservatively at 80% of a typical 100K context window.
+ * FALLBACK ceiling for a resumed session — 80% of a 100K context window —
+ * used only when the caller cannot supply the real one.
+ *
+ * It is not the intended value. A caller that knows the model's context
+ * window must pass `maxTokens`; CompactionManager does, computed from its own
+ * `contextWindow`. Left standing as the only ceiling, this constant silently
+ * truncated resumed sessions on every model with a window larger than 100K —
+ * which is every current frontier model.
  */
 const RESUME_MAX_TOKENS = 80_000;
 

@@ -36686,6 +36686,10 @@
       "kind": "function"
     },
     {
+      "name": "redactCredentialsOnly",
+      "kind": "function"
+    },
+    {
       "name": "redactSensitiveData",
       "kind": "function"
     },
