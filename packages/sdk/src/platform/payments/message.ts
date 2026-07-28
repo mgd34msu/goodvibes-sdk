@@ -24,6 +24,7 @@
  * The pools are shown next to the total on purpose: an inflated number is much
  * easier to catch beside the budget it is about to eat than on its own.
  */
+import { isPlainHostname, sanitizeNoticeField, sanitizeOwnerNoticeField } from '../security/notice-text.js';
 import type { PoolSnapshot } from './budget.js';
 import type {
   CurrencyCode,
@@ -32,6 +33,32 @@ import type {
   ShippingStepDown,
   ShippingTier,
 } from './types.js';
+
+/**
+ * The merchant identity the owner is shown.
+ *
+ * It is the registrable domain computed by `registrableDomain()` from the
+ * VALIDATED checkout url — never the page's own claimed name, because a page can
+ * call itself anything. A computed hostname always passes `isPlainHostname`; if
+ * one ever does not, the identity did not come from where the caller believed,
+ * and the honest response is a placeholder rather than rendering it.
+ */
+function renderMerchant(domain: string): string {
+  return isPlainHostname(domain) ? domain : '(merchant identity unavailable)';
+}
+
+/**
+ * The item line.
+ *
+ * `OwnerSuppliedText` is only constructible from an owner-direct turn, so this
+ * should already be his words rather than a product title off a page. It is
+ * still neutralised: the branded type is a compile-time guarantee, and a
+ * compile-time guarantee does not survive a call site that threads provenance
+ * wrongly. Underscore is kept for legibility since it cannot build a link.
+ */
+function renderItem(item: OwnerSuppliedText): string {
+  return sanitizeOwnerNoticeField(item, 100);
+}
 
 export interface PurchaseFacts {
   readonly merchantDomain: string;
@@ -88,8 +115,8 @@ export function renderApprovalMessage(facts: PurchaseFacts, expiresInMinutes: nu
   const lines = [
     `Approval needed — this is over your daily item budget.`,
     ``,
-    `  ${facts.item}`,
-    `  from ${facts.merchantDomain}`,
+    `  ${renderItem(facts.item)}`,
+    `  from ${renderMerchant(facts.merchantDomain)}`,
     ``,
     ...amountLines(facts),
     ``,
@@ -112,8 +139,8 @@ export function renderVetoMessage(facts: PurchaseFacts, expiresInMinutes: number
   const lines = [
     `About to buy this — it is within your budget.`,
     ``,
-    `  ${facts.item}`,
-    `  from ${facts.merchantDomain}`,
+    `  ${renderItem(facts.item)}`,
+    `  from ${renderMerchant(facts.merchantDomain)}`,
     ``,
     ...amountLines(facts),
     ``,
@@ -135,7 +162,8 @@ function amountLines(facts: PurchaseFacts): string[] {
     lines.push(`  Fees:     ${formatMinorUnits(facts.feesMinorUnits, facts.currency)}`);
   }
   lines.push(
-    `  Shipping: ${formatMinorUnits(facts.shippingMinorUnits, facts.currency)} (${facts.shippingTier})`,
+    `  Shipping: ${formatMinorUnits(facts.shippingMinorUnits, facts.currency)} `
+    + `(${sanitizeNoticeField(facts.shippingTier, 20)})`,
   );
   if (facts.stepDown !== null) {
     // Surfaced rather than buried: a step-down needs no approval because it is
@@ -160,8 +188,8 @@ export function renderCancellationReport(facts: PurchaseFacts): string {
   return [
     `Stopped. Nothing was charged.`,
     ``,
-    `  ${facts.item}`,
-    `  from ${facts.merchantDomain}`,
+    `  ${renderItem(facts.item)}`,
+    `  from ${renderMerchant(facts.merchantDomain)}`,
     `  would have been ${formatMinorUnits(facts.totalMinorUnits, facts.currency)}`,
     ``,
     `The checkout was abandoned and the budget I was holding is back.`,

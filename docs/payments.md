@@ -852,6 +852,52 @@ Tested adversarially: the same purchase is driven with injected content in every
 page field the driver reads, and the rendered message must be byte-identical to
 the clean run.
 
+### 9.3.1 Every merchant-derived string is attacker-chosen
+
+The approval and veto notices carry text a merchant page controls into a message
+the owner reads on his phone and answers under a ten-minute clock, with money
+attached. That is the inbound-mail notice defect (SDK `140cbcb4`) with a charge
+on the end of it.
+
+The reasoning that produced that defect is the part to keep in view: the field
+was sanitized for control characters only because *the sender cannot forge which
+mailbox received the mail*. True about the mailbox, false about the local part in
+front of the `@`, which under catch-all or plus-addressing is whatever the sender
+typed. **A field is not safe because part of its provenance is verified.**
+
+So every one of these is treated as attacker-chosen and neutralised before it can
+reach any channel: item title, merchant display name, seller name,
+shipping-option labels, promotional text, currency strings, and any merchant text
+quoted back inside a refusal reason.
+
+| Rule | How |
+|---|---|
+| Merchant identified by **validated domain**, not display name | `registrableDomain()` of the validated checkout URL. A page can call itself anything. `isPlainHostname` asserts the value really is a computed hostname; anything else renders as "(merchant identity unavailable)" rather than being printed. |
+| Amounts **re-rendered from our parsed integers** | `formatMinorUnits` throws on a non-integer rather than rendering something plausible, so a merchant string can never become the number he reads. |
+| Markup and mention syntax **neutralised at the source** | `security/notice-text.ts` — `sanitizeNoticeField` for attacker text, `sanitizeOwnerNoticeField` where underscore is worth keeping. |
+| Owner-authored text sanitized **too** | `OwnerSuppliedText` is a compile-time guarantee, and a compile-time guarantee does not survive a call site that threads provenance wrongly. |
+
+**Where per-channel escaping lives.** Two layers, deliberately split:
+
+- **Source (SDK, `notice-text.ts`)** — neutralise the *union* of trigger
+  characters across Telegram MarkdownV2, Slack mrkdwn, Discord markdown, ntfy and
+  a bare terminal. The SDK does not know which route a notice will take, so it
+  does not guess; this is the layer that has to hold regardless of destination.
+- **Delivery (channel adapter)** — whatever escaping that specific wire format
+  requires, owned by the code that knows the format.
+
+Neutralising the union at the source is not a substitute for correct per-channel
+escaping. It is what stops a missing escape in one adapter from becoming a
+clickable link in a message about money.
+
+Tested as attacks rather than as formatting, in
+`test/payments-notice-injection.test.ts`: a merchant name carrying a markdown
+link, a mention and a fake "Approved" affordance must arrive inert. Four of the
+five production cases were confirmed to fail with the sanitisation reverted, and
+the trigger set is proved load-bearing by dropping one character at a time —
+dropping `(` lets `[Approved](https://evil.example)` survive even with `[`
+removed, which is why both are in the set rather than relying on one.
+
 ### 9.4 The audit ledger
 
 Append-only JSONL following the existing
