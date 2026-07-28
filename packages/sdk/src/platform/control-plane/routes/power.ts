@@ -19,7 +19,7 @@ export function createPowerKeepAwakeSetHandler(service: PowerGatewayService): Ga
   return async (invocation) => {
     const params = readInvocationParams(invocation);
     if (typeof params.enabled !== 'boolean') {
-      throw new GatewayVerbError('enabled (boolean) is required', 'INVALID_ARGUMENT', 400);
+      throw new GatewayVerbError('enabled (boolean) is required', 'INVALID_ARGUMENT', 400, 'enabled');
     }
     return service.setKeepAwake(params.enabled);
   };

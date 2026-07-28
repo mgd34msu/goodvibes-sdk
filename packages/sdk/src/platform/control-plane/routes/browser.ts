@@ -152,7 +152,7 @@ function readOptionalString(value: unknown): string | undefined {
 function readRequiredString(value: unknown, field: string): string {
   const read = readOptionalString(value);
   if (read === undefined) {
-    throw new GatewayVerbError(`${field} (non-empty string) is required`, 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError(`${field} (non-empty string) is required`, 'INVALID_ARGUMENT', 400, field);
   }
   return read;
 }
@@ -303,7 +303,7 @@ export function createBrowserGatewayHandlers(
     ['browser.select', handler(async (params) => {
       const values = readStringList(params.values);
       if (values.length === 0) {
-        throw new GatewayVerbError('values (a non-empty list of option values) is required', 'INVALID_ARGUMENT', 400);
+        throw new GatewayVerbError('values (a non-empty list of option values) is required', 'INVALID_ARGUMENT', 400, 'values');
       }
       return service.select(readTarget(params), {
         ref: readRequiredString(params.ref, 'ref'),

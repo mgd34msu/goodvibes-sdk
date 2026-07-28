@@ -18,6 +18,8 @@ import {
   STRING_SCHEMA,
   arraySchema,
   bodyEnvelopeSchema,
+  branchedSchema,
+  requirementBranch,
   methodDescriptor,
   objectSchema,
 } from './method-catalog-shared.js';
@@ -27,6 +29,51 @@ import {
   COMPANION_CHAT_SESSIONS_LIST_SCHEMA,
   COMPANION_CHAT_SESSION_WITH_MESSAGES_SCHEMA,
 } from './operator-contract-schemas.js';
+
+/** The attachment list every companion-chat message payload carries. */
+const COMPANION_CHAT_ATTACHMENTS_SCHEMA = arraySchema(objectSchema({
+  artifactId: STRING_SCHEMA,
+  label: STRING_SCHEMA,
+  metadata: objectSchema({}, []),
+}, ['artifactId']));
+
+const COMPANION_CHAT_MESSAGE_PAYLOAD_PROPERTIES: Record<string, Record<string, unknown>> = {
+  body: STRING_SCHEMA,
+  content: STRING_SCHEMA,
+  attachments: COMPANION_CHAT_ATTACHMENTS_SCHEMA,
+  metadata: objectSchema({}, []),
+};
+
+/**
+ * Companion chat refuses a message carrying no text AND no attachments
+ * (companion/companion-chat-routes.ts: `content, body, or attachments are
+ * required`, 400 INVALID_INPUT). None of the three is required on its own, so
+ * a flat `required` array cannot state this — listing any one of them would
+ * refuse an attachment-only message, which is a call that works today. The
+ * union says exactly what the handler does.
+ */
+function companionChatMessageInputSchema(
+  extraProperties: Record<string, Record<string, unknown>> = {},
+  alwaysRequired: readonly string[] = [],
+): Record<string, unknown> {
+  const properties = { ...extraProperties, ...COMPANION_CHAT_MESSAGE_PAYLOAD_PROPERTIES };
+  return branchedSchema(
+    bodyEnvelopeSchema(properties, alwaysRequired),
+    (['body', 'content', 'attachments'] as const).map((field) =>
+      requirementBranch({ [field]: properties[field] as Record<string, unknown> }, [field])),
+  );
+}
+
+/**
+ * `provider` and `model` name one route together and the handler refuses half
+ * of it (`provider and model must be supplied together`, 400
+ * INVALID_MODEL_ROUTE). Neither is required alone — this is a dependency
+ * between two optional fields, which is what `dependentRequired` is for.
+ */
+const COMPANION_MODEL_ROUTE_DEPENDENCY: Readonly<Record<string, readonly string[]>> = {
+  model: ['provider'],
+  provider: ['model'],
+};
 
 export const builtinGatewayControlCompanionMethodDescriptors: readonly GatewayMethodDescriptor[] = [
   methodDescriptor({
@@ -41,7 +88,7 @@ export const builtinGatewayControlCompanionMethodDescriptors: readonly GatewayMe
       model: STRING_SCHEMA,
       provider: STRING_SCHEMA,
       systemPrompt: STRING_SCHEMA,
-    }, []),
+    }, [], { dependentRequired: COMPANION_MODEL_ROUTE_DEPENDENCY }),
     outputSchema: objectSchema({
       sessionId: STRING_SCHEMA,
       createdAt: NUMBER_SCHEMA,
@@ -78,12 +125,21 @@ export const builtinGatewayControlCompanionMethodDescriptors: readonly GatewayMe
     category: 'companion',
     scopes: ['write:sessions'],
     http: { method: 'PATCH', path: '/api/companion/chat/sessions/{sessionId}' },
-    inputSchema: bodyEnvelopeSchema({
-      title: STRING_SCHEMA,
-      model: STRING_SCHEMA,
-      provider: STRING_SCHEMA,
-      systemPrompt: STRING_SCHEMA,
-    }, []),
+    // An update with nothing to update is refused (`At least one of title,
+    // provider, model, or systemPrompt is required`), and provider/model still
+    // travel as a pair. Both facts are declared: a union over the four fields,
+    // each branch carrying the pairing dependency.
+    inputSchema: branchedSchema(
+      bodyEnvelopeSchema({
+        sessionId: STRING_SCHEMA,
+        title: STRING_SCHEMA,
+        model: STRING_SCHEMA,
+        provider: STRING_SCHEMA,
+        systemPrompt: STRING_SCHEMA,
+      }, ['sessionId'], { dependentRequired: COMPANION_MODEL_ROUTE_DEPENDENCY }),
+      (['title', 'model', 'provider', 'systemPrompt'] as const).map((field) =>
+        requirementBranch({ [field]: STRING_SCHEMA }, [field])),
+    ),
     outputSchema: objectSchema({
       session: COMPANION_CHAT_SESSION_SCHEMA,
     }, ['session']),
@@ -121,16 +177,7 @@ export const builtinGatewayControlCompanionMethodDescriptors: readonly GatewayMe
     category: 'companion',
     scopes: ['write:sessions'],
     http: { method: 'POST', path: '/api/companion/chat/sessions/{sessionId}/messages' },
-    inputSchema: bodyEnvelopeSchema({
-      body: STRING_SCHEMA,
-      content: STRING_SCHEMA,
-      attachments: arraySchema(objectSchema({
-        artifactId: STRING_SCHEMA,
-        label: STRING_SCHEMA,
-        metadata: objectSchema({}, []),
-      }, ['artifactId'])),
-      metadata: objectSchema({}, []),
-    }, []),
+    inputSchema: companionChatMessageInputSchema({ sessionId: STRING_SCHEMA }, ['sessionId']),
     outputSchema: objectSchema({
       messageId: STRING_SCHEMA,
     }, ['messageId']),
@@ -169,17 +216,12 @@ export const builtinGatewayControlCompanionMethodDescriptors: readonly GatewayMe
     category: 'companion',
     scopes: ['write:sessions'],
     http: { method: 'POST', path: '/api/companion/chat/sessions/{sessionId}/messages/edit' },
-    inputSchema: bodyEnvelopeSchema({
-      messageId: STRING_SCHEMA,
-      body: STRING_SCHEMA,
-      content: STRING_SCHEMA,
-      attachments: arraySchema(objectSchema({
-        artifactId: STRING_SCHEMA,
-        label: STRING_SCHEMA,
-        metadata: objectSchema({}, []),
-      }, ['artifactId'])),
-      metadata: objectSchema({}, []),
-    }, []),
+    // `messageId` is refused unconditionally (`messageId is required`), and the
+    // edited text follows the same body/content/attachments rule as a create.
+    inputSchema: companionChatMessageInputSchema(
+      { sessionId: STRING_SCHEMA, messageId: STRING_SCHEMA },
+      ['sessionId', 'messageId'],
+    ),
     outputSchema: objectSchema({
       sessionId: STRING_SCHEMA,
       editedFrom: STRING_SCHEMA,
@@ -195,17 +237,7 @@ export const builtinGatewayControlCompanionMethodDescriptors: readonly GatewayMe
     category: 'companion',
     scopes: ['write:sessions'],
     http: { method: 'POST', path: '/api/companion/chat/sessions/{sessionId}/messages/steer' },
-    inputSchema: bodyEnvelopeSchema({
-      sessionId: STRING_SCHEMA,
-      body: STRING_SCHEMA,
-      content: STRING_SCHEMA,
-      attachments: arraySchema(objectSchema({
-        artifactId: STRING_SCHEMA,
-        label: STRING_SCHEMA,
-        metadata: objectSchema({}, []),
-      }, ['artifactId'])),
-      metadata: objectSchema({}, []),
-    }, ['sessionId']),
+    inputSchema: companionChatMessageInputSchema({ sessionId: STRING_SCHEMA }, ['sessionId']),
     outputSchema: objectSchema({
       sessionId: STRING_SCHEMA,
       messageId: STRING_SCHEMA,

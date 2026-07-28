@@ -3507,7 +3507,57 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               }
             }
           },
-          "additionalProperties": true
+          "additionalProperties": true,
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "dataBase64": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "dataBase64"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "text"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "uri": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "uri"
+              ],
+              "additionalProperties": true
+            }
+          ]
         },
         "outputSchema": {
           "type": "object",
@@ -5576,9 +5626,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "prompt": {
               "type": "string"
             },
-            "kind": {
-              "type": "string"
-            },
             "cron": {
               "type": "string"
             },
@@ -5982,12 +6029,115 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   }
                 ]
               }
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "cron",
+                "every",
+                "at"
+              ]
+            },
+            "schedule": {
+              "type": "object",
+              "properties": {
+                "expression": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "expression"
+              ],
+              "additionalProperties": false
             }
           },
           "required": [
             "prompt"
           ],
-          "additionalProperties": true
+          "additionalProperties": true,
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "cron"
+                  ]
+                },
+                "cron": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "cron"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "cron"
+                  ]
+                },
+                "schedule": {
+                  "type": "object",
+                  "properties": {
+                    "expression": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "expression"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "schedule"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "every"
+                  ]
+                },
+                "every": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "every"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "at"
+                  ]
+                },
+                "at": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "at"
+              ],
+              "additionalProperties": true
+            }
+          ]
         },
         "outputSchema": {
           "type": "object",
@@ -13238,9 +13388,6 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "prompt": {
               "type": "string"
             },
-            "kind": {
-              "type": "string"
-            },
             "cron": {
               "type": "string"
             },
@@ -13582,12 +13729,115 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "deleteAfterRun": {
               "type": "boolean"
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "cron",
+                "every",
+                "at"
+              ]
+            },
+            "schedule": {
+              "type": "object",
+              "properties": {
+                "expression": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "expression"
+              ],
+              "additionalProperties": false
             }
           },
           "required": [
             "prompt"
           ],
-          "additionalProperties": true
+          "additionalProperties": true,
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "cron"
+                  ]
+                },
+                "cron": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "cron"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "cron"
+                  ]
+                },
+                "schedule": {
+                  "type": "object",
+                  "properties": {
+                    "expression": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "expression"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "schedule"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "every"
+                  ]
+                },
+                "every": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "every"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "at"
+                  ]
+                },
+                "at": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "at"
+              ],
+              "additionalProperties": true
+            }
+          ]
         },
         "outputSchema": {
           "type": "object",
@@ -24458,7 +24708,45 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               }
             }
           },
-          "additionalProperties": true
+          "additionalProperties": true,
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "target": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "target"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "input": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "input"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "query"
+              ],
+              "additionalProperties": true
+            }
+          ]
         },
         "outputSchema": {
           "type": "object",
@@ -26636,6 +26924,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "inputSchema": {
           "type": "object",
           "properties": {
+            "sessionId": {
+              "type": "string"
+            },
             "body": {
               "type": "string"
             },
@@ -26671,7 +26962,68 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               "additionalProperties": false
             }
           },
-          "additionalProperties": true
+          "required": [
+            "sessionId"
+          ],
+          "additionalProperties": true,
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "body": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "body"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "content": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "content"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "attachments": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "artifactId": {
+                        "type": "string"
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "properties": {},
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "artifactId"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "attachments"
+              ],
+              "additionalProperties": true
+            }
+          ]
         },
         "outputSchema": {
           "type": "object",
@@ -26708,6 +27060,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "inputSchema": {
           "type": "object",
           "properties": {
+            "sessionId": {
+              "type": "string"
+            },
             "messageId": {
               "type": "string"
             },
@@ -26746,7 +27101,69 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               "additionalProperties": false
             }
           },
-          "additionalProperties": true
+          "required": [
+            "sessionId",
+            "messageId"
+          ],
+          "additionalProperties": true,
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "body": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "body"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "content": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "content"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "attachments": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "artifactId": {
+                        "type": "string"
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "properties": {},
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "artifactId"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "attachments"
+              ],
+              "additionalProperties": true
+            }
+          ]
         },
         "outputSchema": {
           "type": "object",
@@ -27075,7 +27492,65 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "required": [
             "sessionId"
           ],
-          "additionalProperties": true
+          "additionalProperties": true,
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "body": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "body"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "content": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "content"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "attachments": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "artifactId": {
+                        "type": "string"
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "properties": {},
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "artifactId"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "attachments"
+              ],
+              "additionalProperties": true
+            }
+          ]
         },
         "outputSchema": {
           "type": "object",
@@ -27188,7 +27663,15 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               "type": "string"
             }
           },
-          "additionalProperties": true
+          "additionalProperties": true,
+          "dependentRequired": {
+            "model": [
+              "provider"
+            ],
+            "provider": [
+              "model"
+            ]
+          }
         },
         "outputSchema": {
           "type": "object",
@@ -27777,6 +28260,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "inputSchema": {
           "type": "object",
           "properties": {
+            "sessionId": {
+              "type": "string"
+            },
             "title": {
               "type": "string"
             },
@@ -27790,7 +28276,68 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               "type": "string"
             }
           },
-          "additionalProperties": true
+          "required": [
+            "sessionId"
+          ],
+          "additionalProperties": true,
+          "dependentRequired": {
+            "model": [
+              "provider"
+            ],
+            "provider": [
+              "model"
+            ]
+          },
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "title"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "model": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "model"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "provider": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "provider"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "systemPrompt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "systemPrompt"
+              ],
+              "additionalProperties": true
+            }
+          ]
         },
         "outputSchema": {
           "type": "object",
@@ -50511,7 +51058,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "type": "object",
           "properties": {
             "kind": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "overview",
+                "bundle",
+                "dashboard",
+                "source",
+                "node",
+                "issue",
+                "rollup"
+              ]
             },
             "id": {
               "type": "string"
@@ -50529,7 +51085,48 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "required": [
             "kind"
           ],
-          "additionalProperties": true
+          "additionalProperties": true,
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "overview",
+                    "bundle",
+                    "dashboard"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "source",
+                    "node",
+                    "issue",
+                    "rollup"
+                  ]
+                },
+                "id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "id"
+              ],
+              "additionalProperties": true
+            }
+          ]
         },
         "outputSchema": {
           "type": "object",
@@ -51002,7 +51599,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "type": "object",
           "properties": {
             "kind": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "overview",
+                "bundle",
+                "dashboard",
+                "source",
+                "node",
+                "issue",
+                "rollup"
+              ]
             },
             "id": {
               "type": "string"
@@ -51020,7 +51626,48 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "required": [
             "kind"
           ],
-          "additionalProperties": true
+          "additionalProperties": true,
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "overview",
+                    "bundle",
+                    "dashboard"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "source",
+                    "node",
+                    "issue",
+                    "rollup"
+                  ]
+                },
+                "id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "id"
+              ],
+              "additionalProperties": true
+            }
+          ]
         },
         "outputSchema": {
           "type": "object",
@@ -63286,7 +63933,91 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               }
             }
           },
-          "additionalProperties": true
+          "additionalProperties": true,
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "artifact": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "artifactId": {
+                      "type": "string"
+                    },
+                    "mimeType": {
+                      "type": "string"
+                    },
+                    "dataBase64": {
+                      "type": "string"
+                    },
+                    "uri": {
+                      "type": "string"
+                    },
+                    "filename": {
+                      "type": "string"
+                    },
+                    "sizeBytes": {
+                      "type": "number"
+                    },
+                    "sha256": {
+                      "type": "string"
+                    },
+                    "metadata": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          {
+                            "type": "array",
+                            "items": {}
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "mimeType",
+                    "metadata"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "artifact"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "artifactId": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "artifactId"
+              ],
+              "additionalProperties": true
+            }
+          ]
         },
         "outputSchema": {
           "type": "object",

@@ -18,7 +18,7 @@ const REWIND_SCOPES: readonly RewindScope[] = ['files', 'conversation', 'both'];
 
 function requireString(value: unknown, field: string): string {
   if (typeof value !== 'string' || value.length === 0) {
-    throw new GatewayVerbError(`Missing required field: ${field}`, 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError(`Missing required field: ${field}`, 'INVALID_ARGUMENT', 400, field);
   }
   return value;
 }
@@ -34,6 +34,7 @@ function requireScope(value: unknown): RewindScope {
       `Invalid scope: ${String(value)} (expected one of ${REWIND_SCOPES.join(', ')})`,
       'INVALID_ARGUMENT',
       400,
+      'scope',
     );
   }
   return value as RewindScope;
@@ -42,7 +43,7 @@ function requireScope(value: unknown): RewindScope {
 function optionalBoolean(value: unknown, field: string): boolean | undefined {
   if (value === undefined || value === null) return undefined;
   if (typeof value !== 'boolean') {
-    throw new GatewayVerbError(`Invalid ${field}: expected a boolean`, 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError(`Invalid ${field}: expected a boolean`, 'INVALID_ARGUMENT', 400, field);
   }
   return value;
 }
@@ -72,7 +73,7 @@ export function createRewindApplyHandler(service: Pick<UnifiedRewindService, 'ap
       return await service.apply(anchor, scope, { confirm, confirmToken });
     } catch (error) {
       if (error instanceof RewindTokenError) {
-        throw new GatewayVerbError(error.message, 'INVALID_ARGUMENT', 400);
+        throw new GatewayVerbError(error.message, 'INVALID_ARGUMENT', 400, 'confirmToken');
       }
       throw error;
     }

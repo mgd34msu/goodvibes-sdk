@@ -55,6 +55,7 @@ function validateKind(value: unknown): SharedSessionKind | undefined {
       `Invalid kind: ${String(value)} (expected one of ${SHARED_SESSION_KINDS.join(', ')})`,
       'INVALID_ARGUMENT',
       400,
+      'kind',
     );
   }
   return value as SharedSessionKind;
@@ -67,6 +68,7 @@ function validateStatus(value: unknown): SharedSessionStatus | undefined {
       `Invalid status: ${String(value)} (expected one of ${SHARED_SESSION_STATUSES.join(', ')})`,
       'INVALID_ARGUMENT',
       400,
+      'status',
     );
   }
   return value as SharedSessionStatus;
@@ -75,7 +77,7 @@ function validateStatus(value: unknown): SharedSessionStatus | undefined {
 function validateSurfaceKind(value: unknown): SurfaceKind | undefined {
   if (value === undefined || value === null) return undefined;
   if (typeof value !== 'string' || !(SURFACE_KINDS as readonly string[]).includes(value)) {
-    throw new GatewayVerbError(`Invalid surfaceKind: ${String(value)}`, 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError(`Invalid surfaceKind: ${String(value)}`, 'INVALID_ARGUMENT', 400, 'surfaceKind');
   }
   return value as SurfaceKind;
 }
@@ -84,7 +86,7 @@ function clampLimit(raw: unknown): number {
   if (raw === undefined || raw === null) return SESSIONS_SEARCH_DEFAULT_LIMIT;
   const n = typeof raw === 'number' ? raw : Number(raw);
   if (!Number.isFinite(n) || n <= 0) {
-    throw new GatewayVerbError(`Invalid limit: ${String(raw)}`, 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError(`Invalid limit: ${String(raw)}`, 'INVALID_ARGUMENT', 400, 'limit');
   }
   return Math.min(Math.floor(n), SESSIONS_SEARCH_MAX_LIMIT);
 }

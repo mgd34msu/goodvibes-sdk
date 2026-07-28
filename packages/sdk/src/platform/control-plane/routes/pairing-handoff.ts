@@ -62,7 +62,7 @@ function requirePrincipal(invocation: GatewayMethodInvocation): string {
 
 function requireString(value: unknown, field: string): string {
   if (typeof value !== 'string' || value.trim().length === 0) {
-    throw new GatewayVerbError(`Missing or invalid ${field}`, 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError(`Missing or invalid ${field}`, 'INVALID_ARGUMENT', 400, field);
   }
   return value;
 }
@@ -70,7 +70,7 @@ function requireString(value: unknown, field: string): string {
 function requestedOffers(value: unknown): readonly PairingHandoffOfferKind[] {
   if (value === undefined) return PAIRING_HANDOFF_OFFER_KINDS;
   if (!Array.isArray(value)) {
-    throw new GatewayVerbError('offers must be an array of offer kinds', 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError('offers must be an array of offer kinds', 'INVALID_ARGUMENT', 400, 'offers');
   }
   return normalizeOffers(value.filter((v): v is string => typeof v === 'string'));
 }
@@ -160,15 +160,15 @@ interface OfferResult {
  */
 function readKeys(value: unknown): { p256dh: string; auth: string } {
   if (value === null || typeof value !== 'object') {
-    throw new GatewayVerbError('notifications.keys is required', 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError('notifications.keys is required', 'INVALID_ARGUMENT', 400, 'notifications.keys');
   }
   const keys = value as Record<string, unknown>;
   const p256dh = requireString(keys.p256dh, 'notifications.keys.p256dh');
   const auth = requireString(keys.auth, 'notifications.keys.auth');
   const p256dhProblem = describeP256dhProblem(p256dh);
-  if (p256dhProblem) throw new GatewayVerbError(p256dhProblem, 'INVALID_ARGUMENT', 400);
+  if (p256dhProblem) throw new GatewayVerbError(p256dhProblem, 'INVALID_ARGUMENT', 400, 'notifications.keys.p256dh');
   const authProblem = describeAuthSecretProblem(auth);
-  if (authProblem) throw new GatewayVerbError(authProblem, 'INVALID_ARGUMENT', 400);
+  if (authProblem) throw new GatewayVerbError(authProblem, 'INVALID_ARGUMENT', 400, 'notifications.keys.auth');
   return { p256dh, auth };
 }
 
@@ -176,7 +176,7 @@ function readKeys(value: unknown): { p256dh: string; auth: string } {
 function readEndpoint(value: unknown): string {
   const endpoint = requireString(value, 'notifications.endpoint');
   const problem = describeEndpointProblem(endpoint);
-  if (problem) throw new GatewayVerbError(problem, 'INVALID_ARGUMENT', 400);
+  if (problem) throw new GatewayVerbError(problem, 'INVALID_ARGUMENT', 400, 'notifications.endpoint');
   return endpoint;
 }
 

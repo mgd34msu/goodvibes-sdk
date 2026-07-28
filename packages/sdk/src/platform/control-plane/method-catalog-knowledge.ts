@@ -31,6 +31,7 @@ import {
   KNOWLEDGE_PACKET_SCHEMA,
   KNOWLEDGE_PACKET_DETAIL_SCHEMA,
   KNOWLEDGE_PROJECTION_BUNDLE_SCHEMA,
+  KNOWLEDGE_PROJECTION_INPUT_SCHEMA,
   KNOWLEDGE_PROJECTION_TARGETS_OUTPUT_SCHEMA,
   KNOWLEDGE_REINDEX_OUTPUT_SCHEMA,
   KNOWLEDGE_REFINEMENT_RUN_OUTPUT_SCHEMA,
@@ -657,12 +658,7 @@ export const builtinGatewayKnowledgeMethodDescriptors: readonly GatewayMethodDes
     category: 'knowledge',
     scopes: ['read:knowledge'],
     http: { method: 'POST', path: '/api/knowledge/projections/render' },
-    inputSchema: bodyEnvelopeSchema({
-      kind: STRING_SCHEMA,
-      id: STRING_SCHEMA,
-      limit: NUMBER_SCHEMA,
-      ...KNOWLEDGE_SPACE_INPUT_FIELDS,
-    }, ['kind']),
+    inputSchema: KNOWLEDGE_PROJECTION_INPUT_SCHEMA,
     outputSchema: KNOWLEDGE_PROJECTION_BUNDLE_SCHEMA,
   }),
   methodDescriptor({
@@ -673,12 +669,7 @@ export const builtinGatewayKnowledgeMethodDescriptors: readonly GatewayMethodDes
     scopes: ['write:knowledge'],
     access: 'admin',
     http: { method: 'POST', path: '/api/knowledge/projections/materialize' },
-    inputSchema: bodyEnvelopeSchema({
-      kind: STRING_SCHEMA,
-      id: STRING_SCHEMA,
-      limit: NUMBER_SCHEMA,
-      ...KNOWLEDGE_SPACE_INPUT_FIELDS,
-    }, ['kind']),
+    inputSchema: KNOWLEDGE_PROJECTION_INPUT_SCHEMA,
     outputSchema: KNOWLEDGE_MATERIALIZED_PROJECTION_SCHEMA,
   }),
   methodDescriptor({
