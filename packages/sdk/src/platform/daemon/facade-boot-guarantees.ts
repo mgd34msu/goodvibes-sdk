@@ -12,6 +12,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { migrateDaemonOwnedConfig } from '../config/daemon-config-migration.js';
+import type { SweepableSecrets } from '../config/plaintext-credential-sweep.js';
 import {
   buildCredentialMigrationReceipt,
   describeCredentialMigration,
@@ -20,6 +21,7 @@ import {
 } from '../config/daemon-credential-migration.js';
 import { DAEMON_CONFIG_ROOT } from '../config/daemon-config-tier.js';
 import { ensureConnectorConfigSections } from '../config/connector-config-sections.js';
+import { describePlaintextSweep, sweepPlaintextCredentials } from '../config/plaintext-credential-sweep.js';
 import { repairHalfLandedGoogleConnection } from '../google/connection-repair.js';
 import { nodeGoogleFilePort } from '../google/node.js';
 import { resolveSharedDirectory } from '../runtime/surface-root.js';
@@ -176,6 +178,39 @@ export async function runDaemonBootGuarantees(
   migrateDaemonOwnedConfigOnBoot(configManager, services.shellPaths.homeDirectory);
   await migrateDaemonNeededCredentialsOnBoot(services.secretsManager, services.shellPaths.homeDirectory);
   await repairGoogleConnectionOnBoot(configManager, services);
+  await sweepPlaintextCredentialsOnBoot(configManager, services);
+}
+
+/**
+ * Move any credential still sitting literally in a config file into the store.
+ *
+ * The write paths that produced these are closed, which does nothing for the
+ * values already written. See config/plaintext-credential-sweep.ts for the
+ * ordering that makes this safe: a literal is replaced by a reference only
+ * after the store has been read back and matched.
+ */
+async function sweepPlaintextCredentialsOnBoot(
+  configManager: ConfigManager,
+  services: DaemonBootServices,
+): Promise<void> {
+  try {
+    ensureConnectorConfigSections(configManager);
+    const manager = configManager as unknown as { get(key: string): unknown; setDynamic(key: string, value: unknown): void };
+    const report = await sweepPlaintextCredentials(
+      { get: (key) => manager.get(key), set: (key, value) => { manager.setDynamic(key, value); } },
+      services.secretsManager,
+    );
+    if (report.noop) return;
+    logger.info('DaemonServer: credentials stored in the clear were moved into the secret store', {
+      summary: describePlaintextSweep(report),
+      entries: report.entries.map((entry) => `${entry.configKey}:${entry.outcome}`),
+    });
+  } catch (error) {
+    logger.warn('DaemonServer: the plaintext credential sweep failed', {
+      error: summarizeError(error),
+      detail: 'a credential may still be stored in the clear in a settings file',
+    });
+  }
 }
 
 /**
@@ -227,6 +262,6 @@ async function repairGoogleConnectionOnBoot(
  * delete through, and two directory paths. Nothing else.
  */
 export interface DaemonBootServices {
-  readonly secretsManager: MigratableSecretStore;
+  readonly secretsManager: MigratableSecretStore & SweepableSecrets;
   readonly shellPaths: { readonly workingDirectory: string; readonly homeDirectory: string };
 }

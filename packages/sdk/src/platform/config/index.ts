@@ -210,6 +210,24 @@ export type {
   MigratableSecretStore,
 } from './daemon-credential-migration.js';
 export {
+  isDeclaredSecretBearingConfigKey,
+  isSecretBearingConfigKey,
+  isSecretReferenceValue,
+  SECRET_BEARING_CONFIG_PATHS,
+} from './secret-bearing-config-keys.js';
+export {
+  describePlaintextSweep,
+  secretReferenceFor,
+  sweepPlaintextCredentials,
+} from './plaintext-credential-sweep.js';
+export type {
+  PlaintextSweepEntry,
+  PlaintextSweepOutcome,
+  PlaintextSweepReport,
+  SweepableConfig,
+  SweepableSecrets,
+} from './plaintext-credential-sweep.js';
+export {
   ensureCalendarConfigDefaults,
   ensureConnectorConfigSections,
   ensureGoogleOAuthConfigDefaults,

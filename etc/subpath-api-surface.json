@@ -11856,6 +11856,29 @@
       "kind": "interface"
     },
     {
+      "name": "PlaintextSweepEntry",
+      "kind": "interface",
+      "required": [
+        "configKey",
+        "outcome",
+        "secretKey"
+      ]
+    },
+    {
+      "name": "PlaintextSweepOutcome",
+      "kind": "type"
+    },
+    {
+      "name": "PlaintextSweepReport",
+      "kind": "interface",
+      "required": [
+        "entries",
+        "failed",
+        "moved",
+        "noop"
+      ]
+    },
+    {
       "name": "ProviderSubscription",
       "kind": "interface",
       "required": [
@@ -11884,6 +11907,10 @@
         "modelId",
         "provider"
       ]
+    },
+    {
+      "name": "SECRET_BEARING_CONFIG_PATHS",
+      "kind": "const"
     },
     {
       "name": "SHARED_CONFIG_KEYS",
@@ -12049,6 +12076,23 @@
       "kind": "class"
     },
     {
+      "name": "SweepableConfig",
+      "kind": "interface",
+      "required": [
+        "get",
+        "set"
+      ]
+    },
+    {
+      "name": "SweepableSecrets",
+      "kind": "interface",
+      "required": [
+        "get",
+        "getFromScope",
+        "set"
+      ]
+    },
+    {
       "name": "ToolLLM",
       "kind": "class"
     },
@@ -12157,6 +12201,10 @@
       "kind": "function"
     },
     {
+      "name": "describePlaintextSweep",
+      "kind": "function"
+    },
+    {
       "name": "describeSecretRef",
       "kind": "function"
     },
@@ -12249,7 +12297,19 @@
       "kind": "function"
     },
     {
+      "name": "isDeclaredSecretBearingConfigKey",
+      "kind": "function"
+    },
+    {
+      "name": "isSecretBearingConfigKey",
+      "kind": "function"
+    },
+    {
       "name": "isSecretRefInput",
+      "kind": "function"
+    },
+    {
+      "name": "isSecretReferenceValue",
       "kind": "function"
     },
     {
@@ -12389,7 +12449,15 @@
       "kind": "function"
     },
     {
+      "name": "secretReferenceFor",
+      "kind": "function"
+    },
+    {
       "name": "secretWriteScopeWasOverridden",
+      "kind": "function"
+    },
+    {
+      "name": "sweepPlaintextCredentials",
       "kind": "function"
     },
     {
