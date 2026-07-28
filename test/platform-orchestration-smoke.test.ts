@@ -24,18 +24,18 @@ describe('platform/runtime/orchestration — spawn-policy smoke', () => {
     expect(typeof result.reason).toBe('string');
   });
 
-  test('evaluateOrchestrationSpawn allows sequential mode regardless of recursion flag', () => {
+  test('evaluateOrchestrationSpawn allows manual-batch mode regardless of recursion flag', () => {
     const configManager = {
       get: (_key: string) => null,
     };
     const result = evaluateOrchestrationSpawn({
       configManager: configManager as never,
-      mode: 'sequential',
+      mode: 'manual-batch',
       activeAgents: 1,
       requestedDepth: 1,
       overrides: { recursionEnabled: false, maxAgents: 5, maxDepth: 3 },
     });
-    // sequential bypasses the recursionEnabled guard
+    // manual-batch bypasses the recursionEnabled guard (only recursive-child/plan-auto are gated)
     expect(result.allowed).toBe(true);
     expect(result.availableSlots).toBe(4);
   });
@@ -46,7 +46,7 @@ describe('platform/runtime/orchestration — spawn-policy smoke', () => {
     };
     const result = evaluateOrchestrationSpawn({
       configManager: configManager as never,
-      mode: 'sequential',
+      mode: 'manual-batch',
       activeAgents: 5,
       overrides: { maxAgents: 5 },
     });

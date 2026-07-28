@@ -113,6 +113,14 @@ function makeHarness(projectRoot: string): Harness {
 
   const configOverrides = { gates: [] as Array<{ name: string; command: string; enabled: boolean }>, commitScope: 'scoped' as 'off' | 'scoped' | 'all' };
 
+  // `get`/`getCategory` on the real ConfigManager are generic over `ConfigKey`
+  // with a per-key conditional return type (`ConfigValue<K>` / `GoodVibesConfig[C]`,
+  // a ~500-branch conditional). A by-string-key stub can't be typed against that
+  // generic signature directly — TypeScript hits its own recursion limit
+  // ("Excessive stack depth") comparing two such generic conditional signatures
+  // structurally. Casting the whole mock once at the boundary (rather than
+  // per-return-value) sidesteps that compiler limitation; ConfigManager's own
+  // methods work around the same expressiveness gap internally with `as ConfigValue<K>`.
   const configManager = {
     get: (key: string): unknown => {
       if (key === 'wrfc.commitScope') return configOverrides.commitScope;
@@ -132,7 +140,7 @@ function makeHarness(projectRoot: string): Harness {
       }
       return undefined;
     },
-  };
+  } as unknown as Pick<import('../packages/sdk/src/platform/config/manager.js').ConfigManager, 'get' | 'getCategory'>;
 
   const agentManager: PhaseRunnerAgentManagerLike = {
     spawn: (input) => {
@@ -733,7 +741,7 @@ describe('resume prefix replay', () => {
     item.currentPhaseId = revPhase!.id;
     item.state = 'awaiting-capacity';
     item.visits.set(engPhase!.id, 1);
-    item.usage = { inputTokens: 5, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0, llmCallCount: 1, turnCount: 1, costUsd: null, costState: 'unpriced' };
+    item.usage = { inputTokens: 5, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0, llmCallCount: 1, turnCount: 1, toolCallCount: 0, costUsd: null, costState: 'unpriced' };
 
     const snapshotJson = engine.serializeWorkstream(seed.id);
     expect(snapshotJson).not.toBeNull();
@@ -891,7 +899,7 @@ describe('controller-compat', () => {
     const configManager = {
       get: () => undefined,
       getCategory: () => ({ commitScope: 'scoped' }),
-    };
+    } as unknown as Pick<import('../packages/sdk/src/platform/config/manager.js').ConfigManager, 'get' | 'getCategory'>;
     const spec = fromChainSpec({ id: 'owner-1', task: 'implement the thing' }, configManager);
     expect(spec.items).toHaveLength(1);
     expect(spec.items[0]!.task).toBe('implement the thing');

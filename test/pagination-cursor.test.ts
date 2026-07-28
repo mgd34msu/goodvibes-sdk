@@ -24,6 +24,7 @@ import {
   hasPaginationParams,
   paginateItems,
 } from '../packages/daemon-sdk/dist/index.js';
+import type { PaginatedResponse } from '../packages/daemon-sdk/dist/index.js';
 import { createDaemonRuntimeAutomationRouteHandlers } from '../packages/daemon-sdk/dist/index.js';
 import { createDaemonIntegrationRouteHandlers } from '../packages/daemon-sdk/dist/index.js';
 import { createDaemonKnowledgeRouteHandlers } from '../packages/daemon-sdk/dist/index.js';
@@ -132,7 +133,7 @@ describe('paginateItems', () => {
     let pages = 0;
     // page through 3 items at a time
     while (pages < 20) {
-      const result = paginateItems(items, 3, cursor, (x) => x.id);
+      const result: PaginatedResponse<{ id: string; createdAt: number }> | { readonly error: string } = paginateItems(items, 3, cursor, (x) => x.id);
       if ('error' in result) throw new Error(result.error);
       for (const item of result.items) {
         seen.push(item.id);
@@ -236,9 +237,9 @@ function makeAutomationContext(
       runNow: async () => ({ id: 'r1', status: 'queued' }),
       getSchedulerCapacity: () => ({ slotsTotal: 4, slotsInUse: 0, queueDepth: 0, oldestQueuedAgeMs: null }),
     },
-    parseJsonBody: async (req) => { const j = await req.json(); return j as Record<string, unknown>; },
+    parseJsonBody: async (req: Request) => { const j = await req.json(); return j as Record<string, unknown>; },
     parseOptionalJsonBody: async () => null,
-    recordApiResponse: (_req, _path, res) => res,
+    recordApiResponse: (_req: Request, _path: string, res: Response) => res,
     requireAdmin: () => null,
     sessionBroker: {
       start: async () => undefined,
@@ -483,7 +484,7 @@ function makeIntegrationContext(
       rebuildVectorsAsync: async () => ({}),
       reviewQueue: () => [],
     },
-    parseJsonBody: async (req) => { const j = await req.json(); return j as Record<string, unknown>; },
+    parseJsonBody: async (req: Request) => { const j = await req.json(); return j as Record<string, unknown>; },
     providerRuntime: {
       listSnapshots: async () => [],
       getSnapshot: async () => null,
@@ -603,7 +604,7 @@ function makeKnowledgeContext(
       listSpaces: () => [],
       getDefaultSpace: () => null,
     },
-    parseJsonBody: async (req) => { const j = await req.json(); return j as Record<string, unknown>; },
+    parseJsonBody: async (req: Request) => { const j = await req.json(); return j as Record<string, unknown>; },
     requireAdmin: () => null,
     fetchOptions: {},
     artifactStore: null,

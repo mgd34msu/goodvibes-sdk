@@ -20,6 +20,7 @@ import { PowerManager, LID_SWITCH_HONEST_SPLIT } from '../packages/sdk/src/platf
 import { bindPowerWorkSignals } from '../packages/sdk/src/platform/power/work-signals.ts';
 import { createLinuxLogindSeam, reapOrphanedInhibitors } from '../packages/sdk/src/platform/power/linux-logind.ts';
 import type { PowerInhibitClass, PowerPlatformSeam } from '../packages/sdk/src/platform/power/types.ts';
+import type { EventEnvelope } from '@pellux/goodvibes-transport-core';
 
 /** A scriptable seam recording every acquire/release, with per-class denials. */
 function fixtureSeam(options: { deny?: readonly PowerInhibitClass[] } = {}) {
@@ -73,10 +74,10 @@ describe('automatic work inhibition', () => {
     // A fake runtime bus delivering the REAL envelope shape (type/ts/payload —
     // never `event`) so this proves the actual bug: bindPowerWorkSignals used
     // to read envelope.event, which is undefined on a real EventEnvelope.
-    const handlers = new Map<string, (env: { payload: Record<string, unknown>; turnId?: string; agentId?: string }) => void>();
+    const handlers = new Map<string, (env: EventEnvelope<string, Record<string, unknown>>) => void>();
     bindPowerWorkSignals({ on: (type, cb) => { handlers.set(type, cb); return () => {}; } }, manager);
 
-    handlers.get('TURN_SUBMITTED')!({ payload: { type: 'TURN_SUBMITTED', turnId: 't-1', prompt: 'hi' } });
+    handlers.get('TURN_SUBMITTED')!({ type: 'TURN_SUBMITTED', ts: Date.now(), payload: { type: 'TURN_SUBMITTED', turnId: 't-1', prompt: 'hi' } });
     await settle();
     let state = manager.getState();
     expect(state.work.held).toBe(true);
@@ -85,15 +86,15 @@ describe('automatic work inhibition', () => {
     expect(state.work.capExpiresAt).not.toBeNull();
 
     // A second piece of work overlaps; the inhibitor survives the first drain.
-    handlers.get('AGENT_RUNNING')!({ payload: { type: 'AGENT_RUNNING', agentId: 'a-9' } });
-    handlers.get('TURN_COMPLETED')!({ payload: { type: 'TURN_COMPLETED', turnId: 't-1', response: '', stopReason: 'completed' } });
+    handlers.get('AGENT_RUNNING')!({ type: 'AGENT_RUNNING', ts: Date.now(), payload: { type: 'AGENT_RUNNING', agentId: 'a-9' } });
+    handlers.get('TURN_COMPLETED')!({ type: 'TURN_COMPLETED', ts: Date.now(), payload: { type: 'TURN_COMPLETED', turnId: 't-1', response: '', stopReason: 'completed' } });
     await settle();
     state = manager.getState();
     expect(state.work.held).toBe(true);
     expect(state.work.reasons).toEqual(['agent a-9 is active']);
 
     // Last work drains: released.
-    handlers.get('AGENT_COMPLETED')!({ payload: { type: 'AGENT_COMPLETED', agentId: 'a-9', durationMs: 1 } });
+    handlers.get('AGENT_COMPLETED')!({ type: 'AGENT_COMPLETED', ts: Date.now(), payload: { type: 'AGENT_COMPLETED', agentId: 'a-9', durationMs: 1 } });
     await settle();
     expect(manager.getState().work.held).toBe(false);
     expect(log).toEqual([

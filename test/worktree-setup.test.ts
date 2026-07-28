@@ -93,7 +93,10 @@ describe('worktrees.setup.run gateway verb', () => {
     const recorded: { path: string; setup: WorktreeSetupResult }[] = [];
     const catalog = new GatewayMethodCatalog();
     registerWorktreeSetupGatewayMethods(catalog, {
-      registry: { recordSetup: (path, setup) => recorded.push({ path, setup }) },
+      registry: {
+        recordSetup: (path, setup) => { recorded.push({ path, setup }); },
+        discard: async () => { throw new Error('not expected'); },
+      },
       sourceRoot: '/src',
       resolveConfig: () => ({ commands: [], carryOverGlobs: [] }),
     });
@@ -109,7 +112,7 @@ describe('worktrees.setup.run gateway verb', () => {
   test('a missing path is an honest 400', async () => {
     const catalog = new GatewayMethodCatalog();
     registerWorktreeSetupGatewayMethods(catalog, {
-      registry: { recordSetup: () => {} },
+      registry: { recordSetup: () => {}, discard: async () => { throw new Error('not expected'); } },
       sourceRoot: '/src',
       resolveConfig: () => ({ commands: [], carryOverGlobs: [] }),
     });

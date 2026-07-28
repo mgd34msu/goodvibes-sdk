@@ -261,7 +261,8 @@ if (REGISTRY_MODE) {
   console.log('registry install smoke passed');
 } else {
   const { tempRoot, specs } = await buildTarballSpecs();
-  const packDir = specs.length > 0 ? resolve(specs[0], '..') : null;
+  const firstSpec = specs[0];
+  const packDir = firstSpec !== undefined ? resolve(firstSpec, '..') : null;
   try {
     await installWithNpm(specs);
     console.log('tarball install smoke passed');

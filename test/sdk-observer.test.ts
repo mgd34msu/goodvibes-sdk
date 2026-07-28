@@ -74,8 +74,8 @@ describe('SDKObserver — auth wire-up', () => {
 
     await auth.login({ username: 'alice', password: 'secret' });
     expect(observed).toHaveLength(1);
-    expect(observed[0].reason).toBe('login');
-    expect(observed[0].to).toBe('token');
+    expect(observed[0]!.reason).toBe('login');
+    expect(observed[0]!.to).toBe('token');
   });
 
   test('onAuthTransition is called with logout transition on clearToken', async () => {
@@ -93,7 +93,7 @@ describe('SDKObserver — auth wire-up', () => {
 
     await auth.clearToken();
     expect(observed).toHaveLength(1);
-    expect(observed[0].reason).toBe('logout');
+    expect(observed[0]!.reason).toBe('logout');
   });
 
   test('an observer that throws is reported but does NOT propagate into SDK logic', async () => {
@@ -142,9 +142,9 @@ describe('SDKObserver — TransportObserver callbacks', () => {
     invokeObserver(() => observer.onTransportActivity?.({ direction: 'recv', url: 'http://localhost/api', kind: 'http', durationMs: 42 }));
 
     expect(activities).toHaveLength(2);
-    expect(activities[0].direction).toBe('send');
-    expect(activities[1].direction).toBe('recv');
-    expect(activities[1].durationMs).toBe(42);
+    expect(activities[0]!.direction).toBe('send');
+    expect(activities[1]!.direction).toBe('recv');
+    expect(activities[1]!.durationMs).toBe(42);
   });
 
   test('invokeObserver isolates and reports onTransportActivity errors', () => {
@@ -208,8 +208,9 @@ describe('SDKObserver — TransportObserver callbacks', () => {
     };
     invokeObserver(() => observer.onTransportActivity?.({ direction: 'send', url: 'http://x', kind: 'sse' }));
     invokeObserver(() => observer.onTransportActivity?.({ direction: 'send', url: 'http://x', kind: 'ws' }));
-    expect(activities[0].kind).toBe('sse');
-    expect(activities[1].kind).toBe('ws');
+    expect(activities).toHaveLength(2);
+    expect(activities[0]!.kind).toBe('sse');
+    expect(activities[1]!.kind).toBe('ws');
   });
 });
 

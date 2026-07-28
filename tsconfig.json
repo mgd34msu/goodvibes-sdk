@@ -47,6 +47,9 @@
     },
     {
       "path": "./packages/toolchain"
+    },
+    {
+      "path": "./tsconfig.tests.json"
     }
   ]
 }

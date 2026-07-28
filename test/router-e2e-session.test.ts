@@ -152,7 +152,10 @@ describe('router-e2e session — messages (happy path)', () => {
     const res = await dispatchSessionRoutes(req, handlers);
     expect(res).not.toBeNull();
     expect(res!.status).toBe(200);
-    expect(capturedId).toBe('sess-1');
+    // `capturedId` is reassigned inside the `closeSharedSession` handler
+    // closure above; TS's control-flow analysis can't see across that
+    // boundary, so its narrowed type here is stuck at the `null` initializer.
+    expect(capturedId as unknown as string).toBe('sess-1');
     const body = await res!.json() as Record<string, unknown>;
     expect(body.ok).toBe(true);
   });
@@ -189,6 +192,8 @@ describe('router-e2e session — failure paths', () => {
     const res = await dispatchSessionRoutes(req, handlers);
     expect(res).not.toBeNull();
     expect(res!.status).toBe(200);
-    expect(capturedInput).toBe('input-99');
+    // Same closure-narrowing note as above: `capturedInput` is reassigned
+    // inside the `cancelSharedSessionInput` handler closure.
+    expect(capturedInput as unknown as string).toBe('input-99');
   });
 });

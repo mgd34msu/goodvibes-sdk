@@ -8,6 +8,6 @@ export function makeRequest(method: string, url: string, body?: unknown): Reques
   return new Request(url, {
     method,
     headers: body !== undefined ? { 'content-type': 'application/json' } : {},
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
 }

@@ -96,6 +96,24 @@ function createMockWebSocketClass(): {
   return { MockWebSocket: MockWebSocket as unknown as typeof WebSocket, instances };
 }
 
+/** Asserts at least one mock socket was created and returns the first one, narrowed. */
+function firstInstance(instances: MockWebSocketHandle[]): MockWebSocketHandle {
+  expect(instances.length).toBeGreaterThanOrEqual(1);
+  return instances[0]!;
+}
+
+/**
+ * DomainEventConnector's declared return type is `void | Promise<() => void>` —
+ * the WebSocket branch always resolves a real stop function, but the type
+ * doesn't promise that. Assert it before calling, so a real regression (the
+ * connector silently returning nothing) fails loudly instead of leaking an
+ * open socket across tests.
+ */
+function stopOrThrow(stop: (() => void) | void): void {
+  if (typeof stop !== 'function') throw new Error('connector did not return a stop function');
+  stop();
+}
+
 // ---------------------------------------------------------------------------
 // Task 1 — Typed connection-state events
 // ---------------------------------------------------------------------------
@@ -136,7 +154,7 @@ describe('Task 1: typed connection-state events', () => {
     const stop = await connector('agents', () => {});
     expect(instances).toHaveLength(1);
 
-    instances[0].simulateOpen();
+    firstInstance(instances).simulateOpen();
     await settleEvents(10);
 
     // Exact sequence: connecting (from connect()) then connected (after auth).
@@ -144,7 +162,7 @@ describe('Task 1: typed connection-state events', () => {
     // but semantically wrong. The sequence must be exactly [connecting, connected].
     expect(states).toEqual(['connecting', 'connected']);
 
-    stop();
+    stopOrThrow(stop);
     await settleEvents(0);
     expect(states).toContain('disconnected');
   });
@@ -160,13 +178,13 @@ describe('Task 1: typed connection-state events', () => {
     const connector = createWebSocketConnector('http://127.0.0.1:3210', 'tok', MockWebSocket, opts);
     const stop = await connector('agents', () => {});
 
-    instances[0].simulateOpen();
+    firstInstance(instances).simulateOpen();
     await settleEvents(10);
-    instances[0].simulateClose(1006); // abnormal close
+    firstInstance(instances).simulateClose(1006); // abnormal close
     await settleEvents(10);
 
     expect(states).toContain('reconnecting');
-    stop();
+    stopOrThrow(stop);
   });
 
   test('onConnectionStateChange fires failed when attempts exhausted', async () => {
@@ -181,9 +199,9 @@ describe('Task 1: typed connection-state events', () => {
     const stop = await connector('agents', () => {});
 
     // exhaust the single allowed reconnect
-    instances[0].simulateOpen();
+    firstInstance(instances).simulateOpen();
     await settleEvents(10);
-    instances[0].simulateClose(1006);
+    firstInstance(instances).simulateClose(1006);
     await settleEvents(10);
     // second connection attempt (reconnect #1)
     const ws2 = instances[instances.length - 1];
@@ -195,7 +213,7 @@ describe('Task 1: typed connection-state events', () => {
     }
 
     expect(states).toContain('failed');
-    stop();
+    stopOrThrow(stop);
   });
 
   test('onReconnectAttempt fires with structured metadata', async () => {
@@ -209,9 +227,9 @@ describe('Task 1: typed connection-state events', () => {
     const connector = createWebSocketConnector('http://127.0.0.1:3210', 'tok', MockWebSocket, opts);
     const stop = await connector('agents', () => {});
 
-    instances[0].simulateOpen();
+    firstInstance(instances).simulateOpen();
     await settleEvents(10);
-    instances[0].simulateClose(1006, 'server error');
+    firstInstance(instances).simulateClose(1006, 'server error');
     await settleEvents(10);
 
     expect(attempts.length).toBeGreaterThanOrEqual(1);
@@ -222,7 +240,7 @@ describe('Task 1: typed connection-state events', () => {
     expect(typeof first.reason).toBe('string');
     expect(first.reason.length).toBeGreaterThan(0);
 
-    stop();
+    stopOrThrow(stop);
   });
 
   test('legacy onReconnect still fires alongside onReconnectAttempt (backward compat)', async () => {
@@ -238,9 +256,9 @@ describe('Task 1: typed connection-state events', () => {
     const connector = createWebSocketConnector('http://127.0.0.1:3210', 'tok', MockWebSocket, opts);
     const stop = await connector('agents', () => {});
 
-    instances[0].simulateOpen();
+    firstInstance(instances).simulateOpen();
     await settleEvents(10);
-    instances[0].simulateClose(1006);
+    firstInstance(instances).simulateClose(1006);
     await settleEvents(10);
 
     expect(legacyCalls.length).toBeGreaterThanOrEqual(1);
@@ -248,7 +266,7 @@ describe('Task 1: typed connection-state events', () => {
     // Both should agree on attempt number
     expect(legacyCalls[0]![0]).toBe(newCalls[0]!.attempt);
 
-    stop();
+    stopOrThrow(stop);
   });
 });
 
@@ -337,11 +355,11 @@ describe('Task 2: backpressure visibility', () => {
     const beforeReconnect = bpEvents.length;
 
     // Connect (flushOutboundQueue resets the overflow counter + drains the queue)
-    instances[0].simulateOpen();
+    firstInstance(instances).simulateOpen();
     await settleEvents(10);
 
     // Disconnect again so the next messages go to the queue (not the open socket)
-    instances[0].simulateClose(1006);
+    firstInstance(instances).simulateClose(1006);
     await settleEvents(10);
 
     // Flood again — the overflow counter was reset on the previous flush, so the
@@ -564,7 +582,7 @@ describe('Task 5: onTransportEvent typed event dispatch', () => {
     expect(connectingEvents.length).toBeGreaterThanOrEqual(1);
     expect(connectingEvents[0]!.state).toBe('connecting');
 
-    instances[0].simulateOpen();
+    firstInstance(instances).simulateOpen();
     await settleEvents(10);
 
     const stateEvents = events
@@ -575,7 +593,7 @@ describe('Task 5: onTransportEvent typed event dispatch', () => {
     // Exact sequence pin: connecting then connected, no duplicates
     expect(stateEvents).toEqual(['connecting', 'connected']);
 
-    stop();
+    stopOrThrow(stop);
     await settleEvents(0);
 
     const afterStop = events
@@ -596,9 +614,9 @@ describe('Task 5: onTransportEvent typed event dispatch', () => {
     const connector = createWebSocketConnector('http://127.0.0.1:3210', 'tok', MockWebSocket, opts);
     const stop = await connector('agents', () => {});
 
-    instances[0].simulateOpen();
+    firstInstance(instances).simulateOpen();
     await settleEvents(10);
-    instances[0].simulateClose(1006, 'server error');
+    firstInstance(instances).simulateClose(1006, 'server error');
     await settleEvents(10);
 
     const reconnectEvents = events.filter(
@@ -612,7 +630,7 @@ describe('Task 5: onTransportEvent typed event dispatch', () => {
     expect(typeof first.delayMs).toBe('number');
     expect(first.reason.length).toBeGreaterThan(0);
 
-    stop();
+    stopOrThrow(stop);
   });
 
   test('onTransportEvent receives TRANSPORT_BACKPRESSURE when queue overflows', async () => {
@@ -654,11 +672,11 @@ describe('Task 5: onTransportEvent typed event dispatch', () => {
     const connector = createWebSocketConnector('http://127.0.0.1:3210', 'tok', MockWebSocket, opts);
     void connector('agents', () => {});
 
-    instances[0].simulateOpen();
+    firstInstance(instances).simulateOpen();
     await settleEvents(10);
 
     // simulateClose with code 1005 sets wasClean: false (code !== 1000 in the harness)
-    instances[0].simulateClose(1005, '');
+    firstInstance(instances).simulateClose(1005, '');
     await settleEvents(20);
 
     // 1005 is NOT a clean close — connector must schedule a reconnect
@@ -680,11 +698,11 @@ describe('Task 5: onTransportEvent typed event dispatch', () => {
     const connector = createWebSocketConnector('http://127.0.0.1:3210', 'tok', MockWebSocket, opts);
     void connector('agents', () => {});
 
-    instances[0].simulateOpen();
+    firstInstance(instances).simulateOpen();
     await settleEvents(10);
 
     // Simulate clean server-side close
-    instances[0].simulateClose(1000, 'normal closure');
+    firstInstance(instances).simulateClose(1000, 'normal closure');
     await settleEvents(20);
 
     // Must NOT see 'reconnecting' after a clean close

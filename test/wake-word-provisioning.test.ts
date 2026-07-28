@@ -31,8 +31,16 @@ import {
   WAKE_WORD_FRONT_END,
 } from '../packages/sdk/src/platform/voice/provisioning/wake-word-manifest.js';
 
-const MODEL = resolveWakeWordModel();
-if (MODEL === null) throw new Error('the default wake-word model must resolve');
+// Resolved eagerly via an IIFE (rather than a bare `const` + throw-guard) so
+// MODEL's static type is non-null everywhere it's read, including inside
+// nested function bodies defined below — a throw-guard on a separate
+// statement narrows only the enclosing scope's own control flow, not closures
+// that read the variable later.
+const MODEL = (() => {
+  const model = resolveWakeWordModel();
+  if (model === null) throw new Error('the default wake-word model must resolve');
+  return model;
+})();
 const EMBEDDING = WAKE_WORD_FRONT_END.embedding.download;
 
 let root: string;

@@ -17,19 +17,27 @@ import {
 } from '../packages/sdk/src/platform/ci-watch/auto-watch.ts';
 import { CiWatchService } from '../packages/sdk/src/platform/ci-watch/service.ts';
 import { runCiWatchPollPass } from '../packages/sdk/src/platform/ci-watch/poller.ts';
+import type { CiWatchServiceDeps } from '../packages/sdk/src/platform/ci-watch/service.ts';
 import type { CiJob, CiWatchSubscription, FixSessionBrief } from '../packages/sdk/src/platform/ci-watch/types.ts';
 
-/** In-memory watch store (the subscriptions seam). */
-function memoryStore() {
+/**
+ * In-memory watch store (the subscriptions seam).
+ *
+ * This used to be cast through `unknown`, because CiWatchStore is a concrete
+ * class with a private field and no object literal is structurally assignable
+ * to it. The cast then accepted a double carrying a `current` getter the class
+ * does not have. CiWatchServiceDeps.store is now the two members the service
+ * calls, so this double is checked like any other value.
+ */
+function memoryStore(): CiWatchServiceDeps['store'] {
   let subs: CiWatchSubscription[] = [];
   return {
     load: async () => [...subs],
     save: async (next: CiWatchSubscription[]) => { subs = [...next]; },
-    get current() { return subs; },
   };
 }
 
-function job(name: string, conclusion: string | null, status = 'completed'): CiJob {
+function job(name: string, conclusion: string | null, status: CiJob['status'] = 'completed'): CiJob {
   return { name, status, conclusion, url: `https://ci.example/${name}` };
 }
 

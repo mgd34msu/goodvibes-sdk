@@ -54,6 +54,10 @@ describe('Home Graph repair and generated pages', () => {
       installationId: 'house-1',
       areas: [{ id: 'living-room', name: 'Living Room' }],
       devices: [{ id: 'lg-tv', name: 'LG webOS Smart TV', manufacturer: 'LG', model: '86NANO90UNA', areaId: 'living-room' }],
+      // The raw Home Assistant wire spelling on purpose: snake_case keys and
+      // `platform`, which normalizeHomeGraphObjectInput reads as the
+      // integration id. Rewriting these to camelCase and dropping `platform`
+      // makes the file compile and breaks what it is testing.
       entities: [{
         entity_id: 'media_player.lg_webos_smart_tv',
         name: 'LG webOS Smart TV',
@@ -541,9 +545,7 @@ describe('Home Graph repair and generated pages', () => {
         sourceDiscovery: { trustReason: 'official-vendor-domain, model:86NANO90UNA', sourceRank: 1 },
       },
     });
-    const sourceWithoutUris = { ...source } as Record<string, unknown>;
-    delete sourceWithoutUris.sourceUri;
-    delete sourceWithoutUris.canonicalUri;
+    const { sourceUri: _droppedSourceUri, canonicalUri: _droppedCanonicalUri, ...sourceWithoutUris } = source;
     const responseOnlyOfficialSource = {
       ...sourceWithoutUris,
       id: responseOnlyOfficialSourceId,

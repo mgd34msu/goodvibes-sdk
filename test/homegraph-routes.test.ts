@@ -210,7 +210,7 @@ describe('Home Graph daemon routes', () => {
     expect(dryRunStatusResponse?.status).toBe(200);
     expect(resetResponse?.status).toBe(200);
     expect(resetStatusResponse?.status).toBe(200);
-    const status = await statusResponse!.json() as Record<string, unknown>;
+    const status = await statusResponse!.json() as { readonly spaceId?: string; readonly nodeCount?: number };
     const reindex = await reindexResponse!.json() as Record<string, unknown>;
     const map = await mapResponse!.json() as Record<string, unknown>;
     const svg = await svgResponse!.text();
@@ -221,7 +221,7 @@ describe('Home Graph daemon routes', () => {
       readonly artifactDeleteCandidates?: number;
       readonly deletedArtifacts?: number;
     };
-    const dryRunStatus = await dryRunStatusResponse!.json() as Record<string, unknown>;
+    const dryRunStatus = await dryRunStatusResponse!.json() as { readonly nodeCount?: number };
     const reset = await resetResponse!.json() as {
       readonly dryRun?: boolean;
       readonly deleted?: { readonly sources?: number; readonly nodes?: number };

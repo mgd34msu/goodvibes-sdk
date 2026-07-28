@@ -27,6 +27,7 @@ import {
 import { parseJsonRecord } from '../packages/sdk/src/platform/adapters/helpers.js';
 import { handleNtfySurfacePayload } from '../packages/sdk/src/platform/adapters/ntfy/index.js';
 import type { SurfaceAdapterContext } from '../packages/sdk/src/platform/adapters/types.js';
+import type { ChannelPolicyDecision } from '../packages/sdk/src/platform/channels/types.js';
 
 // ---------------------------------------------------------------------------
 // Minimal SurfaceAdapterContext stub — only the fields used by the paths under

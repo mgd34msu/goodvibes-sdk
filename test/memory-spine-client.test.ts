@@ -7,8 +7,11 @@ import {
   type LocalMemoryStore,
 } from '../packages/sdk/src/platform/runtime/memory-spine/index.js';
 import { createTransportError } from '../packages/transport-http/src/http-core.ts';
-import type { MemoryBundle, MemoryImportResult, MemoryLink, MemoryRecord, MemorySemanticSearchResult, MemoryVectorStats, MemoryDoctorReport } from '../packages/sdk/src/platform/state/index.js';
+import type { MemoryBundle, MemoryLink, MemoryRecord, MemorySemanticSearchResult, MemoryVectorStats, MemoryDoctorReport } from '../packages/sdk/src/platform/state/index.js';
 import type { HonestMemorySearchResult } from '../packages/sdk/src/platform/state/index.js';
+// MemoryImportResult is a real exported type (memory-store.ts) but is not
+// re-exported from the state barrel (state/index.ts) — pull it from source.
+import type { MemoryImportResult } from '../packages/sdk/src/platform/state/memory-store.js';
 
 /**
  * The memory-spine host-vs-client switch. A daemon host and any offline/embedded
@@ -31,6 +34,7 @@ function honest(records: MemoryRecord[]): HonestMemorySearchResult {
   return {
     records, mode: 'literal', requestedSemantic: false, indexUnavailableReason: null,
     caveat: null, recallFiltered: false, excludedFlaggedCount: 0, excludedBelowFloorCount: 0,
+    excludedOutOfWindowCount: 0,
     totalBeforeRecallFilter: records.length, recallFloor: 60,
   };
 }

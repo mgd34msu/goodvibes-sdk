@@ -42,6 +42,7 @@ import { CrossSessionTaskRegistry } from '../packages/sdk/src/platform/sessions/
 import { SandboxSessionRegistry } from '../packages/sdk/src/platform/runtime/sandbox/session-registry.js';
 import { OverflowHandler } from '../packages/sdk/src/platform/tools/shared/overflow.js';
 import type { ToolRegistry } from '../packages/sdk/src/platform/tools/registry.js';
+import type { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 
 type PrivateOrchestrator = {
   toolDeps: Record<string, unknown>;
@@ -63,11 +64,11 @@ describe('AgentOrchestrator — createRunContext cwd threading (wiring)', () => 
 
     const defaultCtx = orchestrator.createRunContext();
     expect(defaultCtx.workingDirectory).toBe('/default/cwd');
-    expect(defaultCtx.getFullRegistry()).toBe(registryByCwd.get('/default/cwd'));
+    expect(defaultCtx.getFullRegistry()).toBe(registryByCwd.get('/default/cwd')!);
 
     const overrideCtx = orchestrator.createRunContext('/item/worktree/path');
     expect(overrideCtx.workingDirectory).toBe('/item/worktree/path');
-    expect(overrideCtx.getFullRegistry()).toBe(registryByCwd.get('/item/worktree/path'));
+    expect(overrideCtx.getFullRegistry()).toBe(registryByCwd.get('/item/worktree/path')!);
     expect(overrideCtx.getFullRegistry()).not.toBe(defaultCtx.getFullRegistry());
 
     // Calling with the SAME override twice returns the identical cached
@@ -113,7 +114,7 @@ function makeRealToolDeps(defaultDir: string, scratchRoot: string): Record<strin
     // deps.remoteRunnerRegistry.agentManager — a real AgentManager is cheap
     // and exercises the exact production duck-typed lookup path.
     agentManager: new AgentManager({
-      configManager: { get: () => null },
+      configManager: { get: ((_key: string): unknown => undefined) as ConfigManager['get'] },
       messageBus: { registerAgent() { /* no-op */ } },
       executor: { async runAgent() { /* never spawned in this test */ } },
     }),

@@ -12,10 +12,11 @@ import {
 } from '../packages/sdk/src/platform/runtime/orchestration/spawn-policy.js';
 import { coreConfigDefaults } from '../packages/sdk/src/platform/config/schema-domain-core.js';
 import { fleetConfigDefaults } from '../packages/sdk/src/platform/config/schema-domain-fleet.js';
+import type { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 
 // Config manager stub that returns null for every key, exercising the
 // schema-default fallback path.
-const nullConfig = { get: () => null };
+const nullConfig: Pick<ConfigManager, 'get'> = { get: (() => null) as unknown as ConfigManager['get'] };
 
 describe('spawn policy — bound cap identity', () => {
   test('active-agents cap names fleet.maxSize when it binds (owner-renamed cap)', () => {

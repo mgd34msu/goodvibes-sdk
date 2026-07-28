@@ -82,7 +82,7 @@ function makeRegistry(opts: {
               type: 'MODEL_CHANGED',
               registryKey: newModel.registryKey,
               provider: newModel.provider,
-              previous: previous ? { registryKey: previous.registryKey, provider: previous.provider } : undefined,
+              ...(previous ? { previous: { registryKey: previous.registryKey, provider: previous.provider } } : {}),
             }, { sessionId: 'system', source: 'test-registry', traceId: `test:${Date.now()}` }),
           );
         }
@@ -118,7 +118,7 @@ function makeRequest(method: string, url: string, body?: unknown): Request {
   return new Request(url, {
     method,
     headers: body ? { 'content-type': 'application/json' } : {},
-    body: body ? JSON.stringify(body) : undefined,
+    ...(body ? { body: JSON.stringify(body) } : {}),
   });
 }
 

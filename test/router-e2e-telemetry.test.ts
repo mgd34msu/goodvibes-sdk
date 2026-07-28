@@ -132,11 +132,11 @@ describe('router-e2e telemetry — GET /api/v1/telemetry (happy path)', () => {
   });
 
   test('GET /api/v1/telemetry/events bounds since, until, and limit filters', async () => {
-    let capturedFilter: Record<string, unknown> | null = null;
+    const capturedFilters: Record<string, unknown>[] = [];
     const api = {
       ...makeTelemetryApi(),
       listEventPage: (filter: unknown) => {
-        capturedFilter = filter as Record<string, unknown>;
+        capturedFilters.push(filter as Record<string, unknown>);
         return { items: [], cursor: null };
       },
     };
@@ -159,7 +159,8 @@ describe('router-e2e telemetry — GET /api/v1/telemetry (happy path)', () => {
     const res = await dispatchOperatorRoutes(req, handlers);
 
     expect(res?.status).toBe(200);
-    if (!capturedFilter) throw new Error('Telemetry filter was not captured');
+    expect(capturedFilters).toHaveLength(1);
+    const capturedFilter = capturedFilters[0]!;
     expect(capturedFilter.limit).toBe(1000);
     expect(capturedFilter.since).toBe(0);
     expect(capturedFilter.until).toBe(Date.UTC(2100, 0, 1));

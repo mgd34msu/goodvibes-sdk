@@ -40,7 +40,7 @@ function companionSession(id: string, status: 'active' | 'closed'): PersistedCha
       systemPrompt: null, status, createdAt: now, updatedAt: now,
       closedAt: status === 'closed' ? now : null, messageCount: 1,
     },
-    messages: [{ id: `${id}-m1`, sessionId: id, role: 'user', content: 'hello', createdAt: now }],
+    messages: [{ id: `${id}-m1`, sessionId: id, role: 'user', content: 'hello', attachments: [], createdAt: now }],
   };
 }
 
@@ -200,7 +200,7 @@ function companionSessionWithMessages(id: string, messageCount: number): Persist
     },
     messages: Array.from({ length: messageCount }, (_v, i) => ({
       id: `${id}-m${i}`, sessionId: id, role: (i % 2 === 0 ? 'user' : 'assistant') as 'user' | 'assistant',
-      content: `${id} message ${i}`, createdAt: base + i,
+      content: `${id} message ${i}`, attachments: [], createdAt: base + i,
     })),
   };
 }

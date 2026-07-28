@@ -29,7 +29,7 @@ function authHeaders(extra: Record<string, string> = {}): Record<string, string>
 }
 
 /** A deterministic, non-UTF-8-safe binary buffer (every byte value 0-255, repeated). */
-function binaryFixture(byteLength: number): Uint8Array {
+function binaryFixture(byteLength: number): Uint8Array<ArrayBuffer> {
   const bytes = new Uint8Array(byteLength);
   for (let i = 0; i < byteLength; i += 1) bytes[i] = i % 256;
   return bytes;

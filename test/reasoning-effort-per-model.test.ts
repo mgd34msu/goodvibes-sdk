@@ -261,6 +261,7 @@ describe('resolveEffortForModel', () => {
       source: 'catalog',
       minBudgetTokens: 4096,
       maxBudgetTokens: 16384,
+      canDisableReasoning: true,
     };
     expect(budgetTokensForLevel('low', spec)).toBe(4096);
     expect(budgetTokensForLevel('high', spec)).toBe(16384);
@@ -526,8 +527,12 @@ describe('Gemini reasoning wire shape', () => {
 describe('OpenAI-compatible reasoning wiring', () => {
   test('xAI and DeepSeek declare a reasoning format instead of silently dropping', () => {
     const byId = new Map(BUILTIN_COMPAT_PROVIDERS.map((entry) => [entry.id, entry]));
-    expect(byId.get('xai')?.reasoningFormat).toBe('reasoning-effort');
-    expect(byId.get('deepseek')?.reasoningFormat).toBe('reasoning-effort');
+    const xai = byId.get('xai');
+    if (xai?.kind !== 'openai-compat') throw new Error('expected the xai builtin entry to be an openai-compat definition');
+    expect(xai.reasoningFormat).toBe('reasoning-effort');
+    const deepseek = byId.get('deepseek');
+    if (deepseek?.kind !== 'openai-compat') throw new Error('expected the deepseek builtin entry to be an openai-compat definition');
+    expect(deepseek.reasoningFormat).toBe('reasoning-effort');
   });
 
   test('the base grok-4 gets no level, because it rejects the parameter outright', () => {

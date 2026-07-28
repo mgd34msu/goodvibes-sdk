@@ -30,13 +30,27 @@ type OrchestratorPrivateSurface = {
   isPassiveKnowledgeInjectionEnabled(): boolean;
 };
 
-function makeBareOrchestrator(): InstanceType<typeof Orchestrator> & OrchestratorPrivateSurface {
-  const orch = Object.create(Orchestrator.prototype) as InstanceType<typeof Orchestrator> & OrchestratorPrivateSurface;
-  orch.turnKnowledgeIdsAlreadySurfaced = new Set<string>();
-  orch.turnInjectionRing = [];
-  orch.turnKnowledgeSequence = 0;
-  orch.flagManager = null;
+/**
+ * Orchestrator has private fields with the same names used below
+ * (turnKnowledgeIdsAlreadySurfaced, flagManager, ...). Intersecting
+ * `InstanceType<typeof Orchestrator>` with a plain object type declaring
+ * those same names collides with the class's private nominal typing and
+ * collapses the whole type to `never` (see orchestrator-abort.test.ts for
+ * the established precedent: cast to `unknown` first, per access, rather
+ * than trying to build one merged type).
+ */
+function makeBareOrchestrator(): InstanceType<typeof Orchestrator> {
+  const orch = Object.create(Orchestrator.prototype) as InstanceType<typeof Orchestrator>;
+  const priv = orch as unknown as OrchestratorPrivateSurface;
+  priv.turnKnowledgeIdsAlreadySurfaced = new Set<string>();
+  priv.turnInjectionRing = [];
+  priv.turnKnowledgeSequence = 0;
+  priv.flagManager = null;
   return orch;
+}
+
+function bareOrchestratorPrivateSurface(orch: InstanceType<typeof Orchestrator>): OrchestratorPrivateSurface {
+  return orch as unknown as OrchestratorPrivateSurface;
 }
 
 function makeRecord(overrides: Partial<TurnInjectionRecord> & { turn: number }): TurnInjectionRecord {
@@ -65,15 +79,16 @@ describe('Orchestrator.getTurnInjections() — main-session accessor', () => {
   test('recordTurnKnowledgeInjection appends to the ring returned by getTurnInjections()', () => {
     const orch = makeBareOrchestrator();
     const record = makeRecord({ turn: 1, injectedIds: ['mem_a'] });
-    orch.recordTurnKnowledgeInjection(record);
+    bareOrchestratorPrivateSurface(orch).recordTurnKnowledgeInjection(record);
 
     expect(orch.getTurnInjections()).toEqual([record]);
   });
 
   test('the ring is bounded (mirrors AgentRecord.turnInjections eviction via the shared recordTurnInjection util)', () => {
     const orch = makeBareOrchestrator();
+    const priv = bareOrchestratorPrivateSurface(orch);
     for (let i = 1; i <= 25; i++) {
-      orch.recordTurnKnowledgeInjection(makeRecord({ turn: i }));
+      priv.recordTurnKnowledgeInjection(makeRecord({ turn: i }));
     }
     const ring = orch.getTurnInjections();
     expect(ring.length).toBeLessThan(25);
@@ -82,33 +97,36 @@ describe('Orchestrator.getTurnInjections() — main-session accessor', () => {
 
   test('getAlreadyInjectedKnowledgeIds/addInjectedKnowledgeIds: starts empty (no spawn-time baseline) and grows monotonically', () => {
     const orch = makeBareOrchestrator();
-    expect(orch.getAlreadyInjectedKnowledgeIds()).toEqual([]);
+    const priv = bareOrchestratorPrivateSurface(orch);
+    expect(priv.getAlreadyInjectedKnowledgeIds()).toEqual([]);
 
-    orch.addInjectedKnowledgeIds(['mem_a', 'mem_b']);
-    expect(orch.getAlreadyInjectedKnowledgeIds().sort()).toEqual(['mem_a', 'mem_b']);
+    priv.addInjectedKnowledgeIds(['mem_a', 'mem_b']);
+    expect([...priv.getAlreadyInjectedKnowledgeIds()].sort()).toEqual(['mem_a', 'mem_b']);
 
-    orch.addInjectedKnowledgeIds(['mem_c']);
-    expect(orch.getAlreadyInjectedKnowledgeIds().sort()).toEqual(['mem_a', 'mem_b', 'mem_c']);
+    priv.addInjectedKnowledgeIds(['mem_c']);
+    expect([...priv.getAlreadyInjectedKnowledgeIds()].sort()).toEqual(['mem_a', 'mem_b', 'mem_c']);
 
     // Adding an id already present is idempotent (backed by a Set).
-    orch.addInjectedKnowledgeIds(['mem_a']);
-    expect(orch.getAlreadyInjectedKnowledgeIds().sort()).toEqual(['mem_a', 'mem_b', 'mem_c']);
+    priv.addInjectedKnowledgeIds(['mem_a']);
+    expect([...priv.getAlreadyInjectedKnowledgeIds()].sort()).toEqual(['mem_a', 'mem_b', 'mem_c']);
   });
 
   test('nextTurnKnowledgeSequence() is monotonic across calls (session-lifetime, not per-call)', () => {
     const orch = makeBareOrchestrator();
-    expect(orch.nextTurnKnowledgeSequence()).toBe(1);
-    expect(orch.nextTurnKnowledgeSequence()).toBe(2);
-    expect(orch.nextTurnKnowledgeSequence()).toBe(3);
+    const priv = bareOrchestratorPrivateSurface(orch);
+    expect(priv.nextTurnKnowledgeSequence()).toBe(1);
+    expect(priv.nextTurnKnowledgeSequence()).toBe(2);
+    expect(priv.nextTurnKnowledgeSequence()).toBe(3);
   });
 
   test('isPassiveKnowledgeInjectionEnabled(): defaults to true with no flag manager, defers to the SAME agent-passive-knowledge-injection flag id when one is wired', () => {
     const orch = makeBareOrchestrator();
-    expect(orch.isPassiveKnowledgeInjectionEnabled()).toBe(true);
+    const priv = bareOrchestratorPrivateSurface(orch);
+    expect(priv.isPassiveKnowledgeInjectionEnabled()).toBe(true);
 
     const calls: string[] = [];
-    orch.flagManager = { isEnabled: (id: string) => { calls.push(id); return false; } };
-    expect(orch.isPassiveKnowledgeInjectionEnabled()).toBe(false);
+    priv.flagManager = { isEnabled: (id: string) => { calls.push(id); return false; } };
+    expect(priv.isPassiveKnowledgeInjectionEnabled()).toBe(false);
     expect(calls).toEqual(['agent-passive-knowledge-injection']);
   });
 });

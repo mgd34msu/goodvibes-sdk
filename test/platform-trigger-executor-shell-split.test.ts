@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'bun:test';
 import { shellSplit } from '../packages/sdk/src/platform/utils/shell-split.js';
 
 describe('shellSplit', () => {

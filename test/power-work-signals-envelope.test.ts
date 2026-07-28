@@ -26,7 +26,27 @@ import type { EmitterContext } from '../packages/sdk/src/platform/runtime/emitte
 import { emitTurnSubmitted, emitTurnCompleted } from '../packages/sdk/src/platform/runtime/emitters/turn.ts';
 import { emitAgentSpawning, emitAgentCompleted } from '../packages/sdk/src/platform/runtime/emitters/agents.ts';
 import { emitAutomationRunQueued, emitAutomationRunCompleted } from '../packages/sdk/src/platform/runtime/emitters/automation.ts';
-import { bindPowerWorkSignals } from '../packages/sdk/src/platform/power/work-signals.ts';
+import { bindPowerWorkSignals, type PowerWorkSignalBus } from '../packages/sdk/src/platform/power/work-signals.ts';
+import type { PowerManager } from '../packages/sdk/src/platform/power/manager.ts';
+
+/**
+ * work-signals.ts's own doc comment on `PowerWorkSignalBus` claims
+ * "RuntimeEventBus.on is generic ... so it structurally satisfies this
+ * non-generic signature without a cast at the call site" — the compiler
+ * disagrees: `AnyRuntimeEvent`'s member payloads have no index signature, so
+ * `EventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>` is not assignable
+ * to `EventEnvelope<string, Record<string, unknown>>`. This test intentionally
+ * drives a REAL RuntimeEventBus (not a duck-typed stub) through
+ * bindPowerWorkSignals, so the cast below only affects what the type checker
+ * believes about `bus`'s static type — the exact same real bus instance is
+ * still passed and used at runtime.
+ */
+function bindOverRealBus(
+  bus: RuntimeEventBus,
+  manager: Pick<PowerManager, 'holdWork' | 'releaseWork'>,
+): ReturnType<typeof bindPowerWorkSignals> {
+  return bindPowerWorkSignals(bus as unknown as PowerWorkSignalBus, manager);
+}
 
 const ctx: EmitterContext = { sessionId: 'sess-1', traceId: 'trace-1', source: 'test' };
 
@@ -53,7 +73,7 @@ describe('bindPowerWorkSignals over a REAL RuntimeEventBus + REAL envelopes', ()
   test('a real TURN_SUBMITTED/TURN_COMPLETED pair holds and releases by turnId', async () => {
     const bus = new RuntimeEventBus();
     const { manager, holds, releases } = fakeManager();
-    bindPowerWorkSignals(bus, manager);
+    bindOverRealBus(bus, manager);
 
     emitTurnSubmitted(bus, ctx, { turnId: 't-1', prompt: 'hello' });
     await settle();
@@ -67,7 +87,7 @@ describe('bindPowerWorkSignals over a REAL RuntimeEventBus + REAL envelopes', ()
   test('a real AGENT_SPAWNING/AGENT_COMPLETED pair holds and releases by agentId', async () => {
     const bus = new RuntimeEventBus();
     const { manager, holds, releases } = fakeManager();
-    bindPowerWorkSignals(bus, manager);
+    bindOverRealBus(bus, manager);
 
     emitAgentSpawning(bus, ctx, { agentId: 'a-9', task: 'do the thing' });
     await settle();
@@ -81,7 +101,7 @@ describe('bindPowerWorkSignals over a REAL RuntimeEventBus + REAL envelopes', ()
   test('a real AUTOMATION_RUN_QUEUED/AUTOMATION_RUN_COMPLETED pair holds and releases by runId', async () => {
     const bus = new RuntimeEventBus();
     const { manager, holds, releases } = fakeManager();
-    bindPowerWorkSignals(bus, manager);
+    bindOverRealBus(bus, manager);
 
     emitAutomationRunQueued(bus, ctx, { jobId: 'job-1', runId: 'run-7', scheduledAt: Date.now(), forced: false });
     await settle();
@@ -97,7 +117,7 @@ describe('bindPowerWorkSignals over a REAL RuntimeEventBus + REAL envelopes', ()
   test('overlapping work refcounts correctly: the inhibitor-equivalent hold list is non-empty until the last piece drains', async () => {
     const bus = new RuntimeEventBus();
     const { manager, holds, releases } = fakeManager();
-    bindPowerWorkSignals(bus, manager);
+    bindOverRealBus(bus, manager);
 
     emitTurnSubmitted(bus, ctx, { turnId: 't-2', prompt: 'x' });
     emitAgentSpawning(bus, ctx, { agentId: 'a-1', task: 'y' });

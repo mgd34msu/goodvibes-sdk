@@ -146,7 +146,7 @@ describe('release semantics — claimed-done releases NOTHING', () => {
     expect(dependencySatisfied(...(() => { const { ws, dep } = fakeWorkstream({ state: 'passed', mergeState: 'merged' }); return [ws, dep] as const; })())).toBe(true);
     // Legacy policy (no releasePolicy): passed alone still releases (back-compat).
     const { ws, dep } = fakeWorkstream({ state: 'passed', mergeState: 'pending' });
-    (ws as { releasePolicy?: string }).releasePolicy = undefined;
+    (ws as { releasePolicy?: string | undefined }).releasePolicy = undefined;
     expect(dependencySatisfied(ws, dep)).toBe(true);
   });
 });
@@ -205,7 +205,7 @@ describe('dynamic graph — live edges, cycles, orphans', () => {
     expect(result?.cycle).toBeDefined();
     const cycleEvent = events.find((e) => e.type === 'graph-cycle');
     expect(cycleEvent).toBeDefined();
-    expect((cycleEvent as { cycle: string[] }).cycle.join('->')).toContain('A');
+    expect((cycleEvent as { cycle: readonly string[] } | undefined)?.cycle.join('->')).toContain('A');
     // The graph is unchanged — no silently-poisoned edge.
     expect(ws.items.find((i) => i.id === 'b')!.dependsOn).toHaveLength(0);
   });
@@ -277,7 +277,7 @@ describe('elastic pool — spawn on ready, visible at-cap, retire on empty', () 
     const h = createOrchestrationHarness();
     let maxSize = 0; // at cap immediately (0 headroom)
     let refusal: string | undefined;
-    const engine = makeElasticEngine(h, () => ({ active: 5, maxSize: maxSize || 5, capKey: 'fleet.maxSize', refusal }));
+    const engine = makeElasticEngine(h, () => ({ active: 5, maxSize: maxSize || 5, capKey: 'fleet.maxSize', ...(refusal !== undefined ? { refusal } : {}) }));
     const events: OrchestrationEvent[] = [];
     engine.on((e) => events.push(e));
     const ws = engine.createWorkstream({
@@ -361,7 +361,7 @@ describe('fleet.maxSize — one ceiling, responsibility-counted, invisible migra
       writeFileSync(join(dir, 'settings.json'), JSON.stringify({ orchestration: { maxActiveAgents: 12 } }, null, 2), 'utf-8');
       const manager = new ConfigManager({ configDir: dir });
       // The value moved; the new key resolves it; the legacy key is gone from disk.
-      expect(manager.get('fleet.maxSize' as never)).toBe(12);
+      expect(manager.get('fleet.maxSize')).toBe(12);
       const onDisk = JSON.parse(readFileSync(join(dir, 'settings.json'), 'utf-8')) as Record<string, unknown>;
       expect(onDisk.fleet).toEqual({ maxSize: 12 });
       expect(onDisk.orchestration).toBeUndefined();

@@ -146,7 +146,7 @@ function makeHarness(options: { readonly deliverReplyThrows: boolean }): Harness
     channelPlugins,
     authToken: () => null,
     surfaceDeliveryEnabled: () => true,
-    recordDeliveryAttempt: (entry) => ledger.push(entry),
+    recordDeliveryAttempt: (entry: SurfaceDeliveryLedgerEntry) => ledger.push(entry),
   } as never);
 
   pipeline.setUndeliveredReporter((reply) => helper.recordUndeliveredReply(reply));

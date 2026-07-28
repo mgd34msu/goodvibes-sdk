@@ -22,7 +22,7 @@ import type { AgentManagerLike } from '../packages/sdk/src/platform/agents/wrfc-
 
 function makeRecord(overrides: Partial<AgentRecord> & { id: string; task: string }): AgentRecord {
   return {
-    id: overrides.id, task: overrides.task, template: overrides.template ?? 'engineer', tools: [],
+    template: overrides.template ?? 'engineer', tools: [],
     status: 'running', startedAt: Date.now(), toolCallCount: 0, orchestrationDepth: 0,
     executionProtocol: 'direct', reviewMode: 'none', communicationLane: 'parent-only',
     usage: { inputTokens: 100, outputTokens: 50, cacheReadTokens: 0, cacheWriteTokens: 0, llmCallCount: 1, turnCount: 1 },
@@ -42,6 +42,13 @@ function createHarness() {
   bus.onDomain('workflows', (envelope) => {
     workflowEvents.push({ type: envelope.type, data: (envelope as unknown as { payload: Record<string, unknown> }).payload });
   });
+  // ConfigManager.get/getCategory are generic over `ConfigKey`/`keyof GoodVibesConfig`
+  // with a per-key conditional return type — a by-string-key stub can't be typed
+  // against that generic signature directly (TypeScript hits its own recursion
+  // limit, "Excessive stack depth", comparing two such generic conditional
+  // signatures). Casting the whole mock once at the boundary sidesteps that
+  // compiler limitation; ConfigManager's own methods work around the same
+  // expressiveness gap internally with `as ConfigValue<K>`.
   const configManager = {
     get: (key: string): unknown => {
       if (key === 'wrfc.scoreThreshold') return 9.9;
@@ -50,7 +57,7 @@ function createHarness() {
       return undefined;
     },
     getCategory: (c: string): unknown => c === 'wrfc' ? { scoreThreshold: 9.9, maxFixAttempts: 3, autoCommit: false, gates: [] } : undefined,
-  };
+  } as unknown as Pick<import('../packages/sdk/src/platform/config/manager.js').ConfigManager, 'get' | 'getCategory'>;
   const agentManager: AgentManagerLike = {
     spawn: (input) => {
       const id = `agent-${spawned.length + 1}`;

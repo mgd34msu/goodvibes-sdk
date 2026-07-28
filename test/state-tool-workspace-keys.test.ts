@@ -31,7 +31,7 @@ function makeStateTool(
     memoryDir: memDir,
     workingDir,
     daemonHomeDir,
-    swapManager,
+    ...(swapManager !== undefined ? { swapManager } : {}),
   });
 }
 

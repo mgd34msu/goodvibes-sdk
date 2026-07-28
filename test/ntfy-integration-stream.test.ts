@@ -646,7 +646,7 @@ describe('ntfy topic routing', () => {
       },
       trySpawnAgent: (input: Record<string, unknown>, _logLabel: string, sessionId?: string) => {
         calls.spawn++;
-        spawnInputs.push({ input, sessionId });
+        spawnInputs.push({ input, ...(sessionId !== undefined ? { sessionId } : {}) });
         return { id: 'agent-1' };
       },
       queueSurfaceReplyFromBinding: (binding: unknown, input: Record<string, unknown>) => {

@@ -54,7 +54,7 @@ describe('emit inside a cost-origin scope stamps the event', () => {
       if (env.payload.type === 'LLM_RESPONSE_RECEIVED') seen.push(env.payload as Record<string, unknown>);
     });
     await withCostOriginAsync({ tool: 'mcp:github:search', mcpServer: 'github', callId: 'c9' }, async () => {
-      emitLlmResponseReceived(bus, { sessionId: 's1', traceId: 't1', turnId: 'turn1' }, {
+      emitLlmResponseReceived(bus, { sessionId: 's1', source: 'turn-loop', traceId: 't1', turnId: 'turn1' }, {
         turnId: 'turn1', provider: 'anthropic', model: 'claude-x', contentSummary: 'x',
         toolCallCount: 0, inputTokens: 10, outputTokens: 2,
       });
@@ -71,7 +71,7 @@ describe('emit inside a cost-origin scope stamps the event', () => {
     bus.onDomain('turn', (env) => {
       if (env.payload.type === 'LLM_RESPONSE_RECEIVED') seen.push(env.payload as Record<string, unknown>);
     });
-    emitLlmResponseReceived(bus, { sessionId: 's1', traceId: 't1', turnId: 'turn1' }, {
+    emitLlmResponseReceived(bus, { sessionId: 's1', source: 'turn-loop', traceId: 't1', turnId: 'turn1' }, {
       turnId: 'turn1', provider: 'anthropic', model: 'claude-x', contentSummary: 'x',
       toolCallCount: 0, inputTokens: 10, outputTokens: 2,
     });

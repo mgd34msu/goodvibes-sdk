@@ -91,7 +91,7 @@ describe('dirty-guard — snapshotDirtyTree', () => {
     // End to end: untouched non-ASCII residue is excluded from a scoped commit
     // (the whole point of the guard) instead of leaking through on a key mismatch.
     const { included, excluded } = excludeUntouchedLaunchResidue(root, ['café.txt', '普通话.txt'], snapshot);
-    expect(excluded.sort()).toEqual(['café.txt', '普通话.txt'].sort());
+    expect([...excluded].sort()).toEqual(['café.txt', '普通话.txt'].sort());
     expect(included).toEqual([]);
   });
 
@@ -164,7 +164,7 @@ describe('dirty-guard — excludeUntouchedLaunchResidue', () => {
 
     const { included, excluded } = excludeUntouchedLaunchResidue(root, ['residue-a.ts', 'residue-b.ts'], launchSnapshot);
     expect(included).toEqual([]);
-    expect(excluded.sort()).toEqual(['residue-a.ts', 'residue-b.ts']);
+    expect([...excluded].sort()).toEqual(['residue-a.ts', 'residue-b.ts']);
   });
 });
 
@@ -185,6 +185,7 @@ function makeItem(touchedPaths: string[]): WorkItem {
     id: 'item-1',
     title: 'item',
     task: 'do work',
+    dependsOn: [],
     currentPhaseId: 'phase-1',
     state: 'in-phase',
     allAgentIds: [],

@@ -22,6 +22,7 @@ import type {
   CompanionProviderChunk,
   CompanionProviderMessage,
 } from '../packages/sdk/src/platform/companion/companion-chat-manager.js';
+import type { CompanionChatMessage } from '../packages/sdk/src/platform/companion/companion-chat-types.js';
 
 const disposables = trackDisposables();
 
@@ -58,9 +59,9 @@ function makeManager(provider: CompanionLLMProvider): CompanionChatManager {
   );
 }
 
-const activeOnly = (
-  messages: readonly { supersededAt?: number | undefined }[],
-): typeof messages => messages.filter((m) => m.supersededAt === undefined) as typeof messages;
+const activeOnly = <T extends { supersededAt?: number | undefined }>(
+  messages: readonly T[],
+): T[] => messages.filter((m) => m.supersededAt === undefined);
 
 describe('regenerate — honest lineage', () => {
   test('supersedes the prior response (retained, retrievable) and produces a fresh one', async () => {

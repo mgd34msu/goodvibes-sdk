@@ -70,9 +70,16 @@ function makePermissionConfigReader(): PermissionConfigReader {
     getSnapshot: () => ({
       permissions: {
         mode: 'prompt' as const,
+        backgroundAgents: 'inherit' as const,
+        engine: 'baseline' as const,
+        simulation: true,
+        divergenceDashboard: true,
+        commandParser: 'ast' as const,
+        divergenceThreshold: 0.05,
+        maxDivergenceRecords: 500,
         tools: {},
       },
-    }),
+    }) as unknown as ReturnType<PermissionConfigReader['getSnapshot']>,
   };
 }
 

@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, test } from 'bun:test';
 import { ArtifactStore } from '../packages/sdk/src/platform/artifacts/index.js';
+import { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 import { listGeneratedKnowledgePages } from '../packages/sdk/src/platform/knowledge/generated-pages.js';
 import { materializeGeneratedKnowledgeProjection } from '../packages/sdk/src/platform/knowledge/generated-projections.js';
 import { renderDevicePassportPage } from '../packages/sdk/src/platform/knowledge/home-graph/rendering.js';
@@ -13,6 +14,7 @@ import { KnowledgeService } from '../packages/sdk/src/platform/knowledge/service
 import { knowledgeSpaceMetadata } from '../packages/sdk/src/platform/knowledge/spaces.js';
 import { KnowledgeStore } from '../packages/sdk/src/platform/knowledge/store.js';
 import { semanticFactId } from '../packages/sdk/src/platform/knowledge/semantic/utils.js';
+import { MemoryEmbeddingProviderRegistry, MemoryRegistry, MemoryStore } from '../packages/sdk/src/platform/state/index.js';
 import { trackDisposables } from './_helpers/disposables.ts';
 
 const tmpRoots: string[] = [];
@@ -1000,9 +1002,9 @@ describe('knowledge generated projections and maps', () => {
     const agentAmbiguitySource = await store.upsertSource({
       id: 'source-goodvibes-homeassistant-agent',
       connectorId: 'url',
-      sourceType: 'webpage',
+      sourceType: 'url',
       title: 'Navigation Menu',
-      url: 'https://github.com/mgd34msu/goodvibes-homeassistant',
+      sourceUri: 'https://github.com/mgd34msu/goodvibes-homeassistant',
       canonicalUri: 'https://github.com/mgd34msu/goodvibes-homeassistant',
       summary: 'Home Assistant GoodVibes conversation agent repository.',
       tags: ['github'],
@@ -1013,7 +1015,7 @@ describe('knowledge generated projections and maps', () => {
     });
     const tvFact = await store.upsertNode({
       id: 'sem-fact-agent-default-tv-network',
-      kind: 'knowledge_fact',
+      kind: 'fact',
       slug: 'agent-default-tv-network',
       title: 'Network and wireless capabilities',
       summary: 'The TV includes Wi-Fi, Bluetooth, and Ethernet capabilities.',
@@ -1036,9 +1038,9 @@ describe('knowledge generated projections and maps', () => {
       store.upsertSource({
         id: 'source-goodvibes-root-navigation',
         connectorId: 'url',
-        sourceType: 'webpage',
+        sourceType: 'url',
         title: 'Navigation Menu',
-        url: 'https://github.com/mgd34msu/goodvibes',
+        sourceUri: 'https://github.com/mgd34msu/goodvibes',
         canonicalUri: 'https://github.com/mgd34msu/goodvibes',
         summary: 'GitHub repository navigation for the root GoodVibes repository.',
         tags: ['github'],
@@ -1048,9 +1050,9 @@ describe('knowledge generated projections and maps', () => {
       store.upsertSource({
         id: 'source-goodvibes-plugin-navigation',
         connectorId: 'url',
-        sourceType: 'webpage',
+        sourceType: 'url',
         title: 'Navigation Menu',
-        url: 'https://github.com/mgd34msu/goodvibes-plugin',
+        sourceUri: 'https://github.com/mgd34msu/goodvibes-plugin',
         canonicalUri: 'https://github.com/mgd34msu/goodvibes-plugin',
         summary: 'GitHub repository navigation for GoodVibes Plugin.',
         tags: ['github'],
@@ -1060,9 +1062,9 @@ describe('knowledge generated projections and maps', () => {
       store.upsertSource({
         id: 'source-goodvibes-tui-navigation',
         connectorId: 'url',
-        sourceType: 'webpage',
+        sourceType: 'url',
         title: 'Navigation Menu',
-        url: 'https://github.com/mgd34msu/goodvibes-tui',
+        sourceUri: 'https://github.com/mgd34msu/goodvibes-tui',
         canonicalUri: 'https://github.com/mgd34msu/goodvibes-tui',
         summary: 'GitHub repository navigation for GoodVibes TUI.',
         tags: ['github'],
@@ -1072,9 +1074,9 @@ describe('knowledge generated projections and maps', () => {
       store.upsertSource({
         id: 'source-goodvibes-desktop-navigation',
         connectorId: 'url',
-        sourceType: 'webpage',
+        sourceType: 'url',
         title: 'Navigation Menu',
-        url: 'https://github.com/mgd34msu/goodvibes-desktop',
+        sourceUri: 'https://github.com/mgd34msu/goodvibes-desktop',
         canonicalUri: 'https://github.com/mgd34msu/goodvibes-desktop',
         summary: 'GitHub repository navigation for GoodVibes Desktop.',
         tags: ['github'],
@@ -1084,7 +1086,7 @@ describe('knowledge generated projections and maps', () => {
     ]);
     const productNavigationFact = await store.upsertNode({
       id: 'sem-fact-goodvibes-navigation-tv-fragment',
-      kind: 'knowledge_fact',
+      kind: 'fact',
       slug: 'goodvibes-navigation-tv-fragment',
       title: 'Input and output ports',
       summary: 'The TV has HDMI and audio output ports.',
@@ -1200,12 +1202,18 @@ describe('knowledge generated projections and maps', () => {
       metadata: knowledgeSpaceMetadata('default'),
     });
 
+    const memoryRoot = mkdtempSync(join(tmpdir(), 'goodvibes-knowledge-projection-memory-'));
+    tmpRoots.push(memoryRoot);
+    const memoryConfigManager = new ConfigManager({ configDir: join(memoryRoot, 'config') });
+    const memoryStore = new MemoryStore(undefined, {
+      embeddingRegistry: new MemoryEmbeddingProviderRegistry({ configManager: memoryConfigManager }),
+      enableVectorIndex: false,
+    });
+    await memoryStore.init();
+    const memoryRegistry = new MemoryRegistry(memoryStore);
+
     const service = disposables.add(new KnowledgeService(store, artifactStore, undefined, {
-      memoryRegistry: {
-        add: async () => {},
-        getAll: () => [],
-        getStore: () => null,
-      },
+      memoryRegistry,
     }), disposeKnowledgeService);
     const projectionService = new KnowledgeProjectionService(store, artifactStore);
 
@@ -1262,20 +1270,20 @@ describe('knowledge generated projections and maps', () => {
       issues: store.listIssues(100),
     }, { includeSources: true });
 
-    expect(defaultTargets.map((target) => target.id)).not.toContain(leakedNode.id);
-    expect(defaultTargets.map((target) => target.id)).not.toContain(edgeOnlyTopic.id);
-    expect(defaultTargets.map((target) => target.id)).not.toContain(edgeOnlyDomain.id);
-    expect(defaultTargets.map((target) => target.id)).not.toContain(orphanCatalogTopic.id);
-    expect(defaultTargets.map((target) => target.id)).not.toContain(orphanAnswerGap.id);
-    expect(defaultTargets.map((target) => target.id)).not.toContain(tvFact.id);
-    expect(defaultTargets.map((target) => target.id)).not.toContain(productNavigationFact.id);
-    expect(defaultTargets.map((target) => target.id)).not.toContain(productNavigationMemory.id);
-    expect(defaultTargets.map((target) => target.id)).not.toContain(orphanNavigationMemory.id);
-    expect(defaultTargets.map((target) => target.id)).not.toContain(githubRepairSource.id);
-    expect(defaultTargets.map((target) => target.id)).not.toContain(legacyAgentWikiNode.id);
-    expect(defaultTargets.map((target) => target.id)).not.toContain(leakedIssue.id);
-    expect(defaultTargets.map((target) => target.id)).not.toContain(explicitDefaultIssue.id);
-    expect(defaultTargets.map((target) => target.id)).not.toContain(orphanAnswerIssue.id);
+    expect(defaultTargets.map((target) => target.itemId)).not.toContain(leakedNode.id);
+    expect(defaultTargets.map((target) => target.itemId)).not.toContain(edgeOnlyTopic.id);
+    expect(defaultTargets.map((target) => target.itemId)).not.toContain(edgeOnlyDomain.id);
+    expect(defaultTargets.map((target) => target.itemId)).not.toContain(orphanCatalogTopic.id);
+    expect(defaultTargets.map((target) => target.itemId)).not.toContain(orphanAnswerGap.id);
+    expect(defaultTargets.map((target) => target.itemId)).not.toContain(tvFact.id);
+    expect(defaultTargets.map((target) => target.itemId)).not.toContain(productNavigationFact.id);
+    expect(defaultTargets.map((target) => target.itemId)).not.toContain(productNavigationMemory.id);
+    expect(defaultTargets.map((target) => target.itemId)).not.toContain(orphanNavigationMemory.id);
+    expect(defaultTargets.map((target) => target.itemId)).not.toContain(githubRepairSource.id);
+    expect(defaultTargets.map((target) => target.itemId)).not.toContain(legacyAgentWikiNode.id);
+    expect(defaultTargets.map((target) => target.itemId)).not.toContain(leakedIssue.id);
+    expect(defaultTargets.map((target) => target.itemId)).not.toContain(explicitDefaultIssue.id);
+    expect(defaultTargets.map((target) => target.itemId)).not.toContain(orphanAnswerIssue.id);
     expect(defaultPacket?.items.map((item) => item.id)).not.toContain(leakedNode.id);
     expect(defaultPacket?.items.map((item) => item.id)).not.toContain(leakedIssue.id);
     expect(defaultPacket?.items.map((item) => item.id)).not.toContain(explicitDefaultGap.id);

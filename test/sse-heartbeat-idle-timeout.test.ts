@@ -11,6 +11,7 @@
 import { describe, expect, test } from 'bun:test';
 import { EventEmitter } from 'node:events';
 import { ControlPlaneGateway } from '../packages/sdk/src/platform/control-plane/gateway.ts';
+import type { ControlPlaneGatewayConfig } from '../packages/sdk/src/platform/control-plane/gateway.ts';
 import { SSE_HEARTBEAT_INTERVAL_MS, sseIdleTimeoutSeconds } from '../packages/sdk/src/platform/control-plane/sse-timing.ts';
 
 describe('SSE idle-timeout invariant', () => {
@@ -49,7 +50,7 @@ function makeGateway(): { gateway: ControlPlaneGateway; ee: EventEmitter } {
   }) as unknown as Parameters<InstanceType<typeof ControlPlaneGateway>['attachRuntime']>[0]['runtimeBus'];
   const gateway = new ControlPlaneGateway({
     runtimeBus: bus as NonNullable<typeof bus>,
-    featureFlags: { isEnabled: () => true } as unknown as Parameters<typeof ControlPlaneGateway>[0]['featureFlags'],
+    featureFlags: { isEnabled: () => true } as unknown as ControlPlaneGatewayConfig['featureFlags'],
   });
   return { gateway, ee };
 }
@@ -112,7 +113,9 @@ describe('SSE keep-alive delivery', () => {
     // Extract the id line of the FIRST fleet event (the one we "already saw").
     const idMatch = buf.match(/id: ([^\n]+)\nevent: fleet/);
     expect(idMatch).not.toBeNull();
-    const lastSeenId = idMatch![1];
+    const lastSeenId = idMatch?.[1];
+    expect(lastSeenId).toBeDefined();
+    if (lastSeenId === undefined) throw new Error('expected a captured last-event-id');
 
     // Reconnect presenting Last-Event-ID: the newer event (n2) must replay.
     const c2 = new AbortController();

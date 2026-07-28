@@ -30,6 +30,7 @@ function result(records: MemoryRecord[], recallFiltered: boolean): HonestMemoryS
   return {
     records, mode: 'literal', requestedSemantic: false, indexUnavailableReason: null,
     caveat: null, recallFiltered, excludedFlaggedCount: 0, excludedBelowFloorCount: 0,
+    excludedOutOfWindowCount: 0,
     totalBeforeRecallFilter: records.length, recallFloor: MIN_PROMPT_MEMORY_CONFIDENCE,
   };
 }

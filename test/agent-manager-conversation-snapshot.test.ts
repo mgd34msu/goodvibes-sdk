@@ -22,10 +22,11 @@ import {
   DEFAULT_CONVERSATION_SNAPSHOT_RETENTION,
 } from '../packages/sdk/src/platform/tools/agent/manager.js';
 import type { ConversationMessageSnapshot } from '../packages/sdk/src/platform/core/conversation.js';
+import type { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 
 function makeManager(conversationSnapshotRetention?: number): AgentManager {
   return new AgentManager({
-    configManager: { get: () => null },
+    configManager: { get: () => null } as unknown as Pick<ConfigManager, 'get'>,
     messageBus: { registerAgent() {} },
     archetypeLoader: { loadArchetype: () => null },
     ...(conversationSnapshotRetention !== undefined ? { conversationSnapshotRetention } : {}),

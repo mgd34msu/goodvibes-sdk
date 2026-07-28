@@ -15,6 +15,19 @@ import type { KnowledgeNodeRecord } from '../packages/sdk/src/platform/knowledge
 import { createDaemonKnowledgeRouteHandlers } from '../packages/daemon-sdk/dist/index.js';
 import type { DaemonKnowledgeRouteContext } from '../packages/daemon-sdk/dist/index.js';
 import { trackDisposables } from './_helpers/disposables.ts';
+import type { MemoryRegistry } from '../packages/sdk/src/platform/state/memory-registry.js';
+import type { MemoryStore } from '../packages/sdk/src/platform/state/memory-store.js';
+
+/** None of these tests exercise the memory subsystem — KnowledgeService just needs the dependency present. */
+function fakeMemoryRegistry(): Pick<MemoryRegistry, 'add' | 'getAll' | 'getStore'> {
+  return {
+    add: async () => {
+      throw new Error('fakeMemoryRegistry.add should not be called in this test');
+    },
+    getAll: () => [],
+    getStore: () => ({} as unknown as MemoryStore),
+  };
+}
 
 const tmpRoots: string[] = [];
 
@@ -96,7 +109,7 @@ describe('knowledge wiki honesty — revision history (Defect 1)', () => {
   test('a kind-only identity change records a revision listing kind (Finding 3)', async () => {
     const store = createStore();
     const created = await store.upsertNode({ kind: 'topic', slug: 'k', title: 'K', confidence: 90 });
-    await store.upsertNode({ id: created.id, kind: 'concept', slug: 'k', title: 'K', confidence: 90 });
+    await store.upsertNode({ id: created.id, kind: 'knowledge_entity', slug: 'k', title: 'K', confidence: 90 });
     const revisions = store.listNodeRevisions(created.id);
     expect(revisions.length).toBe(2);
     expect(revisions[1]!.changedFields).toContain('kind');
@@ -189,7 +202,7 @@ describe('knowledge wiki honesty — review gate (Defect 2)', () => {
 
   test('reviewNode accepts a draft into active with reviewed provenance', async () => {
     const { store, artifactStore } = createStores();
-    const service = disposables.add(new KnowledgeService(store, artifactStore, undefined, {}), disposeKnowledgeService);
+    const service = disposables.add(new KnowledgeService(store, artifactStore, undefined, { memoryRegistry: fakeMemoryRegistry() }), disposeKnowledgeService);
     const draft = await store.upsertNode({ kind: 'topic', slug: 'candidate', title: 'Candidate', confidence: 10 });
     expect(draft.status).toBe('draft');
     const result = await service.reviewNode({ id: draft.id, decision: 'accept', reviewer: 'operator' });
@@ -200,7 +213,7 @@ describe('knowledge wiki honesty — review gate (Defect 2)', () => {
 
   test('draft nodes are not served by search', async () => {
     const { store, artifactStore } = createStores();
-    const service = disposables.add(new KnowledgeService(store, artifactStore, undefined, {}), disposeKnowledgeService);
+    const service = disposables.add(new KnowledgeService(store, artifactStore, undefined, { memoryRegistry: fakeMemoryRegistry() }), disposeKnowledgeService);
     const draft = await store.upsertNode({ kind: 'topic', slug: 'zephyr-draft', title: 'Zephyr draft note', confidence: 10 });
     const active = await store.upsertNode({ kind: 'topic', slug: 'zephyr-active', title: 'Zephyr active note', confidence: 90 });
     const ids = service.search('zephyr', 20).map((hit) => hit.id);
@@ -255,7 +268,7 @@ describe('knowledge wiki honesty — mergeNodes re-points edges (Defect 5)', () 
 describe('knowledge wiki honesty — honest hard delete and forget filter (Defect 6)', () => {
   test('queryNodes hides forgotten (stale) nodes by default but returns them on request', async () => {
     const { store, artifactStore } = createStores();
-    const service = disposables.add(new KnowledgeService(store, artifactStore, undefined, {}), disposeKnowledgeService);
+    const service = disposables.add(new KnowledgeService(store, artifactStore, undefined, { memoryRegistry: fakeMemoryRegistry() }), disposeKnowledgeService);
     const node = await store.upsertNode({ kind: 'topic', slug: 'forgettable', title: 'Forgettable', confidence: 90 });
     await store.upsertNode({ id: node.id, kind: 'topic', slug: 'forgettable', title: 'Forgettable', status: 'stale', confidence: 90 });
     expect(service.queryNodes({ limit: 100 }).items.map((n) => n.id)).not.toContain(node.id);
@@ -264,7 +277,7 @@ describe('knowledge wiki honesty — honest hard delete and forget filter (Defec
 
   test('deleteNode is an honest hard delete that also purges revision history', async () => {
     const { store, artifactStore } = createStores();
-    const service = disposables.add(new KnowledgeService(store, artifactStore, undefined, {}), disposeKnowledgeService);
+    const service = disposables.add(new KnowledgeService(store, artifactStore, undefined, { memoryRegistry: fakeMemoryRegistry() }), disposeKnowledgeService);
     const node = await store.upsertNode({ kind: 'topic', slug: 'gone', title: 'Gone', confidence: 90 });
     expect(store.listNodeRevisions(node.id).length).toBeGreaterThan(0);
     const result = await service.deleteNode(node.id);
@@ -281,7 +294,7 @@ describe('knowledge wiki honesty — delete cascades refinement tasks (Defect 7)
     const store = createStore();
     const node = await store.upsertNode({ kind: 'topic', slug: 'subject', title: 'Subject', confidence: 90 });
     await store.upsertRefinementTask({
-      spaceId: 'default', subjectKind: 'node', subjectId: node.id, state: 'pending', trigger: 'manual',
+      spaceId: 'default', subjectKind: 'node', subjectId: node.id, state: 'detected', trigger: 'manual',
     });
     expect(store.listRefinementTasks(100).some((t) => t.subjectId === node.id)).toBe(true);
     await store.deleteNode(node.id);
@@ -292,7 +305,7 @@ describe('knowledge wiki honesty — delete cascades refinement tasks (Defect 7)
 describe('knowledge wiki honesty — packet truncation disclosure (Defect 9)', () => {
   test('a packet that drops candidates over the limit reports it honestly', async () => {
     const { store, artifactStore } = createStores();
-    const service = disposables.add(new KnowledgeService(store, artifactStore, undefined, {}), disposeKnowledgeService);
+    const service = disposables.add(new KnowledgeService(store, artifactStore, undefined, { memoryRegistry: fakeMemoryRegistry() }), disposeKnowledgeService);
     for (let i = 0; i < 8; i += 1) {
       await store.upsertSource({
         connectorId: 'manual', sourceType: 'document', title: `Widget manual ${i}`,
@@ -318,7 +331,7 @@ describe('knowledge wiki honesty — packet truncation disclosure (Defect 9)', (
 
   test('a packet whose token budget binds distinguishes budget-drops from rank-cap drops', async () => {
     const { store, artifactStore } = createStores();
-    const service = disposables.add(new KnowledgeService(store, artifactStore, undefined, {}), disposeKnowledgeService);
+    const service = disposables.add(new KnowledgeService(store, artifactStore, undefined, { memoryRegistry: fakeMemoryRegistry() }), disposeKnowledgeService);
     for (let i = 0; i < 8; i += 1) {
       await store.upsertSource({
         connectorId: 'manual', sourceType: 'document', title: `Widget manual ${i}`,
@@ -397,7 +410,7 @@ describe('knowledge wiki honesty — shared artifact reset does not orphan forei
 describe('knowledge wiki honesty — forgotten nodes are not served over the wire (Defect 6)', () => {
   test('the GET /api/knowledge/nodes route excludes a forgotten (stale) node by default', async () => {
     const { store, artifactStore } = createStores();
-    const service = disposables.add(new KnowledgeService(store, artifactStore, undefined, {}), disposeKnowledgeService);
+    const service = disposables.add(new KnowledgeService(store, artifactStore, undefined, { memoryRegistry: fakeMemoryRegistry() }), disposeKnowledgeService);
     const kept = await store.upsertNode({ kind: 'topic', slug: 'served', title: 'Served', confidence: 90 });
     const forgotten = await store.upsertNode({ kind: 'topic', slug: 'forgotten', title: 'Forgotten', confidence: 90 });
     await store.upsertNode({ id: forgotten.id, kind: 'topic', slug: 'forgotten', title: 'Forgotten', status: 'stale', confidence: 90 });

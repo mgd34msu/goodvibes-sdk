@@ -6,6 +6,7 @@ import {
 import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/index.ts';
 import { emitOpsContextWarning } from '../packages/sdk/src/platform/runtime/emitters/ops.ts';
 import { registerBootstrapHookBridge } from '../packages/sdk/src/platform/runtime/bootstrap-hook-bridge.ts';
+import type { HookEvent } from '../packages/sdk/src/platform/hooks/types.ts';
 
 describe('context auto-compaction threshold', () => {
   test('uses configured percentage threshold instead of only remaining-token buffer', () => {
@@ -65,7 +66,7 @@ describe('context auto-compaction threshold', () => {
     const unsubs = registerBootstrapHookBridge({
       runtimeBus: bus,
       hookDispatcher: {
-        fire(event) {
+        fire(event: HookEvent) {
           fired.push({
             path: event.path,
             specific: event.specific,

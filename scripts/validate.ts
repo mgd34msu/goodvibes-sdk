@@ -25,7 +25,11 @@ run('bun', ['run', 'test-skip:check'], 'test-skip:check');
 run('bun', ['run', 'architecture:check'], 'architecture:check');
 run('bun', ['run', 'platform-console:check'], 'platform-console:check');
 run('bun', ['run', 'build'], 'build');
-run('bun', ['run', 'types:check'], 'types:check');
+// typecheck runs the composite solution (which now includes test/ and
+// scripts/ via tsconfig.tests.json) AND the standalone type-test project,
+// judging each by its output as well as its exit code. It supersedes the
+// bare types:check that used to run here.
+run('bun', ['run', 'typecheck'], 'typecheck');
 run('bun', ['run', 'api:check'], 'api:check');
 // examples typecheck also runs locally so `bun run validate` catches type
 // errors without a separate CI step.

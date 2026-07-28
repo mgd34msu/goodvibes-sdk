@@ -172,7 +172,7 @@ describe('permission mode-change event', () => {
     let listener: ConfigChangeCallback<'permissions.mode'> | null = null;
     const configManager: Pick<ConfigManager, 'subscribe'> = {
       subscribe: (_key, cb) => {
-        listener = cb as ConfigChangeCallback<'permissions.mode'>;
+        listener = cb as unknown as ConfigChangeCallback<'permissions.mode'>;
         return () => {};
       },
     };

@@ -18,6 +18,10 @@
 import { describe, expect, test } from 'bun:test';
 import type { DaemonRuntimeRouteContext as CanonicalContext } from '../packages/daemon-sdk/src/runtime-route-types.js';
 import type { DaemonRuntimeRouteContext as PlatformHttpContext } from '../packages/sdk/src/platform/daemon/http/runtime-route-types.js';
+import type {
+  CreateAutomationJobInput,
+  UpdateAutomationJobInput,
+} from '../packages/sdk/src/platform/automation/manager-runtime-helpers.js';
 
 // ---------------------------------------------------------------------------
 // Type-level assertions
@@ -25,18 +29,50 @@ import type { DaemonRuntimeRouteContext as PlatformHttpContext } from '../packag
 
 /**
  * A value assignable to PlatformHttpContext must satisfy the canonical
- * automationManager shape — including all its methods.
+ * automationManager shape — every method except the two this layer refines.
  *
- * This test would FAIL TO COMPILE if the platform-HTTP type stopped requiring
- * any method that the canonical defines on automationManager.
+ * This FAILS TO COMPILE if the platform-HTTP type stops requiring any method
+ * the canonical defines on automationManager.
+ *
+ * `createJob` and `updateJob` are excluded because they diverge ON PURPOSE:
+ * the canonical types them `Record<string, unknown>` since daemon-sdk's
+ * handlers call them with a parsed JSON body, and the platform layer types them
+ * with the validated CreateAutomationJobInput / UpdateAutomationJobInput it
+ * actually implements. `createDaemonRuntimeRouteHandlers` in
+ * platform/daemon/http/runtime-routes.ts is the bridge that runs the body
+ * through `parseCreateAutomationJobInput` between the two.
+ *
+ * This exclusion is new, and it is the reason the file did not compile: nothing
+ * ever compiled it. The two shapes are UNRELATED types — an interface with no
+ * index signature is not assignable to `Record<string, unknown>` in either
+ * direction — so `ctx.automationManager` was never assignable to the canonical
+ * and this assertion could not have held on any day since it was written. The
+ * same absence of compilation had let AutomationRunLike lose a field the
+ * canonical copy carries; both are fixed now.
+ *
+ * `assertRefinedAutomationInputs` below pins the divergence itself, so removing
+ * the refinement does not silently pass by falling back to the canonical.
  */
 function assertPlatformInheritsAutomationManager(
   ctx: PlatformHttpContext,
-): CanonicalContext['automationManager'] {
-  // The platform-HTTP context must expose automationManager with the full
-  // canonical shape. If the canonical gains a new method, this function's
-  // return type widening causes a compile error.
+): Omit<CanonicalContext['automationManager'], 'createJob' | 'updateJob'> {
+  // If the canonical gains a new method, this function's return type widens and
+  // the assignment stops compiling.
   return ctx.automationManager;
+}
+
+/**
+ * The two refined methods, pinned in the direction that matters.
+ *
+ * `createJob` here must take the VALIDATED input type. If someone "fixes" the
+ * divergence by widening this layer back to `Record<string, unknown>`, the
+ * Omit above would still pass — this does not.
+ */
+function assertRefinedAutomationInputs(
+  ctx: PlatformHttpContext,
+): [(input: CreateAutomationJobInput) => Promise<{ readonly id: string }>,
+    (jobId: string, input: UpdateAutomationJobInput) => Promise<{ readonly id: string } | null>] {
+  return [ctx.automationManager.createJob, ctx.automationManager.updateJob];
 }
 
 /**
@@ -66,7 +102,7 @@ function assertPlatformInheritsAgentManager(
 describe('platform-HTTP DaemonRuntimeRouteContext inherits canonical shapes', () => {
   test('automationManager shape is inherited from canonical, not inlined', () => {
     // Construct a minimal stub that satisfies PlatformHttpContext
-    const automationManager: CanonicalContext['automationManager'] = {
+    const automationManager: PlatformHttpContext['automationManager'] = {
       listJobs: () => [],
       listRuns: () => [],
       getRun: () => null,
@@ -132,9 +168,9 @@ describe('platform-HTTP DaemonRuntimeRouteContext inherits canonical shapes', ()
 // ---------------------------------------------------------------------------
 
 function buildMinimalContext(
-  automationManagerOverride?: CanonicalContext['automationManager'],
+  automationManagerOverride?: PlatformHttpContext['automationManager'],
 ): PlatformHttpContext {
-  const automationManager: CanonicalContext['automationManager'] = automationManagerOverride ?? {
+  const automationManager: PlatformHttpContext['automationManager'] = automationManagerOverride ?? {
     listJobs: () => [],
     listRuns: () => [],
     getRun: () => null,
@@ -167,6 +203,7 @@ function buildMinimalContext(
     requireAdmin: () => null,
     sessionBroker: {
       start: async () => {},
+      register: async () => ({ record: { id: 'stub' }, reopened: false }),
       submitMessage: async () => { throw new Error('not expected'); },
       steerMessage: async () => { throw new Error('not expected'); },
       followUpMessage: async () => { throw new Error('not expected'); },
@@ -175,17 +212,21 @@ function buildMinimalContext(
       getSession: () => null,
       getMessages: () => [],
       getInputs: () => [],
+      getInputsSince: () => [],
+      markInputDelivered: async () => null,
       closeSession: async () => null,
       reopenSession: async () => null,
+      detachParticipant: async () => null,
+      deleteSession: async () => 'not-found' as const,
       cancelInput: async () => null,
       completeAgent: async () => {},
       appendCompanionMessage: async () => {},
     },
     agentManager: { getStatus: () => null, cancel: () => {} },
     automationManager,
-    normalizeAtSchedule: () => ({}),
-    normalizeEverySchedule: () => ({}),
-    normalizeCronSchedule: () => ({}),
+    normalizeAtSchedule: (at) => ({ kind: 'at' as const, at }),
+    normalizeEverySchedule: () => ({ kind: 'every' as const, intervalMs: 1000 }),
+    normalizeCronSchedule: (expression) => ({ kind: 'cron' as const, expression }),
     routeBindings: { start: async () => {}, getBinding: () => undefined },
     trySpawnAgent: () => new Response(JSON.stringify({ error: 'not expected' }), { status: 500 }),
     queueSurfaceReplyFromBinding: () => {},

@@ -26,6 +26,7 @@ import {
 } from '../packages/sdk/src/platform/runtime/feature-flags/feature-settings.js';
 import { FEATURE_FLAG_MAP } from '../packages/sdk/src/platform/runtime/feature-flags/flags.js';
 import type { FlagState } from '../packages/sdk/src/platform/runtime/feature-flags/types.js';
+import type { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 
 // A runtime-toggleable capability defaulting OFF and a startup-gated
 // (runtimeToggleable: false) one defaulting OFF — picked from the real
@@ -49,14 +50,15 @@ requireKnownFlag(STARTUP_GATED_FLAG_ID, 'disabled');
 /** Minimal fake ConfigManager: only the `subscribe` surface the bridge needs. */
 function fakeConfigManager() {
   const listeners = new Map<string, Set<(newVal: unknown, oldVal: unknown) => void>>();
+  const subscribe = (key: string, cb: (newVal: unknown, oldVal: unknown) => void) => {
+    if (!listeners.has(key)) listeners.set(key, new Set());
+    listeners.get(key)!.add(cb);
+    return () => {
+      listeners.get(key)?.delete(cb);
+    };
+  };
   return {
-    subscribe(key: string, cb: (newVal: unknown, oldVal: unknown) => void) {
-      if (!listeners.has(key)) listeners.set(key, new Set());
-      listeners.get(key)!.add(cb);
-      return () => {
-        listeners.get(key)?.delete(cb);
-      };
-    },
+    subscribe: subscribe as unknown as Pick<ConfigManager, 'subscribe'>['subscribe'],
     /** Simulates configManager.set('<domain key>', value) firing subscribers. */
     fireSet(key: string, newVal: unknown, oldVal: unknown) {
       for (const cb of listeners.get(key) ?? []) cb(newVal, oldVal);

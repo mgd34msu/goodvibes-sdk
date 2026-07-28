@@ -1,9 +1,27 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { Browser, BrowserContext, Page } from 'playwright-core';
+// `playwright-core` is an optional dependency hoisted only under
+// packages/sdk/node_modules, not resolvable from test/ at the repo root (see
+// tsconfig.tests.json's project root). Every use of these types below goes
+// through an `as unknown as X` cast at the mock boundary, so a same-named
+// local opaque alias preserves identical behavior without a real resolution.
+type BrowserContext = unknown;
+type Page = unknown;
 import { BrowserEngine, UntrustedEffectError } from '../packages/sdk/src/platform/browser/browser-engine.js';
 import { BrowserSessionManager } from '../packages/sdk/src/platform/browser/browser-sessions.js';
+/**
+ * The real factory, not a local imitation of it.
+ *
+ * This file used to declare its own `grantOwnerApproval` returning an object
+ * literal. That literal went stale the moment `OwnerApproval` grew `expiresAt`
+ * and `contentFingerprint`, and nothing noticed until `test/` was brought under
+ * the typecheck — a fixture that mints a shape production no longer mints is
+ * not a fixture, it is a second implementation drifting on its own. Using the
+ * product's factory also means the "a page cannot grant one" assertion below
+ * exercises the refusal that actually ships.
+ */
+import { grantOwnerApproval } from '../packages/sdk/src/platform/security/owner-approval.js';
 import type {
   BrowserProvisionIo,
   OutwardEffectDecision,
@@ -108,15 +126,6 @@ class TestUntrustedContentPort implements UntrustedContentPort {
   }
 }
 
-/**
- * An approval only a surface with command authority can produce. A page saying
- * the owner approved something cannot reach this, which is the point.
- */
-function grantOwnerApproval(input: { readonly action: string; readonly surface: string }): OwnerApproval | null {
-  if (input.surface !== 'owner-direct') return null;
-  return { action: input.action, grantedAt: new Date().toISOString(), surface: 'owner-direct' };
-}
-
 interface RawElement {
   readonly tag: string;
   readonly role: string;
@@ -213,12 +222,12 @@ beforeEach(async () => {
     profileRoot: '/tmp/goodvibes-outward-test',
     surfaceRoot: 'test-surface',
     io: readyIo(),
-    loadDriver: () => ({
+    loadDriver: (() => ({
       chromium: {
         launchPersistentContext: async () => context,
-        connectOverCDP: async () => ({ contexts: () => [context] } as unknown as Browser),
+        connectOverCDP: async () => ({ contexts: () => [context] }),
       },
-    }),
+    })) as unknown as NonNullable<ConstructorParameters<typeof BrowserSessionManager>[0]['loadDriver']>,
   });
   engine = new BrowserEngine(sessions, { screenshotDirectory: SCREENSHOT_DIRECTORY, untrusted });
   await engine.launch({ headless: true });
@@ -355,12 +364,12 @@ describe('outward effects after reading a page', () => {
       profileRoot: '/tmp/goodvibes-outward-test',
       surfaceRoot: 'test-surface',
       io: readyIo(),
-      loadDriver: () => ({
+      loadDriver: (() => ({
         chromium: {
           launchPersistentContext: async () => context,
-          connectOverCDP: async () => ({ contexts: () => [context] } as unknown as Browser),
+          connectOverCDP: async () => ({ contexts: () => [context] }),
         },
-      }),
+      })) as unknown as NonNullable<ConstructorParameters<typeof BrowserSessionManager>[0]['loadDriver']>,
     });
     const recorded = new BrowserEngine(sessions, {
       screenshotDirectory: SCREENSHOT_DIRECTORY,

@@ -59,8 +59,8 @@ function makeDeps(overrides: Partial<ProcessRegistryDeps> = {}): ProcessRegistry
     watcherRegistry: { list: () => [], stopWatcher: () => null },
     workflow: {
       workflowManager: { list: () => [], cancel: () => false },
-      triggerManager: { list: () => [], remove: () => false, disable: () => false },
-      scheduleManager: { list: () => [], remove: () => false, disable: () => false },
+      triggerManager: { list: () => [], remove: () => false, enable: () => false, disable: () => false },
+      scheduleManager: { list: () => [], remove: () => false, enable: () => false, disable: () => false },
     },
     now: () => T0 + 5_000,
     ...overrides,
@@ -255,8 +255,8 @@ describe('fleet registry — headline + stall on the snapshot', () => {
 
     // A continuous updater: per-token deltas, tool events, per-turn progress.
     for (let turn = 1; turn <= 25; turn++) {
-      emitAgentStreamDelta(bus, emitterCtx, { agentId: 'agent-2', delta: `token-${turn}` });
-      emitAgentAwaitingTool(bus, emitterCtx, { agentId: 'agent-2', tool: `tool-${turn}` });
+      emitAgentStreamDelta(bus, emitterCtx, { agentId: 'agent-2', content: `token-${turn}`, accumulated: `token-${turn}` });
+      emitAgentAwaitingTool(bus, emitterCtx, { agentId: 'agent-2', callId: `call-${turn}`, tool: `tool-${turn}` });
       emitAgentProgress(bus, emitterCtx, { agentId: 'agent-2', progress: `Turn ${turn} · exec` });
     }
     await flushBus();

@@ -26,11 +26,24 @@ interface CapturedRequest {
   headers: Record<string, string>;
 }
 
+/**
+ * Bun's `typeof fetch` includes a `preconnect` static method that plain mock
+ * functions don't have. Attach a no-op stub so test doubles satisfy the type
+ * without pretending to implement real preconnect behavior.
+ */
+function withPreconnect(
+  impl: (input: string | URL | Request, init?: RequestInit) => Promise<Response>,
+): typeof globalThis.fetch {
+  return Object.assign(impl, {
+    preconnect: (_url: string | URL, _options?: { dns?: boolean; tcp?: boolean; http?: boolean; https?: boolean }) => {},
+  });
+}
+
 function createCapturingFetch(
   responseFactory: (req: CapturedRequest) => Response | Promise<Response>,
 ): { fetch: typeof fetch; requests: CapturedRequest[] } {
   const requests: CapturedRequest[] = [];
-  const fetch: typeof globalThis.fetch = async (input, init) => {
+  const fetch = withPreconnect(async (input, init) => {
     const headers: Record<string, string> = {};
     if (init?.headers) {
       const h = new Headers(init.headers as HeadersInit);
@@ -43,8 +56,8 @@ function createCapturingFetch(
     };
     requests.push(req);
     return responseFactory(req);
-  };
-  return { fetch: fetch as typeof globalThis.fetch, requests };
+  });
+  return { fetch, requests };
 }
 
 const UUID_V4_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -76,7 +89,8 @@ describe('generateIdempotencyKey()', () => {
     const key = generateIdempotencyKey();
     const withoutDashes = key.replace(/-/g, '');
     const variantChar = withoutDashes[16];
-    expect(['8', '9', 'a', 'b']).toContain(variantChar);
+    expect(variantChar).toBeDefined();
+    expect(['8', '9', 'a', 'b']).toContain(variantChar!);
   });
 });
 
@@ -97,10 +111,10 @@ describe('Idempotency-Key header: mutating methods', () => {
         idempotent: true,
       });
       expect(requests.length).toBe(1);
-      expect(requests[0].method).toBe(method);
-      const key = requests[0].headers['idempotency-key'];
+      expect(requests[0]!.method).toBe(method);
+      const key = requests[0]!.headers['idempotency-key'];
       expect(typeof key).toBe('string');
-      expect(UUID_V4_RE.test(key)).toBe(true);
+      expect(UUID_V4_RE.test(key!)).toBe(true);
     });
   }
 });
@@ -114,7 +128,7 @@ describe('Idempotency-Key header: idempotent-by-nature methods', () => {
       const transport = createHttpJsonTransport({ baseUrl: 'https://api.example.com', fetch });
       await transport.requestJson('/v1/resource', { method });
       expect(requests.length).toBe(1);
-      expect(requests[0].headers['idempotency-key']).toBeUndefined();
+      expect(requests[0]!.headers['idempotency-key']).toBeUndefined();
     });
   }
 });
@@ -128,8 +142,8 @@ describe('Idempotency-Key: unique per request', () => {
     await transport.requestJson('/v1/a', { method: 'POST', body: { x: 1 }, idempotent: true });
     await transport.requestJson('/v1/b', { method: 'POST', body: { x: 2 }, idempotent: true });
     expect(requests.length).toBe(2);
-    const key1 = requests[0].headers['idempotency-key'];
-    const key2 = requests[1].headers['idempotency-key'];
+    const key1 = requests[0]!.headers['idempotency-key'];
+    const key2 = requests[1]!.headers['idempotency-key'];
     expect(typeof key1).toBe('string');
     expect(typeof key2).toBe('string');
     expect(key1).not.toBe(key2);

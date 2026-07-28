@@ -66,10 +66,10 @@ describe('router-e2e remote — GET /api/remote (happy path)', () => {
   });
 
   test('POST /api/remote/pair/requests/:id/approve delegates with correct id', async () => {
-    let capturedId: string | null = null;
+    const capturedIds: string[] = [];
     const handlers = makeDefaultDaemonHandlerStub({
       approveRemotePairRequest: (id, _req) => {
-        capturedId = id;
+        capturedIds.push(id);
         return Response.json({ ok: true, id });
       },
     });
@@ -77,14 +77,14 @@ describe('router-e2e remote — GET /api/remote (happy path)', () => {
     const res = await dispatchRemoteRoutes(req, handlers);
     expect(res).not.toBeNull();
     expect(res!.status).toBe(200);
-    expect(capturedId).toBe('req-abc');
+    expect(capturedIds).toEqual(['req-abc']);
   });
 
   test('POST /api/remote/pair/requests/:id/reject delegates with correct id', async () => {
-    let capturedId: string | null = null;
+    const capturedIds: string[] = [];
     const handlers = makeDefaultDaemonHandlerStub({
       rejectRemotePairRequest: (id, _req) => {
-        capturedId = id;
+        capturedIds.push(id);
         return Response.json({ ok: true, id });
       },
     });
@@ -92,14 +92,14 @@ describe('router-e2e remote — GET /api/remote (happy path)', () => {
     const res = await dispatchRemoteRoutes(req, handlers);
     expect(res).not.toBeNull();
     expect(res!.status).toBe(200);
-    expect(capturedId).toBe('req-xyz');
+    expect(capturedIds).toEqual(['req-xyz']);
   });
 
   test('POST /api/remote/peers/:id/token/rotate delegates with correct peer id', async () => {
-    let capturedPeerId: string | null = null;
+    const capturedPeerIds: string[] = [];
     const handlers = makeDefaultDaemonHandlerStub({
       rotateRemotePeerToken: (peerId, _req) => {
-        capturedPeerId = peerId;
+        capturedPeerIds.push(peerId);
         return Response.json({ token: 'rotated-token' });
       },
     });
@@ -109,7 +109,7 @@ describe('router-e2e remote — GET /api/remote (happy path)', () => {
     expect(res!.status).toBe(200);
     const body = await res!.json() as Record<string, unknown>;
     expect(body.token).toBe('rotated-token');
-    expect(capturedPeerId).toBe('peer-1');
+    expect(capturedPeerIds).toEqual(['peer-1']);
   });
 
   test('GET /api/remote/work returns work list', async () => {
@@ -125,10 +125,10 @@ describe('router-e2e remote — GET /api/remote (happy path)', () => {
   });
 
   test('POST /api/remote/work/:id/cancel cancels work item', async () => {
-    let capturedId: string | null = null;
+    const capturedIds: string[] = [];
     const handlers = makeDefaultDaemonHandlerStub({
       cancelRemoteWork: (id, _req) => {
-        capturedId = id;
+        capturedIds.push(id);
         return Response.json({ ok: true, id });
       },
     });
@@ -136,7 +136,7 @@ describe('router-e2e remote — GET /api/remote (happy path)', () => {
     const res = await dispatchRemoteRoutes(req, handlers);
     expect(res).not.toBeNull();
     expect(res!.status).toBe(200);
-    expect(capturedId).toBe('work-99');
+    expect(capturedIds).toEqual(['work-99']);
   });
 });
 

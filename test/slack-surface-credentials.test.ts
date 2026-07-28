@@ -214,7 +214,7 @@ describe('Slack surface credentials', () => {
 
       const result = await manager.start('slack');
       expect(result.ok).toBe(true);
-      expect(authorization).toBe('Bearer xapp-config-ref');
+      expect(authorization as string | null).toBe('Bearer xapp-config-ref');
       manager.stop('slack');
     } finally {
       globalThis.fetch = originalFetch;
@@ -255,7 +255,7 @@ describe('Slack surface credentials', () => {
         channelId: 'C123',
       }, 'done');
 
-      expect(authorization).toBe('Bearer xoxb-delivery-ref');
+      expect(authorization as string | null).toBe('Bearer xoxb-delivery-ref');
     } finally {
       globalThis.fetch = originalFetch;
     }

@@ -1,10 +1,18 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readdirSync, rmSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { readdirSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { sweepStaleTmpDirs } from './stale-tmp-sweep.ts';
-import { makeRunTmpDirName, RUN_TMP_PREFIX, STALE_RUN_MS, testTmpEnv, TEST_TMP_ROOT } from './test-run-tmp.ts';
+import {
+  makeRunTmpDirName,
+  RUN_TMP_PREFIX,
+  RUNNER_ENV_FLAG,
+  STALE_RUN_MS,
+  testTmpEnv,
+  TEST_TMP_ROOT,
+  withRunTmpDir,
+} from './test-run-tmp.ts';
 import { withWorkspaceLock } from './workspace-lock.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -41,7 +49,7 @@ const args = process.argv.slice(2);
  * package.json, an editorconfig — is a property tests are entitled to assume
  * absent.
  */
-const RUN_TMP_DIR = join(TEST_TMP_ROOT, makeRunTmpDirName());
+const RUN_TMP_DIR_NAME = makeRunTmpDirName();
 
 function defaultTestArgs(): readonly string[] {
   const testRoot = resolve(SDK_ROOT, 'test');
@@ -106,25 +114,26 @@ function hasExplicitTimeout(): boolean {
   return args.some((arg) => arg === '--timeout' || arg.startsWith('--timeout='));
 }
 
-await withWorkspaceLock('test', () => {
+await withWorkspaceLock('test', async () => {
   const testArgs = resolveTestArgs();
   sweepStaleTmpDirs(TEST_TMP_ROOT, RUN_TMP_PREFIX, STALE_RUN_MS);
-  rmSync(RUN_TMP_DIR, { recursive: true, force: true });
-  mkdirSync(RUN_TMP_DIR, { recursive: true });
-  try {
+  // withRunTmpDir removes the parent in a `finally`, so a failing suite takes
+  // its temp tree with it too. Sibling runs own their own parent and are never
+  // touched.
+  await withRunTmpDir(TEST_TMP_ROOT, (runTmpDir) => {
     const timeoutArgs = hasExplicitTimeout() ? [] : [`--timeout=${resolveTimeoutMs()}`];
     execFileSync('bun', ['test', ...timeoutArgs, ...testArgs], {
       cwd: SDK_ROOT,
       stdio: 'inherit',
       env: {
         ...process.env,
-        ...testTmpEnv(RUN_TMP_DIR),
+        ...testTmpEnv(runTmpDir),
+        // Sibling of the spread above, not part of it: see RUNNER_ENV_FLAG's
+        // note in scripts/test-run-tmp.ts. Deleting the spread must leave this
+        // behind, or test/test-tmp-containment.test.ts stops being able to see
+        // that the containment is gone.
+        [RUNNER_ENV_FLAG]: '1',
       },
     });
-  } finally {
-    // Every exit path, including a failing suite: this run's temp tree goes
-    // with this run. Sibling runs own their own `run-<pid>` subtree and are
-    // never touched.
-    rmSync(RUN_TMP_DIR, { recursive: true, force: true });
-  }
+  }, RUN_TMP_DIR_NAME);
 });

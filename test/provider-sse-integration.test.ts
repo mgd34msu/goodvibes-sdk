@@ -124,7 +124,7 @@ describe('ControlPlaneGateway SSE — real end-to-end', () => {
     await settleEvents(10);
 
     const envelope = createEventEnvelope('MODEL_CHANGED', {
-      type: 'MODEL_CHANGED',
+      type: 'MODEL_CHANGED' as const,
       registryKey: 'inception:mercury-2',
       provider: 'inception',
     }, { sessionId: 'test-session', source: 'test', traceId: 'test-trace' });

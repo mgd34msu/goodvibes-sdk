@@ -22,7 +22,7 @@ describe('output policy', () => {
 
     const original = JSON.stringify({ rows: Array.from({ length: 200 }, (_, index) => ({ index })) });
     const { result, audit } = applyOutputPolicy(
-      { success: true, output: original },
+      { callId: 'call-1', success: true, output: original },
       policy,
       makeOverflowHandler(),
     );

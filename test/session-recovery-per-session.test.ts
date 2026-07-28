@@ -91,7 +91,7 @@ describe('per-session recovery snapshots', () => {
       record(id: string, text?: string): boolean {
         // Exactly-once semantics, mirroring FeatureAnnouncementStore.record.
         if (recorded.some((r) => r.id === id)) return false;
-        recorded.push({ id, text });
+        recorded.push({ id, ...(text !== undefined ? { text } : {}) });
         return true;
       },
     };

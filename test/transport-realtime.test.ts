@@ -161,10 +161,10 @@ describe('transport realtime', () => {
   describe('forSession', () => {
     test('filters: non-matching sessionId does not fire on callback', async () => {
       const received: unknown[] = [];
-      let dispatch: ((envelope: { type: string; sessionId?: string; payload: unknown }) => void) | null = null;
+      const dispatchRef: { dispatch: ((envelope: { type: string; sessionId?: string; payload: unknown }) => void) | null } = { dispatch: null };
 
       const events = createRemoteDomainEvents(['alpha'] as const, async (_domain, onEnvelope) => {
-        dispatch = onEnvelope as typeof dispatch;
+        dispatchRef.dispatch = onEnvelope as typeof dispatchRef.dispatch;
         return () => {};
       });
 
@@ -173,11 +173,11 @@ describe('transport realtime', () => {
 
       await Promise.resolve();
       // Wrong session — should be filtered out.
-      dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-B', payload: { ok: false } });
+      dispatchRef.dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-B', payload: { ok: false } });
       // No sessionId — also dropped.
-      dispatch?.({ type: 'ALPHA_READY', payload: { ok: null } });
+      dispatchRef.dispatch?.({ type: 'ALPHA_READY', payload: { ok: null } });
       // Correct session — should fire.
-      dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-A', payload: { ok: true } });
+      dispatchRef.dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-A', payload: { ok: true } });
 
       expect(received).toHaveLength(1);
       expect(received[0]).toEqual({ ok: true });
@@ -185,10 +185,10 @@ describe('transport realtime', () => {
 
     test('filters: matching sessionId fires onEnvelope', async () => {
       const received: string[] = [];
-      let dispatch: ((envelope: { type: string; sessionId?: string; payload: unknown }) => void) | null = null;
+      const dispatchRef: { dispatch: ((envelope: { type: string; sessionId?: string; payload: unknown }) => void) | null } = { dispatch: null };
 
       const events = createRemoteDomainEvents(['alpha'] as const, async (_domain, onEnvelope) => {
-        dispatch = onEnvelope as typeof dispatch;
+        dispatchRef.dispatch = onEnvelope as typeof dispatchRef.dispatch;
         return () => {};
       });
 
@@ -200,21 +200,21 @@ describe('transport realtime', () => {
 
       // Trigger one that matches.
       await Promise.resolve();
-      dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-A', payload: { ok: true } });
+      dispatchRef.dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-A', payload: { ok: true } });
       // Trigger one that does NOT match — should be filtered out.
-      dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-B', payload: { ok: false } });
+      dispatchRef.dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-B', payload: { ok: false } });
       // Trigger one with no sessionId — also dropped.
-      dispatch?.({ type: 'ALPHA_READY', payload: { ok: null } });
+      dispatchRef.dispatch?.({ type: 'ALPHA_READY', payload: { ok: null } });
 
       expect(received).toEqual(['session-A']);
     });
 
     test('filters: matching sessionId fires on (payload only)', async () => {
       const received: unknown[] = [];
-      let dispatch: ((envelope: { type: string; sessionId?: string; payload: unknown }) => void) | null = null;
+      const dispatchRef: { dispatch: ((envelope: { type: string; sessionId?: string; payload: unknown }) => void) | null } = { dispatch: null };
 
       const events = createRemoteDomainEvents(['alpha'] as const, async (_domain, onEnvelope) => {
-        dispatch = onEnvelope as typeof dispatch;
+        dispatchRef.dispatch = onEnvelope as typeof dispatchRef.dispatch;
         return () => {};
       });
 
@@ -223,8 +223,8 @@ describe('transport realtime', () => {
       sessionEvents.alpha.on('ALPHA_READY', (payload) => received.push(payload));
 
       await Promise.resolve();
-      dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-X', payload: { ok: true } });
-      dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-Y', payload: { ok: false } });
+      dispatchRef.dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-X', payload: { ok: true } });
+      dispatchRef.dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-Y', payload: { ok: false } });
 
       expect(received).toHaveLength(1);
       expect(received[0]).toEqual({ ok: true });
@@ -232,10 +232,10 @@ describe('transport realtime', () => {
 
     test('unsubscribe: stops receiving events', async () => {
       const received: unknown[] = [];
-      let dispatch: ((envelope: { type: string; sessionId?: string; payload: unknown }) => void) | null = null;
+      const dispatchRef: { dispatch: ((envelope: { type: string; sessionId?: string; payload: unknown }) => void) | null } = { dispatch: null };
 
       const events = createRemoteDomainEvents(['alpha'] as const, async (_domain, onEnvelope) => {
-        dispatch = onEnvelope as typeof dispatch;
+        dispatchRef.dispatch = onEnvelope as typeof dispatchRef.dispatch;
         return () => {};
       });
 
@@ -245,21 +245,21 @@ describe('transport realtime', () => {
       });
 
       await Promise.resolve();
-      dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-A', payload: {} });
+      dispatchRef.dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-A', payload: {} });
       expect(received).toHaveLength(1);
 
       unsub();
-      dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-A', payload: {} });
+      dispatchRef.dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-A', payload: {} });
       expect(received).toHaveLength(1); // no new events after unsub
     });
 
     test('multiple parallel sessions: each receives only its own events', async () => {
       const receivedA: unknown[] = [];
       const receivedB: unknown[] = [];
-      let dispatch: ((envelope: { type: string; sessionId?: string; payload: unknown }) => void) | null = null;
+      const dispatchRef: { dispatch: ((envelope: { type: string; sessionId?: string; payload: unknown }) => void) | null } = { dispatch: null };
 
       const events = createRemoteDomainEvents(['alpha'] as const, async (_domain, onEnvelope) => {
-        dispatch = onEnvelope as typeof dispatch;
+        dispatchRef.dispatch = onEnvelope as typeof dispatchRef.dispatch;
         return () => {};
       });
 
@@ -270,9 +270,9 @@ describe('transport realtime', () => {
       sessionB.alpha.onEnvelope('ALPHA_READY', (e) => receivedB.push(e.sessionId));
 
       await Promise.resolve();
-      dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-A', payload: {} });
-      dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-B', payload: {} });
-      dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-A', payload: {} });
+      dispatchRef.dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-A', payload: {} });
+      dispatchRef.dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-B', payload: {} });
+      dispatchRef.dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-A', payload: {} });
 
       expect(receivedA).toEqual(['session-A', 'session-A']);
       expect(receivedB).toEqual(['session-B']);
@@ -280,10 +280,10 @@ describe('transport realtime', () => {
 
     test('domain accessor on filtered view is also filtered', async () => {
       const received: unknown[] = [];
-      let dispatch: ((envelope: { type: string; sessionId?: string; payload: unknown }) => void) | null = null;
+      const dispatchRef: { dispatch: ((envelope: { type: string; sessionId?: string; payload: unknown }) => void) | null } = { dispatch: null };
 
       const events = createRemoteDomainEvents(['alpha', 'beta'] as const, async (_domain, onEnvelope) => {
-        dispatch = onEnvelope as typeof dispatch;
+        dispatchRef.dispatch = onEnvelope as typeof dispatchRef.dispatch;
         return () => {};
       });
 
@@ -292,8 +292,8 @@ describe('transport realtime', () => {
       sessionEvents.domain('alpha').onEnvelope('ALPHA_READY', (e) => received.push(e.sessionId));
 
       await Promise.resolve();
-      dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-A', payload: {} });
-      dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-Z', payload: {} });
+      dispatchRef.dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-A', payload: {} });
+      dispatchRef.dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-Z', payload: {} });
 
       expect(received).toEqual(['session-A']);
       // domains list is preserved.
@@ -368,6 +368,8 @@ describe('transport realtime', () => {
     );
 
     const stop = await connector('agents', () => {});
+    expect(typeof stop).toBe('function');
+    if (typeof stop !== 'function') throw new Error('expected connector to return a stop function');
 
     // There should be exactly one instance created.
     expect(instances).toHaveLength(1);
@@ -402,19 +404,24 @@ describe('transport realtime', () => {
     );
 
     const stop = await connector('agents', (envelope) => payloads.push(envelope));
+    expect(typeof stop).toBe('function');
+    if (typeof stop !== 'function') throw new Error('expected connector to return a stop function');
     expect(instances).toHaveLength(1);
+    const firstInstance = instances[0];
+    expect(firstInstance).toBeDefined();
+    if (!firstInstance) throw new Error('expected a mock WebSocket instance');
 
     // Simulate one full connect + first successful message.
-    instances[0].simulateOpen();
+    firstInstance.simulateOpen();
     await settleEvents(0);
-    instances[0].simulateMessage(JSON.stringify({
+    firstInstance.simulateMessage(JSON.stringify({
       type: 'event',
       event: 'agents',
       payload: { type: 'AGENT_STARTED', sessionId: 's1', payload: { type: 'AGENT_STARTED', id: 'a1' } },
     }));
     // After message, reconnectAttempt should have reset: close and reconnect multiple times
     // without hitting the maxAttempts cap (they should all succeed since counter reset).
-    instances[0].simulateClose();
+    firstInstance.simulateClose();
     await settleEvents(0);
 
     expect(instances.length).toBeGreaterThanOrEqual(2);
@@ -449,6 +456,8 @@ describe('transport realtime', () => {
     await connector('agents', () => {});
     expect(instances).toHaveLength(1);
     const ws = instances[0];
+    expect(ws).toBeDefined();
+    if (!ws) throw new Error('expected a mock WebSocket instance');
 
     // Trigger onOpen, which starts async token resolution but doesn't resolve yet.
     ws.simulateOpen();

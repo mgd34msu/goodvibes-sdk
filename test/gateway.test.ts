@@ -85,7 +85,7 @@ describe('ControlPlaneGateway — end-to-end emit', () => {
 
     const received: Array<{ event: string; payload: unknown; id?: string }> = [];
     const send = (event: string, payload: unknown, id?: string): void => {
-      received.push({ event, payload, id });
+      received.push({ event, payload, ...(id !== undefined ? { id } : {}) });
     };
 
     const { clientId } = gateway.openWebSocketClient(
@@ -142,7 +142,7 @@ describe('ControlPlaneGateway — end-to-end emit', () => {
     // Message must be stored in listSurfaceMessages
     const stored = gateway.listSurfaceMessages();
     expect(stored.length).toBe(1);
-    expect(stored[0].id).toBe(msg.id);
+    expect(stored[0]!.id).toBe(msg.id);
   });
 
   test('openWebSocketClient sends ready event and registers the client', () => {
@@ -236,9 +236,10 @@ describe('ControlPlaneGateway — invariants', () => {
     gateway.publishEvent('third', { seq: 3 });
 
     const recent = gateway.listRecentEvents(3);
-    expect(recent[0].event).toBe('third');
-    expect(recent[1].event).toBe('second');
-    expect(recent[2].event).toBe('first');
+    expect(recent.length).toBe(3);
+    expect(recent[0]!.event).toBe('third');
+    expect(recent[1]!.event).toBe('second');
+    expect(recent[2]!.event).toBe('first');
   });
 
   test('recentEvents wraps correctly after ring buffer overflow', () => {
@@ -252,7 +253,7 @@ describe('ControlPlaneGateway — invariants', () => {
     const recent = gateway.listRecentEvents(CAPACITY);
     expect(recent.length).toBe(CAPACITY);
     // Most recent entry must have seq = CAPACITY + 9 (last written)
-    const newest = recent[0].payload as { seq: number };
+    const newest = recent[0]!.payload as { seq: number };
     expect(newest.seq).toBe(CAPACITY + 9);
   });
 
@@ -301,7 +302,8 @@ describe('ControlPlaneGateway — invariants', () => {
     expect(receivedA).toContain('targeted-private');
     expect(receivedB).not.toContain('targeted-private');
     const publicRecent = gateway.listRecentEvents().find((event) => event.event === 'targeted-private');
-    expect(publicRecent?.event).toBe('targeted-private');
-    expect('replayScope' in (publicRecent as Record<string, unknown>)).toBe(false);
+    expect(publicRecent).toBeDefined();
+    expect(publicRecent!.event).toBe('targeted-private');
+    expect('replayScope' in (publicRecent! as unknown as Record<string, unknown>)).toBe(false);
   });
 });

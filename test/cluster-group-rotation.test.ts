@@ -19,7 +19,6 @@ import {
   type GroupTestWorld,
 } from './cluster-group-harness.js';
 import { createGroup, joinGroup } from '../packages/sdk/src/platform/cluster/group-operations.js';
-import { advance } from './cluster-group-harness.js';
 import { ClusterCoordinator } from '../packages/sdk/src/platform/cluster/coordinator.js';
 import {
   adoptGroupKeys,

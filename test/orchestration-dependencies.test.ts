@@ -35,7 +35,7 @@ function proposalItem(o: Partial<ProposalWorkItem> & { id: string; title: string
 
 function makeProposal(items: ProposalWorkItem[]): PlanProposal {
   return {
-    id: 'prop', task: 'goal', strategy: 'parallel', rationale: 'r',
+    id: 'prop', task: 'goal', strategy: 'cohort', rationale: 'r',
     phases: [{ id: 'p', title: 'Execute', order: 1 }],
     workItems: items, createdAt: 1, source: 'planner-agent', decomposedBy: 'agent',
   };

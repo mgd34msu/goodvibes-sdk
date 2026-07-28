@@ -49,7 +49,7 @@ describe('platform/security — http-auth smoke', () => {
 
   test('authenticateOperatorToken checks shared tokens in constant-time path and falls through to sessions', () => {
     const userAuth = {
-      validateSession: (token: string) => token === 'session-token' ? { username: 'alice' } : null,
+      validateSession: (token: string) => token === 'session-token' ? { token, username: 'alice', expiresAt: Date.now() + 3_600_000 } : null,
       getUser: (username: string) => username === 'alice'
         ? { username: 'alice', roles: ['admin'] as const }
         : null,

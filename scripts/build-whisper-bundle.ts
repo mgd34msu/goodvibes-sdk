@@ -51,7 +51,9 @@ function platformKey(): string {
 }
 
 async function run(cmd: string[], cwd?: string): Promise<void> {
-  const proc = Bun.spawn(cmd, { cwd, stdout: 'inherit', stderr: 'inherit' });
+  // `cwd` is optional on SpawnOptions and exactOptionalPropertyTypes forbids
+  // passing it as explicitly undefined.
+  const proc = Bun.spawn(cmd, { ...(cwd !== undefined ? { cwd } : {}), stdout: 'inherit', stderr: 'inherit' });
   const code = await proc.exited;
   if (code !== 0) throw new Error(`${cmd.join(' ')} failed (exit ${code})`);
 }

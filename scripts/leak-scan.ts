@@ -21,18 +21,26 @@
  * `scripts/test.ts`, leaking the same way a signal-killed run does.
  */
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, readdirSync, rmSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { readdirSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { sweepStaleTmpDirs } from './stale-tmp-sweep.ts';
-import { makeRunTmpDirName, RUN_TMP_PREFIX, STALE_RUN_MS, testTmpEnv, TEST_TMP_ROOT } from './test-run-tmp.ts';
+import {
+  makeRunTmpDirName,
+  RUN_TMP_PREFIX,
+  RUNNER_ENV_FLAG,
+  STALE_RUN_MS,
+  testTmpEnv,
+  TEST_TMP_ROOT,
+  withRunTmpDir,
+} from './test-run-tmp.ts';
 import { withWorkspaceLock } from './workspace-lock.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SDK_ROOT = resolve(__dirname, '..');
 const args = process.argv.slice(2);
-const RUN_TMP_DIR = join(TEST_TMP_ROOT, makeRunTmpDirName());
+const RUN_TMP_DIR_NAME = makeRunTmpDirName();
 
 function defaultTestArgs(): readonly string[] {
   const testRoot = resolve(SDK_ROOT, 'test');
@@ -57,11 +65,14 @@ function defaultTestArgs(): readonly string[] {
 const testArgs = args.length > 0 ? args : defaultTestArgs();
 const reportPath = process.env.GOODVIBES_LEAK_REPORT ?? resolve(SDK_ROOT, '.tmp/leak-report.json');
 
-await withWorkspaceLock('leak-scan', () => {
+await withWorkspaceLock('leak-scan', async () => {
   sweepStaleTmpDirs(TEST_TMP_ROOT, RUN_TMP_PREFIX, STALE_RUN_MS);
-  rmSync(RUN_TMP_DIR, { recursive: true, force: true });
-  mkdirSync(RUN_TMP_DIR, { recursive: true });
-  try {
+  // Removal is inside withRunTmpDir's `finally`, so every exit path — including
+  // a failing suite — takes this run's temp tree with it, exactly like
+  // scripts/test.ts. Both entry points share that one lifecycle rather than
+  // each keeping a copy, so test/test-tmp-containment.test.ts drives the real
+  // one.
+  await withRunTmpDir(TEST_TMP_ROOT, (runTmpDir) => {
     const result = spawnSync(
       'bun',
       ['test', '--preload', './test/_helpers/leak-detector.ts', ...testArgs],
@@ -70,7 +81,11 @@ await withWorkspaceLock('leak-scan', () => {
         stdio: 'inherit',
         env: {
           ...process.env,
-          ...testTmpEnv(RUN_TMP_DIR),
+          ...testTmpEnv(runTmpDir),
+          // Sibling of the spread, not part of it — see RUNNER_ENV_FLAG in
+          // scripts/test-run-tmp.ts. This entry point contains temp the same
+          // way scripts/test.ts does, so the guard test asserts it here too.
+          [RUNNER_ENV_FLAG]: '1',
           GOODVIBES_LEAK_DETECT: '1',
           GOODVIBES_LEAK_REPORT: reportPath,
         },
@@ -80,9 +95,5 @@ await withWorkspaceLock('leak-scan', () => {
     if (result.status !== 0) {
       console.log(`(suite exited ${result.status ?? 'null'} — leak data above is still valid)`);
     }
-  } finally {
-    // Every exit path, including a failing suite: this run's temp tree goes
-    // with this run, exactly like scripts/test.ts.
-    rmSync(RUN_TMP_DIR, { recursive: true, force: true });
-  }
+  }, RUN_TMP_DIR_NAME);
 });

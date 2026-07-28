@@ -29,7 +29,14 @@ import { summarizeError } from '../utils/error-display.js';
 
 export interface CiWatchServiceDeps {
   readonly source: CiStatusSource;
-  readonly store: CiWatchStore;
+  /**
+   * `load` and `save` are the only members CiWatchService calls. Declared as
+   * the whole class, every test double had to be cast through `unknown` —
+   * CiWatchStore has a private field, so no object literal is structurally
+   * assignable to it — and the casts then accepted doubles carrying members the
+   * class does not have.
+   */
+  readonly store: Pick<CiWatchStore, 'load' | 'save'>;
   /** Delivers the completion notification to the subscription's channel (optional in tests). */
   readonly notifier?: CiNotifier | undefined;
   /** Starts the opt-in fix-session; absent → the trigger is recorded but not started. */

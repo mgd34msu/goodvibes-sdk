@@ -103,6 +103,17 @@ function makeCountingMemoryRegistry(records: MemoryRecord[]) {
         counters.getAllCalls += 1;
         return records;
       },
+      searchSemantic: () => [],
+      vectorStats: () => ({
+        backend: 'sqlite-vec' as const,
+        enabled: false,
+        available: false,
+        path: '',
+        dimensions: 0,
+        indexedRecords: 0,
+        embeddingProviderId: 'none',
+        embeddingProviderLabel: 'none',
+      }),
     },
     counters,
   };
@@ -122,12 +133,13 @@ const FAKE_MODEL: ModelDefinition = {
 function makeProviderRegistry(
   provider: LLMProvider,
   contextWindow = 0,
-): Pick<ProviderRegistry, 'getCurrentModel' | 'getForModel' | 'listModels' | 'getContextWindowForModel'> {
+): Pick<ProviderRegistry, 'getCurrentModel' | 'getForModel' | 'listModels' | 'getContextWindowForModel' | 'recordContextWindowRejection'> {
   return {
     getCurrentModel: () => FAKE_MODEL,
     getForModel: () => provider,
     listModels: () => [FAKE_MODEL],
     getContextWindowForModel: () => contextWindow,
+    recordContextWindowRejection: () => {},
   };
 }
 
@@ -186,8 +198,8 @@ function makeRegistryDeps(record: AgentRecord, messageBus: Pick<AgentMessageBus,
     watcherRegistry: { list: () => [], stopWatcher: () => null },
     workflow: {
       workflowManager: { list: () => [], cancel: () => false },
-      triggerManager: { list: () => [], remove: () => false, disable: () => false },
-      scheduleManager: { list: () => [], remove: () => false, disable: () => false },
+      triggerManager: { list: () => [], remove: () => false, disable: () => false, enable: () => false },
+      scheduleManager: { list: () => [], remove: () => false, disable: () => false, enable: () => false },
     },
     messageBus,
   };

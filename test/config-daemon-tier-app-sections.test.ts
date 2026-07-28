@@ -90,7 +90,12 @@ describe('a ConfigManager constructed over a daemon tier holding app-layer keys'
     expect(manager).toBeDefined();
     // And the daemon's value is the one that answers, which is the whole point
     // of the tier: a surface stored it, the daemon reads it back.
-    expect(manager.get('email.imapHost' as never)).toBe('imap.gmail.com');
-    expect(manager.get('email.enabled' as never)).toBe(true);
+    // 'email.*' is an app-layer section, not a CONFIG_SCHEMA key — `get()`'s
+    // generic signature has no ConfigKey literal for it, so the key is cast to
+    // `never` (the only type assignable to every `K extends ConfigKey`) and the
+    // resulting `ConfigValue<never>` (itself `never`) is widened to `unknown`
+    // before asserting, rather than casting to a specific expected shape.
+    expect(manager.get('email.imapHost' as never) as unknown).toBe('imap.gmail.com');
+    expect(manager.get('email.enabled' as never) as unknown).toBe(true);
   });
 });

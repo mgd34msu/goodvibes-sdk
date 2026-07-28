@@ -24,6 +24,7 @@ import type {
   HomeGraphKnowledgeTarget,
   HomeGraphNodeKind,
   HomeGraphObjectInput,
+  HomeGraphObjectInputSource,
   HomeGraphObjectKind,
   HomeGraphSpaceInput,
 } from './types.js';
@@ -283,7 +284,7 @@ export function readHomeAssistantMetadataString(
 
 export function normalizeHomeGraphObjectInput(
   kind: HomeGraphObjectKind | HomeGraphNodeKind,
-  value: HomeGraphObjectInput | Record<string, unknown>,
+  value: HomeGraphObjectInputSource | Record<string, unknown>,
 ): HomeGraphObjectInput {
   const raw = readRecord(value);
   const attributes = readRecord(raw.attributes);

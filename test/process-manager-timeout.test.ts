@@ -29,7 +29,7 @@ describe('ProcessManager.spawn', () => {
 
     await waitFor(() => {
       const status = pm.getStatus(id);
-      return status === null || status.done === true;
+      return status === undefined || status.done === true;
     });
 
     const status = pm.getStatus(id);
@@ -51,11 +51,11 @@ describe('ProcessManager.spawn', () => {
 
     await waitFor(() => {
       const status = pm.getStatus(id);
-      return status === null || status.killDeadline !== null;
+      return status === undefined || status.killDeadline !== null;
     }, { timeoutMs: 500 });
 
     const status = pm.getStatus(id);
-    expect(status === null || status.killDeadline !== null).toBe(true);
+    expect(status === undefined || status.killDeadline !== null).toBe(true);
     if (status) expect(status.killDeadline!).toBeGreaterThan(before);
   }, 2000);
 
@@ -68,7 +68,7 @@ describe('ProcessManager.spawn', () => {
     const list = JSON.parse(listResult!.stdout) as Array<{ id: string; status: string }>;
     expect(list.length).toBeGreaterThanOrEqual(1);
 
-    const id = list[0].id;
+    const id = list[0]!.id;
     const statusResult = pm.handleCommand(`bg_status ${id}`);
     expect(statusResult).not.toBeNull();
     expect(statusResult!.success).toBe(true);

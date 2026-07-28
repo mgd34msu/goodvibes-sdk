@@ -76,7 +76,7 @@ function withTempStore<T>(fn: (storePath: string) => Promise<T>): Promise<T> {
 describe('SurfaceKind unification', () => {
   test('canonical SURFACE_KINDS = transport ∪ product, with the four product surfaces', () => {
     expect(SURFACE_KINDS).toEqual([...TRANSPORT_SURFACE_KINDS, ...PRODUCT_SURFACE_KINDS]);
-    for (const product of ['agent', 'webui', 'companion', 'automation']) {
+    for (const product of PRODUCT_SURFACE_KINDS) {
       expect(SURFACE_KINDS).toContain(product);
     }
     // Transport list stays strict (route bindings never bind product surfaces).
@@ -199,7 +199,7 @@ describe('sessions.register — idempotency + heartbeat + honest closed semantic
       await broker.register({ sessionId: 'reg-2', participant: participant('agent', 'surf:a', 'user-1') });
       const merged = await broker.register({ sessionId: 'reg-2', participant: participant('webui', 'surf:w', 'user-2') });
       expect(merged.record.participants).toHaveLength(2);
-      expect(merged.record.surfaceKinds.sort()).toEqual(['agent', 'webui']);
+      expect([...merged.record.surfaceKinds].sort()).toEqual(['agent', 'webui']);
     });
   });
 

@@ -232,7 +232,9 @@ describe('WorkspaceSwapManager', () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.code).toBe('WORKSPACE_BUSY');
-      expect(result.retryAfter).toBe(5);
+      if (result.code === 'WORKSPACE_BUSY') {
+        expect(result.retryAfter).toBe(5);
+      }
     }
     // Working dir unchanged
     expect(mgr.getCurrentWorkingDir()).toBe(baseDir);

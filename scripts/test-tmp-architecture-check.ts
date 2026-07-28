@@ -1,7 +1,7 @@
 /**
  * Guards the two properties that keep test/build temp directories from
  * leaking into the real `/tmp` the way they did before scripts/test.ts's
- * TMPDIR redirection existed (see that file's RUN_TMP_DIR comment for the
+ * TMPDIR redirection existed (see that file's RUN_TMP_DIR_NAME comment for the
  * incident — ~74k leaked directories consumed every tmpfs inode on this
  * project's own host and every subsequent test failed with ENOSPC).
  *
@@ -61,7 +61,7 @@ function checkPackageJsonScripts(packageJsonPath: string): void {
       failures.push(
         `${rel}: scripts.${name} invokes \`bun test\` directly ("${command}") — route it through ` +
           `\`bun scripts/test.ts\` (or an existing wrapper script like \`test:rn\`) so TMPDIR redirection ` +
-          `and the stale-run sweep apply. See scripts/test.ts's RUN_TMP_DIR comment.`,
+          `and the stale-run sweep apply. See scripts/test.ts's RUN_TMP_DIR_NAME comment.`,
       );
     }
   }

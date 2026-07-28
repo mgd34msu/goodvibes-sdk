@@ -27,7 +27,7 @@ function makeRequest(method: string, url: string, body?: unknown): Request {
   return new Request(url, {
     method,
     headers: body ? { 'content-type': 'application/json' } : {},
-    body: body ? JSON.stringify(body) : undefined,
+    ...(body ? { body: JSON.stringify(body) } : {}),
   });
 }
 
@@ -42,6 +42,12 @@ interface MockSessionRecord {
   messageCount: number;
 }
 
+type SubmitMessageInput = Parameters<DaemonRuntimeRouteContext['sessionBroker']['submitMessage']>[0];
+type SteerMessageInput = Parameters<DaemonRuntimeRouteContext['sessionBroker']['steerMessage']>[0];
+type FollowUpMessageInput = Parameters<DaemonRuntimeRouteContext['sessionBroker']['followUpMessage']>[0];
+type CreateSessionInput = Parameters<DaemonRuntimeRouteContext['sessionBroker']['createSession']>[0];
+type TrySpawnAgentInput = Parameters<DaemonRuntimeRouteContext['trySpawnAgent']>[0];
+
 /**
  * Builds a minimal DaemonRuntimeRouteContext sufficient for session message routing tests.
  */
@@ -50,6 +56,7 @@ function makeContext(opts: {
   bindAgentCallCount?: { value: number };
   followupEvents?: FollowupPayload[];
   appendCompanionCallCount?: { value: number };
+  publishConversationFollowup?: DaemonRuntimeRouteContext['publishConversationFollowup'];
 }): DaemonRuntimeRouteContext {
   const sessions = opts.sessions ?? new Map<string, MockSessionRecord>();
   const bindAgentCallCount = opts.bindAgentCallCount ?? { value: 0 };
@@ -57,14 +64,14 @@ function makeContext(opts: {
   const appendCompanionCallCount = opts.appendCompanionCallCount ?? { value: 0 };
 
   return {
-    parseJsonBody: async (req) => {
+    parseJsonBody: async (req: Request) => {
       try {
         return await req.json() as Record<string, unknown>;
       } catch {
         return new Response('Bad JSON', { status: 400 });
       }
     },
-    parseOptionalJsonBody: async (req) => {
+    parseOptionalJsonBody: async (req: Request) => {
       const text = await req.text();
       if (!text) return null;
       try {
@@ -73,11 +80,11 @@ function makeContext(opts: {
         return new Response('Bad JSON', { status: 400 });
       }
     },
-    recordApiResponse: (_req, _path, response) => response,
+    recordApiResponse: (_req: Request, _path: string, response: Response) => response,
     requireAdmin: () => null,
     sessionBroker: {
       start: async () => {},
-      submitMessage: async (input) => {
+      submitMessage: async (input: SubmitMessageInput) => {
         const sessionId = input.sessionId ?? randomUUID();
         const session: MockSessionRecord = sessions.get(sessionId) ?? {
           id: sessionId,
@@ -95,7 +102,7 @@ function makeContext(opts: {
           userMessage: null,
         };
       },
-      steerMessage: async (input) => {
+      steerMessage: async (input: SteerMessageInput) => {
         const sessionId = input.sessionId ?? randomUUID();
         const session: MockSessionRecord = sessions.get(sessionId) ?? {
           id: sessionId,
@@ -113,7 +120,7 @@ function makeContext(opts: {
           userMessage: null,
         };
       },
-      followUpMessage: async (input) => {
+      followUpMessage: async (input: FollowUpMessageInput) => {
         const sessionId = input.sessionId ?? randomUUID();
         const session: MockSessionRecord = sessions.get(sessionId) ?? {
           id: sessionId,
@@ -134,12 +141,12 @@ function makeContext(opts: {
       bindAgent: async () => {
         bindAgentCallCount.value += 1;
       },
-      createSession: async (input) => ({ id: input.id ?? randomUUID() }),
-      getSession: (sessionId) => sessions.get(sessionId) ?? null,
+      createSession: async (input: CreateSessionInput) => ({ id: input.id ?? randomUUID() }),
+      getSession: (sessionId: string) => sessions.get(sessionId) ?? null,
       getMessages: () => [],
       getInputs: () => [],
-      closeSession: async (sessionId) => sessions.get(sessionId) ?? null,
-      reopenSession: async (sessionId) => sessions.get(sessionId) ?? null,
+      closeSession: async (sessionId: string) => sessions.get(sessionId) ?? null,
+      reopenSession: async (sessionId: string) => sessions.get(sessionId) ?? null,
       cancelInput: async () => null,
       completeAgent: async () => {},
       appendCompanionMessage: async () => { appendCompanionCallCount.value += 1; return null; },
@@ -161,14 +168,14 @@ function makeContext(opts: {
       setEnabled: async () => null,
       runNow: async () => ({ id: randomUUID(), status: 'running' }),
     },
-    normalizeAtSchedule: (at) => at,
-    normalizeEverySchedule: (interval) => interval,
-    normalizeCronSchedule: (expr) => expr,
+    normalizeAtSchedule: (at: number) => at,
+    normalizeEverySchedule: (interval: string | number) => interval,
+    normalizeCronSchedule: (expr: string) => expr,
     routeBindings: {
       start: async () => {},
       getBinding: () => undefined,
     },
-    trySpawnAgent: (_input) => ({
+    trySpawnAgent: (_input: TrySpawnAgentInput) => ({
       id: randomUUID(),
       status: 'running',
       task: 'test-task',
@@ -182,10 +189,13 @@ function makeContext(opts: {
     configManager: { get: () => undefined },
     runtimeStore: null,
     runtimeDispatch: null,
-    publishConversationFollowup: (sessionId, envelope) => {
+    publishConversationFollowup: opts.publishConversationFollowup ?? ((
+      sessionId: string,
+      envelope: Omit<ConversationMessageEnvelope, 'sessionId'>,
+    ) => {
       followupEvents.push({ sessionId, envelope } as FollowupPayload);
-    },
-    openSessionEventStream: (_req, _sessionId) => new Response('stream', { status: 200 }),
+    }),
+    openSessionEventStream: (_req: Request, _sessionId: string) => new Response('stream', { status: 200 }),
   } as unknown as DaemonRuntimeRouteContext;
 }
 
@@ -317,7 +327,7 @@ describe('message routing: kind=message persists and emits runtime bus event (no
     );
     await handlers.postSharedSessionMessage(sessionId, req);
     expect(followupEvents).toHaveLength(1);
-    expect(followupEvents[0].sessionId).toBe(sessionId);
+    expect(followupEvents[0]!.sessionId).toBe(sessionId);
   });
 
   test('emitted envelope has valid ConversationMessageEnvelope shape with source=companion-followup', async () => {
@@ -332,7 +342,7 @@ describe('message routing: kind=message persists and emits runtime bus event (no
     const event = followupEvents[0];
     expect(event).not.toBeUndefined(); // presence-only: array element existence
     // Structural check: all required fields of ConversationMessageEnvelope are present
-    const envelope = event.envelope as ConversationMessageEnvelope;
+    const envelope = event!.envelope as ConversationMessageEnvelope;
     expect(typeof envelope.messageId).toBe('string');
     expect(typeof envelope.body).toBe('string');
     expect(envelope.body).toBe('Test message body');
@@ -364,7 +374,8 @@ describe('message routing: kind=message persists and emits runtime bus event (no
     );
     const res = await handlers.postSharedSessionMessage(sessionId, req);
     expect(res.status).toBe(202);
-    const envelope = followupEvents[0].envelope as ConversationMessageEnvelope;
+    expect(followupEvents).toHaveLength(1);
+    const envelope = followupEvents[0]!.envelope as ConversationMessageEnvelope;
     expect(envelope.metadata?.surfaceKind).toBe('webui');
     expect(envelope.metadata?.surfaceId).toBe('goodvibes-webui');
     expect(envelope.metadata?.routing).toEqual({
@@ -386,7 +397,8 @@ describe('message routing: kind=message persists and emits runtime bus event (no
       { body: 'Scoped message', kind: 'message' },
     );
     await handlers.postSharedSessionMessage(sessionId, req);
-    expect(followupEvents[0].sessionId).toBe(sessionId);
+    expect(followupEvents).toHaveLength(1);
+    expect(followupEvents[0]!.sessionId).toBe(sessionId);
   });
 
   test('returns 404 for unknown session', async () => {
@@ -491,13 +503,12 @@ describe('gateway scoping: only TUI clients receive followup events', () => {
 
     // Wire publishConversationFollowup to call fakePublishEvent with { clientKind: 'tui' },
     // matching router.ts in production.
-    const ctx = makeContext({ sessions });
-    (ctx as Record<string, unknown>).publishConversationFollowup = (
-      sid: string,
-      envelope: Omit<import('../packages/sdk/src/platform/control-plane/conversation-message.js').ConversationMessageEnvelope, 'sessionId'>,
-    ) => {
-      fakePublishEvent('conversation.followup.companion', { sessionId: sid, ...envelope }, { clientKind: 'tui' });
-    };
+    const ctx = makeContext({
+      sessions,
+      publishConversationFollowup: (sid, envelope) => {
+        fakePublishEvent('conversation.followup.companion', { sessionId: sid, ...envelope }, { clientKind: 'tui' });
+      },
+    });
 
     const handlers = createDaemonRuntimeSessionRouteHandlers(ctx);
     const req = makeRequest(
@@ -510,7 +521,7 @@ describe('gateway scoping: only TUI clients receive followup events', () => {
 
     // TUI subscriber received the conversation.followup.companion event
     expect(tuiClient.received).toHaveLength(1);
-    expect(tuiClient.received[0].event).toBe('conversation.followup.companion');
+    expect(tuiClient.received[0]!.event).toBe('conversation.followup.companion');
 
     // Non-TUI (companion) subscriber received NOTHING — filter excluded it
     expect(companionClient.received).toHaveLength(0);
@@ -547,13 +558,13 @@ describe('gateway scoping: only TUI clients receive followup events', () => {
 
     // Session A context received the event
     expect(followupEventsA).toHaveLength(1);
-    expect(followupEventsA[0].sessionId).toBe(sessionIdA);
+    expect(followupEventsA[0]!.sessionId).toBe(sessionIdA);
 
     // Session B context (different subscriber) received zero events
     expect(followupEventsB).toHaveLength(0);
 
     // Confirm no cross-session contamination: the event sessionId is A, not B
-    expect(followupEventsA[0].sessionId).not.toBe(sessionIdB);
+    expect(followupEventsA[0]!.sessionId).not.toBe(sessionIdB);
 
     // Confirm ctxB handlers for session B would produce their own isolated events
     const handlersB = createDaemonRuntimeSessionRouteHandlers(ctxB);
@@ -564,7 +575,7 @@ describe('gateway scoping: only TUI clients receive followup events', () => {
     );
     await handlersB.postSharedSessionMessage(sessionIdB, reqB);
     expect(followupEventsB).toHaveLength(1);
-    expect(followupEventsB[0].sessionId).toBe(sessionIdB);
+    expect(followupEventsB[0]!.sessionId).toBe(sessionIdB);
     // A still has only 1 event (no bleed from B)
     expect(followupEventsA).toHaveLength(1);
   });
@@ -596,7 +607,7 @@ describe('body size handling', () => {
     // Route handler accepts it — no size limit enforced at this layer
     expect(res.status).toBe(202);
     expect(followupEvents).toHaveLength(1);
-    expect(followupEvents[0].envelope.body).toBe(oversizedBody);
+    expect(followupEvents[0]!.envelope.body).toBe(oversizedBody);
   });
 });
 

@@ -1,0 +1,49 @@
+{
+  // The EMIT solution: the eleven workspace packages and nothing else.
+  //
+  // tsconfig.json additionally references ./tsconfig.tests.json so that
+  // `tsc -b` typechecks test/ and scripts/ — but that project emits nothing and
+  // has no dist to sweep, and a red test tree must not stop the packages from
+  // building. scripts/build.ts therefore builds THIS config, while
+  // scripts/typecheck.ts builds the full solution.
+  "compilerOptions": {
+    "types": [],
+    "noEmit": true
+  },
+  "files": [],
+  "references": [
+    {
+      "path": "./packages/contracts"
+    },
+    {
+      "path": "./packages/errors"
+    },
+    {
+      "path": "./packages/daemon-sdk"
+    },
+    {
+      "path": "./packages/transport-core"
+    },
+    {
+      "path": "./packages/transport-http"
+    },
+    {
+      "path": "./packages/transport-realtime"
+    },
+    {
+      "path": "./packages/operator-sdk"
+    },
+    {
+      "path": "./packages/peer-sdk"
+    },
+    {
+      "path": "./packages/sdk"
+    },
+    {
+      "path": "./packages/terminal-shell"
+    },
+    {
+      "path": "./packages/toolchain"
+    }
+  ]
+}

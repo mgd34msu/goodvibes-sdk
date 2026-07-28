@@ -12,8 +12,13 @@ import { RuntimeEventBus, createEventEnvelope } from '../packages/sdk/src/platfo
 import type { SessionEvent } from '../packages/sdk/src/events/session.js';
 
 function makeEnvelope() {
-  const payload = { type: 'SESSION_CREATED', sessionId: 'sess-async-event-bus' } as SessionEvent;
-  return createEventEnvelope('SESSION_CREATED', payload, {
+  const payload: SessionEvent = {
+    type: 'SESSION_STARTED',
+    sessionId: 'sess-async-event-bus',
+    profileId: 'default',
+    workingDir: '/tmp/async-event-bus',
+  };
+  return createEventEnvelope('SESSION_STARTED', payload, {
     sessionId: 'sess-async-event-bus',
     traceId: 'async-event-bus',
     source: 'test',
@@ -25,7 +30,7 @@ describe('RuntimeEventBus async dispatch via queueMicrotask', () => {
     const bus = new RuntimeEventBus();
     let fired = false;
 
-    bus.on<SessionEvent>('SESSION_CREATED', () => {
+    bus.on<SessionEvent>('SESSION_STARTED', () => {
       fired = true;
     });
 
@@ -39,7 +44,7 @@ describe('RuntimeEventBus async dispatch via queueMicrotask', () => {
     const bus = new RuntimeEventBus();
     let fired = false;
 
-    bus.on<SessionEvent>('SESSION_CREATED', () => {
+    bus.on<SessionEvent>('SESSION_STARTED', () => {
       fired = true;
     });
 
@@ -54,17 +59,17 @@ describe('RuntimeEventBus async dispatch via queueMicrotask', () => {
     const received: string[] = [];
 
     // First subscriber throws
-    bus.on<SessionEvent>('SESSION_CREATED', () => {
+    bus.on<SessionEvent>('SESSION_STARTED', () => {
       throw new Error('subscriber-crash');
     });
 
     // Second subscriber records receipt
-    bus.on<SessionEvent>('SESSION_CREATED', () => {
+    bus.on<SessionEvent>('SESSION_STARTED', () => {
       received.push('second');
     });
 
     // Third subscriber also records receipt
-    bus.on<SessionEvent>('SESSION_CREATED', () => {
+    bus.on<SessionEvent>('SESSION_STARTED', () => {
       received.push('third');
     });
 
@@ -97,9 +102,9 @@ describe('RuntimeEventBus async dispatch via queueMicrotask', () => {
     const bus = new RuntimeEventBus();
     const order: number[] = [];
 
-    bus.on<SessionEvent>('SESSION_CREATED', () => order.push(1));
-    bus.on<SessionEvent>('SESSION_CREATED', () => order.push(2));
-    bus.on<SessionEvent>('SESSION_CREATED', () => order.push(3));
+    bus.on<SessionEvent>('SESSION_STARTED', () => order.push(1));
+    bus.on<SessionEvent>('SESSION_STARTED', () => order.push(2));
+    bus.on<SessionEvent>('SESSION_STARTED', () => order.push(3));
 
     bus.emit('session', makeEnvelope());
     // Three microtasks to drain

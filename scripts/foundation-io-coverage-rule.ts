@@ -20,14 +20,17 @@ export function parseMapKeys(fileText: string, mapName: string): Set<string> {
   const body = fileText.slice(start, end === -1 ? undefined : end);
   const keys = new Set<string>();
   for (const match of body.matchAll(/^ {2}"([^"]+)":/gm)) {
-    keys.add(match[1]);
+    const key = match[1];
+    if (key !== undefined) keys.add(key);
   }
   return keys;
 }
 
 /** Extract the dotted ids from the generated operator-method-ids.ts source. */
 export function parseMethodIds(idsFileText: string): string[] {
-  return [...idsFileText.matchAll(/^ {2}"([^"]+)",/gm)].map((m) => m[1]);
+  return [...idsFileText.matchAll(/^ {2}"([^"]+)",/gm)]
+    .map((m) => m[1])
+    .filter((id): id is string => id !== undefined);
 }
 
 /**
