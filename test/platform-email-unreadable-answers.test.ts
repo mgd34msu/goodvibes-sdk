@@ -23,6 +23,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { createServer, connect, type Server, type Socket } from 'node:net';
 import { EmailService } from '../packages/sdk/src/platform/email/email-service.ts';
+import { createServiceBackedGateway } from '../packages/sdk/src/platform/control-plane/routes/email-composition.ts';
 import {
   testDescribeSenderClaim,
   throwingEmailTransport,
@@ -338,5 +339,46 @@ describe('a `{0}` header section is an empty answer, not a missing message', () 
 
     expect(result.messages.find((message) => message.uid === 103)?.subject).toBe('Message 103');
     expect(result.messages.find((message) => message.uid === 101)?.from).toBe('sender101@sender.test');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The wire verb
+// ---------------------------------------------------------------------------
+
+describe('email.inbox.list carries the fact over the wire, not just in-process', () => {
+  test('the gateway passes unreadable through, so a remote caller can see it too', async () => {
+    // The SDK-side field is only half the fix: `email.inbox.list` is served to
+    // callers that never touch `EmailService`, and a schema that advertises the
+    // field while the handler drops it would be worse than not having it.
+    fake = await startFakeImap({ present: [101, 102, 103], headerless: [102] });
+    const gateway = createServiceBackedGateway(buildService(fake.port));
+
+    const result = await gateway.listInbox({ unreadOnly: false, limit: 10 });
+
+    expect(result.messages.map((message) => message.uid)).toEqual([103, 101]);
+    expect(result.total).toBe(3);
+    expect(result.unreadable).toHaveLength(1);
+    expect(result.unreadable?.[0]?.uid).toBe(102);
+  });
+
+  test('a whole page sends no unreadable key at all', async () => {
+    fake = await startFakeImap({ present: [101, 102], headerless: [] });
+    const gateway = createServiceBackedGateway(buildService(fake.port));
+
+    const result = await gateway.listInbox({ unreadOnly: false, limit: 10 });
+
+    expect(result.unreadable).toBeUndefined();
+    expect('unreadable' in result).toBe(false);
+  });
+
+  test('an unreadable single message is NOT reported to the caller as a 404', async () => {
+    // `readMessage` answering null here made the handler raise NOT_FOUND with
+    // "it may have been moved or deleted since it was listed" — a false
+    // statement about a message that is sitting in the mailbox.
+    fake = await startFakeImap({ present: [101, 102], headerless: [102] });
+    const gateway = createServiceBackedGateway(buildService(fake.port));
+
+    await expect(gateway.readMessage(102)).rejects.toMatchObject({ code: 'EMAIL_REQUEST_FAILED' });
   });
 });

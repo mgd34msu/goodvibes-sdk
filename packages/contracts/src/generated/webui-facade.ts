@@ -8090,7 +8090,13 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "messageId": "sample"
         }
       ],
-      "total": 0
+      "total": 0,
+      "unreadable": [
+        {
+          "uid": 0,
+          "detail": "sample"
+        }
+      ]
     }
   },
   "email.inbox.read": {

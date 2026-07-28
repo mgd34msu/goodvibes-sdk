@@ -5916,7 +5916,13 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           "messageId": "sample"
         }
       ],
-      "total": 0
+      "total": 0,
+      "unreadable": [
+        {
+          "uid": 0,
+          "detail": "sample"
+        }
+      ]
     }
   },
   "email.inbox.read": {
