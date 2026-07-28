@@ -94,7 +94,7 @@ export interface InboundMailContext {
   readonly configManager: { get(key: string): unknown };
   readonly secretsManager?: Pick<SecretsManager, 'get' | 'getGlobalHome'> | undefined;
   readonly transport: EmailTransportPort;
-  readonly expectations: VerificationExpectationBook;
+  readonly expectations: ExpectationMatcher;   // NOT the book — see below
   readonly records: InboundMailStore;
   readonly cursors: MailboxCursorStore;
   readonly deliverOwnerNotice: (text: string) => Promise<SurfaceNoticeDelivery>;
@@ -104,7 +104,31 @@ export interface InboundMailContext {
 
 There is no `trySpawnAgent` to call, no `sessionBroker` to submit to, and no
 `queueSurfaceReplyFromBinding` to reply through. The compiler rejects the call,
-not a reviewer. Three tests hold the line: a runtime own-property assertion (so
+not a reviewer.
+
+**The same narrowing applies to expectations, and my first draft got it wrong.**
+It handed the inbound path the whole `VerificationExpectationBook`. That book
+carries `openExpectation`, and now also `hydrateExpectation` — two methods that
+insert. Holding it would make inbound code structurally able to register an
+expectation, which is precisely what §2 forbids and precisely the mistake this
+section refuses to allow for `trySpawnAgent`. Same principle, and it nearly went
+through on the very rule the round exists to enforce.
+
+So the inbound path holds a match-only view:
+
+```ts
+export interface ExpectationMatcher {
+  matchCandidate(input: VerificationMatchInput): VerificationMatchResult;
+  // deliberately absent: openExpectation, hydrateExpectation,
+  // and every other method that inserts, widens or extends.
+}
+```
+
+`VerificationExpectationBook` satisfies this structurally, so nothing is
+wrapped or duplicated — the watcher simply cannot name what it does not hold.
+`hydrateExpectation` is boot-only: the wiring calls it from the store's recovery
+sweep, never the watcher. Enforced by a type-level test and by a source-level
+test that no file under `platform/email/inbound/` mentions either method. Three tests hold the line: a runtime own-property assertion (so
 a later widening is caught even if it type-checks), a type-level test asserting
 `InboundMailContext` is not assignable from anything carrying a spawn field, and
 a source-level test asserting no file under `platform/email/inbound/` references
@@ -341,6 +365,124 @@ Correctness details that are easy to get wrong and are therefore specified:
   refreshed) and then stops, reports `failed` with the reason, and waits for a
   configuration change. Retrying a bad password on a backoff loop is how an
   account gets locked.
+- **A timeout is not a rejection.** A `LOGIN` that is never answered is a
+  network stall, not a bad credential, and classifying it by the phase it
+  timed out in would make it terminal and stop the watcher retrying forever.
+  Terminal classification is reserved for an actual server refusal (`NO` /
+  `BAD`) and for a credential string that cannot be sent at all.
+- **A terminal state is announced, not merely recorded.** A watcher that stops
+  permanently because the credential was genuinely rejected says so on an
+  authoritative channel, naming the exact step to fix it. Silent permanent
+  death is the failure this entire round exists to eliminate: an inbox that
+  looks quiet while verification mail piles up behind a locked door.
+
+### 3.4c Credentials are read at daemon scope
+
+The watcher runs in the daemon, so it reads credentials at **daemon scope**,
+and it does not fall back to a surface-local store.
+
+This is not hypothetical. The owner hit a live failure where the daemon
+reported no email capability at all, because `/google adopt` in the agent wrote
+credentials to the agent's own secret store while the daemon reads a different
+one. A separate round is fixing that generally — a credential the daemon needs
+is written at daemon scope regardless of which surface captured it.
+
+A fallback that searches a surface-local store would paper over exactly that
+bug, and would do it invisibly: the daemon would work on the machine where the
+agent happened to run and fail everywhere else, for reasons nobody could see.
+So a credential absent at daemon scope is a **capability failure with a named
+reason** (§3.4a), reported as such, not a cue to go looking elsewhere.
+
+### 3.4a Capability sufficiency is a precondition, not a Gmail detail
+
+A defect caught in review generalizes into a rule for the whole inbound path,
+so it is stated here rather than left in one module.
+
+The Gmail delta path originally gated on scopes that authorize
+`users.history.list` — a set that includes `gmail.metadata`. Google's scope
+documentation describes that scope as *"View your email message metadata such as
+labels and headers, but not the email body."* So a metadata-only token passed
+the gate, the call succeeded, and the result was `ok: true` with every body
+empty. **A success indistinguishable from a real one is the worst shape a defect
+can take in a delivery path**, and it is worse here than almost anywhere,
+because the mailbox going quiet is exactly what a working mailbox looks like on
+a slow day.
+
+The rule:
+
+> A connection that authenticates but cannot deliver what the caller needs
+> fails **loudly, at connect time, with a named reason and the exact step to
+> fix it**. It never returns empty-looking success.
+
+This is a **precondition of the inbound path**, evaluated before the watcher
+reports healthy, not a per-provider check:
+
+- **Gmail API path** — two scope tiers, checked separately. Scopes that
+  authorize the history call, and scopes that authorize bodies
+  (`gmail.readonly`, `gmail.modify`, `https://mail.google.com/` — *not*
+  `gmail.metadata`). History-capable but not body-capable refuses **before**
+  making the call.
+- **IMAP path** — `open()` reports a typed capability record rather than
+  returning `void` and letting "connected" stand in for "can read this mailbox":
+  whether `IDLE` is advertised (which decides push vs poll), whether
+  `EXAMINE <mailbox>` actually succeeded, the `UIDVALIDITY` it reported, and a
+  clear distinction between *authentication rejected*, *mailbox does not exist*,
+  and *connected and readable*. The server's own wording is carried into the
+  failure reason where it gave one.
+
+### 3.4b What happens when capability is insufficient at runtime
+
+Setup-time validation is not enough. Scopes get revoked, app passwords get
+rotated, mailboxes get renamed, and all of that happens long after setup while
+the daemon is running unattended.
+
+Three runtime states, all distinct and all surfaced in health:
+
+| State | Meaning | Watcher |
+|---|---|---|
+| `healthy` | Full capability | Running, IDLE or polling |
+| `degraded` | Reduced but still serving its purpose — e.g. no `IDLE`, so polling | **Running.** Expectations still work |
+| `insufficient` | Cannot read the mailbox, or cannot fetch bodies | **Not running** |
+
+**Ruling: `insufficient` refuses and notifies. It does not silently degrade.**
+`surfaces.email.inbound.onInsufficientCapability` defaults to
+`'refuse-and-notify'`; `'notice-only'` exists as a deliberate, configured
+downgrade and is never entered automatically.
+
+The reasoning, since this rejects the more accommodating option:
+
+1. **An expectation that can never be satisfied is worse than no expectation.**
+   The signup workstream would wait out its entire window and then report "no
+   verification mail arrived" — which is false. It would send the owner to check
+   his mailbox when the problem is his grant, and the mailbox will look fine.
+2. **Automatic degradation reintroduces the exact defect one level up.** We just
+   removed a silent partial capability from the Gmail gate; adding a silent
+   partial capability to the surface that consumes it would be the same bug with
+   a wider blast radius.
+3. **Least friction is not "keep running in a broken mode."** It is one message
+   naming what is missing and the step that fixes it. A daemon that quietly
+   half-works costs more of the owner's time than one that says
+   "this grant is metadata-only; inbound email needs `gmail.readonly`."
+
+Consequences that make the refusal honest rather than merely safe:
+
+- **Opening an expectation against an `insufficient` mailbox is refused at open
+  time**, with that reason. The signup workstream learns immediately instead of
+  after fifteen minutes of silence.
+- **Expectations already open when capability is lost are failed with a named
+  reason**, not left to expire. This is the "cannot silently sit unsatisfied"
+  requirement, and expiry is not an acceptable substitute for it: expiry means
+  *nothing came*, and this is *we can no longer look*.
+- **"Cannot" and "not yet" are different.** A watcher in backoff after a dropped
+  connection is **not** insufficient — recovery fetches everything above the
+  cursor, so the expectation is still satisfiable and must not be failed.
+  Only a capability verdict fails an expectation.
+- **Re-probed on a timer** (`capabilityRecheckMinutes`, default 60) and on
+  config change, so the owner fixing his scopes does not require a restart to
+  take effect. Not a tight retry loop.
+- **Notified once per transition**, not once per probe. A recurring alarm about
+  a condition the owner already knows about trains him to ignore the channel
+  this capability depends on.
 
 ### 3.5 Where it plugs in — the supervisor model, not the webhook model
 
@@ -556,6 +698,154 @@ The rules the renderer enforces, and which its tests assert:
   single most useful fact — it says which account this is about, from evidence
   the sender could not forge.
 
+### 7.1 Which fields are attacker-chosen — the audit
+
+A defect found in review makes the case for doing this as a list rather than by
+intuition. `deliveredTo` was given weaker sanitization than the subject line, on
+the reasoning that a delivery header "cannot be forged by the sender". The
+header cannot be forged — the receiving server stamps it truthfully — but what
+it truthfully stamps is **the envelope recipient the sender chose**, and this
+design runs on per-signup aliases, which means catch-all or plus-addressing,
+which means the local part is the sender's to pick. Mail addressed to
+`[Approved](https://evil.example)@ourdomain.com` rendered a clickable attacker
+link in the owner's notice, on the one row the notice exists to make
+trustworthy.
+
+The lesson generalizes: **an address is not safe because part of it is
+verified.** Every field is attacker-chosen until a specific reason says
+otherwise, and the reason is written down.
+
+| Field | Origin | Verdict |
+|---|---|---|
+| `subject` | `Subject:` header | **Attacker-chosen.** Sender writes it verbatim |
+| `senderDisplay` | `From:` header | **Attacker-chosen.** Display name is free text |
+| `deliveredTo` local part | envelope recipient | **Attacker-chosen** under catch-all/plus-addressing |
+| `deliveredTo` domain | our own domain | Ours — but escaped anyway, at no cost |
+| `outcome.purpose` | the registering workstream | **Attacker-chosen unless drawn from a fixed vocabulary.** A signup flow that lifted a service name off a web page is passing untrusted text through an authorized caller |
+| `outcome.serviceDomain` | expectation, validated | Validated ASCII hostname. Escaped anyway |
+| `outcome.reason` | refusal | Ours **only if** it is a fixed enum member. Any reason quoting a server's wording is attacker-chosen |
+| `links[].host` | extracted + validated | Registrable domain, hostname-shaped. Escaped anyway |
+| `receivedAt` | **our clock** | Ours — **and this is load-bearing.** `ImapEnvelope.date` is `extractHeader(raw, 'Date')`, a string the sender wrote. The notice timestamp must come from our own receipt time, never from that header |
+| `authenticationResults` | receiving server | Only the top-most is beyond the sender's reach; carries no authority anywhere and is escaped if shown |
+
+Two of those rows are ones nobody would have guessed: an address, and a
+timestamp.
+
+### 7.2 Escaping belongs to the channel, not to the producer
+
+The renderer as first specified returned **one string for every channel**. That
+is the architectural error underneath the defect above, and fixing the character
+set does not fix it.
+
+A single trigger-character set has to be the union of what is dangerous on every
+channel the notice might reach. Telegram MarkdownV2 reserves
+`_*[]()~`>#+-=|{}.!`; Discord adds `@everyone`/`@here`; Slack uses `<url|text>`
+and `<!channel>`; an HTML notice needs entity escaping instead; ntfy carries
+plain text but puts fields in HTTP headers, where a newline is the injection.
+A set tuned for one is silently wrong on another, and it goes wrong **the day a
+channel is added**, in a module nobody edited.
+
+Stripping is also lossy in the wrong direction: the owner sees a mangled subject
+and cannot tell whether the mail said that or we did.
+
+So the producer emits **structure**, and each channel escapes at the last
+moment:
+
+```ts
+export type NoticeSpan =
+  | { readonly kind: 'literal'; readonly text: string }    // our words, safe by construction
+  | { readonly kind: 'untrusted'; readonly text: string }; // someone else's, escaped by the channel
+
+export interface NoticeField {
+  readonly label: string;                    // always ours
+  readonly value: readonly NoticeSpan[];
+}
+
+export interface StructuredNotice {
+  readonly title: readonly NoticeSpan[];
+  readonly fields: readonly NoticeField[];
+}
+```
+
+`renderInboundMailNotice` returns a `StructuredNotice`. Each channel's delivery
+path owns a `renderNotice(notice: StructuredNotice): string` that escapes
+`untrusted` spans per its own syntax — **escapes, not strips**, so
+`[Approved](https://evil.example)` reaches the owner as that exact literal text
+rather than as a link or as mangled spaces. He sees what the mail actually said,
+and it does nothing.
+
+Why this is the right shape:
+
+- **The producer cannot get it wrong**, because it never holds a channel-format
+  string. Forgetting to escape is not a mistake that can be made in the wrong
+  place; the only code that turns spans into text is the code that knows the
+  syntax.
+- **Adding a channel is a bounded, visible task** — implement one escaper —
+  rather than an invisible widening of a shared character set.
+- **Untrusted-ness travels with the value.** A field passed through three
+  functions is still tagged `untrusted` at the end.
+
+**Discord masked links are what make this required rather than precautionary**,
+and it was verified rather than assumed. `[text](url)` **does** render in
+bot-sent messages, webhook messages and embeds. It does **not** render in
+messages a human types into the client — a trade-off Discord made specifically
+to stop people hiding malicious URLs behind innocent text.
+
+The daemon delivers over the bot and webhook paths, which are precisely the
+paths where masked links work. So bracket and paren escaping is not
+cheap-if-unneeded insurance; it is the control that stops a mail sender's chosen
+text from arriving in the owner's Discord as a clickable link reading whatever
+they want. It is documented as necessary, with the finding beside it, because
+**an escaper that looks optional gets deleted by the next person tidying up**.
+
+Noted and deliberately **not** relied on: Discord runs its own filter that
+blocks a URL appearing in the *text* portion of a masked link. That is their
+mitigation, not a contract with us; it can change without notice, and it does
+not cover the general case of arbitrary attacker-chosen display text. Our
+escaping stands on its own.
+
+Sources: `https://github.com/discord/discord-api-docs/issues/6096`,
+`https://gist.github.com/matthewzring/9f7bbfd102003963f9be7dbcf7d40e51`.
+
+### 7.3 Make the unsafe value unconstructible, not merely validated
+
+The strongest defence produced in this round deserves a name, because it is a
+better class of protection than sanitizing and it generalizes well past email.
+
+`receivedAt` is a branded `ReceiptTimestamp` whose only constructor takes a real
+`Date` the daemon observed. A sender's `Date:` header is a `string`, so it
+cannot be passed — not "is rejected by validation", but **has no path into the
+type at all**. The check cannot be forgotten, because there is nowhere to forget
+it.
+
+The codebase already had one instance, and it is the reason the expectation
+mechanism can be trusted at all: `DeliveredRecipient` does not export its brand
+symbol, so a value can only originate from the mailbox actually fetched from or
+a delivery header the receiving agent stamped. No quantity of sender-written
+text produces one.
+
+Stated so it gets reused:
+
+> Where an attacker-supplied value could be mistaken for an observed one, do not
+> validate the attacker's version — make it **impossible to construct**. Give
+> the observed value a brand whose only constructor takes the observation
+> itself.
+
+Candidates wherever this design reaches: an observed receipt time versus a
+claimed `Date:`; a delivery-verified recipient versus a claimed `To:`; a
+validated registrable domain versus a claimed link host. **And in payments,
+which is a consumer of this work: a merchant's claimed total must not be
+constructible as our validated total.** Same defect shape, money attached.
+
+Sanitizing is still the right tool for text that must be displayed. Branding is
+for values that carry authority, where the answer is not "clean it" but "you
+cannot have this from there".
+
+`deliverSurfaceNotice(binding, text)` takes a plain string and stays as it is;
+the channel renderer runs immediately before it. Until every channel has an
+escaper, the fallback renderer emits **plain text with all markup neutralized**
+— the conservative behavior, chosen explicitly rather than inherited.
+
 Routing is configurable (§8). The default is the owner's existing notice route
 binding, so this inherits whatever he already uses rather than introducing a
 second notion of "where to find me".
@@ -589,8 +879,11 @@ wearing a feature's clothes.
 | `surfaces.email.inbound.dedupTtlMinutes` | number | **`60`** | Must exceed a restart cycle, or a crash re-delivers as a duplicate. An hour covers the auto-update restart. |
 | `surfaces.email.inbound.retentionDays` | number | **`30`** | How long inbound records are kept before reaping. Long enough to explain "why did I get that message", short enough to bound the store. |
 | `surfaces.email.inbound.maxRecords` | number | **`5000`** | The hard bound. Whichever of age or count binds first, wins. |
+| `surfaces.email.inbound.capabilityRecheckMinutes` | number | **`60`** | How often a mailbox reporting insufficient capability is re-probed (§3.4b). Fixing a scope must not require a daemon restart, and must not produce a tight retry loop. Range 5–1440. |
+| `surfaces.email.inbound.onInsufficientCapability` | `'refuse-and-notify' \| 'notice-only'` | **`'refuse-and-notify'`** | §3.4b. `notice-only` is a deliberate downgrade in which expectations can never be satisfied — so signup and order confirmation stop working — and is never entered automatically. |
 
 **Every default above is mine, not the owner's, and needs his confirmation** —
+fourteen of them now, counting the two capability settings —
 `flags-are-features` requires an explicit per-flag ruling. They are listed here
 rather than buried in a schema file so he can rule on them as a set. The two
 most likely to be argued: `enabled: false` (the alternative is a daemon that
@@ -659,7 +952,7 @@ storage mechanism, not a hand-built path.
 |---|---|
 | Reaps | Cursors for accounts no longer in config are dropped on load. |
 | Bounds | One record per (account, mailbox); the file cannot grow with traffic. |
-| Validates by content | On load every field is re-validated: `uidValidity` and `lastSeenUid` must be positive integers, `updatedAt` a parseable ISO date, `mailbox` a non-empty string. A record failing any check is **discarded, not repaired** — a corrupt cursor silently coerced to `0` would replay the entire mailbox. Discarded cursors re-establish at the high-water mark and are disclosed. |
+| Validates by content | On load every field is re-validated: `uidValidity` must be a positive integer, `lastSeenUid` a **non-negative** integer (zero is the honest value for a first run against an empty mailbox, and requiring positivity would make a freshly-established cursor fail its own validation on the very next load), `updatedAt` a parseable ISO date, `mailbox` a non-empty string. A record failing any check is **discarded, not repaired** — a corrupt cursor silently coerced to `0` would replay the entire mailbox. Discarded cursors re-establish at the high-water mark and are disclosed. |
 | Sweeps | On load, and on config change. |
 | Discloses | `email.inbound.status` reports every cursor with its mailbox, position and age. |
 
@@ -732,6 +1025,39 @@ the config schema. Neither list overlaps.
 
 ## 11. Consumers
 
+### 11.1 Cross-round requirement for payments
+
+§7.1 and §7.2 apply to the payments notices with more force than they apply
+here, and this is raised as a requirement on that round rather than a
+suggestion.
+
+Payments already rules that approval and veto messages are rendered from
+structured fields and never from page text. That ruling is right and it is not
+sufficient, because "structured field" is where this defect lived: the merchant
+name and the item title **are** structured fields, and both are lifted straight
+off a merchant's web page. They are as attacker-chosen as an email subject.
+
+Three things make it worse there than here:
+
+1. **The owner acts on it under time pressure.** The veto window's whole design
+   is silence-means-proceed, so a notice that misleads him for ten minutes
+   spends his money. Here, a misleading notice is merely misleading.
+2. **Money is attached.** A rendered link in a purchase notice is a phishing
+   target the owner has already been primed to trust, because he is expecting a
+   message about a purchase he authorized.
+3. **The total is the one field he checks.** An item title carrying markup can
+   restyle, obscure or visually displace the amount in the same message —
+   Telegram will happily bold, strike through, or spoiler-tag whatever it is
+   handed. The number he reads must not be positionable by the merchant.
+
+So the payments round needs: the same `StructuredNotice` and per-channel
+escaper, `merchantName` and `itemTitle` tagged `untrusted`, and the amount
+emitted as a `literal` span that no untrusted span can be interleaved with.
+A test asserting a merchant name containing markup cannot alter how the total
+renders.
+
+## 11.2 Consumers
+
 The payments capability is a consumer, not a peer: order confirmations and
 delivery notices arrive by mail. It gets them through the **expectation**
 mechanism — a purchase that was approved registers an expectation scoped to the
@@ -778,6 +1104,20 @@ before the fix lands.
 | 26 | Only one cluster node consumes a mailbox | Two supervisors, one gate |
 | 27 | The cursor advances only after processing completes | Failure injected between fetch and notice; message redelivered, not skipped |
 | 28 | Settings appear in TUI, agent and webui | Per-surface assertion, including the webui snapshot check |
+| 29 | A body-incapable grant refuses before calling, and never returns empty-bodied success | Metadata-only token; assert refusal, not an empty delta |
+| 30 | A missing mailbox, a rejected credential and a readable mailbox are three distinct outcomes | Fake IMAP server, three scripts |
+| 31 | Opening an expectation against an insufficient mailbox is refused at open time | Not left to expire fifteen minutes later |
+| 32 | Capability lost mid-window fails open expectations with a named reason | Distinct from expiry, which means "nothing came" |
+| 33 | A watcher in reconnect backoff does NOT fail expectations | "Not yet" is not "cannot" |
+| 34 | Insufficient capability notifies once per transition, not once per probe | Repeated probes, one notice |
+| 35 | The inbound path cannot register or hydrate an expectation | Type-level + source-level assertion (§2.1) |
+| 36 | The producer cannot emit a channel-formatted string | `renderInboundMailNotice` returns `StructuredNotice`; type-level test |
+| 37 | Each channel escapes rather than strips | `[Approved](https://evil)` arrives as that literal text, not a link and not mangled |
+| 38 | Per-channel escapers cover their own syntax | Telegram MarkdownV2, Discord mentions, Slack `<url\|text>`, HTML entities, ntfy header newline — one case each |
+| 39 | An untrusted span cannot reach output unescaped on any channel | Table-driven across every registered escaper |
+| 40 | A channel with no escaper falls back to fully-neutralized plain text | Not to the raw string |
+| 41 | The notice timestamp comes from our clock, not the `Date:` header | Sender-supplied date differs from receipt time |
+| 42 | An expectation purpose lifted from untrusted text is escaped | Not trusted for being supplied by an authorized caller |
 
 ---
 
@@ -796,7 +1136,19 @@ overturn any of them.
 4. **The spawn capability is removed by type, not guarded by check.** §2.1.
 5. **Arrival is not ingest.** §5.1. The single most consequential decision here.
 6. **Dedup identity is `UIDVALIDITY:UID`, not `Message-ID`.** §6.
-7. **All twelve defaults in §8.** Listed together for a single ruling.
+7. **All fourteen defaults in §8.** Listed together for a single ruling.
+8. **Insufficient capability refuses and notifies; it never silently
+   degrades.** §3.4b. `notice-only` exists but is only ever entered by
+   configuration.
+9. **Escaping belongs to the channel, not the producer.** §7.2. The producer
+   emits `StructuredNotice`; each channel escapes its own syntax. This replaces
+   the single-string renderer, which was mine and was wrong.
+10. **Every notice field is attacker-chosen until a written reason says
+    otherwise.** §7.1. Including addresses, and including timestamps.
+11. **Four numeric ranges** chosen without design guidance and needing the same
+    confirmation as the defaults: `maxBackoffSeconds` `[10,3600]`,
+    `dedupTtlMinutes` `[5,1440]`, `retentionDays` `[1,365]`,
+    `maxRecords` `[100,100000]`.
 
 ## 14. Related
 
