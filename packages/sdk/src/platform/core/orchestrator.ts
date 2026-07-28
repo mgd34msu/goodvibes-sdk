@@ -620,15 +620,19 @@ export class Orchestrator {
     content?: ContentPart[],
     options?: OrchestratorUserInputOptions | undefined,
   ): Promise<void> {
-    const turnStartTime = Date.now();
-    const configManager = requireConfigManager(this.coreServices);
-    const providerRegistry = requireProviderRegistry(this.coreServices);
-
     // Where "this turn" acquires a beginning: an owner-started turn ends the
     // previous untrusted-content window, a channel- or schedule-started one
     // deliberately does not. Here rather than in handleUserInput so a message
-    // queued mid-thinking gets its own turn. Reasoning: security/turn-boundary.ts.
+    // queued mid-thinking gets its own turn, and ahead of the config and
+    // provider lookups because a turn the owner started is his whether or not
+    // this runtime can resolve a model for it — a boundary that depends on
+    // unrelated resolution succeeding silently stops moving when it fails.
+    // Reasoning and classification: security/turn-boundary.ts.
     startTurnForOwnerInput(options?.origin);
+
+    const turnStartTime = Date.now();
+    const configManager = requireConfigManager(this.coreServices);
+    const providerRegistry = requireProviderRegistry(this.coreServices);
 
     // --- Phase 1: Preflight — idempotency, event emission, plan injection ---
     const preflight = this.runTurnPreflight(text, content, options, providerRegistry);
