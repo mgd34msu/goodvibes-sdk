@@ -517,6 +517,71 @@ describe('inbound watcher — capability sufficiency', () => {
 });
 
 // ---------------------------------------------------------------------------
+//
+// `docs/inbound-email.md` §3.4d, "Scope sufficiency applies to both": a
+// non-empty mailbox gets one BODY.PEEK at connect, answering whether the
+// server will hand over message content before any expectation could be
+// opened — instead of finding out reactively, on the first real fetch, which
+// for a signup workstream is the verification mail itself.
+
+describe('inbound watcher — connect-time body probe', () => {
+  test('a server that refuses the body probe is insufficient before any search ever runs', async () => {
+    const harness = await build({
+      server: { fetch: 'refused', initial: [message(101, 'a')] },
+    });
+    harness.watcher.start();
+    await waitFor(
+      () => harness.observer.terminals.length >= 1,
+      'a terminal report for the refused probe',
+    );
+
+    expect(harness.watcher.status.verdict.reason).toBe('fetch-refused');
+    expect(harness.watcher.status.verdict.state).toBe('insufficient');
+    // Reached at connect, before the cursor was ever resolved against a
+    // search: no UID SEARCH was issued, and the sink was never asked to
+    // handle anything. An expectation registered against this mailbox learns
+    // immediately rather than after a signup window expires in silence.
+    expect(count(harness.mailbox.commands, SEARCH_COMMAND)).toBe(0);
+    expect(harness.sink.attempts).toEqual([]);
+    expect(harness.watcher.status.bodyProbe).toEqual({
+      probed: true,
+      ok: false,
+      detail: expect.stringContaining('IMAP command failed'),
+    });
+  });
+
+  test('a server that serves the body probe reports probed-ok and runs normally', async () => {
+    const harness = await build({
+      server: { initial: [message(101, 'a')] },
+    });
+    harness.watcher.start();
+    await idleReached(harness);
+
+    expect(harness.watcher.status.bodyProbe).toEqual({ probed: true, ok: true });
+    expect(harness.watcher.status.verdict.state).not.toBe('insufficient');
+    expect(harness.observer.terminals).toEqual([]);
+  });
+
+  test('an empty mailbox is not-probed, distinct from probed-ok, and the watcher still runs', async () => {
+    const harness = await build({ server: { initial: [] } });
+    harness.watcher.start();
+    await idleReached(harness);
+
+    const probe = harness.watcher.status.bodyProbe;
+    // Asserted on the discriminant directly, not via a truthiness check —
+    // `{ probed: false }` and `{ probed: true, ok: true }` must never read as
+    // interchangeable "it's fine" values.
+    expect(probe?.probed).toBe(false);
+    expect(probe).toEqual({ probed: false });
+    expect(probe).not.toEqual({ probed: true, ok: true });
+    // Not probed is not a capability problem: the watcher is healthy and the
+    // reactive path remains the answer for this (currently empty) mailbox.
+    expect(harness.watcher.status.verdict.state).not.toBe('insufficient');
+    expect(harness.observer.terminals).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
 
 describe('inbound watcher — the cursor', () => {
   test('the cursor advances only after a message is fully processed', async () => {
