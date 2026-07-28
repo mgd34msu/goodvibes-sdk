@@ -16,10 +16,11 @@
  *      and is passed for display alone; it is never the correlation key, and
  *      there is no path here that makes it one.
  *   2. **Ask the matcher, never tell it.** The intake holds an
- *      `ExpectationMatcher` — `Pick<VerificationExpectationBook,
- *      'matchCandidate'>` — so it can ask whether a message satisfies
- *      something already registered and cannot open, hydrate, widen or extend
- *      anything. A message may satisfy an expectation; it may never create one.
+ *      `ExpectationMatcher`, whose signatures are projected off
+ *      `VerificationExpectationBook.matchCandidate`, so it can ask whether a
+ *      message satisfies something already registered — and can spend what it
+ *      was handed — but cannot open, hydrate, widen or extend anything. A
+ *      message may satisfy an expectation; it may never create one.
  *   3. **Render structure; the channel layer escapes.** The producer returns
  *      spans and `renderNoticeForChannel` picks the escaper for the surface
  *      the notice is about to be delivered to. This file CALLS that; it owns
@@ -28,6 +29,44 @@
  *      be delivered is written with its reason, so mail that arrived and could
  *      not be announced is a fact the owner can read rather than a dropped
  *      promise.
+ *   5. **Spend the grant last.** The match is asked for with `consume: false`
+ *      and the expectation is closed only after the notice and the record are
+ *      both done with. See below.
+ *
+ * Why the grant is spent LAST, and not where the match is made
+ * ────────────────────────────────────────────────────────────
+ * `matchCandidate` defaults to `consume: true`, so this file used to delete
+ * the expectation before it had even tried to send the notice. On the one
+ * failure the design explicitly retries — `delivery-failed` — the intake threw
+ * with the grant already gone: the sink released its claim, the cursor stayed
+ * put, the message was redelivered exactly as intended, and pass 2 found an
+ * empty book and recorded `no-expectation`. The retry recovered the notice and
+ * destroyed the thing the notice was about. The owner was told his own
+ * verification mail was unsolicited.
+ *
+ * The rule that fixes it, stated as a rule because the ordering is otherwise
+ * easy to undo by accident: **a pass either completes, or it leaves the book
+ * exactly as it found it.** Nothing between the match and the end of the
+ * handler may mutate the expectation, so every throw in between — a transport
+ * failure, a failed record write, a killed process — hands the redelivery the
+ * same book pass 1 saw, and it correlates identically.
+ *
+ * The alternative was to keep consuming up front and have the retry reuse a
+ * RECORDED match. That needs a second durable store, keyed by message
+ * identity, which then needs its own bounds, its own reaping and its own
+ * recovery rules — a whole persisted state machine whose only job is to undo
+ * an ordering choice this file is free to make differently. Deferring the
+ * consume needs nothing new at all.
+ *
+ * What deferring costs, stated rather than glossed: the window between "notice
+ * delivered" and "grant spent" is a few in-process statements, and a crash
+ * inside it leaves the expectation open. That is bounded by the expectation's
+ * own window, it is disclosed when the window elapses (`onExpired`), and the
+ * redelivery re-matches and re-spends it if the dedup claim did not survive
+ * either. The cost of the old ordering was unbounded by comparison: the
+ * correlation was destroyed outright and no later pass could recover it.
+ * Between a state that expires on its own and a fact that is gone for good,
+ * this takes the one that expires.
  *
  * Which failures are retried, and why the distinction is load-bearing
  * ──────────────────────────────────────────────────────────────────
@@ -199,7 +238,10 @@ export function createInboundMailIntake(
     const receivedAt = receiptTimestamp(now);
     const deliveredTo = deliveredRecipientFromDeliveryHeaders(message.deliveredTo);
 
-    const match = deps.expectations.matchCandidate({
+    // `consume: false` — the grant is NOT spent here. See the ordering note in
+    // the file header: it is spent at the very end, once this pass is known to
+    // be completing.
+    const match = await deps.expectations.matchCandidate({
       messageId: message.messageId,
       from: message.from,
       deliveredTo,
@@ -208,7 +250,7 @@ export function createInboundMailIntake(
       // The IMAP path fetched envelopes, so there is no body here and the
       // empty string is the honest value. The Gmail delta carries one.
       body: message.source === 'gmail' ? message.body : '',
-    }, now);
+    }, now, { consume: false });
 
     let noticeStatus: InboundNoticeStatus = 'suppressed';
     let noticeFailureReason: string | undefined;
@@ -275,5 +317,9 @@ export function createInboundMailIntake(
       body: message.source === 'gmail' ? message.body : '',
       receivedAt: receivedAt.iso,
     });
+
+    // LAST. Announced, recorded, and only now spent — see the header. A no-op
+    // for every outcome that is not a match.
+    await deps.expectations.consumeMatch(match);
   };
 }

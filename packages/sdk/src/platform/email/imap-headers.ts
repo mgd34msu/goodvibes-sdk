@@ -9,6 +9,11 @@
  */
 
 import { fetchSection, parseFetchResponses } from './imap-fetch-response.js';
+// The 32-bit protocol ceiling, imported rather than restated. `source-cursor.ts`
+// states the reasoning at length and is a leaf module (its only import is
+// `inbound/types.js`, which imports nothing), so there is one bound and no way
+// for the reader of the wire and the writer of the cursor to disagree about it.
+import { MAX_IMAP_UID } from './inbound/source-cursor.js';
 import type {
   ImapEnvelope,
   ImapEnvelopeBatch,
@@ -179,6 +184,16 @@ export function extractAuthenticationResults(rawHeaders: string): string[] {
  * mark of which it is. The caller knows which command it sent, so the name
  * here says "numbers" rather than claiming one or the other. This client only
  * ever sends `UID SEARCH`.
+ *
+ * BOUNDED AT BOTH ENDS, and the upper bound is not decoration. Sequence
+ * numbers and UIDs are both 32-bit (RFC 3501 §2.3.1.1); `parseInt` is not.
+ * `parseInt('99999999999999999999', 10)` is `1e20`, `Number.isInteger(1e20)`
+ * is true, and that value used to travel from this line straight into
+ * `MailboxCursorStore.advance()`, where `Math.max` would pin the cursor above
+ * every UID a server can ever issue with no way for a later pass to bring it
+ * down. A token outside the protocol's range names no message this client can
+ * fetch, so it is dropped here rather than carried on as a number that still
+ * looks usable.
  */
 export function parseSearchNumbers(searchResponse: readonly string[]): number[] {
   const nums: number[] = [];
@@ -187,7 +202,7 @@ export function parseSearchNumbers(searchResponse: readonly string[]): number[] 
     const parts = line.slice(9).trim().split(/\s+/);
     for (const part of parts) {
       const n = parseInt(part, 10);
-      if (!isNaN(n) && n > 0) nums.push(n);
+      if (!isNaN(n) && n > 0 && n <= MAX_IMAP_UID) nums.push(n);
     }
   }
   return nums;

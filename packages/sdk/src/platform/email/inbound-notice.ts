@@ -62,6 +62,7 @@
  */
 
 import { toASCII } from 'node:punycode';
+import { redactCardShapes } from '../security/card-shapes.js';
 import { registrableDomain } from '../security/public-suffix.js';
 import type { LinkRefusalReason } from '../security/link-validation.js';
 import type { DeliveredRecipient } from '../google/delivery-evidence.js';
@@ -328,8 +329,27 @@ function safeRegistrableDomain(rawHost: string): ValidatedRegistrableDomain {
 // audit exactly, not intuition.
 // ---------------------------------------------------------------------------
 
+/**
+ * Strip control characters and line breaks, THEN redact card shapes (§11.0).
+ *
+ * Redaction is not only the record store's job. That store keeps the digits
+ * off disk; this keeps them out of what the owner actually reads, and the two
+ * are separate exposures — a notice goes to whichever surface his route
+ * binding names, and on most of them it lands in a message history the daemon
+ * does not control and cannot later redact.
+ *
+ * The ORDER matters, in this direction only. `stripControlAndLineBreaks`
+ * rewrites a line break as a SPACE, and a space is a separator `PAN_RUN` joins
+ * across, so a card number written across two lines becomes one detectable run
+ * by stripping first. Redacting first would leave that same number as two
+ * halves too short for the detector, and pass both through.
+ */
+function displaySafe(raw: string): string {
+  return redactCardShapes(stripControlAndLineBreaks(raw));
+}
+
 function senderField(senderDisplay: string): NoticeField {
-  const stripped = stripControlAndLineBreaks(senderDisplay);
+  const stripped = displaySafe(senderDisplay);
   return {
     label: 'From',
     value: [stripped.length > 0 ? untrusted(stripped) : literal('(unknown sender)')],
@@ -337,7 +357,7 @@ function senderField(senderDisplay: string): NoticeField {
 }
 
 function subjectField(subject: string): NoticeField {
-  const stripped = stripControlAndLineBreaks(subject);
+  const stripped = displaySafe(subject);
   return {
     label: 'Subject',
     value: [stripped.length > 0 ? untrusted(stripped) : literal('(no subject)')],
@@ -348,11 +368,12 @@ function deliveredToField(deliveredTo: DeliveredRecipient | null): NoticeField {
   if (deliveredTo === null) {
     return { label: 'Delivered to', value: [literal('(no verified delivery evidence)')] };
   }
-  // Attacker-chosen — see the module header's field audit. Only control
-  // characters and line breaks are removed here; everything else (including
-  // markup metacharacters) survives into the untrusted span unmodified, to be
-  // escaped rather than stripped by whichever channel renders this notice.
-  return { label: 'Delivered to', value: [untrusted(stripControlAndLineBreaks(deliveredTo.address))] };
+  // Attacker-chosen — see the module header's field audit. Control characters
+  // and line breaks are removed and card shapes redacted; everything else
+  // (including markup metacharacters) survives into the untrusted span
+  // unmodified, to be escaped rather than stripped by whichever channel
+  // renders this notice.
+  return { label: 'Delivered to', value: [untrusted(displaySafe(deliveredTo.address))] };
 }
 
 function outcomeField(outcome: InboundOutcome): NoticeField {
