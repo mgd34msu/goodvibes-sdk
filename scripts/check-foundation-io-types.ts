@@ -50,6 +50,7 @@ import { builtinGatewayTailscaleMethodDescriptors } from '../packages/sdk/src/pl
 import { builtinGatewayControlAutomationMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-automation.ts';
 import { builtinGatewayAcpMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-acp.ts';
 import { builtinGatewayBrowserMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-browser.ts';
+import { builtinGatewayOwnerProfileMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-owner-profile.ts';
 import { builtinGatewayPermissionRuleMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-permission-rules.ts';
 import { builtinGatewayControlCoreMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-core.ts';
 import { builtinGatewayControlLiveTurnMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-control-live-turn.ts';
@@ -237,6 +238,7 @@ const CATALOG_DESCRIPTORS = [
   ...builtinGatewayControlAutomationMethodDescriptors,
   ...builtinGatewayAcpMethodDescriptors,
   ...builtinGatewayBrowserMethodDescriptors,
+  ...builtinGatewayOwnerProfileMethodDescriptors,
 ];
 
 function descriptorSchemas(methodId: string): { input: Record<string, unknown>; output: Record<string, unknown> } {
@@ -407,6 +409,18 @@ const ENTRIES: ReadonlyArray<{ readonly methodId: string; readonly input: Record
   { methodId: 'principals.update', input: PRINCIPALS_UPDATE_INPUT_SCHEMA, output: PRINCIPALS_UPDATE_OUTPUT_SCHEMA },
   { methodId: 'principals.delete', input: PRINCIPALS_DELETE_INPUT_SCHEMA, output: PRINCIPALS_DELETE_OUTPUT_SCHEMA },
   { methodId: 'principals.resolve', input: PRINCIPALS_RESOLVE_INPUT_SCHEMA, output: PRINCIPALS_RESOLVE_OUTPUT_SCHEMA },
+  // Owner profile (docs/owner-profile.md §11.1). All nine, including the three
+  // write verbs: a typed client is exactly what stops a surface from inventing
+  // its own idea of what a refusal looks like.
+  { methodId: 'profile.read', ...descriptorSchemas('profile.read') },
+  { methodId: 'profile.get', ...descriptorSchemas('profile.get') },
+  { methodId: 'profile.person', ...descriptorSchemas('profile.person') },
+  { methodId: 'profile.provenance', ...descriptorSchemas('profile.provenance') },
+  { methodId: 'profile.set', ...descriptorSchemas('profile.set') },
+  { methodId: 'profile.append', ...descriptorSchemas('profile.append') },
+  { methodId: 'profile.forget', ...descriptorSchemas('profile.forget') },
+  { methodId: 'profile.undo', ...descriptorSchemas('profile.undo') },
+  { methodId: 'profile.status', ...descriptorSchemas('profile.status') },
   // Live per-channel test-message probe:
   { methodId: 'channels.test.send', input: CHANNEL_TEST_SEND_INPUT_SCHEMA, output: CHANNEL_TEST_SEND_OUTPUT_SCHEMA },
   // Worktree cold-start setup rerun + the snapshot record (now carrying setup state):

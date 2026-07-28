@@ -47,6 +47,7 @@ import {
 } from './orchestrator-turn-helpers.js';
 import { appendGoodVibesRuntimeAwarenessPrompt } from '../tools/goodvibes-runtime/index.js';
 import { buildWrfcWorkflowRoutingPrompt } from './wrfc-routing.js';
+import { withOpenTierProfileBlock } from '../agents/orchestrator-prompts.js';
 import {
   buildPerTurnKnowledgeInjection,
   defaultTurnKnowledgeBudgetTokens,
@@ -437,7 +438,11 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
     // agent-runner's composeTurnSystemPrompt established, even though this loop has no in-call
     // context-exceeded retry path to go stale across (compaction here is the PROACTIVE
     // checkContextWindowPreflight above, not a reactive mid-call retry-and-shrink).
-    const composeTurnSystemPrompt = (base: string): string => {
+    const composeTurnSystemPrompt = (raw: string): string => {
+      // owner-profile §11.2: the OPEN tier only, composed fresh onto the current
+      // base each iteration and never written back, exactly like the knowledge
+      // block below. Absent profile ⇒ `base` comes back untouched.
+      const base = withOpenTierProfileBlock(raw);
       if (!turnKnowledgeBlock) return base;
       if (knowledgeContextWindow > 0) {
         const liveMsgTokens = estimateConversationTokens(context.conversation.getMessagesForLLM());

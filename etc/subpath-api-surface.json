@@ -16506,6 +16506,10 @@
       ]
     },
     {
+      "name": "SignupBaseAddressSource",
+      "kind": "type"
+    },
+    {
       "name": "StartLoopbackListenerOptions",
       "kind": "interface",
       "required": [
@@ -16823,6 +16827,10 @@
       "kind": "function"
     },
     {
+      "name": "registerSignupBaseAddressFallback",
+      "kind": "function"
+    },
+    {
       "name": "renderGoogleSetupReport",
       "kind": "function"
     },
@@ -16844,6 +16852,10 @@
     },
     {
       "name": "resolveGoogleCredentials",
+      "kind": "function"
+    },
+    {
+      "name": "resolveSignupBaseAddress",
       "kind": "function"
     },
     {
@@ -36457,6 +36469,10 @@
       "kind": "interface"
     },
     {
+      "name": "ProfileRedactionValueReader",
+      "kind": "type"
+    },
+    {
       "name": "PromptSource",
       "kind": "interface",
       "required": [
@@ -36695,6 +36711,10 @@
     },
     {
       "name": "redactedErrorMessage",
+      "kind": "function"
+    },
+    {
+      "name": "registerProfileRedactionValues",
       "kind": "function"
     },
     {

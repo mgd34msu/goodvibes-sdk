@@ -64,25 +64,6 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
     ceiling: 825,
     justification: 'internal capability registry; every entry carries the full written description surfaces render, so the file grows by roughly one paragraph per capability rather than by code. +22 for the paired-device-capabilities entry (the paired-phone camera/screen/location/clipboard/command family, its confirmation-and-grants posture, and the device.* keys that configure it)',
   },
-  // schema-types.ts ~1.18k — config schema type surface, post-split, shrink-only
-  'packages/sdk/src/platform/config/schema-types.ts': {
-    ceiling: 1255,
-    justification: 'config schema type surface, shrink-only. Split 2026-07-26 from 1399 lines: the '
-      + 'listener/reachability interfaces (ControlPlaneConfig, HttpListenerRuntimeConfig, WebConfig, '
-      + 'NetworkConfig, RelayConfig) moved to schema-types-network.ts and the platform-service '
-      + 'interfaces (BatchConfig + its three modes, CloudflareConfig, TelemetryConfig, AtRestConfig) '
-      + 'moved to schema-types-platform.ts, both re-exported here so import sites are unchanged — the '
-      + 'same convention schema-types-surfaces.ts already used. What remains is the ConfigKey union and '
-      + 'the ConfigValue mapped type, which stay inline because '
-      + 'test/config-key-union-completeness.test.ts parses THIS file as the single source of the '
-      + 'declared key set, plus the interfaces that have no other natural home. The ceiling was '
-      + 'lowered from the old 1397 so new config keys cost a re-justification, which is the point of the '
-      + 'ratchet. A second pass moved the daemon-service interfaces (NotificationsConfig, TtsConfig, '
-      + 'AutomationConfig, WatchersConfig, ServiceConfig, RuntimeConfig) to schema-types-daemon.ts. The '
-      + 'ceiling is deliberately left at 1246 while the file sits near 1175: it is never raised, but the '
-      + 'slack is real headroom for config keys landing concurrently, so tightening it to the exact count '
-      + 'would red-gate in-flight work rather than prevent drift.; +51 for declaring the daemon\'s own mailbox and calendar keys (surfaces.email.*, surfaces.calendar.*) in the ConfigKey union and value map. They were read by the daemon\'s handlers but declared nowhere, and the settings modal renders from CONFIG_SCHEMA — so the handlers\' own error messages ("Set surfaces.calendar.caldavUrl and surfaces.calendar.caldavUser") named keys no operator could reach through the UI that told them to set it. Declaring them also makes them daemon-owned by the existing surfaces. prefix rule, so the credential lands in the daemon tier instead of whichever client silo the operator happened to be in',
-  },
   // orchestrator.ts ~1.08k — core orchestrator monolith, pre-split, shrink-only
   'packages/sdk/src/platform/core/orchestrator.ts': {
     ceiling: 1100,

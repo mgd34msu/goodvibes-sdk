@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `443`
+- Methods: `452`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -71414,6 +71414,1073 @@ Update a principal's name, kind, identities, and/or metadata. Absent fields are 
   },
   "required": [
     "principal"
+  ],
+  "additionalProperties": false
+}
+```
+
+### profile
+
+#### `profile.append`
+
+Add one prose bullet to a section, carrying its provenance suffix. Same three-layer gate as profile.set. A section that does not exist is created at the end of the document; a section the owner renamed is matched case-insensitively rather than duplicated.
+
+- Title: `Append Profile Note`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/profile/append`
+- Scopes: `write:profile`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "section": {
+      "type": "string"
+    },
+    "text": {
+      "type": "string"
+    },
+    "surface": {
+      "type": "string"
+    },
+    "said": {
+      "type": "string"
+    },
+    "authority": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "section",
+    "text",
+    "surface",
+    "said"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "ok": {
+      "type": "boolean"
+    },
+    "reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "changes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "fieldId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "section": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "superseded": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "kind",
+          "section",
+          "label",
+          "superseded"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "disclosure": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "ok",
+    "changes",
+    "disclosure"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `profile.forget`
+
+Delete a field line (or one line by index) and every retained history comment for that field. No tombstone, no deleted flag, no retention window — delete means delete. Forgetting something that was not there reports that honestly instead of returning success. Authority-gated exactly like a write: an injection that cannot add a fact must not be able to remove one.
+
+- Title: `Forget Profile Line`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/profile/forget`
+- Scopes: `write:profile`
+- Emits events: none
+- Dangerous: `yes`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "fieldId": {
+      "type": "string"
+    },
+    "lineIndex": {
+      "type": "number"
+    },
+    "authority": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "ok": {
+      "type": "boolean"
+    },
+    "reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "changes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "fieldId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "section": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "superseded": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "kind",
+          "section",
+          "label",
+          "superseded"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "disclosure": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "ok",
+    "changes",
+    "disclosure"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `profile.get`
+
+Return one mechanical field by id (e.g. commerce.shippingAddress). Answers present:false for a field the owner has not recorded rather than inventing a value, and returns an invalid value verbatim with its reason instead of hiding it. A closed-tier field carries the one-line disclosure the reply should show.
+
+- Title: `Get Profile Field`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/profile/fields/{fieldId}`
+- Scopes: `read:profile`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "fieldId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "fieldId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "fieldId": {
+      "type": "string"
+    },
+    "present": {
+      "type": "boolean"
+    },
+    "field": {
+      "type": "object",
+      "properties": {
+        "fieldId": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "valid": {
+          "type": "boolean"
+        },
+        "invalidReason": {
+          "type": "string"
+        },
+        "provenance": {
+          "type": "object",
+          "properties": {
+            "surface": {
+              "type": "string"
+            },
+            "date": {
+              "type": "string"
+            },
+            "said": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "surface",
+            "date",
+            "said"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "fieldId",
+        "label",
+        "value",
+        "valid"
+      ],
+      "additionalProperties": false
+    },
+    "disclosure": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "fieldId",
+    "present",
+    "disclosure"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `profile.person`
+
+Return the People lines matching one name. Takes a NAME by design and has no enumerate-all counterpart: a People line may reach outbound content only when the owner named that person in this turn's instruction, and the only lookup that exists taking a name is what makes that structural rather than a matter of model judgement.
+
+- Title: `Get Person From Profile`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/profile/person`
+- Scopes: `read:profile`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "lines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "lineIndex": {
+            "type": "number"
+          },
+          "section": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "provenance": {
+            "type": "object",
+            "properties": {
+              "surface": {
+                "type": "string"
+              },
+              "date": {
+                "type": "string"
+              },
+              "said": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "surface",
+              "date",
+              "said"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "lineIndex",
+          "section",
+          "text"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "disclosure": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "lines",
+    "disclosure"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `profile.provenance`
+
+Answer "where did you get that?" for one field: the surface, the date and the owner's verbatim words, plus every superseded predecessor still retained as a history comment. A field the owner typed by hand reports handEdited:true and no provenance, rather than being dressed up as a recorded source.
+
+- Title: `Get Profile Provenance`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/profile/fields/{fieldId}/provenance`
+- Scopes: `read:profile`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "fieldId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "fieldId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "fieldId": {
+      "type": "string"
+    },
+    "present": {
+      "type": "boolean"
+    },
+    "handEdited": {
+      "type": "boolean"
+    },
+    "provenance": {
+      "type": "object",
+      "properties": {
+        "surface": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string"
+        },
+        "said": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "surface",
+        "date",
+        "said"
+      ],
+      "additionalProperties": false
+    },
+    "superseded": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "lineIndex": {
+            "type": "number"
+          },
+          "fieldId": {
+            "type": "string"
+          },
+          "section": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "supersededOn": {
+            "type": "string"
+          },
+          "previousLine": {
+            "type": "string"
+          },
+          "provenance": {
+            "type": "object",
+            "properties": {
+              "surface": {
+                "type": "string"
+              },
+              "date": {
+                "type": "string"
+              },
+              "said": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "surface",
+              "date",
+              "said"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "lineIndex",
+          "fieldId",
+          "section",
+          "text",
+          "value",
+          "supersededOn",
+          "previousLine"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "fieldId",
+    "present",
+    "handEdited",
+    "superseded"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `profile.read`
+
+Return the whole owner profile, by section, with each section's tier and every mechanical field's validity. This is the answer to "what do you know about me?" and is the ONE read that returns closed-tier content in bulk — which is why it is never callable from a message-composition path.
+
+- Title: `Read Owner Profile`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/profile`
+- Scopes: `read:profile`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "state": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "exists": {
+          "type": "boolean"
+        },
+        "lineCount": {
+          "type": "number"
+        },
+        "fieldCount": {
+          "type": "number"
+        },
+        "proseLineCount": {
+          "type": "number"
+        },
+        "sections": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "invalidFields": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "fieldId": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "fieldId",
+              "reason"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "path"
+      ],
+      "additionalProperties": false
+    },
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "heading": {
+            "type": "string"
+          },
+          "tier": {
+            "type": "string"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "fieldId": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                },
+                "valid": {
+                  "type": "boolean"
+                },
+                "invalidReason": {
+                  "type": "string"
+                },
+                "provenance": {
+                  "type": "object",
+                  "properties": {
+                    "surface": {
+                      "type": "string"
+                    },
+                    "date": {
+                      "type": "string"
+                    },
+                    "said": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "surface",
+                    "date",
+                    "said"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "fieldId",
+                "label",
+                "value",
+                "valid"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "prose": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "lineIndex": {
+                  "type": "number"
+                },
+                "section": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "provenance": {
+                  "type": "object",
+                  "properties": {
+                    "surface": {
+                      "type": "string"
+                    },
+                    "date": {
+                      "type": "string"
+                    },
+                    "said": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "surface",
+                    "date",
+                    "said"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "lineIndex",
+                "section",
+                "text"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "heading",
+          "tier",
+          "fields",
+          "prose"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "state",
+    "sections"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `profile.set`
+
+Record or correct one mechanical field, moving any previous value into a retained history comment. Refused unless the caller carries owner-direct authority AND the proposed value does not overlap untrusted content read this turn AND a verbatim quote of what the owner said is supplied. A caller declaring the call was not an explicit user request is refused before any of that.
+
+- Title: `Set Profile Field`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/profile/set`
+- Scopes: `write:profile`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "fieldId": {
+      "type": "string"
+    },
+    "value": {
+      "type": "string"
+    },
+    "surface": {
+      "type": "string"
+    },
+    "said": {
+      "type": "string"
+    },
+    "authority": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "fieldId",
+    "value",
+    "surface",
+    "said"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "ok": {
+      "type": "boolean"
+    },
+    "reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "changes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "fieldId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "section": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "superseded": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "kind",
+          "section",
+          "label",
+          "superseded"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "disclosure": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "ok",
+    "changes",
+    "disclosure"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `profile.status`
+
+Diagnostics for the profile: whether it loaded, the file path, the section names, line/field/prose counts, and every mechanical value that did not validate WITH ITS REASON. It never returns a value — that is what makes it safe in a support bundle, and it is asserted by test. An unreadable file reports unavailable with the reason rather than an empty profile.
+
+- Title: `Owner Profile Status`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/profile/status`
+- Scopes: `read:profile`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "kind": {
+      "type": "string"
+    },
+    "path": {
+      "type": "string"
+    },
+    "exists": {
+      "type": "boolean"
+    },
+    "lineCount": {
+      "type": "number"
+    },
+    "fieldCount": {
+      "type": "number"
+    },
+    "proseLineCount": {
+      "type": "number"
+    },
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "invalidFields": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "fieldId": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fieldId",
+          "reason"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "reason": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "kind",
+    "path"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `profile.undo`
+
+Promote a field's most recent superseded value back to the active line, so a wrong correction is recoverable. Authority-gated like every other mutation.
+
+- Title: `Undo Profile Correction`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/profile/undo`
+- Scopes: `write:profile`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "fieldId": {
+      "type": "string"
+    },
+    "authority": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "fieldId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "ok": {
+      "type": "boolean"
+    },
+    "reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "changes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "fieldId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "section": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "superseded": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "kind",
+          "section",
+          "label",
+          "superseded"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "disclosure": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "ok",
+    "changes",
+    "disclosure"
   ],
   "additionalProperties": false
 }

@@ -9,6 +9,7 @@ import { atRestConfigDefaults, atRestConfigSettings } from './schema-domain-at-r
 import { learningConfigDefaults, learningConfigSettings } from './schema-domain-learning.js';
 import { powerConfigDefaults, powerConfigSettings } from './schema-domain-power.js';
 import { memoryConfigDefaults, memoryConfigSettings } from './schema-domain-memory.js';
+import { ownerProfileConfigDefaults, ownerProfileConfigSettings } from './schema-domain-owner-profile.js';
 import { voiceLocalConfigDefaults, voiceLocalConfigSettings } from './schema-domain-voice-local.js';
 import { voiceWakeConfigDefaults, voiceWakeConfigSettings } from './schema-domain-voice-wake.js';
 import { triggersConfigDefaults, triggersConfigSettings } from './schema-domain-triggers.js';
@@ -57,6 +58,7 @@ export const DEFAULT_CONFIG = {
   learning: learningConfigDefaults.learning,
   power: powerConfigDefaults.power,
   memory: memoryConfigDefaults.memory,
+  profile: ownerProfileConfigDefaults.profile,
   voice: { ...voiceLocalConfigDefaults.voice, ...voiceWakeConfigDefaults.voice },
   device: deviceConfigDefaults.device,
   push: pushConfigDefaults.push,
@@ -87,6 +89,7 @@ export const CONFIG_SCHEMA: ConfigSetting[] = [
   ...learningConfigSettings,
   ...powerConfigSettings,
   ...memoryConfigSettings,
+  ...ownerProfileConfigSettings,
   ...voiceLocalConfigSettings,
   ...voiceWakeConfigSettings,
   ...deviceConfigSettings,

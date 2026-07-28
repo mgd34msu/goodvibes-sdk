@@ -298,6 +298,22 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     // record lifecycle transition).
     'install', 'restart', 'start', 'stop', 'uninstall', 'open', 'reload',
   ],
+  'owner-profile-memory': [
+    // What the platform knows about the person who owns it, in the vocabulary
+    // a person uses about their own notes. Each of these names an act the core
+    // vocabulary cannot: `append` adds a prose bullet WITHOUT superseding
+    // anything, which is precisely what distinguishes it from `set`; `forget`
+    // deletes and leaves no tombstone, and calling it `delete` would put it in
+    // the same word as every soft-delete in the catalog when this one is the
+    // one that really removes the bytes; `undo` promotes a superseded value
+    // back, which is neither a create nor an update of anything the caller
+    // supplied; `provenance` answers "where did you get that", a read of the
+    // record's history rather than of the record; and `person` is a lookup BY
+    // NAME with deliberately no plural counterpart — `people.list` does not
+    // exist, and must not, because an enumerate-all call is the exact hole the
+    // third-party-data rule closes. See docs/owner-profile.md §10 and §11.1.
+    'append', 'forget', 'undo', 'provenance', 'person',
+  ],
   'legacy-verb-aliases': [
     // KNOWN, OUT-OF-SCOPE minor inconsistency (not one of the ranked
     // worst-class collisions): mcp.servers.remove means exactly what `delete`
