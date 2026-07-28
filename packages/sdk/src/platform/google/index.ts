@@ -406,7 +406,6 @@ export {
   type VerificationExpectation,
   type OpenExpectationInput,
   type CandidateEmail,
-  type UntrustedDisplayText,
   type SurfaceAuthorityProbe,
   type VerificationMatch,
   type VerificationArtifact,

@@ -60,6 +60,11 @@ import {
   type CalDavSecretPort,
 } from './caldav-gateway-config.js';
 import {
+  organizerIsOwnerIdentity,
+  recordCalendarEventIngest,
+  type CalendarUntrustedIngestRecorder,
+} from './untrusted-events.js';
+import {
   calendarQueryBody,
   calendarQueryByUidBody,
   createCalDavRequest,
@@ -80,6 +85,16 @@ export interface CalDavCalendarGatewayServiceOptions {
   readonly now?: (() => number) | undefined;
   /** UID source for created events, injected for the same reason. */
   readonly randomUuid?: (() => string) | undefined;
+  /**
+   * Records that a turn read untrusted event content.
+   *
+   * Events on a CalDAV collection are written by whoever sent the invitation,
+   * so every read path here records: `listEvents`, `getEvent`, `exportIcs` and
+   * `importIcs`. Each of those runs because a caller asked for it, which is the
+   * condition for recording at all — nothing in this service runs on a timer.
+   * See untrusted-events.ts.
+   */
+  readonly recordUntrustedIngest?: CalendarUntrustedIngestRecorder | undefined;
 }
 
 /** One calendar collection the account can reach. */
@@ -227,6 +242,53 @@ export function createCalDavCalendarGatewayService(
     return new Date(now()).toISOString();
   }
 
+  /**
+   * Record that a caller just read these events.
+   *
+   * The origin prefers the RAW organizer value, because the inviter's address
+   * is what identifies who wrote the text — that value stays inside the ledger
+   * and never reaches a gateway response, which continues to carry display
+   * names only.
+   *
+   * A CalDAV collection is the owner's own server: it holds both the entries he
+   * created and the invitations delivered to him. Recording every event on it
+   * would mark the ordinary act of reading his own calendar as untrusted ingest
+   * and refuse every outward action for the rest of the turn — and refuse it
+   * COARSELY, because `createUntrustedContentPort` calls `evaluateOutwardEffect`
+   * with `request`, `ledger` and `approval` only, no `content`, so a port
+   * consumer such as `platform/browser/browser-engine.ts` takes the "any origin
+   * -> refuse" branch and no content-derivation check ever runs. So the claimed
+   * ORGANIZER is compared against the CONFIGURED CalDAV account, and only a
+   * positive match is treated as the owner's own. Absent, unparseable or
+   * unmatched all stay external; an unconfigured account matches nothing.
+   *
+   * The identity comes from `surfaces.calendar.caldavUser` — configuration —
+   * exactly as the mail exemption reads only configured owner addresses
+   * (`platform/security/owner-identity.ts`). It is never read from an event.
+   */
+  function recordEventsRead(
+    config: CalDavGatewayConfig,
+    calendarId: string,
+    events: readonly CalDavEvent[],
+  ): void {
+    recordCalendarEventIngest({
+      record: options.recordUntrustedIngest,
+      provenance: { kind: 'caldav', calendarId },
+      events: events.map((event) => {
+        const organizer = event.organizerRaw ?? event.organizer;
+        return {
+          summary: event.summary,
+          location: event.location,
+          description: event.description,
+          attendees: displayAttendees(event),
+          organizer,
+          organizerIsOwner: organizerIsOwnerIdentity(organizer, config.username),
+        };
+      }),
+      at: stampNow(),
+    });
+  }
+
   function newUid(): string {
     return `${randomUuid()}@goodvibes`;
   }
@@ -313,9 +375,14 @@ export function createCalDavCalendarGatewayService(
     },
 
     async listEvents(input: CalendarGatewayListInput): Promise<readonly CalendarGatewayEventSummary[]> {
-      const { events } = await readEvents(input);
+      const { config, events } = await readEvents(input);
       const sorted = [...events].sort((a, b) => a.start.localeCompare(b.start));
-      return sorted.slice(0, resolveLimit(input.limit)).map(toSummary);
+      const page = sorted.slice(0, resolveLimit(input.limit));
+      // Only the page is recorded: it is what the caller actually receives, and
+      // recording the rest would claim exposure to text nobody was handed.
+      const first = page[0];
+      if (first !== undefined) recordEventsRead(config, first.calendarId, page);
+      return page.map(toSummary);
     },
 
     async getEvent(
@@ -348,7 +415,9 @@ export function createCalDavCalendarGatewayService(
         const parsed = parseICS(body);
         const first = parsed[0];
         if (first === undefined) throw notFound(eventId);
-        return toDetail({ ...first, href: toRelativeHref(eventId), calendarId: id });
+        const event = { ...first, href: toRelativeHref(eventId), calendarId: id };
+        recordEventsRead(config, id, [event]);
+        return toDetail(event);
       }
 
       // Strategy 2 — a bare UID: ask the server for only the matching resource
@@ -358,6 +427,7 @@ export function createCalDavCalendarGatewayService(
       const response = await request(collectionUrl, 'REPORT', calendarQueryByUidBody(eventId), { Depth: '1' });
       const found = eventsFromMultistatus(response.body, id).find((event) => event.uid === eventId);
       if (found === undefined) throw notFound(eventId);
+      recordEventsRead(config, id, [found]);
       return toDetail(found);
     },
 
@@ -399,7 +469,9 @@ export function createCalDavCalendarGatewayService(
     },
 
     async exportIcs(input: CalendarGatewayListInput): Promise<CalendarGatewayIcsExport> {
-      const { events } = await readEvents(input);
+      const { config, events } = await readEvents(input);
+      const first = events[0];
+      if (first !== undefined) recordEventsRead(config, first.calendarId, events);
       const dtStamp = stampNow();
       const inputs = events.map((event) =>
         toGenerateInput(event, event.uid || newUid(), dtStamp),
@@ -419,6 +491,20 @@ export function createCalDavCalendarGatewayService(
           400,
         );
       }
+      // The .ics body is somebody else's text and the caller asked for it to be
+      // read, so this is an ingest — recorded before a single PUT is attempted.
+      recordCalendarEventIngest({
+        record: options.recordUntrustedIngest,
+        provenance: { kind: 'ics-import' },
+        events: parsed.map((event) => ({
+          summary: event.summary,
+          location: event.location,
+          description: event.description,
+          attendees: event.attendees.map((attendee) => attendee.displayName),
+          organizer: event.organizerRaw ?? event.organizer,
+        })),
+        at: stampNow(),
+      });
       const { config, request } = await connect();
       const id = calendarId && calendarId.length > 0 ? calendarId : config.defaultCalendarId;
       const eventIds: string[] = [];

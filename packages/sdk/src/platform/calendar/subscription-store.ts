@@ -18,9 +18,20 @@
  * stage and detail.
  *
  * PURE of ambient IO — no direct fs/network/process; all IO is injected.
+ *
+ * A feed is externally-controlled input, so reading its event content records an
+ * untrusted ingest through the injected `recordUntrustedIngest`. That recording
+ * hangs off two EXPLICIT readers — `readEvents()` and `readAllEvents()` — and
+ * never off the plain accessors `events()` / `allEvents()`, which record
+ * nothing. The refresh path likewise records NOTHING: arrival is not ingest
+ * (see untrusted-events.ts and docs/decisions/2026-07-27-arrival-is-not-ingest.md).
  */
 
 import { parseIcs } from './ics-parser.js';
+import {
+  recordCalendarEventIngest,
+  type CalendarUntrustedIngestRecorder,
+} from './untrusted-events.js';
 import type {
   CalendarEvent,
   CalendarSubscription,
@@ -46,6 +57,32 @@ export interface SubscriptionStoreOptions {
   readonly fetcher: FeedFetcher;
   readonly clock?: Clock;
   readonly defaultRefreshIntervalMs?: number;
+  /**
+   * Records that a turn read untrusted event content.
+   *
+   * A subscribed feed is continuous externally-controlled input: whoever can
+   * write to the calendar behind the URL writes the summaries, descriptions,
+   * locations and attendee names this store hands out.
+   *
+   * **Called from `readEvents()` and `readAllEvents()` — the two EXPLICIT
+   * reads — and from nowhere else.** `refresh()`, `refreshDue()` and
+   * `applyFetch()` are arrival: they run because a timer said so, with nobody
+   * watching. Recording there would write into whatever turn happened to be
+   * open and refuse that turn's outward action over an event nothing asked
+   * for, which hands anyone who can put an entry on a subscribed calendar a
+   * remote off switch. See docs/decisions/2026-07-27-arrival-is-not-ingest.md.
+   *
+   * The plain accessors `events()` / `allEvents()` do NOT record, and the
+   * distinction is not stylistic. `events()` reads as a pure accessor and is
+   * already used as one on an arrival path: goodvibes-agent's
+   * `calendar-subscription-registry.ts` calls `store.events(name)` inside
+   * `refresh()`, purely to count and persist after a timer fired. Had recording
+   * been a side effect of `events()`, the moment that consumer wired this
+   * recorder its timer-driven refresh would have started recording ingests —
+   * arrival becoming ingest through a name that promised otherwise. The
+   * recorder being optional would only have made the trap dormant, not absent.
+   */
+  readonly recordUntrustedIngest?: CalendarUntrustedIngestRecorder;
 }
 
 export interface AddSubscriptionInput {
@@ -128,11 +165,30 @@ export class SubscriptionStore {
   private readonly clock: Clock;
   private readonly defaultInterval: number;
   private readonly records = new Map<string, SubscriptionRecord>();
+  private readonly recordUntrustedIngest?: CalendarUntrustedIngestRecorder;
 
   constructor(options: SubscriptionStoreOptions) {
     this.fetcher = options.fetcher;
     this.clock = options.clock ?? (() => Date.now());
     this.defaultInterval = clampInterval(options.defaultRefreshIntervalMs, DEFAULT_REFRESH_INTERVAL_MS);
+    if (options.recordUntrustedIngest) this.recordUntrustedIngest = options.recordUntrustedIngest;
+  }
+
+  /**
+   * Record that the caller just read this subscription's event content.
+   *
+   * The ONLY place this store records an ingest, and it is reached only from a
+   * read. The feed URL is masked before it becomes an origin: a Google/Outlook
+   * "secret address" grants read access, and an origin surfaces into refusal
+   * text an operator sees.
+   */
+  private recordRead(record: SubscriptionRecord): void {
+    recordCalendarEventIngest({
+      record: this.recordUntrustedIngest,
+      provenance: { kind: 'subscription', name: record.name, maskedUrl: maskFeedUrl(record.url) },
+      events: record.events,
+      at: new Date(this.clock()).toISOString(),
+    });
   }
 
   /**
@@ -214,14 +270,47 @@ export class SubscriptionStore {
     return this.records.has(name);
   }
 
-  /** Events from the most recent successful parse of the named subscription. */
+  /**
+   * Events from the most recent successful parse of the named subscription.
+   *
+   * A PURE accessor: it records nothing. Callers that are looking at the
+   * content because a turn asked for it want `readEvents()` instead — see the
+   * note on `recordUntrustedIngest` for why the recording is a separate,
+   * explicitly-named call rather than a side effect of this one.
+   */
   events(name: string): readonly CalendarEvent[] {
     return this.records.get(name)?.events ?? [];
   }
 
-  /** All subscriptions' events, each tagged with its source subscription name. */
+  /**
+   * All subscriptions' events, each tagged with its source subscription name.
+   *
+   * A PURE accessor, like `events()`. `readAllEvents()` is the recording form.
+   */
   allEvents(): { readonly name: string; readonly events: readonly CalendarEvent[] }[] {
     return [...this.records.values()].map((r) => ({ name: r.name, events: r.events }));
+  }
+
+  /**
+   * `events()`, plus the record that a turn read this subscription's untrusted
+   * event content.
+   *
+   * Call this from a path that runs because SOMEONE ASKED — a tool call, a
+   * command, a rendered agenda. Never from a poll or a refresh: those are
+   * arrival, and `events()` is the accessor they want.
+   */
+  readEvents(name: string): readonly CalendarEvent[] {
+    const record = this.records.get(name);
+    if (!record) return [];
+    this.recordRead(record);
+    return record.events;
+  }
+
+  /** `allEvents()`, plus the ingest record for every subscription handed back. */
+  readAllEvents(): { readonly name: string; readonly events: readonly CalendarEvent[] }[] {
+    const records = [...this.records.values()];
+    for (const record of records) this.recordRead(record);
+    return records.map((r) => ({ name: r.name, events: r.events }));
   }
 
   /**

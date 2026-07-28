@@ -29,8 +29,18 @@
  * refusal reconstructable rather than an assertion.
  */
 
-/** Surfaces whose content is written by someone other than the owner. */
-export type UntrustedSurface = 'web-page' | 'email' | 'channel-message' | 'document';
+/**
+ * Surfaces whose content is written by someone other than the owner.
+ *
+ * `'calendar-event'` is its own member rather than a case of `'document'`.
+ * Where a calendar event came from is an inviter's address or a subscription
+ * URL the daemon polls, and that is precisely the fact a reader of the ledger
+ * needs: "content from alice@example.invalid (claimed organizer)" and "content
+ * from a feed at calendars.example.invalid" are different provenance, and
+ * folding both into "document" would erase the difference in the one place it
+ * decides whether a refusal reads as sensible.
+ */
+export type UntrustedSurface = 'web-page' | 'email' | 'channel-message' | 'document' | 'calendar-event';
 
 /** One (surface, origin) pair that contributed exposure to the current turn. */
 export interface UntrustedExposure {
@@ -50,6 +60,11 @@ export function describeUntrustedSource(exposure: UntrustedExposure): string {
       return `a channel message from ${origin}`;
     case 'document':
       return `the document ${origin}`;
+    case 'calendar-event':
+      // The origin is an inviter's address or the feed the daemon polls, so it
+      // reads naturally either way: "a calendar event from alice@example.com"
+      // and "a calendar event from calendars.example.com".
+      return `a calendar event from ${origin}`;
   }
 }
 
@@ -64,6 +79,8 @@ export function describeWhoControls(surface: UntrustedSurface): string {
       return 'anyone who can post in that channel';
     case 'document':
       return 'whoever produced it';
+    case 'calendar-event':
+      return 'anyone who can invite you, or whoever publishes that feed';
   }
 }
 
