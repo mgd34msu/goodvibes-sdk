@@ -139,6 +139,16 @@ describe('markup metacharacters are neutralized for every surface that interpret
     }
   });
 
+  test('a bare parenthesized URL is stripped independent of whether square brackets are present', () => {
+    // Explicit rather than relying only on "[link](url)" removing its own
+    // brackets — parentheses are their own entry in MARKUP_TRIGGER_CHARS, not
+    // an implicit side effect of removing '['.
+    const output = renderInboundMailNotice(baseInput({ subject: 'See (https://evil.example) for details' }));
+    const subjectLine = output.split('\n').find((line) => line.startsWith('Subject:'))!;
+    expect(subjectLine).not.toContain('(');
+    expect(subjectLine).not.toContain(')');
+  });
+
   test('Slack mrkdwn link/mention syntax (<url|text>) cannot be formed', () => {
     const output = renderInboundMailNotice(baseInput({
       subject: 'Click <https://evil.example|here> now',
@@ -259,16 +269,50 @@ describe('an IDN/homograph host never renders as its lookalike', () => {
   });
 });
 
-describe('the delivery address is shown, from evidence the sender could not forge', () => {
+describe('the delivery address is shown, from a header the sender cannot falsify the SOURCE of', () => {
   test('a verified delivered-to address renders', () => {
     const evidence = deliveredRecipientFromAliasMailbox('owner+gv-github-com-k3n9x2p4@example.com');
     const output = renderInboundMailNotice(baseInput({ deliveredTo: evidence }));
-    expect(output).toContain('Delivered to: owner+gv-github-com-k3n9x2p4@example.com');
+    // A zero-width space follows '@' (see breakMentionForms) — invisible to a
+    // human reader, but the exact-match string is no longer the literal
+    // address with a bare '@'.
+    expect(output).toContain('Delivered to: owner+gv-github-com-k3n9x2p4@​example.com');
+    expect(output).not.toContain('Delivered to: owner+gv-github-com-k3n9x2p4@example.com');
   });
 
   test('no delivery evidence renders an honest statement, not a blank or a forged address', () => {
     const output = renderInboundMailNotice(baseInput({ deliveredTo: null }));
     expect(output).toContain('Delivered to: (no verified delivery evidence)');
+  });
+
+  // The header is stamped truthfully by the receiving mail system, but what
+  // it truthfully stamps is the envelope recipient the SENDER chose (a
+  // catch-all domain or plus-addressing puts the local part entirely in the
+  // sender's hands). So this address is attacker-chosen text, same as
+  // subject or sender, and must not become clickable markup or a mention.
+  test('a delivered-to address containing markdown link syntax does not render a link', () => {
+    const evidence = deliveredRecipientFromAliasMailbox('[Approved](https://evil.example)@ourdomain.com');
+    const output = renderInboundMailNotice(baseInput({ deliveredTo: evidence }));
+    expect(output).not.toContain('[Approved](https://evil.example)');
+    expect(output).not.toContain('[');
+    expect(output).not.toContain(']');
+    expect(output).not.toContain('(https://evil.example)');
+  });
+
+  test('a delivered-to address containing @everyone does not render a mention form', () => {
+    const evidence = deliveredRecipientFromAliasMailbox('@everyone@ourdomain.com');
+    const output = renderInboundMailNotice(baseInput({ deliveredTo: evidence }));
+    expect(output).not.toContain('@everyone');
+  });
+
+  test('a delivered-to address containing a legitimate underscore still reads correctly', () => {
+    const evidence = deliveredRecipientFromAliasMailbox('owner+first_last@ourdomain.com');
+    const output = renderInboundMailNotice(baseInput({ deliveredTo: evidence }));
+    // The underscore survives untouched (the one trigger character this
+    // field keeps); only the mention-breaking zero-width space after '@'
+    // makes this not a byte-for-byte match of the raw address.
+    expect(output).toContain('Delivered to: owner+first_last@​ourdomain.com');
+    expect(output).toContain('first_last');
   });
 });
 
