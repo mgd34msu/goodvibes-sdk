@@ -113,6 +113,12 @@ export {
 
 export { renderGoogleSetupRunbook, RUNBOOK_RELATIVE_PATH } from './setup-runbook.js';
 
+export { repairHalfLandedGoogleConnection } from './connection-repair.js';
+export type {
+  GoogleConnectionRepairOutcome,
+  GoogleConnectionRepairResult,
+} from './connection-repair.js';
+
 export {
   runGoogleSetupFlow,
   renderGoogleSetupReport,

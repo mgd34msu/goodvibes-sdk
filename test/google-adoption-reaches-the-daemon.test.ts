@@ -35,6 +35,7 @@ import { SecretsManager } from '../packages/sdk/src/platform/config/secrets.ts';
 import {
   adoptExistingGoogleCredentials,
   detectGoogleSetupState,
+  repairHalfLandedGoogleConnection,
   ensureGoogleConfigDefaults,
   GOOGLE_CONFIG_KEYS,
   GOOGLE_SECRET_KEYS,
@@ -178,5 +179,79 @@ describe("a credential adopted in the agent is the daemon's to use", () => {
     const calendar = (stored['calendar'] ?? {}) as Record<string, Record<string, unknown>>;
     expect(calendar['google']?.['clientId']).toBe(FAKE_CLIENT_ID);
     expect(calendar['google']?.['clientSecretRef']).toBe(GOOGLE_CONFIG_KEYS.oauthClientSecretRef);
+  });
+});
+
+describe('a setup that only half landed is finished, not left for the owner to redo', () => {
+  /**
+   * The owner's exact state. `/google adopt` reported success; the SECRET half
+   * reached the store and the CONFIG half reached nowhere the daemon reads,
+   * because the `calendar` section did not exist to write into. He was told the
+   * setup worked and the daemon then said no email integration was available.
+   */
+  async function halfLandedHome(): Promise<string> {
+    const home = throwawayHome();
+    seedGmailMcp(home);
+    const agent = surface(home, 'agent');
+    // Secrets only — exactly what survives when the config writes throw.
+    await agent.secrets.set(GOOGLE_SECRET_KEYS.oauthClientSecret, FAKE_CLIENT_SECRET);
+    await agent.secrets.set(GOOGLE_SECRET_KEYS.oauthRefreshToken, FAKE_REFRESH_TOKEN);
+    return home;
+  }
+
+  test('the daemon completes it from the files the credential came from', async () => {
+    const home = await halfLandedHome();
+
+    // Before: half a credential, which reads as no account at all.
+    const before = surface(home, 'daemon');
+    expect((await detectGoogleSetupState({ config: before.config, secrets: before.secrets })).oauthClientId).toBeNull();
+
+    const daemon = surface(home, 'daemon');
+    const result = await repairHalfLandedGoogleConnection({
+      files: nodeFiles, config: daemon.config, secrets: daemon.secrets, homeDirectory: home,
+    });
+    expect(result.outcome).toBe('repaired');
+
+    const after = await detectGoogleSetupState({ config: daemon.config, secrets: daemon.secrets });
+    expect(after.oauthClientId).toBe(FAKE_CLIENT_ID);
+    expect(after.hasRefreshToken).toBe(true);
+  });
+
+  test('running it again changes nothing', async () => {
+    const home = await halfLandedHome();
+    const daemon = surface(home, 'daemon');
+    await repairHalfLandedGoogleConnection({
+      files: nodeFiles, config: daemon.config, secrets: daemon.secrets, homeDirectory: home,
+    });
+    const second = await repairHalfLandedGoogleConnection({
+      files: nodeFiles, config: daemon.config, secrets: daemon.secrets, homeDirectory: home,
+    });
+    expect(second.outcome).toBe('already-connected');
+  });
+
+  test('it never adopts on a machine where nobody ran a setup', async () => {
+    const home = throwawayHome();
+    // Adoptable credentials ARE sitting there, and that is precisely not enough.
+    seedGmailMcp(home);
+    const daemon = surface(home, 'daemon');
+    const result = await repairHalfLandedGoogleConnection({
+      files: nodeFiles, config: daemon.config, secrets: daemon.secrets, homeDirectory: home,
+    });
+    expect(result.outcome).toBe('nothing-to-repair');
+    const state = await detectGoogleSetupState({ config: daemon.config, secrets: daemon.secrets });
+    expect(state.oauthClientId).toBeNull();
+  });
+
+  test('it says so plainly when the source files are gone', async () => {
+    const home = throwawayHome();
+    const agent = surface(home, 'agent');
+    await agent.secrets.set(GOOGLE_SECRET_KEYS.oauthRefreshToken, FAKE_REFRESH_TOKEN);
+    // No ~/.gmail-mcp at all.
+    const daemon = surface(home, 'daemon');
+    const result = await repairHalfLandedGoogleConnection({
+      files: nodeFiles, config: daemon.config, secrets: daemon.secrets, homeDirectory: home,
+    });
+    expect(result.outcome).toBe('source-gone');
+    expect(result.detail).toContain('Re-run the Google setup');
   });
 });

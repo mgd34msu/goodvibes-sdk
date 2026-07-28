@@ -16168,6 +16168,18 @@
       ]
     },
     {
+      "name": "GoogleConnectionRepairOutcome",
+      "kind": "type"
+    },
+    {
+      "name": "GoogleConnectionRepairResult",
+      "kind": "interface",
+      "required": [
+        "detail",
+        "outcome"
+      ]
+    },
+    {
       "name": "GoogleConnectionSources",
       "kind": "interface",
       "required": [
@@ -16960,6 +16972,10 @@
     },
     {
       "name": "renderLoopbackSuccessPage",
+      "kind": "function"
+    },
+    {
+      "name": "repairHalfLandedGoogleConnection",
       "kind": "function"
     },
     {

@@ -19,6 +19,9 @@ import {
   type MigratableSecretStore,
 } from '../config/daemon-credential-migration.js';
 import { DAEMON_CONFIG_ROOT } from '../config/daemon-config-tier.js';
+import { ensureConnectorConfigSections } from '../config/connector-config-sections.js';
+import { repairHalfLandedGoogleConnection } from '../google/connection-repair.js';
+import { nodeGoogleFilePort } from '../google/node.js';
 import { resolveSharedDirectory } from '../runtime/surface-root.js';
 import type { ConfigManager } from '../config/manager.js';
 import { ensureActivityLoggerConfigured, logger } from '../utils/logger.js';
@@ -172,6 +175,48 @@ export async function runDaemonBootGuarantees(
   ensureDaemonActivityLog(services.shellPaths.workingDirectory);
   migrateDaemonOwnedConfigOnBoot(configManager, services.shellPaths.homeDirectory);
   await migrateDaemonNeededCredentialsOnBoot(services.secretsManager, services.shellPaths.homeDirectory);
+  await repairGoogleConnectionOnBoot(configManager, services);
+}
+
+/**
+ * Finish a Google setup that only half landed.
+ *
+ * The migration above moves credentials between tiers. It cannot help a
+ * connection whose config half never reached ANY tier, which is the state
+ * `/google adopt` left on the owner's machine: the secret stored, the client id
+ * that goes with it nowhere, and a daemon reporting no account connected while
+ * being told the setup had succeeded.
+ *
+ * Runs only where a Google credential is already stored — finishing what a
+ * person started, never starting one for them. See google/connection-repair.ts.
+ */
+async function repairGoogleConnectionOnBoot(
+  configManager: ConfigManager,
+  services: DaemonBootServices,
+): Promise<void> {
+  try {
+    ensureConnectorConfigSections(configManager);
+    const manager = configManager as unknown as { get(key: string): unknown; setDynamic(key: string, value: unknown): void };
+    const result = await repairHalfLandedGoogleConnection({
+      files: nodeGoogleFilePort,
+      config: { get: (key) => manager.get(key), set: (key, value) => { manager.setDynamic(key, value); } },
+      secrets: {
+        get: (key) => services.secretsManager.get(key),
+        set: (key, value) => services.secretsManager.set(key, value),
+      },
+      homeDirectory: services.shellPaths.homeDirectory,
+    });
+    if (result.outcome === 'already-connected' || result.outcome === 'nothing-to-repair') return;
+    logger.info('DaemonServer: completed a Google setup that had only half landed', {
+      outcome: result.outcome,
+      detail: result.detail,
+    });
+  } catch (error) {
+    logger.warn('DaemonServer: could not complete a half-landed Google setup', {
+      error: summarizeError(error),
+      detail: 'the daemon may still report no Google account connected while a credential for one is stored',
+    });
+  }
 }
 
 /**
