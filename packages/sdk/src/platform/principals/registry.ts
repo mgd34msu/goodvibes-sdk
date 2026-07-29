@@ -12,6 +12,7 @@
  * it — reattaching an identity must be a deliberate delete-then-recreate.
  */
 import { randomUUID } from 'node:crypto';
+import { StoreWriteQueue } from '../state/store-write-queue.js';
 import type { PrincipalStore } from './store.js';
 import {
   PrincipalRegistryError,
@@ -76,8 +77,31 @@ function normalizeIdentities(identities: readonly PrincipalIdentity[] | undefine
 
 export class PrincipalRegistry {
   private records: PrincipalRecord[] | null = null;
+  /** Whole-store writes run one at a time, in call order. See StoreWriteQueue. */
+  private readonly writes = new StoreWriteQueue();
 
   constructor(private readonly store: PrincipalStore) {}
+
+  /**
+   * Write the principals as they stand at THIS call, after every write already
+   * queued has finished.
+   *
+   * `PrincipalStore.save` replaces the file atomically but says nothing about
+   * ORDER, and `records` is one live array every method mutates in place, so two
+   * gateway calls in flight at once finished in whatever order their renames
+   * landed. Unordered, a `create` could land after the `delete` that followed
+   * it — and a principal is the thing channel intake resolves a sender identity
+   * against, so a deleted principal back on disk is a person whose messages are
+   * still attributed to a named identity after they were unmapped.
+   *
+   * The snapshot is taken here rather than at write time: every caller mutates
+   * `records` and then saves, so each snapshot is at least as new as the one
+   * queued before it.
+   */
+  private async persist(records: readonly PrincipalRecord[]): Promise<void> {
+    const snapshot = [...records];
+    await this.writes.run(() => this.store.save(snapshot));
+  }
 
   private async all(): Promise<PrincipalRecord[]> {
     if (this.records === null) {
@@ -136,7 +160,7 @@ export class PrincipalRegistry {
       ...(input.metadata ? { metadata: input.metadata } : {}),
     };
     records.push(record);
-    await this.store.save(records);
+    await this.persist(records);
     return record;
   }
 
@@ -160,7 +184,7 @@ export class PrincipalRegistry {
       ...(input.metadata !== undefined ? { metadata: input.metadata } : {}),
     };
     records[index] = next;
-    await this.store.save(records);
+    await this.persist(records);
     return next;
   }
 
@@ -169,7 +193,7 @@ export class PrincipalRegistry {
     const index = records.findIndex((r) => r.id === id);
     if (index === -1) return false;
     records.splice(index, 1);
-    await this.store.save(records);
+    await this.persist(records);
     return true;
   }
 

@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { PersistentStore } from '../state/persistent-store.js';
+import { StoreWriteQueue } from '../state/store-write-queue.js';
 import type {
   ChannelConversationKind,
   ChannelGroupPolicyRecord,
@@ -188,7 +189,8 @@ export class ChannelPolicyManager {
   private readonly audit: ChannelPolicyAuditRecord[] = [];
   private loaded = false;
   private auditFlushTimer: ReturnType<typeof setTimeout> | null = null;
-  private auditFlushChain: Promise<void> = Promise.resolve();
+  /** Whole-store writes run one at a time, in call order. See StoreWriteQueue. */
+  private readonly writes = new StoreWriteQueue();
 
   constructor(
     options: {
@@ -399,13 +401,15 @@ export class ChannelPolicyManager {
     if (this.auditFlushTimer) return;
     const timer = setTimeout(() => {
       this.auditFlushTimer = null;
-      this.auditFlushChain = this.auditFlushChain
-        .then(() => this.persist())
-        .catch((error: unknown) => {
-          logger.warn('Channel policy audit flush failed', {
-            error: error instanceof Error ? error.message : String(error),
-          });
+      // The flush goes through the same write queue every other write uses.
+      // It used to have a chain of its own, which ordered flushes against each
+      // OTHER and against nothing else — the write it actually races is
+      // `upsertPolicy`'s.
+      void this.persist().catch((error: unknown) => {
+        logger.warn('Channel policy audit flush failed', {
+          error: error instanceof Error ? error.message : String(error),
         });
+      });
     }, AUDIT_FLUSH_INTERVAL_MS);
     timer.unref?.();
     this.auditFlushTimer = timer;
@@ -420,14 +424,30 @@ export class ChannelPolicyManager {
       clearTimeout(this.auditFlushTimer);
       this.auditFlushTimer = null;
     }
-    await this.auditFlushChain.catch(() => undefined);
+    // A flush already in flight settles first, so the final write below is the
+    // last one to land rather than a race against it.
+    await this.writes.drain();
     if (this.loaded) await this.persist();
   }
 
+  /**
+   * Write the policies and audit trail as they stand at THIS call, after every
+   * write already queued has finished.
+   *
+   * Two paths write this file and they were ordered only against themselves:
+   * `upsertPolicy` awaited its write, and the debounced audit flush ran on a
+   * private chain. `evaluateIngress` schedules a flush on EVERY inbound message,
+   * so a "disable this surface" ruling — or the owner-allowlist seeding that
+   * decides which sender the surface answers at all — arriving while a flush was
+   * in flight could be overwritten by that flush's older snapshot. The surface
+   * comes back enabled, or the allowlist comes back empty and adopts the next
+   * sender that speaks.
+   */
   private async persist(): Promise<void> {
-    await this.store.persist({
+    const snapshot: ChannelPolicySnapshot = {
       policies: this.listPolicies(),
       audit: [...this.audit],
-    });
+    };
+    await this.writes.run(() => this.store.persist(snapshot));
   }
 }

@@ -8,6 +8,7 @@
  * use.
  */
 import { PersistentStore } from '../state/persistent-store.js';
+import { StoreWriteQueue } from '../state/store-write-queue.js';
 import type { CheckinReceipt } from './types.js';
 
 const MAX_RECEIPTS = 500;
@@ -28,6 +29,8 @@ function validateSnapshot(snapshot: CheckinReceiptsSnapshot | null): CheckinRece
 export class CheckinReceiptStore {
   private readonly store: PersistentStore<CheckinReceiptsSnapshot>;
   private receipts: CheckinReceipt[] | null = null;
+  /** Whole-file writes run one at a time, in call order. See StoreWriteQueue. */
+  private readonly writes = new StoreWriteQueue();
 
   constructor(path: string) {
     this.store = new PersistentStore<CheckinReceiptsSnapshot>(path);
@@ -38,12 +41,25 @@ export class CheckinReceiptStore {
     return this.receipts;
   }
 
-  /** Append a receipt (capped to the most recent MAX_RECEIPTS). */
+  /**
+   * Append a receipt (capped to the most recent MAX_RECEIPTS).
+   *
+   * The write is ORDERED against every other append. A check-in run is long —
+   * it reads a state snapshot, asks a model to judge it, and delivers over a
+   * channel — so the scheduled run and the manual verb overlap readily, and
+   * `PersistentStore.persist` is atomic but says nothing about which of two
+   * in-flight writes lands last. Unordered, the earlier run's write could land
+   * second and replace the file with its own snapshot, which does not contain
+   * the later run's receipt. The receipt is the whole point of this store: it is
+   * how an automatic behavior stays visible, so losing one means a check-in that
+   * contacted the owner with nothing on disk saying it ever ran.
+   */
   async append(receipt: CheckinReceipt): Promise<CheckinReceipt> {
     const receipts = await this.all();
     receipts.push(receipt);
     if (receipts.length > MAX_RECEIPTS) receipts.splice(0, receipts.length - MAX_RECEIPTS);
-    await this.store.persist({ version: 1, receipts: [...receipts] });
+    const snapshot: CheckinReceiptsSnapshot = { version: 1, receipts: [...receipts] };
+    await this.writes.run(() => this.store.persist(snapshot));
     return receipt;
   }
 

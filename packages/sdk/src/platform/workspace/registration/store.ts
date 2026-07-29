@@ -15,9 +15,27 @@
  * or the daemon state dir) via the SAME broadRootReason the checkpoint manager
  * already uses — a registration store must never let automatic coverage sweep a
  * whole home directory.
+ *
+ * CONCURRENCY. Every mutation here is a READ-MODIFY-WRITE: `read()` loads the
+ * whole document, the method edits one array, and `persist()` replaces the
+ * file. `PersistentStore.persist` is one atomic replacement, so nobody sees a
+ * torn file — but it does not close the window between the read and the write,
+ * which is exactly what its own header says belongs to the caller that owns the
+ * read. Two registrations interleaved there lose one of the two roots outright:
+ * both read the same array, both append their own record, and the second write
+ * replaces the first. The lost root then has no coverage and nothing says so.
+ *
+ * And this store, alone among the daemon's stores, is contended ACROSS
+ * PROCESSES: `goodvibes register` in a project directory writes the same
+ * user-scoped file the running daemon writes, so an in-process queue on its own
+ * would order this process's writes and still lose the other's. Every
+ * read-modify-write therefore runs under BOTH — the in-process chain and the
+ * advisory lock at `<file>.lock` — which is the shape `push/subscription-store.ts`
+ * already uses for the same reason.
  */
 
 import { PersistentStore } from '../../state/persistent-store.js';
+import { acquireCrossProcessLock } from '../checkpoint/cross-process-lock.js';
 import { broadRootReason } from '../checkpoint/root-guard.js';
 import { normalizeWorkspaceRoot, resolveWorkspaceRegistration } from './resolution.js';
 import {
@@ -70,12 +88,44 @@ export class WorkspaceRegistrationStore {
   private readonly homeDir: string;
   private readonly daemonStateDir: string;
   private readonly probe: (path: string) => WorkspaceGitMetadata;
+  /** Orders read-modify-writes within this process. See the header. */
+  private queue: Promise<unknown> = Promise.resolve();
 
   constructor(options: WorkspaceRegistrationStoreOptions) {
     this.store = new PersistentStore<PersistedRegistry>(options.path);
     this.homeDir = options.homeDir;
     this.daemonStateDir = options.daemonStateDir;
     this.probe = options.probe ?? probeWorktreeLink;
+  }
+
+  /**
+   * Run `fn` as the only read-modify-write against this file, in this process
+   * AND across processes.
+   *
+   * The chain orders callers here; the advisory lock keeps the CLI's
+   * registration from being clobbered by the daemon's, and vice versa. A
+   * `:memory:` store has no file to contend on and takes the chain only.
+   *
+   * The chain tracks COMPLETION, never OUTCOME: `next.catch` keeps it alive
+   * after a rejection, so one failed registration cannot wedge the store for
+   * the life of the process, and the rejection still reaches the caller that
+   * owns it and nobody else. `then(guarded, guarded)` rather than `then(guarded)`
+   * for the same reason — a settled predecessor must run the next one either way.
+   */
+  private run<T>(fn: () => Promise<T>): Promise<T> {
+    const guarded = async (): Promise<T> => {
+      const lockPath = this.store.lockPath;
+      if (!lockPath) return fn();
+      const release = await acquireCrossProcessLock(lockPath, { totalTimeoutMs: 10_000 });
+      try {
+        return await fn();
+      } finally {
+        release();
+      }
+    };
+    const next = this.queue.then(guarded, guarded);
+    this.queue = next.catch(() => undefined);
+    return next;
   }
 
   private async read(): Promise<PersistedRegistry> {
@@ -100,59 +150,67 @@ export class WorkspaceRegistrationStore {
     root: string,
     opts?: { readonly label?: string; readonly origin?: string; readonly checkpointEligible?: boolean },
   ): Promise<RegisterWorkspaceResult> {
+    // The root guard runs OUTSIDE the lock: it rejects on the argument alone,
+    // and a refusal should not queue behind another process's write.
     const target = this.requireRegistrableRoot(root);
-    const state = await this.read();
-    const existing = state.workspaces.find((w) => w.root === target);
-    if (existing) {
-      const origin = opts?.origin?.trim();
-      const wantsUpgrade =
-        (origin !== undefined && origin !== '' && existing.origin !== origin)
-        || (opts?.checkpointEligible === true && existing.checkpointEligible !== true);
-      if (!wantsUpgrade) return { record: existing, alreadyRegistered: true };
-      const upgraded: RegisteredWorkspaceRecord = {
-        ...existing,
-        ...(origin ? { origin } : {}),
+    return this.run(async () => {
+      const state = await this.read();
+      const existing = state.workspaces.find((w) => w.root === target);
+      if (existing) {
+        const origin = opts?.origin?.trim();
+        const wantsUpgrade =
+          (origin !== undefined && origin !== '' && existing.origin !== origin)
+          || (opts?.checkpointEligible === true && existing.checkpointEligible !== true);
+        if (!wantsUpgrade) return { record: existing, alreadyRegistered: true };
+        const upgraded: RegisteredWorkspaceRecord = {
+          ...existing,
+          ...(origin ? { origin } : {}),
+          ...(opts?.checkpointEligible === true ? { checkpointEligible: true } : {}),
+        };
+        await this.store.persist({
+          version: 1,
+          workspaces: state.workspaces.map((w) => (w.root === target ? upgraded : w)),
+          declines: state.declines,
+        });
+        return { record: upgraded, alreadyRegistered: true };
+      }
+
+      const record: RegisteredWorkspaceRecord = {
+        root: target,
+        registeredAt: new Date().toISOString(),
+        ...(opts?.label?.trim() ? { label: opts.label.trim() } : {}),
+        ...(opts?.origin?.trim() ? { origin: opts.origin.trim() } : {}),
         ...(opts?.checkpointEligible === true ? { checkpointEligible: true } : {}),
       };
-      await this.store.persist({
-        version: 1,
-        workspaces: state.workspaces.map((w) => (w.root === target ? upgraded : w)),
-        declines: state.declines,
-      });
-      return { record: upgraded, alreadyRegistered: true };
-    }
-
-    const record: RegisteredWorkspaceRecord = {
-      root: target,
-      registeredAt: new Date().toISOString(),
-      ...(opts?.label?.trim() ? { label: opts.label.trim() } : {}),
-      ...(opts?.origin?.trim() ? { origin: opts.origin.trim() } : {}),
-      ...(opts?.checkpointEligible === true ? { checkpointEligible: true } : {}),
-    };
-    // Registering a root clears any remembered decline at exactly that root.
-    const declines = state.declines.filter((d) => d.root !== target);
-    await this.store.persist({ version: 1, workspaces: [...state.workspaces, record], declines });
-    return { record, alreadyRegistered: false };
+      // Registering a root clears any remembered decline at exactly that root.
+      const declines = state.declines.filter((d) => d.root !== target);
+      await this.store.persist({ version: 1, workspaces: [...state.workspaces, record], declines });
+      return { record, alreadyRegistered: false };
+    });
   }
 
   /** Remove a registered root. Returns whether anything was removed (honest boolean, never a phantom). */
   async remove(root: string): Promise<{ readonly root: string; readonly removed: boolean }> {
     const target = normalizeWorkspaceRoot(root);
-    const state = await this.read();
-    const workspaces = state.workspaces.filter((w) => w.root !== target);
-    const removed = workspaces.length !== state.workspaces.length;
-    if (removed) await this.store.persist({ version: 1, workspaces, declines: state.declines });
-    return { root: target, removed };
+    return this.run(async () => {
+      const state = await this.read();
+      const workspaces = state.workspaces.filter((w) => w.root !== target);
+      const removed = workspaces.length !== state.workspaces.length;
+      if (removed) await this.store.persist({ version: 1, workspaces, declines: state.declines });
+      return { root: target, removed };
+    });
   }
 
   /** Remember a subtree-scoped decline at a root. Idempotent. Used by prompt consumers, not a wire verb. */
   async decline(root: string): Promise<{ readonly root: string; readonly alreadyDeclined: boolean }> {
     const target = normalizeWorkspaceRoot(root);
-    const state = await this.read();
-    if (state.declines.some((d) => d.root === target)) return { root: target, alreadyDeclined: true };
-    const record: DeclinedWorkspaceRecord = { root: target, declinedAt: new Date().toISOString() };
-    await this.store.persist({ version: 1, workspaces: state.workspaces, declines: [...state.declines, record] });
-    return { root: target, alreadyDeclined: false };
+    return this.run(async () => {
+      const state = await this.read();
+      if (state.declines.some((d) => d.root === target)) return { root: target, alreadyDeclined: true };
+      const record: DeclinedWorkspaceRecord = { root: target, declinedAt: new Date().toISOString() };
+      await this.store.persist({ version: 1, workspaces: state.workspaces, declines: [...state.declines, record] });
+      return { root: target, alreadyDeclined: false };
+    });
   }
 
   /**

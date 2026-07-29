@@ -1,5 +1,6 @@
 import type { AutomationRunTelemetry } from '../../automation/runs.js';
 import type { PersistentStore } from '../../state/persistent-store.js';
+import type { StoreWriteQueue } from '../../state/store-write-queue.js';
 
 export type DistributedPeerKind = 'node' | 'device';
 export type DistributedPairRequestStatus = 'pending' | 'approved' | 'verified' | 'rejected' | 'expired';
@@ -204,6 +205,14 @@ interface StoredPairRequest extends DistributedRuntimePairRequest {
 
 export interface DistributedRuntimeManagerState {
   readonly store: PersistentStore<DistributedRuntimeSnapshotStore>;
+  /**
+   * Whole-store writes, one at a time, in call order. See StoreWriteQueue.
+   *
+   * Part of the state rather than a private of the manager because the writes
+   * live in the free functions of `distributed-runtime-store.ts`, which is also
+   * where the ones nobody waits for are fired from.
+   */
+  readonly writes: StoreWriteQueue;
   readonly pairRequests: Map<string, StoredPairRequest>;
   readonly peers: Map<string, StoredPeerRecord>;
   readonly work: Map<string, DistributedPendingWork>;

@@ -3,6 +3,7 @@ import { join } from 'path';
 import { logger } from '../utils/logger.js';
 import { randomBytes } from 'crypto';
 import { JsonFileStore } from './json-file-store.js';
+import { StoreWriteQueue } from './store-write-queue.js';
 import { summarizeError } from '../utils/error-display.js';
 
 /**
@@ -221,6 +222,8 @@ export class KVState {
   private readonly legacyStateDir: string | undefined;
   private sweepTimer: ReturnType<typeof setInterval> | null = null;
   private housekeepingStarted = false;
+  /** Whole-file writes run one at a time, in call order. See StoreWriteQueue. */
+  private readonly writes = new StoreWriteQueue();
 
   constructor(options: KVStateOptions) {
     if (!options.stateDir || options.stateDir.trim().length === 0) {
@@ -341,9 +344,26 @@ export class KVState {
     };
   }
 
+  /**
+   * Write the session file, after every write already queued has finished.
+   *
+   * There are two writers and nothing ordered them: the 5-second debounce armed
+   * by `set`/`clear`, and `dispose()`, which clears the timer and writes
+   * directly. Clearing a timer that has ALREADY fired stops nothing, so an
+   * agent that finishes just after a debounced write started has two writes in
+   * flight, and `JsonFileStore.save` renames atomically without saying which
+   * rename lands last. Unordered, the earlier write's older view can land second
+   * and put back a key `clear` removed — which a resumed session then reads as
+   * still set.
+   *
+   * `this.data` is passed by reference, as it always was: `save` serialises it
+   * when the write RUNS, so each queued write emits a view at least as new as
+   * the one before it. Only the order was missing.
+   */
   async persist(): Promise<void> {
-    if (this.data === null) return;
-    await this.store.save(this.data);
+    const data = this.data;
+    if (data === null) return;
+    await this.writes.run(() => this.store.save(data));
   }
 
   getSessionId(): string {

@@ -15,6 +15,7 @@
 
 import type { PolicyRule } from '../runtime/permissions/types.js';
 import { PersistentStore } from '../state/persistent-store.js';
+import { StoreWriteQueue } from '../state/store-write-queue.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 import type { RememberTier } from './approval-rules.js';
@@ -38,6 +39,8 @@ export class UserPermissionRuleStore {
   private readonly store: PersistentStore<UserRuleFile>;
   private records: StoredUserPermissionRule[] = [];
   private loaded = false;
+  /** Whole-store writes run one at a time, in call order. See StoreWriteQueue. */
+  private readonly writes = new StoreWriteQueue();
 
   constructor(filePath: string) {
     this.store = new PersistentStore<UserRuleFile>(filePath);
@@ -91,7 +94,24 @@ export class UserPermissionRuleStore {
     return removed;
   }
 
+  /**
+   * Replace the store file with the rules as they stand at THIS call, after
+   * every write already queued has finished.
+   *
+   * `PersistentStore.persist` is atomic but says nothing about ORDER, and these
+   * rules are written by two paths that overlap in practice: `add`, from a
+   * "remember this decision" answer, and `delete`, from a revocation. With the
+   * writes unordered the add's rename could land AFTER the delete's, putting
+   * the revoked rule back on disk — and a durable user rule is consulted before
+   * anything prompts, so the next matching ask was auto-approved by a rule its
+   * owner had already taken away.
+   *
+   * The snapshot is still taken here, synchronously, exactly as it always was.
+   * Ordering is sufficient because both callers replace `records` and then
+   * persist, so each snapshot is at least as new as the one queued before it.
+   */
   private async persist(): Promise<void> {
-    await this.store.persist({ version: 1, rules: this.records });
+    const snapshot: UserRuleFile = { version: 1, rules: this.records };
+    await this.writes.run(() => this.store.persist(snapshot));
   }
 }

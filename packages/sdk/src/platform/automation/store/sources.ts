@@ -1,4 +1,5 @@
 import { PersistentStore } from '../../state/persistent-store.js';
+import { StoreWriteQueue } from '../../state/store-write-queue.js';
 import type { AutomationSourceRecord } from '../sources.js';
 import { resolveAutomationStorePath, type AutomationStorePathConfig } from './paths.js';
 
@@ -32,6 +33,8 @@ export interface AutomationSourceStoreConfig {
 
 export class AutomationSourceStore {
   private readonly store: PersistentStore<AutomationSourcesSnapshot>;
+  /** Whole-file writes run one at a time, in call order. See StoreWriteQueue. */
+  private readonly writes = new StoreWriteQueue();
 
   constructor(config: string | AutomationSourceStoreConfig = {}) {
     const path = typeof config === 'string'
@@ -44,10 +47,15 @@ export class AutomationSourceStore {
     return validateSnapshot(await this.store.load());
   }
 
+  /**
+   * Replace the file with `sources` as they are at THIS call, after every write
+   * already queued has finished. Ordering, not the snapshot point, is what was
+   * missing: `AutomationService.upsertJob`, `upsertRun` and `upsertSource` all
+   * rewrite this whole file, and `PersistentStore.persist` is atomic but
+   * unordered.
+   */
   async save(sources: readonly AutomationSourceRecord[]): Promise<void> {
-    await this.store.persist({
-      version: 1,
-      sources: [...sources],
-    });
+    const snapshot: AutomationSourcesSnapshot = { version: 1, sources: [...sources] };
+    await this.writes.run(() => this.store.persist(snapshot));
   }
 }
