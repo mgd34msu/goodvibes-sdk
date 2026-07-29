@@ -34,6 +34,8 @@ export interface OccasionsConfig {
   interviewQuestions: number;
   /** How long the record of what he landed on is kept, in years. */
   giftHistoryYears: number;
+  /** How often the approach sweep runs, in minutes. */
+  sweepIntervalMinutes: number;
 }
 
 /** Dot-path keys for the `occasions.*` domain. */
@@ -48,7 +50,8 @@ export type OccasionsConfigKey =
   | 'occasions.calendarMirror'
   | 'occasions.suppressMirroredNudges'
   | 'occasions.interviewQuestions'
-  | 'occasions.giftHistoryYears';
+  | 'occasions.giftHistoryYears'
+  | 'occasions.sweepIntervalMinutes';
 
 /**
  * Maps an `occasions.*` key to its value type.
@@ -71,4 +74,5 @@ export type OccasionsConfigValue<K extends OccasionsConfigKey> =
   K extends 'occasions.suppressMirroredNudges' ? boolean :
   K extends 'occasions.interviewQuestions' ? number :
   K extends 'occasions.giftHistoryYears' ? number :
+  K extends 'occasions.sweepIntervalMinutes' ? number :
   never;

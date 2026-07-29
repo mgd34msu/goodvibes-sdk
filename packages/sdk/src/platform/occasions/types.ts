@@ -311,6 +311,7 @@ export const OCCASIONS_CONFIG_KEYS = {
   suppressMirroredNudges: 'occasions.suppressMirroredNudges',
   interviewQuestions: 'occasions.interviewQuestions',
   giftHistoryYears: 'occasions.giftHistoryYears',
+  sweepIntervalMinutes: 'occasions.sweepIntervalMinutes',
 } as const;
 
 /** The heading occasions are declared under. A canonical profile section. */

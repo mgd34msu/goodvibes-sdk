@@ -253,6 +253,26 @@ with every surface closed.
 | `occasions.suppressMirroredNudges` | `true` | Owner ruling §5. |
 | `occasions.interviewQuestions` | `3` | Not pinned; §4.10 says "genuinely short". |
 | `occasions.giftHistoryYears` | `10` | Not pinned; §4.10 says year three should not be steered by year one. |
+| `occasions.sweepIntervalMinutes` | `60` | Not pinned; the plan does not say how often the sweep runs, only that it runs. |
+
+## 8.1 What runs the sweep
+
+A loop that only runs when a verb asks it to is not proactive, and proactive is
+the whole feature — so the composition arms a repeating timer
+(`occasions/ticker.ts`), re-read from config every tick so
+`occasions.sweepIntervalMinutes` is live rather than restart-only.
+
+The ticker is deliberately dumb, because the sweep is where the judgement is: a
+tick inside quiet hours raises nothing and reaps anyway, and a tick on a day an
+occasion has already been raised finds its open item not yet due. The interval
+therefore decides how soon the FIRST nudge lands after a window opens and
+nothing else — shortening it cannot make the system nag.
+
+Passes are strictly serial: the next tick is armed only when the current pass
+finishes, so a slow sweep delays the next one rather than having one start on
+top of it and deliver the same batch twice. The re-arm sits in a `finally`, so
+one transient failure cannot end the loop for the life of the process, and the
+timer is `unref`'d so it never holds the daemon open.
 
 ## 9. What this feature deliberately does not do
 

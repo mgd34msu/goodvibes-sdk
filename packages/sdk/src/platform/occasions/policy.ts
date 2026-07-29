@@ -36,6 +36,7 @@ export const OCCASIONS_DEFAULTS = {
   suppressMirroredNudges: true,
   interviewQuestions: 3,
   giftHistoryYears: 10,
+  sweepIntervalMinutes: 60,
 } as const;
 
 function bool(value: unknown, fallback: boolean): boolean {
@@ -83,6 +84,12 @@ export function readOccasionsPolicy(config: OccasionsConfigAccess): OccasionsPol
       OCCASIONS_DEFAULTS.giftHistoryYears,
       1,
       50,
+    ),
+    sweepIntervalMinutes: int(
+      get(OCCASIONS_CONFIG_KEYS.sweepIntervalMinutes),
+      OCCASIONS_DEFAULTS.sweepIntervalMinutes,
+      5,
+      1440,
     ),
   };
 }

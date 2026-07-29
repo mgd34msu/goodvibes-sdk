@@ -71,6 +71,8 @@ export interface OccasionsPolicy extends CadencePolicy {
   readonly nudgeChannel: string;
   /** Whether occasions are written out to the calendar as a mirror. */
   readonly calendarMirror: boolean;
+  /** How often the scheduled sweep runs, in minutes. Read live, per tick. */
+  readonly sweepIntervalMinutes: number;
 }
 
 /** One occasion that is due to be raised, with the occurrence it is about. */
