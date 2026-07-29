@@ -20,11 +20,12 @@
  * instead of on whatever the caller happened to be looking at.
  */
 import { describe, test, expect } from 'bun:test';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { waitFor } from './_helpers/test-timeout.js';
-import { PersistentStore } from '../packages/sdk/src/platform/state/persistent-store.js';
+import {
+  makeControllableStore,
+  readOnDisk,
+  type ControllableStore,
+} from './_helpers/controllable-store.js';
 import { StoreWriteQueue } from '../packages/sdk/src/platform/state/store-write-queue.js';
 import { ApprovalBroker } from '../packages/sdk/src/platform/control-plane/approval-broker.js';
 import type { SharedApprovalRecord } from '../packages/sdk/src/platform/control-plane/approval-broker.js';
@@ -56,66 +57,22 @@ interface ApprovalSnapshot extends Record<string, unknown> {
 }
 
 /**
- * A real store with a knob on the write.
- *
- * `delayNextMs` is how the overlap is forced: the CI failure needed one write
- * to be slow while another ran, which on the runner was two fsyncs under
- * contention. Making the first write slow on purpose reproduces the same
- * interleaving on an idle machine, deterministically, instead of hoping a
- * loaded box produces it. Everything below the knob is the real
- * `PersistentStore`, so the atomic rename being raced is the actual one.
+ * The store harness lives in `_helpers/controllable-store.ts` — a real
+ * `PersistentStore` with a delay knob and a fail-the-Nth-write knob. It was
+ * written here for this defect and moved out so the other stores that share it
+ * are pinned by the same technique rather than a second one.
  */
-class ControllableStore extends PersistentStore<ApprovalSnapshot> {
-  /** Applied to the next write only, before it reaches the disk. */
-  delayNextMs = 0;
-  /** The next write rejects instead of writing. Consumed by that write. */
-  failNext = false;
-  /**
-   * Fail the Nth write of this store's life, counted from 1.
-   *
-   * Needed where the write that has to fail is not the next one: with the
-   * queue in place the writes are ordered, so "the third one" names a specific
-   * write precisely, and a test can single out a write that is several deep in
-   * the queue without racing to set a flag at the right instant.
-   */
-  failWriteNumber: number | null = null;
-  /** Writes that have started, and writes that have finished either way. */
-  started = 0;
-  finished = 0;
-
-  override async persist(data: ApprovalSnapshot): Promise<void> {
-    this.started += 1;
-    const fail = this.failNext || this.failWriteNumber === this.started;
-    this.failNext = false;
-    const delay = this.delayNextMs;
-    this.delayNextMs = 0;
-    try {
-      if (delay > 0) await new Promise<void>((resolve) => { setTimeout(resolve, delay); });
-      if (fail) throw new Error('store unavailable');
-      await super.persist(data);
-    } finally {
-      this.finished += 1;
-    }
-  }
-}
-
-function makeStore(): { store: ControllableStore; path: string; cleanup: () => void } {
-  const dir = mkdtempSync(join(tmpdir(), 'gv-approval-order-'));
-  const path = join(dir, 'approvals.json');
-  return {
-    store: new ControllableStore(path),
-    path,
-    cleanup: () => rmSync(dir, { recursive: true, force: true }),
-  };
+function makeStore(): {
+  store: ControllableStore<ApprovalSnapshot>;
+  path: string;
+  cleanup: () => void;
+} {
+  const { store, path, cleanup } = makeControllableStore<ApprovalSnapshot>('approval-order', 'approvals.json');
+  return { store, path, cleanup };
 }
 
 function onDisk(path: string, callId: string): SharedApprovalRecord | undefined {
-  try {
-    const snapshot = JSON.parse(readFileSync(path, 'utf-8')) as ApprovalSnapshot;
-    return snapshot.approvals.find((entry) => entry.callId === callId);
-  } catch {
-    return undefined;
-  }
+  return readOnDisk<ApprovalSnapshot>(path)?.approvals.find((entry) => entry.callId === callId);
 }
 
 describe('the newest write is the one that survives on disk', () => {

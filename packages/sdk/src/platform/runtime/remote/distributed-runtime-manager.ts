@@ -1,4 +1,5 @@
 import { PersistentStore } from '../../state/persistent-store.js';
+import { StoreWriteQueue } from '../../state/store-write-queue.js';
 import type {
   DistributedApprovalBridge,
   DistributedAutomationBridge,
@@ -55,6 +56,7 @@ export class DistributedRuntimeManager implements DistributedRuntimeManagerState
   readonly work = new Map<string, DistributedPendingWork>();
   readonly audit: DistributedRuntimeAuditRecord[] = [];
   readonly waiters = new Map<string, DistributedRuntimeWaiter[]>();
+  readonly writes = new StoreWriteQueue();
   sessionBridge: DistributedSessionBridge | null = null;
   approvalBridge: DistributedApprovalBridge | null = null;
   automationBridge: DistributedAutomationBridge | null = null;

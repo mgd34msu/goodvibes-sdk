@@ -446,11 +446,31 @@ export async function pruneAndPersistDistributedRuntime(state: DistributedRuntim
   await persistDistributedRuntime(state);
 }
 
+/**
+ * Write the whole distributed-runtime state as it stands at THIS call, after
+ * every write already queued has finished.
+ *
+ * `PersistentStore.persist` is atomic but unordered, and this store is written
+ * from three directions at once: awaited writes at the end of every pairing and
+ * work verb, and two UNAWAITED ones — `expireDistributedPairRequests` and
+ * `requeueDistributedExpiredClaims` both fire `persistDistributedRuntimeAsync`,
+ * and both are reached from ordinary list/read calls, so a plain `GET` starts a
+ * background write. Unordered, that background write's rename could land after
+ * a verb's and put its older view back on disk: a pair request rejected or
+ * revoked seconds earlier reads back as 'pending', which is a peer somebody
+ * turned away still able to complete pairing; and a completed unit of work
+ * reads back as 'queued', which is that work dispatched to a peer a second time.
+ *
+ * The snapshot is still built here, synchronously — every caller mutates the
+ * maps and then persists, so each snapshot is at least as new as the one queued
+ * before it.
+ */
 export async function persistDistributedRuntime(state: DistributedRuntimeManagerState): Promise<void> {
-  await state.store.persist({
+  const snapshot = {
     pairRequests: [...state.pairRequests.values()],
     peers: [...state.peers.values()],
     work: [...state.work.values()],
     audit: [...state.audit],
-  });
+  };
+  await state.writes.run(() => state.store.persist(snapshot));
 }

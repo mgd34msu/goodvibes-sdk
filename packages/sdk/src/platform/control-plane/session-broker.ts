@@ -2,6 +2,7 @@ import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 import { sessionsActive } from '../runtime/metrics.js';
 import { PersistentStore } from '../state/persistent-store.js';
+import { StoreWriteQueue } from '../state/store-write-queue.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import { RouteBindingManager } from '../channels/index.js';
 import type { AutomationRouteBinding } from '../automation/routes.js';
@@ -91,6 +92,7 @@ export class SharedSessionBroker {
   private readonly messages = new Map<string, SharedSessionMessage[]>();
   private readonly inputs = new Map<string, SharedSessionInputRecord[]>();
   private readonly runtimeBusBridge = new SharedSessionRuntimeBusBridge();
+  private readonly writes = new StoreWriteQueue();
   private eventPublisher: SharedSessionEventPublisher | null = null;
   private continuationRunner: SharedSessionContinuationRunner | null = null;
   private surfaceReplyBinder: SharedSessionSurfaceReplyBinder | null = null;
@@ -643,12 +645,12 @@ export class SharedSessionBroker {
     });
   }
 
+  /** Snapshot now, write in call order — `gcSweep` persists unawaited and would
+   * otherwise land a stale view over a `cancelInput`. See StoreWriteQueue. */
   private async persist(): Promise<void> {
-    await this.store.persist(createSessionBrokerSnapshot({
-      sessions: this.sessions,
-      messages: this.messages,
-      inputs: this.inputs,
-    }, MAX_PERSISTED_MESSAGES));
+    const state = { sessions: this.sessions, messages: this.messages, inputs: this.inputs };
+    const snapshot = createSessionBrokerSnapshot(state, MAX_PERSISTED_MESSAGES);
+    await this.writes.run(() => this.store.persist(snapshot));
   }
 
   private publishUpdate(event: string, payload: unknown): void {

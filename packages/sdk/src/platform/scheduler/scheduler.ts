@@ -1,4 +1,5 @@
 import { PersistentStore } from '../state/persistent-store.js';
+import { StoreWriteQueue } from '../state/store-write-queue.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 import { isRecord } from '../utils/record-coerce.js';
@@ -485,6 +486,7 @@ export class TaskScheduler {
   private running = false;
   /** Debounce handle for coalescing rapid successive save() calls. */
   private _saveDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly writes = new StoreWriteQueue(); // ordered whole-store writes; see StoreWriteQueue
 
   constructor(config: string | TaskSchedulerConfig) {
     const resolvedConfig = typeof config === 'string'
@@ -760,10 +762,8 @@ export class TaskScheduler {
   }
 
   private async save(): Promise<void> {
-    await this.store.persist({
-      tasks: Array.from(this.tasks.values()),
-      history: this.flatHistory(),
-    });
+    const snapshot: StoreData = { tasks: Array.from(this.tasks.values()), history: this.flatHistory() };
+    await this.writes.run(() => this.store.persist(snapshot));
   }
 
   /**

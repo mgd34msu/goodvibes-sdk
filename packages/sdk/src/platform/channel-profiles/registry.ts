@@ -10,6 +10,7 @@
  * `set` is an upsert keyed on (surfaceKind, channelId?): binding the same
  * channel again replaces the previous binding rather than accumulating rows.
  */
+import { StoreWriteQueue } from '../state/store-write-queue.js';
 import type { ChannelProfileStore } from './store.js';
 import {
   CHANNEL_PERMISSION_MODES,
@@ -55,8 +56,27 @@ function optionalString(value: unknown, field: string): string | undefined {
 
 export class ChannelProfileRegistry {
   private bindings: ChannelProfileBinding[] | null = null;
+  /** Whole-store writes run one at a time, in call order. See StoreWriteQueue. */
+  private readonly writes = new StoreWriteQueue();
 
   constructor(private readonly store: ChannelProfileStore) {}
+
+  /**
+   * Write the bindings as they stand at THIS call, after every write already
+   * queued has finished.
+   *
+   * `ChannelProfileStore.save` replaces the file atomically but says nothing
+   * about ORDER, and `bindings` is one live array `set` and `delete` both mutate
+   * in place. Unordered, a `set` could land after the `delete` that followed it
+   * and put the removed binding back on disk — and this binding is what decides
+   * the model and permission mode a channel-originated session runs under, so a
+   * deleted one returning means a channel keeps running under defaults its owner
+   * unbound.
+   */
+  private async persist(bindings: readonly ChannelProfileBinding[]): Promise<void> {
+    const snapshot = [...bindings];
+    await this.writes.run(() => this.store.save(snapshot));
+  }
 
   private async all(): Promise<ChannelProfileBinding[]> {
     if (this.bindings === null) this.bindings = await this.store.load();
@@ -92,7 +112,7 @@ export class ChannelProfileRegistry {
     const index = bindings.findIndex((b) => b.id === id);
     if (index === -1) bindings.push(binding);
     else bindings[index] = binding;
-    await this.store.save(bindings);
+    await this.persist(bindings);
     return binding;
   }
 
@@ -102,7 +122,7 @@ export class ChannelProfileRegistry {
     const index = bindings.findIndex((b) => b.id === id);
     if (index === -1) return false;
     bindings.splice(index, 1);
-    await this.store.save(bindings);
+    await this.persist(bindings);
     return true;
   }
 

@@ -15,6 +15,7 @@
  * loss.
  */
 import { PersistentStore, persistentStoreOrphansReclaimed } from '../../state/persistent-store.js';
+import { StoreWriteQueue } from '../../state/store-write-queue.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { logger } from '../../utils/logger.js';
 import type { CursorSweepReport, MailboxCursorStore } from './cursor-store.js';
@@ -317,6 +318,14 @@ export class InboundMailHousekeeper {
   private readonly now: () => number;
   private timer: ReturnType<typeof setInterval> | null = null;
   private lastReport: InboundMailHousekeepingReport | null = null;
+  /**
+   * Orders the disclosure log's read-modify-write. See `sweep`.
+   *
+   * The log is not a snapshot of anything in memory — each write is the file's
+   * own previous contents plus one entry — so the unit that has to be
+   * serialised is the READ AND THE WRITE TOGETHER, not the write alone.
+   */
+  private readonly writes = new StoreWriteQueue();
 
   constructor(options: InboundMailHousekeeperOptions) {
     this.cursors = options.cursors;
@@ -380,35 +389,51 @@ export class InboundMailHousekeeper {
     const records = await attempt('records', () => this.records.sweep(trigger));
     const expectations = await attempt('expectations', () => this.expectations.sweep(trigger));
 
-    const existing = await attempt('disclosure', () => this.listDisclosures()) ?? [];
-    const report: InboundMailHousekeepingReport = {
-      sweptAt: this.now(),
-      trigger,
-      cursors,
-      records,
-      expectations,
-      failures,
-      summary: summarize(cursors, records, expectations, failures),
-    };
-    this.lastReport = report;
-    // Disclosure is the LAST thing and cannot take the pass down with it: a
-    // sweep that reaped correctly and then could not write its own log has
-    // still reaped correctly, and the caller needs to be told what happened
-    // more than it needs the write to have succeeded.
-    await attempt('disclosure', () => this.disclosure.persist({
-      version: 1,
-      // Projected, never the report itself. See `DisclosedSweep`: the report
-      // carries every surviving expectation for the boot hydrator, and putting
-      // those on disk made this file an unreaped duplicate of the expectation
-      // store.
-      //
-      // `existing` came back from `listDisclosures()`, which drops entries past
-      // `disclosureRetentionMs`. So the age bound is not merely a read-time
-      // filter — every sweep physically rewrites the file without them, which
-      // is the same "the bound applies on the write" rule the record store now
-      // follows and for the same reason.
-      reports: [...existing, discloseReport(report)].slice(-MAX_DISCLOSURE_REPORTS),
-    }));
+    // READ AND WRITE IN ONE SERIALISED UNIT, and this is the one store here
+    // where ordering the write alone would not have been enough. Every other
+    // store in the daemon writes a snapshot of state it already holds in
+    // memory; this log writes the FILE'S OWN previous contents plus one entry.
+    // Two sweeps overlapping — the recovery sweep runs on `supervisor.start()`,
+    // which a config change re-runs, while the 6-hourly timer is mid-pass —
+    // therefore both read the same `existing`, both append their own entry, and
+    // whichever writes second silently drops the other's. What is lost is the
+    // record of a reap: files were removed and the log that exists so a deletion
+    // is never indistinguishable from data loss has nothing about it.
+    //
+    // The report is built inside the unit too, so a failure to READ the log is
+    // still in `failures` and still in the summary sentence, exactly as before.
+    let report!: InboundMailHousekeepingReport;
+    await this.writes.run(async () => {
+      const existing = await attempt('disclosure', () => this.listDisclosures()) ?? [];
+      report = {
+        sweptAt: this.now(),
+        trigger,
+        cursors,
+        records,
+        expectations,
+        failures,
+        summary: summarize(cursors, records, expectations, failures),
+      };
+      this.lastReport = report;
+      // Disclosure is the LAST thing and cannot take the pass down with it: a
+      // sweep that reaped correctly and then could not write its own log has
+      // still reaped correctly, and the caller needs to be told what happened
+      // more than it needs the write to have succeeded.
+      await attempt('disclosure', () => this.disclosure.persist({
+        version: 1,
+        // Projected, never the report itself. See `DisclosedSweep`: the report
+        // carries every surviving expectation for the boot hydrator, and putting
+        // those on disk made this file an unreaped duplicate of the expectation
+        // store.
+        //
+        // `existing` came back from `listDisclosures()`, which drops entries past
+        // `disclosureRetentionMs`. So the age bound is not merely a read-time
+        // filter — every sweep physically rewrites the file without them, which
+        // is the same "the bound applies on the write" rule the record store now
+        // follows and for the same reason.
+        reports: [...existing, discloseReport(report)].slice(-MAX_DISCLOSURE_REPORTS),
+      }));
+    });
     return report;
   }
 

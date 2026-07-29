@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import { PersistentStore } from '../state/persistent-store.js';
+import { StoreWriteQueue } from '../state/store-write-queue.js';
 import type { ConfigManager } from '../config/manager.js';
 import type { ProviderRegistry } from '../providers/registry.js';
 import type { LLMProvider, ProviderBatchResult } from '../providers/interface.js';
@@ -96,6 +97,8 @@ export class DaemonBatchManager {
   private data: DaemonBatchStoreData | null = null;
   private interval: ReturnType<typeof setInterval> | null = null;
   private ticking: Promise<DaemonBatchTickResult> | null = null;
+  /** Whole-store writes run one at a time, in call order. See StoreWriteQueue. */
+  private readonly writes = new StoreWriteQueue();
 
   constructor(
     private readonly options: {
@@ -480,8 +483,28 @@ export class DaemonBatchManager {
     return this.data;
   }
 
+  /**
+   * Write the job store, after every write already queued has finished.
+   *
+   * `PersistentStore.persist` is atomic but unordered, and two of these are in
+   * flight at once on the ordinary path: `tick` writes at the end of a pass
+   * that begins with a network round trip to the provider, and `cancelJob`
+   * writes the moment an operator cancels. Unordered, the tick's rename could
+   * land last and put its view of the job — 'queued', captured before the
+   * cancel — back on disk. After a restart the cancelled job reads back as
+   * queued, and the next tick submits it to the provider, which is a paid
+   * request the operator explicitly called off.
+   *
+   * `this.data` is the live store object rather than a copy, and that is
+   * unchanged here: `PersistentStore.persist` serialises it when the write
+   * RUNS, so each queued write emits a view at least as new as the one before
+   * it and the last to land is the most recent. What was missing was only the
+   * order.
+   */
   private async persist(): Promise<void> {
-    if (this.data) await this.store.persist(this.data);
+    const data = this.data;
+    if (!data) return;
+    await this.writes.run(() => this.store.persist(data));
   }
 
   private getMode(): DaemonBatchRuntimeSnapshot['mode'] {

@@ -26,6 +26,7 @@ import {
 } from './types.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
+import { StoreWriteQueue } from '../state/store-write-queue.js';
 
 export interface CiWatchServiceDeps {
   readonly source: CiStatusSource;
@@ -88,8 +89,31 @@ function normalizeStartOutcome(result: FixSessionStartOutcome | string | undefin
 
 export class CiWatchService {
   private subscriptions: CiWatchSubscription[] | null = null;
+  /** Whole-store writes run one at a time, in call order. See StoreWriteQueue. */
+  private readonly writes = new StoreWriteQueue();
 
   constructor(private readonly deps: CiWatchServiceDeps) {}
+
+  /**
+   * Write the subscriptions as they stand at THIS call, after every write
+   * already queued has finished.
+   *
+   * `checkWatch` is the reason this needs ordering rather than luck: it polls
+   * the forge over the network and only writes when that returns, so its write
+   * is requested long before it lands and routinely overlaps whatever an
+   * operator did in the meantime. Unordered, a `deleteWatch` that had already
+   * returned true could be undone by the in-flight check's older snapshot, and
+   * the deleted watch keeps polling and notifying — or, on the retirement path,
+   * a watch that had already delivered its one terminal verdict comes back and
+   * delivers it again.
+   *
+   * The snapshot is taken here, not deferred to write time: every caller mutates
+   * the subscription array and then saves.
+   */
+  private async save(subscriptions: readonly CiWatchSubscription[]): Promise<void> {
+    const snapshot = [...subscriptions];
+    await this.writes.run(() => this.deps.store.save(snapshot));
+  }
 
   private now(): number {
     return (this.deps.now ?? Date.now)();
@@ -133,7 +157,7 @@ export class CiWatchService {
     };
     const subs = await this.all();
     subs.push(subscription);
-    await this.deps.store.save(subs);
+    await this.save(subs);
     return subscription;
   }
 
@@ -142,7 +166,7 @@ export class CiWatchService {
     const index = subs.findIndex((s) => s.id === id);
     if (index === -1) return false;
     subs.splice(index, 1);
-    await this.deps.store.save(subs);
+    await this.save(subs);
     return true;
   }
 
@@ -244,7 +268,7 @@ export class CiWatchService {
     } else {
       subs[index] = { ...subscription, lastOverall: report.overall, updatedAt: this.now() };
     }
-    await this.deps.store.save(subs);
+    await this.save(subs);
 
     return {
       report,

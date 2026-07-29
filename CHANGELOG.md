@@ -131,6 +131,58 @@ endpoints (6) are unchanged.
   a neighbouring write had already carried to disk does not outlive the create
   that disowned it.
 
+- **The same unordered-write defect, in twelve more stores.** `ApprovalBroker`
+  was where CI happened to catch it; the shape it caught is the shape every
+  store built on `PersistentStore` had. Each of these now writes through the
+  same per-call queue, and each is pinned by a test that fails with the real
+  symptom when its queue is removed:
+
+  - `UserPermissionRuleStore` — a revoked "always allow" rule came back and
+    silently auto-approved the next matching ask. Durable user rules are
+    consulted before anything prompts, so the revocation had no effect at all
+    after a restart.
+  - `DaemonBatchManager` — a cancelled batch job read back as `queued` and the
+    next tick submitted it to the paid provider.
+  - `SharedSessionBroker` — the 60-second GC sweep persists without waiting, so
+    it could land over a `cancelInput`; the input read back as `queued`, and
+    boot reconciliation spawns an agent for queued work.
+  - `ChannelPolicyManager` — the audit flush is scheduled on every inbound
+    message and was ordered only against itself, so a "disable this surface"
+    ruling or an owner-allowlist seed could be overwritten by it.
+  - The four automation stores (`jobs`, `runs`, `routes`, `sources`), shared by
+    `AutomationManager` and `AutomationService` — the manager is designed for
+    four concurrent runs plus a 2-second reconcile timer, and a completed run
+    that read back as `running` was re-executed after a restart.
+  - `TaskScheduler` — `add`/`remove`/`setEnabled` each fire a save nobody waits
+    for; a deleted cron task came back and spawned an agent on the next start.
+  - `CiWatchService` — a poll's write is requested before its network round trip
+    returns, so a deleted watch could be restored and keep notifying.
+  - `PrincipalRegistry` and `ChannelProfileRegistry` — a deleted identity
+    mapping or channel binding could be restored by a create/set that started
+    before it.
+  - The distributed-runtime store — writes are fired unawaited from ordinary
+    list calls; a rejected pair request read back as `pending`, which is a peer
+    the operator turned away still able to complete pairing.
+  - `CheckinReceiptStore` — an append-only log where the earlier write's
+    snapshot does not contain the later receipt, so a check-in that contacted
+    the owner could leave nothing on disk saying it ran.
+  - `KVState` — `dispose()` racing a debounce that had already fired; a cleared
+    key came back when the session was resumed.
+  - `InboundMailHousekeeper`'s disclosure log — the one case where ordering the
+    write alone would not have been enough, because each write is the file's own
+    previous contents plus one entry. Its READ is inside the serialised unit too,
+    so two overlapping sweeps cannot drop one sweep's record of what it reaped.
+
+- **A lost workspace registration.** `WorkspaceRegistrationStore.add` / `remove`
+  / `decline` were read-modify-writes with no exclusion of any kind, and this is
+  the one daemon store a second PROCESS writes — `goodvibes register` in a
+  project directory writes the same user-scoped file the running daemon writes.
+  Two registrations that interleaved lost one of the two roots outright: no
+  coverage for that project, and nothing anywhere saying so. Each mutation now
+  runs under both an in-process chain and the advisory lock at
+  `PersistentStore.lockPath`, which is the shape `PushSubscriptionStore` already
+  uses and which that class's header directs read-modify-write callers to.
+
 - **A channel reported `healthy` because its token was in config, not because it
   worked.** `ChannelStatusSnapshot.state` was computed from credential presence
   alone, so a Telegram bot whose ingress had stopped kept reporting healthy for
