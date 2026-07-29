@@ -2,7 +2,7 @@
   "name": "@pellux/goodvibes-daemon-sdk",
   "version": "1.19.0",
   "engines": {
-    "bun": "1.3.10",
+    "bun": "1.3.14",
     "node": ">=22.0.0"
   },
   "description": "Embeddable GoodVibes daemon route contracts, dispatchers, and server-side handler builders.",

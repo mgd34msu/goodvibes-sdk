@@ -2,7 +2,7 @@
   "name": "@pellux/goodvibes-transport-realtime",
   "version": "1.19.0",
   "engines": {
-    "bun": "1.3.10",
+    "bun": "1.3.14",
     "node": ">=22.0.0"
   },
   "description": "Realtime event-domain connectors for GoodVibes SSE and WebSocket integrations.",

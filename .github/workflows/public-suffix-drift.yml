@@ -65,7 +65,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.10
+          bun-version: 1.3.14
 
       - name: Compare the bundled public-suffix snapshot against upstream
         run: bun scripts/check-public-suffix-drift.ts

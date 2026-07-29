@@ -1,6 +1,7 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { checkBunPins, isExactVersion, type PinSource } from './bun-pin-rule.ts';
 import { packageDirs, publicPackageDirs } from './release-shared.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -128,6 +129,73 @@ function assertContractsGeneratedTypesReexported(): void {
   }
 }
 
+/** Every tracked YAML under `.github/`, as pin-rule input. */
+function githubYamlSources(): PinSource[] {
+  const root = resolve(SDK_ROOT, '.github');
+  const sources: PinSource[] = [];
+  const walk = (dir: string): void => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = resolve(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+      } else if (entry.isFile() && /\.ya?ml$/.test(entry.name)) {
+        sources.push({
+          relPath: relative(SDK_ROOT, full).split('\\').join('/'),
+          text: readFileSync(full, 'utf8'),
+        });
+      }
+    }
+  };
+  walk(root);
+  return sources;
+}
+
+/**
+ * One bun version across the whole repository.
+ *
+ * `engines.bun` in the root package.json is the number; everything else — the
+ * `packageManager` field, the `@types/bun` devDependency, and every
+ * `bun-version` pin or default under `.github/` — is held to it. The per-package
+ * `engines.bun` copies are already checked against the root above.
+ *
+ * The floor exists for a reason (bun 1.3.10-1.3.13 deadlock the module loader
+ * after two `fs.watch` closes; see .github/actions/setup/action.yml), and a
+ * reason is only as good as the weakest copy of the number.
+ */
+function assertBunPinAgreement(): void {
+  const expected: unknown = rootSharedMetadata.engines?.bun;
+  if (!isExactVersion(expected)) {
+    throw new Error(
+      `root package.json engines.bun must be an exact version like 1.3.14 (found: ${JSON.stringify(expected)})`,
+    );
+  }
+  if (rootPackage.packageManager !== `bun@${expected}`) {
+    throw new Error(
+      `root package.json packageManager must be "bun@${expected}" to match engines.bun `
+      + `(found: ${JSON.stringify(rootPackage.packageManager)})`,
+    );
+  }
+  const typesBun: unknown = rootPackage.devDependencies?.['@types/bun'];
+  if (typesBun !== expected) {
+    throw new Error(
+      `root package.json devDependencies["@types/bun"] must be ${JSON.stringify(expected)} `
+      + `to match engines.bun (found: ${JSON.stringify(typesBun)})`,
+    );
+  }
+  const examples = JSON.parse(readFileSync(resolve(SDK_ROOT, 'examples/package.json'), 'utf8'));
+  const examplesTypesBun: unknown = examples.devDependencies?.['@types/bun'];
+  if (examplesTypesBun !== `^${expected}`) {
+    throw new Error(
+      `examples/package.json devDependencies["@types/bun"] must be ${JSON.stringify(`^${expected}`)} `
+      + `to match engines.bun (found: ${JSON.stringify(examplesTypesBun)})`,
+    );
+  }
+  const violations = checkBunPins(expected, githubYamlSources());
+  if (violations.length > 0) {
+    throw new Error(`bun version pins disagree with root engines.bun:\n  ${violations.join('\n  ')}`);
+  }
+}
+
 function assertReadmePublicWording(dir: string, readme: string): void {
   if (!publicPackageDirs.includes(dir)) return;
   const stalePatterns = [
@@ -225,5 +293,6 @@ for (const dir of packageDirs) {
 }
 
 assertContractsGeneratedTypesReexported();
+assertBunPinAgreement();
 
 console.log('package metadata check passed');
