@@ -100,6 +100,13 @@ interface DaemonSurfaceActionContext {
    * can log WHICH guard refused — see SurfaceNoticeRefusal.
    */
   readonly deliverSurfaceNotice?: ((binding: import('../automation/routes.js').AutomationRouteBinding | undefined, text: string) => Promise<import('./types.js').SurfaceNoticeDelivery>) | undefined;
+  /**
+   * The per-surface ingress alarm, handed to adapters so the two DETACHED
+   * inbound paths (Slack and Discord slash commands, which answer the provider
+   * before doing the work) can report a failure the shared webhook seam in
+   * `ChannelPluginRegistry` cannot see.
+   */
+  readonly ingressAlarm?: import('../channels/ingress-alarm.js').ChannelIngressAlarm | undefined;
 }
 
 export class DaemonSurfaceActionHelper {
@@ -120,6 +127,13 @@ export class DaemonSurfaceActionHelper {
       configManager: this.context.configManager,
       routeBindings: this.context.routeBindings,
       sessionBroker: this.context.sessionBroker,
+      ...(this.context.ingressAlarm
+        ? {
+          reportIngressFailure: (surface: import('../channels/types.js').ChannelSurface, detail: string) => {
+            this.context.ingressAlarm?.recordFailure(surface, detail);
+          },
+        }
+        : {}),
       authorizeSurfaceIngress: async (input) => {
         origin.current = {
           surface: input.surface,

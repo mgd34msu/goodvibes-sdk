@@ -1,5 +1,7 @@
 import type { AutomationRouteBinding } from '../automation/routes.js';
 import type { SharedApprovalRecord } from '../control-plane/index.js';
+import type { ChannelIngressAlarm } from './ingress-alarm.js';
+import { summarizeError } from '../utils/error-display.js';
 import type { Tool } from '../types/tools.js';
 import type {
   ChannelAdapterDescriptor,
@@ -89,6 +91,7 @@ export class ChannelPluginRegistry {
   private readonly pluginsBySurface = new Map<ChannelSurface, ChannelPlugin>();
   private readonly pluginsByPath = new Map<string, ChannelPlugin>();
   private readonly featureFlags: FeatureFlagReader;
+  private ingressAlarm: ChannelIngressAlarm | null = null;
   private version = 0;
 
   constructor(options: { readonly featureFlags?: FeatureFlagReader } = {}) {
@@ -169,10 +172,42 @@ export class ChannelPluginRegistry {
     return plugin && this.isPluginEnabled(plugin) ? plugin : null;
   }
 
+  /**
+   * THE shared inbound seam for every webhook-delivered surface.
+   *
+   * Wrapped rather than passed straight through, because this is the one place
+   * that knows both "a message arrived from surface X" and "processing it
+   * failed" for all twelve of them at once. Wiring the alarm per adapter would
+   * mean twelve chances to forget, and the surface that got forgotten would be
+   * silent in exactly the way the one that started this was.
+   *
+   * The error is RE-THROWN, deliberately. A webhook has no cursor to advance:
+   * the provider decides whether to redeliver, and it decides on the status
+   * code. Swallowing it here would turn a retryable 500 into a 200 and convert
+   * "might be redelivered" into "definitely lost" — the opposite of the fix.
+   * The alarm records; the caller still fails.
+   */
   async handleInbound(pathname: string, req: Request): Promise<Response | null> {
     const plugin = this.getByPath(pathname);
     if (!plugin?.handleInbound) return null;
-    return plugin.handleInbound(req);
+    if (!this.ingressAlarm) return plugin.handleInbound(req);
+    try {
+      const response = await plugin.handleInbound(req);
+      this.ingressAlarm.recordSuccess(plugin.surface);
+      return response;
+    } catch (error) {
+      this.ingressAlarm.recordFailure(plugin.surface, summarizeError(error));
+      throw error;
+    }
+  }
+
+  /**
+   * Install the alarm that turns a message this node could not process into
+   * something the owner hears about. Optional: an embedder that wires none
+   * keeps exactly the previous behaviour.
+   */
+  setIngressAlarm(alarm: ChannelIngressAlarm | null): void {
+    this.ingressAlarm = alarm;
   }
 
   async deliverReply(surface: ChannelSurface, pending: unknown, message: string): Promise<boolean> {
