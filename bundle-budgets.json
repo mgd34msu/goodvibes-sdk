@@ -262,8 +262,8 @@
     "rationale": "new public package export budget; measured 158 B gzip @ v0.33.0 release verification; headroom max(ceil(158*1.2)=190, 158+50=208) -> 208 (+50 B floor dominates)"
   },
   "./platform/config": {
-    "gzip_bytes": 1977,
-    "rationale": "config facade with secrets, services, subscriptions, helper model, tool LLM, the daemon-served shared-config tier + admin-scoped credential-status read, and the config-ownership surface (scope resolution, daemon-tier paths, the daemon-owned migration and the derived control-plane base-url readers); measured 1647 B gzip @ v1.15.0 release verification; headroom max(ceil(1647*1.2)=1977, 1647+50=1697) \u2192 1977 (1.2x dominates)"
+    "gzip_bytes": 2462,
+    "rationale": "config facade with secrets, services, subscriptions, helper model, tool LLM, the daemon-served shared-config tier + admin-scoped credential-status read, and the config-ownership surface (scope resolution, daemon-tier paths, the daemon-owned migration and the derived control-plane base-url readers); re-anchored after the credential-custody expansion added the secret-ref refusal vocabulary, the credential-scope registry, the daemon-needed credential migration and its receipt, the secret-bearing config-key declaration, the plaintext credential sweep and the connector config-section defaults; measured 2051 B gzip @ commit 625afa04; headroom max(ceil(2051*1.2)=2462, 2051+50=2101) \u2192 2462 (1.2x dominates by 361 B)"
   },
   "./platform/control-plane": {
     "gzip_bytes": 1494,
@@ -369,9 +369,17 @@
     "gzip_bytes": 1001,
     "rationale": "re-anchored after intentional export expansion: review-task-source parser/planner, graph dynamics (live edges, cycle refusal, orphans, graph snapshot), elastic pool, fix-workstream runner; measured 834 B gzip @ commit f22cfa27; headroom max(ceil(834*1.2)=1001, 834+50=884) \u2192 1001 (1.2x dominates by 117 B)"
   },
+  "./platform/owner-profile": {
+    "gzip_bytes": 1031,
+    "rationale": "new entry: the owner-profile surface — surface list, field/section registry with tier split, document parser and provenance split, projection and load state, and the OwnerProfileStore that is the only writer the barrel exposes (writer.ts mutations stay internal so the trust gate cannot be walked around); measured 859 B gzip @ commit 625afa04; headroom max(ceil(859*1.2)=1031, 859+50=909) → 1031 (1.2x dominates by 122 B)"
+  },
   "./platform/pairing": {
     "gzip_bytes": 454,
     "rationale": "public facade grew again with the origin TLS/capability posture exports (describeOriginPosture + the LAN plain-http notice line); measured 378 B gzip; headroom max(ceil(378*1.2)=454, 378+50=428) \u2192 454 (1.2x dominates)"
+  },
+  "./platform/payments": {
+    "gzip_bytes": 2823,
+    "rationale": "new entry: the payment capability's whole public surface, so no surface re-implements a budget, a ladder step or a window — currency/minor-unit and command-authority parsing, day-key arithmetic, BudgetLedger with its reservation TTL and cap, shipping ranking and ladder walk, and the approval-gate/veto-window state machines including interrupted-window recovery; measured 2352 B gzip @ commit 625afa04; headroom max(ceil(2352*1.2)=2823, 2352+50=2402) → 2823 (1.2x dominates by 421 B)"
   },
   "./platform/permissions": {
     "gzip_bytes": 157,
@@ -502,8 +510,8 @@
     "rationale": "new public package export budget; measured 52 B gzip @ v0.33.0 release verification; headroom max(ceil(52*1.2)=63, 52+50=102) -> 102 (+50 B floor dominates)"
   },
   "./platform/security": {
-    "gzip_bytes": 446,
-    "rationale": "auth/token surface plus the untrusted-content contract: the standing rule text, the per-process ingest ledger, the outward-effect decision, and the port factory a browser engine is handed. Hoisted here from one product when the daemon gained browser and mail verbs of its own and needed the same contract; a second copy of the refusal wording would have drifted within a release. Measured 371 B gzip @ the browser-verb round (was 237 B); headroom max(ceil(371*1.2)=446, 371+50=421) -> 446 (1.2x dominates)"
+    "gzip_bytes": 772,
+    "rationale": "auth/token surface plus the untrusted-content contract: the standing rule text, the per-process ingest ledger, the outward-effect decision, and the port factory a browser engine is handed. Hoisted here from one product when the daemon gained browser and mail verbs of its own and needed the same contract; a second copy of the refusal wording would have drifted within a release. Re-anchored after the owner-approval store and content fingerprint, the exposure/source/who-controls wording, the owner-direct turn boundary, the content-taint finder and the owner-identity address resolution joined the same surface for the same reason. Measured 643 B gzip @ commit 625afa04 (was 371 B); headroom max(ceil(643*1.2)=772, 643+50=693) → 772 (1.2x dominates by 79 B)"
   },
   "./platform/sessions": {
     "gzip_bytes": 138,
