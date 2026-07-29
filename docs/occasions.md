@@ -200,8 +200,10 @@ His ruling, verbatim:
 - The occasion carries the person as a **plain label**, rather than restructuring
   the People section, which is prose-only by design.
 - Nudge cadence as in §4.6.
-- With no `occasions.nudgeChannel` set, the feature is **pull-only**: nothing is
-  pushed, and `occasions.pending` is how a surface sees what is outstanding.
+- Nudges push to Telegram by default (`occasions.nudgeChannel = telegram`), the
+  owner's ruling. Setting that key to empty makes the feature **pull-only**
+  instead: nothing is pushed, and `occasions.pending` is how a surface sees what
+  is outstanding.
 - A dropped interview resumes the **next day**.
 
 ## 7. The control-plane surface
@@ -238,14 +240,17 @@ was not a user request.
 ## 8. Settings
 
 All daemon-owned (`config-ownership.ts`), because the sweep runs in the daemon
-with every surface closed.
+with every surface closed. All twelve defaults were confirmed by the owner key by
+key on 2026-07-28; eleven stood as proposed and `occasions.nudgeChannel` changed
+from empty to `telegram`. The "source" column below records where each default
+came from originally.
 
 | Key | Default | Source of the default |
 |---|---|---|
 | `occasions.enabled` | `true` | Not pinned by the plan; a feature that ships off ships dark. |
 | `occasions.leadDays` | `10` | Owner ruling §4.1. |
 | `occasions.activeHours` | `08:00-22:00` | Owner ruling §4.7. |
-| `occasions.nudgeChannel` | `''` | Not pinned; empty means pull-only, so nothing is pushed to a channel nobody chose. |
+| `occasions.nudgeChannel` | `telegram` | Owner ruling, 2026-07-28: nudges push to Telegram out of the box. Empty makes it pull-only. |
 | `occasions.cadenceDays` | `3` | My choice, flagged (§4.6). |
 | `occasions.finalStretchDays` | `2` | My choice, flagged (§4.6). |
 | `occasions.awayAdjust` | `true` | Owner ruling §4.13. |
