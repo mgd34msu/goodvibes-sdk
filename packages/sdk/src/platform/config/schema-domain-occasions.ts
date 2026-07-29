@@ -13,10 +13,11 @@
  * rhythm, the runway, the hours and the retention, each of which he can move
  * without a release.
  *
- * Two defaults are the owner's own words: the ten-day lead and the 08:00–22:00
- * window. Two are decisions I took and flagged: the every-third-day cadence and
- * the daily final stretch. The rest are stated here so they can be overruled
- * per key rather than assumed.
+ * Every default in this file was confirmed by the owner key by key on
+ * 2026-07-28. Two were his own words from the outset — the ten-day lead and the
+ * 08:00–22:00 window — and one he changed at that point: `nudgeChannel` ships as
+ * `telegram` rather than empty, so a nudge pushes out of the box instead of
+ * waiting to be pulled.
  */
 import { type ConfigSettingDefinition, intRange } from './schema-shared.js';
 import type { OccasionsConfig } from './schema-types-occasions.js';
@@ -34,7 +35,7 @@ export const occasionsConfigDefaults: { occasions: OccasionsConfig } = {
     enabled: true,
     leadDays: 10,
     activeHours: '08:00-22:00',
-    nudgeChannel: '',
+    nudgeChannel: 'telegram',
     cadenceDays: 3,
     finalStretchDays: 2,
     awayAdjust: true,
@@ -72,9 +73,9 @@ export const occasionsConfigSettings: ConfigSettingDefinition[] = [
   {
     key: 'occasions.nudgeChannel',
     type: 'string',
-    default: '',
+    default: 'telegram',
     description:
-      'Where a nudge is delivered, as a channel surface or surface:address (for example telegram, or telegram:12345). Empty means the agent surface only, which picks up what is outstanding at the start of a turn. The TUI is refused as a destination whatever is set here: it is a get-work-done interface, and life admin does not belong in it.',
+      'Where a nudge is delivered, as a channel surface or surface:address (for example telegram, or telegram:12345). Telegram by default, because an occasion nudge that waits to be asked for has already missed the date it existed to protect — the owner ruled that these push out of the box. Set it to empty to make the feature pull-only instead: nothing is pushed, and the agent surface picks up what is outstanding at the start of a turn. The TUI is refused as a destination whatever is set here: it is a get-work-done interface, and life admin does not belong in it.',
   },
   {
     key: 'occasions.cadenceDays',

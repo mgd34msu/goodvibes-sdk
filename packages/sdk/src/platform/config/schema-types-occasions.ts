@@ -18,7 +18,10 @@ export interface OccasionsConfig {
   leadDays: number;
   /** The hours it may speak, `HH:MM-HH:MM`, in `daemon.timezone`. */
   activeHours: string;
-  /** Where a nudge is delivered: `surfaceKind` or `surfaceKind:address`. */
+  /**
+   * Where a nudge is delivered: `surfaceKind` or `surfaceKind:address`.
+   * `telegram` by default; empty makes the feature pull-only.
+   */
   nudgeChannel: string;
   /** Ordinary gap between nudges, in days. */
   cadenceDays: number;

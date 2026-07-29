@@ -28,7 +28,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
     member's birth date into a message channel.
   - **Telegram and the agent. Never the TUI**, which is refused as a
     destination structurally rather than left unconfigured. The TUI is a
-    get-work-done interface and life admin does not belong in it.
+    get-work-done interface and life admin does not belong in it. Telegram is
+    the shipped default (`occasions.nudgeChannel`), so nudges push without
+    being configured first; setting that key to empty makes the feature
+    pull-only.
   - **Nothing unresolved is ever dropped.** One open-item mechanism behind all
     three cases: an unanswered nudge continues on its own rhythm, a "later"
     comes back roughly halfway to the date, a conflict between two declared

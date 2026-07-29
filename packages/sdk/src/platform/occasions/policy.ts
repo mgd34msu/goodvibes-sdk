@@ -28,7 +28,7 @@ export const OCCASIONS_DEFAULTS = {
   enabled: true,
   leadDays: 10,
   activeHours: '08:00-22:00',
-  nudgeChannel: '',
+  nudgeChannel: 'telegram',
   cadenceDays: 3,
   finalStretchDays: 2,
   awayAdjust: true,

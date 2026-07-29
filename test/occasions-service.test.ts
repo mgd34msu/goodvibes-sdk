@@ -23,6 +23,10 @@ import {
   type OccasionNudgeDeliverer,
 } from '../packages/sdk/src/platform/occasions/service.ts';
 import { OCCASIONS_DEFAULTS } from '../packages/sdk/src/platform/occasions/policy.ts';
+import {
+  occasionsConfigDefaults,
+  occasionsConfigSettings,
+} from '../packages/sdk/src/platform/config/schema-domain-occasions.ts';
 import type { OccasionNudge } from '../packages/sdk/src/platform/occasions/types.ts';
 
 const dirs: string[] = [];
@@ -82,9 +86,9 @@ function harness(options: { readonly profileText?: string; readonly now?: number
       return 'delivery-1';
     },
   };
-  // A channel is configured here because the shipped default is empty — the
-  // feature is pull-only until he names one, and the "no channel" case below
-  // sets it back.
+  // Telegram is pinned here rather than left to the default so the delivery
+  // assertions below name the channel they mean; the shipped default is also
+  // `telegram`, and the "no channel" case sets it to empty to get pull-only.
   const overrides = new Map<string, unknown>([
     ['daemon.timezone', 'Europe/London'],
     ['occasions.nudgeChannel', 'telegram'],
@@ -546,5 +550,32 @@ describe('the calendar mirror', () => {
     expect(calls).toHaveLength(2);
     // And the file is unchanged: the mirror is a copy, never a source.
     expect(readFileSync(profilePath, 'utf-8')).toBe(PROFILE);
+  });
+});
+
+describe('the shipped defaults', () => {
+  test('a nudge pushes to Telegram out of the box', () => {
+    // Owner ruling, 2026-07-28: nudges push to Telegram by default rather than
+    // waiting for someone to name a channel. Empty is still the pull-only mode,
+    // it is just no longer what ships.
+    expect(occasionsConfigDefaults.occasions.nudgeChannel).toBe('telegram');
+    expect(OCCASIONS_DEFAULTS.nudgeChannel).toBe('telegram');
+    expect(resolveNudgeDestination(occasionsConfigDefaults.occasions.nudgeChannel))
+      .toBe('telegram');
+  });
+
+  test('every default is stated once: the settings rows and the config tree agree', () => {
+    const tree = occasionsConfigDefaults.occasions as unknown as Record<string, unknown>;
+    for (const setting of occasionsConfigSettings) {
+      const short = setting.key.slice('occasions.'.length);
+      expect(tree[short], `${setting.key} default drifted from the config tree`)
+        .toEqual(setting.default);
+    }
+  });
+
+  test("the policy reader's fallbacks match the schema domain exactly", () => {
+    // The schema tree is the widened shape, so it goes on the receiver side and
+    // the `as const` policy fallbacks are the expectation.
+    expect({ ...occasionsConfigDefaults.occasions }).toEqual({ ...OCCASIONS_DEFAULTS });
   });
 });
