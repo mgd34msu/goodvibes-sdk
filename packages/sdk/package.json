@@ -361,6 +361,10 @@
       "types": "./dist/platform/node/runtime-boundary.d.ts",
       "import": "./dist/platform/node/runtime-boundary.js"
     },
+    "./platform/occasions": {
+      "types": "./dist/platform/occasions/index.d.ts",
+      "import": "./dist/platform/occasions/index.js"
+    },
     "./platform/orchestration": {
       "types": "./dist/platform/orchestration/index.d.ts",
       "import": "./dist/platform/orchestration/index.js"

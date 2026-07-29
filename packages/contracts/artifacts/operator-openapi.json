@@ -3,7 +3,7 @@
   "info": {
     "title": "GoodVibes Operator API",
     "version": "1.19.2",
-    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 464 cataloged methods: 409 with dedicated REST bindings, 55 reachable only through the generic invoke endpoint. 0 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
+    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 480 cataloged methods: 425 with dedicated REST bindings, 55 reachable only through the generic invoke endpoint. 0 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
   },
   "servers": [
     {
@@ -70449,6 +70449,2386 @@
         ]
       }
     },
+    "/api/occasions/answer": {
+      "post": {
+        "operationId": "occasions.answer",
+        "summary": "Answer An Occasion Nudge",
+        "description": "Record yes, no or later for one occurrence. A no goes silent for the rest of this cycle and expires with the date, so next year asks fresh carrying no memory of the refusal. A later is NOT a decline — it comes back roughly halfway to the date. A yes on a gift-giving occasion opens the short interview and returns its first question.",
+        "tags": [
+          "occasions"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "interview": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "interviewId": {
+                              "type": "string"
+                            },
+                            "occasionId": {
+                              "type": "string"
+                            },
+                            "occurrence": {
+                              "type": "string"
+                            },
+                            "steps": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "prompt": {
+                                    "type": "string"
+                                  },
+                                  "opensFrom": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "prompt",
+                                  "opensFrom"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "nextStep": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string"
+                                    },
+                                    "prompt": {
+                                      "type": "string"
+                                    },
+                                    "opensFrom": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "prompt",
+                                    "opensFrom"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "complete": {
+                              "type": "boolean"
+                            },
+                            "landedOn": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "interviewId",
+                            "occasionId",
+                            "occurrence",
+                            "steps",
+                            "nextStep",
+                            "complete",
+                            "landedOn"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "reason",
+                    "interview"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "write:occasions"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "occasionId": {
+                    "type": "string"
+                  },
+                  "answer": {
+                    "type": "string",
+                    "enum": [
+                      "yes",
+                      "no",
+                      "later"
+                    ]
+                  },
+                  "occurrence": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "occasionId",
+                  "answer"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/occasions/confirm": {
+      "post": {
+        "operationId": "occasions.confirm",
+        "summary": "Record A Confirmed Important Date",
+        "description": "Write the confirmed occasion as one line in the owner profile, under Important dates, carrying its provenance. This is the ONE confirmation: nothing re-confirms at nudge time, because for an annual date a silent write means the mistake surfaces up to eleven months later. Refused without a kind rather than defaulting one. Goes through the owner-profile write gate, so authority, surface and a verbatim quote of what he said are all required.",
+        "tags": [
+          "occasions"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "occasionId": {
+                      "type": "string"
+                    },
+                    "disclosure": {
+                      "type": "string"
+                    },
+                    "droppedRecords": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "reason",
+                    "occasionId",
+                    "disclosure",
+                    "droppedRecords"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "write:occasions"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "date": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "gift-giving",
+                      "remember-only",
+                      "neither"
+                    ]
+                  },
+                  "person": {
+                    "type": "string"
+                  },
+                  "recurrence": {
+                    "type": "string",
+                    "enum": [
+                      "annual",
+                      "once"
+                    ]
+                  },
+                  "leadDays": {
+                    "type": "number"
+                  },
+                  "surface": {
+                    "type": "string"
+                  },
+                  "said": {
+                    "type": "string"
+                  },
+                  "authority": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "title",
+                  "date",
+                  "kind",
+                  "surface",
+                  "said",
+                  "authority"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/occasions/conflict/resolve": {
+      "post": {
+        "operationId": "occasions.conflict.resolve",
+        "summary": "Close A Date Conflict",
+        "description": "Stop re-raising a conflict the owner has dealt with. The conflict itself is never resolved automatically — two different dates for one thing means only he knows which was right, and silently taking the newer value is the behaviour this exists to prevent.",
+        "tags": [
+          "occasions"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "occasionId": {
+                      "type": "string"
+                    },
+                    "resolved": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "occasionId",
+                    "resolved"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "write:occasions"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "occasionId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "occasionId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/occasions/gifts": {
+      "post": {
+        "operationId": "occasions.gifts",
+        "summary": "List Gift History",
+        "description": "Return what the owner landed on for one occasion in previous years, newest first. Kept beyond the answers deliberately: the answers expire with their date so next year asks fresh, the history does not.",
+        "tags": [
+          "occasions"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "occasionId": {
+                      "type": "string"
+                    },
+                    "gifts": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "occasionId": {
+                            "type": "string"
+                          },
+                          "occurrence": {
+                            "type": "string"
+                          },
+                          "recordedAt": {
+                            "type": "number"
+                          },
+                          "landedOn": {
+                            "type": "string"
+                          },
+                          "notes": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "occasionId",
+                          "occurrence",
+                          "recordedAt",
+                          "landedOn"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "occasionId",
+                    "gifts"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "read:occasions"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "occasionId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "occasionId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/occasions/interview/answer": {
+      "post": {
+        "operationId": "occasions.interview.answer",
+        "summary": "Answer A Gift Interview Question",
+        "description": "Record one answer and return the next question, if there is one. The interview guides the owner to his own idea and never recommends a gift — that judgement is his, which is also why the outcome recorded is what he landed on rather than what was suggested.",
+        "tags": [
+          "occasions"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "present": {
+                      "type": "boolean"
+                    },
+                    "interview": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "interviewId": {
+                              "type": "string"
+                            },
+                            "occasionId": {
+                              "type": "string"
+                            },
+                            "occurrence": {
+                              "type": "string"
+                            },
+                            "steps": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "prompt": {
+                                    "type": "string"
+                                  },
+                                  "opensFrom": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "prompt",
+                                  "opensFrom"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "nextStep": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string"
+                                    },
+                                    "prompt": {
+                                      "type": "string"
+                                    },
+                                    "opensFrom": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "prompt",
+                                    "opensFrom"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "complete": {
+                              "type": "boolean"
+                            },
+                            "landedOn": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "interviewId",
+                            "occasionId",
+                            "occurrence",
+                            "steps",
+                            "nextStep",
+                            "complete",
+                            "landedOn"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "present",
+                    "interview"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "write:occasions"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "interviewId": {
+                    "type": "string"
+                  },
+                  "stepId": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "interviewId",
+                  "stepId",
+                  "text"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/occasions/interview": {
+      "post": {
+        "operationId": "occasions.interview.get",
+        "summary": "Get Gift Interview",
+        "description": "Return one gift interview and the question that has not been answered yet. A thread the owner walked away from resumes here rather than restarting: the next step is the one he did not get to. Over a channel the steps are asked one at a time; in the agent they can be one exchange.",
+        "tags": [
+          "occasions"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "present": {
+                      "type": "boolean"
+                    },
+                    "interview": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "interviewId": {
+                              "type": "string"
+                            },
+                            "occasionId": {
+                              "type": "string"
+                            },
+                            "occurrence": {
+                              "type": "string"
+                            },
+                            "steps": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "prompt": {
+                                    "type": "string"
+                                  },
+                                  "opensFrom": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "prompt",
+                                  "opensFrom"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "nextStep": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string"
+                                    },
+                                    "prompt": {
+                                      "type": "string"
+                                    },
+                                    "opensFrom": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "prompt",
+                                    "opensFrom"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "complete": {
+                              "type": "boolean"
+                            },
+                            "landedOn": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "interviewId",
+                            "occasionId",
+                            "occurrence",
+                            "steps",
+                            "nextStep",
+                            "complete",
+                            "landedOn"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "present",
+                    "interview"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "read:occasions"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "interviewId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "interviewId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/occasions/interview/record": {
+      "post": {
+        "operationId": "occasions.interview.record",
+        "summary": "Record What He Landed On",
+        "description": "Close the interview with what he settled on and write it to the gift history. Recording the outcome rather than merely that he said yes is the point: \"he said yes in 2026\" cannot stop year three steering where year one did.",
+        "tags": [
+          "occasions"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "present": {
+                      "type": "boolean"
+                    },
+                    "interview": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "interviewId": {
+                              "type": "string"
+                            },
+                            "occasionId": {
+                              "type": "string"
+                            },
+                            "occurrence": {
+                              "type": "string"
+                            },
+                            "steps": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "prompt": {
+                                    "type": "string"
+                                  },
+                                  "opensFrom": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "prompt",
+                                  "opensFrom"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "nextStep": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string"
+                                    },
+                                    "prompt": {
+                                      "type": "string"
+                                    },
+                                    "opensFrom": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "prompt",
+                                    "opensFrom"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "complete": {
+                              "type": "boolean"
+                            },
+                            "landedOn": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "interviewId",
+                            "occasionId",
+                            "occurrence",
+                            "steps",
+                            "nextStep",
+                            "complete",
+                            "landedOn"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "present",
+                    "interview"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "write:occasions"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "interviewId": {
+                    "type": "string"
+                  },
+                  "landedOn": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "interviewId",
+                  "landedOn"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/occasions": {
+      "get": {
+        "operationId": "occasions.list",
+        "summary": "List Important Dates",
+        "description": "Return every occasion declared in the owner profile, with its next occurrence, how many days away it is, the lead it uses, whether it is inside its lead window, and what was answered for that occurrence. Also returns lines under the heading that could not be typed, each with the reason, and any occasion that has two different dates recorded. This carries the dates: it is the owner asking his own system what it holds, which is the explicit ask that unlocks a closed-tier read. A nudge never does.",
+        "tags": [
+          "occasions"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "today": {
+                      "type": "string"
+                    },
+                    "timezone": {
+                      "type": "string"
+                    },
+                    "occasions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "occasion": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "date": {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "recurring",
+                                      "dated"
+                                    ]
+                                  },
+                                  "year": {
+                                    "type": "number"
+                                  },
+                                  "month": {
+                                    "type": "number"
+                                  },
+                                  "day": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "month",
+                                  "day"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "recurrence": {
+                                "type": "string",
+                                "enum": [
+                                  "annual",
+                                  "once"
+                                ]
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "gift-giving",
+                                  "remember-only",
+                                  "neither"
+                                ]
+                              },
+                              "person": {
+                                "type": "string"
+                              },
+                              "leadDays": {
+                                "anyOf": [
+                                  {
+                                    "type": "number"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "mirrored": {
+                                "type": "boolean"
+                              },
+                              "extras": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "lineIndex": {
+                                "type": "number"
+                              },
+                              "text": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "title",
+                              "date",
+                              "recurrence",
+                              "kind",
+                              "person",
+                              "leadDays",
+                              "mirrored",
+                              "extras",
+                              "lineIndex",
+                              "text"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "nextOccurrence": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "daysUntil": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "leadDays": {
+                            "type": "number"
+                          },
+                          "inLeadWindow": {
+                            "type": "boolean"
+                          },
+                          "answer": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "yes",
+                                  "no",
+                                  "later"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "mirrored": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "occasion",
+                          "nextOccurrence",
+                          "daysUntil",
+                          "leadDays",
+                          "inLeadWindow",
+                          "answer",
+                          "mirrored"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "unparsed": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "lineIndex": {
+                            "type": "number"
+                          },
+                          "text": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "lineIndex",
+                          "text",
+                          "reason"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "conflicts": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "occasionId": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "dates": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "lineIndexes": {
+                            "type": "array",
+                            "items": {
+                              "type": "number"
+                            }
+                          }
+                        },
+                        "required": [
+                          "occasionId",
+                          "title",
+                          "dates",
+                          "lineIndexes"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "today",
+                    "timezone",
+                    "occasions",
+                    "unparsed",
+                    "conflicts"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "read:occasions"
+        ]
+      }
+    },
+    "/api/occasions/pending": {
+      "get": {
+        "operationId": "occasions.pending",
+        "summary": "Pull Outstanding Occasions",
+        "description": "Return everything unresolved, without delivering anything: the batched nudge, any date conflict still open, and any interview left mid-thread. This is how the agent surface receives a nudge — it pulls at the start of a turn rather than being pushed at, and a stored date is the prior scheduling that permits raising something unprompted. The nudge names the occasion and the person and NEVER the date: proximity is a word, not a count of days.",
+        "tags": [
+          "occasions"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "today": {
+                      "type": "string"
+                    },
+                    "nudge": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "raisedAt": {
+                              "type": "number"
+                            },
+                            "subjects": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "occasionId": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "person": {
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "gift-giving",
+                                      "remember-only",
+                                      "neither"
+                                    ]
+                                  },
+                                  "proximity": {
+                                    "type": "string",
+                                    "enum": [
+                                      "approaching",
+                                      "soon",
+                                      "imminent"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "occasionId",
+                                  "title",
+                                  "person",
+                                  "kind",
+                                  "proximity"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "message": {
+                              "type": "string"
+                            },
+                            "answerable": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "raisedAt",
+                            "subjects",
+                            "message",
+                            "answerable"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "conflicts": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "occasionId": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "occasionId",
+                          "message"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "interviews": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "interviewId": {
+                            "type": "string"
+                          },
+                          "occasionId": {
+                            "type": "string"
+                          },
+                          "occurrence": {
+                            "type": "string"
+                          },
+                          "steps": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "prompt": {
+                                  "type": "string"
+                                },
+                                "opensFrom": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "prompt",
+                                "opensFrom"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "nextStep": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "prompt": {
+                                    "type": "string"
+                                  },
+                                  "opensFrom": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "prompt",
+                                  "opensFrom"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "complete": {
+                            "type": "boolean"
+                          },
+                          "landedOn": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "interviewId",
+                          "occasionId",
+                          "occurrence",
+                          "steps",
+                          "nextStep",
+                          "complete",
+                          "landedOn"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "today",
+                    "nudge",
+                    "conflicts",
+                    "interviews"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "read:occasions"
+        ]
+      }
+    },
+    "/api/occasions/plans/confirm": {
+      "post": {
+        "operationId": "occasions.plans.confirm",
+        "summary": "Record A Confirmed Plan",
+        "description": "Write the confirmed plan as one line in the owner profile, under Plans, carrying its provenance. Same one-confirmation rule and the same owner-profile write gate as an occasion.",
+        "tags": [
+          "occasions"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "occasionId": {
+                      "type": "string"
+                    },
+                    "disclosure": {
+                      "type": "string"
+                    },
+                    "droppedRecords": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "reason",
+                    "occasionId",
+                    "disclosure",
+                    "droppedRecords"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "write:occasions"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "from": {
+                    "type": "string"
+                  },
+                  "to": {
+                    "type": "string"
+                  },
+                  "away": {
+                    "type": "boolean"
+                  },
+                  "destination": {
+                    "type": "string"
+                  },
+                  "surface": {
+                    "type": "string"
+                  },
+                  "said": {
+                    "type": "string"
+                  },
+                  "authority": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "title",
+                  "from",
+                  "to",
+                  "surface",
+                  "said",
+                  "authority"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/occasions/plans": {
+      "get": {
+        "operationId": "occasions.plans.list",
+        "summary": "List Plans",
+        "description": "Return every plan declared in the owner profile — a dated range with attributes — plus whichever one has him away today. Plans are ambient: they never prompt. They exist so the system knows not to suggest things into that window, and so a nudge that would land while he is abroad moves to the day before he leaves.",
+        "tags": [
+          "occasions"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "today": {
+                      "type": "string"
+                    },
+                    "plans": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "from": {
+                            "type": "string"
+                          },
+                          "to": {
+                            "type": "string"
+                          },
+                          "away": {
+                            "type": "boolean"
+                          },
+                          "destination": {
+                            "type": "string"
+                          },
+                          "extras": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "lineIndex": {
+                            "type": "number"
+                          },
+                          "text": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "title",
+                          "from",
+                          "to",
+                          "away",
+                          "destination",
+                          "extras",
+                          "lineIndex",
+                          "text"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "unparsed": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "lineIndex": {
+                            "type": "number"
+                          },
+                          "text": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "lineIndex",
+                          "text",
+                          "reason"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "awayNow": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "title": {
+                              "type": "string"
+                            },
+                            "from": {
+                              "type": "string"
+                            },
+                            "to": {
+                              "type": "string"
+                            },
+                            "away": {
+                              "type": "boolean"
+                            },
+                            "destination": {
+                              "type": "string"
+                            },
+                            "extras": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "lineIndex": {
+                              "type": "number"
+                            },
+                            "text": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "title",
+                            "from",
+                            "to",
+                            "away",
+                            "destination",
+                            "extras",
+                            "lineIndex",
+                            "text"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "today",
+                    "plans",
+                    "unparsed",
+                    "awayNow"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "read:occasions"
+        ]
+      }
+    },
+    "/api/occasions/plans/propose": {
+      "post": {
+        "operationId": "occasions.plans.propose",
+        "summary": "Propose A Plan",
+        "description": "Work out what would be written for a plan heard in conversation, and return the one-line confirmation. Writes nothing. Away is opt-in rather than assumed: \"the kitchen is being redone, 3rd to the 10th\" is a real dated range that is not him leaving the house.",
+        "tags": [
+          "occasions"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "line": {
+                      "type": "string"
+                    },
+                    "confirmation": {
+                      "type": "string"
+                    },
+                    "needsKind": {
+                      "type": "boolean"
+                    },
+                    "conflictsWith": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "reason",
+                    "line",
+                    "confirmation",
+                    "needsKind",
+                    "conflictsWith"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "write:occasions"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "from": {
+                    "type": "string"
+                  },
+                  "to": {
+                    "type": "string"
+                  },
+                  "away": {
+                    "type": "boolean"
+                  },
+                  "destination": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "title",
+                  "from",
+                  "to"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/occasions/propose": {
+      "post": {
+        "operationId": "occasions.propose",
+        "summary": "Propose An Important Date",
+        "description": "Work out what would be written for a date heard in conversation, and return the one-line confirmation to put to the owner. WRITES NOTHING. When no kind was given, needsKind is true and the confirmation asks for it in the same breath — the kind is his choice and is never inferred, because no rule that reads a label tells a birthday from a death anniversary. Any date already recorded for the same name that disagrees comes back in conflictsWith.",
+        "tags": [
+          "occasions"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "line": {
+                      "type": "string"
+                    },
+                    "confirmation": {
+                      "type": "string"
+                    },
+                    "needsKind": {
+                      "type": "boolean"
+                    },
+                    "conflictsWith": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "reason",
+                    "line",
+                    "confirmation",
+                    "needsKind",
+                    "conflictsWith"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "write:occasions"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "date": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "gift-giving",
+                      "remember-only",
+                      "neither"
+                    ]
+                  },
+                  "person": {
+                    "type": "string"
+                  },
+                  "recurrence": {
+                    "type": "string",
+                    "enum": [
+                      "annual",
+                      "once"
+                    ]
+                  },
+                  "leadDays": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "title",
+                  "date"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/occasions/remove": {
+      "post": {
+        "operationId": "occasions.remove",
+        "summary": "Remove An Important Date",
+        "description": "Remove one occasion and every record the machine kept against it — answers, gift history, open items, interviews and calendar mirrors. Takes exactly one confirmation: not unquestioned, and not an argument. People divorce and people die. A confirmed:false call returns the sentence to put to him and removes nothing.",
+        "tags": [
+          "occasions"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "occasionId": {
+                      "type": "string"
+                    },
+                    "disclosure": {
+                      "type": "string"
+                    },
+                    "droppedRecords": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "reason",
+                    "occasionId",
+                    "disclosure",
+                    "droppedRecords"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "write:occasions"
+        ],
+        "x-dangerous": true,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "occasionId": {
+                    "type": "string"
+                  },
+                  "confirmed": {
+                    "type": "boolean"
+                  },
+                  "authority": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "occasionId",
+                  "confirmed",
+                  "authority"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/occasions/state": {
+      "get": {
+        "operationId": "occasions.state",
+        "summary": "Occasions State Disclosure",
+        "description": "What the machine-owned store is holding — counts of answers, gift records, open items, interviews and calendar mirrors — plus what the last housekeeping pass removed and why, and whether the file was found unreadable. Counts and reasons only: no answer, no gift and no date is returned, which is what makes this safe in a support bundle.",
+        "tags": [
+          "occasions"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "acknowledgements": {
+                      "type": "number"
+                    },
+                    "giftRecords": {
+                      "type": "number"
+                    },
+                    "openItems": {
+                      "type": "number"
+                    },
+                    "interviews": {
+                      "type": "number"
+                    },
+                    "mirrors": {
+                      "type": "number"
+                    },
+                    "lastSweep": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "sweptAt": {
+                              "type": "number"
+                            },
+                            "expiredAcknowledgements": {
+                              "type": "number"
+                            },
+                            "orphanedRecords": {
+                              "type": "number"
+                            },
+                            "expiredOpenItems": {
+                              "type": "number"
+                            },
+                            "agedGiftRecords": {
+                              "type": "number"
+                            },
+                            "droppedInterviews": {
+                              "type": "number"
+                            },
+                            "staleMirrors": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "sweptAt",
+                            "expiredAcknowledgements",
+                            "orphanedRecords",
+                            "expiredOpenItems",
+                            "agedGiftRecords",
+                            "droppedInterviews",
+                            "staleMirrors"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "corruption": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "acknowledgements",
+                    "giftRecords",
+                    "openItems",
+                    "interviews",
+                    "mirrors",
+                    "lastSweep",
+                    "corruption"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "read:occasions"
+        ]
+      }
+    },
+    "/api/occasions/sweep": {
+      "post": {
+        "operationId": "occasions.sweep",
+        "summary": "Run The Approach Sweep Now",
+        "description": "Run one pass immediately: reap expired and orphaned state, find the occasions entering their lead window, batch them into a single message, mirror to the calendar if that is on, and deliver. Housekeeping runs first and unconditionally, so a machine with nudging turned off still reaps. Returns hold:\"quiet-hours\" or hold:\"disabled\" when it deliberately said nothing — nothing is dropped, it waits.",
+        "tags": [
+          "occasions"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ranAt": {
+                      "type": "number"
+                    },
+                    "today": {
+                      "type": "string"
+                    },
+                    "hold": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "nudge": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "raisedAt": {
+                              "type": "number"
+                            },
+                            "subjects": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "occasionId": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "person": {
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "gift-giving",
+                                      "remember-only",
+                                      "neither"
+                                    ]
+                                  },
+                                  "proximity": {
+                                    "type": "string",
+                                    "enum": [
+                                      "approaching",
+                                      "soon",
+                                      "imminent"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "occasionId",
+                                  "title",
+                                  "person",
+                                  "kind",
+                                  "proximity"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "message": {
+                              "type": "string"
+                            },
+                            "answerable": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "raisedAt",
+                            "subjects",
+                            "message",
+                            "answerable"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "conflictMessages": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "resumedInterviews": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "delivered": {
+                      "type": "boolean"
+                    },
+                    "deliveryChannel": {
+                      "type": "string"
+                    },
+                    "deliveryId": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "mirrored": {
+                      "type": "number"
+                    },
+                    "housekeeping": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "sweptAt": {
+                              "type": "number"
+                            },
+                            "expiredAcknowledgements": {
+                              "type": "number"
+                            },
+                            "orphanedRecords": {
+                              "type": "number"
+                            },
+                            "expiredOpenItems": {
+                              "type": "number"
+                            },
+                            "agedGiftRecords": {
+                              "type": "number"
+                            },
+                            "droppedInterviews": {
+                              "type": "number"
+                            },
+                            "staleMirrors": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "sweptAt",
+                            "expiredAcknowledgements",
+                            "orphanedRecords",
+                            "expiredOpenItems",
+                            "agedGiftRecords",
+                            "droppedInterviews",
+                            "staleMirrors"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "ranAt",
+                    "today",
+                    "hold",
+                    "nudge",
+                    "conflictMessages",
+                    "resumedInterviews",
+                    "delivered",
+                    "deliveryChannel",
+                    "deliveryId",
+                    "mirrored",
+                    "housekeeping"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "write:occasions"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/panels": {
       "get": {
         "operationId": "panels.list",
@@ -100374,6 +102754,150 @@
       "category": "memory",
       "access": "authenticated",
       "rest": "GET /api/memory/vector",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "occasions.answer",
+      "category": "occasions",
+      "access": "authenticated",
+      "rest": "POST /api/occasions/answer",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "occasions.confirm",
+      "category": "occasions",
+      "access": "authenticated",
+      "rest": "POST /api/occasions/confirm",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "occasions.conflict.resolve",
+      "category": "occasions",
+      "access": "authenticated",
+      "rest": "POST /api/occasions/conflict/resolve",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "occasions.gifts",
+      "category": "occasions",
+      "access": "authenticated",
+      "rest": "POST /api/occasions/gifts",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "occasions.interview.answer",
+      "category": "occasions",
+      "access": "authenticated",
+      "rest": "POST /api/occasions/interview/answer",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "occasions.interview.get",
+      "category": "occasions",
+      "access": "authenticated",
+      "rest": "POST /api/occasions/interview",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "occasions.interview.record",
+      "category": "occasions",
+      "access": "authenticated",
+      "rest": "POST /api/occasions/interview/record",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "occasions.list",
+      "category": "occasions",
+      "access": "authenticated",
+      "rest": "GET /api/occasions",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "occasions.pending",
+      "category": "occasions",
+      "access": "authenticated",
+      "rest": "GET /api/occasions/pending",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "occasions.plans.confirm",
+      "category": "occasions",
+      "access": "authenticated",
+      "rest": "POST /api/occasions/plans/confirm",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "occasions.plans.list",
+      "category": "occasions",
+      "access": "authenticated",
+      "rest": "GET /api/occasions/plans",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "occasions.plans.propose",
+      "category": "occasions",
+      "access": "authenticated",
+      "rest": "POST /api/occasions/plans/propose",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "occasions.propose",
+      "category": "occasions",
+      "access": "authenticated",
+      "rest": "POST /api/occasions/propose",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "occasions.remove",
+      "category": "occasions",
+      "access": "authenticated",
+      "rest": "POST /api/occasions/remove",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "occasions.state",
+      "category": "occasions",
+      "access": "authenticated",
+      "rest": "GET /api/occasions/state",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "occasions.sweep",
+      "category": "occasions",
+      "access": "authenticated",
+      "rest": "POST /api/occasions/sweep",
       "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"

@@ -13136,6 +13136,473 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       }
     }
   },
+  "occasions.answer": {
+    "methodId": "occasions.answer",
+    "http": {
+      "method": "POST",
+      "path": "/api/occasions/answer"
+    },
+    "status": 200,
+    "body": {
+      "ok": false,
+      "reason": "sample",
+      "interview": {
+        "interviewId": "sample",
+        "occasionId": "sample",
+        "occurrence": "sample",
+        "steps": [
+          {
+            "id": "sample",
+            "prompt": "sample",
+            "opensFrom": "sample"
+          }
+        ],
+        "nextStep": {
+          "id": "sample",
+          "prompt": "sample",
+          "opensFrom": "sample"
+        },
+        "complete": false,
+        "landedOn": "sample"
+      }
+    }
+  },
+  "occasions.confirm": {
+    "methodId": "occasions.confirm",
+    "http": {
+      "method": "POST",
+      "path": "/api/occasions/confirm"
+    },
+    "status": 200,
+    "body": {
+      "ok": false,
+      "reason": "sample",
+      "occasionId": "sample",
+      "disclosure": "sample",
+      "droppedRecords": 0
+    }
+  },
+  "occasions.conflict.resolve": {
+    "methodId": "occasions.conflict.resolve",
+    "http": {
+      "method": "POST",
+      "path": "/api/occasions/conflict/resolve"
+    },
+    "status": 200,
+    "body": {
+      "occasionId": "sample",
+      "resolved": false
+    }
+  },
+  "occasions.gifts": {
+    "methodId": "occasions.gifts",
+    "http": {
+      "method": "POST",
+      "path": "/api/occasions/gifts"
+    },
+    "status": 200,
+    "body": {
+      "occasionId": "sample",
+      "gifts": [
+        {
+          "occasionId": "sample",
+          "occurrence": "sample",
+          "recordedAt": 0,
+          "landedOn": "sample",
+          "notes": "sample"
+        }
+      ]
+    }
+  },
+  "occasions.interview.answer": {
+    "methodId": "occasions.interview.answer",
+    "http": {
+      "method": "POST",
+      "path": "/api/occasions/interview/answer"
+    },
+    "status": 200,
+    "body": {
+      "present": false,
+      "interview": {
+        "interviewId": "sample",
+        "occasionId": "sample",
+        "occurrence": "sample",
+        "steps": [
+          {
+            "id": "sample",
+            "prompt": "sample",
+            "opensFrom": "sample"
+          }
+        ],
+        "nextStep": {
+          "id": "sample",
+          "prompt": "sample",
+          "opensFrom": "sample"
+        },
+        "complete": false,
+        "landedOn": "sample"
+      }
+    }
+  },
+  "occasions.interview.get": {
+    "methodId": "occasions.interview.get",
+    "http": {
+      "method": "POST",
+      "path": "/api/occasions/interview"
+    },
+    "status": 200,
+    "body": {
+      "present": false,
+      "interview": {
+        "interviewId": "sample",
+        "occasionId": "sample",
+        "occurrence": "sample",
+        "steps": [
+          {
+            "id": "sample",
+            "prompt": "sample",
+            "opensFrom": "sample"
+          }
+        ],
+        "nextStep": {
+          "id": "sample",
+          "prompt": "sample",
+          "opensFrom": "sample"
+        },
+        "complete": false,
+        "landedOn": "sample"
+      }
+    }
+  },
+  "occasions.interview.record": {
+    "methodId": "occasions.interview.record",
+    "http": {
+      "method": "POST",
+      "path": "/api/occasions/interview/record"
+    },
+    "status": 200,
+    "body": {
+      "present": false,
+      "interview": {
+        "interviewId": "sample",
+        "occasionId": "sample",
+        "occurrence": "sample",
+        "steps": [
+          {
+            "id": "sample",
+            "prompt": "sample",
+            "opensFrom": "sample"
+          }
+        ],
+        "nextStep": {
+          "id": "sample",
+          "prompt": "sample",
+          "opensFrom": "sample"
+        },
+        "complete": false,
+        "landedOn": "sample"
+      }
+    }
+  },
+  "occasions.list": {
+    "methodId": "occasions.list",
+    "http": {
+      "method": "GET",
+      "path": "/api/occasions"
+    },
+    "status": 200,
+    "body": {
+      "today": "sample",
+      "timezone": "sample",
+      "occasions": [
+        {
+          "occasion": {
+            "id": "sample",
+            "title": "sample",
+            "date": {
+              "kind": "recurring",
+              "year": 0,
+              "month": 0,
+              "day": 0
+            },
+            "recurrence": "annual",
+            "kind": "gift-giving",
+            "person": "sample",
+            "leadDays": 0,
+            "mirrored": false,
+            "extras": [
+              "sample"
+            ],
+            "lineIndex": 0,
+            "text": "sample"
+          },
+          "nextOccurrence": "sample",
+          "daysUntil": 0,
+          "leadDays": 0,
+          "inLeadWindow": false,
+          "answer": "yes",
+          "mirrored": false
+        }
+      ],
+      "unparsed": [
+        {
+          "lineIndex": 0,
+          "text": "sample",
+          "reason": "sample"
+        }
+      ],
+      "conflicts": [
+        {
+          "occasionId": "sample",
+          "title": "sample",
+          "dates": [
+            "sample"
+          ],
+          "lineIndexes": [
+            0
+          ]
+        }
+      ]
+    }
+  },
+  "occasions.pending": {
+    "methodId": "occasions.pending",
+    "http": {
+      "method": "GET",
+      "path": "/api/occasions/pending"
+    },
+    "status": 200,
+    "body": {
+      "today": "sample",
+      "nudge": {
+        "id": "sample",
+        "raisedAt": 0,
+        "subjects": [
+          {
+            "occasionId": "sample",
+            "title": "sample",
+            "person": "sample",
+            "kind": "gift-giving",
+            "proximity": "approaching"
+          }
+        ],
+        "message": "sample",
+        "answerable": false
+      },
+      "conflicts": [
+        {
+          "occasionId": "sample",
+          "message": "sample"
+        }
+      ],
+      "interviews": [
+        {
+          "interviewId": "sample",
+          "occasionId": "sample",
+          "occurrence": "sample",
+          "steps": [
+            {
+              "id": "sample",
+              "prompt": "sample",
+              "opensFrom": "sample"
+            }
+          ],
+          "nextStep": {
+            "id": "sample",
+            "prompt": "sample",
+            "opensFrom": "sample"
+          },
+          "complete": false,
+          "landedOn": "sample"
+        }
+      ]
+    }
+  },
+  "occasions.plans.confirm": {
+    "methodId": "occasions.plans.confirm",
+    "http": {
+      "method": "POST",
+      "path": "/api/occasions/plans/confirm"
+    },
+    "status": 200,
+    "body": {
+      "ok": false,
+      "reason": "sample",
+      "occasionId": "sample",
+      "disclosure": "sample",
+      "droppedRecords": 0
+    }
+  },
+  "occasions.plans.list": {
+    "methodId": "occasions.plans.list",
+    "http": {
+      "method": "GET",
+      "path": "/api/occasions/plans"
+    },
+    "status": 200,
+    "body": {
+      "today": "sample",
+      "plans": [
+        {
+          "id": "sample",
+          "title": "sample",
+          "from": "sample",
+          "to": "sample",
+          "away": false,
+          "destination": "sample",
+          "extras": [
+            "sample"
+          ],
+          "lineIndex": 0,
+          "text": "sample"
+        }
+      ],
+      "unparsed": [
+        {
+          "lineIndex": 0,
+          "text": "sample",
+          "reason": "sample"
+        }
+      ],
+      "awayNow": {
+        "id": "sample",
+        "title": "sample",
+        "from": "sample",
+        "to": "sample",
+        "away": false,
+        "destination": "sample",
+        "extras": [
+          "sample"
+        ],
+        "lineIndex": 0,
+        "text": "sample"
+      }
+    }
+  },
+  "occasions.plans.propose": {
+    "methodId": "occasions.plans.propose",
+    "http": {
+      "method": "POST",
+      "path": "/api/occasions/plans/propose"
+    },
+    "status": 200,
+    "body": {
+      "ok": false,
+      "reason": "sample",
+      "line": "sample",
+      "confirmation": "sample",
+      "needsKind": false,
+      "conflictsWith": [
+        "sample"
+      ]
+    }
+  },
+  "occasions.propose": {
+    "methodId": "occasions.propose",
+    "http": {
+      "method": "POST",
+      "path": "/api/occasions/propose"
+    },
+    "status": 200,
+    "body": {
+      "ok": false,
+      "reason": "sample",
+      "line": "sample",
+      "confirmation": "sample",
+      "needsKind": false,
+      "conflictsWith": [
+        "sample"
+      ]
+    }
+  },
+  "occasions.remove": {
+    "methodId": "occasions.remove",
+    "http": {
+      "method": "POST",
+      "path": "/api/occasions/remove"
+    },
+    "status": 200,
+    "body": {
+      "ok": false,
+      "reason": "sample",
+      "occasionId": "sample",
+      "disclosure": "sample",
+      "droppedRecords": 0
+    }
+  },
+  "occasions.state": {
+    "methodId": "occasions.state",
+    "http": {
+      "method": "GET",
+      "path": "/api/occasions/state"
+    },
+    "status": 200,
+    "body": {
+      "path": "sample",
+      "acknowledgements": 0,
+      "giftRecords": 0,
+      "openItems": 0,
+      "interviews": 0,
+      "mirrors": 0,
+      "lastSweep": {
+        "sweptAt": 0,
+        "expiredAcknowledgements": 0,
+        "orphanedRecords": 0,
+        "expiredOpenItems": 0,
+        "agedGiftRecords": 0,
+        "droppedInterviews": 0,
+        "staleMirrors": 0
+      },
+      "corruption": "sample"
+    }
+  },
+  "occasions.sweep": {
+    "methodId": "occasions.sweep",
+    "http": {
+      "method": "POST",
+      "path": "/api/occasions/sweep"
+    },
+    "status": 200,
+    "body": {
+      "ranAt": 0,
+      "today": "sample",
+      "hold": "sample",
+      "nudge": {
+        "id": "sample",
+        "raisedAt": 0,
+        "subjects": [
+          {
+            "occasionId": "sample",
+            "title": "sample",
+            "person": "sample",
+            "kind": "gift-giving",
+            "proximity": "approaching"
+          }
+        ],
+        "message": "sample",
+        "answerable": false
+      },
+      "conflictMessages": [
+        "sample"
+      ],
+      "resumedInterviews": [
+        "sample"
+      ],
+      "delivered": false,
+      "deliveryChannel": "sample",
+      "deliveryId": "sample",
+      "mirrored": 0,
+      "housekeeping": {
+        "sweptAt": 0,
+        "expiredAcknowledgements": 0,
+        "orphanedRecords": 0,
+        "expiredOpenItems": 0,
+        "agedGiftRecords": 0,
+        "droppedInterviews": 0,
+        "staleMirrors": 0
+      }
+    }
+  },
   "pairing.handoff.complete": {
     "methodId": "pairing.handoff.complete",
     "http": null,

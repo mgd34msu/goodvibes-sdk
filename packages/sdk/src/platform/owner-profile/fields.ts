@@ -26,6 +26,8 @@ export const PROFILE_SECTIONS = [
   'People',
   'Places',
   'Work',
+  'Important dates',
+  'Plans',
   'Notes',
 ] as const;
 
@@ -34,12 +36,25 @@ export type ProfileSectionName = (typeof PROFILE_SECTIONS)[number];
 /**
  * Sections that hold notes rather than records. An autonomous write into one of
  * these appends a bullet; nothing turns them into records.
+ *
+ * `Important dates` and `Plans` are here for a reason worth stating, because at
+ * a glance they look like the most record-shaped sections in the document. A
+ * birthday is a REPEATED record and the field registry maps one section-plus-
+ * label to one value — it can hold `commerce.shippingAddress` and cannot hold
+ * twenty birthdays. So each occasion is a prose line, preserved verbatim by
+ * this parser exactly like any other bullet, and typed by a reader layered on
+ * top of it (`platform/occasions/grammar.ts`). The profile's guarantee that a
+ * validator never rewrites a line he wrote survives unchanged, and a date line
+ * this parser cannot make sense of is reported with a reason rather than
+ * corrected.
  */
 export const PROSE_ONLY_SECTIONS: readonly ProfileSectionName[] = [
   'Style',
   'People',
   'Places',
   'Work',
+  'Important dates',
+  'Plans',
   'Notes',
 ];
 
