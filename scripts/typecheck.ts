@@ -57,6 +57,15 @@ for (const project of PROJECTS) {
     cwd: SDK_ROOT,
     encoding: 'utf8',
     maxBuffer: 256 * 1024 * 1024,
+    // Node's default old-space ceiling is ~4 GB regardless of how much the host
+    // has. The contract surface passed that: with 464 operator methods rendered
+    // into OperatorMethodInputMap / OperatorMethodOutputMap, `tsc -b --force`
+    // dies with "Ineffective mark-compacts near heap limit" — a SIGNAL, not a
+    // diagnostic, so a caller reading only the exit code sees a failure with no
+    // errors and has nothing to act on. Raised rather than worked around,
+    // because the type surface is legitimately this large and the machine has
+    // the memory; capping the surface instead would mean deleting checks.
+    env: { ...process.env, NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --max-old-space-size=16384`.trim() },
   });
   if (run.error) {
     console.error(`[typecheck] ${project.label}: could not run — ${run.error.message}`);

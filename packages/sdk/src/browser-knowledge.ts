@@ -3,6 +3,7 @@ import type {
   OperatorMethodOutput,
   OperatorTypedMethodId,
 } from '@pellux/goodvibes-contracts/generated/foundation-client-types';
+import type { OmitNamed } from '@pellux/goodvibes-contracts';
 import {
   createScopedBrowserSdk,
   forScopedBrowserSession,
@@ -14,6 +15,19 @@ import {
   type SharedBrowserMethodId,
 } from './browser-scoped.js';
 import type { ServerSentEventHandlers } from './transport-http.js';
+
+/**
+ * The input type of `TMethodId` minus the key this wrapper supplies from its own
+ * positional argument (the id already in the URL path).
+ *
+ * `OmitNamed` rather than a plain `Omit` — see @pellux/goodvibes-contracts'
+ * typed-io-keys.ts: an `additionalProperties: true` verb renders with a broad
+ * index signature, and `Omit` collapses the whole named shape against it.
+ */
+type OperatorInputWithout<TMethodId extends OperatorTypedMethodId, TKey extends string> = OmitNamed<
+  OperatorMethodInput<TMethodId>,
+  TKey
+>;
 
 export const KNOWLEDGE_BROWSER_ROUTES = {
   'knowledge.ask': { method: 'POST', path: '/api/knowledge/ask' },
@@ -101,36 +115,6 @@ export type BrowserKnowledgeMethodId =
 
 export type BrowserKnowledgeDomain = typeof KNOWLEDGE_BROWSER_DOMAINS[number];
 
-/**
- * The declared properties of `T`, with any index signature dropped.
- *
- * Body-envelope inputs are open (`additionalProperties: true`), which renders
- * as an intersection with `{ readonly [key: string]: unknown }`. That single
- * addition breaks `Omit`: `keyof` an intersection carrying an index signature
- * is `string | number`, so omitting a named key removes nothing and keeps
- * nothing, and the result is a bare record. Every helper below that took
- * `Omit<Input, 'sessionId'>` was therefore accepting anything at all — not
- * because of the requirement branches, which came later, but from the moment
- * the envelope was opened. Dropping the index signature first is what makes
- * the omit mean something.
- */
-type DeclaredKeys<T> = {
-  [K in keyof T as string extends K ? never : number extends K ? never : K]: T[K];
-};
-
-/**
- * `Omit` that survives both the index signature and a union.
- *
- * Distributing matters as much as `DeclaredKeys`: the companion-chat verbs
- * whose required set is conditional are typed as a base intersected with a
- * union of requirement branches, and a non-distributive `Omit` collapses that
- * union to its members' common keys — discarding the requirement it exists to
- * state.
- */
-type OmitDeclared<T, TKeys extends PropertyKey> = T extends unknown
-  ? Omit<DeclaredKeys<T>, TKeys>
-  : never;
-
 export interface BrowserKnowledgeSdk extends ScopedBrowserSdk<BrowserKnowledgeMethodId, BrowserKnowledgeDomain> {
   readonly knowledge: {
     ask(input: OperatorMethodInput<'knowledge.ask'>): Promise<OperatorMethodOutput<'knowledge.ask'>>;
@@ -145,13 +129,13 @@ export interface BrowserKnowledgeSdk extends ScopedBrowserSdk<BrowserKnowledgeMe
       list(input?: OperatorMethodInput<'companion.chat.sessions.list'>): Promise<OperatorMethodOutput<'companion.chat.sessions.list'>>;
       update(
         sessionId: string,
-        input: OmitDeclared<OperatorMethodInput<'companion.chat.sessions.update'>, 'sessionId'>,
+        input: OperatorInputWithout<'companion.chat.sessions.update', 'sessionId'>,
       ): Promise<OperatorMethodOutput<'companion.chat.sessions.update'>>;
     };
     readonly messages: {
       create(
         sessionId: string,
-        input: OmitDeclared<OperatorMethodInput<'companion.chat.messages.create'>, 'sessionId'>,
+        input: OperatorInputWithout<'companion.chat.messages.create', 'sessionId'>,
       ): Promise<OperatorMethodOutput<'companion.chat.messages.create'>>;
       list(sessionId: string): Promise<OperatorMethodOutput<'companion.chat.messages.list'>>;
       /**
@@ -162,7 +146,7 @@ export interface BrowserKnowledgeSdk extends ScopedBrowserSdk<BrowserKnowledgeMe
        */
       steer(
         sessionId: string,
-        input: OmitDeclared<OperatorMethodInput<'companion.chat.messages.steer'>, 'sessionId'>,
+        input: OperatorInputWithout<'companion.chat.messages.steer', 'sessionId'>,
       ): Promise<OperatorMethodOutput<'companion.chat.messages.steer'>>;
     };
     readonly turns: {
@@ -173,7 +157,7 @@ export interface BrowserKnowledgeSdk extends ScopedBrowserSdk<BrowserKnowledgeMe
        */
       cancel(
         sessionId: string,
-        input?: Omit<OperatorMethodInput<'companion.chat.turns.cancel'>, 'sessionId'>,
+        input?: OperatorInputWithout<'companion.chat.turns.cancel', 'sessionId'>,
       ): Promise<OperatorMethodOutput<'companion.chat.turns.cancel'>>;
     };
     readonly events: {
@@ -193,18 +177,18 @@ export interface BrowserKnowledgeSdk extends ScopedBrowserSdk<BrowserKnowledgeMe
     snapshot(input?: OperatorMethodInput<'projectPlanning.workPlan.snapshot'>): Promise<OperatorMethodOutput<'projectPlanning.workPlan.snapshot'>>;
     readonly tasks: {
       list(input?: OperatorMethodInput<'projectPlanning.workPlan.tasks.list'>): Promise<OperatorMethodOutput<'projectPlanning.workPlan.tasks.list'>>;
-      get(taskId: string, input?: Omit<OperatorMethodInput<'projectPlanning.workPlan.task.get'>, 'taskId'>): Promise<OperatorMethodOutput<'projectPlanning.workPlan.task.get'>>;
+      get(taskId: string, input?: OperatorInputWithout<'projectPlanning.workPlan.task.get', 'taskId'>): Promise<OperatorMethodOutput<'projectPlanning.workPlan.task.get'>>;
       create(input: OperatorMethodInput<'projectPlanning.workPlan.task.create'>): Promise<OperatorMethodOutput<'projectPlanning.workPlan.task.create'>>;
       update(
         taskId: string,
-        input: Omit<OperatorMethodInput<'projectPlanning.workPlan.task.update'>, 'taskId'>,
+        input: OperatorInputWithout<'projectPlanning.workPlan.task.update', 'taskId'>,
       ): Promise<OperatorMethodOutput<'projectPlanning.workPlan.task.update'>>;
       status(
         taskId: string,
-        input: Omit<OperatorMethodInput<'projectPlanning.workPlan.task.status'>, 'taskId'>,
+        input: OperatorInputWithout<'projectPlanning.workPlan.task.status', 'taskId'>,
       ): Promise<OperatorMethodOutput<'projectPlanning.workPlan.task.status'>>;
       reorder(input: OperatorMethodInput<'projectPlanning.workPlan.tasks.reorder'>): Promise<OperatorMethodOutput<'projectPlanning.workPlan.tasks.reorder'>>;
-      delete(taskId: string, input?: Omit<OperatorMethodInput<'projectPlanning.workPlan.task.delete'>, 'taskId'>): Promise<OperatorMethodOutput<'projectPlanning.workPlan.task.delete'>>;
+      delete(taskId: string, input?: OperatorInputWithout<'projectPlanning.workPlan.task.delete', 'taskId'>): Promise<OperatorMethodOutput<'projectPlanning.workPlan.task.delete'>>;
       clearCompleted(input?: OperatorMethodInput<'projectPlanning.workPlan.clearCompleted'>): Promise<OperatorMethodOutput<'projectPlanning.workPlan.clearCompleted'>>;
     };
   };
@@ -236,16 +220,24 @@ export function createBrowserKnowledgeSdkFromRoutes(
       map: (input) => invoke('knowledge.map', input),
     },
     chat: {
+      // `Object.assign` rather than `{ sessionId: id, ...input }` on the three
+      // branched verbs below. Their inputs are `Base & (A | B | C)` — one of
+      // body/content/attachments, one of title/model/provider/systemPrompt —
+      // and an object spread of a branched union widens every branch member to
+      // optional, so the merged value no longer proves it satisfies any branch.
+      // Object.assign returns an INTERSECTION, which keeps it. Same runtime
+      // value, and no cast: the caller was already type-checked against the
+      // branch by the signature, so the merge is their value plus one string.
       sessions: {
         create: (input) => invoke('companion.chat.sessions.create', input),
         get: (id) => invoke('companion.chat.sessions.get', { sessionId: id }),
         list: (input) => invoke('companion.chat.sessions.list', input),
-        update: (id, input) => invoke('companion.chat.sessions.update', { sessionId: id, ...input }),
+        update: (id, input) => invoke('companion.chat.sessions.update', Object.assign({ sessionId: id }, input)),
       },
       messages: {
-        create: (id, input) => invoke('companion.chat.messages.create', { sessionId: id, ...input }),
+        create: (id, input) => invoke('companion.chat.messages.create', Object.assign({ sessionId: id }, input)),
         list: (id) => invoke('companion.chat.messages.list', { sessionId: id }),
-        steer: (id, input) => invoke('companion.chat.messages.steer', { sessionId: id, ...input }),
+        steer: (id, input) => invoke('companion.chat.messages.steer', Object.assign({ sessionId: id }, input)),
       },
       turns: {
         cancel: (id, input) => invoke('companion.chat.turns.cancel', { sessionId: id, ...(input ?? {}) }),
