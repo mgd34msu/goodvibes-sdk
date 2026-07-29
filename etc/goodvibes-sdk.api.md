@@ -1720,6 +1720,11 @@ export type HttpTransport = HttpJsonTransport;
 export type HttpTransportOptions = HttpJsonTransportOptions;
 
 // @public
+export type IndexPart<T> = string extends keyof T ? {
+    readonly [key: string]: unknown;
+} : unknown;
+
+// @public
 export function injectTraceparent(headers: Record<string, string>): void;
 
 // @public
@@ -2138,6 +2143,11 @@ export const ModelChangedEventSchema: z.ZodObject<{
 }, z.core.$strict>;
 
 // @public
+export type NamedProps<T> = {
+    [K in keyof T as string extends K ? never : number extends K ? never : K]: T[K];
+};
+
+// @public
 export function normalizeAuthToken(input: AuthTokenInput): AuthTokenResolver;
 
 // @public (undocumented)
@@ -2162,6 +2172,9 @@ export type ObserverInvocationResult = {
     readonly ok: false;
     readonly error: unknown;
 };
+
+// @public
+export type OmitNamed<T, TKey extends PropertyKey> = T extends unknown ? Omit<NamedProps<T>, TKey> & IndexPart<T> : never;
 
 // @public (undocumented)
 export function openContractRouteStream(transport: HttpTransport, route: ContractRouteDefinition, input: Record<string, unknown> | undefined, options: ContractStreamOptions): Promise<() => void>;
@@ -2502,9 +2515,7 @@ export interface OperatorMethodContract {
 export type OperatorMethodId = typeof OPERATOR_METHOD_IDS[number];
 
 // @public (undocumented)
-export type OperatorMethodInput<TMethodId extends OperatorTypedMethodId> = TMethodId extends keyof OperatorMethodInputMap ? OperatorMethodInputMap[TMethodId] : {
-    readonly [key: string]: unknown;
-};
+export type OperatorMethodInput<TMethodId extends OperatorTypedMethodId> = OperatorMethodInputMap[TMethodId];
 
 // @public (undocumented)
 export interface OperatorMethodInputMap {
@@ -2527,7 +2538,11 @@ export interface OperatorMethodInputMap {
         selectedHunks?: readonly number[];
         rememberTier?: "command-class" | "exact" | "path" | "session" | "tool";
         reason?: string;
-        modifiedArgs?: {};
+        modifiedArgs?: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
     };
     // (undocumented)
     "approvals.cancel": {
@@ -2701,7 +2716,10 @@ export interface OperatorMethodInputMap {
         jobId: string;
     };
     // (undocumented)
-    "automation.jobs.list": {};
+    "automation.jobs.list": {
+        limit?: number;
+        cursor?: string;
+    };
     // (undocumented)
     "automation.jobs.run": {
         jobId: string;
@@ -2716,14 +2734,14 @@ export interface OperatorMethodInputMap {
             kind: "at";
             at: number;
         } | {
+            kind: "every";
+            intervalMs: number;
+            anchorAt?: number;
+        } | {
             kind: "cron";
             expression: string;
             timezone?: string;
             staggerMs?: number;
-        } | {
-            kind: "every";
-            intervalMs: number;
-            anchorAt?: number;
         };
         model?: string;
         provider?: string;
@@ -2741,7 +2759,7 @@ export interface OperatorMethodInputMap {
             routeId?: string;
             threadId?: string;
             channelId?: string;
-            surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+            surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
             pinnedSessionId?: string;
             preserveThread?: boolean;
             createIfMissing?: boolean;
@@ -2759,14 +2777,14 @@ export interface OperatorMethodInputMap {
             mode: "integration" | "link" | "none" | "surface" | "webhook";
             targets: readonly ({
                 kind: "integration" | "link" | "none" | "surface" | "webhook";
-                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
                 address?: string;
                 routeId?: string;
                 label?: string;
             })[];
             fallbackTargets: readonly ({
                 kind: "integration" | "link" | "none" | "surface" | "webhook";
-                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
                 address?: string;
                 routeId?: string;
                 label?: string;
@@ -3106,6 +3124,45 @@ export interface OperatorMethodInputMap {
         readonly [key: string]: unknown;
     });
     // (undocumented)
+    "calendar.events.create": ({
+        title: string;
+        start: string;
+        end: string;
+        description?: string;
+        attendees?: readonly string[];
+        location?: string;
+        calendarId?: string;
+        confirm: boolean;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "calendar.events.get": {
+        eventId: string;
+        calendarId?: string;
+    };
+    // (undocumented)
+    "calendar.events.list": {
+        calendarId?: string;
+        from?: string;
+        to?: string;
+        limit?: number;
+    };
+    // (undocumented)
+    "calendar.ics.export": {
+        calendarId?: string;
+        from?: string;
+        to?: string;
+    };
+    // (undocumented)
+    "calendar.ics.import": ({
+        icsContent: string;
+        calendarId?: string;
+        confirm: boolean;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
     "channels.accounts.action.default": ({
         accountId?: string;
         metadata?: ({} & {
@@ -3227,6 +3284,44 @@ export interface OperatorMethodInputMap {
         surface: string;
     };
     // (undocumented)
+    "channels.drafts.delete": {
+        draftId: string;
+    };
+    // (undocumented)
+    "channels.drafts.get": {
+        draftId: string;
+    };
+    // (undocumented)
+    "channels.drafts.list": {
+        status?: string;
+        limit?: number;
+    };
+    // (undocumented)
+    "channels.drafts.save": ({
+        version: number;
+        id: string;
+        createdAt: string;
+        updatedAt: string;
+        status: string;
+        title?: string;
+        message: string;
+        channel?: string;
+        route?: string;
+        webhook?: string;
+        link?: string;
+        tags?: readonly string[];
+        sentResponseId?: string;
+        sendError?: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "channels.inbox.list": {
+        provider?: string;
+        limit?: number;
+        since?: number;
+    };
+    // (undocumented)
     "channels.lifecycle.get": {
         surface: string;
     };
@@ -3306,6 +3401,26 @@ export interface OperatorMethodInputMap {
     // (undocumented)
     "channels.repairs.list": {
         surface: string;
+    };
+    // (undocumented)
+    "channels.routing.assign": ({
+        channelId?: string;
+        surfaceKind: string;
+        routeId?: string;
+        profileId: string;
+        label?: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "channels.routing.delete": {
+        assignmentId: string;
+    };
+    // (undocumented)
+    "channels.routing.list": {
+        profileId?: string;
+        surfaceKind?: string;
+        limit?: number;
     };
     // (undocumented)
     "channels.setup.get": {
@@ -3507,6 +3622,12 @@ export interface OperatorMethodInputMap {
         sessionId: string;
     };
     // (undocumented)
+    "companion.chat.messages.retry": ({
+        messageId?: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
     "companion.chat.messages.steer": ({
         sessionId: string;
         body?: string;
@@ -3636,6 +3757,10 @@ export interface OperatorMethodInputMap {
         dimension: "agent" | "hook" | "mcp" | "model" | "provider" | "session" | "tool";
     };
     // (undocumented)
+    "credentials.get": {
+        key?: string;
+    };
+    // (undocumented)
     "deliveries.get": {
         deliveryId: string;
     };
@@ -3658,6 +3783,16 @@ export interface OperatorMethodInputMap {
     // (undocumented)
     "devices.nodes.list": {};
     // (undocumented)
+    "email.draft.create": ({
+        to: string;
+        subject: string;
+        body: string;
+        inReplyTo?: string;
+        references?: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
     "email.expectation.cancel": {
         id: string;
     };
@@ -3673,6 +3808,26 @@ export interface OperatorMethodInputMap {
     };
     // (undocumented)
     "email.inbound.status": {};
+    // (undocumented)
+    "email.inbox.list": {
+        limit?: number;
+        since?: string;
+        unreadOnly?: boolean;
+    };
+    // (undocumented)
+    "email.inbox.read": {
+        uid: number;
+    };
+    // (undocumented)
+    "email.send": ({
+        to: string;
+        subject: string;
+        body: string;
+        inReplyTo?: string;
+        confirm: boolean;
+    } & {
+        readonly [key: string]: unknown;
+    });
     // (undocumented)
     "flags.graduation.report": {};
     // (undocumented)
@@ -3730,7 +3885,418 @@ export interface OperatorMethodInputMap {
     // (undocumented)
     "health.snapshot": {};
     // (undocumented)
+    "homeassistant.homeGraph.askHomeGraph": ({
+        installationId?: string;
+        knowledgeSpaceId?: string;
+        query: string;
+        limit?: number;
+        mode?: string;
+        includeSources?: boolean;
+        includeConfidence?: boolean;
+        includeLinkedObjects?: boolean;
+        timeoutMs?: number;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.browse": ({
+        installationId?: string;
+        knowledgeSpaceId?: string;
+        limit?: number;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.export": ({
+        installationId?: string;
+        knowledgeSpaceId?: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.generateHomeGraphPacket": ({
+        installationId?: string;
+        knowledgeSpaceId?: string;
+        packetKind?: string;
+        title?: string;
+        sharingProfile?: string;
+        includeFields?: readonly string[];
+        excludeFields?: readonly string[];
+        metadata?: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.generateRoomPage": ({
+        installationId?: string;
+        knowledgeSpaceId?: string;
+        areaId?: string;
+        roomId?: string;
+        title?: string;
+        metadata?: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.import": ({
+        installationId?: string;
+        knowledgeSpaceId?: string;
+        data: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.ingestHomeGraphArtifact": ({
+        installationId?: string;
+        knowledgeSpaceId?: string;
+        artifactId?: string;
+        path?: string;
+        uri?: string;
+        title?: string;
+        tags?: readonly string[];
+        target?: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+        allowPrivateHosts?: boolean;
+        metadata?: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    }) & ({
+        artifactId: string;
+    } | {
+        path: string;
+    } | {
+        uri: string;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.ingestHomeGraphNote": ({
+        installationId?: string;
+        knowledgeSpaceId?: string;
+        title?: string;
+        body: string;
+        category?: string;
+        tags?: readonly string[];
+        target?: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+        metadata?: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.ingestHomeGraphUrl": ({
+        installationId?: string;
+        knowledgeSpaceId?: string;
+        url: string;
+        title?: string;
+        tags?: readonly string[];
+        target?: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+        allowPrivateHosts?: boolean;
+        metadata?: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.linkHomeGraphKnowledge": ({
+        installationId?: string;
+        knowledgeSpaceId?: string;
+        sourceId?: string;
+        nodeId?: string;
+        target: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+        relation?: string;
+        metadata?: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    }) & ({
+        sourceId: string;
+    } | {
+        nodeId: string;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.listHomeGraphIssues": {
+        installationId?: string;
+        knowledgeSpaceId?: string;
+        limit?: number;
+        status?: string;
+        severity?: string;
+        code?: string;
+    };
+    // (undocumented)
+    "homeassistant.homeGraph.map": {
+        installationId?: string;
+        knowledgeSpaceId?: string;
+        limit?: number;
+        includeSources?: boolean;
+        includeIssues?: boolean;
+        includeGenerated?: boolean;
+        query?: string;
+        recordKinds?: readonly string[];
+        ids?: readonly string[];
+        linkedToIds?: readonly string[];
+        nodeKinds?: readonly string[];
+        sourceTypes?: readonly string[];
+        sourceStatuses?: readonly string[];
+        nodeStatuses?: readonly string[];
+        issueCodes?: readonly string[];
+        issueStatuses?: readonly string[];
+        issueSeverities?: readonly string[];
+        edgeRelations?: readonly string[];
+        tags?: readonly string[];
+        minConfidence?: number;
+        objectKinds?: readonly string[];
+        entityIds?: readonly string[];
+        deviceIds?: readonly string[];
+        areaIds?: readonly string[];
+        integrationIds?: readonly string[];
+        integrationDomains?: readonly string[];
+        domains?: readonly string[];
+        deviceClasses?: readonly string[];
+        labels?: readonly string[];
+        ha?: {
+            objectKinds?: readonly string[];
+            entityIds?: readonly string[];
+            deviceIds?: readonly string[];
+            areaIds?: readonly string[];
+            integrationIds?: readonly string[];
+            integrationDomains?: readonly string[];
+            domains?: readonly string[];
+            deviceClasses?: readonly string[];
+            labels?: readonly string[];
+        };
+    };
+    // (undocumented)
+    "homeassistant.homeGraph.pages.list": {
+        installationId?: string;
+        knowledgeSpaceId?: string;
+        limit?: number;
+        includeMarkdown?: boolean;
+    };
+    // (undocumented)
+    "homeassistant.homeGraph.refinement.run": ({
+        installationId?: string;
+        knowledgeSpaceId?: string;
+        gapIds?: readonly string[];
+        sourceIds?: readonly string[];
+        limit?: number;
+        maxRunMs?: number;
+        force?: boolean;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.refinement.task.cancel": ({
+        installationId?: string;
+        knowledgeSpaceId?: string;
+        id: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.refinement.task.get": {
+        installationId?: string;
+        knowledgeSpaceId?: string;
+        limit?: number;
+        id: string;
+    };
+    // (undocumented)
+    "homeassistant.homeGraph.refinement.tasks.list": {
+        installationId?: string;
+        knowledgeSpaceId?: string;
+        limit?: number;
+        state?: string;
+        subjectId?: string;
+        gapId?: string;
+    };
+    // (undocumented)
+    "homeassistant.homeGraph.refreshDevicePassport": ({
+        installationId?: string;
+        knowledgeSpaceId?: string;
+        deviceId: string;
+        metadata?: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.reindex": ({
+        installationId?: string;
+        knowledgeSpaceId?: string;
+        limit?: number;
+        maxRunMs?: number;
+        semanticLimit?: number;
+        semanticMaxRunMs?: number;
+        generatedPageLimit?: number;
+        force?: boolean;
+        refreshPages?: boolean;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.reset": ({
+        installationId?: string;
+        knowledgeSpaceId?: string;
+        dryRun?: boolean;
+        preserveArtifacts?: boolean;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.reviewHomeGraphFact": ({
+        installationId?: string;
+        knowledgeSpaceId?: string;
+        issueId?: string;
+        nodeId?: string;
+        sourceId?: string;
+        action: string;
+        value?: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+        reviewer?: string;
+    } & {
+        readonly [key: string]: unknown;
+    }) & ({
+        issueId: string;
+    } | {
+        nodeId: string;
+    } | {
+        sourceId: string;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.sources.list": ({
+        installationId?: string;
+        knowledgeSpaceId?: string;
+        limit?: number;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.status": ({
+        installationId?: string;
+        knowledgeSpaceId?: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.syncHomeGraph": ({
+        installationId?: string;
+        knowledgeSpaceId?: string;
+        homeId?: string;
+        title?: string;
+        capturedAt?: number;
+        entities?: readonly JsonValue[];
+        devices?: readonly JsonValue[];
+        areas?: readonly JsonValue[];
+        automations?: readonly JsonValue[];
+        scripts?: readonly JsonValue[];
+        scenes?: readonly JsonValue[];
+        labels?: readonly JsonValue[];
+        integrations?: readonly JsonValue[];
+        helpers?: readonly JsonValue[];
+        pageAutomation?: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+        metadata?: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.unlinkHomeGraphKnowledge": ({
+        installationId?: string;
+        knowledgeSpaceId?: string;
+        sourceId?: string;
+        nodeId?: string;
+        target: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+        relation?: string;
+        metadata?: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    }) & ({
+        sourceId: string;
+    } | {
+        nodeId: string;
+    });
+    // (undocumented)
     "intelligence.snapshot": {};
+    // (undocumented)
+    "knowledge.ask": ({
+        query: string;
+        knowledgeSpaceId?: string;
+        limit?: number;
+        mode?: string;
+        includeSources?: boolean;
+        includeConfidence?: boolean;
+        includeLinkedObjects?: boolean;
+        candidateSourceIds?: readonly string[];
+        candidateNodeIds?: readonly string[];
+        strictCandidates?: boolean;
+        timeoutMs?: number;
+        metadata?: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
     // (undocumented)
     "knowledge.candidate.decide": ({
         decision: "accept" | "reject" | "supersede";
@@ -3770,10 +4336,12 @@ export interface OperatorMethodInputMap {
         id: string;
     };
     // (undocumented)
-    "knowledge.extractions.list": ({
+    "knowledge.extractions.list": {
         limit?: number;
         sourceId?: string;
-    } & KnowledgeSpaceScopeInput);
+        knowledgeSpaceId?: string;
+        includeAllSpaces?: boolean;
+    };
     // (undocumented)
     "knowledge.graphql.execute": ({
         query: string;
@@ -3793,7 +4361,7 @@ export interface OperatorMethodInputMap {
         artifactId?: string;
         path?: string;
         uri?: string;
-        sourceType?: "bookmark" | "bookmark-list" | "history" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
+        sourceType?: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
         title?: string;
         sessionId?: string;
         tags?: readonly string[];
@@ -3838,12 +4406,39 @@ export interface OperatorMethodInputMap {
         readonly [key: string]: unknown;
     });
     // (undocumented)
-    "knowledge.ingest.connector": unknown;
+    "knowledge.ingest.connector": {
+        connectorId: string;
+        input: ({} & {
+            readonly [key: string]: JsonValue;
+        }) | boolean | null | number | readonly JsonValue[] | string;
+        content?: string;
+        path?: string;
+        sessionId?: string;
+        allowPrivateHosts?: boolean;
+    } | {
+        connectorId: string;
+        input?: ({} & {
+            readonly [key: string]: JsonValue;
+        }) | boolean | null | number | readonly JsonValue[] | string;
+        content: string;
+        path?: string;
+        sessionId?: string;
+        allowPrivateHosts?: boolean;
+    } | {
+        connectorId: string;
+        input?: ({} & {
+            readonly [key: string]: JsonValue;
+        }) | boolean | null | number | readonly JsonValue[] | string;
+        content?: string;
+        path: string;
+        sessionId?: string;
+        allowPrivateHosts?: boolean;
+    };
     // (undocumented)
     "knowledge.ingest.url": ({
         url: string;
         title?: string;
-        sourceType?: "bookmark" | "bookmark-list" | "history" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
+        sourceType?: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
         sessionId?: string;
         tags?: readonly string[];
         folderPath?: string;
@@ -3870,13 +4465,28 @@ export interface OperatorMethodInputMap {
         readonly [key: string]: unknown;
     });
     // (undocumented)
-    "knowledge.issues.list": ({
-        limit?: number;
-    } & KnowledgeSpaceScopeInput);
-    // (undocumented)
-    "knowledge.item.get": ({
+    "knowledge.issue.review": {
         id: string;
-    } & KnowledgeSpaceScopeInput);
+        action: string;
+        reviewer?: string;
+        value?: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+    };
+    // (undocumented)
+    "knowledge.issues.list": {
+        limit?: number;
+        knowledgeSpaceId?: string;
+        includeAllSpaces?: boolean;
+    };
+    // (undocumented)
+    "knowledge.item.get": {
+        id: string;
+        knowledgeSpaceId?: string;
+        includeAllSpaces?: boolean;
+    };
     // (undocumented)
     "knowledge.job-runs.list": {
         limit?: number;
@@ -3897,16 +4507,44 @@ export interface OperatorMethodInputMap {
     // (undocumented)
     "knowledge.lint": {};
     // (undocumented)
-    "knowledge.nodes.list": ({
+    "knowledge.map": {
         limit?: number;
-    } & KnowledgeSpaceScopeInput);
+        knowledgeSpaceId?: string;
+        includeAllSpaces?: boolean;
+        includeSources?: boolean;
+        includeIssues?: boolean;
+        includeGenerated?: boolean;
+        query?: string;
+        recordKinds?: readonly string[];
+        ids?: readonly string[];
+        linkedToIds?: readonly string[];
+        nodeKinds?: readonly string[];
+        sourceTypes?: readonly string[];
+        sourceStatuses?: readonly string[];
+        nodeStatuses?: readonly string[];
+        issueCodes?: readonly string[];
+        issueStatuses?: readonly string[];
+        issueSeverities?: readonly string[];
+        edgeRelations?: readonly string[];
+        tags?: readonly string[];
+        minConfidence?: number;
+    };
+    // (undocumented)
+    "knowledge.nodes.list": {
+        limit?: number;
+        cursor?: string;
+        knowledgeSpaceId?: string;
+        includeAllSpaces?: boolean;
+    };
     // (undocumented)
     "knowledge.packet": ({
         task: string;
         writeScope?: readonly string[];
         budgetLimit?: number;
         detail?: "compact" | "detailed" | "standard";
-    } & KnowledgeSpaceScopeInput & {
+        knowledgeSpaceId?: string;
+        includeAllSpaces?: boolean;
+    } & {
         readonly [key: string]: unknown;
     });
     // (undocumented)
@@ -3940,9 +4578,41 @@ export interface OperatorMethodInputMap {
         id: string;
     });
     // (undocumented)
-    "knowledge.projections.list": ({
+    "knowledge.projections.list": {
         limit?: number;
-    } & KnowledgeSpaceScopeInput);
+    };
+    // (undocumented)
+    "knowledge.refinement.run": ({
+        knowledgeSpaceId?: string;
+        spaceId?: string;
+        gapIds?: readonly string[];
+        sourceIds?: readonly string[];
+        limit?: number;
+        maxRunMs?: number;
+        force?: boolean;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "knowledge.refinement.task.cancel": ({
+        id: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "knowledge.refinement.task.get": {
+        id: string;
+    };
+    // (undocumented)
+    "knowledge.refinement.tasks.list": {
+        limit?: number;
+        spaceId?: string;
+        knowledgeSpaceId?: string;
+        state?: string;
+        subjectKind?: string;
+        subjectId?: string;
+        gapId?: string;
+    };
     // (undocumented)
     "knowledge.reindex": {};
     // (undocumented)
@@ -3952,6 +4622,8 @@ export interface OperatorMethodInputMap {
     // (undocumented)
     "knowledge.reports.list": {
         limit?: number;
+        knowledgeSpaceId?: string;
+        includeAllSpaces?: boolean;
     };
     // (undocumented)
     "knowledge.schedule.delete": {
@@ -3977,18 +4649,18 @@ export interface OperatorMethodInputMap {
             kind: "at";
             at: number;
         } | {
-            kind: "cron";
-            expression: string;
-            timezone?: string;
-            staggerMs?: number;
+            kind: "every";
+            intervalMs: number;
+            anchorAt?: number;
         } | {
             kind: "every";
             interval: string;
             anchorAt?: number;
         } | {
-            kind: "every";
-            intervalMs: number;
-            anchorAt?: number;
+            kind: "cron";
+            expression: string;
+            timezone?: string;
+            staggerMs?: number;
         };
         metadata?: ({} & {
             readonly [key: string]: ({} & {
@@ -4006,6 +4678,8 @@ export interface OperatorMethodInputMap {
     "knowledge.search": ({
         query: string;
         limit?: number;
+        knowledgeSpaceId?: string;
+        includeAllSpaces?: boolean;
         includeSources?: boolean;
         includeNodes?: boolean;
         metadata?: ({} & {
@@ -4013,7 +4687,7 @@ export interface OperatorMethodInputMap {
                 readonly [key: string]: JsonValue;
             }) | boolean | null | number | readonly JsonValue[] | string;
         });
-    } & KnowledgeSpaceScopeInput & {
+    } & {
         readonly [key: string]: unknown;
     });
     // (undocumented)
@@ -4021,11 +4695,17 @@ export interface OperatorMethodInputMap {
         id: string;
     };
     // (undocumented)
-    "knowledge.sources.list": ({
+    "knowledge.sources.list": {
         limit?: number;
-    } & KnowledgeSpaceScopeInput);
+        cursor?: string;
+        knowledgeSpaceId?: string;
+        includeAllSpaces?: boolean;
+    };
     // (undocumented)
-    "knowledge.status": KnowledgeSpaceScopeInput;
+    "knowledge.status": {
+        knowledgeSpaceId?: string;
+        includeAllSpaces?: boolean;
+    };
     // (undocumented)
     "knowledge.usage.list": {
         limit?: number;
@@ -4059,7 +4739,39 @@ export interface OperatorMethodInputMap {
         readonly [key: string]: unknown;
     });
     // (undocumented)
+    "mcp.config.get": {};
+    // (undocumented)
+    "mcp.config.reload": {};
+    // (undocumented)
+    "mcp.servers.list": {};
+    // (undocumented)
+    "mcp.servers.remove": {
+        serverName: string;
+        scope?: "global" | "project";
+    };
+    // (undocumented)
     "mcp.servers.reveal": {};
+    // (undocumented)
+    "mcp.servers.upsert": ({
+        scope?: "global" | "project";
+        server: {
+            name: string;
+            command: string;
+            args?: readonly string[];
+            env?: ({} & {
+                readonly [key: string]: unknown;
+            });
+            envKeys?: readonly string[];
+            role?: null | string;
+            trustMode?: null | string;
+            allowedPaths?: readonly string[];
+            allowedHosts?: readonly string[];
+        };
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "mcp.tools.list": {};
     // (undocumented)
     "media.analyze": ({
         providerId?: string;
@@ -4177,6 +4889,179 @@ export interface OperatorMethodInputMap {
     };
     // (undocumented)
     "memory.projections.list": {};
+    // (undocumented)
+    "memory.records.add": ({
+        cls: "architecture" | "constraint" | "decision" | "fact" | "incident" | "ownership" | "pattern" | "risk" | "runbook";
+        summary: string;
+        scope?: "project" | "session" | "team";
+        detail?: string;
+        tags?: readonly string[];
+        provenance?: readonly ({
+            kind: "event" | "file" | "session" | "task" | "turn";
+            ref: string;
+            label?: string;
+        })[];
+        review?: {
+            state?: "contradicted" | "fresh" | "reviewed" | "stale";
+            confidence?: number;
+            reviewedBy?: string;
+            staleReason?: string;
+        };
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "memory.records.delete": {
+        id: string;
+    };
+    // (undocumented)
+    "memory.records.export": ({
+        scope?: "project" | "session" | "team";
+        cls?: "architecture" | "constraint" | "decision" | "fact" | "incident" | "ownership" | "pattern" | "risk" | "runbook";
+        tags?: readonly string[];
+        query?: string;
+        semantic?: boolean;
+        since?: number;
+        reviewState?: readonly ("contradicted" | "fresh" | "reviewed" | "stale")[];
+        minConfidence?: number;
+        provenanceKinds?: readonly ("event" | "file" | "session" | "task" | "turn")[];
+        staleOnly?: boolean;
+        limit?: number;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "memory.records.get": {
+        id: string;
+    };
+    // (undocumented)
+    "memory.records.import": ({
+        bundle: {
+            schemaVersion: "v1";
+            exportedAt: number;
+            scope: "all" | "project" | "session" | "team";
+            recordCount: number;
+            linkCount: number;
+            records: readonly (({
+                id: string;
+                scope: "project" | "session" | "team";
+                cls: "architecture" | "constraint" | "decision" | "fact" | "incident" | "ownership" | "pattern" | "risk" | "runbook";
+                summary: string;
+                detail?: string;
+                tags: readonly string[];
+                provenance: readonly ({
+                    kind: "event" | "file" | "session" | "task" | "turn";
+                    ref: string;
+                    label?: string;
+                })[];
+                reviewState: "contradicted" | "fresh" | "reviewed" | "stale";
+                confidence: number;
+                reviewedAt?: number;
+                reviewedBy?: string;
+                staleReason?: string;
+                createdAt: number;
+                updatedAt: number;
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            links: readonly ({
+                fromId: string;
+                toId: string;
+                relation: string;
+                createdAt: number;
+            })[];
+        };
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "memory.records.links.add": ({
+        id: string;
+        toId: string;
+        relation: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "memory.records.links.list": {
+        id: string;
+    };
+    // (undocumented)
+    "memory.records.list": ({
+        scope?: "project" | "session" | "team";
+        cls?: "architecture" | "constraint" | "decision" | "fact" | "incident" | "ownership" | "pattern" | "risk" | "runbook";
+        tags?: readonly string[];
+        query?: string;
+        semantic?: boolean;
+        since?: number;
+        reviewState?: readonly ("contradicted" | "fresh" | "reviewed" | "stale")[];
+        minConfidence?: number;
+        provenanceKinds?: readonly ("event" | "file" | "session" | "task" | "turn")[];
+        staleOnly?: boolean;
+        limit?: number;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "memory.records.search": ({
+        scope?: "project" | "session" | "team";
+        cls?: "architecture" | "constraint" | "decision" | "fact" | "incident" | "ownership" | "pattern" | "risk" | "runbook";
+        tags?: readonly string[];
+        query?: string;
+        semantic?: boolean;
+        since?: number;
+        reviewState?: readonly ("contradicted" | "fresh" | "reviewed" | "stale")[];
+        minConfidence?: number;
+        provenanceKinds?: readonly ("event" | "file" | "session" | "task" | "turn")[];
+        staleOnly?: boolean;
+        limit?: number;
+        recall?: boolean;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "memory.records.search-semantic": ({
+        scope?: "project" | "session" | "team";
+        cls?: "architecture" | "constraint" | "decision" | "fact" | "incident" | "ownership" | "pattern" | "risk" | "runbook";
+        tags?: readonly string[];
+        query?: string;
+        semantic?: boolean;
+        since?: number;
+        reviewState?: readonly ("contradicted" | "fresh" | "reviewed" | "stale")[];
+        minConfidence?: number;
+        provenanceKinds?: readonly ("event" | "file" | "session" | "task" | "turn")[];
+        staleOnly?: boolean;
+        limit?: number;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "memory.records.update": ({
+        id: string;
+        scope?: "project" | "session" | "team";
+        summary?: string;
+        detail?: string;
+        tags?: readonly string[];
+        validFrom?: null | number;
+        validUntil?: null | number;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "memory.records.update-review": ({
+        id: string;
+        state?: "contradicted" | "fresh" | "reviewed" | "stale";
+        confidence?: number;
+        reviewedBy?: string;
+        staleReason?: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "memory.review-queue": {
+        limit?: number;
+        scope?: "project" | "session" | "team";
+    };
     // (undocumented)
     "memory.vector.rebuild": {};
     // (undocumented)
@@ -4586,6 +5471,203 @@ export interface OperatorMethodInputMap {
         authority: string;
     };
     // (undocumented)
+    "projectPlanning.decisions.list": ({
+        projectId?: string;
+        knowledgeSpaceId?: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "projectPlanning.decisions.record": ({
+        projectId?: string;
+        knowledgeSpaceId?: string;
+        decision: ({
+            id?: string;
+            title: string;
+            context?: string;
+            decision: string;
+            alternatives?: readonly string[];
+            reasoning?: string;
+            consequences?: readonly string[];
+            status?: string;
+            createdAt?: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "projectPlanning.evaluate": ({
+        projectId?: string;
+        knowledgeSpaceId?: string;
+        planningId?: string;
+        state?: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "projectPlanning.language.get": ({
+        projectId?: string;
+        knowledgeSpaceId?: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "projectPlanning.language.upsert": ({
+        projectId?: string;
+        knowledgeSpaceId?: string;
+        language: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "projectPlanning.state.get": {
+        projectId?: string;
+        knowledgeSpaceId?: string;
+        planningId?: string;
+    };
+    // (undocumented)
+    "projectPlanning.state.upsert": ({
+        projectId?: string;
+        knowledgeSpaceId?: string;
+        state: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "projectPlanning.status": ({
+        projectId?: string;
+        knowledgeSpaceId?: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "projectPlanning.workPlan.clearCompleted": ({
+        projectId?: string;
+        knowledgeSpaceId?: string;
+        workPlanId?: string;
+        statuses?: readonly string[];
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "projectPlanning.workPlan.snapshot": {
+        projectId?: string;
+        knowledgeSpaceId?: string;
+        workPlanId?: string;
+        status?: string;
+        parentTaskId?: string;
+        chainId?: string;
+        owner?: string;
+        limit?: number;
+    };
+    // (undocumented)
+    "projectPlanning.workPlan.task.create": ({
+        projectId?: string;
+        knowledgeSpaceId?: string;
+        workPlanId?: string;
+        task: ({
+            taskId?: string;
+            title: string;
+            notes?: string;
+            owner?: string;
+            status?: string;
+            priority?: number;
+            order?: number;
+            source?: string;
+            tags?: readonly string[];
+            parentTaskId?: string;
+            chainId?: string;
+            phaseId?: string;
+            agentId?: string;
+            turnId?: string;
+            decisionId?: string;
+            sourceMessageId?: string;
+            linkedArtifactIds?: readonly string[];
+            linkedSourceIds?: readonly string[];
+            linkedNodeIds?: readonly string[];
+            originSurface?: string;
+            createdAt?: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "projectPlanning.workPlan.task.delete": {
+        projectId?: string;
+        knowledgeSpaceId?: string;
+        workPlanId?: string;
+        taskId: string;
+    };
+    // (undocumented)
+    "projectPlanning.workPlan.task.get": {
+        projectId?: string;
+        knowledgeSpaceId?: string;
+        workPlanId?: string;
+        taskId: string;
+    };
+    // (undocumented)
+    "projectPlanning.workPlan.task.status": ({
+        projectId?: string;
+        knowledgeSpaceId?: string;
+        workPlanId?: string;
+        taskId: string;
+        status: string;
+        reason?: string;
+        source?: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "projectPlanning.workPlan.task.update": ({
+        projectId?: string;
+        knowledgeSpaceId?: string;
+        workPlanId?: string;
+        taskId: string;
+        patch: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "projectPlanning.workPlan.tasks.list": {
+        projectId?: string;
+        knowledgeSpaceId?: string;
+        workPlanId?: string;
+        status?: string;
+        parentTaskId?: string;
+        chainId?: string;
+        owner?: string;
+        limit?: number;
+    };
+    // (undocumented)
+    "projectPlanning.workPlan.tasks.reorder": ({
+        projectId?: string;
+        knowledgeSpaceId?: string;
+        workPlanId?: string;
+        orderedTaskIds: readonly string[];
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
     "providers.get": {
         providerId: string;
     };
@@ -4596,6 +5678,21 @@ export interface OperatorMethodInputMap {
         providerId: string;
     };
     // (undocumented)
+    "push.subscriptions.create": {
+        endpoint: string;
+        keys: {
+            p256dh: string;
+            auth: string;
+        };
+        deviceId?: string;
+    };
+    // (undocumented)
+    "push.subscriptions.delete": {
+        subscriptionId: string;
+    };
+    // (undocumented)
+    "push.subscriptions.list": {};
+    // (undocumented)
     "push.subscriptions.reconcile": {
         deviceId: string;
         endpoint: string;
@@ -4604,6 +5701,12 @@ export interface OperatorMethodInputMap {
             auth: string;
         };
     };
+    // (undocumented)
+    "push.subscriptions.verify": {
+        subscriptionId: string;
+    };
+    // (undocumented)
+    "push.vapid.get": {};
     // (undocumented)
     "quota.fanout.get": {
         provider: string;
@@ -4775,6 +5878,8 @@ export interface OperatorMethodInputMap {
     // (undocumented)
     "runtime.metrics.get": {};
     // (undocumented)
+    "scheduler.capacity": {};
+    // (undocumented)
     "security.settings": {};
     // (undocumented)
     "services.install": {};
@@ -4854,9 +5959,17 @@ export interface OperatorMethodInputMap {
         inputId: string;
     };
     // (undocumented)
+    "sessions.inputs.deliver": {
+        sessionId: string;
+        inputId: string;
+        consumed?: boolean;
+    };
+    // (undocumented)
     "sessions.inputs.list": {
         sessionId: string;
         limit?: number;
+        state?: string;
+        since?: number;
     };
     // (undocumented)
     "sessions.integration.snapshot": {};
@@ -4867,7 +5980,7 @@ export interface OperatorMethodInputMap {
         body: string;
         surfaceKind?: string;
         surfaceId?: string;
-        kind?: "message" | "task" | "followup";
+        kind?: string;
         routing?: {
             providerId?: string;
             modelId?: string;
@@ -4920,6 +6033,25 @@ export interface OperatorMethodInputMap {
     "sessions.queuedMessages.list": {
         sessionId: string;
     };
+    // (undocumented)
+    "sessions.register": ({
+        sessionId: string;
+        kind?: "acp" | "agent" | "automation" | "companion-chat" | "companion-task" | "tui" | "webui";
+        project?: string;
+        title?: string;
+        participant: {
+            surfaceKind: string;
+            surfaceId: string;
+            externalId?: string;
+            userId?: string;
+            displayName?: string;
+            routeId?: string;
+            lastSeenAt: number;
+        };
+        reopen?: boolean;
+    } & {
+        readonly [key: string]: unknown;
+    });
     // (undocumented)
     "sessions.reopen": {
         sessionId: string;
@@ -5296,6 +6428,22 @@ export interface OperatorMethodInputMap {
         readonly [key: string]: unknown;
     });
     // (undocumented)
+    "voice.tts.stream": ({
+        providerId?: string;
+        text: string;
+        voiceId?: string;
+        modelId?: string;
+        format?: string;
+        speed?: number;
+        metadata?: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
     "voice.voices.list": {
         providerId?: string;
     };
@@ -5417,7 +6565,7 @@ export interface OperatorMethodInputMap {
 }
 
 // @public (undocumented)
-export type OperatorMethodOutput<TMethodId extends OperatorTypedMethodId> = TMethodId extends keyof OperatorMethodOutputMap ? OperatorMethodOutputMap[TMethodId] : unknown;
+export type OperatorMethodOutput<TMethodId extends OperatorTypedMethodId> = OperatorMethodOutputMap[TMethodId];
 
 // @public (undocumented)
 export interface OperatorMethodOutputMap {
@@ -5446,7 +6594,13 @@ export interface OperatorMethodOutputMap {
                 detail: string;
             })[];
             issues: readonly string[];
-            recommendedActions: readonly string[];
+            recommendedActions: readonly ({
+                description: string;
+                command?: {
+                    name: string;
+                    args: readonly string[];
+                };
+            })[];
             routeRecords: readonly ({
                 route: "api-key" | "service-oauth" | "subscription" | "unconfigured";
                 usable: boolean;
@@ -5503,7 +6657,11 @@ export interface OperatorMethodOutputMap {
             request: {
                 callId: string;
                 tool: string;
-                args: {};
+                args: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
                 category: "delegate" | "execute" | "read" | "write";
                 analysis: {
                     classification: string;
@@ -5547,7 +6705,11 @@ export interface OperatorMethodOutputMap {
                 remember?: boolean;
                 rememberTier?: "command-class" | "exact" | "path" | "session" | "tool";
                 reason?: string;
-                modifiedArgs?: {};
+                modifiedArgs?: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
             };
             fixSessionId?: string;
             fixSessionError?: string;
@@ -5583,7 +6745,11 @@ export interface OperatorMethodOutputMap {
             request: {
                 callId: string;
                 tool: string;
-                args: {};
+                args: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
                 category: "delegate" | "execute" | "read" | "write";
                 analysis: {
                     classification: string;
@@ -5627,7 +6793,11 @@ export interface OperatorMethodOutputMap {
                 remember?: boolean;
                 rememberTier?: "command-class" | "exact" | "path" | "session" | "tool";
                 reason?: string;
-                modifiedArgs?: {};
+                modifiedArgs?: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
             };
             fixSessionId?: string;
             fixSessionError?: string;
@@ -5663,7 +6833,11 @@ export interface OperatorMethodOutputMap {
             request: {
                 callId: string;
                 tool: string;
-                args: {};
+                args: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
                 category: "delegate" | "execute" | "read" | "write";
                 analysis: {
                     classification: string;
@@ -5707,7 +6881,11 @@ export interface OperatorMethodOutputMap {
                 remember?: boolean;
                 rememberTier?: "command-class" | "exact" | "path" | "session" | "tool";
                 reason?: string;
-                modifiedArgs?: {};
+                modifiedArgs?: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
             };
             fixSessionId?: string;
             fixSessionError?: string;
@@ -5743,7 +6921,11 @@ export interface OperatorMethodOutputMap {
             request: {
                 callId: string;
                 tool: string;
-                args: {};
+                args: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
                 category: "delegate" | "execute" | "read" | "write";
                 analysis: {
                     classification: string;
@@ -5787,7 +6969,11 @@ export interface OperatorMethodOutputMap {
                 remember?: boolean;
                 rememberTier?: "command-class" | "exact" | "path" | "session" | "tool";
                 reason?: string;
-                modifiedArgs?: {};
+                modifiedArgs?: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
             };
             fixSessionId?: string;
             fixSessionError?: string;
@@ -5822,8 +7008,8 @@ export interface OperatorMethodOutputMap {
             category: "delegate" | "execute" | "read" | "write";
             machineState: "collect_rules" | "decision_emitted" | "evaluate_policy" | "evaluate_runtime_mode" | "evaluate_session_override" | "final_safety_checks" | "normalize_input";
             outcome: "approved" | "deferred" | "denied";
-            reason: "config_allow" | "config_deny" | "managed_policy_allow" | "managed_policy_deny" | "mode_allow_all" | "mode_background_restricted" | "mode_denied" | "mode_plan_deny" | "safety_guardrail" | "session_cached_approval" | "session_cached_denial" | "user_approved" | "user_denied";
-            sourceLayer: "config_policy" | "managed_policy" | "runtime_mode" | "safety_check" | "session_override" | "user_prompt";
+            reason: "config_allow" | "config_deny" | "managed_policy_allow" | "managed_policy_deny" | "mode_allow_all" | "mode_background_restricted" | "mode_denied" | "mode_plan_deny" | "safety_guardrail" | "session_cached_approval" | "session_cached_denial" | "user_approved" | "user_denied" | "user_rule_allow" | "user_rule_deny";
+            sourceLayer: "config_policy" | "managed_policy" | "runtime_mode" | "safety_check" | "session_override" | "user_prompt" | "user_rule";
             persisted: boolean;
             classification?: string;
             riskLevel?: "critical" | "high" | "low" | "medium";
@@ -5862,6 +7048,23 @@ export interface OperatorMethodOutputMap {
                     host?: string;
                 };
                 workingDirectory?: string;
+                attribution?: {
+                    kind: "background-agent";
+                    agentId: string;
+                    template?: string;
+                } | {
+                    kind: "mcp-server";
+                    serverName: string;
+                } | {
+                    kind: "sandbox-escalation";
+                    sandbox: string;
+                    escalations: readonly string[];
+                };
+                rememberOptions?: readonly ({
+                    tier: "command-class" | "exact" | "path" | "session" | "tool";
+                    label: string;
+                    detail: string;
+                })[];
             };
             createdAt: number;
             updatedAt: number;
@@ -5872,7 +7075,16 @@ export interface OperatorMethodOutputMap {
             decision?: {
                 approved: boolean;
                 remember?: boolean;
+                rememberTier?: "command-class" | "exact" | "path" | "session" | "tool";
+                reason?: string;
+                modifiedArgs?: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
             };
+            fixSessionId?: string;
+            fixSessionError?: string;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
                     readonly [key: string]: JsonValue;
@@ -6192,14 +7404,14 @@ export interface OperatorMethodOutputMap {
                 kind: "at";
                 at: number;
             } | {
+                kind: "every";
+                intervalMs: number;
+                anchorAt?: number;
+            } | {
                 kind: "cron";
                 expression: string;
                 timezone?: string;
                 staggerMs?: number;
-            } | {
-                kind: "every";
-                intervalMs: number;
-                anchorAt?: number;
             };
             nextRunAt?: number;
             lastRunAt?: number;
@@ -6403,14 +7615,14 @@ export interface OperatorMethodOutputMap {
                 kind: "at";
                 at: number;
             } | {
+                kind: "every";
+                intervalMs: number;
+                anchorAt?: number;
+            } | {
                 kind: "cron";
                 expression: string;
                 timezone?: string;
                 staggerMs?: number;
-            } | {
-                kind: "every";
-                intervalMs: number;
-                anchorAt?: number;
             };
             execution: {
                 prompt?: string;
@@ -6421,7 +7633,7 @@ export interface OperatorMethodOutputMap {
                     routeId?: string;
                     threadId?: string;
                     channelId?: string;
-                    surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                    surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
                     pinnedSessionId?: string;
                     preserveThread?: boolean;
                     createIfMissing?: boolean;
@@ -6454,7 +7666,7 @@ export interface OperatorMethodOutputMap {
                     id?: string;
                     url?: string;
                     routeId?: string;
-                    surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                    surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
                     metadata?: ({} & {
                         readonly [key: string]: ({} & {
                             readonly [key: string]: JsonValue;
@@ -6467,14 +7679,14 @@ export interface OperatorMethodOutputMap {
                 mode: "integration" | "link" | "none" | "surface" | "webhook";
                 targets: readonly ({
                     kind: "integration" | "link" | "none" | "surface" | "webhook";
-                    surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                    surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
                     address?: string;
                     routeId?: string;
                     label?: string;
                 })[];
                 fallbackTargets: readonly ({
                     kind: "integration" | "link" | "none" | "surface" | "webhook";
-                    surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                    surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
                     address?: string;
                     routeId?: string;
                     label?: string;
@@ -6503,7 +7715,7 @@ export interface OperatorMethodOutputMap {
                 id: string;
                 kind: "hook" | "manual" | "schedule" | "surface" | "watcher" | "webhook";
                 label: string;
-                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
                 routeId?: string;
                 enabled: boolean;
                 createdAt: number;
@@ -6534,6 +7746,10 @@ export interface OperatorMethodOutputMap {
         } & {
             readonly [key: string]: unknown;
         }))[];
+        emptyState?: {
+            title: string;
+            body: string;
+        };
     };
     // (undocumented)
     "automation.jobs.run": ({
@@ -6558,14 +7774,14 @@ export interface OperatorMethodOutputMap {
             kind: "at";
             at: number;
         } | {
+            kind: "every";
+            intervalMs: number;
+            anchorAt?: number;
+        } | {
             kind: "cron";
             expression: string;
             timezone?: string;
             staggerMs?: number;
-        } | {
-            kind: "every";
-            intervalMs: number;
-            anchorAt?: number;
         };
         execution: {
             prompt?: string;
@@ -6576,7 +7792,7 @@ export interface OperatorMethodOutputMap {
                 routeId?: string;
                 threadId?: string;
                 channelId?: string;
-                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
                 pinnedSessionId?: string;
                 preserveThread?: boolean;
                 createIfMissing?: boolean;
@@ -6609,7 +7825,7 @@ export interface OperatorMethodOutputMap {
                 id?: string;
                 url?: string;
                 routeId?: string;
-                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
                 metadata?: ({} & {
                     readonly [key: string]: ({} & {
                         readonly [key: string]: JsonValue;
@@ -6622,14 +7838,14 @@ export interface OperatorMethodOutputMap {
             mode: "integration" | "link" | "none" | "surface" | "webhook";
             targets: readonly ({
                 kind: "integration" | "link" | "none" | "surface" | "webhook";
-                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
                 address?: string;
                 routeId?: string;
                 label?: string;
             })[];
             fallbackTargets: readonly ({
                 kind: "integration" | "link" | "none" | "surface" | "webhook";
-                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
                 address?: string;
                 routeId?: string;
                 label?: string;
@@ -6658,7 +7874,7 @@ export interface OperatorMethodOutputMap {
             id: string;
             kind: "hook" | "manual" | "schedule" | "surface" | "watcher" | "webhook";
             label: string;
-            surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+            surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
             routeId?: string;
             enabled: boolean;
             createdAt: number;
@@ -8314,6 +9530,47 @@ export interface OperatorMethodOutputMap {
         readonly [key: string]: unknown;
     });
     // (undocumented)
+    "calendar.events.create": {
+        eventId: string;
+        uid: string;
+        createdAt: string;
+    };
+    // (undocumented)
+    "calendar.events.get": {
+        id: string;
+        uid?: string;
+        title: string;
+        start: string;
+        end: string;
+        location?: string;
+        description?: string;
+        attendees?: readonly string[];
+        recurrence?: string;
+    };
+    // (undocumented)
+    "calendar.events.list": {
+        events: readonly ({
+            id: string;
+            title: string;
+            start: string;
+            end: string;
+            location?: string;
+            description?: string;
+            attendees?: readonly string[];
+        })[];
+    };
+    // (undocumented)
+    "calendar.ics.export": {
+        icsContent: string;
+        eventCount: number;
+    };
+    // (undocumented)
+    "calendar.ics.import": {
+        imported: number;
+        eventIds: readonly string[];
+        errors: readonly string[];
+    };
+    // (undocumented)
     "channels.accounts.action.default": {
         surface: string;
         accountId?: string;
@@ -8836,24 +10093,96 @@ export interface OperatorMethodOutputMap {
         });
     };
     // (undocumented)
+    "channels.drafts.delete": {
+        deleted: boolean;
+        draftId: string;
+    };
+    // (undocumented)
+    "channels.drafts.get": ({
+        version?: number;
+        id?: string;
+        createdAt?: string;
+        updatedAt?: string;
+        status?: string;
+        title?: string;
+        message?: string;
+        channel?: string;
+        route?: string;
+        webhook?: string;
+        link?: string;
+        tags?: readonly string[];
+        sentResponseId?: string;
+        sendError?: string;
+        notFound?: boolean;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "channels.drafts.list": {
+        drafts: readonly ({
+            version: number;
+            id: string;
+            createdAt: string;
+            updatedAt: string;
+            status: string;
+            title?: string;
+            message: string;
+            channel?: string;
+            route?: string;
+            webhook?: string;
+            link?: string;
+            tags?: readonly string[];
+            sentResponseId?: string;
+            sendError?: string;
+        })[];
+        total: number;
+    };
+    // (undocumented)
+    "channels.drafts.save": {
+        draft: {
+            version: number;
+            id: string;
+            createdAt: string;
+            updatedAt: string;
+            status: string;
+            title?: string;
+            message: string;
+            channel?: string;
+            route?: string;
+            webhook?: string;
+            link?: string;
+            tags?: readonly string[];
+            sentResponseId?: string;
+            sendError?: string;
+        };
+        created: boolean;
+    };
+    // (undocumented)
+    "channels.inbox.list": {
+        items: readonly ({
+            id: string;
+            provider: string;
+            kind: string;
+            from: string;
+            fromAddress?: string;
+            subject?: string;
+            bodyPreview: string;
+            receivedAt: number;
+            unread: boolean;
+            routeId?: string;
+            threadId?: string;
+            attachmentCount?: number;
+        })[];
+        total: number;
+        truncated: boolean;
+        cursor?: string;
+    };
+    // (undocumented)
     "channels.lifecycle.get": {
         surface: string;
         accountId?: string;
         currentVersion: number;
         targetVersion: number;
-        migrations: readonly ({
-            id: string;
-            fromVersion: number;
-            toVersion: number;
-            action: string;
-            applied: boolean;
-            detail: string;
-            metadata?: ({} & {
-                readonly [key: string]: ({} & {
-                    readonly [key: string]: JsonValue;
-                }) | boolean | null | number | readonly JsonValue[] | string;
-            });
-        })[];
         metadata: ({} & {
             readonly [key: string]: ({} & {
                 readonly [key: string]: JsonValue;
@@ -9043,6 +10372,35 @@ export interface OperatorMethodOutputMap {
                 }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
+    };
+    // (undocumented)
+    "channels.routing.assign": {
+        assignmentId: string;
+        channelId?: string;
+        surfaceKind: string;
+        routeId?: string;
+        profileId: string;
+        label?: string;
+        createdAt: string;
+        updatedAt: string;
+    };
+    // (undocumented)
+    "channels.routing.delete": {
+        deleted: boolean;
+        assignmentId: string;
+    };
+    // (undocumented)
+    "channels.routing.list": {
+        routes: readonly ({
+            id: string;
+            createdAt: string;
+            updatedAt: string;
+            surfaceKind: string;
+            routeId?: string;
+            profileId: string;
+            label?: string;
+        })[];
+        total: number;
     };
     // (undocumented)
     "channels.setup.get": {
@@ -9435,7 +10793,44 @@ export interface OperatorMethodOutputMap {
     // (undocumented)
     "companion.chat.messages.list": {
         sessionId: string;
-        messages: readonly CompanionChatMessage[];
+        messages: readonly ({
+            id: string;
+            sessionId: string;
+            role: "assistant" | "user";
+            content: string;
+            attachments: readonly (({
+                id: string;
+                artifactId: string;
+                kind: string;
+                mimeType: string;
+                filename?: string;
+                sizeBytes: number;
+                sha256: string;
+                createdAt: number;
+                expiresAt?: number;
+                sourceUri?: string;
+                acquisitionMode?: string;
+                fetchMode?: string;
+                label?: string;
+                metadata: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            createdAt: number;
+            deliveryState?: "cancelled" | "queued";
+            inReplyTo?: string;
+        })[];
+    };
+    // (undocumented)
+    "companion.chat.messages.retry": {
+        sessionId: string;
+        regeneratedFrom: string;
+        supersededMessageIds: readonly string[];
+        turnStarted: boolean;
     };
     // (undocumented)
     "companion.chat.messages.steer": {
@@ -9475,13 +10870,71 @@ export interface OperatorMethodOutputMap {
     };
     // (undocumented)
     "companion.chat.sessions.get": {
-        session: CompanionChatSession;
-        messages: readonly CompanionChatMessage[];
+        session: {
+            id: string;
+            kind: "companion-chat";
+            title: string;
+            model: null | string;
+            provider: null | string;
+            systemPrompt: null | string;
+            status: "active" | "closed";
+            createdAt: number;
+            updatedAt: number;
+            closedAt: null | number;
+            messageCount: number;
+        };
+        messages: readonly ({
+            id: string;
+            sessionId: string;
+            role: "assistant" | "user";
+            content: string;
+            attachments: readonly (({
+                id: string;
+                artifactId: string;
+                kind: string;
+                mimeType: string;
+                filename?: string;
+                sizeBytes: number;
+                sha256: string;
+                createdAt: number;
+                expiresAt?: number;
+                sourceUri?: string;
+                acquisitionMode?: string;
+                fetchMode?: string;
+                label?: string;
+                metadata: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            createdAt: number;
+            deliveryState?: "cancelled" | "queued";
+            inReplyTo?: string;
+        })[];
     };
     // (undocumented)
     "companion.chat.sessions.list": {
-        sessions: readonly CompanionChatSession[];
-        totals: CompanionChatSessionsListTotals;
+        sessions: readonly ({
+            id: string;
+            kind: "companion-chat";
+            title: string;
+            model: null | string;
+            provider: null | string;
+            systemPrompt: null | string;
+            status: "active" | "closed";
+            createdAt: number;
+            updatedAt: number;
+            closedAt: null | number;
+            messageCount: number;
+        })[];
+        totals: {
+            sessions: number;
+            active: number;
+            closed: number;
+        };
     };
     // (undocumented)
     "companion.chat.sessions.update": {
@@ -9569,6 +11022,9 @@ export interface OperatorMethodOutputMap {
         value?: ({} & {
             readonly [key: string]: JsonValue;
         }) | boolean | null | number | readonly JsonValue[] | string;
+        persistedTo?: string;
+        tier?: string;
+        daemonOwned?: boolean;
     } & {
         readonly [key: string]: unknown;
     });
@@ -9614,7 +11070,7 @@ export interface OperatorMethodOutputMap {
         authorizationHeaderPresent: boolean;
         sessionCookiePresent: boolean;
         principalId: null | string;
-        principalKind: "bot" | "service" | "token" | "user" | null;
+        principalKind: null | "bot" | "service" | "token" | "user";
         admin: boolean;
         scopes: readonly string[];
         roles: readonly string[];
@@ -9665,6 +11121,7 @@ export interface OperatorMethodOutputMap {
                 current: {
                     method: string;
                     path: string;
+                    aliasPaths?: readonly string[];
                     responseSchema: {
                         authenticated: boolean;
                         authMode: "anonymous" | "invalid" | "session" | "shared-token";
@@ -9672,7 +11129,7 @@ export interface OperatorMethodOutputMap {
                         authorizationHeaderPresent: boolean;
                         sessionCookiePresent: boolean;
                         principalId: null | string;
-                        principalKind: "bot" | "service" | "token" | "user" | null;
+                        principalKind: null | "bot" | "service" | "token" | "user";
                         admin: boolean;
                         scopes: readonly string[];
                         roles: readonly string[];
@@ -9729,16 +11186,16 @@ export interface OperatorMethodOutputMap {
                     };
                     events?: readonly string[];
                     inputSchema?: ({} & {
-                        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
+                        readonly [key: string]: JsonValue;
                     });
                     outputSchema?: ({} & {
-                        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
+                        readonly [key: string]: JsonValue;
                     });
                     pluginId?: string;
                     dangerous?: boolean;
                     invokable?: boolean;
                     metadata?: ({} & {
-                        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
+                        readonly [key: string]: JsonValue;
                     });
                 })[];
                 events: readonly ({
@@ -9752,11 +11209,11 @@ export interface OperatorMethodOutputMap {
                     domains?: readonly string[];
                     wireEvents?: readonly string[];
                     outputSchema?: ({} & {
-                        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
+                        readonly [key: string]: JsonValue;
                     });
                     pluginId?: string;
                     metadata?: ({} & {
-                        readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
+                        readonly [key: string]: JsonValue;
                     });
                 })[];
                 schemaCoverage: {
@@ -9770,6 +11227,12 @@ export interface OperatorMethodOutputMap {
                     events: number;
                     withDomains: number;
                     withWireEvents: number;
+                };
+                validationCoverage?: {
+                    methods: number;
+                    validated: number;
+                    skippedGeneric: number;
+                    skippedUntyped: number;
                 };
             };
             peer: {
@@ -9791,11 +11254,11 @@ export interface OperatorMethodOutputMap {
             domains?: readonly string[];
             wireEvents?: readonly string[];
             outputSchema?: ({} & {
-                readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
+                readonly [key: string]: JsonValue;
             });
             pluginId?: string;
             metadata?: ({} & {
-                readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
+                readonly [key: string]: JsonValue;
             });
         })[];
     };
@@ -9865,16 +11328,16 @@ export interface OperatorMethodOutputMap {
             };
             events?: readonly string[];
             inputSchema?: ({} & {
-                readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
+                readonly [key: string]: JsonValue;
             });
             outputSchema?: ({} & {
-                readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
+                readonly [key: string]: JsonValue;
             });
             pluginId?: string;
             dangerous?: boolean;
             invokable?: boolean;
             metadata?: ({} & {
-                readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
+                readonly [key: string]: JsonValue;
             });
         };
     };
@@ -9895,16 +11358,16 @@ export interface OperatorMethodOutputMap {
             };
             events?: readonly string[];
             inputSchema?: ({} & {
-                readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
+                readonly [key: string]: JsonValue;
             });
             outputSchema?: ({} & {
-                readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
+                readonly [key: string]: JsonValue;
             });
             pluginId?: string;
             dangerous?: boolean;
             invokable?: boolean;
             metadata?: ({} & {
-                readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
+                readonly [key: string]: JsonValue;
             });
         })[];
     };
@@ -10032,6 +11495,20 @@ export interface OperatorMethodOutputMap {
         })[];
     };
     // (undocumented)
+    "credentials.get": {
+        available: boolean;
+        credentials: readonly ({
+            key: string;
+            configured: boolean;
+            usable: boolean;
+            source: string;
+            scope: string;
+            secure: boolean;
+            overriddenByEnv: boolean;
+            refSource?: string;
+        })[];
+    };
+    // (undocumented)
     "deliveries.get": {
         delivery: ({
             id: string;
@@ -10039,7 +11516,7 @@ export interface OperatorMethodOutputMap {
             jobId: string;
             target: {
                 kind: "integration" | "link" | "none" | "surface" | "webhook";
-                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
                 address?: string;
                 routeId?: string;
                 label?: string;
@@ -10068,7 +11545,7 @@ export interface OperatorMethodOutputMap {
             jobId: string;
             target: {
                 kind: "integration" | "link" | "none" | "surface" | "webhook";
-                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+                surfaceKind?: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
                 address?: string;
                 routeId?: string;
                 label?: string;
@@ -10174,6 +11651,12 @@ export interface OperatorMethodOutputMap {
         mode: string;
         allowAlwaysOffer: string;
         captureRetentionHours: number;
+    };
+    // (undocumented)
+    "email.draft.create": {
+        draftId: string;
+        uid?: number;
+        mailbox: string;
     };
     // (undocumented)
     "email.expectation.cancel": {
@@ -10301,6 +11784,43 @@ export interface OperatorMethodOutputMap {
             mode: string;
             reason: string;
         };
+    };
+    // (undocumented)
+    "email.inbox.list": {
+        messages: readonly ({
+            uid: number;
+            from: string;
+            subject: string;
+            date: string;
+            unread: boolean;
+            bodyPreview: string;
+            messageId: string;
+        })[];
+        total: number;
+        unreadable?: readonly ({
+            uid?: number;
+            detail: string;
+        })[];
+    };
+    // (undocumented)
+    "email.inbox.read": {
+        uid: number;
+        from: string;
+        subject: string;
+        date: string;
+        messageId: string;
+        bodyText: string;
+        bodyHtml?: string;
+        attachments?: readonly ({
+            filename: string;
+            contentType: string;
+            sizeBytes: number;
+        })[];
+    };
+    // (undocumented)
+    "email.send": {
+        messageId: string;
+        sentAt: string;
     };
     // (undocumented)
     "flags.graduation.report": {
@@ -10828,6 +12348,1353 @@ export interface OperatorMethodOutputMap {
         readonly [key: string]: unknown;
     });
     // (undocumented)
+    "homeassistant.homeGraph.askHomeGraph": ({
+        ok: boolean;
+        spaceId: string;
+        query: string;
+        answer: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+        results: readonly JsonValue[];
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.browse": ({
+        ok: boolean;
+        spaceId: string;
+        nodes: readonly (({
+            id: string;
+            kind: string;
+            slug: string;
+            title: string;
+            summary?: string;
+            aliases: readonly string[];
+            status: string;
+            confidence: number;
+            sourceId?: string;
+            subject?: string;
+            subjectIds?: readonly string[];
+            targetHints?: readonly (({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            }))[];
+            linkedObjectIds?: readonly string[];
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+        edges: readonly (({
+            id: string;
+            fromKind: string;
+            fromId: string;
+            toKind: string;
+            toId: string;
+            relation: string;
+            weight: number;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+        sources: readonly (({
+            id: string;
+            connectorId: string;
+            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
+            title?: string;
+            sourceUri?: string;
+            canonicalUri?: string;
+            summary?: string;
+            description?: string;
+            tags: readonly string[];
+            folderPath?: string;
+            status: string;
+            artifactId?: string;
+            contentHash?: string;
+            lastCrawledAt?: number;
+            crawlError?: string;
+            sessionId?: string;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+        issues: readonly (({
+            id: string;
+            severity: string;
+            code: string;
+            message: string;
+            status: string;
+            sourceId?: string;
+            nodeId?: string;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.export": ({
+        version: number;
+        exportedAt: number;
+        spaceId: string;
+        installationId: string;
+        sources: readonly (({
+            id: string;
+            connectorId: string;
+            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
+            title?: string;
+            sourceUri?: string;
+            canonicalUri?: string;
+            summary?: string;
+            description?: string;
+            tags: readonly string[];
+            folderPath?: string;
+            status: string;
+            artifactId?: string;
+            contentHash?: string;
+            lastCrawledAt?: number;
+            crawlError?: string;
+            sessionId?: string;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+        nodes: readonly (({
+            id: string;
+            kind: string;
+            slug: string;
+            title: string;
+            summary?: string;
+            aliases: readonly string[];
+            status: string;
+            confidence: number;
+            sourceId?: string;
+            subject?: string;
+            subjectIds?: readonly string[];
+            targetHints?: readonly (({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            }))[];
+            linkedObjectIds?: readonly string[];
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+        edges: readonly (({
+            id: string;
+            fromKind: string;
+            fromId: string;
+            toKind: string;
+            toId: string;
+            relation: string;
+            weight: number;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+        issues: readonly (({
+            id: string;
+            severity: string;
+            code: string;
+            message: string;
+            status: string;
+            sourceId?: string;
+            nodeId?: string;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+        extractions: readonly (({
+            id: string;
+            sourceId: string;
+            artifactId?: string;
+            extractorId: string;
+            format: string;
+            title?: string;
+            summary?: string;
+            excerpt?: string;
+            sections: readonly string[];
+            links: readonly string[];
+            estimatedTokens: number;
+            structure: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.generateHomeGraphPacket": ({
+        ok: boolean;
+        spaceId: string;
+        title: string;
+        markdown: string;
+        source?: ({
+            id: string;
+            connectorId: string;
+            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
+            title?: string;
+            sourceUri?: string;
+            canonicalUri?: string;
+            summary?: string;
+            description?: string;
+            tags: readonly string[];
+            folderPath?: string;
+            status: string;
+            artifactId?: string;
+            contentHash?: string;
+            lastCrawledAt?: number;
+            crawlError?: string;
+            sessionId?: string;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+        linked?: ({
+            id: string;
+            fromKind: string;
+            fromId: string;
+            toKind: string;
+            toId: string;
+            relation: string;
+            weight: number;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+        artifact: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.generateRoomPage": ({
+        ok: boolean;
+        spaceId: string;
+        title: string;
+        markdown: string;
+        source?: ({
+            id: string;
+            connectorId: string;
+            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
+            title?: string;
+            sourceUri?: string;
+            canonicalUri?: string;
+            summary?: string;
+            description?: string;
+            tags: readonly string[];
+            folderPath?: string;
+            status: string;
+            artifactId?: string;
+            contentHash?: string;
+            lastCrawledAt?: number;
+            crawlError?: string;
+            sessionId?: string;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+        linked?: ({
+            id: string;
+            fromKind: string;
+            fromId: string;
+            toKind: string;
+            toId: string;
+            relation: string;
+            weight: number;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+        artifact: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.import": ({
+        ok: boolean;
+        spaceId: string;
+        imported: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.ingestHomeGraphArtifact": ({
+        ok: boolean;
+        spaceId: string;
+        source: ({
+            id: string;
+            connectorId: string;
+            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
+            title?: string;
+            sourceUri?: string;
+            canonicalUri?: string;
+            summary?: string;
+            description?: string;
+            tags: readonly string[];
+            folderPath?: string;
+            status: string;
+            artifactId?: string;
+            contentHash?: string;
+            lastCrawledAt?: number;
+            crawlError?: string;
+            sessionId?: string;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+        artifactId?: string;
+        extraction?: ({
+            id: string;
+            sourceId: string;
+            artifactId?: string;
+            extractorId: string;
+            format: string;
+            title?: string;
+            summary?: string;
+            excerpt?: string;
+            sections: readonly string[];
+            links: readonly string[];
+            estimatedTokens: number;
+            structure: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+        linked?: ({
+            id: string;
+            fromKind: string;
+            fromId: string;
+            toKind: string;
+            toId: string;
+            relation: string;
+            weight: number;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.ingestHomeGraphNote": ({
+        ok: boolean;
+        spaceId: string;
+        source: ({
+            id: string;
+            connectorId: string;
+            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
+            title?: string;
+            sourceUri?: string;
+            canonicalUri?: string;
+            summary?: string;
+            description?: string;
+            tags: readonly string[];
+            folderPath?: string;
+            status: string;
+            artifactId?: string;
+            contentHash?: string;
+            lastCrawledAt?: number;
+            crawlError?: string;
+            sessionId?: string;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+        artifactId?: string;
+        extraction?: ({
+            id: string;
+            sourceId: string;
+            artifactId?: string;
+            extractorId: string;
+            format: string;
+            title?: string;
+            summary?: string;
+            excerpt?: string;
+            sections: readonly string[];
+            links: readonly string[];
+            estimatedTokens: number;
+            structure: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+        linked?: ({
+            id: string;
+            fromKind: string;
+            fromId: string;
+            toKind: string;
+            toId: string;
+            relation: string;
+            weight: number;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.ingestHomeGraphUrl": ({
+        ok: boolean;
+        spaceId: string;
+        source: ({
+            id: string;
+            connectorId: string;
+            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
+            title?: string;
+            sourceUri?: string;
+            canonicalUri?: string;
+            summary?: string;
+            description?: string;
+            tags: readonly string[];
+            folderPath?: string;
+            status: string;
+            artifactId?: string;
+            contentHash?: string;
+            lastCrawledAt?: number;
+            crawlError?: string;
+            sessionId?: string;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+        artifactId?: string;
+        extraction?: ({
+            id: string;
+            sourceId: string;
+            artifactId?: string;
+            extractorId: string;
+            format: string;
+            title?: string;
+            summary?: string;
+            excerpt?: string;
+            sections: readonly string[];
+            links: readonly string[];
+            estimatedTokens: number;
+            structure: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+        linked?: ({
+            id: string;
+            fromKind: string;
+            fromId: string;
+            toKind: string;
+            toId: string;
+            relation: string;
+            weight: number;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.linkHomeGraphKnowledge": ({
+        ok: boolean;
+        spaceId: string;
+        edge: ({
+            id: string;
+            fromKind: string;
+            fromId: string;
+            toKind: string;
+            toId: string;
+            relation: string;
+            weight: number;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+        target?: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.listHomeGraphIssues": ({
+        ok: boolean;
+        spaceId: string;
+        issues: readonly (({
+            id: string;
+            severity: string;
+            code: string;
+            message: string;
+            status: string;
+            sourceId?: string;
+            nodeId?: string;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.map": ({
+        ok: boolean;
+        spaceId?: string;
+        title: string;
+        generatedAt: number;
+        width: number;
+        height: number;
+        nodeCount: number;
+        edgeCount: number;
+        totalNodeCount?: number;
+        totalEdgeCount?: number;
+        facets?: ({
+            recordKinds?: readonly (({
+                value: string;
+                count: number;
+                label?: string;
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            nodeKinds?: readonly (({
+                value: string;
+                count: number;
+                label?: string;
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            sourceTypes?: readonly (({
+                value: string;
+                count: number;
+                label?: string;
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            sourceStatuses?: readonly (({
+                value: string;
+                count: number;
+                label?: string;
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            nodeStatuses?: readonly (({
+                value: string;
+                count: number;
+                label?: string;
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            issueCodes?: readonly (({
+                value: string;
+                count: number;
+                label?: string;
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            issueStatuses?: readonly (({
+                value: string;
+                count: number;
+                label?: string;
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            issueSeverities?: readonly (({
+                value: string;
+                count: number;
+                label?: string;
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            edgeRelations?: readonly (({
+                value: string;
+                count: number;
+                label?: string;
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            tags?: readonly (({
+                value: string;
+                count: number;
+                label?: string;
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            homeAssistant?: ({} & {
+                readonly [key: string]: readonly (({
+                    value: string;
+                    count: number;
+                    label?: string;
+                } & {
+                    readonly [key: string]: unknown;
+                }))[];
+            });
+        } & {
+            readonly [key: string]: unknown;
+        });
+        nodes: readonly (({
+            id: string;
+            recordKind: string;
+            kind: string;
+            title: string;
+            summary?: string;
+            x: number;
+            y: number;
+            radius: number;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+        edges: readonly (({
+            id: string;
+            fromId: string;
+            toId: string;
+            source?: string;
+            target?: string;
+            fromTitle?: string;
+            toTitle?: string;
+            sourceTitle?: string;
+            targetTitle?: string;
+            relation: string;
+            weight: number;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+        svg: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.pages.list": ({
+        ok: boolean;
+        spaceId: string;
+        pages: readonly JsonValue[];
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.refinement.run": ({
+        ok: boolean;
+        spaceId: string;
+        result: ({
+            scannedGaps: number;
+            candidateGaps?: number;
+            processedGaps?: number;
+            createdGaps: number;
+            repairableGaps: number;
+            suppressedGaps: number;
+            skippedGaps: number;
+            searched: number;
+            ingestedSources: number;
+            linkedRepairs: number;
+            blockedGaps?: number;
+            closedGaps?: number;
+            queuedTasks?: number;
+            requestedLimit?: number;
+            effectiveLimit?: number;
+            coalesced?: boolean;
+            truncated?: boolean;
+            budgetExhausted?: boolean;
+            taskIds?: readonly string[];
+            ingestedSourceIds?: readonly string[];
+            errors: readonly JsonValue[];
+        } & {
+            readonly [key: string]: unknown;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.refinement.task.cancel": ({
+        ok: boolean;
+        spaceId: string;
+        task: null | ({
+            id: string;
+            spaceId: string;
+            subjectKind?: string;
+            subjectId?: string;
+            subjectTitle?: string;
+            subjectType?: string;
+            gapId?: string;
+            issueId?: string;
+            state: "applying" | "blocked" | "cancelled" | "closed" | "detected" | "evaluating" | "extracting" | "failed" | "needs_review" | "queued" | "searching" | "suppressed" | "verified";
+            priority: "high" | "low" | "normal" | "urgent";
+            trigger: "answer" | "homegraph-sync" | "ingest" | "manual" | "reindex" | "scheduled";
+            budget: ({} & {
+                readonly [key: string]: number;
+            });
+            attemptCount: number;
+            blockedReason?: string;
+            nextRepairAttemptAt?: number;
+            acceptedSourceIds?: readonly string[];
+            ingestedSourceIds?: readonly string[];
+            rejectedSourceUrls?: readonly string[];
+            promotedFactCount?: number;
+            sourceAssessments?: readonly JsonValue[];
+            trace: readonly JsonValue[];
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.refinement.task.get": ({
+        ok: boolean;
+        spaceId: string;
+        task: null | ({
+            id: string;
+            spaceId: string;
+            subjectKind?: string;
+            subjectId?: string;
+            subjectTitle?: string;
+            subjectType?: string;
+            gapId?: string;
+            issueId?: string;
+            state: "applying" | "blocked" | "cancelled" | "closed" | "detected" | "evaluating" | "extracting" | "failed" | "needs_review" | "queued" | "searching" | "suppressed" | "verified";
+            priority: "high" | "low" | "normal" | "urgent";
+            trigger: "answer" | "homegraph-sync" | "ingest" | "manual" | "reindex" | "scheduled";
+            budget: ({} & {
+                readonly [key: string]: number;
+            });
+            attemptCount: number;
+            blockedReason?: string;
+            nextRepairAttemptAt?: number;
+            acceptedSourceIds?: readonly string[];
+            ingestedSourceIds?: readonly string[];
+            rejectedSourceUrls?: readonly string[];
+            promotedFactCount?: number;
+            sourceAssessments?: readonly JsonValue[];
+            trace: readonly JsonValue[];
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.refinement.tasks.list": ({
+        ok: boolean;
+        spaceId: string;
+        tasks: readonly (({
+            id: string;
+            spaceId: string;
+            subjectKind?: string;
+            subjectId?: string;
+            subjectTitle?: string;
+            subjectType?: string;
+            gapId?: string;
+            issueId?: string;
+            state: "applying" | "blocked" | "cancelled" | "closed" | "detected" | "evaluating" | "extracting" | "failed" | "needs_review" | "queued" | "searching" | "suppressed" | "verified";
+            priority: "high" | "low" | "normal" | "urgent";
+            trigger: "answer" | "homegraph-sync" | "ingest" | "manual" | "reindex" | "scheduled";
+            budget: ({} & {
+                readonly [key: string]: number;
+            });
+            attemptCount: number;
+            blockedReason?: string;
+            nextRepairAttemptAt?: number;
+            acceptedSourceIds?: readonly string[];
+            ingestedSourceIds?: readonly string[];
+            rejectedSourceUrls?: readonly string[];
+            promotedFactCount?: number;
+            sourceAssessments?: readonly JsonValue[];
+            trace: readonly JsonValue[];
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.refreshDevicePassport": ({
+        ok: boolean;
+        spaceId: string;
+        title: string;
+        markdown: string;
+        source?: ({
+            id: string;
+            connectorId: string;
+            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
+            title?: string;
+            sourceUri?: string;
+            canonicalUri?: string;
+            summary?: string;
+            description?: string;
+            tags: readonly string[];
+            folderPath?: string;
+            status: string;
+            artifactId?: string;
+            contentHash?: string;
+            lastCrawledAt?: number;
+            crawlError?: string;
+            sessionId?: string;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+        linked?: ({
+            id: string;
+            fromKind: string;
+            fromId: string;
+            toKind: string;
+            toId: string;
+            relation: string;
+            weight: number;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+        artifact: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.reindex": ({
+        ok: boolean;
+        spaceId: string;
+        scanned: number;
+        reparsed: number;
+        skipped: number;
+        failed: number;
+        changedSourceCount?: number;
+        forcedSourceCount?: number;
+        skippedGeneratedPageArtifactCount?: number;
+        refreshedGeneratedPageCount?: number;
+        generatedPagePolicyVersion?: string;
+        coalesced?: boolean;
+        truncated?: boolean;
+        budgetExhausted?: boolean;
+        sources: readonly (({
+            id: string;
+            connectorId: string;
+            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
+            title?: string;
+            sourceUri?: string;
+            canonicalUri?: string;
+            summary?: string;
+            description?: string;
+            tags: readonly string[];
+            folderPath?: string;
+            status: string;
+            artifactId?: string;
+            contentHash?: string;
+            lastCrawledAt?: number;
+            crawlError?: string;
+            sessionId?: string;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+        failures: readonly JsonValue[];
+        linked?: readonly JsonValue[];
+        semantic?: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+        generated?: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.reset": ({
+        ok: boolean;
+        spaceId: string;
+        installationId: string;
+        dryRun: boolean;
+        deleted: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+        artifactDeleteCandidates: number;
+        deletedArtifacts: number;
+        preservedArtifacts: number;
+        artifactsDeleted: boolean;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.reviewHomeGraphFact": ({
+        ok: boolean;
+        spaceId: string;
+        issue?: ({
+            id: string;
+            severity: string;
+            code: string;
+            message: string;
+            status: string;
+            sourceId?: string;
+            nodeId?: string;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+        node?: ({
+            id: string;
+            kind: string;
+            slug: string;
+            title: string;
+            summary?: string;
+            aliases: readonly string[];
+            status: string;
+            confidence: number;
+            sourceId?: string;
+            subject?: string;
+            subjectIds?: readonly string[];
+            targetHints?: readonly (({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            }))[];
+            linkedObjectIds?: readonly string[];
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+        source?: ({
+            id: string;
+            connectorId: string;
+            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
+            title?: string;
+            sourceUri?: string;
+            canonicalUri?: string;
+            summary?: string;
+            description?: string;
+            tags: readonly string[];
+            folderPath?: string;
+            status: string;
+            artifactId?: string;
+            contentHash?: string;
+            lastCrawledAt?: number;
+            crawlError?: string;
+            sessionId?: string;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.sources.list": ({
+        ok: boolean;
+        spaceId: string;
+        sources: readonly (({
+            id: string;
+            connectorId: string;
+            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
+            title?: string;
+            sourceUri?: string;
+            canonicalUri?: string;
+            summary?: string;
+            description?: string;
+            tags: readonly string[];
+            folderPath?: string;
+            status: string;
+            artifactId?: string;
+            contentHash?: string;
+            lastCrawledAt?: number;
+            crawlError?: string;
+            sessionId?: string;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.status": ({
+        ok: boolean;
+        spaceId: string;
+        installationId: string;
+        sourceCount: number;
+        nodeCount: number;
+        edgeCount: number;
+        issueCount: number;
+        extractionCount: number;
+        lastSnapshotAt?: number;
+        readiness?: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+        capabilities: readonly string[];
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.syncHomeGraph": ({
+        ok: boolean;
+        spaceId: string;
+        installationId: string;
+        source: ({
+            id: string;
+            connectorId: string;
+            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
+            title?: string;
+            sourceUri?: string;
+            canonicalUri?: string;
+            summary?: string;
+            description?: string;
+            tags: readonly string[];
+            folderPath?: string;
+            status: string;
+            artifactId?: string;
+            contentHash?: string;
+            lastCrawledAt?: number;
+            crawlError?: string;
+            sessionId?: string;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+        home: ({
+            id: string;
+            kind: string;
+            slug: string;
+            title: string;
+            summary?: string;
+            aliases: readonly string[];
+            status: string;
+            confidence: number;
+            sourceId?: string;
+            subject?: string;
+            subjectIds?: readonly string[];
+            targetHints?: readonly (({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            }))[];
+            linkedObjectIds?: readonly string[];
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+        created: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+        generated: ({
+            devicePassports: number;
+            roomPages: number;
+            artifacts: number;
+            sources: number;
+            deferredDevicePassports?: number;
+            deferredRoomPages?: number;
+            truncated?: boolean;
+            errors: readonly JsonValue[];
+        } & {
+            readonly [key: string]: unknown;
+        });
+        counts: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "homeassistant.homeGraph.unlinkHomeGraphKnowledge": ({
+        ok: boolean;
+        spaceId: string;
+        edge: ({
+            id: string;
+            fromKind: string;
+            fromId: string;
+            toKind: string;
+            toId: string;
+            relation: string;
+            weight: number;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+        target?: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
     "intelligence.snapshot": {
         diagnosticsStatus: string;
         symbolSearchStatus: string;
@@ -10838,6 +13705,196 @@ export interface OperatorMethodOutputMap {
         totalRequests: number;
         avgLatencyMs: number;
     };
+    // (undocumented)
+    "knowledge.ask": ({
+        ok: boolean;
+        spaceId: string;
+        query: string;
+        answer: ({
+            text: string;
+            mode: string;
+            confidence: number;
+            sources: readonly (({
+                id: string;
+                connectorId: string;
+                sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
+                title?: string;
+                sourceUri?: string;
+                canonicalUri?: string;
+                summary?: string;
+                description?: string;
+                tags: readonly string[];
+                folderPath?: string;
+                status: string;
+                artifactId?: string;
+                contentHash?: string;
+                lastCrawledAt?: number;
+                crawlError?: string;
+                sessionId?: string;
+                metadata: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+                createdAt: number;
+                updatedAt: number;
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            linkedObjects: readonly (({
+                id: string;
+                kind: string;
+                slug: string;
+                title: string;
+                summary?: string;
+                aliases: readonly string[];
+                status: string;
+                confidence: number;
+                sourceId?: string;
+                subject?: string;
+                subjectIds?: readonly string[];
+                targetHints?: readonly (({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                }))[];
+                linkedObjectIds?: readonly string[];
+                metadata: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+                createdAt: number;
+                updatedAt: number;
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            facts?: readonly (({
+                id: string;
+                kind: string;
+                slug: string;
+                title: string;
+                summary?: string;
+                aliases: readonly string[];
+                status: string;
+                confidence: number;
+                sourceId?: string;
+                subject?: string;
+                subjectIds?: readonly string[];
+                targetHints?: readonly (({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                }))[];
+                linkedObjectIds?: readonly string[];
+                metadata: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+                createdAt: number;
+                updatedAt: number;
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            gaps?: readonly (({
+                id: string;
+                kind: string;
+                slug: string;
+                title: string;
+                summary?: string;
+                aliases: readonly string[];
+                status: string;
+                confidence: number;
+                sourceId?: string;
+                subject?: string;
+                subjectIds?: readonly string[];
+                targetHints?: readonly (({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                }))[];
+                linkedObjectIds?: readonly string[];
+                metadata: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+                createdAt: number;
+                updatedAt: number;
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            synthesized?: boolean;
+        } & {
+            readonly [key: string]: unknown;
+        });
+        results: readonly (({
+            kind: string;
+            id: string;
+            score: number;
+            reason: string;
+            source?: ({
+                id: string;
+                connectorId: string;
+                sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
+                title?: string;
+                sourceUri?: string;
+                canonicalUri?: string;
+                summary?: string;
+                description?: string;
+                tags: readonly string[];
+                folderPath?: string;
+                status: string;
+                artifactId?: string;
+                contentHash?: string;
+                lastCrawledAt?: number;
+                crawlError?: string;
+                sessionId?: string;
+                metadata: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+                createdAt: number;
+                updatedAt: number;
+            } & {
+                readonly [key: string]: unknown;
+            });
+            node?: ({
+                id: string;
+                kind: string;
+                slug: string;
+                title: string;
+                summary?: string;
+                aliases: readonly string[];
+                status: string;
+                confidence: number;
+                sourceId?: string;
+                subject?: string;
+                subjectIds?: readonly string[];
+                targetHints?: readonly (({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                }))[];
+                linkedObjectIds?: readonly string[];
+                metadata: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+                createdAt: number;
+                updatedAt: number;
+            } & {
+                readonly [key: string]: unknown;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+    } & {
+        readonly [key: string]: unknown;
+    });
     // (undocumented)
     "knowledge.candidate.decide": {
         candidate: ({
@@ -10955,15 +14012,13 @@ export interface OperatorMethodOutputMap {
             displayName?: string;
             version?: string;
             description: string;
-            sourceType: "bookmark" | "bookmark-list" | "history" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
+            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
             inputSchema?: ({} & {
                 readonly [key: string]: ({} & {
                     readonly [key: string]: JsonValue;
                 }) | boolean | null | number | readonly JsonValue[] | string;
             });
-            examples?: readonly (({} & {
-                readonly [key: string]: JsonValue;
-            }) | JsonValue | boolean | null | number | string)[];
+            examples?: readonly JsonValue[];
             capabilities?: readonly string[];
             setup?: ({
                 version: string;
@@ -11004,15 +14059,13 @@ export interface OperatorMethodOutputMap {
             displayName?: string;
             version?: string;
             description: string;
-            sourceType: "bookmark" | "bookmark-list" | "history" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
+            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
             inputSchema?: ({} & {
                 readonly [key: string]: ({} & {
                     readonly [key: string]: JsonValue;
                 }) | boolean | null | number | readonly JsonValue[] | string;
             });
-            examples?: readonly (({} & {
-                readonly [key: string]: JsonValue;
-            }) | JsonValue | boolean | null | number | string)[];
+            examples?: readonly JsonValue[];
             capabilities?: readonly string[];
             setup?: ({
                 version: string;
@@ -11113,9 +14166,7 @@ export interface OperatorMethodOutputMap {
                 readonly [key: string]: JsonValue;
             }) | boolean | null | number | readonly JsonValue[] | string;
         });
-        errors?: readonly (({} & {
-            readonly [key: string]: JsonValue;
-        }) | JsonValue | boolean | null | number | string)[];
+        errors?: readonly JsonValue[];
         extensions?: ({} & {
             readonly [key: string]: ({} & {
                 readonly [key: string]: JsonValue;
@@ -11135,7 +14186,7 @@ export interface OperatorMethodOutputMap {
         source: ({
             id: string;
             connectorId: string;
-            sourceType: "bookmark" | "bookmark-list" | "history" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
+            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
             title?: string;
             sourceUri?: string;
             canonicalUri?: string;
@@ -11188,7 +14239,7 @@ export interface OperatorMethodOutputMap {
         sources: readonly (({
             id: string;
             connectorId: string;
-            sourceType: "bookmark" | "bookmark-list" | "history" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
+            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
             title?: string;
             sourceUri?: string;
             canonicalUri?: string;
@@ -11221,7 +14272,7 @@ export interface OperatorMethodOutputMap {
         sources: readonly (({
             id: string;
             connectorId: string;
-            sourceType: "bookmark" | "bookmark-list" | "history" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
+            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
             title?: string;
             sourceUri?: string;
             canonicalUri?: string;
@@ -11264,7 +14315,7 @@ export interface OperatorMethodOutputMap {
         sources: readonly (({
             id: string;
             connectorId: string;
-            sourceType: "bookmark" | "bookmark-list" | "history" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
+            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
             title?: string;
             sourceUri?: string;
             canonicalUri?: string;
@@ -11295,7 +14346,7 @@ export interface OperatorMethodOutputMap {
         source: ({
             id: string;
             connectorId: string;
-            sourceType: "bookmark" | "bookmark-list" | "history" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
+            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
             title?: string;
             sourceUri?: string;
             canonicalUri?: string;
@@ -11348,7 +14399,7 @@ export interface OperatorMethodOutputMap {
         sources: readonly (({
             id: string;
             connectorId: string;
-            sourceType: "bookmark" | "bookmark-list" | "history" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
+            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
             title?: string;
             sourceUri?: string;
             canonicalUri?: string;
@@ -11375,6 +14426,95 @@ export interface OperatorMethodOutputMap {
         errors: readonly string[];
     };
     // (undocumented)
+    "knowledge.issue.review": ({
+        ok: boolean;
+        issue: ({
+            id: string;
+            severity: string;
+            code: string;
+            message: string;
+            status: string;
+            sourceId?: string;
+            nodeId?: string;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+        node?: ({
+            id: string;
+            kind: string;
+            slug: string;
+            title: string;
+            summary?: string;
+            aliases: readonly string[];
+            status: string;
+            confidence: number;
+            sourceId?: string;
+            subject?: string;
+            subjectIds?: readonly string[];
+            targetHints?: readonly (({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            }))[];
+            linkedObjectIds?: readonly string[];
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+        source?: ({
+            id: string;
+            connectorId: string;
+            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
+            title?: string;
+            sourceUri?: string;
+            canonicalUri?: string;
+            summary?: string;
+            description?: string;
+            tags: readonly string[];
+            folderPath?: string;
+            status: string;
+            artifactId?: string;
+            contentHash?: string;
+            lastCrawledAt?: number;
+            crawlError?: string;
+            sessionId?: string;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+        suppression?: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+        appliedFacts?: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
     "knowledge.issues.list": {
         issues: readonly (({
             id: string;
@@ -11400,7 +14540,7 @@ export interface OperatorMethodOutputMap {
         source?: ({
             id: string;
             connectorId: string;
-            sourceType: "bookmark" | "bookmark-list" | "history" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
+            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
             title?: string;
             sourceUri?: string;
             canonicalUri?: string;
@@ -11434,6 +14574,14 @@ export interface OperatorMethodOutputMap {
             status: string;
             confidence: number;
             sourceId?: string;
+            subject?: string;
+            subjectIds?: readonly string[];
+            targetHints?: readonly (({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            }))[];
+            linkedObjectIds?: readonly string[];
             metadata: ({} & {
                 readonly [key: string]: ({} & {
                     readonly [key: string]: JsonValue;
@@ -11483,7 +14631,7 @@ export interface OperatorMethodOutputMap {
         linkedSources?: readonly (({
             id: string;
             connectorId: string;
-            sourceType: "bookmark" | "bookmark-list" | "history" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
+            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
             title?: string;
             sourceUri?: string;
             canonicalUri?: string;
@@ -11517,6 +14665,14 @@ export interface OperatorMethodOutputMap {
             status: string;
             confidence: number;
             sourceId?: string;
+            subject?: string;
+            subjectIds?: readonly string[];
+            targetHints?: readonly (({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            }))[];
+            linkedObjectIds?: readonly string[];
             metadata: ({} & {
                 readonly [key: string]: ({} & {
                     readonly [key: string]: JsonValue;
@@ -11542,27 +14698,64 @@ export interface OperatorMethodOutputMap {
             completedAt?: number;
             error?: string;
             result: {} | {
+                issueCount: number;
+            } | {
+                sourceCount: number;
+                issueCount: number;
+            } | {
+                refreshed: number;
+            } | {
                 imported: number;
                 failed: number;
                 profileCount: number;
                 errorCount: number;
             } | {
-                issueCount: number;
-            } | {
                 projections: readonly ({
                     targetId: string;
                     artifactId: string;
                 })[];
-            } | {
-                refreshed: number;
-            } | {
+            } | ({
+                scanned: number;
+                enriched: number;
+                skipped: number;
+                failed: number;
+                errors: readonly JsonValue[];
+                selfImprovement?: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+            } & {
+                readonly [key: string]: unknown;
+            }) | ({
+                scannedGaps: number;
+                candidateGaps?: number;
+                processedGaps?: number;
+                createdGaps: number;
+                repairableGaps: number;
+                suppressedGaps: number;
+                skippedGaps: number;
+                searched: number;
+                ingestedSources: number;
+                linkedRepairs: number;
+                blockedGaps?: number;
+                closedGaps?: number;
+                queuedTasks?: number;
+                requestedLimit?: number;
+                effectiveLimit?: number;
+                coalesced?: boolean;
+                truncated?: boolean;
+                budgetExhausted?: boolean;
+                taskIds?: readonly string[];
+                ingestedSourceIds?: readonly string[];
+                errors: readonly JsonValue[];
+            } & {
+                readonly [key: string]: unknown;
+            }) | {
                 reportId: string;
                 metrics: ({} & {
                     readonly [key: string]: number;
                 });
-            } | {
-                sourceCount: number;
-                issueCount: number;
             };
             metadata: ({} & {
                 readonly [key: string]: ({} & {
@@ -11579,7 +14772,7 @@ export interface OperatorMethodOutputMap {
     "knowledge.job.get": {
         job: {
             id: string;
-            kind: "deep-consolidation" | "light-consolidation" | "lint" | "rebuild-projections" | "refresh-bookmarks" | "refresh-stale" | "reindex" | "sync-browser-history";
+            kind: "deep-consolidation" | "light-consolidation" | "lint" | "rebuild-projections" | "refresh-bookmarks" | "refresh-stale" | "reindex" | "semantic-enrichment" | "semantic-self-improvement" | "sync-browser-history";
             title: string;
             description: string;
             defaultMode: "background" | "inline";
@@ -11602,27 +14795,64 @@ export interface OperatorMethodOutputMap {
             completedAt?: number;
             error?: string;
             result: {} | {
+                issueCount: number;
+            } | {
+                sourceCount: number;
+                issueCount: number;
+            } | {
+                refreshed: number;
+            } | {
                 imported: number;
                 failed: number;
                 profileCount: number;
                 errorCount: number;
             } | {
-                issueCount: number;
-            } | {
                 projections: readonly ({
                     targetId: string;
                     artifactId: string;
                 })[];
-            } | {
-                refreshed: number;
-            } | {
+            } | ({
+                scanned: number;
+                enriched: number;
+                skipped: number;
+                failed: number;
+                errors: readonly JsonValue[];
+                selfImprovement?: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+            } & {
+                readonly [key: string]: unknown;
+            }) | ({
+                scannedGaps: number;
+                candidateGaps?: number;
+                processedGaps?: number;
+                createdGaps: number;
+                repairableGaps: number;
+                suppressedGaps: number;
+                skippedGaps: number;
+                searched: number;
+                ingestedSources: number;
+                linkedRepairs: number;
+                blockedGaps?: number;
+                closedGaps?: number;
+                queuedTasks?: number;
+                requestedLimit?: number;
+                effectiveLimit?: number;
+                coalesced?: boolean;
+                truncated?: boolean;
+                budgetExhausted?: boolean;
+                taskIds?: readonly string[];
+                ingestedSourceIds?: readonly string[];
+                errors: readonly JsonValue[];
+            } & {
+                readonly [key: string]: unknown;
+            }) | {
                 reportId: string;
                 metrics: ({} & {
                     readonly [key: string]: number;
                 });
-            } | {
-                sourceCount: number;
-                issueCount: number;
             };
             metadata: ({} & {
                 readonly [key: string]: ({} & {
@@ -11639,7 +14869,7 @@ export interface OperatorMethodOutputMap {
     "knowledge.jobs.list": {
         jobs: readonly ({
             id: string;
-            kind: "deep-consolidation" | "light-consolidation" | "lint" | "rebuild-projections" | "refresh-bookmarks" | "refresh-stale" | "reindex" | "sync-browser-history";
+            kind: "deep-consolidation" | "light-consolidation" | "lint" | "rebuild-projections" | "refresh-bookmarks" | "refresh-stale" | "reindex" | "semantic-enrichment" | "semantic-self-improvement" | "sync-browser-history";
             title: string;
             description: string;
             defaultMode: "background" | "inline";
@@ -11672,6 +14902,142 @@ export interface OperatorMethodOutputMap {
         }))[];
     };
     // (undocumented)
+    "knowledge.map": ({
+        ok: boolean;
+        spaceId?: string;
+        title: string;
+        generatedAt: number;
+        width: number;
+        height: number;
+        nodeCount: number;
+        edgeCount: number;
+        totalNodeCount?: number;
+        totalEdgeCount?: number;
+        facets?: ({
+            recordKinds?: readonly (({
+                value: string;
+                count: number;
+                label?: string;
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            nodeKinds?: readonly (({
+                value: string;
+                count: number;
+                label?: string;
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            sourceTypes?: readonly (({
+                value: string;
+                count: number;
+                label?: string;
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            sourceStatuses?: readonly (({
+                value: string;
+                count: number;
+                label?: string;
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            nodeStatuses?: readonly (({
+                value: string;
+                count: number;
+                label?: string;
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            issueCodes?: readonly (({
+                value: string;
+                count: number;
+                label?: string;
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            issueStatuses?: readonly (({
+                value: string;
+                count: number;
+                label?: string;
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            issueSeverities?: readonly (({
+                value: string;
+                count: number;
+                label?: string;
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            edgeRelations?: readonly (({
+                value: string;
+                count: number;
+                label?: string;
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            tags?: readonly (({
+                value: string;
+                count: number;
+                label?: string;
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            homeAssistant?: ({} & {
+                readonly [key: string]: readonly (({
+                    value: string;
+                    count: number;
+                    label?: string;
+                } & {
+                    readonly [key: string]: unknown;
+                }))[];
+            });
+        } & {
+            readonly [key: string]: unknown;
+        });
+        nodes: readonly (({
+            id: string;
+            recordKind: string;
+            kind: string;
+            title: string;
+            summary?: string;
+            x: number;
+            y: number;
+            radius: number;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+        edges: readonly (({
+            id: string;
+            fromId: string;
+            toId: string;
+            source?: string;
+            target?: string;
+            fromTitle?: string;
+            toTitle?: string;
+            sourceTitle?: string;
+            targetTitle?: string;
+            relation: string;
+            weight: number;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+        svg: string;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
     "knowledge.nodes.list": {
         nodes: readonly (({
             id: string;
@@ -11683,6 +15049,14 @@ export interface OperatorMethodOutputMap {
             status: string;
             confidence: number;
             sourceId?: string;
+            subject?: string;
+            subjectIds?: readonly string[];
+            targetHints?: readonly (({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            }))[];
+            linkedObjectIds?: readonly string[];
             metadata: ({} & {
                 readonly [key: string]: ({} & {
                     readonly [key: string]: JsonValue;
@@ -11896,8 +15270,151 @@ export interface OperatorMethodOutputMap {
         }))[];
     };
     // (undocumented)
+    "knowledge.refinement.run": ({
+        scannedGaps: number;
+        candidateGaps?: number;
+        processedGaps?: number;
+        createdGaps: number;
+        repairableGaps: number;
+        suppressedGaps: number;
+        skippedGaps: number;
+        searched: number;
+        ingestedSources: number;
+        linkedRepairs: number;
+        blockedGaps?: number;
+        closedGaps?: number;
+        queuedTasks?: number;
+        requestedLimit?: number;
+        effectiveLimit?: number;
+        coalesced?: boolean;
+        truncated?: boolean;
+        budgetExhausted?: boolean;
+        taskIds?: readonly string[];
+        ingestedSourceIds?: readonly string[];
+        errors: readonly JsonValue[];
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "knowledge.refinement.task.cancel": ({
+        task: ({
+            id: string;
+            spaceId: string;
+            subjectKind?: string;
+            subjectId?: string;
+            subjectTitle?: string;
+            subjectType?: string;
+            gapId?: string;
+            issueId?: string;
+            state: "applying" | "blocked" | "cancelled" | "closed" | "detected" | "evaluating" | "extracting" | "failed" | "needs_review" | "queued" | "searching" | "suppressed" | "verified";
+            priority: "high" | "low" | "normal" | "urgent";
+            trigger: "answer" | "homegraph-sync" | "ingest" | "manual" | "reindex" | "scheduled";
+            budget: ({} & {
+                readonly [key: string]: number;
+            });
+            attemptCount: number;
+            blockedReason?: string;
+            nextRepairAttemptAt?: number;
+            acceptedSourceIds?: readonly string[];
+            ingestedSourceIds?: readonly string[];
+            rejectedSourceUrls?: readonly string[];
+            promotedFactCount?: number;
+            sourceAssessments?: readonly JsonValue[];
+            trace: readonly JsonValue[];
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "knowledge.refinement.task.get": ({
+        task: ({
+            id: string;
+            spaceId: string;
+            subjectKind?: string;
+            subjectId?: string;
+            subjectTitle?: string;
+            subjectType?: string;
+            gapId?: string;
+            issueId?: string;
+            state: "applying" | "blocked" | "cancelled" | "closed" | "detected" | "evaluating" | "extracting" | "failed" | "needs_review" | "queued" | "searching" | "suppressed" | "verified";
+            priority: "high" | "low" | "normal" | "urgent";
+            trigger: "answer" | "homegraph-sync" | "ingest" | "manual" | "reindex" | "scheduled";
+            budget: ({} & {
+                readonly [key: string]: number;
+            });
+            attemptCount: number;
+            blockedReason?: string;
+            nextRepairAttemptAt?: number;
+            acceptedSourceIds?: readonly string[];
+            ingestedSourceIds?: readonly string[];
+            rejectedSourceUrls?: readonly string[];
+            promotedFactCount?: number;
+            sourceAssessments?: readonly JsonValue[];
+            trace: readonly JsonValue[];
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "knowledge.refinement.tasks.list": ({
+        tasks: readonly (({
+            id: string;
+            spaceId: string;
+            subjectKind?: string;
+            subjectId?: string;
+            subjectTitle?: string;
+            subjectType?: string;
+            gapId?: string;
+            issueId?: string;
+            state: "applying" | "blocked" | "cancelled" | "closed" | "detected" | "evaluating" | "extracting" | "failed" | "needs_review" | "queued" | "searching" | "suppressed" | "verified";
+            priority: "high" | "low" | "normal" | "urgent";
+            trigger: "answer" | "homegraph-sync" | "ingest" | "manual" | "reindex" | "scheduled";
+            budget: ({} & {
+                readonly [key: string]: number;
+            });
+            attemptCount: number;
+            blockedReason?: string;
+            nextRepairAttemptAt?: number;
+            acceptedSourceIds?: readonly string[];
+            ingestedSourceIds?: readonly string[];
+            rejectedSourceUrls?: readonly string[];
+            promotedFactCount?: number;
+            sourceAssessments?: readonly JsonValue[];
+            trace: readonly JsonValue[];
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
     "knowledge.reindex": {
-        status: {
+        status: ({
             ready: boolean;
             storagePath: string;
             sourceCount: number;
@@ -11906,11 +15423,14 @@ export interface OperatorMethodOutputMap {
             issueCount: number;
             extractionCount: number;
             jobRunCount: number;
+            refinementTaskCount?: number;
             usageCount: number;
             candidateCount: number;
             reportCount: number;
             scheduleCount: number;
-        };
+        } & {
+            readonly [key: string]: unknown;
+        });
         issues: readonly (({
             id: string;
             severity: string;
@@ -11989,14 +15509,14 @@ export interface OperatorMethodOutputMap {
                 kind: "at";
                 at: number;
             } | {
+                kind: "every";
+                intervalMs: number;
+                anchorAt?: number;
+            } | {
                 kind: "cron";
                 expression: string;
                 timezone?: string;
                 staggerMs?: number;
-            } | {
-                kind: "every";
-                intervalMs: number;
-                anchorAt?: number;
             };
             lastRunAt?: number;
             nextRunAt?: number;
@@ -12022,14 +15542,14 @@ export interface OperatorMethodOutputMap {
                 kind: "at";
                 at: number;
             } | {
+                kind: "every";
+                intervalMs: number;
+                anchorAt?: number;
+            } | {
                 kind: "cron";
                 expression: string;
                 timezone?: string;
                 staggerMs?: number;
-            } | {
-                kind: "every";
-                intervalMs: number;
-                anchorAt?: number;
             };
             lastRunAt?: number;
             nextRunAt?: number;
@@ -12055,14 +15575,14 @@ export interface OperatorMethodOutputMap {
                 kind: "at";
                 at: number;
             } | {
+                kind: "every";
+                intervalMs: number;
+                anchorAt?: number;
+            } | {
                 kind: "cron";
                 expression: string;
                 timezone?: string;
                 staggerMs?: number;
-            } | {
-                kind: "every";
-                intervalMs: number;
-                anchorAt?: number;
             };
             lastRunAt?: number;
             nextRunAt?: number;
@@ -12088,14 +15608,14 @@ export interface OperatorMethodOutputMap {
                 kind: "at";
                 at: number;
             } | {
+                kind: "every";
+                intervalMs: number;
+                anchorAt?: number;
+            } | {
                 kind: "cron";
                 expression: string;
                 timezone?: string;
                 staggerMs?: number;
-            } | {
-                kind: "every";
-                intervalMs: number;
-                anchorAt?: number;
             };
             lastRunAt?: number;
             nextRunAt?: number;
@@ -12120,7 +15640,7 @@ export interface OperatorMethodOutputMap {
             source?: ({
                 id: string;
                 connectorId: string;
-                sourceType: "bookmark" | "bookmark-list" | "history" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
+                sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
                 title?: string;
                 sourceUri?: string;
                 canonicalUri?: string;
@@ -12154,6 +15674,14 @@ export interface OperatorMethodOutputMap {
                 status: string;
                 confidence: number;
                 sourceId?: string;
+                subject?: string;
+                subjectIds?: readonly string[];
+                targetHints?: readonly (({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                }))[];
+                linkedObjectIds?: readonly string[];
                 metadata: ({} & {
                     readonly [key: string]: ({} & {
                         readonly [key: string]: JsonValue;
@@ -12203,7 +15731,7 @@ export interface OperatorMethodOutputMap {
         sources: readonly (({
             id: string;
             connectorId: string;
-            sourceType: "bookmark" | "bookmark-list" | "history" | "dataset" | "document" | "image" | "manual" | "other" | "repo" | "url";
+            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
             title?: string;
             sourceUri?: string;
             canonicalUri?: string;
@@ -12229,7 +15757,7 @@ export interface OperatorMethodOutputMap {
         }))[];
     };
     // (undocumented)
-    "knowledge.status": {
+    "knowledge.status": ({
         ready: boolean;
         storagePath: string;
         sourceCount: number;
@@ -12238,11 +15766,14 @@ export interface OperatorMethodOutputMap {
         issueCount: number;
         extractionCount: number;
         jobRunCount: number;
+        refinementTaskCount?: number;
         usageCount: number;
         candidateCount: number;
         reportCount: number;
         scheduleCount: number;
-    };
+    } & {
+        readonly [key: string]: unknown;
+    });
     // (undocumented)
     "knowledge.usage.list": {
         usage: readonly (({
@@ -12304,6 +15835,123 @@ export interface OperatorMethodOutputMap {
         rotated: boolean;
     };
     // (undocumented)
+    "mcp.config.get": {
+        locations: readonly ({
+            scope: string;
+            kind: string;
+            path: string;
+            writable: boolean;
+        })[];
+        servers: readonly ({
+            name: string;
+            command: string;
+            args: readonly string[];
+            envKeys: readonly string[];
+            role: null | string;
+            trustMode: null | string;
+            allowedPaths: readonly string[];
+            allowedHosts: readonly string[];
+            source: {
+                scope: string;
+                kind: string;
+                path: string;
+                writable: boolean;
+            };
+        })[];
+    };
+    // (undocumented)
+    "mcp.config.reload": {
+        reload: {
+            added: number;
+            changed: number;
+            removed: number;
+            unchanged: number;
+            servers: readonly ({
+                name: string;
+                action: "added" | "changed" | "removed" | "unchanged";
+                connected: boolean;
+            })[];
+        };
+        config: {
+            locations: readonly ({
+                scope: string;
+                kind: string;
+                path: string;
+                writable: boolean;
+            })[];
+            servers: readonly ({
+                name: string;
+                command: string;
+                args: readonly string[];
+                envKeys: readonly string[];
+                role: null | string;
+                trustMode: null | string;
+                allowedPaths: readonly string[];
+                allowedHosts: readonly string[];
+                source: {
+                    scope: string;
+                    kind: string;
+                    path: string;
+                    writable: boolean;
+                };
+            })[];
+        };
+    };
+    // (undocumented)
+    "mcp.servers.list": {
+        servers: readonly ({
+            name: string;
+            connected: boolean;
+        })[];
+        security: readonly (({} & {
+            readonly [key: string]: unknown;
+        }))[];
+        sandboxBindings: readonly (({} & {
+            readonly [key: string]: unknown;
+        }))[];
+    };
+    // (undocumented)
+    "mcp.servers.remove": {
+        scope: "global" | "project";
+        path: string;
+        removed?: boolean;
+        reload: {
+            added: number;
+            changed: number;
+            removed: number;
+            unchanged: number;
+            servers: readonly ({
+                name: string;
+                action: "added" | "changed" | "removed" | "unchanged";
+                connected: boolean;
+            })[];
+        };
+        config: {
+            locations: readonly ({
+                scope: string;
+                kind: string;
+                path: string;
+                writable: boolean;
+            })[];
+            servers: readonly ({
+                name: string;
+                command: string;
+                args: readonly string[];
+                envKeys: readonly string[];
+                role: null | string;
+                trustMode: null | string;
+                allowedPaths: readonly string[];
+                allowedHosts: readonly string[];
+                source: {
+                    scope: string;
+                    kind: string;
+                    path: string;
+                    writable: boolean;
+                };
+            })[];
+        };
+    };
+    // (undocumented)
     "mcp.servers.reveal": {
         locations: readonly ({
             scope: string;
@@ -12329,6 +15977,56 @@ export interface OperatorMethodOutputMap {
                 path: string;
                 writable: boolean;
             };
+        })[];
+    };
+    // (undocumented)
+    "mcp.servers.upsert": {
+        scope: "global" | "project";
+        path: string;
+        removed?: boolean;
+        reload: {
+            added: number;
+            changed: number;
+            removed: number;
+            unchanged: number;
+            servers: readonly ({
+                name: string;
+                action: "added" | "changed" | "removed" | "unchanged";
+                connected: boolean;
+            })[];
+        };
+        config: {
+            locations: readonly ({
+                scope: string;
+                kind: string;
+                path: string;
+                writable: boolean;
+            })[];
+            servers: readonly ({
+                name: string;
+                command: string;
+                args: readonly string[];
+                envKeys: readonly string[];
+                role: null | string;
+                trustMode: null | string;
+                allowedPaths: readonly string[];
+                allowedHosts: readonly string[];
+                source: {
+                    scope: string;
+                    kind: string;
+                    path: string;
+                    writable: boolean;
+                };
+            })[];
+        };
+    };
+    // (undocumented)
+    "mcp.tools.list": {
+        tools: readonly ({
+            qualifiedName: string;
+            serverName: string;
+            toolName: string;
+            description: string;
         })[];
     };
     // (undocumented)
@@ -12448,6 +16146,7 @@ export interface OperatorMethodOutputMap {
             embeddingProviderId: string;
             embeddingProviderLabel: string;
             error?: string;
+            platformLimitReason?: string;
         } & {
             readonly [key: string]: unknown;
         });
@@ -12487,6 +16186,7 @@ export interface OperatorMethodOutputMap {
             embeddingProviderId: string;
             embeddingProviderLabel: string;
             error?: string;
+            platformLimitReason?: string;
         } & {
             readonly [key: string]: unknown;
         });
@@ -12548,6 +16248,270 @@ export interface OperatorMethodOutputMap {
         })[];
     };
     // (undocumented)
+    "memory.records.add": {
+        record: ({
+            id: string;
+            scope: "project" | "session" | "team";
+            cls: "architecture" | "constraint" | "decision" | "fact" | "incident" | "ownership" | "pattern" | "risk" | "runbook";
+            summary: string;
+            detail?: string;
+            tags: readonly string[];
+            provenance: readonly ({
+                kind: "event" | "file" | "session" | "task" | "turn";
+                ref: string;
+                label?: string;
+            })[];
+            reviewState: "contradicted" | "fresh" | "reviewed" | "stale";
+            confidence: number;
+            reviewedAt?: number;
+            reviewedBy?: string;
+            staleReason?: string;
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+    };
+    // (undocumented)
+    "memory.records.delete": {
+        id: string;
+        deleted: boolean;
+    };
+    // (undocumented)
+    "memory.records.export": {
+        bundle: {
+            schemaVersion: "v1";
+            exportedAt: number;
+            scope: "all" | "project" | "session" | "team";
+            recordCount: number;
+            linkCount: number;
+            records: readonly (({
+                id: string;
+                scope: "project" | "session" | "team";
+                cls: "architecture" | "constraint" | "decision" | "fact" | "incident" | "ownership" | "pattern" | "risk" | "runbook";
+                summary: string;
+                detail?: string;
+                tags: readonly string[];
+                provenance: readonly ({
+                    kind: "event" | "file" | "session" | "task" | "turn";
+                    ref: string;
+                    label?: string;
+                })[];
+                reviewState: "contradicted" | "fresh" | "reviewed" | "stale";
+                confidence: number;
+                reviewedAt?: number;
+                reviewedBy?: string;
+                staleReason?: string;
+                createdAt: number;
+                updatedAt: number;
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            links: readonly ({
+                fromId: string;
+                toId: string;
+                relation: string;
+                createdAt: number;
+            })[];
+        };
+    };
+    // (undocumented)
+    "memory.records.get": {
+        record: ({
+            id: string;
+            scope: "project" | "session" | "team";
+            cls: "architecture" | "constraint" | "decision" | "fact" | "incident" | "ownership" | "pattern" | "risk" | "runbook";
+            summary: string;
+            detail?: string;
+            tags: readonly string[];
+            provenance: readonly ({
+                kind: "event" | "file" | "session" | "task" | "turn";
+                ref: string;
+                label?: string;
+            })[];
+            reviewState: "contradicted" | "fresh" | "reviewed" | "stale";
+            confidence: number;
+            reviewedAt?: number;
+            reviewedBy?: string;
+            staleReason?: string;
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+    };
+    // (undocumented)
+    "memory.records.import": {
+        result: {
+            importedRecords: number;
+            skippedRecords: number;
+            importedLinks: number;
+        };
+    };
+    // (undocumented)
+    "memory.records.links.add": {
+        link: {
+            fromId: string;
+            toId: string;
+            relation: string;
+            createdAt: number;
+        };
+    };
+    // (undocumented)
+    "memory.records.links.list": {
+        links: readonly ({
+            fromId: string;
+            toId: string;
+            relation: string;
+            createdAt: number;
+        })[];
+    };
+    // (undocumented)
+    "memory.records.list": {
+        records: readonly (({
+            id: string;
+            scope: "project" | "session" | "team";
+            cls: "architecture" | "constraint" | "decision" | "fact" | "incident" | "ownership" | "pattern" | "risk" | "runbook";
+            summary: string;
+            detail?: string;
+            tags: readonly string[];
+            provenance: readonly ({
+                kind: "event" | "file" | "session" | "task" | "turn";
+                ref: string;
+                label?: string;
+            })[];
+            reviewState: "contradicted" | "fresh" | "reviewed" | "stale";
+            confidence: number;
+            reviewedAt?: number;
+            reviewedBy?: string;
+            staleReason?: string;
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+    };
+    // (undocumented)
+    "memory.records.search": {
+        records: readonly (({
+            id: string;
+            scope: "project" | "session" | "team";
+            cls: "architecture" | "constraint" | "decision" | "fact" | "incident" | "ownership" | "pattern" | "risk" | "runbook";
+            summary: string;
+            detail?: string;
+            tags: readonly string[];
+            provenance: readonly ({
+                kind: "event" | "file" | "session" | "task" | "turn";
+                ref: string;
+                label?: string;
+            })[];
+            reviewState: "contradicted" | "fresh" | "reviewed" | "stale";
+            confidence: number;
+            reviewedAt?: number;
+            reviewedBy?: string;
+            staleReason?: string;
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+        mode: "literal" | "semantic";
+        requestedSemantic: boolean;
+        indexUnavailableReason: null | string;
+        caveat: null | string;
+        recallFiltered: boolean;
+        excludedFlaggedCount: number;
+        excludedBelowFloorCount: number;
+        totalBeforeRecallFilter: number;
+        recallFloor: number;
+    };
+    // (undocumented)
+    "memory.records.search-semantic": {
+        results: readonly ({
+            record: ({
+                id: string;
+                scope: "project" | "session" | "team";
+                cls: "architecture" | "constraint" | "decision" | "fact" | "incident" | "ownership" | "pattern" | "risk" | "runbook";
+                summary: string;
+                detail?: string;
+                tags: readonly string[];
+                provenance: readonly ({
+                    kind: "event" | "file" | "session" | "task" | "turn";
+                    ref: string;
+                    label?: string;
+                })[];
+                reviewState: "contradicted" | "fresh" | "reviewed" | "stale";
+                confidence: number;
+                reviewedAt?: number;
+                reviewedBy?: string;
+                staleReason?: string;
+                createdAt: number;
+                updatedAt: number;
+            } & {
+                readonly [key: string]: unknown;
+            });
+            distance?: null | number;
+            similarity: number;
+            score: number;
+        })[];
+    };
+    // (undocumented)
+    "memory.records.update": {
+        record: ({
+            id: string;
+            scope: "project" | "session" | "team";
+            cls: "architecture" | "constraint" | "decision" | "fact" | "incident" | "ownership" | "pattern" | "risk" | "runbook";
+            summary: string;
+            detail?: string;
+            tags: readonly string[];
+            provenance: readonly ({
+                kind: "event" | "file" | "session" | "task" | "turn";
+                ref: string;
+                label?: string;
+            })[];
+            reviewState: "contradicted" | "fresh" | "reviewed" | "stale";
+            confidence: number;
+            reviewedAt?: number;
+            reviewedBy?: string;
+            staleReason?: string;
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+    };
+    // (undocumented)
+    "memory.records.update-review": {
+        record: ({
+            id: string;
+            scope: "project" | "session" | "team";
+            cls: "architecture" | "constraint" | "decision" | "fact" | "incident" | "ownership" | "pattern" | "risk" | "runbook";
+            summary: string;
+            detail?: string;
+            tags: readonly string[];
+            provenance: readonly ({
+                kind: "event" | "file" | "session" | "task" | "turn";
+                ref: string;
+                label?: string;
+            })[];
+            reviewState: "contradicted" | "fresh" | "reviewed" | "stale";
+            confidence: number;
+            reviewedAt?: number;
+            reviewedBy?: string;
+            staleReason?: string;
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+    };
+    // (undocumented)
+    "memory.review-queue": {
+        records: readonly (({} & {
+            readonly [key: string]: unknown;
+        }))[];
+    };
+    // (undocumented)
     "memory.vector.rebuild": {
         vector: ({
             backend: "sqlite-vec";
@@ -12559,6 +16523,7 @@ export interface OperatorMethodOutputMap {
             embeddingProviderId: string;
             embeddingProviderLabel: string;
             error?: string;
+            platformLimitReason?: string;
         } & {
             readonly [key: string]: unknown;
         });
@@ -12575,6 +16540,7 @@ export interface OperatorMethodOutputMap {
             embeddingProviderId: string;
             embeddingProviderLabel: string;
             error?: string;
+            platformLimitReason?: string;
         } & {
             readonly [key: string]: unknown;
         });
@@ -13319,6 +17285,1697 @@ export interface OperatorMethodOutputMap {
         disclosure: string;
     };
     // (undocumented)
+    "projectPlanning.decisions.list": ({
+        ok: boolean;
+        projectId: string;
+        knowledgeSpaceId: string;
+        decisions: readonly (({
+            id: string;
+            title: string;
+            context?: string;
+            decision: string;
+            alternatives?: readonly string[];
+            reasoning?: string;
+            consequences?: readonly string[];
+            status?: string;
+            createdAt?: number;
+            updatedAt?: number;
+            metadata?: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "projectPlanning.decisions.record": ({
+        ok: boolean;
+        projectId: string;
+        knowledgeSpaceId: string;
+        decision: ({
+            id: string;
+            title: string;
+            context?: string;
+            decision: string;
+            alternatives?: readonly string[];
+            reasoning?: string;
+            consequences?: readonly string[];
+            status?: string;
+            createdAt?: number;
+            updatedAt?: number;
+            metadata?: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        });
+        source: ({
+            id: string;
+            connectorId: string;
+            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
+            title?: string;
+            sourceUri?: string;
+            canonicalUri?: string;
+            summary?: string;
+            description?: string;
+            tags: readonly string[];
+            folderPath?: string;
+            status: string;
+            artifactId?: string;
+            contentHash?: string;
+            lastCrawledAt?: number;
+            crawlError?: string;
+            sessionId?: string;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "projectPlanning.evaluate": ({
+        ok: boolean;
+        projectId: string;
+        knowledgeSpaceId: string;
+        readiness: string;
+        gaps: readonly (({
+            id: string;
+            kind: string;
+            severity: string;
+            message: string;
+            question?: ({
+                id: string;
+                prompt: string;
+                whyItMatters?: string;
+                recommendedAnswer?: string;
+                consequence?: string;
+                status?: string;
+                answer?: string;
+                answeredAt?: number;
+                metadata?: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+            } & {
+                readonly [key: string]: unknown;
+            });
+            relatedTaskIds?: readonly string[];
+            metadata?: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+        nextQuestion?: ({
+            id: string;
+            prompt: string;
+            whyItMatters?: string;
+            recommendedAnswer?: string;
+            consequence?: string;
+            status?: string;
+            answer?: string;
+            answeredAt?: number;
+            metadata?: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        });
+        state: ({
+            id: string;
+            projectId: string;
+            knowledgeSpaceId: string;
+            goal: string;
+            scope?: string;
+            knownContext: readonly string[];
+            openQuestions: readonly (({
+                id: string;
+                prompt: string;
+                whyItMatters?: string;
+                recommendedAnswer?: string;
+                consequence?: string;
+                status?: string;
+                answer?: string;
+                answeredAt?: number;
+                metadata?: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            answeredQuestions: readonly (({
+                id: string;
+                prompt: string;
+                whyItMatters?: string;
+                recommendedAnswer?: string;
+                consequence?: string;
+                status?: string;
+                answer?: string;
+                answeredAt?: number;
+                metadata?: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            decisions: readonly (({
+                id: string;
+                title: string;
+                context?: string;
+                decision: string;
+                alternatives?: readonly string[];
+                reasoning?: string;
+                consequences?: readonly string[];
+                status?: string;
+                createdAt?: number;
+                updatedAt?: number;
+                metadata?: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            assumptions: readonly string[];
+            constraints: readonly string[];
+            risks: readonly string[];
+            tasks: readonly (({
+                id: string;
+                title: string;
+                why?: string;
+                status?: string;
+                dependencies?: readonly string[];
+                likelyFiles?: readonly string[];
+                verification?: readonly string[];
+                canRunConcurrently?: boolean;
+                needsReview?: boolean;
+                blockedOnUserInput?: boolean;
+                recommendedAgent?: string;
+                metadata?: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            dependencies: readonly JsonValue[];
+            verificationGates: readonly JsonValue[];
+            agentAssignments: readonly JsonValue[];
+            readiness: string;
+            executionApproved: boolean;
+            createdAt: number;
+            updatedAt: number;
+            metadata?: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "projectPlanning.language.get": ({
+        ok: boolean;
+        projectId: string;
+        knowledgeSpaceId: string;
+        language?: null | ({
+            projectId: string;
+            knowledgeSpaceId: string;
+            terms: readonly JsonValue[];
+            ambiguities: readonly JsonValue[];
+            examples?: readonly string[];
+            updatedAt: number;
+            metadata?: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        });
+        source?: ({
+            id: string;
+            connectorId: string;
+            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
+            title?: string;
+            sourceUri?: string;
+            canonicalUri?: string;
+            summary?: string;
+            description?: string;
+            tags: readonly string[];
+            folderPath?: string;
+            status: string;
+            artifactId?: string;
+            contentHash?: string;
+            lastCrawledAt?: number;
+            crawlError?: string;
+            sessionId?: string;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "projectPlanning.language.upsert": ({
+        ok: boolean;
+        projectId: string;
+        knowledgeSpaceId: string;
+        language?: null | ({
+            projectId: string;
+            knowledgeSpaceId: string;
+            terms: readonly JsonValue[];
+            ambiguities: readonly JsonValue[];
+            examples?: readonly string[];
+            updatedAt: number;
+            metadata?: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        });
+        source?: ({
+            id: string;
+            connectorId: string;
+            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
+            title?: string;
+            sourceUri?: string;
+            canonicalUri?: string;
+            summary?: string;
+            description?: string;
+            tags: readonly string[];
+            folderPath?: string;
+            status: string;
+            artifactId?: string;
+            contentHash?: string;
+            lastCrawledAt?: number;
+            crawlError?: string;
+            sessionId?: string;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "projectPlanning.state.get": ({
+        ok: boolean;
+        projectId: string;
+        knowledgeSpaceId: string;
+        state?: null | ({
+            id: string;
+            projectId: string;
+            knowledgeSpaceId: string;
+            goal: string;
+            scope?: string;
+            knownContext: readonly string[];
+            openQuestions: readonly (({
+                id: string;
+                prompt: string;
+                whyItMatters?: string;
+                recommendedAnswer?: string;
+                consequence?: string;
+                status?: string;
+                answer?: string;
+                answeredAt?: number;
+                metadata?: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            answeredQuestions: readonly (({
+                id: string;
+                prompt: string;
+                whyItMatters?: string;
+                recommendedAnswer?: string;
+                consequence?: string;
+                status?: string;
+                answer?: string;
+                answeredAt?: number;
+                metadata?: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            decisions: readonly (({
+                id: string;
+                title: string;
+                context?: string;
+                decision: string;
+                alternatives?: readonly string[];
+                reasoning?: string;
+                consequences?: readonly string[];
+                status?: string;
+                createdAt?: number;
+                updatedAt?: number;
+                metadata?: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            assumptions: readonly string[];
+            constraints: readonly string[];
+            risks: readonly string[];
+            tasks: readonly (({
+                id: string;
+                title: string;
+                why?: string;
+                status?: string;
+                dependencies?: readonly string[];
+                likelyFiles?: readonly string[];
+                verification?: readonly string[];
+                canRunConcurrently?: boolean;
+                needsReview?: boolean;
+                blockedOnUserInput?: boolean;
+                recommendedAgent?: string;
+                metadata?: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            dependencies: readonly JsonValue[];
+            verificationGates: readonly JsonValue[];
+            agentAssignments: readonly JsonValue[];
+            readiness: string;
+            executionApproved: boolean;
+            createdAt: number;
+            updatedAt: number;
+            metadata?: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        });
+        source?: ({
+            id: string;
+            connectorId: string;
+            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
+            title?: string;
+            sourceUri?: string;
+            canonicalUri?: string;
+            summary?: string;
+            description?: string;
+            tags: readonly string[];
+            folderPath?: string;
+            status: string;
+            artifactId?: string;
+            contentHash?: string;
+            lastCrawledAt?: number;
+            crawlError?: string;
+            sessionId?: string;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "projectPlanning.state.upsert": ({
+        ok: boolean;
+        projectId: string;
+        knowledgeSpaceId: string;
+        state?: null | ({
+            id: string;
+            projectId: string;
+            knowledgeSpaceId: string;
+            goal: string;
+            scope?: string;
+            knownContext: readonly string[];
+            openQuestions: readonly (({
+                id: string;
+                prompt: string;
+                whyItMatters?: string;
+                recommendedAnswer?: string;
+                consequence?: string;
+                status?: string;
+                answer?: string;
+                answeredAt?: number;
+                metadata?: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            answeredQuestions: readonly (({
+                id: string;
+                prompt: string;
+                whyItMatters?: string;
+                recommendedAnswer?: string;
+                consequence?: string;
+                status?: string;
+                answer?: string;
+                answeredAt?: number;
+                metadata?: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            decisions: readonly (({
+                id: string;
+                title: string;
+                context?: string;
+                decision: string;
+                alternatives?: readonly string[];
+                reasoning?: string;
+                consequences?: readonly string[];
+                status?: string;
+                createdAt?: number;
+                updatedAt?: number;
+                metadata?: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            assumptions: readonly string[];
+            constraints: readonly string[];
+            risks: readonly string[];
+            tasks: readonly (({
+                id: string;
+                title: string;
+                why?: string;
+                status?: string;
+                dependencies?: readonly string[];
+                likelyFiles?: readonly string[];
+                verification?: readonly string[];
+                canRunConcurrently?: boolean;
+                needsReview?: boolean;
+                blockedOnUserInput?: boolean;
+                recommendedAgent?: string;
+                metadata?: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            dependencies: readonly JsonValue[];
+            verificationGates: readonly JsonValue[];
+            agentAssignments: readonly JsonValue[];
+            readiness: string;
+            executionApproved: boolean;
+            createdAt: number;
+            updatedAt: number;
+            metadata?: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        });
+        source?: ({
+            id: string;
+            connectorId: string;
+            sourceType: "bookmark" | "bookmark-list" | "dataset" | "document" | "history" | "image" | "manual" | "other" | "repo" | "url";
+            title?: string;
+            sourceUri?: string;
+            canonicalUri?: string;
+            summary?: string;
+            description?: string;
+            tags: readonly string[];
+            folderPath?: string;
+            status: string;
+            artifactId?: string;
+            contentHash?: string;
+            lastCrawledAt?: number;
+            crawlError?: string;
+            sessionId?: string;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            createdAt: number;
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "projectPlanning.status": ({
+        ok: boolean;
+        projectId: string;
+        knowledgeSpaceId: string;
+        passiveOnly: boolean;
+        counts: ({} & {
+            readonly [key: string]: ({} & {
+                readonly [key: string]: JsonValue;
+            }) | boolean | null | number | readonly JsonValue[] | string;
+        });
+        capabilities: readonly string[];
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "projectPlanning.workPlan.clearCompleted": ({
+        ok: boolean;
+        projectId: string;
+        knowledgeSpaceId: string;
+        workPlanId: string;
+        task?: ({
+            taskId: string;
+            projectId: string;
+            knowledgeSpaceId: string;
+            title: string;
+            notes?: string;
+            owner?: string;
+            status: string;
+            priority?: number;
+            order: number;
+            source?: string;
+            tags: readonly string[];
+            parentTaskId?: string;
+            chainId?: string;
+            phaseId?: string;
+            agentId?: string;
+            turnId?: string;
+            decisionId?: string;
+            sourceMessageId?: string;
+            linkedArtifactIds: readonly string[];
+            linkedSourceIds: readonly string[];
+            linkedNodeIds: readonly string[];
+            originSurface?: string;
+            createdAt: number;
+            updatedAt: number;
+            completedAt?: number;
+            metadata?: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        });
+        previousTask?: ({
+            taskId: string;
+            projectId: string;
+            knowledgeSpaceId: string;
+            title: string;
+            notes?: string;
+            owner?: string;
+            status: string;
+            priority?: number;
+            order: number;
+            source?: string;
+            tags: readonly string[];
+            parentTaskId?: string;
+            chainId?: string;
+            phaseId?: string;
+            agentId?: string;
+            turnId?: string;
+            decisionId?: string;
+            sourceMessageId?: string;
+            linkedArtifactIds: readonly string[];
+            linkedSourceIds: readonly string[];
+            linkedNodeIds: readonly string[];
+            originSurface?: string;
+            createdAt: number;
+            updatedAt: number;
+            completedAt?: number;
+            metadata?: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        });
+        deletedTask?: ({
+            taskId: string;
+            projectId: string;
+            knowledgeSpaceId: string;
+            title: string;
+            notes?: string;
+            owner?: string;
+            status: string;
+            priority?: number;
+            order: number;
+            source?: string;
+            tags: readonly string[];
+            parentTaskId?: string;
+            chainId?: string;
+            phaseId?: string;
+            agentId?: string;
+            turnId?: string;
+            decisionId?: string;
+            sourceMessageId?: string;
+            linkedArtifactIds: readonly string[];
+            linkedSourceIds: readonly string[];
+            linkedNodeIds: readonly string[];
+            originSurface?: string;
+            createdAt: number;
+            updatedAt: number;
+            completedAt?: number;
+            metadata?: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        });
+        clearedTaskIds?: readonly string[];
+        snapshot: ({
+            ok: boolean;
+            projectId: string;
+            knowledgeSpaceId: string;
+            workPlanId: string;
+            tasks: readonly (({
+                taskId: string;
+                projectId: string;
+                knowledgeSpaceId: string;
+                title: string;
+                notes?: string;
+                owner?: string;
+                status: string;
+                priority?: number;
+                order: number;
+                source?: string;
+                tags: readonly string[];
+                parentTaskId?: string;
+                chainId?: string;
+                phaseId?: string;
+                agentId?: string;
+                turnId?: string;
+                decisionId?: string;
+                sourceMessageId?: string;
+                linkedArtifactIds: readonly string[];
+                linkedSourceIds: readonly string[];
+                linkedNodeIds: readonly string[];
+                originSurface?: string;
+                createdAt: number;
+                updatedAt: number;
+                completedAt?: number;
+                metadata?: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            counts: {
+                total: number;
+                pending: number;
+                in_progress: number;
+                blocked: number;
+                done: number;
+                failed: number;
+                cancelled: number;
+            };
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "projectPlanning.workPlan.snapshot": ({
+        ok: boolean;
+        projectId: string;
+        knowledgeSpaceId: string;
+        workPlanId: string;
+        tasks: readonly (({
+            taskId: string;
+            projectId: string;
+            knowledgeSpaceId: string;
+            title: string;
+            notes?: string;
+            owner?: string;
+            status: string;
+            priority?: number;
+            order: number;
+            source?: string;
+            tags: readonly string[];
+            parentTaskId?: string;
+            chainId?: string;
+            phaseId?: string;
+            agentId?: string;
+            turnId?: string;
+            decisionId?: string;
+            sourceMessageId?: string;
+            linkedArtifactIds: readonly string[];
+            linkedSourceIds: readonly string[];
+            linkedNodeIds: readonly string[];
+            originSurface?: string;
+            createdAt: number;
+            updatedAt: number;
+            completedAt?: number;
+            metadata?: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+        counts: {
+            total: number;
+            pending: number;
+            in_progress: number;
+            blocked: number;
+            done: number;
+            failed: number;
+            cancelled: number;
+        };
+        updatedAt: number;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "projectPlanning.workPlan.task.create": ({
+        ok: boolean;
+        projectId: string;
+        knowledgeSpaceId: string;
+        workPlanId: string;
+        task?: ({
+            taskId: string;
+            projectId: string;
+            knowledgeSpaceId: string;
+            title: string;
+            notes?: string;
+            owner?: string;
+            status: string;
+            priority?: number;
+            order: number;
+            source?: string;
+            tags: readonly string[];
+            parentTaskId?: string;
+            chainId?: string;
+            phaseId?: string;
+            agentId?: string;
+            turnId?: string;
+            decisionId?: string;
+            sourceMessageId?: string;
+            linkedArtifactIds: readonly string[];
+            linkedSourceIds: readonly string[];
+            linkedNodeIds: readonly string[];
+            originSurface?: string;
+            createdAt: number;
+            updatedAt: number;
+            completedAt?: number;
+            metadata?: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        });
+        previousTask?: ({
+            taskId: string;
+            projectId: string;
+            knowledgeSpaceId: string;
+            title: string;
+            notes?: string;
+            owner?: string;
+            status: string;
+            priority?: number;
+            order: number;
+            source?: string;
+            tags: readonly string[];
+            parentTaskId?: string;
+            chainId?: string;
+            phaseId?: string;
+            agentId?: string;
+            turnId?: string;
+            decisionId?: string;
+            sourceMessageId?: string;
+            linkedArtifactIds: readonly string[];
+            linkedSourceIds: readonly string[];
+            linkedNodeIds: readonly string[];
+            originSurface?: string;
+            createdAt: number;
+            updatedAt: number;
+            completedAt?: number;
+            metadata?: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        });
+        deletedTask?: ({
+            taskId: string;
+            projectId: string;
+            knowledgeSpaceId: string;
+            title: string;
+            notes?: string;
+            owner?: string;
+            status: string;
+            priority?: number;
+            order: number;
+            source?: string;
+            tags: readonly string[];
+            parentTaskId?: string;
+            chainId?: string;
+            phaseId?: string;
+            agentId?: string;
+            turnId?: string;
+            decisionId?: string;
+            sourceMessageId?: string;
+            linkedArtifactIds: readonly string[];
+            linkedSourceIds: readonly string[];
+            linkedNodeIds: readonly string[];
+            originSurface?: string;
+            createdAt: number;
+            updatedAt: number;
+            completedAt?: number;
+            metadata?: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        });
+        clearedTaskIds?: readonly string[];
+        snapshot: ({
+            ok: boolean;
+            projectId: string;
+            knowledgeSpaceId: string;
+            workPlanId: string;
+            tasks: readonly (({
+                taskId: string;
+                projectId: string;
+                knowledgeSpaceId: string;
+                title: string;
+                notes?: string;
+                owner?: string;
+                status: string;
+                priority?: number;
+                order: number;
+                source?: string;
+                tags: readonly string[];
+                parentTaskId?: string;
+                chainId?: string;
+                phaseId?: string;
+                agentId?: string;
+                turnId?: string;
+                decisionId?: string;
+                sourceMessageId?: string;
+                linkedArtifactIds: readonly string[];
+                linkedSourceIds: readonly string[];
+                linkedNodeIds: readonly string[];
+                originSurface?: string;
+                createdAt: number;
+                updatedAt: number;
+                completedAt?: number;
+                metadata?: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            counts: {
+                total: number;
+                pending: number;
+                in_progress: number;
+                blocked: number;
+                done: number;
+                failed: number;
+                cancelled: number;
+            };
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "projectPlanning.workPlan.task.delete": ({
+        ok: boolean;
+        projectId: string;
+        knowledgeSpaceId: string;
+        workPlanId: string;
+        task?: ({
+            taskId: string;
+            projectId: string;
+            knowledgeSpaceId: string;
+            title: string;
+            notes?: string;
+            owner?: string;
+            status: string;
+            priority?: number;
+            order: number;
+            source?: string;
+            tags: readonly string[];
+            parentTaskId?: string;
+            chainId?: string;
+            phaseId?: string;
+            agentId?: string;
+            turnId?: string;
+            decisionId?: string;
+            sourceMessageId?: string;
+            linkedArtifactIds: readonly string[];
+            linkedSourceIds: readonly string[];
+            linkedNodeIds: readonly string[];
+            originSurface?: string;
+            createdAt: number;
+            updatedAt: number;
+            completedAt?: number;
+            metadata?: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        });
+        previousTask?: ({
+            taskId: string;
+            projectId: string;
+            knowledgeSpaceId: string;
+            title: string;
+            notes?: string;
+            owner?: string;
+            status: string;
+            priority?: number;
+            order: number;
+            source?: string;
+            tags: readonly string[];
+            parentTaskId?: string;
+            chainId?: string;
+            phaseId?: string;
+            agentId?: string;
+            turnId?: string;
+            decisionId?: string;
+            sourceMessageId?: string;
+            linkedArtifactIds: readonly string[];
+            linkedSourceIds: readonly string[];
+            linkedNodeIds: readonly string[];
+            originSurface?: string;
+            createdAt: number;
+            updatedAt: number;
+            completedAt?: number;
+            metadata?: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        });
+        deletedTask?: ({
+            taskId: string;
+            projectId: string;
+            knowledgeSpaceId: string;
+            title: string;
+            notes?: string;
+            owner?: string;
+            status: string;
+            priority?: number;
+            order: number;
+            source?: string;
+            tags: readonly string[];
+            parentTaskId?: string;
+            chainId?: string;
+            phaseId?: string;
+            agentId?: string;
+            turnId?: string;
+            decisionId?: string;
+            sourceMessageId?: string;
+            linkedArtifactIds: readonly string[];
+            linkedSourceIds: readonly string[];
+            linkedNodeIds: readonly string[];
+            originSurface?: string;
+            createdAt: number;
+            updatedAt: number;
+            completedAt?: number;
+            metadata?: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        });
+        clearedTaskIds?: readonly string[];
+        snapshot: ({
+            ok: boolean;
+            projectId: string;
+            knowledgeSpaceId: string;
+            workPlanId: string;
+            tasks: readonly (({
+                taskId: string;
+                projectId: string;
+                knowledgeSpaceId: string;
+                title: string;
+                notes?: string;
+                owner?: string;
+                status: string;
+                priority?: number;
+                order: number;
+                source?: string;
+                tags: readonly string[];
+                parentTaskId?: string;
+                chainId?: string;
+                phaseId?: string;
+                agentId?: string;
+                turnId?: string;
+                decisionId?: string;
+                sourceMessageId?: string;
+                linkedArtifactIds: readonly string[];
+                linkedSourceIds: readonly string[];
+                linkedNodeIds: readonly string[];
+                originSurface?: string;
+                createdAt: number;
+                updatedAt: number;
+                completedAt?: number;
+                metadata?: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            counts: {
+                total: number;
+                pending: number;
+                in_progress: number;
+                blocked: number;
+                done: number;
+                failed: number;
+                cancelled: number;
+            };
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "projectPlanning.workPlan.task.get": ({
+        ok: boolean;
+        projectId: string;
+        knowledgeSpaceId: string;
+        workPlanId: string;
+        task: null | ({
+            taskId: string;
+            projectId: string;
+            knowledgeSpaceId: string;
+            title: string;
+            notes?: string;
+            owner?: string;
+            status: string;
+            priority?: number;
+            order: number;
+            source?: string;
+            tags: readonly string[];
+            parentTaskId?: string;
+            chainId?: string;
+            phaseId?: string;
+            agentId?: string;
+            turnId?: string;
+            decisionId?: string;
+            sourceMessageId?: string;
+            linkedArtifactIds: readonly string[];
+            linkedSourceIds: readonly string[];
+            linkedNodeIds: readonly string[];
+            originSurface?: string;
+            createdAt: number;
+            updatedAt: number;
+            completedAt?: number;
+            metadata?: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        });
+        snapshot: ({
+            ok: boolean;
+            projectId: string;
+            knowledgeSpaceId: string;
+            workPlanId: string;
+            tasks: readonly (({
+                taskId: string;
+                projectId: string;
+                knowledgeSpaceId: string;
+                title: string;
+                notes?: string;
+                owner?: string;
+                status: string;
+                priority?: number;
+                order: number;
+                source?: string;
+                tags: readonly string[];
+                parentTaskId?: string;
+                chainId?: string;
+                phaseId?: string;
+                agentId?: string;
+                turnId?: string;
+                decisionId?: string;
+                sourceMessageId?: string;
+                linkedArtifactIds: readonly string[];
+                linkedSourceIds: readonly string[];
+                linkedNodeIds: readonly string[];
+                originSurface?: string;
+                createdAt: number;
+                updatedAt: number;
+                completedAt?: number;
+                metadata?: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            counts: {
+                total: number;
+                pending: number;
+                in_progress: number;
+                blocked: number;
+                done: number;
+                failed: number;
+                cancelled: number;
+            };
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "projectPlanning.workPlan.task.status": ({
+        ok: boolean;
+        projectId: string;
+        knowledgeSpaceId: string;
+        workPlanId: string;
+        task?: ({
+            taskId: string;
+            projectId: string;
+            knowledgeSpaceId: string;
+            title: string;
+            notes?: string;
+            owner?: string;
+            status: string;
+            priority?: number;
+            order: number;
+            source?: string;
+            tags: readonly string[];
+            parentTaskId?: string;
+            chainId?: string;
+            phaseId?: string;
+            agentId?: string;
+            turnId?: string;
+            decisionId?: string;
+            sourceMessageId?: string;
+            linkedArtifactIds: readonly string[];
+            linkedSourceIds: readonly string[];
+            linkedNodeIds: readonly string[];
+            originSurface?: string;
+            createdAt: number;
+            updatedAt: number;
+            completedAt?: number;
+            metadata?: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        });
+        previousTask?: ({
+            taskId: string;
+            projectId: string;
+            knowledgeSpaceId: string;
+            title: string;
+            notes?: string;
+            owner?: string;
+            status: string;
+            priority?: number;
+            order: number;
+            source?: string;
+            tags: readonly string[];
+            parentTaskId?: string;
+            chainId?: string;
+            phaseId?: string;
+            agentId?: string;
+            turnId?: string;
+            decisionId?: string;
+            sourceMessageId?: string;
+            linkedArtifactIds: readonly string[];
+            linkedSourceIds: readonly string[];
+            linkedNodeIds: readonly string[];
+            originSurface?: string;
+            createdAt: number;
+            updatedAt: number;
+            completedAt?: number;
+            metadata?: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        });
+        deletedTask?: ({
+            taskId: string;
+            projectId: string;
+            knowledgeSpaceId: string;
+            title: string;
+            notes?: string;
+            owner?: string;
+            status: string;
+            priority?: number;
+            order: number;
+            source?: string;
+            tags: readonly string[];
+            parentTaskId?: string;
+            chainId?: string;
+            phaseId?: string;
+            agentId?: string;
+            turnId?: string;
+            decisionId?: string;
+            sourceMessageId?: string;
+            linkedArtifactIds: readonly string[];
+            linkedSourceIds: readonly string[];
+            linkedNodeIds: readonly string[];
+            originSurface?: string;
+            createdAt: number;
+            updatedAt: number;
+            completedAt?: number;
+            metadata?: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        });
+        clearedTaskIds?: readonly string[];
+        snapshot: ({
+            ok: boolean;
+            projectId: string;
+            knowledgeSpaceId: string;
+            workPlanId: string;
+            tasks: readonly (({
+                taskId: string;
+                projectId: string;
+                knowledgeSpaceId: string;
+                title: string;
+                notes?: string;
+                owner?: string;
+                status: string;
+                priority?: number;
+                order: number;
+                source?: string;
+                tags: readonly string[];
+                parentTaskId?: string;
+                chainId?: string;
+                phaseId?: string;
+                agentId?: string;
+                turnId?: string;
+                decisionId?: string;
+                sourceMessageId?: string;
+                linkedArtifactIds: readonly string[];
+                linkedSourceIds: readonly string[];
+                linkedNodeIds: readonly string[];
+                originSurface?: string;
+                createdAt: number;
+                updatedAt: number;
+                completedAt?: number;
+                metadata?: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            counts: {
+                total: number;
+                pending: number;
+                in_progress: number;
+                blocked: number;
+                done: number;
+                failed: number;
+                cancelled: number;
+            };
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "projectPlanning.workPlan.task.update": ({
+        ok: boolean;
+        projectId: string;
+        knowledgeSpaceId: string;
+        workPlanId: string;
+        task?: ({
+            taskId: string;
+            projectId: string;
+            knowledgeSpaceId: string;
+            title: string;
+            notes?: string;
+            owner?: string;
+            status: string;
+            priority?: number;
+            order: number;
+            source?: string;
+            tags: readonly string[];
+            parentTaskId?: string;
+            chainId?: string;
+            phaseId?: string;
+            agentId?: string;
+            turnId?: string;
+            decisionId?: string;
+            sourceMessageId?: string;
+            linkedArtifactIds: readonly string[];
+            linkedSourceIds: readonly string[];
+            linkedNodeIds: readonly string[];
+            originSurface?: string;
+            createdAt: number;
+            updatedAt: number;
+            completedAt?: number;
+            metadata?: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        });
+        previousTask?: ({
+            taskId: string;
+            projectId: string;
+            knowledgeSpaceId: string;
+            title: string;
+            notes?: string;
+            owner?: string;
+            status: string;
+            priority?: number;
+            order: number;
+            source?: string;
+            tags: readonly string[];
+            parentTaskId?: string;
+            chainId?: string;
+            phaseId?: string;
+            agentId?: string;
+            turnId?: string;
+            decisionId?: string;
+            sourceMessageId?: string;
+            linkedArtifactIds: readonly string[];
+            linkedSourceIds: readonly string[];
+            linkedNodeIds: readonly string[];
+            originSurface?: string;
+            createdAt: number;
+            updatedAt: number;
+            completedAt?: number;
+            metadata?: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        });
+        deletedTask?: ({
+            taskId: string;
+            projectId: string;
+            knowledgeSpaceId: string;
+            title: string;
+            notes?: string;
+            owner?: string;
+            status: string;
+            priority?: number;
+            order: number;
+            source?: string;
+            tags: readonly string[];
+            parentTaskId?: string;
+            chainId?: string;
+            phaseId?: string;
+            agentId?: string;
+            turnId?: string;
+            decisionId?: string;
+            sourceMessageId?: string;
+            linkedArtifactIds: readonly string[];
+            linkedSourceIds: readonly string[];
+            linkedNodeIds: readonly string[];
+            originSurface?: string;
+            createdAt: number;
+            updatedAt: number;
+            completedAt?: number;
+            metadata?: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        });
+        clearedTaskIds?: readonly string[];
+        snapshot: ({
+            ok: boolean;
+            projectId: string;
+            knowledgeSpaceId: string;
+            workPlanId: string;
+            tasks: readonly (({
+                taskId: string;
+                projectId: string;
+                knowledgeSpaceId: string;
+                title: string;
+                notes?: string;
+                owner?: string;
+                status: string;
+                priority?: number;
+                order: number;
+                source?: string;
+                tags: readonly string[];
+                parentTaskId?: string;
+                chainId?: string;
+                phaseId?: string;
+                agentId?: string;
+                turnId?: string;
+                decisionId?: string;
+                sourceMessageId?: string;
+                linkedArtifactIds: readonly string[];
+                linkedSourceIds: readonly string[];
+                linkedNodeIds: readonly string[];
+                originSurface?: string;
+                createdAt: number;
+                updatedAt: number;
+                completedAt?: number;
+                metadata?: ({} & {
+                    readonly [key: string]: ({} & {
+                        readonly [key: string]: JsonValue;
+                    }) | boolean | null | number | readonly JsonValue[] | string;
+                });
+            } & {
+                readonly [key: string]: unknown;
+            }))[];
+            counts: {
+                total: number;
+                pending: number;
+                in_progress: number;
+                blocked: number;
+                done: number;
+                failed: number;
+                cancelled: number;
+            };
+            updatedAt: number;
+        } & {
+            readonly [key: string]: unknown;
+        });
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "projectPlanning.workPlan.tasks.list": ({
+        ok: boolean;
+        projectId: string;
+        knowledgeSpaceId: string;
+        workPlanId: string;
+        tasks: readonly (({
+            taskId: string;
+            projectId: string;
+            knowledgeSpaceId: string;
+            title: string;
+            notes?: string;
+            owner?: string;
+            status: string;
+            priority?: number;
+            order: number;
+            source?: string;
+            tags: readonly string[];
+            parentTaskId?: string;
+            chainId?: string;
+            phaseId?: string;
+            agentId?: string;
+            turnId?: string;
+            decisionId?: string;
+            sourceMessageId?: string;
+            linkedArtifactIds: readonly string[];
+            linkedSourceIds: readonly string[];
+            linkedNodeIds: readonly string[];
+            originSurface?: string;
+            createdAt: number;
+            updatedAt: number;
+            completedAt?: number;
+            metadata?: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+        counts: {
+            total: number;
+            pending: number;
+            in_progress: number;
+            blocked: number;
+            done: number;
+            failed: number;
+            cancelled: number;
+        };
+        updatedAt: number;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
+    "projectPlanning.workPlan.tasks.reorder": ({
+        ok: boolean;
+        projectId: string;
+        knowledgeSpaceId: string;
+        workPlanId: string;
+        tasks: readonly (({
+            taskId: string;
+            projectId: string;
+            knowledgeSpaceId: string;
+            title: string;
+            notes?: string;
+            owner?: string;
+            status: string;
+            priority?: number;
+            order: number;
+            source?: string;
+            tags: readonly string[];
+            parentTaskId?: string;
+            chainId?: string;
+            phaseId?: string;
+            agentId?: string;
+            turnId?: string;
+            decisionId?: string;
+            sourceMessageId?: string;
+            linkedArtifactIds: readonly string[];
+            linkedSourceIds: readonly string[];
+            linkedNodeIds: readonly string[];
+            originSurface?: string;
+            createdAt: number;
+            updatedAt: number;
+            completedAt?: number;
+            metadata?: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        } & {
+            readonly [key: string]: unknown;
+        }))[];
+        counts: {
+            total: number;
+            pending: number;
+            in_progress: number;
+            blocked: number;
+            done: number;
+            failed: number;
+            cancelled: number;
+        };
+        updatedAt: number;
+    } & {
+        readonly [key: string]: unknown;
+    });
+    // (undocumented)
     "providers.get": {
         providerId: string;
         active: boolean;
@@ -13546,6 +19203,39 @@ export interface OperatorMethodOutputMap {
         readonly [key: string]: unknown;
     });
     // (undocumented)
+    "push.subscriptions.create": {
+        subscription: {
+            id: string;
+            principalId: string;
+            deviceId?: string;
+            endpointOrigin: string;
+            endpointHash: string;
+            createdAt: number;
+            lastDeliveryAt?: number;
+            lastOutcome?: string;
+            consecutiveFailures?: number;
+        };
+    };
+    // (undocumented)
+    "push.subscriptions.delete": {
+        subscriptionId: string;
+        deleted: boolean;
+    };
+    // (undocumented)
+    "push.subscriptions.list": {
+        subscriptions: readonly ({
+            id: string;
+            principalId: string;
+            deviceId?: string;
+            endpointOrigin: string;
+            endpointHash: string;
+            createdAt: number;
+            lastDeliveryAt?: number;
+            lastOutcome?: string;
+            consecutiveFailures?: number;
+        })[];
+    };
+    // (undocumented)
     "push.subscriptions.reconcile": {
         subscription: {
             id: string;
@@ -13559,6 +19249,20 @@ export interface OperatorMethodOutputMap {
             consecutiveFailures?: number;
         };
         drift: string;
+    };
+    // (undocumented)
+    "push.subscriptions.verify": {
+        receipt: {
+            subscriptionId: string;
+            endpointOrigin: string;
+            outcome: string;
+            httpStatus?: number;
+            detail?: string;
+        };
+    };
+    // (undocumented)
+    "push.vapid.get": {
+        publicKey: string;
     };
     // (undocumented)
     "quota.fanout.get": {
@@ -13591,7 +19295,7 @@ export interface OperatorMethodOutputMap {
             transport: string;
             basePath: string;
             peerKinds: readonly ("device" | "node")[];
-            workTypes: readonly ("automation.run" | "invoke" | "location.request" | "session.message" | "status.request")[];
+            workTypes: readonly ("automation.run" | "device.capability" | "invoke" | "location.request" | "session.message" | "status.request")[];
             scopes: readonly string[];
             recommendedHeartbeatMs: number;
             recommendedWorkPullMs: number;
@@ -13815,7 +19519,7 @@ export interface OperatorMethodOutputMap {
             id: string;
             peerId: string;
             peerKind: "device" | "node";
-            type: "automation.run" | "invoke" | "location.request" | "session.message" | "status.request";
+            type: "automation.run" | "device.capability" | "invoke" | "location.request" | "session.message" | "status.request";
             command: string;
             priority: "default" | "high" | "normal";
             status: "cancelled" | "claimed" | "completed" | "expired" | "failed" | "queued";
@@ -14168,7 +19872,7 @@ export interface OperatorMethodOutputMap {
                 id: string;
                 peerId: string;
                 peerKind: "device" | "node";
-                type: "automation.run" | "invoke" | "location.request" | "session.message" | "status.request";
+                type: "automation.run" | "device.capability" | "invoke" | "location.request" | "session.message" | "status.request";
                 command: string;
                 priority: "default" | "high" | "normal";
                 status: "cancelled" | "claimed" | "completed" | "expired" | "failed" | "queued";
@@ -14243,7 +19947,7 @@ export interface OperatorMethodOutputMap {
             id: string;
             peerId: string;
             peerKind: "device" | "node";
-            type: "automation.run" | "invoke" | "location.request" | "session.message" | "status.request";
+            type: "automation.run" | "device.capability" | "invoke" | "location.request" | "session.message" | "status.request";
             command: string;
             priority: "default" | "high" | "normal";
             status: "cancelled" | "claimed" | "completed" | "expired" | "failed" | "queued";
@@ -14300,7 +20004,7 @@ export interface OperatorMethodOutputMap {
             id: string;
             peerId: string;
             peerKind: "device" | "node";
-            type: "automation.run" | "invoke" | "location.request" | "session.message" | "status.request";
+            type: "automation.run" | "device.capability" | "invoke" | "location.request" | "session.message" | "status.request";
             command: string;
             priority: "default" | "high" | "normal";
             status: "cancelled" | "claimed" | "completed" | "expired" | "failed" | "queued";
@@ -14422,7 +20126,7 @@ export interface OperatorMethodOutputMap {
     "routes.bindings.create": ({
         id: string;
         kind: "channel" | "message" | "session" | "thread";
-        surfaceKind: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+        surfaceKind: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
         surfaceId: string;
         externalId: string;
         sessionPolicy?: "continue-existing" | "create-or-bind" | "require-existing";
@@ -14457,7 +20161,7 @@ export interface OperatorMethodOutputMap {
         bindings: readonly (({
             id: string;
             kind: "channel" | "message" | "session" | "thread";
-            surfaceKind: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+            surfaceKind: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
             surfaceId: string;
             externalId: string;
             sessionPolicy?: "continue-existing" | "create-or-bind" | "require-existing";
@@ -14485,7 +20189,7 @@ export interface OperatorMethodOutputMap {
     "routes.bindings.update": ({
         id: string;
         kind: "channel" | "message" | "session" | "thread";
-        surfaceKind: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+        surfaceKind: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
         surfaceId: string;
         externalId: string;
         sessionPolicy?: "continue-existing" | "create-or-bind" | "require-existing";
@@ -14516,7 +20220,7 @@ export interface OperatorMethodOutputMap {
         bindings: readonly (({
             id: string;
             kind: "channel" | "message" | "session" | "thread";
-            surfaceKind: "bluebubbles" | "discord" | "google-chat" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "tui" | "web" | "webhook" | "whatsapp";
+            surfaceKind: "bluebubbles" | "discord" | "google-chat" | "homeassistant" | "imessage" | "matrix" | "mattermost" | "msteams" | "ntfy" | "service" | "signal" | "slack" | "telegram" | "telephony" | "tui" | "web" | "webhook" | "whatsapp";
             surfaceId: string;
             externalId: string;
             sessionPolicy?: "continue-existing" | "create-or-bind" | "require-existing";
@@ -14543,28 +20247,36 @@ export interface OperatorMethodOutputMap {
     // (undocumented)
     "runtime.metrics.get": {
         counters: ({} & {
-            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
+            readonly [key: string]: unknown;
         });
         gauges: ({} & {
-            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
+            readonly [key: string]: unknown;
         });
         histograms: ({} & {
-            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
+            readonly [key: string]: unknown;
         });
         toolFormat: {
             byModel: ({} & {
-                readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
+                readonly [key: string]: unknown;
             });
             byClass: ({} & {
-                readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
+                readonly [key: string]: unknown;
             });
         };
+    };
+    // (undocumented)
+    "scheduler.capacity": {
+        slotsTotal: number;
+        slotsInUse: number;
+        queueDepth: number;
+        oldestQueuedAgeMs: null | number;
     };
     // (undocumented)
     "security.settings": {
         settings: readonly ({
             key: string;
-            type: "configuration" | "feature-flag";
+            type: "configuration" | "setting";
+            featureId: string;
             defaultState: string;
             currentState: string;
             securityRelevant: boolean;
@@ -14578,6 +20290,7 @@ export interface OperatorMethodOutputMap {
     // (undocumented)
     "services.install": ({
         platform: string;
+        serviceName: string;
         path: string;
         installed: boolean;
         autostart: boolean;
@@ -14642,6 +20355,7 @@ export interface OperatorMethodOutputMap {
     // (undocumented)
     "services.restart": ({
         platform: string;
+        serviceName: string;
         path: string;
         installed: boolean;
         autostart: boolean;
@@ -14706,6 +20420,7 @@ export interface OperatorMethodOutputMap {
     // (undocumented)
     "services.start": ({
         platform: string;
+        serviceName: string;
         path: string;
         installed: boolean;
         autostart: boolean;
@@ -14770,6 +20485,7 @@ export interface OperatorMethodOutputMap {
     // (undocumented)
     "services.status": ({
         platform: string;
+        serviceName: string;
         path: string;
         installed: boolean;
         autostart: boolean;
@@ -14834,6 +20550,7 @@ export interface OperatorMethodOutputMap {
     // (undocumented)
     "services.stop": ({
         platform: string;
+        serviceName: string;
         path: string;
         installed: boolean;
         autostart: boolean;
@@ -14898,6 +20615,7 @@ export interface OperatorMethodOutputMap {
     // (undocumented)
     "services.uninstall": ({
         platform: string;
+        serviceName: string;
         path: string;
         installed: boolean;
         autostart: boolean;
@@ -14974,7 +20692,8 @@ export interface OperatorMethodOutputMap {
     "sessions.close": ({
         session: {
             id: string;
-            kind: "companion-chat" | "companion-task" | "tui";
+            kind: string;
+            project?: string;
             title: string;
             status: "active" | "closed";
             createdAt: number;
@@ -14983,6 +20702,7 @@ export interface OperatorMethodOutputMap {
             closedAt?: number;
             lastActivityAt: number;
             messageCount: number;
+            retainedMessageCount?: number;
             pendingInputCount: number;
             routeIds: readonly string[];
             surfaceKinds: readonly string[];
@@ -15020,7 +20740,8 @@ export interface OperatorMethodOutputMap {
     "sessions.create": {
         session: {
             id: string;
-            kind: "companion-chat" | "companion-task" | "tui";
+            kind: string;
+            project?: string;
             title: string;
             status: "active" | "closed";
             createdAt: number;
@@ -15029,6 +20750,7 @@ export interface OperatorMethodOutputMap {
             closedAt?: number;
             lastActivityAt: number;
             messageCount: number;
+            retainedMessageCount?: number;
             pendingInputCount: number;
             routeIds: readonly string[];
             surfaceKinds: readonly string[];
@@ -15099,7 +20821,8 @@ export interface OperatorMethodOutputMap {
     "sessions.followUp": {
         session: null | {
             id: string;
-            kind: "companion-chat" | "companion-task" | "tui";
+            kind: string;
+            project?: string;
             title: string;
             status: "active" | "closed";
             createdAt: number;
@@ -15108,6 +20831,7 @@ export interface OperatorMethodOutputMap {
             closedAt?: number;
             lastActivityAt: number;
             messageCount: number;
+            retainedMessageCount?: number;
             pendingInputCount: number;
             routeIds: readonly string[];
             surfaceKinds: readonly string[];
@@ -15191,14 +20915,15 @@ export interface OperatorMethodOutputMap {
             };
             error?: string;
         };
-        mode: "continued-live" | "queued-follow-up" | "rejected" | "spawn";
+        mode: "continued-live" | "queued-follow-up" | "queued-for-surface" | "rejected" | "spawn";
         agentId: null | string;
     };
     // (undocumented)
     "sessions.get": {
         session: {
             id: string;
-            kind: "companion-chat" | "companion-task" | "tui";
+            kind: string;
+            project?: string;
             title: string;
             status: "active" | "closed";
             createdAt: number;
@@ -15207,6 +20932,7 @@ export interface OperatorMethodOutputMap {
             closedAt?: number;
             lastActivityAt: number;
             messageCount: number;
+            retainedMessageCount?: number;
             pendingInputCount: number;
             routeIds: readonly string[];
             surfaceKinds: readonly string[];
@@ -15295,10 +21021,58 @@ export interface OperatorMethodOutputMap {
         };
     };
     // (undocumented)
+    "sessions.inputs.deliver": {
+        input: {
+            id: string;
+            sessionId: string;
+            intent: "follow-up" | "steer" | "submit";
+            state: "cancelled" | "completed" | "delivered" | "failed" | "queued" | "rejected" | "spawned";
+            correlationId: string;
+            causationId?: string;
+            body: string;
+            createdAt: number;
+            updatedAt: number;
+            routeId?: string;
+            surfaceKind?: string;
+            surfaceId?: string;
+            externalId?: string;
+            threadId?: string;
+            userId?: string;
+            displayName?: string;
+            activeAgentId?: string;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+            routing?: {
+                providerId?: string;
+                modelId?: string;
+                providerSelection?: "concrete" | "inherit-current" | "synthetic";
+                providerFailurePolicy?: "fail" | "ordered-fallbacks";
+                fallbackModels?: readonly string[];
+                helperModel?: {
+                    providerId: string;
+                    modelId: string;
+                };
+                executionIntent?: {
+                    riskClass?: "dangerous" | "elevated" | "safe";
+                    requiresApproval?: boolean;
+                    networkPolicy?: "allow" | "deny" | "inherit" | "scoped";
+                    filesystemPolicy?: "inherit" | "isolated" | "read-only" | "workspace-write";
+                };
+                tools?: readonly string[];
+                reasoningEffort?: "high" | "instant" | "low" | "max" | "medium" | "minimal" | "none" | "xhigh";
+            };
+            error?: string;
+        };
+    };
+    // (undocumented)
     "sessions.inputs.list": {
         session: {
             id: string;
-            kind: "companion-chat" | "companion-task" | "tui";
+            kind: string;
+            project?: string;
             title: string;
             status: "active" | "closed";
             createdAt: number;
@@ -15307,6 +21081,7 @@ export interface OperatorMethodOutputMap {
             closedAt?: number;
             lastActivityAt: number;
             messageCount: number;
+            retainedMessageCount?: number;
             pendingInputCount: number;
             routeIds: readonly string[];
             surfaceKinds: readonly string[];
@@ -15395,7 +21170,8 @@ export interface OperatorMethodOutputMap {
         };
         sessions: readonly ({
             id: string;
-            kind: "companion-chat" | "companion-task" | "tui";
+            kind: string;
+            project?: string;
             title: string;
             status: "active" | "closed";
             createdAt: number;
@@ -15404,6 +21180,7 @@ export interface OperatorMethodOutputMap {
             closedAt?: number;
             lastActivityAt: number;
             messageCount: number;
+            retainedMessageCount?: number;
             pendingInputCount: number;
             routeIds: readonly string[];
             surfaceKinds: readonly string[];
@@ -15427,10 +21204,15 @@ export interface OperatorMethodOutputMap {
         })[];
     };
     // (undocumented)
-    "sessions.messages.create": SharedSessionConversationRouteOutput | {
+    "sessions.messages.create": {
+        messageId: string;
+        routedTo: string;
+        sessionId: string;
+    } | {
         session: null | {
             id: string;
-            kind: "companion-chat" | "companion-task" | "tui";
+            kind: string;
+            project?: string;
             title: string;
             status: "active" | "closed";
             createdAt: number;
@@ -15439,6 +21221,7 @@ export interface OperatorMethodOutputMap {
             closedAt?: number;
             lastActivityAt: number;
             messageCount: number;
+            retainedMessageCount?: number;
             pendingInputCount: number;
             routeIds: readonly string[];
             surfaceKinds: readonly string[];
@@ -15522,14 +21305,15 @@ export interface OperatorMethodOutputMap {
             };
             error?: string;
         };
-        mode: "continued-live" | "queued-follow-up" | "rejected" | "spawn";
+        mode: "continued-live" | "queued-follow-up" | "queued-for-surface" | "rejected" | "spawn";
         agentId: null | string;
     };
     // (undocumented)
     "sessions.messages.list": {
         session: {
             id: string;
-            kind: "companion-chat" | "companion-task" | "tui";
+            kind: string;
+            project?: string;
             title: string;
             status: "active" | "closed";
             createdAt: number;
@@ -15538,6 +21322,7 @@ export interface OperatorMethodOutputMap {
             closedAt?: number;
             lastActivityAt: number;
             messageCount: number;
+            retainedMessageCount?: number;
             pendingInputCount: number;
             routeIds: readonly string[];
             surfaceKinds: readonly string[];
@@ -15611,10 +21396,11 @@ export interface OperatorMethodOutputMap {
         })[];
     };
     // (undocumented)
-    "sessions.reopen": ({
+    "sessions.register": {
         session: {
             id: string;
-            kind: "companion-chat" | "companion-task" | "tui";
+            kind: string;
+            project?: string;
             title: string;
             status: "active" | "closed";
             createdAt: number;
@@ -15623,6 +21409,48 @@ export interface OperatorMethodOutputMap {
             closedAt?: number;
             lastActivityAt: number;
             messageCount: number;
+            retainedMessageCount?: number;
+            pendingInputCount: number;
+            routeIds: readonly string[];
+            surfaceKinds: readonly string[];
+            participants: readonly ({
+                surfaceKind: string;
+                surfaceId: string;
+                externalId?: string;
+                userId?: string;
+                displayName?: string;
+                routeId?: string;
+                lastSeenAt: number;
+            })[];
+            activeAgentId?: string;
+            lastAgentId?: string;
+            lastError?: string;
+            metadata: ({} & {
+                readonly [key: string]: ({} & {
+                    readonly [key: string]: JsonValue;
+                }) | boolean | null | number | readonly JsonValue[] | string;
+            });
+        };
+        reopened: boolean;
+        conflict?: {
+            status: "closed";
+        };
+    };
+    // (undocumented)
+    "sessions.reopen": ({
+        session: {
+            id: string;
+            kind: string;
+            project?: string;
+            title: string;
+            status: "active" | "closed";
+            createdAt: number;
+            updatedAt: number;
+            lastMessageAt?: number;
+            closedAt?: number;
+            lastActivityAt: number;
+            messageCount: number;
+            retainedMessageCount?: number;
             pendingInputCount: number;
             routeIds: readonly string[];
             surfaceKinds: readonly string[];
@@ -15690,7 +21518,8 @@ export interface OperatorMethodOutputMap {
     "sessions.steer": {
         session: null | {
             id: string;
-            kind: "companion-chat" | "companion-task" | "tui";
+            kind: string;
+            project?: string;
             title: string;
             status: "active" | "closed";
             createdAt: number;
@@ -15699,6 +21528,7 @@ export interface OperatorMethodOutputMap {
             closedAt?: number;
             lastActivityAt: number;
             messageCount: number;
+            retainedMessageCount?: number;
             pendingInputCount: number;
             routeIds: readonly string[];
             surfaceKinds: readonly string[];
@@ -15782,7 +21612,7 @@ export interface OperatorMethodOutputMap {
             };
             error?: string;
         };
-        mode: "continued-live" | "queued-follow-up" | "rejected" | "spawn";
+        mode: "continued-live" | "queued-follow-up" | "queued-for-surface" | "rejected" | "spawn";
         agentId: null | string;
     };
     // (undocumented)
@@ -15793,6 +21623,9 @@ export interface OperatorMethodOutputMap {
     };
     // (undocumented)
     "settings.snapshot": {
+        available: boolean;
+        reason: string;
+    } | {
         available: boolean;
         liveKeyCount: number;
         profileCount: number;
@@ -15850,9 +21683,6 @@ export interface OperatorMethodOutputMap {
                 }) | boolean | null | number | readonly JsonValue[] | string;
             });
         })[];
-    } | {
-        available: boolean;
-        reason: string;
     };
     // (undocumented)
     "skills.create": {
@@ -16302,19 +22132,19 @@ export interface OperatorMethodOutputMap {
     // (undocumented)
     "telemetry.otlp.logs": {
         resourceLogs: readonly (({} & {
-            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
+            readonly [key: string]: JsonValue;
         }))[];
     };
     // (undocumented)
     "telemetry.otlp.metrics": {
         resourceMetrics: readonly (({} & {
-            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
+            readonly [key: string]: JsonValue;
         }))[];
     };
     // (undocumented)
     "telemetry.otlp.traces": {
         resourceSpans: readonly (({} & {
-            readonly [key: string]: JsonValue | boolean | null | number | readonly JsonValue[] | string;
+            readonly [key: string]: JsonValue;
         }))[];
     };
     // (undocumented)
@@ -16768,6 +22598,12 @@ export interface OperatorMethodOutputMap {
                 readonly [key: string]: JsonValue;
             }) | boolean | null | number | readonly JsonValue[] | string;
         });
+    };
+    // (undocumented)
+    "voice.tts.stream": {
+        contentType: string;
+        providerId: string;
+        format: string;
     };
     // (undocumented)
     "voice.voices.list": {
@@ -18831,10 +24667,13 @@ export function requestJsonRaw<T>(fetchImpl: typeof fetch, url: string, init?: R
 // @public (undocumented)
 export function requireContractRoute<TRoute extends ContractRouteLike>(routes: readonly TRoute[], routeId: string, kind: string): TRoute;
 
-// @public (undocumented)
-export type RequiredKeys<T extends object> = {
-    [K in keyof T]-?: {} extends Pick<T, K> ? never : K;
-}[keyof T];
+// @public
+export type RequiredKeys<T extends object> = RequiredNamedKeys<T>;
+
+// @public
+export type RequiredNamedKeys<T> = {
+    [K in keyof NamedProps<T>]-?: Record<string, never> extends Pick<NamedProps<T>, K> ? never : K;
+}[keyof NamedProps<T>];
 
 // @public
 export function resolveAuthToken(authToken: string | null | undefined, getAuthToken?: AuthTokenResolver): Promise<string | null>;
@@ -20287,7 +26126,7 @@ export class WebSocketTransportError extends GoodVibesSdkError {
 // @public
 export type WithoutKeys<TInput, TKeys extends PropertyKey> = [
 TInput
-] extends [undefined] ? undefined : TInput extends object ? Omit<TInput, Extract<keyof TInput, TKeys>> : TInput;
+] extends [undefined] ? undefined : TInput extends object ? OmitNamed<TInput, TKeys> : TInput;
 
 // @public (undocumented)
 export type WorkflowEvent = {

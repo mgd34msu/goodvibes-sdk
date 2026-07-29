@@ -97,6 +97,14 @@ export type {
   OperatorMethodOutput,
   OperatorMethodOutputMap,
   OperatorStreamMethodId,
+  // The open-envelope key helpers. Public because the public `RequiredKeys` and
+  // `WithoutKeys` (transport-http client plumbing) are written in terms of them:
+  // without these the entry point exports types whose definitions name symbols
+  // it does not export, which api-extractor reports as ae-forgotten-export.
+  IndexPart,
+  NamedProps,
+  OmitNamed,
+  RequiredNamedKeys,
   OperatorTypedEventId,
   OperatorTypedMethodId,
   PeerEndpointInput,
