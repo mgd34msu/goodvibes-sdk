@@ -246,6 +246,15 @@ describe('a redelivered message produces exactly one notice', () => {
     await harness.clock.advance(1_000);
 
     await waitFor(() => harness.notices.length >= 1, 'the redelivered message to be announced');
+    // The cursor moves strictly AFTER the notice goes out, so the notice is the
+    // wrong edge to wait on for a cursor assertion. On a loaded runner the two
+    // steps stopped landing in the same tick and the assertion below read 101
+    // while the watcher was behaving perfectly — a failure of the wait, not of
+    // the code. Wait for the step actually being asserted.
+    await waitFor(
+      () => harness.cursors.advances.includes(102),
+      'the cursor to advance past the redelivered message',
+    );
     expect(harness.handled).toEqual([102, 102]);
     expect(harness.notices).toEqual([102]);
     expect((await harness.cursors.get(ACCOUNT, MAILBOX))?.lastSeenUid).toBe(102);
