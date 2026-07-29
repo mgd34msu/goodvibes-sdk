@@ -1282,7 +1282,7 @@ export { forSession as forSessionRuntime }
 // @public (undocumented)
 export const FOUNDATION_METADATA: {
     readonly productId: "goodvibes";
-    readonly productVersion: "1.19.0";
+    readonly productVersion: "1.19.1";
     readonly operatorMethodCount: 464;
     readonly operatorEventCount: 32;
     readonly peerEndpointCount: 6;
