@@ -106,6 +106,31 @@ endpoints (6) are unchanged.
 
 ### Fixed
 
+- **An approval that had been answered could go back to `pending` on disk.**
+  `ApprovalBroker` wrote its whole store on every change, from a snapshot taken
+  when the write was requested, and nothing ordered those writes.
+  `PersistentStore.persist` replaces a file atomically but says nothing about
+  order, so two writes in flight at once finished whenever their renames landed
+  — and the write that started first could finish last, putting its older view
+  of the store back over a newer one.
+
+  The window is the one every create passes through: `requestApproval` puts the
+  record in memory before it writes it, so a surface can resolve an approval
+  while the write that created it is still in flight. When that happened, the
+  create's rename landed second and restored the snapshot it took before the
+  approval was answered. After a restart the record read back as `pending`, and
+  because silence on a payment approval means denied, an approved purchase was
+  eventually a denied one — the decision lost, in the path whose whole job is to
+  keep it.
+
+  Writes now go through a per-broker queue (`StoreWriteQueue`): one at a time,
+  in call order, so the newest write is the one that survives. A failed write
+  rejects for its own caller only and never becomes the queue, so one unwritable
+  moment cannot wedge every write after it. `requestApproval` also writes the
+  corrected store when it rolls a failed create back out of memory, so a record
+  a neighbouring write had already carried to disk does not outlive the create
+  that disowned it.
+
 - **A channel reported `healthy` because its token was in config, not because it
   worked.** `ChannelStatusSnapshot.state` was computed from credential presence
   alone, so a Telegram bot whose ingress had stopped kept reporting healthy for
