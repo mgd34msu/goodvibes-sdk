@@ -31,6 +31,7 @@ import { processTelegramUpdate } from '../../adapters/telegram/index.js';
 import { resolveSecretInput } from '../../config/secret-refs.js';
 import { logger } from '../../utils/logger.js';
 import { summarizeError } from '../../utils/error-display.js';
+import { IngressProcessingHealth, type ChannelIngressAlarm } from '../ingress-alarm.js';
 import { TelegramApiError, TelegramBotApi, type TelegramBotIdentity, type TelegramUpdate } from './api.js';
 import { TelegramOffsetStore } from './offset-store.js';
 import { CONFLICT_ESCALATION_ATTEMPTS, classifyTelegramConflict } from './conflict-policy.js';
@@ -55,6 +56,13 @@ export interface TelegramIngressStatus {
   /** Why this mode — and, when inactive, exactly what to fix. */
   readonly reason: string;
   readonly running: boolean;
+  /**
+   * The most recent inbound message this node could not PROCESS, while the run
+   * of failures lasts. Deliberately not folded into `running`: the loop can be
+   * turning over perfectly while everything it hands on throws, which is the
+   * defect this field exists for. See IngressProcessingHealth.
+   */
+  readonly lastError?: string | undefined;
 }
 
 export interface TelegramIngressDeps {
@@ -66,6 +74,8 @@ export interface TelegramIngressDeps {
   readonly offsetFilePath: string;
   /** Test seam: swap in a client with an injected fetch. */
   readonly createApi?: ((token: string) => TelegramBotApi) | undefined;
+  /** Where a skipped message reaches the owner; absent still logs and degrades. */
+  readonly ingressAlarm?: ChannelIngressAlarm | undefined;
   /**
    * Telegram told us another process is already long-polling this bot token.
    *
@@ -133,7 +143,12 @@ export class TelegramIngressSupervisor {
     running: false,
   };
 
-  constructor(private readonly deps: TelegramIngressDeps) {}
+  /** Whether this node can PROCESS what it receives — see the class header. */
+  private readonly processing: IngressProcessingHealth;
+
+  constructor(private readonly deps: TelegramIngressDeps) {
+    this.processing = new IngressProcessingHealth('telegram', deps.ingressAlarm);
+  }
 
   /**
    * The fraction the conflict jitter is drawn from, clamped into [0, 1).
@@ -149,7 +164,11 @@ export class TelegramIngressSupervisor {
   }
 
   get status(): TelegramIngressStatus {
-    return this.currentStatus;
+    // Merged rather than stored on `currentStatus`: the mode transitions below
+    // REPLACE that object wholesale, so a processing failure recorded there
+    // would be erased by the next routine status refresh.
+    const lastError = this.processing.lastError;
+    return lastError === undefined ? this.currentStatus : { ...this.currentStatus, lastError };
   }
 
   /** The resolved bot identity, or null when getMe has not succeeded yet. */
@@ -550,13 +569,13 @@ export class TelegramIngressSupervisor {
         await processTelegramUpdate(update, context, {
           sendMessage: (input) => api.sendMessage(input),
         });
+        this.processing.recordSuccess();
       } catch (error) {
-        // One bad update must not wedge the cursor: log it and move past it,
-        // otherwise every subsequent poll redelivers the same failing update.
-        logger.warn('Telegram ingress: update processing failed; advancing past it', {
-          updateId,
-          error: summarizeError(error),
-        });
+        // Still advance past it — a cursor wedged on one poison update
+        // redelivers it forever. What is no longer true is that skipping is
+        // quiet: IngressProcessingHealth degrades the surface and reaches the
+        // owner. See its header for the day this cost.
+        this.processing.recordFailure(summarizeError(error), { updateId });
       }
       if (updateId !== null) offset = Math.max(offset ?? 0, updateId + 1);
     }

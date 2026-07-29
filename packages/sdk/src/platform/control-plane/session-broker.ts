@@ -96,6 +96,7 @@ export class SharedSessionBroker {
   private eventPublisher: SharedSessionEventPublisher | null = null;
   private continuationRunner: SharedSessionContinuationRunner | null = null;
   private surfaceReplyBinder: SharedSessionSurfaceReplyBinder | null = null;
+  private surfaceNoticeSender: ((routeId: string, text: string) => void) | null = null;
   private loaded = false;
   private _gcInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -198,6 +199,16 @@ export class SharedSessionBroker {
    */
   setSurfaceReplyBinder(binder: SharedSessionSurfaceReplyBinder | null): void {
     this.surfaceReplyBinder = binder;
+  }
+
+  /**
+   * Install the path for a one-line unsolicited message to a route's channel —
+   * distinct from the reply binder above, which pairs an AGENT's answer with a
+   * conversation. Today's only caller is the route-binding healing in
+   * session-broker-intent.ts, telling a chat its conversation moved.
+   */
+  setSurfaceNoticeSender(sender: ((routeId: string, text: string) => void) | null): void {
+    this.surfaceNoticeSender = sender;
   }
 
   private announceSurfaceReply(binding: SharedSessionSurfaceReplyBinding): void {
@@ -690,6 +701,7 @@ export class SharedSessionBroker {
         persist: () => this.persist(),
         publishUpdate: (event, payload) => this.publishUpdate(event, payload),
         announceSurfaceReply: (binding) => this.announceSurfaceReply(binding),
+        ...(this.surfaceNoticeSender ? { sendSurfaceNotice: this.surfaceNoticeSender } : {}),
         buildContinuationTask: (sessionId) => this.buildContinuationTask(sessionId),
         ...(this.conversationGateConfig ? { conversationGateConfig: this.conversationGateConfig } : {}),
       },

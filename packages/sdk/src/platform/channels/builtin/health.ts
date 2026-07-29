@@ -47,6 +47,14 @@ function describeUnobservableSurface(surface: ChannelSurface): string {
  * once Telegram has been told where to POST — so mode, not the loop flag,
  * decides. Reading the flag alone would report a correctly armed webhook as
  * dead, which is the same class of wrong answer in the other direction.
+ *
+ * `status.lastError` is carried into every RUNNING branch, and that is the
+ * whole point of it. A poll loop can be turning over perfectly while every
+ * update it hands on fails to be processed — which is precisely what happened:
+ * mode 'polling', running true, reason "long-polling", reported healthy, and
+ * every message the owner sent was being skipped. Running is not the same
+ * question as working, so a supervisor that is receiving but not processing now
+ * reports `degraded` with the reason attached.
  */
 export function observeTelegramRuntime(status: TelegramIngressStatus | null): ChannelRuntimeObservation {
   if (!status) {
@@ -57,14 +65,14 @@ export function observeTelegramRuntime(status: TelegramIngressStatus | null): Ch
     );
   }
   if (status.mode === 'webhook') {
-    return observedRuntime(true, status.reason);
+    return observedRuntime(true, status.reason, status.lastError);
   }
   if (status.mode === 'polling') {
     return status.running
-      ? observedRuntime(true, status.reason)
-      : observedRuntime(false, `Telegram polling is not running: ${status.reason}`);
+      ? observedRuntime(true, status.reason, status.lastError)
+      : observedRuntime(false, `Telegram polling is not running: ${status.reason}`, status.lastError);
   }
-  return observedRuntime(false, status.reason);
+  return observedRuntime(false, status.reason, status.lastError);
 }
 
 /**

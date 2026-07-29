@@ -197,7 +197,14 @@ export async function handleSlackSurfacePayload(
             });
           });
         }
-      })();
+      })().catch((error: unknown) => {
+        // Same shape as Discord's slash command, same absent catch: the HTTP
+        // response is already sent, so a throw here was an unhandled rejection
+        // with no log line and no way to notice.
+        const detail = summarizeError(error);
+        logger.error('handleSlackSurfaceWebhook: slash-command processing failed after the ack', { error: detail });
+        context.reportIngressFailure?.('slack', detail);
+      });
     });
 
     return Response.json({

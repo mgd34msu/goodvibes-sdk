@@ -65,6 +65,8 @@ export {
   unobservableRuntime,
 } from './health.js';
 export type { ChannelHealthInput } from './health.js';
+export { ChannelIngressAlarm, DEFAULT_INGRESS_ALARM_WINDOW_MS } from './ingress-alarm.js';
+export type { ChannelIngressAlarmDeps, ChannelIngressFailureState } from './ingress-alarm.js';
 export { ChannelHealthWatcher } from './health-watcher.js';
 export type { ChannelHealthAlert, ChannelHealthWatcherDeps } from './health-watcher.js';
 export type { UpsertRouteBindingInput } from './route-manager.js';
