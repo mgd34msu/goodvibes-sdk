@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { SDKErrorCodes } from '@pellux/goodvibes-errors';
 import { PersistentStore } from '../state/persistent-store.js';
+import { StoreWriteQueue } from '../state/store-write-queue.js';
 import type { PermissionPromptDecision, PermissionPromptRequest, PermissionRequestHandler } from '../permissions/prompt.js';
 import { buildDurableRuleForDecision, matchDurableRules, type RememberTier } from '../permissions/approval-rules.js';
 import type { ControlPlaneSurfaceMessage } from './types.js';
@@ -262,6 +263,8 @@ export class ApprovalBroker {
     timer?: ReturnType<typeof setTimeout> | undefined;
   }>();
   private readonly listeners = new Set<ApprovalListener>();
+  /** Whole-store writes run one at a time, in call order. See StoreWriteQueue. */
+  private readonly writes = new StoreWriteQueue();
   private publisher: ApprovalPublisher | null = null;
   private loaded = false;
 
@@ -417,6 +420,17 @@ export class ApprovalBroker {
         this.pendingResolvers.delete(approval.id);
       }
       this.approvals.delete(approval.id);
+      // The record is out of the map; get it out of the file too, explicitly.
+      //
+      // A write that failed did not necessarily leave the file untouched by
+      // this record: a write queued BEHIND it captures the map when it runs,
+      // and whether that capture happens before or after the delete above is a
+      // question about microtask ordering, which is not a thing a payment
+      // record's durability should rest on. Writing the corrected map settles
+      // it. If this write fails too the store is simply unavailable, and the
+      // caller is already being told that by the error below — so its own
+      // failure is swallowed rather than replacing the real one.
+      await this.persist().catch(() => undefined);
       throw error;
     }
     this.publish(approval);
@@ -713,11 +727,30 @@ export class ApprovalBroker {
     }
   }
 
+  /**
+   * Replace the store file with the approvals as they stand at THIS call,
+   * after every write already queued has finished.
+   *
+   * The snapshot is still taken here, synchronously, exactly as it always was.
+   * What changed is that the write no longer races: `PersistentStore.persist`
+   * is atomic but unordered, so two of these in flight at once finished
+   * whenever their renames happened to land, and the one that started first
+   * could finish last and put its older view of the store back on disk. The
+   * queue is what makes "started first" mean "finished first".
+   *
+   * Ordering is sufficient because callers mutate the map and then persist, so
+   * each snapshot is at least as new as the one queued before it and the last
+   * one to land is the most recent state. Deferring the snapshot to write time
+   * would also work, but it would let a write serialise records belonging to
+   * callers that had not finished yet — including a create still deciding
+   * whether it can commit — and that is a wider door than this defect needs.
+   */
   private async persist(): Promise<void> {
     this.pruneTerminalApprovals();
-    await this.store.persist({
+    const snapshot: SharedApprovalStoreSnapshot = {
       approvals: sortApprovals(this.approvals.values()),
-    });
+    };
+    await this.writes.run(() => this.store.persist(snapshot));
   }
 
   private publish(approval: SharedApprovalRecord): void {
