@@ -5,7 +5,7 @@ import type { DaemonGatewayRestRouteHandlers } from './context.js';
  *
  * Explicit REST route table for the handler-backed gateway verb families that
  * ALSO advertise an `http` binding in the operator method catalog (skills.*,
- * principals.*, profile.*, checkin.*, ci.*, channels.profiles.*, the session-scoped
+ * principals.*, profile.*, occasions.*, checkin.*, ci.*, channels.profiles.*, the session-scoped
  * sessions.permissionMode.get/set + sessions.contextUsage.get, stepup.* (the
  * relay step-up ceremony), and runtime.metrics.get). Those verbs are
  * served in-process through `invokeGatewayMethodCall`'s registered-handler
@@ -82,6 +82,27 @@ export const GATEWAY_REST_ROUTES: readonly GatewayRestRoute[] = [
   route('POST', '/api/profile/append', 'profile.append'),
   route('POST', '/api/profile/forget', 'profile.forget'),
   route('POST', '/api/profile/undo', 'profile.undo'),
+
+  // occasions.* — the owner's important dates and plans, and the loop that
+  // raises them (docs/occasions.md §7). The two verbs that read a whole
+  // collection are GET; everything that names one thing, answers a question or
+  // writes a line takes a body and is POST.
+  route('GET', '/api/occasions', 'occasions.list'),
+  route('GET', '/api/occasions/pending', 'occasions.pending'),
+  route('GET', '/api/occasions/state', 'occasions.state'),
+  route('GET', '/api/occasions/plans', 'occasions.plans.list'),
+  route('POST', '/api/occasions/propose', 'occasions.propose'),
+  route('POST', '/api/occasions/confirm', 'occasions.confirm'),
+  route('POST', '/api/occasions/remove', 'occasions.remove'),
+  route('POST', '/api/occasions/answer', 'occasions.answer'),
+  route('POST', '/api/occasions/interview', 'occasions.interview.get'),
+  route('POST', '/api/occasions/interview/answer', 'occasions.interview.answer'),
+  route('POST', '/api/occasions/interview/record', 'occasions.interview.record'),
+  route('POST', '/api/occasions/gifts', 'occasions.gifts'),
+  route('POST', '/api/occasions/sweep', 'occasions.sweep'),
+  route('POST', '/api/occasions/conflict/resolve', 'occasions.conflict.resolve'),
+  route('POST', '/api/occasions/plans/propose', 'occasions.plans.propose'),
+  route('POST', '/api/occasions/plans/confirm', 'occasions.plans.confirm'),
   // checkin.*
   route('GET', '/api/checkin/config', 'checkin.config.get'),
   route('POST', '/api/checkin/config', 'checkin.config.set'),

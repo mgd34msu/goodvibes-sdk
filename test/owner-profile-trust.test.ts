@@ -346,6 +346,12 @@ describe('§14.19 — third-party containment: no enumerate-all-people call exis
       ['person("")', store.person('')],
       ['person("   ")', store.person('   ')],
       ['person("*")', store.person('*')],
+      // The two occasions readers. They serve `Important dates` and `Plans`,
+      // which are closed tier like `People`, so they are named routes rather
+      // than a widened `section()` — and neither can reach the People section
+      // at all, which is what this asserts rather than states.
+      ['importantDates()', store.importantDates()],
+      ['plans()', store.plans()],
       ['get("people")', store.get('people')],
       ['provenance("people")', store.provenance('people')],
       ['status()', store.status()],
@@ -372,12 +378,29 @@ describe('§14.19 — third-party containment: no enumerate-all-people call exis
     // carries counts, section NAMES and invalid-field reasons, never a value.
     // Verified by loading a profile whose People section holds a unique marker
     // and asserting neither result contains it.
+    //
+    // `importantDates` and `plans` were added for the proactive occasions loop
+    // (docs/occasions.md). Weighed against §10 the same way, and the weighing
+    // is worth recording because these DO return closed-tier prose in bulk,
+    // which `section()` refuses:
+    //
+    //  - They are NAMED and fixed. Neither takes a heading, so neither can be
+    //    turned into the generic closed-section reader §10 exists to prevent —
+    //    the shape the hole originally had.
+    //  - Their only consumer is the approach sweep, whose OUTPUT names the
+    //    occasion and the person and never the date. There is no path from
+    //    either of these to outbound content carrying a date.
+    //  - Neither can reach `People`: asserted above, not asserted here.
+    //
+    // A third method of this shape should not be added without the same
+    // argument being made again, in writing, for that section.
     expect(methods).toEqual([
       'adopt', 'adoptRead', 'append', 'closeWatcher', 'commit', 'forget', 'get',
-      'load', 'loadSync', 'markUnavailable', 'matchesLastSeen', 'path', 'person',
-      'provenance', 'provenanceFor', 'read', 'reloadIfChanged', 'scheduleReload',
-      'section', 'sectionByHeading', 'set', 'startPolling', 'status', 'undo',
-      'unwatch', 'viewOf', 'watch', 'writableProjection',
+      'importantDates', 'load', 'loadSync', 'markUnavailable', 'matchesLastSeen',
+      'path', 'person', 'plans', 'provenance', 'provenanceFor', 'read',
+      'reloadIfChanged', 'scheduleReload', 'section', 'sectionByHeading', 'set',
+      'startPolling', 'status', 'undo', 'unwatch', 'viewOf', 'watch',
+      'writableProjection',
     ]);
   });
 });

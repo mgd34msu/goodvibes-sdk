@@ -22,6 +22,7 @@ import { builtinGatewayControlMethodDescriptors } from '../packages/sdk/src/plat
 import { builtinGatewayEmailMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-email.ts';
 import { builtinGatewayPaymentsMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-payments.ts';
 import { builtinGatewayOwnerProfileMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-owner-profile.ts';
+import { builtinGatewayOccasionsMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-occasions.ts';
 import { builtinGatewayCalendarMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-calendar.ts';
 import { builtinGatewayBrowserMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-browser.ts';
 import { builtinGatewayRuntimeMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-runtime.ts';
@@ -66,6 +67,7 @@ export const ALL_GATEWAY_METHOD_DESCRIPTORS: readonly GatewayMethodDescriptor[] 
   ...builtinGatewaySkillsMethodDescriptors,
   ...builtinGatewayPrincipalsMethodDescriptors,
   ...builtinGatewayOwnerProfileMethodDescriptors,
+  ...builtinGatewayOccasionsMethodDescriptors,
   ...builtinGatewayChannelProfilesMethodDescriptors,
   ...builtinGatewayCheckinMethodDescriptors,
   ...builtinGatewayCiMethodDescriptors,

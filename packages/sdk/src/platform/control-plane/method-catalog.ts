@@ -65,6 +65,9 @@ import {
   builtinGatewayOwnerProfileMethodDescriptors,
 } from './method-catalog-owner-profile.js';
 import {
+  builtinGatewayOccasionsMethodDescriptors,
+} from './method-catalog-occasions.js';
+import {
   builtinGatewayChannelProfilesMethodDescriptors,
 } from './method-catalog-channel-profiles.js';
 import {
@@ -138,6 +141,7 @@ const BUILTIN_GATEWAY_METHODS: readonly GatewayMethodDescriptor[] = [
   ...builtinGatewaySkillsMethodDescriptors,
   ...builtinGatewayPrincipalsMethodDescriptors,
   ...builtinGatewayOwnerProfileMethodDescriptors,
+  ...builtinGatewayOccasionsMethodDescriptors,
   ...builtinGatewayChannelProfilesMethodDescriptors,
   ...builtinGatewayCheckinMethodDescriptors,
   ...builtinGatewayCiMethodDescriptors,
