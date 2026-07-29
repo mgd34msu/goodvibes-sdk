@@ -1,5 +1,8 @@
-import { resolve } from 'node:path';
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { describe, expect, test } from 'bun:test';
+import { withTestTimeout } from './_helpers/test-timeout.ts';
 import {
   createBrowserHomeAssistantSdk,
 } from '../packages/sdk/dist/browser-homeassistant.js';
@@ -32,18 +35,81 @@ function createRecordingFetch(body: unknown = { ok: true }): {
   };
 }
 
+const SDK_ROOT = resolve(import.meta.dir, '..');
+
+/**
+ * How long one entrypoint bundle may take before this test stops waiting and
+ * says which entrypoint it was waiting on.
+ *
+ * These three cases used to call `Bun.build` in-process and `await` it with no
+ * ceiling at all, and that is what wedged CI: the bundler ran inside the same
+ * process as the other 794 test files, and when it stopped settling there was
+ * nothing to stop waiting. One run had all three cases charged the runner's
+ * whole 60 000 ms per-test budget; an earlier run of the same commit produced
+ * fifteen minutes of total silence and was killed by the job timeout, leaving
+ * bun processes behind for the runner's orphan sweep to terminate. Fifteen
+ * minutes of silence is indistinguishable from slow progress until something
+ * kills it.
+ *
+ * So the bundle runs as a child process that this file owns: it cannot touch
+ * the test runtime, it is bounded, and it is killed on every exit path
+ * including the timeout and an assertion failure. The number is deliberately
+ * enormous relative to the work — the same three bundles take single-digit
+ * milliseconds each — because it is a ceiling, not a budget: a healthy run
+ * never approaches it and never pays for it. It sits below the suite's 60 000
+ * ms per-test default so that a stuck bundle is reported by the message below,
+ * which names the entrypoint, rather than by the runner's generic timeout.
+ */
+const BUNDLE_CEILING_MS = 30_000;
+
 async function bundleEntrypoint(entrypoint: string): Promise<string> {
-  const result = await Bun.build({
-    entrypoints: [resolve(import.meta.dir, '..', entrypoint)],
-    target: 'browser',
-    format: 'esm',
-    minify: false,
-    packages: 'external',
-  });
-  expect(result.success, result.logs.map((log) => log.message).join('\n')).toBe(true);
-  const [output] = result.outputs;
-  expect(output).toBeDefined();
-  return await output!.text();
+  const outDir = mkdtempSync(join(tmpdir(), 'gv-browser-bundle-'));
+  const child = Bun.spawn(
+    [
+      process.execPath,
+      'build',
+      resolve(SDK_ROOT, entrypoint),
+      '--target=browser',
+      '--format=esm',
+      '--packages=external',
+      `--outdir=${outDir}`,
+    ],
+    { cwd: SDK_ROOT, stdin: 'ignore', stdout: 'pipe', stderr: 'pipe' },
+  );
+  // Drained from the start. An undrained pipe is its own way to hang: a child
+  // that fills the buffer blocks on write and never reaches exit. `.catch`
+  // because the kill below tears these streams down in the timeout path, and a
+  // rejected read nobody is waiting on would surface as an unhandled rejection
+  // attributed to whichever test happens to be running by then.
+  const stdout = new Response(child.stdout).text().catch(() => '');
+  const stderr = new Response(child.stderr).text().catch(() => '');
+  try {
+    const exitCode = await withTestTimeout(
+      child.exited,
+      BUNDLE_CEILING_MS,
+      `bundling ${entrypoint} did not finish within ${BUNDLE_CEILING_MS}ms`,
+    );
+    const diagnostics = `${await stdout}\n${await stderr}`.trim();
+    expect(exitCode, `bun build ${entrypoint} exited ${exitCode}:\n${diagnostics}`).toBe(0);
+    const produced = readdirSync(outDir).filter((name) => name.endsWith('.js'));
+    expect(produced, `bun build ${entrypoint} produced no JS output:\n${diagnostics}`).toHaveLength(1);
+    const bundle = readFileSync(join(outDir, produced[0]!), 'utf-8');
+    // The home assistant case below is made entirely of `not.toContain`, which
+    // an empty or truncated bundle would satisfy perfectly. The subject of
+    // those assertions is a real bundle of the whole entrypoint or they assert
+    // nothing at all, so its size is checked once, here, rather than trusted.
+    // The three real bundles are 24-31 KB.
+    expect(bundle.length, `bun build ${entrypoint} produced a suspiciously small bundle`)
+      .toBeGreaterThan(10_000);
+    return bundle;
+  } finally {
+    // Every path, including the ceiling above and a failed expect: the child is
+    // killed and reaped here, so nothing this file starts can outlive it into
+    // the runner's post-job orphan sweep.
+    try { child.kill('SIGKILL'); } catch { /* already exited */ }
+    await child.exited.catch(() => undefined);
+    rmSync(outDir, { recursive: true, force: true });
+  }
 }
 
 describe('scoped browser SDK entrypoints', () => {

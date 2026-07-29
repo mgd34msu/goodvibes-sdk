@@ -851,6 +851,14 @@ describe('inbound watcher — the cursor', () => {
     await harness.clock.advance(1_000);
 
     await waitFor(() => harness.sink.uids.includes(102), 'the redelivered message');
+    // Delivery to the sink is not the cursor advance: the advance happens after
+    // it, and on a loaded runner the gap between the two is observable. Waiting
+    // on the sink and then asserting on the cursor read a cursor that had not
+    // moved yet. Wait for the advance being asserted.
+    await waitFor(
+      () => harness.cursors.advances.includes(102),
+      'the cursor to advance past the redelivered message',
+    );
     expect(harness.sink.attempts).toEqual([102, 102]);
     expect(harness.sink.uids).toEqual([102]);
     expect(harness.cursors.advances).toEqual([102]);
@@ -1052,6 +1060,12 @@ describe('inbound watcher — a server that does not report UIDNEXT', () => {
       harness.mailbox,
       () => harness.sink.uids.length >= 1,
       'the newly arrived message',
+    );
+    // Same ordering as above: the sink sees the message before the cursor
+    // records it, so the cursor assertion waits on the cursor.
+    await waitFor(
+      () => harness.cursors.advances.includes(104),
+      'the cursor to advance past the newly arrived message',
     );
 
     expect(harness.sink.uids).toEqual([104]);

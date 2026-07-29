@@ -1,8 +1,8 @@
-import { execFileSync } from 'node:child_process';
 import { readdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { runOwnedTestChild } from './owned-test-child.ts';
 import { sweepStaleTmpDirs } from './stale-tmp-sweep.ts';
 import {
   makeRunTmpDirName,
@@ -120,11 +120,13 @@ await withWorkspaceLock('test', async () => {
   // withRunTmpDir removes the parent in a `finally`, so a failing suite takes
   // its temp tree with it too. Sibling runs own their own parent and are never
   // touched.
-  await withRunTmpDir(TEST_TMP_ROOT, (runTmpDir) => {
+  await withRunTmpDir(TEST_TMP_ROOT, async (runTmpDir) => {
     const timeoutArgs = hasExplicitTimeout() ? [] : [`--timeout=${resolveTimeoutMs()}`];
-    execFileSync('bun', ['test', ...timeoutArgs, ...testArgs], {
+    // Owned, not merely spawned — see scripts/owned-test-child.ts for the
+    // orphan this replaces.
+    const { exitCode, signalCode } = await runOwnedTestChild({
+      argv: [...timeoutArgs, ...testArgs],
       cwd: SDK_ROOT,
-      stdio: 'inherit',
       env: {
         ...process.env,
         ...testTmpEnv(runTmpDir),
@@ -135,5 +137,8 @@ await withWorkspaceLock('test', async () => {
         [RUNNER_ENV_FLAG]: '1',
       },
     });
+    if (exitCode !== 0) {
+      throw new Error(`bun test ${signalCode ? `killed by ${signalCode}` : `exited with code ${exitCode}`}`);
+    }
   }, RUN_TMP_DIR_NAME);
 });

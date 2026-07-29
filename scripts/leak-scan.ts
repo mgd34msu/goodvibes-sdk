@@ -20,11 +20,11 @@
  * real system temp dir when run through this entry point instead of
  * `scripts/test.ts`, leaking the same way a signal-killed run does.
  */
-import { spawnSync } from 'node:child_process';
 import { readdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { runOwnedTestChild } from './owned-test-child.ts';
 import { sweepStaleTmpDirs } from './stale-tmp-sweep.ts';
 import {
   makeRunTmpDirName,
@@ -72,28 +72,27 @@ await withWorkspaceLock('leak-scan', async () => {
   // scripts/test.ts. Both entry points share that one lifecycle rather than
   // each keeping a copy, so test/test-tmp-containment.test.ts drives the real
   // one.
-  await withRunTmpDir(TEST_TMP_ROOT, (runTmpDir) => {
-    const result = spawnSync(
-      'bun',
-      ['test', '--preload', './test/_helpers/leak-detector.ts', ...testArgs],
-      {
-        cwd: SDK_ROOT,
-        stdio: 'inherit',
-        env: {
-          ...process.env,
-          ...testTmpEnv(runTmpDir),
-          // Sibling of the spread, not part of it — see RUNNER_ENV_FLAG in
-          // scripts/test-run-tmp.ts. This entry point contains temp the same
-          // way scripts/test.ts does, so the guard test asserts it here too.
-          [RUNNER_ENV_FLAG]: '1',
-          GOODVIBES_LEAK_DETECT: '1',
-          GOODVIBES_LEAK_REPORT: reportPath,
-        },
+  await withRunTmpDir(TEST_TMP_ROOT, async (runTmpDir) => {
+    // Owned the same way scripts/test.ts owns its child: a signal that reaches
+    // this script reaches the suite too, and the suite is reaped before this
+    // callback returns into the temp-tree removal.
+    const { exitCode } = await runOwnedTestChild({
+      argv: ['--preload', './test/_helpers/leak-detector.ts', ...testArgs],
+      cwd: SDK_ROOT,
+      env: {
+        ...process.env,
+        ...testTmpEnv(runTmpDir),
+        // Sibling of the spread, not part of it — see RUNNER_ENV_FLAG in
+        // scripts/test-run-tmp.ts. This entry point contains temp the same
+        // way scripts/test.ts does, so the guard test asserts it here too.
+        [RUNNER_ENV_FLAG]: '1',
+        GOODVIBES_LEAK_DETECT: '1',
+        GOODVIBES_LEAK_REPORT: reportPath,
       },
-    );
+    });
     console.log(`\nleak report written to ${reportPath}`);
-    if (result.status !== 0) {
-      console.log(`(suite exited ${result.status ?? 'null'} — leak data above is still valid)`);
+    if (exitCode !== 0) {
+      console.log(`(suite exited ${exitCode ?? 'null'} — leak data above is still valid)`);
     }
   }, RUN_TMP_DIR_NAME);
 });
