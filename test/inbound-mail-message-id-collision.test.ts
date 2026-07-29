@@ -34,7 +34,6 @@ import {
 } from '../packages/sdk/src/platform/email/inbound/sink.ts';
 import {
   InboundMailboxWatcher,
-  imapMailboxConnectionPort,
   resolveWatcherSettings,
 } from '../packages/sdk/src/platform/email/inbound/index.ts';
 import type { InboundMailboxMessage } from '../packages/sdk/src/platform/email/inbound/ports.ts';
@@ -45,7 +44,9 @@ import {
   fixedRandom,
   cleanupInboundScratch,
   makeCursorStore,
+  nudgeUntil,
   waitFor,
+  watcherConnectionPort,
   requireImapMessage,
 } from './_helpers/inbound-watcher-harness.ts';
 
@@ -85,7 +86,7 @@ async function build(): Promise<Harness> {
 
   const watcher = new InboundMailboxWatcher({
     settings: resolveWatcherSettings({ account: ACCOUNT, mailbox: MAILBOX }),
-    connections: imapMailboxConnectionPort({
+    connections: watcherConnectionPort({
       connect: () => openMailboxSocket(mailbox.port),
       username: 'watched@example.test',
       password: 'an-app-password',
@@ -126,14 +127,22 @@ describe('a forged Message-ID cannot suppress a message (gate #14)', () => {
     await idleRounds(harness, 1);
 
     harness.mailbox.deliver('the first', FORGED_ID);
-    await waitFor(() => harness.handled.length >= 1, 'the first message');
+    // `nudgeUntil`, not `waitFor`, and see its header for why: `idleRounds`
+    // reads the SERVER's command log, and the client registers the waiter that
+    // ends the round one round trip later. A `deliver()` edge landing in that
+    // window is seen by nobody who can act on it, and the only recovery is the
+    // 27-minute re-issue on a `FakeClock` this test never advances — so it
+    // presents as a hard timeout, not as slowness. Nothing is re-sent unless
+    // the wake really was lost, and a duplicate wake cannot double-count here
+    // anyway: the sink claims `imap:<uidValidity>:<uid>` before it runs.
+    await nudgeUntil(harness.mailbox, () => harness.handled.length >= 1, 'the first message');
 
     // Pushed only once the watcher is back INSIDE an IDLE: a line arriving
     // between rounds has nobody waiting on it, and delivering eagerly would
     // test the harness's timing rather than the watcher.
     await idleRounds(harness, 2);
     harness.mailbox.deliver('the second, wearing the first message\'s identity', FORGED_ID);
-    await waitFor(() => harness.handled.length >= 2, 'the second message');
+    await nudgeUntil(harness.mailbox, () => harness.handled.length >= 2, 'the second message');
 
     expect(harness.handled).toEqual([101, 102]);
     // The collision was CONSTRUCTED, not merely intended. Without this the
@@ -152,7 +161,7 @@ describe('a forged Message-ID cannot suppress a message (gate #14)', () => {
     await idleRounds(harness, 1);
 
     harness.mailbox.deliver('no override');
-    await waitFor(() => harness.handled.length >= 1, 'the unforged message');
+    await nudgeUntil(harness.mailbox, () => harness.handled.length >= 1, 'the unforged message');
 
     expect(harness.messageIds).toEqual(['<uid-101@example.test>']);
     expect(harness.messageIds[0]).not.toBe(FORGED_ID);

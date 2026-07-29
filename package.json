@@ -48,6 +48,7 @@
     "test:rn": "bun scripts/test.ts test/rn-bundle-node-imports.test.ts",
     "test:workers": "bun scripts/test.ts test/workers/workers.test.ts",
     "test:workers:wrangler": "bun scripts/test.ts test/workers-wrangler/wrangler.test.ts",
+    "sweep:wake-race": "bun scripts/sweep-wake-race.ts",
     "any:check": "bun scripts/no-any-types.ts",
     "architecture:check": "bun scripts/test-tmp-architecture-check.ts",
     "api:check": "bunx api-extractor run --local && bunx api-extractor run --local --config api-extractor.embed.json && git diff --quiet -- etc/goodvibes-sdk.api.md etc/goodvibes-sdk-embed.api.md && bun run api:subpath:check",

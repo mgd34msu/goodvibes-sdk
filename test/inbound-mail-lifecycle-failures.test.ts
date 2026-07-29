@@ -32,7 +32,6 @@ import {
   MailboxCursorStore,
   PersistedExpectationStore,
   createInboundTerminalFailureAnnouncer,
-  imapMailboxConnectionPort,
   resolveWatcherSettings,
   type InboundCapabilityVerdict,
   type InboundMailObserver,
@@ -61,6 +60,7 @@ import {
   makeCursorStore,
   nudgeUntil,
   waitFor,
+  watcherConnectionPort,
 } from './_helpers/inbound-watcher-harness.ts';
 
 const ACCOUNT = 'primary';
@@ -275,7 +275,7 @@ describe('a cursor-store write that fails does not end inbound mail in silence',
         create: async (input) => {
           sources.push(new ImapMailSource({
             settings: resolveWatcherSettings({ account: ACCOUNT, mailbox: MAILBOX }),
-            connections: imapMailboxConnectionPort({
+            connections: watcherConnectionPort({
               connect: () => openMailboxSocket(mailbox.port),
               username: 'watched@example.test',
               password: 'an-app-password',

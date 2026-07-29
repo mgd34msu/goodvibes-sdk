@@ -197,6 +197,14 @@ jobs:
           git config --global user.name "GoodVibes CI"
       - name: Run test suite (${{ matrix.platform }})
         run: ${{ matrix.test-cmd }}
+      - name: Sweep the fake-IMAP suites for the lost-wake race
+        # The bun leg only: this re-runs suites the leg has already run, with
+        # one wire call delayed so a wake edge that a test pushes at the wrong
+        # moment is reliably lost instead of occasionally lost. It is the check
+        # that would have caught gate #14 before a 2-vCPU runner did. Cheap —
+        # seven small suites — and deterministic; see the script's header.
+        if: matrix.platform == 'bun'
+        run: bun run sweep:wake-race
 
   # ---------------------------------------------------------------------------
   # Consumer jobs that share the build artifact. Each tests the exact same

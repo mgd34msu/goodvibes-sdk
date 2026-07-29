@@ -37,6 +37,7 @@ import {
   flush,
   nudgeUntil,
   waitFor,
+  watcherConnectionPort,
   type RecordingCursorStore,
 } from './_helpers/inbound-watcher-harness.ts';
 
@@ -84,7 +85,7 @@ async function build(input: {
   });
   const watcher = new InboundMailboxWatcher({
     settings,
-    connections: imapMailboxConnectionPort({
+    connections: watcherConnectionPort({
       connect: () => openMailboxSocket(mailbox.port),
       username: 'watched@example.test',
       password: 'an-app-password',
@@ -742,7 +743,7 @@ describe('inbound watcher — can it read message content at all', () => {
     expect(harness.watcher.status.running).toBe(true);
     expect(harness.watcher.status.mode).toBe('idle');
     harness.mailbox.deliver('arrived after the empty probe');
-    await waitFor(() => harness.sink.delivered.length >= 1, 'the delivered message');
+    await nudgeUntil(harness.mailbox, () => harness.sink.delivered.length >= 1, 'the delivered message');
     expect(harness.observer.terminals).toEqual([]);
   });
 
@@ -780,7 +781,7 @@ describe('inbound watcher — can it read message content at all', () => {
     expect(harness.observer.terminals).toEqual([]);
     expect(harness.watcher.status.running).toBe(true);
     harness.mailbox.deliver('arrived after a zero-octet probe');
-    await waitFor(() => harness.sink.delivered.length >= 1, 'the delivered message');
+    await nudgeUntil(harness.mailbox, () => harness.sink.delivered.length >= 1, 'the delivered message');
   });
 
   test('a server that hands over a body passes the probe and reaches healthy', async () => {
