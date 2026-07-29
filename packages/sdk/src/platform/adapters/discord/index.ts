@@ -167,7 +167,19 @@ export async function handleDiscordInteractionPayload(
               error: summarizeError(error),
             });
           });
-      })();
+      })().catch((error: unknown) => {
+        // The slash-command path answers Discord immediately with a deferred
+        // response and then does the work detached, so nothing downstream can
+        // observe a failure here — this block had no catch at all, which made a
+        // throw an unhandled rejection with not one line logged, and left the
+        // user staring at "working…" forever. It reports through the same
+        // per-surface ingress alarm every other inbound path uses.
+        const detail = summarizeError(error);
+        logger.error('handleDiscordSurfaceWebhook: slash-command processing failed after the deferred reply', {
+          error: detail,
+        });
+        context.reportIngressFailure?.('discord', detail);
+      });
     });
 
     return deferredResponse;

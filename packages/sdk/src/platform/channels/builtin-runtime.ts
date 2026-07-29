@@ -120,6 +120,7 @@ export class BuiltinChannelRuntime {
       serviceRegistry: this.deps.serviceRegistry,
       buildSurfaceAdapterContext: this.deps.buildSurfaceAdapterContext,
       offsetFilePath,
+      ...(this.deps.ingressAlarm ? { ingressAlarm: this.deps.ingressAlarm } : {}),
       onConcurrentConsumerConflict: (detail) => {
         this.consumerConflictHandler?.(detail);
         this.deps.onTelegramConsumerConflict?.(detail);

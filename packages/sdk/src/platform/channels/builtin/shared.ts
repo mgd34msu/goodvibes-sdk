@@ -10,6 +10,7 @@ import type { ChannelPolicyManager } from '../policy-manager.js';
 import type { ChannelPluginRegistry } from '../plugin-registry.js';
 import type { ChannelProviderRuntimeManager } from '../provider-runtime.js';
 import type { RouteBindingManager } from '../route-manager.js';
+import type { ChannelIngressAlarm } from '../ingress-alarm.js';
 import type { InboundMailSupervisor } from '../../email/inbound/supervisor.js';
 
 /**
@@ -73,6 +74,14 @@ export interface BuiltinChannelRuntimeDeps {
    * TelegramIngressDeps.onConcurrentConsumerConflict.
    */
   readonly onTelegramConsumerConflict?: ((detail: string) => void) | undefined;
+  /**
+   * Turns an inbound message this node failed to process into something the
+   * owner hears about, instead of a log line in a debug file. Handed to the
+   * Telegram ingress supervisor, which is the one built-in surface holding a
+   * durable read cursor and therefore the one that skips a message for good.
+   * Omitted by embedders with no way to reach the owner.
+   */
+  readonly ingressAlarm?: ChannelIngressAlarm | undefined;
   /**
    * The inbound-mail supervisor, when the composition built one.
    *

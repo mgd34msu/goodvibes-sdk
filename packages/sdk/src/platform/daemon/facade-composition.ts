@@ -15,6 +15,7 @@ import {
   ChannelReplyPipeline,
   ChannelProviderRuntimeManager,
 } from '../channels/index.js';
+import { createChannelIngressAlarm } from './owner-alert.js';
 import { ControlPlaneGateway } from '../control-plane/index.js';
 import { buildSharedSessionAgentSpawnRoutingInput } from '../control-plane/session-intents.js';
 import type { ModelIdCandidate } from '../providers/model-id-resolution.js';
@@ -554,6 +555,19 @@ export function createDaemonFacadeCollaborators(
   runtime.sessionBroker.setSurfaceReplyBinder((binding) => {
     surfaceDeliveryHelper.ensureSurfaceReply(binding);
   });
+  // The broker's own voice on a channel, used when it heals a route binding
+  // that named an unusable session: the conversation moves to a fresh session
+  // and the person on the other end is told why, instead of meeting an
+  // assistant that has silently forgotten the last two days. Same delivery
+  // helper every other unsolicited message uses, so the surface's escaper and
+  // its refusal logging both apply.
+  runtime.sessionBroker.setSurfaceNoticeSender((routeId, text) => {
+    const binding = runtime.routeBindings.getBinding(routeId) ?? undefined;
+    void surfaceDeliveryHelper.deliverSurfaceNotice(binding, text);
+  });
+  // One alarm, every inbound path — see createChannelIngressAlarm.
+  const ingressAlarm = createChannelIngressAlarm(runtime.routeBindings, surfaceDeliveryHelper);
+  runtime.channelPlugins.setIngressAlarm(ingressAlarm);
   // Pending work proposals for the conversation-first spawn gate. Persisted
   // beside the other control-plane state so a proposal survives a daemon
   // restart; the store validates and reaps on load, so a stale one is not
@@ -569,6 +583,7 @@ export function createDaemonFacadeCollaborators(
   });
 
   const surfaceActionHelper = new DaemonSurfaceActionHelper({
+    ingressAlarm,
     serviceRegistry: runtime.serviceRegistry,
     secretsManager: runtime.runtimeServices.secretsManager,
     configManager: runtime.configManager,
@@ -687,9 +702,10 @@ export function createDaemonFacadeCollaborators(
     secretsManager: runtime.runtimeServices.secretsManager,
     serviceRegistry: runtime.serviceRegistry,
     buildSurfaceAdapterContext: () => surfaceActionHelper.buildSurfaceAdapterContext(),
+    ingressAlarm,
   });
   const builtinChannels = createBuiltinChannelRuntime({
-    runtime, options, providerRuntime, surfaceActionHelper, surfaceDeliveryHelper,
+    runtime, options, providerRuntime, surfaceActionHelper, surfaceDeliveryHelper, ingressAlarm,
   });
 
   return {

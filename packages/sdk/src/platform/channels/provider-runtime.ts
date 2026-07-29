@@ -57,6 +57,17 @@ interface ProviderRuntimeManagerDeps {
   readonly secretsManager?: Pick<SecretsManager, 'get' | 'getGlobalHome'> | undefined;
   readonly serviceRegistry: ServiceRegistry;
   readonly buildSurfaceAdapterContext: () => SurfaceAdapterContext;
+  /**
+   * Where a message this node read off a live stream and then failed to process
+   * becomes something the owner hears about.
+   *
+   * These three surfaces need it MORE than the webhook ones, not less: Slack
+   * Socket Mode, the Discord gateway and the ntfy JSON stream have no ack, no
+   * cursor and no redelivery. Once the socket has handed an event over, the
+   * catch below is the last place it exists. Losing it quietly is structural
+   * here, so saying so is the only remedy available.
+   */
+  readonly ingressAlarm?: import('./ingress-alarm.js').ChannelIngressAlarm | undefined;
 }
 
 interface RuntimeState {
@@ -368,20 +379,23 @@ export class ChannelProviderRuntimeManager {
 
   private async handleSlackEnvelope(envelope: SlackSocketModeEnvelope, slack: SlackIntegration): Promise<void> {
     if (!envelope.payload || typeof envelope.payload !== 'object') return;
-    await handleSlackSurfacePayload(envelope.payload, this.deps.buildSurfaceAdapterContext(), slack).catch((error: unknown) => {
-      logger.warn('ChannelProviderRuntimeManager: Slack Socket Mode payload failed', {
-        error: summarizeError(error),
+    await handleSlackSurfacePayload(envelope.payload, this.deps.buildSurfaceAdapterContext(), slack)
+      .then(() => { this.deps.ingressAlarm?.recordSuccess('slack'); })
+      .catch((error: unknown) => {
+        const detail = summarizeError(error);
+        logger.error('ChannelProviderRuntimeManager: Slack Socket Mode payload failed', { error: detail });
+        this.deps.ingressAlarm?.recordFailure('slack', detail);
       });
-    });
   }
 
   private async handleDiscordDispatch(dispatch: DiscordGatewayDispatch, discord: DiscordIntegration): Promise<void> {
-    await handleDiscordGatewayDispatchPayload(dispatch, this.deps.buildSurfaceAdapterContext(), discord).catch((error: unknown) => {
-      logger.warn('ChannelProviderRuntimeManager: Discord Gateway dispatch failed', {
-        eventType: dispatch.t,
-        error: summarizeError(error),
+    await handleDiscordGatewayDispatchPayload(dispatch, this.deps.buildSurfaceAdapterContext(), discord)
+      .then(() => { this.deps.ingressAlarm?.recordSuccess('discord'); })
+      .catch((error: unknown) => {
+        const detail = summarizeError(error);
+        logger.error('ChannelProviderRuntimeManager: Discord Gateway dispatch failed', { eventType: dispatch.t, error: detail });
+        this.deps.ingressAlarm?.recordFailure('discord', detail);
       });
-    });
   }
 
   private async handleNtfyMessage(message: NtfyMessage): Promise<void> {
@@ -399,11 +413,13 @@ export class ChannelProviderRuntimeManager {
       topic: message.topic ?? '(none)',
       messageId: message.id ?? '(none)',
     });
-    await handleNtfySurfacePayload(message, this.deps.buildSurfaceAdapterContext()).catch((error: unknown) => {
-      logger.warn('ChannelProviderRuntimeManager: ntfy message dispatch failed', {
-        error: summarizeError(error),
+    await handleNtfySurfacePayload(message, this.deps.buildSurfaceAdapterContext())
+      .then(() => { this.deps.ingressAlarm?.recordSuccess('ntfy'); })
+      .catch((error: unknown) => {
+        const detail = summarizeError(error);
+        logger.error('ChannelProviderRuntimeManager: ntfy message dispatch failed', { error: detail });
+        this.deps.ingressAlarm?.recordFailure('ntfy', detail);
       });
-    });
   }
 
   private async resolveSlackBotToken(): Promise<string | null> {

@@ -14,6 +14,7 @@
 
 import { BuiltinChannelRuntime } from '../channels/index.js';
 import { composeInboundMail } from './facade-inbound-mail.js';
+import type { ChannelIngressAlarm } from '../channels/index.js';
 import { createDaemonGmailInboundReader } from './facade-gmail-reader.js';
 import type { ChannelProviderRuntimeManager } from '../channels/index.js';
 import type { DaemonSurfaceActionHelper } from './surface-actions.js';
@@ -30,6 +31,15 @@ export interface BuiltinChannelRuntimeCompositionInput {
   readonly providerRuntime: ChannelProviderRuntimeManager;
   readonly surfaceActionHelper: DaemonSurfaceActionHelper;
   readonly surfaceDeliveryHelper: DaemonSurfaceDeliveryHelper;
+  /**
+   * The ONE per-surface ingress alarm, built by the composition root and shared
+   * by every inbound path — the Telegram poller here, the shared webhook seam
+   * in `ChannelPluginRegistry`, the three streaming surfaces in
+   * `ChannelProviderRuntimeManager`, and the two detached slash-command paths.
+   * One instance because the rate limit is per surface across all of them, not
+   * per ingress mechanism.
+   */
+  readonly ingressAlarm?: ChannelIngressAlarm | undefined;
 }
 
 /**
@@ -69,6 +79,7 @@ export function createBuiltinChannelRuntime(
     }),
   });
   const builtinChannels = new BuiltinChannelRuntime({
+    ...(input.ingressAlarm ? { ingressAlarm: input.ingressAlarm } : {}),
     configManager: runtime.configManager,
     secretsManager: runtime.runtimeServices.secretsManager,
     serviceRegistry: runtime.serviceRegistry,

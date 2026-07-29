@@ -194,7 +194,7 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
   },
   // session-broker.ts (control-plane) ~0.84k — control-plane session broker, post-split, shrink-only
   'packages/sdk/src/platform/control-plane/session-broker.ts': {
-    ceiling: 844,
-    justification: 'control-plane session broker; handleIntent (the submit/steer/follow-up dispatch body) moved to the free function handleSharedSessionIntent in session-broker-intent.ts, following the deps-object convention of session-broker-gc.ts/session-broker-inputs.ts/session-broker-sessions.ts; the class keeps a thin delegating handleIntent wrapper; ceiling lowered to the post-split line count',
+    ceiling: 856,
+    justification: 'control-plane session broker; handleIntent (the submit/steer/follow-up dispatch body) moved to the free function handleSharedSessionIntent in session-broker-intent.ts, following the deps-object convention of session-broker-gc.ts/session-broker-inputs.ts/session-broker-sessions.ts; the class keeps a thin delegating handleIntent wrapper; ceiling lowered to the post-split line count; +12 for the surface-notice port (field, setSurfaceNoticeSender, and the deps spread into handleIntent) that lets the broker say one line on a channel when it HEALS a route binding whose session was unusable. Without it the rollover is silent and reads as amnesia: the assistant that remembered the last two days answers the next message knowing nothing, and the owner cannot tell that from a fault. The healing itself, its policy and all its prose live in session-broker-intent.ts; what is here is three lines of plumbing and its doc, which cannot move without inventing a second broker-shaped object to hold one nullable function',
   },
 };
