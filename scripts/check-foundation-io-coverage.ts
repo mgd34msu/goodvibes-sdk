@@ -8,17 +8,19 @@
  * resolve to the broad `unknown` fallback) and compares that count to the
  * frozen baseline in foundation-io-coverage-baseline.ts.
  *
- *   - count INCREASED -> fail: a new method shipped without typed IO. The
- *     newly-untyped ids are printed; add their InputMap/OutputMap entries (and
- *     an ENTRIES row in check-foundation-io-types.ts so they stay in sync).
+ *   - count INCREASED -> fail: a method shipped without typed IO. The
+ *     newly-untyped ids are printed; run
+ *     `bun run scripts/generate-foundation-io-entries.ts` to render their
+ *     InputMap/OutputMap entries from their catalog descriptors.
  *   - count DECREASED -> fail: coverage improved; lower the baseline to lock it
  *     in (a stale, too-high baseline must not silently outlive the debt it
  *     recorded — same discipline as the line-cap grandfather ratchet).
  *   - unchanged -> pass.
  *
- * This is a companion to check-foundation-io-types.ts (which proves the
- * hand-authored entries do not DRIFT from their schemas). This script proves
- * the untyped SET does not GROW. Both run under `contracts:check`.
+ * This is a companion to check-foundation-io-types.ts (which proves the entries
+ * do not DRIFT from their schemas). This script proves the typed SET stays
+ * complete. Both run under `contracts:check`, and the baseline is 0 — every
+ * catalogued verb carries typed IO.
  *
  * Usage:
  *   bun run scripts/check-foundation-io-coverage.ts          # report + enforce
@@ -60,10 +62,11 @@ console.log(
 if (result.direction === 'increased') {
   console.error(
     `\n[check-foundation-io-coverage] FAIL: untyped operator-method count rose from ` +
-      `${result.baseline} to ${result.current}. New methods must ship with typed IO ` +
+      `${result.baseline} to ${result.current}. Every method must ship with typed IO ` +
       `entries in packages/contracts/src/generated/foundation-client-types.ts ` +
-      `(OperatorMethodInputMap + OperatorMethodOutputMap) plus an ENTRIES row in ` +
-      `scripts/check-foundation-io-types.ts.\n\nThe ${untyped.length} currently-untyped method ids:`,
+      `(OperatorMethodInputMap + OperatorMethodOutputMap) — run ` +
+      `\`bun run scripts/generate-foundation-io-entries.ts\` to render them from the ` +
+      `method-catalog descriptors.\n\nThe ${untyped.length} currently-untyped method ids:`,
   );
   for (const id of untyped) console.error(`  - ${id}`);
   process.exit(1);
