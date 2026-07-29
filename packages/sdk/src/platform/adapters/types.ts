@@ -92,6 +92,16 @@ export interface SurfaceAdapterContext {
     mentioned?: boolean | undefined;
     metadata?: Record<string, unknown> | undefined;
   }) => Promise<SurfaceIngressDecision>;
+  /**
+   * Report that an inbound message on this surface could not be processed.
+   *
+   * For the DETACHED paths only — Slack's and Discord's slash commands answer
+   * the provider immediately and then work in the background, so a failure
+   * there is invisible to the shared inbound seam in `ChannelPluginRegistry`
+   * that covers every other webhook surface. Optional so an embedder that
+   * wires no alarm is unaffected.
+   */
+  readonly reportIngressFailure?: ((surface: import('../channels/types.js').ChannelSurface, detail: string) => void) | undefined;
   readonly parseSurfaceControlCommand: (text: string) => SurfaceControlCommand | null;
   readonly performSurfaceControlCommand: (command: SurfaceControlCommand) => Promise<string>;
   readonly performInteractiveSurfaceAction: (
