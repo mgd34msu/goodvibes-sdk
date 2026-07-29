@@ -3,7 +3,7 @@
   "info": {
     "title": "GoodVibes Operator API",
     "version": "1.18.1",
-    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 464 cataloged methods: 409 with dedicated REST bindings, 55 reachable only through the generic invoke endpoint. 96 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
+    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 464 cataloged methods: 409 with dedicated REST bindings, 55 reachable only through the generic invoke endpoint. 0 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
   },
   "servers": [
     {
@@ -19297,7 +19297,7 @@
       "post": {
         "operationId": "calendar.events.create",
         "summary": "Create Calendar Event",
-        "description": "Create an event on the configured CalDAV calendar. Requires explicit confirmation.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Create an event on the configured CalDAV calendar. Requires explicit confirmation.",
         "tags": [
           "calendar"
         ],
@@ -19333,7 +19333,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -19392,7 +19392,7 @@
       "get": {
         "operationId": "calendar.events.list",
         "summary": "List Calendar Events",
-        "description": "Return calendar event summaries from the configured CalDAV calendar within an optional time window.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return calendar event summaries from the configured CalDAV calendar within an optional time window.",
         "tags": [
           "calendar"
         ],
@@ -19456,7 +19456,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -19505,7 +19505,7 @@
       "get": {
         "operationId": "calendar.events.get",
         "summary": "Get Calendar Event",
-        "description": "Return the full event object including attendees, recurrence, and raw iCalendar UID.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return the full event object including attendees, recurrence, and raw iCalendar UID.",
         "tags": [
           "calendar"
         ],
@@ -19563,7 +19563,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -19596,7 +19596,7 @@
       "get": {
         "operationId": "calendar.ics.export",
         "summary": "Export iCalendar",
-        "description": "Export events from the configured CalDAV calendar as raw .ics content within an optional time window.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Export events from the configured CalDAV calendar as raw .ics content within an optional time window.",
         "tags": [
           "calendar"
         ],
@@ -19628,7 +19628,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -19669,7 +19669,7 @@
       "post": {
         "operationId": "calendar.ics.import",
         "summary": "Import iCalendar",
-        "description": "Import raw .ics content into the configured CalDAV calendar. Requires explicit confirmation.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Import raw .ics content into the configured CalDAV calendar. Requires explicit confirmation.",
         "tags": [
           "calendar"
         ],
@@ -19711,7 +19711,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -23162,7 +23162,7 @@
       "delete": {
         "operationId": "channels.drafts.delete",
         "summary": "Delete Channel Draft",
-        "description": "Remove a channel draft from the daemon-side store.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Remove a channel draft from the daemon-side store.",
         "tags": [
           "channels"
         ],
@@ -23194,7 +23194,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -23218,7 +23218,7 @@
       "get": {
         "operationId": "channels.drafts.get",
         "summary": "Get Channel Draft",
-        "description": "Return a single daemon-mirrored channel draft by id, or a notFound marker.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return a single daemon-mirrored channel draft by id, or a notFound marker.",
         "tags": [
           "channels"
         ],
@@ -23288,7 +23288,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -23313,7 +23313,7 @@
       "get": {
         "operationId": "channels.drafts.list",
         "summary": "List Channel Drafts",
-        "description": "Return daemon-mirrored channel drafts for cross-device sync. Webhook values are stored redacted.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return daemon-mirrored channel drafts for cross-device sync. Webhook values are stored redacted.",
         "tags": [
           "channels"
         ],
@@ -23404,7 +23404,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -23435,7 +23435,7 @@
       "post": {
         "operationId": "channels.drafts.save",
         "summary": "Save Channel Draft",
-        "description": "Mirror a channel draft to the daemon-side store. Webhook values must be redacted before transmission; raw webhook tokens are rejected. Requires explicit confirmation.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Mirror a channel draft to the daemon-side store. Webhook values must be redacted before transmission; raw webhook tokens are rejected. Requires explicit confirmation.",
         "tags": [
           "channels"
         ],
@@ -23523,7 +23523,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -23605,7 +23605,7 @@
       "get": {
         "operationId": "channels.inbox.list",
         "summary": "List Channel Inbox",
-        "description": "Return per-provider inbound message feeds (Slack DMs, Discord messages, email threads) fetched live from provider APIs. Read-only; no provider write.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return per-provider inbound message feeds (Slack DMs, Discord messages, email threads) fetched live from provider APIs. Read-only; no provider write.",
         "tags": [
           "channels"
         ],
@@ -23695,7 +23695,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -25207,7 +25207,7 @@
       "post": {
         "operationId": "channels.routing.assign",
         "summary": "Assign Channel Routing Rule",
-        "description": "Create or update a channel-to-profile routing rule in the daemon-persisted routing table. Requires explicit confirmation.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Create or update a channel-to-profile routing rule in the daemon-persisted routing table. Requires explicit confirmation.",
         "tags": [
           "channels"
         ],
@@ -25260,7 +25260,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -25306,7 +25306,7 @@
       "get": {
         "operationId": "channels.routing.list",
         "summary": "List Channel Routing Rules",
-        "description": "Return the daemon-persisted channel-to-profile routing table.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return the daemon-persisted channel-to-profile routing table.",
         "tags": [
           "channels"
         ],
@@ -25372,7 +25372,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -25413,7 +25413,7 @@
       "delete": {
         "operationId": "channels.routing.delete",
         "summary": "Delete Channel Routing Rule",
-        "description": "Remove a channel-to-profile routing rule from the daemon-persisted routing table.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Remove a channel-to-profile routing rule from the daemon-persisted routing table.",
         "tags": [
           "channels"
         ],
@@ -25445,7 +25445,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -28017,7 +28017,7 @@
       "post": {
         "operationId": "companion.chat.messages.retry",
         "summary": "Regenerate Companion Chat Response",
-        "description": "Regenerate an assistant response. Optional `messageId` targets a specific assistant message; omitted, the latest assistant response is re-run. The prior response (and any turns after it) is SUPERSEDED — kept in the message list and on disk, flagged as retained history — never deleted, then a fresh turn re-runs from the preceding user message. Returns the superseded message ids so the caller can render the honest lineage. Rejected on a closed session (409 SESSION_CLOSED) or unknown session (404 SESSION_NOT_FOUND), and with an honest machine code (409 NO_ASSISTANT_MESSAGE) when there is nothing to regenerate.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Regenerate an assistant response. Optional `messageId` targets a specific assistant message; omitted, the latest assistant response is re-run. The prior response (and any turns after it) is SUPERSEDED — kept in the message list and on disk, flagged as retained history — never deleted, then a fresh turn re-runs from the preceding user message. Returns the superseded message ids so the caller can render the honest lineage. Rejected on a closed session (409 SESSION_CLOSED) or unknown session (404 SESSION_NOT_FOUND), and with an honest machine code (409 NO_ASSISTANT_MESSAGE) when there is nothing to regenerate.",
         "tags": [
           "companion"
         ],
@@ -28060,7 +28060,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -29733,7 +29733,7 @@
       "get": {
         "operationId": "credentials.get",
         "summary": "Get Credential Status",
-        "description": "Return secret-free credential status (configured/usable) for the shared store. Never returns raw secret bytes. Optional ?key= narrows to one credential.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return secret-free credential status (configured/usable) for the shared store. Never returns raw secret bytes. Optional ?key= narrows to one credential.",
         "tags": [
           "config"
         ],
@@ -29804,7 +29804,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -32684,7 +32684,7 @@
       "post": {
         "operationId": "email.draft.create",
         "summary": "Create Email Draft",
-        "description": "Append a draft message to the configured IMAP Drafts folder. Distinct from the local channel draft store. Requires explicit confirmation.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Append a draft message to the configured IMAP Drafts folder. Distinct from the local channel draft store. Requires explicit confirmation.",
         "tags": [
           "email"
         ],
@@ -32719,7 +32719,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -32768,7 +32768,7 @@
       "get": {
         "operationId": "email.inbox.list",
         "summary": "List Email Inbox",
-        "description": "Return inbox message summaries fetched live from the configured IMAP account, newest first (ordered by server-assigned UID, never by the sender-written Date header). Read-only (EXAMINE / BODY.PEEK); never marks messages read. When the server answered for a message and the daemon could not read the answer, the page is short and `unreadable` says so — an omitted message is not by itself evidence that it was deleted.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return inbox message summaries fetched live from the configured IMAP account, newest first (ordered by server-assigned UID, never by the sender-written Date header). Read-only (EXAMINE / BODY.PEEK); never marks messages read. When the server answered for a message and the daemon could not read the answer, the page is short and `unreadable` says so — an omitted message is not by itself evidence that it was deleted.",
         "tags": [
           "email"
         ],
@@ -32854,7 +32854,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -32895,7 +32895,7 @@
       "get": {
         "operationId": "email.inbox.read",
         "summary": "Read Email Message",
-        "description": "Return the full body and attachment metadata for a single inbox message by IMAP UID. Read-only (BODY.PEEK; does not mark as read).\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return the full body and attachment metadata for a single inbox message by IMAP UID. Read-only (BODY.PEEK; does not mark as read).",
         "tags": [
           "email"
         ],
@@ -32969,7 +32969,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -32994,7 +32994,7 @@
       "post": {
         "operationId": "email.send",
         "summary": "Send Email",
-        "description": "Send a composed email via the configured SMTP account. Irreversible external send; requires confirm: true and explicit user review of recipients and body.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Send a composed email via the configured SMTP account. Irreversible external send; requires confirm: true and explicit user review of recipients and body.",
         "tags": [
           "email"
         ],
@@ -33026,7 +33026,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -34547,7 +34547,7 @@
       "post": {
         "operationId": "homeassistant.homeGraph.askHomeGraph",
         "summary": "Ask Home Graph",
-        "description": "Search a Home Graph knowledge space and return a source-backed answer.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Search a Home Graph knowledge space and return a source-backed answer.",
         "tags": [
           "knowledge"
         ],
@@ -34636,7 +34636,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -34694,7 +34694,7 @@
       "get": {
         "operationId": "homeassistant.homeGraph.browse",
         "summary": "Browse Home Graph",
-        "description": "Return namespace-filtered Home Graph sources, nodes, edges, and issues.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return namespace-filtered Home Graph sources, nodes, edges, and issues.",
         "tags": [
           "knowledge"
         ],
@@ -35122,7 +35122,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -35163,7 +35163,7 @@
       "post": {
         "operationId": "homeassistant.homeGraph.export",
         "summary": "Export Home Graph Space",
-        "description": "Export a complete Home Graph knowledge space.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Export a complete Home Graph knowledge space.",
         "tags": [
           "knowledge"
         ],
@@ -35721,7 +35721,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -35755,7 +35755,7 @@
       "post": {
         "operationId": "homeassistant.homeGraph.generateHomeGraphPacket",
         "summary": "Generate Home Graph Packet",
-        "description": "Render a scoped Home Graph packet with SDK-owned inclusion/exclusion profile rules.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Render a scoped Home Graph packet with SDK-owned inclusion/exclusion profile rules.",
         "tags": [
           "knowledge"
         ],
@@ -36007,7 +36007,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -36089,7 +36089,7 @@
       "post": {
         "operationId": "homeassistant.homeGraph.generateRoomPage",
         "summary": "Generate Room Page",
-        "description": "Render a Home Graph room/area page and materialize it as markdown.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Render a Home Graph room/area page and materialize it as markdown.",
         "tags": [
           "knowledge"
         ],
@@ -36341,7 +36341,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -36411,7 +36411,7 @@
       "post": {
         "operationId": "homeassistant.homeGraph.import",
         "summary": "Import Home Graph Space",
-        "description": "Restore a Home Graph knowledge space export into the current daemon knowledge store.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Restore a Home Graph knowledge space export into the current daemon knowledge store.",
         "tags": [
           "knowledge"
         ],
@@ -36471,7 +36471,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -36535,7 +36535,7 @@
       "post": {
         "operationId": "homeassistant.homeGraph.ingestHomeGraphArtifact",
         "summary": "Ingest Home Graph Artifact",
-        "description": "Index an existing artifact reference, JSON path/URI reference, multipart file upload, or raw binary upload as a Home Graph document, receipt, warranty, manual, or photo.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Index an existing artifact reference, JSON path/URI reference, multipart file upload, or raw binary upload as a Home Graph document, receipt, warranty, manual, or photo.",
         "tags": [
           "knowledge"
         ],
@@ -36873,7 +36873,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -37020,7 +37020,7 @@
       "post": {
         "operationId": "homeassistant.homeGraph.ingestHomeGraphNote",
         "summary": "Ingest Home Graph Note",
-        "description": "Store a Home Assistant note or remember-this fact as a Home Graph source.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Store a Home Assistant note or remember-this fact as a Home Graph source.",
         "tags": [
           "knowledge"
         ],
@@ -37358,7 +37358,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -37464,7 +37464,7 @@
       "post": {
         "operationId": "homeassistant.homeGraph.ingestHomeGraphUrl",
         "summary": "Ingest Home Graph URL",
-        "description": "Fetch and index a URL as a Home Graph source without writing to the default knowledge space.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Fetch and index a URL as a Home Graph source without writing to the default knowledge space.",
         "tags": [
           "knowledge"
         ],
@@ -37802,7 +37802,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -37908,7 +37908,7 @@
       "post": {
         "operationId": "homeassistant.homeGraph.linkHomeGraphKnowledge",
         "summary": "Link Home Graph Knowledge",
-        "description": "Attach a Home Graph source or node to a Home Assistant object.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Attach a Home Graph source or node to a Home Assistant object.",
         "tags": [
           "knowledge"
         ],
@@ -38040,7 +38040,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -38166,7 +38166,7 @@
       "get": {
         "operationId": "homeassistant.homeGraph.listHomeGraphIssues",
         "summary": "List Home Graph Issues",
-        "description": "Return Home Graph data quality, review, and maintenance issues.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return Home Graph data quality, review, and maintenance issues.",
         "tags": [
           "knowledge"
         ],
@@ -38272,7 +38272,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -38337,7 +38337,7 @@
       "post": {
         "operationId": "homeassistant.homeGraph.map",
         "summary": "Map Home Graph",
-        "description": "Return a visual Home Graph node/edge map with deterministic layout data and SVG.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return a visual Home Graph node/edge map with deterministic layout data and SVG.",
         "tags": [
           "knowledge"
         ],
@@ -38802,7 +38802,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -39040,7 +39040,7 @@
       "get": {
         "operationId": "homeassistant.homeGraph.pages.list",
         "summary": "List Home Graph Pages",
-        "description": "Return generated Home Graph wiki pages with optional markdown content.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return generated Home Graph wiki pages with optional markdown content.",
         "tags": [
           "knowledge"
         ],
@@ -39097,7 +39097,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -39146,7 +39146,7 @@
       "post": {
         "operationId": "homeassistant.homeGraph.refinement.run",
         "summary": "Run Home Graph Refinement",
-        "description": "Run source-backed Home Graph self-improvement for a space, source list, or specific gaps.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Run source-backed Home Graph self-improvement for a space, source list, or specific gaps.",
         "tags": [
           "knowledge"
         ],
@@ -39286,7 +39286,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -39341,7 +39341,7 @@
       "post": {
         "operationId": "homeassistant.homeGraph.refinement.task.cancel",
         "summary": "Cancel Home Graph Refinement Task",
-        "description": "Mark a queued or active Home Graph refinement task as cancelled.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Mark a queued or active Home Graph refinement task as cancelled.",
         "tags": [
           "knowledge"
         ],
@@ -39579,7 +39579,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -39629,7 +39629,7 @@
       "get": {
         "operationId": "homeassistant.homeGraph.refinement.task.get",
         "summary": "Get Home Graph Refinement Task",
-        "description": "Return one Home Graph refinement task and its trace.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return one Home Graph refinement task and its trace.",
         "tags": [
           "knowledge"
         ],
@@ -39867,7 +39867,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -39916,7 +39916,7 @@
       "get": {
         "operationId": "homeassistant.homeGraph.refinement.tasks.list",
         "summary": "List Home Graph Refinement Tasks",
-        "description": "Return durable Home Graph refinement tasks with states, traces, source assessments, and blocked reasons.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return durable Home Graph refinement tasks with states, traces, source assessments, and blocked reasons.",
         "tags": [
           "knowledge"
         ],
@@ -40150,7 +40150,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -40215,7 +40215,7 @@
       "post": {
         "operationId": "homeassistant.homeGraph.refreshDevicePassport",
         "summary": "Refresh Device Passport",
-        "description": "Generate or refresh the living passport page for one Home Assistant device.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Generate or refresh the living passport page for one Home Assistant device.",
         "tags": [
           "knowledge"
         ],
@@ -40467,7 +40467,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -40534,7 +40534,7 @@
       "post": {
         "operationId": "homeassistant.homeGraph.reindex",
         "summary": "Reindex Home Graph Sources",
-        "description": "Re-extract already-stored Home Graph artifacts with missing or sparse extraction records.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Re-extract already-stored Home Graph artifacts with missing or sparse extraction records.",
         "tags": [
           "knowledge"
         ],
@@ -40825,7 +40825,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -40880,7 +40880,7 @@
       "post": {
         "operationId": "homeassistant.homeGraph.reset",
         "summary": "Reset Home Graph Space",
-        "description": "Clear one Home Assistant Home Graph knowledge space after callers export any diagnostic backup they need.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Clear one Home Assistant Home Graph knowledge space after callers export any diagnostic backup they need.",
         "tags": [
           "knowledge"
         ],
@@ -40964,7 +40964,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -41005,7 +41005,7 @@
       "post": {
         "operationId": "homeassistant.homeGraph.reviewHomeGraphFact",
         "summary": "Review Home Graph Fact",
-        "description": "Accept, reject, resolve, edit, or forget a Home Graph issue, source, or node.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Accept, reject, resolve, edit, or forget a Home Graph issue, source, or node.",
         "tags": [
           "knowledge"
         ],
@@ -41345,7 +41345,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -41462,7 +41462,7 @@
       "get": {
         "operationId": "homeassistant.homeGraph.sources.list",
         "summary": "List Home Graph Sources",
-        "description": "Return source inventory for a Home Graph space.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return source inventory for a Home Graph space.",
         "tags": [
           "knowledge"
         ],
@@ -41610,7 +41610,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -41651,7 +41651,7 @@
       "get": {
         "operationId": "homeassistant.homeGraph.status",
         "summary": "Home Graph Status",
-        "description": "Return Home Assistant Home Graph status for an isolated knowledge space.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return Home Assistant Home Graph status for an isolated knowledge space.",
         "tags": [
           "knowledge"
         ],
@@ -41744,7 +41744,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -41777,7 +41777,7 @@
       "post": {
         "operationId": "homeassistant.homeGraph.syncHomeGraph",
         "summary": "Sync Home Graph",
-        "description": "Ingest a Home Assistant registry snapshot into an isolated Home Graph knowledge space.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Ingest a Home Assistant registry snapshot into an isolated Home Graph knowledge space.",
         "tags": [
           "knowledge"
         ],
@@ -42168,7 +42168,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -42481,7 +42481,7 @@
       "post": {
         "operationId": "homeassistant.homeGraph.unlinkHomeGraphKnowledge",
         "summary": "Unlink Home Graph Knowledge",
-        "description": "Remove an active Home Graph source/object link without deleting source history.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Remove an active Home Graph source/object link without deleting source history.",
         "tags": [
           "knowledge"
         ],
@@ -42613,7 +42613,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -42739,7 +42739,7 @@
       "post": {
         "operationId": "knowledge.ask",
         "summary": "Ask Knowledge",
-        "description": "Search, semantically synthesize, and return a source-backed answer from the structured knowledge/wiki store.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Search, semantically synthesize, and return a source-backed answer from the structured knowledge/wiki store.",
         "tags": [
           "knowledge"
         ],
@@ -43569,7 +43569,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -47046,7 +47046,7 @@
       "post": {
         "operationId": "knowledge.issue.review",
         "summary": "Review Knowledge Issue",
-        "description": "Record an LLM or user review decision for a knowledge issue and optionally apply semantic facts to the linked source or node.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Record an LLM or user review decision for a knowledge issue and optionally apply semantic facts to the linked source or node.",
         "tags": [
           "knowledge"
         ],
@@ -47437,7 +47437,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -49620,7 +49620,7 @@
       "get": {
         "operationId": "knowledge.map",
         "summary": "Map Knowledge Graph",
-        "description": "Return a deterministic visual map of structured knowledge nodes, sources, edges, and optional issues.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return a deterministic visual map of structured knowledge nodes, sources, edges, and optional issues.",
         "tags": [
           "knowledge"
         ],
@@ -50085,7 +50085,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -51684,7 +51684,7 @@
       "post": {
         "operationId": "knowledge.refinement.run",
         "summary": "Run Knowledge Refinement",
-        "description": "Run source-backed semantic self-improvement for a space, source list, or specific gaps.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Run source-backed semantic self-improvement for a space, source list, or specific gaps.",
         "tags": [
           "knowledge"
         ],
@@ -51807,7 +51807,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -51862,7 +51862,7 @@
       "post": {
         "operationId": "knowledge.refinement.task.cancel",
         "summary": "Cancel Knowledge Refinement Task",
-        "description": "Mark a queued or active semantic refinement task as cancelled.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Mark a queued or active semantic refinement task as cancelled.",
         "tags": [
           "knowledge"
         ],
@@ -52085,7 +52085,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -52129,7 +52129,7 @@
       "get": {
         "operationId": "knowledge.refinement.task.get",
         "summary": "Get Knowledge Refinement Task",
-        "description": "Return one semantic refinement task and its trace.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return one semantic refinement task and its trace.",
         "tags": [
           "knowledge"
         ],
@@ -52352,7 +52352,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -52377,7 +52377,7 @@
       "get": {
         "operationId": "knowledge.refinement.tasks.list",
         "summary": "List Knowledge Refinement Tasks",
-        "description": "Return durable semantic refinement tasks with state, traces, accepted/rejected source assessments, and blocked reasons.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return durable semantic refinement tasks with state, traces, accepted/rejected source assessments, and blocked reasons.",
         "tags": [
           "knowledge"
         ],
@@ -52603,7 +52603,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -55058,7 +55058,7 @@
       "get": {
         "operationId": "projectPlanning.decisions.list",
         "summary": "List Project Decisions",
-        "description": "Return durable decision records from the current project planning knowledge space.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return durable decision records from the current project planning knowledge space.",
         "tags": [
           "knowledge"
         ],
@@ -55172,7 +55172,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -55203,7 +55203,7 @@
       "post": {
         "operationId": "projectPlanning.decisions.record",
         "summary": "Record Project Decision",
-        "description": "Persist a meaningful project decision record for future TUI and agent context.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Persist a meaningful project decision record for future TUI and agent context.",
         "tags": [
           "knowledge"
         ],
@@ -55427,7 +55427,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -55507,7 +55507,7 @@
       "post": {
         "operationId": "projectPlanning.evaluate",
         "summary": "Evaluate Project Planning Readiness",
-        "description": "Validate planning state and return gaps/next-question hints without mutating state or driving conversation.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Validate planning state and return gaps/next-question hints without mutating state or driving conversation.",
         "tags": [
           "knowledge"
         ],
@@ -56195,7 +56195,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -56259,7 +56259,7 @@
       "get": {
         "operationId": "projectPlanning.language.get",
         "summary": "Get Project Language",
-        "description": "Return canonical project vocabulary and resolved ambiguity records from the project knowledge space.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return canonical project vocabulary and resolved ambiguity records from the project knowledge space.",
         "tags": [
           "knowledge"
         ],
@@ -56517,7 +56517,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -56548,7 +56548,7 @@
       "post": {
         "operationId": "projectPlanning.language.upsert",
         "summary": "Upsert Project Language",
-        "description": "Persist project vocabulary and ambiguity-resolution records without changing any live daemon session behavior.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Persist project vocabulary and ambiguity-resolution records without changing any live daemon session behavior.",
         "tags": [
           "knowledge"
         ],
@@ -56806,7 +56806,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -56870,7 +56870,7 @@
       "get": {
         "operationId": "projectPlanning.state.get",
         "summary": "Get Project Planning State",
-        "description": "Return the current project-scoped planning state artifact. The TUI owns the active conversation loop.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return the current project-scoped planning state artifact. The TUI owns the active conversation loop.",
         "tags": [
           "knowledge"
         ],
@@ -57489,7 +57489,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -57528,7 +57528,7 @@
       "post": {
         "operationId": "projectPlanning.state.upsert",
         "summary": "Upsert Project Planning State",
-        "description": "Persist project-scoped planning state from the TUI interview loop and evaluate readiness.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Persist project-scoped planning state from the TUI interview loop and evaluate readiness.",
         "tags": [
           "knowledge"
         ],
@@ -58147,7 +58147,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -58211,7 +58211,7 @@
       "get": {
         "operationId": "projectPlanning.status",
         "summary": "Project Planning Status",
-        "description": "Return passive, project-scoped planning artifact counts and SDK capabilities without starting a planning loop.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return passive, project-scoped planning artifact counts and SDK capabilities without starting a planning loop.",
         "tags": [
           "knowledge"
         ],
@@ -58286,7 +58286,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -58319,7 +58319,7 @@
       "post": {
         "operationId": "projectPlanning.workPlan.clearCompleted",
         "summary": "Clear Completed Project Work Plan Tasks",
-        "description": "Remove completed project work-plan tasks. Defaults to clearing status done only.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Remove completed project work-plan tasks. Defaults to clearing status done only.",
         "tags": [
           "knowledge"
         ],
@@ -58971,7 +58971,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -59014,7 +59014,7 @@
       "get": {
         "operationId": "projectPlanning.workPlan.snapshot",
         "summary": "Project Work Plan Snapshot",
-        "description": "Return the durable project-scoped work-plan snapshot, including tasks and status counts.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return the durable project-scoped work-plan snapshot, including tasks and status counts.",
         "tags": [
           "knowledge"
         ],
@@ -59233,7 +59233,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -59314,7 +59314,7 @@
       "post": {
         "operationId": "projectPlanning.workPlan.task.create",
         "summary": "Create Project Work Plan Task",
-        "description": "Create a durable project-scoped work-plan task for TUI, WebUI, APK, daemon planning, or WRFC correlation.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Create a durable project-scoped work-plan task for TUI, WebUI, APK, daemon planning, or WRFC correlation.",
         "tags": [
           "knowledge"
         ],
@@ -59966,7 +59966,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -60088,7 +60088,7 @@
       "get": {
         "operationId": "projectPlanning.workPlan.tasks.list",
         "summary": "List Project Work Plan Tasks",
-        "description": "List durable project-scoped work-plan tasks with optional status, owner, parent, or WRFC-chain filters.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "List durable project-scoped work-plan tasks with optional status, owner, parent, or WRFC-chain filters.",
         "tags": [
           "knowledge"
         ],
@@ -60307,7 +60307,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -60388,7 +60388,7 @@
       "delete": {
         "operationId": "projectPlanning.workPlan.task.delete",
         "summary": "Delete Project Work Plan Task",
-        "description": "Delete a durable project-scoped work-plan task.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Delete a durable project-scoped work-plan task.",
         "tags": [
           "knowledge"
         ],
@@ -61040,7 +61040,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -61087,7 +61087,7 @@
       "get": {
         "operationId": "projectPlanning.workPlan.task.get",
         "summary": "Get Project Work Plan Task",
-        "description": "Fetch one durable project-scoped work-plan task by id.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Fetch one durable project-scoped work-plan task by id.",
         "tags": [
           "knowledge"
         ],
@@ -61473,7 +61473,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -61520,7 +61520,7 @@
       "patch": {
         "operationId": "projectPlanning.workPlan.task.update",
         "summary": "Update Project Work Plan Task",
-        "description": "Patch a durable project-scoped work-plan task.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Patch a durable project-scoped work-plan task.",
         "tags": [
           "knowledge"
         ],
@@ -62172,7 +62172,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -62253,7 +62253,7 @@
       "post": {
         "operationId": "projectPlanning.workPlan.task.status",
         "summary": "Set Project Work Plan Task Status",
-        "description": "Validate and apply a project work-plan task status transition.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Validate and apply a project work-plan task status transition.",
         "tags": [
           "knowledge"
         ],
@@ -62905,7 +62905,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -62968,7 +62968,7 @@
       "post": {
         "operationId": "projectPlanning.workPlan.tasks.reorder",
         "summary": "Reorder Project Work Plan Tasks",
-        "description": "Replace task ordering for the current project work plan.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Replace task ordering for the current project work plan.",
         "tags": [
           "knowledge"
         ],
@@ -63187,7 +63187,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -63233,7 +63233,7 @@
       "get": {
         "operationId": "mcp.config.get",
         "summary": "MCP Effective Config",
-        "description": "Return effective MCP config from global, external, and project sources. Environment values are redacted to envKeys.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return effective MCP config from global, external, and project sources. Environment values are redacted to envKeys.",
         "tags": [
           "mcp"
         ],
@@ -63380,7 +63380,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -63395,7 +63395,7 @@
       "post": {
         "operationId": "mcp.config.reload",
         "summary": "Reload MCP Config",
-        "description": "Reload effective MCP config and reconnect added, removed, or changed servers without daemon restart.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Reload effective MCP config and reconnect added, removed, or changed servers without daemon restart.",
         "tags": [
           "mcp"
         ],
@@ -63606,7 +63606,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -63633,7 +63633,7 @@
       "get": {
         "operationId": "mcp.servers.list",
         "summary": "MCP Servers List",
-        "description": "Return configured MCP servers, runtime security posture, and sandbox bindings.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return configured MCP servers, runtime security posture, and sandbox bindings.",
         "tags": [
           "mcp"
         ],
@@ -63695,7 +63695,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -63710,7 +63710,7 @@
       "delete": {
         "operationId": "mcp.servers.remove",
         "summary": "Remove MCP Server",
-        "description": "Remove a project/global MCP server config and disconnect it without daemon restart.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Remove a project/global MCP server config and disconnect it without daemon restart.",
         "tags": [
           "mcp"
         ],
@@ -63936,7 +63936,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -64141,7 +64141,7 @@
       "post": {
         "operationId": "mcp.servers.upsert",
         "summary": "Upsert MCP Server",
-        "description": "Persist a project/global MCP server config and reconnect the changed runtime server without daemon restart.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Persist a project/global MCP server config and reconnect the changed runtime server without daemon restart.",
         "tags": [
           "mcp"
         ],
@@ -64367,7 +64367,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "admin",
         "x-transport": [
           "http",
@@ -64470,7 +64470,7 @@
       "get": {
         "operationId": "mcp.tools.list",
         "summary": "MCP Tools List",
-        "description": "Return currently connected MCP tools.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return currently connected MCP tools.",
         "tags": [
           "mcp"
         ],
@@ -64522,7 +64522,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -67769,7 +67769,7 @@
       "post": {
         "operationId": "memory.records.add",
         "summary": "Add Memory Record",
-        "description": "Add a memory record to the daemon-owned canonical store. The daemon is the single writer for its store; a client surface routes its writes here instead of opening the store file, so two processes never write the same sql.js file. New records default to confidence 60 (the recall floor) and reviewState fresh unless the review block overrides them.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Add a memory record to the daemon-owned canonical store. The daemon is the single writer for its store; a client surface routes its writes here instead of opening the store file, so two processes never write the same sql.js file. New records default to confidence 60 (the recall floor) and reviewState fresh unless the review block overrides them.",
         "tags": [
           "memory"
         ],
@@ -67905,7 +67905,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -68024,7 +68024,7 @@
       "delete": {
         "operationId": "memory.records.delete",
         "summary": "Delete Memory Record",
-        "description": "Permanently delete a memory record and its links from the canonical store. Delete means delete: the record is removed from the store and the semantic index, not merely flagged. Returns { deleted: false } when no record with that id existed — an honest boolean, never a 200 that pretends a phantom row was removed.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Permanently delete a memory record and its links from the canonical store. Delete means delete: the record is removed from the store and the semantic index, not merely flagged. Returns { deleted: false } when no record with that id existed — an honest boolean, never a 200 that pretends a phantom row was removed.",
         "tags": [
           "memory"
         ],
@@ -68056,7 +68056,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -68079,7 +68079,7 @@
       "get": {
         "operationId": "memory.records.get",
         "summary": "Get Memory Record",
-        "description": "Return a single memory record by id from the canonical store, or 404 when no record with that id exists.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return a single memory record by id from the canonical store, or 404 when no record with that id exists.",
         "tags": [
           "memory"
         ],
@@ -68215,7 +68215,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -68240,7 +68240,7 @@
       "post": {
         "operationId": "memory.records.export",
         "summary": "Export Memory Bundle",
-        "description": "Export a no-loss bundle (records + links) for the given filter from the canonical store. The bundle round-trips through import id-keyed, so it is the wire form of the cross-surface fold/reconcile seam. Read-only.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Export a no-loss bundle (records + links) for the given filter from the canonical store. The bundle round-trips through import id-keyed, so it is the wire form of the cross-surface fold/reconcile seam. Read-only.",
         "tags": [
           "memory"
         ],
@@ -68445,7 +68445,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -68544,7 +68544,7 @@
       "post": {
         "operationId": "memory.records.import",
         "summary": "Import Memory Bundle",
-        "description": "Import a bundle into the canonical store as an id-keyed union: an id already present is left untouched (counted skipped), a new id is added; a link is added only when both its endpoints exist. Never overwrites, never deletes, idempotent on re-run. The daemon is the single writer, so a client imports here instead of writing the store file.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Import a bundle into the canonical store as an id-keyed union: an id already present is left untouched (counted skipped), a new id is added; a link is added only when both its endpoints exist. Never overwrites, never deletes, idempotent on re-run. The daemon is the single writer, so a client imports here instead of writing the store file.",
         "tags": [
           "memory"
         ],
@@ -68589,7 +68589,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -68800,7 +68800,7 @@
       "post": {
         "operationId": "memory.records.links.add",
         "summary": "Link Memory Records",
-        "description": "Create a directed relation (e.g. \"supersedes\", \"caused\") from the path record to a target record. Returns 404 when either endpoint does not exist — never a 200 that pretends a link was made between records that do not both exist.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Create a directed relation (e.g. \"supersedes\", \"caused\") from the path record to a target record. Returns 404 when either endpoint does not exist — never a 200 that pretends a link was made between records that do not both exist.",
         "tags": [
           "memory"
         ],
@@ -68849,7 +68849,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -68899,7 +68899,7 @@
       "get": {
         "operationId": "memory.records.links.list",
         "summary": "List Memory Record Links",
-        "description": "Return every link where the record is the source or the target. Returns 404 when no record with that id exists — an honest not-found, distinct from a record that exists but has no links (an empty array).\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return every link where the record is the source or the target. Returns 404 when no record with that id exists — an honest not-found, distinct from a record that exists but has no links (an empty array).",
         "tags": [
           "memory"
         ],
@@ -68951,7 +68951,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -68976,7 +68976,7 @@
       "post": {
         "operationId": "memory.records.list",
         "summary": "List Memory Records",
-        "description": "Bulk read from the canonical store: a literal (non-semantic) search returning the matching records as a plain array. An empty filter returns every record (getAll). This is the read a client surface uses instead of opening the store file for its browse/list and knowledge-injection paths.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Bulk read from the canonical store: a literal (non-semantic) search returning the matching records as a plain array. An empty filter returns every record (getAll). This is the read a client surface uses instead of opening the store file for its browse/list and knowledge-injection paths.",
         "tags": [
           "memory"
         ],
@@ -69115,7 +69115,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -69214,7 +69214,7 @@
       "post": {
         "operationId": "memory.records.search",
         "summary": "Search Memory Records",
-        "description": "Search the canonical store, literal or semantic. When semantic is requested but the semantic index cannot be consulted, the search falls back to a literal scan and states the reason in indexUnavailableReason rather than returning a silent empty result that reads as \"nothing was ever stored\". With recall=true the cross-surface recall-honesty contract is applied: flagged (stale/contradicted) records are excluded outright and records below the 60% confidence floor are dropped, each exclusion counted honestly.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Search the canonical store, literal or semantic. When semantic is requested but the semantic index cannot be consulted, the search falls back to a literal scan and states the reason in indexUnavailableReason rather than returning a silent empty result that reads as \"nothing was ever stored\". With recall=true the cross-surface recall-honesty contract is applied: flagged (stale/contradicted) records are excluded outright and records below the 60% confidence floor are dropped, each exclusion counted honestly.",
         "tags": [
           "memory"
         ],
@@ -69407,7 +69407,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -69509,7 +69509,7 @@
       "post": {
         "operationId": "memory.records.search-semantic",
         "summary": "Semantic Search Memory Records",
-        "description": "Rank records by semantic similarity against the query, returning scored results (distance, similarity, score). When the query has no vector match the store falls back to a lexical ranking rather than a silent empty. distance is null for a fallback (non-vector) result. Read-only against the daemon's canonical index.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Rank records by semantic similarity against the query, returning scored results (distance, similarity, score). When the query has no vector match the store falls back to a lexical ranking rather than a silent empty. distance is null for a fallback (non-vector) result. Read-only against the daemon's canonical index.",
         "tags": [
           "memory"
         ],
@@ -69675,7 +69675,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -69774,7 +69774,7 @@
       "post": {
         "operationId": "memory.records.update",
         "summary": "Update Memory Record",
-        "description": "Edit a record's content fields (scope, summary, detail, tags) and its temporal validity window (validFrom, validUntil) in the canonical store. This is distinct from the review update: it changes the record itself — e.g. moving scope project→team promotes a record to the shared surface. For validFrom/validUntil a number sets the bound, null clears it, and an omitted field leaves it unchanged, so a proposal that changes only the window can be applied. Returns 404 when no record with that id exists.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Edit a record's content fields (scope, summary, detail, tags) and its temporal validity window (validFrom, validUntil) in the canonical store. This is distinct from the review update: it changes the record itself — e.g. moving scope project→team promotes a record to the shared surface. For validFrom/validUntil a number sets the bound, null clears it, and an omitted field leaves it unchanged, so a proposal that changes only the window can be applied. Returns 404 when no record with that id exists.",
         "tags": [
           "memory"
         ],
@@ -69910,7 +69910,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -69994,7 +69994,7 @@
       "post": {
         "operationId": "memory.records.update-review",
         "summary": "Update Memory Record Review",
-        "description": "Update a record's review signal (reviewState, confidence, reviewer, staleReason) in the canonical store. Marking a record stale or contradicted flags it so the recall-honesty contract will never inject it into a prompt again regardless of confidence. Returns 404 when no record with that id exists.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Update a record's review signal (reviewState, confidence, reviewer, staleReason) in the canonical store. Marking a record stale or contradicted flags it so the recall-honesty contract will never inject it into a prompt again regardless of confidence. Returns 404 when no record with that id exists.",
         "tags": [
           "memory"
         ],
@@ -70130,7 +70130,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -70192,7 +70192,7 @@
       "get": {
         "operationId": "memory.review-queue",
         "summary": "Memory Review Queue",
-        "description": "Return memory records prioritised for review. Accepts optional limit (?limit=N) and scope filter (?scope=session|project|team). A scope query parameter that is present but not one of the three valid values returns 400.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return memory records prioritised for review. Accepts optional limit (?limit=N) and scope filter (?scope=session|project|team). A scope query parameter that is present but not one of the three valid values returns 400.",
         "tags": [
           "memory"
         ],
@@ -70225,7 +70225,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -80656,7 +80656,7 @@
       "get": {
         "operationId": "scheduler.capacity",
         "summary": "Scheduler Capacity",
-        "description": "Return the current automation-scheduler capacity snapshot: total slots, in-use slots, queue depth, and age of the oldest queued run.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Return the current automation-scheduler capacity snapshot: total slots, in-use slots, queue depth, and age of the oldest queued run.",
         "tags": [
           "scheduler"
         ],
@@ -80703,7 +80703,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -84877,7 +84877,7 @@
       "post": {
         "operationId": "sessions.inputs.deliver",
         "summary": "Mark Shared Session Input Delivered",
-        "description": "A live registered surface reports that it collected a queued input (moves it to `delivered`) or finished acting on it (`consumed:true` moves it to `completed`). This is how a surface-managed session — where steer/follow-up inputs queue for the surface rather than spawn a daemon executor — closes the input lifecycle honestly. Only queued/delivered inputs advance; others are returned unchanged.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "A live registered surface reports that it collected a queued input (moves it to `delivered`) or finished acting on it (`consumed:true` moves it to `completed`). This is how a surface-managed session — where steer/follow-up inputs queue for the surface rather than spawn a daemon executor — closes the input lifecycle honestly. Only queued/delivered inputs advance; others are returned unchanged.",
         "tags": [
           "sessions"
         ],
@@ -85117,7 +85117,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -87073,7 +87073,7 @@
       "post": {
         "operationId": "sessions.register",
         "summary": "Register Shared Session",
-        "description": "Idempotently register (or heartbeat) a session keyed on a caller-supplied id, carrying its kind, project, and participant identity. Re-calling with the same id advances the participant lastSeenAt (heartbeat). Registering against a CLOSED session does NOT silently reopen it — the heartbeat is recorded and the still-closed record is returned with reopened=false and conflict={status:closed}; pass reopen=true to reopen. A titled session is never renamed by the heartbeat. An unknown kind is rejected (400), not coerced. Prefer this over sessions.create for external runtimes that own their session id.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Idempotently register (or heartbeat) a session keyed on a caller-supplied id, carrying its kind, project, and participant identity. Re-calling with the same id advances the participant lastSeenAt (heartbeat). Registering against a CLOSED session does NOT silently reopen it — the heartbeat is recorded and the still-closed record is returned with reopened=false and conflict={status:closed}; pass reopen=true to reopen. A titled session is never renamed by the heartbeat. An unknown kind is rejected (400), not coerced. Prefer this over sessions.create for external runtimes that own their session id.",
         "tags": [
           "sessions"
         ],
@@ -87264,7 +87264,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http",
@@ -94785,7 +94785,7 @@
       "post": {
         "operationId": "voice.tts.stream",
         "summary": "Stream Text To Speech",
-        "description": "Synthesize audio as streamed bytes through a registered streaming voice provider.\n\nNOTE: this method has no typed SDK client IO — request/response resolve to `unknown` in the typed client (see `x-typed-client-io`).",
+        "description": "Synthesize audio as streamed bytes through a registered streaming voice provider.",
         "tags": [
           "voice"
         ],
@@ -94821,7 +94821,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "x-typed-client-io": false,
+        "x-typed-client-io": true,
         "x-access": "authenticated",
         "x-transport": [
           "http"
@@ -97577,7 +97577,7 @@
       "queryParameters": []
     }
   },
-  "x-untyped-client-io-count": 96,
+  "x-untyped-client-io-count": 0,
   "x-operator-methods": [
     {
       "id": "accounts.snapshot",
@@ -98142,7 +98142,7 @@
       "category": "calendar",
       "access": "admin",
       "rest": "POST /api/calendar/events",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -98151,7 +98151,7 @@
       "category": "calendar",
       "access": "authenticated",
       "rest": "GET /api/calendar/events/{eventId}",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -98160,7 +98160,7 @@
       "category": "calendar",
       "access": "authenticated",
       "rest": "GET /api/calendar/events",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -98169,7 +98169,7 @@
       "category": "calendar",
       "access": "authenticated",
       "rest": "GET /api/calendar/ics/export",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -98178,7 +98178,7 @@
       "category": "calendar",
       "access": "admin",
       "rest": "POST /api/calendar/ics/import",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -98340,7 +98340,7 @@
       "category": "channels",
       "access": "admin",
       "rest": "DELETE /api/channels/drafts/{draftId}",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -98349,7 +98349,7 @@
       "category": "channels",
       "access": "authenticated",
       "rest": "GET /api/channels/drafts/{draftId}",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -98358,7 +98358,7 @@
       "category": "channels",
       "access": "authenticated",
       "rest": "GET /api/channels/drafts",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -98367,7 +98367,7 @@
       "category": "channels",
       "access": "admin",
       "rest": "POST /api/channels/drafts",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -98376,7 +98376,7 @@
       "category": "channels",
       "access": "authenticated",
       "rest": "GET /api/channels/inbox",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -98466,7 +98466,7 @@
       "category": "channels",
       "access": "admin",
       "rest": "POST /api/channels/routing",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -98475,7 +98475,7 @@
       "category": "channels",
       "access": "admin",
       "rest": "DELETE /api/channels/routing/{assignmentId}",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -98484,7 +98484,7 @@
       "category": "channels",
       "access": "authenticated",
       "rest": "GET /api/channels/routing",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -98736,7 +98736,7 @@
       "category": "companion",
       "access": "authenticated",
       "rest": "POST /api/companion/chat/sessions/{sessionId}/messages/retry",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -98835,7 +98835,7 @@
       "category": "config",
       "access": "admin",
       "rest": "GET /config/credentials",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -98988,7 +98988,7 @@
       "category": "email",
       "access": "admin",
       "rest": "POST /api/email/drafts",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99033,7 +99033,7 @@
       "category": "email",
       "access": "authenticated",
       "rest": "GET /api/email/inbox",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99042,7 +99042,7 @@
       "category": "email",
       "access": "authenticated",
       "rest": "GET /api/email/inbox/{uid}",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99051,7 +99051,7 @@
       "category": "email",
       "access": "admin",
       "rest": "POST /api/email/send",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99249,7 +99249,7 @@
       "category": "knowledge",
       "access": "authenticated",
       "rest": "POST /api/homeassistant/home-graph/ask",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99258,7 +99258,7 @@
       "category": "knowledge",
       "access": "authenticated",
       "rest": "GET /api/homeassistant/home-graph/browse",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99267,7 +99267,7 @@
       "category": "knowledge",
       "access": "authenticated",
       "rest": "POST /api/homeassistant/home-graph/export",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99276,7 +99276,7 @@
       "category": "knowledge",
       "access": "admin",
       "rest": "POST /api/homeassistant/home-graph/packet",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99285,7 +99285,7 @@
       "category": "knowledge",
       "access": "admin",
       "rest": "POST /api/homeassistant/home-graph/room-page",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99294,7 +99294,7 @@
       "category": "knowledge",
       "access": "admin",
       "rest": "POST /api/homeassistant/home-graph/import",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99303,7 +99303,7 @@
       "category": "knowledge",
       "access": "admin",
       "rest": "POST /api/homeassistant/home-graph/ingest/artifact",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99312,7 +99312,7 @@
       "category": "knowledge",
       "access": "admin",
       "rest": "POST /api/homeassistant/home-graph/ingest/note",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99321,7 +99321,7 @@
       "category": "knowledge",
       "access": "admin",
       "rest": "POST /api/homeassistant/home-graph/ingest/url",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99330,7 +99330,7 @@
       "category": "knowledge",
       "access": "admin",
       "rest": "POST /api/homeassistant/home-graph/link",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99339,7 +99339,7 @@
       "category": "knowledge",
       "access": "authenticated",
       "rest": "GET /api/homeassistant/home-graph/issues",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99348,7 +99348,7 @@
       "category": "knowledge",
       "access": "authenticated",
       "rest": "POST /api/homeassistant/home-graph/map",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99357,7 +99357,7 @@
       "category": "knowledge",
       "access": "authenticated",
       "rest": "GET /api/homeassistant/home-graph/pages",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99366,7 +99366,7 @@
       "category": "knowledge",
       "access": "admin",
       "rest": "POST /api/homeassistant/home-graph/refinement/run",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99375,7 +99375,7 @@
       "category": "knowledge",
       "access": "admin",
       "rest": "POST /api/homeassistant/home-graph/refinement/tasks/{id}/cancel",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99384,7 +99384,7 @@
       "category": "knowledge",
       "access": "authenticated",
       "rest": "GET /api/homeassistant/home-graph/refinement/tasks/{id}",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99393,7 +99393,7 @@
       "category": "knowledge",
       "access": "authenticated",
       "rest": "GET /api/homeassistant/home-graph/refinement/tasks",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99402,7 +99402,7 @@
       "category": "knowledge",
       "access": "admin",
       "rest": "POST /api/homeassistant/home-graph/device-passport",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99411,7 +99411,7 @@
       "category": "knowledge",
       "access": "admin",
       "rest": "POST /api/homeassistant/home-graph/reindex",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99420,7 +99420,7 @@
       "category": "knowledge",
       "access": "admin",
       "rest": "POST /api/homeassistant/home-graph/reset",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99429,7 +99429,7 @@
       "category": "knowledge",
       "access": "admin",
       "rest": "POST /api/homeassistant/home-graph/facts/review",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99438,7 +99438,7 @@
       "category": "knowledge",
       "access": "authenticated",
       "rest": "GET /api/homeassistant/home-graph/sources",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99447,7 +99447,7 @@
       "category": "knowledge",
       "access": "authenticated",
       "rest": "GET /api/homeassistant/home-graph/status",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99456,7 +99456,7 @@
       "category": "knowledge",
       "access": "admin",
       "rest": "POST /api/homeassistant/home-graph/sync",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99465,7 +99465,7 @@
       "category": "knowledge",
       "access": "admin",
       "rest": "POST /api/homeassistant/home-graph/unlink",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99474,7 +99474,7 @@
       "category": "knowledge",
       "access": "authenticated",
       "rest": "POST /api/knowledge/ask",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99627,7 +99627,7 @@
       "category": "knowledge",
       "access": "admin",
       "rest": "POST /api/knowledge/issues/{id}/review",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99699,7 +99699,7 @@
       "category": "knowledge",
       "access": "authenticated",
       "rest": "GET /api/knowledge/map",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99753,7 +99753,7 @@
       "category": "knowledge",
       "access": "admin",
       "rest": "POST /api/knowledge/refinement/run",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99762,7 +99762,7 @@
       "category": "knowledge",
       "access": "admin",
       "rest": "POST /api/knowledge/refinement/tasks/{id}/cancel",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99771,7 +99771,7 @@
       "category": "knowledge",
       "access": "authenticated",
       "rest": "GET /api/knowledge/refinement/tasks/{id}",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99780,7 +99780,7 @@
       "category": "knowledge",
       "access": "authenticated",
       "rest": "GET /api/knowledge/refinement/tasks",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99906,7 +99906,7 @@
       "category": "knowledge",
       "access": "authenticated",
       "rest": "GET /api/projects/planning/decisions",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99915,7 +99915,7 @@
       "category": "knowledge",
       "access": "admin",
       "rest": "POST /api/projects/planning/decisions",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99924,7 +99924,7 @@
       "category": "knowledge",
       "access": "authenticated",
       "rest": "POST /api/projects/planning/evaluate",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99933,7 +99933,7 @@
       "category": "knowledge",
       "access": "authenticated",
       "rest": "GET /api/projects/planning/language",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99942,7 +99942,7 @@
       "category": "knowledge",
       "access": "admin",
       "rest": "POST /api/projects/planning/language",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99951,7 +99951,7 @@
       "category": "knowledge",
       "access": "authenticated",
       "rest": "GET /api/projects/planning/state",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99960,7 +99960,7 @@
       "category": "knowledge",
       "access": "admin",
       "rest": "POST /api/projects/planning/state",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99969,7 +99969,7 @@
       "category": "knowledge",
       "access": "authenticated",
       "rest": "GET /api/projects/planning/status",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99978,7 +99978,7 @@
       "category": "knowledge",
       "access": "admin",
       "rest": "POST /api/projects/planning/work-plan/clear-completed",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99987,7 +99987,7 @@
       "category": "knowledge",
       "access": "authenticated",
       "rest": "GET /api/projects/planning/work-plan",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -99996,7 +99996,7 @@
       "category": "knowledge",
       "access": "admin",
       "rest": "POST /api/projects/planning/work-plan/tasks",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -100005,7 +100005,7 @@
       "category": "knowledge",
       "access": "admin",
       "rest": "DELETE /api/projects/planning/work-plan/tasks/{taskId}",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -100014,7 +100014,7 @@
       "category": "knowledge",
       "access": "authenticated",
       "rest": "GET /api/projects/planning/work-plan/tasks/{taskId}",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -100023,7 +100023,7 @@
       "category": "knowledge",
       "access": "admin",
       "rest": "POST /api/projects/planning/work-plan/tasks/{taskId}/status",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -100032,7 +100032,7 @@
       "category": "knowledge",
       "access": "admin",
       "rest": "PATCH /api/projects/planning/work-plan/tasks/{taskId}",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -100041,7 +100041,7 @@
       "category": "knowledge",
       "access": "authenticated",
       "rest": "GET /api/projects/planning/work-plan/tasks",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -100050,7 +100050,7 @@
       "category": "knowledge",
       "access": "admin",
       "rest": "POST /api/projects/planning/work-plan/tasks/reorder",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -100059,7 +100059,7 @@
       "category": "mcp",
       "access": "authenticated",
       "rest": "GET /api/mcp/config",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -100068,7 +100068,7 @@
       "category": "mcp",
       "access": "admin",
       "rest": "POST /api/mcp/reload",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -100077,7 +100077,7 @@
       "category": "mcp",
       "access": "authenticated",
       "rest": "GET /api/mcp/servers",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -100086,7 +100086,7 @@
       "category": "mcp",
       "access": "admin",
       "rest": "DELETE /api/mcp/config/servers/{serverName}",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -100104,7 +100104,7 @@
       "category": "mcp",
       "access": "admin",
       "rest": "POST /api/mcp/config/servers",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -100113,7 +100113,7 @@
       "category": "mcp",
       "access": "authenticated",
       "rest": "GET /api/mcp/tools",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -100248,7 +100248,7 @@
       "category": "memory",
       "access": "authenticated",
       "rest": "POST /api/memory/records",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -100257,7 +100257,7 @@
       "category": "memory",
       "access": "authenticated",
       "rest": "DELETE /api/memory/records/{id}",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -100266,7 +100266,7 @@
       "category": "memory",
       "access": "authenticated",
       "rest": "POST /api/memory/records/export",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -100275,7 +100275,7 @@
       "category": "memory",
       "access": "authenticated",
       "rest": "GET /api/memory/records/{id}",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -100284,7 +100284,7 @@
       "category": "memory",
       "access": "authenticated",
       "rest": "POST /api/memory/records/import",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -100293,7 +100293,7 @@
       "category": "memory",
       "access": "authenticated",
       "rest": "POST /api/memory/records/{id}/links",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -100302,7 +100302,7 @@
       "category": "memory",
       "access": "authenticated",
       "rest": "GET /api/memory/records/{id}/links",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -100311,7 +100311,7 @@
       "category": "memory",
       "access": "authenticated",
       "rest": "POST /api/memory/records/list",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -100320,7 +100320,7 @@
       "category": "memory",
       "access": "authenticated",
       "rest": "POST /api/memory/records/search",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -100329,7 +100329,7 @@
       "category": "memory",
       "access": "authenticated",
       "rest": "POST /api/memory/records/search-semantic",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -100338,7 +100338,7 @@
       "category": "memory",
       "access": "authenticated",
       "rest": "POST /api/memory/records/{id}/update",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -100347,7 +100347,7 @@
       "category": "memory",
       "access": "authenticated",
       "rest": "POST /api/memory/records/{id}/review",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -100356,7 +100356,7 @@
       "category": "memory",
       "access": "authenticated",
       "rest": "GET /api/memory/review-queue",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -100725,7 +100725,7 @@
       "category": "push",
       "access": "authenticated",
       "rest": null,
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -100734,7 +100734,7 @@
       "category": "push",
       "access": "authenticated",
       "rest": null,
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -100743,7 +100743,7 @@
       "category": "push",
       "access": "authenticated",
       "rest": null,
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "schema-less",
       "outputSchemaCoverage": "typed"
     },
@@ -100761,7 +100761,7 @@
       "category": "push",
       "access": "authenticated",
       "rest": null,
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -100770,7 +100770,7 @@
       "category": "push",
       "access": "authenticated",
       "rest": null,
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "schema-less",
       "outputSchemaCoverage": "typed"
     },
@@ -101067,7 +101067,7 @@
       "category": "scheduler",
       "access": "authenticated",
       "rest": "GET /api/runtime/scheduler",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -101211,7 +101211,7 @@
       "category": "sessions",
       "access": "authenticated",
       "rest": "POST /api/sessions/{sessionId}/inputs/{inputId}/deliver",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -101310,7 +101310,7 @@
       "category": "sessions",
       "access": "authenticated",
       "rest": "POST /api/sessions/register",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
@@ -101598,7 +101598,7 @@
       "category": "voice",
       "access": "authenticated",
       "rest": "POST /api/voice/tts/stream",
-      "typedClientIo": false,
+      "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
     },
