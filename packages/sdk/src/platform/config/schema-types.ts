@@ -2,6 +2,7 @@
  * Shared config schema types for goodvibes-sdk.
  */
 import type { ProfileConfigKey, ProfileConfigValue } from './schema-types-owner-profile.js';
+import type { OccasionsConfigKey } from './schema-types-occasions.js';
 
 
 export * from "./schema-types-surfaces.js";
@@ -757,6 +758,8 @@ export type ConfigKey =
   | 'cluster.beaconSeconds'
   | 'cluster.rosterGossipSeconds'
   // The owner profile's policy (schema-types-owner-profile.ts / schema-domain-owner-profile.ts).
-  | ProfileConfigKey;
+  | ProfileConfigKey
+  // Proactive occasions and plans (schema-types-occasions.ts / schema-domain-occasions.ts).
+  | OccasionsConfigKey;
 
 export * from "./schema-types-values.js";

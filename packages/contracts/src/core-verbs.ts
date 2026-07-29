@@ -190,6 +190,29 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     // pending proposals: a whole-report read named for what it serves.
     'receipts',
   ],
+  'occasions-and-proactive-surfacing': [
+    // The proactive occasions loop (docs/occasions.md). These name acts the
+    // generic vocabulary has no word for, and renaming them would describe
+    // something other than what happens.
+    //
+    //  - `propose` is not `create`: it writes NOTHING and returns the line that
+    //    WOULD be written plus the one sentence to put to the owner. The whole
+    //    point of the pair is that a date heard in conversation is confirmed
+    //    once, at the moment he can still catch a mishearing.
+    //  - `confirm` is not `update`: it is the second half of that pair, and it
+    //    refuses without a kind rather than defaulting one.
+    //  - `answer` is not `set`: it records yes, no or LATER, and "later" is a
+    //    distinct third answer that returns nearer the date rather than a
+    //    softer decline.
+    //  - `sweep` is not `run`: it is the housekeeping-plus-approach pass, and
+    //    it reaps even when it is not allowed to speak.
+    //  - `pending` is not `list`: it returns what is UNRESOLVED, composed as it
+    //    would be delivered, rather than the records.
+    //  - `gifts` is the history of what he landed on, named for what it holds.
+    //  - `state` is the persisted-state disclosure — counts and reasons, never
+    //    a date or an answer — distinct from a generic `status`.
+    'propose', 'confirm', 'answer', 'sweep', 'pending', 'gifts', 'state',
+  ],
   'memory-record-store': [
     // The daemon-owned canonical memory store mirrors the MemoryStore engine's
     // own long-standing API verbs rather than the generic CRUD words. `add`

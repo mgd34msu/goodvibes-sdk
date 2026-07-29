@@ -27,6 +27,7 @@ import type {
   PermissionMode,
 } from './schema-types.js';
 import type { ProfileConfigKey, ProfileConfigValue } from './schema-types-owner-profile.js';
+import type { OccasionsConfigKey, OccasionsConfigValue } from './schema-types-occasions.js';
 // The payments and daemon-process domains map their keys through a value MAP
 // rather than a clause per key. Both clauses were written against the inline
 // ConfigValue that used to live in schema-types.ts, and move here with it.
@@ -555,4 +556,5 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'cluster.beaconSeconds' ? number :
   K extends 'cluster.rosterGossipSeconds' ? number :
   K extends ProfileConfigKey ? ProfileConfigValue<K> :
+  K extends OccasionsConfigKey ? OccasionsConfigValue<K> :
   never;

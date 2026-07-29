@@ -49,6 +49,7 @@ import { learningConfigDefaults, learningConfigSettings } from './schema-domain-
 import { powerConfigDefaults, powerConfigSettings } from './schema-domain-power.js';
 import { memoryConfigDefaults, memoryConfigSettings } from './schema-domain-memory.js';
 import { ownerProfileConfigDefaults, ownerProfileConfigSettings } from './schema-domain-owner-profile.js';
+import { occasionsConfigDefaults, occasionsConfigSettings } from './schema-domain-occasions.js';
 import { voiceLocalConfigDefaults, voiceLocalConfigSettings } from './schema-domain-voice-local.js';
 import { voiceWakeConfigDefaults, voiceWakeConfigSettings } from './schema-domain-voice-wake.js';
 import { triggersConfigDefaults, triggersConfigSettings } from './schema-domain-triggers.js';
@@ -100,6 +101,7 @@ export const DEFAULT_CONFIG = {
   power: powerConfigDefaults.power,
   memory: memoryConfigDefaults.memory,
   profile: ownerProfileConfigDefaults.profile,
+  occasions: occasionsConfigDefaults.occasions,
   voice: { ...voiceLocalConfigDefaults.voice, ...voiceWakeConfigDefaults.voice },
   device: deviceConfigDefaults.device,
   push: pushConfigDefaults.push,
@@ -134,6 +136,7 @@ export const CONFIG_SCHEMA: ConfigSetting[] = [
   ...powerConfigSettings,
   ...memoryConfigSettings,
   ...ownerProfileConfigSettings,
+  ...occasionsConfigSettings,
   ...voiceLocalConfigSettings,
   ...voiceWakeConfigSettings,
   ...deviceConfigSettings,

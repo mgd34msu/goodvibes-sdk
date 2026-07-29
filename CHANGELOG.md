@@ -4,6 +4,57 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
+## [Unreleased]
+
+### Added
+
+- **Occasions and plans — the daemon raises important dates on its own, before
+  they matter.** A new `## Important dates` section and a new `## Plans` section
+  in the owner profile hold his own declarations, as prose lines he can hand-edit
+  and that nothing rewrites. The daemon reads them, works out which are entering
+  their lead window, batches them into one message, and delivers it — with the
+  answer remembered so it does not keep asking, and remembered only until the
+  date passes, because birthdays are annual. See `docs/occasions.md`.
+
+  - **The kind is his, and is never inferred.** `gift-giving`, `remember-only`
+    or `neither`, chosen in the same interaction that confirms the date.
+    `occasions.confirm` refuses without one: no rule that reads a label tells a
+    birthday from a death anniversary, and a cheerful "you'll probably want to
+    sort something" against the wrong one would be genuinely bad.
+  - **A nudge names the occasion and the person and never the date.** Not the
+    date string and not a day count either — "in ten days" is the date with
+    arithmetic applied. Proximity is a word chosen from a count that never
+    leaves the composer, so a reminder delivered to Telegram cannot put a family
+    member's birth date into a message channel.
+  - **Telegram and the agent. Never the TUI**, which is refused as a
+    destination structurally rather than left unconfigured. The TUI is a
+    get-work-done interface and life admin does not belong in it.
+  - **Nothing unresolved is ever dropped.** One open-item mechanism behind all
+    three cases: an unanswered nudge continues on its own rhythm, a "later"
+    comes back roughly halfway to the date, a conflict between two declared
+    dates is re-raised until he settles it, and a gift interview he walked away
+    from resumes at the question he did not answer.
+  - **A yes opens a short interview, not a shopping trip.** Three questions that
+    guide him to his own idea, opened from what his profile already says about
+    the person, recording what he landed on so year three is not steered by year
+    one. It never recommends anything.
+  - **The machine's bookkeeping stays out of his file.** Answers, gift history,
+    open items, interviews and calendar mirror records live in a separate
+    machine-owned store that is bounded, validated record by record, reaped on
+    schedule, swept, and discloses what it holds through `occasions.state`.
+    Every write is ordered.
+  - **The calendar is a mirror, never a source.** Occasions can be written out
+    to a calendar and are then left to the calendar's own reminder; nothing is
+    ever read back the other way, and deleting a calendar entry cannot remove an
+    occasion.
+  - **It runs on its own.** A repeating pass in the daemon looks for dates
+    entering their window; the interval is a live setting and the pass is
+    strictly serial, so a slow one delays the next rather than delivering the
+    same batch twice, and a failing one re-arms rather than ending the loop.
+  - Sixteen `occasions.*` control-plane verbs and twelve `occasions.*` settings,
+    all daemon-owned. Every operation a surface needs is a verb; nothing a
+    surface renders has to be computed there.
+
 ## [1.19.2] - 2026-07-29
 
 Repairs inbound message delivery for every configured chat, notification and

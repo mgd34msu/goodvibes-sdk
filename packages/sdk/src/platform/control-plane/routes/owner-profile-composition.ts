@@ -33,6 +33,7 @@ import type { ConfigManager } from '../../config/manager.js';
 import { OwnerProfileStore, resolveOwnerProfilePath } from '../../owner-profile/index.js';
 import { installOwnerProfileConsumers } from '../../owner-profile/consumers.js';
 import { registerOwnerProfileGatewayMethods } from './owner-profile.js';
+import { installOccasions, type OccasionsInstallDeps } from './occasions-composition.js';
 import { logger } from '../../utils/logger.js';
 
 /** What the composition needs from the runtime graph. */
@@ -41,6 +42,18 @@ export interface OwnerProfileCompositionDeps {
   readonly configManager: Pick<ConfigManager, 'get' | 'attachProfileFallback'>;
   /** `--daemon-home`, when the host parsed one. Absent ⇒ env, then `~/.goodvibes`. */
   readonly daemonHome?: string | undefined;
+  /**
+   * What the occasions loop needs, when this process is running one.
+   *
+   * Composed HERE rather than beside this, because occasions are lines in the
+   * same document: the store built below is the one thing that owns that file,
+   * and a second reader would be a second projection of it, disagreeing with
+   * the first for as long as one of them had not noticed a hand edit. Absent —
+   * a narrow embed, a conformance harness — and the `occasions.*` verbs stay
+   * cataloged-but-unhandled, the same graceful degrade every other optional
+   * group here uses.
+   */
+  readonly occasions?: OccasionsInstallDeps | undefined;
 }
 
 /** The store, and the one call that unwires everything this installed. */
@@ -90,6 +103,8 @@ export function composeOwnerProfile(
   // is synchronous and a fallback reader has nothing to await with. One small
   // file read at boot, on the path that already reads settings.json the same
   // way, removes the window instead of making it awaitable.
+  if (deps.occasions !== undefined) installOccasions(catalog, store, deps.occasions);
+
   const state = store.loadSync();
   // Counts and names only; the store's own logging never carries a value.
   logger.debug('owner-profile: initial load', { kind: state.kind, path: state.path });
