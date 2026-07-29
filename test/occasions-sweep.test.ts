@@ -51,6 +51,7 @@ const POLICY: OccasionsPolicy = {
   suppressMirroredNudges: true,
   interviewQuestions: 3,
   giftHistoryYears: 10,
+  sweepIntervalMinutes: 60,
 };
 
 function occasion(line: string): Occasion {

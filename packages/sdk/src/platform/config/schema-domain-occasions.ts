@@ -42,6 +42,7 @@ export const occasionsConfigDefaults: { occasions: OccasionsConfig } = {
     suppressMirroredNudges: true,
     interviewQuestions: 3,
     giftHistoryYears: 10,
+    sweepIntervalMinutes: 60,
   },
 };
 
@@ -127,5 +128,13 @@ export const occasionsConfigSettings: ConfigSettingDefinition[] = [
     description:
       'How long the record of what you landed on is kept, in years. Ten, so year three is not steered by year one. This is the one part of the machine-owned state that deliberately outlives its occasion\'s answer — the answers expire with their date so next year asks fresh, the history does not.',
     ...intRange(1, 50),
+  },
+  {
+    key: 'occasions.sweepIntervalMinutes',
+    type: 'number',
+    default: 60,
+    description:
+      'How often the daemon looks for dates entering their lead window, in minutes. Hourly by default, which is frequent enough that a nudge lands within an hour of the window opening and cheap enough to be invisible — the pass reads memory and touches one small file. It cannot over-nudge whatever this is set to: each occasion carries its own next-due date, so a shorter interval makes the FIRST nudge land sooner and changes nothing about the rhythm after it. Housekeeping runs on every pass, including the ones that are inside quiet hours or that raise nothing.',
+    ...intRange(5, 1440),
   },
 ];

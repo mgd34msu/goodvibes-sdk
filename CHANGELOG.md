@@ -47,7 +47,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
     to a calendar and are then left to the calendar's own reminder; nothing is
     ever read back the other way, and deleting a calendar entry cannot remove an
     occasion.
-  - Sixteen `occasions.*` control-plane verbs and eleven `occasions.*` settings,
+  - **It runs on its own.** A repeating pass in the daemon looks for dates
+    entering their window; the interval is a live setting and the pass is
+    strictly serial, so a slow one delays the next rather than delivering the
+    same batch twice, and a failing one re-arms rather than ending the loop.
+  - Sixteen `occasions.*` control-plane verbs and twelve `occasions.*` settings,
     all daemon-owned. Every operation a surface needs is a verb; nothing a
     surface renders has to be computed there.
 

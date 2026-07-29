@@ -19,6 +19,20 @@
  * When no router is wired the service still runs and still records what is
  * outstanding; `occasions.pending` is then the only way a nudge is seen, which
  * is exactly how the agent surface receives one anyway.
+ *
+ * ## Something has to run the sweep
+ *
+ * A loop that only runs when a verb asks it to is not proactive, and proactive
+ * is the whole feature. So this arms a repeating timer, re-read from config on
+ * every tick so `occasions.sweepIntervalMinutes` is a live setting rather than a
+ * restart-only one.
+ *
+ * The timer is deliberately dumb, because the SWEEP is where the judgement is:
+ * a tick inside quiet hours raises nothing and reaps anyway, and a tick on a day
+ * an occasion has already been raised finds its open item not yet due. So the
+ * interval decides how soon the first nudge lands and nothing else — it cannot
+ * make the system nag. It is `unref`'d so it never holds the process open, and
+ * a tick that overlaps a still-running one is skipped rather than queued.
  */
 import type { GatewayMethodCatalog } from '../method-catalog.js';
 import type { ConfigManager } from '../../config/manager.js';
@@ -28,6 +42,10 @@ import type { ChannelDeliveryRouter } from '../../channels/delivery-router.js';
 import type { OwnerProfileStore } from '../../owner-profile/index.js';
 import { OccasionStateStore } from '../../occasions/state-store.js';
 import { OccasionsService } from '../../occasions/service.js';
+import { readOccasionsPolicy } from '../../occasions/policy.js';
+import { startOccasionSweepTicker } from '../../occasions/ticker.js';
+import { logger } from '../../utils/logger.js';
+import { summarizeError } from '../../utils/error-display.js';
 import { registerOccasionsGatewayMethods } from './occasions.js';
 
 /** What the composition needs from the runtime graph. */
@@ -100,10 +118,35 @@ export function composeOccasions(
 
   registerOccasionsGatewayMethods(catalog, service);
 
+  // The repeating pass. Its rules and the reasoning behind them live in
+  // occasions/ticker.ts, which takes an injected timer so they are testable by
+  // advancing a counter rather than by waiting an hour.
+  const ticker = startOccasionSweepTicker({
+    sweep: async () => {
+      const outcome = await service.sweep();
+      // Counts and a hold reason only. A date, a person and a message never
+      // reach a log at any level: this file's whole subject is closed tier.
+      logger.debug('occasions: swept', {
+        hold: outcome.hold,
+        raised: outcome.nudge?.subjects.length ?? 0,
+        conflicts: outcome.conflictMessages.length,
+        delivered: outcome.delivered,
+      });
+    },
+    intervalMs: () => readOccasionsPolicy({
+      get: (key) => deps.configManager.get(key as ConfigKey),
+      set: () => undefined,
+    }).sweepIntervalMinutes * 60_000,
+    onError: (error) => {
+      logger.warn('occasions: sweep failed', { error: summarizeError(error) });
+    },
+  });
+
   return {
     service,
     state,
     dispose: async (): Promise<void> => {
+      ticker.stop();
       // Let every queued write finish before the process tears down. An
       // acknowledgement lost at shutdown means he is asked again about
       // something he already answered.
