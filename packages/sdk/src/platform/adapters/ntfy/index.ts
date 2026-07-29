@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { constantTimeEquals, parseJsonRecord, readBearerOrHeaderToken, readTextBodyWithinLimit } from '../helpers.js';
+import { resolveSurfaceCredential, surfaceCredentialUnavailable } from '../surface-credential.js';
 import type { SurfaceAdapterContext } from '../types.js';
 import { inboundDedupKey, ntfyInboundDedup } from '../inbound-dedup.js';
 import {
@@ -9,11 +10,14 @@ import {
 
 export async function handleNtfySurfaceWebhook(req: Request, context: SurfaceAdapterContext): Promise<Response> {
   const enabled = Boolean(context.configManager.get('surfaces.ntfy.enabled'));
-  const configuredToken =
-    String(context.configManager.get('surfaces.ntfy.token') ?? '')
-    || await context.serviceRegistry.resolveSecret('ntfy', 'primary')
-    || process.env.NTFY_ACCESS_TOKEN
-    || '';
+  const credential = await resolveSurfaceCredential(
+    context,
+    { kind: 'config', key: 'surfaces.ntfy.token' },
+    { kind: 'registry', service: 'ntfy', field: 'primary' },
+    { kind: 'env', name: 'NTFY_ACCESS_TOKEN' },
+  );
+  if (credential.state === 'unresolvable') return surfaceCredentialUnavailable('ntfy', credential);
+  const configuredToken = credential.state === 'resolved' ? credential.value : '';
   if (!enabled || !configuredToken) {
     return Response.json({ error: 'ntfy webhook ingress is not configured' }, { status: 503 });
   }

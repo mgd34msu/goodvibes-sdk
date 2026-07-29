@@ -1,4 +1,5 @@
 import { constantTimeEquals, parseJsonRecord, readBearerOrHeaderToken, readTextBodyWithinLimit } from '../helpers.js';
+import { resolveSurfaceCredential, surfaceCredentialUnavailable } from '../surface-credential.js';
 import type { SurfaceAdapterContext } from '../types.js';
 
 function readRecord(value: unknown): Record<string, unknown> | null {
@@ -10,14 +11,16 @@ function readString(value: unknown): string | undefined {
 }
 
 export async function handleIMessageSurfaceWebhook(req: Request, context: SurfaceAdapterContext): Promise<Response> {
-  const configuredToken =
-    String(context.configManager.get('surfaces.imessage.token') ?? '')
-    || await context.serviceRegistry.resolveSecret('imessage', 'primary')
-    || process.env.IMESSAGE_BRIDGE_TOKEN
-    || '';
-  if (configuredToken) {
+  const credential = await resolveSurfaceCredential(
+    context,
+    { kind: 'config', key: 'surfaces.imessage.token' },
+    { kind: 'registry', service: 'imessage', field: 'primary' },
+    { kind: 'env', name: 'IMESSAGE_BRIDGE_TOKEN' },
+  );
+  if (credential.state === 'unresolvable') return surfaceCredentialUnavailable('imessage', credential);
+  if (credential.state === 'resolved') {
     const providedToken = readBearerOrHeaderToken(req, 'x-goodvibes-imessage-token');
-    if (!constantTimeEquals(configuredToken, providedToken)) {
+    if (!constantTimeEquals(credential.value, providedToken)) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
   }

@@ -2,6 +2,7 @@ import { timingSafeEqual } from 'node:crypto';
 import type { GenericWebhookAdapterContext } from '../types.js';
 import { validatePublicWebhookUrl } from '../../utils/url-safety.js';
 import { constantTimeEquals, readTextBodyWithinLimit } from '../helpers.js';
+import { resolveSurfaceCredential, surfaceCredentialUnavailable } from '../surface-credential.js';
 
 function parseJsonRecord(rawBody: string): Record<string, unknown> | Response {
   try {
@@ -12,7 +13,9 @@ function parseJsonRecord(rawBody: string): Record<string, unknown> | Response {
 }
 
 export async function handleGenericWebhookSurface(req: Request, context: GenericWebhookAdapterContext): Promise<Response> {
-  const configuredSecret = String(context.configManager.get('surfaces.webhook.secret') ?? '');
+  const credential = await resolveSurfaceCredential(context, { kind: 'config', key: 'surfaces.webhook.secret' });
+  if (credential.state === 'unresolvable') return surfaceCredentialUnavailable('webhook', credential);
+  const configuredSecret = credential.state === 'resolved' ? credential.value : '';
   const enabled = Boolean(context.configManager.get('surfaces.webhook.enabled'));
   if (!enabled || !configuredSecret) {
     return Response.json({ error: 'Webhook ingress is not configured' }, { status: 503 });

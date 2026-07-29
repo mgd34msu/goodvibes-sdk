@@ -1,5 +1,6 @@
 import type { SurfaceAdapterContext } from '../types.js';
 import { constantTimeEquals, parseJsonRecord, readTextBodyWithinLimit } from '../helpers.js';
+import { resolveSurfaceCredential, surfaceCredentialUnavailable } from '../surface-credential.js';
 import { logger } from '../../utils/logger.js';
 import { parseTelegramBotCommand, telegramBotCommandReply } from './commands.js';
 
@@ -71,14 +72,20 @@ export async function handleTelegramSurfaceWebhook(
   context: SurfaceAdapterContext,
   deps: TelegramUpdateDeps = {},
 ): Promise<Response> {
-  const configuredSecret =
-    String(context.configManager.get('surfaces.telegram.webhookSecret') ?? '')
-    || await context.serviceRegistry.resolveSecret('telegram', 'signingSecret')
-    || process.env.TELEGRAM_WEBHOOK_SECRET
-    || '';
-  if (configuredSecret) {
+  // The registration side (channels/telegram/ingress.ts) hands Telegram the
+  // RESOLVED secret, so an unresolved reference here is not a mismatch anyone
+  // can debug from the outside: Telegram sends exactly the right value and
+  // every update is rejected.
+  const credential = await resolveSurfaceCredential(
+    context,
+    { kind: 'config', key: 'surfaces.telegram.webhookSecret' },
+    { kind: 'registry', service: 'telegram', field: 'signingSecret' },
+    { kind: 'env', name: 'TELEGRAM_WEBHOOK_SECRET' },
+  );
+  if (credential.state === 'unresolvable') return surfaceCredentialUnavailable('telegram', credential);
+  if (credential.state === 'resolved') {
     const providedSecret = req.headers.get('x-telegram-bot-api-secret-token') ?? '';
-    if (!constantTimeEquals(configuredSecret, providedSecret)) {
+    if (!constantTimeEquals(credential.value, providedSecret)) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
   }

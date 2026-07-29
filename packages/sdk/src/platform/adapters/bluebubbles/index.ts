@@ -1,4 +1,5 @@
-import { parseJsonRecord, readBearerOrHeaderToken, readTextBodyWithinLimit } from '../helpers.js';
+import { constantTimeEquals, parseJsonRecord, readBearerOrHeaderToken, readTextBodyWithinLimit } from '../helpers.js';
+import { resolveSurfaceCredential, surfaceCredentialUnavailable } from '../surface-credential.js';
 import type { SurfaceAdapterContext } from '../types.js';
 
 function readRecord(value: unknown): Record<string, unknown> | null {
@@ -16,16 +17,25 @@ function conversationKindForChatGuid(chatGuid?: string, isGroup?: boolean): impo
 }
 
 export async function handleBlueBubblesSurfaceWebhook(req: Request, context: SurfaceAdapterContext): Promise<Response> {
-  const configuredPassword =
-    String(context.configManager.get('surfaces.bluebubbles.password') ?? '')
-    || await context.serviceRegistry.resolveSecret('bluebubbles', 'password')
-    || process.env.BLUEBUBBLES_PASSWORD
-    || '';
+  const credential = await resolveSurfaceCredential(
+    context,
+    { kind: 'config', key: 'surfaces.bluebubbles.password' },
+    { kind: 'registry', service: 'bluebubbles', field: 'password' },
+    { kind: 'env', name: 'BLUEBUBBLES_PASSWORD' },
+  );
+  if (credential.state === 'unresolvable') return surfaceCredentialUnavailable('bluebubbles', credential);
   const url = new URL(req.url);
-  const providedPassword = url.searchParams.get('password')
-    ?? readBearerOrHeaderToken(req, 'x-goodvibes-bluebubbles-token')
-    ?? '';
-  if (configuredPassword && providedPassword !== configuredPassword) {
+  // Header FIRST, query parameter second.
+  //
+  // BlueBubbles' own webhook configuration can only append `?password=`, so the
+  // query parameter has to keep working or every existing install breaks. But a
+  // credential in a URL is copied into places nobody chose to put it — access
+  // logs, proxy logs, a Referer header — so a caller that can send the header
+  // should never have its query parameter read instead.
+  const providedPassword = readBearerOrHeaderToken(req, 'x-goodvibes-bluebubbles-token')
+    || url.searchParams.get('password')
+    || '';
+  if (credential.state === 'resolved' && !constantTimeEquals(credential.value, providedPassword)) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
   const rawBody = await readTextBodyWithinLimit(req);
