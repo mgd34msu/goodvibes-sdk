@@ -136,7 +136,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
         return createJsonResponse({ id: 'msg-1' });
       }),
     });
-    const result = await sdk.sessions.messages.create('session-1', { role: 'user', content: 'hello' });
+    const result = await sdk.sessions.messages.create('session-1', { body: 'hello' });
     expect(calls[0]).toContain('/sessions/session-1/messages');
     expect(result).toMatchObject({ id: 'msg-1' });
   });
@@ -494,7 +494,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
       calls.push(String(input));
       return createJsonResponse({ id: 'msg-1' });
     });
-    const result = await client.sessions.messages.create('session-1', { role: 'user', content: 'hi' });
+    const result = await client.sessions.messages.create('session-1', { body: 'hi' });
     expect(calls[0]).toContain('session-1');
     expect(result).toMatchObject({ id: 'msg-1' });
   });
