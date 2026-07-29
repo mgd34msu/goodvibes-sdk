@@ -124,7 +124,7 @@ await withWorkspaceLock('test', async () => {
     const timeoutArgs = hasExplicitTimeout() ? [] : [`--timeout=${resolveTimeoutMs()}`];
     // Owned, not merely spawned — see scripts/owned-test-child.ts for the
     // orphan this replaces.
-    const { exitCode, signalCode } = await runOwnedTestChild({
+    const { exitCode, signalCode, stopped, stopReason } = await runOwnedTestChild({
       argv: [...timeoutArgs, ...testArgs],
       cwd: SDK_ROOT,
       env: {
@@ -137,6 +137,12 @@ await withWorkspaceLock('test', async () => {
         [RUNNER_ENV_FLAG]: '1',
       },
     });
+    // A run this script ended itself reports WHY, by name. A generic "killed by
+    // SIGTERM" here would throw away the only sentence that says what the suite
+    // was doing — which is the whole point of the ceiling that ended it.
+    if (stopped !== null) {
+      throw new Error(`bun test ended by the ${stopped} ceiling: ${stopReason ?? 'no reason recorded'}`);
+    }
     if (exitCode !== 0) {
       throw new Error(`bun test ${signalCode ? `killed by ${signalCode}` : `exited with code ${exitCode}`}`);
     }

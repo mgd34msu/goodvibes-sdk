@@ -76,7 +76,7 @@ await withWorkspaceLock('leak-scan', async () => {
     // Owned the same way scripts/test.ts owns its child: a signal that reaches
     // this script reaches the suite too, and the suite is reaped before this
     // callback returns into the temp-tree removal.
-    const { exitCode } = await runOwnedTestChild({
+    const { exitCode, stopped, stopReason } = await runOwnedTestChild({
       argv: ['--preload', './test/_helpers/leak-detector.ts', ...testArgs],
       cwd: SDK_ROOT,
       env: {
@@ -91,7 +91,9 @@ await withWorkspaceLock('leak-scan', async () => {
       },
     });
     console.log(`\nleak report written to ${reportPath}`);
-    if (exitCode !== 0) {
+    if (stopped !== null) {
+      console.log(`(the ${stopped} ceiling ended this run: ${stopReason ?? 'no reason recorded'})`);
+    } else if (exitCode !== 0) {
       console.log(`(suite exited ${exitCode ?? 'null'} — leak data above is still valid)`);
     }
   }, RUN_TMP_DIR_NAME);

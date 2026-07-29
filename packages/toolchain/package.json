@@ -2,7 +2,7 @@
   "name": "@pellux/goodvibes-toolchain",
   "version": "1.19.0",
   "engines": {
-    "bun": "1.3.10",
+    "bun": "1.3.14",
     "node": ">=22.0.0"
   },
   "description": "Shared GoodVibes CI/CD toolchain: parameterized release, publish, and verification tools (sdk-pin gate, build-binaries, release-cut, coverage-gate, per-job-green, and more) consumed by every GoodVibes repo.",
