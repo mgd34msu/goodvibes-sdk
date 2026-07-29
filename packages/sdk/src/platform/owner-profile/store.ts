@@ -396,6 +396,41 @@ export class OwnerProfileStore {
     return section.prose.filter((line) => pattern.test(withoutListMarker(line.text)));
   }
 
+  /**
+   * The declared occasions, as raw prose lines.
+   *
+   * ## Why this is a named method rather than `section('Important dates')`
+   *
+   * `section()` refuses the closed tier, and this section is closed — it holds
+   * family birth dates, which are the single most obvious thing that must never
+   * be bulk-injected into a prompt or a message channel. The daemon still has to
+   * read the whole section, because the approach sweep's entire job is "which of
+   * these is coming up".
+   *
+   * So it gets a route that is NAMED and narrow, the same shape `person()` has,
+   * rather than a widened `section()`. Two properties make that safe rather than
+   * merely stated:
+   *
+   *  - The only consumer is the sweep, and the sweep's OUTPUT — the nudge —
+   *    carries the occasion and the person and never the date. The date reaches
+   *    a message channel through no path at all.
+   *  - There is no generic "give me a closed section" call. Widening this to one
+   *    would re-open the enumerate-all hole `section()` exists to close, by a
+   *    different name.
+   */
+  importantDates(): readonly ProfileLine[] {
+    return this.sectionByHeading('Important dates')?.prose ?? [];
+  }
+
+  /**
+   * The declared plans, as raw prose lines. Same reasoning as
+   * {@link importantDates}: closed tier, one named consumer, no generic
+   * counterpart.
+   */
+  plans(): readonly ProfileLine[] {
+    return this.sectionByHeading('Plans')?.prose ?? [];
+  }
+
   /** Provenance for one field, plus every superseded predecessor. */
   provenance(fieldId: string): ProfileProvenanceReport {
     const value = this.projection?.fields.get(fieldId);
