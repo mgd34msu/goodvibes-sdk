@@ -34,6 +34,7 @@ import {
   adjustForAway,
   conflictItemId,
   interviewItemId,
+  interviewResumeDate,
   isDue,
   laterReturnDate,
   nextNudgeDue,
@@ -231,7 +232,7 @@ export function decideSweep(context: SweepContext): SweepDecision {
     const itemId = interviewItemId(interview.occasionId, interview.occurrence);
     const existing = itemsById.get(itemId);
     if (existing !== undefined && !isDue(existing, today)) continue;
-    const nextDue = addDaysClamped(today, 1, interview.occurrence);
+    const nextDue = interviewResumeDate(today, interview.occurrence);
     writes.push(existing === undefined
       ? openItemFor({
         kind: 'interview',

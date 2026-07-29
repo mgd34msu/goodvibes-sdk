@@ -306,8 +306,28 @@ describe('cadence', () => {
     expect(laterReturnDate('2026-03-14', '2026-03-14')).toBe('2026-03-14');
   });
 
-  test('a dropped interview resumes the next day', () => {
+  test('a dropped interview resumes the next day, and never after the date', () => {
     expect(interviewResumeDate('2026-03-06')).toBe('2026-03-07');
+    expect(interviewResumeDate('2026-03-06', '2026-03-14')).toBe('2026-03-07');
+    // The day before the occurrence: tomorrow IS the day, so it stands.
+    expect(interviewResumeDate('2026-03-13', '2026-03-14')).toBe('2026-03-14');
+    // On the day: there is nowhere later to go.
+    expect(interviewResumeDate('2026-03-14', '2026-03-14')).toBe('2026-03-14');
+  });
+
+  test('the sweep resumes a dropped interview through that same rule', () => {
+    const interview = {
+      id: "interview:sarah's birthday@2026-03-14",
+      occasionId: "sarah's birthday",
+      occurrence: '2026-03-14',
+      startedAt: 0,
+      steps: [{ id: 'direction', prompt: 'what?', opensFrom: '' }],
+      answers: [],
+    };
+    const onTheDay = decideSweep(context({ today: '2026-03-14', interviews: [interview] }));
+    const item = onTheDay.openItemWrites.find((entry) => entry.kind === 'interview');
+    // Not the 15th: the sweep must not compute this itself and step past the date.
+    expect(item?.dueOn).toBe('2026-03-14');
   });
 
   test('a nudge due while he is away moves to the day before he leaves', () => {
