@@ -70,7 +70,6 @@ function withoutComments(body: string): string {
 }
 
 /**
-/**
  * Every `export type <Something>ConfigKey =` declaration, so a domain that
  * carries its own key union — schema-types-owner-profile.ts,
  * schema-types-payments.ts, schema-types-daemon.ts — is covered by the same
