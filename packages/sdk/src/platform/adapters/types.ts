@@ -144,6 +144,14 @@ export interface GenericWebhookReplyInput {
 }
 
 export interface GenericWebhookAdapterContext {
+  /**
+   * The store a `goodvibes://secrets/…` config reference resolves against.
+   *
+   * `surfaces.webhook.secret` is swept into the secret store like every other
+   * surface credential, so without this the generic webhook adapter holds a
+   * reference it cannot resolve and refuses every caller.
+   */
+  readonly secretsManager?: Pick<SecretsManager, 'get' | 'getGlobalHome'> | undefined;
   readonly configManager: {
     get(key: string): unknown;
   };

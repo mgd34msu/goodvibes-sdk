@@ -1,5 +1,6 @@
 import type { ChannelConversationKind } from '../../channels/index.js';
 import { constantTimeEquals, readBearerOrHeaderToken, readTextBodyWithinLimit } from '../helpers.js';
+import { resolveSurfaceCredential, surfaceCredentialUnavailable } from '../surface-credential.js';
 import type { SurfaceAdapterContext } from '../types.js';
 import { logger } from '../../utils/logger.js';
 
@@ -36,14 +37,17 @@ function normalizeConversationId(raw?: string): string | undefined {
 }
 
 export async function handleMSTeamsSurfaceWebhook(req: Request, context: SurfaceAdapterContext): Promise<Response> {
-  const configuredSecret =
-    String(context.configManager.get('surfaces.msteams.appPassword') ?? '')
-    || await context.serviceRegistry.resolveSecret('msteams', 'password')
-    || process.env.MSTEAMS_APP_PASSWORD
-    || '';
-  if (!configuredSecret) {
+  const credential = await resolveSurfaceCredential(
+    context,
+    { kind: 'config', key: 'surfaces.msteams.appPassword' },
+    { kind: 'registry', service: 'msteams', field: 'password' },
+    { kind: 'env', name: 'MSTEAMS_APP_PASSWORD' },
+  );
+  if (credential.state === 'unresolvable') return surfaceCredentialUnavailable('msteams', credential);
+  if (credential.state === 'absent') {
     return Response.json({ error: 'Webhook not configured' }, { status: 503 });
   }
+  const configuredSecret = credential.value;
   const providedToken = readBearerOrHeaderToken(req, 'x-goodvibes-msteams-token');
   if (!constantTimeEquals(configuredSecret, providedToken)) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });

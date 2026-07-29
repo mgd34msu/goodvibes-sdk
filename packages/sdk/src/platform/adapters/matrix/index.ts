@@ -1,4 +1,5 @@
 import { constantTimeEquals, parseJsonRecord, readBearerOrHeaderToken, readTextBodyWithinLimit } from '../helpers.js';
+import { resolveSurfaceCredential, surfaceCredentialUnavailable } from '../surface-credential.js';
 import type { SurfaceAdapterContext } from '../types.js';
 
 function readRecord(value: unknown): Record<string, unknown> | null {
@@ -16,13 +17,15 @@ function readThreadId(content: Record<string, unknown> | null): string | undefin
 }
 
 export async function handleMatrixSurfaceWebhook(req: Request, context: SurfaceAdapterContext): Promise<Response> {
-  const configuredToken =
-    String(context.configManager.get('surfaces.matrix.accessToken') ?? '')
-    || await context.serviceRegistry.resolveSecret('matrix', 'primary')
-    || process.env.MATRIX_ACCESS_TOKEN
-    || '';
+  const credential = await resolveSurfaceCredential(
+    context,
+    { kind: 'config', key: 'surfaces.matrix.accessToken' },
+    { kind: 'registry', service: 'matrix', field: 'primary' },
+    { kind: 'env', name: 'MATRIX_ACCESS_TOKEN' },
+  );
+  if (credential.state === 'unresolvable') return surfaceCredentialUnavailable('matrix', credential);
   const providedToken = readBearerOrHeaderToken(req, 'x-goodvibes-matrix-token');
-  if (configuredToken && !constantTimeEquals(configuredToken, providedToken)) {
+  if (credential.state === 'resolved' && !constantTimeEquals(credential.value, providedToken)) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
   const rawBody = await readTextBodyWithinLimit(req);

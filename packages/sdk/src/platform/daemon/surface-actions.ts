@@ -155,6 +155,7 @@ export class DaemonSurfaceActionHelper {
 
   buildGenericWebhookAdapterContext(): GenericWebhookAdapterContext {
     return {
+      secretsManager: this.context.secretsManager,
       configManager: this.context.configManager,
       routeBindings: this.context.routeBindings,
       sessionBroker: this.context.sessionBroker,

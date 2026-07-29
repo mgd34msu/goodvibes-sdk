@@ -1,5 +1,6 @@
 import type { SurfaceAdapterContext } from '../types.js';
 import { constantTimeEquals, parseJsonRecord, readTextBodyWithinLimit } from '../helpers.js';
+import { resolveSurfaceCredential, surfaceCredentialUnavailable } from '../surface-credential.js';
 import { logger } from '../../utils/logger.js';
 
 function readRecord(value: unknown): Record<string, unknown> | null {
@@ -11,11 +12,13 @@ function readString(value: unknown): string | undefined {
 }
 
 export async function handleGoogleChatSurfaceWebhook(req: Request, context: SurfaceAdapterContext): Promise<Response> {
-  const verificationToken =
-    String(context.configManager.get('surfaces.googleChat.verificationToken') ?? '')
-    || await context.serviceRegistry.resolveSecret('google-chat', 'signingSecret')
-    || process.env.GOOGLE_CHAT_VERIFICATION_TOKEN
-    || '';
+  const credential = await resolveSurfaceCredential(
+    context,
+    { kind: 'config', key: 'surfaces.googleChat.verificationToken' },
+    { kind: 'registry', service: 'google-chat', field: 'signingSecret' },
+    { kind: 'env', name: 'GOOGLE_CHAT_VERIFICATION_TOKEN' },
+  );
+  if (credential.state === 'unresolvable') return surfaceCredentialUnavailable('google-chat', credential);
   const rawBody = await readTextBodyWithinLimit(req);
   if (rawBody instanceof Response) return rawBody;
   const body = parseJsonRecord(rawBody);
@@ -23,7 +26,7 @@ export async function handleGoogleChatSurfaceWebhook(req: Request, context: Surf
   const payload = readRecord(body);
   if (!payload) return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
   const providedToken = readString(payload.token) ?? req.headers.get('x-goog-chat-token') ?? '';
-  if (verificationToken && !constantTimeEquals(verificationToken, providedToken)) {
+  if (credential.state === 'resolved' && !constantTimeEquals(credential.value, providedToken)) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

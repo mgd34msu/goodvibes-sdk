@@ -1,5 +1,6 @@
 import { createHash, createHmac } from 'node:crypto';
 import { constantTimeEquals, parseJsonRecord, readBearerOrHeaderToken, readTextBodyWithinLimit } from '../helpers.js';
+import { resolveSurfaceCredential, surfaceCredentialUnavailable } from '../surface-credential.js';
 import type { SurfaceAdapterContext } from '../types.js';
 
 function readRecord(value: unknown): Record<string, unknown> | null {
@@ -66,20 +67,26 @@ function verifyTwilioSignature(
 }
 
 export async function handleTelephonySurfaceWebhook(req: Request, context: SurfaceAdapterContext): Promise<Response> {
-  const configuredSecret =
-    String(context.configManager.get('surfaces.telephony.webhookSecret') ?? '')
-    || await context.serviceRegistry.resolveSecret('telephony', 'signingSecret')
-    || String(context.configManager.get('surfaces.telephony.token') ?? '')
-    || await context.serviceRegistry.resolveSecret('telephony', 'primary')
-    || process.env.TELEPHONY_WEBHOOK_SECRET
-    || process.env.TWILIO_WEBHOOK_SECRET
-    || process.env.TELEPHONY_BRIDGE_TOKEN
-    || '';
-  const twilioAuthToken =
-    await context.serviceRegistry.resolveSecret('telephony', 'authToken')
-    || String(context.configManager.get('surfaces.telephony.authToken') ?? '')
-    || process.env.TWILIO_AUTH_TOKEN
-    || '';
+  const sharedCredential = await resolveSurfaceCredential(
+    context,
+    { kind: 'config', key: 'surfaces.telephony.webhookSecret' },
+    { kind: 'registry', service: 'telephony', field: 'signingSecret' },
+    { kind: 'config', key: 'surfaces.telephony.token' },
+    { kind: 'registry', service: 'telephony', field: 'primary' },
+    { kind: 'env', name: 'TELEPHONY_WEBHOOK_SECRET' },
+    { kind: 'env', name: 'TWILIO_WEBHOOK_SECRET' },
+    { kind: 'env', name: 'TELEPHONY_BRIDGE_TOKEN' },
+  );
+  if (sharedCredential.state === 'unresolvable') return surfaceCredentialUnavailable('telephony', sharedCredential);
+  const configuredSecret = sharedCredential.state === 'resolved' ? sharedCredential.value : '';
+  const twilioCredential = await resolveSurfaceCredential(
+    context,
+    { kind: 'registry', service: 'telephony', field: 'authToken' },
+    { kind: 'config', key: 'surfaces.telephony.authToken' },
+    { kind: 'env', name: 'TWILIO_AUTH_TOKEN' },
+  );
+  if (twilioCredential.state === 'unresolvable') return surfaceCredentialUnavailable('telephony', twilioCredential);
+  const twilioAuthToken = twilioCredential.state === 'resolved' ? twilioCredential.value : '';
   if (!configuredSecret && !twilioAuthToken) {
     return Response.json({ error: 'Telephony webhook is not configured' }, { status: 503 });
   }

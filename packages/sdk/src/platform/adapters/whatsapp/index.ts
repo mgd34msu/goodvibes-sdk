@@ -1,4 +1,5 @@
 import { constantTimeEquals, parseJsonRecord, readBearerOrHeaderToken, readTextBodyWithinLimit, verifySha256HmacSignature } from '../helpers.js';
+import { resolveSurfaceCredential, surfaceCredentialUnavailable } from '../surface-credential.js';
 import type { SurfaceAdapterContext } from '../types.js';
 import { logger } from '../../utils/logger.js';
 
@@ -12,16 +13,22 @@ function readString(value: unknown): string | undefined {
 
 export async function handleWhatsAppSurfaceWebhook(req: Request, context: SurfaceAdapterContext): Promise<Response> {
   const provider = String(context.configManager.get('surfaces.whatsapp.provider') ?? 'meta-cloud').trim() || 'meta-cloud';
-  const verifyToken =
-    String(context.configManager.get('surfaces.whatsapp.verifyToken') ?? '')
-    || process.env.WHATSAPP_VERIFY_TOKEN
-    || '';
-  const signingSecret =
-    String(context.configManager.get('surfaces.whatsapp.signingSecret') ?? '')
-    || await context.serviceRegistry.resolveSecret('whatsapp', 'signingSecret')
-    || process.env.WHATSAPP_SIGNING_SECRET
-    || process.env.WHATSAPP_BRIDGE_TOKEN
-    || '';
+  const verifyCredential = await resolveSurfaceCredential(
+    context,
+    { kind: 'config', key: 'surfaces.whatsapp.verifyToken' },
+    { kind: 'env', name: 'WHATSAPP_VERIFY_TOKEN' },
+  );
+  if (verifyCredential.state === 'unresolvable') return surfaceCredentialUnavailable('whatsapp', verifyCredential);
+  const verifyToken = verifyCredential.state === 'resolved' ? verifyCredential.value : '';
+  const signingCredential = await resolveSurfaceCredential(
+    context,
+    { kind: 'config', key: 'surfaces.whatsapp.signingSecret' },
+    { kind: 'registry', service: 'whatsapp', field: 'signingSecret' },
+    { kind: 'env', name: 'WHATSAPP_SIGNING_SECRET' },
+    { kind: 'env', name: 'WHATSAPP_BRIDGE_TOKEN' },
+  );
+  if (signingCredential.state === 'unresolvable') return surfaceCredentialUnavailable('whatsapp', signingCredential);
+  const signingSecret = signingCredential.state === 'resolved' ? signingCredential.value : '';
   const url = new URL(req.url);
   if (req.method === 'GET') {
     const mode = url.searchParams.get('hub.mode') ?? '';

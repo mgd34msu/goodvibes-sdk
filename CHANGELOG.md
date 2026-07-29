@@ -4,6 +4,67 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
+## [1.19.2] - 2026-07-29
+
+Repairs inbound message delivery for every configured chat, notification and
+telephony surface. Anyone on 1.19.1 with a surface configured through the
+settings UI should update: their surfaces are refusing inbound traffic.
+
+### Fixed
+
+- **A correctly-configured surface answered 401 to every inbound POST.** 1.19.1
+  added a sweep that moves credentials still sitting in the clear in a config
+  file into the encrypted secret store, leaving a `goodvibes://secrets/…`
+  reference in the config. Delivery paths resolve that reference; the inbound
+  webhook adapters did not. Each compared its config value byte-for-byte
+  against the secret the caller presented, so it was comparing the reference
+  TEXT against the real secret — a mismatch on every request. Nothing reached a
+  session: messages sent to the daemon were rejected, and the only symptom was
+  an unexplained 401.
+
+  Operators who never had a plaintext credential to sweep were affected too.
+  The settings modal has written references for these keys since before this
+  round, so a surface configured through the UI has always been in this shape;
+  1.19.1 is simply when a fresh sweep put existing installs there as well.
+
+  Telegram in webhook mode was the worst case, because the two halves of one
+  surface disagreed: the daemon registers the webhook with the RESOLVED secret,
+  so Telegram sent exactly the right value and the adapter rejected it against
+  the unresolved reference. Polling mode never reads that config value and was
+  unaffected.
+
+  Fifteen credential reads across twelve adapters now resolve through one
+  shared helper before comparing: webhook, telegram, ntfy, google-chat,
+  whatsapp (verify token and signing secret), msteams, matrix, mattermost,
+  bluebubbles, imessage, signal, and telephony (webhook secret, token and
+  Twilio auth token). A credential set as a literal — an operator who was never
+  swept, or one configuring by environment variable — keeps working unchanged.
+
+- **A credential that cannot be resolved now refuses the request instead of
+  waving it through.** Seven of these adapters skip the comparison entirely
+  when no credential is configured, which is the correct reading of an
+  unconfigured surface. Resolving the reference in place would have made a
+  BROKEN credential indistinguishable from an ABSENT one, and those seven
+  surfaces — telegram, google-chat, matrix, mattermost, bluebubbles, imessage
+  and signal — would have accepted any caller, including one presenting no
+  secret at all. The shared helper reports "resolved", "absent" and
+  "unresolvable" as three different answers, and a surface whose credential is
+  configured but unresolvable now answers 503 and logs which config key is at
+  fault, naming the key and never the value. A setting containing only
+  whitespace counts as configured-and-broken for the same reason, rather than
+  being trimmed into looking unconfigured.
+
+### Changed
+
+- **BlueBubbles reads its password from the request header first, and falls
+  back to the `?password=` query parameter.** The query parameter still works,
+  because the BlueBubbles server can only be configured to send it that way and
+  removing it would break every existing install. But a credential in a URL is
+  copied into access logs, proxy logs and referrer headers by things that were
+  never asked, so a caller that can send the header no longer has its query
+  parameter read instead. The comparison is also constant-time now, matching
+  every other adapter.
+
 ## [1.19.1] - 2026-07-29
 
 Write-ordering fixes for state held in `PersistentStore`. The entries below are
