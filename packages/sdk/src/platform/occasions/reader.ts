@@ -1,0 +1,138 @@
+/**
+ * reader.ts — the profile, read as occasions and plans.
+ *
+ * One direction only. This module reads the owner's file and types what it
+ * finds; nothing here writes, and nothing here takes a date from anywhere other
+ * than his file. That is the §6 rule made structural: a calendar entry is a
+ * single occurrence of an ephemeral thing, and sourcing an occasion from one
+ * would give the wrong recurrence and lose the fact the moment the event passed.
+ * There is no calendar-shaped input to this module, so there is no path to get
+ * it wrong later.
+ *
+ * The reader is also where CONFLICTS are found. The profile already preserves
+ * every line he wrote, so two different dates for the same thing are both
+ * sitting in the document; taking the newer one silently would be the one
+ * behaviour explicitly ruled out. Both are reported, and the conflict becomes an
+ * open item that is raised now and raised again if it is ignored.
+ */
+import type { ProfileLine } from '../owner-profile/types.js';
+import { renderOccasionDate, type IsoDate } from './dates.js';
+import { parseOccasionLine, parsePlanLine } from './grammar.js';
+import type {
+  Occasion,
+  OccasionConflict,
+  Plan,
+  UnparsedOccasionLine,
+  UnparsedPlanLine,
+} from './types.js';
+
+/**
+ * The narrow read surface this module needs from the owner-profile store.
+ *
+ * Three named methods, no generic section reader: the store deliberately has no
+ * "give me any closed section" call and this interface must not become one by
+ * accident.
+ */
+export interface OccasionProfileSource {
+  /** Raw prose lines under `## Important dates`. */
+  importantDates(): readonly ProfileLine[];
+  /** Raw prose lines under `## Plans`. */
+  plans(): readonly ProfileLine[];
+  /** Profile lines mentioning one person, by name. Opens the interview. */
+  person(name: string): readonly ProfileLine[];
+}
+
+/** Everything the dates section holds, including what did not parse. */
+export interface OccasionReadResult {
+  readonly occasions: readonly Occasion[];
+  readonly unparsed: readonly UnparsedOccasionLine[];
+  readonly conflicts: readonly OccasionConflict[];
+}
+
+/** Everything the plans section holds. */
+export interface PlanReadResult {
+  readonly plans: readonly Plan[];
+  readonly unparsed: readonly UnparsedPlanLine[];
+}
+
+/**
+ * Read every occasion, in document order.
+ *
+ * The FIRST line for an id is the active occasion, matching the profile's own
+ * rule for a duplicated mechanical field. A later line for the same id is not
+ * dropped: if it names a different date it becomes a conflict, and if it names
+ * the same one it is a harmless duplicate that stays in the file and stays
+ * visible.
+ */
+export function readOccasions(source: OccasionProfileSource): OccasionReadResult {
+  const occasions: Occasion[] = [];
+  const unparsed: UnparsedOccasionLine[] = [];
+  const byId = new Map<string, Occasion[]>();
+
+  for (const line of source.importantDates()) {
+    const result = parseOccasionLine(line.lineIndex, line.text);
+    if (!result.ok) {
+      unparsed.push(result.unparsed);
+      continue;
+    }
+    const occasion = result.occasion;
+    const seen = byId.get(occasion.id);
+    if (seen === undefined) {
+      byId.set(occasion.id, [occasion]);
+      occasions.push(occasion);
+    } else {
+      seen.push(occasion);
+    }
+  }
+
+  const conflicts: OccasionConflict[] = [];
+  for (const [id, group] of byId) {
+    if (group.length < 2) continue;
+    const dates = [...new Set(group.map((entry) => renderOccasionDate(entry.date)))];
+    if (dates.length < 2) continue;
+    conflicts.push({
+      occasionId: id,
+      title: group[0]?.title ?? id,
+      dates,
+      lineIndexes: group.map((entry) => entry.lineIndex),
+    });
+  }
+
+  return { occasions, unparsed, conflicts };
+}
+
+/** Read every plan, in document order. */
+export function readPlans(source: OccasionProfileSource): PlanReadResult {
+  const plans: Plan[] = [];
+  const unparsed: UnparsedPlanLine[] = [];
+  for (const line of source.plans()) {
+    const result = parsePlanLine(line.lineIndex, line.text);
+    if (result.ok) plans.push(result.plan);
+    else unparsed.push(result.unparsed);
+  }
+  return { plans, unparsed };
+}
+
+/** The plan covering `date` that takes him away from home, if there is one. */
+export function awayPlanOn(plans: readonly Plan[], date: IsoDate): Plan | undefined {
+  return plans.find((plan) => plan.away && plan.from <= date && date <= plan.to);
+}
+
+/**
+ * The next away plan that STARTS on or after `date`, if there is one.
+ *
+ * Used to move a nudge earlier so it reaches him before he leaves rather than
+ * while he is standing in an airport. Ordered by start date because two
+ * overlapping trips would otherwise resolve by document order, which is the
+ * order he happened to type them in.
+ */
+export function nextAwayPlanFrom(plans: readonly Plan[], date: IsoDate): Plan | undefined {
+  return plans
+    .filter((plan) => plan.away && plan.from >= date)
+    .sort((left, right) => (left.from < right.from ? -1 : left.from > right.from ? 1 : 0))[0];
+}
+
+/** True when he is away on `date`. */
+export function isAwayOn(plans: readonly Plan[], date: IsoDate): boolean {
+  return awayPlanOn(plans, date) !== undefined;
+}
