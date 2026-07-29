@@ -29,7 +29,6 @@ import {
 import {
   InboundMailboxWatcher,
   drainMailboxDelta,
-  imapMailboxConnectionPort,
   resolveWatcherSettings,
   type MailboxWire,
 } from '../packages/sdk/src/platform/email/inbound/index.ts';
@@ -44,6 +43,7 @@ import {
   makeCursorStore,
   nudgeUntil,
   waitFor,
+  watcherConnectionPort,
   imapMessageFixture,
   requireImapMessage,
   type RecordingCursorStore,
@@ -123,7 +123,7 @@ async function build(): Promise<Harness> {
 
   const watcher = new InboundMailboxWatcher({
     settings: resolveWatcherSettings({ account: ACCOUNT, mailbox: MAILBOX }),
-    connections: imapMailboxConnectionPort({
+    connections: watcherConnectionPort({
       connect: () => openMailboxSocket(mailbox.port),
       username: 'watched@example.test',
       password: 'an-app-password',
