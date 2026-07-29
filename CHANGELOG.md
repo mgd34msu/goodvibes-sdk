@@ -4,6 +4,206 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
+## [1.19.0] - 2026-07-28
+
+Three capabilities the platform did not have — spending money, knowing who its
+owner is, and reading mail as it arrives — plus the two boundaries they made
+non-optional: every verb's input and output now carries its real type, and
+externally-authored text is marked as such wherever it enters.
+
+The operator surface goes from **443 to 464 methods**. Events (32) and peer
+endpoints (6) are unchanged.
+
+### Added
+
+- **Payments — `payments.*` (7 verbs), new subpath `./platform/payments`.**
+  `payments.checkout.begin`, `payments.checkout.fillCard`,
+  `payments.cards.create` / `.list` / `.delete`, `payments.purchases.list`,
+  `payments.budget.status`. The SDK owns budget arithmetic, the decision order,
+  both approval-window state machines, the shipping ladder, message rendering,
+  the audit ledger and the taint gate — all pure and injectable under
+  `platform/payments/*`. The daemon serves the verbs; surfaces are wiring and UI
+  only, with no decision logic. Card material and settings live in the
+  daemon-owned config and secret tiers. Design of record: `docs/payments.md`,
+  including §12.1's list of rulings taken and their reasoning.
+
+  The premise is stated in the design and worth repeating here: a card turns a
+  successful prompt injection from "sends an email" into "buys something", so
+  the untrusted-content work below is a precondition of this feature rather than
+  a companion to it.
+
+- **Owner profile — `profile.*` (9 verbs), new subpath
+  `./platform/owner-profile`.** `profile.get`, `.set`, `.append`, `.read`,
+  `.person`, `.provenance`, `.forget`, `.undo`, `.status`. One Markdown file at
+  daemon scope, read once into memory at boot and read back out at the cost of a
+  property access. `profile.read` carries its own scope so enumeration is gated
+  separately from keyed reads, and the closed-tier prose sections are reachable
+  only through `person(name)` — `section()` refuses them. Every write takes an
+  authority argument; it is never defaulted. Design and the four owner rulings
+  it is built from: `docs/owner-profile.md`.
+
+- **Real-time inbound email — `email.*` (4 verbs).** `email.inbound.status`,
+  `email.expectation.open` / `.list` / `.cancel`. The daemon could send mail and
+  could read mail when asked; nothing ever asked on its own, so there was no
+  delivery path to fix — there was no delivery path. `platform/email/inbound/*`
+  adds an IMAP IDLE watcher with a poll-loop fallback and backoff, a Gmail
+  history-delta source preferred when Google is adopted, per-source cursor,
+  record and expectation stores, a probed body-access capability check, health
+  reporting on the daemon's own health surface, and an owner-notice path.
+  Design of record: `docs/inbound-email.md`; read §5 first.
+
+- **`mcp.servers.reveal`** — reads back a configured MCP server entry.
+
+- **New public subpath `./platform/runtime/path-shadow`** — resolves which
+  binary on `PATH` actually answers for a command name, and reports the losers.
+  Written after a stale `~/.bun/bin/goodvibes-agent` link shadowed a current
+  install and the symptom looked like a version that would not update.
+
+- **Typed IO for every catalogued verb.** `OperatorMethodInputMap` and
+  `OperatorMethodOutputMap` go from 368 entries to **464** — every verb in the
+  catalogue, generated rather than hand-maintained, with the coverage ratchet
+  dropped to zero. The OpenAPI contract now renders 365 paths across 464
+  methods with **0 marked `untyped-client-io`**.
+
+- **An untrusted-content boundary that covers the paths it claimed to.**
+  `platform/calendar/untrusted-events.ts` marks invitation-authored summary,
+  description, location and attendee text; `platform/tools/fetch/untrusted-ingest.ts`
+  closes the `fetch` tool, which recorded nothing at all while the browser
+  engine and both mail surfaces recorded their reads — a page loaded through
+  `browser.*` could not steer a send and the same page loaded through `fetch`
+  could. `platform/security/untrusted-surface-language.ts` gives the refusal
+  wording one owner. Card-shaped content is refused on remote channels and
+  redacted out of inbound mail.
+
+- **A credential scope registry.** `platform/config/credential-scope-registry.ts`
+  names every credential the platform stores and whether the daemon needs one,
+  so daemon-needed credentials are written at daemon scope no matter which
+  surface captured them.
+
+### Changed
+
+- **`OperatorMethodInput` and `OperatorMethodOutput` are now indexed accesses,
+  not distributive conditionals — and the permissive fallback is gone.**
+  Every id has a rendered entry, so the lookup no longer needs a conditional
+  branch. It could not keep one: relating a client object literal to an
+  interface generic over the 464-id union instantiated the conditional once per
+  id and produced **TS2590, "Expression produces a union type that is too
+  complex to represent"** in `packages/operator-sdk/src/client-core.ts` and
+  `packages/sdk/src/browser-scoped.ts`. Rationale:
+  `docs/decisions/2026-07-28-operator-method-io-is-an-indexed-access.md`.
+
+  **This is the breaking part for consumers.** Ids with no map entry used to
+  resolve to `{ [k: string]: unknown }`, which accepted anything. They now carry
+  their real shapes and their real `required` arrays. Measured against the webui
+  as the worst case: of the 33 distinct method ids it invokes, **22 now enforce
+  at least one required field**, and a bridge type that still declares them
+  optional is a compile error at the re-pin. That is the wanted outcome — the
+  server was already refusing those calls and the consumer could not see it. The
+  full table is in `docs/decisions/2026-07-28-webui-repin-required-fields.md`.
+
+- **Every catalogued verb declares its handler requirement**, so a composition
+  that cannot serve a family says so at registration rather than at call time.
+
+### Fixed
+
+- **A channel reported `healthy` because its token was in config, not because it
+  worked.** `ChannelStatusSnapshot.state` was computed from credential presence
+  alone, so a Telegram bot whose ingress had stopped kept reporting healthy for
+  as long as its token stayed configured: a message was sent, no reply came, and
+  every surface agreed everything was fine. Four surfaces were worse — Slack,
+  Discord, ntfy and the generic webhook reported healthy whenever their delivery
+  switch was on, without checking for a credential at all. Meanwhile
+  `BuiltinChannelRuntime.telegramIngressStatus()` — the function that knew the
+  answer, including the named reason ingress was inactive — had no caller.
+
+  The reported state now answers whether the channel can send and receive right
+  now. `ChannelHealthState` distinguishes `healthy`, `degraded`, `dead`,
+  `unknown`, `unconfigured` and `disabled`, and every snapshot carries the
+  `ChannelRuntimeObservation` its state was derived from, reason included. One
+  rule resolves it (`resolveChannelHealthState`), so a surface cannot report
+  health without an observation behind it.
+
+  Telegram is read from the ingress supervisor (webhook mode counts as armed —
+  it runs no poll loop by design, and reading `running` alone would have called
+  a correctly registered webhook dead). Slack, Discord and ntfy are read from
+  the provider connection manager. Every other built-in surface receives through
+  a webhook this daemon merely registers and therefore cannot tell a working
+  provider from a silent one — those report `unknown` and say in plain words
+  that configuration is all they know. No invented greens.
+
+- **A credential that is declared but resolves to nothing is now its own
+  state.** Measured on this project's own machine: `daemon/secrets.enc` was
+  `{}`, the Telegram token sat in `agent/secrets.enc` and `tui/secrets.enc`, and
+  `daemon/settings.json` pointed at
+  `goodvibes://secrets/goodvibes/TELEGRAM_BOT_TOKEN`. Every daemon send failed
+  with "Missing Telegram bot token" while the agent's own path sent fine through
+  its own store — and both reported the same health, because a reference is a
+  non-empty string and that was all "configured" ever meant.
+
+  `describeBuiltinSecret` now resolves what it describes, so
+  `ChannelSecretStatus` carries `resolved` alongside `configured` and a `source`
+  of `unresolved`, and the snapshot carries `credentialResolves`. The health
+  state `unresolved` sits between `unconfigured` (nobody believes it works) and
+  `dead` (it resolved and the runtime is down), and the reported reason names
+  the field rather than the symptom. The doctor gains a matching
+  `credentials-resolve` check. It costs a store read — no network, no trial
+  send. An observed working path still outranks it, so a surface reading its
+  credential through a path this describer does not model is never called broken
+  while it is demonstrably carrying traffic.
+
+- **A dead channel now reaches the owner instead of sitting in a field.**
+  `ChannelHealthWatcher` sweeps the registry, and the daemon announces a channel
+  that stops working over a channel that still does — never over the failed one.
+  Recoveries are announced to whoever was told about the failure, a channel that
+  stays dead is repeated on a long interval rather than mentioned once, and
+  `unknown` is not treated as failure so webhook-delivered surfaces do not cry
+  wolf. When nothing survives to carry the notice, that fact is logged at ERROR
+  with the alert, so the log says both that a channel died and that nobody was
+  told.
+
+- **Credentials already stranded in a surface silo are lifted to the daemon
+  tier on start.** Routing new writes correctly fixes nothing for someone who
+  already ran setup — the owner ran `/google adopt` in the agent, it reported
+  success, and the credential landed where that build put it. The daemon
+  previously enumerated only its own surface root, so a credential left in
+  `~/.goodvibes/agent/` was invisible to the one thing that could lift it.
+  `listDetailedForMigration` now reaches every surface, project and user store
+  on the machine, and `migrateOnSurfaceStart` gives a surface the same entry
+  point so a machine whose daemon has not run yet is still repaired. A
+  plaintext-credential sweep moves values out of settings files, and the
+  migration no longer destroys the credential it has just saved.
+
+- **The publish rehearsal was stricter than the publish.**
+  `scripts/publish-packages.ts` applied a check on the `--dry-run` path that the
+  real publish path did not, so a rehearsal could fail on something a genuine
+  publish would have accepted. Both paths now run the same checks.
+
+- **Test temporary directories leaked.** Several suites created throwaway home
+  and store directories per case without reaping them; on a tmpfs that
+  exhausted inodes. The suites reap, and a regression gate counts containment
+  rather than reading the hook.
+
+### Migration
+
+- **Re-pin consumers to 1.19.0 and expect required-field compile errors.** Any
+  bridge or wrapper type that declared an operator method's input fields
+  optional because the id previously fell through to the permissive fallback
+  must now declare the real required fields. See
+  `docs/decisions/2026-07-28-webui-repin-required-fields.md` for the measured
+  per-id table.
+
+- **`./platform/payments` and `./platform/owner-profile` are published for the
+  first time.** Consumers carrying a local overlay or `file:` tarball for either
+  can restore their npm pin. The duplicated `WEBUI_CARD_ENTRY_CONDITIONS` copy
+  in the webui can be deleted and imported from the SDK — see
+  `docs/decisions/2026-07-28-payments-release-gates.md`.
+
+- **Daemon-needed credentials move to daemon scope on first start of 1.19.0.**
+  The migration copies rather than moves, and is idempotent. No action required;
+  a capability that reported itself unconfigured next to a working credential
+  should stop doing so.
+
+
 ## [1.18.1] - 2026-07-27
 
 ### Fixed
@@ -66,61 +266,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   honest 501 for the verbs that reach the dispatch arm unobstructed. Checked by
   reverting the guard: 41 of its 68 assertions fail without the fix and all 68
   pass with it, so it is a gate rather than decoration.
-
-- **A channel reported `healthy` because its token was in config, not because it
-  worked.** `ChannelStatusSnapshot.state` was computed from credential presence
-  alone, so a Telegram bot whose ingress had stopped kept reporting healthy for
-  as long as its token stayed configured: a message was sent, no reply came, and
-  every surface agreed everything was fine. Four surfaces were worse — Slack,
-  Discord, ntfy and the generic webhook reported healthy whenever their delivery
-  switch was on, without checking for a credential at all. Meanwhile
-  `BuiltinChannelRuntime.telegramIngressStatus()` — the function that knew the
-  answer, including the named reason ingress was inactive — had no caller.
-
-  The reported state now answers whether the channel can send and receive right
-  now. `ChannelHealthState` distinguishes `healthy`, `degraded`, `dead`,
-  `unknown`, `unconfigured` and `disabled`, and every snapshot carries the
-  `ChannelRuntimeObservation` its state was derived from, reason included. One
-  rule resolves it (`resolveChannelHealthState`), so a surface cannot report
-  health without an observation behind it.
-
-  Telegram is read from the ingress supervisor (webhook mode counts as armed —
-  it runs no poll loop by design, and reading `running` alone would have called
-  a correctly registered webhook dead). Slack, Discord and ntfy are read from
-  the provider connection manager. Every other built-in surface receives through
-  a webhook this daemon merely registers and therefore cannot tell a working
-  provider from a silent one — those report `unknown` and say in plain words
-  that configuration is all they know. No invented greens.
-
-- **A credential that is declared but resolves to nothing is now its own
-  state.** Measured on this project's own machine: `daemon/secrets.enc` was
-  `{}`, the Telegram token sat in `agent/secrets.enc` and `tui/secrets.enc`, and
-  `daemon/settings.json` pointed at
-  `goodvibes://secrets/goodvibes/TELEGRAM_BOT_TOKEN`. Every daemon send failed
-  with "Missing Telegram bot token" while the agent's own path sent fine through
-  its own store — and both reported the same health, because a reference is a
-  non-empty string and that was all "configured" ever meant.
-
-  `describeBuiltinSecret` now resolves what it describes, so
-  `ChannelSecretStatus` carries `resolved` alongside `configured` and a `source`
-  of `unresolved`, and the snapshot carries `credentialResolves`. The health
-  state `unresolved` sits between `unconfigured` (nobody believes it works) and
-  `dead` (it resolved and the runtime is down), and the reported reason names
-  the field rather than the symptom. The doctor gains a matching
-  `credentials-resolve` check. It costs a store read — no network, no trial
-  send. An observed working path still outranks it, so a surface reading its
-  credential through a path this describer does not model is never called broken
-  while it is demonstrably carrying traffic.
-
-- **A dead channel now reaches the owner instead of sitting in a field.**
-  `ChannelHealthWatcher` sweeps the registry, and the daemon announces a channel
-  that stops working over a channel that still does — never over the failed one.
-  Recoveries are announced to whoever was told about the failure, a channel that
-  stays dead is repeated on a long interval rather than mentioned once, and
-  `unknown` is not treated as failure so webhook-delivered surfaces do not cry
-  wolf. When nothing survives to carry the notice, that fact is logged at ERROR
-  with the alert, so the log says both that a channel died and that nobody was
-  told.
 
 ### Changed
 
