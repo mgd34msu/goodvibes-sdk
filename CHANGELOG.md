@@ -4,6 +4,43 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
+## [1.19.1] - 2026-07-29
+
+Write-ordering fixes for state held in `PersistentStore`. The entries below are
+one defect shape appearing in different stores: a whole-file write built from a
+snapshot taken when the write was requested, with nothing ordering the writes,
+so two in flight at once finish in whichever order their renames land and an
+older snapshot can come down on top of a newer one. The file then disagrees
+with memory, and after a restart the state has silently gone backwards.
+
+### Fixed
+
+- **An approval that had been answered could go back to `pending` on disk.**
+  `ApprovalBroker` wrote its whole store on every change, and the window is the
+  one every create passes through: `requestApproval` puts the record in memory
+  before it writes it, so a surface can resolve an approval while the write that
+  created it is still in flight. When that happened, the
+  create's rename landed second and restored the snapshot it took before the
+  approval was answered. After a restart the record read back as `pending`, and
+  because silence on a payment approval means denied, an approved purchase was
+  eventually a denied one — the decision lost, in the path whose whole job is to
+  keep it.
+
+  Writes now go through a per-broker queue (`StoreWriteQueue`): one at a time,
+  in call order, so the newest write is the one that survives. The snapshot is
+  still taken when the write is requested; ordering is what was missing, and
+  deferring the snapshot would let a write serialise records belonging to
+  callers that had not committed yet. A failed write rejects for its own caller
+  only and never becomes the queue, so one unwritable moment cannot wedge every
+  write after it. `requestApproval` also writes the corrected store when it
+  rolls a failed create back out of memory, so a record a neighbouring write had
+  already carried to disk does not outlive the create that disowned it.
+
+  This fix adds no API. `StoreWriteQueue` is internal to the SDK, and is the
+  remedy the other entries in this section reuse where the store is written by
+  a single process; one written by more than one takes the advisory lock at
+  `PersistentStore.lockPath` instead.
+
 ## [1.19.0] - 2026-07-28
 
 Three capabilities the platform did not have — spending money, knowing who its
@@ -105,31 +142,6 @@ endpoints (6) are unchanged.
   that cannot serve a family says so at registration rather than at call time.
 
 ### Fixed
-
-- **An approval that had been answered could go back to `pending` on disk.**
-  `ApprovalBroker` wrote its whole store on every change, from a snapshot taken
-  when the write was requested, and nothing ordered those writes.
-  `PersistentStore.persist` replaces a file atomically but says nothing about
-  order, so two writes in flight at once finished whenever their renames landed
-  — and the write that started first could finish last, putting its older view
-  of the store back over a newer one.
-
-  The window is the one every create passes through: `requestApproval` puts the
-  record in memory before it writes it, so a surface can resolve an approval
-  while the write that created it is still in flight. When that happened, the
-  create's rename landed second and restored the snapshot it took before the
-  approval was answered. After a restart the record read back as `pending`, and
-  because silence on a payment approval means denied, an approved purchase was
-  eventually a denied one — the decision lost, in the path whose whole job is to
-  keep it.
-
-  Writes now go through a per-broker queue (`StoreWriteQueue`): one at a time,
-  in call order, so the newest write is the one that survives. A failed write
-  rejects for its own caller only and never becomes the queue, so one unwritable
-  moment cannot wedge every write after it. `requestApproval` also writes the
-  corrected store when it rolls a failed create back out of memory, so a record
-  a neighbouring write had already carried to disk does not outlive the create
-  that disowned it.
 
 - **A channel reported `healthy` because its token was in config, not because it
   worked.** `ChannelStatusSnapshot.state` was computed from credential presence
