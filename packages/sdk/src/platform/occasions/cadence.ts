@@ -81,15 +81,22 @@ export function laterReturnDate(today: IsoDate, occurrence: IsoDate): IsoDate {
 }
 
 /**
- * A dropped interview resumes the next day.
+ * A dropped interview resumes the next day, and never after the date itself.
  *
  * He was mid-thread, so this is a live conversation he walked away from rather
  * than a question he has not engaged with. One day is the shortest gap that is
  * not badgering, and it was my call — the plan says "nudge again later and
  * resume" without naming an interval.
+ *
+ * The clamp lives HERE rather than at the call site. The sweep used to add a day
+ * and clamp inline, which made this function a second, unused definition of the
+ * same rule sitting next to the real one — the drift class every other comment
+ * in this module argues against, and the kind that survives review because both
+ * copies are correct on the day they are written.
  */
-export function interviewResumeDate(today: IsoDate): IsoDate {
-  return addDays(today, 1);
+export function interviewResumeDate(today: IsoDate, occurrence?: IsoDate): IsoDate {
+  const due = addDays(today, 1);
+  return occurrence !== undefined && due > occurrence ? occurrence : due;
 }
 
 /**
