@@ -108,6 +108,24 @@ export const REPLICATED_CONFIG_DOMAINS: readonly string[] = [
   // the eight policy keys and nothing else; `profile.path` is ruled node-local
   // below because it names a location on one machine's disk.
   'profile.',
+
+  // The proactive occasions policy: the lead time, the hours it may speak, the
+  // nudge rhythm, the away adjustment, the calendar mirror, the interview
+  // length and the gift-history retention.
+  //
+  // Replicated for the same reason `profile.` is, one step further along. These
+  // are decisions about how the platform treats HIM, and the occasions
+  // themselves live in the profile document, which is his and is the same
+  // wherever he reads it. A group where one node raised his wife's birthday at
+  // ten days and another at three, or where one had gone quiet after a "no" the
+  // other never saw, would be the same assistant behaving two different ways
+  // depending on which machine answered — and, worse, would nudge him twice.
+  //
+  // `occasions.nudgeChannel` crosses too, and deliberately: a channel target is
+  // a decision about where he wants to hear about this, not a property of one
+  // machine's hardware. The channel credentials it resolves through are a
+  // separate concern with their own replication rules.
+  'occasions.',
 ];
 
 /**

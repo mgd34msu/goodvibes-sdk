@@ -96,6 +96,12 @@ export const DAEMON_OWNED_CONFIG_PREFIXES: readonly string[] = [
   // failure the daemon tier exists for, and this instance would be a bad one:
   // the operator would believe he had stopped autonomous recording.
   'profile.',
+  // The occasions sweep runs IN the daemon, on a timer, with every surface
+  // closed. Its lead time, its quiet window, its cadence and its delivery
+  // channel are read there and nowhere else, so a value set from a surface and
+  // left in that surface's silo would configure nothing while reporting
+  // success — the same failure `profile.` is here for, one feature along.
+  'occasions.',
 ];
 
 /** Individual daemon-owned keys that do not sit under a daemon-owned domain. */

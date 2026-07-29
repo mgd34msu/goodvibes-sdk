@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.19.2
- * Methods: 464 total, 409 REST-routed, 55 ws-only invoke.
+ * Methods: 480 total, 425 REST-routed, 55 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -1168,6 +1168,70 @@ export const WEBUI_METHOD_ROUTES: Readonly<Record<string, WebuiRouteDefinition>>
     "method": "GET",
     "path": "/api/memory/vector"
   },
+  "occasions.answer": {
+    "method": "POST",
+    "path": "/api/occasions/answer"
+  },
+  "occasions.confirm": {
+    "method": "POST",
+    "path": "/api/occasions/confirm"
+  },
+  "occasions.conflict.resolve": {
+    "method": "POST",
+    "path": "/api/occasions/conflict/resolve"
+  },
+  "occasions.gifts": {
+    "method": "POST",
+    "path": "/api/occasions/gifts"
+  },
+  "occasions.interview.answer": {
+    "method": "POST",
+    "path": "/api/occasions/interview/answer"
+  },
+  "occasions.interview.get": {
+    "method": "POST",
+    "path": "/api/occasions/interview"
+  },
+  "occasions.interview.record": {
+    "method": "POST",
+    "path": "/api/occasions/interview/record"
+  },
+  "occasions.list": {
+    "method": "GET",
+    "path": "/api/occasions"
+  },
+  "occasions.pending": {
+    "method": "GET",
+    "path": "/api/occasions/pending"
+  },
+  "occasions.plans.confirm": {
+    "method": "POST",
+    "path": "/api/occasions/plans/confirm"
+  },
+  "occasions.plans.list": {
+    "method": "GET",
+    "path": "/api/occasions/plans"
+  },
+  "occasions.plans.propose": {
+    "method": "POST",
+    "path": "/api/occasions/plans/propose"
+  },
+  "occasions.propose": {
+    "method": "POST",
+    "path": "/api/occasions/propose"
+  },
+  "occasions.remove": {
+    "method": "POST",
+    "path": "/api/occasions/remove"
+  },
+  "occasions.state": {
+    "method": "GET",
+    "path": "/api/occasions/state"
+  },
+  "occasions.sweep": {
+    "method": "POST",
+    "path": "/api/occasions/sweep"
+  },
   "panels.list": {
     "method": "GET",
     "path": "/api/panels"
@@ -2050,6 +2114,22 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "memory.review-queue": "rest",
   "memory.vector.rebuild": "rest",
   "memory.vector.stats": "rest",
+  "occasions.answer": "rest",
+  "occasions.confirm": "rest",
+  "occasions.conflict.resolve": "rest",
+  "occasions.gifts": "rest",
+  "occasions.interview.answer": "rest",
+  "occasions.interview.get": "rest",
+  "occasions.interview.record": "rest",
+  "occasions.list": "rest",
+  "occasions.pending": "rest",
+  "occasions.plans.confirm": "rest",
+  "occasions.plans.list": "rest",
+  "occasions.plans.propose": "rest",
+  "occasions.propose": "rest",
+  "occasions.remove": "rest",
+  "occasions.state": "rest",
+  "occasions.sweep": "rest",
   "pairing.handoff.complete": "ws-invoke",
   "pairing.handoff.create": "ws-invoke",
   "pairing.posture.get": "ws-invoke",
@@ -15527,6 +15607,446 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
         "embeddingProviderLabel": "sample",
         "error": "sample",
         "platformLimitReason": "sample"
+      }
+    }
+  },
+  "occasions.answer": {
+    "input": {
+      "occasionId": "sample",
+      "answer": "yes",
+      "occurrence": "sample"
+    },
+    "output": {
+      "ok": false,
+      "reason": "sample",
+      "interview": {
+        "interviewId": "sample",
+        "occasionId": "sample",
+        "occurrence": "sample",
+        "steps": [
+          {
+            "id": "sample",
+            "prompt": "sample",
+            "opensFrom": "sample"
+          }
+        ],
+        "nextStep": {
+          "id": "sample",
+          "prompt": "sample",
+          "opensFrom": "sample"
+        },
+        "complete": false,
+        "landedOn": "sample"
+      }
+    }
+  },
+  "occasions.confirm": {
+    "input": {
+      "title": "sample",
+      "date": "sample",
+      "kind": "gift-giving",
+      "person": "sample",
+      "recurrence": "annual",
+      "leadDays": 0,
+      "surface": "sample",
+      "said": "sample",
+      "authority": "sample"
+    },
+    "output": {
+      "ok": false,
+      "reason": "sample",
+      "occasionId": "sample",
+      "disclosure": "sample",
+      "droppedRecords": 0
+    }
+  },
+  "occasions.conflict.resolve": {
+    "input": {
+      "occasionId": "sample"
+    },
+    "output": {
+      "occasionId": "sample",
+      "resolved": false
+    }
+  },
+  "occasions.gifts": {
+    "input": {
+      "occasionId": "sample"
+    },
+    "output": {
+      "occasionId": "sample",
+      "gifts": [
+        {
+          "occasionId": "sample",
+          "occurrence": "sample",
+          "recordedAt": 0,
+          "landedOn": "sample",
+          "notes": "sample"
+        }
+      ]
+    }
+  },
+  "occasions.interview.answer": {
+    "input": {
+      "interviewId": "sample",
+      "stepId": "sample",
+      "text": "sample"
+    },
+    "output": {
+      "present": false,
+      "interview": {
+        "interviewId": "sample",
+        "occasionId": "sample",
+        "occurrence": "sample",
+        "steps": [
+          {
+            "id": "sample",
+            "prompt": "sample",
+            "opensFrom": "sample"
+          }
+        ],
+        "nextStep": {
+          "id": "sample",
+          "prompt": "sample",
+          "opensFrom": "sample"
+        },
+        "complete": false,
+        "landedOn": "sample"
+      }
+    }
+  },
+  "occasions.interview.get": {
+    "input": {
+      "interviewId": "sample"
+    },
+    "output": {
+      "present": false,
+      "interview": {
+        "interviewId": "sample",
+        "occasionId": "sample",
+        "occurrence": "sample",
+        "steps": [
+          {
+            "id": "sample",
+            "prompt": "sample",
+            "opensFrom": "sample"
+          }
+        ],
+        "nextStep": {
+          "id": "sample",
+          "prompt": "sample",
+          "opensFrom": "sample"
+        },
+        "complete": false,
+        "landedOn": "sample"
+      }
+    }
+  },
+  "occasions.interview.record": {
+    "input": {
+      "interviewId": "sample",
+      "landedOn": "sample"
+    },
+    "output": {
+      "present": false,
+      "interview": {
+        "interviewId": "sample",
+        "occasionId": "sample",
+        "occurrence": "sample",
+        "steps": [
+          {
+            "id": "sample",
+            "prompt": "sample",
+            "opensFrom": "sample"
+          }
+        ],
+        "nextStep": {
+          "id": "sample",
+          "prompt": "sample",
+          "opensFrom": "sample"
+        },
+        "complete": false,
+        "landedOn": "sample"
+      }
+    }
+  },
+  "occasions.list": {
+    "input": {},
+    "output": {
+      "today": "sample",
+      "timezone": "sample",
+      "occasions": [
+        {
+          "occasion": {
+            "id": "sample",
+            "title": "sample",
+            "date": {
+              "kind": "recurring",
+              "year": 0,
+              "month": 0,
+              "day": 0
+            },
+            "recurrence": "annual",
+            "kind": "gift-giving",
+            "person": "sample",
+            "leadDays": 0,
+            "mirrored": false,
+            "extras": [
+              "sample"
+            ],
+            "lineIndex": 0,
+            "text": "sample"
+          },
+          "nextOccurrence": "sample",
+          "daysUntil": 0,
+          "leadDays": 0,
+          "inLeadWindow": false,
+          "answer": "yes",
+          "mirrored": false
+        }
+      ],
+      "unparsed": [
+        {
+          "lineIndex": 0,
+          "text": "sample",
+          "reason": "sample"
+        }
+      ],
+      "conflicts": [
+        {
+          "occasionId": "sample",
+          "title": "sample",
+          "dates": [
+            "sample"
+          ],
+          "lineIndexes": [
+            0
+          ]
+        }
+      ]
+    }
+  },
+  "occasions.pending": {
+    "input": {},
+    "output": {
+      "today": "sample",
+      "nudge": {
+        "id": "sample",
+        "raisedAt": 0,
+        "subjects": [
+          {
+            "occasionId": "sample",
+            "title": "sample",
+            "person": "sample",
+            "kind": "gift-giving",
+            "proximity": "approaching"
+          }
+        ],
+        "message": "sample",
+        "answerable": false
+      },
+      "conflicts": [
+        {
+          "occasionId": "sample",
+          "message": "sample"
+        }
+      ],
+      "interviews": [
+        {
+          "interviewId": "sample",
+          "occasionId": "sample",
+          "occurrence": "sample",
+          "steps": [
+            {
+              "id": "sample",
+              "prompt": "sample",
+              "opensFrom": "sample"
+            }
+          ],
+          "nextStep": {
+            "id": "sample",
+            "prompt": "sample",
+            "opensFrom": "sample"
+          },
+          "complete": false,
+          "landedOn": "sample"
+        }
+      ]
+    }
+  },
+  "occasions.plans.confirm": {
+    "input": {
+      "title": "sample",
+      "from": "sample",
+      "to": "sample",
+      "away": false,
+      "destination": "sample",
+      "surface": "sample",
+      "said": "sample",
+      "authority": "sample"
+    },
+    "output": {
+      "ok": false,
+      "reason": "sample",
+      "occasionId": "sample",
+      "disclosure": "sample",
+      "droppedRecords": 0
+    }
+  },
+  "occasions.plans.list": {
+    "input": {},
+    "output": {
+      "today": "sample",
+      "plans": [
+        {
+          "id": "sample",
+          "title": "sample",
+          "from": "sample",
+          "to": "sample",
+          "away": false,
+          "destination": "sample",
+          "extras": [
+            "sample"
+          ],
+          "lineIndex": 0,
+          "text": "sample"
+        }
+      ],
+      "unparsed": [
+        {
+          "lineIndex": 0,
+          "text": "sample",
+          "reason": "sample"
+        }
+      ],
+      "awayNow": {
+        "id": "sample",
+        "title": "sample",
+        "from": "sample",
+        "to": "sample",
+        "away": false,
+        "destination": "sample",
+        "extras": [
+          "sample"
+        ],
+        "lineIndex": 0,
+        "text": "sample"
+      }
+    }
+  },
+  "occasions.plans.propose": {
+    "input": {
+      "title": "sample",
+      "from": "sample",
+      "to": "sample",
+      "away": false,
+      "destination": "sample"
+    },
+    "output": {
+      "ok": false,
+      "reason": "sample",
+      "line": "sample",
+      "confirmation": "sample",
+      "needsKind": false,
+      "conflictsWith": [
+        "sample"
+      ]
+    }
+  },
+  "occasions.propose": {
+    "input": {
+      "title": "sample",
+      "date": "sample",
+      "kind": "gift-giving",
+      "person": "sample",
+      "recurrence": "annual",
+      "leadDays": 0
+    },
+    "output": {
+      "ok": false,
+      "reason": "sample",
+      "line": "sample",
+      "confirmation": "sample",
+      "needsKind": false,
+      "conflictsWith": [
+        "sample"
+      ]
+    }
+  },
+  "occasions.remove": {
+    "input": {
+      "occasionId": "sample",
+      "confirmed": false,
+      "authority": "sample"
+    },
+    "output": {
+      "ok": false,
+      "reason": "sample",
+      "occasionId": "sample",
+      "disclosure": "sample",
+      "droppedRecords": 0
+    }
+  },
+  "occasions.state": {
+    "input": {},
+    "output": {
+      "path": "sample",
+      "acknowledgements": 0,
+      "giftRecords": 0,
+      "openItems": 0,
+      "interviews": 0,
+      "mirrors": 0,
+      "lastSweep": {
+        "sweptAt": 0,
+        "expiredAcknowledgements": 0,
+        "orphanedRecords": 0,
+        "expiredOpenItems": 0,
+        "agedGiftRecords": 0,
+        "droppedInterviews": 0,
+        "staleMirrors": 0
+      },
+      "corruption": "sample"
+    }
+  },
+  "occasions.sweep": {
+    "input": {},
+    "output": {
+      "ranAt": 0,
+      "today": "sample",
+      "hold": "sample",
+      "nudge": {
+        "id": "sample",
+        "raisedAt": 0,
+        "subjects": [
+          {
+            "occasionId": "sample",
+            "title": "sample",
+            "person": "sample",
+            "kind": "gift-giving",
+            "proximity": "approaching"
+          }
+        ],
+        "message": "sample",
+        "answerable": false
+      },
+      "conflictMessages": [
+        "sample"
+      ],
+      "resumedInterviews": [
+        "sample"
+      ],
+      "delivered": false,
+      "deliveryChannel": "sample",
+      "deliveryId": "sample",
+      "mirrored": 0,
+      "housekeeping": {
+        "sweptAt": 0,
+        "expiredAcknowledgements": 0,
+        "orphanedRecords": 0,
+        "expiredOpenItems": 0,
+        "agedGiftRecords": 0,
+        "droppedInterviews": 0,
+        "staleMirrors": 0
       }
     }
   },

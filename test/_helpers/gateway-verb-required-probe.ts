@@ -59,6 +59,7 @@ import { registerDevicesGatewayMethods } from '../../packages/sdk/src/platform/c
 import { registerDaemonEmailVerbs } from '../../packages/sdk/src/platform/control-plane/routes/email-composition.js';
 import { registerEmailGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/email.js';
 import { registerEmailExpectationGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/email-expectations.ts';
+import { registerOccasionsGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/occasions.ts';
 import { registerOwnerProfileGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/owner-profile.ts';
 import { registerPaymentsGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/payments.ts';
 import { registerFlagsGraduationGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/flags-graduation.js';
@@ -128,6 +129,7 @@ const ROUTE_REGISTRARS: ReadonlyArray<readonly [string, (catalog: GatewayMethodC
   ['devices', (catalog) => registerDevicesGatewayMethods(catalog, stubDeps())],
   ['email', (catalog) => registerEmailGatewayMethods(catalog, stubDeps())],
   ['email-expectations', (catalog) => registerEmailExpectationGatewayMethods(catalog, stubDeps())],
+  ['occasions', (catalog) => registerOccasionsGatewayMethods(catalog, stubDeps())],
   ['owner-profile', (catalog) => registerOwnerProfileGatewayMethods(catalog, stubDeps())],
   ['payments', (catalog) => registerPaymentsGatewayMethods(catalog, stubDeps())],
   ['email-composition', (catalog) => registerDaemonEmailVerbs(catalog, stubDeps())],
@@ -173,6 +175,7 @@ export const EXPECTED_ROUTE_REGISTRARS: readonly string[] = [
   'registerDevicesGatewayMethods',
   'registerEmailGatewayMethods',
   'registerEmailExpectationGatewayMethods',
+  'registerOccasionsGatewayMethods',
   'registerOwnerProfileGatewayMethods',
   'registerPaymentsGatewayMethods',
   'registerFlagsGraduationGatewayMethods',

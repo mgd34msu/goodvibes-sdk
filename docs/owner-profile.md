@@ -465,11 +465,28 @@ complete file. Same pattern as `PersistentStore.persist()`
 ## 6. Sections
 
 `Identity`, `Contact`, `Location`, `Commerce`, `Preferences`, `Contacting me`,
-`Style`, `Defaults`, `People`, `Places`, `Work`, `Notes`.
+`Style`, `Defaults`, `People`, `Places`, `Work`, `Important dates`, `Plans`,
+`Notes`.
 
-`People`, `Places`, `Work`, `Notes` and `Style` are prose-only. Autonomous writes
-into them append a bullet with a provenance suffix. Nothing turns them into
-records.
+`People`, `Places`, `Work`, `Important dates`, `Plans`, `Notes` and `Style` are
+prose-only. Autonomous writes into them append a bullet with a provenance
+suffix. Nothing turns them into records.
+
+`Important dates` and `Plans` are prose-only for a reason worth stating, because
+at a glance they look like the most record-shaped sections in the document. A
+birthday is a REPEATED record, and the field registry maps one section-plus-label
+to one value — it can hold `commerce.shippingAddress` and it cannot hold twenty
+birthdays. So each occasion is an ordinary prose line, preserved verbatim by this
+parser exactly like any other bullet, and typed by a reader layered on top of it
+(`platform/occasions/grammar.ts`, see `docs/occasions.md`). §4.4's guarantee that
+a validator never rewrites a line he wrote survives untouched: a date line that
+reader cannot make sense of is reported with a reason rather than corrected.
+
+The daemon reads those two sections through `OwnerProfileStore.importantDates()`
+and `.plans()` — named, narrow routes in the same shape as `person()`, because
+both sections are closed tier and `section()` refuses the closed tier. There is
+deliberately no generic "give me any closed section" call; adding one would
+re-open the enumerate-all hole §10 closes, by a different name.
 
 ---
 
