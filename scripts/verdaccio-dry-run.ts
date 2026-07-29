@@ -412,19 +412,49 @@ if (ownerProfile.OwnerProfileStore === undefined)
 // capability through control-plane verbs — so the subpath sweep above would
 // pass with the owner-profile verb surface entirely broken. The real consumer
 // contract is the method catalog, and it is asserted separately.
+// Both lists below are the FULL shipped family, not a representative sample.
+// They were a 4-of-9 and a 2-of-7 subset, which left ten verbs asserted by
+// nothing but the "did any profile.* survive at all" count on the next line —
+// a count that stays happy while a specific verb vanishes. Renaming or
+// retiring a verb is now supposed to fail here and be updated deliberately;
+// that is the check doing its job, not the check being brittle.
 const catalogIds = new Set(contracts.OPERATOR_METHOD_IDS);
 const ownerProfileVerbs = [...catalogIds].filter((id) => id.startsWith('profile.'));
 if (ownerProfileVerbs.length === 0)
   throw new Error('the published method catalog declares no profile.* verbs at all');
-for (const id of ['profile.get', 'profile.append', 'profile.forget', 'profile.provenance'])
+for (const id of [
+  'profile.append',
+  'profile.forget',
+  'profile.get',
+  'profile.person',
+  'profile.provenance',
+  'profile.read',
+  'profile.set',
+  'profile.status',
+  'profile.undo',
+])
   if (!catalogIds.has(id))
     throw new Error('owner-profile verb absent from the published method catalog: ' + id);
 console.log('[smoke] OK: ' + ownerProfileVerbs.length + ' owner-profile verbs in the published catalog');
 
-// And the payments execution pair, for the same reason.
-for (const id of ['payments.checkout.begin', 'payments.checkout.fillCard'])
+// And the payments family, for the same reason. The checkout pair executes a
+// purchase; the budget, card and purchase-list verbs are what a surface needs
+// to render the capability at all, so losing one of those is just as fatal.
+const paymentsVerbs = [...catalogIds].filter((id) => id.startsWith('payments.'));
+if (paymentsVerbs.length === 0)
+  throw new Error('the published method catalog declares no payments.* verbs at all');
+for (const id of [
+  'payments.budget.status',
+  'payments.cards.create',
+  'payments.cards.delete',
+  'payments.cards.list',
+  'payments.checkout.begin',
+  'payments.checkout.fillCard',
+  'payments.purchases.list',
+])
   if (!catalogIds.has(id))
     throw new Error('payments verb absent from the published method catalog: ' + id);
+console.log('[smoke] OK: ' + paymentsVerbs.length + ' payments verbs in the published catalog');
 
 console.log('[smoke] ALL ENTRY POINTS RESOLVED OK');
 `.trim();
