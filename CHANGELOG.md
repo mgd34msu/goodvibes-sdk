@@ -58,6 +58,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
     all daemon-owned. Every operation a surface needs is a verb; nothing a
     surface renders has to be computed there.
 
+### Fixed
+
+- **A route binding is now a hint, validated every time it is used — a channel
+  can no longer be stranded by a stale one.** A persisted binding whose session
+  is closed, missing, corrupt, or not serviceable from this node is healed at
+  the resolve seam per its own `sessionPolicy` (a `create-or-bind` binding rolls
+  over to a fresh session) instead of throwing `Session is closed` at the
+  ingress forever. This is surface-agnostic — it applies to every channel-bound
+  adapter, not just the one it was observed on (Telegram messages were being
+  dropped permanently against a session closed days earlier). When a rollover
+  happens, the broker says so on the channel in one line, so a fresh
+  conversation reads as a comprehensible reset rather than silent amnesia.
+  Direct HTTP callers that name a `sessionId` themselves still get their 409 —
+  healing applies only where no client exists to react.
+- **A failed inbound owner message is an incident, not a log line.** The first
+  failure to process an inbound message marks the channel degraded in channel
+  health with the real reason and notifies the owner through a channel that
+  still works — rate-limited, so the first failure pings, repeats within the
+  window do not, and recovery notes itself once. Skipping past a poison update
+  stays (a wedged cursor is worse) but is now loud, never a debug-log whisper.
+
 ## [1.19.2] - 2026-07-29
 
 Repairs inbound message delivery for every configured chat, notification and
