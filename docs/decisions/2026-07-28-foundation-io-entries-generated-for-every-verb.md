@@ -1,125 +1,118 @@
-# Decision: the open-envelope key fix ships; the every-verb rendering does not, yet
+# Decision: generate OperatorMethodInputMap/OutputMap for every catalogued verb, and drop the typed-IO ratchet to zero
 
 Date: 2026-07-28
 Status: accepted
 Supersedes the scoping (not the reasoning) of
 `2026-07-06-foundation-io-types-hand-authored.md`
 
-`wo/typedio-coverage` carried two separable things. One is a defect fix and
-lands here. The other is a completeness expansion that cannot compile yet, and
-is recorded here so it can land later without being re-derived.
+## Context
 
-## What landed
+The 2026-07-06 decision hand-authored typed-IO entries for eight methods and
+wrote `scripts/check-foundation-io-types.ts` to prove they could not drift from
+their method-catalog schemas. It said plainly that it did not solve the problem
+project-wide, and that rebuilding the missing `export-foundation-artifacts.ts`
+generator was a separate, larger effort. That effort is this change.
 
-The open-envelope key helpers (`packages/contracts/src/typed-io-keys.ts`) and
-their two production consumers.
+Two measured gaps existed at `9ef97eb8` across the 443 catalogued verbs:
 
-A contract input whose schema sets `additionalProperties: true` renders as
-`Base & { readonly [key: string]: unknown }`. `keyof` that intersection is
-`string | number`, so both `Omit` and any `keyof`-driven mapped type silently
-degrade against it: the omit collapses the named shape into the bare index
-signature, and a required-keys mapped type yields `never`. **139 of 443**
-operator inputs are open envelopes. Both degradations were in production:
+- **97 verbs had no entry in either map.** `OperatorMethodInput<M>` /
+  `OperatorMethodOutput<M>` fell through to `{ readonly [key: string]: unknown }`
+  / `unknown`, so those verbs reached consumers with no compile-time shape at
+  all. `calendar.*` (5), `email.*` (4), `memory.*` (13), `projectPlanning.*`
+  (17) and `homeassistant.*` (25) were the largest families.
+- **91 verbs carried an entry that no longer matched the schema it was rendered
+  from.** `check-foundation-io-types.ts` only diffed a hand-maintained `ENTRIES`
+  list naming 143 of the 443 ids, so the other 300 were unchecked: correcting a
+  `required` array on those catalog schemas changed no consumer type and
+  reddened no gate.
 
-- `transport-http/src/client-plumbing.ts` — `RequiredKeys` returned `never`, so
-  `MethodArgs` concluded "no required fields" and made the operator client's
-  input argument OPTIONAL on every open-envelope verb. A caller could omit a
-  body the schema requires.
-- `sdk/src/browser-knowledge.ts` — `Omit<OperatorMethodInput<M>, K>` in the
-  browser facade, collapsing the same way.
+The untyped-IO ratchet (`check-foundation-io-coverage.ts`, baseline 97) held the
+frontier — a new verb without typed IO fails the build — but by construction did
+nothing about the verbs behind it.
 
-Both now go through `NamedProps` / `OmitNamed` / `RequiredNamedKeys`, which
-strip the index signature first, apply the key operation, then re-add it.
-`test/types/open-envelope-key-helpers.ts` pins the behaviour.
+## Decision
 
-Two things the fix immediately caught, which is the argument for it:
+Entries are **rendered from the catalog descriptors**, not authored. Nothing here
+is per-verb.
 
-- `OmitNamed` had to be made DISTRIBUTIVE. `Omit` is
-  `Pick<T, Exclude<keyof T, K>>`, and `keyof` a union is the INTERSECTION of its
-  members' keys — so on a `Base & (A | B | C)` input ("one of
-  body/content/attachments") the branches collapsed into one flat object with
-  every branch member optional, turning "one of these is required" into "none of
-  these is required". Same class of loss as the index-signature trap, reached
-  the same way.
-- `test/operator-sdk-coverage.test.ts` was calling `sessions.messages.create`
-  with `{ role, content }`. That verb declares neither property and REQUIRES
-  `body`. The call would have been refused with a 400; it compiled only because
-  `RequiredKeys` had collapsed. Corrected to the declared shape.
+- `scripts/foundation-io-render.ts` — the schema-to-TS-type-string renderer,
+  extracted verbatim from `check-foundation-io-types.ts` so the writer and the
+  checker share one implementation.
+- `scripts/foundation-io-catalog.ts` — the composition of all 25 builtin
+  descriptor arrays, mirroring the module-private `BUILTIN_GATEWAY_METHODS` in
+  `method-catalog.ts`. `assertCoversMethodIds` fails loudly if a catalog module
+  is wired into `method-catalog.ts` but not here, so verbs cannot fall out of
+  coverage silently.
+- `scripts/generate-foundation-io-entries.ts` — rewrites both map bodies for all
+  443 ids. Wired into `refresh:contracts`.
+- `scripts/check-foundation-io-types.ts` — its `ENTRIES` list is now **derived**
+  from the catalog rather than hand-maintained, so the drift check covers 886
+  entries (443 methods x input/output) instead of 286.
+- `FOUNDATION_IO_COVERAGE_BASELINE` lowered 97 -> 0.
 
-The facade's three branched verbs merge with `Object.assign` rather than object
-spread: spread of a branched union widens every member to optional, so the
-merged value stops proving it satisfies a branch. `Object.assign` returns an
-intersection, which keeps it — same runtime value, no cast.
+### Two renderer corrections, both measured
 
-## What did NOT land, and exactly where it stands
+**Schema-valued `additionalProperties`.** `recordSchema(v)` returns
+`{ type: 'object', additionalProperties: v }`, and every call site builds a fresh
+object. The renderer identity-matched only the single `METADATA_SCHEMA`
+instance, so structurally identical record schemas — `TOOL_ARGUMENTS_SCHEMA`,
+`GRAPHQL_VARIABLES_SCHEMA`, `CONFIG_CATEGORY_SNAPSHOT_SCHEMA` and the rest — fell
+through to the plain-object branch and rendered as `{  }`, which declares
+nothing. Generalizing the identity check to any schema-valued
+`additionalProperties` moved 22 map entries from wrong to right and subsumes the
+`METADATA_SCHEMA` special case exactly (byte-identical render). It also makes
+`approvals.approve`'s `modifiedArgs` and the approval request's `args` stop
+claiming `{  }` when the schema says JSON record — the divergence class the
+sweep flagged.
 
-Rendering every catalogued verb's input/output from its own schema — the
-generator, the 464-entry maps, the coverage ratchet at 0, and the size bound
-built for them. All of it is on `wo/typedio-coverage` at `15dd3ca3`; nothing was
-deleted. Entries stay at 368 and the coverage ratchet at its matching baseline.
+The `JSON_VALUE_SCHEMA` / `JSON_OBJECT_SCHEMA` / `JSON_ARRAY_SCHEMA` identity
+checks stay ahead of it: those schemas are self-referential and render to the
+named recursive `JsonValue` alias, which structural recursion cannot reach.
 
-It does not land because **`packages/operator-sdk` stops compiling.** Measured
-by building each project separately rather than inferred from the solution
-build:
+**`anyOf` of pure required-key refinements.** `knowledge.ingest.connector` is a
+base object schema plus `anyOf: [{required:['input']},{required:['content']},
+{required:['path']}]` — the JSON-Schema idiom for "at least one of these". The
+renderer hit its union branch and threw on a node with no `type`. It now renders
+the union of the base object with each branch's keys promoted to required. This
+was the only verb of 443 the renderer could not express; after it, zero throw.
 
-| | result |
-|---|---|
-| `packages/contracts` | 2s, clean |
-| `packages/transport-http` | 2s, clean |
-| `packages/operator-sdk`, HEAD's 368 entries | 132s, clean |
-| `packages/operator-sdk`, 464 rendered entries | SIGABRT, out of memory, ~500s |
+An `integer` branch was also tried and reverted: no catalog schema uses
+`type: 'integer'`, so it changed nothing and would have been unexercised
+speculation in a renderer whose contract is to throw rather than guess.
 
-**Heap caveat, so these numbers are not misread:** those runs are bare
-`bunx tsc`, which gets node's DEFAULT ~4 GB ceiling. The raised ceiling in
-`scripts/typecheck.ts` does not apply to them. Both sides of the comparison sit
-at the same 4 GB, so the comparison holds; absolute headroom is a separate
-question, and at a 16 GB ceiling the full rendering still ran past 10 minutes
-without finishing.
+### A consumer-side collapse the new types exposed
 
-The cause is breadth, not a few fat verbs.
-`OperatorRemoteClient.invoke<TMethodId extends OperatorTypedMethodId>` is
-generic over the whole method-id union, so `MethodArgs` — and `OmitNamed` and
-`RequiredKeys` beneath it — instantiate once per member.
+`Omit<OperatorMethodInput<M>, K>` — used at 8 wrapper signatures in
+`packages/sdk/src/browser-knowledge.ts` — does not work for any verb whose schema
+sets `additionalProperties: true`. That renders as `Base & { readonly [key:
+string]: unknown }`, whose `keyof` is `string | number`, so `Exclude<keyof T, K>`
+removes nothing and `Pick` retains no named property: the argument type collapses
+to the bare index signature and every field, including which fields are required,
+is lost. Measured directly, not inferred. `OperatorInputWithout` strips the index
+signature before the omit and re-adds it after, keeping both the named shape and
+the additional-properties escape hatch.
 
-### The size bound, built and measured, for whoever picks this up
+## Consequences
 
-Bounding by rendered input size was tried. It is not sufficient on its own, but
-the analysis is sound and should not be redone:
+- 443 of 443 verbs carry typed IO; the ratchet reads 0 and a verb that ships
+  without an entry fails the gate rather than joining a backlog.
+- The published OpenAPI contract now marks **0** methods `untyped-client-io`
+  (was 97).
+- Drift coverage went from 143 verbs to all 443 — a corrected `required` array on
+  any catalog schema now reaches consumer types, or reddens `contracts:check`.
+- `etc/goodvibes-sdk.api.md` grew substantially: the maps went from 346 to 443
+  entries and 91 existing entries changed shape. That diff is the point of the
+  change, not a side effect.
 
-- 464 verbs, median 41 rendered characters, mean 136, then a very short tail.
-- A 1100-character gap sits between `automation.schedules.create` (2384) and
-  `multimodal.writeback` (1287). **Threshold: 1800 characters**, chosen as the
-  widest empty interval in the distribution — anywhere inside the gap bounds the
-  same three verbs, and nothing sits near enough to flip across it on an
-  incidental schema edit.
-- Bounded verbs: `automation.jobs.create`, `automation.jobs.update`,
-  `automation.schedules.create`.
-- "Bounded" means the required properties keep their real types and the optional
-  ones fall into the open index signature the envelope already has. That
-  deliberately preserves requiredness — bounding by dropping the whole shape
-  would have reintroduced the `never` defect on those three. The schema is
-  untouched; the invoke gate still enforces it in full.
-- Effect: total rendered input characters 63,347 → 55,483, against HEAD's
-  45,613. It recovers about 45% of the gap. Not enough, because the cost is
-  breadth.
+## Verified
 
-The bound was built with disclosure and a two-way ratchet before being trusted,
-and that immediately earned its keep: the branch-exemption rule was
-early-returning, so the two `automation.*.create` verbs — which sit in BOTH the
-branch-exemption set and the size-bound set — were never bounded at all. The
-bound looked applied while doing nothing to the two largest inputs it existed
-for. A count alone would not have shown that; naming the verbs did.
-
-### The real fix, scheduled not forgotten
-
-Make `OperatorRemoteClient.invoke` non-generic across all method ids. That
-changes the public operator client's signature, so it needs its own work order
-and its own verification rather than being done at the tail of a merge sequence.
-The expansion and the bound land the moment it is done.
-
-## Standing cost, unrelated to any of the above
-
-`packages/operator-sdk` takes **132 seconds** to typecheck on HEAD's own 368
-entries, at the default 4 GB heap. That predates this round. Anyone adding verbs
-should know what they are walking toward; it was not introduced here and is not
-fixed here.
+- `bun run contracts:check` — green (needed the documented second pass: the
+  OpenAPI artifact consumes the untyped set, so 97 -> 0 required regenerating it).
+- `bunx tsc -b` — green.
+- The entries are load-bearing, proved two-sided at a production call site rather
+  than in `test/` (which `tsc -b` does not typecheck): mutating
+  `browser-knowledge.ts`'s `projectPlanning.workPlan.task.status` call to pass
+  `status: 42` fails to compile against the generated entries
+  (`TS2322: Type 'number' is not assignable to type 'string'`) and compiles
+  **clean** against the original file, where that verb had no entry. The entry is
+  what does the work.

@@ -46,28 +46,9 @@ export type IndexPart<T> = string extends keyof T ? { readonly [key: string]: un
  * The keys of `T` that are genuinely required — correct for open envelopes,
  * where a bare `RequiredKeys`-style mapped type collapses to `never`.
  */
-type RequiredKeysIn<N> = {
-  [K in keyof N]-?: Record<string, never> extends Pick<N, K> ? never : K;
-}[keyof N];
-
-/**
- * `NamedProps<T>` is evaluated once and handed in, rather than three times
- * inside the mapped type (the key list, the `Pick`, and the indexed access).
- *
- * `[K in keyof N]` over a naked `N` is HOMOMORPHIC, so for a branched input
- * rendered as `(Base & A) | (Base & B)` it maps per member and yields the union
- * of each branch's required keys. That is the wanted answer, and the
- * non-homomorphic alternative is the bug: taking `keyof` across the whole union
- * gives only the keys the branches SHARE, and branches exist precisely because
- * each requires a different field — so the shared set has nothing required in
- * it, `RequiredKeys` collapses to `never`, and `MethodArgs` makes the input
- * argument optional on every such verb. That is the same defect this module was
- * written to fix, reintroduced from the other side.
- *
- * test/types/open-envelope-key-helpers.ts pins the property that matters:
- * `RequiredNamedKeys` of an open envelope must not be `never`.
- */
-export type RequiredNamedKeys<T> = RequiredKeysIn<NamedProps<T>>;
+export type RequiredNamedKeys<T> = {
+  [K in keyof NamedProps<T>]-?: Record<string, never> extends Pick<NamedProps<T>, K> ? never : K;
+}[keyof NamedProps<T>];
 
 /**
  * `T` without `TKey`, preserving the named shape (and its requiredness) as well
@@ -75,15 +56,18 @@ export type RequiredNamedKeys<T> = RequiredKeysIn<NamedProps<T>>;
  *
  * This is the safe replacement for `Omit<T, TKey>` on any rendered method input.
  *
- * `T extends unknown ? … : never` so the omit DISTRIBUTES. Several inputs are
- * `Base & (A | B | C)` — the "one of body/content/attachments" idiom — and
- * `Omit` is not distributive: it is `Pick<T, Exclude<keyof T, K>>`, and `keyof`
- * a union is the INTERSECTION of its members' keys, so the branches collapse
- * into one flat object with every branch member optional. That silently turns
- * "one of these is required" into "none of these is required", which is the
- * same class of loss as the index-signature trap above and reached production
- * the same way. Distributing applies the omit per branch and keeps them.
+ * `T extends unknown ?` makes this DISTRIBUTE, and that is load-bearing for the
+ * same reason `RequiredNamedKeys` is homomorphic. A branched input renders as
+ * `(Base & A) | (Base & B)` (method-catalog-shared.ts `branchedSchema`, for the
+ * verbs whose required set is conditional). Applied to the whole union at once,
+ * `keyof` sees only the keys the branches SHARE — which for requirement
+ * branches is nothing — so every branch's requiredness is dropped and the
+ * helper's parameter accepts `{}` again. Distributing maps each branch
+ * separately and rejoins them, so `create(id, {})` stays an error.
+ *
+ * Verified by test/types/open-envelope-key-helpers.ts and
+ * test/types/typed-client-wrong-body.ts: collapsing this to the non-distributive
+ * form turns two `@ts-expect-error` directives into "unused directive" failures.
  */
-export type OmitNamed<T, TKey extends PropertyKey> = T extends unknown
-  ? Omit<NamedProps<T>, TKey> & IndexPart<T>
-  : never;
+export type OmitNamed<T, TKey extends PropertyKey> =
+  T extends unknown ? Omit<NamedProps<T>, TKey> & IndexPart<T> : never;

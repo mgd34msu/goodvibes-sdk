@@ -39,10 +39,35 @@ const requiredKeysAreNotNever: [RequiredNamedKeys<JobsCreate>] extends [never] ?
 type SessionsDelete = OperatorMethodInput<'sessions.delete'>;
 const closedRequiredKeys: [RequiredNamedKeys<SessionsDelete>] extends [never] ? false : true = true;
 
+// 6. A BRANCHED input keeps every branch's requirement through the omit.
+//
+// This is the THIRD way this codebase has lost branch requirements, and it is
+// the mirror image of the index-signature trap above rather than a repeat of it.
+// `companion.chat.messages.create` renders as
+// `Base & ({ body: string } | { content: string } | { attachments: ... })`
+// — each branch makes a DIFFERENT field mandatory. `Omit<T, K>` is
+// `Pick<T, Exclude<keyof T, K>>`, and `keyof` a union is the INTERSECTION of its
+// members' keys, which for these branches is nothing. So a NON-distributive
+// `OmitNamed` flattens the union into one object with every branch field
+// optional: "one of these is required" silently becomes "none of these is
+// required", and `create(id, {})` compiles again.
+//
+// `OmitNamed` therefore has to distribute, while `RequiredNamedKeys` has to stay
+// homomorphic. The two are not the same treatment — see typed-io-keys.ts.
+type ChatMessageCreateMinusSession = OmitNamed<
+  OperatorMethodInput<'companion.chat.messages.create'>,
+  'sessionId'
+>;
+// @ts-expect-error - one of body / content / attachments is required
+const noBranchSatisfied: ChatMessageCreateMinusSession = {};
+const oneBranchSatisfied: ChatMessageCreateMinusSession = { body: 'hello' };
+
 export {
   missingPrompt,
   wrongPromptType,
   extrasStillAllowed,
   requiredKeysAreNotNever,
   closedRequiredKeys,
+  noBranchSatisfied,
+  oneBranchSatisfied,
 };

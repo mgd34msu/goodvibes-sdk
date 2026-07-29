@@ -115,6 +115,36 @@ export type BrowserKnowledgeMethodId =
 
 export type BrowserKnowledgeDomain = typeof KNOWLEDGE_BROWSER_DOMAINS[number];
 
+/**
+ * The declared properties of `T`, with any index signature dropped.
+ *
+ * Body-envelope inputs are open (`additionalProperties: true`), which renders
+ * as an intersection with `{ readonly [key: string]: unknown }`. That single
+ * addition breaks `Omit`: `keyof` an intersection carrying an index signature
+ * is `string | number`, so omitting a named key removes nothing and keeps
+ * nothing, and the result is a bare record. Every helper below that took
+ * `Omit<Input, 'sessionId'>` was therefore accepting anything at all — not
+ * because of the requirement branches, which came later, but from the moment
+ * the envelope was opened. Dropping the index signature first is what makes
+ * the omit mean something.
+ */
+type DeclaredKeys<T> = {
+  [K in keyof T as string extends K ? never : number extends K ? never : K]: T[K];
+};
+
+/**
+ * `Omit` that survives both the index signature and a union.
+ *
+ * Distributing matters as much as `DeclaredKeys`: the companion-chat verbs
+ * whose required set is conditional are typed as a base intersected with a
+ * union of requirement branches, and a non-distributive `Omit` collapses that
+ * union to its members' common keys — discarding the requirement it exists to
+ * state.
+ */
+type OmitDeclared<T, TKeys extends PropertyKey> = T extends unknown
+  ? Omit<DeclaredKeys<T>, TKeys>
+  : never;
+
 export interface BrowserKnowledgeSdk extends ScopedBrowserSdk<BrowserKnowledgeMethodId, BrowserKnowledgeDomain> {
   readonly knowledge: {
     ask(input: OperatorMethodInput<'knowledge.ask'>): Promise<OperatorMethodOutput<'knowledge.ask'>>;
@@ -220,24 +250,16 @@ export function createBrowserKnowledgeSdkFromRoutes(
       map: (input) => invoke('knowledge.map', input),
     },
     chat: {
-      // `Object.assign` rather than `{ sessionId: id, ...input }` on the three
-      // branched verbs below. Their inputs are `Base & (A | B | C)` — one of
-      // body/content/attachments, one of title/model/provider/systemPrompt —
-      // and an object spread of a branched union widens every branch member to
-      // optional, so the merged value no longer proves it satisfies any branch.
-      // Object.assign returns an INTERSECTION, which keeps it. Same runtime
-      // value, and no cast: the caller was already type-checked against the
-      // branch by the signature, so the merge is their value plus one string.
       sessions: {
         create: (input) => invoke('companion.chat.sessions.create', input),
         get: (id) => invoke('companion.chat.sessions.get', { sessionId: id }),
         list: (input) => invoke('companion.chat.sessions.list', input),
-        update: (id, input) => invoke('companion.chat.sessions.update', Object.assign({ sessionId: id }, input)),
+        update: (id, input) => invoke('companion.chat.sessions.update', { sessionId: id, ...input }),
       },
       messages: {
-        create: (id, input) => invoke('companion.chat.messages.create', Object.assign({ sessionId: id }, input)),
+        create: (id, input) => invoke('companion.chat.messages.create', { sessionId: id, ...input }),
         list: (id) => invoke('companion.chat.messages.list', { sessionId: id }),
-        steer: (id, input) => invoke('companion.chat.messages.steer', Object.assign({ sessionId: id }, input)),
+        steer: (id, input) => invoke('companion.chat.messages.steer', { sessionId: id, ...input }),
       },
       turns: {
         cancel: (id, input) => invoke('companion.chat.turns.cancel', { sessionId: id, ...(input ?? {}) }),
