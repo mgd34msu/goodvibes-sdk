@@ -31,7 +31,6 @@
  * browser tab, or a fixture.
  */
 import {
-  DEFAULT_WAKE_MODEL_ID,
   parseWakeModelList,
   voiceWakeConfigDefaults,
 } from '../../config/schema-domain-voice-wake.js';
@@ -315,21 +314,4 @@ export function resolveWakeRuntimeSettings(
     blockers,
     limitations,
   };
-}
-
-/**
- * Where a model id's file lives: the pinned id resolves inside the managed tree,
- * anything else against `voice.wake.customModelDir` (or the managed custom
- * directory when that row is empty). Files found outside the managed tree are
- * loaded as-is and are NOT checksum-pinned, which is what that row's description
- * promises.
- */
-export function resolveWakeModelSource(
-  modelId: string,
-  settings: Pick<WakeRuntimeSettings, 'customModelDir'>,
-): { readonly kind: 'managed' | 'custom'; readonly directory: string; readonly fileName: string } {
-  if (modelId === DEFAULT_WAKE_MODEL_ID) {
-    return { kind: 'managed', directory: '', fileName: '' };
-  }
-  return { kind: 'custom', directory: settings.customModelDir, fileName: `${modelId}.onnx` };
 }

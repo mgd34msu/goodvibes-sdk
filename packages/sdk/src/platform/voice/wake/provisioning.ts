@@ -42,6 +42,7 @@ import {
   wakeWordProvisionBytes,
   type WakeWordModelManifest,
 } from '../provisioning/wake-word-manifest.js';
+import { DEFAULT_WAKE_MODEL_ID } from '../../config/schema-domain-voice-wake.js';
 import type { WakeArtifactStatus, WakeUnavailableReason } from './types.js';
 
 /** Directory layout of the managed wake-word tree. */
@@ -99,6 +100,43 @@ export function wakeArtifactStatus(path: string, spec: VerifiedDownloadSpec): Wa
   }
   const verified = fileMatches(path, spec);
   return { path, verified, corrupt: !verified, bytes };
+}
+
+/** One model the engine should load, resolved to a file. */
+export interface ResolvedWakeModelFile {
+  readonly id: string;
+  readonly path: string;
+  /**
+   * True for the managed, checksum-pinned artifact. False for a file loaded from
+   * a custom directory as-is — which `voice.wake.customModelDir`'s description
+   * promises explicitly, because it is the difference between a model whose
+   * bytes were verified and one that was not.
+   */
+  readonly pinned: boolean;
+}
+
+/**
+ * Turn `voice.wake.models` into files to load.
+ *
+ * The pinned default id resolves inside the managed tree. Any other id resolves
+ * against `voice.wake.customModelDir`, and when that row is EMPTY it falls back
+ * to the managed `custom` directory — the fallback the row's description
+ * promises, implemented here rather than left for each host to re-derive, since
+ * a host that skipped it would look for custom models in the process's working
+ * directory.
+ */
+export function resolveWakeModelFiles(
+  modelIds: readonly string[],
+  options: { readonly managedRoot: string; readonly customModelDir?: string | undefined; readonly version?: string | undefined },
+): readonly ResolvedWakeModelFile[] {
+  const paths = resolveManagedWakePaths(options.managedRoot, options.version);
+  const customRoot = (options.customModelDir ?? '').trim();
+  const customDir = customRoot.length > 0 ? customRoot : paths.customDir;
+  return modelIds.map((id) => (
+    id === DEFAULT_WAKE_MODEL_ID
+      ? { id, path: paths.classifierPath, pinned: true }
+      : { id, path: join(customDir, `${id}.onnx`), pinned: false }
+  ));
 }
 
 /** Whether the wake-word runtime can start, and if not, honestly why. */

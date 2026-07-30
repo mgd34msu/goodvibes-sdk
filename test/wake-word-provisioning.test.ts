@@ -19,6 +19,7 @@ import {
   wakeArtifactStatus,
   resolveManagedWakePaths,
   describeWakeModel,
+  resolveWakeModelFiles,
 } from '../packages/sdk/src/platform/voice/wake/provisioning.js';
 import {
   sweepWakeStorage,
@@ -364,5 +365,38 @@ describe('the retained-clip naming the sweeper depends on', () => {
     // and reap a live session's clips as orphans.
     const name = retainedClipFileName('weird--id/with:chars', 0);
     expect(name.split('--')[0]).toBe('weird-id_with_chars');
+  });
+});
+
+describe('which model files voice.wake.models resolves to', () => {
+  test('the pinned id resolves inside the managed tree and is marked pinned', () => {
+    const [file] = resolveWakeModelFiles(['hey_goodvibes'], { managedRoot: '/managed' });
+    expect(file?.pinned).toBe(true);
+    expect(file?.path).toContain('/managed/wake/models/');
+    expect(file?.path.endsWith('.onnx')).toBe(true);
+  });
+
+  test('a custom id with an EMPTY customModelDir falls back to the managed custom directory', () => {
+    // The row promises this fallback in writing. Without it a host would look
+    // for custom models in the process working directory.
+    const [file] = resolveWakeModelFiles(['my_word'], { managedRoot: '/managed', customModelDir: '' });
+    expect(file?.path).toBe('/managed/wake/custom/my_word.onnx');
+    expect(file?.pinned).toBe(false);
+  });
+
+  test('a custom directory is used as given, and its files are NOT pinned', () => {
+    const [file] = resolveWakeModelFiles(['my_word'], { managedRoot: '/managed', customModelDir: '/home/me/models' });
+    expect(file?.path).toBe('/home/me/models/my_word.onnx');
+    expect(file?.pinned).toBe(false);
+  });
+
+  test('order is preserved and the pinned model can sit beside custom ones', () => {
+    const files = resolveWakeModelFiles(['hey_goodvibes', 'my_word'], { managedRoot: '/managed' });
+    expect(files.map((f) => f.id)).toEqual(['hey_goodvibes', 'my_word']);
+    expect(files.map((f) => f.pinned)).toEqual([true, false]);
+  });
+
+  test('an empty list resolves to no files, which is detection disabled without a stopped service', () => {
+    expect(resolveWakeModelFiles([], { managedRoot: '/managed' })).toEqual([]);
   });
 });
