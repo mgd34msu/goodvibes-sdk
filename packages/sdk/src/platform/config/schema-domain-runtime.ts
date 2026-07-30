@@ -40,7 +40,7 @@ export const runtimeConfigDefaults = {
     eventBus: {
       maxListeners: 100,
     },
-    unifiedTasks: false,
+    unifiedTasks: true,
     pluginLifecycle: false,
     mcpLifecycle: false,
     toolBudget: {

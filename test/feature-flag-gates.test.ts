@@ -1556,6 +1556,34 @@ describe('feature flag safe-default gates', () => {
     expect(enabled.createTask({ kind: 'exec', title: 'allowed', owner: 'test' }).status).toBe('queued');
   });
 
+  // runtime.unifiedTasks/'unified-runtime-task' used to default OFF while
+  // every consumer's composition root omitted the featureFlags manager on
+  // UnifiedTaskManager entirely. isFeatureGateEnabled is permissive with no
+  // manager wired, so the recorded default (false/disabled) never matched
+  // shipped behaviour: task tracking (including /tasks and operator
+  // interventions) was always effectively on. The default is corrected here
+  // to record the truth rather than be silently overridden by a bug — see
+  // CHANGELOG.md [Unreleased] for the history.
+  test('runtime.unifiedTasks defaults true, and unified-runtime-task defaults enabled to match', async () => {
+    const { CONFIG_SCHEMA } = await import('../packages/sdk/src/platform/config/schema.js');
+    const entry = CONFIG_SCHEMA.find((s) => s.key === 'runtime.unifiedTasks');
+    expect(entry).toBeDefined();
+    expect(entry!.default).toBe(true);
+
+    const { FEATURE_FLAG_MAP } = await import('../packages/sdk/src/platform/runtime/feature-flags/flags.js');
+    const flag = FEATURE_FLAG_MAP.get('unified-runtime-task');
+    expect(flag?.defaultState).toBe('enabled');
+
+    // With nothing configured, a task manager built from a real (default)
+    // config resolves enabled — the fix that closed this gap in TUI/agent
+    // composition roots changes nothing for an existing install.
+    const configManager = new ConfigManager({ configDir: mkdtempSync(join(tmpdir(), 'gv-unified-tasks-default-')) });
+    expect(configManager.get('runtime.unifiedTasks')).toBe(true);
+    const { deriveFeatureStates } = await import('../packages/sdk/src/platform/runtime/feature-flags/feature-settings.js');
+    const states = deriveFeatureStates(configManager);
+    expect(states['unified-runtime-task']).toBe('enabled');
+  });
+
   test('permission-divergence-dashboard and policy-as-code gate factories', () => {
     const simulator = new PermissionSimulator({}, {}, 'warn-on-divergence');
 
