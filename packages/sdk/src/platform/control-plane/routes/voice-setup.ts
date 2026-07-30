@@ -72,6 +72,26 @@ export function createWakeProvisionHandler(service: VoiceSetupGatewayService): G
 }
 
 /**
+ * A GET verb's numbers arrive as STRINGS, and that is not a detail here.
+ *
+ * The control plane says so in as many words: "GET/DELETE params arrive as query
+ * strings that cannot be soundly type-checked", so nothing coerces or validates
+ * them before a handler runs. A `typeof value === 'number'` test therefore
+ * silently rejects `offset=524288` and falls back to 0 — which for a chunked read
+ * means the client re-fetches the first chunk forever, or reassembles a file out
+ * of repeated openings and verifies it against a checksum it can never match.
+ * Loud on a bad value, correct on a good one, is the only safe shape.
+ */
+function readOptionalCount(value: unknown, field: string): number | undefined {
+  if (value === undefined || value === null || value === '') return undefined;
+  const parsed = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new Error(`voice.wake.model.get: ${field} must be a non-negative number (got ${JSON.stringify(value)})`);
+  }
+  return Math.trunc(parsed);
+}
+
+/**
  * Read one chunk. The component is validated here rather than trusted: an
  * unrecognised name is a caller error with a written message, not a path built
  * out of whatever arrived.
@@ -85,8 +105,8 @@ export function createWakeModelHandler(service: VoiceSetupGatewayService): Gatew
     }
     return service.wakeModelChunk({
       component,
-      offset: typeof params.offset === 'number' ? params.offset : undefined,
-      maxBytes: typeof params.maxBytes === 'number' ? params.maxBytes : undefined,
+      offset: readOptionalCount(params.offset, 'offset'),
+      maxBytes: readOptionalCount(params.maxBytes, 'maxBytes'),
     });
   };
 }
