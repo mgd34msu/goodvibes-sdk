@@ -566,8 +566,8 @@
     "rationale": "public facade; grew again when the wake-word engine, front end, supervision and checksum-pinned provisioning were re-exported here beside the spoken-turn (live TTS) policy engine; measured 455 B gzip @ 1.15.0 release preparation; headroom max(ceil(455*1.2)=546, 455+50=505) -> 546 (1.2x dominates)"
   },
   "./platform/voice/capture": {
-    "gzip_bytes": 850,
-    "rationale": "microphone capture as a platform capability, imported by BOTH a browser bundle and a host: frame slicing/int16 decode/wav+base64 encoding, the recorder argv resolver, the injected-spawn recorder stream, and the utterance + push-to-talk policies. Runtime-neutral by construction (the host passes in what opens a device), which is what makes it importable from a tab at all; measured 708 B gzip at first export; headroom max(ceil(708*1.2)=850, 708+50=758) -> 850 (1.2x dominates)"
+    "gzip_bytes": 1127,
+    "rationale": "microphone capture as a platform capability, imported by BOTH a browser bundle and a host: frame slicing/int16 decode/wav+base64 encoding, the recorder argv resolver, the injected-spawn recorder stream, the utterance + push-to-talk policies, and the speexdsp noise-suppression stage behind voice.wake.noiseSuppression. Runtime-neutral by construction (the host passes in what opens a device), which is what makes it importable from a tab at all — and what lets the suppression filter be one WebAssembly module both hosts run. This entry measures the barrel's own re-exports, not the graph behind them; the 53 kB module itself sits in ./vendor/speexdsp-wasm.ts, which no export entry point measures. Measured 939 B gzip when the suppression stage was exported; headroom max(ceil(939*1.2)=1127, 939+50=989) -> 1127 (1.2x dominates)"
   },
   "./platform/voice/wake/runtime": {
     "gzip_bytes": 1131,

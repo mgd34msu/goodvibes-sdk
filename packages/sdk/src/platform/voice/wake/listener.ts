@@ -27,6 +27,10 @@
  */
 import { VoiceInputRecorder, type CapturedUtterance } from '../capture/voice-input.js';
 import {
+  createNoiseSuppressingOpener,
+  type NoiseSuppressionFactory,
+} from '../capture/noise-suppression.js';
+import {
   AudioCaptureError,
   type AudioCaptureHandlers,
   type AudioCaptureOpener,
@@ -106,7 +110,18 @@ export interface WakeListenerHandlers {
 
 export interface WakeListenerOptions {
   readonly settings: WakeRuntimeSettings;
+  /**
+   * Opens the device. The listener wraps it so `voice.wake.noiseSuppression` is
+   * applied here rather than per surface — see
+   * {@link createNoiseSuppressingOpener}. A host therefore passes the same
+   * unfiltered opener it always did.
+   */
   readonly openCapture: AudioCaptureOpener;
+  /**
+   * Builds the suppression stage. Defaults to the embedded speexdsp filter;
+   * injected so a test can drive the wiring deterministically.
+   */
+  readonly createNoiseSuppression?: NoiseSuppressionFactory | undefined;
   /**
    * Builds the engine, models loaded. Called on every start INCLUDING a restart,
    * because a restart exists to recover from a runtime that died — reusing the
@@ -132,6 +147,8 @@ const MAX_QUEUED_FRAMES = 4;
 export class WakeListener {
   readonly #options: WakeListenerOptions;
   readonly #settings: WakeRuntimeSettings;
+  /** The host's opener with the suppression stage in front of it. */
+  readonly #openCapture: AudioCaptureOpener;
   readonly #supervisor: WakeSupervisor;
   readonly #now: () => number;
   readonly #setTimer: (handler: () => void, ms: number) => unknown;
@@ -152,6 +169,10 @@ export class WakeListener {
   constructor(options: WakeListenerOptions) {
     this.#options = options;
     this.#settings = options.settings;
+    this.#openCapture = createNoiseSuppressingOpener(options.openCapture, {
+      ...(options.createNoiseSuppression !== undefined ? { create: options.createNoiseSuppression } : {}),
+      ...(options.warn !== undefined ? { warn: options.warn } : {}),
+    });
     this.#supervisor = new WakeSupervisor(options.settings.supervisor);
     this.#now = options.now ?? (() => Date.now());
     this.#setTimer = options.setTimeout ?? ((handler, ms) => setTimeout(handler, ms));
@@ -252,7 +273,7 @@ export class WakeListener {
       onStopped: (reason, error) => { this.#onStreamStopped(reason, error); },
     };
     try {
-      const stream = await this.#options.openCapture(
+      const stream = await this.#openCapture(
         {
           frameSamples: engine.chunkSamples,
           device: this.#settings.capture.device,
