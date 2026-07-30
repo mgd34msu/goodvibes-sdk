@@ -368,6 +368,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'update.firstCheckSeconds' ? number :
   K extends 'update.releasesUrl' ? string :
   K extends 'update.rollbackAfterFailedStarts' ? number :
+  K extends 'update.alertAfterFailedChecks' ? number :
   K extends 'network.outboundTls.mode' ? 'bundled' | 'bundled+custom' | 'custom' :
   K extends 'network.outboundTls.customCaFile' ? string :
   K extends 'network.outboundTls.customCaDir' ? string :

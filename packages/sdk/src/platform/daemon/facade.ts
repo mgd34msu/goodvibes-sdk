@@ -2,7 +2,7 @@ import { runDaemonBootGuarantees } from './facade-boot-guarantees.js';
 import { logger } from '../utils/logger.js';
 import { jsonErrorResponse } from './http/error-response.js';
 import { summarizeError } from '../utils/error-display.js';
-import { DaemonLifecycleRuntime, importLegacyDaemonSessionStores, registerDaemonHeartbeatWatcher } from './facade-lifecycle.js';
+import { DaemonLifecycleRuntime, createDaemonOwnerAlerter, importLegacyDaemonSessionStores, registerDaemonHeartbeatWatcher } from './facade-lifecycle.js';
 import { AgentManager } from '../tools/agent/index.js';
 import type { AgentRecord } from '../tools/agent/index.js';
 import type { ConfigManager } from '../config/manager.js';
@@ -248,6 +248,7 @@ export class DaemonServer {
       // may promote.
       ...(this.config.hasOverriddenHome === undefined ? {} : { hasOverriddenHome: this.config.hasOverriddenHome }),
       stopGracefully: () => this.stop(), // update/rollback restarts take the normal stop path, so shutdown hooks fire
+      alertOwner: createDaemonOwnerAlerter(this.routeBindings, this.surfaceDeliveryHelper),
     });
     this.httpRouter.setDaemonStatusProviders({
       // Update/crash receipts, and which node currently reads the inbox.

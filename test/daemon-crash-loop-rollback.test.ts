@@ -20,6 +20,7 @@ import { join } from 'node:path';
 import {
   DEFAULT_CRASH_LOOP_WINDOW_MS,
   MAX_TRACKED_FAILED_STARTS,
+  readLifecycleMarker,
   recordDaemonAutoRollback,
   recordDaemonCleanShutdown,
   recordDaemonStart,
@@ -197,6 +198,14 @@ interface RollbackHarness {
   readonly exits: number[];
   readonly stops: number[];
   readonly stderr: string[];
+  /** Lines put in front of the owner over a working channel. */
+  readonly alerts: string[];
+  /** The lifecycle marker as persisted, so the rejection record is readable in a test. */
+  readonly marker: () => ReturnType<typeof readLifecycleMarker>;
+  /** The state directory, so a second harness can model the NEXT process on the same host. */
+  readonly scratch: string;
+  /** The marker filesystem, shareable with a second harness for the same reason. */
+  readonly markerFs: { io: LifecycleMarkerIo; files: Map<string, string> };
   readonly receipts: () => readonly { text: string }[];
 }
 
@@ -204,9 +213,13 @@ function rollbackHarness(overrides: {
   readonly artifact?: DaemonLifecycleRuntimeOptions['updateArtifact'];
   readonly installed?: Record<string, string>;
   readonly threshold?: number;
+  /** Share one marker filesystem across two harnesses to model two PROCESSES. */
+  readonly marker?: { io: LifecycleMarkerIo; files: Map<string, string> };
+  /** Share one state directory too, so the second harness reads the first's marker and receipts. */
+  readonly controlPlaneDir?: string;
 } = {}): RollbackHarness {
-  const scratch = mkdtempSync(join(tmpdir(), 'crash-loop-'));
-  scratchDirs.push(scratch);
+  const scratch = overrides.controlPlaneDir ?? mkdtempSync(join(tmpdir(), 'crash-loop-'));
+  if (overrides.controlPlaneDir === undefined) scratchDirs.push(scratch);
   const config = new Map<string, unknown>([
     ['update.auto', false], // the loop is not what these tests exercise
     ['service.enabled', false], // boot promotion is a separate path
@@ -222,13 +235,14 @@ function rollbackHarness(overrides: {
     status: () => ({ installed: false, running: false }),
     install: () => { throw new Error('no service manager in this test'); },
   } as unknown as DaemonLifecycleRuntimeOptions['platformServiceManager'];
-  const { io: markerIo } = memoryMarkerIo();
+  const { io: markerIo, files: markerFiles } = overrides.marker ?? memoryMarkerIo();
   const { io: rollbackIo, files } = memoryUpdateIo(
     overrides.installed ?? { [EXEC_PATH]: 'bad-build', [PREVIOUS_PATH]: 'good-build' },
   );
   const exits: number[] = [];
   const stops: number[] = [];
   const stderr: string[] = [];
+  const alerts: string[] = [];
   const runtime = new DaemonLifecycleRuntime({
     stderr: { write: (chunk: string) => void stderr.push(chunk) },
     configManager,
@@ -240,9 +254,26 @@ function rollbackHarness(overrides: {
     exitProcess: (code: number) => { exits.push(code); },
     stopGracefully: () => { stops.push(Date.now()); },
     isCompiledBinary: () => true,
+    alertOwner: (text: string) => void alerts.push(text),
     ...(overrides.artifact !== undefined ? { updateArtifact: overrides.artifact } : {}),
   });
-  return { runtime, files, exits, stops, stderr, receipts: () => runtime.receiptStore().list() };
+  return {
+    runtime,
+    files,
+    exits,
+    stops,
+    stderr,
+    alerts,
+    scratch,
+    markerFs: { io: markerIo, files: markerFiles },
+    // The runtime owns its marker path; the memory filesystem only ever holds
+    // that one file, so reading "the marker" needs no path duplication here.
+    marker: () => {
+      const path = [...markerFiles.keys()][0];
+      return path === undefined ? null : readLifecycleMarker(path, markerIo);
+    },
+    receipts: () => runtime.receiptStore().list(),
+  };
 }
 
 const ARTIFACT = { version: '2.0.0', execPath: EXEC_PATH };
@@ -324,5 +355,149 @@ describe('crash-loop rollback at boot', () => {
     for (let i = 0; i < 6; i++) expect(h.runtime.onStarting()).toBe(false);
     expect(h.files.get(EXEC_PATH)).toBe('bad-build');
     expect(h.receipts()).toHaveLength(0);
+  });
+});
+
+/**
+ * A streak accuses a BUILD. The failure this pins: a daemon that had been up
+ * for ten and a half hours rolled itself back to the kept previous binary, and
+ * that older binary could not start at all — the machine had no daemon from
+ * that night until the next morning. The streak it acted on was not its own.
+ */
+describe('the failed-start streak is scoped to the build it accuses', () => {
+  test('a streak recorded by one version does not carry over to the version that replaced it', () => {
+    const { io } = memoryMarkerIo();
+    let clock = 1_000_000;
+    const now = (): number => clock;
+    // 1.24.1 fails to start twice, in quick succession.
+    recordDaemonStartAttempt(MARKER, { io, now, version: '1.24.1' });
+    clock += 2_000;
+    expect(recordDaemonStartAttempt(MARKER, { io, now, version: '1.24.1' }).failedStarts).toBe(1);
+    clock += 2_000;
+    // The binary on disk is now a different one (an update, a rollback, a
+    // hand-run install). Its first boot starts from zero: it has not failed.
+    expect(recordDaemonStartAttempt(MARKER, { io, now, version: '1.27.0' }).failedStarts).toBe(0);
+    clock += 2_000;
+    expect(recordDaemonStartAttempt(MARKER, { io, now, version: '1.27.0' }).failedStarts).toBe(1);
+  });
+
+  test('a marker with no version recorded (an older install) still counts, so upgrading in place loses nothing', () => {
+    const { io } = memoryMarkerIo();
+    let clock = 1_000_000;
+    const now = (): number => clock;
+    recordDaemonStartAttempt(MARKER, { io, now });
+    clock += 2_000;
+    expect(recordDaemonStartAttempt(MARKER, { io, now, version: '1.27.0' }).failedStarts).toBe(1);
+  });
+
+  test('an in-process restart cycle is not a boot: a daemon that came up cannot accumulate failed starts', () => {
+    const h = rollbackHarness({ artifact: ARTIFACT });
+    // This process boots and reaches a fully-started daemon.
+    expect(h.runtime.onStarting()).toBe(false);
+    h.runtime.onStarted();
+    // Six control-plane binding changes, each re-entering start() and stop().
+    // None of them is a boot that failed, so none of them counts toward the
+    // crash-loop threshold and the binary on disk is never touched.
+    for (let i = 0; i < 6; i++) {
+      h.runtime.onStopping(true);
+      expect(h.runtime.onStarting()).toBe(false);
+      h.runtime.onStarted();
+    }
+    expect(h.files.get(EXEC_PATH)).toBe('bad-build'); // unchanged: nothing was restored
+    expect(h.alerts).toEqual([]);
+    // Nor does a restart cycle mint a crash receipt: the marker it reads is the
+    // one THIS process wrote moments ago, which of course still says `running`.
+    expect(h.receipts()).toHaveLength(0);
+  });
+
+  test('a genuine crash is still reported once, on the first fully-started moment of the NEXT process', () => {
+    const first = rollbackHarness({ artifact: ARTIFACT });
+    first.runtime.onStarting();
+    first.runtime.onStarted();
+    // No orderly stop — this process died. The marker is left saying `running`.
+    expect(first.marker()?.state).toBe('running');
+    expect(first.receipts()).toHaveLength(0);
+
+    // The next process, same host, same marker and receipt store.
+    const next = rollbackHarness({
+      artifact: ARTIFACT,
+      marker: first.markerFs,
+      controlPlaneDir: first.scratch,
+    });
+    next.runtime.onStarting();
+    next.runtime.onStarted();
+    const receipts = next.receipts();
+    expect(receipts).toHaveLength(1);
+    expect(receipts[0]!.text).toStartWith('restarted after a crash at');
+    // And it is reported once, not again on every restart cycle that follows.
+    next.runtime.onStopping(true);
+    next.runtime.onStarting();
+    next.runtime.onStarted();
+    expect(next.receipts()).toHaveLength(1);
+  });
+});
+
+/**
+ * The cycle: install, fail three starts, roll back, and — one check interval
+ * later — download and install the identical release again. Two byte-identical
+ * rollback receipts two days apart, and an installed daemon three releases
+ * behind, is what that looks like from outside.
+ */
+describe('a rollback records the version it rejected', () => {
+  test('the rejected version is persisted, so the update loop can refuse to reinstall it', async () => {
+    const h = rollbackHarness({ artifact: ARTIFACT });
+    for (let i = 0; i < 4; i++) h.runtime.onStarting();
+    await Bun.sleep(10);
+    expect(h.files.get(EXEC_PATH)).toBe('good-build');
+    expect(h.marker()?.rejectedVersion).toBe('2.0.0');
+  });
+
+  test('the rejection outlives the restored build coming up healthy — that is the whole point', () => {
+    const { io } = memoryMarkerIo();
+    const now = (): number => 1_000_000;
+    recordDaemonAutoRollback(MARKER, { io, now, rejectedVersion: '2.0.0' });
+    // The restored 1.9.0 boots and reaches fully-started. Its update loop runs
+    // moments later; the rejection has to still be readable, or it downloads
+    // 2.0.0 again.
+    recordDaemonStart(MARKER, { io, now, pid: 99, version: '1.9.0' });
+    expect(readLifecycleMarker(MARKER, io)?.rejectedVersion).toBe('2.0.0');
+    // A clean shutdown keeps it too — a restart must not un-reject a bad build.
+    recordDaemonCleanShutdown(MARKER, { io, now, version: '1.9.0' });
+    expect(readLifecycleMarker(MARKER, io)?.rejectedVersion).toBe('2.0.0');
+  });
+
+  test('the rejection clears when the rejected version itself starts successfully — never a permanent pin', () => {
+    const { io } = memoryMarkerIo();
+    const now = (): number => 1_000_000;
+    recordDaemonAutoRollback(MARKER, { io, now, rejectedVersion: '2.0.0' });
+    // The owner reinstalled 2.0.0 by hand and it came up. The rejection was
+    // about this host, and this host now disagrees with it.
+    recordDaemonStart(MARKER, { io, now, pid: 99, version: '2.0.0' });
+    expect(readLifecycleMarker(MARKER, io)?.rejectedVersion).toBeUndefined();
+  });
+
+  test('a rejected version is content-validated like every other persisted field', () => {
+    const { io, files } = memoryMarkerIo();
+    files.set(MARKER, JSON.stringify({
+      state: 'running', at: 1, failedStarts: 0,
+      rejectedVersion: 'x'.repeat(500), // absurd; not carried into a log line or an alert
+      version: { not: 'a string' },
+    }));
+    const marker = readLifecycleMarker(MARKER, io);
+    expect(marker?.rejectedVersion).toBeUndefined();
+    expect(marker?.version).toBeUndefined();
+  });
+
+  test('the rollback tells the owner directly instead of leaving a receipt nobody consumes', async () => {
+    const h = rollbackHarness({ artifact: ARTIFACT });
+    for (let i = 0; i < 4; i++) h.runtime.onStarting();
+    await Bun.sleep(10);
+    expect(h.alerts).toHaveLength(1);
+    expect(h.alerts[0]).toContain('rolled itself back');
+    expect(h.alerts[0]).toContain('from v2.0.0');
+    expect(h.alerts[0]).toContain('3 starts in a row');
+    // And it says what happens next, so the owner is not left to guess whether
+    // the machine will ever update again.
+    expect(h.alerts[0]).toContain('until a newer one ships');
   });
 });
