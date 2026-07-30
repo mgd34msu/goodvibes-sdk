@@ -8,6 +8,50 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Fixed
 
+- **A package the SDK says it can live without could stop the daemon from
+  existing.** `packages/sdk/package.json` declares thirty packages under
+  `optionalDependencies`. That declaration is a promise: an install that skipped
+  them, or one where a build failed, still produces a working SDK, and the
+  features that need them report themselves unavailable. A **static** import of
+  such a package breaks the promise in both of the shapes that ship. Measured
+  here with `packages/sdk/node_modules/jsdom` moved aside:
+
+  - `bun build packages/sdk/src/platform/daemon/cli.ts --compile` failed with
+    `error: Could not resolve: "jsdom"`. There was no daemon binary at all.
+  - The same graph run from source died at **module init** with
+    `Cannot find package 'jsdom'` — before `main()`, before the activity logger
+    had a destination, and before `daemon/fatal-boot-report.ts` existed to
+    report anything. One step earlier in boot than the mute-daemon failure
+    above, and just as silent.
+
+  `knowledge/html-readability.ts` was the entry point for this: the daemon
+  reaches it through `knowledge/extractors.ts`. It now loads `jsdom` and
+  `@mozilla/readability` through the new `utils/optional-dependency.ts` at the
+  moment an extraction needs them, caches the outcome (including the failure)
+  once per process, and returns `null` with a stated reason when they are
+  absent; `extractKnowledgeArtifact` falls back to its lightweight HTML path and
+  carries that reason as a warning, so a missing package never looks like an
+  empty page. `extractReadableHtml` is now async as a result.
+
+  The same treatment was applied to every other optional package the daemon
+  graph reached statically and could be reached lazily: `jszip` (the Office
+  extractors), `bplist-parser` (Safari bookmarks), `fuse.js` (the registry
+  tool's fuzzy ranking, which now falls back to exact substring and says so in
+  its result), `node-edge-tts` including its `dist/drm.js` subpath (the
+  Microsoft voice provider), and `sqlite-vec` (resolved through `createRequire`
+  rather than `await`, because the loader is called from synchronous store
+  constructors — the same technique, for the same reason, as the `bun:sqlite`
+  resolution in `knowledge/browser-history/readers.ts`).
+
+  Proven against a compiled artifact, because source cannot show it: under
+  `bun` with a full node_modules tree a static import and a dynamic one behave
+  identically. `test/optional-dependency-boot.test.ts` compiles both shapes with
+  `bun build --compile --external jsdom --external @mozilla/readability` and
+  runs them from a directory where neither resolves. The static control exits 1
+  with **zero bytes on stdout** — it never reaches its first statement. The lazy
+  shape exits 0, names the package it is missing, and still returns an
+  extraction.
+
 - **Every shipped daemon to date has died mute on a fatal boot error. This is
   the release that makes them speak.** Measured against the released 1.27.0
   binary, in an isolated home, with an unparseable `daemon/settings.json`: exit

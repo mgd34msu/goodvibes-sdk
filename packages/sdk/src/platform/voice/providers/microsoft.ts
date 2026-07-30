@@ -1,12 +1,7 @@
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { EdgeTTS } from 'node-edge-tts';
-import {
-  CHROMIUM_FULL_VERSION,
-  TRUSTED_CLIENT_TOKEN,
-  generateSecMsGecToken,
-} from 'node-edge-tts/dist/drm.js';
+import { loadOptionalDependency } from '../../utils/optional-dependency.js';
 import type { VoiceDescriptor, VoiceProvider } from '../types.js';
 import {
   buildStatus,
@@ -26,7 +21,24 @@ type MicrosoftVoiceListEntry = {
   };
 };
 
-function buildMicrosoftVoiceHeaders(): Record<string, string> {
+type EdgeTtsDrm = typeof import('node-edge-tts/dist/drm.js');
+
+/**
+ * The DRM constants and token generator live in a deep subpath of the same
+ * optional package, so they get the same treatment as the package itself: no
+ * static specifier on the module graph, resolved at the call that needs it.
+ */
+async function loadEdgeTtsDrm(): Promise<EdgeTtsDrm> {
+  const loaded = await loadOptionalDependency(
+    'node-edge-tts/dist/drm.js',
+    () => import('node-edge-tts/dist/drm.js'),
+  );
+  if (!loaded.available) throw new Error(loaded.reason);
+  return loaded.module;
+}
+
+async function buildMicrosoftVoiceHeaders(): Promise<Record<string, string>> {
+  const { CHROMIUM_FULL_VERSION, generateSecMsGecToken } = await loadEdgeTtsDrm();
   const major = CHROMIUM_FULL_VERSION.split('.')[0] || '0';
   return {
     Authority: 'speech.platform.bing.com',
@@ -40,8 +52,8 @@ function buildMicrosoftVoiceHeaders(): Record<string, string> {
 
 async function listMicrosoftVoices(): Promise<readonly VoiceDescriptor[]> {
   const response = await instrumentedFetch(
-    `https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/voices/list?trustedclienttoken=${TRUSTED_CLIENT_TOKEN}`,
-    { headers: buildMicrosoftVoiceHeaders() },
+    `https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/voices/list?trustedclienttoken=${(await loadEdgeTtsDrm()).TRUSTED_CLIENT_TOKEN}`,
+    { headers: await buildMicrosoftVoiceHeaders() },
   );
   if (!response.ok) throw new Error(`Microsoft voices failed: HTTP ${response.status}`);
   const payload = await response.json() as MicrosoftVoiceListEntry[];
@@ -86,6 +98,14 @@ export function createMicrosoftProvider(): VoiceProvider {
       const dir = mkdtempSync(join(tmpdir(), 'gv-edge-tts-'));
       const outPath = join(dir, `speech${ext}`);
       try {
+        // `node-edge-tts` is an optionalDependency: reached here, at the one
+        // call that needs it, rather than at module init. A static import made
+        // every graph containing this provider — the daemon's included —
+        // unloadable when the package was absent; see
+        // utils/optional-dependency.ts for the measured failure.
+        const loaded = await loadOptionalDependency('node-edge-tts', () => import('node-edge-tts'));
+        if (!loaded.available) throw new Error(loaded.reason);
+        const { EdgeTTS } = loaded.module;
         const tts = new EdgeTTS({
           voice: request.voiceId?.trim() || 'en-US-MichelleNeural',
           lang: 'en-US',
