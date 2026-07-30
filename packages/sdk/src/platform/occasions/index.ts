@@ -127,9 +127,12 @@ export {
 } from './sweep.js';
 
 export {
+  NUDGE_AGENT_SURFACE,
   NUDGE_FORBIDDEN_SURFACES,
-  resolveNudgeDestination,
+  nudgeDestinationSurface,
+  resolveNudgeDestinations,
   type InterviewProgress,
+  type NudgeDelivery,
   type OccasionListResult,
   type OccasionView,
   type PendingResult,

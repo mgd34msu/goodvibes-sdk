@@ -17085,6 +17085,12 @@ export interface OperatorMethodOutputMap {
         delivered: boolean;
         deliveryChannel: string;
         deliveryId: null | string;
+        deliveries: readonly ({
+            channel: string;
+            delivered: boolean;
+            deliveryId: null | string;
+            failure: null | string;
+        })[];
         mirrored: number;
         housekeeping: null | {
             sweptAt: number;

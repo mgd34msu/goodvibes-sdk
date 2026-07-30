@@ -96,10 +96,39 @@ line carrying `lead 21` overrides it for that occasion alone.
 ### 4.2 Channel — Telegram **and** the agent. Never the TUI
 His reason, verbatim: *"that's more of a 'get work done' kind of interface."*
 
+**And** rather than **or**: `occasions.nudgeChannel` is a comma-separated list, so
+`telegram,agent` is what his ruling actually says. Each destination is pushed on
+its own and a failure on one is recorded rather than thrown, so an expired
+Telegram token cannot stop the agent hearing about his wife's birthday.
+
+Telegram is a transport the daemon can reach by itself — a bot token and an HTTP
+call. The agent is not: landing a message in an agent conversation means taking a
+turn inside the agent product. So the SDK owns the destination and the contract
+(`channels/delivery/strategies-agent.ts`) and the agent product registers the
+callable that does the landing. Until it does, a push addressed to the agent
+fails saying exactly that, rather than looking like an unknown surface.
+
 **This generalises beyond this feature.** The TUI is a work interface;
 life-admin and proactive personal nudges belong on Telegram and the agent.
-`resolveNudgeDestination` refuses a TUI target structurally rather than merely
-not choosing one.
+`resolveNudgeDestinations` refuses a TUI target structurally rather than merely
+not choosing one — and a list that names the TUI alongside real destinations
+loses the TUI entry and keeps the rest.
+
+#### One thing said once
+The agent is both a push destination and the surface that PULLS through
+`occasions.pending`, so it is the one place where the same nudge could be spoken
+twice. It cannot be, because both read the **same open item**: a push that lands
+on the agent stamps the item with the day it landed, and while the agent is a
+configured push destination the pull leaves stamped items out.
+
+The condition is the push that LANDED, not the one that was configured. An item
+no push has ever landed on the agent carries no stamp, so it still comes back
+through the pull — that covers `agent` configured with no sender registered, and
+a send that failed, neither of which may cost him the nudge. Once an item HAS
+been landed there, the stamp stays for the life of the item: the agent has
+already raised that occasion, and a later failed re-push on its cadence is a
+channel fault to report rather than a reason to say the same thing again from the
+other direction. An answer resolves the item from either side, exactly as before.
 
 ### 4.3 A nudge names the occasion but **never the date**
 His words: *"it only needs to tell me a birthday date if i ask it what it is,
@@ -201,9 +230,15 @@ His ruling, verbatim:
   the People section, which is prose-only by design.
 - Nudge cadence as in §4.6.
 - Nudges push to Telegram by default (`occasions.nudgeChannel = telegram`), the
-  owner's ruling. Setting that key to empty makes the feature **pull-only**
-  instead: nothing is pushed, and `occasions.pending` is how a surface sees what
-  is outstanding.
+  owner's ruling. The key takes a **list**, so `telegram,agent` pushes to both —
+  his ruling in §4.2 — and each entry may carry an address
+  (`telegram:12345,agent`). Setting the key to empty makes the feature
+  **pull-only** instead: nothing is pushed, and `occasions.pending` is how a
+  surface sees what is outstanding.
+- The list is not restricted to those two. Any channel surface the delivery
+  router can reach is a valid entry, because "where he wants to hear about this"
+  is his call and not a shortlist. What is fixed is the exclusion: the TUI is
+  refused whatever is set.
 - A dropped interview resumes the **next day**.
 
 ## 7. The control-plane surface
@@ -224,7 +259,7 @@ carries the date.
 | `occasions.interview.answer` | `write:occasions` | Record one answer, return the next question. |
 | `occasions.interview.record` | `write:occasions` | Close with what he landed on; writes gift history. |
 | `occasions.gifts` | `read:occasions` | What he landed on in previous years. |
-| `occasions.pending` | `read:occasions` | Everything outstanding, delivered to nobody. |
+| `occasions.pending` | `read:occasions` | Everything outstanding, delivered to nobody. Leaves out a nudge a push has already landed on the agent, while the agent is a push destination (§4.2). |
 | `occasions.sweep` | `write:occasions` | Run one pass now. |
 | `occasions.conflict.resolve` | `write:occasions` | Stop re-raising a conflict he has dealt with. |
 | `occasions.plans.list` | `read:occasions` | Plans, and whether one has him away today. |
@@ -250,7 +285,7 @@ came from originally.
 | `occasions.enabled` | `true` | Not pinned by the plan; a feature that ships off ships dark. |
 | `occasions.leadDays` | `10` | Owner ruling §4.1. |
 | `occasions.activeHours` | `08:00-22:00` | Owner ruling §4.7. |
-| `occasions.nudgeChannel` | `telegram` | Owner ruling, 2026-07-28: nudges push to Telegram out of the box. Empty makes it pull-only. |
+| `occasions.nudgeChannel` | `telegram` | Owner ruling, 2026-07-28: nudges push to Telegram out of the box. A comma-separated list, so `telegram,agent` is his §4.2 ruling in full; empty makes it pull-only. |
 | `occasions.cadenceDays` | `3` | My choice, flagged (§4.6). |
 | `occasions.finalStretchDays` | `2` | My choice, flagged (§4.6). |
 | `occasions.awayAdjust` | `true` | Owner ruling §4.13. |

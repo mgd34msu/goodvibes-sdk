@@ -210,6 +210,18 @@ export interface OpenItem {
   readonly dueOn: IsoDate;
   /** The occurrence this item dies with; absent ⇒ it lives until resolved. */
   readonly expiresAfter?: IsoDate | undefined;
+  /**
+   * The day a push last landed this item in the agent's own conversation.
+   *
+   * Set only when a delivery to the `agent` destination actually succeeded, and
+   * it is what stops the push and the pull speaking the same thing twice: while
+   * the agent is a configured push destination, `occasions.pending` leaves out
+   * an item that has already been landed there. Absent means no push has landed
+   * on the agent — because none was configured, or because the one attempted
+   * failed — and the pull is then how the item gets raised, so a failed push
+   * never costs him the nudge.
+   */
+  readonly agentPushedOn?: IsoDate | undefined;
 }
 
 /** One occasion inside a nudge. Carries the person; never carries the date. */
