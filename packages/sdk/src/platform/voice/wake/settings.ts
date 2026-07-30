@@ -16,10 +16,11 @@
  * Some rows cannot be honoured on some surfaces, and the honest answers differ:
  *
  *  - A {@link WakeSettingBlocker} means the detector must NOT start. Asking for
- *    `speex` on a host without libspeexdsp, or a voice-activity floor with no VAD
- *    model, would otherwise mean audio flowing unfiltered through a stage the
- *    user believes is running. The schema already set that posture for
- *    noiseSuppression in writing; this applies it uniformly.
+ *    `speex` suppression, which no surface implements yet, or a voice-activity
+ *    floor with no VAD model to run, would otherwise mean audio flowing
+ *    unfiltered through a stage the user believes is screening it. The schema
+ *    already set that posture for noiseSuppression in writing; this applies it
+ *    uniformly.
  *  - A {@link WakeSettingLimitation} means the detector runs, with one row not in
  *    force, and says which. Retaining audio needs a filesystem, so a browser tab
  *    keeps listening and reports that retention is not happening rather than
@@ -44,7 +45,16 @@ export type WakeSurface = 'tui' | 'agent' | 'webui';
 
 /** What a surface can actually do, so a row is refused rather than faked. */
 export interface WakeSurfaceCapabilities {
-  /** libspeexdsp present. Hosts probe; a browser tab is always false. */
+  /**
+   * True only when this surface ACTUALLY APPLIES speex suppression to captured
+   * audio — not merely when libspeexdsp is installed somewhere on the host.
+   *
+   * No shipped surface passes true, because no surface implements the stage: it
+   * needs libspeexdsp bindings the platform neither ships nor manages. The
+   * distinction matters because the wrong reading of this flag is the exact lie
+   * the row exists to prevent — a host that probed for the library and said yes
+   * would capture unfiltered audio while the setting claims a filter is running.
+   */
   readonly speexAvailable?: boolean | undefined;
   /**
    * A voice-activity-detection model is loadable. False everywhere today: no VAD
@@ -219,8 +229,9 @@ export function resolveWakeRuntimeSettings(
     blockers.push({
       key: 'voice.wake.noiseSuppression',
       detail:
-        'set to "speex", but libspeexdsp is not available on this surface. Audio would be captured unfiltered '
-        + 'through a stage you have configured, so the detector does not start. Install libspeexdsp, or set the row to "none".',
+        'set to "speex", but no surface applies speex suppression yet: the stage needs libspeexdsp bindings the '
+        + 'platform does not ship or manage. Rather than capture unfiltered audio through a filter you have '
+        + 'configured, the detector does not start. "none" is the value that runs today.',
     });
   }
   if (vadThreshold > 0 && capabilities.vadAvailable !== true) {

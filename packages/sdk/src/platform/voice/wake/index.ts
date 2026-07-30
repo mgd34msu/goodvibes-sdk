@@ -106,6 +106,7 @@ export {
 } from './provisioning.js';
 
 export {
+  retainedClipFileName,
   sweepWakeStorage,
   startWakeRecoverySweeper,
   WAKE_REAP_RECEIPT_FILE,
