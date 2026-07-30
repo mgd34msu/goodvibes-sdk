@@ -119,7 +119,7 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     id: 'otel-remote-export',
     name: 'OTel Remote Export',
     description:
-      'Enables OTLP/gRPC remote export of spans to a configured collector endpoint. Requires otel-foundation.',
+      'Enables OTLP/HTTP JSON remote export of spans to a configured collector endpoint. Requires otel-foundation.',
     defaultState: 'disabled',
     tier: 5,
     runtimeToggleable: true,

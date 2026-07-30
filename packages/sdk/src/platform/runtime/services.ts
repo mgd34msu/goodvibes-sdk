@@ -116,6 +116,7 @@ import { SandboxSessionRegistry } from './sandbox/session-registry.js';
 import { createShellPathService, type ShellPathService } from './shell-paths.js';
 import type { FeatureFlagManager } from './feature-flags/index.js';
 import { createFeatureFlagManager } from './feature-flags/index.js';
+import { installComposedTelemetry } from './telemetry/index.js';
 import { deriveFeatureStates, bindFeatureSettingsBridge } from './feature-flags/feature-settings.js';
 import { PolicyRuntimeState } from './permissions/policy-runtime.js';
 import { loadConfiguredPolicyBundle } from './permissions/policy-config-loader.js';
@@ -332,10 +333,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const workingDirectory = options.workingDir;
   const homeDirectory = options.homeDirectory;
   const surfaceRoot = requireSurfaceRoot(options.surfaceRoot, 'RuntimeServicesOptions surfaceRoot');
-  const shellPaths = createShellPathService({
-    workingDirectory,
-    homeDirectory,
-  });
+  const shellPaths = createShellPathService({ workingDirectory, homeDirectory });
   const configManager = options.configManager;
   const featureFlags = options.featureFlags ?? createFeatureFlagManager();
   if (options.featureFlags === undefined) {
@@ -344,6 +342,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     featureFlags.loadFromConfig({ flags: deriveFeatureStates(configManager) });
     bindFeatureSettingsBridge(configManager, featureFlags);
   }
+  installComposedTelemetry(featureFlags); // telemetry.otelMode -> the process tracer
   const runtimeDispatch = createDomainDispatch(options.runtimeStore);
   const gatewayMethods = new GatewayMethodCatalog();
   const panelManager = options.panelManager ?? createNoopPanelManager();
@@ -412,11 +411,9 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const watcherRegistry = new WatcherRegistry({
     storePath: shellPaths.resolveProjectPath(surfaceRoot, 'watchers.json'),
     featureFlags,
+    recoveryWindowMinutes: () => Number(configManager.get('watchers.recoveryWindowMinutes')), // read per restore
   });
-  watcherRegistry.attachRuntime({
-    runtimeStore: options.runtimeStore,
-    runtimeBus: options.runtimeBus,
-  });
+  watcherRegistry.attachRuntime({ runtimeStore: options.runtimeStore, runtimeBus: options.runtimeBus });
   const agentMessageBus = new AgentMessageBus(); agentMessageBus.setRuntimeBus(options.runtimeBus);
   const archetypeLoader = new ArchetypeLoader(join(workingDirectory, '.goodvibes', 'agents'));
   const agentOrchestrator = new AgentOrchestrator({ messageBus: agentMessageBus });

@@ -8,7 +8,7 @@ import { gateSurfaceSpawn, type SurfaceIngressOrigin } from './surface-conversat
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 import type { ConfigManager } from '../config/manager.js';
-import { RuntimeEventBus } from '../runtime/events/index.js';
+import { RuntimeEventBus, configureRuntimeEventBusDefaults, runtimeEventBusOptionsFrom } from '../runtime/events/index.js';
 import { createRuntimeStore } from '../runtime/store/index.js';
 import { setTelemetryIncludeRawPrompts } from '../runtime/telemetry/redaction-config.js';
 import {
@@ -276,6 +276,7 @@ export function resolveDaemonFacadeRuntime(config: DaemonConfig): ResolvedDaemon
   }
 
   const resolvedConfigManager = configManager ?? config.runtimeServices!.configManager;
+  configureRuntimeEventBusDefaults(runtimeEventBusOptionsFrom((key) => resolvedConfigManager.get(key)));
   const ownedRuntimeBus = config.runtimeServices?.runtimeBus ?? config.runtimeBus ?? new RuntimeEventBus();
   const runtimeServices = ensureAgentKnowledgeService(config.runtimeServices ?? createRuntimeServices({
     configManager: resolvedConfigManager,

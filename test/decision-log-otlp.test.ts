@@ -8,7 +8,16 @@
  * mapping; the off-by-default / no-endpoint no-ops; and a live POST round-trip
  * proving the on-the-wire body parses back into the OTLP shape.
  */
-import { describe, expect, test, afterAll } from 'bun:test';
+import { describe, expect, test, afterAll, afterEach } from 'bun:test';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
+import {
+  PermissionManager,
+  createPermissionConfigReader,
+} from '../packages/sdk/src/platform/permissions/manager.js';
+import type { PolicyRuntimeState } from '../packages/sdk/src/platform/runtime/permissions/policy-runtime.js';
 import {
   buildTracePayload,
   buildLogsPayload,
@@ -190,5 +199,184 @@ describe('exportDecisions POST round-trip', () => {
     expect(logs).toBeDefined();
     validateTracePayload(traces!.body as OtlpTracePayload);
     validateLogsPayload(logs!.body as OtlpLogsPayload);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The config keys behind the exporter
+// ---------------------------------------------------------------------------
+//
+// Everything above exercises `exportDecisions` directly. None of it says the
+// exporter is ever CALLED: it had zero call sites, so
+// `telemetry.decisionOtlpEnabled` promised an export that nothing could
+// perform. These drive the production seam — a real ConfigManager, through
+// `createPermissionConfigReader`, into `PermissionManager.checkDetailed` — and
+// assert on what a collector receives, at both positions of the enabled key.
+
+const permissionRoots: string[] = [];
+afterEach(() => {
+  for (const root of permissionRoots.splice(0)) rmSync(root, { recursive: true, force: true });
+});
+
+function policyRuntimeStateStub(): Pick<PolicyRuntimeState, 'recordPermissionRequest' | 'recordPermissionDecision' | 'getRegistry'> {
+  return {
+    recordPermissionRequest: () => {},
+    recordPermissionDecision: () => {},
+    getRegistry: () => ({ getCurrent: () => undefined }) as unknown as ReturnType<PolicyRuntimeState['getRegistry']>,
+  };
+}
+
+/** A ConfigManager on a throwaway config dir, with the given keys applied. */
+function permissionConfigManager(values: Record<string, unknown>): ConfigManager {
+  const root = mkdtempSync(join(tmpdir(), 'gv-decision-otlp-'));
+  permissionRoots.push(root);
+  const manager = new ConfigManager({ configDir: join(root, 'config') });
+  for (const [key, value] of Object.entries(values)) {
+    manager.set(key as Parameters<ConfigManager['set']>[0], value as never);
+  }
+  return manager;
+}
+
+/**
+ * The policy engine is what routes a tool call through the layered evaluator,
+ * and therefore what produces a decision-log record at all.
+ */
+const policyEngineOn = { isEnabled: (id: string): boolean => id === 'permissions-policy-engine' };
+
+describe('telemetry.decisionOtlp* — the export the permission layer performs', () => {
+  const received: Array<{ path: string; body: unknown }> = [];
+  const server = Bun.serve({
+    port: 0,
+    async fetch(req) {
+      const url = new URL(req.url);
+      received.push({ path: url.pathname, body: await req.json() });
+      return new Response('{}', { status: 200 });
+    },
+  });
+  const endpoint = `http://localhost:${server.port}`;
+  afterAll(() => { server.stop(true); });
+
+  /** Wait for the fire-and-forget export, or give up after ~1s. */
+  async function settle(expected: number): Promise<void> {
+    for (let i = 0; i < 100 && received.length < expected; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+  }
+
+  function managerFor(config: ConfigManager): PermissionManager {
+    return new PermissionManager(
+      async () => ({ approved: false, remember: false }),
+      createPermissionConfigReader(config),
+      policyRuntimeStateStub(),
+      null,
+      policyEngineOn,
+      null,
+    );
+  }
+
+  test('enabled with an endpoint POSTs the decision as an OTLP span', async () => {
+    received.length = 0;
+    const manager = managerFor(permissionConfigManager({
+      'telemetry.decisionOtlpEnabled': true,
+      'telemetry.decisionOtlpEndpoint': endpoint,
+      'telemetry.decisionOtlpSignal': 'span',
+    }));
+    await manager.checkDetailed('exec', { command: 'ls -la' });
+    await settle(1);
+
+    expect(received).toHaveLength(1);
+    expect(received[0]?.path).toBe('/v1/traces');
+    validateTracePayload(received[0]!.body as OtlpTracePayload);
+    const span = (received[0]!.body as OtlpTracePayload).resourceSpans[0]!.scopeSpans[0]!.spans[0]!;
+    const toolName = span.attributes.find((a) => a.key === 'tool.name')?.value;
+    expect(toolName && 'stringValue' in toolName ? toolName.stringValue : null).toBe('exec');
+    // The mode is context the log entry does not carry itself, so its presence
+    // proves the manager supplied it rather than the exporter inventing one.
+    expect(span.attributes.some((a) => a.key === 'permission.mode')).toBe(true);
+  });
+
+  test('disabled (the shipped default) POSTs nothing at all', async () => {
+    received.length = 0;
+    const manager = managerFor(permissionConfigManager({
+      'telemetry.decisionOtlpEndpoint': endpoint,
+    }));
+    await manager.checkDetailed('exec', { command: 'ls -la' });
+    // Give a would-be export the same window the enabled case needed.
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(received).toEqual([]);
+  });
+
+  test('enabled with no endpoint POSTs nothing', async () => {
+    received.length = 0;
+    const manager = managerFor(permissionConfigManager({
+      'telemetry.decisionOtlpEnabled': true,
+    }));
+    await manager.checkDetailed('exec', { command: 'ls -la' });
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(received).toEqual([]);
+  });
+
+  test("signal='log' sends the log shape instead of the span shape", async () => {
+    received.length = 0;
+    const manager = managerFor(permissionConfigManager({
+      'telemetry.decisionOtlpEnabled': true,
+      'telemetry.decisionOtlpEndpoint': endpoint,
+      'telemetry.decisionOtlpSignal': 'log',
+    }));
+    await manager.checkDetailed('exec', { command: 'ls -la' });
+    await settle(1);
+
+    expect(received.map((r) => r.path)).toEqual(['/v1/logs']);
+    validateLogsPayload(received[0]!.body as OtlpLogsPayload);
+  });
+
+  test("signal='both' sends both shapes for one decision", async () => {
+    received.length = 0;
+    const manager = managerFor(permissionConfigManager({
+      'telemetry.decisionOtlpEnabled': true,
+      'telemetry.decisionOtlpEndpoint': endpoint,
+      'telemetry.decisionOtlpSignal': 'both',
+    }));
+    await manager.checkDetailed('exec', { command: 'ls -la' });
+    await settle(2);
+
+    expect(received.map((r) => r.path).sort()).toEqual(['/v1/logs', '/v1/traces']);
+  });
+
+  test('an unreachable collector never blocks or fails the decision', async () => {
+    const manager = managerFor(permissionConfigManager({
+      'telemetry.decisionOtlpEnabled': true,
+      // A port nothing is listening on.
+      'telemetry.decisionOtlpEndpoint': 'http://127.0.0.1:1',
+      'telemetry.decisionOtlpSignal': 'span',
+    }));
+    const result = await manager.checkDetailed('exec', { command: 'ls -la' });
+    expect(result.approved).toBe(false);
+    await new Promise((resolve) => setTimeout(resolve, 60));
+  });
+
+  test('a reader with no decision-OTLP accessor exports nothing and still decides', async () => {
+    received.length = 0;
+    const config = permissionConfigManager({
+      'telemetry.decisionOtlpEnabled': true,
+      'telemetry.decisionOtlpEndpoint': endpoint,
+    });
+    const reader = createPermissionConfigReader(config);
+    const narrowed = {
+      isAutoApproveEnabled: reader.isAutoApproveEnabled,
+      getSnapshot: reader.getSnapshot,
+      getWorkingDirectory: reader.getWorkingDirectory,
+    };
+    const manager = new PermissionManager(
+      async () => ({ approved: false, remember: false }),
+      narrowed,
+      policyRuntimeStateStub(),
+      null,
+      policyEngineOn,
+      null,
+    );
+    await manager.checkDetailed('exec', { command: 'ls -la' });
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(received).toEqual([]);
   });
 });

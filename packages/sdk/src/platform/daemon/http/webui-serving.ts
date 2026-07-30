@@ -33,8 +33,16 @@ import { readStringList } from '../helpers.js';
 export interface WebuiServingPosture {
   /** True when the daemon should serve the configured bundle directory at `/`. */
   readonly serveBundle: boolean;
-  /** Absolute or working-dir-relative bundle directory; empty string when unset. */
+  /**
+   * Absolute or working-dir-relative directory whose contents are served.
+   *
+   * `controlPlane.webui.bundleDir` when that key names one, and
+   * `web.staticAssetsDir` otherwise — see {@link resolveWebuiServingPosture} for
+   * why the precedence runs that way. Empty string only when both are empty.
+   */
   readonly bundleDir: string;
+  /** Which config key supplied {@link bundleDir}. Empty when neither did. */
+  readonly bundleDirSource: 'controlPlane.webui.bundleDir' | 'web.staticAssetsDir' | '';
   /** Cross-origin request support (OPTIONS preflight + Access-Control-Allow-*). */
   readonly cors: {
     readonly enabled: boolean;
@@ -50,16 +58,46 @@ function readConfig(configManager: ConfigManager, key: string): unknown {
   return typeof getter === 'function' ? getter.call(configManager, key) : undefined;
 }
 
-/** Read the current serving posture from config. Cheap; called per request. */
+/** A config value read as a trimmed string; empty when it is not one. */
+function readTrimmedString(configManager: ConfigManager, key: string): string {
+  const raw = readConfig(configManager, key);
+  return typeof raw === 'string' ? raw.trim() : '';
+}
+
+/**
+ * Read the current serving posture from config. Cheap; called per request.
+ *
+ * DIRECTORY PRECEDENCE. Two keys name a directory of static files for the
+ * embedded web surface, and until this read existed only one of them did
+ * anything:
+ *
+ *   - `controlPlane.webui.bundleDir` wins whenever it names a directory. It is
+ *     the specific answer to "which built bundle does THIS daemon serve", it
+ *     ships empty, and an operator who filled it in has answered that question
+ *     for this machine.
+ *   - `web.staticAssetsDir` supplies the directory when bundleDir is empty. It
+ *     is the web surface's own assets directory, it ships with the build's
+ *     conventional output path (`dist/web`), and a host that lays its bundle
+ *     down where the build puts it now needs only `controlPlane.webui.serve`.
+ *
+ * The order is deliberately NOT the other way round: `web.staticAssetsDir` has a
+ * non-empty shipped default, so letting it win would make bundleDir unreachable
+ * for anyone who never touched either key — trading one dead key for another.
+ * `controlPlane.webui.serve` remains the only switch; neither directory key
+ * turns serving on by itself.
+ */
 export function resolveWebuiServingPosture(configManager: ConfigManager): WebuiServingPosture {
   const serveBundle = readConfig(configManager, 'controlPlane.webui.serve') === true;
-  const bundleDirRaw = readConfig(configManager, 'controlPlane.webui.bundleDir');
+  const bundleDirConfigured = readTrimmedString(configManager, 'controlPlane.webui.bundleDir');
+  const staticAssetsDir = readTrimmedString(configManager, 'web.staticAssetsDir');
+  const bundleDir = bundleDirConfigured || staticAssetsDir;
   const corsEnabled = readConfig(configManager, 'controlPlane.cors.enabled') === true;
   const allowedOrigins = readStringList(readConfig(configManager, 'controlPlane.cors.allowedOrigins')) ?? [];
   const openaiPrefixRaw = readConfig(configManager, 'controlPlane.openaiCompatible.pathPrefix');
   return {
     serveBundle,
-    bundleDir: typeof bundleDirRaw === 'string' ? bundleDirRaw.trim() : '',
+    bundleDir,
+    bundleDirSource: bundleDirConfigured ? 'controlPlane.webui.bundleDir' : staticAssetsDir ? 'web.staticAssetsDir' : '',
     cors: { enabled: corsEnabled, allowedOrigins },
     openaiPathPrefix: typeof openaiPrefixRaw === 'string' && openaiPrefixRaw.trim() ? openaiPrefixRaw.trim() : '/v1',
   };

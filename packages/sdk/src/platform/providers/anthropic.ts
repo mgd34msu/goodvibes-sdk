@@ -21,8 +21,8 @@ import { applyAnthropicReasoning, isAnthropicThinkingEnabled } from './anthropic
 import { describeReasoningRejection } from './reasoning-effort.js';
 import { getCacheCapability } from './cache-capability.js';
 import { mapAnthropicStopReason } from './stop-reason-maps.js';
-import { getDefaultStrategy } from './cache-strategy.js';
-import type { CacheContext, CacheHitTracker } from './cache-strategy.js';
+import { resolveCacheStrategy } from './cache-strategy.js';
+import type { CacheContext, CacheHitTracker, CachePolicyReader } from './cache-strategy.js';
 import { ProviderError } from '../types/errors.js';
 import { withRetry } from '../utils/retry.js';
 import { instrumentedLlmCall } from '../runtime/llm-observability.js';
@@ -157,15 +157,27 @@ export class AnthropicProvider implements LLMProvider {
   private readonly apiKey: string;
   private readonly cacheHitTracker: Pick<CacheHitTracker, 'getHitRate' | 'recordTurn'>;
   private readonly modelsCachePath: string | undefined;
+  /**
+   * Where `cache.enabled` and `cache.stableTtl` are read from, per request.
+   *
+   * Read at request time rather than captured at construction, for the reason
+   * `cache.monitorHitRate` and `cache.hitRateWarningThreshold` are: a config
+   * change applies to the next turn, not the next restart. Absent when an
+   * embedder constructs this provider with nothing but a key, which leaves the
+   * shipped defaults in force.
+   */
+  private readonly cachePolicy: CachePolicyReader | undefined;
 
   constructor(
     apiKey: string,
     cacheHitTracker: Pick<CacheHitTracker, 'getHitRate' | 'recordTurn'> = NOOP_CACHE_HIT_TRACKER,
     modelsCachePath?: string,
+    cachePolicy?: CachePolicyReader,
   ) {
     this.apiKey = apiKey;
     this.cacheHitTracker = cacheHitTracker;
     this.modelsCachePath = modelsCachePath;
+    this.cachePolicy = cachePolicy;
     this.batch = {
       kind: 'provider-batch',
       endpoints: ['/v1/messages/batches'],
@@ -216,7 +228,7 @@ export class AnthropicProvider implements LLMProvider {
         recentCacheHitRate: this.cacheHitTracker.getHitRate() || undefined,
       };
 
-      const strategy = getDefaultStrategy(cacheContext);
+      const strategy = resolveCacheStrategy(cacheContext, this.cachePolicy);
       let breakpointsPlaced = 0;
 
       if (strategy.breakpoints.length > 0) {

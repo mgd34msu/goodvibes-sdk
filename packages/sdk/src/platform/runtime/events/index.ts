@@ -86,6 +86,59 @@ export interface RuntimeEventBusOptions {
   maxListeners?: number | undefined;
 }
 
+/**
+ * The cap a bus built with no explicit `maxListeners` uses.
+ *
+ * Starts at {@link MAX_LISTENERS} and is re-pointed once per process by
+ * {@link configureRuntimeEventBusDefaults}, which is how the
+ * `runtime.eventBus.maxListeners` config key reaches buses this module cannot
+ * see the construction of. Every SDK bus but the two daemon ones is built by a
+ * component that holds no ConfigManager — the plugin lifecycle manager's
+ * fallback bus is the standing example — so a per-call-site argument would
+ * leave the key governing two buses out of three.
+ */
+let defaultMaxListeners = MAX_LISTENERS;
+
+/**
+ * Point the default listener cap at the operator's configured value.
+ *
+ * Called once at startup by the host that owns the config (the standalone
+ * daemon's `main()` and `resolveDaemonFacadeRuntime`), in the same place and for
+ * the same reason `configureActivityLogger` is: the value exists only after a
+ * ConfigManager does, and every bus built afterwards should honour it without
+ * each construction site having to know the key.
+ *
+ * A value that is not a positive number leaves the current default in place. A
+ * hand-edited settings file is the only way to get one, and a `NaN` cap would
+ * silently switch the leak check off entirely — the opposite of what raising
+ * the number is for.
+ *
+ * Buses built BEFORE this call keep the cap they were constructed with, and an
+ * explicit `maxListeners` option always wins over the default.
+ */
+export function configureRuntimeEventBusDefaults(options: RuntimeEventBusOptions): void {
+  const configured = options.maxListeners;
+  if (typeof configured === 'number' && Number.isFinite(configured) && configured > 0) {
+    defaultMaxListeners = Math.floor(configured);
+  }
+}
+
+/**
+ * Read `runtime.eventBus.maxListeners` into bus options.
+ *
+ * Takes a plain key reader rather than a ConfigManager so this module keeps its
+ * place below the config layer in the import graph. An absent or non-numeric
+ * value yields empty options, which leaves the default cap alone.
+ */
+export function runtimeEventBusOptionsFrom(
+  getConfig: (key: 'runtime.eventBus.maxListeners') => unknown,
+): RuntimeEventBusOptions {
+  const configured = getConfig('runtime.eventBus.maxListeners');
+  return typeof configured === 'number' && Number.isFinite(configured) && configured > 0
+    ? { maxListeners: Math.floor(configured) }
+    : {};
+}
+
 /** Extract a plain string error message from an unknown thrown value. */
 function extractErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -131,7 +184,7 @@ export class RuntimeEventBus {
   private static readonly _MISBEHAVE_DEDUP_THRESHOLD = 1;
 
   constructor(opts?: RuntimeEventBusOptions) {
-    this._maxListeners = opts?.maxListeners ?? MAX_LISTENERS;
+    this._maxListeners = opts?.maxListeners ?? defaultMaxListeners;
   }
 
   /**

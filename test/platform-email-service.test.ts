@@ -383,6 +383,86 @@ describe('EmailService smtpSecurity — socket factory selection', () => {
 });
 
 // ---------------------------------------------------------------------------
+// imapSecurity field wiring — surfaces.email.imap.secure
+// ---------------------------------------------------------------------------
+//
+// `surfaces.email.imap.secure` had a schema row and a default of true, and
+// nothing read it: the surface reader translated smtp.secure and skipped its
+// IMAP twin, and every IMAP connection went through the implicit-TLS factory
+// unconditionally. These pin BOTH positions of the key — the default TLS path
+// byte-for-byte as before, and the plaintext path the schema describes.
+
+describe('readEmailConfig — imapSecurity field', () => {
+  test('defaults to "tls" when not set', () => {
+    const config = readEmailConfig((k) => makeConfig()[k]);
+    expect(config.imapSecurity).toBe('tls');
+  });
+
+  test('reads "plaintext" value', () => {
+    const config = readEmailConfig((k) => makeConfig({ 'email.imapSecurity': 'plaintext' })[k]);
+    expect(config.imapSecurity).toBe('plaintext');
+  });
+
+  test('an unrecognised value falls back to "tls", never to plaintext', () => {
+    const config = readEmailConfig((k) => makeConfig({ 'email.imapSecurity': 'starttls' })[k]);
+    expect(config.imapSecurity).toBe('tls');
+  });
+});
+
+describe('EmailService imapSecurity — socket factory selection', () => {
+  const imapCases: ReadonlyArray<{ readonly security: string | undefined; readonly expected: string }> = [
+    { security: undefined, expected: 'connectImapTls' },
+    { security: 'tls', expected: 'connectImapTls' },
+    { security: 'plaintext', expected: 'connectImapPlain' },
+  ];
+
+  for (const { security, expected } of imapCases) {
+    test(`imapSecurity=${security ?? 'unset'} reaches for ${expected}`, async () => {
+      const transport = recordingEmailTransport();
+      const service = new EmailService({
+        getConfig: (k) => makeConfig(security === undefined ? {} : { 'email.imapSecurity': security })[k],
+        secretsManager: makeSecretsManager({ GOODVIBES_EMAIL_PASSWORD: 'pass' }),
+        transport: transport.port,
+        describeSenderClaim: testDescribeSenderClaim,
+      });
+      await expect(service.checkInbox()).rejects.toThrow();
+      expect(transport.chosen).toEqual([expected]);
+    });
+  }
+
+  test('every IMAP entry point honours the key, not just checkInbox', async () => {
+    const plaintextService = (): EmailService => new EmailService({
+      getConfig: (k) => makeConfig({ 'email.imapSecurity': 'plaintext' })[k],
+      secretsManager: makeSecretsManager({ GOODVIBES_EMAIL_PASSWORD: 'pass' }),
+      transport: recorded.port,
+      describeSenderClaim: testDescribeSenderClaim,
+    });
+    const recorded = recordingEmailTransport();
+    await expect(plaintextService().listInbox()).rejects.toThrow();
+    await expect(plaintextService().readMessageResult(7)).rejects.toThrow();
+    await expect(
+      plaintextService().createDraft({ to: 'a@b.test', subject: 'S', body: 'B' }),
+    ).rejects.toThrow();
+    expect(recorded.chosen).toEqual(['connectImapPlain', 'connectImapPlain', 'connectImapPlain']);
+  });
+
+  test('a transport with no plaintext member is refused by name rather than silently upgraded', async () => {
+    const service = new EmailService({
+      getConfig: (k) => makeConfig({ 'email.imapSecurity': 'plaintext' })[k],
+      secretsManager: makeSecretsManager({ GOODVIBES_EMAIL_PASSWORD: 'pass' }),
+      // A transport predating connectImapPlain: TLS is present, plaintext is not.
+      transport: {
+        connectImapTls: async () => stubSocket,
+        connectSmtpTls: async () => stubSocket,
+        connectSmtpStartTls: async () => stubSocket,
+      },
+      describeSenderClaim: testDescribeSenderClaim,
+    });
+    await expect(service.checkInbox()).rejects.toThrow(/connectImapPlain/);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // EmailService.testConnection — connect-wizard "test connection" step.
 // Uses real in-process fake TCP servers (no real network) to exercise a
 // genuine success path, not just a wiring-rejection path.

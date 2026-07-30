@@ -147,6 +147,7 @@ describe('surfaces.email as an email.* config reader', () => {
       imapPort: 1993,
       smtpHost: 'smtp.example.com',
       smtpPort: 587,
+      imapSecurity: 'tls',
       smtpSecurity: 'starttls',
       username: 'mike@example.com',
       passwordRef: SURFACE_EMAIL_PASSWORD_REF,
@@ -163,6 +164,36 @@ describe('surfaces.email as an email.* config reader', () => {
       'surfaces.email.smtp.secure': true,
     })));
     expect(secure.smtpSecurity).toBe('tls');
+  });
+
+  test('imap.secure decides the IMAP security mode at both positions', () => {
+    // The default: nothing set, TLS, exactly as every IMAP connection behaved
+    // before this key was read at all.
+    const unset = readSurfaceEmailSettings(reader(NESTED));
+    expect(unset.imapSecure).toBe(true);
+    expect(readEmailConfig(createSurfaceEmailConfigReader(reader(NESTED))).imapSecurity).toBe('tls');
+
+    // False is the position the schema describes and nothing implemented: a
+    // plain IMAP connection, for a server on localhost or in a test.
+    const plaintextKeys = { ...NESTED, 'surfaces.email.imap.secure': false };
+    expect(readSurfaceEmailSettings(reader(plaintextKeys)).imapSecure).toBe(false);
+    expect(
+      readEmailConfig(createSurfaceEmailConfigReader(reader(plaintextKeys))).imapSecurity,
+    ).toBe('plaintext');
+
+    // Explicit true reads back as TLS, so the key is a real two-value switch and
+    // not just an absence check.
+    const tlsKeys = { ...NESTED, 'surfaces.email.imap.secure': true };
+    expect(
+      readEmailConfig(createSurfaceEmailConfigReader(reader(tlsKeys))).imapSecurity,
+    ).toBe('tls');
+  });
+
+  test('an unreachable imap.secure key stays on the encrypted default', () => {
+    const settings = readSurfaceEmailSettings(() => {
+      throw new Error('Invalid config path: surfaces.email.imap.secure');
+    });
+    expect(settings.imapSecure).toBe(true);
   });
 
   test('a mailbox with no host, account or password is not enabled', () => {

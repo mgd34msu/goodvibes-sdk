@@ -146,6 +146,12 @@ function readBoolean(getConfig: ConfigReader, key: string, fallback: boolean): b
 export interface SurfaceEmailSettings {
   readonly imapHost: string | undefined;
   readonly imapPort: number;
+  /**
+   * `surfaces.email.imap.secure`. True — the default, and every hosted provider
+   * — means implicit TLS on the IMAP port. False means a plain connection, which
+   * is what a mail server on localhost or a fake in a test offers.
+   */
+  readonly imapSecure: boolean;
   readonly smtpHost: string | undefined;
   readonly smtpPort: number;
   readonly smtpSecure: boolean;
@@ -170,6 +176,7 @@ export function readSurfaceEmailSettings(getConfig: ConfigReader): SurfaceEmailS
     imapPort: readNumber(getConfig, `${SURFACE_EMAIL_PREFIX}.imap.port`)
       ?? readNumber(getConfig, `${SURFACE_EMAIL_PREFIX}.imapPort`)
       ?? 993,
+    imapSecure: readBoolean(getConfig, `${SURFACE_EMAIL_PREFIX}.imap.secure`, true),
     smtpHost: readString(getConfig, `${SURFACE_EMAIL_PREFIX}.smtp.host`) ?? host,
     smtpPort: readNumber(getConfig, `${SURFACE_EMAIL_PREFIX}.smtp.port`) ?? 465,
     smtpSecure: readBoolean(getConfig, `${SURFACE_EMAIL_PREFIX}.smtp.secure`, true),
@@ -208,6 +215,13 @@ export function createSurfaceEmailConfigReader(getConfig: ConfigReader): ConfigR
         return settings.imapHost ?? '';
       case 'email.imapPort':
         return settings.imapPort;
+      // The same reasoning as `email.smtpSecurity` below: the operator answered
+      // the question, so this reports their answer rather than guessing from the
+      // port. 'tls' is implicit TLS on the IMAP port; 'plaintext' is an
+      // unencrypted connection, which only a localhost or test server offers and
+      // which is exactly what `surfaces.email.imap.secure: false` asks for.
+      case 'email.imapSecurity':
+        return settings.imapSecure ? 'tls' : 'plaintext';
       case 'email.smtpHost':
         return settings.smtpHost ?? '';
       case 'email.smtpPort':

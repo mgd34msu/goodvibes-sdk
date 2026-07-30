@@ -7,13 +7,57 @@
  * - Auth success/failure counters
  * - Session and SSE subscriber gauges
  * - Telemetry buffer fill gauge
+ *
+ * It also holds the process's ACTIVE TRACER, which `telemetry.otelMode`
+ * governs — see {@link platformTracer}.
  */
 import { RuntimeMeter } from './telemetry/meter.js';
+import { RuntimeTracer } from './telemetry/tracer.js';
 import { toolFormatTelemetry } from './telemetry/tool-format-telemetry.js';
 import type { HistogramSnapshot } from './telemetry/types.js';
 
 /** Singleton RuntimeMeter instance for the platform. */
 export const platformMeter = new RuntimeMeter({ scope: 'goodvibes-sdk' });
+
+/**
+ * A tracer that records nothing. What the platform uses until a host installs
+ * one, which is the same thing `telemetry.otelMode: 'off'` asks for.
+ */
+const DISABLED_TRACER = new RuntimeTracer({ scope: 'goodvibes-sdk', enabled: false, exporters: [] });
+
+let activeTracer: RuntimeTracer = DISABLED_TRACER;
+
+/**
+ * The tracer the platform's instrumentation opens spans on.
+ *
+ * `telemetry.otelMode` used to be checked in exactly one place —
+ * `createTelemetryProvider`, which had no callers — while the live meter in this
+ * module was built with no reference to it at all. So 'off', 'in-process' and
+ * 'remote-export' produced identical behaviour: no spans, ever, because nothing
+ * held a tracer to open one on.
+ *
+ * This is the seam that closes that. The composed runtime builds a provider from
+ * the mode's two feature gates and installs its tracer here; instrumentation
+ * asks for the tracer per call rather than capturing it, so a host that installs
+ * one after the first LLM request still gets spans from the second.
+ *
+ * A function rather than a mutable export because a `let` binding read through
+ * an ES module namespace is a live view in bundlers and a snapshot in some CJS
+ * interop paths, and "did tracing turn on" is not a question to leave to that.
+ */
+export function platformTracer(): RuntimeTracer {
+  return activeTracer;
+}
+
+/**
+ * Install the process's tracer. Called once by the composed runtime.
+ *
+ * Passing `null` restores the recording-nothing tracer, which is what a test
+ * that turned tracing on uses to put the process back.
+ */
+export function installPlatformTracer(tracer: RuntimeTracer | null): void {
+  activeTracer = tracer ?? DISABLED_TRACER;
+}
 
 // ── HTTP metrics ─────────────────────────────────────────────────────────────
 
