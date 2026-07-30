@@ -6534,7 +6534,7 @@ export interface OperatorMethodInputMap {
     };
     // (undocumented)
     "voice.wake.model.get": {
-        component: "classifier" | "embedding" | "notice" | "vad";
+        component: "classifier" | "embedding" | "embedding-notice" | "notice" | "tflite" | "vad" | "vad-notice";
         offset?: number;
         maxBytes?: number;
     };
@@ -23029,7 +23029,7 @@ export interface OperatorMethodOutputMap {
     };
     // (undocumented)
     "voice.wake.model.get": {
-        component: "classifier" | "embedding" | "notice" | "vad";
+        component: "classifier" | "embedding" | "embedding-notice" | "notice" | "tflite" | "vad" | "vad-notice";
         offset: number;
         bytes: number;
         totalBytes: number;
@@ -23040,12 +23040,14 @@ export interface OperatorMethodOutputMap {
     // (undocumented)
     "voice.wake.provision": {
         ready: boolean;
+        mobileFormatReady: boolean;
         vadReady: boolean;
         modelVersion: null | string;
         noticePath: null | string;
+        embeddingNoticePath: null | string;
         recallIsSyntheticOnly: boolean;
         outcomes: readonly ({
-            component: "classifier" | "embedding" | "notice" | "vad" | "vad-notice";
+            component: "classifier" | "embedding" | "embedding-notice" | "mobile-classifier" | "notice" | "vad" | "vad-notice";
             state: "failed" | "installed" | "skipped";
             path: string;
             bytes?: number;
@@ -23062,6 +23064,12 @@ export interface OperatorMethodOutputMap {
             corrupt: boolean;
             bytes: number;
         };
+        mobileClassifier: {
+            path: string;
+            verified: boolean;
+            corrupt: boolean;
+            bytes: number;
+        };
         notice: {
             path: string;
             verified: boolean;
@@ -23069,6 +23077,12 @@ export interface OperatorMethodOutputMap {
             bytes: number;
         };
         embedding: {
+            path: string;
+            verified: boolean;
+            corrupt: boolean;
+            bytes: number;
+        };
+        embeddingNotice: {
             path: string;
             verified: boolean;
             corrupt: boolean;

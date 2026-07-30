@@ -19,9 +19,17 @@
  * WebCrypto, which means a truncated transfer or a swapped file fails at the
  * consumer instead of loading as a model that silently never detects.
  *
- * Nothing here downloads on its own: `provision()` is an explicit act, matching
- * the rest of the local voice stack, and is single-flight so two surfaces asking
- * at once join one download rather than racing for the same files.
+ * WHO ASKS FOR THE DOWNLOAD
+ *
+ * `provision()` is a request from a surface, and `ensureProvisioned()` is the
+ * install/boot path (voice/wake/install-provision.ts) — the model ships with the
+ * installation, so a fresh daemon has it without anyone asking. Both go through
+ * ONE single-flight: a boot attempt and a user typing the setup command at the
+ * same moment join one download rather than racing for the same files.
+ *
+ * Nothing else here downloads. `status()` and `modelChunk()` only read, so a
+ * surface enabling wake detection never triggers a fetch — it gets an honest
+ * not-provisioned with the recovery act named.
  */
 import { readFileSync, statSync } from 'node:fs';
 import {
@@ -31,6 +39,10 @@ import {
   type WakeProvisionResult,
   type WakeProvisionStatus,
 } from '../voice/wake/provisioning.js';
+import {
+  provisionWakeWordModelsAtInstall,
+  type WakeInstallProvisionOutcome,
+} from '../voice/wake/install-provision.js';
 import {
   resolveWakeWordModel,
   WAKE_VAD_MODEL,
@@ -42,12 +54,30 @@ import { singleFlight } from '../utils/single-flight.js';
 /**
  * Which pinned artifact a chunk read is asking for.
  *
+ * `tflite` is the same classifier in TensorFlow Lite form. It is served because
+ * it is provisioned: a surface whose inference runtime cannot load onnx has the
+ * same claim on the model as one that can, and it has no more ability to fetch
+ * the release asset itself.
+ *
  * `vad` is the speech gate `voice.wake.vadThreshold` runs. A browser tab needs it
  * from here for exactly the reason it needs the classifier from here: the release
  * assets answer without an `access-control-allow-origin` header, so the tab cannot
  * fetch them itself.
+ *
+ * EVERY NOTICE is served, and that is the point of listing them here. This
+ * service hands out three redistributable artifacts — the classifier, Google's
+ * Apache-2.0 embedding build, and the speech gate — and each has an attribution
+ * file that must travel with it. A client that can fetch the bytes but not the
+ * NOTICE cannot satisfy the terms it received them under.
  */
-export type WakeModelComponent = 'classifier' | 'embedding' | 'notice' | 'vad';
+export type WakeModelComponent =
+  | 'classifier'
+  | 'tflite'
+  | 'embedding'
+  | 'notice'
+  | 'embedding-notice'
+  | 'vad'
+  | 'vad-notice';
 
 /** Largest chunk a single read returns, before base64. */
 export const WAKE_MODEL_CHUNK_MAX_BYTES = 512 * 1024;
@@ -89,6 +119,12 @@ export interface WakeSetupServiceDeps {
 export interface WakeSetupService {
   status(): WakeProvisionStatus;
   provision(): Promise<WakeProvisionResult>;
+  /**
+   * The install/boot path: provision what is missing, never throw, and report one
+   * plain line. Joins the same single-flight as {@link provision}, so a boot
+   * attempt and a user-triggered setup are one download.
+   */
+  ensureProvisioned(options?: { readonly recoveryHint?: string | undefined }): Promise<WakeInstallProvisionOutcome>;
   modelChunk(request: WakeModelChunkRequest): WakeModelChunkResult;
 }
 
@@ -102,15 +138,21 @@ function resolveComponent(
   if (component === 'embedding') {
     return { path: paths.embeddingPath, sha256: WAKE_WORD_FRONT_END.embedding.download.sha256 };
   }
+  if (component === 'embedding-notice') {
+    return { path: paths.embeddingNoticePath, sha256: WAKE_WORD_FRONT_END.embedding.notice.sha256 };
+  }
   if (component === 'vad') {
     return { path: paths.vadPath, sha256: WAKE_VAD_MODEL.onnx.sha256 };
+  }
+  if (component === 'vad-notice') {
+    return { path: paths.vadNoticePath, sha256: WAKE_VAD_MODEL.notice.sha256 };
   }
   if (model === null) {
     throw new Error('[wake] no wake-word model is pinned, so no artifact can be served');
   }
-  return component === 'notice'
-    ? { path: paths.noticePath, sha256: model.notice.sha256 }
-    : { path: paths.classifierPath, sha256: model.onnx.sha256 };
+  if (component === 'notice') return { path: paths.noticePath, sha256: model.notice.sha256 };
+  if (component === 'tflite') return { path: paths.mobileClassifierPath, sha256: model.tflite.sha256 };
+  return { path: paths.classifierPath, sha256: model.onnx.sha256 };
 }
 
 function readSlice(path: string, offset: number, length: number): Uint8Array {
@@ -133,6 +175,14 @@ export function createWakeSetupService(deps: WakeSetupServiceDeps): WakeSetupSer
   return {
     status: () => readStatus({ managedRoot: deps.managedVoiceRoot }),
     provision: () => runProvision(),
+    ensureProvisioned: (options) => provisionWakeWordModelsAtInstall({
+      managedRoot: deps.managedVoiceRoot,
+      ...(options?.recoveryHint !== undefined ? { recoveryHint: options.recoveryHint } : {}),
+      readStatus,
+      // Routed through the single flight rather than calling the provisioner
+      // directly, which is the whole reason this lives on the service.
+      provision: () => runProvision(),
+    }),
     modelChunk: (request) => {
       const { path, sha256 } = resolveComponent(deps.managedVoiceRoot, request.component);
       const offset = Math.max(0, Math.trunc(request.offset ?? 0));

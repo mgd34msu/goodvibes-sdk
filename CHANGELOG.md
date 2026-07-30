@@ -108,6 +108,67 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
     capturing unfiltered audio. So does a filter that fails mid-stream — the
     stream stops rather than passing half-filtered frames on.
 
+- **The wake-word model ships with the installation, so a fresh machine can
+  actually use the wake word.** Everything needed to detect the phrase was
+  already here and provisioning was reachable only by asking for it — typing
+  `/voice wake setup` or calling `voice.wake.provision` — which made the ordinary
+  outcome of installing goodvibes a feature that could not start, waiting on a
+  download most people would never go and find.
+
+  - `platform/voice/wake/install-provision.ts` is the policy, and three seams
+    call it: an installer, a package postinstall, and every daemon boot
+    (`startWakeBootProvisioning`, which also finally starts the recovery sweeper
+    that `recovery.ts` had been exporting with no caller). `ensureProvisioned()`
+    on the wake setup service routes a boot attempt through the SAME single
+    flight as a user-triggered provision, so the two join one download.
+  - **A failed download never fails an installation.** No path throws — not an
+    absent network, not DNS, not a proxy serving HTML, not an unwritable home
+    directory, not a provisioner that itself threw. A failure degrades to exactly
+    the previous behaviour: status reports `not-provisioned` **by content**, and
+    the recovery command still works. It says so once, in one line of prose that
+    names what happened and how to retry, and the next boot tries again.
+  - **It reaps before it retries.** Each attempt sweeps first, so an attempt
+    killed mid-download leaves no partial and no torn file to be re-inspected
+    forever — which is what makes the boot retry converge.
+  - **Turning the feature on still downloads nothing.** `voice.wake.enabled`
+    moving to `true` reads the artifacts and refuses honestly when they are
+    missing, naming the recovery command. Installing and booting are the
+    sanctioned acts; a switch is not one.
+  - `GOODVIBES_SKIP_WAKE_MODEL_DOWNLOAD=1` installs without the model, and says
+    so in the same one line, so opting out never looks like a silent failure.
+
+- **Every attribution NOTICE travels with the artifact it attributes.** Three
+  redistributable artifacts come out of this tree — our classifier, Google's
+  Apache-2.0 `speech_embedding` build, and the speech gate above — and only the
+  classifier's NOTICE was ever fetched. The front end's was pinned in the
+  manifest, never downloaded, never served, and not counted in the reported
+  download size, while the daemon handed the embedding's bytes to browsers over
+  the same chunk path it uses for the classifier's. All three are now fetched
+  (`embedding-notice` and `vad-notice` are components of the provisioning plan,
+  each fetched immediately after the artifact it attributes so a network that
+  drops part-way never leaves bytes on disk with no attribution beside them), all
+  three are served (`voice.wake.model.get` gains `component=embedding-notice`,
+  `component=vad` and `component=vad-notice`), and all three are reported
+  (`WakeProvisionStatus.embeddingNotice` / `vadNotice`,
+  `WakeProvisionResult.embeddingNoticePath`). The classifier's and the front end's
+  count toward `ready` — an artifact whose attribution is not on disk is not one
+  this tree may hand to anything — and the gate's is held to the same rule inside
+  `vadReady`, which is where the gate itself is reported. `downloadBytes` now
+  comes from the manifest's own `wakeWordProvisionBytes` +
+  `wakeWordFrontEndProvisionBytes` + `wakeVadProvisionBytes` rather than a
+  hand-written field sum, which is how the omission happened.
+
+- **Both pinned formats of the classifier are provisioned and served.** The
+  `.tflite` twin was pinned, counted in every reported download size, and never
+  fetched — so `voice.wake.status` quoted a 6.1 MB download for a 3.7 MB one, and
+  `voice.wake.model.get` could not serve a format it did not have. It is fetched
+  now (last, after everything the detector needs and after the speech gate, so a
+  partial network still leaves a working detector) and is a `component=tflite`
+  chunk read. It does not gate readiness: `WakeProvisionStatus.ready` still covers
+  what the detector loads, with the twin reported separately as `mobileClassifier`
+  / `mobileFormatReady`, because a host that missed only the twin is a host that
+  detects.
+
 - **Audio capture, as a capability the whole voice stack shares — so the wake
   word actually listens and the terminal can finally talk to speech-to-text.**
   The detector shipped complete and unused: twenty-five `voice.wake.*` rows, a
@@ -291,6 +352,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   push destination (see above), `occasions.nudgeChannel` accepts one channel or
   a list of them, and every value it accepts reaches somewhere or reports why it
   did not.
+
+- **The recovery sweeper no longer deletes an artifact the provisioner just
+  verified.** Its pinned-filename sets listed the classifier's `.onnx` and NOTICE
+  and the front end's `.onnx`, but not the `.tflite` and not the front end's
+  NOTICE — so once either was provisioned every hourly sweep would have reaped it
+  as an unpinned version, forever. Both directories now carry an explicit
+  name-by-name set covering everything the provisioner writes, and a torn copy of
+  either is reaped for failing verification (so the next provision refetches it)
+  rather than for being an unpinned version.
 
 - **A route binding is now a hint, validated every time it is used — a channel
   can no longer be stranded by a stale one.** A persisted binding whose session

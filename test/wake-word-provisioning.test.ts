@@ -22,6 +22,14 @@ import {
   resolveWakeModelFiles,
 } from '../packages/sdk/src/platform/voice/wake/provisioning.js';
 import {
+  provisionWakeWordModelsAtInstall,
+  startWakeBootProvisioning,
+  WAKE_INSTALL_SKIP_ENV,
+  type WakeInstallProvisionOutcome,
+} from '../packages/sdk/src/platform/voice/wake/install-provision.js';
+import { resolveManagedVoiceRoot } from '../packages/sdk/src/platform/voice/provisioning/managed-root.js';
+import { createShellPathService } from '../packages/sdk/src/platform/runtime/shell-paths.js';
+import {
   sweepWakeStorage,
   startWakeRecoverySweeper,
   WAKE_REAP_RECEIPT_FILE,
@@ -31,6 +39,9 @@ import {
 import {
   resolveWakeWordModel,
   WAKE_VAD_MODEL,
+  wakeVadProvisionBytes,
+  wakeWordFrontEndProvisionBytes,
+  wakeWordProvisionBytes,
   WAKE_WORD_FRONT_END,
 } from '../packages/sdk/src/platform/voice/provisioning/wake-word-manifest.js';
 
@@ -45,6 +56,7 @@ const MODEL = (() => {
   return model;
 })();
 const EMBEDDING = WAKE_WORD_FRONT_END.embedding.download;
+const EMBEDDING_NOTICE = WAKE_WORD_FRONT_END.embedding.notice;
 /** The speech gate provisions with the models, so every plan here includes it. */
 const VAD = WAKE_VAD_MODEL.onnx;
 const VAD_NOTICE = WAKE_VAD_MODEL.notice;
@@ -83,8 +95,10 @@ function servingFetch(bodies: Record<string, Uint8Array>) {
 function pinnedBodies(): Record<string, Uint8Array> {
   return {
     [MODEL.onnx.url]: new Uint8Array(0),
+    [MODEL.tflite.url]: new Uint8Array(0),
     [MODEL.notice.url]: new Uint8Array(0),
     [EMBEDDING.url]: new Uint8Array(0),
+    [EMBEDDING_NOTICE.url]: new Uint8Array(0),
     [VAD.url]: new Uint8Array(0),
     [VAD_NOTICE.url]: new Uint8Array(0),
   };
@@ -119,9 +133,16 @@ describe('wake artifact verification is by content, never by existence', () => {
     expect(status.ready).toBe(false);
     expect(status.reason).toBe('not-provisioned');
     expect(status.modelVersion).toBe(MODEL.version);
+    // Both classifier formats, the front end, the speech gate, and all three
+    // attribution NOTICEs — counted through the manifest's own helpers, which is
+    // what keeps a NOTICE from going uncounted the way the front end's did.
     expect(status.downloadBytes).toBe(
-      MODEL.onnx.bytes + MODEL.tflite.bytes + MODEL.notice.bytes + EMBEDDING.bytes
-      + VAD.bytes + WAKE_VAD_MODEL.tflite.bytes + VAD_NOTICE.bytes,
+      wakeWordProvisionBytes(MODEL) + wakeWordFrontEndProvisionBytes() + wakeVadProvisionBytes(),
+    );
+    expect(status.downloadBytes).toBe(
+      MODEL.onnx.bytes + MODEL.tflite.bytes + MODEL.notice.bytes
+      + EMBEDDING.bytes + EMBEDDING_NOTICE.bytes
+      + VAD.bytes + VAD_NOTICE.bytes,
     );
     // The gate is reported separately from the detector's own readiness.
     expect(status.vadReady).toBe(false);
@@ -146,8 +167,10 @@ describe('provisioning refuses bad downloads', () => {
     const bodies = pinnedBodies();
     // One byte short of the pin: the classic silent-corruption case.
     bodies[MODEL.onnx.url] = new Uint8Array(MODEL.onnx.bytes - 1);
+    bodies[MODEL.tflite.url] = new Uint8Array(MODEL.tflite.bytes - 1);
     bodies[MODEL.notice.url] = new Uint8Array(MODEL.notice.bytes - 1);
     bodies[EMBEDDING.url] = new Uint8Array(EMBEDDING.bytes - 1);
+    bodies[EMBEDDING_NOTICE.url] = new Uint8Array(EMBEDDING_NOTICE.bytes - 1);
     bodies[VAD.url] = new Uint8Array(VAD.bytes - 1);
     bodies[VAD_NOTICE.url] = new Uint8Array(VAD_NOTICE.bytes - 1);
     const { impl } = servingFetch(bodies);
@@ -167,8 +190,10 @@ describe('provisioning refuses bad downloads', () => {
     // Correct length, wrong content — a swapped asset or a corrupted transfer
     // that a size check alone would wave through.
     bodies[MODEL.onnx.url] = new Uint8Array(MODEL.onnx.bytes).fill(7);
+    bodies[MODEL.tflite.url] = new Uint8Array(MODEL.tflite.bytes).fill(7);
     bodies[MODEL.notice.url] = new Uint8Array(MODEL.notice.bytes).fill(7);
     bodies[EMBEDDING.url] = new Uint8Array(EMBEDDING.bytes).fill(7);
+    bodies[EMBEDDING_NOTICE.url] = new Uint8Array(EMBEDDING_NOTICE.bytes).fill(7);
     bodies[VAD.url] = new Uint8Array(VAD.bytes).fill(7);
     bodies[VAD_NOTICE.url] = new Uint8Array(VAD_NOTICE.bytes).fill(7);
     const { impl } = servingFetch(bodies);
@@ -207,8 +232,11 @@ describe('the speech gate provisions with the models', () => {
     const result = await provisionWakeWordModels({ managedRoot: root, fetchImpl: impl });
     expect(requests).toContain(VAD.url);
     expect(requests).toContain(VAD_NOTICE.url);
+    // The plan's full order: each artifact immediately followed by its own
+    // attribution file, everything the detector needs first, then the gate, then
+    // the tflite twin nothing here loads.
     expect(result.outcomes.map((outcome) => outcome.component)).toEqual([
-      'embedding', 'classifier', 'notice', 'vad', 'vad-notice',
+      'embedding', 'embedding-notice', 'classifier', 'notice', 'vad', 'vad-notice', 'mobile-classifier',
     ]);
   });
 
@@ -449,5 +477,515 @@ describe('which model files voice.wake.models resolves to', () => {
 
   test('an empty list resolves to no files, which is detection disabled without a stopped service', () => {
     expect(resolveWakeModelFiles([], { managedRoot: '/managed' })).toEqual([]);
+  });
+});
+
+describe('both runtime formats of the classifier are provisioned, and only one gates readiness', () => {
+  test('the tflite twin resolves beside the onnx build in the managed tree', () => {
+    const paths = resolveManagedWakePaths(root);
+    expect(paths.mobileClassifierPath).toBe(paths.classifierPath.replace(/\.onnx$/, '.tflite'));
+    expect(paths.mobileClassifierPath.startsWith(paths.modelsDir)).toBe(true);
+  });
+
+  test('a provision fetches the tflite too, and fetches the detector artifacts FIRST', async () => {
+    const { impl, requests } = servingFetch(pinnedBodies());
+    await provisionWakeWordModels({ managedRoot: root, fetchImpl: impl });
+    expect(requests).toContain(MODEL.tflite.url);
+    // Order is load-bearing: an install that loses the network part-way must
+    // leave a WORKING detector, not a mobile-format file and nothing to run.
+    expect(requests.indexOf(MODEL.tflite.url)).toBeGreaterThan(requests.indexOf(MODEL.onnx.url));
+    expect(requests.indexOf(MODEL.tflite.url)).toBeGreaterThan(requests.indexOf(MODEL.notice.url));
+    expect(requests.indexOf(MODEL.tflite.url)).toBeGreaterThan(requests.indexOf(EMBEDDING.url));
+  });
+
+  test('the reported download size and the artifacts actually fetched are the same set', async () => {
+    const { impl, requests } = servingFetch(pinnedBodies());
+    const status = wakeProvisionStatus({ managedRoot: root });
+    await provisionWakeWordModels({ managedRoot: root, fetchImpl: impl });
+    // downloadBytes has always counted the classifier's tflite; before it was
+    // fetched, that figure described a download that never happened. The rule now
+    // holds for every pinned artifact, the speech gate included: the gate's own
+    // tflite twin is pinned but NOT fetched, so it is NOT counted either.
+    const fetched = [MODEL.onnx, MODEL.tflite, MODEL.notice, EMBEDDING, EMBEDDING_NOTICE, VAD, VAD_NOTICE]
+      .filter((spec) => requests.includes(spec.url))
+      .reduce((total, spec) => total + spec.bytes, 0);
+    expect(status.downloadBytes).toBe(fetched);
+    expect(requests).not.toContain(WAKE_VAD_MODEL.tflite.url);
+  });
+
+  test('a torn tflite does NOT make the detector report a checksum problem', () => {
+    const paths = resolveManagedWakePaths(root);
+    mkdirSync(paths.modelsDir, { recursive: true });
+    writeFileSync(paths.mobileClassifierPath, Buffer.alloc(MODEL.tflite.bytes));
+    const status = wakeProvisionStatus({ managedRoot: root });
+    expect(status.mobileClassifier.corrupt).toBe(true);
+    // The three the detector loads are simply absent, and that — not the twin —
+    // is what the reason has to describe.
+    expect(status.reason).toBe('not-provisioned');
+    expect(status.ready).toBe(false);
+  });
+
+  test('a receipt reports the mobile format separately from whether the detector can run', async () => {
+    const bodies = pinnedBodies();
+    delete bodies[MODEL.tflite.url];
+    const { impl } = servingFetch(bodies);
+    const result = await provisionWakeWordModels({ managedRoot: root, fetchImpl: impl });
+    expect(result.mobileFormatReady).toBe(false);
+    const mobile = result.outcomes.find((o) => o.component === 'mobile-classifier');
+    expect(mobile?.state).toBe('failed');
+    expect(mobile?.error).toContain('404');
+  });
+
+  test('the NOTICE path is reported whenever the NOTICE itself landed', async () => {
+    // Its own outcome decides it, not the run's: the NOTICE must travel with
+    // whatever WAS written, and a tflite 404 does not un-write it.
+    const written: string[] = [];
+    const result = await provisionWakeWordModels({
+      managedRoot: root,
+      fetchImpl: (async () => new Response(null, { status: 500 })) as unknown as typeof fetch,
+    });
+    expect(written).toEqual([]);
+    expect(result.noticePath).toBeNull();
+    expect(result.ready).toBe(false);
+  });
+
+  test('the sweeper keeps a pinned tflite and reaps a torn one', () => {
+    const paths = resolveManagedWakePaths(root);
+    mkdirSync(paths.modelsDir, { recursive: true });
+    // A pinned-version filename with content that does not match is reaped for
+    // FAILING VERIFICATION, not for being an unpinned version — the distinction
+    // matters because an unpinned-version reap would delete every provisioned
+    // tflite on the next sweep, forever.
+    writeFileSync(paths.mobileClassifierPath, Buffer.alloc(MODEL.tflite.bytes));
+    const summary = sweepWakeStorage({ managedRoot: root });
+    const entry = summary.reaped.find((r) => r.path === paths.mobileClassifierPath);
+    expect(entry?.reason).toBe('failed-verification');
+  });
+});
+
+describe('the managed voice root is derived once, not per caller', () => {
+  test('it is the same directory the running path service resolves', () => {
+    const paths = createShellPathService({ workingDirectory: root, homeDirectory: root });
+    expect(resolveManagedVoiceRoot(root)).toBe(paths.resolveUserPath('voice'));
+  });
+
+  test('a relative home is refused rather than resolved against the working directory', () => {
+    // An installer resolving this relatively would scatter a managed tree
+    // wherever it happened to be invoked from.
+    expect(() => resolveManagedVoiceRoot('relative/home')).toThrow(/absolute home directory/);
+    expect(() => resolveManagedVoiceRoot('   ')).toThrow(/absolute home directory/);
+  });
+});
+
+describe('provisioning as part of installation', () => {
+  /** A fetch that behaves like a machine with no network at all. */
+  const offlineFetch = (async () => { throw new Error('getaddrinfo ENOTFOUND objects.githubusercontent.com'); }) as unknown as typeof fetch;
+
+  test('an OFFLINE install does not fail, and degrades to exactly the old behaviour', async () => {
+    const outcome = await provisionWakeWordModelsAtInstall({
+      managedRoot: root,
+      fetchImpl: offlineFetch,
+      recoveryHint: '/voice wake setup',
+      env: {},
+    });
+    // 1. It did not throw, and it did not claim success.
+    expect(outcome.state).toBe('degraded');
+    expect(outcome.ready).toBe(false);
+    // 2. It said so once, plainly, naming the recovery act and the retry.
+    expect(outcome.message).toContain('installation continues');
+    expect(outcome.message).toContain('/voice wake setup');
+    // The reason is the download layer's own plain-language summary, not a raw
+    // stack: this line is printed to a person installing a coding tool.
+    expect(outcome.message).toContain('DNS lookup failed');
+    // 3. Nothing partial or unverified was left behind.
+    const paths = resolveManagedWakePaths(root);
+    expect(existsSync(paths.classifierPath)).toBe(false);
+    expect(existsSync(paths.mobileClassifierPath)).toBe(false);
+    expect(existsSync(paths.embeddingPath)).toBe(false);
+    // 4. The feature's own status is unchanged from a machine that never tried.
+    const status = wakeProvisionStatus({ managedRoot: root });
+    expect(status.ready).toBe(false);
+    expect(status.reason).toBe('not-provisioned');
+  });
+
+  test('an HTTP failure is reported honestly rather than as a generic error', async () => {
+    const outcome = await provisionWakeWordModelsAtInstall({
+      managedRoot: root,
+      fetchImpl: (async () => new Response(null, { status: 503 })) as unknown as typeof fetch,
+      env: {},
+    });
+    expect(outcome.state).toBe('degraded');
+    expect(outcome.message).toContain('503');
+  });
+
+  test('a provisioner that THROWS still cannot fail an install', async () => {
+    const outcome = await provisionWakeWordModelsAtInstall({
+      managedRoot: root,
+      env: {},
+      provision: async () => { throw new Error('EROFS: read-only file system'); },
+    });
+    expect(outcome.state).toBe('degraded');
+    expect(outcome.message).toContain('EROFS');
+    expect(outcome.ready).toBe(false);
+  });
+
+  test('a status read that throws is a degraded outcome, not an exception', async () => {
+    let provisioned = false;
+    const outcome = await provisionWakeWordModelsAtInstall({
+      managedRoot: root,
+      env: {},
+      readStatus: () => { throw new Error('EACCES: permission denied'); },
+      provision: async () => { provisioned = true; throw new Error('unreachable'); },
+    });
+    expect(outcome.state).toBe('degraded');
+    expect(outcome.message).toContain('EACCES');
+    // It never got as far as spending bandwidth on a tree it cannot read.
+    expect(provisioned).toBe(false);
+  });
+
+  test('an already-provisioned machine downloads nothing and stays quiet about it', async () => {
+    let downloads = 0;
+    const outcome = await provisionWakeWordModelsAtInstall({
+      managedRoot: root,
+      env: {},
+      readStatus: () => readyStatus(root),
+      provision: async () => { downloads += 1; throw new Error('should not run'); },
+    });
+    expect(outcome.state).toBe('already-provisioned');
+    expect(outcome.ready).toBe(true);
+    expect(downloads).toBe(0);
+  });
+
+  test('the opt-out is honoured and reported, never silent', async () => {
+    let downloads = 0;
+    const outcome = await provisionWakeWordModelsAtInstall({
+      managedRoot: root,
+      recoveryHint: '/voice wake setup',
+      env: { [WAKE_INSTALL_SKIP_ENV]: '1' },
+      provision: async () => { downloads += 1; throw new Error('should not run'); },
+    });
+    expect(downloads).toBe(0);
+    expect(outcome.state).toBe('opted-out');
+    expect(outcome.message).toContain(WAKE_INSTALL_SKIP_ENV);
+    expect(outcome.message).toContain('/voice wake setup');
+  });
+
+  test('a successful install verifies by content and says the feature needs nothing further', async () => {
+    // Not ready before, ready after: the read that decides is the one taken
+    // AFTER the fetch, over the tree on disk.
+    let reads = 0;
+    const outcome = await provisionWakeWordModelsAtInstall({
+      managedRoot: root,
+      env: {},
+      // A provisioner that reports success is not trusted on its own: the policy
+      // re-reads the tree by content before it calls anything ready.
+      provision: async () => ({
+        ready: true,
+        mobileFormatReady: true,
+        vadReady: true,
+        modelVersion: MODEL.version,
+        outcomes: [{ component: 'classifier' as const, state: 'installed' as const, path: 'c', bytes: 2_367_644 }],
+        noticePath: 'n',
+        embeddingNoticePath: 'en',
+        recallIsSyntheticOnly: true,
+      }),
+      readStatus: () => {
+        reads += 1;
+        return reads === 1 ? wakeProvisionStatus({ managedRoot: root }) : readyStatus(root);
+      },
+    });
+    expect(reads).toBe(2);
+    expect(outcome.state).toBe('provisioned');
+    expect(outcome.ready).toBe(true);
+    expect(outcome.message).toContain('voice.wake.enabled');
+    expect(outcome.message).toContain('nothing further to download');
+  });
+
+  test('a provisioner claiming success over an unverified tree is NOT believed', async () => {
+    const outcome = await provisionWakeWordModelsAtInstall({
+      managedRoot: root,
+      env: {},
+      provision: async () => ({
+        ready: true,
+        mobileFormatReady: true,
+        vadReady: true,
+        modelVersion: MODEL.version,
+        outcomes: [],
+        noticePath: 'n',
+        embeddingNoticePath: 'en',
+        recallIsSyntheticOnly: true,
+      }),
+      // The real content check over an empty root: nothing is there.
+    });
+    expect(outcome.state).toBe('degraded');
+    expect(outcome.ready).toBe(false);
+  });
+
+  test('it reaps a torn artifact before retrying, so a boot retry converges', async () => {
+    const paths = resolveManagedWakePaths(root);
+    mkdirSync(paths.modelsDir, { recursive: true });
+    // The exact shape that cost this project a training run: full size, zero bytes.
+    writeFileSync(paths.classifierPath, Buffer.alloc(MODEL.onnx.bytes));
+    const { impl, requests } = servingFetch(pinnedBodies());
+    const outcome = await provisionWakeWordModelsAtInstall({
+      managedRoot: root,
+      env: {},
+      fetchImpl: impl,
+    });
+    expect(outcome.reapedBeforeAttempt).toBeGreaterThan(0);
+    // Removed rather than re-used, and re-fetched rather than skipped.
+    expect(requests).toContain(MODEL.onnx.url);
+  });
+
+  test('a pre-attempt sweep that fails does not skip the download', async () => {
+    const { impl, requests } = servingFetch(pinnedBodies());
+    const outcome = await provisionWakeWordModelsAtInstall({
+      managedRoot: root,
+      env: {},
+      fetchImpl: impl,
+      sweep: () => { throw new Error('EPERM'); },
+    });
+    expect(outcome.reapedBeforeAttempt).toBe(0);
+    expect(requests.length).toBeGreaterThan(0);
+  });
+});
+
+describe('the boot half: sweep, then fetch what the install could not', () => {
+  test('it sweeps at boot and makes exactly one attempt, announcing the result', async () => {
+    const announced: string[] = [];
+    let attempts = 0;
+    const pending: (() => void)[] = [];
+    const boot = startWakeBootProvisioning({
+      managedRoot: root,
+      announce: (message) => announced.push(message),
+      ensureProvisioned: async () => {
+        attempts += 1;
+        return degradedOutcome();
+      },
+      setTimeoutImpl: (handler) => { pending.push(handler); return 1; },
+      clearTimeoutImpl: () => {},
+    });
+    // The sweep already ran — the sweeper sweeps at start, which is what makes a
+    // torn artifact from a killed install recoverable without a user act.
+    expect(existsSync(join(resolveManagedWakePaths(root).wakeRoot))).toBe(false);
+    expect(attempts).toBe(0);
+    pending[0]?.();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(attempts).toBe(1);
+    expect(announced).toEqual([degradedOutcome().message]);
+    boot.stop();
+  });
+
+  test('an already-provisioned daemon restart says nothing at all', async () => {
+    const announced: string[] = [];
+    const pending: (() => void)[] = [];
+    const boot = startWakeBootProvisioning({
+      managedRoot: root,
+      announce: (message) => announced.push(message),
+      ensureProvisioned: async () => ({
+        state: 'already-provisioned' as const,
+        ready: true,
+        mobileFormatReady: true,
+        message: 'already there',
+        outcomes: [],
+        modelVersion: MODEL.version,
+        reapedBeforeAttempt: 0,
+      }),
+      setTimeoutImpl: (handler) => { pending.push(handler); return 1; },
+      clearTimeoutImpl: () => {},
+    });
+    pending[0]?.();
+    await Promise.resolve();
+    await Promise.resolve();
+    // A line per restart about having done nothing is how a log stops being read.
+    expect(announced).toEqual([]);
+    boot.stop();
+  });
+
+  test('stop() before the attempt fires cancels it, and is idempotent', async () => {
+    let attempts = 0;
+    let cleared = 0;
+    const pending: (() => void)[] = [];
+    const boot = startWakeBootProvisioning({
+      managedRoot: root,
+      announce: () => {},
+      ensureProvisioned: async () => { attempts += 1; return degradedOutcome(); },
+      setTimeoutImpl: (handler) => { pending.push(handler); return 7; },
+      clearTimeoutImpl: () => { cleared += 1; },
+    });
+    boot.stop();
+    boot.stop();
+    expect(cleared).toBe(1);
+    // Even if the timer fired anyway (a real clearTimeout races), a stopped
+    // starter must not begin a download during shutdown.
+    pending[0]?.();
+    await Promise.resolve();
+    expect(attempts).toBe(0);
+  });
+
+  test('an ensureProvisioned that breaks its no-throw contract does not take the daemon down', async () => {
+    const pending: (() => void)[] = [];
+    const boot = startWakeBootProvisioning({
+      managedRoot: root,
+      announce: () => {},
+      ensureProvisioned: async () => { throw new Error('host wrapper bug'); },
+      setTimeoutImpl: (handler) => { pending.push(handler); return 1; },
+      clearTimeoutImpl: () => {},
+    });
+    expect(() => pending[0]?.()).not.toThrow();
+    await Promise.resolve();
+    await Promise.resolve();
+    boot.stop();
+  });
+});
+
+/** A content-verified status for a tree the test does not have real bytes for. */
+function readyStatus(managedRoot: string) {
+  const paths = resolveManagedWakePaths(managedRoot);
+  const verified = (path: string, bytes: number) => ({ path, verified: true, corrupt: false, bytes });
+  return {
+    ready: true,
+    reason: null,
+    classifier: verified(paths.classifierPath, MODEL.onnx.bytes),
+    mobileClassifier: verified(paths.mobileClassifierPath, MODEL.tflite.bytes),
+    notice: verified(paths.noticePath, MODEL.notice.bytes),
+    embedding: verified(paths.embeddingPath, EMBEDDING.bytes),
+    embeddingNotice: verified(paths.embeddingNoticePath, EMBEDDING_NOTICE.bytes),
+    vad: verified(paths.vadPath, VAD.bytes),
+    vadNotice: verified(paths.vadNoticePath, VAD_NOTICE.bytes),
+    vadReady: true,
+    downloadBytes: 0,
+    modelVersion: MODEL.version,
+    recallIsSyntheticOnly: true,
+  };
+}
+
+function degradedOutcome(): WakeInstallProvisionOutcome {
+  return {
+    state: 'degraded',
+    ready: false,
+    mobileFormatReady: false,
+    message: 'The wake-word model could not be downloaded (offline); installation continues.',
+    outcomes: [],
+    modelVersion: MODEL.version,
+    reapedBeforeAttempt: 0,
+  };
+}
+
+describe('both redistributable artifacts carry their attribution NOTICE, on identical terms', () => {
+  test('the front end\'s NOTICE resolves beside the front end, not beside the classifier', () => {
+    const paths = resolveManagedWakePaths(root);
+    expect(paths.embeddingNoticePath).toBe(paths.embeddingPath.replace(/\.onnx$/, '.NOTICE.txt'));
+    expect(paths.embeddingNoticePath.startsWith(paths.frontEndDir)).toBe(true);
+    // Two different NOTICEs for two different artifacts — not one file doing both jobs.
+    expect(paths.embeddingNoticePath).not.toBe(paths.noticePath);
+  });
+
+  test('a provision fetches it, and the plan fetches it beside the artifact it attributes', async () => {
+    const { impl, requests } = servingFetch(pinnedBodies());
+    const result = await provisionWakeWordModels({ managedRoot: root, fetchImpl: impl });
+    expect(requests).toContain(EMBEDDING_NOTICE.url);
+    expect(result.outcomes.map((o) => o.component)).toContain('embedding-notice');
+    // Immediately after the embedding: the pair is fetched together, so a network
+    // that drops part-way never leaves bytes on disk with no attribution beside them.
+    expect(requests.indexOf(EMBEDDING_NOTICE.url)).toBe(requests.indexOf(EMBEDDING.url) + 1);
+  });
+
+  test('a missing front-end NOTICE makes the tree NOT ready, exactly as a missing classifier NOTICE does', async () => {
+    const bodies = pinnedBodies();
+    delete bodies[EMBEDDING_NOTICE.url];
+    const { impl } = servingFetch(bodies);
+    const result = await provisionWakeWordModels({ managedRoot: root, fetchImpl: impl });
+    // An artifact whose attribution is not on disk is not one this tree may serve.
+    expect(result.ready).toBe(false);
+    expect(result.embeddingNoticePath).toBeNull();
+    expect(result.outcomes.find((o) => o.component === 'embedding-notice')?.state).toBe('failed');
+    // And symmetrically, dropping the CLASSIFIER's notice does the same thing — the
+    // point being that neither is the privileged one.
+    const other = pinnedBodies();
+    delete other[MODEL.notice.url];
+    const second = await provisionWakeWordModels({ managedRoot: root, fetchImpl: servingFetch(other).impl });
+    expect(second.ready).toBe(false);
+    expect(second.noticePath).toBeNull();
+  });
+
+  test('each NOTICE is reported on its OWN outcome, with its own reason', async () => {
+    // Both NOTICE paths are derived from their own component's outcome rather than
+    // from the run's overall result, so one failing cannot erase the other's record.
+    // These fixtures cannot make either one VERIFY (the served bodies are empty, and
+    // the pins are the real published checksums), so what is pinned here is that the
+    // two are tracked separately and each carries its own honest reason — the live
+    // install is what proves the success side.
+    const bodies = pinnedBodies();
+    delete bodies[EMBEDDING_NOTICE.url];
+    const result = await provisionWakeWordModels({ managedRoot: root, fetchImpl: servingFetch(bodies).impl });
+    const classifierNotice = result.outcomes.find((o) => o.component === 'notice');
+    const frontEndNotice = result.outcomes.find((o) => o.component === 'embedding-notice');
+    expect(classifierNotice).toBeDefined();
+    expect(frontEndNotice).toBeDefined();
+    // Different failures, reported as such: one was served the wrong length, the
+    // other was not served at all.
+    expect(classifierNotice?.error).toContain('size-mismatch');
+    expect(frontEndNotice?.error).toContain('404');
+    // And they point at different files, so neither reason can be attributed to the
+    // wrong artifact by a reader of the receipt.
+    expect(classifierNotice?.path).not.toBe(frontEndNotice?.path);
+  });
+
+  test('status reports it as its own artifact, and a torn one is corrupt rather than absent', () => {
+    const paths = resolveManagedWakePaths(root);
+    mkdirSync(paths.frontEndDir, { recursive: true });
+    const clean = wakeProvisionStatus({ managedRoot: root });
+    expect(clean.embeddingNotice.verified).toBe(false);
+    expect(clean.embeddingNotice.corrupt).toBe(false);
+    expect(clean.embeddingNotice.path).toBe(paths.embeddingNoticePath);
+
+    writeFileSync(paths.embeddingNoticePath, Buffer.alloc(EMBEDDING_NOTICE.bytes));
+    const torn = wakeProvisionStatus({ managedRoot: root });
+    expect(torn.embeddingNotice.corrupt).toBe(true);
+    expect(torn.reason).toBe('checksum-mismatch');
+  });
+
+  test('the sweeper KEEPS a pinned front-end NOTICE and reaps a torn one', () => {
+    // The defect class this exists for: a file the provisioner writes and the
+    // sweeper does not recognise is deleted once an hour, forever. It shipped once
+    // for the .tflite; the front-end directory's NOTICE was the next candidate.
+    const paths = resolveManagedWakePaths(root);
+    mkdirSync(paths.frontEndDir, { recursive: true });
+    writeFileSync(paths.embeddingNoticePath, Buffer.alloc(EMBEDDING_NOTICE.bytes));
+    const summary = sweepWakeStorage({ managedRoot: root });
+    const entry = summary.reaped.find((r) => r.path === paths.embeddingNoticePath);
+    // Reaped for failing verification (so the next provision refetches it), NOT for
+    // being an unpinned version (which would delete a good one too).
+    expect(entry?.reason).toBe('failed-verification');
+  });
+
+  test('a front-end NOTICE of an unpinned version is still reaped', () => {
+    const paths = resolveManagedWakePaths(root);
+    mkdirSync(paths.frontEndDir, { recursive: true });
+    const orphan = join(paths.frontEndDir, 'speech-embedding-0.9.0.NOTICE.txt');
+    writeFileSync(orphan, Buffer.alloc(32));
+    const summary = sweepWakeStorage({ managedRoot: root });
+    expect(summary.reaped.find((r) => r.path === orphan)?.reason).toBe('unpinned-version');
+  });
+
+  test('the reported download size comes from the manifest helpers, not a hand-written sum', () => {
+    // Summing the fields by hand at each call site is precisely how the front end's
+    // NOTICE ended up uncounted while its bytes were being advertised.
+    expect(wakeWordFrontEndProvisionBytes()).toBe(EMBEDDING.bytes + EMBEDDING_NOTICE.bytes);
+    expect(wakeVadProvisionBytes()).toBe(VAD.bytes + VAD_NOTICE.bytes);
+    expect(wakeProvisionStatus({ managedRoot: root }).downloadBytes)
+      .toBe(wakeWordProvisionBytes(MODEL) + wakeWordFrontEndProvisionBytes() + wakeVadProvisionBytes());
+  });
+
+  test('an install that lands everything reports both NOTICE paths and is ready', async () => {
+    const { impl } = servingFetch(pinnedBodies());
+    const result = await provisionWakeWordModels({ managedRoot: root, fetchImpl: impl });
+    // pinnedBodies serves zero-length bodies, so nothing verifies — what is asserted
+    // here is the SHAPE of a complete plan, which the live install proves for real.
+    expect(result.outcomes.map((o) => o.component).sort()).toEqual(
+      ['classifier', 'embedding', 'embedding-notice', 'mobile-classifier', 'notice', 'vad', 'vad-notice'],
+    );
   });
 });

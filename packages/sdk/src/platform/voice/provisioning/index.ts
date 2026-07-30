@@ -79,3 +79,8 @@ export {
   type VoiceKeyPreconfig,
   type VoiceKeySkip,
 } from './config-preconfigure.js';
+
+export {
+  resolveManagedVoiceRoot,
+  MANAGED_VOICE_DIRECTORY_NAME,
+} from './managed-root.js';

@@ -397,9 +397,20 @@ export const WAKE_VAD_MODEL: WakeVadModelManifest = {
     + 'attribution-only or public domain; none is NonCommercial, ShareAlike, or NoDerivatives.',
 };
 
-/** Total download size of the speech gate's artifacts (bytes), for an offer. */
+/**
+ * Total download size of the speech gate's artifacts (bytes), for an offer.
+ *
+ * Counts what a provision FETCHES — the onnx head and its NOTICE — and not the
+ * tflite twin, which is pinned here for a runtime that cannot load onnx but is
+ * not part of the plan, because nothing in this SDK loads it. The rule this obeys
+ * is the one the classifier's twin was fixed to obey: a reported download size
+ * has to describe the set of artifacts actually fetched, or `voice.wake.status`
+ * quotes a figure for a download that never happens. The classifier's twin is
+ * counted by {@link wakeWordProvisionBytes} because the plan fetches it; this one
+ * is not counted because the plan does not.
+ */
 export function wakeVadProvisionBytes(vad: WakeVadModelManifest = WAKE_VAD_MODEL): number {
-  return vad.onnx.bytes + vad.tflite.bytes + vad.notice.bytes;
+  return vad.onnx.bytes + vad.notice.bytes;
 }
 
 /**
@@ -438,4 +449,18 @@ export function resolveWakeWordModel(
 /** Total download size of a wake-word model's artifacts (bytes), for an offer. */
 export function wakeWordProvisionBytes(model: WakeWordModelManifest): number {
   return model.onnx.bytes + model.tflite.bytes + model.notice.bytes;
+}
+
+/**
+ * Total download size of the front end's artifacts (bytes).
+ *
+ * A function beside {@link wakeWordProvisionBytes} rather than an addition at
+ * each call site, and for the reason the front end's own NOTICE exposed: a
+ * consumer summing `embedding.download.bytes` by hand quietly omitted the
+ * attribution file, so the reported download size described a set of artifacts
+ * that was not the set being fetched. The melspectrogram stage contributes
+ * nothing — it is computed in code, which is the point of it.
+ */
+export function wakeWordFrontEndProvisionBytes(): number {
+  return WAKE_WORD_FRONT_END.embedding.download.bytes + WAKE_WORD_FRONT_END.embedding.notice.bytes;
 }

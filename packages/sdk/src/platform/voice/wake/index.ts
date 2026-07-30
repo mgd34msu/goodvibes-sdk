@@ -104,9 +104,24 @@ export {
   type WakeProvisionResult,
   type WakeProvisionOptions,
   type WakeProvisionProgress,
+  type WakeProvisionComponent,
   type WakeComponentOutcome,
   type ResolvedWakeModelFile,
 } from './provisioning.js';
+
+export {
+  provisionWakeWordModelsAtInstall,
+  startWakeBootProvisioning,
+  WAKE_INSTALL_SKIP_ENV,
+  WAKE_INSTALL_DEFAULT_RECOVERY_HINT,
+  WAKE_INSTALL_TIMEOUT_MS,
+  WAKE_BOOT_PROVISION_DELAY_MS,
+  type WakeInstallProvisionState,
+  type WakeInstallProvisionOutcome,
+  type WakeInstallProvisionOptions,
+  type WakeBootProvisioning,
+  type WakeBootProvisioningOptions,
+} from './install-provision.js';
 
 export {
   retainedClipFileName,

@@ -8,6 +8,41 @@
  * piper and whisper runtimes use — so a truncated body, a proxy's error page,
  * or a swapped asset is refused and NOTHING is left at the destination.
  *
+ * The classifier is pinned in BOTH runtime formats and both are fetched: the
+ * onnx build is what every current host loads, and the tflite twin is the same
+ * classifier for a runtime that cannot load onnx. Fetching both is what lets
+ * runtime/wake-setup.ts serve either one to a surface that cannot fetch release
+ * assets itself, and it is what the reported download size has always counted
+ * ({@link wakeWordProvisionBytes} includes the tflite).
+ *
+ * EVERY ATTRIBUTION NOTICE TRAVELS WITH ITS ARTIFACT
+ *
+ * Three artifacts are redistributed out of this tree — our classifier, Google's
+ * Apache-2.0 `speech_embedding` build, and the speech gate `voice.wake.vadThreshold`
+ * runs — and each is published with an attribution file a deployment carrying the
+ * artifact must carry with it. All three are therefore fetched, each immediately
+ * after the artifact it belongs to, and each is served by the chunk path a browser
+ * reads through: an artifact whose attribution is not on disk is not one this tree
+ * may hand to anything. Fetching one NOTICE and not another would leave part of
+ * the attribution set on the server it came from, which is exactly what happened
+ * until the embedding's was added here.
+ *
+ * WHAT GATES READINESS, AND WHAT REPORTS SEPARATELY
+ *
+ * {@link WakeProvisionStatus.ready} covers the onnx classifier, the front end and
+ * the attribution of each. Two provisioned artifacts are deliberately outside it:
+ *
+ *  - the tflite twin, because nothing in this SDK loads it — a host that got the
+ *    onnx build, the front end and their NOTICEs can detect, and reporting
+ *    otherwise would be a lie in the unhelpful direction. It reports through
+ *    `mobileClassifier` / `mobileFormatReady`.
+ *  - the speech gate and its NOTICE, because `voice.wake.vadThreshold` is 0
+ *    unless someone turns it on, so a detector with no gate on disk is fully
+ *    operational, and folding the gate into `ready` would make every existing
+ *    installation look broken until it re-provisioned. It reports through
+ *    `vad` / `vadNotice` / `vadReady`, and the gate's NOTICE is held to the same
+ *    attribution rule inside `vadReady`.
+ *
  * DOWNLOADED ARTIFACTS ARE PERSISTED STATE, SO THEY GET REAL HOUSEKEEPING
  *
  * This exact bug class has already cost this project a training run: a feature
@@ -24,8 +59,19 @@
  *    lives in recovery.ts and runs at recovery time and periodically, with a
  *    written receipt so a deletion is never silent.
  *
- * Nothing here downloads on its own. Provisioning is an explicit act, matching
- * the rest of the local voice stack.
+ * WHEN THIS RUNS, AND WHAT STILL NEVER DOWNLOADS
+ *
+ * The model ships WITH the installation: the installer and the npm postinstall
+ * call the install policy in ./install-provision.ts, and a daemon retries at
+ * boot whatever the install could not get. So a fresh machine has the artifacts
+ * without the user asking, which is the point — an always-listening feature the
+ * user has to go and fetch a model for is a feature most people never reach.
+ *
+ * What did NOT change is the runtime rule. Nothing in this file downloads as a
+ * side effect of anything: {@link wakeProvisionStatus} only reads, and turning
+ * `voice.wake.enabled` on never fetches — a host missing the artifacts reports
+ * not-provisioned and names the recovery command. Install-time and boot-time
+ * provisioning are sanctioned acts with a receipt; flipping a switch is not.
  */
 import { existsSync, mkdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
@@ -41,6 +87,7 @@ import {
   WAKE_VAD_MODEL,
   WAKE_WORD_FRONT_END,
   wakeVadProvisionBytes,
+  wakeWordFrontEndProvisionBytes,
   wakeWordProvisionBytes,
   type WakeWordModelManifest,
 } from '../provisioning/wake-word-manifest.js';
@@ -59,19 +106,37 @@ export interface ManagedWakePaths {
   readonly customDir: string;
   /** Session-scoped retained audio, only used when retainAudio is session-temp. */
   readonly retainedDir: string;
-  /** The pinned classifier for the resolved version. */
+  /** The pinned classifier for the resolved version, in onnx form. */
   readonly classifierPath: string;
+  /**
+   * The same pinned classifier in TensorFlow Lite form, for a runtime that
+   * cannot load onnx. Provisioned beside the onnx build so the daemon can serve
+   * either form; not required for the detector this SDK runs.
+   */
+  readonly mobileClassifierPath: string;
   /** The attribution NOTICE that must travel with the classifier. */
   readonly noticePath: string;
   /** The speech-embedding backbone. */
   readonly embeddingPath: string;
+  /**
+   * The attribution NOTICE that must travel with the speech-embedding backbone,
+   * on exactly the terms the classifier's does.
+   *
+   * Three artifacts are redistributed by this tree — the classifier, Google's
+   * Apache-2.0 `speech_embedding` build, and the speech gate — and each carries
+   * an attribution file that a deployment redistributing it must carry with it.
+   * The daemon serves the embedding's bytes over the same chunk path it serves
+   * the classifier's, so fetching one NOTICE and not the others would leave part
+   * of the attribution set on the server it was published from.
+   */
+  readonly embeddingNoticePath: string;
   /**
    * The speech gate `voice.wake.vadThreshold` runs. It lives beside the embedding
    * rather than with the classifiers because it is front-end infrastructure: one
    * head shared by every wake model, over the embedding they all consume.
    */
   readonly vadPath: string;
-  /** The speech gate's attribution NOTICE. */
+  /** The speech gate's attribution NOTICE, on the same terms as the other two. */
   readonly vadNoticePath: string;
 }
 
@@ -89,8 +154,10 @@ export function resolveManagedWakePaths(managedRoot: string, version?: string): 
     customDir: join(wakeRoot, 'custom'),
     retainedDir: join(wakeRoot, 'retained'),
     classifierPath: join(modelsDir, `goodvibes-wakeword-hey-goodvibes-${modelVersion}.onnx`),
+    mobileClassifierPath: join(modelsDir, `goodvibes-wakeword-hey-goodvibes-${modelVersion}.tflite`),
     noticePath: join(modelsDir, `goodvibes-wakeword-hey-goodvibes-${modelVersion}.NOTICE.txt`),
     embeddingPath: join(frontEndDir, `speech-embedding-${WAKE_WORD_FRONT_END.embedding.version}.onnx`),
+    embeddingNoticePath: join(frontEndDir, `speech-embedding-${WAKE_WORD_FRONT_END.embedding.version}.NOTICE.txt`),
     vadPath: join(frontEndDir, `goodvibes-vad-${WAKE_VAD_MODEL.version}.onnx`),
     vadNoticePath: join(frontEndDir, `goodvibes-vad-${WAKE_VAD_MODEL.version}.NOTICE.txt`),
   };
@@ -156,8 +223,22 @@ export interface WakeProvisionStatus {
   readonly ready: boolean;
   readonly reason: WakeUnavailableReason | null;
   readonly classifier: WakeArtifactStatus;
+  /**
+   * The tflite twin of the classifier. Reported so a surface can say whether the
+   * daemon can serve that form, and deliberately NOT part of {@link ready}: the
+   * detector this SDK runs loads the onnx build, so a host missing only the
+   * tflite is a host that detects.
+   */
+  readonly mobileClassifier: WakeArtifactStatus;
   readonly notice: WakeArtifactStatus;
   readonly embedding: WakeArtifactStatus;
+  /**
+   * The front end's attribution NOTICE. Part of {@link ready} for the same reason
+   * the classifier's `notice` is: an artifact whose attribution is not on disk is
+   * not an artifact this tree may hand to anything, and the daemon hands the
+   * embedding's bytes to browsers.
+   */
+  readonly embeddingNotice: WakeArtifactStatus;
   /** The speech gate's head and its NOTICE. */
   readonly vad: WakeArtifactStatus;
   readonly vadNotice: WakeArtifactStatus;
@@ -196,8 +277,10 @@ export function wakeProvisionStatus(options: {
       ready: false,
       reason: 'not-provisioned',
       classifier: empty,
+      mobileClassifier: empty,
       notice: empty,
       embedding: wakeArtifactStatus(paths.embeddingPath, embeddingSpec),
+      embeddingNotice: wakeArtifactStatus(paths.embeddingNoticePath, WAKE_WORD_FRONT_END.embedding.notice),
       vad,
       vadNotice,
       vadReady: vad.verified && vadNotice.verified,
@@ -207,27 +290,56 @@ export function wakeProvisionStatus(options: {
     };
   }
   const classifier = wakeArtifactStatus(paths.classifierPath, model.onnx);
+  const mobileClassifier = wakeArtifactStatus(paths.mobileClassifierPath, model.tflite);
   const notice = wakeArtifactStatus(paths.noticePath, model.notice);
   const embedding = wakeArtifactStatus(paths.embeddingPath, embeddingSpec);
-  const anyCorrupt = classifier.corrupt || notice.corrupt || embedding.corrupt;
-  const allVerified = classifier.verified && notice.verified && embedding.verified;
+  const embeddingNotice = wakeArtifactStatus(paths.embeddingNoticePath, WAKE_WORD_FRONT_END.embedding.notice);
+  // The classifier's and the front end's NOTICEs count exactly as much as the
+  // artifacts they attribute: an attribution file that is not on disk cannot
+  // travel with bytes this tree hands out, and the daemon hands both the
+  // classifier's and the embedding's to browsers. The speech gate's NOTICE is
+  // held to the same rule inside `vadReady` rather than here, because the gate
+  // itself is not part of `ready` — see `vadReady`.
+  const anyCorrupt = classifier.corrupt || notice.corrupt || embedding.corrupt || embeddingNotice.corrupt;
+  const allVerified = classifier.verified && notice.verified && embedding.verified && embeddingNotice.verified;
   return {
     ready: allVerified,
     reason: allVerified ? null : anyCorrupt ? 'checksum-mismatch' : 'not-provisioned',
     classifier,
+    mobileClassifier,
     notice,
     embedding,
+    embeddingNotice,
     vad,
     vadNotice,
     vadReady: vad.verified && vadNotice.verified,
-    downloadBytes: wakeWordProvisionBytes(model) + embeddingSpec.bytes + wakeVadProvisionBytes(),
+    // Every total comes from the manifest's own helpers rather than being summed
+    // field by field here, which is how the front end's NOTICE went uncounted.
+    downloadBytes:
+      wakeWordProvisionBytes(model) + wakeWordFrontEndProvisionBytes() + wakeVadProvisionBytes(),
     modelVersion: model.version,
     recallIsSyntheticOnly: model.measurements.recallIsSyntheticOnly,
   };
 }
 
-/** One artifact provisioning names. */
-export type WakeProvisionComponent = 'classifier' | 'notice' | 'embedding' | 'vad' | 'vad-notice';
+/**
+ * Which artifact a progress event or outcome is about.
+ *
+ * `mobile-classifier` is the tflite form of the same classifier — a separate
+ * component rather than a detail of `classifier`, so a receipt can report one
+ * landing and the other not. `embedding-notice` and `vad-notice` are the front
+ * end's and the speech gate's attribution files, listed on the same terms as the
+ * classifier's `notice`: three artifacts are redistributed from this tree and
+ * each has its own NOTICE to travel with.
+ */
+export type WakeProvisionComponent =
+  | 'classifier'
+  | 'mobile-classifier'
+  | 'notice'
+  | 'embedding'
+  | 'embedding-notice'
+  | 'vad'
+  | 'vad-notice';
 
 /** Progress for one artifact during provisioning. */
 export interface WakeProvisionProgress {
@@ -248,7 +360,15 @@ export interface WakeComponentOutcome {
 }
 
 export interface WakeProvisionResult {
+  /**
+   * The DETECTOR can run: the onnx classifier, its NOTICE and the embedding all
+   * landed. Deliberately not "every artifact landed" — see
+   * {@link mobileFormatReady} — because this is the field a surface renders as
+   * "wake works", and the tflite twin is not something the detector loads.
+   */
   readonly ready: boolean;
+  /** The tflite form landed too, so the daemon can serve it. */
+  readonly mobileFormatReady: boolean;
   /**
    * The speech gate landed too. Separate from {@link ready} for the same reason
    * {@link WakeProvisionStatus.vadReady} is: the detector runs without the gate,
@@ -257,8 +377,10 @@ export interface WakeProvisionResult {
   readonly vadReady: boolean;
   readonly modelVersion: string | null;
   readonly outcomes: readonly WakeComponentOutcome[];
-  /** The attribution NOTICE's path, which must travel with redistributed artifacts. */
+  /** The classifier's attribution NOTICE, which must travel with it wherever it goes. */
   readonly noticePath: string | null;
+  /** The front end's attribution NOTICE, on exactly the same terms. */
+  readonly embeddingNoticePath: string | null;
   /** Restated at every provisioning boundary, not only in docs. */
   readonly recallIsSyntheticOnly: boolean;
 }
@@ -286,6 +408,7 @@ export async function provisionWakeWordModels(options: WakeProvisionOptions): Pr
   if (model === null) {
     return {
       ready: false,
+      mobileFormatReady: false,
       vadReady: false,
       modelVersion: null,
       outcomes: [
@@ -297,49 +420,61 @@ export async function provisionWakeWordModels(options: WakeProvisionOptions): Pr
         },
       ],
       noticePath: null,
+      embeddingNoticePath: null,
       recallIsSyntheticOnly: true,
     };
   }
   mkdirSync(paths.modelsDir, { recursive: true });
   mkdirSync(paths.frontEndDir, { recursive: true });
 
-  const plan: readonly { component: WakeComponentOutcome['component']; spec: VerifiedDownloadSpec; dest: string }[] = [
+  // Order matters for a partial network: the four the detector needs come first
+  // — each artifact immediately followed by its own attribution file — so an
+  // install that loses the connection part-way still leaves a WORKING detector
+  // rather than a tflite file and nothing to run. What the detector does not need
+  // follows: the speech gate (`voice.wake.vadThreshold` is 0 unless someone turns
+  // it on) and last the tflite twin, which nothing here loads.
+  const plan: readonly { component: WakeProvisionComponent; spec: VerifiedDownloadSpec; dest: string }[] = [
     { component: 'embedding', spec: WAKE_WORD_FRONT_END.embedding.download, dest: paths.embeddingPath },
+    { component: 'embedding-notice', spec: WAKE_WORD_FRONT_END.embedding.notice, dest: paths.embeddingNoticePath },
     { component: 'classifier', spec: model.onnx, dest: paths.classifierPath },
     { component: 'notice', spec: model.notice, dest: paths.noticePath },
     // The speech gate provisions WITH the wake models rather than on its own act:
-    // it is 20 kB beside their 3.7 MB, and a surface that has the detector but not
+    // it is 23 kB beside their 6.1 MB, and a surface that has the detector but not
     // the gate is a surface where voice.wake.vadThreshold refuses for a reason the
     // user cannot act on.
     { component: 'vad', spec: WAKE_VAD_MODEL.onnx, dest: paths.vadPath },
     { component: 'vad-notice', spec: WAKE_VAD_MODEL.notice, dest: paths.vadNoticePath },
+    { component: 'mobile-classifier', spec: model.tflite, dest: paths.mobileClassifierPath },
   ];
 
   const outcomes: WakeComponentOutcome[] = [];
   for (const step of plan) {
     outcomes.push(await provisionOne(step, options));
   }
-  // The gate not landing does not make the detector unready: vadThreshold is 0 by
-  // default, and the detector runs without it. It is reported separately instead.
-  const detectorComponents: readonly WakeProvisionComponent[] = ['classifier', 'notice', 'embedding'];
-  const ready = outcomes
-    .filter((outcome) => detectorComponents.includes(outcome.component))
-    .every((outcome) => outcome.state !== 'failed');
-  const vadReady = outcomes
-    .filter((outcome) => outcome.component === 'vad' || outcome.component === 'vad-notice')
-    .every((outcome) => outcome.state !== 'failed');
+  const landed = (component: WakeProvisionComponent): boolean =>
+    outcomes.some((outcome) => outcome.component === component && outcome.state !== 'failed');
+  // `ready` is the detector: the onnx classifier, the front end, and the
+  // attribution of each. Neither the tflite twin nor the speech gate is part of
+  // it — nothing here loads the twin, and vadThreshold is 0 by default, so the
+  // detector runs without the gate. Both are reported separately instead.
+  const ready = landed('classifier') && landed('notice') && landed('embedding') && landed('embedding-notice');
   return {
     ready,
-    vadReady,
+    mobileFormatReady: landed('mobile-classifier'),
+    vadReady: landed('vad') && landed('vad-notice'),
     modelVersion: model.version,
     outcomes,
-    noticePath: ready ? paths.noticePath : null,
+    // Each NOTICE's own outcome decides its path, not the run's: it must travel
+    // with whatever WAS redistributed, and it is on disk whenever its fetch
+    // succeeded, however the rest of the run went.
+    noticePath: landed('notice') ? paths.noticePath : null,
+    embeddingNoticePath: landed('embedding-notice') ? paths.embeddingNoticePath : null,
     recallIsSyntheticOnly: model.measurements.recallIsSyntheticOnly,
   };
 }
 
 async function provisionOne(
-  step: { component: WakeComponentOutcome['component']; spec: VerifiedDownloadSpec; dest: string },
+  step: { component: WakeProvisionComponent; spec: VerifiedDownloadSpec; dest: string },
   options: WakeProvisionOptions,
 ): Promise<WakeComponentOutcome> {
   const { component, spec, dest } = step;

@@ -17,6 +17,10 @@
  *     matches the pin; otherwise it is reaped so the next provision re-fetches it.
  *  4. REAP PERIODICALLY. {@link startWakeRecoverySweeper} keeps a long-lived
  *     daemon sweeping, because a process that only sweeps at boot never sweeps.
+ *     Its caller is `startWakeBootProvisioning` in ./install-provision.ts, which
+ *     starts it at every boot and then retries whatever the install could not
+ *     download — the sweep and the retry belong together, because reaping a torn
+ *     artifact is exactly what lets the retry replace it instead of skipping it.
  *  5. DISCLOSE. Every sweep writes a receipt next to the data
  *     ({@link WAKE_REAP_RECEIPT_FILE}) and returns a summary. Silent deletion is
  *     indistinguishable from data loss.
@@ -173,6 +177,10 @@ function sweepPinnedArtifacts(
     const model = resolveWakeWordModel(version);
     if (model === null) continue;
     pinnedNames.add(`goodvibes-wakeword-hey-goodvibes-${model.version}.onnx`);
+    // The tflite twin is provisioned too, so it is pinned too. Leaving it off
+    // this set would have the sweeper delete an artifact the provisioner had
+    // just verified, once an hour, forever.
+    pinnedNames.add(`goodvibes-wakeword-hey-goodvibes-${model.version}.tflite`);
     pinnedNames.add(`goodvibes-wakeword-hey-goodvibes-${model.version}.NOTICE.txt`);
   }
   for (const entry of listFiles(paths.modelsDir)) {
@@ -185,27 +193,38 @@ function sweepPinnedArtifacts(
     if (existsSync(paths.classifierPath) && !fileMatches(paths.classifierPath, current.onnx)) {
       remove(paths.classifierPath, 'failed-verification');
     }
+    if (existsSync(paths.mobileClassifierPath) && !fileMatches(paths.mobileClassifierPath, current.tflite)) {
+      remove(paths.mobileClassifierPath, 'failed-verification');
+    }
     if (existsSync(paths.noticePath) && !fileMatches(paths.noticePath, current.notice)) {
       remove(paths.noticePath, 'failed-verification');
     }
   }
   const embeddingSpec = WAKE_WORD_FRONT_END.embedding.download;
-  // The front-end directory holds the embedding AND the speech gate. Both are
-  // pinned, so anything else in there is an artifact of a version the manifest no
-  // longer lists — including a gate from an earlier retrain.
-  const frontEndNames = new Set([
-    `speech-embedding-${WAKE_WORD_FRONT_END.embedding.version}.onnx`,
-    `goodvibes-vad-${WAKE_VAD_MODEL.version}.onnx`,
-    `goodvibes-vad-${WAKE_VAD_MODEL.version}.NOTICE.txt`,
-  ]);
+  // Every file the provisioner writes into the front-end directory has to appear
+  // in this set, or the sweeper deletes an artifact that was just verified — once
+  // an hour, forever. That defect shipped once for the tflite; the embedding's
+  // NOTICE, the speech gate and the gate's own NOTICE are the other files this
+  // directory now holds and belong here for the same reason. A name-by-name set
+  // (rather than a suffix match) is what keeps a leftover from an older version
+  // reapable — including a gate from an earlier retrain.
+  const pinnedFrontEndNames = new Set<string>();
+  const embeddingVersion = WAKE_WORD_FRONT_END.embedding.version;
+  pinnedFrontEndNames.add(`speech-embedding-${embeddingVersion}.onnx`);
+  pinnedFrontEndNames.add(`speech-embedding-${embeddingVersion}.NOTICE.txt`);
+  pinnedFrontEndNames.add(`goodvibes-vad-${WAKE_VAD_MODEL.version}.onnx`);
+  pinnedFrontEndNames.add(`goodvibes-vad-${WAKE_VAD_MODEL.version}.NOTICE.txt`);
   for (const entry of listFiles(paths.frontEndDir)) {
     if (entry.name.endsWith('.part')) continue;
-    if (!frontEndNames.has(entry.name)) {
+    if (!pinnedFrontEndNames.has(entry.name)) {
       remove(entry.path, 'unpinned-version');
     }
   }
   if (existsSync(paths.embeddingPath) && !fileMatches(paths.embeddingPath, embeddingSpec)) {
     remove(paths.embeddingPath, 'failed-verification');
+  }
+  if (existsSync(paths.embeddingNoticePath) && !fileMatches(paths.embeddingNoticePath, WAKE_WORD_FRONT_END.embedding.notice)) {
+    remove(paths.embeddingNoticePath, 'failed-verification');
   }
   if (existsSync(paths.vadPath) && !fileMatches(paths.vadPath, WAKE_VAD_MODEL.onnx)) {
     remove(paths.vadPath, 'failed-verification');

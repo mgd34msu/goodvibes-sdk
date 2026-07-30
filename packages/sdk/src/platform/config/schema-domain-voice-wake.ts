@@ -9,8 +9,14 @@
  * EVERY ROW IS A REAL FEATURE, NOT A SWITCH. Each key below changes behaviour that
  * exists and is reachable, and each carries a written description of what it does and
  * why its default is what it is. `voice.wake.enabled` defaults to `false`: an
- * always-on microphone must be an explicit act, matching the `voice.local.*` posture
- * that nothing auto-downloads and nothing auto-starts.
+ * always-on microphone must be an explicit act.
+ *
+ * The MODEL is not that act. It ships with the installation — the installer and the
+ * npm postinstall provision it, and a daemon retries at boot — so the row above is
+ * the only thing between an installed machine and a working wake word. What still
+ * never happens is a download triggered by a switch: enabling detection on a host
+ * whose artifacts are absent reports which are missing and names the recovery
+ * command, exactly as it did when provisioning was the user's job.
  *
  * THESE ROWS ARE LIVE, AND SAY WHERE
  *
@@ -152,9 +158,12 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
       + 'subprocess and is on by default, the agent captures the same way and is opted in per surface, and a browser '
       + 'tab captures through getUserMedia and is opted in per origin. '
       + 'Off by default because an always-on microphone must be an explicit act, not something a user discovers after '
-      + 'the fact — the same posture as voice.local.*, where nothing auto-downloads and nothing auto-starts. The '
-      + 'pinned model is downloaded on an explicit provision, so enabling this on a host that has not provisioned '
-      + 'reports what is missing instead of silently fetching 3.7 MB.',
+      + 'the fact. '
+      + 'THE MODEL IS ALREADY THERE: installing goodvibes downloads and checksum-verifies the pinned classifier, and a '
+      + 'daemon retries at boot if the install could not reach the network — so turning this on normally needs no setup '
+      + 'step at all. Turning it on never downloads anything itself: on a host whose artifacts are missing or fail '
+      + 'verification it says exactly which, and names the command that fetches them, rather than silently pulling '
+      + '6.1 MB the moment a switch moves.',
   },
   {
     key: 'voice.wake.models',

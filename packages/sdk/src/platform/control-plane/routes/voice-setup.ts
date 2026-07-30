@@ -100,10 +100,9 @@ export function createWakeModelHandler(service: VoiceSetupGatewayService): Gatew
   return (input) => {
     const params = (input ?? {}) as { component?: unknown; offset?: unknown; maxBytes?: unknown };
     const component = typeof params.component === 'string' ? params.component : '';
-    if (component !== 'classifier' && component !== 'embedding' && component !== 'notice' && component !== 'vad') {
-      throw new Error(
-        `voice.wake.model.get: component must be classifier, embedding, notice or vad (got "${component}")`,
-      );
+    const known = ['classifier', 'tflite', 'embedding', 'notice', 'embedding-notice', 'vad', 'vad-notice'];
+    if (!known.includes(component)) {
+      throw new Error(`voice.wake.model.get: component must be one of ${known.join(', ')} (got "${component}")`);
     }
     return service.wakeModelChunk({
       component,
