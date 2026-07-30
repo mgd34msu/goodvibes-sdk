@@ -12,6 +12,7 @@
 import type { Exec, Logger } from './effects.js';
 import { realExec, consoleLogger } from './effects.js';
 import type { BinaryTarget, BuildConfig } from '../config.js';
+import { describeMissingRequired, resolveOptionalExternals, type DependencyManifest } from './optional-externals.js';
 
 /** Resolve which targets to build and whether the daemon leg is forced off/only. */
 export interface TargetSelection {
@@ -72,6 +73,15 @@ export interface RunBuildOptions {
   readonly nativeKey: string;
   /** Copies a resolved native addon into place; returns false if it could not be provided. Injected so the real fs copy stays out of the policy. */
   readonly provideAddon?: (target: BinaryTarget, sameHost: boolean) => boolean;
+  /**
+   * Manifests whose `optionalDependencies` may be externalised and whose
+   * `dependencies` must be present. Omit both this and `isPackageInstalled`
+   * and the screen does not run at all, which is what every existing caller
+   * gets.
+   */
+  readonly dependencyManifests?: readonly DependencyManifest[];
+  /** True when the package resolves from the build root. */
+  readonly isPackageInstalled?: (packageName: string) => boolean;
   readonly exec?: Exec;
   readonly logger?: Logger;
 }
@@ -89,9 +99,33 @@ export function runBuildBinaries(options: RunBuildOptions): BuildOutcome[] {
     if (res.status !== 0) throw new Error(`prebuild failed: ${cmd.join(' ')}\n${res.stderr}`);
   }
 
+  // An optionalDependency that is not installed becomes `--external`, so bun
+  // leaves the specifier for runtime and the SDK's own unavailability report
+  // governs instead of the bundle failing to resolve. A missing REQUIRED
+  // package fails here instead, loudly and by name — see optional-externals.ts
+  // for why that asymmetry is the whole point.
+  let optionalExternals: readonly string[] = [];
+  if (options.dependencyManifests && options.isPackageInstalled) {
+    const screened = resolveOptionalExternals({
+      manifests: options.dependencyManifests,
+      isInstalled: options.isPackageInstalled,
+    });
+    if (screened.missingRequired.length > 0) throw new Error(describeMissingRequired(screened.missingRequired));
+    optionalExternals = screened.externals;
+    if (optionalExternals.length > 0) {
+      logger.info(
+        `[build-binaries] ${optionalExternals.length} optional package(s) not installed — left external, `
+        + `the feature reports itself unavailable at runtime: ${optionalExternals.join(', ')}`,
+      );
+    }
+  }
+
   const outcomes: BuildOutcome[] = [];
   for (const target of selection.targets) {
-    const externals = target.nativeAddonPackage ? [target.nativeAddonPackage] : [];
+    const externals = [
+      ...(target.nativeAddonPackage ? [target.nativeAddonPackage] : []),
+      ...optionalExternals,
+    ];
     let ok = true;
     let detail = '';
 

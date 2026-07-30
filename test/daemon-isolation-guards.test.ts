@@ -38,6 +38,50 @@ import { describeSecretIsolation } from '../packages/sdk/src/platform/runtime/se
 const MACHINE_HOME = '/home/owner';
 
 // ---------------------------------------------------------------------------
+// Scratch directories — created here, removed here
+// ---------------------------------------------------------------------------
+
+/**
+ * Every scratch directory this file makes, so the cleanup removes exactly the
+ * ones this run created and nothing else.
+ *
+ * This file used to create a throwaway home per harness and per compiled case
+ * and remove only the two directories holding the compiled binaries. Every
+ * `gv-promotion-…`, `gv-…-home-…` and `gv-flag-home-…` it made survived the
+ * run, and the host this was measured on had accumulated roughly three
+ * thousand of them from repeated runs — persisted residue with nothing reaping
+ * it, on a tmpfs where each one costs inodes.
+ *
+ * A registry of the paths we made, rather than a glob sweep of `tmpdir()` for
+ * the prefixes: another copy of this suite may be running beside this one, and
+ * a prefix sweep would delete the directories it is still using out from under
+ * it. `mkdtempSync` already guarantees each name is unique, so removing only
+ * what we recorded is both complete for this run and incapable of touching
+ * another.
+ */
+const scratchDirs: string[] = [];
+
+/** `mkdtempSync`, with the result registered for removal. */
+function scratchDir(prefix: string): string {
+  const dir = mkdtempSync(join(tmpdir(), prefix));
+  scratchDirs.push(dir);
+  return dir;
+}
+
+afterAll(() => {
+  // `force` so an already-removed directory is not an error, and each removal
+  // is independent so one failure cannot strand the rest.
+  for (const dir of scratchDirs.splice(0)) {
+    try {
+      rmSync(dir, { recursive: true, force: true });
+    } catch {
+      // A directory we cannot remove must not fail the suite that made it —
+      // the assertions have already run and the reason to be here is hygiene.
+    }
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Guard 1 — a daemon with an overridden home never seizes the service unit
 // ---------------------------------------------------------------------------
 
@@ -48,7 +92,7 @@ function makePromotionHarness(options: { readonly hasOverriddenHome?: boolean | 
 } {
   let adopted = 0;
   const exits: number[] = [];
-  const scratch = mkdtempSync(join(tmpdir(), 'gv-promotion-'));
+  const scratch = scratchDir('gv-promotion-');
   const runtime = new DaemonLifecycleRuntime({
     // `service.enabled` is deliberately TRUE here: the guard must not depend on
     // the isolated process having written its own opt-out, because that key is
@@ -207,7 +251,7 @@ interface CompiledEntry {
 
 /** Compile one entry the way the release lane does (see toolchain buildCompileArgs). */
 function compileEntry(entry: string, name: string): CompiledEntry {
-  const dir = mkdtempSync(join(tmpdir(), `gv-compiled-${name}-`));
+  const dir = scratchDir(`gv-compiled-${name}-`);
   const binary = join(dir, name);
   const built = spawnSync(
     process.execPath,
@@ -247,7 +291,7 @@ function runDaemon(binary: string, home: string, args: readonly string[] = []): 
 
 /** A home whose daemon tier holds exactly `settings`. */
 function homeWithDaemonSettings(settings: unknown, label: string): string {
-  const home = mkdtempSync(join(tmpdir(), `gv-${label}-`));
+  const home = scratchDir(`gv-${label}-`);
   mkdirSync(join(home, '.goodvibes', 'daemon'), { recursive: true });
   mkdirSync(join(home, 'work'), { recursive: true });
   writeFileSync(join(home, '.goodvibes', 'daemon', 'settings.json'), JSON.stringify(settings), 'utf-8');
@@ -262,10 +306,9 @@ describe('the compiled daemon says why it will not start', () => {
     fixed = compileEntry('test/fixtures/daemon-fatal-boot-entry.ts', 'gvd');
     legacy = compileEntry('test/fixtures/daemon-fatal-boot-legacy-entry.ts', 'gvd-legacy');
   });
-  afterAll(() => {
-    rmSync(fixed.dir, { recursive: true, force: true });
-    rmSync(legacy.dir, { recursive: true, force: true });
-  });
+  // No local afterAll: both compile directories come from `scratchDir`, so the
+  // file-level cleanup removes them along with every throwaway home. One
+  // registry rather than two removal paths is what stopped the homes leaking.
 
   test('the shape that shipped writes NOTHING to either stream — the baseline', () => {
     // Not an assumption about how a compiled binary flushes: a fatal handler
@@ -279,7 +322,7 @@ describe('the compiled daemon says why it will not start', () => {
   });
 
   test('an unparseable settings file names the file and the parse error on stderr', () => {
-    const home = mkdtempSync(join(tmpdir(), 'gv-corrupt-home-'));
+    const home = scratchDir('gv-corrupt-home-');
     mkdirSync(join(home, '.goodvibes', 'daemon'), { recursive: true });
     mkdirSync(join(home, 'work'), { recursive: true });
     const settingsPath = join(home, '.goodvibes', 'daemon', 'settings.json');
@@ -323,7 +366,7 @@ describe('the compiled daemon says why it will not start', () => {
     // override of the daemon home — so the only thing that can redirect the
     // read is the flag itself.
     const realHome = homeWithDaemonSettings({ controlPlane: { port: 31111 } }, 'real-home');
-    const flagHome = mkdtempSync(join(tmpdir(), 'gv-flag-home-'));
+    const flagHome = scratchDir('gv-flag-home-');
     writeFileSync(join(flagHome, 'settings.json'), JSON.stringify({ controlPlane: { port: 32222 } }), 'utf-8');
 
     // Without the flag, the real home answers — otherwise the sentinel proves nothing.
