@@ -33,13 +33,21 @@ import {
 } from '../voice/wake/provisioning.js';
 import {
   resolveWakeWordModel,
+  WAKE_VAD_MODEL,
   WAKE_WORD_FRONT_END,
 } from '../voice/provisioning/wake-word-manifest.js';
 import { bytesToBase64 } from '../voice/capture/frames.js';
 import { singleFlight } from '../utils/single-flight.js';
 
-/** Which pinned artifact a chunk read is asking for. */
-export type WakeModelComponent = 'classifier' | 'embedding' | 'notice';
+/**
+ * Which pinned artifact a chunk read is asking for.
+ *
+ * `vad` is the speech gate `voice.wake.vadThreshold` runs. A browser tab needs it
+ * from here for exactly the reason it needs the classifier from here: the release
+ * assets answer without an `access-control-allow-origin` header, so the tab cannot
+ * fetch them itself.
+ */
+export type WakeModelComponent = 'classifier' | 'embedding' | 'notice' | 'vad';
 
 /** Largest chunk a single read returns, before base64. */
 export const WAKE_MODEL_CHUNK_MAX_BYTES = 512 * 1024;
@@ -93,6 +101,9 @@ function resolveComponent(
   const model = resolveWakeWordModel();
   if (component === 'embedding') {
     return { path: paths.embeddingPath, sha256: WAKE_WORD_FRONT_END.embedding.download.sha256 };
+  }
+  if (component === 'vad') {
+    return { path: paths.vadPath, sha256: WAKE_VAD_MODEL.onnx.sha256 };
   }
   if (model === null) {
     throw new Error('[wake] no wake-word model is pinned, so no artifact can be served');
