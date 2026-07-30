@@ -173,6 +173,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
     the inbound-mail poller. The default TLS path is unchanged, and a transport
     with no plaintext factory is refused by name rather than quietly upgraded.
 
+- **`runtime.unifiedTasks` claimed off; the shipped behavior was always on.**
+  The key's recorded default was `false` and the `unified-runtime-task` flag's
+  `defaultState` was `disabled`, but every consumer composition root built its
+  task manager without a feature-flag manager at all, and the gate underneath
+  is permissive with none wired — so the setting never actually governed
+  anything, and task tracking (including the `/tasks` command and operator
+  interventions) has always run regardless of this key. The default now
+  records the truth (`true`/`enabled`) instead of a value the software never
+  actually honored, so consumers can wire the flag manager and have `false`
+  genuinely turn the runtime task manager off, with zero behavior change for
+  any install that never touched this setting.
+
 ## [1.19.2] - 2026-07-29
 
 Repairs inbound message delivery for every configured chat, notification and
