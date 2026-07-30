@@ -17,6 +17,10 @@
  *     matches the pin; otherwise it is reaped so the next provision re-fetches it.
  *  4. REAP PERIODICALLY. {@link startWakeRecoverySweeper} keeps a long-lived
  *     daemon sweeping, because a process that only sweeps at boot never sweeps.
+ *     Its caller is `startWakeBootProvisioning` in ./install-provision.ts, which
+ *     starts it at every boot and then retries whatever the install could not
+ *     download — the sweep and the retry belong together, because reaping a torn
+ *     artifact is exactly what lets the retry replace it instead of skipping it.
  *  5. DISCLOSE. Every sweep writes a receipt next to the data
  *     ({@link WAKE_REAP_RECEIPT_FILE}) and returns a summary. Silent deletion is
  *     indistinguishable from data loss.
@@ -173,6 +177,10 @@ function sweepPinnedArtifacts(
     const model = resolveWakeWordModel(version);
     if (model === null) continue;
     pinnedNames.add(`goodvibes-wakeword-hey-goodvibes-${model.version}.onnx`);
+    // The tflite twin is provisioned too, so it is pinned too. Leaving it off
+    // this set would have the sweeper delete an artifact the provisioner had
+    // just verified, once an hour, forever.
+    pinnedNames.add(`goodvibes-wakeword-hey-goodvibes-${model.version}.tflite`);
     pinnedNames.add(`goodvibes-wakeword-hey-goodvibes-${model.version}.NOTICE.txt`);
   }
   for (const entry of listFiles(paths.modelsDir)) {
@@ -184,6 +192,9 @@ function sweepPinnedArtifacts(
   if (current !== null) {
     if (existsSync(paths.classifierPath) && !fileMatches(paths.classifierPath, current.onnx)) {
       remove(paths.classifierPath, 'failed-verification');
+    }
+    if (existsSync(paths.mobileClassifierPath) && !fileMatches(paths.mobileClassifierPath, current.tflite)) {
+      remove(paths.mobileClassifierPath, 'failed-verification');
     }
     if (existsSync(paths.noticePath) && !fileMatches(paths.noticePath, current.notice)) {
       remove(paths.noticePath, 'failed-verification');

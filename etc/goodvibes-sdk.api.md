@@ -6534,7 +6534,7 @@ export interface OperatorMethodInputMap {
     };
     // (undocumented)
     "voice.wake.model.get": {
-        component: "classifier" | "embedding" | "notice";
+        component: "classifier" | "embedding" | "notice" | "tflite";
         offset?: number;
         maxBytes?: number;
     };
@@ -23023,7 +23023,7 @@ export interface OperatorMethodOutputMap {
     };
     // (undocumented)
     "voice.wake.model.get": {
-        component: "classifier" | "embedding" | "notice";
+        component: "classifier" | "embedding" | "notice" | "tflite";
         offset: number;
         bytes: number;
         totalBytes: number;
@@ -23034,11 +23034,12 @@ export interface OperatorMethodOutputMap {
     // (undocumented)
     "voice.wake.provision": {
         ready: boolean;
+        mobileFormatReady: boolean;
         modelVersion: null | string;
         noticePath: null | string;
         recallIsSyntheticOnly: boolean;
         outcomes: readonly ({
-            component: "classifier" | "embedding" | "notice";
+            component: "classifier" | "embedding" | "mobile-classifier" | "notice";
             state: "failed" | "installed" | "skipped";
             path: string;
             bytes?: number;
@@ -23050,6 +23051,12 @@ export interface OperatorMethodOutputMap {
         ready: boolean;
         reason: null | string;
         classifier: {
+            path: string;
+            verified: boolean;
+            corrupt: boolean;
+            bytes: number;
+        };
+        mobileClassifier: {
             path: string;
             verified: boolean;
             corrupt: boolean;

@@ -37257,7 +37257,7 @@ Whether the managed local voice runtime (piper TTS + a default voice) is install
 
 #### `voice.wake.model.get`
 
-Read one provisioned wake artifact in bounded chunks, for a surface that cannot fetch it itself — a browser tab, whose cross-origin fetch of the release asset is refused because that asset answers with no CORS header. Each chunk carries the offset, the whole artifact's size, and its PINNED sha256, so a client reassembles the file and verifies it against the pin: a truncated transfer fails at the consumer instead of loading as a model that silently never detects. Provision first — this serves what is on disk and does not download.
+Read one provisioned wake artifact in bounded chunks, for a surface that cannot fetch it itself — a browser tab, whose cross-origin fetch of the release asset is refused because that asset answers with no CORS header. Each chunk carries the offset, the whole artifact's size, and its PINNED sha256, so a client reassembles the file and verifies it against the pin: a truncated transfer fails at the consumer instead of loading as a model that silently never detects. Both classifier formats are served — "classifier" is the onnx build a browser tab loads, "tflite" the same classifier for a runtime that cannot. Serves what is on disk and does not download; installation puts it there, and voice.wake.provision is the recovery path when it is missing.
 
 - Title: `Read Wake-Word Model Bytes`
 - Source: `builtin`
@@ -37279,6 +37279,7 @@ Read one provisioned wake artifact in bounded chunks, for a surface that cannot 
       "type": "string",
       "enum": [
         "classifier",
+        "tflite",
         "embedding",
         "notice"
       ]
@@ -37307,6 +37308,7 @@ Read one provisioned wake artifact in bounded chunks, for a surface that cannot 
       "type": "string",
       "enum": [
         "classifier",
+        "tflite",
         "embedding",
         "notice"
       ]
@@ -37345,7 +37347,7 @@ Read one provisioned wake artifact in bounded chunks, for a surface that cannot 
 
 #### `voice.wake.provision`
 
-Download and checksum-verify the pinned wake-word classifier, its NOTICE, and the speech-embedding front end into the goodvibes-managed directory — about 3.7 MB. Downloads only when you ask, and is resumable by re-running: an artifact that already matches its pin is skipped, and one that is present but fails verification is replaced rather than used. A failed or mismatched download keeps nothing at the destination. Single-flight: two surfaces asking at once join one download instead of racing for the same files.
+Download and checksum-verify the pinned wake-word classifier in both runtime formats (onnx and tflite), its NOTICE, and the speech-embedding front end into the goodvibes-managed directory — about 6.1 MB. Installing goodvibes already does this, and a daemon retries at boot, so this verb is the RECOVERY path: an install that was offline, an artifact that failed verification, or a re-provision after the pinned model changes. Resumable by re-running: an artifact that already matches its pin is skipped, and one that is present but fails verification is replaced rather than used. A failed or mismatched download keeps nothing at the destination. Single-flight: two surfaces asking at once — or a boot attempt and a user asking — join one download instead of racing for the same files.
 
 - Title: `Download the Wake-Word Models`
 - Source: `builtin`
@@ -37374,6 +37376,9 @@ Download and checksum-verify the pinned wake-word classifier, its NOTICE, and th
   "type": "object",
   "properties": {
     "ready": {
+      "type": "boolean"
+    },
+    "mobileFormatReady": {
       "type": "boolean"
     },
     "modelVersion": {
@@ -37408,6 +37413,7 @@ Download and checksum-verify the pinned wake-word classifier, its NOTICE, and th
             "type": "string",
             "enum": [
               "classifier",
+              "mobile-classifier",
               "notice",
               "embedding"
             ]
@@ -37441,6 +37447,7 @@ Download and checksum-verify the pinned wake-word classifier, its NOTICE, and th
   },
   "required": [
     "ready",
+    "mobileFormatReady",
     "modelVersion",
     "noticePath",
     "recallIsSyntheticOnly",
@@ -37452,7 +37459,7 @@ Download and checksum-verify the pinned wake-word classifier, its NOTICE, and th
 
 #### `voice.wake.status`
 
-Whether the pinned wake-word artifacts are on disk and VERIFIED BY CONTENT: the "hey goodvibes" classifier, its attribution NOTICE, and the speech-embedding front end the classifier sits behind. Each reports verified, corrupt (present but failing its checksum — a truncated or swapped file, distinct from missing) and its byte size, with the total a fresh provision would download. Also restates that the model's published recall figures are measured on synthesised speech only, which any surface describing the model must carry. Never downloads. Read-only.
+Whether the pinned wake-word artifacts are on disk and VERIFIED BY CONTENT: the "hey goodvibes" classifier, the tflite form of the same classifier, its attribution NOTICE, and the speech-embedding front end the classifier sits behind. Each reports verified, corrupt (present but failing its checksum — a truncated or swapped file, distinct from missing) and its byte size, with the total a fresh provision would download. Installing goodvibes provisions these, and a daemon retries at boot whatever the install could not fetch, so on a normal machine this reads ready without anyone having run a setup command; an offline install reports not-provisioned here until it is retried. The overall ready flag covers what the DETECTOR loads (classifier, NOTICE, front end) — a host missing only the tflite twin can still detect. Also restates that the model's published recall figures are measured on synthesised speech only, which any surface describing the model must carry. Never downloads. Read-only.
 
 - Title: `Get Wake-Word Model State`
 - Source: `builtin`
@@ -37494,6 +37501,30 @@ Whether the pinned wake-word artifacts are on disk and VERIFIED BY CONTENT: the 
       ]
     },
     "classifier": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "verified": {
+          "type": "boolean"
+        },
+        "corrupt": {
+          "type": "boolean"
+        },
+        "bytes": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "path",
+        "verified",
+        "corrupt",
+        "bytes"
+      ],
+      "additionalProperties": false
+    },
+    "mobileClassifier": {
       "type": "object",
       "properties": {
         "path": {
@@ -37586,6 +37617,7 @@ Whether the pinned wake-word artifacts are on disk and VERIFIED BY CONTENT: the 
     "ready",
     "reason",
     "classifier",
+    "mobileClassifier",
     "notice",
     "embedding",
     "downloadBytes",

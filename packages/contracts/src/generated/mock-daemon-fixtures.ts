@@ -6843,6 +6843,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
     "status": 200,
     "body": {
       "ready": false,
+      "mobileFormatReady": false,
       "modelVersion": "sample",
       "noticePath": "sample",
       "recallIsSyntheticOnly": false,
@@ -6868,6 +6869,12 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       "ready": false,
       "reason": "sample",
       "classifier": {
+        "path": "sample",
+        "verified": false,
+        "corrupt": false,
+        "bytes": 0
+      },
+      "mobileClassifier": {
         "path": "sample",
         "verified": false,
         "corrupt": false,

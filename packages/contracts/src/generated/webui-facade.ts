@@ -8949,6 +8949,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
     "input": {},
     "output": {
       "ready": false,
+      "mobileFormatReady": false,
       "modelVersion": "sample",
       "noticePath": "sample",
       "recallIsSyntheticOnly": false,
@@ -8969,6 +8970,12 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
       "ready": false,
       "reason": "sample",
       "classifier": {
+        "path": "sample",
+        "verified": false,
+        "corrupt": false,
+        "bytes": 0
+      },
+      "mobileClassifier": {
         "path": "sample",
         "verified": false,
         "corrupt": false,
