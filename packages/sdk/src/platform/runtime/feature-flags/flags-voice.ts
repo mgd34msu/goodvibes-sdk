@@ -24,6 +24,8 @@ export const VOICE_FEATURE_FLAGS: FeatureFlag[] = [
       + 'Disabled by default because holding a microphone open must be an explicit act; enabling '
       + 'it starts a supervised capture process and shows a persistent listening indicator for as '
       + 'long as it runs. '
+      + 'Live on all three surfaces: the terminal and the agent through a recorder subprocess, the web UI '
+      + 'in a browser tab. Each is opted in by its own voice.wake.surfaces.* row. '
       + 'Tuned through voice.wake.*, whose threshold, patience and cooldown rows govern how '
       + 'readily it fires, and whose supervisor rows bound how a crashing detector is retried. '
       + 'The model\'s published recall figures are measured on synthesised speech only — no human '
@@ -31,25 +33,12 @@ export const VOICE_FEATURE_FLAGS: FeatureFlag[] = [
     defaultState: 'disabled',
     tier: 3,
     runtimeToggleable: true,
-    // The platform half is complete and tested — front end, engine, detection
-    // rules, checksum-pinned provisioning, recovery housekeeping, supervisor.
-    // What does not exist yet is the per-surface half: nothing captures audio,
-    // supplies an inference session, plays the chime, draws the indicator, or
-    // hands a transcript anywhere. Consumers pin a published SDK version and
-    // cannot compile against this one until it publishes, so the wiring lands
-    // in the release after it.
-    //
-    // Declared rather than left implicit because the alternative already
-    // shipped and reached a user: a settings switch that flips cleanly and
-    // silently does nothing. REMOVE THIS FIELD in the same change that wires
-    // capture and a session loader up — not before, and not separately.
-    notOperable: {
-      reason: 'no-runtime-wiring',
-      detail:
-        'Wake-word detection is not available in this build. The detector itself is complete — model, front end, '
-        + 'scoring and provisioning all ship here — but no surface captures microphone audio or supplies it an '
-        + 'inference runtime yet, so turning this on would do nothing. Your setting is remembered and takes effect '
-        + 'in the release that adds capture; nothing is listening until then.',
-    },
+    // `notOperable` is GONE, in the same change that wired capture up — which is
+    // the rule this field carried in writing. The terminal and the agent open a
+    // recorder subprocess and the browser tab opens getUserMedia; all three feed
+    // the engine frames and all three hand the utterance after a wake to the same
+    // speech-to-text call. What remains limited is per-ROW, not per-surface
+    // (voice.wake.vadThreshold has no pinned VAD model; a browser tab has no
+    // filesystem), and each of those rows says so itself.
   },
 ];

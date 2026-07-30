@@ -203,6 +203,23 @@ function sweepPinnedArtifacts(
 }
 
 /**
+ * The filename a retained clip MUST be written under, so the sweeper can tell
+ * whose it is.
+ *
+ * The convention is load-bearing rather than cosmetic: {@link sweepRetained}
+ * reads the session id from the first `--`-delimited segment, so a host that
+ * invents its own naming gets clips reaped as orphans, or worse, never reaped.
+ * Exported so no surface has to re-derive it from reading this file.
+ */
+export function retainedClipFileName(sessionId: string, at: number, extension = 'wav'): string {
+  // Colons and slashes are not portable in filenames, and the session id is the
+  // one segment the sweeper parses, so a `--` inside it would split wrong.
+  const safeSession = sessionId.replace(/[^A-Za-z0-9_.-]/g, '_').replace(/-{2,}/g, '-');
+  const stamp = new Date(at).toISOString().replace(/[:.]/g, '-');
+  return `${safeSession}--${stamp}.${extension}`;
+}
+
+/**
  * Bound retained debug audio three ways: by owning session, by age, and by
  * count. Clip filenames carry their session id as the first `--`-delimited
  * segment, which is how an orphan is recognised.

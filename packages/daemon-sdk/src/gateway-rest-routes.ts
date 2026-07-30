@@ -169,6 +169,15 @@ export const GATEWAY_REST_ROUTES: readonly GatewayRestRoute[] = [
   // voice.local.* — managed local-voice runtime status + one-act install.
   route('GET', '/api/voice/local/status', 'voice.local.status'),
   route('POST', '/api/voice/local/install', 'voice.local.install'),
+  // voice.wake.* — the pinned wake-word artifacts: content-verified state, the
+  // explicit ~3.7MB provision, and a bounded chunked read of one artifact's
+  // bytes. The last exists because a browser tab cannot fetch the pinned asset
+  // itself (the release asset answers with no CORS header), so the tab reads it
+  // from here, same-origin, and verifies what it reassembled against the
+  // pinned checksum each chunk restates.
+  route('GET', '/api/voice/wake/status', 'voice.wake.status'),
+  route('POST', '/api/voice/wake/provision', 'voice.wake.provision'),
+  route('GET', '/api/voice/wake/model', 'voice.wake.model.get'),
   // calendar.* — event read/write and iCalendar import/export over the
   // platform Google connector. These paths were advertised for a long time
   // with nothing behind them, because the connector lived inside one product

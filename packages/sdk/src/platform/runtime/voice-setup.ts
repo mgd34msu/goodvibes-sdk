@@ -26,6 +26,12 @@ import {
   type VoiceRuntimeStatus,
 } from '../voice/provisioning/index.js';
 import { singleFlight } from '../utils/single-flight.js';
+import {
+  createWakeSetupService,
+  type WakeModelChunkRequest,
+  type WakeModelChunkResult,
+  type WakeSetupService,
+} from './wake-setup.js';
 
 /** What voice.local.install resolves with (the wire receipt). */
 export interface VoiceInstallReceipt {
@@ -57,12 +63,19 @@ export interface VoiceSetupServiceDeps {
 export interface VoiceSetupService {
   status(): VoiceRuntimeStatus;
   install(): Promise<VoiceInstallReceipt>;
+  /** Wake-word artifact state, verified by content. See runtime/wake-setup.ts. */
+  wakeStatus(): ReturnType<WakeSetupService['status']>;
+  wakeProvision(): ReturnType<WakeSetupService['provision']>;
+  wakeModelChunk(request: WakeModelChunkRequest): WakeModelChunkResult;
 }
 
 export function createVoiceSetupService(deps: VoiceSetupServiceDeps): VoiceSetupService {
   const provision = deps.provision ?? provisionLocalVoiceRuntime;
   const readStatus = deps.readStatus ?? localVoiceRuntimeStatus;
   const progress = createVoiceInstallProgressTracker();
+  // Wake artifacts live under the same managed voice root, in its `wake`
+  // subdirectory, so they share this service's ownership of that tree.
+  const wake = createWakeSetupService({ managedVoiceRoot: deps.managedVoiceRoot });
 
   const runInstall = singleFlight(async (): Promise<VoiceInstallReceipt> => {
     progress.begin();
@@ -125,5 +138,17 @@ export function createVoiceSetupService(deps: VoiceSetupServiceDeps): VoiceSetup
       }
       return runInstall();
     },
+    wakeStatus: () => wake.status(),
+    async wakeProvision() {
+      // Same admission gate as the local runtime install: this one is 3.7 MB
+      // rather than 209 MB, but it still buffers artifacts to verify them, and
+      // refusing honestly under memory pressure beats adding to it.
+      const admission = deps.admitExpensiveWork('wake-word model provision');
+      if (!admission.allowed) {
+        throw new Error(admission.reason ?? 'wake-word provision refused: daemon is under critical memory pressure.');
+      }
+      return wake.provision();
+    },
+    wakeModelChunk: (request) => wake.modelChunk(request),
   };
 }

@@ -8,6 +8,56 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Added
 
+- **Audio capture, as a capability the whole voice stack shares — so the wake
+  word actually listens and the terminal can finally talk to speech-to-text.**
+  The detector shipped complete and unused: twenty-five `voice.wake.*` rows, a
+  pinned classifier, a front end computed in code, and nothing anywhere that
+  opened a microphone. Capture now exists in
+  `platform/voice/capture`, and it is deliberately NOT a wake-word detail — two
+  consumers share one device path.
+
+  - **A wake starts a capture session, it does not end one.** On a confirmed
+    detection the same stream switches to recording the utterance that follows,
+    seeded with the pre-roll from before the wake fired, and ends on
+    `voice.wake.silenceStopMs` or at `voice.wake.captureMaxSeconds`. Re-opening
+    the device at that moment would drop the front of the sentence and race
+    whatever still holds it, which is the whole reason push-to-talk and wake
+    detection cannot be separate stacks.
+  - **Push-to-talk voice input is the other consumer**, and it is what the
+    terminal never had: whisper was provisioned there and transcribed on
+    request, while nothing on that surface had ever captured a sample.
+    `PushToTalkSession` is the shared state machine — asking for the device is
+    its own visible phase, and the device is released on every path out,
+    including the failing ones.
+  - **The recorder argv was checked against the real tools.** Most
+    consequentially, `pw-record` is given `--container raw`: without it the
+    stream carries a container header before the samples, byte-misaligning
+    everything downstream — which does not fail, it just never detects. `sox`
+    cannot select a device from its arguments at all, so the resolved command
+    reports that instead of quietly ignoring `voice.wake.inputDevice`, and a
+    recorder named explicitly and not installed is reported rather than silently
+    swapped for another one, because pinning it was the point.
+  - **Frames carry int16 magnitudes as floats**, the scale the classifier was
+    trained on. Normalised −1..1 audio scores near zero forever and looks
+    exactly like a microphone that is picking nothing up, so the frame contract
+    says so in writing and `AudioFrameSlicer` re-cuts a recorder's ragged pipe
+    reads into exact frames, carrying the remainder rather than dropping or
+    padding it.
+  - **`resolveWakeRuntimeSettings` is the one place every row becomes
+    behaviour**, and the keys it reads are asserted against the schema in both
+    directions — a row nothing reads is a row that configures nothing, which is
+    precisely the state this change found. Rows that cannot take effect are
+    reported as blockers (the detector does not start) or limitations (it runs,
+    with that row not in force), each with a written reason.
+  - **Three new verbs on the existing voice-setup group**:
+    `voice.wake.status` (content-verified state of the pinned artifacts),
+    `voice.wake.provision` (explicit, single-flight, ~3.7 MB) and
+    `voice.wake.model`. The last exists because a browser tab cannot fetch the
+    pinned assets itself — they answer with no CORS header — so it reads them
+    from the daemon in bounded chunks, each restating the pinned sha256, and
+    verifies the file it reassembled before creating a session.
+
+
 - **Occasions and plans — the daemon raises important dates on its own, before
   they matter.** A new `## Important dates` section and a new `## Plans` section
   in the owner profile hold his own declarations, as prose lines he can hand-edit
@@ -106,6 +156,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   - **A broken value reads as the stock posture, never a wider one.** A number
     that is not finite or not positive, or an enum value outside its list, falls
     back to the shipped default instead of being passed through.
+
+### Changed
+
+- **`voice.wake.enabled` no longer lies, in either direction.** The
+  `wake-word-detection` registry entry's `notOperable` declaration is gone,
+  removed in the same change that wired capture up as its own comment required,
+  so the feature gate now follows the setting instead of refusing it outright.
+  Every settings description was rewritten to say what is true PER SURFACE
+  rather than that the feature does nothing: the terminal and the agent capture
+  through a recorder subprocess (the terminal on by default), a browser tab
+  captures through `getUserMedia` and is opted in per origin, and the rows that
+  remain limited name their own limit — `voice.wake.vadThreshold` above 0
+  refuses to start because no VAD model is pinned to screen frames with, and a
+  browser tab has no filesystem for `voice.wake.retainAudio` or a local
+  `voice.wake.activationSoundPath`.
+- **The wake engine takes its warning sink from the host**, alongside the
+  inference session it already took. It imported the platform logger, which
+  writes files and therefore imports `node:fs` — enough to make the engine
+  unbundleable for the browser tab it claims to run in, which nothing had
+  exercised. A new `platform/voice/wake/runtime` subpath exports the
+  runtime-neutral half of the module (front end, engine, rules, settings,
+  listener) so a tab can import it without pulling provisioning's filesystem
+  code in behind it.
 
 ### Fixed
 
