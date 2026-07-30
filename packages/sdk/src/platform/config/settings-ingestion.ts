@@ -59,6 +59,7 @@ import {
 } from './settings-reader-floor.js';
 import { VERSION } from '../version.js';
 import { logger } from '../utils/logger.js';
+import { writeFatalLine } from '../daemon/fatal-boot-report.js';
 
 /** What the reader did with a setting it could not ingest. */
 export type SettingsIngestionAction = 'skipped' | 'refused';
@@ -423,15 +424,22 @@ export function screenSettingsForIngestion(
 /**
  * Say it on stderr AND in the activity log, in that order.
  *
- * stderr is synchronous and lands wherever the daemon's output goes — the
- * service journal, a terminal — which is where an operator looks when a daemon
- * keeps restarting. The activity log buffers and flushes asynchronously, so on
- * a refusal it is exactly the line that gets discarded. Both, always: the same
- * reasoning that governs the fatal-error path in daemon/cli.ts.
+ * The default writer is a SYNCHRONOUS write to file descriptor 2, not
+ * `process.stderr.write`. That is deliberate and load-bearing: the released
+ * daemon binary died on exactly this path with zero bytes on either stream,
+ * because a host's fatal handler is free to write nowhere and a host is free to
+ * replace `process.stderr` (goodvibes-tui does, to keep a rendered screen
+ * clean). Disclosing the refusal HERE, at the point of refusal and straight to
+ * the descriptor, means every host speaks — including one whose own fatal tail
+ * is silent. See daemon/fatal-boot-report.ts.
+ *
+ * The activity log follows, and is best-effort: on a refusal the process is
+ * about to stop, and an asynchronously flushed log is exactly the part that
+ * gets discarded. The descriptor write is the guarantee.
  */
 export function announceIngestionNotice(
   entry: SettingsIngestionNotice,
-  write: (line: string) => void = (line) => { process.stderr.write(line); },
+  write: (line: string) => void = writeFatalLine,
 ): void {
   const verb = entry.action === 'refused' ? 'REFUSED' : 'skipped';
   const line = `goodvibes settings: ${verb} ${entry.key} in ${entry.file} — ${entry.reason}. ${entry.remedy}`;
@@ -455,7 +463,7 @@ export function describeIngestionNotice(entry: SettingsIngestionNotice): string 
 export interface IngestSettingsOptions {
   /** This reader's version, compared against the file's recorded floor. */
   readonly readerVersion?: string | undefined;
-  /** Where the loud line goes. Defaults to process.stderr. */
+  /** Where the loud line goes. Defaults to a synchronous write to fd 2. */
   readonly write?: ((line: string) => void) | undefined;
   /** Called for every notice, refusals included, before a refusal throws. */
   readonly onNotice?: ((entry: SettingsIngestionNotice) => void) | undefined;

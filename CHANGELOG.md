@@ -8,6 +8,56 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Fixed
 
+- **Every shipped daemon to date has died mute on a fatal boot error. This is
+  the release that makes them speak.** Measured against the released 1.27.0
+  binary, in an isolated home, with an unparseable `daemon/settings.json`: exit
+  code 1, **zero bytes on stdout, zero bytes on stderr, and no activity log
+  written at all**. The operator's only signal was that everything had stopped.
+
+  The cause was not output buffering and not a bypassed handler. The daemon
+  entrypoint that ships reports a fatal boot failure to the activity **logger**
+  and then exits — and at that point in boot the logger has no destination, so
+  the line goes nowhere and no file descriptor is ever touched. A `logger.error`
+  is not a disclosure.
+
+  Every early-exit site in the daemon boot path now routes through
+  `platform/daemon/fatal-boot-report.ts`, which writes **synchronously to file
+  descriptor 2** (`writeSync(2, …)`) before anything else and before the exit:
+  the fatal handler, the settings refusals, the crash-loop rollback notice, and
+  the `--install-service` output. The descriptor is used rather than
+  `process.stderr.write` because the latter is a replaceable property on a
+  mutable global — goodvibes-tui really does replace it, to keep a rendered
+  screen clean — and because a stream write issued immediately before
+  `process.exit()` can still be in flight when the process stops existing.
+
+  A settings refusal is now disclosed by the SDK **at the point of refusal**,
+  so a host whose own fatal tail is silent still speaks. Proven against a
+  compiled binary, not source: `test/daemon-isolation-guards.test.ts` builds the
+  daemon fatal-boot path with `bun build --compile` and asserts bytes on stderr
+  for an unparseable file, a safety-gate refusal, and a reader-floor refusal —
+  alongside a control that pins the shape that shipped at zero bytes.
+
+- **`--daemon-home` governed only half of what it names.** The flag (and
+  `GOODVIBES_DAEMON_HOME`) names the daemon's own state directory, and four
+  modules already resolved it that way — but `daemon/cli.ts` threaded it into
+  the identity files only, while the `ConfigManager` derived its daemon config
+  tier from `homedir()` regardless and the credential store was never told at
+  all. A daemon pointed at another state directory therefore read the real
+  home's daemon settings and the real home's daemon-scoped secrets, which is the
+  second half of the isolation incident `runtime/secrets-composition.ts`
+  records. The resolution moved to `platform/daemon/cli-paths.ts` (extracted so
+  it can be tested at all — `cli.ts` ends in a top-level `void main()`, so
+  importing it to check its path math would start a daemon), and the resolved
+  home now reaches the daemon config tier and `SecretsManager`.
+
+  Separately, `runtime/bootstrap-services.ts` passed the **user home** as
+  `--daemon-home` when spawning a detached daemon, where every reader expects
+  the state directory — so a spawned or serviced daemon filed `operator-tokens.json`
+  and `daemon-settings.json` one level above where all of them look. On a normal
+  machine the config half still landed correctly, because the user home is the
+  default parent, which is exactly why this went unnoticed. It now passes the
+  state directory, and the `GOODVIBES_DAEMON_HOME` it sets on the child matches.
+
 - **A setting the daemon cannot ingest is now said out loud, and does not take
   the daemon with it.** A daemon read `calendar.google.clientSecretRef` — the
   `goodvibes://secrets/…` reference a newer component's credential sweep had

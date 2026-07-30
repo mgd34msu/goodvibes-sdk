@@ -28,6 +28,7 @@ import { resolveOrCreateDaemonPath } from '../packages/sdk/src/platform/config/d
 import type { DaemonOwnedConfigPath } from '../packages/sdk/src/platform/config/config-ownership.ts';
 import { ConfigManager } from '../packages/sdk/src/platform/config/manager.ts';
 import {
+  announceIngestionNotice,
   ingestSettingsFile,
   isSafetyGateConfigKey,
   SAFETY_GATE_CONFIG_PREFIXES,
@@ -330,5 +331,38 @@ describe('settings ingestion runs after the load-time migrations, not before', (
 
     const manager = new ConfigManager({ configDir });
     expect(manager.getIngestionQuarantine()).toHaveLength(0);
+  });
+});
+
+describe('the refusal reaches the operator even when the host has taken over stderr', () => {
+  test('announceIngestionNotice writes to the descriptor, not through process.stderr', () => {
+    // goodvibes-tui replaces `process.stderr.write` while a screen is rendered
+    // (runtime/terminal-output-guard.ts), recording writes instead of printing
+    // them. A fatal settings refusal routed through that wrapper is recorded
+    // into a process that is about to stop existing — which is silence.
+    //
+    // So the default writer is `writeSync(2, …)`. This pins that: with
+    // `process.stderr.write` replaced by a recorder, the recorder must stay
+    // empty and the bytes must still leave the process.
+    const recorded: string[] = [];
+    const original = process.stderr.write.bind(process.stderr);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (process.stderr as unknown as { write: unknown }).write = ((chunk: unknown) => {
+      recorded.push(String(chunk));
+      return true;
+    }) as never;
+    try {
+      announceIngestionNotice({
+        file: '/tmp/daemon/settings.json',
+        key: 'permissions.tools.exec',
+        reason: 'expects one of allow, prompt, deny',
+        remedy: 'fix the value',
+        action: 'refused',
+      });
+    } finally {
+      (process.stderr as unknown as { write: unknown }).write = original as never;
+    }
+    // Nothing was routed through the replaceable stream property.
+    expect(recorded).toHaveLength(0);
   });
 });
