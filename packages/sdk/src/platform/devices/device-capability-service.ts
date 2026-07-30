@@ -24,6 +24,7 @@ import {
 } from './device-capability-contract.js';
 import type { DeviceCapabilityGrant, DeviceGrantStore } from './device-grants.js';
 import type { DeviceCaptureArtifact, DeviceCaptureArtifactStore } from './device-capture-artifacts.js';
+import { resolveDevicePolicySource, type DevicePolicySource } from './device-policy-source.js';
 
 /** How the feature behaves overall (`device.capabilities.mode`). */
 export type DeviceCapabilityMode = 'off' | 'ask-every-time' | 'honor-grants';
@@ -152,7 +153,13 @@ export interface DeviceCapabilityServiceOptions {
   readonly confirm: DeviceConfirmationHandler;
   /** Paired device nodes, resolved from the peer registry. */
   readonly listNodes: () => readonly DeviceNodeProfile[];
-  readonly policy?: Partial<DeviceCapabilityPolicy> | undefined;
+  /**
+   * A fixed posture, or a resolver called once per request so a settings change
+   * governs the NEXT request rather than waiting for a restart — the same
+   * liveness `device.nodes.maxPaired` already has at the pairing path. See
+   * device-policy-source.ts.
+   */
+  readonly policy?: DevicePolicySource<DeviceCapabilityPolicy> | undefined;
 }
 
 /**
@@ -197,7 +204,7 @@ export class DeviceCapabilityService {
   private readonly dispatcher: DeviceCapabilityDispatcher;
   private readonly confirm: DeviceConfirmationHandler;
   private readonly listNodes: () => readonly DeviceNodeProfile[];
-  private readonly policy: DeviceCapabilityPolicy;
+  private readonly resolvePolicy: () => DeviceCapabilityPolicy;
 
   constructor(options: DeviceCapabilityServiceOptions) {
     this.grants = options.grants;
@@ -205,11 +212,12 @@ export class DeviceCapabilityService {
     this.dispatcher = options.dispatcher;
     this.confirm = options.confirm;
     this.listNodes = options.listNodes;
-    this.policy = { ...DEFAULT_DEVICE_CAPABILITY_POLICY, ...(options.policy ?? {}) };
+    this.resolvePolicy = resolveDevicePolicySource(options.policy, DEFAULT_DEVICE_CAPABILITY_POLICY);
   }
 
+  /** The posture in force right now (re-read when given a resolver). */
   getPolicy(): DeviceCapabilityPolicy {
-    return this.policy;
+    return this.resolvePolicy();
   }
 
   /** Paired nodes with the capabilities each can actually serve right now. */
@@ -232,6 +240,10 @@ export class DeviceCapabilityService {
     readonly reason: string;
     readonly sessionId?: string | undefined;
   }): Promise<DeviceCapabilityOutcome> {
+    // One read for the whole request: the posture that gates the capability, the
+    // posture that decides whether a durable grant may be offered, and the
+    // deadline the device is given are all the same snapshot.
+    const policy = this.getPolicy();
     const node = this.listNodes().find((candidate) => candidate.nodeId === input.nodeId);
     if (!node) {
       return {
@@ -273,7 +285,7 @@ export class DeviceCapabilityService {
       };
     }
 
-    const disabled = capabilityDisabledReason(descriptor, this.policy);
+    const disabled = capabilityDisabledReason(descriptor, policy);
     if (disabled) {
       return {
         ok: false,
@@ -287,7 +299,7 @@ export class DeviceCapabilityService {
     let authority: 'existing-grant' | 'confirmed-once' | 'confirmed-always' = 'confirmed-once';
     let grant: DeviceCapabilityGrant | null = null;
 
-    if (this.policy.mode === 'honor-grants') {
+    if (policy.mode === 'honor-grants') {
       grant = await this.grants.find({
         nodeId: node.nodeId,
         capabilityId: descriptor.id,
@@ -299,7 +311,7 @@ export class DeviceCapabilityService {
       authority = 'existing-grant';
       await this.grants.markUsed(grant.id);
     } else {
-      const allowAlwaysOffered = isAllowAlwaysOffered(descriptor, this.policy);
+      const allowAlwaysOffered = isAllowAlwaysOffered(descriptor, policy);
       const response = await this.confirm({
         nodeId: node.nodeId,
         nodeKind: node.nodeKind,
@@ -343,7 +355,7 @@ export class DeviceCapabilityService {
       nodeId: node.nodeId,
       capabilityId: descriptor.id,
       input: { ...(input.input ?? {}), reason: input.reason },
-      timeoutMs: this.policy.requestTimeoutMs,
+      timeoutMs: policy.requestTimeoutMs,
     });
 
     if (!dispatched.ok) {
@@ -364,7 +376,7 @@ export class DeviceCapabilityService {
         kind: descriptor.artifactKind,
         mediaType: dispatched.mediaType ?? 'application/octet-stream',
         bytes: dispatched.bytes,
-        ttlMs: this.policy.captureRetentionMs,
+        ttlMs: policy.captureRetentionMs,
         ...(dispatched.workId ? { workId: dispatched.workId } : {}),
         reason: input.reason,
       });

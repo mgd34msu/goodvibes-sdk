@@ -24,6 +24,7 @@ import { promises as fs } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { PersistentStore } from '../state/persistent-store.js';
 import { isDeviceCapabilityId, type DeviceArtifactKind, type DeviceCapabilityId } from './device-capability-contract.js';
+import { resolveDevicePolicySource, type DevicePolicySource } from './device-policy-source.js';
 
 /** Index row for one retained capture. */
 export interface DeviceCaptureArtifact {
@@ -125,7 +126,11 @@ function digest(bytes: Uint8Array): string {
 }
 
 export interface DeviceCaptureStoreOptions {
-  readonly policy?: Partial<DeviceArtifactPolicy> | undefined;
+  /**
+   * Fixed retention and cap, or a resolver read at every use so a live settings
+   * change applies without a restart (see device-policy-source.ts).
+   */
+  readonly policy?: DevicePolicySource<DeviceArtifactPolicy> | undefined;
   readonly now?: (() => number) | undefined;
 }
 
@@ -138,19 +143,20 @@ export type DeviceArtifactReadResult =
 export class DeviceCaptureArtifactStore {
   private readonly directory: string;
   private readonly index: PersistentStore<DeviceArtifactSnapshot>;
-  private readonly policy: DeviceArtifactPolicy;
+  private readonly resolvePolicy: () => DeviceArtifactPolicy;
   private readonly now: () => number;
   private writeChain: Promise<void> = Promise.resolve();
 
   constructor(directory: string, options: DeviceCaptureStoreOptions = {}) {
     this.directory = resolve(directory);
     this.index = new PersistentStore<DeviceArtifactSnapshot>(join(this.directory, 'capture-index.json'));
-    this.policy = { ...DEFAULT_DEVICE_ARTIFACT_POLICY, ...(options.policy ?? {}) };
+    this.resolvePolicy = resolveDevicePolicySource(options.policy, DEFAULT_DEVICE_ARTIFACT_POLICY);
     this.now = options.now ?? (() => Date.now());
   }
 
+  /** Retention and cap in force right now (re-read when given a resolver). */
   getPolicy(): DeviceArtifactPolicy {
-    return this.policy;
+    return this.resolvePolicy();
   }
 
   getDirectory(): string {
@@ -215,7 +221,7 @@ export class DeviceCaptureArtifactStore {
     const fileName = `${id}.${extension}`;
     await fs.mkdir(this.directory, { recursive: true });
     await fs.writeFile(join(this.directory, fileName), input.bytes);
-    const ttl = input.ttlMs && input.ttlMs > 0 ? input.ttlMs : this.policy.retentionMs;
+    const ttl = input.ttlMs && input.ttlMs > 0 ? input.ttlMs : this.getPolicy().retentionMs;
     const artifact: DeviceCaptureArtifact = {
       id,
       nodeId: input.nodeId,
@@ -272,6 +278,8 @@ export class DeviceCaptureArtifactStore {
    */
   async sweep(): Promise<DeviceArtifactSweepReport> {
     const now = this.now();
+    // One read for the whole pass, so the cap this sweep applies is consistent.
+    const policy = this.getPolicy();
     let onDisk: string[] = [];
     try {
       onDisk = (await fs.readdir(this.directory)).filter((name) => name !== 'capture-index.json');
@@ -320,7 +328,7 @@ export class DeviceCaptureArtifactStore {
       }
 
       surviving.sort((a, b) => a.capturedAt - b.capturedAt);
-      const overflow = surviving.length - this.policy.maxArtifacts;
+      const overflow = surviving.length - policy.maxArtifacts;
       const kept: DeviceCaptureArtifact[] = [];
       for (let index = 0; index < surviving.length; index += 1) {
         const artifact = surviving[index];

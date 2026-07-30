@@ -75,6 +75,9 @@ export class DeviceHousekeeper {
   private readonly now: () => number;
   private timer: ReturnType<typeof setInterval> | null = null;
   private lastReport: DeviceHousekeepingReport | null = null;
+  /** Set while a timer runs; re-read after each sweep to follow a live setting. */
+  private resolveInterval: (() => number) | null = null;
+  private armedIntervalMs = 0;
 
   constructor(options: DeviceHousekeepingOptions) {
     this.grants = options.grants;
@@ -126,14 +129,45 @@ export class DeviceHousekeeper {
   /**
    * Keep sweeping on an interval. A long-lived daemon that only swept at boot
    * would never sweep at all, so this is not optional wiring.
+   *
+   * Pass a resolver instead of a number to follow a live setting: the cadence is
+   * re-read after every sweep and the timer re-armed when it changed, so an
+   * owner who shortens `device.capture.sweepIntervalMinutes` does not have to
+   * restart the daemon to get the faster sweep. A resolver that returns a
+   * nonsensical cadence (zero, negative, not finite) leaves the current one in
+   * place rather than stopping housekeeping altogether.
    */
-  start(intervalMs: number): void {
+  start(intervalMs: number | (() => number)): void {
     this.stop();
+    this.resolveInterval = typeof intervalMs === 'function' ? intervalMs : (): number => intervalMs;
+    this.arm(this.resolveInterval());
+  }
+
+  /** The cadence the live timer is running at, or null when stopped. */
+  getArmedIntervalMs(): number | null {
+    return this.timer ? this.armedIntervalMs : null;
+  }
+
+  private arm(intervalMs: number): void {
     if (!Number.isFinite(intervalMs) || intervalMs <= 0) return;
+    this.armedIntervalMs = intervalMs;
     this.timer = setInterval(() => {
-      void this.sweep('periodic').catch(() => undefined);
+      void this.sweep('periodic')
+        .catch(() => undefined)
+        .finally(() => { this.rearmIfCadenceChanged(); });
     }, intervalMs);
     this.timer.unref?.();
+  }
+
+  /** Follow a cadence change without waiting for a restart. */
+  private rearmIfCadenceChanged(): void {
+    const resolver = this.resolveInterval;
+    if (!this.timer || !resolver) return;
+    const next = resolver();
+    if (!Number.isFinite(next) || next <= 0 || next === this.armedIntervalMs) return;
+    clearInterval(this.timer);
+    this.timer = null;
+    this.arm(next);
   }
 
   stop(): void {
@@ -141,5 +175,6 @@ export class DeviceHousekeeper {
       clearInterval(this.timer);
       this.timer = null;
     }
+    this.resolveInterval = null;
   }
 }

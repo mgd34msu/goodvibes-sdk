@@ -14,6 +14,10 @@
  *    by content rather than existence.
  *  - device-housekeeping — recovery-time and periodic sweeps, with disclosure.
  *  - device-capability-service — the single path a capability is reached through.
+ *  - device-policy-source — fixed policy or live resolver, shared by all three.
+ *  - device-posture-config — the `device.*` settings → policy structs mapping.
+ *  - device-posture-runtime — one call that stands the feature up in a host.
+ *  - device-phone-tool — the `phone` tool every host registers on its registry.
  */
 export {
   DEVICE_CAPABILITY_CONTRACT_VERSION,
@@ -89,6 +93,42 @@ export {
   isAllowAlwaysOffered,
   capabilityDisabledReason,
 } from './device-capability-service.js';
+export { resolveDevicePolicySource } from './device-policy-source.js';
+export type { DevicePolicySource } from './device-policy-source.js';
+
+export {
+  DEVICE_POSTURE_CONFIG_KEYS,
+  readDeviceArtifactPolicy,
+  readDeviceCapabilityPolicy,
+  readDeviceGrantPolicy,
+  readDeviceRequestTimeoutMs,
+  readDeviceSweepIntervalMs,
+  readDevicePostureSettings,
+} from './device-posture-config.js';
+export type {
+  DevicePostureConfigKey,
+  DevicePostureConfigReader,
+  DevicePostureSettings,
+} from './device-posture-config.js';
+
+export {
+  DEVICE_NODE_ANNOUNCEMENT_KEY,
+  createDevicePostureRuntime,
+  listDeviceNodesFromTransport,
+  readDeviceAnnouncement,
+} from './device-posture-runtime.js';
+export type {
+  DeviceApprovalBridge,
+  DevicePeerTransport,
+  DevicePeerView,
+  DevicePostureRuntime,
+  DevicePostureRuntimeOptions,
+  DeviceWorkView,
+} from './device-posture-runtime.js';
+
+export { createDevicePhoneTool, registerDevicePhoneTool } from './device-phone-tool.js';
+export type { DevicePhoneToolRegistry } from './device-phone-tool.js';
+
 export type {
   DeviceCapabilityMode,
   DeviceAllowAlwaysOffer,
