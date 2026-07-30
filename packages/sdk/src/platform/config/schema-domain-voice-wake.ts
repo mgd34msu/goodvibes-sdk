@@ -20,14 +20,17 @@
  * the `wake-word-detection` registry entry, removed in the change that wired capture up
  * rather than before it.
  *
+ * All three delivery surfaces compose a capture host now: the terminal and the agent
+ * open a recorder subprocess, the browser tab opens getUserMedia.
+ *
  * Where a row cannot take effect it says so IN ITS OWN DESCRIPTION rather than behind a
- * blanket declaration, because the remaining gaps are per-row and per-surface, not
- * whole-feature: `voice.wake.surfaces.agent` has no capture host, `voice.wake.vadThreshold`
- * has no VAD model pinned to run, and a browser tab has no filesystem for
- * `voice.wake.retainAudio` or a local `voice.wake.activationSoundPath`. Those three are
- * refused or reported by resolveWakeRuntimeSettings, which reads every row here and is
- * the one place they become behaviour — a row it does not read is a row that configures
- * nothing, and a test asserts that set against this one.
+ * blanket declaration, because the remaining gaps are per-row, not per-surface and not
+ * whole-feature: `voice.wake.vadThreshold` has no VAD model pinned to run, and a browser
+ * tab has no filesystem for `voice.wake.retainAudio` or a local
+ * `voice.wake.activationSoundPath`. Those are refused or reported by
+ * resolveWakeRuntimeSettings, which reads every row here and is the one place they become
+ * behaviour — a row it does not read is a row that configures nothing, and a test asserts
+ * that set against this one.
  *
  * THE 26 ROWS AND THE ONE DELIBERATE DEVIATION
  *
@@ -146,8 +149,8 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
       + 'Turning it on starts a supervised capture process and a persistent listening indicator; turning it off stops '
       + 'it and releases the device immediately. '
       + 'WHERE IT LISTENS depends on the voice.wake.surfaces.* rows: the terminal captures through a recorder '
-      + 'subprocess and is on by default, a browser tab captures through getUserMedia and is opted in per origin, and '
-      + 'the agent surface has no capture host yet. '
+      + 'subprocess and is on by default, the agent captures the same way and is opted in per surface, and a browser '
+      + 'tab captures through getUserMedia and is opted in per origin. '
       + 'Off by default because an always-on microphone must be an explicit act, not something a user discovers after '
       + 'the fact — the same posture as voice.local.*, where nothing auto-downloads and nothing auto-starts. The '
       + 'pinned model is downloaded on an explicit provision, so enabling this on a host that has not provisioned '
@@ -262,11 +265,13 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
     type: 'boolean',
     default: false,
     description:
-      'Listen for the wake phrase on the agent surface. Off by default because two terminal surfaces both acting on one spoken '
-      + 'utterance is a confusing default. '
-      + 'THE AGENT HAS NO CAPTURE HOST YET: the shared capture path is built and the agent surface does not open it, so turning '
-      + 'this on records the choice and starts nothing there. It takes effect when the agent wires the same recorder path the '
-      + 'terminal uses; the terminal and browser rows are unaffected.',
+      'Listen for the wake phrase on the agent surface, through a recorder subprocess on the host — the same capture path the '
+      + 'terminal uses. Turning this on with voice.wake.enabled opens the microphone on the agent, and a confirmed wake sends '
+      + 'the utterance that follows to speech-to-text and puts the transcript into the agent conversation input, or submits it '
+      + 'when voice.wake.autoSubmit is on. '
+      + 'Off by default because two surfaces on one machine both acting on a single spoken utterance is a confusing default, '
+      + 'not because it does not work: turn it on when the agent is the surface you actually talk to, and consider turning '
+      + 'voice.wake.surfaces.tui off when you do.',
   },
   {
     key: 'voice.wake.surfaces.webui',
