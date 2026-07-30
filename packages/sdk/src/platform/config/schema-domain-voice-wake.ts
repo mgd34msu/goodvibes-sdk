@@ -12,17 +12,22 @@
  * always-on microphone must be an explicit act, matching the `voice.local.*` posture
  * that nothing auto-downloads and nothing auto-starts.
  *
- * THESE ROWS ARE NOT LIVE YET, AND SAY SO
+ * THESE ROWS ARE LIVE, AND SAY WHERE
  *
- * The detector is complete and tested, but no surface captures audio or supplies it
- * an inference session, so nothing here changes runtime behaviour today. That is
- * declared where a user meets it rather than left to be discovered: the
- * `wake-word-detection` registry entry carries `notOperable`, which makes the feature
- * gate refuse it outright and gives every settings surface a written reason to render
- * instead of a switch that lies, and `voice.wake.enabled`'s own description opens with
- * it. Remove the `notOperable` field and this note together with the change that wires
- * capture up — a settings row that flips cleanly and silently does nothing has already
- * shipped once here.
+ * Capture is wired: the terminal opens a recorder subprocess (voice.wake.captureCommand)
+ * and a browser tab opens getUserMedia, both feeding the same engine and both handing
+ * the utterance after a wake to the same speech-to-text call. `notOperable` is gone from
+ * the `wake-word-detection` registry entry, removed in the change that wired capture up
+ * rather than before it.
+ *
+ * Where a row cannot take effect it says so IN ITS OWN DESCRIPTION rather than behind a
+ * blanket declaration, because the remaining gaps are per-row and per-surface, not
+ * whole-feature: `voice.wake.surfaces.agent` has no capture host, `voice.wake.vadThreshold`
+ * has no VAD model pinned to run, and a browser tab has no filesystem for
+ * `voice.wake.retainAudio` or a local `voice.wake.activationSoundPath`. Those three are
+ * refused or reported by resolveWakeRuntimeSettings, which reads every row here and is
+ * the one place they become behaviour — a row it does not read is a row that configures
+ * nothing, and a test asserts that set against this one.
  *
  * THE 26 ROWS AND THE ONE DELIBERATE DEVIATION
  *
@@ -137,14 +142,16 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
     type: 'boolean',
     default: false,
     description:
-      'NOT AVAILABLE IN THIS BUILD — turning this on does nothing yet. The detector is complete (model, front end, '
-      + 'scoring, provisioning) but no surface captures microphone audio or supplies it an inference runtime, so '
-      + 'nothing is listening. The setting is remembered and takes effect in the release that adds capture; until '
-      + 'then the wake-word-detection feature reports itself unavailable rather than pretending to run. '
-      + 'What it will do: run the wake-word detector, listening continuously for the wake phrase on the configured '
-      + 'input device. Off by default because an always-on microphone must be an explicit act, not something a user '
-      + 'discovers after the fact — the same posture as voice.local.*, where nothing auto-downloads and nothing '
-      + 'auto-starts. Turning it on will start a supervised capture process; turning it off stops it and releases the device.',
+      'Run the wake-word detector, listening continuously for the wake phrase on the configured input device. '
+      + 'Turning it on starts a supervised capture process and a persistent listening indicator; turning it off stops '
+      + 'it and releases the device immediately. '
+      + 'WHERE IT LISTENS depends on the voice.wake.surfaces.* rows: the terminal captures through a recorder '
+      + 'subprocess and is on by default, a browser tab captures through getUserMedia and is opted in per origin, and '
+      + 'the agent surface has no capture host yet. '
+      + 'Off by default because an always-on microphone must be an explicit act, not something a user discovers after '
+      + 'the fact — the same posture as voice.local.*, where nothing auto-downloads and nothing auto-starts. The '
+      + 'pinned model is downloaded on an explicit provision, so enabling this on a host that has not provisioned '
+      + 'reports what is missing instead of silently fetching 3.7 MB.',
   },
   {
     key: 'voice.wake.models',
@@ -200,7 +207,9 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
       'Speech-probability floor, 0 to 1, from a voice-activity detector run ahead of the wake classifier; frames below it are '
       + 'discarded before scoring. 0 means the VAD stage is off, which is the shipped default: it costs an extra model download '
       + 'and per-frame inference, and there is no measured false-accept evidence yet that justifies it. '
-      + 'Raise it above 0 if the detector fires on music or non-speech noise.',
+      + 'NO VAD MODEL IS PINNED TODAY, so any value above 0 REFUSES TO START the detector with that reason stated, rather '
+      + 'than running unscreened frames through a stage you have configured — the same posture as noiseSuppression below. '
+      + 'It becomes usable when a VAD model joins the pinned manifest; until then 0 is the only value that runs.',
   },
   {
     key: 'voice.wake.noiseSuppression',
@@ -217,8 +226,13 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
     type: 'string',
     default: '',
     description:
-      'Capture device to listen on. Empty means the operating system default source. Device identifiers are host-specific — '
-      + 'list real ones with `pactl list short sources`, `arecord -L`, or navigator.mediaDevices in a browser.',
+      'Capture device to listen on. Empty means the operating system default source. '
+      + 'Shared by BOTH microphone consumers: wake detection and push-to-talk voice input open the same device through the '
+      + 'same path, so this row moves both rather than only the always-on one. '
+      + 'Device identifiers are host-specific — list real ones with `pactl list short sources` or `arecord -L`, or use a '
+      + 'navigator.mediaDevices deviceId in a browser tab. Note pw-record takes a PipeWire node serial or node name here, '
+      + 'not a PulseAudio device name, and sox cannot target a device at all (it reads AUDIODEV from the environment), which '
+      + 'the surface reports rather than silently ignoring.',
   },
   {
     key: 'voice.wake.captureCommand',
@@ -226,33 +240,44 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
     default: 'auto',
     enumValues: ['auto', 'pw-record', 'parecord', 'arecord', 'ffmpeg', 'sox'],
     description:
-      'Which recorder feeds the detector. "auto" probes for pw-record, parecord, arecord, ffmpeg, then sox and uses the first '
-      + 'present, mirroring how local audio playback discovers its player. Name one explicitly to pin the choice on a host where '
-      + 'the probe picks a device-starved backend.',
+      'Which recorder feeds capture on a HOST surface — the terminal and the daemon child process. A browser tab ignores this '
+      + 'row and uses getUserMedia. Feeds both consumers: wake detection and push-to-talk voice input. '
+      + '"auto" probes for pw-record, parecord, arecord, ffmpeg, then sox and uses the first present, mirroring how local audio '
+      + 'playback discovers its player. Name one explicitly to pin the choice on a host where the probe picks a device-starved '
+      + 'backend; a named recorder that is not installed reports that instead of quietly falling back, because pinning it was '
+      + 'the point.',
   },
   {
     key: 'voice.wake.surfaces.tui',
     type: 'boolean',
     default: true,
     description:
-      'Deliver wake events to the terminal UI. On by default: once wake detection is enabled the terminal is the primary surface, '
-      + 'and a wake that reaches no surface is a detector that appears broken.',
+      'Listen for the wake phrase on the terminal, through a recorder subprocess on the host. On by default: once wake detection '
+      + 'is enabled the terminal is the primary surface, and a wake that reaches no surface is a detector that appears broken. '
+      + 'A confirmed wake plays the activation sound, shows the listening indicator, captures the utterance that follows and '
+      + 'sends it to speech-to-text, then places the transcript in the composer — or submits it when voice.wake.autoSubmit is on.',
   },
   {
     key: 'voice.wake.surfaces.agent',
     type: 'boolean',
     default: false,
     description:
-      'Deliver wake events to the agent surface. Off by default because two terminal surfaces both acting on one spoken utterance '
-      + 'is a confusing default; turn it on when the agent is the surface you actually talk to.',
+      'Listen for the wake phrase on the agent surface. Off by default because two terminal surfaces both acting on one spoken '
+      + 'utterance is a confusing default. '
+      + 'THE AGENT HAS NO CAPTURE HOST YET: the shared capture path is built and the agent surface does not open it, so turning '
+      + 'this on records the choice and starts nothing there. It takes effect when the agent wires the same recorder path the '
+      + 'terminal uses; the terminal and browser rows are unaffected.',
   },
   {
     key: 'voice.wake.surfaces.webui',
     type: 'boolean',
     default: false,
     description:
-      'Deliver wake events to the web UI, which runs the detector in the browser tab. Off by default because browser capture is a '
-      + 'separate stack with its own per-origin microphone permission prompt — it is opted into per browser, not inherited from the host.',
+      'Listen for the wake phrase in the web UI, which runs the detector inside the browser tab on a WASM backend and downloads the '
+      + 'pinned model through the daemon. Off by default because browser capture is a separate stack with its own per-origin '
+      + 'microphone permission prompt — it is opted into per browser, not inherited from the host. While it is off the tab never '
+      + 'calls getUserMedia at all, so no permission prompt appears. A plain-http origin cannot capture and says so instead of '
+      + 'failing silently.',
   },
   {
     key: 'voice.wake.activationSound',
@@ -269,7 +294,10 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
     type: 'string',
     default: '',
     description:
-      'Absolute path to the audio file played on wake. Read only when voice.wake.activationSound is "custom"; ignored otherwise.',
+      'Absolute path to the audio file played on wake. Read only when voice.wake.activationSound is "custom"; ignored otherwise. '
+      + 'A host surface plays the file through the same player local voice output uses. A browser tab cannot read a path on your '
+      + 'machine, so it plays the built-in chime instead and reports that this row is not in force there — a wake stays audible '
+      + 'either way.',
   },
   {
     key: 'voice.wake.indicator',
@@ -278,8 +306,9 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
     enumValues: ['off', 'statusline', 'banner'],
     description:
       'How the surface shows that the microphone is live. "statusline" keeps a persistent listening marker for as long as the '
-      + 'detector runs — not only at the moment of a wake — so an always-on microphone is never invisible. "banner" is more '
-      + 'prominent; "off" removes the marker entirely and is not the default for that reason.',
+      + 'detector runs — not only at the moment of a wake — so an always-on microphone is never invisible: a footer row in the '
+      + 'terminal, a status-strip chip in the web UI. "banner" is more prominent; "off" removes the marker entirely and is not '
+      + 'the default for that reason.',
   },
   {
     key: 'voice.wake.preRollMs',
@@ -297,8 +326,9 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
     default: 10,
     ...intRange(1, 120),
     description:
-      'Hard ceiling on how long post-wake capture runs before it stops on its own. Bounds memory and guarantees a stuck or '
-      + 'silent stream cannot hold the microphone open indefinitely.',
+      'Hard ceiling on how long capture runs before it stops on its own. Bounds memory and guarantees a stuck or silent stream '
+      + 'cannot hold the microphone open indefinitely. Applies to post-wake capture AND to push-to-talk, where a key-release '
+      + 'event that never arrives would otherwise leave the device open.',
   },
   {
     key: 'voice.wake.silenceStopMs',
@@ -307,14 +337,18 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
     ...intRange(100, 10_000),
     description:
       'Milliseconds of silence that end post-wake capture, so the request is sent when the user stops talking rather than at '
-      + 'the voice.wake.captureMaxSeconds ceiling. Raise it if capture cuts off mid-sentence during natural pauses.',
+      + 'the voice.wake.captureMaxSeconds ceiling. Raise it if capture cuts off mid-sentence during natural pauses. '
+      + 'Post-wake only: push-to-talk ends when the key is released, because someone holding it through a pause has not '
+      + 'finished talking.',
   },
   {
     key: 'voice.wake.autoSubmit',
     type: 'boolean',
     default: false,
     description:
-      'Submit the transcribed text as a turn automatically instead of placing it in the input for review. '
+      'Submit the transcribed text as a turn automatically instead of placing it in the input for review. Applies to the '
+      + 'utterance captured after a WAKE; push-to-talk always places its transcript in the composer, because a person who pressed '
+      + 'a key is already looking at the screen. '
       + 'Off by default, matching the never-auto-send posture of the existing voice input: a misheard transcript must not become '
       + 'a submitted turn without a human seeing it first.',
   },
@@ -326,7 +360,9 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
     description:
       'Whether captured audio is written to disk. "none" by default — nothing is stored, which is the only setting under which '
       + 'the microphone leaves no recording behind. "session-temp" keeps clips in a session-scoped directory that is deleted when '
-      + 'the session ends and swept on recovery, and exists to debug a bad transcript, not as a recording feature.',
+      + 'the session ends and swept on recovery, and exists to debug a bad transcript, not as a recording feature. '
+      + 'A browser tab has no filesystem to retain into: it reports that this row is not in force rather than appearing to store '
+      + 'clips it is not storing.',
   },
   {
     key: 'voice.wake.customModelDir',
@@ -374,6 +410,7 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
     description:
       'Execution backend for the detector inside a browser tab. "wasm" is the default and the measured configuration: the '
       + 'per-frame cost already beats real time by a wide margin, and WebGPU cannot run the front end without splitting the graph '
-      + 'across devices, which costs more in transfers than it saves. "webgpu" is available for hosts that measure otherwise.',
+      + 'across devices, which costs more in transfers than it saves. "webgpu" is available for hosts that measure otherwise. '
+      + 'Read by the browser tab when it creates its inference sessions; a host surface always runs WASM and ignores this row.',
   },
 ];

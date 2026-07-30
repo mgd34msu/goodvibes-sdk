@@ -6,6 +6,14 @@
  * `voice.local.install` is the one-act setup: it provisions the piper engine +
  * a default voice and pre-configures the voice.local.* keys (never overwriting a
  * user-set value), so local voice works immediately after.
+ *
+ * The three `voice.wake.*` verbs are here rather than in their own group because
+ * they are the same capability — provisioning a pinned, checksum-verified voice
+ * artifact and reporting honestly on it — and they attach through the voice-setup
+ * service that is already composed. `voice.wake.model` exists because a browser
+ * tab cannot fetch the pinned artifacts itself: the release assets answer with no
+ * CORS header, so a tab reads the model from the daemon, same-origin, in bounded
+ * chunks it verifies against the pinned checksum.
  */
 import type { GatewayMethodDescriptor } from './method-catalog-shared.js';
 import {
@@ -95,6 +103,52 @@ const INSTALL_RESULT_SCHEMA = objectSchema({
   }, ['set', 'skipped']),
 }, ['provisioned', 'platform', 'tts', 'stt', 'components', 'configured']);
 
+/** Content-verified state of one wake artifact on disk. */
+const WAKE_ARTIFACT_SCHEMA = objectSchema({
+  path: STRING_SCHEMA,
+  verified: BOOLEAN_SCHEMA,
+  corrupt: BOOLEAN_SCHEMA,
+  bytes: NUMBER_SCHEMA,
+}, ['path', 'verified', 'corrupt', 'bytes']);
+
+const WAKE_STATUS_SCHEMA = objectSchema({
+  ready: BOOLEAN_SCHEMA,
+  reason: NULLABLE_STRING,
+  classifier: WAKE_ARTIFACT_SCHEMA,
+  notice: WAKE_ARTIFACT_SCHEMA,
+  embedding: WAKE_ARTIFACT_SCHEMA,
+  downloadBytes: NUMBER_SCHEMA,
+  modelVersion: NULLABLE_STRING,
+  recallIsSyntheticOnly: BOOLEAN_SCHEMA,
+}, ['ready', 'reason', 'classifier', 'notice', 'embedding', 'downloadBytes', 'modelVersion', 'recallIsSyntheticOnly']);
+
+const WAKE_PROVISION_RESULT_SCHEMA = objectSchema({
+  ready: BOOLEAN_SCHEMA,
+  modelVersion: NULLABLE_STRING,
+  noticePath: NULLABLE_STRING,
+  recallIsSyntheticOnly: BOOLEAN_SCHEMA,
+  outcomes: {
+    type: 'array',
+    items: objectSchema({
+      component: { type: 'string', enum: ['classifier', 'notice', 'embedding'] },
+      state: { type: 'string', enum: ['installed', 'skipped', 'failed'] },
+      path: STRING_SCHEMA,
+      bytes: NUMBER_SCHEMA,
+      error: STRING_SCHEMA,
+    }, ['component', 'state', 'path']),
+  },
+}, ['ready', 'modelVersion', 'noticePath', 'recallIsSyntheticOnly', 'outcomes']);
+
+const WAKE_MODEL_CHUNK_SCHEMA = objectSchema({
+  component: { type: 'string', enum: ['classifier', 'embedding', 'notice'] },
+  offset: NUMBER_SCHEMA,
+  bytes: NUMBER_SCHEMA,
+  totalBytes: NUMBER_SCHEMA,
+  sha256: STRING_SCHEMA,
+  dataBase64: STRING_SCHEMA,
+  complete: BOOLEAN_SCHEMA,
+}, ['component', 'offset', 'bytes', 'totalBytes', 'sha256', 'dataBase64', 'complete']);
+
 export const builtinGatewayVoiceSetupMethodDescriptors: readonly GatewayMethodDescriptor[] = [
   methodDescriptor({
     id: 'voice.local.status',
@@ -117,5 +171,54 @@ export const builtinGatewayVoiceSetupMethodDescriptors: readonly GatewayMethodDe
     http: { method: 'POST', path: '/api/voice/local/install' },
     inputSchema: objectSchema({}, []),
     outputSchema: INSTALL_RESULT_SCHEMA,
+  }),
+  methodDescriptor({
+    id: 'voice.wake.status',
+    title: 'Get Wake-Word Model State',
+    description:
+      'Whether the pinned wake-word artifacts are on disk and VERIFIED BY CONTENT: the "hey goodvibes" classifier, its '
+      + 'attribution NOTICE, and the speech-embedding front end the classifier sits behind. Each reports verified, corrupt '
+      + '(present but failing its checksum — a truncated or swapped file, distinct from missing) and its byte size, with the '
+      + 'total a fresh provision would download. Also restates that the model\'s published recall figures are measured on '
+      + 'synthesised speech only, which any surface describing the model must carry. Never downloads. Read-only.',
+    category: 'health',
+    scopes: ['read:health'],
+    http: { method: 'GET', path: '/api/voice/wake/status' },
+    inputSchema: objectSchema({}, []),
+    outputSchema: WAKE_STATUS_SCHEMA,
+  }),
+  methodDescriptor({
+    id: 'voice.wake.provision',
+    title: 'Download the Wake-Word Models',
+    description:
+      'Download and checksum-verify the pinned wake-word classifier, its NOTICE, and the speech-embedding front end into the '
+      + 'goodvibes-managed directory — about 3.7 MB. Downloads only when you ask, and is resumable by re-running: an artifact '
+      + 'that already matches its pin is skipped, and one that is present but fails verification is replaced rather than used. '
+      + 'A failed or mismatched download keeps nothing at the destination. Single-flight: two surfaces asking at once join one '
+      + 'download instead of racing for the same files.',
+    category: 'health',
+    scopes: ['write:config'],
+    http: { method: 'POST', path: '/api/voice/wake/provision' },
+    inputSchema: objectSchema({}, []),
+    outputSchema: WAKE_PROVISION_RESULT_SCHEMA,
+  }),
+  methodDescriptor({
+    id: 'voice.wake.model.get',
+    title: 'Read Wake-Word Model Bytes',
+    description:
+      'Read one provisioned wake artifact in bounded chunks, for a surface that cannot fetch it itself — a browser tab, whose '
+      + 'cross-origin fetch of the release asset is refused because that asset answers with no CORS header. Each chunk carries '
+      + 'the offset, the whole artifact\'s size, and its PINNED sha256, so a client reassembles the file and verifies it against '
+      + 'the pin: a truncated transfer fails at the consumer instead of loading as a model that silently never detects. '
+      + 'Provision first — this serves what is on disk and does not download.',
+    category: 'health',
+    scopes: ['read:health'],
+    http: { method: 'GET', path: '/api/voice/wake/model' },
+    inputSchema: objectSchema({
+      component: { type: 'string', enum: ['classifier', 'embedding', 'notice'] },
+      offset: NUMBER_SCHEMA,
+      maxBytes: NUMBER_SCHEMA,
+    }, ['component']),
+    outputSchema: WAKE_MODEL_CHUNK_SCHEMA,
   }),
 ];
