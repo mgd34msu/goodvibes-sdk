@@ -57,8 +57,14 @@ import { singleFlight } from '../utils/single-flight.js';
  * it is provisioned: a surface whose inference runtime cannot load onnx has the
  * same claim on the model as one that can, and it has no more ability to fetch
  * the release asset itself.
+ *
+ * BOTH NOTICEs are served, and that is the point of listing them here. This
+ * service hands out two redistributable artifacts — the classifier and Google's
+ * Apache-2.0 embedding build — and each has an attribution file that must travel
+ * with it. A client that can fetch the bytes but not the NOTICE cannot satisfy
+ * the terms it received them under.
  */
-export type WakeModelComponent = 'classifier' | 'tflite' | 'embedding' | 'notice';
+export type WakeModelComponent = 'classifier' | 'tflite' | 'embedding' | 'notice' | 'embedding-notice';
 
 /** Largest chunk a single read returns, before base64. */
 export const WAKE_MODEL_CHUNK_MAX_BYTES = 512 * 1024;
@@ -118,6 +124,9 @@ function resolveComponent(
   const model = resolveWakeWordModel();
   if (component === 'embedding') {
     return { path: paths.embeddingPath, sha256: WAKE_WORD_FRONT_END.embedding.download.sha256 };
+  }
+  if (component === 'embedding-notice') {
+    return { path: paths.embeddingNoticePath, sha256: WAKE_WORD_FRONT_END.embedding.notice.sha256 };
   }
   if (model === null) {
     throw new Error('[wake] no wake-word model is pinned, so no artifact can be served');

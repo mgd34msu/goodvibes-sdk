@@ -201,15 +201,27 @@ function sweepPinnedArtifacts(
     }
   }
   const embeddingSpec = WAKE_WORD_FRONT_END.embedding.download;
-  const embeddingName = `speech-embedding-${WAKE_WORD_FRONT_END.embedding.version}.onnx`;
+  // Every file the provisioner writes into the front-end directory has to appear
+  // in this set, or the sweeper deletes an artifact that was just verified — once
+  // an hour, forever. That defect shipped once for the tflite; the embedding's
+  // NOTICE is the second file in this directory and belongs here for the same
+  // reason. A name-by-name set (rather than a suffix match) is what keeps a
+  // leftover from an older version reapable.
+  const pinnedFrontEndNames = new Set<string>();
+  const embeddingVersion = WAKE_WORD_FRONT_END.embedding.version;
+  pinnedFrontEndNames.add(`speech-embedding-${embeddingVersion}.onnx`);
+  pinnedFrontEndNames.add(`speech-embedding-${embeddingVersion}.NOTICE.txt`);
   for (const entry of listFiles(paths.frontEndDir)) {
     if (entry.name.endsWith('.part')) continue;
-    if (entry.name !== embeddingName) {
+    if (!pinnedFrontEndNames.has(entry.name)) {
       remove(entry.path, 'unpinned-version');
     }
   }
   if (existsSync(paths.embeddingPath) && !fileMatches(paths.embeddingPath, embeddingSpec)) {
     remove(paths.embeddingPath, 'failed-verification');
+  }
+  if (existsSync(paths.embeddingNoticePath) && !fileMatches(paths.embeddingNoticePath, WAKE_WORD_FRONT_END.embedding.notice)) {
+    remove(paths.embeddingNoticePath, 'failed-verification');
   }
 }
 

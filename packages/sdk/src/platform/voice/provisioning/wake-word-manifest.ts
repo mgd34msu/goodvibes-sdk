@@ -277,3 +277,17 @@ export function resolveWakeWordModel(
 export function wakeWordProvisionBytes(model: WakeWordModelManifest): number {
   return model.onnx.bytes + model.tflite.bytes + model.notice.bytes;
 }
+
+/**
+ * Total download size of the front end's artifacts (bytes).
+ *
+ * A function beside {@link wakeWordProvisionBytes} rather than an addition at
+ * each call site, and for the reason the front end's own NOTICE exposed: a
+ * consumer summing `embedding.download.bytes` by hand quietly omitted the
+ * attribution file, so the reported download size described a set of artifacts
+ * that was not the set being fetched. The melspectrogram stage contributes
+ * nothing — it is computed in code, which is the point of it.
+ */
+export function wakeWordFrontEndProvisionBytes(): number {
+  return WAKE_WORD_FRONT_END.embedding.download.bytes + WAKE_WORD_FRONT_END.embedding.notice.bytes;
+}
