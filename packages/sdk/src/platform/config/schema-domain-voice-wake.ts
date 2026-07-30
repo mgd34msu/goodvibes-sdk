@@ -411,6 +411,9 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
       'Execution backend for the detector inside a browser tab. "wasm" is the default and the measured configuration: the '
       + 'per-frame cost already beats real time by a wide margin, and WebGPU cannot run the front end without splitting the graph '
       + 'across devices, which costs more in transfers than it saves. "webgpu" is available for hosts that measure otherwise. '
-      + 'Read by the browser tab when it creates its inference sessions; a host surface always runs WASM and ignores this row.',
+      + 'Read by the browser tab when it creates its inference sessions; a host surface always runs WASM and ignores this row. '
+      + 'BOTH VALUES LOAD THE SAME ENGINE BINARY — the WebGPU-capable build carries the CPU engine too — so switching costs no '
+      + 'extra download, and a tab set to "webgpu" on a browser without navigator.gpu falls back to the CPU provider inside '
+      + 'the binary it already has.',
   },
 ];
