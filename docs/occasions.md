@@ -119,10 +119,16 @@ The agent is both a push destination and the surface that PULLS through
 `occasions.pending`, so it is the one place where the same nudge could be spoken
 twice. It cannot be, because both read the **same open item**: a push that lands
 on the agent stamps the item with the day it landed, and while the agent is a
-configured push destination the pull leaves stamped items out. The condition is
-the push that LANDED, not the one that was configured — a failed push stamps
-nothing, so that nudge still comes back through the pull and is not lost. An
-answer resolves the item from either side, exactly as before.
+configured push destination the pull leaves stamped items out.
+
+The condition is the push that LANDED, not the one that was configured. An item
+no push has ever landed on the agent carries no stamp, so it still comes back
+through the pull — that covers `agent` configured with no sender registered, and
+a send that failed, neither of which may cost him the nudge. Once an item HAS
+been landed there, the stamp stays for the life of the item: the agent has
+already raised that occasion, and a later failed re-push on its cadence is a
+channel fault to report rather than a reason to say the same thing again from the
+other direction. An answer resolves the item from either side, exactly as before.
 
 ### 4.3 A nudge names the occasion but **never the date**
 His words: *"it only needs to tell me a birthday date if i ask it what it is,

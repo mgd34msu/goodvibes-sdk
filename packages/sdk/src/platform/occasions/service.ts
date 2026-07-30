@@ -30,8 +30,9 @@
  * so it is the one place where a push and a pull could say the same thing twice.
  * They cannot, because both read the same open item: a push that lands on the
  * agent stamps the item, and while the agent is a push destination the pull
- * leaves stamped items out. A push that FAILED stamps nothing, so the pull is
- * still how that nudge gets raised.
+ * leaves stamped items out. An item no push has ever landed there carries no
+ * stamp, so the pull is still how that nudge gets raised — which covers `agent`
+ * configured with no sender registered, and a send that failed.
  */
 import type { AuthoritySurface } from '../security/untrusted-content.js';
 import type { ProfileSurface, ProfileWriteResult } from '../owner-profile/types.js';
@@ -710,9 +711,10 @@ export class OccasionsService {
    * landed there is left out. The push and the pull are two ways of getting the
    * same thing to the same conversation, and doing both would have the agent
    * raise one birthday twice. The condition is the LANDED push rather than the
-   * configuration: with `agent` configured but the sender not registered, or the
-   * send failing, nothing is stamped and everything still comes back here — so
-   * the guard cannot turn into a way of dropping a nudge.
+   * configuration: an item no push has ever landed on the agent — because the
+   * sender is not registered, or because the send failed — carries no stamp and
+   * still comes back here, so the guard cannot turn into a way of dropping a
+   * nudge.
    */
   async pending(): Promise<PendingResult> {
     const today = this.today();
