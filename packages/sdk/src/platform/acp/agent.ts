@@ -29,7 +29,11 @@
  * prompt resolves with stop reason `cancelled`.
  */
 
-import { AgentSideConnection, ndJsonStream, PROTOCOL_VERSION, type Agent } from '@agentclientprotocol/sdk';
+// `@agentclientprotocol/sdk` is an optionalDependency, so its VALUES are taken
+// off the awaited module in acp/optional-sdk.ts rather than imported here. The
+// type imports below stay type-only and are erased; see optional-sdk.ts.
+import { loadAcpSdk } from './optional-sdk.js';
+import type { AgentSideConnection, Agent } from '@agentclientprotocol/sdk';
 import type {
   AuthenticateRequest,
   AuthenticateResponse,
@@ -196,6 +200,7 @@ export class GoodVibesAcpAgent implements Agent {
   ) {}
 
   async initialize(params: InitializeRequest): Promise<InitializeResponse> {
+    const { PROTOCOL_VERSION } = await loadAcpSdk();
     return {
       protocolVersion: Math.min(params.protocolVersion, PROTOCOL_VERSION),
       agentCapabilities: {
@@ -379,11 +384,17 @@ export class GoodVibesAcpAgent implements Agent {
 /**
  * Serve a GoodVibes ACP agent over stdio. Call from a headless entry point;
  * returns the connection and a dispose handle (the caller owns process exit).
+ *
+ * Async because `@agentclientprotocol/sdk` is an optionalDependency and the
+ * connection cannot be built before it resolves. When the package is absent
+ * the returned promise rejects with an error naming it, which is the honest
+ * answer for an entry point whose whole job is to speak that protocol.
  */
-export function serveAcpAgent(options: AcpAgentOptions = {}): {
+export async function serveAcpAgent(options: AcpAgentOptions = {}): Promise<{
   connection: AgentSideConnection;
   dispose: () => Promise<void>;
-} {
+}> {
+  const { AgentSideConnection, ndJsonStream } = await loadAcpSdk();
   let agent: GoodVibesAcpAgent | null = null;
   const stdout = new WritableStream<Uint8Array>({
     write(chunk) {

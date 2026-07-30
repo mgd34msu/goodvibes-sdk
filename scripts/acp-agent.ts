@@ -17,7 +17,10 @@
 
 import { serveAcpAgent } from '../packages/sdk/src/platform/acp/agent.ts';
 
-const { dispose } = serveAcpAgent({
+// Awaited because `@agentclientprotocol/sdk` is an optionalDependency and the
+// connection is built after it resolves. An install without it rejects here,
+// with a message naming the package, instead of failing at module init.
+const { dispose } = await serveAcpAgent({
   homeDirectory: process.env.GOODVIBES_HOME ?? process.env.HOME ?? process.cwd(),
 });
 

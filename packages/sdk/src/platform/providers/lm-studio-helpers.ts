@@ -1,4 +1,5 @@
-import OpenAI from 'openai';
+import type OpenAI from 'openai';
+import { createOpenAIClient } from './optional-openai.js';
 import { ProviderError } from '../types/errors.js';
 import type { ToolCall, ToolDefinition } from '../types/tools.js';
 import { summarizeError } from '../utils/error-display.js';
@@ -55,18 +56,36 @@ export type NativeFetch = (
   init?: RequestInit,
 ) => Promise<Response>;
 
+/**
+ * Build the LM Studio responses client.
+ *
+ * `openai` is an optionalDependency, so the client is built on the first
+ * `create()` call rather than here — a static import plus a construction at
+ * call time put the specifier on the module graph of everything that reaches
+ * the LM Studio provider, and an absent optional package then took the whole
+ * process down at module init (see utils/optional-dependency.ts). This
+ * function's signature is unchanged; `create()` was already async, so the one
+ * memoised construction now happens inside it, and when the package is absent
+ * the returned promise rejects with an error naming it.
+ */
 export function createResponsesClient(
   baseURL: string,
   apiKey: string,
   defaultHeaders: Record<string, string> | undefined,
 ): LMStudioResponsesClient {
-  const client = new OpenAI({
-    apiKey: resolveOpenAIClientApiKey(apiKey),
-    baseURL,
-    ...(defaultHeaders ? { defaultHeaders } : {}),
-  });
+  let client: Promise<OpenAI> | undefined;
+  const resolveClient = () => {
+    client ??= createOpenAIClient({
+      apiKey: resolveOpenAIClientApiKey(apiKey),
+      baseURL,
+      ...(defaultHeaders ? { defaultHeaders } : {}),
+    });
+    return client;
+  };
   return {
-    create: (params, options) => client.responses.create(params as never, options) as unknown as Promise<LMStudioResponsesStream>,
+    create: async (params, options) => (
+      (await resolveClient()).responses.create(params as never, options) as unknown as Promise<LMStudioResponsesStream>
+    ),
   };
 }
 
