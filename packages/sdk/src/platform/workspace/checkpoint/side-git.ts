@@ -30,7 +30,8 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { simpleGit, type SimpleGit } from 'simple-git';
+import type { SimpleGit } from 'simple-git';
+import { createSimpleGit } from '../../git/optional-simple-git.js';
 import { logger } from '../../utils/logger.js';
 import { summarizeError } from '../../utils/error-display.js';
 
@@ -109,7 +110,7 @@ export async function detectGitToplevel(dir: string): Promise<string | null> {
     const env = sanitizeGitEnv(process.env);
     delete env.GIT_DIR;
     delete env.GIT_WORK_TREE;
-    const git = simpleGit({ baseDir: dir }).env(env);
+    const git = (await createSimpleGit({ baseDir: dir })).env(env);
     const out = (await git.raw(['rev-parse', '--show-toplevel'])).trim();
     return out.length > 0 ? out : null;
   } catch {
@@ -126,21 +127,49 @@ export async function detectGitToplevel(dir: string): Promise<string | null> {
 export class SideGitRunner {
   readonly workspaceRoot: string;
   readonly gitDir: string;
-  private readonly git: SimpleGit;
+  /**
+   * The scoped `simple-git` instance, built on first use rather than in the
+   * constructor. `simple-git` is an optionalDependency; a static import here
+   * put its specifier on the module graph of every graph that reaches
+   * checkpoints, the daemon's included, so an absent optional package removed
+   * the process rather than the feature (see utils/optional-dependency.ts).
+   * The promise is memoised, so the `.env()` scoping is still applied exactly
+   * once per runner, and every method here was already async.
+   */
+  private gitClient: Promise<SimpleGit> | undefined;
+  /**
+   * The environment the client is scoped to, snapshotted at construction —
+   * the same moment `sanitizeGitEnv(process.env)` ran when the client itself
+   * was built here, so deferring the construction does not defer the reading
+   * of `process.env`.
+   */
+  private readonly gitEnv: Record<string, string>;
 
   constructor(opts: SideGitRunnerOptions) {
     this.workspaceRoot = opts.workspaceRoot;
     this.gitDir = opts.gitDir;
-    this.git = simpleGit({ baseDir: opts.workspaceRoot }).env({
+    this.gitEnv = {
       ...sanitizeGitEnv(process.env),
       GIT_DIR: opts.gitDir,
       GIT_WORK_TREE: opts.workspaceRoot,
-    });
+    };
+  }
+
+  /**
+   * This runner's git client, permanently scoped to its isolated
+   * GIT_DIR/GIT_WORK_TREE pair. When `simple-git` is absent the await throws
+   * an error naming it, which surfaces on the same path as any other
+   * checkpoint git failure.
+   */
+  private git(): Promise<SimpleGit> {
+    this.gitClient ??= createSimpleGit({ baseDir: this.workspaceRoot })
+      .then((git) => git.env(this.gitEnv));
+    return this.gitClient;
   }
 
   /** Run an arbitrary raw git command against the side repo, returning stdout. */
   async raw(args: string[]): Promise<string> {
-    return this.git.raw(args);
+    return (await this.git()).raw(args);
   }
 
   /**
@@ -155,15 +184,15 @@ export class SideGitRunner {
     }
     const alreadyInit = existsSync(join(this.gitDir, 'HEAD'));
     if (!alreadyInit) {
-      await this.git.raw(['init', '--quiet']);
+      await (await this.git()).raw(['init', '--quiet']);
       logger.debug('SideGitRunner.init: initialized side repo', { gitDir: this.gitDir });
     }
     // Local (side-repo-scoped) identity — never touches the user's ~/.gitconfig
     // or the workspace's real .git/config (there is no --global here, and
     // GIT_DIR points at our own directory, so `git config` without --global
     // writes to <gitDir>/config).
-    await this.git.raw(['config', 'user.name', FALLBACK_IDENTITY.name]);
-    await this.git.raw(['config', 'user.email', FALLBACK_IDENTITY.email]);
+    await (await this.git()).raw(['config', 'user.name', FALLBACK_IDENTITY.name]);
+    await (await this.git()).raw(['config', 'user.email', FALLBACK_IDENTITY.email]);
     this.ensureGoodvibesIgnored();
   }
 
@@ -227,7 +256,7 @@ export class SideGitRunner {
    */
   async stageAll(paths?: string[]): Promise<void> {
     const pathspecs = paths && paths.length > 0 ? paths : ['.'];
-    await this.git.raw(['add', '-A', '--', ...pathspecs]);
+    await (await this.git()).raw(['add', '-A', '--', ...pathspecs]);
   }
 
   /**
@@ -241,7 +270,7 @@ export class SideGitRunner {
    * are NUL-delimited (`-z`) so newlines in names never inflate the count.
    */
   async countFirstSnapshotFiles(): Promise<number> {
-    const out: string = await this.git.raw(['ls-files', '--others', '--exclude-standard', '-z']);
+    const out: string = await (await this.git()).raw(['ls-files', '--others', '--exclude-standard', '-z']);
     if (out.length === 0) return 0;
     // Trailing NUL after the last entry — filter empties rather than off-by-one.
     return out.split('\0').filter((entry: string) => entry.length > 0).length;
@@ -249,12 +278,12 @@ export class SideGitRunner {
 
   /** Write the currently-staged index out as a tree object, without committing. Returns the tree hash. */
   async writeTree(): Promise<string> {
-    return (await this.git.raw(['write-tree'])).trim();
+    return (await (await this.git()).raw(['write-tree'])).trim();
   }
 
   /** Resolve `<commit>^{tree}` for an existing commit hash. */
   async treeOf(commit: string): Promise<string> {
-    return (await this.git.raw(['rev-parse', `${commit}^{tree}`])).trim();
+    return (await (await this.git()).raw(['rev-parse', `${commit}^{tree}`])).trim();
   }
 
   /**
@@ -276,22 +305,22 @@ export class SideGitRunner {
    * `updateRef`.
    */
   async commitTree(treeHash: string, message: string): Promise<string> {
-    return (await this.git.raw(['commit-tree', treeHash, '-m', message])).trim();
+    return (await (await this.git()).raw(['commit-tree', treeHash, '-m', message])).trim();
   }
 
   async updateRef(refName: string, commit: string): Promise<void> {
-    await this.git.raw(['update-ref', refName, commit]);
+    await (await this.git()).raw(['update-ref', refName, commit]);
   }
 
   async deleteRef(refName: string): Promise<void> {
-    await this.git.raw(['update-ref', '-d', refName]);
+    await (await this.git()).raw(['update-ref', '-d', refName]);
   }
 
   /** List every ref under CHECKPOINT_REF_PREFIX as `{ id, commit }`. */
   async listCheckpointRefs(): Promise<{ id: string; commit: string }[]> {
     let out: string;
     try {
-      out = await this.git.raw(['for-each-ref', '--format=%(refname) %(objectname)', CHECKPOINT_REF_PREFIX]);
+      out = await (await this.git()).raw(['for-each-ref', '--format=%(refname) %(objectname)', CHECKPOINT_REF_PREFIX]);
     } catch {
       return [];
     }
@@ -309,38 +338,38 @@ export class SideGitRunner {
 
   /** Files tracked in a commit's tree (recursive, name-only). */
   async listTrackedFiles(commitOrTree: string): Promise<string[]> {
-    const out: string = await this.git.raw(['ls-tree', '-r', '--name-only', commitOrTree]);
+    const out: string = await (await this.git()).raw(['ls-tree', '-r', '--name-only', commitOrTree]);
     return out.split('\n').map((line: string) => line.trim()).filter(Boolean);
   }
 
   /** Reset the side index to exactly match a commit's tree (does not touch the working tree). */
   async readTreeReset(commit: string): Promise<void> {
-    await this.git.raw(['read-tree', '--reset', commit]);
+    await (await this.git()).raw(['read-tree', '--reset', commit]);
   }
 
   /** Write every file currently in the side index out to the working tree, overwriting existing files. */
   async checkoutIndexAll(): Promise<void> {
-    await this.git.raw(['checkout-index', '-a', '-f']);
+    await (await this.git()).raw(['checkout-index', '-a', '-f']);
   }
 
   /** `git diff` between two commit-ish values. Omit `to` to diff against the live working tree. */
   async diff(from: string, to?: string): Promise<string> {
-    return this.git.raw(to ? ['diff', from, to] : ['diff', from]);
+    return (await this.git()).raw(to ? ['diff', from, to] : ['diff', from]);
   }
 
   /** `git diff --stat` between two commit-ish values. Omit `to` to diff against the live working tree. */
   async diffStat(from: string, to?: string): Promise<string> {
-    return this.git.raw(to ? ['diff', '--stat', from, to] : ['diff', '--stat', from]);
+    return (await this.git()).raw(to ? ['diff', '--stat', from, to] : ['diff', '--stat', from]);
   }
 
   /** `git diff --name-only` between two commit-ish values. Omit `to` to diff against the live working tree. */
   async diffNameOnly(from: string, to?: string): Promise<string[]> {
-    const out: string = await this.git.raw(to ? ['diff', '--name-only', from, to] : ['diff', '--name-only', from]);
+    const out: string = await (await this.git()).raw(to ? ['diff', '--name-only', from, to] : ['diff', '--name-only', from]);
     return out.split('\n').map((line: string) => line.trim()).filter(Boolean);
   }
 
   /** `git gc --prune=now` on the side repo. */
   async gc(): Promise<void> {
-    await this.git.raw(['gc', '--prune=now', '--quiet']);
+    await (await this.git()).raw(['gc', '--prune=now', '--quiet']);
   }
 }

@@ -17,6 +17,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type { ConfigKey } from './schema.js';
+import { raiseSettingsReaderFloor } from './settings-reader-floor.js';
 
 /**
  * The keys that ride the shared, surface-root-independent tier. Currently the
@@ -98,6 +99,34 @@ export function persistSharedKey(path: string, key: string, value: unknown): voi
   writeDotPath(existing, key, value);
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, JSON.stringify(existing, null, 2) + '\n', 'utf-8');
+}
+
+/**
+ * Record, in the file itself, the lowest reader version that can ingest what a
+ * migration just rewrote here.
+ *
+ * This settings file is SHARED state: several components read it and several
+ * write it, and on a real machine they are not all the same version at the same
+ * moment. When the credential sweep rewrote a literal password into a
+ * `goodvibes://secrets/…` reference, it wrote a form the daemon of the day could
+ * not walk, and that daemon failed while constructing its ConfigManager. The
+ * operator saw a daemon that would not start. What had happened was a newer
+ * component migrating shared state under an older reader, and nothing on disk
+ * said so.
+ *
+ * Best-effort by construction: a floor that cannot be written must never undo a
+ * migration that already succeeded, and a file that does not exist gets no
+ * marker — a floor describes a rewrite, so there is nothing to record where
+ * nothing was written. Returns true when the floor was raised.
+ */
+export function raiseReaderFloorInFile(path: string, minReaderVersion: string, setBy: string): boolean {
+  if (!existsSync(path)) return false;
+  const existing = readSharedTierFile(path);
+  const { raised } = raiseSettingsReaderFloor(existing, minReaderVersion, setBy);
+  if (!raised) return false;
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, JSON.stringify(existing, null, 2) + '\n', 'utf-8');
+  return true;
 }
 
 /**

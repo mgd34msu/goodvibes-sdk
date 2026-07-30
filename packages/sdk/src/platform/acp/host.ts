@@ -26,7 +26,12 @@ import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { delimiter, join } from 'node:path';
 import { homedir } from 'node:os';
-import { ClientSideConnection, ndJsonStream } from '@agentclientprotocol/sdk';
+// `@agentclientprotocol/sdk` is an optionalDependency. This module is on the
+// daemon's graph, so a static import of its values made an absent optional
+// package a daemon that does not exist; the values come off the awaited module
+// in acp/optional-sdk.ts at connection time instead. The type import is erased.
+import { loadAcpSdk } from './optional-sdk.js';
+import type { ClientSideConnection } from '@agentclientprotocol/sdk';
 import type { Agent, Client, NewSessionResponse, PromptResponse, RequestPermissionRequest, RequestPermissionResponse, SessionNotification } from './protocol.js';
 import type { PermissionRequestHandler } from '../permissions/prompt.js';
 import { analyzePermissionRequest } from '../permissions/analysis.js';
@@ -253,6 +258,10 @@ export class AcpHostService {
 
     let stage: AcpHostError['stage'] = 'spawn';
     try {
+      // Inside the try, so an install without the optional ACP package fails
+      // this one session start with a message naming it — reported through the
+      // same AcpHostError path as a spawn failure.
+      const { ClientSideConnection, ndJsonStream } = await loadAcpSdk();
       record.child = spawn([input.agent.binaryPath, ...input.agent.args], { cwd: input.cwd });
       if (!record.child.stdin || !record.child.stdout) {
         throw new Error('subprocess stdio not available (stdin/stdout must be piped)');

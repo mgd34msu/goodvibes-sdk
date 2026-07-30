@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
-import bplistParserDefault from 'bplist-parser';
 import { copyLockedBrowserSqlite } from './locked-db.js';
+import { loadOptionalDependency } from '../../utils/optional-dependency.js';
 import type {
   BrowserBookmarkEntry,
   BrowserHistoryEntry,
@@ -9,9 +9,23 @@ import type {
   BrowserKnowledgeProfile,
 } from './types.js';
 
-const bplistParser = bplistParserDefault as unknown as {
+interface BplistParser {
   parseFileSync<T = unknown>(path: string): T[];
-};
+}
+
+/**
+ * `bplist-parser` is an optionalDependency, and only Safari bookmarks — a
+ * binary plist — need it. A static import made the whole module, and therefore
+ * every graph that reaches browser knowledge, unloadable when the package is
+ * absent: the same class of failure the `bun:sqlite` note below describes, and
+ * the one utils/optional-dependency.ts records for the daemon.
+ */
+async function loadBplistParser(): Promise<BplistParser> {
+  const loaded = await loadOptionalDependency('bplist-parser', () => import('bplist-parser'));
+  if (!loaded.available) throw new Error(loaded.reason);
+  const namespace = loaded.module as { readonly default?: unknown };
+  return (namespace.default ?? loaded.module) as unknown as BplistParser;
+}
 
 // bun:sqlite is a Bun-only builtin; a static import makes this module unloadable
 // under any non-Bun runtime (Node's ESM linker rejects the `bun:` scheme at link
@@ -417,6 +431,7 @@ function walkWebKitBookmarkNode(
 
 async function readWebKitBookmarks(profile: BrowserKnowledgeProfile, options: BrowserKnowledgeReadOptions): Promise<BrowserBookmarkEntry[]> {
   if (!profile.bookmarksPath || profile.browser === 'epiphany') return [];
+  const bplistParser = await loadBplistParser();
   const [root] = bplistParser.parseFileSync<WebKitBookmarkNode>(profile.bookmarksPath);
   const out: BrowserBookmarkEntry[] = [];
   for (const child of root?.Children ?? []) {

@@ -1,8 +1,26 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
+import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import type { Database } from 'bun:sqlite';
-import { load as loadSqliteVec } from 'sqlite-vec';
+
+/**
+ * `sqlite-vec` is an optionalDependency and this loader is reached from
+ * synchronous store constructors, so it cannot be awaited. Resolved through
+ * `createRequire` at the one call that needs it instead — the same technique,
+ * and for the same reason, as the `bun:sqlite` resolution in
+ * knowledge/browser-history/readers.ts: a static import puts the specifier on
+ * the module graph, and a graph that cannot link is a process that dies at
+ * module init with no handler running. See utils/optional-dependency.ts.
+ *
+ * In a compiled binary this is never called: `resolveSqliteVecPath()` returns
+ * the co-located extension and `db.loadExtension` takes that path. It is the
+ * development and unbundled-runtime path that needs the package.
+ */
+function requireSqliteVecLoad(): (db: Database) => void {
+  const mod = createRequire(import.meta.url)('sqlite-vec') as { load: (db: Database) => void };
+  return mod.load;
+}
 
 /**
  * Resolves the path to the sqlite-vec native extension.
@@ -76,7 +94,7 @@ export function loadSqliteVecExtension(db: Database): void {
     if (bundledPath) {
       db.loadExtension(bundledPath);
     } else {
-      loadSqliteVec(db);
+      requireSqliteVecLoad()(db);
     }
   } catch (err) {
     if (isExtensionLoadingRefusal(err)) {

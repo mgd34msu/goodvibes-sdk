@@ -101,7 +101,22 @@ export function overlayDaemonTier(
   path: string,
   assign: (key: DaemonOwnedConfigPath, value: unknown) => void,
 ): readonly DaemonOwnedConfigPath[] {
-  const stored = readDaemonTierFile(path);
+  return overlayDaemonTierFrom(readDaemonTierFile(path), assign);
+}
+
+/**
+ * The same overlay against an ALREADY-PARSED store.
+ *
+ * ConfigManager screens a settings file before it merges any of it (see
+ * settings-ingestion.ts), which means the object it overlays is not the one on
+ * disk: a key that could not be ingested has been removed from it, loudly. If
+ * the overlay re-read the file it would put that key straight back, which is
+ * the quarantine defeating itself.
+ */
+export function overlayDaemonTierFrom(
+  stored: Record<string, unknown>,
+  assign: (key: DaemonOwnedConfigPath, value: unknown) => void,
+): readonly DaemonOwnedConfigPath[] {
   const applied: DaemonOwnedConfigPath[] = [];
   for (const entry of collectDaemonOwnedEntries(stored)) {
     assign(entry.key, entry.value);

@@ -14,8 +14,12 @@
  *   FAKE_ACP_MODE=hang        reads stdin but never answers initialize (timeout path).
  *   FAKE_ACP_MODE=slow-turn   a prompt streams then waits until cancelled.
  */
-import { AgentSideConnection, ndJsonStream, PROTOCOL_VERSION } from '../../packages/sdk/src/platform/acp/protocol.ts';
+// The ACP SDK's values come off `loadAcpSdk()` rather than a re-export,
+// because `@agentclientprotocol/sdk` is an optionalDependency and a re-export
+// links its specifier at module init. See acp/optional-sdk.ts.
+import { loadAcpSdk } from '../../packages/sdk/src/platform/acp/protocol.ts';
 import type {
+  AgentSideConnection,
   Agent,
   CancelNotification,
   InitializeRequest,
@@ -39,6 +43,7 @@ if (mode === 'hang') {
   process.stdin.on('data', () => {});
   setInterval(() => {}, 60_000);
 } else {
+  const { AgentSideConnection, ndJsonStream, PROTOCOL_VERSION } = await loadAcpSdk();
   const stdout = new WritableStream<Uint8Array>({
     write(chunk) { process.stdout.write(chunk); },
   });
