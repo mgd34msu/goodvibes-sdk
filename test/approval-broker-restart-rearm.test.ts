@@ -160,26 +160,34 @@ describe('an approval survives a restart with its deadline intact', () => {
       const first = new ApprovalBroker({ storePath: store.path });
       await first.start();
 
-      // A short window, deliberately: it is already over by the time the second
-      // broker starts, which is the whole scenario.
-      const pending = first.requestApproval({ request: request('call-1'), timeoutMs: 40 });
+      // No `timeoutMs` here, deliberately, matching the other tests below: it
+      // keeps this broker from ever arming its OWN expiry timer, which would
+      // otherwise race this test's `setPersistedDeadline` write with a second,
+      // internally-triggered persist() of its own. The deadline this test
+      // cares about is written directly onto the record below instead.
+      const pending = first.requestApproval({ request: request('call-1') });
       // The awaiting caller dies with the process in the real case; here it is
       // resolved by the expiry so the promise is not left dangling.
       void pending.catch(() => undefined);
-      // requestApproval is async: let it create and persist the record before
-      // asking the broker what it holds.
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      // Wait on the STORE FILE, not a fixed margin: `persisted()` is waiting
+      // on the thing the restart actually consumes (see its own doc comment
+      // above) rather than betting on how quickly this process gets
+      // scheduled inside the full suite.
+      await waitFor(() => persisted(store.path, 'call-1'));
 
       const created = first.listApprovals().find((entry) => entry.callId === 'call-1');
       expect(created?.status).toBe('pending');
-      expect(created?.expiresAt).toBeDefined();
 
-      await new Promise((resolve) => setTimeout(resolve, 120));
+      // Move the deadline into the past, directly on the persisted record —
+      // "already expired when the restart reads it" becomes a fact about the
+      // file rather than a bet on real time elapsing between two fixed
+      // sleeps and a slow disk write landing in between.
+      setPersistedDeadline(store.path, 'call-1', Date.now() - 1);
 
       // A NEW broker over the same store is the restart.
       const second = new ApprovalBroker({ storePath: store.path });
       await second.start();
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await waitFor(() => statusOf(second, 'call-1') === 'expired');
 
       const restored = second.listApprovals().find((entry) => entry.callId === 'call-1');
       expect(restored).toBeDefined();
