@@ -1,12 +1,86 @@
-import {
-  GraphQLError,
-  GraphQLScalarType,
-  Kind,
-  buildSchema,
-  type DocumentNode,
-  type ValueNode,
-} from 'graphql';
+/**
+ * graphql-schema.ts — the knowledge GraphQL schema text, its JSON scalar, and
+ * the small coercion helpers the resolvers use.
+ *
+ * `graphql` is declared under `optionalDependencies` in
+ * packages/sdk/package.json, and this file imported `GraphQLError`,
+ * `GraphQLScalarType` and `Kind` as VALUES at module init, while
+ * knowledge/graphql.ts ran `buildSchema` and `printSchema` in CLASS-STATIC
+ * initialisers — which also run at module init. The daemon reaches both
+ * through the knowledge service, so an install without `graphql` did not lose
+ * the GraphQL surface, it lost the daemon before it could report anything
+ * (see utils/optional-dependency.ts for the measured failure).
+ *
+ * Everything here is now reached through `graphqlModule()`, and the whole
+ * module is resolved by `primeGraphqlModule()` — a dynamic import written out
+ * literally so a bundler still sees `graphql` and bundles it when it IS
+ * installed. `KnowledgeGraphqlService` primes it at construction, so in a
+ * compiled binary the bundled module is in hand long before an HTTP route
+ * reads `schemaText`. The synchronous fallback below covers an unbundled
+ * caller that reaches a helper first, and when the package is genuinely
+ * absent every entry point throws an error whose message names it.
+ */
+
+import { createRequire } from 'node:module';
+import type { DocumentNode, ValueNode, buildSchema } from 'graphql';
+import { loadOptionalDependency, optionalDependencyUnavailable } from '../utils/optional-dependency.js';
 import type { KnowledgePacketDetail, KnowledgeProjectionTargetKind } from './types.js';
+
+type GraphqlModule = typeof import('graphql');
+
+let resolvedGraphql: GraphqlModule | undefined;
+let graphqlUnavailableReason: string | undefined;
+
+/** Whether the knowledge GraphQL surface can run here, and why not. */
+export interface KnowledgeGraphqlAvailability {
+  readonly available: boolean;
+  readonly reason?: string;
+}
+
+/**
+ * Resolve `graphql` once per process. Never rejects: an absent package is
+ * reported, and the reason is remembered so the synchronous accessor below
+ * repeats it instead of retrying a resolution that already failed.
+ */
+export async function primeGraphqlModule(): Promise<KnowledgeGraphqlAvailability> {
+  if (resolvedGraphql) return { available: true };
+  const loaded = await loadOptionalDependency('graphql', () => import('graphql'));
+  if (!loaded.available) {
+    graphqlUnavailableReason = loaded.reason;
+    return { available: false, reason: loaded.reason };
+  }
+  resolvedGraphql = loaded.module;
+  return { available: true };
+}
+
+/**
+ * The resolved `graphql` module, for the synchronous helpers in this file and
+ * the synchronous `schemaText` the daemon-sdk route contract requires.
+ *
+ * Prefers whatever `primeGraphqlModule()` already resolved — which is the
+ * bundled copy inside a compiled binary. Falls back to `createRequire` for a
+ * caller that got here before the prime finished, the same technique
+ * state/sqlite-vec-loader.ts uses for its synchronous constructors. When
+ * neither works the throw carries the standard unavailability message, so the
+ * feature reports itself missing by name rather than failing obscurely.
+ *
+ * A `createRequire` failure is NOT remembered. Inside a compiled binary the
+ * package is bundled and `createRequire` cannot see it at all — only the
+ * dynamic import can — so caching that failure would declare `graphql`
+ * permanently missing in exactly the installation where it is present. Only
+ * `primeGraphqlModule()`, which uses the import a bundler follows, gets to
+ * decide that the package is absent.
+ */
+export function graphqlModule(): GraphqlModule {
+  if (resolvedGraphql) return resolvedGraphql;
+  if (graphqlUnavailableReason) throw new Error(graphqlUnavailableReason);
+  try {
+    resolvedGraphql = createRequire(import.meta.url)('graphql') as GraphqlModule;
+    return resolvedGraphql;
+  } catch (error) {
+    throw new Error(optionalDependencyUnavailable('graphql', error));
+  }
+}
 
 export const KNOWLEDGE_GRAPHQL_SDL = `
   scalar JSON
@@ -416,6 +490,7 @@ export const KNOWLEDGE_GRAPHQL_SDL = `
 `;
 
 export function parseJsonAst(node: ValueNode): unknown {
+  const { Kind } = graphqlModule();
   switch (node.kind) {
     case Kind.STRING:
     case Kind.ENUM:
@@ -438,6 +513,7 @@ export function parseJsonAst(node: ValueNode): unknown {
 }
 
 export function installJsonScalar(schema: ReturnType<typeof buildSchema>): void {
+  const { GraphQLError, GraphQLScalarType } = graphqlModule();
   const type = schema.getType('JSON');
   if (!(type instanceof GraphQLScalarType)) {
     throw new GraphQLError('Knowledge GraphQL schema is missing JSON scalar.');
@@ -469,7 +545,7 @@ export function toProjectionKind(value: string): KnowledgeProjectionTargetKind {
         return 'overview';
     }
   }
-  throw new GraphQLError(`Unknown projection kind: ${value}`);
+  throw new (graphqlModule().GraphQLError)(`Unknown projection kind: ${value}`);
 }
 
 export function toProjectionEnum(value: string | undefined): string {
@@ -496,7 +572,7 @@ export function toPacketDetail(value: string | undefined): KnowledgePacketDetail
   if (normalized === 'compact' || normalized === 'standard' || normalized === 'detailed') {
     return normalized;
   }
-  throw new GraphQLError(`Unknown packet detail: ${value}`);
+  throw new (graphqlModule().GraphQLError)(`Unknown packet detail: ${value}`);
 }
 
 export function toPacketDetailEnum(value: string | undefined): string {
@@ -555,6 +631,7 @@ export function clampOffset(value: number | null | undefined): number {
 }
 
 export function pickOperation(document: DocumentNode, operationName?: string): 'query' | 'mutation' {
+  const { GraphQLError, Kind } = graphqlModule();
   const operation = document.definitions.find((definition) => definition.kind === Kind.OPERATION_DEFINITION && (!operationName || definition.name?.value === operationName));
   if (!operation || operation.kind !== Kind.OPERATION_DEFINITION) {
     throw new GraphQLError(`Operation not found: ${operationName ?? 'default'}`);

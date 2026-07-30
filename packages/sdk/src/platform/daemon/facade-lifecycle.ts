@@ -17,6 +17,7 @@ import type { ConfigManager } from '../config/manager.js';
 import type { PlatformServiceManager } from './service-manager.js';
 import { DaemonAutoUpdater, resolveDaemonInstalledFiles, type AutoUpdateServiceActions } from './auto-updater.js';
 import { DaemonReceiptStore, formatReceiptTime } from './receipts.js';
+import { writeFatalLine } from './fatal-boot-report.js';
 import { FeatureAnnouncementStore, collectStartupAnnouncements, featureAnnouncementsPath } from '../runtime/feature-announcements.js';
 import {
   readLifecycleMarker,
@@ -267,7 +268,13 @@ export class DaemonLifecycleRuntime {
    */
   private announceOnStderr(line: string): void {
     try {
-      (this.options.stderr ?? process.stderr).write(`${line}\n`);
+      // Synchronous write to fd 2 by default: every branch that calls this
+      // exits moments later, and `process.stderr` is both replaceable by a
+      // host and asynchronously flushed — which is how the released daemon
+      // came to die with zero bytes on either stream. The injected seam is
+      // kept so tests can observe. See daemon/fatal-boot-report.ts.
+      if (this.options.stderr) this.options.stderr.write(`${line}\n`);
+      else writeFatalLine(line);
     } catch {
       // A closed/unwritable stderr must never turn a rollback into a crash.
     }

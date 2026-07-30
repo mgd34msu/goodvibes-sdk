@@ -1,6 +1,11 @@
 import { existsSync } from 'fs';
 import { join } from 'path';
-import { simpleGit } from 'simple-git';
+// `simple-git` is an optionalDependency and is built through
+// git/optional-simple-git.ts at the call that needs it, never imported at
+// module init. The type import below is erased. See
+// utils/optional-dependency.ts.
+import type { SimpleGit } from 'simple-git';
+import { createSimpleGit } from '../git/optional-simple-git.js';
 import { GitService } from '../git/service.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
@@ -110,7 +115,7 @@ export class AgentWorktree {
    * `git add --all` sweep for back-compat.
    */
   async commitWorkingTree(message: string, paths?: string[]): Promise<CommitWorkingTreeResult> {
-    const git = simpleGit({ baseDir: this.git.getCwd() });
+    const git = await createSimpleGit({ baseDir: this.git.getCwd() });
     const scoped = paths && paths.length > 0 ? paths : null;
     let stagedPathspecs: string[];
     let addFlag: '-A' | '--all';
@@ -208,7 +213,7 @@ export class AgentWorktree {
    * repo whose first commit was the one that just failed). Best-effort: a reset failure is logged,
    * not thrown, so it never masks the original commit error the caller needs to see.
    */
-  private async _restoreIndex(git: ReturnType<typeof simpleGit>, pathspecs: string[]): Promise<void> {
+  private async _restoreIndex(git: SimpleGit, pathspecs: string[]): Promise<void> {
     try {
       await git.raw(['reset', '--', ...pathspecs]);
       logger.debug('AgentWorktree.commitWorkingTree: restored index after failed commit', { pathspecs });
@@ -221,7 +226,7 @@ export class AgentWorktree {
 
   async currentHead(): Promise<string | null> {
     try {
-      const git = simpleGit({ baseDir: this.git.getCwd() });
+      const git = await createSimpleGit({ baseDir: this.git.getCwd() });
       return (await git.raw(['rev-parse', 'HEAD'])).trim();
     } catch (error) {
       logger.warn('AgentWorktree.currentHead failed', { error: summarizeError(error) });
@@ -266,7 +271,7 @@ export class AgentWorktree {
   private async _hasChanges(worktreePath: string, branch: string): Promise<boolean> {
     try {
       // Use a simple-git instance pointed at the worktree to check status
-      const wgit = simpleGit({ baseDir: this.git.getCwd() });
+      const wgit = await createSimpleGit({ baseDir: this.git.getCwd() });
       // Count commits on the branch that aren't on the current branch
       const result = await wgit.raw(['rev-list', '--count', `HEAD..${branch}`]);
       const count = parseInt(result.trim(), 10);
@@ -280,7 +285,7 @@ export class AgentWorktree {
 
   private async _branchExists(branch: string): Promise<boolean> {
     try {
-      const wgit = simpleGit({ baseDir: this.git.getCwd() });
+      const wgit = await createSimpleGit({ baseDir: this.git.getCwd() });
       await wgit.raw(['rev-parse', '--verify', '--quiet', branch]);
       return true;
     } catch {
@@ -298,7 +303,7 @@ export class AgentWorktree {
       // Try with --force flag via raw if normal remove fails
       logger.debug('AgentWorktree._removeWorktree: first attempt failed, retrying with --force', { worktreePath, error: summarizeError(err) });
       try {
-        const wgit = simpleGit({ baseDir: this.git.getCwd() });
+        const wgit = await createSimpleGit({ baseDir: this.git.getCwd() });
         await wgit.raw(['worktree', 'remove', '--force', worktreePath]);
       } catch (err) {
         logger.error('AgentWorktree._removeWorktree failed', { worktreePath, error: summarizeError(err) });
@@ -312,7 +317,7 @@ export class AgentWorktree {
    */
   private async _deleteBranch(branch: string): Promise<void> {
     try {
-      const wgit = simpleGit({ baseDir: this.git.getCwd() });
+      const wgit = await createSimpleGit({ baseDir: this.git.getCwd() });
       await wgit.raw(['branch', '-D', branch]);
     } catch (err) {
       logger.warn('AgentWorktree._deleteBranch failed during cleanup', { branch, error: summarizeError(err) });
@@ -405,7 +410,7 @@ export class IsolatedWorktree {
   /** HEAD of the item branch (inside the worktree), or null if it can't be read. */
   async currentHead(): Promise<string | null> {
     try {
-      const wgit = simpleGit({ baseDir: this.path });
+      const wgit = await createSimpleGit({ baseDir: this.path });
       return (await wgit.raw(['rev-parse', 'HEAD'])).trim();
     } catch (error) {
       logger.warn('IsolatedWorktree.currentHead failed', { path: this.path, error: summarizeError(error) });
@@ -417,7 +422,7 @@ export class IsolatedWorktree {
   async isClean(): Promise<boolean> {
     if (!existsSync(this.path)) return true;
     try {
-      const wgit = simpleGit({ baseDir: this.path });
+      const wgit = await createSimpleGit({ baseDir: this.path });
       const status = (await wgit.raw(['status', '--porcelain'])).trim();
       return status.length === 0;
     } catch (error) {
@@ -430,7 +435,7 @@ export class IsolatedWorktree {
   /** True when the item branch carries at least one commit beyond the base branch. */
   async branchHasCommits(): Promise<boolean> {
     try {
-      const wgit = simpleGit({ baseDir: this.rootGit.getCwd() });
+      const wgit = await createSimpleGit({ baseDir: this.rootGit.getCwd() });
       const count = parseInt((await wgit.raw(['rev-list', '--count', `${this.baseBranch}..${this.branch}`])).trim(), 10);
       return Number.isFinite(count) && count > 0;
     } catch (error) {
@@ -451,7 +456,7 @@ export class IsolatedWorktree {
       logger.debug('IsolatedWorktree.integrate: branch has no commits beyond base, nothing to merge', { branch: this.branch });
       return { status: 'empty' };
     }
-    const wgit = simpleGit({ baseDir: this.rootGit.getCwd() });
+    const wgit = await createSimpleGit({ baseDir: this.rootGit.getCwd() });
     const before = (await wgit.raw(['rev-parse', 'HEAD'])).trim();
     const result = await this.rootGit.merge(this.branch);
     if (result.success) {
@@ -482,7 +487,7 @@ export class IsolatedWorktree {
   async diff(): Promise<{ files: string[]; unifiedDiff: string; stat: string }> {
     const range = `${this.baseBranch}...${this.branch}`;
     try {
-      const wgit = simpleGit({ baseDir: this.rootGit.getCwd() });
+      const wgit = await createSimpleGit({ baseDir: this.rootGit.getCwd() });
       const names = (await wgit.raw(['diff', '--name-only', range])).trim();
       const files = names.length > 0 ? names.split('\n').filter(Boolean) : [];
       const unifiedDiff = await wgit.raw(['diff', range]);
@@ -499,7 +504,7 @@ export class IsolatedWorktree {
     logger.debug('IsolatedWorktree.remove', { path: this.path, branch: this.branch });
     await this.removeDirectory();
     try {
-      const wgit = simpleGit({ baseDir: this.rootGit.getCwd() });
+      const wgit = await createSimpleGit({ baseDir: this.rootGit.getCwd() });
       await wgit.raw(['branch', '-D', this.branch]);
     } catch (err) {
       logger.warn('IsolatedWorktree.remove: branch delete did not complete', { branch: this.branch, error: summarizeError(err) });
@@ -525,7 +530,7 @@ export class IsolatedWorktree {
     logger.debug('IsolatedWorktree.evict', { path: this.path, branch: this.branch });
     let preservedCommit: string | null = null;
     if (existsSync(this.path) && !(await this.isClean())) {
-      const wgit = simpleGit({ baseDir: this.path });
+      const wgit = await createSimpleGit({ baseDir: this.path });
       await wgit.raw(['add', '-A']);
       const message = 'preserve uncommitted work at kept-cap eviction';
       try {
@@ -551,7 +556,7 @@ export class IsolatedWorktree {
       await this.rootGit.worktreeRemove(this.path);
     } catch (err) {
       logger.debug('IsolatedWorktree.removeDirectory: first attempt failed, retrying with --force', { path: this.path, error: summarizeError(err) });
-      const wgit = simpleGit({ baseDir: this.rootGit.getCwd() });
+      const wgit = await createSimpleGit({ baseDir: this.rootGit.getCwd() });
       await wgit.raw(['worktree', 'remove', '--force', this.path]);
     }
   }

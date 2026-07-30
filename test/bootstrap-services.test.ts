@@ -366,6 +366,7 @@ describe('startHostServices detached daemon spawn (Layer 2 default)', () => {
 
   test('spawns a DETACHED daemon by default (not in-process embedded) and adopts it as external with the install hint', async () => {
     const captured: CapturedSpawn = { unrefCalled: false };
+    const runtimeDir = tempRuntimeDir();
     let createDaemonCalled = false;
     const handle = await startHostServices(
       baseConfig(), // no daemon.embedInProcess → default detached path
@@ -376,7 +377,7 @@ describe('startHostServices detached daemon spawn (Layer 2 default)', () => {
         isDaemonVersionCompatible: () => true,
         probeDaemonPortInUse: async () => false,
         spawnDetachedDaemon: stubSpawn(captured),
-        daemonRuntimeDir: tempRuntimeDir(),
+        daemonRuntimeDir: runtimeDir,
         daemonHomeDir: '/home/tester',
         sleep: immediateSleep,
         probeDaemonIdentity: async () => ({ kind: 'goodvibes' as const, status: 'running', version: '9.9.9' }),
@@ -395,7 +396,18 @@ describe('startHostServices detached daemon spawn (Layer 2 default)', () => {
     expect(captured.unrefCalled).toBe(true);
     expect(captured.command).toBe('goodvibes-daemon');
     expect(captured.args).toContain('--daemon-home');
-    expect(captured.args).toContain('/home/tester');
+    // The daemon's STATE directory, not the user home above it. Every reader in
+    // the SDK resolves `--daemon-home` as `~/.goodvibes/daemon` (see
+    // workspace/daemon-home.ts, config/daemon-config-tier.ts,
+    // owner-profile/paths.ts, config/secrets.ts); this spawner passed the user
+    // home, so a spawned daemon filed its operator tokens and daemon settings a
+    // level up from where all of them look. On a normal machine the config half
+    // still landed right, because the user home IS the default parent — which is
+    // exactly why nothing caught it.
+    expect(captured.args).toContain(runtimeDir);
+    expect(captured.args).not.toContain('/home/tester');
+    // The env var is read by the same resolver; the two must not disagree.
+    expect(captured.options?.env?.['GOODVIBES_DAEMON_HOME']).toBe(runtimeDir);
     expect(captured.args).toContain('--port');
     expect(captured.args).toContain('3421');
     // Adopted as external with the spawned reason + one-time install hint.

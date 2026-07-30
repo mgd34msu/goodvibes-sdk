@@ -4,6 +4,288 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
+## [Unreleased]
+
+### Changed
+
+- **`zustand` moved from `optionalDependencies` to `dependencies`.** It backs
+  `runtime/store/index.ts`, and a daemon without a runtime store is not a
+  daemon — so declaring it optional was untrue, and the fix belongs in the
+  manifest rather than in the import. Unlike every other package in this
+  release's optional-dependency work, its import is left exactly as it was:
+  making a synchronous store lazy would break every synchronous consumer to
+  honour a declaration that was simply wrong. No real install changes, because
+  a default `npm`/`bun install` has always installed optional dependencies; what
+  changes is that an install which deliberately omits them now still gets the
+  store. (The `tree-sitter-*` grammars stay declared optional and keep their
+  static `with { type: 'file' }` asset imports, which exist so `bun build
+  --compile` embeds the WASM; the build lane below is what makes that
+  declaration honest.)
+
+### Fixed
+
+- **A compiled build now survives an optional package it is allowed to be
+  without.** Making the SDK's imports dynamic fixed the RUNTIME half of the
+  optional-dependency defect, but not the build: bun resolves a dynamic
+  `import('pkg')` at bundle time exactly as it resolves a static one, so with
+  the package absent `bun build …/daemon/cli.ts --compile` still failed with
+  `Could not resolve: "jsdom"` and produced no binary at all. The lazy
+  resolution never got the chance to govern.
+
+  `@pellux/goodvibes-toolchain`'s compile path (`lib/optional-externals.ts`,
+  wired into `runBuildBinaries`) now screens every declared dependency of the
+  building repo and of the SDK it bundles against what is actually installed:
+
+  - a package declared **optional** and not installed is passed as
+    `--external`, so bun leaves the specifier for runtime, the binary is
+    produced, and the SDK's own unavailability report is what the operator
+    sees;
+  - a package declared **required** and not installed **fails the build**, by
+    package name and by the manifest that asked for it. Externalising that one
+    would trade a loud failure at build time for a binary that dies in the
+    field, which is the exact trade this line of work exists to undo;
+  - a package declared optional by one manifest and required by another is
+    treated as required — the stricter declaration wins;
+  - an optional package that IS installed is left alone and still gets bundled,
+    so an ordinary build is unchanged, and a caller that supplies no manifests
+    gets the argv it always got.
+
+  `test/toolchain/build-binaries.test.ts` pins both the produced argv and the
+  behaviour end to end: it screens a package name that resolves nowhere,
+  compiles a fixture with the real `bun build --compile`, and runs the artifact
+  — the binary exists, boots, and reports the package unavailable, against a
+  control whose static import of the same name does not compile at all.
+
+- **`test/daemon-isolation-guards.test.ts` no longer leaves scratch directories
+  behind.** It created a throwaway home per harness and per compiled case and
+  removed only the two holding the compiled binaries — **10 directories leaked
+  per run**, measured, and the development host had accumulated roughly three
+  thousand of them. Every directory now comes from one `scratchDir()` helper
+  that records what it made, and a file-level cleanup removes exactly those.
+  Deliberately a registry of paths rather than a prefix sweep of `tmpdir()`: a
+  second copy of the suite may be running alongside, and a sweep would delete
+  the directories it is still using.
+
+- **A package the SDK says it can live without could stop the daemon from
+  existing.** `packages/sdk/package.json` declares thirty packages under
+  `optionalDependencies`. That declaration is a promise: an install that skipped
+  them, or one where a build failed, still produces a working SDK, and the
+  features that need them report themselves unavailable. A **static** import of
+  such a package breaks the promise in both of the shapes that ship. Measured
+  here with `packages/sdk/node_modules/jsdom` moved aside:
+
+  - `bun build packages/sdk/src/platform/daemon/cli.ts --compile` failed with
+    `error: Could not resolve: "jsdom"`. There was no daemon binary at all.
+  - The same graph run from source died at **module init** with
+    `Cannot find package 'jsdom'` — before `main()`, before the activity logger
+    had a destination, and before `daemon/fatal-boot-report.ts` existed to
+    report anything. One step earlier in boot than the mute-daemon failure
+    above, and just as silent.
+
+  `knowledge/html-readability.ts` was the entry point for this: the daemon
+  reaches it through `knowledge/extractors.ts`. It now loads `jsdom` and
+  `@mozilla/readability` through the new `utils/optional-dependency.ts` at the
+  moment an extraction needs them, caches the outcome (including the failure)
+  once per process, and returns `null` with a stated reason when they are
+  absent; `extractKnowledgeArtifact` falls back to its lightweight HTML path and
+  carries that reason as a warning, so a missing package never looks like an
+  empty page. `extractReadableHtml` is now async as a result.
+
+  The same treatment was applied to every other optional package the daemon
+  graph reached statically and could be reached lazily: `jszip` (the Office
+  extractors), `bplist-parser` (Safari bookmarks), `fuse.js` (the registry
+  tool's fuzzy ranking, which now falls back to exact substring and says so in
+  its result), `node-edge-tts` including its `dist/drm.js` subpath (the
+  Microsoft voice provider), and `sqlite-vec` (resolved through `createRequire`
+  rather than `await`, because the loader is called from synchronous store
+  constructors — the same technique, for the same reason, as the `bun:sqlite`
+  resolution in `knowledge/browser-history/readers.ts`).
+
+  Seven more optional packages needed the module restructured rather than the
+  import moved, because each was reached by building a client in a
+  **constructor**, extending an **imported base class**, running a **class
+  static**, or **re-exporting** a value — all of which run at module init:
+
+  - `openai` (`providers/openai.ts`, `providers/openai-compat.ts`,
+    `providers/lm-studio-helpers.ts`). The client is a memoised promise built on
+    first use instead of in the constructor. Every method that uses it was
+    already async, so no public signature moved; constructing a provider no
+    longer needs the package, and the first call that does reports it by name
+    through the provider-error path the caller already handles.
+  - `@anthropic-ai/bedrock-sdk` (`providers/amazon-bedrock.ts`,
+    `providers/amazon-bedrock-mantle.ts`), including its `core/auth.js` subpath
+    for the SigV4 signer the control-plane model listing reuses.
+    `AnthropicSdkProviderOptions.createClient` may now return a promise, which
+    the one caller — already inside an async retry body — awaits.
+  - `@anthropic-ai/sdk` and `google-auth-library`
+    (`providers/anthropic-vertex.ts`). `AnthropicVertexClient extends
+    BaseAnthropic`, and a class cannot extend a dynamically imported base: the
+    `extends` expression is evaluated when the declaration is. The class is now
+    declared **inside** an async factory called once and memoised, so the
+    declaration runs after the import resolves and every `new` still gets one
+    class object.
+  - `@agentclientprotocol/sdk` (`acp/host.ts`, `acp/agent.ts`,
+    `acp/connection.ts`, `acp/protocol.ts`). A re-export cannot be lazy —
+    `export { x } from 'pkg'` links the specifier exactly like an import — so
+    `acp/protocol.ts` no longer re-exports `ndJsonStream`,
+    `AgentSideConnection` and `PROTOCOL_VERSION`; the three consumers and the
+    ACP test fixture take them off `loadAcpSdk()` instead. Its type re-exports
+    are untouched, because `export type` is erased. `serveAcpAgent` is async as
+    a result — it cannot build a connection before the package resolves.
+  - `simple-git` (`git/service.ts`, `agents/worktree.ts`,
+    `workspace/checkpoint/side-git.ts`). The two constructor cases hold a
+    memoised promise their already-async methods await, so each client is still
+    built exactly once, with the `.env()` scoping the checkpoint runner depends
+    on applied to it.
+  - `graphql` (`knowledge/graphql.ts`, `knowledge/graphql-schema.ts`).
+    `buildSchema` and `printSchema` ran in class-static initialisers; they are
+    lazily-computed accessors now, cached after the first use. The
+    `KnowledgeGraphqlService` constructor primes the package through the
+    dynamic import a bundler follows, so a compiled binary has it in hand
+    before any route reads `schemaText` — which the daemon-sdk route contract
+    requires to stay a synchronous string.
+
+  When any of these packages is absent the feature throws an error whose
+  message is the same stated reason: the package name, that it is an optional
+  dependency of `@pellux/goodvibes-sdk`, and that installing it enables the
+  feature. Nothing returns empty or defaults silently.
+
+  Two optional packages are deliberately NOT converted. `zustand` backs
+  `runtime/store/index.ts`, which is synchronous and which a daemon cannot run
+  without — the mismatch there is in the declaration, not the import.
+  `web-tree-sitter` and the five `tree-sitter-*` grammars are
+  `with { type: 'file' }` asset imports that exist precisely so
+  `bun build --compile` embeds the WASM into the binary; a dynamic import would
+  defeat the embedding that makes the feature work in a shipped artifact.
+
+  Proven against a compiled artifact, because source cannot show it: under
+  `bun` with a full node_modules tree a static import and a dynamic one behave
+  identically. `test/optional-dependency-boot.test.ts` compiles both shapes with
+  `bun build --compile --external <pkg>` and runs them from a directory where
+  the packages do not resolve. `--external` rather than hiding a package, so the
+  test never mutates this repository's node_modules underneath the suite running
+  beside it. The static controls — one importing `jsdom`, one importing
+  `graphql` and building a schema at module scope — exit 1 with **zero bytes on
+  stdout**; they never reach their first statement. The lazy shapes exit 0, name
+  every package they are missing, and still return an extraction.
+
+  Measured on the real daemon binary, compiled from
+  `platform/daemon/cli.ts` with the package left as a runtime specifier and run
+  where it does not resolve, against a home holding an unparseable
+  `daemon/settings.json`:
+
+  - `openai`: before, exit 1 with 0 bytes on stdout and **99 bytes** on stderr
+    saying only `Cannot find package 'openai'`. After, exit 1 with **1232
+    bytes** naming the settings file, `could not be read as JSON`, and the parse
+    error. The daemon booted and reported the thing that was actually wrong.
+  - `@agentclientprotocol/sdk`: before, exit 1 with 0 bytes on stdout and **113
+    bytes** saying only `Cannot find module '@agentclientprotocol/sdk'`. After,
+    exit 1 with **1205 bytes** reporting the settings file.
+  - All seven left external at once: the daemon still boots and still reaches
+    its settings check.
+
+- **Every shipped daemon to date has died mute on a fatal boot error. This is
+  the release that makes them speak.** Measured against the released 1.27.0
+  binary, in an isolated home, with an unparseable `daemon/settings.json`: exit
+  code 1, **zero bytes on stdout, zero bytes on stderr, and no activity log
+  written at all**. The operator's only signal was that everything had stopped.
+
+  The cause was not output buffering and not a bypassed handler. The daemon
+  entrypoint that ships reports a fatal boot failure to the activity **logger**
+  and then exits — and at that point in boot the logger has no destination, so
+  the line goes nowhere and no file descriptor is ever touched. A `logger.error`
+  is not a disclosure.
+
+  Every early-exit site in the daemon boot path now routes through
+  `platform/daemon/fatal-boot-report.ts`, which writes **synchronously to file
+  descriptor 2** (`writeSync(2, …)`) before anything else and before the exit:
+  the fatal handler, the settings refusals, the crash-loop rollback notice, and
+  the `--install-service` output. The descriptor is used rather than
+  `process.stderr.write` because the latter is a replaceable property on a
+  mutable global — goodvibes-tui really does replace it, to keep a rendered
+  screen clean — and because a stream write issued immediately before
+  `process.exit()` can still be in flight when the process stops existing.
+
+  A settings refusal is now disclosed by the SDK **at the point of refusal**,
+  so a host whose own fatal tail is silent still speaks. Proven against a
+  compiled binary, not source: `test/daemon-isolation-guards.test.ts` builds the
+  daemon fatal-boot path with `bun build --compile` and asserts bytes on stderr
+  for an unparseable file, a safety-gate refusal, and a reader-floor refusal —
+  alongside a control that pins the shape that shipped at zero bytes.
+
+- **`--daemon-home` governed only half of what it names.** The flag (and
+  `GOODVIBES_DAEMON_HOME`) names the daemon's own state directory, and four
+  modules already resolved it that way — but `daemon/cli.ts` threaded it into
+  the identity files only, while the `ConfigManager` derived its daemon config
+  tier from `homedir()` regardless and the credential store was never told at
+  all. A daemon pointed at another state directory therefore read the real
+  home's daemon settings and the real home's daemon-scoped secrets, which is the
+  second half of the isolation incident `runtime/secrets-composition.ts`
+  records. The resolution moved to `platform/daemon/cli-paths.ts` (extracted so
+  it can be tested at all — `cli.ts` ends in a top-level `void main()`, so
+  importing it to check its path math would start a daemon), and the resolved
+  home now reaches the daemon config tier and `SecretsManager`.
+
+  Separately, `runtime/bootstrap-services.ts` passed the **user home** as
+  `--daemon-home` when spawning a detached daemon, where every reader expects
+  the state directory — so a spawned or serviced daemon filed `operator-tokens.json`
+  and `daemon-settings.json` one level above where all of them look. On a normal
+  machine the config half still landed correctly, because the user home is the
+  default parent, which is exactly why this went unnoticed. It now passes the
+  state directory, and the `GOODVIBES_DAEMON_HOME` it sets on the child matches.
+
+- **A setting the daemon cannot ingest is now said out loud, and does not take
+  the daemon with it.** A daemon read `calendar.google.clientSecretRef` — the
+  `goodvibes://secrets/…` reference a newer component's credential sweep had
+  written into the shared daemon settings file — and exited 1 with nothing on
+  stderr, nothing in the journal, nothing anywhere. It crash-looped 77 times
+  overnight and the owner found out by everything being dead.
+
+  Settings ingestion now has one stated rule, in
+  `platform/config/settings-ingestion.ts`, and the reader follows it for every
+  settings file it reads (global surface, project surface, shared tier, daemon
+  tier):
+
+  - **Every failure names the FILE, the KEY and the REASON**, on stderr — where a
+    service journal captures it — and in the activity log, before anything
+    decides whether to carry on.
+  - **The default is to quarantine the single unreadable key and keep serving.**
+    It is dropped, the tier below it answers, and the notice says so. A daemon
+    running one setting short, loudly, is recoverable; a daemon that will not
+    start is not.
+  - **A key whose fallback could permit MORE than the operator stored refuses
+    instead** — the per-tool approval gates, `permissions.mode`,
+    `permissions.engine`, and the whole `policy.` domain, declared in
+    `SAFETY_GATE_CONFIG_PREFIXES` with the evidence for each. Deliberately not
+    `danger.*`, `behavior.autoApprove`, `controlPlane.allowRemote/trustProxy` or
+    `sandbox.enabled`: those ship as the restrictive value, so falling back to
+    them can only ever close something.
+  - **A whole file that will not parse is also a refusal**, because the reader
+    cannot tell whether the unreadable bytes held a gate — but it now names the
+    file and the parse error rather than dying with a bare exit code.
+
+  Four failure modes that were previously **silent** are now announced:
+  a value of the wrong shape on a known key (`controlPlane.port` set to a string
+  became the live port, unvalidated); a section of the wrong type (a string where
+  `controlPlane` belongs silently returned the daemon to port 3421); a key form a
+  newer component wrote that this build does not know; and a credential key
+  holding a reference that cannot be resolved. `ConfigManager.getIngestionQuarantine()`
+  reports them all, and each is also filed as a startup receipt the daemon serves
+  from `/status`.
+
+- **A migration that rewrites shared settings records the reader version it
+  requires, so an older reader reports the version gap instead of the symptom.**
+  `~/.goodvibes/daemon/settings.json` is read by every component on a machine and
+  they are not all the same version at once. The credential sweep and the
+  daemon-owned config migration now leave a `$goodvibes.minReaderVersion` marker
+  beside what they rewrote (`platform/config/settings-reader-floor.ts`). A reader
+  below the floor says exactly that — *"settings were migrated by a newer
+  component; this daemon (X) is older than the floor (Y) — update it"* — checked
+  before any key is ingested, so the version gap is reported rather than whichever
+  key happened to be shaped in a way the reader could not parse. The marker never
+  reaches the resolved config, a floor is never lowered, and a floor that cannot be
+  written never undoes a migration that already succeeded.
+
 ## [1.20.0] - 2026-07-30
 
 The daemon now raises the dates that matter on its own, pushes occasion nudges

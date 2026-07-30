@@ -1,11 +1,12 @@
-import { AnthropicBedrock } from '@anthropic-ai/bedrock-sdk';
-// The exact SigV4 signer AnthropicBedrock itself calls internally
-// (core/auth.js's `getAuthHeaders`) to sign runtime `invoke` requests against
-// `bedrock-runtime.<region>.amazonaws.com`. Reused here, unmodified, to sign
-// a GET against the control-plane `bedrock.<region>.amazonaws.com` host
-// instead — same AWS service ('bedrock'), same credential resolution,
-// different path.
-import { getAuthHeaders } from '@anthropic-ai/bedrock-sdk/core/auth.js';
+// `@anthropic-ai/bedrock-sdk` is an optionalDependency and is reached through
+// providers/optional-bedrock.ts at the call that needs it, never as a static
+// import: the client class here, and the exact SigV4 signer AnthropicBedrock
+// itself calls internally (core/auth.js's `getAuthHeaders`) to sign runtime
+// `invoke` requests against `bedrock-runtime.<region>.amazonaws.com`. The
+// signer is reused below, unmodified, to sign a GET against the control-plane
+// `bedrock.<region>.amazonaws.com` host instead — same AWS service
+// ('bedrock'), same credential resolution, different path.
+import { loadBedrockAuth, loadBedrockSdk } from './optional-bedrock.js';
 import { AnthropicSdkProvider } from './anthropic-sdk-provider.js';
 import type { ProviderModelSource } from './interface.js';
 import { runLiveModelRefresh, type LiveModelDiscoveryResult } from './live-model-discovery.js';
@@ -86,6 +87,7 @@ export async function fetchBedrockModelIds(): Promise<string[]> {
   if (bearerToken) {
     headers = { Authorization: `Bearer ${bearerToken}`, Accept: 'application/json' };
   } else {
+    const { getAuthHeaders } = await loadBedrockAuth();
     const signed = await getAuthHeaders(
       { method: 'GET' },
       {
@@ -126,7 +128,12 @@ export class AmazonBedrockProvider extends AnthropicSdkProvider {
       label: 'Amazon Bedrock',
       defaultModel: 'claude-sonnet-4-6',
       models: [...BEDROCK_DATED_STATIC_MODELS],
-      createClient: () => {
+      // Async because `@anthropic-ai/bedrock-sdk` is resolved here rather than
+      // at module init; `createClient` accepts a promise for exactly this, and
+      // an install without the package fails this one request with a message
+      // naming it instead of preventing the daemon from starting.
+      createClient: async () => {
+        const { AnthropicBedrock } = await loadBedrockSdk();
         const apiKey = process.env['AWS_BEARER_TOKEN_BEDROCK']?.trim();
         const awsAccessKey = process.env['AWS_ACCESS_KEY_ID']?.trim();
         const awsSecretKey = process.env['AWS_SECRET_ACCESS_KEY']?.trim();

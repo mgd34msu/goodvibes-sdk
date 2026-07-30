@@ -12,6 +12,7 @@ export * from './lib/effects.js';
 export * from './lib/load-config.js';
 export * from './lib/sdk-pin-gate.js';
 export * from './lib/build-binaries.js';
+export * from './lib/optional-externals.js';
 export * from './lib/release-cut.js';
 export * from './lib/coverage-gate.js';
 export * from './lib/verification-ledger.js';

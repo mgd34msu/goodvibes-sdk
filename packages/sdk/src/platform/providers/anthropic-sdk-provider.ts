@@ -73,7 +73,18 @@ export interface AnthropicSdkProviderOptions {
   readonly label: string;
   readonly defaultModel: string;
   readonly models: readonly string[];
-  readonly createClient: () => AnthropicStreamCapableClient;
+  /**
+   * Build the vendor client for one request.
+   *
+   * A promise is allowed because both Bedrock providers and the Vertex
+   * provider now resolve their vendor package (`@anthropic-ai/bedrock-sdk`,
+   * `@anthropic-ai/sdk`) through a dynamic import at this point rather than a
+   * static import at module init — see utils/optional-dependency.ts. The one
+   * caller below already runs inside an async retry body, so awaiting here
+   * changes no public signature, and a sync factory (every test double, for
+   * instance) still satisfies the type unchanged.
+   */
+  readonly createClient: () => AnthropicStreamCapableClient | Promise<AnthropicStreamCapableClient>;
   readonly auth: AnthropicSdkProviderAuthConfig;
   readonly streamProtocol: string;
   readonly notes?: readonly string[] | undefined;
@@ -91,7 +102,7 @@ export class AnthropicSdkProvider implements LLMProvider {
 
   async chat(params: ChatRequest): Promise<ChatResponse> {
     return withRetry(async () => {
-      const client = this.options.createClient();
+      const client = await this.options.createClient();
       const resolvedModel = normalizeAnthropicModel(params.model ?? this.options.defaultModel);
       const body: Record<string, unknown> = {
         model: resolvedModel,

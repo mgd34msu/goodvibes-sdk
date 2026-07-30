@@ -1,4 +1,5 @@
-import OpenAI from 'openai';
+import type OpenAI from 'openai';
+import { createOpenAIClient } from './optional-openai.js';
 import type {
   LLMProvider,
   ChatRequest,
@@ -49,6 +50,14 @@ import { describeReasoningRejection, reasoningEffortLevels } from './reasoning-e
 const NOOP_CACHE_HIT_TRACKER: Pick<CacheHitTracker, 'recordTurn'> = {
   recordTurn: () => {},
 };
+
+/**
+ * The chat-completions `create` signature. Named here because the client is
+ * resolved through a promise now and cannot be referenced as `typeof
+ * this.client...` in a type position; `OpenAI` is imported type-only, so the
+ * specifier is erased and never reaches the module graph.
+ */
+type OpenAICompatChatCreate = OpenAI['chat']['completions']['create'];
 
 /**
  * Placeholder credential passed to the `openai` package's client constructor
@@ -160,7 +169,16 @@ export class OpenAICompatProvider implements LLMProvider {
     return this._models;
   }
 
-  private client: OpenAI;
+  /**
+   * The `openai` client, resolved on first use rather than at construction.
+   * `openai` is an optionalDependency; a static import plus a constructor-time
+   * `new OpenAI(...)` put the specifier on the module graph of every graph
+   * that registers providers, the daemon's included, and an absent optional
+   * package then removed the process instead of one provider. See
+   * utils/optional-dependency.ts. Both methods that use the client already run
+   * inside an async request path, so no public signature changes.
+   */
+  private openaiClient: Promise<OpenAI> | undefined;
   private defaultModel: string;
   private embeddingModel: string;
   private readonly configured: boolean;
@@ -180,6 +198,13 @@ export class OpenAICompatProvider implements LLMProvider {
   private readonly endpointHost: string;
   private readonly apiKey: string;
   private readonly defaultHeaders: Record<string, string>;
+  /**
+   * The caller's `defaultHeaders` exactly as given, including a deliberate
+   * empty object. `defaultHeaders` above normalises `undefined` to `{}` for
+   * per-request header merging; the client construction below keeps the
+   * original distinction it had when it ran in the constructor.
+   */
+  private readonly clientDefaultHeaders: Record<string, string> | undefined;
   private readonly modelListing: 'openai-endpoint' | 'none';
   private readonly modelListingUrl: string | undefined;
   private readonly customFetchLiveModels: (() => Promise<string[]>) | undefined;
@@ -193,6 +218,7 @@ export class OpenAICompatProvider implements LLMProvider {
     this.datedStaticModels = [...opts.models];
     this.apiKey = opts.apiKey;
     this.defaultHeaders = opts.defaultHeaders ?? {};
+    this.clientDefaultHeaders = opts.defaultHeaders;
     this.modelListing = opts.modelListing ?? 'openai-endpoint';
     this.modelListingUrl = opts.modelListingUrl;
     this.customFetchLiveModels = opts.fetchLiveModels;
@@ -225,11 +251,16 @@ export class OpenAICompatProvider implements LLMProvider {
         return opts.baseURL;
       }
     })();
-    this.client = new OpenAI({
-      apiKey: resolveOpenAIClientApiKey(opts.apiKey),
-      baseURL: opts.baseURL,
-      ...(opts.defaultHeaders ? { defaultHeaders: opts.defaultHeaders } : {}),
+  }
+
+  /** The `openai` client for this provider, built once on first use. */
+  private client(): Promise<OpenAI> {
+    this.openaiClient ??= createOpenAIClient({
+      apiKey: resolveOpenAIClientApiKey(this.apiKey),
+      baseURL: this.baseURL,
+      ...(this.clientDefaultHeaders ? { defaultHeaders: this.clientDefaultHeaders } : {}),
     });
+    return this.openaiClient;
   }
 
   isConfigured(): boolean {
@@ -372,16 +403,17 @@ export class OpenAICompatProvider implements LLMProvider {
       try {
         // .withResponse() surfaces the raw HTTP Response alongside the stream so
         // rate-limit headers are readable on the SUCCESS path (not only 429s).
-        const created = await this.client.chat.completions.create(
+        const client = await this.client();
+        const created = await client.chat.completions.create(
           {
             model: selectedModel,
-            messages: openaiMessages as Parameters<typeof this.client.chat.completions.create>[0]['messages'],
-            ...(openaiTools ? { tools: openaiTools as Parameters<typeof this.client.chat.completions.create>[0]['tools'] } : {}),
+            messages: openaiMessages as Parameters<OpenAICompatChatCreate>[0]['messages'],
+            ...(openaiTools ? { tools: openaiTools as Parameters<OpenAICompatChatCreate>[0]['tools'] } : {}),
             ...(maxTokens ? { max_tokens: maxTokens } : {}),
             stream: true,
             stream_options: { include_usage: true },
             ...extraBody,
-          } as Parameters<typeof this.client.chat.completions.create>[0],
+          } as Parameters<OpenAICompatChatCreate>[0],
           (
             signal !== undefined || Object.keys(requestHeaders).length > 0
               ? {
@@ -389,7 +421,7 @@ export class OpenAICompatProvider implements LLMProvider {
                   ...(Object.keys(requestHeaders).length > 0 ? { headers: requestHeaders } : {}),
                 }
               : undefined
-          ) as Parameters<typeof this.client.chat.completions.create>[1],
+          ) as Parameters<OpenAICompatChatCreate>[1],
         ).withResponse() as unknown as {
           data: AsyncIterable<import('openai/resources/chat/completions.js').ChatCompletionChunk> & { controller: AbortController };
           response: Response;
@@ -524,7 +556,7 @@ export class OpenAICompatProvider implements LLMProvider {
   async embed(request: ProviderEmbeddingRequest): Promise<ProviderEmbeddingResult> {
     let response;
     try {
-      response = await this.client.embeddings.create(
+      response = await (await this.client()).embeddings.create(
         {
           model: request.model ?? this.embeddingModel,
           input: request.text,

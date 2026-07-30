@@ -38,7 +38,36 @@ export {
   readControlPlaneBinding,
 } from './control-plane-base-url.js';
 export type { BaseUrlAudience, ControlPlaneBinding } from './control-plane-base-url.js';
-export { readDotPath } from './shared-config-tier.js';
+export { readDotPath, raiseReaderFloorInFile } from './shared-config-tier.js';
+// Settings ingestion: what a reader does with a setting it cannot ingest, and
+// the reader-version floor a migration records when it rewrites shared state.
+export {
+  SAFETY_GATE_CONFIG_PREFIXES,
+  SettingsIngestionRefusal,
+  announceIngestionNotice,
+  describeIngestionNotice,
+  ingestSettingsFile,
+  isSafetyGateConfigKey,
+  screenSettingsForIngestion,
+  unreadableSettingsFileNotice,
+} from './settings-ingestion.js';
+export type {
+  IngestSettingsOptions,
+  SettingsIngestionAction,
+  SettingsIngestionNotice,
+  SettingsIngestionResult,
+} from './settings-ingestion.js';
+export {
+  SETTINGS_FLOOR_MARKER_KEY,
+  SWEPT_CREDENTIAL_READER_FLOOR,
+  compareReaderVersions,
+  describeFloorRefusal,
+  raiseSettingsReaderFloor,
+  readSettingsReaderFloor,
+  readerIsBelowFloor,
+  stripSettingsReaderFloor,
+} from './settings-reader-floor.js';
+export type { SettingsReaderFloor } from './settings-reader-floor.js';
 export {
   DAEMON_CONFIG_ROOT,
   DAEMON_SETTINGS_FILE,
