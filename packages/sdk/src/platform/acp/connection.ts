@@ -6,7 +6,11 @@
  * subagent can request permissions and send session updates.
  */
 
-import { ClientSideConnection, ndJsonStream } from '@agentclientprotocol/sdk';
+// `@agentclientprotocol/sdk` is an optionalDependency: its values are taken
+// off the awaited module in acp/optional-sdk.ts at the point the connection is
+// built, never imported at module init. The type import below is erased.
+import { loadAcpSdk } from './optional-sdk.js';
+import type { ClientSideConnection } from '@agentclientprotocol/sdk';
 import type {
   Client,
   Agent,
@@ -136,6 +140,11 @@ export class AcpConnection {
     try {
       this.transportClosed = false;
       this.emitTransportInitializing();
+
+      // 0. Resolve the ACP SDK. Inside the try, so an install without the
+      //    optional package fails this subagent run with a message naming it
+      //    rather than preventing the process from starting.
+      const { ClientSideConnection, ndJsonStream } = await loadAcpSdk();
 
       // 1. Spawn child process with piped stdio
       this.childProcess = Bun.spawn(this.spawnCmd, {

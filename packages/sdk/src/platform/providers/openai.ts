@@ -1,4 +1,5 @@
-import OpenAI, { toFile } from 'openai';
+import type OpenAI from 'openai';
+import { createOpenAIClient, openAIToFile } from './optional-openai.js';
 import type {
   LLMProvider,
   ChatRequest,
@@ -44,6 +45,14 @@ const NOOP_CACHE_HIT_TRACKER: Pick<CacheHitTracker, 'recordTurn'> = {
 };
 
 /**
+ * The chat-completions `create` signature, named here because the client is
+ * now resolved through a promise and cannot be referenced as `typeof
+ * this.client...` in a type position. `OpenAI` is imported type-only, so the
+ * specifier is erased and never reaches the module graph.
+ */
+type OpenAIChatCreate = OpenAI['chat']['completions']['create'];
+
+/**
  * Dated fallback model list — used when no API key is configured (so a live
  * /v1/models call isn't possible) and as the offline baseline when a live
  * call fails with no prior cache. Docs-verified (no OPENAI_API_KEY was
@@ -85,7 +94,20 @@ export class OpenAIProvider implements LLMProvider {
   }
   readonly batch: ProviderBatchAdapter;
 
-  private client: OpenAI;
+  /**
+   * The `openai` client, resolved on first use rather than at construction.
+   *
+   * `openai` is an optionalDependency, and this class used to build its client
+   * in the constructor from a static import — which put the specifier on the
+   * module graph of everything that reaches the provider registry, the daemon
+   * included. One memoised promise per provider instance keeps the single
+   * construction this class always did; every method that needs the client
+   * already runs inside an async request path, so awaiting it changes no
+   * public signature. When the package is absent the await throws an error
+   * whose message names it, and each method's existing catch turns that into
+   * the provider error the caller already handles.
+   */
+  private openaiClient: Promise<OpenAI> | undefined;
   private readonly apiKey: string;
   private readonly embeddingModel = 'text-embedding-3-small';
   private readonly cacheHitTracker: Pick<CacheHitTracker, 'recordTurn'>;
@@ -97,10 +119,6 @@ export class OpenAIProvider implements LLMProvider {
     modelsCachePath?: string,
   ) {
     this.apiKey = apiKey;
-    // isConfigured() derives from this.apiKey (the ORIGINAL value, possibly
-    // empty) below; the client itself needs a non-empty placeholder because
-    // openai's constructor throws "Missing credentials..." on a falsy key.
-    this.client = new OpenAI({ apiKey: resolveOpenAIClientApiKey(apiKey) });
     this.cacheHitTracker = cacheHitTracker;
     this.modelsCachePath = modelsCachePath;
     this.batch = {
@@ -111,6 +129,17 @@ export class OpenAIProvider implements LLMProvider {
       cancelBatch: (providerBatchId) => this.cancelBatch(providerBatchId),
       getResults: (providerBatchId) => this.getBatchResults(providerBatchId),
     };
+  }
+
+  /**
+   * The `openai` client for this provider, built once. `isConfigured()`
+   * derives from `this.apiKey` (the ORIGINAL value, possibly empty); the
+   * client itself needs a non-empty placeholder because openai's constructor
+   * throws "Missing credentials..." on a falsy key.
+   */
+  private client(): Promise<OpenAI> {
+    this.openaiClient ??= createOpenAIClient({ apiKey: resolveOpenAIClientApiKey(this.apiKey) });
+    return this.openaiClient;
   }
 
   async chat(params: ChatRequest): Promise<ChatResponse> {
@@ -147,18 +176,22 @@ export class OpenAIProvider implements LLMProvider {
       const openaiTools = tools && tools.length > 0 ? toOpenAITools(tools) : undefined;
 
       try {
+        // Resolving the client inside the try means an absent `openai` package
+        // arrives at the caller as this provider's ordinary chat error, naming
+        // the package, rather than as a boot failure.
+        const client = await this.client();
         // .withResponse() surfaces the raw HTTP Response so rate-limit headers
         // are readable on the SUCCESS path (not only 429s).
-        const created = await this.client.chat.completions.create(
+        const created = await client.chat.completions.create(
           {
             model,
-            messages: openaiMessages as Parameters<typeof this.client.chat.completions.create>[0]['messages'],
-            ...(openaiTools ? { tools: openaiTools as Parameters<typeof this.client.chat.completions.create>[0]['tools'] } : {}),
+            messages: openaiMessages as Parameters<OpenAIChatCreate>[0]['messages'],
+            ...(openaiTools ? { tools: openaiTools as Parameters<OpenAIChatCreate>[0]['tools'] } : {}),
             ...(maxTokens ? { max_tokens: maxTokens } : {}),
             ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
             stream: true,
             stream_options: { include_usage: true },
-          } as Parameters<typeof this.client.chat.completions.create>[0],
+          } as Parameters<OpenAIChatCreate>[0],
           signal !== undefined ? { signal } : undefined,
         ).withResponse() as unknown as {
           data: AsyncIterable<import('openai/resources/chat/completions.js').ChatCompletionChunk> & { controller: AbortController };
@@ -242,7 +275,7 @@ export class OpenAIProvider implements LLMProvider {
   async embed(request: ProviderEmbeddingRequest): Promise<ProviderEmbeddingResult> {
     let response;
     try {
-      response = await this.client.embeddings.create(
+      response = await (await this.client()).embeddings.create(
         {
           model: request.model ?? this.embeddingModel,
           input: request.text,
@@ -349,12 +382,12 @@ export class OpenAIProvider implements LLMProvider {
       url: '/v1/chat/completions',
       body: this.toOpenAIBatchChatBody(request.params),
     })).join('\n') + '\n';
-    const file = await this.client.files.create({
-      file: await toFile(new Blob([lines], { type: 'application/jsonl' }), 'goodvibes-openai-chat-batch.jsonl'),
+    const file = await (await this.client()).files.create({
+      file: await openAIToFile(new Blob([lines], { type: 'application/jsonl' }), 'goodvibes-openai-chat-batch.jsonl'),
       purpose: 'batch',
     });
     const metadata = input.metadata && Object.keys(input.metadata).length > 0 ? input.metadata : undefined;
-    const batch = await this.client.batches.create({
+    const batch = await (await this.client()).batches.create({
       input_file_id: file.id,
       endpoint: '/v1/chat/completions',
       completion_window: input.completionWindow ?? '24h',
@@ -368,7 +401,7 @@ export class OpenAIProvider implements LLMProvider {
   }
 
   private async retrieveBatch(providerBatchId: string): Promise<ProviderBatchPollResult> {
-    const batch = await this.client.batches.retrieve(providerBatchId);
+    const batch = await (await this.client()).batches.retrieve(providerBatchId);
     return {
       providerBatchId: batch.id,
       status: this.mapOpenAIBatchStatus(batch.status),
@@ -378,7 +411,7 @@ export class OpenAIProvider implements LLMProvider {
   }
 
   private async cancelBatch(providerBatchId: string): Promise<ProviderBatchPollResult> {
-    const batch = await this.client.batches.cancel(providerBatchId);
+    const batch = await (await this.client()).batches.cancel(providerBatchId);
     return {
       providerBatchId: batch.id,
       status: this.mapOpenAIBatchStatus(batch.status),
@@ -388,7 +421,7 @@ export class OpenAIProvider implements LLMProvider {
   }
 
   private async getBatchResults(providerBatchId: string): Promise<readonly ProviderBatchResult[]> {
-    const batch = await this.client.batches.retrieve(providerBatchId);
+    const batch = await (await this.client()).batches.retrieve(providerBatchId);
     const results: ProviderBatchResult[] = [];
     if (typeof batch.output_file_id === 'string' && batch.output_file_id.length > 0) {
       results.push(...await this.readOpenAIBatchResultFile(batch.output_file_id, false));
@@ -421,7 +454,7 @@ export class OpenAIProvider implements LLMProvider {
   }
 
   private async readOpenAIBatchResultFile(fileId: string, forceFailed: boolean): Promise<ProviderBatchResult[]> {
-    const response = await this.client.files.content(fileId);
+    const response = await (await this.client()).files.content(fileId);
     const text = await response.text();
     const lines = text.split('\n').map((line) => line.trim()).filter(Boolean);
     const results: ProviderBatchResult[] = [];

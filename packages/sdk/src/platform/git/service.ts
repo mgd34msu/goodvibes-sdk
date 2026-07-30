@@ -1,4 +1,5 @@
-import { simpleGit, type SimpleGit } from 'simple-git';
+import type { SimpleGit } from 'simple-git';
+import { createSimpleGit } from './optional-simple-git.js';
 import { parseUnifiedDiff, type StructuredDiff } from './structured-diff.js';
 import type { HookDispatcher } from '../hooks/dispatcher.js';
 import type { HookEvent } from '../hooks/types.js';
@@ -66,14 +67,33 @@ export function conflictPathsFromMergeOutput(message: string): string[] {
  * worktreeRemove) emit Pre:git:<op>, Post:git:<op>, and Fail:git:<op> events.
  */
 export class GitService {
-  private git: SimpleGit;
+  /**
+   * The `simple-git` instance, built on first use rather than in the
+   * constructor. `simple-git` is an optionalDependency, and a static import
+   * plus a constructor-time `simpleGit(...)` put the specifier on the module
+   * graph of everything that reaches git integration — the daemon included —
+   * so an absent optional package removed the process instead of the feature
+   * (see utils/optional-dependency.ts). The promise is memoised, so the
+   * instance is still built exactly once per service, and every method here
+   * was already async, so no public signature changed.
+   */
+  private gitClient: Promise<SimpleGit> | undefined;
   private hooks: HookDispatcher | null;
   private cwd: string;
 
   constructor(cwd: string, hooks?: HookDispatcher) {
     this.cwd = cwd;
     this.hooks = hooks ?? null;
-    this.git = simpleGit({ baseDir: this.cwd });
+  }
+
+  /**
+   * This service's git client. When `simple-git` is absent the await throws
+   * an error naming it, which reaches the caller through the same path any
+   * other git failure takes.
+   */
+  private git(): Promise<SimpleGit> {
+    this.gitClient ??= createSimpleGit({ baseDir: this.cwd });
+    return this.gitClient;
   }
 
   // ---------------------------------------------------------------------------
@@ -128,11 +148,11 @@ export class GitService {
   // ---------------------------------------------------------------------------
 
   async status(): Promise<Awaited<ReturnType<SimpleGit['status']>>> {
-    return this.git.status();
+    return (await this.git()).status();
   }
 
   async branch(): Promise<{ current: string; all: string[]; detached: boolean }> {
-    const result = await this.git.branch();
+    const result = await (await this.git()).branch();
     return {
       current: result.current,
       all: result.all,
@@ -143,7 +163,7 @@ export class GitService {
   async log(
     maxCount = 20,
   ): Promise<Array<{ hash: string; date: string; message: string; author: string }>> {
-    const result = await this.git.log({ maxCount });
+    const result = await (await this.git()).log({ maxCount });
     return result.all.map((entry: Awaited<ReturnType<SimpleGit['log']>>['all'][number]) => ({
       hash: entry.hash,
       date: entry.date,
@@ -154,9 +174,9 @@ export class GitService {
 
   async diff(ref?: string): Promise<string> {
     if (ref) {
-      return this.git.diff([ref]);
+      return (await this.git()).diff([ref]);
     }
-    return this.git.diff();
+    return (await this.git()).diff();
   }
 
   /**
@@ -181,7 +201,7 @@ export class GitService {
     const args = staged
       ? ['diff', '--cached', '--', filePath]
       : ['diff', '--', filePath];
-    return this.git.raw(args);
+    return (await this.git()).raw(args);
   }
 
   /**
@@ -193,7 +213,7 @@ export class GitService {
     if (files && files.length > 0) {
       args.push('--', ...files);
     }
-    return this.git.diff(args);
+    return (await this.git()).diff(args);
   }
 
   /**
@@ -201,13 +221,13 @@ export class GitService {
    * Read-only — no hooks emitted.
    */
   async diffStat(before: string, after: string): Promise<string> {
-    return this.git.raw(['diff', '--stat', before, after]);
+    return (await this.git()).raw(['diff', '--stat', before, after]);
   }
 
   async blame(
     filePath: string,
   ): Promise<Array<{ hash: string; author: string; line: number; content: string }>> {
-    const raw = await this.git.raw(['blame', '--porcelain', filePath]);
+    const raw = await (await this.git()).raw(['blame', '--porcelain', filePath]);
     const lines = raw.split('\n');
     const result: Array<{ hash: string; author: string; line: number; content: string }> = [];
 
@@ -241,18 +261,18 @@ export class GitService {
   // ---------------------------------------------------------------------------
 
   async add(files: string | string[]): Promise<void> {
-    await this.git.add(files);
+    await (await this.git()).add(files);
   }
 
   async addAll(): Promise<void> {
-    await this.git.raw(['add', '--all']);
+    await (await this.git()).raw(['add', '--all']);
   }
 
   async reset(files?: string | string[]): Promise<void> {
     if (files) {
-      await this.git.reset(['HEAD', '--', ...(Array.isArray(files) ? files : [files])]);
+      await (await this.git()).reset(['HEAD', '--', ...(Array.isArray(files) ? files : [files])]);
     } else {
-      await this.git.reset(['HEAD']);
+      await (await this.git()).reset(['HEAD']);
     }
   }
 
@@ -274,7 +294,7 @@ export class GitService {
       if (options?.amend) flags.push('--amend');
       if (options?.noVerify) flags.push('--no-verify');
 
-      const result = await this.git.commit(message, undefined, flags);
+      const result = await (await this.git()).commit(message, undefined, flags);
       const output = { hash: result.commit, summary: JSON.stringify(result.summary) };
       await this.firePost('commit', { message, ...output });
       return output;
@@ -284,7 +304,7 @@ export class GitService {
           const flags: string[] = [];
           if (options.amend) flags.push('--amend');
           if (options.noVerify) flags.push('--no-verify');
-          const raw = await this.git.raw([
+          const raw = await (await this.git()).raw([
             '-c',
             `user.name=${options.fallbackIdentity.name}`,
             '-c',
@@ -294,7 +314,7 @@ export class GitService {
             message,
             ...flags,
           ]);
-          const hash = (await this.git.raw(['rev-parse', 'HEAD'])).trim();
+          const hash = (await (await this.git()).raw(['rev-parse', 'HEAD'])).trim();
           const output = { hash, summary: raw.trim() };
           await this.firePost('commit', { message, ...output });
           return output;
@@ -319,9 +339,9 @@ export class GitService {
     await this.firePre('checkout', { branch, options });
     try {
       if (options?.create) {
-        await this.git.checkoutLocalBranch(branch);
+        await (await this.git()).checkoutLocalBranch(branch);
       } else {
-        await this.git.checkout(branch);
+        await (await this.git()).checkout(branch);
       }
       await this.firePost('checkout', { branch });
     } catch (err) {
@@ -335,7 +355,7 @@ export class GitService {
   ): Promise<{ success: boolean; conflicts?: string[] }> {
     await this.firePre('merge', { branch });
     try {
-      await this.git.merge([branch]);
+      await (await this.git()).merge([branch]);
       await this.firePost('merge', { branch, success: true });
       return { success: true };
     } catch (err) {
@@ -373,7 +393,7 @@ export class GitService {
     try {
       const flags: string[] = [];
       if (options?.force) flags.push('--force');
-      await this.git.push(remote, branch, flags);
+      await (await this.git()).push(remote, branch, flags);
       await this.firePost('push', { remote, branch });
     } catch (err) {
       await this.fireFail('push', { remote, branch, error: summarizeError(err) });
@@ -387,7 +407,7 @@ export class GitService {
   ): Promise<void> {
     await this.firePre('pull', { remote, branch });
     try {
-      await this.git.pull(remote, branch);
+      await (await this.git()).pull(remote, branch);
       await this.firePost('pull', { remote, branch });
     } catch (err) {
       await this.fireFail('pull', { remote, branch, error: summarizeError(err) });
@@ -410,17 +430,17 @@ export class GitService {
       switch (action) {
         case 'push': {
           const args = message ? ['push', '-m', message] : ['push'];
-          result = await this.git.stash(args);
+          result = await (await this.git()).stash(args);
           break;
         }
         case 'pop':
-          result = await this.git.stash(['pop']);
+          result = await (await this.git()).stash(['pop']);
           break;
         case 'list':
-          result = await this.git.stash(['list']);
+          result = await (await this.git()).stash(['list']);
           break;
         case 'drop':
-          result = await this.git.stash(['drop']);
+          result = await (await this.git()).stash(['drop']);
           break;
         default:
           result = '';
@@ -440,7 +460,7 @@ export class GitService {
   async worktreeAdd(path: string, branch: string): Promise<void> {
     await this.firePre('worktreeAdd', { path, branch });
     try {
-      await this.git.raw(['worktree', 'add', path, '-b', branch]);
+      await (await this.git()).raw(['worktree', 'add', path, '-b', branch]);
       await this.firePost('worktreeAdd', { path, branch });
     } catch (err) {
       await this.fireFail('worktreeAdd', { path, branch, error: summarizeError(err) });
@@ -451,7 +471,7 @@ export class GitService {
   async worktreeRemove(path: string): Promise<void> {
     await this.firePre('worktreeRemove', { path });
     try {
-      await this.git.raw(['worktree', 'remove', path]);
+      await (await this.git()).raw(['worktree', 'remove', path]);
       await this.firePost('worktreeRemove', { path });
     } catch (err) {
       await this.fireFail('worktreeRemove', { path, error: summarizeError(err) });
@@ -460,7 +480,7 @@ export class GitService {
   }
 
   async worktreeList(): Promise<Array<{ path: string; branch: string; head: string }>> {
-    const raw = await this.git.raw(['worktree', 'list', '--porcelain']);
+    const raw = await (await this.git()).raw(['worktree', 'list', '--porcelain']);
     const entries = raw.trim().split('\n\n').filter(Boolean);
     return entries.map((block: string) => {
       const lines = block.split('\n');

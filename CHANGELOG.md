@@ -43,14 +43,88 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   constructors — the same technique, for the same reason, as the `bun:sqlite`
   resolution in `knowledge/browser-history/readers.ts`).
 
+  Seven more optional packages needed the module restructured rather than the
+  import moved, because each was reached by building a client in a
+  **constructor**, extending an **imported base class**, running a **class
+  static**, or **re-exporting** a value — all of which run at module init:
+
+  - `openai` (`providers/openai.ts`, `providers/openai-compat.ts`,
+    `providers/lm-studio-helpers.ts`). The client is a memoised promise built on
+    first use instead of in the constructor. Every method that uses it was
+    already async, so no public signature moved; constructing a provider no
+    longer needs the package, and the first call that does reports it by name
+    through the provider-error path the caller already handles.
+  - `@anthropic-ai/bedrock-sdk` (`providers/amazon-bedrock.ts`,
+    `providers/amazon-bedrock-mantle.ts`), including its `core/auth.js` subpath
+    for the SigV4 signer the control-plane model listing reuses.
+    `AnthropicSdkProviderOptions.createClient` may now return a promise, which
+    the one caller — already inside an async retry body — awaits.
+  - `@anthropic-ai/sdk` and `google-auth-library`
+    (`providers/anthropic-vertex.ts`). `AnthropicVertexClient extends
+    BaseAnthropic`, and a class cannot extend a dynamically imported base: the
+    `extends` expression is evaluated when the declaration is. The class is now
+    declared **inside** an async factory called once and memoised, so the
+    declaration runs after the import resolves and every `new` still gets one
+    class object.
+  - `@agentclientprotocol/sdk` (`acp/host.ts`, `acp/agent.ts`,
+    `acp/connection.ts`, `acp/protocol.ts`). A re-export cannot be lazy —
+    `export { x } from 'pkg'` links the specifier exactly like an import — so
+    `acp/protocol.ts` no longer re-exports `ndJsonStream`,
+    `AgentSideConnection` and `PROTOCOL_VERSION`; the three consumers and the
+    ACP test fixture take them off `loadAcpSdk()` instead. Its type re-exports
+    are untouched, because `export type` is erased. `serveAcpAgent` is async as
+    a result — it cannot build a connection before the package resolves.
+  - `simple-git` (`git/service.ts`, `agents/worktree.ts`,
+    `workspace/checkpoint/side-git.ts`). The two constructor cases hold a
+    memoised promise their already-async methods await, so each client is still
+    built exactly once, with the `.env()` scoping the checkpoint runner depends
+    on applied to it.
+  - `graphql` (`knowledge/graphql.ts`, `knowledge/graphql-schema.ts`).
+    `buildSchema` and `printSchema` ran in class-static initialisers; they are
+    lazily-computed accessors now, cached after the first use. The
+    `KnowledgeGraphqlService` constructor primes the package through the
+    dynamic import a bundler follows, so a compiled binary has it in hand
+    before any route reads `schemaText` — which the daemon-sdk route contract
+    requires to stay a synchronous string.
+
+  When any of these packages is absent the feature throws an error whose
+  message is the same stated reason: the package name, that it is an optional
+  dependency of `@pellux/goodvibes-sdk`, and that installing it enables the
+  feature. Nothing returns empty or defaults silently.
+
+  Two optional packages are deliberately NOT converted. `zustand` backs
+  `runtime/store/index.ts`, which is synchronous and which a daemon cannot run
+  without — the mismatch there is in the declaration, not the import.
+  `web-tree-sitter` and the five `tree-sitter-*` grammars are
+  `with { type: 'file' }` asset imports that exist precisely so
+  `bun build --compile` embeds the WASM into the binary; a dynamic import would
+  defeat the embedding that makes the feature work in a shipped artifact.
+
   Proven against a compiled artifact, because source cannot show it: under
   `bun` with a full node_modules tree a static import and a dynamic one behave
   identically. `test/optional-dependency-boot.test.ts` compiles both shapes with
-  `bun build --compile --external jsdom --external @mozilla/readability` and
-  runs them from a directory where neither resolves. The static control exits 1
-  with **zero bytes on stdout** — it never reaches its first statement. The lazy
-  shape exits 0, names the package it is missing, and still returns an
-  extraction.
+  `bun build --compile --external <pkg>` and runs them from a directory where
+  the packages do not resolve. `--external` rather than hiding a package, so the
+  test never mutates this repository's node_modules underneath the suite running
+  beside it. The static controls — one importing `jsdom`, one importing
+  `graphql` and building a schema at module scope — exit 1 with **zero bytes on
+  stdout**; they never reach their first statement. The lazy shapes exit 0, name
+  every package they are missing, and still return an extraction.
+
+  Measured on the real daemon binary, compiled from
+  `platform/daemon/cli.ts` with the package left as a runtime specifier and run
+  where it does not resolve, against a home holding an unparseable
+  `daemon/settings.json`:
+
+  - `openai`: before, exit 1 with 0 bytes on stdout and **99 bytes** on stderr
+    saying only `Cannot find package 'openai'`. After, exit 1 with **1232
+    bytes** naming the settings file, `could not be read as JSON`, and the parse
+    error. The daemon booted and reported the thing that was actually wrong.
+  - `@agentclientprotocol/sdk`: before, exit 1 with 0 bytes on stdout and **113
+    bytes** saying only `Cannot find module '@agentclientprotocol/sdk'`. After,
+    exit 1 with **1205 bytes** reporting the settings file.
+  - All seven left external at once: the daemon still boots and still reaches
+    its settings check.
 
 - **Every shipped daemon to date has died mute on a fatal boot error. This is
   the release that makes them speak.** Measured against the released 1.27.0

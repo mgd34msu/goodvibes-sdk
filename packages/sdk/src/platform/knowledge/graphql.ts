@@ -1,9 +1,23 @@
-import { GraphQLError, buildSchema, graphql, parse, printSchema } from 'graphql';
+/**
+ * graphql.ts — the knowledge GraphQL service.
+ *
+ * `graphql` is an optionalDependency and is reached only through
+ * `graphqlModule()` / `primeGraphqlModule()` in ./graphql-schema.js. The two
+ * class-static initialisers here — `buildSchema(KNOWLEDGE_GRAPHQL_SDL)` and
+ * `printSchema(...)` — ran at MODULE INIT, which made an install without the
+ * package a daemon that could not start rather than a GraphQL surface that
+ * reports itself unavailable. They are lazily-computed accessors now, built on
+ * first use and then cached, so the schema is still parsed and printed exactly
+ * once per process. See ./graphql-schema.js and utils/optional-dependency.ts.
+ */
+
+import type { GraphQLSchema } from 'graphql';
 import type { KnowledgeService } from './service.js';
 import {
   KNOWLEDGE_GRAPHQL_SDL,
   clampInt,
   clampOffset,
+  graphqlModule,
   installJsonScalar,
   mapJob,
   mapJobRun,
@@ -11,6 +25,7 @@ import {
   mapProjectionBundle,
   mapProjectionTarget,
   pickOperation,
+  primeGraphqlModule,
   toJobMode,
   toPacketDetail,
   toProjectionKind,
@@ -27,7 +42,7 @@ export function inspectKnowledgeGraphqlAccess(
   source: string,
   operationName?: string,
 ): KnowledgeGraphqlAccessProfile {
-  const document = parse(source);
+  const document = graphqlModule().parse(source);
   const operation = pickOperation(document, operationName);
   return operation === 'mutation'
     ? { operation, requiredScopes: ['write:knowledge'], adminRequired: true }
@@ -41,6 +56,7 @@ interface KnowledgeGraphqlContext {
 }
 
 function assertWriteAccess(context: KnowledgeGraphqlContext): void {
+  const { GraphQLError } = graphqlModule();
   if (!context.admin) {
     throw new GraphQLError('Knowledge GraphQL mutation requires admin access.');
   }
@@ -58,21 +74,46 @@ export interface KnowledgeGraphqlExecuteInput {
 }
 
 export class KnowledgeGraphqlService {
-  private static readonly schema = (() => {
-    const schema = buildSchema(KNOWLEDGE_GRAPHQL_SDL);
-    installJsonScalar(schema);
-    return schema;
-  })();
+  private static cachedSchema: GraphQLSchema | undefined;
+  private static cachedSchemaSdl: string | undefined;
 
-  static readonly schemaSdl = printSchema(KnowledgeGraphqlService.schema);
+  /**
+   * The parsed schema, built on first use. This was a class-static
+   * initialiser, which ran `buildSchema` at module init and so required
+   * `graphql` — an optionalDependency — for the module to load at all.
+   */
+  private static get schema(): GraphQLSchema {
+    if (!KnowledgeGraphqlService.cachedSchema) {
+      const schema = graphqlModule().buildSchema(KNOWLEDGE_GRAPHQL_SDL);
+      installJsonScalar(schema);
+      KnowledgeGraphqlService.cachedSchema = schema;
+    }
+    return KnowledgeGraphqlService.cachedSchema;
+  }
 
-  constructor(private readonly service: KnowledgeService) {}
+  /** The printed schema text, computed on first use for the same reason. */
+  static get schemaSdl(): string {
+    KnowledgeGraphqlService.cachedSchemaSdl ??= graphqlModule().printSchema(KnowledgeGraphqlService.schema);
+    return KnowledgeGraphqlService.cachedSchemaSdl;
+  }
+
+  constructor(private readonly service: KnowledgeService) {
+    // Resolve `graphql` now, through the dynamic import a bundler follows, so
+    // a compiled binary has the bundled module in hand before any route reads
+    // `schemaText` — which the daemon-sdk route contract requires to be a
+    // synchronous string. Never rejects; an absent package is remembered and
+    // reported by the accessors that need it.
+    void primeGraphqlModule();
+  }
 
   get schemaText(): string {
     return KnowledgeGraphqlService.schemaSdl;
   }
 
   async execute(input: KnowledgeGraphqlExecuteInput) {
+    const primed = await primeGraphqlModule();
+    if (!primed.available) throw new Error(primed.reason);
+    const { graphql } = graphqlModule();
     const rootValue = this.createRootValue();
     const context: KnowledgeGraphqlContext = {
       service: this.service,
@@ -177,7 +218,7 @@ export class KnowledgeGraphqlService {
       sourceExtraction: ({ sourceId }: { sourceId: string }) => this.service.getSourceExtraction(sourceId),
       neighbors: ({ kind, id, relation, limit }: { kind: 'source' | 'node'; id: string; relation?: string | undefined; limit?: number }) => {
         if (kind !== 'source' && kind !== 'node') {
-          throw new GraphQLError(`Unsupported knowledge neighbor kind: ${kind}`);
+          throw new (graphqlModule().GraphQLError)(`Unsupported knowledge neighbor kind: ${kind}`);
         }
         return this.service.getNeighbors(kind, id, { relation, limit: clampInt(limit, 20) });
       },

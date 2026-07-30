@@ -1,4 +1,8 @@
-import { AnthropicBedrockMantle } from '@anthropic-ai/bedrock-sdk';
+// `@anthropic-ai/bedrock-sdk` is an optionalDependency: reached through
+// providers/optional-bedrock.ts at client construction, never as a static
+// import. See utils/optional-dependency.ts for the failure a static import of
+// an absent optional package produces.
+import { loadBedrockSdk } from './optional-bedrock.js';
 import { AnthropicSdkProvider } from './anthropic-sdk-provider.js';
 import { fetchBedrockModelIds } from './amazon-bedrock.js';
 import type { ProviderModelSource } from './interface.js';
@@ -50,14 +54,17 @@ export class AmazonBedrockMantleProvider extends AnthropicSdkProvider {
       label: 'Amazon Bedrock Mantle',
       defaultModel: 'claude-sonnet-4-6',
       models: [...BEDROCK_MANTLE_DATED_STATIC_MODELS],
-      createClient: () => new AnthropicBedrockMantle({
-        apiKey: process.env['AWS_BEARER_TOKEN_BEDROCK'],
-        awsAccessKey: process.env['AWS_ACCESS_KEY_ID'] ?? null,
-        awsSecretAccessKey: process.env['AWS_SECRET_ACCESS_KEY'] ?? null,
-        awsSessionToken: process.env['AWS_SESSION_TOKEN'] ?? null,
-        awsProfile: process.env['AWS_PROFILE'],
-        awsRegion: process.env['AWS_REGION'] ?? process.env['AWS_DEFAULT_REGION'] ?? 'us-east-1',
-      }),
+      createClient: async () => {
+        const { AnthropicBedrockMantle } = await loadBedrockSdk();
+        return new AnthropicBedrockMantle({
+          apiKey: process.env['AWS_BEARER_TOKEN_BEDROCK'],
+          awsAccessKey: process.env['AWS_ACCESS_KEY_ID'] ?? null,
+          awsSecretAccessKey: process.env['AWS_SECRET_ACCESS_KEY'] ?? null,
+          awsSessionToken: process.env['AWS_SESSION_TOKEN'] ?? null,
+          awsProfile: process.env['AWS_PROFILE'],
+          awsRegion: process.env['AWS_REGION'] ?? process.env['AWS_DEFAULT_REGION'] ?? 'us-east-1',
+        });
+      },
       auth: {
         mode: configured ? 'api-key' : 'anonymous',
         configured,
