@@ -58,6 +58,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
     all daemon-owned. Every operation a surface needs is a verb; nothing a
     surface renders has to be computed there.
 
+- **The paired-device posture is a platform contract, so every daemon host
+  honours the `device.*` settings.** The mapping from those settings to the
+  policy the stores and the capability service enforce, the peer/approval wiring
+  around them, and the `phone` tool itself now live in `platform/devices`:
+  `readDeviceCapabilityPolicy` / `readDeviceGrantPolicy` /
+  `readDeviceArtifactPolicy` / `readDeviceSweepIntervalMs`,
+  `createDevicePostureRuntime` (transport, approval bridge and config reader are
+  the only seams a host supplies), and `createDevicePhoneTool` /
+  `registerDevicePhoneTool`. Written in one consumer, those eleven keys were dark
+  in every other host — including the terminal app's daemon.
+
+  - **Every policy is now read live rather than frozen at construction.**
+    `DeviceCapabilityService`, `DeviceGrantStore` and `DeviceCaptureArtifactStore`
+    accept a resolver as well as a fixed partial, and `DeviceHousekeeper.start`
+    accepts a cadence resolver and re-arms its timer after a sweep when the
+    cadence changed. A `device.*` change governs the next request, the next
+    grant, and the next sweep without a restart — the liveness
+    `device.nodes.maxPaired` already had at the pairing path.
+  - **A broken value reads as the stock posture, never a wider one.** A number
+    that is not finite or not positive, or an enum value outside its list, falls
+    back to the shipped default instead of being passed through.
+
 ### Fixed
 
 - **A route binding is now a hint, validated every time it is used — a channel

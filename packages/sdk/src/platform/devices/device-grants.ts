@@ -31,6 +31,7 @@
 import { randomUUID } from 'node:crypto';
 import { PersistentStore } from '../state/persistent-store.js';
 import { isDeviceCapabilityId, type DeviceCapabilityId, type DeviceNodeKind } from './device-capability-contract.js';
+import { resolveDevicePolicySource, type DevicePolicySource } from './device-policy-source.js';
 
 /** Scope of an approval a person gave. */
 export type DeviceGrantScope = 'always' | 'session';
@@ -132,7 +133,11 @@ export interface DeviceGrantOwnership {
 }
 
 export interface DeviceGrantStoreOptions {
-  readonly policy?: Partial<DeviceGrantPolicy> | undefined;
+  /**
+   * Fixed bounds, or a resolver read at every use so a live settings change
+   * applies without a restart (see device-policy-source.ts).
+   */
+  readonly policy?: DevicePolicySource<DeviceGrantPolicy> | undefined;
   readonly now?: (() => number) | undefined;
   readonly ownership?: DeviceGrantOwnership | undefined;
 }
@@ -206,7 +211,7 @@ function validateAudit(value: unknown): DeviceGrantAuditRecord | null {
  */
 export class DeviceGrantStore {
   private readonly store: PersistentStore<DeviceGrantSnapshot>;
-  private readonly policy: DeviceGrantPolicy;
+  private readonly resolvePolicy: () => DeviceGrantPolicy;
   private readonly now: () => number;
   private readonly ownership: DeviceGrantOwnership;
   private writeChain: Promise<void> = Promise.resolve();
@@ -215,14 +220,18 @@ export class DeviceGrantStore {
     this.store = typeof storeOrPath === 'string'
       ? new PersistentStore<DeviceGrantSnapshot>(storeOrPath)
       : storeOrPath;
-    this.policy = { ...DEFAULT_DEVICE_GRANT_POLICY, ...(options.policy ?? {}) };
+    this.resolvePolicy = resolveDevicePolicySource(options.policy, DEFAULT_DEVICE_GRANT_POLICY);
     this.now = options.now ?? (() => Date.now());
     this.ownership = options.ownership ?? {};
   }
 
-  /** Effective policy after option merge — surfaced so callers can render it. */
+  /**
+   * The bounds in force right now. With a resolver this re-reads the live
+   * configuration, so a caller rendering the policy shows what the next sweep
+   * will actually apply.
+   */
   getPolicy(): DeviceGrantPolicy {
-    return this.policy;
+    return this.resolvePolicy();
   }
 
   private async readWithDrops(): Promise<{ snapshot: DeviceGrantSnapshot; malformed: number }> {
@@ -310,7 +319,7 @@ export class DeviceGrantStore {
     readonly ttlMs?: number | undefined;
   }): Promise<DeviceCapabilityGrant> {
     const now = this.now();
-    const ttl = input.ttlMs && input.ttlMs > 0 ? input.ttlMs : this.policy.grantTtlMs;
+    const ttl = input.ttlMs && input.ttlMs > 0 ? input.ttlMs : this.getPolicy().grantTtlMs;
     return this.mutate(async (snapshot) => {
       const kept = snapshot.grants.filter((grant) => !(
         grant.nodeId === input.nodeId
@@ -428,6 +437,9 @@ export class DeviceGrantStore {
    */
   async sweep(): Promise<DeviceGrantSweepReport> {
     const now = this.now();
+    // Read once for the whole pass, so the caps and cutoffs one sweep applies
+    // are internally consistent even if the configuration changes mid-sweep.
+    const policy = this.getPolicy();
     return this.mutate(async (snapshot, malformedCount) => {
       const removals: DeviceGrantRemoval[] = [];
       if (malformedCount > 0) {
@@ -468,7 +480,7 @@ export class DeviceGrantStore {
       const capped: DeviceCapabilityGrant[] = [];
       for (const [, bucket] of byNode) {
         bucket.sort((a, b) => a.grantedAt - b.grantedAt);
-        const overflow = bucket.length - this.policy.maxGrantsPerNode;
+        const overflow = bucket.length - policy.maxGrantsPerNode;
         for (let index = 0; index < bucket.length; index += 1) {
           const grant = bucket[index];
           if (!grant) continue;
@@ -480,7 +492,7 @@ export class DeviceGrantStore {
         }
       }
       capped.sort((a, b) => a.grantedAt - b.grantedAt);
-      const totalOverflow = capped.length - this.policy.maxGrantsTotal;
+      const totalOverflow = capped.length - policy.maxGrantsTotal;
       const finalGrants: DeviceCapabilityGrant[] = [];
       for (let index = 0; index < capped.length; index += 1) {
         const grant = capped[index];
@@ -492,7 +504,7 @@ export class DeviceGrantStore {
         finalGrants.push(grant);
       }
 
-      const auditCutoff = now - this.policy.auditRetentionMs;
+      const auditCutoff = now - policy.auditRetentionMs;
       const auditWithRemovals = [
         ...snapshot.audit,
         ...removals
@@ -509,7 +521,7 @@ export class DeviceGrantStore {
           })),
       ];
       const auditAged = auditWithRemovals.filter((entry) => entry.at >= auditCutoff);
-      const auditFinal = auditAged.slice(-this.policy.maxAuditRecords);
+      const auditFinal = auditAged.slice(-policy.maxAuditRecords);
       const auditTrimmed = auditWithRemovals.length - auditFinal.length;
 
       return {

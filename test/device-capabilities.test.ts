@@ -7,10 +7,32 @@
  * is refused, captures expire at 24h and are reaped with disclosure, and a
  * second node type resolves through the same path with no special case.
  */
-import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
-import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
+import { describe, expect, test, beforeEach, afterEach, setSystemTime } from 'bun:test';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { ConfigManager } from '../packages/sdk/src/platform/config/manager.ts';
+import { deviceConfigSettings } from '../packages/sdk/src/platform/config/schema-domain-device.ts';
+import {
+  DEVICE_POSTURE_CONFIG_KEYS,
+  readDeviceArtifactPolicy,
+  readDeviceCapabilityPolicy,
+  readDeviceGrantPolicy,
+  readDeviceSweepIntervalMs,
+} from '../packages/sdk/src/platform/devices/device-posture-config.ts';
+import type {
+  DevicePostureConfigKey,
+  DevicePostureConfigReader,
+} from '../packages/sdk/src/platform/devices/device-posture-config.ts';
+import {
+  DEVICE_NODE_ANNOUNCEMENT_KEY,
+  createDevicePostureRuntime,
+} from '../packages/sdk/src/platform/devices/device-posture-runtime.ts';
+import type {
+  DevicePeerView,
+  DevicePostureRuntime,
+  DeviceWorkView,
+} from '../packages/sdk/src/platform/devices/device-posture-runtime.ts';
 import {
   DEVICE_CAPABILITY_CATALOG,
   DEVICE_CAPABILITY_CONTRACT_VERSION,
@@ -30,6 +52,7 @@ import {
 } from '../packages/sdk/src/platform/devices/device-capability-service.ts';
 import type {
   DeviceCapabilityDispatcher,
+  DeviceCapabilityOutcome,
   DeviceConfirmationRequest,
   DeviceConfirmationDecision,
 } from '../packages/sdk/src/platform/devices/device-capability-service.ts';
@@ -513,5 +536,289 @@ describe('peer work payloads', () => {
     expect(parsed?.capabilityId).toBe('device.location.coarse');
     expect(parsed?.timeoutMs).toBeGreaterThan(0);
     expect(parsed?.input).toEqual({});
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The `device.*` settings → policy mapping, and the runtime a host composes
+// from it. This mapping used to live in one consumer, so every other daemon
+// host ran the feature on the struct defaults and ignored what the owner set.
+// These tests hold the mapping itself: each key, at two values, changing the
+// policy a store or the capability service actually applies.
+// ---------------------------------------------------------------------------
+
+/** A reader over a plain map, so a value the schema would reject can be tested. */
+function reader(values: Partial<Record<DevicePostureConfigKey, unknown>>): DevicePostureConfigReader {
+  return { get: (key) => values[key] };
+}
+
+/** A real ConfigManager over a fresh temp home, the way a surface builds it. */
+let configSeq = 0;
+function freshConfig(): ConfigManager {
+  configSeq += 1;
+  const home = join(root, `home-${configSeq}`);
+  mkdirSync(home, { recursive: true });
+  return new ConfigManager({ homeDir: home, configDir: join(home, 'cfg'), workingDir: home, surfaceRoot: 'goodvibes' });
+}
+
+const MINUTE_MS = 60 * 1000;
+const HOUR_MS = 60 * MINUTE_MS;
+const DAY_MS = 24 * HOUR_MS;
+
+describe('device.* settings mapping', () => {
+  test('the wired key list is exactly the device schema minus the pairing cap', () => {
+    const schemaKeys = deviceConfigSettings.map((setting) => setting.key).filter((key) => key !== 'device.nodes.maxPaired');
+    expect(DEVICE_POSTURE_CONFIG_KEYS.map((key) => key as string)).toEqual(schemaKeys);
+  });
+
+  test('every posture key changes the policy it governs when moved off its stock value', () => {
+    const stock = reader({});
+    expect(readDeviceCapabilityPolicy(stock)).toEqual(DEFAULT_DEVICE_CAPABILITY_POLICY);
+
+    expect(readDeviceCapabilityPolicy(reader({ 'device.capabilities.mode': 'off' })).mode).toBe('off');
+    expect(readDeviceCapabilityPolicy(reader({ 'device.capabilities.allowAlwaysOffer': 'never' })).allowAlwaysOffer).toBe('never');
+    expect(readDeviceCapabilityPolicy(reader({ 'device.location.precision': 'coarse-only' })).locationPrecision).toBe('coarse-only');
+    expect(readDeviceCapabilityPolicy(reader({ 'device.clipboard.readMode': 'ask-only' })).clipboardReadMode).toBe('ask-only');
+    expect(readDeviceCapabilityPolicy(reader({ 'device.capabilities.requestTimeoutSeconds': 5 })).requestTimeoutMs).toBe(5_000);
+    expect(readDeviceCapabilityPolicy(reader({ 'device.capture.retentionHours': 1 })).captureRetentionMs).toBe(HOUR_MS);
+
+    expect(readDeviceArtifactPolicy(reader({ 'device.capture.retentionHours': 72 })).retentionMs).toBe(72 * HOUR_MS);
+    expect(readDeviceArtifactPolicy(reader({ 'device.capture.maxArtifacts': 2 })).maxArtifacts).toBe(2);
+    expect(readDeviceArtifactPolicy(stock)).toEqual({ retentionMs: 24 * HOUR_MS, maxArtifacts: 200 });
+
+    expect(readDeviceGrantPolicy(reader({ 'device.grants.expiryDays': 1 })).grantTtlMs).toBe(DAY_MS);
+    expect(readDeviceGrantPolicy(reader({ 'device.grants.maxPerNode': 3 })).maxGrantsPerNode).toBe(3);
+    expect(readDeviceGrantPolicy(reader({ 'device.grants.auditRetentionDays': 2 })).auditRetentionMs).toBe(2 * DAY_MS);
+    // The two bounds with no settings key keep their absolute safety values.
+    expect(readDeviceGrantPolicy(reader({ 'device.grants.maxPerNode': 3 })).maxGrantsTotal).toBe(512);
+
+    expect(readDeviceSweepIntervalMs(stock)).toBe(30 * MINUTE_MS);
+    expect(readDeviceSweepIntervalMs(reader({ 'device.capture.sweepIntervalMinutes': 5 }))).toBe(5 * MINUTE_MS);
+  });
+
+  test('a broken value reads as the stock posture rather than a wider one', () => {
+    const broken = reader({
+      'device.capabilities.mode': 'sometimes',
+      'device.capabilities.allowAlwaysOffer': true,
+      'device.location.precision': '',
+      'device.clipboard.readMode': 'yes',
+      'device.capabilities.requestTimeoutSeconds': Number.NaN,
+      'device.capture.retentionHours': -4,
+      'device.capture.maxArtifacts': 'lots',
+      'device.capture.sweepIntervalMinutes': 0,
+      'device.grants.expiryDays': Number.POSITIVE_INFINITY,
+      'device.grants.maxPerNode': null,
+      'device.grants.auditRetentionDays': -1,
+    });
+    expect(readDeviceCapabilityPolicy(broken)).toEqual(DEFAULT_DEVICE_CAPABILITY_POLICY);
+    expect(readDeviceArtifactPolicy(broken)).toEqual({ retentionMs: 24 * HOUR_MS, maxArtifacts: 200 });
+    expect(readDeviceGrantPolicy(broken).grantTtlMs).toBe(90 * DAY_MS);
+    expect(readDeviceGrantPolicy(broken).maxGrantsPerNode).toBe(64);
+    expect(readDeviceGrantPolicy(broken).auditRetentionMs).toBe(30 * DAY_MS);
+    expect(readDeviceSweepIntervalMs(broken)).toBe(30 * MINUTE_MS);
+  });
+
+  test('a real ConfigManager is a posture reader: stock values in, stock policy out', () => {
+    const configManager = freshConfig();
+    expect(readDeviceCapabilityPolicy(configManager)).toEqual(DEFAULT_DEVICE_CAPABILITY_POLICY);
+    configManager.set('device.capabilities.mode', 'ask-every-time');
+    configManager.set('device.capture.retentionHours', 2);
+    expect(readDeviceCapabilityPolicy(configManager).mode).toBe('ask-every-time');
+    expect(readDeviceArtifactPolicy(configManager).retentionMs).toBe(2 * HOUR_MS);
+  });
+});
+
+describe('device posture runtime', () => {
+  interface RuntimeHarness {
+    readonly runtime: DevicePostureRuntime;
+    readonly dispatches: Array<{ command: string; timeoutMs: number | undefined; payload: unknown }>;
+    readonly asks: Array<{ timeoutMs: number | undefined }>;
+    answer(next: 'once' | 'always' | 'deny'): void;
+    withBytes(enabled: boolean): void;
+    run(capabilityId: string): Promise<DeviceCapabilityOutcome>;
+  }
+
+  function peer(overrides: Partial<DevicePeerView> = {}): DevicePeerView {
+    return {
+      id: 'phone-1',
+      kind: 'device',
+      label: 'Test phone',
+      platform: 'android',
+      version: '1.0.0',
+      status: 'connected',
+      capabilities: [...DEVICE_CAPABILITY_IDS],
+      metadata: {
+        [DEVICE_NODE_ANNOUNCEMENT_KEY]: {
+          nodeKind: 'web-pwa',
+          contractVersion: DEVICE_CAPABILITY_CONTRACT_VERSION,
+          capabilities: [...DEVICE_CAPABILITY_IDS],
+          secureContext: true,
+        },
+      },
+      ...overrides,
+    };
+  }
+
+  function runtimeHarness(configManager: ConfigManager, stateDirectory: string, peers: readonly DevicePeerView[] = [peer()]): RuntimeHarness {
+    const dispatches: Array<{ command: string; timeoutMs: number | undefined; payload: unknown }> = [];
+    const asks: Array<{ timeoutMs: number | undefined }> = [];
+    let answer: 'once' | 'always' | 'deny' = 'once';
+    let bytes = false;
+
+    const runtime = createDevicePostureRuntime({
+      transport: {
+        listPeers: (kind) => peers.filter((entry) => kind === undefined || entry.kind === kind),
+        invokePeer: async (input): Promise<{ work: DeviceWorkView; completed: boolean }> => {
+          dispatches.push({ command: input.command, timeoutMs: input.timeoutMs, payload: input.payload });
+          return {
+            completed: true,
+            work: {
+              id: `work-${dispatches.length}`,
+              status: 'completed',
+              result: {
+                contractVersion: DEVICE_CAPABILITY_CONTRACT_VERSION,
+                capabilityId: input.command,
+                ok: true,
+                data: { served: input.command },
+                ...(bytes ? { mediaBase64: Buffer.from([1, 2, 3, 4]).toString('base64'), mediaType: 'image/png' } : {}),
+              },
+            },
+          };
+        },
+      },
+      approvals: {
+        requestApproval: async (input) => {
+          asks.push({ timeoutMs: input.timeoutMs });
+          if (answer === 'deny') return { approved: false, reason: 'not now' };
+          if (answer === 'always') return { approved: true, rememberTier: 'tool' };
+          return { approved: true };
+        },
+      },
+      config: configManager,
+      stateDirectory,
+      actor: 'test:phone-tool',
+    });
+
+    return {
+      runtime,
+      dispatches,
+      asks,
+      answer(next) { answer = next; },
+      withBytes(enabled) { bytes = enabled; },
+      run(capabilityId) {
+        return runtime.capabilities.request({ nodeId: 'phone-1', capabilityId, reason: 'runtime test' });
+      },
+    };
+  }
+
+  afterEach(() => {
+    setSystemTime();
+  });
+
+  test('a peer carrying a device announcement is a node; an ordinary peer is not', () => {
+    const h = runtimeHarness(freshConfig(), join(root, 'nodes'), [
+      peer(),
+      peer({ id: 'laptop-1', kind: 'node', metadata: {} }),
+      peer({ id: 'phone-2', metadata: {} }),
+      peer({ id: 'phone-3', status: 'revoked' }),
+    ]);
+    expect(h.runtime.listNodes().map((node) => node.nodeId)).toEqual(['phone-1']);
+  });
+
+  test('one request becomes one work item carrying the contract payload and the configured deadline', async () => {
+    const configManager = freshConfig();
+    configManager.set('device.capabilities.requestTimeoutSeconds', 5);
+    const h = runtimeHarness(configManager, join(root, 'dispatch'));
+    const outcome = await h.run('device.command.vibrate');
+    expect(outcome.ok).toBe(true);
+    expect(h.dispatches).toHaveLength(1);
+    expect(h.dispatches[0]?.command).toBe('device.command.vibrate');
+    expect(h.dispatches[0]?.timeoutMs).toBe(5_000);
+    expect((h.dispatches[0]?.payload as { timeoutMs?: number } | undefined)?.timeoutMs).toBe(5_000);
+    // The prompt inherits the same deadline: the question must not outlive it.
+    expect(h.asks[0]?.timeoutMs).toBe(5_000);
+  });
+
+  test('a posture change governs the NEXT request — no restart, no rebuild', async () => {
+    const configManager = freshConfig();
+    const h = runtimeHarness(configManager, join(root, 'live-mode'));
+    expect((await h.run('device.camera.rear.capture')).ok).toBe(true);
+
+    configManager.set('device.capabilities.mode', 'off');
+    const refused = await h.run('device.camera.rear.capture');
+    expect(refused.ok).toBe(false);
+    if (!refused.ok) expect(refused.refusal).toBe('disabled-by-config');
+    // Nothing reached the phone and nobody was asked the second time.
+    expect(h.dispatches).toHaveLength(1);
+    expect(h.asks).toHaveLength(1);
+
+    configManager.set('device.capabilities.mode', 'honor-grants');
+    expect((await h.run('device.camera.rear.capture')).ok).toBe(true);
+    expect(h.dispatches).toHaveLength(2);
+  });
+
+  test('a live grant-expiry change applies to the next grant, and a retention change to the next capture', async () => {
+    const configManager = freshConfig();
+    const h = runtimeHarness(configManager, join(root, 'live-stores'));
+    h.answer('always');
+    h.withBytes(true);
+
+    const first = await h.run('device.camera.rear.capture');
+    expect(first.ok).toBe(true);
+    const stockGrant = (await h.runtime.grants.list())[0];
+    expect(stockGrant && stockGrant.expiresAt - stockGrant.grantedAt).toBe(90 * DAY_MS);
+    if (first.ok && first.artifact) expect(first.artifact.expiresAt - first.artifact.capturedAt).toBe(24 * HOUR_MS);
+
+    configManager.set('device.grants.expiryDays', 1);
+    configManager.set('device.capture.retentionHours', 1);
+    await h.runtime.grants.revoke({ nodeId: 'phone-1', actor: 'test' });
+    const second = await h.run('device.camera.rear.capture');
+    expect(second.ok).toBe(true);
+    const shortGrant = (await h.runtime.grants.list())[0];
+    expect(shortGrant && shortGrant.expiresAt - shortGrant.grantedAt).toBe(DAY_MS);
+    if (second.ok && second.artifact) expect(second.artifact.expiresAt - second.artifact.capturedAt).toBe(HOUR_MS);
+
+    // And the reduced cap is what the next sweep applies.
+    configManager.set('device.capture.maxArtifacts', 1);
+    expect(h.runtime.artifacts.getPolicy().maxArtifacts).toBe(1);
+    const sweep = await h.runtime.housekeeper.sweep('manual');
+    expect(sweep.artifacts.retained).toBe(1);
+    expect(sweep.artifacts.removed.map((removal) => removal.reason)).toEqual(['count-cap']);
+  });
+
+  test('shortening the sweep cadence re-arms the periodic timer without a restart', async () => {
+    const configManager = freshConfig();
+    const h = runtimeHarness(configManager, join(root, 'cadence'));
+    const realSetInterval = globalThis.setInterval;
+    const delays: number[] = [];
+    const callbacks: Array<() => void> = [];
+    const spawned: Array<ReturnType<typeof setInterval>> = [];
+    globalThis.setInterval = ((handler: () => void, timeout?: number) => {
+      delays.push(timeout ?? 0);
+      callbacks.push(handler);
+      const timer = realSetInterval(() => undefined, HOUR_MS);
+      spawned.push(timer);
+      return timer;
+    }) as unknown as typeof globalThis.setInterval;
+
+    try {
+      await h.runtime.startHousekeeping();
+      expect(delays).toEqual([30 * MINUTE_MS]);
+      expect(h.runtime.housekeeper.getArmedIntervalMs()).toBe(30 * MINUTE_MS);
+
+      configManager.set('device.capture.sweepIntervalMinutes', 5);
+      // The running timer re-reads the cadence after its own sweep.
+      callbacks[callbacks.length - 1]?.();
+      for (let attempt = 0; attempt < 200 && delays.length < 2; attempt += 1) {
+        await new Promise((resolveTick) => { setTimeout(resolveTick, 5); });
+      }
+      expect(delays[delays.length - 1]).toBe(5 * MINUTE_MS);
+      expect(h.runtime.housekeeper.getArmedIntervalMs()).toBe(5 * MINUTE_MS);
+      h.runtime.stopHousekeeping();
+      expect(h.runtime.housekeeper.getArmedIntervalMs()).toBeNull();
+    } finally {
+      for (const timer of spawned) clearInterval(timer);
+      globalThis.setInterval = realSetInterval;
+    }
   });
 });
