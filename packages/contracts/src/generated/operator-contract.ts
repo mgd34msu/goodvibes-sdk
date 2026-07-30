@@ -71377,7 +71377,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "occasions.pending",
         "title": "Pull Outstanding Occasions",
-        "description": "Return everything unresolved, without delivering anything: the batched nudge, any date conflict still open, and any interview left mid-thread. This is how a surface that is not a push destination receives a nudge — it pulls at the start of a turn rather than being pushed at, and a stored date is the prior scheduling that permits raising something unprompted. A nudge a push has already landed on the agent is left out while the agent is a configured push destination, so the push and the pull cannot raise the same thing twice; a push that FAILED leaves nothing out, so no nudge is lost that way. The nudge names the occasion and the person and NEVER the date: proximity is a word, not a count of days.",
+        "description": "Return everything unresolved, without delivering anything: the batched nudge, any date conflict still open, and any interview left mid-thread. This is how a surface that is not a push destination receives a nudge — it pulls at the start of a turn rather than being pushed at, and a stored date is the prior scheduling that permits raising something unprompted. A nudge a push has already landed on the agent is left out while the agent is a configured push destination, so the push and the pull cannot raise the same thing twice; an item no push has ever landed there is still returned, so a missing sender or a failed send loses nothing. The nudge names the occasion and the person and NEVER the date: proximity is a word, not a count of days.",
         "category": "occasions",
         "source": "builtin",
         "access": "authenticated",

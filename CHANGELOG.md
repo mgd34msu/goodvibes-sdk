@@ -40,8 +40,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
     receives pushes and pulls what is outstanding at a turn boundary, and both
     read the same open item: a push that lands on the agent stamps the item, and
     while the agent is a push destination `occasions.pending` leaves stamped
-    items out. A push that failed stamps nothing, so that nudge still comes back
-    through the pull rather than being lost.
+    items out. An item no push has ever landed there carries no stamp, so a
+    missing sender or a failed send still leaves the pull as the way that nudge
+    gets raised.
   - **Nothing unresolved is ever dropped.** One open-item mechanism behind all
     three cases: an unanswered nudge continues on its own rhythm, a "later"
     comes back roughly halfway to the date, a conflict between two declared
