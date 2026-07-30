@@ -13591,6 +13591,14 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       "delivered": false,
       "deliveryChannel": "sample",
       "deliveryId": "sample",
+      "deliveries": [
+        {
+          "channel": "sample",
+          "delivered": false,
+          "deliveryId": "sample",
+          "failure": "sample"
+        }
+      ],
       "mirrored": 0,
       "housekeeping": {
         "sweptAt": 0,

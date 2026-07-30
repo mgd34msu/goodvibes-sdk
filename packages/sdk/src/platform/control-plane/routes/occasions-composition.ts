@@ -16,9 +16,14 @@
  *
  * The nudge goes out over the channel delivery router — the same substrate the
  * proactive check-in uses — with the target parsed by the router's own parser.
+ * That includes the `agent` destination: the router carries a strategy for it,
+ * and the agent product registers the sender that lands the message in its
+ * conversation (`channels/delivery/strategies-agent.ts`). Nothing about this
+ * file has to know which of the configured destinations is a transport and which
+ * is another product.
+ *
  * When no router is wired the service still runs and still records what is
- * outstanding; `occasions.pending` is then the only way a nudge is seen, which
- * is exactly how the agent surface receives one anyway.
+ * outstanding; `occasions.pending` is then the only way a nudge is seen.
  *
  * ## Something has to run the sweep
  *
@@ -132,6 +137,17 @@ export function composeOccasions(
         conflicts: outcome.conflictMessages.length,
         delivered: outcome.delivered,
       });
+      // A destination that went quiet is worth a warning even though the sweep
+      // itself succeeded, and it is named by SURFACE rather than by the full
+      // target: a target can carry a chat id, and an address is closed tier too.
+      // The router has already logged each failure against its own strategy.
+      const failed = outcome.deliveries.filter((entry) => entry.failure !== null);
+      if (failed.length > 0) {
+        logger.warn('occasions: a nudge destination did not accept the nudge', {
+          surfaces: failed.map((entry) => entry.channel.split(':', 1)[0] ?? ''),
+          delivered: outcome.delivered,
+        });
+      }
     },
     intervalMs: () => readOccasionsPolicy({
       get: (key) => deps.configManager.get(key as ConfigKey),

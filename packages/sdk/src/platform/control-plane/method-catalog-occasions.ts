@@ -259,6 +259,21 @@ export const OCCASIONS_PENDING_OUTPUT_SCHEMA = objectSchema({
   interviews: arraySchema(INTERVIEW_PROGRESS_SCHEMA),
 }, ['today', 'nudge', 'conflicts', 'interviews']);
 
+/**
+ * One destination a nudge was pushed to, and what came of it.
+ *
+ * Reported per destination because `occasions.nudgeChannel` is a list — Telegram
+ * AND the agent is the owner's ruling — and one boolean for the batch would not
+ * say WHICH channel went quiet. A channel he believes is reaching him and is not
+ * is the failure this whole feature exists to avoid.
+ */
+export const NUDGE_DELIVERY_SCHEMA = objectSchema({
+  channel: STRING_SCHEMA,
+  delivered: BOOLEAN_SCHEMA,
+  deliveryId: NULLABLE_STRING_SCHEMA,
+  failure: NULLABLE_STRING_SCHEMA,
+}, ['channel', 'delivered', 'deliveryId', 'failure']);
+
 export const OCCASIONS_SWEEP_INPUT_SCHEMA = EMPTY_OBJECT_SCHEMA;
 export const OCCASIONS_SWEEP_OUTPUT_SCHEMA = objectSchema({
   ranAt: NUMBER_SCHEMA,
@@ -270,9 +285,10 @@ export const OCCASIONS_SWEEP_OUTPUT_SCHEMA = objectSchema({
   delivered: BOOLEAN_SCHEMA,
   deliveryChannel: STRING_SCHEMA,
   deliveryId: NULLABLE_STRING_SCHEMA,
+  deliveries: arraySchema(NUDGE_DELIVERY_SCHEMA),
   mirrored: NUMBER_SCHEMA,
   housekeeping: { anyOf: [OCCASION_SWEEP_REPORT_SCHEMA, { type: 'null' }] },
-}, ['ranAt', 'today', 'hold', 'nudge', 'conflictMessages', 'resumedInterviews', 'delivered', 'deliveryChannel', 'deliveryId', 'mirrored', 'housekeeping']);
+}, ['ranAt', 'today', 'hold', 'nudge', 'conflictMessages', 'resumedInterviews', 'delivered', 'deliveryChannel', 'deliveryId', 'deliveries', 'mirrored', 'housekeeping']);
 
 export const OCCASIONS_PLANS_LIST_INPUT_SCHEMA = EMPTY_OBJECT_SCHEMA;
 export const OCCASIONS_PLANS_LIST_OUTPUT_SCHEMA = objectSchema({
@@ -420,7 +436,7 @@ export const builtinGatewayOccasionsMethodDescriptors: readonly GatewayMethodDes
   methodDescriptor({
     id: 'occasions.pending',
     title: 'Pull Outstanding Occasions',
-    description: 'Return everything unresolved, without delivering anything: the batched nudge, any date conflict still open, and any interview left mid-thread. This is how the agent surface receives a nudge — it pulls at the start of a turn rather than being pushed at, and a stored date is the prior scheduling that permits raising something unprompted. The nudge names the occasion and the person and NEVER the date: proximity is a word, not a count of days.',
+    description: 'Return everything unresolved, without delivering anything: the batched nudge, any date conflict still open, and any interview left mid-thread. This is how a surface that is not a push destination receives a nudge — it pulls at the start of a turn rather than being pushed at, and a stored date is the prior scheduling that permits raising something unprompted. A nudge a push has already landed on the agent is left out while the agent is a configured push destination, so the push and the pull cannot raise the same thing twice; a push that FAILED leaves nothing out, so no nudge is lost that way. The nudge names the occasion and the person and NEVER the date: proximity is a word, not a count of days.',
     category: 'occasions',
     scopes: ['read:occasions'],
     http: { method: 'GET', path: '/api/occasions/pending' },
@@ -430,7 +446,7 @@ export const builtinGatewayOccasionsMethodDescriptors: readonly GatewayMethodDes
   methodDescriptor({
     id: 'occasions.sweep',
     title: 'Run The Approach Sweep Now',
-    description: 'Run one pass immediately: reap expired and orphaned state, find the occasions entering their lead window, batch them into a single message, mirror to the calendar if that is on, and deliver. Housekeeping runs first and unconditionally, so a machine with nudging turned off still reaps. Returns hold:"quiet-hours" or hold:"disabled" when it deliberately said nothing — nothing is dropped, it waits.',
+    description: 'Run one pass immediately: reap expired and orphaned state, find the occasions entering their lead window, batch them into a single message, mirror to the calendar if that is on, and deliver. Delivery goes to every destination in occasions.nudgeChannel — a comma-separated list, so Telegram and the agent both get it — and each is attempted independently, with deliveries[] naming per destination what landed and what did not. Housekeeping runs first and unconditionally, so a machine with nudging turned off still reaps. Returns hold:"quiet-hours" or hold:"disabled" when it deliberately said nothing — nothing is dropped, it waits.',
     category: 'occasions',
     scopes: ['write:occasions'],
     http: { method: 'POST', path: '/api/occasions/sweep' },

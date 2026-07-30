@@ -14,12 +14,28 @@
  * ## The TUI is not a destination, structurally
  *
  * The owner's ruling was Telegram and the agent, never the TUI, because *"that's
- * more of a 'get work done' kind of interface."* {@link resolveNudgeDestination}
+ * more of a 'get work done' kind of interface."* {@link resolveNudgeDestinations}
  * refuses a TUI target rather than merely not choosing one, so the rule survives
  * a composition root that wires the delivery router optimistically.
+ *
+ * ## Telegram and the agent, and one thing said once
+ *
+ * `occasions.nudgeChannel` is a LIST, so his ruling — Telegram and the agent —
+ * is expressible rather than a choice between them. Each destination is pushed
+ * independently and a failure on one is recorded rather than thrown, so a dead
+ * Telegram token cannot silence the agent and a missing agent sender cannot
+ * silence Telegram.
+ *
+ * The agent is also the surface that PULLS through {@link OccasionsService.pending},
+ * so it is the one place where a push and a pull could say the same thing twice.
+ * They cannot, because both read the same open item: a push that lands on the
+ * agent stamps the item, and while the agent is a push destination the pull
+ * leaves stamped items out. A push that FAILED stamps nothing, so the pull is
+ * still how that nudge gets raised.
  */
 import type { AuthoritySurface } from '../security/untrusted-content.js';
 import type { ProfileSurface, ProfileWriteResult } from '../owner-profile/types.js';
+import { summarizeError } from '../utils/error-display.js';
 import { daysBetween, nextOccurrence, todayInZone, minutesOfDayInZone, type IsoDate } from './dates.js';
 import { conflictItemId, interviewItemId, laterReturnDate, nudgeItemId } from './cadence.js';
 import {
@@ -60,6 +76,7 @@ import type {
   OccasionNudge,
   OccasionStateDisclosure,
   OccasionSweepReport,
+  OpenItem,
   Plan,
   UnparsedOccasionLine,
   UnparsedPlanLine,
@@ -68,22 +85,42 @@ import type {
 /** Surfaces a proactive personal nudge is never delivered to. */
 export const NUDGE_FORBIDDEN_SURFACES: readonly string[] = ['tui'];
 
+/** The delivery surface that means the agent's own conversation. */
+export const NUDGE_AGENT_SURFACE = 'agent';
+
+/** The surface kind of one destination, lower-cased. */
+export function nudgeDestinationSurface(destination: string): string {
+  return (destination.split(':', 1)[0] ?? '').trim().toLowerCase();
+}
+
 /**
- * The channel a nudge may go to, or `null`.
+ * The channels a nudge may go to. Empty means pull-only.
  *
- * A target is `surfaceKind` or `surfaceKind:address`, matching the channel
- * delivery router's own form. The TUI is refused HERE rather than left
- * unconfigured, because "nobody set it to the TUI" is not the same guarantee as
- * "it cannot be the TUI", and the owner's ruling generalises beyond this
- * feature: the TUI is a work interface, and life-admin belongs on Telegram and
- * the agent.
+ * The setting is a comma-separated list — the same shape `payments.notifyChannels`
+ * and the trigger backoff ladder use — because the owner's ruling was Telegram
+ * AND the agent, and a single-valued setting would have made that a choice
+ * between them. Each entry is `surfaceKind` or `surfaceKind:address`, matching
+ * the channel delivery router's own form, so `telegram:12345,agent` is a valid
+ * pair. Duplicates collapse: a list that names one destination twice must not
+ * push the same nudge to it twice.
+ *
+ * The TUI is refused HERE rather than left unconfigured, because "nobody set it
+ * to the TUI" is not the same guarantee as "it cannot be the TUI", and the
+ * owner's ruling generalises beyond this feature: the TUI is a work interface,
+ * and life-admin belongs on Telegram and the agent. A list that names the TUI
+ * alongside real destinations loses the TUI entry and keeps the rest — the
+ * exclusion is structural, not a reason to drop everything he asked for.
  */
-export function resolveNudgeDestination(channel: string): string | null {
-  const trimmed = channel.trim();
-  if (trimmed.length === 0) return null;
-  const kind = (trimmed.split(':', 1)[0] ?? '').trim().toLowerCase();
-  if (NUDGE_FORBIDDEN_SURFACES.includes(kind)) return null;
-  return trimmed;
+export function resolveNudgeDestinations(channel: string): readonly string[] {
+  const destinations: string[] = [];
+  for (const entry of channel.split(',')) {
+    const trimmed = entry.trim();
+    if (trimmed.length === 0) continue;
+    if (NUDGE_FORBIDDEN_SURFACES.includes(nudgeDestinationSurface(trimmed))) continue;
+    if (destinations.includes(trimmed)) continue;
+    destinations.push(trimmed);
+  }
+  return destinations;
 }
 
 /** How a nudge leaves the daemon. Bound to the channel delivery router. */
@@ -155,6 +192,23 @@ export interface PlanListResult {
   readonly awayNow: Plan | null;
 }
 
+/**
+ * One destination a nudge was pushed to, and what came of it.
+ *
+ * Per destination rather than one verdict for the batch, because with two
+ * channels configured "delivered: false" would say nothing about WHICH one went
+ * quiet — and a channel he believes is reaching him and is not is the failure
+ * this whole feature exists to avoid.
+ */
+export interface NudgeDelivery {
+  /** The destination as configured: `surfaceKind` or `surfaceKind:address`. */
+  readonly channel: string;
+  readonly delivered: boolean;
+  readonly deliveryId: string | null;
+  /** Why this one did not land, when it did not. */
+  readonly failure: string | null;
+}
+
 /** What one sweep did. */
 export interface SweepOutcome {
   readonly ranAt: number;
@@ -163,9 +217,14 @@ export interface SweepOutcome {
   readonly nudge: OccasionNudge | null;
   readonly conflictMessages: readonly string[];
   readonly resumedInterviews: readonly string[];
+  /** True when at least one destination accepted the nudge. */
   readonly delivered: boolean;
+  /** Every destination it was addressed to, as configured. Empty ⇒ pull-only. */
   readonly deliveryChannel: string;
+  /** The id from the first destination that accepted it. */
   readonly deliveryId: string | null;
+  /** One entry per destination attempted, in configured order. */
+  readonly deliveries: readonly NudgeDelivery[];
   readonly mirrored: number;
   readonly housekeeping: OccasionSweepReport | null;
 }
@@ -482,6 +541,7 @@ export class OccasionsService {
         delivered: false,
         deliveryChannel: '',
         deliveryId: null,
+        deliveries: [],
         mirrored,
         housekeeping,
       };
@@ -501,12 +561,14 @@ export class OccasionsService {
       (conflict) => composeConflictMessage(conflict.title, conflict.dates),
     );
 
-    let delivered = false;
-    let deliveryId: string | null = null;
-    const destination = resolveNudgeDestination(policy.nudgeChannel);
-    if (destination !== null && this.deps.deliverer !== undefined && nudge !== null) {
-      deliveryId = (await this.deps.deliverer.deliver({ channel: destination, nudge })) ?? null;
-      delivered = true;
+    const destinations = resolveNudgeDestinations(policy.nudgeChannel);
+    const deliveries = nudge === null ? [] : await this.pushNudge(nudge, destinations);
+    const landed = deliveries.filter((entry) => entry.delivered);
+    // Only a push that ACTUALLY landed on the agent stamps the items. A stamp
+    // written on an attempt would silence the pull for a nudge that never
+    // arrived anywhere, which is the one outcome this feature cannot have.
+    if (landed.some((entry) => nudgeDestinationSurface(entry.channel) === NUDGE_AGENT_SURFACE)) {
+      await this.stampSpokenToAgent(decision.openItemWrites, today);
     }
 
     return {
@@ -516,12 +578,65 @@ export class OccasionsService {
       nudge,
       conflictMessages,
       resumedInterviews: decision.resumeInterviews.map((entry) => entry.id),
-      delivered,
-      deliveryChannel: destination ?? '',
-      deliveryId,
+      delivered: landed.length > 0,
+      deliveryChannel: destinations.join(', '),
+      deliveryId: landed[0]?.deliveryId ?? null,
+      deliveries,
       mirrored,
       housekeeping,
     };
+  }
+
+  /**
+   * Push one nudge to every configured destination, independently.
+   *
+   * A destination that throws is RECORDED and the next one is still tried. The
+   * alternative — letting the first failure escape — means an expired Telegram
+   * token stops the agent hearing about his wife's birthday, and the two have
+   * nothing to do with each other. Nothing is swallowed: each failure comes back
+   * in the outcome, the router has already logged it against its surface and
+   * strategy, and the sweep's caller logs the count.
+   */
+  private async pushNudge(
+    nudge: OccasionNudge,
+    destinations: readonly string[],
+  ): Promise<readonly NudgeDelivery[]> {
+    const deliverer = this.deps.deliverer;
+    if (deliverer === undefined) return [];
+    const results: NudgeDelivery[] = [];
+    for (const channel of destinations) {
+      try {
+        const deliveryId = (await deliverer.deliver({ channel, nudge })) ?? null;
+        results.push({ channel, delivered: true, deliveryId, failure: null });
+      } catch (error) {
+        results.push({
+          channel,
+          delivered: false,
+          deliveryId: null,
+          failure: summarizeError(error),
+        });
+      }
+    }
+    return results;
+  }
+
+  /**
+   * Remember that the agent has these items in hand.
+   *
+   * Written AFTER the push rather than folded into the raise, so an item is
+   * never marked as spoken by a delivery that had not happened yet. The items
+   * were already persisted by the raise above, so this is a second write of the
+   * same records with one field added — cheap, ordered through the store's own
+   * queue, and the only way the stamp can be honest about what landed.
+   */
+  private async stampSpokenToAgent(
+    raised: readonly OpenItem[],
+    today: IsoDate,
+  ): Promise<void> {
+    for (const item of raised) {
+      if (item.kind !== 'nudge') continue;
+      await this.deps.state.putOpenItem({ ...item, agentPushedOn: today });
+    }
   }
 
   /** Unfinished interviews, for the resume case. */
@@ -585,10 +700,19 @@ export class OccasionsService {
   /**
    * Everything outstanding, without delivering anything.
    *
-   * This is how the agent surface receives a nudge: it pulls what is open at the
-   * top of a turn rather than being pushed at. A stored date is the prior
-   * scheduling that permits raising something unprompted, which is what keeps
-   * this consistent with the agent being conversation-first.
+   * This is how a surface that is not a push destination receives a nudge: it
+   * pulls what is open at the top of a turn rather than being pushed at. A
+   * stored date is the prior scheduling that permits raising something
+   * unprompted, which is what keeps this consistent with the agent being
+   * conversation-first.
+   *
+   * When the agent IS a configured push destination, an item a push has already
+   * landed there is left out. The push and the pull are two ways of getting the
+   * same thing to the same conversation, and doing both would have the agent
+   * raise one birthday twice. The condition is the LANDED push rather than the
+   * configuration: with `agent` configured but the sender not registered, or the
+   * send failing, nothing is stamped and everything still comes back here — so
+   * the guard cannot turn into a way of dropping a nudge.
    */
   async pending(): Promise<PendingResult> {
     const today = this.today();
@@ -596,9 +720,13 @@ export class OccasionsService {
     const { occasions, conflicts } = readOccasions(this.deps.profile);
     const items = await this.deps.state.openItems();
     const byId = new Map(occasions.map((entry) => [entry.id, entry]));
+    const agentIsPushed = resolveNudgeDestinations(policy.nudgeChannel).some(
+      (destination) => nudgeDestinationSurface(destination) === NUDGE_AGENT_SURFACE,
+    );
 
     const subjects = items
       .filter((item) => item.kind === 'nudge' && item.occurrence >= today)
+      .filter((item) => !(agentIsPushed && item.agentPushedOn !== undefined))
       .map((item) => {
         const occasion = byId.get(item.occasionId);
         if (occasion === undefined) return null;

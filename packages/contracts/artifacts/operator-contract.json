@@ -71375,7 +71375,7 @@
       {
         "id": "occasions.pending",
         "title": "Pull Outstanding Occasions",
-        "description": "Return everything unresolved, without delivering anything: the batched nudge, any date conflict still open, and any interview left mid-thread. This is how the agent surface receives a nudge — it pulls at the start of a turn rather than being pushed at, and a stored date is the prior scheduling that permits raising something unprompted. The nudge names the occasion and the person and NEVER the date: proximity is a word, not a count of days.",
+        "description": "Return everything unresolved, without delivering anything: the batched nudge, any date conflict still open, and any interview left mid-thread. This is how a surface that is not a push destination receives a nudge — it pulls at the start of a turn rather than being pushed at, and a stored date is the prior scheduling that permits raising something unprompted. A nudge a push has already landed on the agent is left out while the agent is a configured push destination, so the push and the pull cannot raise the same thing twice; a push that FAILED leaves nothing out, so no nudge is lost that way. The nudge names the occasion and the person and NEVER the date: proximity is a word, not a count of days.",
         "category": "occasions",
         "source": "builtin",
         "access": "authenticated",
@@ -72232,7 +72232,7 @@
       {
         "id": "occasions.sweep",
         "title": "Run The Approach Sweep Now",
-        "description": "Run one pass immediately: reap expired and orphaned state, find the occasions entering their lead window, batch them into a single message, mirror to the calendar if that is on, and deliver. Housekeeping runs first and unconditionally, so a machine with nudging turned off still reaps. Returns hold:\"quiet-hours\" or hold:\"disabled\" when it deliberately said nothing — nothing is dropped, it waits.",
+        "description": "Run one pass immediately: reap expired and orphaned state, find the occasions entering their lead window, batch them into a single message, mirror to the calendar if that is on, and deliver. Delivery goes to every destination in occasions.nudgeChannel — a comma-separated list, so Telegram and the agent both get it — and each is attempted independently, with deliveries[] naming per destination what landed and what did not. Housekeeping runs first and unconditionally, so a machine with nudging turned off still reaps. Returns hold:\"quiet-hours\" or hold:\"disabled\" when it deliberately said nothing — nothing is dropped, it waits.",
         "category": "occasions",
         "source": "builtin",
         "access": "authenticated",
@@ -72372,6 +72372,47 @@
                 }
               ]
             },
+            "deliveries": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "channel": {
+                    "type": "string"
+                  },
+                  "delivered": {
+                    "type": "boolean"
+                  },
+                  "deliveryId": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "failure": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "channel",
+                  "delivered",
+                  "deliveryId",
+                  "failure"
+                ],
+                "additionalProperties": false
+              }
+            },
             "mirrored": {
               "type": "number"
             },
@@ -72429,6 +72470,7 @@
             "delivered",
             "deliveryChannel",
             "deliveryId",
+            "deliveries",
             "mirrored",
             "housekeeping"
           ],
