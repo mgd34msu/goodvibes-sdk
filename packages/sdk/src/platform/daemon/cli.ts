@@ -13,59 +13,15 @@ import { VERSION } from '../version.js';
 import { configureActivityLogger, flushActivityLogSync, logger } from '../utils/logger.js';
 import { GlobalNetworkTransportInstaller } from '../runtime/network/index.js';
 import { summarizeError } from '../utils/error-display.js';
-import { resolveDaemonHomeDir, ensureDaemonHome, readDaemonSetting } from '../workspace/daemon-home.js';
+import { ensureDaemonHome } from '../workspace/daemon-home.js';
+import { resolveDaemonCliPaths } from './cli-paths.js';
+import { reportFatalBootFailure, writeExitingStdoutLine, writeFatalLine } from './fatal-boot-report.js';
 import { WorkspaceSwapManager } from '../workspace/workspace-swap-manager.js';
-
-type DaemonCliOwnership = {
-  readonly workingDirectory: string;
-  readonly homeDirectory: string;
-  readonly daemonHomeDir: string;
-};
 
 type DaemonCliTokens = {
   readonly daemonToken: string | undefined;
   readonly httpToken: string | undefined;
 };
-
-/**
- * Parse --daemon-home=<path> and --working-dir=<path> from process.argv.
- * Returns undefined when the flag is not present.
- */
-function parseCliFlag(args: string[], flagPrefix: string): string | undefined {
-  for (const arg of args) {
-    if (arg.startsWith(flagPrefix + '=')) return arg.slice(flagPrefix.length + 1);
-    if (arg === flagPrefix) {
-      const idx = args.indexOf(arg);
-      return args[idx + 1];
-    }
-  }
-  return undefined;
-}
-
-type DaemonCliPaths = DaemonCliOwnership;
-
-/**
- * Resolves daemon home dir and working dir from CLI flags, env vars, and persisted settings.
- */
-function resolveDaemonCliPaths(env: NodeJS.ProcessEnv = process.env): DaemonCliPaths {
-  const daemonHomeArg = parseCliFlag(process.argv, '--daemon-home');
-  const workingDirArg = parseCliFlag(process.argv, '--working-dir');
-
-  const resolvedDaemonHomeDir = resolveDaemonHomeDir({ daemonHomeArg, env });
-
-  // Working dir resolution: flag > env > daemon-settings.json persisted > cwd.
-  const workingDirectory =
-    workingDirArg ??
-    env['GOODVIBES_WORKING_DIR'] ??
-    readDaemonSetting(resolvedDaemonHomeDir, 'runtime.workingDir') ??
-    process.cwd();
-
-  return {
-    workingDirectory,
-    homeDirectory: homedir(),
-    daemonHomeDir: resolvedDaemonHomeDir,
-  };
-}
 
 function readDaemonCliTokens(env: NodeJS.ProcessEnv): DaemonCliTokens {
   const daemonToken = env.GOODVIBES_DAEMON_TOKEN;
@@ -93,18 +49,20 @@ function installServiceAndExit(config: ConfigManager, workingDir: string, homeDi
   });
   try {
     const result = manager.install();
-    process.stdout.write(`service unit installed: ${result.path} (${result.serviceName}, ${result.platform})\n`);
-    for (const command of result.suggestedCommands) process.stdout.write(`  next: ${command}\n`);
-    if (result.lingerNote) process.stdout.write(`${result.lingerNote}\n`);
+    // Written synchronously: every line here is immediately followed by a
+    // process exit, and a stream write can still be in flight when it lands.
+    writeExitingStdoutLine(`service unit installed: ${result.path} (${result.serviceName}, ${result.platform})`);
+    for (const command of result.suggestedCommands) writeExitingStdoutLine(`  next: ${command}`);
+    if (result.lingerNote) writeExitingStdoutLine(result.lingerNote);
     process.exit(0);
   } catch (error) {
-    process.stderr.write(`service install failed: ${summarizeError(error)}\n`);
+    writeFatalLine(`service install failed: ${summarizeError(error)}`);
     process.exit(1);
   }
 }
 
 async function main(): Promise<void> {
-  const { workingDirectory: workingDir, homeDirectory, daemonHomeDir } = resolveDaemonCliPaths(process.env);
+  const { workingDirectory: workingDir, homeDirectory, daemonHomeDir, daemonTierPath } = resolveDaemonCliPaths();
   // Give the shared logger a destination before anything else runs.
   //
   // `logger` buffers into a file only once `configure()` has named one; until
@@ -114,7 +72,21 @@ async function main(): Promise<void> {
   // an unroutable reply produced no record anywhere — which is precisely how a
   // dropped surface reply looked identical to a message that never arrived.
   configureActivityLogger(join(workingDir, '.goodvibes', 'logs'));
-  const config = new ConfigManager({ workingDir, homeDir: homeDirectory, surfaceRoot: 'goodvibes' });
+  // `--daemon-home` / `GOODVIBES_DAEMON_HOME` names the daemon's own state
+  // directory (`~/.goodvibes/daemon` by default). It was parsed here and then
+  // threaded only into the identity files — `ensureDaemonHome`, the operator
+  // token path — while the ConfigManager derived its daemon tier from
+  // `homedir()` regardless. So a daemon told to keep its state somewhere else
+  // read its settings from the real home anyway, and the flag silently governed
+  // half of what it names. daemon-config-tier.ts has always said a caller
+  // honouring the flag should resolve the home first and use
+  // `daemonConfigPathForHome`; this is that caller finally doing it.
+  const config = new ConfigManager({
+    workingDir,
+    homeDir: homeDirectory,
+    surfaceRoot: 'goodvibes',
+    daemonTierPath,
+  });
   if (process.argv.includes('--install-service')) {
     installServiceAndExit(config, workingDir, homeDirectory);
   }
@@ -135,6 +107,12 @@ async function main(): Promise<void> {
     getConversationTitle: () => 'goodvibes daemon',
     workingDir,
     homeDirectory,
+    // The same override, threaded into the credential store so it MOVES the
+    // daemon-scoped secret tier too. runtime/secrets-composition.ts records
+    // what happened while no composition root passed it: a throwaway daemon
+    // given `--daemon-home /tmp/...` kept reading the owner's real secret
+    // store, long-polled his real bot token, and stopped his inbound messages.
+    daemonHome: daemonHomeDir,
     // The real standalone daemon observes externally-launched coding-agent
     // sessions on the host read-only (fleet visibility + steer; never counted,
     // never stopped). Off in the generic factory for test determinism.
@@ -196,15 +174,10 @@ async function main(): Promise<void> {
 }
 
 void main().catch(async (error) => {
-  logger.error('goodvibes daemon host failed', {
-    error: summarizeError(error),
-  });
-  // A daemon that dies during startup must leave the reason in BOTH places:
-  // on the console for whoever ran it, and in the activity log for whoever
-  // finds the host later. The log flush is synchronous and happens before the
-  // exit, so process.exit() can no longer discard it.
-  flushActivityLogSync();
-  process.stderr.write(`goodvibes daemon host failed: ${summarizeError(error)}\n`);
-  if (error instanceof Error && error.stack) process.stderr.write(`${error.stack}\n`);
+  // A daemon that dies during startup must leave the reason where an operator
+  // will actually find it: on the file descriptor the service journal is
+  // attached to, written synchronously, BEFORE the activity log is attempted.
+  // Doing it the other way round is what shipped mute — see fatal-boot-report.ts.
+  reportFatalBootFailure(error);
   process.exit(1);
 });
