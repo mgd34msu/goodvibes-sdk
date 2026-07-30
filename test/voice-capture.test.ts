@@ -375,14 +375,17 @@ describe('the recorder capture stream', () => {
     expect(stops).toEqual(['requested']);
   });
 
-  test('speex is refused while no surface implements it, never run unfiltered', async () => {
+  test('this opener does not filter, so driving it directly with speex is refused', async () => {
+    // The suppression stage runs one layer up (createNoiseSuppressingOpener, which
+    // both consumers apply). A caller reaching past it with `speex` gets a refusal
+    // pointing at the wrapper rather than unfiltered audio.
     const child = fakeProcess();
     await expect(
       opener(child)({ ...request, noiseSuppression: 'speex' }, { onFrame: () => {}, onStopped: () => {} }),
-    ).rejects.toThrow(/applies no speex suppression/);
+    ).rejects.toThrow(/wrap this opener with createNoiseSuppressingOpener/);
   });
 
-  test('speex opens normally once a host declares it actually applies the stage', async () => {
+  test('speex opens normally once a caller declares it filters these frames itself', async () => {
     const child = fakeProcess();
     const stream = await opener(child, { speexAvailable: true })(
       { ...request, noiseSuppression: 'speex' },

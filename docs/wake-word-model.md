@@ -252,6 +252,66 @@ detects.
 the scale the classifier was trained on; normalised audio scores near zero
 forever and looks exactly like a microphone that is picking nothing up.
 
+## Noise suppression runs in the same place, on both surfaces
+
+`voice.wake.noiseSuppression: "speex"` is **SpeexDSP 1.2.1's preprocessor,
+compiled to WebAssembly and carried in the package** — 53,678 bytes, sha256
+`4829d9fa97e648ab9c45e9a685adba7bd762a4f948ec499c59b073bd03cce2bb`, with zero
+imports (no WASI syscalls, no JavaScript glue). It runs wherever `WebAssembly`
+exists, which is both shipped surfaces, for the same reason the inference runtime
+is a WASM backend: a native binding cannot run in the browser tab, and a setting
+that means different things on different surfaces is the problem rather than the
+fix. Build inputs, the pinned toolchain and the attribution are in
+`native/speexdsp-wasm/`; `bun scripts/build-speexdsp-wasm.ts` rebuilds it.
+
+**One application point, so no consumer can be missed.**
+`createNoiseSuppressingOpener` wraps whatever a host opens, and both consumers —
+the wake listener and the push-to-talk session — wrap the opener they are given.
+So the classifier scores filtered frames, the utterance recorded after a wake is
+filtered, the pre-roll carried from before the wake is filtered, and voice input
+is filtered. A host passes the same plain opener it always did. Wrapping is
+idempotent: the wrapper asks the opener underneath it for `none`, so a host that
+wraps its own opener as well filters once, not twice.
+
+**Measured, on a synthetic tone-plus-white-noise set** (a 1 kHz tone gated on and
+off under white noise, measured over the last four seconds of six with a
+960-sample guard band either side of each gate edge, because the suppressor
+overlap-adds a window twice its block length):
+
+| | noise floor | tone window | SNR |
+| --- | --- | --- | --- |
+| passthrough | 515.5 rms | 4277.3 rms | 18.38 dB |
+| speex | 112.7 rms | 4097.3 rms | 31.21 dB |
+
+**Noise floor down 13.20 dB, SNR up 12.83 dB, tone correlation 0.9990** — the
+floor comes down by about the 15 dB the filter is asked for while the tone
+survives. `test/voice-noise-suppression.test.ts` asserts those numbers with
+margin, and asserts that `none` is a true passthrough: the same frame objects, so
+the byte path with suppression off is the path that shipped.
+
+**Cost: 0.100 ms per 80 ms frame** (p95 0.112 ms, max 0.285 ms over 1000 frames
+after warm-up) — 0.13 % of one core, beside the detector's own 3.46 ms. Creating a
+stage costs 5.3 ms the first time (compiling the module) and 0.18 ms per stream
+after that, since the compiled module is shared and only the filter state is per
+stream. Frames are filtered in 20 ms blocks through one continuous state, not in
+80 ms ones: the suppressor estimates its noise floor over a window twice the
+block length, and an 80 ms block would track a room four times more slowly than
+SpeexDSP is tuned for.
+
+**What it is not.** The module carries the denoiser and nothing else — no echo
+canceller, no automatic gain control (which would move the loudness the
+classifier was trained against), and no voice-activity gate. Those stages are
+disabled explicitly in the build rather than left at upstream defaults.
+`voice.wake.vadThreshold` still has no model behind it and still refuses.
+
+**Attribution is mandatory here too.** SpeexDSP is BSD 3-clause, which requires
+its copyright notice, condition list and disclaimer to be reproduced with binary
+redistribution — and the base64 module inside the published package is binary
+redistribution. `native/speexdsp-wasm/NOTICE.txt` is that reproduction and
+`SPEEXDSP_PREPROCESS.noticePath` points at it. Nothing in the chain is
+NonCommercial, ShareAlike or NoDerivatives: SpeexDSP is BSD 3-clause and the
+linked C runtime (wasi-libc) is Apache-2.0-with-LLVM-exception / Apache-2.0 / MIT.
+
 ## Known weaknesses
 
 - **Minimal pairs.** At 0.9 it still fires on 24.7 % of never-trained near-miss

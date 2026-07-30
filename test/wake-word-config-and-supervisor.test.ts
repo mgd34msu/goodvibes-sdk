@@ -409,18 +409,34 @@ describe('a row that cannot take effect says so — blocker or limitation, never
     expect(resolveWakeRuntimeSettings(wakeReader({ 'voice.wake.enabled': true }), 'tui').active).toBe(true);
   });
 
-  test('speex without libspeexdsp BLOCKS rather than capturing unfiltered', () => {
-    const blocked = resolveWakeRuntimeSettings(
+  test('speex RUNS by default now that the platform carries the filter', () => {
+    // The row used to refuse everywhere. The stage is a WebAssembly module in the
+    // package, so on a runtime with WebAssembly — which every surface here is —
+    // asking for it starts the detector with it applied.
+    const running = resolveWakeRuntimeSettings(
       wakeReader({ 'voice.wake.enabled': true, 'voice.wake.noiseSuppression': 'speex' }), 'tui',
+    );
+    expect(running.active).toBe(true);
+    expect(running.blockers).toEqual([]);
+    expect(running.capture.noiseSuppression).toBe('speex');
+  });
+
+  test('a surface that does NOT apply the stage still BLOCKS, with that reason', () => {
+    const blocked = resolveWakeRuntimeSettings(
+      wakeReader({ 'voice.wake.enabled': true, 'voice.wake.noiseSuppression': 'speex' }),
+      'tui',
+      { speexAvailable: false },
     );
     expect(blocked.active).toBe(false);
     expect(blocked.blockers[0]?.key).toBe('voice.wake.noiseSuppression');
-    const allowed = resolveWakeRuntimeSettings(
-      wakeReader({ 'voice.wake.enabled': true, 'voice.wake.noiseSuppression': 'speex' }),
+    expect(blocked.blockers[0]?.detail).toContain('does not apply the speexdsp stage');
+    // And that refusal is specific to speex: "none" runs on the same surface.
+    const none = resolveWakeRuntimeSettings(
+      wakeReader({ 'voice.wake.enabled': true, 'voice.wake.noiseSuppression': 'none' }),
       'tui',
-      { speexAvailable: true },
+      { speexAvailable: false },
     );
-    expect(allowed.active).toBe(true);
+    expect(none.active).toBe(true);
   });
 
   test('retaining audio in a browser tab is a LIMITATION: it keeps listening and reports it', () => {
