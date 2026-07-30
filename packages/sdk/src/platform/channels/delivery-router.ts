@@ -25,6 +25,11 @@ import {
   createMattermostDeliveryStrategy,
   createMatrixDeliveryStrategy,
 } from './delivery/strategies-enterprise.js';
+import {
+  AGENT_DELIVERY_STRATEGY_ID,
+  AgentDeliveryRegistry,
+  createAgentDeliveryStrategy,
+} from './delivery/strategies-agent.js';
 import { resolveChannelDeliverySurfaceKind } from './delivery/shared.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
@@ -43,6 +48,17 @@ export type {
   ChannelDeliveryTarget,
   ChannelDeliveryTargetKind,
 } from './delivery/types.js';
+export { CHANNEL_DELIVERY_SURFACE_KINDS } from './delivery/types.js';
+
+export {
+  AGENT_DELIVERY_STRATEGY_ID,
+  AgentDeliveryRegistry,
+  createAgentDeliveryStrategy,
+} from './delivery/strategies-agent.js';
+export type {
+  AgentConversationMessage,
+  AgentConversationSender,
+} from './delivery/strategies-agent.js';
 
 export { resolveChannelDeliverySurfaceKind } from './delivery/shared.js';
 
@@ -92,10 +108,23 @@ export class ChannelDeliveryRouter {
   private readonly strategies: ChannelDeliveryStrategy[];
   private controlPlaneGateway: ControlPlaneGateway | null;
 
+  /**
+   * Where the agent product plugs its conversation sender in.
+   *
+   * Router-owned rather than a constructor argument, so the destination exists
+   * from the moment the router does and the agent can register whenever it
+   * starts. The strategy that reads it is appended to EVERY strategy list,
+   * including an explicitly supplied one: `agent` being deliverable is a
+   * property of the router, and an embed that hand-picks its transports has no
+   * reason to lose the one surface that is not a transport.
+   */
+  readonly agentDelivery = new AgentDeliveryRegistry();
+
   constructor(config: ChannelDeliveryRouterConfig = {}) {
     this.controlPlaneGateway = config.controlPlaneGateway ?? null;
     if (config.strategies) {
       this.strategies = [...config.strategies];
+      this.ensureAgentStrategy();
       return;
     }
     if (!config.configManager || !config.serviceRegistry || !config.artifactStore || !config.secretsManager) {
@@ -112,6 +141,13 @@ export class ChannelDeliveryRouter {
       () => this.controlPlaneGateway,
       config.secretsManager,
     );
+    this.ensureAgentStrategy();
+  }
+
+  /** Append the agent strategy unless the caller already supplied one. */
+  private ensureAgentStrategy(): void {
+    if (this.strategies.some((entry) => entry.id === AGENT_DELIVERY_STRATEGY_ID)) return;
+    this.strategies.push(createAgentDeliveryStrategy(this.agentDelivery));
   }
 
   setControlPlaneGateway(gateway: ControlPlaneGateway | null): void {

@@ -94,4 +94,17 @@ export type {
   ChannelDeliveryTarget,
   ChannelDeliveryTargetKind,
 } from './delivery-router.js';
+export { CHANNEL_DELIVERY_SURFACE_KINDS } from './delivery-router.js';
+// The agent is a delivery destination the SDK defines and another product
+// implements: it owns the surface kind and the message contract, the agent
+// product registers the callable that lands the message in its conversation.
+export {
+  AGENT_DELIVERY_STRATEGY_ID,
+  AgentDeliveryRegistry,
+  createAgentDeliveryStrategy,
+} from './delivery-router.js';
+export type {
+  AgentConversationMessage,
+  AgentConversationSender,
+} from './delivery-router.js';
 export type { ChannelDeliveryRequest } from './delivery/types.js';

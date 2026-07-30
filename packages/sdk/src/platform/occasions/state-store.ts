@@ -151,6 +151,10 @@ function validOpenItem(value: unknown): OpenItem | null {
   if (!(OPEN_ITEM_KINDS as readonly string[]).includes(kind) || !isIsoDate(dueOn)) return null;
   const occurrence = typeof value['occurrence'] === 'string' ? value['occurrence'] : '';
   const expiresAfter = str(value['expiresAfter']);
+  // A stamp that is not a date is dropped rather than believed: it governs
+  // whether the pull stays quiet about this item, and a bad value would either
+  // silence a nudge or repeat one.
+  const agentPushedOn = str(value['agentPushedOn']);
   return {
     id,
     kind: kind as OpenItemKind,
@@ -161,6 +165,7 @@ function validOpenItem(value: unknown): OpenItem | null {
     raiseCount,
     dueOn,
     ...(expiresAfter !== null && isIsoDate(expiresAfter) ? { expiresAfter } : {}),
+    ...(agentPushedOn !== null && isIsoDate(agentPushedOn) ? { agentPushedOn } : {}),
   };
 }
 

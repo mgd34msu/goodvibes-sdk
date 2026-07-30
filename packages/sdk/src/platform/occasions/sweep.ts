@@ -68,7 +68,10 @@ export interface OccasionsPolicy extends CadencePolicy {
   readonly interviewQuestions: number;
   /** How long gift history is kept, in years. */
   readonly giftHistoryYears: number;
-  /** Where nudges are delivered. Empty ⇒ the agent surface only. */
+  /**
+   * Where nudges are delivered: a comma-separated list of channel destinations,
+   * each `surfaceKind` or `surfaceKind:address`. Empty ⇒ pull-only.
+   */
   readonly nudgeChannel: string;
   /** Whether occasions are written out to the calendar as a mirror. */
   readonly calendarMirror: boolean;
