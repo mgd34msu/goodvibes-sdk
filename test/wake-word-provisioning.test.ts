@@ -30,6 +30,7 @@ import {
 } from '../packages/sdk/src/platform/voice/wake/recovery.js';
 import {
   resolveWakeWordModel,
+  WAKE_VAD_MODEL,
   WAKE_WORD_FRONT_END,
 } from '../packages/sdk/src/platform/voice/provisioning/wake-word-manifest.js';
 
@@ -44,6 +45,9 @@ const MODEL = (() => {
   return model;
 })();
 const EMBEDDING = WAKE_WORD_FRONT_END.embedding.download;
+/** The speech gate provisions with the models, so every plan here includes it. */
+const VAD = WAKE_VAD_MODEL.onnx;
+const VAD_NOTICE = WAKE_VAD_MODEL.notice;
 
 let root: string;
 
@@ -81,6 +85,8 @@ function pinnedBodies(): Record<string, Uint8Array> {
     [MODEL.onnx.url]: new Uint8Array(0),
     [MODEL.notice.url]: new Uint8Array(0),
     [EMBEDDING.url]: new Uint8Array(0),
+    [VAD.url]: new Uint8Array(0),
+    [VAD_NOTICE.url]: new Uint8Array(0),
   };
 }
 
@@ -114,8 +120,12 @@ describe('wake artifact verification is by content, never by existence', () => {
     expect(status.reason).toBe('not-provisioned');
     expect(status.modelVersion).toBe(MODEL.version);
     expect(status.downloadBytes).toBe(
-      MODEL.onnx.bytes + MODEL.tflite.bytes + MODEL.notice.bytes + EMBEDDING.bytes,
+      MODEL.onnx.bytes + MODEL.tflite.bytes + MODEL.notice.bytes + EMBEDDING.bytes
+      + VAD.bytes + WAKE_VAD_MODEL.tflite.bytes + VAD_NOTICE.bytes,
     );
+    // The gate is reported separately from the detector's own readiness.
+    expect(status.vadReady).toBe(false);
+    expect(status.vad.verified).toBe(false);
     // Surfaced at every status boundary, not only in the docs.
     expect(status.recallIsSyntheticOnly).toBe(true);
   });
@@ -138,9 +148,12 @@ describe('provisioning refuses bad downloads', () => {
     bodies[MODEL.onnx.url] = new Uint8Array(MODEL.onnx.bytes - 1);
     bodies[MODEL.notice.url] = new Uint8Array(MODEL.notice.bytes - 1);
     bodies[EMBEDDING.url] = new Uint8Array(EMBEDDING.bytes - 1);
+    bodies[VAD.url] = new Uint8Array(VAD.bytes - 1);
+    bodies[VAD_NOTICE.url] = new Uint8Array(VAD_NOTICE.bytes - 1);
     const { impl } = servingFetch(bodies);
     const result = await provisionWakeWordModels({ managedRoot: root, fetchImpl: impl });
     expect(result.ready).toBe(false);
+    expect(result.vadReady).toBe(false);
     expect(result.noticePath).toBeNull();
     for (const outcome of result.outcomes) {
       expect(outcome.state).toBe('failed');
@@ -156,6 +169,8 @@ describe('provisioning refuses bad downloads', () => {
     bodies[MODEL.onnx.url] = new Uint8Array(MODEL.onnx.bytes).fill(7);
     bodies[MODEL.notice.url] = new Uint8Array(MODEL.notice.bytes).fill(7);
     bodies[EMBEDDING.url] = new Uint8Array(EMBEDDING.bytes).fill(7);
+    bodies[VAD.url] = new Uint8Array(VAD.bytes).fill(7);
+    bodies[VAD_NOTICE.url] = new Uint8Array(VAD_NOTICE.bytes).fill(7);
     const { impl } = servingFetch(bodies);
     const result = await provisionWakeWordModels({ managedRoot: root, fetchImpl: impl });
     expect(result.ready).toBe(false);
@@ -183,6 +198,42 @@ describe('provisioning refuses bad downloads', () => {
     await provisionWakeWordModels({ managedRoot: root, fetchImpl: impl });
     // It was NOT skipped: the classifier URL was requested again.
     expect(requests).toContain(MODEL.onnx.url);
+  });
+});
+
+describe('the speech gate provisions with the models', () => {
+  test('a provision asks for the gate and its NOTICE, not only the detector', async () => {
+    const { impl, requests } = servingFetch({});
+    const result = await provisionWakeWordModels({ managedRoot: root, fetchImpl: impl });
+    expect(requests).toContain(VAD.url);
+    expect(requests).toContain(VAD_NOTICE.url);
+    expect(result.outcomes.map((outcome) => outcome.component)).toEqual([
+      'embedding', 'classifier', 'notice', 'vad', 'vad-notice',
+    ]);
+  });
+
+  test('status reports the gate separately from the detector', () => {
+    const status = wakeProvisionStatus({ managedRoot: root });
+    expect(status.vad.path).toContain('goodvibes-vad-');
+    expect(status.vadNotice.path).toContain('.NOTICE.txt');
+    expect(status.vad.verified).toBe(false);
+    expect(status.vad.corrupt).toBe(false);
+    expect(status.vadReady).toBe(false);
+  });
+
+  test('a gate file that fails verification is reaped, and a stale gate version with it', () => {
+    const paths = resolveManagedWakePaths(root);
+    mkdirSync(paths.frontEndDir, { recursive: true });
+    // Full-size, wrong content: the shape that trained a model on zeros once.
+    writeFileSync(paths.vadPath, Buffer.alloc(VAD.bytes));
+    const stale = join(paths.frontEndDir, 'goodvibes-vad-0.9.0.onnx');
+    writeFileSync(stale, Buffer.alloc(16));
+    const summary = sweepWakeStorage({ managedRoot: root, skipReceipt: true });
+    const reasons = new Map(summary.reaped.map((entry) => [entry.path, entry.reason]));
+    expect(reasons.get(paths.vadPath)).toBe('failed-verification');
+    expect(reasons.get(stale)).toBe('unpinned-version');
+    expect(existsSync(paths.vadPath)).toBe(false);
+    expect(existsSync(stale)).toBe(false);
   });
 });
 

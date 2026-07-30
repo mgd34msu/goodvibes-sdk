@@ -256,6 +256,168 @@ export const WAKE_WORD_MODELS: Readonly<Record<string, WakeWordModelManifest>> =
   },
 };
 
+/** One measured operating point of the speech gate, on held-out frames. */
+export interface WakeVadThresholdRow {
+  /** `voice.wake.vadThreshold` value this row describes. */
+  readonly threshold: number;
+  /**
+   * Fraction of held-out SPEECH frames that pass the gate and reach the
+   * classifier, 0..1. This is the number that decides whether a wake can fire at
+   * all, so it is the one to read first: a gated speech frame is a wake that
+   * cannot happen.
+   */
+  readonly speechPassRate: number;
+  /**
+   * Fraction of held-out NON-SPEECH frames the gate stops, 0..1 — classifier
+   * inferences not run, which is the entire point of the stage.
+   */
+  readonly noiseGateRate: number;
+}
+
+/**
+ * The speech gate `voice.wake.vadThreshold` turns on: OUR speech/non-speech
+ * head, trained by us, over the SAME pinned embedding the wake classifier sits
+ * behind.
+ *
+ * WHY A HEAD RATHER THAN A SEPARATE VAD MODEL
+ *
+ * The front end (melspectrogram + {@link WAKE_WORD_FRONT_END}) already runs once
+ * per 80 ms frame for the classifier. A head over that same 96-dimension
+ * embedding costs a few thousand multiply-adds and NO extra front-end pass, and
+ * provisions with artifacts the surface already has. A standalone VAD would add
+ * its own front end, its own download, and its own provenance to keep honest.
+ */
+export interface WakeVadModelManifest {
+  /** Manifest version of this head — bumped per retrain, not per SDK release. */
+  readonly version: string;
+  /** SPDX identifier of the grant the artifact ships under. */
+  readonly license: string;
+  /** Attribution NOTICE, hosted beside the artifacts and checksummed like them. */
+  readonly notice: VerifiedDownloadSpec;
+  /** onnxruntime format (node/web). */
+  readonly onnx: VerifiedDownloadSpec;
+  /** TensorFlow Lite format (mobile). */
+  readonly tflite: VerifiedDownloadSpec;
+  /** The embedding manifest version this head was trained against. */
+  readonly frontEndVersion: string;
+  /** Input the graph takes: one 96-dimension embedding frame. */
+  readonly inputDims: readonly number[];
+  /** Graph input/output names, recorded so a host can assert what it loaded. */
+  readonly inputName: string;
+  readonly outputName: string;
+  /**
+   * The threshold to run at, measured. Read this rather than picking a round
+   * number: the shipped `voice.wake.vadThreshold` default is 0 (gate off), and
+   * this is what to set it to when turning the gate on.
+   */
+  readonly recommendedThreshold: number;
+  /** Measured behaviour across operating points, on held-out frames. */
+  readonly thresholds: readonly WakeVadThresholdRow[];
+  /** How the figures above were measured. */
+  readonly measurements: {
+    /** Held-out frames scored. */
+    readonly evalFrames: number;
+    /** How many of those were speech. */
+    readonly evalSpeechFrames: number;
+    /**
+     * Largest absolute difference between the onnx and tflite twins' outputs over
+     * the frames compared, and how many detection decisions that changed at the
+     * recommended threshold. 0 flips means the twins decide identically.
+     */
+    readonly maxAbsTwinDeviation: number;
+    readonly twinDecisionFlips: number;
+    readonly twinFramesCompared: number;
+  };
+  /** One-line plain statement of what trained it, for a UI that describes it. */
+  readonly provenance: string;
+}
+
+/**
+ * The pinned speech gate.
+ *
+ * Hosted on the same append-only `voice-runtimes-v1` tag as every other voice
+ * artifact, provisioned with the wake models, and verified by content before use.
+ *
+ * THE ASSETS LAND WITH THIS ROUND'S RELEASE. The byte counts and checksums below
+ * are of the built artifacts and are what the upload must match; until the upload
+ * happens a provision reports the gate as failed and `vadReady` false, while the
+ * detector itself stays ready — which is why the gate is not part of
+ * `WakeProvisionStatus.ready`.
+ */
+export const WAKE_VAD_MODEL: WakeVadModelManifest = {
+  version: '1.0.0',
+  license: 'Apache-2.0',
+  notice: {
+    url: `${VOICE_RUNTIMES_BASE}/goodvibes-vad-1.0.0.NOTICE.txt`,
+    bytes: 6786,
+    sha256: '3d8d27800798397e4b1974712e28753f0c149018be733421d84bfe6cc16546d0',
+  },
+  onnx: {
+    url: `${VOICE_RUNTIMES_BASE}/goodvibes-vad-1.0.0.onnx`,
+    bytes: 15885,
+    sha256: '0ee90b4849f667211fc8fdd27f3c459560108db64b8978f17ae2b27c65596aab',
+  },
+  tflite: {
+    url: `${VOICE_RUNTIMES_BASE}/goodvibes-vad-1.0.0.tflite`,
+    bytes: 18136,
+    sha256: 'f8f1903c075b3d8cb0c7998ae613bbbf31ad5c2bd4c090fde3f83cfed588fdcd',
+  },
+  frontEndVersion: '1.0.0',
+  inputDims: [1, 96],
+  inputName: 'embedding',
+  outputName: 'speech_probability',
+  // The two errors are not symmetric: a gated speech frame is a wake that cannot
+  // fire, while a passed non-speech frame costs one classifier inference. 0.3 is
+  // where speech pass rate starts falling faster than noise gating rises.
+  recommendedThreshold: 0.3,
+  thresholds: [
+    { threshold: 0.05, speechPassRate: 0.9859, noiseGateRate: 0.7768 },
+    { threshold: 0.1, speechPassRate: 0.9778, noiseGateRate: 0.8845 },
+    { threshold: 0.2, speechPassRate: 0.9683, noiseGateRate: 0.9376 },
+    { threshold: 0.3, speechPassRate: 0.9603, noiseGateRate: 0.9565 },
+    { threshold: 0.4, speechPassRate: 0.9526, noiseGateRate: 0.9667 },
+    { threshold: 0.5, speechPassRate: 0.9451, noiseGateRate: 0.9735 },
+    { threshold: 0.6, speechPassRate: 0.9366, noiseGateRate: 0.9786 },
+    { threshold: 0.7, speechPassRate: 0.9262, noiseGateRate: 0.9824 },
+    { threshold: 0.8, speechPassRate: 0.9111, noiseGateRate: 0.9862 },
+    { threshold: 0.9, speechPassRate: 0.8833, noiseGateRate: 0.9903 },
+  ],
+  measurements: {
+    evalFrames: 106_390,
+    evalSpeechFrames: 44_286,
+    maxAbsTwinDeviation: 5.364e-7,
+    twinDecisionFlips: 0,
+    twinFramesCompared: 2000,
+  },
+  provenance:
+    'Trained by the GoodVibes project: a 3,713-parameter head (96 -> 32 -> 16 -> 1) over the same pinned '
+    + 'speech-embedding front end the wake classifier uses, on 278,553 frames of LibriSpeech train-clean-100 and '
+    + 'MUSAN speech against MUSAN noise and music, with per-file gain randomisation and half the speech mixed with '
+    + 'noise at 0-18 dB SNR so the head cannot learn loudness as a proxy for speech. Every corpus is '
+    + 'attribution-only or public domain; none is NonCommercial, ShareAlike, or NoDerivatives.',
+};
+
+/** Total download size of the speech gate's artifacts (bytes), for an offer. */
+export function wakeVadProvisionBytes(vad: WakeVadModelManifest = WAKE_VAD_MODEL): number {
+  return vad.onnx.bytes + vad.tflite.bytes + vad.notice.bytes;
+}
+
+/**
+ * The measured row for a configured threshold, or the nearest one below it, so a
+ * surface can state what a chosen value actually does instead of guessing.
+ */
+export function resolveWakeVadThreshold(
+  threshold: number,
+  vad: WakeVadModelManifest = WAKE_VAD_MODEL,
+): WakeVadThresholdRow | null {
+  let best: WakeVadThresholdRow | null = null;
+  for (const row of vad.thresholds) {
+    if (row.threshold > threshold) continue;
+    if (best === null || row.threshold > best.threshold) best = row;
+  }
+  return best ?? vad.thresholds[0] ?? null;
+}
+
 /**
  * The version {@link resolveWakeWordModel} returns. Moving this line is the
  * whole of adopting a newer model.

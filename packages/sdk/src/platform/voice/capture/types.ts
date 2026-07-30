@@ -43,7 +43,12 @@ export const CAPTURE_CHANNELS = 1;
  */
 export type AudioCaptureBackend = 'auto' | 'pw-record' | 'parecord' | 'arecord' | 'ffmpeg' | 'sox';
 
-/** Noise suppression applied before detection, mirroring `voice.wake.noiseSuppression`. */
+/**
+ * Noise suppression applied before detection, mirroring
+ * `voice.wake.noiseSuppression`. `speex` is SpeexDSP's preprocessor, carried in
+ * this package as a WebAssembly module and applied by
+ * `createNoiseSuppressingOpener` — see ./noise-suppression.ts.
+ */
 export type AudioCaptureNoiseSuppression = 'none' | 'speex';
 
 /** What a surface wants opened. Mirrors the `voice.wake.*` capture rows. */
@@ -58,7 +63,10 @@ export interface AudioCaptureRequest {
   readonly device: string;
   /** Recorder to use on a host surface. Ignored by a browser surface. */
   readonly backend: AudioCaptureBackend;
-  /** Noise suppression to apply. `speex` is refused when unavailable, never skipped. */
+  /**
+   * Noise suppression to apply. `speex` is refused when the runtime cannot run
+   * the filter, never skipped.
+   */
   readonly noiseSuppression: AudioCaptureNoiseSuppression;
 }
 
@@ -76,7 +84,12 @@ export type AudioCaptureFailureReason =
   | 'device-unavailable'
   /** A browser tab on a plain-http origin: `getUserMedia` does not exist there. */
   | 'insecure-origin'
-  /** `speex` was asked for and libspeexdsp is not present. */
+  /**
+   * `speex` was asked for and the suppression stage could not run: a runtime with
+   * no WebAssembly, or an opener being driven directly with no filter in front of
+   * it. Also reported when a running stage fails mid-stream, because
+   * half-filtered audio is not something to continue with quietly.
+   */
   | 'noise-suppression-unavailable'
   /** The surface has no capture mechanism at all. */
   | 'unsupported'

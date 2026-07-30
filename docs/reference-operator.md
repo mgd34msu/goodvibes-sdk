@@ -37280,7 +37280,8 @@ Read one provisioned wake artifact in bounded chunks, for a surface that cannot 
       "enum": [
         "classifier",
         "embedding",
-        "notice"
+        "notice",
+        "vad"
       ]
     },
     "offset": {
@@ -37308,7 +37309,8 @@ Read one provisioned wake artifact in bounded chunks, for a surface that cannot 
       "enum": [
         "classifier",
         "embedding",
-        "notice"
+        "notice",
+        "vad"
       ]
     },
     "offset": {
@@ -37345,7 +37347,7 @@ Read one provisioned wake artifact in bounded chunks, for a surface that cannot 
 
 #### `voice.wake.provision`
 
-Download and checksum-verify the pinned wake-word classifier, its NOTICE, and the speech-embedding front end into the goodvibes-managed directory — about 3.7 MB. Downloads only when you ask, and is resumable by re-running: an artifact that already matches its pin is skipped, and one that is present but fails verification is replaced rather than used. A failed or mismatched download keeps nothing at the destination. Single-flight: two surfaces asking at once join one download instead of racing for the same files.
+Download and checksum-verify the pinned wake-word classifier, its NOTICE, the speech-embedding front end and the speech gate voice.wake.vadThreshold runs, into the goodvibes-managed directory — about 3.7 MB. Downloads only when you ask, and is resumable by re-running: an artifact that already matches its pin is skipped, and one that is present but fails verification is replaced rather than used. A failed or mismatched download keeps nothing at the destination. Single-flight: two surfaces asking at once join one download instead of racing for the same files.
 
 - Title: `Download the Wake-Word Models`
 - Source: `builtin`
@@ -37374,6 +37376,9 @@ Download and checksum-verify the pinned wake-word classifier, its NOTICE, and th
   "type": "object",
   "properties": {
     "ready": {
+      "type": "boolean"
+    },
+    "vadReady": {
       "type": "boolean"
     },
     "modelVersion": {
@@ -37409,7 +37414,9 @@ Download and checksum-verify the pinned wake-word classifier, its NOTICE, and th
             "enum": [
               "classifier",
               "notice",
-              "embedding"
+              "embedding",
+              "vad",
+              "vad-notice"
             ]
           },
           "state": {
@@ -37441,6 +37448,7 @@ Download and checksum-verify the pinned wake-word classifier, its NOTICE, and th
   },
   "required": [
     "ready",
+    "vadReady",
     "modelVersion",
     "noticePath",
     "recallIsSyntheticOnly",
@@ -37452,7 +37460,7 @@ Download and checksum-verify the pinned wake-word classifier, its NOTICE, and th
 
 #### `voice.wake.status`
 
-Whether the pinned wake-word artifacts are on disk and VERIFIED BY CONTENT: the "hey goodvibes" classifier, its attribution NOTICE, and the speech-embedding front end the classifier sits behind. Each reports verified, corrupt (present but failing its checksum — a truncated or swapped file, distinct from missing) and its byte size, with the total a fresh provision would download. Also restates that the model's published recall figures are measured on synthesised speech only, which any surface describing the model must carry. Never downloads. Read-only.
+Whether the pinned wake-word artifacts are on disk and VERIFIED BY CONTENT: the "hey goodvibes" classifier, its attribution NOTICE, the speech-embedding front end the classifier sits behind, and the speech gate voice.wake.vadThreshold runs (reported as vadReady, separately from ready, because the detector runs without it — the row defaults to 0). Each reports verified, corrupt (present but failing its checksum — a truncated or swapped file, distinct from missing) and its byte size, with the total a fresh provision would download. Also restates that the model's published recall figures are measured on synthesised speech only, which any surface describing the model must carry. Never downloads. Read-only.
 
 - Title: `Get Wake-Word Model State`
 - Source: `builtin`
@@ -37565,6 +37573,57 @@ Whether the pinned wake-word artifacts are on disk and VERIFIED BY CONTENT: the 
       ],
       "additionalProperties": false
     },
+    "vad": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "verified": {
+          "type": "boolean"
+        },
+        "corrupt": {
+          "type": "boolean"
+        },
+        "bytes": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "path",
+        "verified",
+        "corrupt",
+        "bytes"
+      ],
+      "additionalProperties": false
+    },
+    "vadNotice": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "verified": {
+          "type": "boolean"
+        },
+        "corrupt": {
+          "type": "boolean"
+        },
+        "bytes": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "path",
+        "verified",
+        "corrupt",
+        "bytes"
+      ],
+      "additionalProperties": false
+    },
+    "vadReady": {
+      "type": "boolean"
+    },
     "downloadBytes": {
       "type": "number"
     },
@@ -37588,6 +37647,9 @@ Whether the pinned wake-word artifacts are on disk and VERIFIED BY CONTENT: the 
     "classifier",
     "notice",
     "embedding",
+    "vad",
+    "vadNotice",
+    "vadReady",
     "downloadBytes",
     "modelVersion",
     "recallIsSyntheticOnly"

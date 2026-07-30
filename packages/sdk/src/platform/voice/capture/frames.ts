@@ -191,6 +191,38 @@ const BASE64_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012
  * binary string built first, which for a ten-second clip is a 320 kB
  * intermediate. Encoding straight from the bytes avoids both.
  */
+/**
+ * Decode base64 back to bytes, without `Buffer` or `atob`.
+ *
+ * The counterpart of {@link bytesToBase64}, and needed for the same reason: the
+ * noise-suppression stage carries its WebAssembly module as base64 in a source
+ * file, so it decodes in a daemon child process and in a browser tab through the
+ * same code path. Ignores whitespace and stops at padding; a character outside
+ * the alphabet is a corrupted blob, so it throws rather than decoding to
+ * plausible-looking garbage.
+ */
+export function base64ToBytes(text: string): Uint8Array {
+  const out = new Uint8Array(Math.floor((text.length * 3) / 4));
+  let length = 0;
+  let accumulator = 0;
+  let bits = 0;
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i] ?? '';
+    if (char === '=') break;
+    if (char === '\n' || char === '\r' || char === ' ' || char === '\t') continue;
+    const value = BASE64_ALPHABET.indexOf(char);
+    if (value < 0) throw new Error(`[capture] base64 input carries "${char}", which is not a base64 character`);
+    accumulator = (accumulator << 6) | value;
+    bits += 6;
+    if (bits >= 8) {
+      bits -= 8;
+      out[length] = (accumulator >> bits) & 0xff;
+      length += 1;
+    }
+  }
+  return out.subarray(0, length);
+}
+
 export function bytesToBase64(bytes: Uint8Array): string {
   let out = '';
   for (let i = 0; i < bytes.length; i += 3) {

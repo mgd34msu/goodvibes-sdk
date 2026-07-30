@@ -1,0 +1,95 @@
+goodvibes-speexdsp-preprocess (WebAssembly build of SpeexDSP's preprocessor)
+============================================================================
+
+This WebAssembly module is a build of the noise-suppression (preprocessor)
+portion of SpeexDSP 1.2.1, plus a small entry-point file written for this
+project. It is what `voice.wake.noiseSuppression: "speex"` runs, on every
+surface that runs it.
+
+Redistributing the module — as a file, or embedded in a JavaScript bundle as
+the SDK does — carries the BSD 3-clause conditions below, which REQUIRE that
+this copyright notice, the condition list and the disclaimer be reproduced with
+it. That is why this notice is carried in the repository beside the artifact
+rather than left in the upstream tarball.
+
+
+Upstream component
+------------------
+
+  SpeexDSP 1.2.1
+  https://gitlab.xiph.org/xiph/speexdsp
+  Source archive: https://github.com/xiph/speexdsp/archive/refs/tags/SpeexDSP-1.2.1.tar.gz
+  Archive sha256: d17ca363654556a4ff1d02cc13d9eb1fc5a8642c90b40bd54ce266c3807b91a7
+  License: BSD 3-clause (see SpeexDSP-1.2.1-COPYING.txt, reproduced verbatim)
+
+  Files compiled into the module:
+    libspeexdsp/preprocess.c   the noise suppressor itself
+    libspeexdsp/filterbank.c   the mel/Bark filterbank it estimates noise over
+    libspeexdsp/fftwrap.c      the FFT wrapper, built with USE_SMALLFT
+    libspeexdsp/smallft.c      the real FFT (FFTPACK derivative carried by SpeexDSP)
+
+  No other SpeexDSP component is present: there is no echo canceller, no
+  resampler, no jitter buffer, and no Speex codec.
+
+
+Copyright and license of the upstream component
+-----------------------------------------------
+
+Copyright 2002-2008     Xiph.org Foundation
+Copyright 2002-2008     Jean-Marc Valin
+Copyright 2005-2007     Analog Devices Inc.
+Copyright 2005-2008     Commonwealth Scientific and Industrial Research
+                        Organisation (CSIRO)
+Copyright 1993, 2002, 2006 David Rowe
+Copyright 2003          EpicGames
+Copyright 1992-1994     Jutta Degener, Carsten Bormann
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+- Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+
+- Redistributions in binary form must reproduce the above copyright
+notice, this list of conditions and the following disclaimer in the
+documentation and/or other materials provided with the distribution.
+
+- Neither the name of the Xiph.org Foundation nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Written for this project
+------------------------
+
+  native/speexdsp-wasm/gv-speex-preprocess.c   the WebAssembly entry points
+  native/speexdsp-wasm/os_support_custom.h     SpeexDSP's OS hooks, minus stdio
+  native/speexdsp-wasm/speexdsp_config_types.h the fixed-width typedefs its
+                                               configure script would generate
+
+These carry the SDK's own MIT license.
+
+
+C runtime linked into the module
+--------------------------------
+
+  wasi-libc (https://github.com/WebAssembly/wasi-libc), used for `calloc`/`free`
+  and the libm functions SpeexDSP calls (exp, log, pow, sin, cos, atan, sqrt,
+  floor). wasi-libc is triple-licensed Apache-2.0 WITH LLVM-exception,
+  Apache-2.0, or MIT.
+
+  The built module imports nothing at all: no WASI syscalls, no JavaScript glue.
+  Its only import-side requirement is a host that can instantiate WebAssembly.

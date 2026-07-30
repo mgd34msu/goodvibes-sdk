@@ -117,30 +117,37 @@ const WAKE_STATUS_SCHEMA = objectSchema({
   classifier: WAKE_ARTIFACT_SCHEMA,
   notice: WAKE_ARTIFACT_SCHEMA,
   embedding: WAKE_ARTIFACT_SCHEMA,
+  vad: WAKE_ARTIFACT_SCHEMA,
+  vadNotice: WAKE_ARTIFACT_SCHEMA,
+  vadReady: BOOLEAN_SCHEMA,
   downloadBytes: NUMBER_SCHEMA,
   modelVersion: NULLABLE_STRING,
   recallIsSyntheticOnly: BOOLEAN_SCHEMA,
-}, ['ready', 'reason', 'classifier', 'notice', 'embedding', 'downloadBytes', 'modelVersion', 'recallIsSyntheticOnly']);
+}, [
+  'ready', 'reason', 'classifier', 'notice', 'embedding', 'vad', 'vadNotice', 'vadReady',
+  'downloadBytes', 'modelVersion', 'recallIsSyntheticOnly',
+]);
 
 const WAKE_PROVISION_RESULT_SCHEMA = objectSchema({
   ready: BOOLEAN_SCHEMA,
+  vadReady: BOOLEAN_SCHEMA,
   modelVersion: NULLABLE_STRING,
   noticePath: NULLABLE_STRING,
   recallIsSyntheticOnly: BOOLEAN_SCHEMA,
   outcomes: {
     type: 'array',
     items: objectSchema({
-      component: { type: 'string', enum: ['classifier', 'notice', 'embedding'] },
+      component: { type: 'string', enum: ['classifier', 'notice', 'embedding', 'vad', 'vad-notice'] },
       state: { type: 'string', enum: ['installed', 'skipped', 'failed'] },
       path: STRING_SCHEMA,
       bytes: NUMBER_SCHEMA,
       error: STRING_SCHEMA,
     }, ['component', 'state', 'path']),
   },
-}, ['ready', 'modelVersion', 'noticePath', 'recallIsSyntheticOnly', 'outcomes']);
+}, ['ready', 'vadReady', 'modelVersion', 'noticePath', 'recallIsSyntheticOnly', 'outcomes']);
 
 const WAKE_MODEL_CHUNK_SCHEMA = objectSchema({
-  component: { type: 'string', enum: ['classifier', 'embedding', 'notice'] },
+  component: { type: 'string', enum: ['classifier', 'embedding', 'notice', 'vad'] },
   offset: NUMBER_SCHEMA,
   bytes: NUMBER_SCHEMA,
   totalBytes: NUMBER_SCHEMA,
@@ -177,7 +184,9 @@ export const builtinGatewayVoiceSetupMethodDescriptors: readonly GatewayMethodDe
     title: 'Get Wake-Word Model State',
     description:
       'Whether the pinned wake-word artifacts are on disk and VERIFIED BY CONTENT: the "hey goodvibes" classifier, its '
-      + 'attribution NOTICE, and the speech-embedding front end the classifier sits behind. Each reports verified, corrupt '
+      + 'attribution NOTICE, the speech-embedding front end the classifier sits behind, and the speech gate '
+      + 'voice.wake.vadThreshold runs (reported as vadReady, separately from ready, because the detector runs without it — '
+      + 'the row defaults to 0). Each reports verified, corrupt '
       + '(present but failing its checksum — a truncated or swapped file, distinct from missing) and its byte size, with the '
       + 'total a fresh provision would download. Also restates that the model\'s published recall figures are measured on '
       + 'synthesised speech only, which any surface describing the model must carry. Never downloads. Read-only.',
@@ -191,8 +200,8 @@ export const builtinGatewayVoiceSetupMethodDescriptors: readonly GatewayMethodDe
     id: 'voice.wake.provision',
     title: 'Download the Wake-Word Models',
     description:
-      'Download and checksum-verify the pinned wake-word classifier, its NOTICE, and the speech-embedding front end into the '
-      + 'goodvibes-managed directory — about 3.7 MB. Downloads only when you ask, and is resumable by re-running: an artifact '
+      'Download and checksum-verify the pinned wake-word classifier, its NOTICE, the speech-embedding front end and the '
+      + 'speech gate voice.wake.vadThreshold runs, into the goodvibes-managed directory — about 3.7 MB. Downloads only when you ask, and is resumable by re-running: an artifact '
       + 'that already matches its pin is skipped, and one that is present but fails verification is replaced rather than used. '
       + 'A failed or mismatched download keeps nothing at the destination. Single-flight: two surfaces asking at once join one '
       + 'download instead of racing for the same files.',
@@ -215,7 +224,7 @@ export const builtinGatewayVoiceSetupMethodDescriptors: readonly GatewayMethodDe
     scopes: ['read:health'],
     http: { method: 'GET', path: '/api/voice/wake/model' },
     inputSchema: objectSchema({
-      component: { type: 'string', enum: ['classifier', 'embedding', 'notice'] },
+      component: { type: 'string', enum: ['classifier', 'embedding', 'notice', 'vad'] },
       offset: NUMBER_SCHEMA,
       maxBytes: NUMBER_SCHEMA,
     }, ['component']),

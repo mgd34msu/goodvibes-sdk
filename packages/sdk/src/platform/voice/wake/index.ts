@@ -55,6 +55,8 @@ export {
   WakeWordEngine,
   type WakeEngineOptions,
   type WakeFrameResult,
+  type WakeVadGate,
+  type WakeVadOutcome,
 } from './engine.js';
 
 export {

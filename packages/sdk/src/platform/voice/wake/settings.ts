@@ -15,12 +15,13 @@
  *
  * Some rows cannot be honoured on some surfaces, and the honest answers differ:
  *
- *  - A {@link WakeSettingBlocker} means the detector must NOT start. Asking for
- *    `speex` suppression, which no surface implements yet, or a voice-activity
- *    floor with no VAD model to run, would otherwise mean audio flowing
- *    unfiltered through a stage the user believes is screening it. The schema
- *    already set that posture for noiseSuppression in writing; this applies it
- *    uniformly.
+ *  - A {@link WakeSettingBlocker} means the detector must NOT start. Asking for a
+ *    voice-activity floor with no VAD model to run, or `speex` suppression on a
+ *    runtime that cannot run the filter, would otherwise mean audio flowing
+ *    unfiltered through a stage the user believes is screening it. `speex` itself
+ *    is no longer such a case on either shipped surface — the filter is a
+ *    WebAssembly module the platform carries, and both hosts run it — so the
+ *    blocker is now reserved for a surface that genuinely cannot.
  *  - A {@link WakeSettingLimitation} means the detector runs, with one row not in
  *    force, and says which. Retaining audio needs a filesystem, so a browser tab
  *    keeps listening and reports that retention is not happening rather than
@@ -34,6 +35,8 @@ import {
   parseWakeModelList,
   voiceWakeConfigDefaults,
 } from '../../config/schema-domain-voice-wake.js';
+import { noiseSuppressionSupport } from '../capture/noise-suppression.js';
+import { resolveWakeVadThreshold, WAKE_VAD_MODEL } from '../provisioning/wake-word-manifest.js';
 import type { AudioCaptureBackend, AudioCaptureNoiseSuppression } from '../capture/types.js';
 import { WAKE_CHUNK_SAMPLES } from './feature-pipeline.js';
 import type { WakeSupervisorPolicy } from './supervisor.js';
@@ -45,20 +48,29 @@ export type WakeSurface = 'tui' | 'agent' | 'webui';
 /** What a surface can actually do, so a row is refused rather than faked. */
 export interface WakeSurfaceCapabilities {
   /**
-   * True only when this surface ACTUALLY APPLIES speex suppression to captured
-   * audio — not merely when libspeexdsp is installed somewhere on the host.
+   * Whether speex suppression can be applied to captured audio on this surface.
    *
-   * No shipped surface passes true, because no surface implements the stage: it
-   * needs libspeexdsp bindings the platform neither ships nor manages. The
-   * distinction matters because the wrong reading of this flag is the exact lie
-   * the row exists to prevent — a host that probed for the library and said yes
-   * would capture unfiltered audio while the setting claims a filter is running.
+   * Left out, it is ANSWERED rather than assumed: the platform carries SpeexDSP's
+   * preprocessor as a WebAssembly module, so the answer is whether this runtime
+   * has WebAssembly — see `noiseSuppressionSupport()`. Both shipped surfaces do,
+   * and both apply the stage, which is why `speex` runs rather than refusing.
+   *
+   * A surface that genuinely cannot — a JavaScript runtime with no WebAssembly —
+   * passes `false` and gets a blocker with that reason, because the wrong reading
+   * of this flag is the exact lie the row exists to prevent: audio captured
+   * unfiltered while the setting claims a filter is running.
    */
   readonly speexAvailable?: boolean | undefined;
   /**
-   * A voice-activity-detection model is loadable. False everywhere today: no VAD
-   * model is pinned by the manifest, so `voice.wake.vadThreshold` above 0 is
-   * refused rather than silently skipped.
+   * The speech gate is loaded on this surface and will actually screen frames.
+   *
+   * A head IS pinned now ({@link WAKE_VAD_MODEL}) and provisions with the wake
+   * models, but loading an inference session is the host's job on every surface —
+   * exactly as it is for the classifier and the embedding — so this stays
+   * host-declared. A host sets it once it has passed the gate's session to the
+   * engine; until then `voice.wake.vadThreshold` above 0 is refused rather than
+   * silently skipped, because a frame reaching the classifier unscreened while
+   * the row says it was screened is the lie the refusal exists to prevent.
    */
   readonly vadAvailable?: boolean | undefined;
   /** Audio can be written to disk, for `retainAudio: session-temp`. */
@@ -224,23 +236,34 @@ export function resolveWakeRuntimeSettings(
   const blockers: WakeSettingBlocker[] = [];
   const limitations: WakeSettingLimitation[] = [];
 
-  if (noiseSuppression === 'speex' && capabilities.speexAvailable !== true) {
+  const speexSupport = noiseSuppressionSupport();
+  const speexAvailable = capabilities.speexAvailable ?? speexSupport.supported;
+  if (noiseSuppression === 'speex' && !speexAvailable) {
+    // Two different noes, and they read differently: the runtime cannot run a
+    // WebAssembly module at all, or the surface says it does not apply the stage.
+    const reason = speexSupport.supported
+      ? 'this surface reports that it does not apply the speexdsp stage to the audio it captures'
+      : speexSupport.reason;
     blockers.push({
       key: 'voice.wake.noiseSuppression',
       detail:
-        'set to "speex", but no surface applies speex suppression yet: the stage needs libspeexdsp bindings the '
-        + 'platform does not ship or manage. Rather than capture unfiltered audio through a filter you have '
-        + 'configured, the detector does not start. "none" is the value that runs today.',
+        `set to "speex", which cannot run here: ${reason}. Rather than capture unfiltered audio through a filter `
+        + 'you have configured, the detector does not start. "none" captures without one.',
     });
   }
   if (vadThreshold > 0 && capabilities.vadAvailable !== true) {
+    const row = resolveWakeVadThreshold(vadThreshold);
+    const measured = row === null
+      ? ''
+      : ` At ${row.threshold} the pinned head passes ${(row.speechPassRate * 100).toFixed(1)}% of speech frames `
+        + `and stops ${(row.noiseGateRate * 100).toFixed(1)}% of non-speech ones.`;
     blockers.push({
       key: 'voice.wake.vadThreshold',
       detail:
-        `set to ${vadThreshold}, but no voice-activity-detection model is available: the platform pins a wake `
-        + 'classifier and a speech-embedding front end, and no VAD model beside them. Frames would reach the '
-        + 'classifier unfiltered while the row says they are being screened, so the detector does not start. '
-        + 'Set the row back to 0 to run without the VAD stage.',
+        `set to ${vadThreshold}, but this surface has not loaded the speech gate, so frames would reach the `
+        + 'classifier unscreened while the row says they are being screened. The gate is pinned as '
+        + `goodvibes-vad ${WAKE_VAD_MODEL.version} and provisions with the wake models; a surface that has it `
+        + `loaded screens frames with it.${measured} Set the row back to 0 to run without the stage.`,
     });
   }
   if (modelIds.length === 0) {

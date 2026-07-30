@@ -17,6 +17,10 @@
  * policy and the surface holds the call.
  */
 import {
+  createNoiseSuppressingOpener,
+  type NoiseSuppressionFactory,
+} from './noise-suppression.js';
+import {
   AudioCaptureError,
   type AudioCaptureBackend,
   type AudioCaptureNoiseSuppression,
@@ -29,7 +33,17 @@ import { VoiceInputRecorder, type CapturedUtterance, type VoiceInputStopReason }
 export type PushToTalkPhase = 'idle' | 'requesting' | 'recording' | 'stopping' | 'error';
 
 export interface PushToTalkOptions {
+  /**
+   * Opens the device. Wrapped here so `voice.wake.noiseSuppression` reaches voice
+   * input as well as wake detection — the row is shared, so the filter must be —
+   * see {@link createNoiseSuppressingOpener}. A host passes its plain opener.
+   */
   readonly openCapture: AudioCaptureOpener;
+  /**
+   * Builds the suppression stage. Defaults to the embedded speexdsp filter;
+   * injected so a test can drive the wiring deterministically.
+   */
+  readonly createNoiseSuppression?: NoiseSuppressionFactory | undefined;
   /** Device, backend and suppression, from the shared `voice.wake.*` capture rows. */
   readonly capture: {
     readonly device: string;
@@ -60,12 +74,17 @@ export interface PushToTalkOptions {
  */
 export class PushToTalkSession {
   readonly #options: PushToTalkOptions;
+  /** The host's opener with the suppression stage in front of it. */
+  readonly #openCapture: AudioCaptureOpener;
   #phase: PushToTalkPhase = 'idle';
   #stream: AudioCaptureStream | null = null;
   #recorder: VoiceInputRecorder | null = null;
 
   constructor(options: PushToTalkOptions) {
     this.#options = options;
+    this.#openCapture = createNoiseSuppressingOpener(options.openCapture, {
+      ...(options.createNoiseSuppression !== undefined ? { create: options.createNoiseSuppression } : {}),
+    });
   }
 
   get phase(): PushToTalkPhase {
@@ -95,7 +114,7 @@ export class PushToTalkSession {
       silenceStopMs: this.#options.silenceStopMs ?? 0,
     });
     try {
-      const stream = await this.#options.openCapture(
+      const stream = await this.#openCapture(
         {
           frameSamples: this.#options.capture.frameSamples,
           device: this.#options.capture.device,
