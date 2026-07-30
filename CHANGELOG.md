@@ -4,6 +4,62 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
+## [Unreleased]
+
+### Fixed
+
+- **A setting the daemon cannot ingest is now said out loud, and does not take
+  the daemon with it.** A daemon read `calendar.google.clientSecretRef` — the
+  `goodvibes://secrets/…` reference a newer component's credential sweep had
+  written into the shared daemon settings file — and exited 1 with nothing on
+  stderr, nothing in the journal, nothing anywhere. It crash-looped 77 times
+  overnight and the owner found out by everything being dead.
+
+  Settings ingestion now has one stated rule, in
+  `platform/config/settings-ingestion.ts`, and the reader follows it for every
+  settings file it reads (global surface, project surface, shared tier, daemon
+  tier):
+
+  - **Every failure names the FILE, the KEY and the REASON**, on stderr — where a
+    service journal captures it — and in the activity log, before anything
+    decides whether to carry on.
+  - **The default is to quarantine the single unreadable key and keep serving.**
+    It is dropped, the tier below it answers, and the notice says so. A daemon
+    running one setting short, loudly, is recoverable; a daemon that will not
+    start is not.
+  - **A key whose fallback could permit MORE than the operator stored refuses
+    instead** — the per-tool approval gates, `permissions.mode`,
+    `permissions.engine`, and the whole `policy.` domain, declared in
+    `SAFETY_GATE_CONFIG_PREFIXES` with the evidence for each. Deliberately not
+    `danger.*`, `behavior.autoApprove`, `controlPlane.allowRemote/trustProxy` or
+    `sandbox.enabled`: those ship as the restrictive value, so falling back to
+    them can only ever close something.
+  - **A whole file that will not parse is also a refusal**, because the reader
+    cannot tell whether the unreadable bytes held a gate — but it now names the
+    file and the parse error rather than dying with a bare exit code.
+
+  Four failure modes that were previously **silent** are now announced:
+  a value of the wrong shape on a known key (`controlPlane.port` set to a string
+  became the live port, unvalidated); a section of the wrong type (a string where
+  `controlPlane` belongs silently returned the daemon to port 3421); a key form a
+  newer component wrote that this build does not know; and a credential key
+  holding a reference that cannot be resolved. `ConfigManager.getIngestionQuarantine()`
+  reports them all, and each is also filed as a startup receipt the daemon serves
+  from `/status`.
+
+- **A migration that rewrites shared settings records the reader version it
+  requires, so an older reader reports the version gap instead of the symptom.**
+  `~/.goodvibes/daemon/settings.json` is read by every component on a machine and
+  they are not all the same version at once. The credential sweep and the
+  daemon-owned config migration now leave a `$goodvibes.minReaderVersion` marker
+  beside what they rewrote (`platform/config/settings-reader-floor.ts`). A reader
+  below the floor says exactly that — *"settings were migrated by a newer
+  component; this daemon (X) is older than the floor (Y) — update it"* — checked
+  before any key is ingested, so the version gap is reported rather than whichever
+  key happened to be shaped in a way the reader could not parse. The marker never
+  reaches the resolved config, a floor is never lowered, and a floor that cannot be
+  written never undoes a migration that already succeeded.
+
 ## [1.20.0] - 2026-07-30
 
 The daemon now raises the dates that matter on its own, pushes occasion nudges

@@ -22,6 +22,8 @@ import {
 import { DAEMON_CONFIG_ROOT } from '../config/daemon-config-tier.js';
 import { ensureConnectorConfigSections } from '../config/connector-config-sections.js';
 import { describePlaintextSweep, sweepPlaintextCredentials } from '../config/plaintext-credential-sweep.js';
+import { raiseReaderFloorInFile } from '../config/shared-config-tier.js';
+import { SWEPT_CREDENTIAL_READER_FLOOR } from '../config/settings-reader-floor.js';
 import { repairHalfLandedGoogleConnection } from '../google/connection-repair.js';
 import { nodeGoogleFilePort } from '../google/node.js';
 import { resolveSharedDirectory } from '../runtime/surface-root.js';
@@ -74,6 +76,14 @@ export function migrateDaemonOwnedConfigOnBoot(
   try {
     const result = migrateDaemonOwnedConfig({ homeDir: homeDirectory });
     if (!result.migrated) return;
+    // Same shared file, same hazard as the credential sweep: this migration
+    // rewrites settings every component on the machine reads. Record the floor
+    // BEFORE the reload, so the file a reader sees never carries a migrated
+    // shape without the version that explains it.
+    const daemonTierPath = configManager.getDaemonTierPath();
+    if (daemonTierPath !== null) {
+      raiseReaderFloorInFile(daemonTierPath, SWEPT_CREDENTIAL_READER_FLOOR, 'daemon-owned-config-migration');
+    }
     configManager.load();
     logger.info('DaemonServer: folded daemon-owned settings into the daemon store', {
       movedTo: result.marker.movedTo,
@@ -196,9 +206,18 @@ async function sweepPlaintextCredentialsOnBoot(
   try {
     ensureConnectorConfigSections(configManager);
     const manager = configManager as unknown as { get(key: string): unknown; setDynamic(key: string, value: unknown): void };
+    const daemonTierPath = configManager.getDaemonTierPath();
     const report = await sweepPlaintextCredentials(
       { get: (key) => manager.get(key), set: (key, value) => { manager.setDynamic(key, value); } },
       services.secretsManager,
+      [],
+      // The sweep rewrites the daemon's settings file, which every component on
+      // this machine reads. Record what a reader now needs, so one that is too
+      // old says exactly that instead of failing on whichever key it could not
+      // walk. See config/settings-reader-floor.ts.
+      daemonTierPath === null
+        ? undefined
+        : (minReaderVersion, setBy) => { raiseReaderFloorInFile(daemonTierPath, minReaderVersion, setBy); },
     );
     if (report.noop) return;
     logger.info('DaemonServer: credentials stored in the clear were moved into the secret store', {

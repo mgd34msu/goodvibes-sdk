@@ -29,10 +29,11 @@ import {
 import { watchConfigFiles, reloadAndNotifyChanges, type ConfigFileWatchHandle } from './config-file-watcher.js';
 import { isDaemonOwnedConfigKey, listDaemonOwnedConfigPaths, type DaemonOwnedConfigPath } from './config-ownership.js';
 import { resolveOrCreateDaemonPath } from './daemon-tier-paths.js';
-import { clearDaemonTierForReset, daemonConfigPath, overlayDaemonTier, persistDaemonKey } from './daemon-config-tier.js';
+import { clearDaemonTierForReset, daemonConfigPath, overlayDaemonTierFrom, persistDaemonKey, readDaemonTierFile } from './daemon-config-tier.js';
 import { describeKeySource, type ConfigKeySource } from './manager-key-source.js';
 import { DEFAULT_CONFIG_SNAPSHOT, cloneDefaultConfig, ensureSharedConfig, requireAbsoluteOwnedPath, sanitizeConfigShape } from './manager-bootstrap.js';
 import { resolveWithProfileFallback, type ConfigProfileFallbackReader } from './profile-fallback.js';
+import { ingestManagerSettings, toConfigLoadFailure, type IngestionNoticeSink, type SettingsIngestionNotice } from './manager-ingestion.js';
 import { persistCategoryKeyRemoval, persistCategoryPatch, type CategoryIoDeps } from './manager-category-io.js';
 
 /** Deep immutable type — prevents mutation of nested objects returned from getAll(). */
@@ -121,6 +122,8 @@ export class ConfigManager {
   private readonly _listeners = new Map<string, Set<(newVal: unknown, oldVal: unknown) => void>>();
   /** Active config-file watch handle (external-edit live reload), or null. */
   private _fileWatch: ConfigFileWatchHandle | null = null;
+  /** Settings the last load could not ingest. See ./settings-ingestion.ts. */
+  private ingestionNotices: SettingsIngestionNotice[] = [];
 
   constructor(overrides: ConfigOverrides) {
     const roots = overrides as ConfigRoots;
@@ -522,30 +525,48 @@ export class ConfigManager {
     writeFileSync(this.projectConfigPath, JSON.stringify(this.withoutDaemonOwned(minimal), null, 2) + '\n', 'utf-8');
   }
 
+  /**
+   * Every setting the last load could not ingest, with the file, the key and
+   * the reason — the owner-visible signal behind the startup notice. Empty when
+   * every settings file was read whole. See ./settings-ingestion.ts.
+   */
+  getIngestionQuarantine(): readonly SettingsIngestionNotice[] {
+    return this.ingestionNotices;
+  }
+  /** Where an ingestion notice is filed; see ./manager-ingestion.ts. */
+  private ingestionSink(): IngestionNoticeSink {
+    return {
+      record: (entry) => { this.ingestionNotices.push(entry); },
+      receipt: (id, text) => { this.migrationReceipt(id, text); },
+    };
+  }
+  private ingest(
+    parsed: Record<string, unknown>,
+    file: string,
+    migrate?: (raw: Record<string, unknown>) => Record<string, unknown>,
+  ): Record<string, unknown> {
+    return ingestManagerSettings(parsed, file, this.ingestionSink(), migrate);
+  }
+  private loadFailure(label: string, file: string, err: unknown): ConfigError {
+    return toConfigLoadFailure(label, file, err, this.ingestionSink());
+  }
+
   /** Load config from disk: global then project (project wins). Deep-merges with defaults. */
   load(): void {
+    this.ingestionNotices = [];
     // Load global settings
     if (existsSync(this.configPath)) {
       try {
         const raw = readFileSync(this.configPath, 'utf-8');
-        const parsed = JSON.parse(raw) as Record<string, unknown>;
-        const migrated = this.applyDefaultStripMigration(
-          this.applyControlPlaneBaseUrlMigration(
-            this.applyFleetMaxSizeMigration(
-              this.applyLegacySettingsMigration(
-                this.applyDangerDaemonMigration(parsed, this.configPath),
-                this.configPath,
-              ),
-              this.configPath,
-            ),
-            this.configPath,
-          ),
+        const migrated = this.ingest(
+          JSON.parse(raw) as Record<string, unknown>,
           this.configPath,
+          (p) => this.applyLoadMigrations(p, this.configPath),
         );
 
         this.config = sanitizeConfigShape(deepMerge(cloneDefaultConfig(), migrated) as GoodVibesConfig);
       } catch (err) {
-        throw new ConfigError(`Global config load failed for ${this.configPath}: ${summarizeError(err)}`);
+        throw this.loadFailure('Global', this.configPath, err);
       }
     }
 
@@ -553,23 +574,14 @@ export class ConfigManager {
     if (this.projectConfigPath && existsSync(this.projectConfigPath)) {
       try {
         const raw = readFileSync(this.projectConfigPath, 'utf-8');
-        const parsed = JSON.parse(raw) as Record<string, unknown>;
-        const migrated = this.applyDefaultStripMigration(
-          this.applyControlPlaneBaseUrlMigration(
-            this.applyFleetMaxSizeMigration(
-              this.applyLegacySettingsMigration(
-                this.applyDangerDaemonMigration(parsed, this.projectConfigPath),
-                this.projectConfigPath,
-              ),
-              this.projectConfigPath,
-            ),
-            this.projectConfigPath,
-          ),
+        const migrated = this.ingest(
+          JSON.parse(raw) as Record<string, unknown>,
           this.projectConfigPath,
+          (p) => this.applyLoadMigrations(p, this.projectConfigPath!),
         );
         this.config = sanitizeConfigShape(deepMerge(this.config, migrated) as GoodVibesConfig);
       } catch (err) {
-        throw new ConfigError(`Project config load failed for ${this.projectConfigPath}: ${summarizeError(err)}`);
+        throw this.loadFailure('Project', this.projectConfigPath, err);
       }
     }
 
@@ -590,13 +602,14 @@ export class ConfigManager {
     this.daemonKeysPresent.clear();
     if (!this.daemonTierPath) return;
     try {
-      const applied = overlayDaemonTier(this.daemonTierPath, (key, value) => {
+      const stored = this.ingest(readDaemonTierFile(this.daemonTierPath), this.daemonTierPath);
+      const applied = overlayDaemonTierFrom(stored, (key, value) => {
         const { parent, field } = resolveOrCreateDaemonPath(this.config as unknown as Record<string, unknown>, key);
         parent[field] = value;
       });
       for (const key of applied) this.daemonKeysPresent.add(key);
     } catch (err) {
-      throw new ConfigError(`Daemon config load failed for ${this.daemonTierPath}: ${summarizeError(err)}`);
+      throw this.loadFailure('Daemon', this.daemonTierPath, err);
     }
   }
 
@@ -616,9 +629,9 @@ export class ConfigManager {
     if (!this.sharedTierPath) return;
     let shared: Record<string, unknown>;
     try {
-      shared = readSharedTierFile(this.sharedTierPath);
+      shared = this.ingest(readSharedTierFile(this.sharedTierPath), this.sharedTierPath);
     } catch (err) {
-      throw new ConfigError(`Shared config load failed for ${this.sharedTierPath}: ${summarizeError(err)}`);
+      throw this.loadFailure('Shared', this.sharedTierPath, err);
     }
     for (const key of SHARED_CONFIG_KEYS) {
       const found = readDotPath(shared, key);
@@ -654,6 +667,17 @@ export class ConfigManager {
     });
   }
 
+  /** Load-time migration passes (see manager-migration-passes.ts), in order. */
+  private applyLoadMigrations(parsed: Record<string, unknown>, sourcePath: string): Record<string, unknown> {
+    return this.applyDefaultStripMigration(
+      this.applyControlPlaneBaseUrlMigration(
+        this.applyFleetMaxSizeMigration(
+          this.applyLegacySettingsMigration(
+            this.applyDangerDaemonMigration(parsed, sourcePath), sourcePath,
+          ), sourcePath,
+        ), sourcePath,
+      ), sourcePath);
+  }
   /** Load-time migration passes (see manager-migration-passes.ts). */
   private migrationReceipt(id: string, text: string): void {
     new FeatureAnnouncementStore(featureAnnouncementsPath(this)).record(id, text);

@@ -26,6 +26,15 @@ import {
   SECRET_BEARING_CONFIG_PATHS,
 } from '../packages/sdk/src/platform/config/secret-bearing-config-keys.ts';
 import { daemonSecretKeyFor } from '../packages/sdk/src/platform/config/daemon-secret-keys.ts';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { raiseReaderFloorInFile } from '../packages/sdk/src/platform/config/shared-config-tier.ts';
+import {
+  compareReaderVersions,
+  readSettingsReaderFloor,
+  SWEPT_CREDENTIAL_READER_FLOOR,
+} from '../packages/sdk/src/platform/config/settings-reader-floor.ts';
 
 const MAIL_PASSWORD = 'surfaces.email.password';
 const MAIL_SECRET_KEY = daemonSecretKeyFor(MAIL_PASSWORD);
@@ -183,5 +192,97 @@ describe('the sweep moves a literal out of config, and never breaks it doing so'
     const report = await sweepPlaintextCredentials(config, fakeSecrets(), ['display.theme']);
     expect(report.noop).toBe(true);
     expect(config.values['display.theme']).toBe('dark');
+  });
+});
+
+/**
+ * A migration that rewrites SHARED state must record what a reader now needs.
+ *
+ * `~/.goodvibes/daemon/settings.json` is read by every component on the machine
+ * and they are not all the same version at once. When this sweep rewrote a
+ * literal into a `goodvibes://secrets/…` reference on `calendar.google.
+ * clientSecretRef`, the daemon of the day could not walk that form and failed
+ * while constructing its ConfigManager — reporting the KEY it tripped over
+ * rather than the version gap that caused it. The floor is what lets the older
+ * reader say the true thing instead. See config/settings-reader-floor.ts.
+ */
+describe('the sweep records the reader version its rewrite requires', () => {
+  test('a rewrite raises the floor, naming the sweep as the cause', async () => {
+    const config = fakeConfig({ [MAIL_PASSWORD]: 'hunter2-test-only' });
+    const recorded: Array<{ version: string; setBy: string }> = [];
+
+    await sweepPlaintextCredentials(config, fakeSecrets(), [], (version, setBy) => {
+      recorded.push({ version, setBy });
+    });
+
+    expect(recorded).toEqual([{ version: SWEPT_CREDENTIAL_READER_FLOOR, setBy: 'credential-sweep' }]);
+  });
+
+  test('a sweep that rewrote nothing records nothing — a floor describes a rewrite', async () => {
+    const config = fakeConfig({});
+    const recorded: string[] = [];
+    await sweepPlaintextCredentials(config, fakeSecrets(), [], (version) => { recorded.push(version); });
+    expect(recorded).toHaveLength(0);
+  });
+
+  test('a rewrite that could not be verified leaves the literal AND records no floor', async () => {
+    const config = fakeConfig({ [MAIL_PASSWORD]: 'hunter2-test-only' });
+    const secrets = fakeSecrets();
+    secrets.set = async () => { throw new Error('store unavailable'); };
+    const recorded: string[] = [];
+
+    const report = await sweepPlaintextCredentials(config, secrets, [], (version) => { recorded.push(version); });
+
+    expect(report.failed).toBe(1);
+    expect(config.values[MAIL_PASSWORD]).toBe('hunter2-test-only');
+    expect(recorded).toHaveLength(0);
+  });
+
+  test('a floor that cannot be written does not undo a sweep that already succeeded', async () => {
+    const config = fakeConfig({ [MAIL_PASSWORD]: 'hunter2-test-only' });
+    const report = await sweepPlaintextCredentials(config, fakeSecrets(), [], () => {
+      throw new Error('settings file is read-only');
+    });
+    // The credential is in the store and the config points at it. What was lost
+    // is the paperwork, which must never cost a credential.
+    expect(report.moved).toBe(1);
+    expect(config.values[MAIL_PASSWORD]).toBe(secretReferenceFor(MAIL_SECRET_KEY));
+  });
+});
+
+describe('raiseReaderFloorInFile', () => {
+  test('writes the floor into an existing settings file, and never lowers it', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'gv-floor-'));
+    const path = join(dir, 'settings.json');
+    writeFileSync(path, JSON.stringify({ display: { theme: 'dark' } }), 'utf-8');
+
+    expect(raiseReaderFloorInFile(path, '1.20.0', 'credential-sweep')).toBe(true);
+    const first = readSettingsReaderFloor(JSON.parse(readFileSync(path, 'utf-8')));
+    expect(first?.minReaderVersion).toBe('1.20.0');
+    expect(first?.setBy).toBe('credential-sweep');
+
+    // Two migrations can rewrite the same file; the highest requirement governs.
+    expect(raiseReaderFloorInFile(path, '1.19.0', 'something-older')).toBe(false);
+    expect(readSettingsReaderFloor(JSON.parse(readFileSync(path, 'utf-8')))?.minReaderVersion).toBe('1.20.0');
+    expect(raiseReaderFloorInFile(path, '1.21.0', 'a-newer-migration')).toBe(true);
+    expect(readSettingsReaderFloor(JSON.parse(readFileSync(path, 'utf-8')))?.minReaderVersion).toBe('1.21.0');
+
+    // The rest of the file is untouched.
+    expect((JSON.parse(readFileSync(path, 'utf-8')) as { display: { theme: string } }).display.theme).toBe('dark');
+  });
+
+  test('a file that does not exist gets no marker — nothing was rewritten there', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'gv-floor-absent-'));
+    const path = join(dir, 'settings.json');
+    expect(raiseReaderFloorInFile(path, '1.20.0', 'credential-sweep')).toBe(false);
+    expect(existsSync(path)).toBe(false);
+  });
+
+  test('version comparison ignores a prerelease suffix rather than refusing to read', () => {
+    // Ignoring a suffix can only make a reader MORE willing to read a file,
+    // which is the safe direction for a check whose failure mode is not starting.
+    expect(compareReaderVersions('1.21.0-rc.1', '1.21.0')).toBe(0);
+    expect(compareReaderVersions('1.20.0', '1.21.0')).toBeLessThan(0);
+    expect(compareReaderVersions('2.0.0', '1.99.99')).toBeGreaterThan(0);
   });
 });

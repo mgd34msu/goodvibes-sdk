@@ -62,6 +62,10 @@ import {
   runDaemonBootGuarantees,
 } from '../packages/sdk/src/platform/daemon/facade-boot-guarantees.ts';
 import {
+  readSettingsReaderFloor,
+  SWEPT_CREDENTIAL_READER_FLOOR,
+} from '../packages/sdk/src/platform/config/settings-reader-floor.ts';
+import {
   adoptExistingGoogleCredentials,
   detectGoogleSetupState,
   GOOGLE_CONFIG_KEYS,
@@ -1106,5 +1110,61 @@ describe('one credential under two names is not one credential', () => {
 
     expect(daemon.configManager.get(CONFIG_KEY)).toBe(REFERENCE);
     expect(await daemon.secretsManager.get(TUI_KEY)).toBe(TOKEN);
+  });
+});
+
+// ===========================================================================
+// A migration that rewrites SHARED state records the reader version it needs.
+// ===========================================================================
+
+/**
+ * `~/.goodvibes/daemon/settings.json` is read by every component on this
+ * machine, and they are not all the same version at once. The 23:09 incident
+ * was exactly that: the boot sweep rewrote a literal into a
+ * `goodvibes://secrets/…` reference, and the daemon of the day could not walk
+ * the form it had just been handed. What that daemon reported was the key it
+ * tripped over. What had actually happened was a newer component migrating
+ * shared state under an older reader, and nothing on disk said so.
+ *
+ * So the rewrite now leaves the floor behind it, through the real boot — not a
+ * hand-written marker. See config/settings-reader-floor.ts.
+ */
+describe('a boot migration that rewrites the shared settings file records the reader it needs', () => {
+  test('the credential sweep leaves a reader floor beside what it rewrote', async () => {
+    const home = throwawayHome();
+
+    // The state the sweep exists for: a credential sitting in the clear in a
+    // settings file, written by a path that did not know the key was one.
+    const surface = openSurface(home, 'daemon');
+    surface.configManager.setDynamic('surfaces.email.password' as never, 'hunter2-test-only');
+
+    await bootDaemon(home);
+
+    const settingsPath = join(home, '.goodvibes', 'daemon', 'settings.json');
+    const stored = JSON.parse(readFileSync(settingsPath, 'utf-8')) as Record<string, unknown>;
+    const floor = readSettingsReaderFloor(stored);
+    expect(floor?.minReaderVersion).toBe(SWEPT_CREDENTIAL_READER_FLOOR);
+    // Two boot migrations rewrite this same shared file — the daemon-owned
+    // config move and the credential sweep — and both record the floor. The
+    // first to run wins the attribution and the second does not lower it, which
+    // is the property that matters: whichever ran, the file says what a reader
+    // now needs.
+    expect(['credential-sweep', 'daemon-owned-config-migration']).toContain(floor?.setBy ?? '');
+
+    // And the rewrite itself happened: the config points at the store, not at
+    // the password. A floor without a rewrite would prove nothing.
+    expect(String(stored['surfaces'] && JSON.stringify(stored['surfaces']))).not.toContain('hunter2');
+  });
+
+  test('a daemon at or above the floor reads the migrated file normally', async () => {
+    const home = throwawayHome();
+    const surface = openSurface(home, 'daemon');
+    surface.configManager.setDynamic('surfaces.email.password' as never, 'hunter2-test-only');
+    await bootDaemon(home);
+
+    // The floor this build records is by definition one this build satisfies,
+    // so a second boot over the migrated file is ordinary reading.
+    const second = await bootDaemon(home);
+    expect(second.configManager.getIngestionQuarantine()).toHaveLength(0);
   });
 });
