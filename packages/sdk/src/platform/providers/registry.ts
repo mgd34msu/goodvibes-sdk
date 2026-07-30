@@ -130,6 +130,7 @@ export class ProviderRegistry {
       subscriptionManager: this.subscriptionManager,
       runtimeBus: this.runtimeBus,
       persistenceRoot: this.getPersistenceRoot(),
+      cachePolicy: this.configManager, // cache.enabled / cache.stableTtl, read per request like their hit-rate siblings
     });
   }
 

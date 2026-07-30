@@ -13,7 +13,11 @@ import {
   llmTokensInput,
   llmTokensOutput,
   llmRequestsStarted,
+  platformTracer,
 } from './metrics.js';
+import { endLlmSpan } from './telemetry/spans/index.js';
+import { SpanKind } from './telemetry/types.js';
+import { summarizeError } from '../utils/error-display.js';
 
 /** Structured prompt summary emitted in telemetry events (default: redacted). */
 export interface PromptSummary {
@@ -105,6 +109,19 @@ export async function instrumentedLlmCall<T>(
   // Auto-emit LLM_REQUEST_STARTED metric on entry (no bus required)
   recordLlmRequestStartedMetric({ provider: opts?.provider, model: opts?.model });
   opts?.onStarted?.();
+  // The provider-call span, on whatever tracer `telemetry.otelMode` installed.
+  // With the mode off this is the no-op span (`spanContext.isValid === false`)
+  // and every call below is a no-op, which is why the hot path pays nothing for
+  // it; with the mode on the same code records a real CLIENT span and, in
+  // remote-export, hands it to the OTLP exporter when it ends.
+  const span = platformTracer().startSpan('llm.call', {
+    kind: SpanKind.CLIENT,
+    attributes: {
+      'llm.provider': opts?.provider ?? 'unknown',
+      'llm.model': opts?.model ?? 'unknown',
+      'llm.streaming': false,
+    },
+  });
   let lastError: unknown;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -127,6 +144,13 @@ export async function instrumentedLlmCall<T>(
           }
         }
       }
+      const spanTokens = opts?.extractTokens?.(result);
+      endLlmSpan(span, {
+        success: true,
+        ...(spanTokens !== undefined
+          ? { tokens: { inputTokens: spanTokens.inputTokens ?? 0, outputTokens: spanTokens.outputTokens ?? 0 } }
+          : {}),
+      });
       return { result, durationMs, retries: attempt };
     } catch (err) {
       lastError = err;
@@ -148,5 +172,6 @@ export async function instrumentedLlmCall<T>(
     llmRequestDurationMs.record(Date.now() - startedAt, labels);
   }
 
+  endLlmSpan(span, { success: false, error: summarizeError(lastError) });
   throw lastError;
 }

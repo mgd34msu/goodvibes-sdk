@@ -9,11 +9,13 @@
  * place a real connection is opened.
  *
  *   - `createImapTlsSocket`      IMAP over implicit TLS (port 993)
+ *   - `createImapPlainSocket`    IMAP unencrypted (port 143), for a localhost or
+ *                                test server — `surfaces.email.imap.secure: false`
  *   - `createSmtpTlsSocket`      SMTP submission over implicit TLS (port 465)
  *   - `createSmtpStartTlsSocket` SMTP submission, plain then STARTTLS (port 587)
  *
- * `nodeEmailTransport` bundles the three into the `EmailTransportPort` the
- * service asks for.
+ * `nodeEmailTransport` bundles them into the `EmailTransportPort` the service
+ * asks for.
  *
  * This entry is deliberately NOT re-exported from the module index: importing
  * the email service must never drag `node:tls` in behind it. A consumer asks
@@ -51,6 +53,37 @@ export function createImapTlsSocket(
     const sock = tlsConnect({ host, port, servername: host }, () => {
       clearTimeout(timer);
       resolve(sock as unknown as Socket);
+    });
+
+    sock.once('error', (err: Error) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+  });
+}
+
+/**
+ * Creates a PLAIN socket connected to an IMAP server (port 143 by convention).
+ *
+ * Reached only when `surfaces.email.imap.secure` is false. Nothing here is
+ * encrypted, which is the point: an IMAP server on localhost, or a fake in an
+ * acceptance run, offers no TLS to negotiate, and every hosted provider is
+ * served by `createImapTlsSocket` above.
+ */
+export function createImapPlainSocket(
+  host: string,
+  port: number,
+  timeoutMs: number = IMAP_DEFAULT_TIMEOUT_MS,
+): Promise<Socket> {
+  return new Promise<Socket>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      sock.destroy();
+      reject(new Error(`IMAP connect timeout to ${host}:${port}`));
+    }, timeoutMs);
+
+    const sock = netConnect({ host, port }, () => {
+      clearTimeout(timer);
+      resolve(sock);
     });
 
     sock.once('error', (err: Error) => {
@@ -186,6 +219,7 @@ export function createSmtpStartTlsSocket(
  */
 export const nodeEmailTransport: EmailTransportPort = {
   connectImapTls: (host, port) => createImapTlsSocket(host, port),
+  connectImapPlain: (host, port) => createImapPlainSocket(host, port),
   connectSmtpTls: (host, port) => createSmtpTlsSocket(host, port),
   connectSmtpStartTls: (host, port) => createSmtpStartTlsSocket(host, port),
 };

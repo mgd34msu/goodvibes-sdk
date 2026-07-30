@@ -47,6 +47,7 @@ const EMAIL_CONFIG_DEFAULTS = {
   enabled: false,
   imapHost: '',
   imapPort: 993,
+  imapSecurity: 'tls' as const,
   smtpHost: '',
   smtpPort: 587,
   smtpSecurity: 'auto' as const,

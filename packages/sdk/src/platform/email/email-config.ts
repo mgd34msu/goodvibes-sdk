@@ -11,7 +11,13 @@ import { ownerMessageForFailure } from './imap-open.js';
 import type { EmailCapabilityFailureNotice } from './imap-open.js';
 // Type-only, so this is erased at build time and no runtime cycle exists
 // between the two halves of what used to be one file.
-import type { EmailConfig, SmtpSecurityMode } from './email-service.js';
+import type {
+  EmailConfig,
+  EmailSocketFactory,
+  EmailTransportPort,
+  ImapSecurityMode,
+  SmtpSecurityMode,
+} from './email-service.js';
 
 // ---------------------------------------------------------------------------
 // Config reading
@@ -35,11 +41,50 @@ function readSmtpSecurity(value: unknown): SmtpSecurityMode {
   return 'auto';
 }
 
+/**
+ * `email.imapSecurity`, defaulting to TLS.
+ *
+ * Anything unrecognised — including an absent value, which is what a config that
+ * predates the key produces — reads as 'tls'. The safe direction for a value
+ * nobody can interpret is the encrypted connection, so the only way to get a
+ * plaintext IMAP connection is to ask for one.
+ */
+function readImapSecurity(value: unknown): ImapSecurityMode {
+  return value === 'plaintext' ? 'plaintext' : 'tls';
+}
+
+/**
+ * Which transport member opens the IMAP connection.
+ *
+ * The IMAP counterpart of the SMTP selection in `EmailService`, and here rather
+ * than beside it because that file is at the repository's per-file line cap.
+ *
+ * A transport with no `connectImapPlain` cannot honour a plaintext request, and
+ * is refused by name: silently handing back the TLS factory would open a TLS
+ * handshake against a plain listener and report a protocol error from a port the
+ * operator never asked to be encrypted.
+ */
+export function imapSocketFactoryFor(
+  transport: Pick<EmailTransportPort, 'connectImapTls' | 'connectImapPlain'>,
+  security: ImapSecurityMode | undefined,
+): EmailSocketFactory {
+  if (security !== 'plaintext') return transport.connectImapTls;
+  const plain = transport.connectImapPlain;
+  if (!plain) {
+    throw new Error(
+      'surfaces.email.imap.secure is false, which asks for a plaintext IMAP connection, '
+      + 'and this email transport provides no connectImapPlain to open one.',
+    );
+  }
+  return plain;
+}
+
 export function readEmailConfig(getConfig: (key: string) => unknown): EmailConfig {
   return {
     enabled: readBoolean(getConfig('email.enabled'), false),
     imapHost: readString(getConfig('email.imapHost')),
     imapPort: readNumber(getConfig('email.imapPort'), 993),
+    imapSecurity: readImapSecurity(getConfig('email.imapSecurity')),
     smtpHost: readString(getConfig('email.smtpHost')),
     smtpPort: readNumber(getConfig('email.smtpPort'), 587),
     smtpSecurity: readSmtpSecurity(getConfig('email.smtpSecurity')),

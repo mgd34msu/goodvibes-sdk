@@ -2,7 +2,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { ConfigManager } from '../config/manager.js';
 import { resolveDaemonEnabled } from '../config/index.js';
-import { RuntimeEventBus } from '../runtime/events/index.js';
+import { RuntimeEventBus, configureRuntimeEventBusDefaults, runtimeEventBusOptionsFrom } from '../runtime/events/index.js';
 import { createRuntimeStore } from '../runtime/store/index.js';
 import { createRuntimeServices } from '../runtime/services.js';
 import { createHostPowerSeam } from '../power/runtime-wiring.js';
@@ -119,6 +119,10 @@ async function main(): Promise<void> {
     installServiceAndExit(config, workingDir, homeDirectory);
   }
   new GlobalNetworkTransportInstaller().install(config);
+  // Point the bus listener cap at `runtime.eventBus.maxListeners` before the
+  // first bus exists, so every bus this process builds later — including ones
+  // built by components that hold no ConfigManager — uses the operator's number.
+  configureRuntimeEventBusDefaults(runtimeEventBusOptionsFrom((key) => config.get(key)));
   const runtimeBus = new RuntimeEventBus();
 
   ensureDaemonHome(daemonHomeDir);

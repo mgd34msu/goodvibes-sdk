@@ -49,7 +49,7 @@ import {
   type InboundCapabilityPolicy,
 } from './capability-policy.js';
 import { resolveWatcherSettings, systemWatcherClock } from './ports.js';
-import { resolveEmailPassword } from '../email-config.js';
+import { imapSocketFactoryFor, resolveEmailPassword } from '../email-config.js';
 import {
   createSurfaceEmailSecretReader,
   readSurfaceEmailSettings,
@@ -136,8 +136,16 @@ export interface InboundMailSourceFactoryDeps {
   readonly getConfig: ConfigReader;
   /** Where the mail password is read from. One store — see `resolveEmailPassword`. */
   readonly secrets: SecretReader;
-  /** The real sockets. A test passes one whose members throw. */
-  readonly transport: Pick<EmailTransportPort, 'connectImapTls'>;
+  /**
+   * The real sockets. A test passes one whose members throw.
+   *
+   * `connectImapPlain` rides along because `surfaces.email.imap.secure` governs
+   * the inbound connection exactly as it governs the mailbox service's: one key,
+   * both IMAP paths, or it is honoured on one and quietly ignored on the other.
+   * It is optional on the port itself, so a transport that predates it still
+   * satisfies this.
+   */
+  readonly transport: Pick<EmailTransportPort, 'connectImapTls' | 'connectImapPlain'>;
   readonly cursors: MailboxCursorStore;
   /** Already resolved from config into milliseconds by the caller. */
   readonly settings: Omit<InboundWatcherSettings, 'account' | 'mailbox'>;
@@ -255,7 +263,10 @@ function liveConnectionPort(
       const host = settings.imapHost;
       const username = settings.username;
       return imapMailboxConnectionPort({
-        connect: () => deps.transport.connectImapTls(host, settings.imapPort),
+        connect: () => imapSocketFactoryFor(
+          deps.transport,
+          settings.imapSecure ? 'tls' : 'plaintext',
+        )(host, settings.imapPort),
         username,
         password: await resolveEmailPassword(SURFACE_EMAIL_PASSWORD_REF, secrets),
         mailbox,

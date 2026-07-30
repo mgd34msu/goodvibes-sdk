@@ -27,6 +27,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ConfigManager } from '../packages/sdk/src/platform/config/manager.ts';
 import { bootDaemon, type BootedDaemon } from '../packages/sdk/src/platform/daemon/boot.ts';
+import { resolveWebuiServingPosture } from '../packages/sdk/src/platform/daemon/http/webui-serving.ts';
 
 const TOKEN = 'test-webui-serving-token';
 const ALLOWED_ORIGIN = 'http://localhost:5173';
@@ -34,14 +35,21 @@ const OTHER_ORIGIN = 'http://evil.example.com';
 
 const INDEX_HTML = '<!doctype html><html><head><title>bundle</title></head><body><div id="root"></div><script src="/assets/app-deadbeef.js"></script></body></html>';
 const APP_JS = 'console.log("goodvibes web ui bundle");';
+// Deliberately different text from INDEX_HTML: the assertions below tell the two
+// directory keys apart by which document came back, not by a status code.
+const STATIC_INDEX_HTML = '<!doctype html><html><head><title>static assets</title></head><body>web.staticAssetsDir</body></html>';
 
 let onHome: string;
 let onWork: string;
 let offHome: string;
 let offWork: string;
 let bundleDir: string;
+let staticAssetsDir: string;
 let servingOn: BootedDaemon;
 let servingOff: BootedDaemon;
+let servingStaticOnly: BootedDaemon;
+let staticHome: string;
+let staticWork: string;
 
 function auth(extra: Record<string, string> = {}): Record<string, string> {
   return { authorization: `Bearer ${TOKEN}`, 'content-type': 'application/json', ...extra };
@@ -72,6 +80,26 @@ beforeAll(async () => {
     configManager: onConfig,
   });
 
+  // Daemon whose ONLY configured directory is web.staticAssetsDir: bundleDir is
+  // left at its shipped empty default, which before this key was read meant
+  // serve: true served nothing at all.
+  staticAssetsDir = mkdtempSync(join(tmpdir(), 'webui-static-assets-'));
+  writeFileSync(join(staticAssetsDir, 'index.html'), STATIC_INDEX_HTML);
+  staticHome = mkdtempSync(join(tmpdir(), 'webui-static-home-'));
+  staticWork = mkdtempSync(join(tmpdir(), 'webui-static-work-'));
+  const staticConfig = new ConfigManager({ workingDir: staticWork, homeDir: staticHome, surfaceRoot: 'goodvibes' });
+  staticConfig.set('controlPlane.webui.serve', true);
+  staticConfig.set('web.staticAssetsDir', staticAssetsDir);
+  servingStaticOnly = await bootDaemon({
+    homeDirectory: staticHome,
+    workingDir: staticWork,
+    daemonHomeDir: join(staticHome, 'daemon'),
+    port: 0,
+    host: '127.0.0.1',
+    token: TOKEN,
+    configManager: staticConfig,
+  });
+
   // Daemon with defaults (both capabilities OFF) for byte-parity checks.
   offHome = mkdtempSync(join(tmpdir(), 'webui-off-home-'));
   offWork = mkdtempSync(join(tmpdir(), 'webui-off-work-'));
@@ -88,7 +116,8 @@ beforeAll(async () => {
 afterAll(async () => {
   await servingOn?.stop();
   await servingOff?.stop();
-  for (const dir of [onHome, onWork, offHome, offWork, bundleDir]) {
+  await servingStaticOnly?.stop();
+  for (const dir of [onHome, onWork, offHome, offWork, bundleDir, staticAssetsDir, staticHome, staticWork]) {
     if (dir) rmSync(dir, { recursive: true, force: true });
   }
 });
@@ -220,5 +249,83 @@ describe('CORS preflight + emission (allowlist-gated, no wildcard)', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('access-control-allow-origin')).toBeNull();
     await res.json();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Which config key names the served directory
+// ---------------------------------------------------------------------------
+//
+// `web.staticAssetsDir` had a schema row, a default of 'dist/web' and a
+// description promising it was the embedded web surface's static asset
+// directory, and no reader anywhere: serving read only
+// `controlPlane.webui.bundleDir`. These pin the resolved precedence at both
+// positions, in the pure resolver and against a real daemon.
+
+/** A ConfigManager stand-in for the resolver: it reads keys and nothing else. */
+function postureConfig(values: Record<string, unknown>): ConfigManager {
+  return { get: (key: string) => values[key] } as unknown as ConfigManager;
+}
+
+describe('static-directory precedence between the two directory keys', () => {
+  test('bundleDir wins when both name a directory', () => {
+    const posture = resolveWebuiServingPosture(postureConfig({
+      'controlPlane.webui.serve': true,
+      'controlPlane.webui.bundleDir': '/srv/bundle',
+      'web.staticAssetsDir': '/srv/assets',
+    }));
+    expect(posture.bundleDir).toBe('/srv/bundle');
+    expect(posture.bundleDirSource).toBe('controlPlane.webui.bundleDir');
+  });
+
+  test('web.staticAssetsDir supplies the directory when bundleDir is empty', () => {
+    const posture = resolveWebuiServingPosture(postureConfig({
+      'controlPlane.webui.serve': true,
+      'controlPlane.webui.bundleDir': '',
+      'web.staticAssetsDir': '/srv/assets',
+    }));
+    expect(posture.bundleDir).toBe('/srv/assets');
+    expect(posture.bundleDirSource).toBe('web.staticAssetsDir');
+  });
+
+  test('whitespace in either key counts as empty, not as a directory named " "', () => {
+    const posture = resolveWebuiServingPosture(postureConfig({
+      'controlPlane.webui.serve': true,
+      'controlPlane.webui.bundleDir': '   ',
+      'web.staticAssetsDir': '  /srv/assets  ',
+    }));
+    expect(posture.bundleDir).toBe('/srv/assets');
+    expect(posture.bundleDirSource).toBe('web.staticAssetsDir');
+  });
+
+  test('both empty leaves nothing to serve, and neither key is credited', () => {
+    const posture = resolveWebuiServingPosture(postureConfig({
+      'controlPlane.webui.serve': true,
+      'controlPlane.webui.bundleDir': '',
+      'web.staticAssetsDir': '',
+    }));
+    expect(posture.bundleDir).toBe('');
+    expect(posture.bundleDirSource).toBe('');
+  });
+
+  test('neither directory key turns serving on by itself', () => {
+    const posture = resolveWebuiServingPosture(postureConfig({
+      'controlPlane.webui.bundleDir': '/srv/bundle',
+      'web.staticAssetsDir': '/srv/assets',
+    }));
+    expect(posture.serveBundle).toBe(false);
+  });
+
+  test('a real daemon configured with only web.staticAssetsDir serves that directory', async () => {
+    const res = await fetch(`${servingStaticOnly.url}/`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('text/html');
+    expect(await res.text()).toBe(STATIC_INDEX_HTML);
+  });
+
+  test('a real daemon with bundleDir set serves the bundle, not the assets dir', async () => {
+    const res = await fetch(`${servingOn.url}/`);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe(INDEX_HTML);
   });
 });

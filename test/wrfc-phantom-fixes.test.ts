@@ -46,6 +46,77 @@ async function flushMicrotasks(rounds = 10): Promise<void> {
   }
 }
 
+/**
+ * Ceiling for a condition wait. Deliberately far above how long the watchdog
+ * takes to fire even on a badly loaded machine: the wait returns the instant the
+ * predicate holds, so headroom costs a fast host nothing, while a watchdog that
+ * genuinely never fires still fails the test — just later, and with a message
+ * that says what it was waiting for.
+ */
+const WAIT_CEILING_MS = 60_000;
+/** Poll cadence. Small enough that the wait tracks the predicate closely. */
+const WAIT_INTERVAL_MS = 10;
+/**
+ * Per-test budget for the watchdog tests, kept above WAIT_CEILING_MS so a
+ * watchdog that never fires fails with waitUntil's labelled diagnostic instead
+ * of bun's opaque "test timed out" — and so a merely SLOW runner never trips it.
+ */
+const WAIT_TEST_TIMEOUT_MS = 90_000;
+
+/**
+ * Real-clock polling for the watchdog tests.
+ *
+ * The watchdog is a `setInterval` at a quarter of the heartbeat timeout, so
+ * whether it has fired yet is only observable across macrotask boundaries — no
+ * number of microtask drains will advance it.
+ *
+ * Load tolerance: these tests used to sleep a fixed margin over the timeout
+ * (150ms for a 100ms watchdog) and then assert. That margin is three interval
+ * ticks on an idle host and none at all on a contended one, so the test failed
+ * for being slow rather than for being wrong. There is no fixed sleep here: the
+ * loop exits on the first true predicate, and only an unbounded wait counts as a
+ * failure. The thrown message reports the label, the elapsed time and the worst
+ * observed scheduler lag, which separates "the runner was starved" from "the
+ * watchdog never fires".
+ */
+async function waitUntil(
+  predicate: () => boolean,
+  opts: { label?: string; ceilingMs?: number; intervalMs?: number } = {},
+): Promise<void> {
+  const ceilingMs = Math.max(opts.ceilingMs ?? WAIT_CEILING_MS, WAIT_CEILING_MS);
+  const intervalMs = opts.intervalMs ?? WAIT_INTERVAL_MS;
+  const startedAt = Date.now();
+  let worstLagMs = 0;
+  while (!predicate()) {
+    const elapsedMs = Date.now() - startedAt;
+    if (elapsedMs > ceilingMs) {
+      throw new Error(
+        `waitUntil: condition never became true — ${opts.label ?? 'unlabelled predicate'}; ` +
+          `waited ${elapsedMs}ms (ceiling ${ceilingMs}ms), worst poll lag ${worstLagMs}ms`,
+      );
+    }
+    const sleptAt = Date.now();
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    worstLagMs = Math.max(worstLagMs, Date.now() - sleptAt - intervalMs);
+  }
+}
+
+/**
+ * Best-effort settle wait: polls until the predicate holds or `ceilingMs`
+ * elapses, and reports which happened. Never throws — for the two call sites
+ * whose predicate must NOT become true, where the real assertion comes
+ * afterwards. Strictly stronger than the blind sleep it replaced, because it
+ * checks throughout the window instead of only at the end of it.
+ */
+async function waitUpTo(predicate: () => boolean, ceilingMs: number, intervalMs = WAIT_INTERVAL_MS): Promise<boolean> {
+  const deadline = Date.now() + ceilingMs;
+  while (!predicate()) {
+    if (Date.now() > deadline) return false;
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+  return true;
+}
+
 function makeRecord(overrides: Partial<AgentRecord> & { id: string; task: string }): AgentRecord {
   return {
     template: overrides.template ?? 'engineer',
@@ -836,6 +907,23 @@ describe('Item 2: phantom-work detection (controller integration)', () => {
 // ---------------------------------------------------------------------------
 
 describe('Item 4a: silent-agent watchdog', () => {
+  /**
+   * Window over which a chain that must NOT fail is watched. The watchdog clamps
+   * its tick to a 50ms floor, so this holds several ticks of the fastest one the
+   * implementation can produce — long enough for the absence to mean something,
+   * short enough that a negative test does not dominate the file's runtime.
+   */
+  const NEGATIVE_WINDOW_MS = 300;
+  /**
+   * Heartbeat timeout for the streaming test, and the delta cadence under it.
+   * The gap between them IS the load tolerance: a delta must be twenty cadences
+   * late before the watchdog can beat it.
+   */
+  const STREAM_WATCHDOG_TIMEOUT_MS = 1_000;
+  const STREAM_DELTA_INTERVAL_MS = 50;
+  /** How long streaming must outlast the window before the liveness claim holds. */
+  const STREAM_SPAN_MS = STREAM_WATCHDOG_TIMEOUT_MS + 500;
+
   test('chain passes normally when engineer completes before watchdog fires', async () => {
     const { bus, controller, agentStore, spawnedRecords, workflowEvents } = createHarness({
       agentHeartbeatTimeoutMs: 60_000, // long timeout — won't fire
@@ -880,18 +968,21 @@ describe('Item 4a: silent-agent watchdog', () => {
     agentEntry.startedAt = Date.now() - 10_000; // 10 seconds ago
     agentEntry.status = 'running';
 
-    // Manually trigger watchdog tick via a private method access hack
-    // Since the watchdog is private, we wait for the timer to fire naturally
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    // The watchdog is private, so we wait for its timer to fire naturally — on
+    // the condition, not on a clock. Every tick sees a 10-second-old lastSeen
+    // against a 100ms timeout, so the FIRST tick that runs fails the chain
+    // however late the runtime gets around to it.
+    await waitUntil(() => controller.getChain(chain.id)?.state === 'failed', {
+      label: 'watchdog failed the chain of a silent agent',
+    });
     await flushMicrotasks();
 
     const chainRecord = controller.getChain(chain.id);
-    // The watchdog with 100ms timeout should have fired by now and failed the chain
     expect(chainRecord?.state).toBe('failed');
     expect(chainRecord?.error).toContain('went silent');
 
     controller.dispose();
-  });
+  }, WAIT_TEST_TIMEOUT_MS);
 
   test('watchdog disabled (timeout=0) does not fail silent chains', async () => {
     const { controller, agentStore, spawnedRecords } = createHarness({
@@ -903,21 +994,38 @@ describe('Item 4a: silent-agent watchdog', () => {
     const chain = controller.createChain(ownerRecord);
     await flushMicrotasks();
 
-    // Wait a moment — no watchdog should have fired
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    // A timeout of 0 means resetWatchdog() starts no timer at all, so there is
+    // no event to wait FOR here — only the absence of one. Poll for the failure
+    // across a window that would hold several ticks of the shortest watchdog the
+    // clamp allows (50ms), and require that it never arrives.
+    const failed = await waitUpTo(
+      () => controller.getChain(chain.id)?.state === 'failed',
+      NEGATIVE_WINDOW_MS,
+    );
     await flushMicrotasks();
 
+    expect(failed, 'a disabled watchdog failed the chain anyway').toBe(false);
     const chainRecord = controller.getChain(chain.id);
-    // Chain should still be in engineering state, not failed
     expect(chainRecord?.state).toBe('engineering');
 
     controller.dispose();
-  });
+  }, WAIT_TEST_TIMEOUT_MS);
 
   test('MAJ-3: AGENT_STREAM_DELTA resets agentLastSeen so streaming-only agent is not killed by watchdog', async () => {
-    // 150ms timeout, agent streams deltas every 50ms but sends no PROGRESS events.
+    // The agent streams deltas but sends no PROGRESS events. What is asserted is
+    // unchanged: streaming alone keeps the chain alive past the watchdog window,
+    // and the chain dies once streaming stops.
+    //
+    // The RATIO is what changed. This used to run a 150ms watchdog against a 40ms
+    // delta cadence — a margin of under four cadences, which a contended runner
+    // eats without being in any way broken, and the chain then died mid-test for
+    // want of a heartbeat that was merely late. At 1000ms against 50ms, a delta
+    // has to arrive twenty cadences late before the watchdog can win, which is a
+    // genuinely pathological host rather than a busy one — and the assertion
+    // below reports the worst gap it saw, so that case says so instead of
+    // looking like a broken reset.
     const { bus, controller, agentStore, spawnedRecords } = createHarness({
-      agentHeartbeatTimeoutMs: 150,
+      agentHeartbeatTimeoutMs: STREAM_WATCHDOG_TIMEOUT_MS,
     });
 
     const ownerRecord = makeRecord({ id: 'owner-stream', task: 'Streaming watchdog test' });
@@ -929,8 +1037,18 @@ describe('Item 4a: silent-agent watchdog', () => {
     expect(engineerRecord).toBeDefined();
     const agentId = engineerRecord!.id;
 
-    // Emit AGENT_STREAM_DELTA every 40ms for 200ms — well past the 150ms watchdog.
+    // Emit AGENT_STREAM_DELTA on a cadence far shorter than the watchdog window,
+    // recording the worst gap between consecutive deltas so a starved runner is
+    // distinguishable from a broken lastSeen reset.
+    const streamStartedAt = Date.now();
+    let lastDeltaAt = streamStartedAt;
+    let worstDeltaGapMs = 0;
+    let deltaCount = 0;
     const streamInterval = setInterval(() => {
+      const firedAt = Date.now();
+      worstDeltaGapMs = Math.max(worstDeltaGapMs, firedAt - lastDeltaAt);
+      lastDeltaAt = firedAt;
+      deltaCount++;
       bus.emit(
         'agents',
         createEventEnvelope(
@@ -939,20 +1057,30 @@ describe('Item 4a: silent-agent watchdog', () => {
           { sessionId: 'test', traceId: 'test', source: 'test' },
         ),
       );
-    }, 40);
+    }, STREAM_DELTA_INTERVAL_MS);
 
-    // Wait 220ms — streaming kept agent alive past 150ms watchdog window.
-    await new Promise((resolve) => setTimeout(resolve, 220));
+    // Stream until the run has outlasted the watchdog window — the condition the
+    // test is actually about — rather than until a fixed clock reading.
+    await waitUntil(() => Date.now() - streamStartedAt >= STREAM_SPAN_MS, {
+      label: 'streamed continuously past the watchdog window',
+    });
     clearInterval(streamInterval);
     await flushMicrotasks();
 
-    // Chain should NOT have been killed by watchdog (still engineering)
+    // Chain must NOT have been killed by the watchdog: streaming is a heartbeat.
     const chainRecord = controller.getChain(chain.id);
-    expect(chainRecord?.state).toBe('engineering');
+    expect(
+      chainRecord?.state,
+      `chain died while streaming: ${deltaCount} deltas over ${Date.now() - streamStartedAt}ms, ` +
+        `worst gap between deltas ${worstDeltaGapMs}ms against a ${STREAM_WATCHDOG_TIMEOUT_MS}ms watchdog`,
+    ).toBe('engineering');
 
-    // Now stop streaming and wait past timeout — chain should time out.
+    // Now stop streaming — the chain must time out. Waited on the condition, so
+    // the watchdog's tick cadence and any scheduler lag are both immaterial.
     agentStore.get(agentId)!.status = 'running';
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await waitUntil(() => controller.getChain(chain.id)?.state === 'failed', {
+      label: 'watchdog failed the chain once streaming stopped',
+    });
     await flushMicrotasks();
 
     const chainRecordAfter = controller.getChain(chain.id);
@@ -960,7 +1088,7 @@ describe('Item 4a: silent-agent watchdog', () => {
     expect(chainRecordAfter?.error).toContain('went silent');
 
     controller.dispose();
-  });
+  }, WAIT_TEST_TIMEOUT_MS);
 });
 
 // ---------------------------------------------------------------------------
