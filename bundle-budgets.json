@@ -286,8 +286,8 @@
     "rationale": "DaemonReceiptStore persisted update/crash receipts + formatReceiptTime, exported so embedders compose the same receipt lifecycle the facade uses; re-anchored after the recovery-housekeeping pass joined the store (reaping, bounding, content validation instead of existence checks, and the removal disclosure the caller reads back); measured 2563 B gzip @ v1.13.0 release verification; headroom max(ceil(2563*1.2)=3076, 2563+50=2613) -> 3076 (1.2x dominates); previously 1489 B at first export"
   },
   "./platform/devices": {
-    "gzip_bytes": 962,
-    "rationale": "new public package export budget; paired-phone capability contract — catalog, capability ids and input validation, grant and capture store types, housekeeping report; measured 801 B gzip @ 1.15.0 release preparation; headroom max(ceil(801*1.2)=962, 801+50=851) -> 962 (1.2x dominates)"
+    "gzip_bytes": 1318,
+    "rationale": "paired-phone capability contract — catalog, capability ids and input validation, grant and capture store types, housekeeping report; re-anchored when the `device.*` settings mapping, the posture runtime composition (peer transport + approval bridge + config reader) and the `phone` tool moved here from a single consumer, so every daemon host honours the same posture instead of only the one that had wired it; measured 1098 B gzip @ device-posture hoist; headroom max(ceil(1098*1.2)=1318, 1098+50=1148) -> 1318 (1.2x dominates); previously 962 B"
   },
   "./platform/discovery": {
     "gzip_bytes": 194,
