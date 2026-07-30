@@ -19,6 +19,7 @@ import { DaemonAutoUpdater, resolveDaemonInstalledFiles, type AutoUpdateServiceA
 import { DaemonReceiptStore, formatReceiptTime } from './receipts.js';
 import { FeatureAnnouncementStore, collectStartupAnnouncements, featureAnnouncementsPath } from '../runtime/feature-announcements.js';
 import {
+  readLifecycleMarker,
   recordDaemonAutoRollback,
   recordDaemonCleanShutdown,
   recordDaemonStart,
@@ -28,7 +29,29 @@ import {
 import { crashLoopRollbackReceipt, decideCrashLoopRollback } from './boot-rollback.js';
 import { rollbackKeptPrevious, realUpdateFileIo, type UpdateFileIo } from '../runtime/self-update.js';
 import { currentProcessSignals, isCompiledBinaryInvocation } from './daemon-exec-invocation.js';
+import { deliverOwnerAlert } from './owner-alert.js';
+import type { RouteBindingManager } from '../channels/route-manager.js';
+import type { DaemonSurfaceDeliveryHelper } from './surface-delivery.js';
 import { discoverLegacySessionSources, importLegacySessionStores } from '../control-plane/index.js';
+
+/**
+ * The daemon's owner-alert callback: put one line in front of the owner over a
+ * channel that still works.
+ *
+ * It reuses the SAME path a failing channel uses (owner-alert.ts) rather than
+ * adding a second notification mechanism. `null` for the preferred surface
+ * because the subject here is not a channel — the daemon cannot update itself,
+ * or has just rolled itself back to an older build — so no surface earns the
+ * first try and the order is simply the most recently used conversation.
+ */
+export function createDaemonOwnerAlerter(
+  routeBindings: RouteBindingManager,
+  delivery: Pick<DaemonSurfaceDeliveryHelper, 'deliverSurfaceNotice'>,
+): (text: string) => void {
+  return (text: string) => {
+    void deliverOwnerAlert(routeBindings, delivery, null, text);
+  };
+}
 
 /**
  * Boot precondition: fold legacy session stores into the home store before
@@ -162,12 +185,34 @@ export interface DaemonLifecycleRuntimeOptions {
    * Injectable for tests; defaults to the real process-signal check.
    */
   readonly isCompiledBinary?: (() => boolean) | undefined;
+  /**
+   * Put one line in front of the owner over a channel that still works. The
+   * facade supplies the existing owner-alert path; absent (embedded daemons,
+   * tests) means the ERROR log line is the whole record.
+   */
+  readonly alertOwner?: ((text: string) => void) | undefined;
 }
 
 export class DaemonLifecycleRuntime {
   private autoUpdater: DaemonAutoUpdater | null = null;
   private store: DaemonReceiptStore | null = null;
   private promotionTimer: ReturnType<typeof setInterval> | null = null;
+  /**
+   * Whether THIS process has ever reached a fully-started daemon.
+   *
+   * start() is re-entered in-process whenever the control-plane binding
+   * changes, and each re-entry used to record another "start attempt". A
+   * long-running, perfectly healthy daemon could therefore accumulate a
+   * failed-start streak from its own restart cycles and then roll ITSELF back
+   * to the kept previous binary — which is exactly what happened: a daemon up
+   * for ten hours restored an older build over itself, and that older build
+   * could not start at all, leaving the machine with no daemon overnight.
+   *
+   * A failed START means the process never came up. A process that came up
+   * cannot retroactively become one, so once this is set the crash-loop guard
+   * takes no further part in this process's life.
+   */
+  private reachedFullyStarted = false;
 
   constructor(private readonly options: DaemonLifecycleRuntimeOptions) {}
 
@@ -228,6 +273,19 @@ export class DaemonLifecycleRuntime {
     }
   }
 
+  /**
+   * Put a line in front of the owner AND state it at ERROR. Never throws: an
+   * alert that cannot be delivered must not turn a rollback into a crash.
+   */
+  private alertOwner(text: string): void {
+    logger.error(`DaemonServer: ${text}`);
+    try {
+      this.options.alertOwner?.(text);
+    } catch (error) {
+      logger.error('DaemonServer: the owner alert could not be sent', { error: summarizeError(error) });
+    }
+  }
+
   /** Marker call options honoring the injected filesystem/clock seams. */
   private markerOptions(): { io?: LifecycleMarkerIo; now?: () => number } {
     return {
@@ -252,10 +310,13 @@ export class DaemonLifecycleRuntime {
   onStarting(): boolean {
     const artifact = this.options.updateArtifact;
     if (!artifact) return false;
+    // An in-process restart cycle (a control-plane binding change re-enters
+    // start()) is not a boot. See `reachedFullyStarted`.
+    if (this.reachedFullyStarted) return false;
     const threshold = Number(this.options.configManager.get('update.rollbackAfterFailedStarts') ?? 3);
     let attempt: ReturnType<typeof recordDaemonStartAttempt>;
     try {
-      attempt = recordDaemonStartAttempt(this.markerPath(), this.markerOptions());
+      attempt = recordDaemonStartAttempt(this.markerPath(), { ...this.markerOptions(), version: artifact.version });
     } catch (error) {
       logger.warn('DaemonServer: could not record the start attempt — crash-loop rollback is not armed this boot', {
         error: summarizeError(error),
@@ -322,13 +383,31 @@ export class DaemonLifecycleRuntime {
 
     const at = (this.options.now ?? Date.now)();
     this.receiptStore().record(crashLoopRollbackReceipt({ failedStarts, restored: result.restored, at }));
+    const rejectedVersion = this.options.updateArtifact?.version;
     try {
-      recordDaemonAutoRollback(this.markerPath(), this.markerOptions());
+      // Naming the rejected version is what stops the self-update loop from
+      // downloading and installing it again on its very next check — the cycle
+      // that pinned an installed daemon to an old build across three releases.
+      recordDaemonAutoRollback(this.markerPath(), {
+        ...this.markerOptions(),
+        ...(rejectedVersion !== undefined ? { rejectedVersion } : {}),
+      });
     } catch (error) {
       logger.warn('DaemonServer: could not stamp the automatic rollback in the lifecycle marker', {
         error: summarizeError(error),
       });
     }
+    // A rollback is rare, consequential, and changes which version the machine
+    // is running without anyone asking. It goes to the owner directly rather
+    // than waiting for a surface to happen to poll for receipts — the receipt
+    // for the rollback that stranded this machine overnight was still sitting
+    // undelivered the next morning.
+    this.alertOwner(
+      `the daemon rolled itself back${rejectedVersion !== undefined ? ` from v${rejectedVersion}` : ''}`
+      + ` after ${failedStarts} starts in a row did not finish.`
+      + ` The previously installed version has been restored (${result.restored.map((target) => target.label).join(', ')})`
+      + ` and automatic updates will skip that release until a newer one ships`,
+    );
     logger.error('DaemonServer: rolled back to the kept previous version after repeated failed starts; handing over to it', {
       failedStarts,
       restored: result.restored.map((target) => target.path),
@@ -373,9 +452,22 @@ export class DaemonLifecycleRuntime {
    * update loop.
    */
   onStarted(): void {
+    // Only the FIRST fully-started moment in a process can discover that the
+    // process before it died: an in-process restart cycle is looking at the
+    // marker THIS process wrote, which of course still says `running`. Without
+    // this, every control-plane binding change minted a "restarted after a
+    // crash" receipt for a crash that never happened, and the receipt store
+    // filled with them — burying the receipts that meant something.
+    const firstStartInThisProcess = !this.reachedFullyStarted;
+    // Set before anything that can throw: this process HAS come up, and the
+    // crash-loop guard must not accuse it for the rest of its life.
+    this.reachedFullyStarted = true;
     try {
-      const startResult = recordDaemonStart(this.markerPath(), this.markerOptions());
-      if (startResult.crashed) {
+      const startResult = recordDaemonStart(this.markerPath(), {
+        ...this.markerOptions(),
+        ...(this.options.updateArtifact ? { version: this.options.updateArtifact.version } : {}),
+      });
+      if (startResult.crashed && firstStartInThisProcess) {
         this.receiptStore().record(`restarted after a crash at ${formatReceiptTime((this.options.now ?? Date.now)())}`);
       }
     } catch (error) {
@@ -413,7 +505,10 @@ export class DaemonLifecycleRuntime {
     }
     if (restarting) return;
     try {
-      recordDaemonCleanShutdown(this.markerPath(), this.markerOptions());
+      recordDaemonCleanShutdown(this.markerPath(), {
+        ...this.markerOptions(),
+        ...(this.options.updateArtifact ? { version: this.options.updateArtifact.version } : {}),
+      });
     } catch (error) {
       logger.warn('DaemonServer: could not record the clean-shutdown marker', { error: summarizeError(error) });
     }
@@ -455,6 +550,7 @@ export class DaemonLifecycleRuntime {
     }
     const intervalMinutes = Number(configManager.get('update.intervalMinutes') ?? 60);
     const firstCheckSeconds = Number(configManager.get('update.firstCheckSeconds') ?? 30);
+    const alertAfter = Number(configManager.get('update.alertAfterFailedChecks') ?? 3);
     const updater = new DaemonAutoUpdater({
       currentVersion: artifact.version,
       execPath: artifact.execPath ?? process.execPath,
@@ -466,6 +562,11 @@ export class DaemonLifecycleRuntime {
       isIdle: this.options.isIdle,
       receipts: this.receiptStore(),
       serviceActions: this.buildServiceActions(),
+      // Read from disk on every check, not captured once: the rejection this
+      // has to honor was written by the boot BEFORE the one running now.
+      rejectedVersion: () => this.rejectedUpdateVersion(),
+      alertOwner: (text) => this.alertOwner(text),
+      ...(Number.isFinite(alertAfter) ? { alertAfterFailedChecks: alertAfter } : {}),
       ...(this.options.stopGracefully ? { stopGracefully: this.options.stopGracefully } : {}),
     });
     this.autoUpdater = updater;
@@ -479,6 +580,16 @@ export class DaemonLifecycleRuntime {
       firstCheckInMs: updater.firstCheckDelayMs,
       thenEveryMs: updater.checkIntervalMs,
     });
+  }
+
+  /**
+   * The version an automatic rollback rejected and no successful boot has
+   * cleared, or null. Read from the marker on disk each time it is asked for,
+   * because the rollback that recorded it happened in a PREVIOUS process.
+   */
+  private rejectedUpdateVersion(): string | null {
+    const marker = readLifecycleMarker(this.markerPath(), this.options.markerIo);
+    return marker?.rejectedVersion ?? null;
   }
 
   /** The service-manager actions shared by the update swap and boot promotion. */

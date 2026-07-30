@@ -87,6 +87,8 @@ interface Harness {
   /** Handover steps in the order they happened, so "stop first" is provable. */
   sequence: string[];
   scratch: string;
+  /** Every line the updater put in front of the owner, in order. */
+  alerts: string[];
 }
 
 function makeHarness(options: {
@@ -94,6 +96,15 @@ function makeHarness(options: {
   supervised?: boolean;
   latestTag?: string;
   currentVersion?: string;
+  /** The version a crash-loop rollback rejected, as the lifecycle marker would report it. */
+  rejectedVersion?: () => string | null;
+  /** Consecutive failed checks before the owner is told. */
+  alertAfterFailedChecks?: number;
+  alertWindowMs?: number;
+  /** Replaces the release fetch entirely — used to make checks throw. */
+  fetchOverride?: UpdateFetchLike;
+  /** A movable clock, so the alert quiet window is provable without real time. */
+  clock?: () => number;
 } ): Harness {
   const scratch = mkdtempSync(join(tmpdir(), 'auto-updater-'));
   const { files, io } = memoryIo({ '/opt/gv/goodvibes-daemon': Buffer.from('daemon-v1') });
@@ -108,6 +119,7 @@ function makeHarness(options: {
   };
   const exits: number[] = [];
   const timers: Array<{ fn: () => void; ms: number }> = [];
+  const alerts: string[] = [];
   const updater = new DaemonAutoUpdater({
     currentVersion: options.currentVersion ?? '1.0.0',
     execPath: '/opt/gv/goodvibes-daemon',
@@ -119,19 +131,28 @@ function makeHarness(options: {
     isIdle: options.idle,
     serviceActions,
     receipts,
-    fetchImpl,
+    fetchImpl: options.fetchOverride ?? fetchImpl,
     io,
     exitProcess: (code) => { exits.push(code); sequence.push('exit'); },
     stopGracefully: () => { sequence.push('stop'); },
-    now: () => new Date(2026, 6, 12, 14, 30).getTime(),
+    now: options.clock ?? (() => new Date(2026, 6, 12, 14, 30).getTime()),
+    alertOwner: (text) => void alerts.push(text),
+    ...(options.rejectedVersion ? { rejectedVersion: options.rejectedVersion } : {}),
+    ...(options.alertAfterFailedChecks !== undefined ? { alertAfterFailedChecks: options.alertAfterFailedChecks } : {}),
+    ...(options.alertWindowMs !== undefined ? { alertWindowMs: options.alertWindowMs } : {}),
     setTimer: (fn, ms) => {
       timers.push({ fn, ms });
       return 0 as unknown as ReturnType<typeof setTimeout>;
     },
     clearTimer: () => {},
   });
-  return { updater, files, receipts, actions, exits, timers, requests, sequence, scratch };
+  return { updater, files, receipts, actions, exits, timers, requests, sequence, scratch, alerts };
 }
+
+/** A fetch that always throws — a check that cannot complete at all. */
+const unreachableFetch: UpdateFetchLike = async () => {
+  throw new Error('getaddrinfo ENOTFOUND github.com');
+};
 
 describe('DaemonAutoUpdater', () => {
   test('boot-settle first check, then the hourly cadence; a current daemon does nothing', async () => {
@@ -240,6 +261,232 @@ describe('DaemonAutoUpdater', () => {
       await h.updater.tick(); // stopped: no work, no rescheduling
       expect(h.requests).toEqual([]);
       expect(h.timers.length).toBe(timersBefore);
+    } finally {
+      rmSync(h.scratch, { recursive: true, force: true });
+    }
+  });
+});
+
+/**
+ * The lived failure: the daemon updated itself, the new build would not start,
+ * the boot rollback restored the old one — and one check interval later the
+ * loop downloaded and installed the identical release again. Install, fail,
+ * roll back, reinstall, hourly, for days, while three releases shipped and the
+ * installed daemon stayed where it was. Nothing on the machine said so.
+ */
+describe('a release that already crash looped here is not installed again', () => {
+  test('the newest release is skipped when a rollback rejected it, and the swap never happens', async () => {
+    const h = makeHarness({ idle: () => true, rejectedVersion: () => '2.0.0' });
+    try {
+      await h.updater.tick();
+      // Nothing downloaded, nothing swapped, no restart: the tag lookup is the
+      // only request that was made.
+      expect(h.files.get('/opt/gv/goodvibes-daemon')?.toString()).toBe('daemon-v1');
+      expect(h.files.has(`/opt/gv/goodvibes-daemon${PREVIOUS_FILE_SUFFIX}`)).toBe(false);
+      expect(h.actions.restarted).toBe(0);
+      expect(h.receipts.list()).toHaveLength(0);
+      expect(h.requests).toEqual([LATEST_URL]);
+    } finally {
+      rmSync(h.scratch, { recursive: true, force: true });
+    }
+  });
+
+  test('the tag form of the rejected version matches the bare form — v2.0.0 and 2.0.0 are one release', async () => {
+    const h = makeHarness({ idle: () => true, rejectedVersion: () => 'v2.0.0' });
+    try {
+      await h.updater.tick();
+      expect(h.files.get('/opt/gv/goodvibes-daemon')?.toString()).toBe('daemon-v1');
+      expect(h.actions.restarted).toBe(0);
+    } finally {
+      rmSync(h.scratch, { recursive: true, force: true });
+    }
+  });
+
+  test('the owner is told once about the held-back release, not once per check', async () => {
+    const h = makeHarness({ idle: () => true, rejectedVersion: () => '2.0.0' });
+    try {
+      for (let i = 0; i < 5; i++) await h.updater.tick();
+      expect(h.alerts).toHaveLength(1);
+      expect(h.alerts[0]).toContain('not installing v2.0.0');
+      expect(h.alerts[0]).toContain('failed to start');
+      // It says what will un-stick it, and that no owner action is needed.
+      expect(h.alerts[0]).toContain('as soon as a newer release ships');
+    } finally {
+      rmSync(h.scratch, { recursive: true, force: true });
+    }
+  });
+
+  test('a NEWER release than the rejected one installs normally — the daemon un-sticks itself', async () => {
+    // The rollback rejected 2.0.0; the release that fixed it is 2.0.0 here only
+    // because the fixture publishes one tag, so reject the version BELOW it.
+    const h = makeHarness({ idle: () => true, rejectedVersion: () => '1.5.0' });
+    try {
+      await h.updater.tick();
+      expect(h.files.get('/opt/gv/goodvibes-daemon')?.toString()).toBe('daemon-v2');
+      expect(h.actions.restarted).toBe(1);
+      expect(h.alerts).toEqual([]);
+    } finally {
+      rmSync(h.scratch, { recursive: true, force: true });
+    }
+  });
+
+  test('an unreadable rejection record never stops the daemon updating', async () => {
+    const h = makeHarness({
+      idle: () => true,
+      rejectedVersion: () => { throw new Error('marker file is a directory'); },
+    });
+    try {
+      await h.updater.tick();
+      // Failing open costs one retry of a bad release; failing closed would
+      // mean never updating again.
+      expect(h.files.get('/opt/gv/goodvibes-daemon')?.toString()).toBe('daemon-v2');
+    } finally {
+      rmSync(h.scratch, { recursive: true, force: true });
+    }
+  });
+});
+
+/**
+ * The other half of the same incident: an update path that has stopped working
+ * must not stay a WARN line in a debug file. If it fails every hour for three
+ * days, the owner hears about it.
+ */
+describe('repeated update-check failures reach the owner', () => {
+  test('checks are counted before they are announced: two failures are quiet, the third is not', async () => {
+    const h = makeHarness({ idle: () => true, fetchOverride: unreachableFetch, alertAfterFailedChecks: 3 });
+    try {
+      await h.updater.tick();
+      await h.updater.tick();
+      expect(h.updater.failedCheckCount).toBe(2);
+      expect(h.alerts).toEqual([]); // one bad network hour is not news
+
+      await h.updater.tick();
+      expect(h.updater.failedCheckCount).toBe(3);
+      expect(h.alerts).toHaveLength(1);
+      expect(h.alerts[0]).toContain('3 times in a row');
+      // It names the version the owner is actually still running, and why.
+      expect(h.alerts[0]).toContain('v1.0.0');
+      // The reason travels with the alert, in the summarized form the rest of
+      // the platform reports errors in.
+      expect(h.alerts[0]).toContain('DNS lookup failed');
+      expect(h.updater.lastCheckFailure).toContain('DNS lookup failed');
+    } finally {
+      rmSync(h.scratch, { recursive: true, force: true });
+    }
+  });
+
+  test('a persistent failure is ONE message, not one an hour — the quiet window holds', async () => {
+    let clock = new Date(2026, 6, 12, 14, 30).getTime();
+    const h = makeHarness({
+      idle: () => true,
+      fetchOverride: unreachableFetch,
+      alertAfterFailedChecks: 1,
+      alertWindowMs: 12 * 60 * 60 * 1000,
+      clock: () => clock,
+    });
+    try {
+      await h.updater.tick();
+      expect(h.alerts).toHaveLength(1);
+      // Seventy-one more hourly checks, all failing, inside the window.
+      for (let i = 0; i < 71; i++) {
+        clock += 60 * 60 * 1000;
+        if (clock - new Date(2026, 6, 12, 14, 30).getTime() >= 12 * 60 * 60 * 1000) break;
+        await h.updater.tick();
+      }
+      expect(h.alerts).toHaveLength(1);
+
+      // Past the window and still broken: say it again rather than going quiet
+      // forever on a daemon that has not updated in half a day.
+      clock += 12 * 60 * 60 * 1000;
+      await h.updater.tick();
+      expect(h.alerts).toHaveLength(2);
+    } finally {
+      rmSync(h.scratch, { recursive: true, force: true });
+    }
+  });
+
+  test('recovery is stated too, so the owner is not left believing it is still broken', async () => {
+    let reachable = false;
+    const working = releaseFetch({ latestTag: 'v1.0.0' }).fetchImpl; // current: no swap, just a completed check
+    const h = makeHarness({
+      idle: () => true,
+      alertAfterFailedChecks: 2,
+      fetchOverride: async (url) => (reachable ? working(url) : unreachableFetch(url)),
+    });
+    try {
+      await h.updater.tick();
+      await h.updater.tick();
+      expect(h.alerts).toHaveLength(1);
+
+      reachable = true;
+      await h.updater.tick();
+      expect(h.updater.failedCheckCount).toBe(0);
+      expect(h.updater.lastCheckFailure).toBeNull();
+      expect(h.alerts).toHaveLength(2);
+      expect(h.alerts[1]).toContain('working again');
+      expect(h.alerts[1]).toContain('2 consecutive failures');
+    } finally {
+      rmSync(h.scratch, { recursive: true, force: true });
+    }
+  });
+
+  test('the schedule survives failure: a check that cannot complete still re-arms the next one', async () => {
+    const h = makeHarness({ idle: () => true, fetchOverride: unreachableFetch, alertAfterFailedChecks: 3 });
+    try {
+      h.updater.start();
+      expect(h.timers).toHaveLength(1);
+      expect(h.timers[0]!.ms).toBe(BOOT_SETTLE_CHECK_DELAY_MS);
+      // Twelve failing hours. Each one schedules the next at the full cadence:
+      // a daemon that has stopped being able to update must keep TRYING, or
+      // "it will retry" in the alert is not true.
+      for (let i = 0; i < 12; i++) {
+        await h.updater.tick();
+        expect(h.timers[h.timers.length - 1]!.ms).toBe(60 * 60 * 1000);
+      }
+      expect(h.timers).toHaveLength(13);
+      expect(h.updater.failedCheckCount).toBe(12);
+    } finally {
+      rmSync(h.scratch, { recursive: true, force: true });
+    }
+  });
+
+  test('the schedule survives a held-back release too: the loop keeps checking for a newer one', async () => {
+    const h = makeHarness({ idle: () => true, rejectedVersion: () => '2.0.0' });
+    try {
+      h.updater.start();
+      for (let i = 0; i < 6; i++) {
+        await h.updater.tick();
+        // Settled, not deferred: the next check is a full interval away, and
+        // there IS a next check — holding a release is not giving up.
+        expect(h.timers[h.timers.length - 1]!.ms).toBe(60 * 60 * 1000);
+      }
+      expect(h.timers).toHaveLength(7);
+    } finally {
+      rmSync(h.scratch, { recursive: true, force: true });
+    }
+  });
+
+  test('a run of failures that recovers before the threshold never bothers the owner at all', async () => {
+    let reachable = false;
+    const working = releaseFetch({ latestTag: 'v1.0.0' }).fetchImpl;
+    const h = makeHarness({
+      idle: () => true,
+      alertAfterFailedChecks: 3,
+      fetchOverride: async (url) => (reachable ? working(url) : unreachableFetch(url)),
+    });
+    try {
+      await h.updater.tick();
+      await h.updater.tick();
+      reachable = true;
+      await h.updater.tick();
+      // Two failures then a success is a flaky network, not an incident.
+      expect(h.alerts).toEqual([]);
+      // And the count really reset, so the next two failures start from zero.
+      reachable = false;
+      await h.updater.tick();
+      await h.updater.tick();
+      expect(h.alerts).toEqual([]);
+      expect(h.updater.failedCheckCount).toBe(2);
     } finally {
       rmSync(h.scratch, { recursive: true, force: true });
     }
