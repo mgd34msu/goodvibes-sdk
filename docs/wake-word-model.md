@@ -15,20 +15,20 @@ the front of the sentence and race whatever still holds the device.
 
 > **Detection runs, and where it runs is stated per surface.** The
 > `notOperable` declaration is gone, removed in the change that wired capture up
-> as it required. The terminal opens a recorder subprocess
-> (`voice.wake.captureCommand`) and a browser tab opens `getUserMedia`; both feed
-> the same engine and both hand the utterance after a wake to the same
+> as it required. The terminal and the agent open a recorder subprocess
+> (`voice.wake.captureCommand`) and a browser tab opens `getUserMedia`; all three
+> feed the same engine and all three hand the utterance after a wake to the same
 > speech-to-text call. `voice.wake.enabled` now drives the feature gate the way
-> every other capability's setting does.
+> every other capability's setting does, and each surface is opted in by its own
+> `voice.wake.surfaces.*` row.
 >
-> Three limits remain, and each is written in its own settings row rather than
-> behind one blanket claim: `voice.wake.surfaces.agent` has no capture host,
-> `voice.wake.vadThreshold` above 0 refuses to start because no VAD model is
-> pinned to screen frames with, and a browser tab has no filesystem for
-> `voice.wake.retainAudio` or a local `voice.wake.activationSoundPath`.
-> `resolveWakeRuntimeSettings` reads every row and reports these as blockers
-> (the detector does not start) or limitations (it runs, with that row not in
-> force).
+> Two limits remain, and each is written in its own settings row rather than
+> behind one blanket claim: `voice.wake.vadThreshold` above 0 refuses to start
+> because no VAD model is pinned to screen frames with, and a browser tab has no
+> filesystem for `voice.wake.retainAudio` or a local
+> `voice.wake.activationSoundPath`. `resolveWakeRuntimeSettings` reads every row
+> and reports these as blockers (the detector does not start) or limitations (it
+> runs, with that row not in force).
 
 ## What is published
 

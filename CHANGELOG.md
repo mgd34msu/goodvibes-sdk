@@ -115,13 +115,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   removed in the same change that wired capture up as its own comment required,
   so the feature gate now follows the setting instead of refusing it outright.
   Every settings description was rewritten to say what is true PER SURFACE
-  rather than that the feature does nothing: the terminal captures through a
-  recorder subprocess and is on by default, a browser tab captures through
-  `getUserMedia` and is opted in per origin, and the rows that remain limited
-  name their own limit — `voice.wake.surfaces.agent` has no capture host,
-  `voice.wake.vadThreshold` above 0 refuses to start because no VAD model is
-  pinned to screen frames with, and a browser tab has no filesystem for
-  `voice.wake.retainAudio` or a local `voice.wake.activationSoundPath`.
+  rather than that the feature does nothing: the terminal and the agent capture
+  through a recorder subprocess (the terminal on by default), a browser tab
+  captures through `getUserMedia` and is opted in per origin, and the rows that
+  remain limited name their own limit — `voice.wake.vadThreshold` above 0
+  refuses to start because no VAD model is pinned to screen frames with, and a
+  browser tab has no filesystem for `voice.wake.retainAudio` or a local
+  `voice.wake.activationSoundPath`.
 - **The wake engine takes its warning sink from the host**, alongside the
   inference session it already took. It imported the platform logger, which
   writes files and therefore imports `node:fs` — enough to make the engine

@@ -24,8 +24,8 @@ export const VOICE_FEATURE_FLAGS: FeatureFlag[] = [
       + 'Disabled by default because holding a microphone open must be an explicit act; enabling '
       + 'it starts a supervised capture process and shows a persistent listening indicator for as '
       + 'long as it runs. '
-      + 'Live on the terminal (a recorder subprocess) and in the web UI (a browser tab, opted in per '
-      + 'origin). The agent surface has no capture host yet and its row stays off. '
+      + 'Live on all three surfaces: the terminal and the agent through a recorder subprocess, the web UI '
+      + 'in a browser tab. Each is opted in by its own voice.wake.surfaces.* row. '
       + 'Tuned through voice.wake.*, whose threshold, patience and cooldown rows govern how '
       + 'readily it fires, and whose supervisor rows bound how a crashing detector is retried. '
       + 'The model\'s published recall figures are measured on synthesised speech only — no human '
@@ -34,11 +34,11 @@ export const VOICE_FEATURE_FLAGS: FeatureFlag[] = [
     tier: 3,
     runtimeToggleable: true,
     // `notOperable` is GONE, in the same change that wired capture up — which is
-    // the rule this field carried in writing. The terminal opens a recorder
-    // subprocess and the browser tab opens getUserMedia; both feed the engine
-    // frames and both hand the utterance after a wake to the same
-    // speech-to-text call. `voice.wake.surfaces.agent` is the one surface still
-    // without a capture host, and it defaults off and says so in its own row
-    // rather than being covered by a blanket declaration here.
+    // the rule this field carried in writing. The terminal and the agent open a
+    // recorder subprocess and the browser tab opens getUserMedia; all three feed
+    // the engine frames and all three hand the utterance after a wake to the same
+    // speech-to-text call. What remains limited is per-ROW, not per-surface
+    // (voice.wake.vadThreshold has no pinned VAD model; a browser tab has no
+    // filesystem), and each of those rows says so itself.
   },
 ];

@@ -475,8 +475,17 @@ describe('the feature is operable now, and the copy no longer says otherwise', (
 
   test('the rows that are still limited name their own limit, rather than a blanket claim', () => {
     const rowFor = (key: string) => voiceWakeConfigSettings.find((r) => r.key === key)?.description ?? '';
-    // The agent has no capture host; its own row says so.
-    expect(rowFor('voice.wake.surfaces.agent')).toContain('NO CAPTURE HOST');
+    // Every delivery surface captures now, and each row says how: the agent
+    // through the same recorder subprocess the terminal uses.
+    expect(rowFor('voice.wake.surfaces.agent')).toContain('recorder subprocess');
+    expect(rowFor('voice.wake.surfaces.agent')).toContain('agent conversation input');
+    // Off by default for a stated reason, not because it does not work.
+    expect(rowFor('voice.wake.surfaces.agent')).toContain('not because it does not work');
+    // And no row anywhere still claims a surface has nothing behind it.
+    for (const row of voiceWakeConfigSettings) {
+      expect(row.description).not.toContain('no capture host');
+      expect(row.description).not.toContain('NO CAPTURE HOST');
+    }
     // The VAD row says no model is pinned and that a non-zero value refuses.
     expect(rowFor('voice.wake.vadThreshold')).toContain('NO VAD MODEL IS PINNED');
     // The browser cannot read a local sound path or retain audio; both say so.
