@@ -118,6 +118,33 @@ describe('the wake-word verbs ride the same registered group', () => {
     expect(createWakeModelHandler(service)({ component: 'classifier' } as never)).toEqual(stubChunk);
   });
 
+  test('a GET verb\'s numbers arrive as strings, and the handler must not read them as 0', () => {
+    // The control plane states outright that GET params arrive as query strings
+    // and are not type-checked, so this is exactly what the daemon delivers. A
+    // handler that required a number would silently reset offset to 0, and a
+    // chunked client would re-fetch the first chunk forever.
+    const seen: Array<{ offset?: number | undefined; maxBytes?: number | undefined }> = [];
+    const capturing: VoiceSetupGatewayService = {
+      ...service,
+      wakeModelChunk: (request) => {
+        seen.push({ offset: request.offset, maxBytes: request.maxBytes });
+        return stubChunk;
+      },
+    };
+    createWakeModelHandler(capturing)({ component: 'classifier', offset: '524288', maxBytes: '1024' } as never);
+    expect(seen[0]).toEqual({ offset: 524288, maxBytes: 1024 });
+    // Absent stays absent rather than becoming 0-with-intent.
+    createWakeModelHandler(capturing)({ component: 'classifier' } as never);
+    expect(seen[1]).toEqual({ offset: undefined, maxBytes: undefined });
+  });
+
+  test('a nonsense offset is refused loudly instead of read as the start of the file', () => {
+    expect(() => createWakeModelHandler(service)({ component: 'classifier', offset: 'abc' } as never))
+      .toThrow(/offset must be a non-negative number/);
+    expect(() => createWakeModelHandler(service)({ component: 'classifier', offset: '-5' } as never))
+      .toThrow(/offset must be a non-negative number/);
+  });
+
   test('an unrecognised component is refused with a written reason, not turned into a path', () => {
     expect(() => createWakeModelHandler(service)({ component: '../../etc/passwd' } as never))
       .toThrow(/component must be classifier, embedding or notice/);
