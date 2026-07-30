@@ -50,7 +50,12 @@ export interface RecorderCaptureOptions {
   readonly isInstalled: (command: string) => boolean;
   /** `process.platform`; decides ffmpeg's input format. */
   readonly platform?: string | undefined;
-  /** True when libspeexdsp is present, so `speex` can be honoured or refused. */
+  /**
+   * True only when this host ACTUALLY APPLIES speex suppression to the captured
+   * audio. No shipped host does — the stage needs libspeexdsp bindings the
+   * platform does not ship — so `speex` is refused rather than captured
+   * unfiltered through a filter the user configured.
+   */
   readonly speexAvailable?: boolean | undefined;
   readonly sampleRate?: number | undefined;
   readonly warn?: AudioCaptureWarn | undefined;
@@ -98,8 +103,9 @@ export function createRecorderCaptureOpener(options: RecorderCaptureOptions): Au
     if (request.noiseSuppression === 'speex' && options.speexAvailable !== true) {
       throw new AudioCaptureError(
         'noise-suppression-unavailable',
-        'voice.wake.noiseSuppression is set to "speex" but libspeexdsp is not present on this host, '
-        + 'so audio would be captured unfiltered. Install libspeexdsp or set the row back to "none".',
+        'voice.wake.noiseSuppression is set to "speex", but this host applies no speex suppression — the stage '
+        + 'needs libspeexdsp bindings the platform does not ship. Refusing rather than capturing unfiltered audio '
+        + 'through a filter you configured. Set the row back to "none".',
       );
     }
     const resolved = resolveRecorderCommand(request.backend, {

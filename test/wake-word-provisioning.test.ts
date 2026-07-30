@@ -25,6 +25,7 @@ import {
   startWakeRecoverySweeper,
   WAKE_REAP_RECEIPT_FILE,
   type WakeReapSummary,
+  retainedClipFileName,
 } from '../packages/sdk/src/platform/voice/wake/recovery.js';
 import {
   resolveWakeWordModel,
@@ -346,5 +347,22 @@ describe('how the model is described to a user', () => {
     expect(text).toContain('synthesised speech only');
     expect(text).toContain('no human recording of the phrase exists');
     expect(text).toContain('false-accept figures ARE measured on real human speech');
+  });
+});
+
+describe('the retained-clip naming the sweeper depends on', () => {
+  test('the session id is the first --delimited segment, which is what makes an orphan recognisable', () => {
+    const name = retainedClipFileName('sess-abc', Date.UTC(2026, 6, 29, 12, 34, 56, 789));
+    expect(name.split('--')[0]).toBe('sess-abc');
+    expect(name.endsWith('.wav')).toBe(true);
+    // No characters that are unportable in a filename.
+    expect(name).not.toMatch(/[:/\\]/);
+  });
+
+  test('a session id that would split the convention is made safe first', () => {
+    // A `--` inside the id would make the sweeper read a truncated session id
+    // and reap a live session's clips as orphans.
+    const name = retainedClipFileName('weird--id/with:chars', 0);
+    expect(name.split('--')[0]).toBe('weird-id_with_chars');
   });
 });

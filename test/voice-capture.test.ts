@@ -375,14 +375,14 @@ describe('the recorder capture stream', () => {
     expect(stops).toEqual(['requested']);
   });
 
-  test('speex without libspeexdsp is refused, never run unfiltered', async () => {
+  test('speex is refused while no surface implements it, never run unfiltered', async () => {
     const child = fakeProcess();
     await expect(
       opener(child)({ ...request, noiseSuppression: 'speex' }, { onFrame: () => {}, onStopped: () => {} }),
-    ).rejects.toThrow(/libspeexdsp is not present/);
+    ).rejects.toThrow(/applies no speex suppression/);
   });
 
-  test('speex with the library present opens normally', async () => {
+  test('speex opens normally once a host declares it actually applies the stage', async () => {
     const child = fakeProcess();
     const stream = await opener(child, { speexAvailable: true })(
       { ...request, noiseSuppression: 'speex' },
