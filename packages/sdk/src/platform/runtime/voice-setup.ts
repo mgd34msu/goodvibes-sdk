@@ -32,6 +32,7 @@ import {
   type WakeModelChunkResult,
   type WakeSetupService,
 } from './wake-setup.js';
+import type { WakeInstallProvisionOutcome } from '../voice/wake/install-provision.js';
 
 /** What voice.local.install resolves with (the wire receipt). */
 export interface VoiceInstallReceipt {
@@ -66,6 +67,14 @@ export interface VoiceSetupService {
   /** Wake-word artifact state, verified by content. See runtime/wake-setup.ts. */
   wakeStatus(): ReturnType<WakeSetupService['status']>;
   wakeProvision(): ReturnType<WakeSetupService['provision']>;
+  /**
+   * Install/boot provisioning: fetch whatever is missing, never throw, report one
+   * line. Not admission-gated, unlike {@link wakeProvision} — a host that refused
+   * this under memory pressure would ship an install with no model and no retry
+   * until someone noticed, and the 6 MB it buffers is not what puts a daemon under
+   * pressure. It joins the same single flight, so it cannot double the work either.
+   */
+  wakeEnsureProvisioned(options?: { readonly recoveryHint?: string | undefined }): Promise<WakeInstallProvisionOutcome>;
   wakeModelChunk(request: WakeModelChunkRequest): WakeModelChunkResult;
 }
 
@@ -140,7 +149,7 @@ export function createVoiceSetupService(deps: VoiceSetupServiceDeps): VoiceSetup
     },
     wakeStatus: () => wake.status(),
     async wakeProvision() {
-      // Same admission gate as the local runtime install: this one is 3.7 MB
+      // Same admission gate as the local runtime install: this one is 6.1 MB
       // rather than 209 MB, but it still buffers artifacts to verify them, and
       // refusing honestly under memory pressure beats adding to it.
       const admission = deps.admitExpensiveWork('wake-word model provision');
@@ -149,6 +158,7 @@ export function createVoiceSetupService(deps: VoiceSetupServiceDeps): VoiceSetup
       }
       return wake.provision();
     },
+    wakeEnsureProvisioned: (options) => wake.ensureProvisioned(options),
     wakeModelChunk: (request) => wake.modelChunk(request),
   };
 }

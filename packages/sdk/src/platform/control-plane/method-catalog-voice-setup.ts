@@ -115,8 +115,10 @@ const WAKE_STATUS_SCHEMA = objectSchema({
   ready: BOOLEAN_SCHEMA,
   reason: NULLABLE_STRING,
   classifier: WAKE_ARTIFACT_SCHEMA,
+  mobileClassifier: WAKE_ARTIFACT_SCHEMA,
   notice: WAKE_ARTIFACT_SCHEMA,
   embedding: WAKE_ARTIFACT_SCHEMA,
+  embeddingNotice: WAKE_ARTIFACT_SCHEMA,
   vad: WAKE_ARTIFACT_SCHEMA,
   vadNotice: WAKE_ARTIFACT_SCHEMA,
   vadReady: BOOLEAN_SCHEMA,
@@ -124,30 +126,41 @@ const WAKE_STATUS_SCHEMA = objectSchema({
   modelVersion: NULLABLE_STRING,
   recallIsSyntheticOnly: BOOLEAN_SCHEMA,
 }, [
-  'ready', 'reason', 'classifier', 'notice', 'embedding', 'vad', 'vadNotice', 'vadReady',
-  'downloadBytes', 'modelVersion', 'recallIsSyntheticOnly',
+  'ready', 'reason', 'classifier', 'mobileClassifier', 'notice', 'embedding', 'embeddingNotice',
+  'vad', 'vadNotice', 'vadReady', 'downloadBytes', 'modelVersion', 'recallIsSyntheticOnly',
 ]);
 
 const WAKE_PROVISION_RESULT_SCHEMA = objectSchema({
   ready: BOOLEAN_SCHEMA,
+  mobileFormatReady: BOOLEAN_SCHEMA,
   vadReady: BOOLEAN_SCHEMA,
   modelVersion: NULLABLE_STRING,
   noticePath: NULLABLE_STRING,
+  embeddingNoticePath: NULLABLE_STRING,
   recallIsSyntheticOnly: BOOLEAN_SCHEMA,
   outcomes: {
     type: 'array',
     items: objectSchema({
-      component: { type: 'string', enum: ['classifier', 'notice', 'embedding', 'vad', 'vad-notice'] },
+      component: {
+        type: 'string',
+        enum: ['classifier', 'mobile-classifier', 'notice', 'embedding', 'embedding-notice', 'vad', 'vad-notice'],
+      },
       state: { type: 'string', enum: ['installed', 'skipped', 'failed'] },
       path: STRING_SCHEMA,
       bytes: NUMBER_SCHEMA,
       error: STRING_SCHEMA,
     }, ['component', 'state', 'path']),
   },
-}, ['ready', 'vadReady', 'modelVersion', 'noticePath', 'recallIsSyntheticOnly', 'outcomes']);
+}, [
+  'ready', 'mobileFormatReady', 'vadReady', 'modelVersion', 'noticePath', 'embeddingNoticePath',
+  'recallIsSyntheticOnly', 'outcomes',
+]);
 
 const WAKE_MODEL_CHUNK_SCHEMA = objectSchema({
-  component: { type: 'string', enum: ['classifier', 'embedding', 'notice', 'vad'] },
+  component: {
+    type: 'string',
+    enum: ['classifier', 'tflite', 'embedding', 'notice', 'embedding-notice', 'vad', 'vad-notice'],
+  },
   offset: NUMBER_SCHEMA,
   bytes: NUMBER_SCHEMA,
   totalBytes: NUMBER_SCHEMA,
@@ -183,12 +196,18 @@ export const builtinGatewayVoiceSetupMethodDescriptors: readonly GatewayMethodDe
     id: 'voice.wake.status',
     title: 'Get Wake-Word Model State',
     description:
-      'Whether the pinned wake-word artifacts are on disk and VERIFIED BY CONTENT: the "hey goodvibes" classifier, its '
-      + 'attribution NOTICE, the speech-embedding front end the classifier sits behind, and the speech gate '
-      + 'voice.wake.vadThreshold runs (reported as vadReady, separately from ready, because the detector runs without it — '
-      + 'the row defaults to 0). Each reports verified, corrupt '
-      + '(present but failing its checksum — a truncated or swapped file, distinct from missing) and its byte size, with the '
-      + 'total a fresh provision would download. Also restates that the model\'s published recall figures are measured on '
+      'Whether the pinned wake-word artifacts are on disk and VERIFIED BY CONTENT: the "hey goodvibes" classifier, the '
+      + 'tflite form of the same classifier, the speech-embedding front end the classifier sits behind, the speech gate '
+      + 'voice.wake.vadThreshold runs, and the attribution NOTICE belonging to each of the three redistributable artifacts '
+      + '(the classifier\'s, the front end\'s and the gate\'s). Each reports '
+      + 'verified, corrupt (present but failing its checksum — a truncated or swapped file, distinct from missing) and its '
+      + 'byte size, with the total a fresh provision would download. Installing goodvibes provisions these, and a daemon '
+      + 'retries at boot whatever the install could not fetch, so on a normal machine this reads ready without anyone having '
+      + 'run a setup command; an offline install reports not-provisioned here until it is retried. The overall ready flag '
+      + 'covers the classifier, the front end and both of THEIR NOTICEs — an artifact whose attribution is missing is not one '
+      + 'this daemon may serve — and excludes two things: the tflite twin, which nothing here loads, so a host missing just '
+      + 'that can still detect; and the speech gate, reported as vadReady instead, because voice.wake.vadThreshold defaults '
+      + 'to 0 and the detector runs without it. Also restates that the model\'s published recall figures are measured on '
       + 'synthesised speech only, which any surface describing the model must carry. Never downloads. Read-only.',
     category: 'health',
     scopes: ['read:health'],
@@ -200,11 +219,15 @@ export const builtinGatewayVoiceSetupMethodDescriptors: readonly GatewayMethodDe
     id: 'voice.wake.provision',
     title: 'Download the Wake-Word Models',
     description:
-      'Download and checksum-verify the pinned wake-word classifier, its NOTICE, the speech-embedding front end and the '
-      + 'speech gate voice.wake.vadThreshold runs, into the goodvibes-managed directory — about 3.7 MB. Downloads only when you ask, and is resumable by re-running: an artifact '
-      + 'that already matches its pin is skipped, and one that is present but fails verification is replaced rather than used. '
-      + 'A failed or mismatched download keeps nothing at the destination. Single-flight: two surfaces asking at once join one '
-      + 'download instead of racing for the same files.',
+      'Download and checksum-verify the pinned wake-word classifier in both runtime formats (onnx and tflite), the '
+      + 'speech-embedding front end, the speech gate voice.wake.vadThreshold runs, and the attribution NOTICE of each, into '
+      + 'the goodvibes-managed directory — about 6.1 MB. '
+      + 'Installing goodvibes already does '
+      + 'this, and a daemon retries at boot, so this verb is the RECOVERY path: an install that was offline, an artifact that '
+      + 'failed verification, or a re-provision after the pinned model changes. Resumable by re-running: an artifact that '
+      + 'already matches its pin is skipped, and one that is present but fails verification is replaced rather than used. '
+      + 'A failed or mismatched download keeps nothing at the destination. Single-flight: two surfaces asking at once — or a '
+      + 'boot attempt and a user asking — join one download instead of racing for the same files.',
     category: 'health',
     scopes: ['write:config'],
     http: { method: 'POST', path: '/api/voice/wake/provision' },
@@ -219,12 +242,20 @@ export const builtinGatewayVoiceSetupMethodDescriptors: readonly GatewayMethodDe
       + 'cross-origin fetch of the release asset is refused because that asset answers with no CORS header. Each chunk carries '
       + 'the offset, the whole artifact\'s size, and its PINNED sha256, so a client reassembles the file and verifies it against '
       + 'the pin: a truncated transfer fails at the consumer instead of loading as a model that silently never detects. '
-      + 'Provision first — this serves what is on disk and does not download.',
+      + 'Both classifier formats are served — "classifier" is the onnx build a browser tab loads, "tflite" the same classifier '
+      + 'for a runtime that cannot — as is the speech gate voice.wake.vadThreshold runs ("vad"), and so is the attribution '
+      + 'NOTICE of each redistributable artifact ("notice" for the classifier, "embedding-notice" for the front end, '
+      + '"vad-notice" for the gate), because a client that can fetch the bytes but not the NOTICE '
+      + 'cannot satisfy the terms it received them under. Serves what is on disk and does not download; installation puts it '
+      + 'there, and voice.wake.provision is the recovery path when it is missing.',
     category: 'health',
     scopes: ['read:health'],
     http: { method: 'GET', path: '/api/voice/wake/model' },
     inputSchema: objectSchema({
-      component: { type: 'string', enum: ['classifier', 'embedding', 'notice', 'vad'] },
+      component: {
+        type: 'string',
+        enum: ['classifier', 'tflite', 'embedding', 'notice', 'embedding-notice', 'vad', 'vad-notice'],
+      },
       offset: NUMBER_SCHEMA,
       maxBytes: NUMBER_SCHEMA,
     }, ['component']),

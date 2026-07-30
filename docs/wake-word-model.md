@@ -57,12 +57,57 @@ detector itself stays ready, which is why the gate is not part of
 The `.onnx` and `.tflite` twins are bit-identical in every decision on every
 evaluation clip — they are the same classifier in two runtime formats.
 
-**The `.tflite` twin is pinned but not currently exercised.** The engine runs
-onnxruntime-web everywhere, including in the browser, so it consumes the
-`.onnx` artifact only. The TFLite file is published and checksummed for a
-mobile runtime that does not exist here yet; nothing in this repository loads
-it, and no test scores against it. Its bit-identical claim rests on the
-training-time comparison recorded above, not on continuous verification.
+**The `.tflite` twin is provisioned and served, but not loaded here.** The engine
+runs onnxruntime-web everywhere, including in the browser, so nothing in this
+repository loads the TFLite file and no test scores against it — its
+bit-identical claim rests on the training-time comparison recorded above, not on
+continuous verification. It IS downloaded alongside the `.onnx` build and served
+by `voice.wake.model.get` (`component=tflite`), so a runtime that cannot load
+onnx has the same access to the model as one that can. It does **not** gate
+`ready` — the only pinned artifact that does not: the detector this SDK runs needs
+the `.onnx` build, the front end, and **both** attribution NOTICEs, so a host that
+got those four and missed the twin is a host that detects, and reporting otherwise
+would be false in the unhelpful direction.
+
+## How it gets onto a machine
+
+**The model ships with the installation.** That is a deliberate reversal of the
+first shape of this feature, where provisioning was reachable only by typing
+`/voice wake setup`. Everything needed to detect the phrase existed and the
+ordinary outcome of installing goodvibes was a wake word that could not start,
+waiting on a download most people would never go and find.
+
+Three seams, one policy
+(`packages/sdk/src/platform/voice/wake/install-provision.ts`):
+
+| when | who calls it | what happens |
+|---|---|---|
+| curl installer | `install_wake_word_model` in the TUI's `scripts/install.sh`, running the installed `goodvibes-daemon provision-wake-model` | artifacts land before the daemon is started |
+| `npm`/`bun install` | the TUI's `scripts/postinstall.js` | same policy, in-process |
+| every daemon boot | `startWakeBootProvisioning` | sweeps the tree, then fetches whatever is still missing |
+
+Four rules hold across all three:
+
+1. **A failed download never fails the installation.** No path throws — not an
+   absent network, not DNS, not a proxy serving HTML, not an unwritable home
+   directory. A failure degrades to precisely the previous behaviour: status
+   reports `not-provisioned` **by content**, and the recovery command works.
+2. **It says so once, plainly.** One line of prose naming what happened and how
+   to retry, printed by the installer or logged by the daemon. Not a stack trace,
+   not a debug-level line nobody reads, and not one message per artifact.
+3. **It reaps before it retries.** An attempt killed mid-download leaves a
+   partial, and a file that exists but does not hash to its pin must never be
+   re-used. Each run sweeps first (`recovery.ts`), which is what makes the boot
+   retry converge rather than re-inspecting the same torn file forever.
+4. **Turning the feature on still downloads nothing.** `voice.wake.enabled`
+   moving to `true` reads the artifacts and refuses honestly when they are
+   missing, naming the recovery command. Installing and booting are the
+   sanctioned acts, each with a receipt; a switch is not one.
+
+`GOODVIBES_SKIP_WAKE_MODEL_DOWNLOAD=1` installs without the model — for an
+air-gapped host, a CI image, or a user who does not want the feature. It is
+reported in the same one-line message, so opting out never looks like a silent
+failure.
 
 ## Swapping in a newer model
 
@@ -191,7 +236,9 @@ quality silently.
 ### The re-sourced embedding artifact
 
 Hosted at the same append-only `voice-runtimes-v1` tag, with a `.sha256`
-sidecar and its own NOTICE:
+sidecar and its own NOTICE. **Both** rows are provisioned, served, and counted in
+the reported download size — see "Attribution is mandatory" below for why the
+NOTICE is not optional:
 
 | artifact | bytes | sha256 |
 |---|---|---|
@@ -217,6 +264,30 @@ Commons Attribution, which **requires** attribution, so
 `goodvibes-wakeword-hey-goodvibes-1.0.0.NOTICE.txt` must be retained and
 reproduced by anything that redistributes the artifacts. It is pinned and
 checksummed in the manifest like any other asset.
+
+**There are TWO redistributable artifacts here, so there are two NOTICEs, and both
+are treated identically.** The classifier is ours; the front end is Google's
+Apache-2.0 `speech_embedding` build, whose own
+`goodvibes-speech-embedding-1.0.0.NOTICE.txt` carries that grant. The daemon
+serves the embedding's bytes over the same chunk path it serves the classifier's
+(`voice.wake.model.get`), which makes it a redistribution on exactly the same
+terms. So both NOTICEs are:
+
+- **fetched** by provisioning (`embedding-notice` is a component of the plan, not
+  an afterthought);
+- **counted** in `downloadBytes`, through the manifest's own
+  `wakeWordProvisionBytes` and `wakeWordFrontEndProvisionBytes` rather than a
+  hand-written sum at each call site — which is how the front end's NOTICE went
+  uncounted and unfetched in the first place;
+- **served** as their own chunk components (`notice`, `embedding-notice`), because
+  a client that can fetch the bytes but not the NOTICE cannot satisfy the terms it
+  received them under;
+- **required for `ready`**, because an artifact whose attribution is not on disk is
+  not one this tree may hand to anything; and
+- **kept by the sweeper**, whose pinned-filename set names them explicitly. A file
+  the provisioner writes and the sweeper does not recognise gets deleted once an
+  hour, forever — that defect shipped once for the `.tflite`, and the front-end
+  directory's NOTICE was the next place it could have happened.
 
 Training data credited in the NOTICE: LibriTTS-R and LibriSpeech (CC BY 4.0),
 MUSAN `music/rfm` and `noise/sound-bible` (CC BY 3.0), MUSAN `noise/free-sound`
