@@ -4,7 +4,16 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
-## [Unreleased]
+## [1.21.0] - 2026-07-30
+
+Hardens the daemon's own lifecycle after a night it handled badly: the
+auto-updater no longer rolls a healthy daemon backwards and tells the owner
+when updates keep failing, a fatal boot error now says what is wrong on the
+terminal instead of dying silently, an unreadable setting is skipped loudly
+instead of killing the daemon or being silently ignored, state migrated by a
+newer component names the version floor instead of crashing an older reader,
+`--daemon-home` actually governs the daemon's state directory, and a compiled
+daemon no longer dies at startup over an absent optional package.
 
 ### Changed
 
