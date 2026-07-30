@@ -8,6 +8,8 @@ import { extractCommandArgs } from '../runtime/permissions/rules/prefix.js';
 import { extractPathArgs } from '../runtime/permissions/rules/path-scope.js';
 import type { PolicyRuntimeState } from '../runtime/permissions/policy-runtime.js';
 import { LayeredPolicyEvaluator } from '../runtime/permissions/evaluator.js';
+import { exportDecisions } from '../runtime/permissions/decision-otlp.js';
+import type { DecisionOtlpConfig } from '../runtime/permissions/decision-otlp.js';
 import type { PermissionDecision as LayeredPermissionDecision } from '../runtime/permissions/types.js';
 import {
   SHIPPED_CREDENTIAL_READ_RULES,
@@ -53,6 +55,27 @@ export interface PermissionConfigReader {
   isAutoApproveEnabled(): boolean;
   getSnapshot(): PermissionConfigSnapshot;
   getWorkingDirectory(): string | null;
+  /**
+   * The `telemetry.decisionOtlp*` keys, as the exporter's own config shape.
+   *
+   * A method of its own rather than three more domains on
+   * {@link PermissionConfigSnapshot}, so the narrowing above survives: a
+   * stand-in reader that does not care about decision export omits this and
+   * exports nothing, which is also the shipped default.
+   */
+  getDecisionOtlpConfig?(): DecisionOtlpConfig;
+}
+
+/** Read the three `telemetry.decisionOtlp*` keys into the exporter's config. */
+function readDecisionOtlpConfig(configManager: Pick<ConfigManager, 'get'>): DecisionOtlpConfig {
+  const signal = configManager.get('telemetry.decisionOtlpSignal');
+  return {
+    enabled: configManager.get('telemetry.decisionOtlpEnabled') === true,
+    endpoint: String(configManager.get('telemetry.decisionOtlpEndpoint') ?? ''),
+    // A hand-edited settings file is the only way to get something outside the
+    // enum here, and spans are the shape the key ships with.
+    signal: signal === 'log' || signal === 'both' ? signal : 'span',
+  };
 }
 
 export function createPermissionConfigReader(
@@ -62,6 +85,8 @@ export function createPermissionConfigReader(
     isAutoApproveEnabled: () => isAutoApproveEnabled(configManager),
     getSnapshot: () => getConfigSnapshot(configManager),
     getWorkingDirectory: () => configManager.getWorkingDirectory(),
+    // Read per decision, not captured: switching export on is a live change.
+    getDecisionOtlpConfig: () => readDecisionOtlpConfig(configManager),
   };
 }
 
@@ -496,7 +521,38 @@ export class PermissionManager {
       rules,
       defaultEffect: 'deny',
     });
-    return evaluator.evaluate(toolName, args);
+    const decision = evaluator.evaluate(toolName, args);
+    this.exportDecisionRecords(evaluator, mode);
+    return decision;
+  }
+
+  /**
+   * Hand this evaluation's decision-log records to the OTLP exporter.
+   *
+   * `runtime/permissions/decision-otlp.ts` was fully built — attribute mapping,
+   * both record shapes, the POST, the off-by-default guards — and called from
+   * nowhere, so `telemetry.decisionOtlpEnabled` promised an export that could
+   * not happen. This is the seam where a decision comes into existence: the
+   * evaluator is constructed per evaluation, so its log holds exactly the
+   * records this call produced.
+   *
+   * Fire-and-forget, and deliberately so. `exportDecisions` never throws and
+   * reports its own failures, and a permission decision must not wait on a
+   * collector: an unreachable endpoint would otherwise stall every tool call.
+   * One record per request rather than a batch, because a batch would mean
+   * holding decisions back from a collector to save round trips on a path that
+   * is off unless an operator asked for it.
+   */
+  private exportDecisionRecords(
+    evaluator: LayeredPolicyEvaluator,
+    mode: PermissionConfigSnapshot['permissions']['mode'],
+  ): void {
+    const config = this.configReader.getDecisionOtlpConfig?.();
+    if (!config?.enabled || !config.endpoint.trim()) return;
+    void exportDecisions(evaluator.log.query(), config, { mode: mode ?? 'prompt' })
+      .catch((error: unknown) => {
+        logger.warn('decision OTLP export failed', { error: summarizeError(error) });
+      });
   }
 
   private mapEvaluatorDecision(

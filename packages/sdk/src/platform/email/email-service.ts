@@ -46,6 +46,7 @@ import { readSenderAuthentication } from '../google/sender-authentication.js';
 import { ImapClient, IMAP_MAX_FETCH_UIDS } from './imap-client.js';
 import { SmtpClient, validateSmtpAddress, validateSmtpSubject } from './smtp-client.js';
 import {
+  imapSocketFactoryFor,
   readEmailConfig,
   resolveEmailPassword,
   smtpPasswordRefFor,
@@ -105,10 +106,25 @@ export function ensureEmailConfigDefaults(
 /** SMTP connection security mode. 'auto' = port-based default (465→tls, else starttls). */
 export type SmtpSecurityMode = 'tls' | 'starttls' | 'auto';
 
+/**
+ * IMAP connection security mode. 'tls' (default) is implicit TLS on the IMAP
+ * port; 'plaintext' is an unencrypted connection, legitimate for a localhost or
+ * test server, and what `surfaces.email.imap.secure: false` selects. No 'auto':
+ * the operator either asked for TLS or asked not to have it.
+ */
+export type ImapSecurityMode = 'tls' | 'plaintext';
+
 export interface EmailConfig {
   readonly enabled: boolean;
   readonly imapHost: string;
   readonly imapPort: number;
+  /**
+   * IMAP connection security. Absent means 'tls', which is what every config
+   * written before this field existed means. `readEmailConfig` always populates
+   * it; it is optional so that adding it does not break an embedder that builds
+   * an `EmailConfig` itself.
+   */
+  readonly imapSecurity?: ImapSecurityMode | undefined;
   readonly smtpHost: string;
   readonly smtpPort: number;
   /** SMTP connection security. Default: 'auto' (port-based). */
@@ -277,7 +293,7 @@ export interface EmailDraftInput {
 export type EmailSocketFactory = (host: string, port: number) => Promise<Socket>;
 
 /**
- * The three real connections this service can need.
+ * The real connections this service can need.
  *
  * A port rather than a direct call so that the service half never imports
  * `node:tls`: the concrete implementation is `nodeEmailTransport` in the
@@ -286,6 +302,13 @@ export type EmailSocketFactory = (host: string, port: number) => Promise<Socket>
 export interface EmailTransportPort {
   /** IMAP over implicit TLS (port 993). */
   readonly connectImapTls: EmailSocketFactory;
+  /**
+   * IMAP over a plain, unencrypted connection. Reached only when
+   * `surfaces.email.imap.secure` is false. OPTIONAL because embedders implement
+   * this public type and every existing one predates the member; one that omits
+   * it is refused by name rather than quietly upgraded back to TLS.
+   */
+  readonly connectImapPlain?: EmailSocketFactory | undefined;
   /** SMTP submission over implicit TLS (port 465). */
   readonly connectSmtpTls: EmailSocketFactory;
   /** SMTP submission over a plain connection upgraded with STARTTLS (port 587). */
@@ -394,7 +417,7 @@ export class EmailService {
     const config = this.getValidatedConfig();
     const password = await resolveEmailPassword(config.passwordRef, this.deps.secretsManager);
 
-    const socketFactory = this.deps.imapSocketFactory ?? this.deps.transport.connectImapTls;
+    const socketFactory = this.deps.imapSocketFactory ?? imapSocketFactoryFor(this.deps.transport, config.imapSecurity);
     const socket = await socketFactory(config.imapHost, config.imapPort);
 
     const client = new ImapClient({
@@ -545,7 +568,7 @@ export class EmailService {
     const config = this.getValidatedConfig();
     const password = await resolveEmailPassword(config.passwordRef, this.deps.secretsManager);
 
-    const socketFactory = this.deps.imapSocketFactory ?? this.deps.transport.connectImapTls;
+    const socketFactory = this.deps.imapSocketFactory ?? imapSocketFactoryFor(this.deps.transport, config.imapSecurity);
     const socket = await socketFactory(config.imapHost, config.imapPort);
     const client = new ImapClient({
       socket,
@@ -593,7 +616,7 @@ export class EmailService {
       ? input.from
       : config.fromAddress;
 
-    const socketFactory = this.deps.imapSocketFactory ?? this.deps.transport.connectImapTls;
+    const socketFactory = this.deps.imapSocketFactory ?? imapSocketFactoryFor(this.deps.transport, config.imapSecurity);
     const socket = await socketFactory(config.imapHost, config.imapPort);
     const client = new ImapClient({ socket, username: config.username, password });
 
@@ -674,7 +697,7 @@ export class EmailService {
     }
 
     try {
-      const socketFactory = this.deps.imapSocketFactory ?? this.deps.transport.connectImapTls;
+      const socketFactory = this.deps.imapSocketFactory ?? imapSocketFactoryFor(this.deps.transport, config.imapSecurity);
       const socket = await socketFactory(config.imapHost, config.imapPort);
       const client = new ImapClient({
         socket,

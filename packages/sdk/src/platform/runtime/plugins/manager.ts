@@ -66,6 +66,9 @@ export class PluginLifecycleManager {
     this.sessionId = options.sessionId ?? '';
     this.capabilityPolicy = options.capabilityPolicy ?? (() => true);
     this.trustTierResolver = options.trustTierResolver ?? ((name) => this.trustStore.getTier(name));
+    // No ConfigManager reaches here, so the fallback bus takes its listener cap
+    // from the module default that `configureRuntimeEventBusDefaults` points at
+    // `runtime.eventBus.maxListeners` during host startup.
     this.runtimeBus = options.runtimeBus ?? new RuntimeEventBus();
   }
 

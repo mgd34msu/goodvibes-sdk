@@ -11,7 +11,16 @@
  */
 
 import { describe, expect, test, beforeEach, afterEach, spyOn, type Mock } from 'bun:test';
-import { RuntimeEventBus, MAX_LISTENERS } from '../packages/sdk/src/platform/runtime/events/index.ts';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import {
+  RuntimeEventBus,
+  MAX_LISTENERS,
+  configureRuntimeEventBusDefaults,
+  runtimeEventBusOptionsFrom,
+} from '../packages/sdk/src/platform/runtime/events/index.ts';
+import { ConfigManager } from '../packages/sdk/src/platform/config/manager.ts';
 import { logger } from '../packages/sdk/src/platform/utils/logger.ts';
 import type { SessionEvent } from '../packages/sdk/src/events/session.js';
 
@@ -236,6 +245,105 @@ describe('config override via maxListeners constructor option', () => {
     const smallCap = 5;
     const bus = new RuntimeEventBus({ maxListeners: smallCap });
     registerN(bus, 'SESSION_STARTED', smallCap);
+    expect(() => {
+      bus.on<SessionEvent>('SESSION_STARTED', makeListener() as Parameters<typeof bus.on>[1]);
+    }).toThrow(RangeError);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The config key behind the cap
+// ---------------------------------------------------------------------------
+//
+// Everything above proves the cap works when a construction site passes one.
+// None of it says `runtime.eventBus.maxListeners` reaches a bus: the SDK's three
+// construction sites all passed nothing, so the schema promised a tunable cap
+// that was always 100. These drive the real read path — a ConfigManager holding
+// a set value, through `runtimeEventBusOptionsFrom` and
+// `configureRuntimeEventBusDefaults`, into a bus built with no options — at two
+// different configured values.
+
+describe('runtime.eventBus.maxListeners governs a bus built with no options', () => {
+  let origEnv: string | undefined;
+  let tmpRoot: string;
+
+  beforeEach(() => {
+    origEnv = process.env['NODE_ENV'];
+    tmpRoot = mkdtempSync(join(tmpdir(), 'gv-event-bus-cap-'));
+  });
+
+  afterEach(() => {
+    if (origEnv === undefined) {
+      delete process.env['NODE_ENV'];
+    } else {
+      process.env['NODE_ENV'] = origEnv;
+    }
+    // Leave the process-wide default where the rest of the suite expects it.
+    configureRuntimeEventBusDefaults({ maxListeners: MAX_LISTENERS });
+    rmSync(tmpRoot, { recursive: true, force: true });
+  });
+
+  function managerWithCap(cap: number): ConfigManager {
+    const manager = new ConfigManager({ configDir: join(tmpRoot, `config-${cap}`) });
+    manager.set('runtime.eventBus.maxListeners', cap);
+    return manager;
+  }
+
+  test('a configured cap of 4 refuses the 5th listener in development', () => {
+    process.env['NODE_ENV'] = 'development';
+    const config = managerWithCap(4);
+    configureRuntimeEventBusDefaults(runtimeEventBusOptionsFrom((key) => config.get(key)));
+
+    const bus = new RuntimeEventBus();
+    registerN(bus, 'SESSION_STARTED', 4);
+    expect(() => {
+      bus.on<SessionEvent>('SESSION_STARTED', makeListener() as Parameters<typeof bus.on>[1]);
+    }).toThrow(RangeError);
+  });
+
+  test('a configured cap of 40 accepts a 5th listener and refuses the 41st', () => {
+    process.env['NODE_ENV'] = 'development';
+    const config = managerWithCap(40);
+    configureRuntimeEventBusDefaults(runtimeEventBusOptionsFrom((key) => config.get(key)));
+
+    const bus = new RuntimeEventBus();
+    // The value the previous case refused is fine at this one.
+    expect(() => registerN(bus, 'SESSION_STARTED', 5)).not.toThrow();
+    registerN(bus, 'SESSION_STARTED', 35);
+    expect(() => {
+      bus.on<SessionEvent>('SESSION_STARTED', makeListener() as Parameters<typeof bus.on>[1]);
+    }).toThrow(RangeError);
+  });
+
+  test('the same configured cap applies to the domain channel', () => {
+    process.env['NODE_ENV'] = 'development';
+    const config = managerWithCap(3);
+    configureRuntimeEventBusDefaults(runtimeEventBusOptionsFrom((key) => config.get(key)));
+
+    const bus = new RuntimeEventBus();
+    for (let i = 0; i < 3; i++) {
+      bus.onDomain('session', makeListener() as Parameters<typeof bus.onDomain>[1]);
+    }
+    expect(() => {
+      bus.onDomain('session', makeListener() as Parameters<typeof bus.onDomain>[1]);
+    }).toThrow(RangeError);
+  });
+
+  test('an explicit constructor option still outranks the configured default', () => {
+    process.env['NODE_ENV'] = 'development';
+    const config = managerWithCap(2);
+    configureRuntimeEventBusDefaults(runtimeEventBusOptionsFrom((key) => config.get(key)));
+
+    const bus = new RuntimeEventBus({ maxListeners: 10 });
+    expect(() => registerN(bus, 'SESSION_STARTED', 10)).not.toThrow();
+  });
+
+  test('an unset key leaves the default alone rather than producing a NaN cap', () => {
+    process.env['NODE_ENV'] = 'development';
+    expect(runtimeEventBusOptionsFrom(() => undefined)).toEqual({});
+    configureRuntimeEventBusDefaults(runtimeEventBusOptionsFrom(() => undefined));
+    const bus = new RuntimeEventBus();
+    registerN(bus, 'SESSION_STARTED', MAX_LISTENERS);
     expect(() => {
       bus.on<SessionEvent>('SESSION_STARTED', makeListener() as Parameters<typeof bus.on>[1]);
     }).toThrow(RangeError);

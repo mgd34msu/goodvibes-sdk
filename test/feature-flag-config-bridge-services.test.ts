@@ -20,6 +20,8 @@ import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/ind
 import { createRuntimeServices } from '../packages/sdk/src/platform/runtime/services.js';
 import { createRuntimeStore } from '../packages/sdk/src/platform/runtime/store/index.js';
 import { createFeatureFlagManager } from '../packages/sdk/src/platform/runtime/feature-flags/manager.js';
+import { installPlatformTracer, platformTracer } from '../packages/sdk/src/platform/runtime/metrics.js';
+import { instrumentedLlmCall } from '../packages/sdk/src/platform/runtime/llm-observability.js';
 import { trackDisposables } from './_helpers/disposables.ts';
 
 /**
@@ -157,5 +159,141 @@ describe('createRuntimeServices — live feature-settings bridge', () => {
       homeDirectory,
     }));
     expect(runtimeServices.featureFlags.isEnabled(TOGGLEABLE_FLAG_ID)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// telemetry.otelMode
+// ---------------------------------------------------------------------------
+//
+// The mode drives two gates in FEATURE_SETTINGS_BINDINGS (otel-foundation,
+// otel-remote-export), and their only reader was `createTelemetryProvider` —
+// which had no callers. The live meter in runtime/metrics.ts was built with no
+// reference to any of it, so 'off', 'in-process' and 'remote-export' produced
+// identical behaviour: no spans, from any mode, ever.
+//
+// `createRuntimeServices` now builds the provider and installs its tracer as the
+// platform's active one, which is what the assertions below observe: a no-op
+// span (`spanContext.isValid === false`) with the mode off, a real recording span
+// with it on, and an OTLP POST when it is set to remote-export with a collector.
+
+/** Build a runtime with `telemetry.otelMode` persisted before construction. */
+function servicesWithOtelMode(mode: string): { configManager: ConfigManager } {
+  const root = mkdtempSync(join(tmpdir(), 'goodvibes-otel-mode-'));
+  tmpRoots.push(root);
+  const workingDir = join(root, 'workspace');
+  const homeDirectory = join(root, 'home');
+  mkdirSync(workingDir, { recursive: true });
+  mkdirSync(homeDirectory, { recursive: true });
+  const configManager = new ConfigManager({ homeDir: homeDirectory, workingDir, surfaceRoot: 'goodvibes-test' });
+  // otel-foundation is startup-gated, so the value has to be persisted before
+  // the runtime is composed — the same ordering the case above documents.
+  configManager.setDynamic('telemetry.otelMode' as ConfigKey, mode);
+  disposables.add(createRuntimeServices({
+    configManager,
+    runtimeBus: new RuntimeEventBus(),
+    runtimeStore: createRuntimeStore(),
+    surfaceRoot: 'goodvibes',
+    workingDir,
+    homeDirectory,
+  }));
+  return { configManager };
+}
+
+describe('createRuntimeServices — telemetry.otelMode governs the platform tracer', () => {
+  const savedEnv = {
+    traces: process.env['OTEL_EXPORTER_OTLP_TRACES_ENDPOINT'],
+    general: process.env['OTEL_EXPORTER_OTLP_ENDPOINT'],
+  };
+
+  afterEach(() => {
+    // Put the process back: the tracer is process-wide, and so is the env.
+    installPlatformTracer(null);
+    if (savedEnv.traces === undefined) delete process.env['OTEL_EXPORTER_OTLP_TRACES_ENDPOINT'];
+    else process.env['OTEL_EXPORTER_OTLP_TRACES_ENDPOINT'] = savedEnv.traces;
+    if (savedEnv.general === undefined) delete process.env['OTEL_EXPORTER_OTLP_ENDPOINT'];
+    else process.env['OTEL_EXPORTER_OTLP_ENDPOINT'] = savedEnv.general;
+  });
+
+  test("'off' (the shipped default) installs a tracer that records nothing", () => {
+    servicesWithOtelMode('off');
+    const span = platformTracer().startSpan('probe');
+    expect(span.spanContext.isValid).toBe(false);
+    span.end();
+  });
+
+  test("'in-process' installs a tracer that creates real, recording spans", () => {
+    servicesWithOtelMode('in-process');
+    const span = platformTracer().startSpan('probe', { attributes: { 'probe.kind': 'unit' } });
+    expect(span.spanContext.isValid).toBe(true);
+    expect(span.spanContext.traceId).toMatch(/^[0-9a-f]{32}$/);
+    span.end();
+    const readable = span.toReadable();
+    expect(readable.name).toBe('probe');
+    expect(readable.attributes['probe.kind']).toBe('unit');
+  });
+
+  test('an LLM call produces no span with the mode off and a real one with it on', async () => {
+    servicesWithOtelMode('off');
+    await instrumentedLlmCall(async () => 'result', { provider: 'anthropic', model: 'claude-x' });
+    // Nothing to assert on a no-op span beyond its invalidity; the point is that
+    // the same call below yields a recording span once the mode changes.
+    expect(platformTracer().startSpan('probe').spanContext.isValid).toBe(false);
+
+    installPlatformTracer(null);
+    servicesWithOtelMode('in-process');
+    expect(platformTracer().startSpan('probe').spanContext.isValid).toBe(true);
+  });
+
+  test("'remote-export' exports the llm.call span to the configured collector", async () => {
+    const received: unknown[] = [];
+    const collector = Bun.serve({
+      port: 0,
+      async fetch(req) {
+        received.push(await req.json());
+        return new Response('{}', { status: 200 });
+      },
+    });
+    try {
+      process.env['OTEL_EXPORTER_OTLP_TRACES_ENDPOINT'] = `http://localhost:${collector.port}/v1/traces`;
+      servicesWithOtelMode('remote-export');
+
+      await instrumentedLlmCall(async () => 'result', { provider: 'anthropic', model: 'claude-x' });
+      // The exporter batches; a flush is what a graceful shutdown does.
+      await platformTracer().flush();
+      for (let i = 0; i < 100 && received.length === 0; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+
+      expect(received.length).toBeGreaterThan(0);
+      expect(JSON.stringify(received)).toContain('llm.call');
+      expect(JSON.stringify(received)).toContain('anthropic');
+    } finally {
+      collector.stop(true);
+    }
+  });
+
+  test("'in-process' records the same span but exports it nowhere", async () => {
+    const received: unknown[] = [];
+    const collector = Bun.serve({
+      port: 0,
+      async fetch(req) {
+        received.push(await req.json());
+        return new Response('{}', { status: 200 });
+      },
+    });
+    try {
+      // A collector IS configured; the mode is what decides whether it is used.
+      process.env['OTEL_EXPORTER_OTLP_TRACES_ENDPOINT'] = `http://localhost:${collector.port}/v1/traces`;
+      servicesWithOtelMode('in-process');
+
+      await instrumentedLlmCall(async () => 'result', { provider: 'anthropic', model: 'claude-x' });
+      await platformTracer().flush();
+      await new Promise((resolve) => setTimeout(resolve, 60));
+
+      expect(received).toEqual([]);
+    } finally {
+      collector.stop(true);
+    }
   });
 });

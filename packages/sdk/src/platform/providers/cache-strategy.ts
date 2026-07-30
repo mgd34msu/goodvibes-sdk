@@ -77,6 +77,43 @@ export function getDefaultStrategy(context: CacheContext): CacheStrategy {
   }
 }
 
+/** The two config keys that govern prompt caching for a request. */
+export interface CachePolicyReader {
+  get(key: 'cache.enabled'): unknown;
+  get(key: 'cache.stableTtl'): unknown;
+}
+
+/**
+ * The strategy for a request, with `cache.enabled` and `cache.stableTtl` applied.
+ *
+ * The capability-derived strategy above answers "what CAN this provider cache".
+ * This answers "what has the operator asked for", which is a separate question
+ * that nothing used to ask: `cache.enabled` was read by nobody, so the only way
+ * to stop paying cache writes was to switch provider, and `cache.stableTtl` fed
+ * `CacheContext.configuredTtl`, which no caller populated — so the enum's '5m'
+ * position produced 1h TTLs like its '1h' one.
+ *
+ * `enabled: false` returns the no-op strategy: no breakpoints, so no
+ * `cache_control` is placed on any block and the request is billed as an
+ * uncached one. It deliberately does not merely shorten the TTL — off means off.
+ *
+ * `config` is optional so a provider constructed without one (a direct
+ * construction in a test, an embedder wiring only an API key) keeps the shipped
+ * defaults: caching on, at the provider's longest stable TTL.
+ */
+export function resolveCacheStrategy(
+  context: CacheContext,
+  config?: CachePolicyReader | undefined,
+): CacheStrategy {
+  if (config?.get('cache.enabled') === false) return buildNoopStrategy();
+  const stableTtl = config?.get('cache.stableTtl');
+  return getDefaultStrategy(
+    typeof stableTtl === 'string' && stableTtl.length > 0
+      ? { ...context, configuredTtl: stableTtl }
+      : context,
+  );
+}
+
 /** Build strategy for explicit caching providers (Anthropic, Gemini). */
 function buildExplicitStrategy(
   cap: ExplicitCacheCapability,

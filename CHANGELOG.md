@@ -78,6 +78,59 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   still works — rate-limited, so the first failure pings, repeats within the
   window do not, and recovery notes itself once. Skipping past a poison update
   stays (a wedged cursor is worse) but is now loud, never a debug-log whisper.
+- **Eight settings that described behaviour their value could never reach are now
+  wired.** Each had a schema row, a validated default and a user-facing
+  description, and a read chain that ended nowhere — so the key configured
+  nothing and the coverage read as complete because the schema half was thorough.
+  Every one is now read on a live path, at both of its positions.
+
+  - **`runtime.eventBus.maxListeners`** reached no bus. `RuntimeEventBus` took the
+    cap only as a constructor option and all three SDK construction sites passed
+    none, so the cap was always 100 no matter what the key said. The hosts that
+    own the config now point the module default at it at startup — the same shape
+    `configureActivityLogger` already uses — which covers buses built by
+    components that hold no ConfigManager, and an explicit constructor option
+    still wins.
+  - **`telemetry.decisionOtlpEnabled` / `decisionOtlpEndpoint` /
+    `decisionOtlpSignal`** described an export the SDK could not perform: the
+    exporter was complete — attribute mapping, spans, logs, the POST, the
+    off-by-default guards — and called from nowhere. The permission layer now
+    hands each decision it records to it, fire-and-forget, so an unreachable
+    collector cannot stall a tool call. Still off by default, still export-only.
+  - **`telemetry.otelMode`** made no difference at any of its three values. Its
+    two feature gates were read only inside `createTelemetryProvider`, which had
+    no callers, and the live meter was built without reference to either — so
+    'off', 'in-process' and 'remote-export' all produced no spans. The composed
+    runtime now builds its telemetry through the provider and installs the
+    tracer, so 'in-process' records provider-call spans and 'remote-export'
+    additionally ships them to the collector named by the OpenTelemetry standard
+    environment variables. Selecting remote-export with no collector configured
+    says so once rather than quietly behaving like the mode below it.
+  - **`cache.enabled`** did not stop prompt caching. The Anthropic provider built
+    its cache context unconditionally, so 'false' still placed breakpoints and
+    still paid cache writes. False now places none — off means off, not a shorter
+    TTL. **`cache.stableTtl`** fed a `configuredTtl` field no caller populated, so
+    its '5m' position produced the same 1h breakpoints as its '1h' one; the value
+    now reaches the stable-content breakpoint. Both read per request, like their
+    two live siblings.
+  - **`watchers.recoveryWindowMinutes`** had no reader at all. It now bounds the
+    missed-event catch-up a restart performs: a watcher restored inside the window
+    runs immediately and picks up what it missed, rather than waiting out a full
+    interval on top of however long the process was down; one restored outside it
+    waits for its normal tick, and the skipped catch-up is stated rather than left
+    to be inferred from a hole in the heartbeats.
+  - **`web.staticAssetsDir`** was ignored by the daemon that serves static files;
+    only `controlPlane.webui.bundleDir` was read. The precedence is now explicit
+    in both descriptions: the specific `controlPlane.webui.bundleDir` wins when it
+    names a directory, and `web.staticAssetsDir` supplies the directory when it is
+    empty — so a host that puts its bundle where the build does needs only
+    `controlPlane.webui.serve`. Neither directory key turns serving on by itself.
+  - **`surfaces.email.imap.secure`** was never read: the surface config reader
+    translated its SMTP twin and skipped it, and every IMAP connection went
+    through the implicit-TLS factory unconditionally. False now selects a plain
+    IMAP connection, exactly as the key describes, on both the mailbox service and
+    the inbound-mail poller. The default TLS path is unchanged, and a transport
+    with no plaintext factory is refused by name rather than quietly upgraded.
 
 ## [1.19.2] - 2026-07-29
 

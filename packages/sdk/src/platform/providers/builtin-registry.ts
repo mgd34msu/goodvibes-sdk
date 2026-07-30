@@ -141,6 +141,13 @@ export function registerBuiltinProviders(
     readonly runtimeBus?: RuntimeEventBus | null | undefined;
     /** Control-plane persistence root; per-provider live-model-discovery cache paths derive from it. */
     readonly persistenceRoot: string;
+    /**
+     * Where the prompt-cache keys (`cache.enabled`, `cache.stableTtl`) are read.
+     *
+     * Only the explicit-caching builtins need it — `cache.enabled` describes
+     * itself as being for "eligible providers (Anthropic)".
+     */
+    readonly cachePolicy?: import('./cache-strategy.js').CachePolicyReader | undefined;
   },
 ): void {
   const modelsCachePath = (providerId: string) => getProviderModelsCachePath(options.persistenceRoot, providerId);
@@ -300,7 +307,7 @@ export function registerBuiltinProviders(
   );
 
   registry.register(new OpenAIProvider(apiKey('openai'), options.cacheHitTracker, modelsCachePath('openai')));
-  registry.register(new AnthropicProvider(apiKey('anthropic'), options.cacheHitTracker, modelsCachePath('anthropic')));
+  registry.register(new AnthropicProvider(apiKey('anthropic'), options.cacheHitTracker, modelsCachePath('anthropic'), options.cachePolicy));
   registry.register(new OpenAICodexProvider(options.subscriptionManager));
   registry.register(new GeminiProvider(apiKey('gemini'), options.cacheHitTracker, modelsCachePath('gemini')));
 
