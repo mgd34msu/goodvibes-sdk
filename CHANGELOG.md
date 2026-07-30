@@ -78,6 +78,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   still works — rate-limited, so the first failure pings, repeats within the
   window do not, and recovery notes itself once. Skipping past a poison update
   stays (a wedged cursor is worse) but is now loud, never a debug-log whisper.
+- **`runtime.unifiedTasks` claimed off; the shipped behavior was always on.**
+  The key's recorded default was `false` and the `unified-runtime-task` flag's
+  `defaultState` was `disabled`, but every consumer composition root built its
+  task manager without a feature-flag manager at all, and the gate underneath
+  is permissive with none wired — so the setting never actually governed
+  anything, and task tracking (including the `/tasks` command and operator
+  interventions) has always run regardless of this key. The default now
+  records the truth (`true`/`enabled`) instead of a value the software never
+  actually honored, so consumers can wire the flag manager and have `false`
+  genuinely turn the runtime task manager off, with zero behavior change for
+  any install that never touched this setting.
 
 ## [1.19.2] - 2026-07-29
 
