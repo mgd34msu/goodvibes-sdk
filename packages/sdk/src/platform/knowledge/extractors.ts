@@ -1,14 +1,34 @@
-import JSZip from 'jszip';
 import { extname } from 'node:path';
 import type { ArtifactDescriptor, ArtifactRecord } from '../artifacts/types.js';
 import { guessMimeType } from '../artifacts/types.js';
-import { extractReadableHtml } from './html-readability.js';
+import { describeHtmlReadabilityAvailability, extractReadableHtml } from './html-readability.js';
 import { extractPdf } from './pdf-extractor.js';
 import { KNOWLEDGE_MAX_STRUCTURE_SEARCH_TEXT_CHARS } from './extraction-policy.js';
 import type { KnowledgeExtractionFormat } from './types.js';
 import { summarizeError } from '../utils/error-display.js';
 import { logger } from '../utils/logger.js';
+import { loadOptionalDependency } from '../utils/optional-dependency.js';
 import { isRecord } from '../utils/record-coerce.js';
+
+type JsZipModule = typeof import('jszip');
+
+/**
+ * `jszip` is an optionalDependency and the Office extractors are the only
+ * things that need it. Reached at use rather than at module init, so an
+ * installation without it still builds a daemon binary and still boots one —
+ * see utils/optional-dependency.ts for what a static import of an optional
+ * package does to both. `extractOfficeWithFallback` turns the unavailable case
+ * into the plain-text fallback with the reason attached.
+ */
+async function loadJsZip(): Promise<JsZipModule> {
+  const loaded = await loadOptionalDependency('jszip', () => import('jszip'));
+  if (!loaded.available) throw new Error(loaded.reason);
+  // jszip is CommonJS (`export = JSZip`). Reached through a dynamic import it
+  // arrives as a namespace whose `default` holds that value; some runtimes also
+  // hoist the value's own properties onto the namespace. Accept either.
+  const namespace = loaded.module as JsZipModule & { readonly default?: JsZipModule };
+  return namespace.default ?? namespace;
+}
 
 export interface KnowledgeExtractionResult {
   readonly extractorId: string;
@@ -124,11 +144,25 @@ function extractLinksFromHtml(html: string): string[] {
   return uniqueStrings(urls, 50);
 }
 
-function extractHtml(buffer: Buffer): KnowledgeExtractionResult {
+async function extractHtml(buffer: Buffer): Promise<KnowledgeExtractionResult> {
   const html = buffer.toString('utf-8');
   let readabilityWarning: string | undefined;
   try {
-    const readable = extractReadableHtml(html);
+    const readable = await extractReadableHtml(html);
+    if (!readable) {
+      // `null` means either "nothing readable in this document" or "the
+      // optional parser is not installed". Only the second is worth saying out
+      // loud, and saying it is the whole point of declaring jsdom optional:
+      // the fallback below still produces a result, and the operator learns
+      // why it is the lightweight one instead of the good one.
+      const availability = await describeHtmlReadabilityAvailability();
+      if (!availability.available && availability.reason) {
+        readabilityWarning = `Used the lightweight HTML fallback: ${availability.reason}`;
+        logger.debug('Knowledge extraction: readable-HTML parser unavailable; using lightweight HTML extractor', {
+          reason: availability.reason,
+        });
+      }
+    }
     if (readable) {
       const summary = summarizeText([readable.excerpt, readable.paragraphSamples[0], readable.textContent].filter(Boolean).join(' '));
       return {
@@ -370,6 +404,7 @@ function extractYaml(buffer: Buffer): KnowledgeExtractionResult {
 }
 
 async function extractDocx(buffer: Buffer): Promise<KnowledgeExtractionResult> {
+  const JSZip = await loadJsZip();
   const zip = await JSZip.loadAsync(buffer);
   const file = zip.file('word/document.xml');
   if (!file) return extractTextLike(buffer, 'docx', 'docx-fallback');
@@ -412,6 +447,7 @@ function readSharedStrings(xml: string): string[] {
 }
 
 async function extractXlsx(buffer: Buffer): Promise<KnowledgeExtractionResult> {
+  const JSZip = await loadJsZip();
   const zip = await JSZip.loadAsync(buffer);
   const workbookXml = await zip.file('xl/workbook.xml')?.async('string') ?? '';
   const sharedStringsXml = await zip.file('xl/sharedStrings.xml')?.async('string') ?? '';
@@ -468,6 +504,7 @@ async function extractXlsx(buffer: Buffer): Promise<KnowledgeExtractionResult> {
 }
 
 async function extractPptx(buffer: Buffer): Promise<KnowledgeExtractionResult> {
+  const JSZip = await loadJsZip();
   const zip = await JSZip.loadAsync(buffer);
   const slideEntries = Object.keys(zip.files)
     .filter((name) => /^ppt\/slides\/slide\d+\.xml$/i.test(name))
@@ -564,7 +601,7 @@ export async function extractKnowledgeArtifact(
   const format = chooseFormat(artifact);
   switch (format) {
     case 'html':
-      return extractHtml(buffer);
+      return await extractHtml(buffer);
     case 'markdown':
       return extractTextLike(buffer, 'markdown', 'markdown');
     case 'json':
