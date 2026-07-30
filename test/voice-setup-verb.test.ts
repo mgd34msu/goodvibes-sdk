@@ -29,8 +29,8 @@ const stubStatus = { platform: 'linux-x64', state: 'not-provisioned', tts: { eng
 const stubInstall = { provisioned: true, platform: 'linux-x64', tts: { engine: 'piper', state: 'provisioned', binaryPath: '/m/piper', modelPath: '/m/voice.onnx' }, stt: { engine: 'whisper-cpp', state: 'unsupported-platform', reason: 'no prebuilt' }, components: [], configured: { set: [{ key: 'voice.local.ttsEngine', value: 'piper' }], skipped: [] } };
 
 const stubArtifact = { path: '/m/wake/x', verified: true, corrupt: false, bytes: 10 };
-const stubWakeStatus = { ready: true, reason: null, classifier: stubArtifact, mobileClassifier: stubArtifact, notice: stubArtifact, embedding: stubArtifact, downloadBytes: 0, modelVersion: '1.0.0', recallIsSyntheticOnly: true };
-const stubWakeProvision = { ready: true, mobileFormatReady: true, modelVersion: '1.0.0', noticePath: '/m/wake/NOTICE.txt', recallIsSyntheticOnly: true, outcomes: [] };
+const stubWakeStatus = { ready: true, reason: null, classifier: stubArtifact, mobileClassifier: stubArtifact, notice: stubArtifact, embedding: stubArtifact, embeddingNotice: stubArtifact, downloadBytes: 0, modelVersion: '1.0.0', recallIsSyntheticOnly: true };
+const stubWakeProvision = { ready: true, mobileFormatReady: true, modelVersion: '1.0.0', noticePath: '/m/wake/models/NOTICE.txt', embeddingNoticePath: '/m/wake/front-end/NOTICE.txt', recallIsSyntheticOnly: true, outcomes: [] };
 const stubChunk = { component: 'classifier', offset: 0, bytes: 4, totalBytes: 4, sha256: 'abc', dataBase64: 'AAEC', complete: true };
 
 const service: VoiceSetupGatewayService = {
@@ -147,15 +147,20 @@ describe('the wake-word verbs ride the same registered group', () => {
 
   test('an unrecognised component is refused with a written reason, not turned into a path', () => {
     expect(() => createWakeModelHandler(service)({ component: '../../etc/passwd' } as never))
-      .toThrow(/component must be classifier, tflite, embedding or notice/);
+      .toThrow(/component must be one of classifier, tflite, embedding, notice, embedding-notice/);
     expect(() => createWakeModelHandler(service)({} as never))
-      .toThrow(/component must be classifier, tflite, embedding or notice/);
+      .toThrow(/component must be one of classifier, tflite, embedding, notice, embedding-notice/);
   });
 
-  test('the tflite form of the classifier is servable, because it is provisioned', () => {
+  test('every provisioned artifact is servable, including both attribution NOTICEs', () => {
     // A runtime that cannot load onnx has the same claim on the model as one that
-    // can, and no more ability to fetch the release asset itself.
-    expect(() => createWakeModelHandler(service)({ component: 'tflite' } as never)).not.toThrow();
+    // can, and no more ability to fetch the release asset itself. And a client that
+    // can fetch the bytes but not the NOTICE cannot satisfy the terms it received
+    // them under — so the front end's NOTICE is a component here too, not just the
+    // classifier's.
+    for (const component of ['classifier', 'tflite', 'embedding', 'notice', 'embedding-notice']) {
+      expect(() => createWakeModelHandler(service)({ component } as never)).not.toThrow();
+    }
   });
 
   test('all three verbs are in the live catalog with REST bindings, and register without throwing', () => {
@@ -214,13 +219,19 @@ describe('the chunked model read a browser tab reassembles', () => {
     expect(chunk.complete).toBe(false);
   });
 
-  test('the tflite twin is served from its own path, under its own pin', () => {
-    const onnx = wake.modelChunk({ component: 'classifier', offset: 0, maxBytes: 16 });
-    const tflite = wake.modelChunk({ component: 'tflite', offset: 0, maxBytes: 16 });
+  test('every component is served from its own path, under its own pin', () => {
     // Different artifacts, so different pinned checksums — a client verifying the
     // file it rebuilt against the wrong pin would reject a perfectly good model.
-    expect(tflite.sha256).not.toBe(onnx.sha256);
-    expect(tflite.sha256.length).toBe(64);
+    const components = ['classifier', 'tflite', 'embedding', 'notice', 'embedding-notice'] as const;
+    const pins = components.map((component) => wake.modelChunk({ component, offset: 0, maxBytes: 16 }).sha256);
+    expect(new Set(pins).size).toBe(components.length);
+    for (const pin of pins) expect(pin.length).toBe(64);
+  });
+
+  test('the two NOTICEs are distinct artifacts, not one file served twice', () => {
+    const classifierNotice = wake.modelChunk({ component: 'notice', offset: 0, maxBytes: 16 });
+    const frontEndNotice = wake.modelChunk({ component: 'embedding-notice', offset: 0, maxBytes: 16 });
+    expect(frontEndNotice.sha256).not.toBe(classifierNotice.sha256);
   });
 
   test('an offset past the end is an error, not an empty success', () => {
@@ -235,7 +246,7 @@ describe('the chunked model read a browser tab reassembles', () => {
       provision: async () => {
         runs += 1;
         await new Promise<void>((r) => { release = r; });
-        return { ready: true, mobileFormatReady: true, modelVersion: '1.0.0', outcomes: [], noticePath: null, recallIsSyntheticOnly: true };
+        return { ready: true, mobileFormatReady: true, modelVersion: '1.0.0', outcomes: [], noticePath: null, embeddingNoticePath: null, recallIsSyntheticOnly: true };
       },
     });
     const a = svc.provision();
@@ -269,7 +280,7 @@ describe('the install/boot provisioning path on the setup service', () => {
       provision: async () => {
         runs += 1;
         await new Promise<void>((r) => { release = r; });
-        return { ready: true, mobileFormatReady: true, modelVersion: '1.0.0', outcomes: [], noticePath: null, recallIsSyntheticOnly: true };
+        return { ready: true, mobileFormatReady: true, modelVersion: '1.0.0', outcomes: [], noticePath: null, embeddingNoticePath: null, recallIsSyntheticOnly: true };
       },
     });
     const boot = svc.ensureProvisioned({ recoveryHint: '/voice wake setup' });

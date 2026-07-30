@@ -51,9 +51,10 @@ bit-identical claim rests on the training-time comparison recorded above, not on
 continuous verification. It IS downloaded alongside the `.onnx` build and served
 by `voice.wake.model.get` (`component=tflite`), so a runtime that cannot load
 onnx has the same access to the model as one that can. It does **not** gate
-`ready`: the detector this SDK runs needs the `.onnx` build, the NOTICE and the
-front end, so a host that got those three and missed the twin is a host that
-detects, and reporting otherwise would be false in the unhelpful direction.
+`ready` — the only pinned artifact that does not: the detector this SDK runs needs
+the `.onnx` build, the front end, and **both** attribution NOTICEs, so a host that
+got those four and missed the twin is a host that detects, and reporting otherwise
+would be false in the unhelpful direction.
 
 ## How it gets onto a machine
 
@@ -222,7 +223,9 @@ quality silently.
 ### The re-sourced embedding artifact
 
 Hosted at the same append-only `voice-runtimes-v1` tag, with a `.sha256`
-sidecar and its own NOTICE:
+sidecar and its own NOTICE. **Both** rows are provisioned, served, and counted in
+the reported download size — see "Attribution is mandatory" below for why the
+NOTICE is not optional:
 
 | artifact | bytes | sha256 |
 |---|---|---|
@@ -248,6 +251,30 @@ Commons Attribution, which **requires** attribution, so
 `goodvibes-wakeword-hey-goodvibes-1.0.0.NOTICE.txt` must be retained and
 reproduced by anything that redistributes the artifacts. It is pinned and
 checksummed in the manifest like any other asset.
+
+**There are TWO redistributable artifacts here, so there are two NOTICEs, and both
+are treated identically.** The classifier is ours; the front end is Google's
+Apache-2.0 `speech_embedding` build, whose own
+`goodvibes-speech-embedding-1.0.0.NOTICE.txt` carries that grant. The daemon
+serves the embedding's bytes over the same chunk path it serves the classifier's
+(`voice.wake.model.get`), which makes it a redistribution on exactly the same
+terms. So both NOTICEs are:
+
+- **fetched** by provisioning (`embedding-notice` is a component of the plan, not
+  an afterthought);
+- **counted** in `downloadBytes`, through the manifest's own
+  `wakeWordProvisionBytes` and `wakeWordFrontEndProvisionBytes` rather than a
+  hand-written sum at each call site — which is how the front end's NOTICE went
+  uncounted and unfetched in the first place;
+- **served** as their own chunk components (`notice`, `embedding-notice`), because
+  a client that can fetch the bytes but not the NOTICE cannot satisfy the terms it
+  received them under;
+- **required for `ready`**, because an artifact whose attribution is not on disk is
+  not one this tree may hand to anything; and
+- **kept by the sweeper**, whose pinned-filename set names them explicitly. A file
+  the provisioner writes and the sweeper does not recognise gets deleted once an
+  hour, forever — that defect shipped once for the `.tflite`, and the front-end
+  directory's NOTICE was the next place it could have happened.
 
 Training data credited in the NOTICE: LibriTTS-R and LibriSpeech (CC BY 4.0),
 MUSAN `music/rfm` and `noise/sound-bible` (CC BY 3.0), MUSAN `noise/free-sound`

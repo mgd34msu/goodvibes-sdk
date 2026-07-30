@@ -37,6 +37,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
   - `GOODVIBES_SKIP_WAKE_MODEL_DOWNLOAD=1` installs without the model, and says
     so in the same one line, so opting out never looks like a silent failure.
 
+- **Both attribution NOTICEs travel with the artifacts they attribute.** Two
+  redistributable artifacts come out of this tree — our classifier and Google's
+  Apache-2.0 `speech_embedding` build — and only the classifier's NOTICE was ever
+  fetched. The front end's was pinned in the manifest, never downloaded, never
+  served, and not counted in the reported download size, while the daemon handed
+  the embedding's bytes to browsers over the same chunk path it uses for the
+  classifier's. Both are now fetched (`embedding-notice` is a component of the
+  provisioning plan, fetched immediately after the artifact it attributes so a
+  network that drops part-way never leaves bytes on disk with no attribution
+  beside them), both are served (`voice.wake.model.get` gains
+  `component=embedding-notice`), both are reported (`WakeProvisionStatus.embeddingNotice`,
+  `WakeProvisionResult.embeddingNoticePath`), and both count toward `ready` — an
+  artifact whose attribution is not on disk is not one this tree may hand to
+  anything. `downloadBytes` now comes from the manifest's own
+  `wakeWordProvisionBytes` + `wakeWordFrontEndProvisionBytes` rather than a
+  hand-written field sum, which is how the omission happened.
+
 - **Both pinned formats of the classifier are provisioned and served.** The
   `.tflite` twin was pinned, counted in every reported download size, and never
   fetched — so `voice.wake.status` quoted a 6.1 MB download for a 3.7 MB one, and
@@ -174,9 +191,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 ### Fixed
 
 - **The recovery sweeper no longer deletes an artifact the provisioner just
-  verified.** Its pinned-filename set listed the `.onnx` and the NOTICE but not
-  the `.tflite`, so once that file was provisioned every hourly sweep would have
-  reaped it as an unpinned version, forever.
+  verified.** Its pinned-filename sets listed the classifier's `.onnx` and NOTICE
+  and the front end's `.onnx`, but not the `.tflite` and not the front end's
+  NOTICE — so once either was provisioned every hourly sweep would have reaped it
+  as an unpinned version, forever. Both directories now carry an explicit
+  name-by-name set covering everything the provisioner writes, and a torn copy of
+  either is reaped for failing verification (so the next provision refetches it)
+  rather than for being an unpinned version.
 
 - **A route binding is now a hint, validated every time it is used — a channel
   can no longer be stranded by a stale one.** A persisted binding whose session

@@ -6846,6 +6846,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       "mobileFormatReady": false,
       "modelVersion": "sample",
       "noticePath": "sample",
+      "embeddingNoticePath": "sample",
       "recallIsSyntheticOnly": false,
       "outcomes": [
         {
@@ -6887,6 +6888,12 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
         "bytes": 0
       },
       "embedding": {
+        "path": "sample",
+        "verified": false,
+        "corrupt": false,
+        "bytes": 0
+      },
+      "embeddingNotice": {
         "path": "sample",
         "verified": false,
         "corrupt": false,

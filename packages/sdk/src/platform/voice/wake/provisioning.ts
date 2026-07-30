@@ -13,10 +13,22 @@
  * classifier for a runtime that cannot load onnx. Fetching both is what lets
  * runtime/wake-setup.ts serve either one to a surface that cannot fetch release
  * assets itself, and it is what the reported download size has always counted
- * ({@link wakeWordProvisionBytes} includes the tflite). Only the onnx build,
- * the NOTICE and the embedding gate {@link WakeProvisionStatus.ready}, because
- * those three are what the running detector loads — a host that got them and
- * missed the tflite can detect, and saying otherwise would be a lie in the
+ * ({@link wakeWordProvisionBytes} includes the tflite).
+ *
+ * BOTH ATTRIBUTION NOTICES TRAVEL, AND BOTH GATE READINESS
+ *
+ * Two artifacts are redistributed out of this tree — our classifier and Google's
+ * Apache-2.0 `speech_embedding` build — and each is published with an attribution
+ * file a deployment carrying the artifact must carry with it. Both are therefore
+ * fetched, both are served by the chunk path a browser reads through, and both
+ * count toward {@link WakeProvisionStatus.ready}: an artifact whose attribution is
+ * not on disk is not one this tree may hand to anything. Fetching one NOTICE and
+ * not the other would have left half the attribution set on the server it came
+ * from, which is exactly what happened until the embedding's was added here.
+ *
+ * The ONE artifact that does not gate readiness is the tflite twin, because
+ * nothing in this SDK loads it: a host that got the onnx build, both NOTICEs and
+ * the front end can detect, and reporting otherwise would be a lie in the
  * unhelpful direction.
  *
  * DOWNLOADED ARTIFACTS ARE PERSISTED STATE, SO THEY GET REAL HOUSEKEEPING
@@ -61,6 +73,7 @@ import {
 import {
   resolveWakeWordModel,
   WAKE_WORD_FRONT_END,
+  wakeWordFrontEndProvisionBytes,
   wakeWordProvisionBytes,
   type WakeWordModelManifest,
 } from '../provisioning/wake-word-manifest.js';
@@ -91,6 +104,18 @@ export interface ManagedWakePaths {
   readonly noticePath: string;
   /** The speech-embedding backbone. */
   readonly embeddingPath: string;
+  /**
+   * The attribution NOTICE that must travel with the speech-embedding backbone,
+   * on exactly the terms the classifier's does.
+   *
+   * Two artifacts are redistributed by this tree — the classifier and Google's
+   * Apache-2.0 `speech_embedding` build — and each carries an attribution file
+   * that a deployment redistributing it must carry with it. The daemon serves the
+   * embedding's bytes over the same chunk path it serves the classifier's, so
+   * fetching one NOTICE and not the other would leave half the attribution set on
+   * the server it was published from.
+   */
+  readonly embeddingNoticePath: string;
 }
 
 /** Resolve the managed wake-word paths for a model version. */
@@ -110,6 +135,7 @@ export function resolveManagedWakePaths(managedRoot: string, version?: string): 
     mobileClassifierPath: join(modelsDir, `goodvibes-wakeword-hey-goodvibes-${modelVersion}.tflite`),
     noticePath: join(modelsDir, `goodvibes-wakeword-hey-goodvibes-${modelVersion}.NOTICE.txt`),
     embeddingPath: join(frontEndDir, `speech-embedding-${WAKE_WORD_FRONT_END.embedding.version}.onnx`),
+    embeddingNoticePath: join(frontEndDir, `speech-embedding-${WAKE_WORD_FRONT_END.embedding.version}.NOTICE.txt`),
   };
 }
 
@@ -182,6 +208,13 @@ export interface WakeProvisionStatus {
   readonly mobileClassifier: WakeArtifactStatus;
   readonly notice: WakeArtifactStatus;
   readonly embedding: WakeArtifactStatus;
+  /**
+   * The front end's attribution NOTICE. Part of {@link ready} for the same reason
+   * the classifier's `notice` is: an artifact whose attribution is not on disk is
+   * not an artifact this tree may hand to anything, and the daemon hands the
+   * embedding's bytes to browsers.
+   */
+  readonly embeddingNotice: WakeArtifactStatus;
   /** Total bytes a fresh provision would download. */
   readonly downloadBytes: number;
   /** The model version these paths resolve to, or null when unpinned. */
@@ -211,6 +244,7 @@ export function wakeProvisionStatus(options: {
       mobileClassifier: empty,
       notice: empty,
       embedding: wakeArtifactStatus(paths.embeddingPath, embeddingSpec),
+      embeddingNotice: wakeArtifactStatus(paths.embeddingNoticePath, WAKE_WORD_FRONT_END.embedding.notice),
       downloadBytes: 0,
       modelVersion: null,
       recallIsSyntheticOnly: true,
@@ -220,8 +254,12 @@ export function wakeProvisionStatus(options: {
   const mobileClassifier = wakeArtifactStatus(paths.mobileClassifierPath, model.tflite);
   const notice = wakeArtifactStatus(paths.noticePath, model.notice);
   const embedding = wakeArtifactStatus(paths.embeddingPath, embeddingSpec);
-  const anyCorrupt = classifier.corrupt || notice.corrupt || embedding.corrupt;
-  const allVerified = classifier.verified && notice.verified && embedding.verified;
+  const embeddingNotice = wakeArtifactStatus(paths.embeddingNoticePath, WAKE_WORD_FRONT_END.embedding.notice);
+  // The two NOTICEs count exactly as much as the artifacts they attribute: an
+  // attribution file that is not on disk cannot travel with bytes this tree hands
+  // out, and the daemon hands both the classifier's and the embedding's to browsers.
+  const anyCorrupt = classifier.corrupt || notice.corrupt || embedding.corrupt || embeddingNotice.corrupt;
+  const allVerified = classifier.verified && notice.verified && embedding.verified && embeddingNotice.verified;
   return {
     ready: allVerified,
     reason: allVerified ? null : anyCorrupt ? 'checksum-mismatch' : 'not-provisioned',
@@ -229,18 +267,30 @@ export function wakeProvisionStatus(options: {
     mobileClassifier,
     notice,
     embedding,
-    downloadBytes: wakeWordProvisionBytes(model) + embeddingSpec.bytes,
+    embeddingNotice,
+    // Both totals come from the manifest's own helpers rather than being summed
+    // field by field here, which is how the front end's NOTICE went uncounted.
+    downloadBytes: wakeWordProvisionBytes(model) + wakeWordFrontEndProvisionBytes(),
     modelVersion: model.version,
     recallIsSyntheticOnly: model.measurements.recallIsSyntheticOnly,
   };
 }
 
 /**
- * Which artifact a progress event or outcome is about. `mobile-classifier` is
- * the tflite form of the same classifier — a separate component rather than a
- * detail of `classifier`, so a receipt can report one landing and the other not.
+ * Which artifact a progress event or outcome is about.
+ *
+ * `mobile-classifier` is the tflite form of the same classifier — a separate
+ * component rather than a detail of `classifier`, so a receipt can report one
+ * landing and the other not. `embedding-notice` is the front end's attribution
+ * file, listed on the same terms as the classifier's `notice`: two artifacts are
+ * redistributed from this tree and each has its own NOTICE to travel with.
  */
-export type WakeProvisionComponent = 'classifier' | 'mobile-classifier' | 'notice' | 'embedding';
+export type WakeProvisionComponent =
+  | 'classifier'
+  | 'mobile-classifier'
+  | 'notice'
+  | 'embedding'
+  | 'embedding-notice';
 
 /** Progress for one artifact during provisioning. */
 export interface WakeProvisionProgress {
@@ -272,8 +322,10 @@ export interface WakeProvisionResult {
   readonly mobileFormatReady: boolean;
   readonly modelVersion: string | null;
   readonly outcomes: readonly WakeComponentOutcome[];
-  /** The attribution NOTICE's path, which must travel with redistributed artifacts. */
+  /** The classifier's attribution NOTICE, which must travel with it wherever it goes. */
   readonly noticePath: string | null;
+  /** The front end's attribution NOTICE, on exactly the same terms. */
+  readonly embeddingNoticePath: string | null;
   /** Restated at every provisioning boundary, not only in docs. */
   readonly recallIsSyntheticOnly: boolean;
 }
@@ -312,6 +364,7 @@ export async function provisionWakeWordModels(options: WakeProvisionOptions): Pr
         },
       ],
       noticePath: null,
+      embeddingNoticePath: null,
       recallIsSyntheticOnly: true,
     };
   }
@@ -323,6 +376,7 @@ export async function provisionWakeWordModels(options: WakeProvisionOptions): Pr
   // WORKING detector rather than a tflite file and nothing to run.
   const plan: readonly { component: WakeProvisionComponent; spec: VerifiedDownloadSpec; dest: string }[] = [
     { component: 'embedding', spec: WAKE_WORD_FRONT_END.embedding.download, dest: paths.embeddingPath },
+    { component: 'embedding-notice', spec: WAKE_WORD_FRONT_END.embedding.notice, dest: paths.embeddingNoticePath },
     { component: 'classifier', spec: model.onnx, dest: paths.classifierPath },
     { component: 'notice', spec: model.notice, dest: paths.noticePath },
     { component: 'mobile-classifier', spec: model.tflite, dest: paths.mobileClassifierPath },
@@ -334,15 +388,17 @@ export async function provisionWakeWordModels(options: WakeProvisionOptions): Pr
   }
   const landed = (component: WakeProvisionComponent): boolean =>
     outcomes.some((outcome) => outcome.component === component && outcome.state !== 'failed');
-  const ready = landed('classifier') && landed('notice') && landed('embedding');
+  const ready = landed('classifier') && landed('notice') && landed('embedding') && landed('embedding-notice');
   return {
     ready,
     mobileFormatReady: landed('mobile-classifier'),
     modelVersion: model.version,
     outcomes,
-    // The NOTICE's own outcome decides this, not the run's: it must travel with
-    // whatever WAS redistributed, and it is on disk whenever its fetch succeeded.
+    // Each NOTICE's own outcome decides its path, not the run's: it must travel
+    // with whatever WAS redistributed, and it is on disk whenever its fetch
+    // succeeded, however the rest of the run went.
     noticePath: landed('notice') ? paths.noticePath : null,
+    embeddingNoticePath: landed('embedding-notice') ? paths.embeddingNoticePath : null,
     recallIsSyntheticOnly: model.measurements.recallIsSyntheticOnly,
   };
 }
