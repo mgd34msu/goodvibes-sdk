@@ -6817,6 +6817,79 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       }
     }
   },
+  "voice.wake.model.get": {
+    "methodId": "voice.wake.model.get",
+    "http": {
+      "method": "GET",
+      "path": "/api/voice/wake/model"
+    },
+    "status": 200,
+    "body": {
+      "component": "classifier",
+      "offset": 0,
+      "bytes": 0,
+      "totalBytes": 0,
+      "sha256": "sample",
+      "dataBase64": "sample",
+      "complete": false
+    }
+  },
+  "voice.wake.provision": {
+    "methodId": "voice.wake.provision",
+    "http": {
+      "method": "POST",
+      "path": "/api/voice/wake/provision"
+    },
+    "status": 200,
+    "body": {
+      "ready": false,
+      "modelVersion": "sample",
+      "noticePath": "sample",
+      "recallIsSyntheticOnly": false,
+      "outcomes": [
+        {
+          "component": "classifier",
+          "state": "installed",
+          "path": "sample",
+          "bytes": 0,
+          "error": "sample"
+        }
+      ]
+    }
+  },
+  "voice.wake.status": {
+    "methodId": "voice.wake.status",
+    "http": {
+      "method": "GET",
+      "path": "/api/voice/wake/status"
+    },
+    "status": 200,
+    "body": {
+      "ready": false,
+      "reason": "sample",
+      "classifier": {
+        "path": "sample",
+        "verified": false,
+        "corrupt": false,
+        "bytes": 0
+      },
+      "notice": {
+        "path": "sample",
+        "verified": false,
+        "corrupt": false,
+        "bytes": 0
+      },
+      "embedding": {
+        "path": "sample",
+        "verified": false,
+        "corrupt": false,
+        "bytes": 0
+      },
+      "downloadBytes": 0,
+      "modelVersion": "sample",
+      "recallIsSyntheticOnly": false
+    }
+  },
   "intelligence.snapshot": {
     "methodId": "intelligence.snapshot",
     "http": {

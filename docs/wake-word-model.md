@@ -5,22 +5,30 @@ ships with. The pin itself lives in
 `packages/sdk/src/platform/voice/provisioning/wake-word-manifest.ts`.
 
 The wake-word **engine, config surface, provisioning flow and recovery
-housekeeping are built** and live under
-`packages/sdk/src/platform/voice/wake/`. Audio capture and the per-surface UI
-are not: capture is genuinely per-surface (a recorder subprocess on a host,
-`getUserMedia` in a browser), so the engine takes 16 kHz frames and returns
-detections rather than owning a device.
+housekeeping** live under `packages/sdk/src/platform/voice/wake/`. The **capture
+capability** they sit on lives beside them in
+`packages/sdk/src/platform/voice/capture/`, and it serves the whole voice stack
+rather than the wake word alone: push-to-talk speech-to-text and wake detection
+are two consumers of ONE device path, because a wake does not end a capture
+session — it starts one, and re-opening the microphone at that moment would drop
+the front of the sentence and race whatever still holds the device.
 
-> **Detection does not run yet, and the platform says so rather than implying
-> otherwise.** No surface captures audio or supplies the engine an inference
-> session, so the `wake-word-detection` registry entry carries a `notOperable`
-> declaration. That makes `isFeatureGateEnabled` refuse the feature whatever
-> `voice.wake.enabled` is set to, keeps `deriveFeatureState` from ever
-> reporting an enabled gate, and gives every settings surface a written reason
-> to render in place of a switch that would flip cleanly and do nothing. The
-> user's setting is preserved for the release that adds capture. **Remove the
-> `notOperable` field in the same change that wires capture and a session
-> loader up — not before, and not separately.**
+> **Detection runs, and where it runs is stated per surface.** The
+> `notOperable` declaration is gone, removed in the change that wired capture up
+> as it required. The terminal and the agent open a recorder subprocess
+> (`voice.wake.captureCommand`) and a browser tab opens `getUserMedia`; all three
+> feed the same engine and all three hand the utterance after a wake to the same
+> speech-to-text call. `voice.wake.enabled` now drives the feature gate the way
+> every other capability's setting does, and each surface is opted in by its own
+> `voice.wake.surfaces.*` row.
+>
+> Two limits remain, and each is written in its own settings row rather than
+> behind one blanket claim: `voice.wake.vadThreshold` above 0 refuses to start
+> because no VAD model is pinned to screen frames with, and a browser tab has no
+> filesystem for `voice.wake.retainAudio` or a local
+> `voice.wake.activationSoundPath`. `resolveWakeRuntimeSettings` reads every row
+> and reports these as blockers (the detector does not start) or limitations (it
+> runs, with that row not in force).
 
 ## What is published
 
@@ -208,6 +216,41 @@ No third-party audio, no third-party model weights, and no training data are
 embedded in the artifacts. Every corpus that shaped the weights is
 attribution-only or public domain — none is NonCommercial, ShareAlike,
 NoDerivatives, or unstated.
+
+## How each surface runs it
+
+One inference runtime serves both surfaces: **`onnxruntime-web` on a WASM
+backend**, which is a plain JavaScript package with a WASM binary rather than a
+native module, so the terminal binary and the browser tab load the same thing.
+Measured on the reference machine with the pinned models: **3.46 ms per 80 ms
+frame, single-threaded** — inside the 3.53 ms budget the engine documents, and
+more than an order of magnitude inside real time.
+
+**The terminal / daemon host.** A recorder subprocess produces the audio
+(`voice.wake.captureCommand`: pw-record, parecord, arecord, ffmpeg or sox, with
+`auto` probing in that order), and `platform/voice/capture/recorder-command.ts`
+holds the argv. Those arguments were checked against the real tools, not
+recalled — most consequentially, **pw-record needs `--container raw`**, because
+writing to `-` without it emits a container header before the samples and
+byte-misaligns the entire stream, which does not fail: it produces a detector
+that never fires. A compiled single-file binary cannot rely on the runtime
+dynamically importing its own WASM glue by path, so the host embeds the two
+`onnxruntime-web` assets, writes them out once, and points
+`ort.env.wasm.wasmPaths` at that directory.
+
+**The browser tab.** `getUserMedia` produces the audio, re-cut to exact frames by
+`AudioFrameSlicer`, and the tab reads the model **from the daemon** rather than
+from the release tag: the published assets answer without an
+`access-control-allow-origin` header, so a cross-origin fetch of them from the
+web UI's origin is refused before the bytes arrive. `voice.wake.model` serves the
+artifact in bounded chunks, each restating the pinned sha256, and the tab
+verifies the file it reassembled before creating a session — a truncated transfer
+then fails at the consumer instead of loading as a model that silently never
+detects.
+
+**Frames carry int16 magnitudes as floats, not normalised −1..1 audio.** That is
+the scale the classifier was trained on; normalised audio scores near zero
+forever and looks exactly like a microphone that is picking nothing up.
 
 ## Known weaknesses
 

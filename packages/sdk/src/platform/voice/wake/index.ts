@@ -8,8 +8,9 @@
  * What lives here is behaviour every surface must share — the front end, the
  * buffering the published classifier was trained against, the patience and
  * cooldown rules, the restart policy, and the checksum-pinned provisioning with
- * its recovery housekeeping. Audio capture does NOT live here, because it is
- * genuinely per-surface.
+ * its recovery housekeeping, plus the settings resolution and the listener that
+ * drive them. Opening a device does NOT live here — that is per-surface, and
+ * arrives as an opener from ../capture, which the listener consumes.
  */
 export {
   melFrames,
@@ -57,6 +58,31 @@ export {
 } from './engine.js';
 
 export {
+  WAKE_SETTING_KEYS,
+  resolveWakeRuntimeSettings,
+  wakeSurfaceKey,
+  type WakeSurface,
+  type WakeSurfaceCapabilities,
+  type WakeSettingBlocker,
+  type WakeSettingLimitation,
+  type WakeActivationSound,
+  type WakeCaptureSettings,
+  type WakeRuntimeSettings,
+  type WakeSettingReader,
+} from './settings.js';
+
+export {
+  WakeListener,
+  type WakeListenerPhase,
+  type WakeListenerState,
+  type WakeListenerHandlers,
+  type WakeListenerOptions,
+  type WakeStartOutcome,
+  type WakeStartRefusal,
+  type WakeTriggered,
+} from './listener.js';
+
+export {
   WakeSupervisor,
   WAKE_SUPERVISOR_DEFAULTS,
   type WakeSupervisorPolicy,
@@ -66,6 +92,7 @@ export {
 
 export {
   provisionWakeWordModels,
+  resolveWakeModelFiles,
   wakeProvisionStatus,
   wakeArtifactStatus,
   resolveManagedWakePaths,
@@ -76,9 +103,11 @@ export {
   type WakeProvisionOptions,
   type WakeProvisionProgress,
   type WakeComponentOutcome,
+  type ResolvedWakeModelFile,
 } from './provisioning.js';
 
 export {
+  retainedClipFileName,
   sweepWakeStorage,
   startWakeRecoverySweeper,
   WAKE_REAP_RECEIPT_FILE,

@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `480`
+- Methods: `483`
 - Events: `32`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -37250,6 +37250,347 @@ Whether the managed local voice runtime (piper TTS + a default voice) is install
     "tts",
     "stt",
     "offerBytes"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `voice.wake.model.get`
+
+Read one provisioned wake artifact in bounded chunks, for a surface that cannot fetch it itself — a browser tab, whose cross-origin fetch of the release asset is refused because that asset answers with no CORS header. Each chunk carries the offset, the whole artifact's size, and its PINNED sha256, so a client reassembles the file and verifies it against the pin: a truncated transfer fails at the consumer instead of loading as a model that silently never detects. Provision first — this serves what is on disk and does not download.
+
+- Title: `Read Wake-Word Model Bytes`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/voice/wake/model`
+- Scopes: `read:health`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "component": {
+      "type": "string",
+      "enum": [
+        "classifier",
+        "embedding",
+        "notice"
+      ]
+    },
+    "offset": {
+      "type": "number"
+    },
+    "maxBytes": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "component"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "component": {
+      "type": "string",
+      "enum": [
+        "classifier",
+        "embedding",
+        "notice"
+      ]
+    },
+    "offset": {
+      "type": "number"
+    },
+    "bytes": {
+      "type": "number"
+    },
+    "totalBytes": {
+      "type": "number"
+    },
+    "sha256": {
+      "type": "string"
+    },
+    "dataBase64": {
+      "type": "string"
+    },
+    "complete": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "component",
+    "offset",
+    "bytes",
+    "totalBytes",
+    "sha256",
+    "dataBase64",
+    "complete"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `voice.wake.provision`
+
+Download and checksum-verify the pinned wake-word classifier, its NOTICE, and the speech-embedding front end into the goodvibes-managed directory — about 3.7 MB. Downloads only when you ask, and is resumable by re-running: an artifact that already matches its pin is skipped, and one that is present but fails verification is replaced rather than used. A failed or mismatched download keeps nothing at the destination. Single-flight: two surfaces asking at once join one download instead of racing for the same files.
+
+- Title: `Download the Wake-Word Models`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/voice/wake/provision`
+- Scopes: `write:config`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "ready": {
+      "type": "boolean"
+    },
+    "modelVersion": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "noticePath": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "recallIsSyntheticOnly": {
+      "type": "boolean"
+    },
+    "outcomes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "component": {
+            "type": "string",
+            "enum": [
+              "classifier",
+              "notice",
+              "embedding"
+            ]
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "installed",
+              "skipped",
+              "failed"
+            ]
+          },
+          "path": {
+            "type": "string"
+          },
+          "bytes": {
+            "type": "number"
+          },
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "component",
+          "state",
+          "path"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "ready",
+    "modelVersion",
+    "noticePath",
+    "recallIsSyntheticOnly",
+    "outcomes"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `voice.wake.status`
+
+Whether the pinned wake-word artifacts are on disk and VERIFIED BY CONTENT: the "hey goodvibes" classifier, its attribution NOTICE, and the speech-embedding front end the classifier sits behind. Each reports verified, corrupt (present but failing its checksum — a truncated or swapped file, distinct from missing) and its byte size, with the total a fresh provision would download. Also restates that the model's published recall figures are measured on synthesised speech only, which any surface describing the model must carry. Never downloads. Read-only.
+
+- Title: `Get Wake-Word Model State`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/voice/wake/status`
+- Scopes: `read:health`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "ready": {
+      "type": "boolean"
+    },
+    "reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "classifier": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "verified": {
+          "type": "boolean"
+        },
+        "corrupt": {
+          "type": "boolean"
+        },
+        "bytes": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "path",
+        "verified",
+        "corrupt",
+        "bytes"
+      ],
+      "additionalProperties": false
+    },
+    "notice": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "verified": {
+          "type": "boolean"
+        },
+        "corrupt": {
+          "type": "boolean"
+        },
+        "bytes": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "path",
+        "verified",
+        "corrupt",
+        "bytes"
+      ],
+      "additionalProperties": false
+    },
+    "embedding": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "verified": {
+          "type": "boolean"
+        },
+        "corrupt": {
+          "type": "boolean"
+        },
+        "bytes": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "path",
+        "verified",
+        "corrupt",
+        "bytes"
+      ],
+      "additionalProperties": false
+    },
+    "downloadBytes": {
+      "type": "number"
+    },
+    "modelVersion": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "recallIsSyntheticOnly": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "ready",
+    "reason",
+    "classifier",
+    "notice",
+    "embedding",
+    "downloadBytes",
+    "modelVersion",
+    "recallIsSyntheticOnly"
   ],
   "additionalProperties": false
 }
