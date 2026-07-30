@@ -28,10 +28,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
     member's birth date into a message channel.
   - **Telegram and the agent. Never the TUI**, which is refused as a
     destination structurally rather than left unconfigured. The TUI is a
-    get-work-done interface and life admin does not belong in it. Telegram is
-    the shipped default (`occasions.nudgeChannel`), so nudges push without
-    being configured first; setting that key to empty makes the feature
-    pull-only.
+    get-work-done interface and life admin does not belong in it.
+    `occasions.nudgeChannel` takes a comma-separated list, so `telegram`,
+    `agent` and `telegram,agent` all mean what they say, and each entry may
+    carry an address (`telegram:12345,agent`). Telegram alone is the shipped
+    default, so nudges push without being configured first; setting the key to
+    empty makes the feature pull-only. Each destination is pushed on its own, so
+    a broken credential on one cannot silence the other, and the sweep reports
+    per destination which landed and which did not.
+  - **The push and the pull cannot say the same thing twice.** The agent both
+    receives pushes and pulls what is outstanding at a turn boundary, and both
+    read the same open item: a push that lands on the agent stamps the item, and
+    while the agent is a push destination `occasions.pending` leaves stamped
+    items out. A push that failed stamps nothing, so that nudge still comes back
+    through the pull rather than being lost.
   - **Nothing unresolved is ever dropped.** One open-item mechanism behind all
     three cases: an unanswered nudge continues on its own rhythm, a "later"
     comes back roughly halfway to the date, a conflict between two declared
@@ -58,7 +68,33 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
     all daemon-owned. Every operation a surface needs is a verb; nothing a
     surface renders has to be computed there.
 
+- **The agent is a delivery destination, not only a place that asks.** `agent`
+  is now a channel delivery surface kind, and every `ChannelDeliveryRouter`
+  carries a strategy for it. The SDK owns the destination and the message
+  contract; the agent product supplies the callable that lands the message in its
+  conversation, registered through `router.agentDelivery.register(sender)` and
+  removable through the undo it returns. A second registration is refused unless
+  the takeover is explicit, and a push that arrives before the product has
+  registered fails saying exactly that instead of looking like an unknown
+  surface. New exports from `@pellux/goodvibes-sdk/platform/channels`:
+  `AgentDeliveryRegistry`, `createAgentDeliveryStrategy`,
+  `AGENT_DELIVERY_STRATEGY_ID`, `CHANNEL_DELIVERY_SURFACE_KINDS`, and the
+  `AgentConversationSender` / `AgentConversationMessage` types. Route bindings
+  are unchanged and still transport-only: nothing dials into an agent
+  conversation, so `agent` is a destination that can be sent to, never a route
+  that can be bound.
+
 ### Fixed
+
+- **Setting the occasions nudge channel to `agent` configured nothing at all.**
+  The owner's ruling was that a nudge pushes to Telegram **and** the agent, but
+  the agent was missing from the delivery surface vocabulary, so the router had
+  no strategy that could claim the target and every push addressed to it was
+  refused as an unsupported surface — silently, from the operator's point of
+  view, because the setting accepted the value happily. The agent is now a real
+  push destination (see above), `occasions.nudgeChannel` accepts one channel or
+  a list of them, and every value it accepts reaches somewhere or reports why it
+  did not.
 
 - **A route binding is now a hint, validated every time it is used — a channel
   can no longer be stranded by a stale one.** A persisted binding whose session

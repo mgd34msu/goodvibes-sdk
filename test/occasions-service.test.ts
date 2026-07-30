@@ -19,7 +19,7 @@ import { OwnerProfileStore } from '../packages/sdk/src/platform/owner-profile/st
 import { OccasionStateStore } from '../packages/sdk/src/platform/occasions/state-store.ts';
 import {
   OccasionsService,
-  resolveNudgeDestination,
+  resolveNudgeDestinations,
   type OccasionNudgeDeliverer,
 } from '../packages/sdk/src/platform/occasions/service.ts';
 import { OCCASIONS_DEFAULTS } from '../packages/sdk/src/platform/occasions/policy.ts';
@@ -66,6 +66,10 @@ interface Harness {
   readonly profile: OwnerProfileStore;
   readonly state: OccasionStateStore;
   readonly delivered: OccasionNudge[];
+  /** Every push that landed, with the destination it was addressed to. */
+  readonly pushes: { readonly channel: string; readonly nudge: OccasionNudge }[];
+  /** Destinations that refuse the push, so a dead channel can be exercised. */
+  readonly refuse: Set<string>;
   readonly profilePath: string;
   setNow(ms: number): void;
   setConfig(key: string, value: unknown): void;
@@ -80,10 +84,16 @@ function harness(options: { readonly profileText?: string; readonly now?: number
 
   const state = new OccasionStateStore(join(dir, 'occasions-state.json'));
   const delivered: OccasionNudge[] = [];
+  const pushes: { readonly channel: string; readonly nudge: OccasionNudge }[] = [];
+  const refuse = new Set<string>();
   const deliverer: OccasionNudgeDeliverer = {
-    deliver: async ({ nudge }) => {
+    deliver: async ({ channel, nudge }) => {
+      // A refusing destination throws, exactly as the delivery router does when
+      // a credential is missing or a strategy cannot reach its surface.
+      if (refuse.has(channel)) throw new Error(`${channel} is not accepting messages`);
+      pushes.push({ channel, nudge });
       delivered.push(nudge);
-      return 'delivery-1';
+      return `delivery-${pushes.length}`;
     },
   };
   // Telegram is pinned here rather than left to the default so the delivery
@@ -123,6 +133,8 @@ function harness(options: { readonly profileText?: string; readonly now?: number
     profile,
     state,
     delivered,
+    pushes,
+    refuse,
     profilePath,
     setNow: (ms) => { now = ms; },
     setConfig: (key, value) => { overrides.set(key, value); },
@@ -457,17 +469,106 @@ describe('what is outstanding, and where it may go', () => {
   });
 
   test('the TUI is refused as a destination, whatever is configured', async () => {
-    expect(resolveNudgeDestination('telegram')).toBe('telegram');
-    expect(resolveNudgeDestination('telegram:12345')).toBe('telegram:12345');
-    expect(resolveNudgeDestination('tui')).toBeNull();
-    expect(resolveNudgeDestination('TUI:main')).toBeNull();
-    expect(resolveNudgeDestination('  ')).toBeNull();
+    expect(resolveNudgeDestinations('telegram')).toEqual(['telegram']);
+    expect(resolveNudgeDestinations('telegram:12345')).toEqual(['telegram:12345']);
+    expect(resolveNudgeDestinations('tui')).toEqual([]);
+    expect(resolveNudgeDestinations('TUI:main')).toEqual([]);
+    expect(resolveNudgeDestinations('  ')).toEqual([]);
+    // Naming the TUI alongside real destinations loses the TUI and keeps the
+    // rest: the exclusion is structural, not a reason to drop what he asked for.
+    expect(resolveNudgeDestinations('tui,telegram,agent')).toEqual(['telegram', 'agent']);
 
     const h = harness();
     h.setConfig('occasions.nudgeChannel', 'tui');
     const outcome = await h.service.sweep();
     expect(outcome.delivered).toBe(false);
     expect(h.delivered).toHaveLength(0);
+  });
+
+  test('every accepted shape resolves to destinations that are actually pushed', async () => {
+    // The owner's ruling was Telegram AND the agent, so all three shapes have to
+    // mean something. A value that configures nothing is the defect this closes.
+    expect(resolveNudgeDestinations('agent')).toEqual(['agent']);
+    expect(resolveNudgeDestinations('telegram,agent')).toEqual(['telegram', 'agent']);
+    expect(resolveNudgeDestinations(' telegram , agent ')).toEqual(['telegram', 'agent']);
+    // One destination named twice is pushed once.
+    expect(resolveNudgeDestinations('agent,agent')).toEqual(['agent']);
+
+    for (const [configured, expected] of [
+      ['telegram', ['telegram']],
+      ['agent', ['agent']],
+      ['telegram,agent', ['telegram', 'agent']],
+      ['telegram:12345,agent', ['telegram:12345', 'agent']],
+    ] as const) {
+      const h = harness();
+      h.setConfig('occasions.nudgeChannel', configured);
+      const outcome = await h.service.sweep();
+      expect(outcome.delivered).toBe(true);
+      expect(h.pushes.map((entry) => entry.channel)).toEqual([...expected]);
+      expect(outcome.deliveries.map((entry) => entry.channel)).toEqual([...expected]);
+      expect(outcome.deliveries.every((entry) => entry.delivered)).toBe(true);
+    }
+  });
+
+  test('the agent gets the same nudge Telegram gets, and it still carries no date', async () => {
+    const h = harness();
+    h.setConfig('occasions.nudgeChannel', 'telegram,agent');
+    await h.service.sweep();
+    expect(h.pushes).toHaveLength(2);
+    expect(h.pushes[0]!.nudge.message).toBe(h.pushes[1]!.nudge.message);
+    for (const push of h.pushes) expect(push.nudge.message).not.toMatch(/\d/);
+  });
+
+  test('a nudge pushed to the agent is not repeated by a pull at a turn boundary', async () => {
+    const h = harness();
+    h.setConfig('occasions.nudgeChannel', 'telegram,agent');
+    await h.service.sweep();
+    expect(h.pushes.map((entry) => entry.channel)).toEqual(['telegram', 'agent']);
+
+    // The push and the pull read the same open item, and the item now carries
+    // the day the agent was spoken to.
+    const items = await h.state.openItems();
+    expect(items).toHaveLength(1);
+    expect(items[0]!.agentPushedOn).toBe('2026-03-06');
+    expect((await h.service.pending()).nudge).toBeNull();
+
+    // Answering still works from either side, and closes it for both.
+    await h.service.answer({ occasionId: "sarah's birthday", answer: 'no' });
+    expect(await h.state.openItems()).toHaveLength(0);
+  });
+
+  test('with Telegram alone the agent still pulls, because nothing was pushed to it', async () => {
+    const h = harness();
+    h.setConfig('occasions.nudgeChannel', 'telegram');
+    await h.service.sweep();
+    expect((await h.state.openItems())[0]!.agentPushedOn).toBeUndefined();
+    expect((await h.service.pending()).nudge).not.toBeNull();
+  });
+
+  test('a push to the agent that fails leaves the pull as the way it is raised', async () => {
+    const h = harness();
+    h.setConfig('occasions.nudgeChannel', 'agent');
+    h.refuse.add('agent');
+    const outcome = await h.service.sweep();
+    expect(outcome.delivered).toBe(false);
+    expect(outcome.deliveries).toHaveLength(1);
+    expect(outcome.deliveries[0]!.failure).toContain('not accepting messages');
+    // Nothing was stamped, so the nudge is not lost — it is still outstanding.
+    expect((await h.state.openItems())[0]!.agentPushedOn).toBeUndefined();
+    expect((await h.service.pending()).nudge).not.toBeNull();
+  });
+
+  test('one dead destination does not silence the other', async () => {
+    const h = harness();
+    h.setConfig('occasions.nudgeChannel', 'telegram,agent');
+    h.refuse.add('telegram');
+    const outcome = await h.service.sweep();
+    expect(outcome.delivered).toBe(true);
+    expect(h.pushes.map((entry) => entry.channel)).toEqual(['agent']);
+    expect(outcome.deliveries.map((entry) => entry.delivered)).toEqual([false, true]);
+    expect(outcome.deliveryChannel).toBe('telegram, agent');
+    // The agent heard it, so the pull stays quiet about it.
+    expect((await h.service.pending()).nudge).toBeNull();
   });
 
   test('a conflict is raised and keeps being raised until it is closed', async () => {
@@ -560,8 +661,12 @@ describe('the shipped defaults', () => {
     // it is just no longer what ships.
     expect(occasionsConfigDefaults.occasions.nudgeChannel).toBe('telegram');
     expect(OCCASIONS_DEFAULTS.nudgeChannel).toBe('telegram');
-    expect(resolveNudgeDestination(occasionsConfigDefaults.occasions.nudgeChannel))
-      .toBe('telegram');
+    expect(resolveNudgeDestinations(occasionsConfigDefaults.occasions.nudgeChannel))
+      .toEqual(['telegram']);
+    // The key accepts a list so his "Telegram and the agent" ruling can be
+    // expressed, and the SHIPPED value is still the one he confirmed: Telegram
+    // alone. Adding the agent to it is his to do, not a default that drifted.
+    expect(occasionsConfigDefaults.occasions.nudgeChannel).not.toContain('agent');
   });
 
   test('every default is stated once: the settings rows and the config tree agree', () => {

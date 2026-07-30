@@ -18,6 +18,11 @@
  * 08:00–22:00 window — and one he changed at that point: `nudgeChannel` ships as
  * `telegram` rather than empty, so a nudge pushes out of the box instead of
  * waiting to be pulled.
+ *
+ * `nudgeChannel` is a comma-separated LIST, because his ruling on where these go
+ * was Telegram AND the agent, and a single-valued key would have made that a
+ * choice between them. The shipped default is still exactly `telegram` — the
+ * value he confirmed — and adding `agent` to it is his to do.
  */
 import { type ConfigSettingDefinition, intRange } from './schema-shared.js';
 import type { OccasionsConfig } from './schema-types-occasions.js';
@@ -75,7 +80,7 @@ export const occasionsConfigSettings: ConfigSettingDefinition[] = [
     type: 'string',
     default: 'telegram',
     description:
-      'Where a nudge is delivered, as a channel surface or surface:address (for example telegram, or telegram:12345). Telegram by default, because an occasion nudge that waits to be asked for has already missed the date it existed to protect — the owner ruled that these push out of the box. Set it to empty to make the feature pull-only instead: nothing is pushed, and the agent surface picks up what is outstanding at the start of a turn. The TUI is refused as a destination whatever is set here: it is a get-work-done interface, and life admin does not belong in it.',
+      'Where a nudge is delivered: a comma-separated list of channel destinations, each a surface or surface:address — "telegram", "agent", "telegram,agent", "telegram:12345,agent". Telegram by default, because an occasion nudge that waits to be asked for has already missed the date it existed to protect — the owner ruled that these push out of the box, to Telegram and to the agent. Naming "agent" pushes the nudge into the agent conversation itself, which the agent product makes possible by registering its own sender; naming both means both get it, once each, and each is attempted independently so a broken credential on one cannot silence the other. Set it to empty to make the feature pull-only instead: nothing is pushed, and a surface picks up what is outstanding at the start of a turn. The TUI is refused as a destination whatever is set here: it is a get-work-done interface, and life admin does not belong in it.',
   },
   {
     key: 'occasions.cadenceDays',
