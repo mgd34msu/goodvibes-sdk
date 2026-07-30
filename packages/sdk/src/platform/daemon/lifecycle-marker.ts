@@ -14,11 +14,24 @@
  * daemon died without shutting down — the caller records one honest crash
  * receipt.
  *
+ * A streak is scoped to the BUILD that recorded it (`version`). Failed starts
+ * accuse a specific binary, so when the executable on disk changes between
+ * boots the accusation does not transfer to its replacement. Without that, a
+ * daemon that had been up for hours could inherit an unrelated streak and roll
+ * a perfectly good binary back to an older one.
+ *
+ * A rollback also records the version it moved AWAY from (`rejectedVersion`),
+ * which outlives the rollback: it is the only thing standing between the
+ * self-update loop and re-downloading, re-verifying, re-installing and
+ * re-restarting into the exact release that just crash looped, every hour,
+ * forever.
+ *
  * Persisted-state hygiene: every field is validated by content on read (a
  * hand-edited, truncated, or foreign file degrades to "no marker", never to a
- * fabricated crash or a fabricated rollback), the counter is bounded, and a
- * failed-start streak older than the crash-loop window is dropped rather than
- * accumulated across weeks of unrelated boots.
+ * fabricated crash or a fabricated rollback), the counter is bounded, version
+ * strings are length-bounded, and a failed-start streak older than the
+ * crash-loop window is dropped rather than accumulated across weeks of
+ * unrelated boots.
  *
  * Filesystem and clock are injectable so the contract is provable in tests.
  */
@@ -63,6 +76,21 @@ export interface LifecycleMarker {
   readonly streakStartedAt?: number | undefined;
   /** When an automatic rollback last restored the kept previous binary; cleared by the next fully-started boot. */
   readonly autoRollbackAt?: number | undefined;
+  /**
+   * The artifact version the CURRENT streak belongs to. A failed-start streak
+   * accuses a specific build; when the build on disk changes (an update, a
+   * rollback, a hand-run install) the accusation does not carry over to its
+   * replacement, so the streak restarts rather than convicting a binary that
+   * never failed.
+   */
+  readonly version?: string | undefined;
+  /**
+   * The version an automatic rollback moved AWAY from — the build that crash
+   * looped. Kept across boots so the self-update loop does not download,
+   * verify, swap and restart into the exact release that just failed, over and
+   * over, every check interval. Cleared once that version starts successfully.
+   */
+  readonly rejectedVersion?: string | undefined;
 }
 
 /** A count field is trusted only when it is a finite, non-negative number; always clamped. */
@@ -77,6 +105,21 @@ function readTimestamp(value: unknown): number | undefined {
   return Math.floor(value);
 }
 
+/**
+ * Upper bound on a persisted version string. A version is compared and printed,
+ * never executed, but an unbounded string from a corrupted file has no business
+ * being carried forward into a receipt or a log line.
+ */
+export const MAX_TRACKED_VERSION_LENGTH = 64;
+
+/** A version field is trusted only when it is a short, non-empty string. */
+function readVersion(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  if (trimmed.length === 0 || trimmed.length > MAX_TRACKED_VERSION_LENGTH) return undefined;
+  return trimmed;
+}
+
 function parseMarker(raw: string | null): LifecycleMarker | null {
   if (!raw) return null;
   try {
@@ -86,6 +129,8 @@ function parseMarker(raw: string | null): LifecycleMarker | null {
     if (typeof parsed.at !== 'number' || !Number.isFinite(parsed.at)) return null;
     const streakStartedAt = readTimestamp(parsed.streakStartedAt);
     const autoRollbackAt = readTimestamp(parsed.autoRollbackAt);
+    const version = readVersion(parsed.version);
+    const rejectedVersion = readVersion(parsed.rejectedVersion);
     return {
       state: parsed.state,
       at: parsed.at,
@@ -93,8 +138,24 @@ function parseMarker(raw: string | null): LifecycleMarker | null {
       failedStarts: readCount(parsed.failedStarts),
       ...(streakStartedAt !== undefined ? { streakStartedAt } : {}),
       ...(autoRollbackAt !== undefined ? { autoRollbackAt } : {}),
+      ...(version !== undefined ? { version } : {}),
+      ...(rejectedVersion !== undefined ? { rejectedVersion } : {}),
     };
   } catch {
+    return null;
+  }
+}
+
+/**
+ * The marker as it stands, or null when there is none / it does not survive
+ * content validation. Exported so the self-update loop can read the version an
+ * automatic rollback rejected without a second parser for the same file.
+ */
+export function readLifecycleMarker(markerPath: string, io: LifecycleMarkerIo = realLifecycleMarkerIo): LifecycleMarker | null {
+  try {
+    return parseMarker(io.read(markerPath));
+  } catch {
+    // An unreadable marker is "no marker", never a throw into a boot path.
     return null;
   }
 }
@@ -125,6 +186,12 @@ export interface MarkerCallOptions {
   io?: LifecycleMarkerIo;
   now?: () => number;
   pid?: number;
+  /**
+   * The running artifact's version. Scopes the failed-start streak to the build
+   * it accuses: a marker left by a DIFFERENT version is another build's record,
+   * and its failures must not be counted against this one.
+   */
+  version?: string | undefined;
 }
 
 /**
@@ -145,14 +212,25 @@ export function recordDaemonStartAttempt(
   const previous = parseMarker(io.read(markerPath));
   const windowMs = Math.max(1_000, options.windowMs ?? DEFAULT_CRASH_LOOP_WINDOW_MS);
 
+  const version = readVersion(options.version);
+  // A streak accuses the build that recorded it. When the binary on disk has
+  // changed since — an update swapped it, a rollback restored it, the owner
+  // reinstalled — the previous build's failures are not this build's, and
+  // carrying them over is how a healthy binary gets convicted of a crash loop
+  // it had no part in.
+  const versionChanged =
+    version !== undefined && previous?.version !== undefined && previous.version !== version;
+
   const streakStartedAt = previous?.streakStartedAt;
   const streakIsRapid =
     previous !== null &&
+    !versionChanged &&
     previous.failedStarts > 0 &&
     streakStartedAt !== undefined &&
     now >= streakStartedAt &&
     now - streakStartedAt <= windowMs;
   const failedStarts = streakIsRapid ? previous.failedStarts : 0;
+  const carriedVersion = version ?? previous?.version;
 
   writeMarker(io, markerPath, {
     state: previous?.state ?? 'clean-shutdown',
@@ -161,6 +239,8 @@ export function recordDaemonStartAttempt(
     failedStarts: Math.min(MAX_TRACKED_FAILED_STARTS, failedStarts + 1),
     streakStartedAt: streakIsRapid && streakStartedAt !== undefined ? streakStartedAt : now,
     ...(previous?.autoRollbackAt !== undefined ? { autoRollbackAt: previous.autoRollbackAt } : {}),
+    ...(carriedVersion !== undefined ? { version: carriedVersion } : {}),
+    ...(previous?.rejectedVersion !== undefined ? { rejectedVersion: previous.rejectedVersion } : {}),
   });
 
   return {
@@ -183,11 +263,24 @@ export function recordDaemonStart(markerPath: string, options: MarkerCallOptions
   const io = options.io ?? realLifecycleMarkerIo;
   const now = options.now ?? Date.now;
   const previous = parseMarker(io.read(markerPath));
+  const version = readVersion(options.version) ?? previous?.version;
+  // A rejected version outlives the boot that rejected it — the whole point is
+  // that the self-update loop, running on the RESTORED build moments from now,
+  // must not fetch and install the rejected release all over again. The one
+  // thing that clears it is the rejected version itself reaching fully-started:
+  // it works after all, so the rejection is stale and saying otherwise would
+  // pin the daemon to an old build forever.
+  const rejectedVersion =
+    previous?.rejectedVersion !== undefined && previous.rejectedVersion !== version
+      ? previous.rejectedVersion
+      : undefined;
   writeMarker(io, markerPath, {
     state: 'running',
     at: now(),
     pid: options.pid ?? process.pid,
     failedStarts: 0,
+    ...(version !== undefined ? { version } : {}),
+    ...(rejectedVersion !== undefined ? { rejectedVersion } : {}),
   });
   return { crashed: previous?.state === 'running', previous };
 }
@@ -196,7 +289,15 @@ export function recordDaemonStart(markerPath: string, options: MarkerCallOptions
 export function recordDaemonCleanShutdown(markerPath: string, options: MarkerCallOptions = {}): void {
   const io = options.io ?? realLifecycleMarkerIo;
   const now = options.now ?? Date.now;
-  writeMarker(io, markerPath, { state: 'clean-shutdown', at: now(), failedStarts: 0 });
+  const previous = parseMarker(io.read(markerPath));
+  const version = readVersion(options.version) ?? previous?.version;
+  writeMarker(io, markerPath, {
+    state: 'clean-shutdown',
+    at: now(),
+    failedStarts: 0,
+    ...(version !== undefined ? { version } : {}),
+    ...(previous?.rejectedVersion !== undefined ? { rejectedVersion: previous.rejectedVersion } : {}),
+  });
 }
 
 /**
@@ -207,15 +308,27 @@ export function recordDaemonCleanShutdown(markerPath: string, options: MarkerCal
  * EXCHANGES the live file with its kept previous — would ping-pong between two
  * versions that both fail to start.
  */
-export function recordDaemonAutoRollback(markerPath: string, options: MarkerCallOptions = {}): void {
+export function recordDaemonAutoRollback(
+  markerPath: string,
+  options: MarkerCallOptions & {
+    /** The version being rolled AWAY from — the build that crash looped. */
+    rejectedVersion?: string | undefined;
+  } = {},
+): void {
   const io = options.io ?? realLifecycleMarkerIo;
   const now = (options.now ?? Date.now)();
   const previous = parseMarker(io.read(markerPath));
+  const rejectedVersion = readVersion(options.rejectedVersion) ?? previous?.rejectedVersion;
   writeMarker(io, markerPath, {
     state: previous?.state ?? 'clean-shutdown',
     at: previous?.at ?? now,
     ...(previous?.pid !== undefined ? { pid: previous.pid } : {}),
     failedStarts: 0,
     autoRollbackAt: now,
+    // The restored build is about to run, and it is a DIFFERENT version from
+    // the one that just failed. Leaving the failing version stamped here would
+    // make the restored binary's first boot look like a continuation of its
+    // streak; naming the rejected one separately keeps both facts.
+    ...(rejectedVersion !== undefined ? { rejectedVersion } : {}),
   });
 }

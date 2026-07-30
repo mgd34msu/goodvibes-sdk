@@ -278,8 +278,8 @@
     "rationale": "platform daemon facade; measured 345 B gzip @ commit 4e5a5e2; headroom max(ceil(345*1.2)=414, 345+50=395) → 414 (1.2x dominates by 19 B)"
   },
   "./platform/daemon/auto-updater": {
-    "gzip_bytes": 4370,
-    "rationale": "DaemonAutoUpdater hourly self-update loop + defaultDownloadBaseUrl, exported for embedders that host the update lifecycle; re-anchored after the boot-settle catch-up check and the crash-loop rollback joined the updater (update-schedule, boot-rollback, and the widened lifecycle marker); measured 3641 B gzip on the merged update branch; headroom max(ceil(3641*1.2)=4370, 3641+50=3691) -> 4370 (1.2x dominates); previously 3321 B"
+    "gzip_bytes": 7070,
+    "rationale": "DaemonAutoUpdater hourly self-update loop + defaultDownloadBaseUrl, exported for embedders that host the update lifecycle; re-anchored after the loop learned to refuse a release that already crash looped on this host (the rejected-version gate, which is what stops install/fail/roll-back/reinstall repeating every interval) and to escalate repeated failed checks to the owner over a working channel instead of a debug-log warn (the consecutive-failure latch, quiet window, and recovery notice); measured 5891 B gzip; headroom max(ceil(5891*1.2)=7070, 5891+50=5941) -> 7070 (1.2x dominates); previously 4370 B"
   },
   "./platform/daemon/receipts": {
     "gzip_bytes": 3076,
