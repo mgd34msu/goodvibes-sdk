@@ -29,8 +29,8 @@ const stubStatus = { platform: 'linux-x64', state: 'not-provisioned', tts: { eng
 const stubInstall = { provisioned: true, platform: 'linux-x64', tts: { engine: 'piper', state: 'provisioned', binaryPath: '/m/piper', modelPath: '/m/voice.onnx' }, stt: { engine: 'whisper-cpp', state: 'unsupported-platform', reason: 'no prebuilt' }, components: [], configured: { set: [{ key: 'voice.local.ttsEngine', value: 'piper' }], skipped: [] } };
 
 const stubArtifact = { path: '/m/wake/x', verified: true, corrupt: false, bytes: 10 };
-const stubWakeStatus = { ready: true, reason: null, classifier: stubArtifact, notice: stubArtifact, embedding: stubArtifact, downloadBytes: 0, modelVersion: '1.0.0', recallIsSyntheticOnly: true };
-const stubWakeProvision = { ready: true, modelVersion: '1.0.0', noticePath: '/m/wake/NOTICE.txt', recallIsSyntheticOnly: true, outcomes: [] };
+const stubWakeStatus = { ready: true, reason: null, classifier: stubArtifact, mobileClassifier: stubArtifact, notice: stubArtifact, embedding: stubArtifact, downloadBytes: 0, modelVersion: '1.0.0', recallIsSyntheticOnly: true };
+const stubWakeProvision = { ready: true, mobileFormatReady: true, modelVersion: '1.0.0', noticePath: '/m/wake/NOTICE.txt', recallIsSyntheticOnly: true, outcomes: [] };
 const stubChunk = { component: 'classifier', offset: 0, bytes: 4, totalBytes: 4, sha256: 'abc', dataBase64: 'AAEC', complete: true };
 
 const service: VoiceSetupGatewayService = {
@@ -147,9 +147,15 @@ describe('the wake-word verbs ride the same registered group', () => {
 
   test('an unrecognised component is refused with a written reason, not turned into a path', () => {
     expect(() => createWakeModelHandler(service)({ component: '../../etc/passwd' } as never))
-      .toThrow(/component must be classifier, embedding or notice/);
+      .toThrow(/component must be classifier, tflite, embedding or notice/);
     expect(() => createWakeModelHandler(service)({} as never))
-      .toThrow(/component must be classifier, embedding or notice/);
+      .toThrow(/component must be classifier, tflite, embedding or notice/);
+  });
+
+  test('the tflite form of the classifier is servable, because it is provisioned', () => {
+    // A runtime that cannot load onnx has the same claim on the model as one that
+    // can, and no more ability to fetch the release asset itself.
+    expect(() => createWakeModelHandler(service)({ component: 'tflite' } as never)).not.toThrow();
   });
 
   test('all three verbs are in the live catalog with REST bindings, and register without throwing', () => {
@@ -208,6 +214,15 @@ describe('the chunked model read a browser tab reassembles', () => {
     expect(chunk.complete).toBe(false);
   });
 
+  test('the tflite twin is served from its own path, under its own pin', () => {
+    const onnx = wake.modelChunk({ component: 'classifier', offset: 0, maxBytes: 16 });
+    const tflite = wake.modelChunk({ component: 'tflite', offset: 0, maxBytes: 16 });
+    // Different artifacts, so different pinned checksums — a client verifying the
+    // file it rebuilt against the wrong pin would reject a perfectly good model.
+    expect(tflite.sha256).not.toBe(onnx.sha256);
+    expect(tflite.sha256.length).toBe(64);
+  });
+
   test('an offset past the end is an error, not an empty success', () => {
     expect(() => wake.modelChunk({ component: 'classifier', offset: 5000 })).toThrow(/past the end/);
   });
@@ -220,7 +235,7 @@ describe('the chunked model read a browser tab reassembles', () => {
       provision: async () => {
         runs += 1;
         await new Promise<void>((r) => { release = r; });
-        return { ready: true, modelVersion: '1.0.0', outcomes: [], noticePath: null, recallIsSyntheticOnly: true };
+        return { ready: true, mobileFormatReady: true, modelVersion: '1.0.0', outcomes: [], noticePath: null, recallIsSyntheticOnly: true };
       },
     });
     const a = svc.provision();
@@ -240,5 +255,55 @@ describe('the chunked model read a browser tab reassembles', () => {
     });
     expect(svc.status()).toEqual(stubWakeStatus);
     expect(downloads).toBe(0);
+  });
+});
+
+
+describe('the install/boot provisioning path on the setup service', () => {
+  test('a boot attempt and a user-triggered setup join ONE download', async () => {
+    let runs = 0;
+    let release: (() => void) | null = null;
+    const svc = createWakeSetupService({
+      managedVoiceRoot: '/managed/voice',
+      readStatus: () => ({ ...stubWakeStatus, ready: false, reason: 'not-provisioned' }),
+      provision: async () => {
+        runs += 1;
+        await new Promise<void>((r) => { release = r; });
+        return { ready: true, mobileFormatReady: true, modelVersion: '1.0.0', outcomes: [], noticePath: null, recallIsSyntheticOnly: true };
+      },
+    });
+    const boot = svc.ensureProvisioned({ recoveryHint: '/voice wake setup' });
+    const user = svc.provision();
+    // The whole reason ensureProvisioned lives on the service rather than being
+    // called directly: two 6 MB downloads for the same files is the alternative.
+    expect(runs).toBe(1);
+    release!();
+    await user;
+    await boot;
+    expect(runs).toBe(1);
+  });
+
+  test('ensureProvisioned reports the recovery hint it was given, and never throws', async () => {
+    const svc = createWakeSetupService({
+      managedVoiceRoot: '/managed/voice',
+      readStatus: () => ({ ...stubWakeStatus, ready: false, reason: 'not-provisioned' }),
+      provision: async () => { throw new Error('no route to host'); },
+    });
+    const outcome = await svc.ensureProvisioned({ recoveryHint: '/voice wake setup' });
+    expect(outcome.state).toBe('degraded');
+    expect(outcome.message).toContain('/voice wake setup');
+    expect(outcome.message).toContain('no route to host');
+  });
+
+  test('an already-provisioned host is not asked to download anything at boot', async () => {
+    let runs = 0;
+    const svc = createWakeSetupService({
+      managedVoiceRoot: '/managed/voice',
+      readStatus: () => stubWakeStatus,
+      provision: async () => { runs += 1; return stubWakeProvision; },
+    });
+    const outcome = await svc.ensureProvisioned();
+    expect(outcome.state).toBe('already-provisioned');
+    expect(runs).toBe(0);
   });
 });

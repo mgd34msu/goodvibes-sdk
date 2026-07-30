@@ -8,6 +8,17 @@
  * piper and whisper runtimes use — so a truncated body, a proxy's error page,
  * or a swapped asset is refused and NOTHING is left at the destination.
  *
+ * The classifier is pinned in BOTH runtime formats and both are fetched: the
+ * onnx build is what every current host loads, and the tflite twin is the same
+ * classifier for a runtime that cannot load onnx. Fetching both is what lets
+ * runtime/wake-setup.ts serve either one to a surface that cannot fetch release
+ * assets itself, and it is what the reported download size has always counted
+ * ({@link wakeWordProvisionBytes} includes the tflite). Only the onnx build,
+ * the NOTICE and the embedding gate {@link WakeProvisionStatus.ready}, because
+ * those three are what the running detector loads — a host that got them and
+ * missed the tflite can detect, and saying otherwise would be a lie in the
+ * unhelpful direction.
+ *
  * DOWNLOADED ARTIFACTS ARE PERSISTED STATE, SO THEY GET REAL HOUSEKEEPING
  *
  * This exact bug class has already cost this project a training run: a feature
@@ -24,8 +35,19 @@
  *    lives in recovery.ts and runs at recovery time and periodically, with a
  *    written receipt so a deletion is never silent.
  *
- * Nothing here downloads on its own. Provisioning is an explicit act, matching
- * the rest of the local voice stack.
+ * WHEN THIS RUNS, AND WHAT STILL NEVER DOWNLOADS
+ *
+ * The model ships WITH the installation: the installer and the npm postinstall
+ * call the install policy in ./install-provision.ts, and a daemon retries at
+ * boot whatever the install could not get. So a fresh machine has the artifacts
+ * without the user asking, which is the point — an always-listening feature the
+ * user has to go and fetch a model for is a feature most people never reach.
+ *
+ * What did NOT change is the runtime rule. Nothing in this file downloads as a
+ * side effect of anything: {@link wakeProvisionStatus} only reads, and turning
+ * `voice.wake.enabled` on never fetches — a host missing the artifacts reports
+ * not-provisioned and names the recovery command. Install-time and boot-time
+ * provisioning are sanctioned acts with a receipt; flipping a switch is not.
  */
 import { existsSync, mkdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
@@ -57,8 +79,14 @@ export interface ManagedWakePaths {
   readonly customDir: string;
   /** Session-scoped retained audio, only used when retainAudio is session-temp. */
   readonly retainedDir: string;
-  /** The pinned classifier for the resolved version. */
+  /** The pinned classifier for the resolved version, in onnx form. */
   readonly classifierPath: string;
+  /**
+   * The same pinned classifier in TensorFlow Lite form, for a runtime that
+   * cannot load onnx. Provisioned beside the onnx build so the daemon can serve
+   * either form; not required for the detector this SDK runs.
+   */
+  readonly mobileClassifierPath: string;
   /** The attribution NOTICE that must travel with the classifier. */
   readonly noticePath: string;
   /** The speech-embedding backbone. */
@@ -79,6 +107,7 @@ export function resolveManagedWakePaths(managedRoot: string, version?: string): 
     customDir: join(wakeRoot, 'custom'),
     retainedDir: join(wakeRoot, 'retained'),
     classifierPath: join(modelsDir, `goodvibes-wakeword-hey-goodvibes-${modelVersion}.onnx`),
+    mobileClassifierPath: join(modelsDir, `goodvibes-wakeword-hey-goodvibes-${modelVersion}.tflite`),
     noticePath: join(modelsDir, `goodvibes-wakeword-hey-goodvibes-${modelVersion}.NOTICE.txt`),
     embeddingPath: join(frontEndDir, `speech-embedding-${WAKE_WORD_FRONT_END.embedding.version}.onnx`),
   };
@@ -144,6 +173,13 @@ export interface WakeProvisionStatus {
   readonly ready: boolean;
   readonly reason: WakeUnavailableReason | null;
   readonly classifier: WakeArtifactStatus;
+  /**
+   * The tflite twin of the classifier. Reported so a surface can say whether the
+   * daemon can serve that form, and deliberately NOT part of {@link ready}: the
+   * detector this SDK runs loads the onnx build, so a host missing only the
+   * tflite is a host that detects.
+   */
+  readonly mobileClassifier: WakeArtifactStatus;
   readonly notice: WakeArtifactStatus;
   readonly embedding: WakeArtifactStatus;
   /** Total bytes a fresh provision would download. */
@@ -172,6 +208,7 @@ export function wakeProvisionStatus(options: {
       ready: false,
       reason: 'not-provisioned',
       classifier: empty,
+      mobileClassifier: empty,
       notice: empty,
       embedding: wakeArtifactStatus(paths.embeddingPath, embeddingSpec),
       downloadBytes: 0,
@@ -180,6 +217,7 @@ export function wakeProvisionStatus(options: {
     };
   }
   const classifier = wakeArtifactStatus(paths.classifierPath, model.onnx);
+  const mobileClassifier = wakeArtifactStatus(paths.mobileClassifierPath, model.tflite);
   const notice = wakeArtifactStatus(paths.noticePath, model.notice);
   const embedding = wakeArtifactStatus(paths.embeddingPath, embeddingSpec);
   const anyCorrupt = classifier.corrupt || notice.corrupt || embedding.corrupt;
@@ -188,6 +226,7 @@ export function wakeProvisionStatus(options: {
     ready: allVerified,
     reason: allVerified ? null : anyCorrupt ? 'checksum-mismatch' : 'not-provisioned',
     classifier,
+    mobileClassifier,
     notice,
     embedding,
     downloadBytes: wakeWordProvisionBytes(model) + embeddingSpec.bytes,
@@ -196,9 +235,16 @@ export function wakeProvisionStatus(options: {
   };
 }
 
+/**
+ * Which artifact a progress event or outcome is about. `mobile-classifier` is
+ * the tflite form of the same classifier — a separate component rather than a
+ * detail of `classifier`, so a receipt can report one landing and the other not.
+ */
+export type WakeProvisionComponent = 'classifier' | 'mobile-classifier' | 'notice' | 'embedding';
+
 /** Progress for one artifact during provisioning. */
 export interface WakeProvisionProgress {
-  readonly component: 'classifier' | 'notice' | 'embedding';
+  readonly component: WakeProvisionComponent;
   readonly phase: 'skip' | 'download' | 'verify' | 'done' | 'error';
   readonly message?: string | undefined;
   readonly bytesTotal?: number | undefined;
@@ -206,7 +252,7 @@ export interface WakeProvisionProgress {
 
 /** One artifact's outcome. */
 export interface WakeComponentOutcome {
-  readonly component: 'classifier' | 'notice' | 'embedding';
+  readonly component: WakeProvisionComponent;
   readonly state: 'installed' | 'skipped' | 'failed';
   readonly path: string;
   readonly bytes?: number | undefined;
@@ -215,7 +261,15 @@ export interface WakeComponentOutcome {
 }
 
 export interface WakeProvisionResult {
+  /**
+   * The DETECTOR can run: the onnx classifier, its NOTICE and the embedding all
+   * landed. Deliberately not "every artifact landed" — see
+   * {@link mobileFormatReady} — because this is the field a surface renders as
+   * "wake works", and the tflite twin is not something the detector loads.
+   */
   readonly ready: boolean;
+  /** The tflite form landed too, so the daemon can serve it. */
+  readonly mobileFormatReady: boolean;
   readonly modelVersion: string | null;
   readonly outcomes: readonly WakeComponentOutcome[];
   /** The attribution NOTICE's path, which must travel with redistributed artifacts. */
@@ -247,6 +301,7 @@ export async function provisionWakeWordModels(options: WakeProvisionOptions): Pr
   if (model === null) {
     return {
       ready: false,
+      mobileFormatReady: false,
       modelVersion: null,
       outcomes: [
         {
@@ -263,28 +318,37 @@ export async function provisionWakeWordModels(options: WakeProvisionOptions): Pr
   mkdirSync(paths.modelsDir, { recursive: true });
   mkdirSync(paths.frontEndDir, { recursive: true });
 
-  const plan: readonly { component: WakeComponentOutcome['component']; spec: VerifiedDownloadSpec; dest: string }[] = [
+  // Order matters for a partial network: the three the detector needs come
+  // first, so an install that loses the connection part-way still leaves a
+  // WORKING detector rather than a tflite file and nothing to run.
+  const plan: readonly { component: WakeProvisionComponent; spec: VerifiedDownloadSpec; dest: string }[] = [
     { component: 'embedding', spec: WAKE_WORD_FRONT_END.embedding.download, dest: paths.embeddingPath },
     { component: 'classifier', spec: model.onnx, dest: paths.classifierPath },
     { component: 'notice', spec: model.notice, dest: paths.noticePath },
+    { component: 'mobile-classifier', spec: model.tflite, dest: paths.mobileClassifierPath },
   ];
 
   const outcomes: WakeComponentOutcome[] = [];
   for (const step of plan) {
     outcomes.push(await provisionOne(step, options));
   }
-  const ready = outcomes.every((outcome) => outcome.state !== 'failed');
+  const landed = (component: WakeProvisionComponent): boolean =>
+    outcomes.some((outcome) => outcome.component === component && outcome.state !== 'failed');
+  const ready = landed('classifier') && landed('notice') && landed('embedding');
   return {
     ready,
+    mobileFormatReady: landed('mobile-classifier'),
     modelVersion: model.version,
     outcomes,
-    noticePath: ready ? paths.noticePath : null,
+    // The NOTICE's own outcome decides this, not the run's: it must travel with
+    // whatever WAS redistributed, and it is on disk whenever its fetch succeeded.
+    noticePath: landed('notice') ? paths.noticePath : null,
     recallIsSyntheticOnly: model.measurements.recallIsSyntheticOnly,
   };
 }
 
 async function provisionOne(
-  step: { component: WakeComponentOutcome['component']; spec: VerifiedDownloadSpec; dest: string },
+  step: { component: WakeProvisionComponent; spec: VerifiedDownloadSpec; dest: string },
   options: WakeProvisionOptions,
 ): Promise<WakeComponentOutcome> {
   const { component, spec, dest } = step;
