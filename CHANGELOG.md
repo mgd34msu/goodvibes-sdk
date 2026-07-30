@@ -4,7 +4,15 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
-## [Unreleased]
+## [1.20.0] - 2026-07-30
+
+The daemon now raises the dates that matter on its own, pushes occasion nudges
+over Telegram and into the agent conversation, and heals a route binding whose
+session is unusable instead of dropping messages against it. The wake word
+becomes fully usable: audio capture on every surface, a noise-suppression
+stage, our own speech gate, and the model installed with the product. A sweep
+of the whole configuration surface made every previously inert key govern what
+its description says, in every consumer.
 
 ### Added
 
