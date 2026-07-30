@@ -6,7 +6,65 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ## [Unreleased]
 
+### Changed
+
+- **`zustand` moved from `optionalDependencies` to `dependencies`.** It backs
+  `runtime/store/index.ts`, and a daemon without a runtime store is not a
+  daemon — so declaring it optional was untrue, and the fix belongs in the
+  manifest rather than in the import. Unlike every other package in this
+  release's optional-dependency work, its import is left exactly as it was:
+  making a synchronous store lazy would break every synchronous consumer to
+  honour a declaration that was simply wrong. No real install changes, because
+  a default `npm`/`bun install` has always installed optional dependencies; what
+  changes is that an install which deliberately omits them now still gets the
+  store. (The `tree-sitter-*` grammars stay declared optional and keep their
+  static `with { type: 'file' }` asset imports, which exist so `bun build
+  --compile` embeds the WASM; the build lane below is what makes that
+  declaration honest.)
+
 ### Fixed
+
+- **A compiled build now survives an optional package it is allowed to be
+  without.** Making the SDK's imports dynamic fixed the RUNTIME half of the
+  optional-dependency defect, but not the build: bun resolves a dynamic
+  `import('pkg')` at bundle time exactly as it resolves a static one, so with
+  the package absent `bun build …/daemon/cli.ts --compile` still failed with
+  `Could not resolve: "jsdom"` and produced no binary at all. The lazy
+  resolution never got the chance to govern.
+
+  `@pellux/goodvibes-toolchain`'s compile path (`lib/optional-externals.ts`,
+  wired into `runBuildBinaries`) now screens every declared dependency of the
+  building repo and of the SDK it bundles against what is actually installed:
+
+  - a package declared **optional** and not installed is passed as
+    `--external`, so bun leaves the specifier for runtime, the binary is
+    produced, and the SDK's own unavailability report is what the operator
+    sees;
+  - a package declared **required** and not installed **fails the build**, by
+    package name and by the manifest that asked for it. Externalising that one
+    would trade a loud failure at build time for a binary that dies in the
+    field, which is the exact trade this line of work exists to undo;
+  - a package declared optional by one manifest and required by another is
+    treated as required — the stricter declaration wins;
+  - an optional package that IS installed is left alone and still gets bundled,
+    so an ordinary build is unchanged, and a caller that supplies no manifests
+    gets the argv it always got.
+
+  `test/toolchain/build-binaries.test.ts` pins both the produced argv and the
+  behaviour end to end: it screens a package name that resolves nowhere,
+  compiles a fixture with the real `bun build --compile`, and runs the artifact
+  — the binary exists, boots, and reports the package unavailable, against a
+  control whose static import of the same name does not compile at all.
+
+- **`test/daemon-isolation-guards.test.ts` no longer leaves scratch directories
+  behind.** It created a throwaway home per harness and per compiled case and
+  removed only the two holding the compiled binaries — **10 directories leaked
+  per run**, measured, and the development host had accumulated roughly three
+  thousand of them. Every directory now comes from one `scratchDir()` helper
+  that records what it made, and a file-level cleanup removes exactly those.
+  Deliberately a registry of paths rather than a prefix sweep of `tmpdir()`: a
+  second copy of the suite may be running alongside, and a sweep would delete
+  the directories it is still using.
 
 - **A package the SDK says it can live without could stop the daemon from
   existing.** `packages/sdk/package.json` declares thirty packages under
