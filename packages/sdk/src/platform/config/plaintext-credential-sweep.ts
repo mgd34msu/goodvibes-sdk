@@ -44,6 +44,7 @@ import {
   SECRET_BEARING_CONFIG_PATHS,
 } from './secret-bearing-config-keys.js';
 import { daemonSecretKeyFor } from './daemon-secret-keys.js';
+import { SWEPT_CREDENTIAL_READER_FLOOR } from './settings-reader-floor.js';
 import type { SecretScope, SecretStorageMedium } from './secrets.js';
 
 /** What happened to one config key. */
@@ -168,6 +169,23 @@ export async function sweepPlaintextCredentials(
   secrets: SweepableSecrets,
   /** Extra keys a product knows about that the platform set does not name. */
   additionalKeys: readonly string[] = [],
+  /**
+   * Record the minimum reader version this rewrite requires, in the settings
+   * file the rewrite landed in.
+   *
+   * This sweep rewrites SHARED state — `~/.goodvibes/daemon/settings.json` is
+   * read by every component on the machine, and they are not all the same
+   * version at the same moment. A `goodvibes://secrets/…` reference written
+   * onto `calendar.google.clientSecretRef` is a form an older reader could not
+   * walk, and the older reader failed on the KEY rather than reporting the
+   * version gap that actually caused it. With a floor recorded, that reader
+   * says the one true thing instead: the file was migrated by something newer
+   * than it is.
+   *
+   * Injected rather than done here so the sweep keeps its narrow, testable
+   * config surface and no knowledge of where the file lives.
+   */
+  recordReaderFloor?: ((minReaderVersion: string, setBy: string) => void) | undefined,
 ): Promise<PlaintextSweepReport> {
   const keys = [...new Set([...SECRET_BEARING_CONFIG_PATHS, ...additionalKeys.filter(isSecretBearingConfigKey)])];
   const entries: PlaintextSweepEntry[] = [];
@@ -188,6 +206,20 @@ export async function sweepPlaintextCredentials(
 
   const moved = entries.filter((entry) => entry.outcome === 'moved').length;
   const failed = entries.filter((entry) => entry.outcome === 'left-in-place').length;
+  const rewrote = entries.filter((entry) => entry.outcome !== 'left-in-place').length;
+  // A config key was replaced by a reference, so the file now needs a reader
+  // that understands one. Best-effort: a floor that cannot be recorded must
+  // never undo a sweep whose credentials are already safely in the store.
+  if (rewrote > 0 && recordReaderFloor) {
+    try {
+      recordReaderFloor(SWEPT_CREDENTIAL_READER_FLOOR, 'credential-sweep');
+    } catch (error) {
+      logger.warn('Credential sweep: could not record the reader version this rewrite needs', {
+        error: summarizeError(error),
+        detail: 'the credentials were still moved; an older reader will report the key rather than the version gap',
+      });
+    }
+  }
   if (moved > 0 || failed > 0) {
     // Disclosed, never silent. Key names and outcomes only.
     logger.info('Credential sweep: credentials stored in the clear were moved into the secret store', {
