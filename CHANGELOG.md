@@ -105,7 +105,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
     tracer, so 'in-process' records provider-call spans and 'remote-export'
     additionally ships them to the collector named by the OpenTelemetry standard
     environment variables. Selecting remote-export with no collector configured
-    says so once rather than quietly behaving like the mode below it.
+    says so once rather than quietly behaving like the mode below it. The key's
+    description said the export was OTLP/gRPC; the exporter has always spoken
+    OTLP/HTTP JSON, and the description, the config type's doc comment and the
+    `otel-remote-export` capability blurb now say so and name where the endpoint
+    comes from.
   - **`cache.enabled`** did not stop prompt caching. The Anthropic provider built
     its cache context unconditionally, so 'false' still placed breakpoints and
     still paid cache writes. False now places none — off means off, not a shorter
