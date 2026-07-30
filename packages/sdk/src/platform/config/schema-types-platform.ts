@@ -74,7 +74,9 @@ export interface TelemetryConfig {
   /**
    * OpenTelemetry instrumentation mode: off (no OTel SDK init), in-process
    * (spans created and exported in-process only), or remote-export (spans
-   * additionally exported over OTLP/gRPC to the configured collector).
+   * additionally exported as OTLP/HTTP JSON to the collector named by the
+   * OTEL_EXPORTER_OTLP_TRACES_ENDPOINT / OTEL_EXPORTER_OTLP_ENDPOINT
+   * environment variables).
    * Switching away from off requires a restart. Default off.
    */
   otelMode: 'off' | 'in-process' | 'remote-export';
