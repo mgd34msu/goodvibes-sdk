@@ -60,7 +60,6 @@ export {
 export {
   WAKE_SETTING_KEYS,
   resolveWakeRuntimeSettings,
-  resolveWakeModelSource,
   wakeSurfaceKey,
   type WakeSurface,
   type WakeSurfaceCapabilities,
@@ -93,6 +92,7 @@ export {
 
 export {
   provisionWakeWordModels,
+  resolveWakeModelFiles,
   wakeProvisionStatus,
   wakeArtifactStatus,
   resolveManagedWakePaths,
@@ -103,6 +103,7 @@ export {
   type WakeProvisionOptions,
   type WakeProvisionProgress,
   type WakeComponentOutcome,
+  type ResolvedWakeModelFile,
 } from './provisioning.js';
 
 export {

@@ -72,7 +72,6 @@ export {
 export {
   WAKE_SETTING_KEYS,
   resolveWakeRuntimeSettings,
-  resolveWakeModelSource,
   wakeSurfaceKey,
   type WakeSurface,
   type WakeSurfaceCapabilities,
