@@ -557,6 +557,14 @@
       "types": "./dist/platform/voice/index.d.ts",
       "import": "./dist/platform/voice/index.js"
     },
+    "./platform/voice/capture": {
+      "types": "./dist/platform/voice/capture/index.d.ts",
+      "import": "./dist/platform/voice/capture/index.js"
+    },
+    "./platform/voice/wake/runtime": {
+      "types": "./dist/platform/voice/wake/runtime.d.ts",
+      "import": "./dist/platform/voice/wake/runtime.js"
+    },
     "./platform/watchers": {
       "types": "./dist/platform/watchers/index.d.ts",
       "import": "./dist/platform/watchers/index.js"

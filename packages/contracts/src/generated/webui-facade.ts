@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.19.2
- * Methods: 480 total, 425 REST-routed, 55 ws-only invoke.
+ * Methods: 483 total, 428 REST-routed, 55 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -659,6 +659,18 @@ export const WEBUI_METHOD_ROUTES: Readonly<Record<string, WebuiRouteDefinition>>
   "voice.local.status": {
     "method": "GET",
     "path": "/api/voice/local/status"
+  },
+  "voice.wake.model.get": {
+    "method": "GET",
+    "path": "/api/voice/wake/model"
+  },
+  "voice.wake.provision": {
+    "method": "POST",
+    "path": "/api/voice/wake/provision"
+  },
+  "voice.wake.status": {
+    "method": "GET",
+    "path": "/api/voice/wake/status"
   },
   "intelligence.snapshot": {
     "method": "GET",
@@ -1987,6 +1999,9 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "power.status.get": "rest",
   "voice.local.install": "rest",
   "voice.local.status": "rest",
+  "voice.wake.model.get": "rest",
+  "voice.wake.provision": "rest",
+  "voice.wake.status": "rest",
   "intelligence.snapshot": "rest",
   "homeassistant.homeGraph.askHomeGraph": "rest",
   "homeassistant.homeGraph.browse": "rest",
@@ -8912,6 +8927,68 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           }
         ]
       }
+    }
+  },
+  "voice.wake.model.get": {
+    "input": {
+      "component": "classifier",
+      "offset": 0,
+      "maxBytes": 0
+    },
+    "output": {
+      "component": "classifier",
+      "offset": 0,
+      "bytes": 0,
+      "totalBytes": 0,
+      "sha256": "sample",
+      "dataBase64": "sample",
+      "complete": false
+    }
+  },
+  "voice.wake.provision": {
+    "input": {},
+    "output": {
+      "ready": false,
+      "modelVersion": "sample",
+      "noticePath": "sample",
+      "recallIsSyntheticOnly": false,
+      "outcomes": [
+        {
+          "component": "classifier",
+          "state": "installed",
+          "path": "sample",
+          "bytes": 0,
+          "error": "sample"
+        }
+      ]
+    }
+  },
+  "voice.wake.status": {
+    "input": {},
+    "output": {
+      "ready": false,
+      "reason": "sample",
+      "classifier": {
+        "path": "sample",
+        "verified": false,
+        "corrupt": false,
+        "bytes": 0
+      },
+      "notice": {
+        "path": "sample",
+        "verified": false,
+        "corrupt": false,
+        "bytes": 0
+      },
+      "embedding": {
+        "path": "sample",
+        "verified": false,
+        "corrupt": false,
+        "bytes": 0
+      },
+      "downloadBytes": 0,
+      "modelVersion": "sample",
+      "recallIsSyntheticOnly": false
     }
   },
   "intelligence.snapshot": {

@@ -26,6 +26,12 @@ import {
   isFeatureGateEnabled,
   requireFeatureGate,
 } from '../packages/sdk/src/platform/runtime/feature-flags/gates.js';
+import {
+  WAKE_SETTING_KEYS,
+  resolveWakeRuntimeSettings,
+  wakeSurfaceKey,
+  type WakeSurface,
+} from '../packages/sdk/src/platform/voice/wake/settings.js';
 import { deriveFeatureState, FEATURE_SETTINGS_BINDINGS } from '../packages/sdk/src/platform/runtime/feature-flags/feature-settings.js';
 
 const WAKE = voiceWakeConfigDefaults.voice.wake;
@@ -147,75 +153,58 @@ describe('the wake-word feature registry row', () => {
   });
 });
 
-describe('the feature is honest about not being wired up yet', () => {
-  // The failure this guards against has already shipped and reached a user:
-  // a settings row that looks like a working switch, flips cleanly, and
-  // silently does nothing.
-  test('the registry declares it inoperable, with a reason a user can read', () => {
-    const inoperable = featureInoperability('wake-word-detection');
-    expect(inoperable).not.toBeNull();
-    expect(inoperable?.reason).toBe('no-runtime-wiring');
-    expect(inoperable?.detail).toContain('not available in this build');
-    // It must say what is missing and what happens to the user's setting.
-    expect(inoperable?.detail).toContain('captures microphone audio');
-    expect(inoperable?.detail).toContain('remembered');
+describe('the feature is wired up, and the mechanism that said otherwise is retired', () => {
+  // The failure this block used to guard against — a settings row that looks
+  // like a working switch, flips cleanly, and silently does nothing — is fixed
+  // rather than declared, so the assertions are inverted: the gate now follows
+  // the user's setting, and the copy describes what happens on each surface.
+  test('nothing declares this feature inoperable any more', () => {
+    expect(featureInoperability('wake-word-detection')).toBeNull();
+    const flag = FEATURE_FLAGS.find((entry) => entry.id === 'wake-word-detection');
+    expect(flag?.notOperable).toBeUndefined();
   });
 
-  test('the gate refuses it even with a manager that says enabled', () => {
-    // Nothing half-wired can run: this is the enforcement, not the label.
-    const sayYes = { isEnabled: () => true };
-    expect(isFeatureGateEnabled(sayYes, 'wake-word-detection')).toBe(false);
-    // ...and with no manager wired at all, where the gate is normally permissive.
-    expect(isFeatureGateEnabled(null, 'wake-word-detection')).toBe(false);
-    // A feature with no inoperability declared still behaves exactly as before.
+  test('the gate follows the setting, on and off', () => {
+    expect(isFeatureGateEnabled({ isEnabled: () => true }, 'wake-word-detection')).toBe(true);
+    expect(isFeatureGateEnabled({ isEnabled: () => false }, 'wake-word-detection')).toBe(false);
+    // With no manager wired the gate is permissive, as it is for every other
+    // feature that has no inoperability declared.
+    expect(isFeatureGateEnabled(null, 'wake-word-detection')).toBe(true);
     expect(isFeatureGateEnabled(null, 'hitl-ux-modes')).toBe(true);
   });
 
-  test('requireFeatureGate explains it cannot work, not that it is switched off', () => {
-    // Pointing a user at a settings key that will not help is worse than silence.
+  test('requireFeatureGate now points at the setting instead of a build limitation', () => {
+    expect(() => requireFeatureGate({ isEnabled: () => true }, 'wake-word-detection', 'start listening')).not.toThrow();
     let message = '';
     try {
-      requireFeatureGate({ isEnabled: () => true }, 'wake-word-detection', 'start listening');
+      requireFeatureGate({ isEnabled: () => false }, 'wake-word-detection', 'start listening');
     } catch (error) {
       message = error instanceof Error ? error.message : String(error);
     }
-    expect(message).toContain('not available in this build');
-    expect(message).toContain('start listening');
-    expect(message).not.toContain('is turned off');
+    expect(message).toContain('is turned off');
+    expect(message).toContain('voice.wake.enabled');
+    expect(message).not.toContain('not available in this build');
   });
 
-  test('turning the setting on does not derive an enabled gate state', () => {
+  test('turning the setting on now derives an ENABLED gate state', () => {
     const binding = FEATURE_SETTINGS_BINDINGS.find((entry) => entry.featureId === 'wake-word-detection');
     expect(binding).toBeDefined();
-    // The user's config value is kept — their intent survives to the release
-    // that wires capture up — but the gate state stays off, so no surface
-    // reading the flag manager can render this as "on" while nothing listens.
-    expect(deriveFeatureState(binding!, true)).toBe('disabled');
+    expect(deriveFeatureState(binding!, true)).toBe('enabled');
     expect(deriveFeatureState(binding!, false)).toBe('disabled');
   });
 
-  test('the settings surface carries the reason, so every consumer renders it', () => {
+  test('the settings surface reports it operable, with no reason to render instead of a switch', () => {
     const setting = FEATURE_SETTINGS.find((entry) => entry.id === 'wake-word-detection');
-    expect(setting?.operable).toBe(false);
-    expect(setting?.inoperableDetail).toContain('not available in this build');
-    // Features that DO work are unaffected and stay operable.
-    const working = FEATURE_SETTINGS.find((entry) => entry.id === 'hitl-ux-modes');
-    expect(working?.operable).toBe(true);
-    expect(working?.inoperableDetail).toBeNull();
+    expect(setting?.operable).toBe(true);
+    expect(setting?.inoperableDetail).toBeNull();
   });
 
-  test('the enablement setting itself warns before the user toggles it', () => {
+  test('the enablement row leads with what it does, not with a warning that it does not', () => {
     const row = voiceWakeConfigSettings.find((entry) => entry.key === 'voice.wake.enabled');
-    // Leads with it: a user reading the row in settings sees this first.
-    expect(row?.description.startsWith('NOT AVAILABLE IN THIS BUILD')).toBe(true);
-    expect(row?.description).toContain('does nothing yet');
-  });
-
-  test('exactly one feature is inoperable today, and it is this one', () => {
-    // A guard on the mechanism itself: if a future change marks something else
-    // inoperable, that is a deliberate act someone has to come here and record.
-    const inoperableIds = FEATURE_FLAGS.filter((entry) => entry.notOperable !== undefined).map((entry) => entry.id);
-    expect(inoperableIds).toEqual(['wake-word-detection']);
+    expect(row?.description.startsWith('Run the wake-word detector')).toBe(true);
+    expect(row?.description).toContain('releases the device');
+    // And it says WHERE it listens, because that differs per surface.
+    expect(row?.description).toContain('voice.wake.surfaces');
   });
 });
 
@@ -304,5 +293,197 @@ describe('the detector supervisor', () => {
   test('rejects a policy that cannot mean anything', () => {
     expect(() => new WakeSupervisor({ maxRestarts: -1 })).toThrow(/maxRestarts/);
     expect(() => new WakeSupervisor({ crashWindowSeconds: 0 })).toThrow(/crashWindowSeconds/);
+  });
+});
+
+/**
+ * Reads the shipped defaults, with an override layer, so a resolver test states
+ * only the row it is about.
+ */
+function wakeReader(overrides: Readonly<Record<string, unknown>> = {}): (key: string) => unknown {
+  const wake = WAKE as unknown as Record<string, unknown>;
+  return (key: string) => {
+    if (key in overrides) return overrides[key];
+    const leaf = key.replace('voice.wake.', '');
+    if (leaf.startsWith('surfaces.')) {
+      return (wake['surfaces'] as Record<string, boolean>)[leaf.slice('surfaces.'.length)];
+    }
+    return wake[leaf];
+  };
+}
+
+describe('every row reaches the runtime — no row configures nothing', () => {
+  test('the resolver reads exactly the schema rows, in both directions', () => {
+    // This is the check that would have caught the shipped state this change
+    // fixed: 25 rows in the schema and nothing reading any of them. A row added
+    // to the schema without being read here fails; a key read here that is not a
+    // real schema row fails too.
+    const schemaKeys = voiceWakeConfigSettings.map((row) => row.key).sort();
+    expect([...WAKE_SETTING_KEYS].sort()).toEqual(schemaKeys);
+    for (const key of WAKE_SETTING_KEYS) expect(CONFIG_KEYS.has(key)).toBe(true);
+  });
+
+  test('every row it reads actually lands somewhere in the resolved settings', () => {
+    // Non-default values for every row, so a row that is read but dropped on the
+    // floor shows up as a resolved value that did not move.
+    const resolved = resolveWakeRuntimeSettings(wakeReader({
+      'voice.wake.enabled': true,
+      'voice.wake.models': 'hey_goodvibes, my_own_word ,,hey_goodvibes',
+      'voice.wake.threshold': 0.75,
+      'voice.wake.patienceFrames': 4,
+      'voice.wake.cooldownMs': 1234,
+      'voice.wake.noiseSuppression': 'speex',
+      'voice.wake.inputDevice': 'mymic',
+      'voice.wake.captureCommand': 'arecord',
+      'voice.wake.activationSound': 'custom',
+      'voice.wake.activationSoundPath': '/sounds/ping.wav',
+      'voice.wake.indicator': 'banner',
+      'voice.wake.preRollMs': 250,
+      'voice.wake.captureMaxSeconds': 7,
+      'voice.wake.silenceStopMs': 900,
+      'voice.wake.autoSubmit': true,
+      'voice.wake.retainAudio': 'session-temp',
+      'voice.wake.customModelDir': '/models/wake',
+      'voice.wake.maxRestarts': 5,
+      'voice.wake.restartBackoffMs': 500,
+      'voice.wake.crashWindowSeconds': 120,
+      'voice.wake.browserBackend': 'webgpu',
+    }), 'tui', { speexAvailable: true, canRetainAudio: true, canPlayLocalFile: true });
+
+    expect(resolved.enabled).toBe(true);
+    expect(resolved.surfaceEnabled).toBe(true);
+    expect(resolved.active).toBe(true);
+    // The comma list is split, trimmed, de-duplicated, order preserved.
+    expect(resolved.modelIds).toEqual(['hey_goodvibes', 'my_own_word']);
+    expect(resolved.tuning).toEqual({ threshold: 0.75, patienceFrames: 4, cooldownMs: 1234 });
+    expect(resolved.capture.noiseSuppression).toBe('speex');
+    expect(resolved.capture.device).toBe('mymic');
+    expect(resolved.capture.backend).toBe('arecord');
+    expect(resolved.capture.frameSamples).toBe(1280);
+    expect(resolved.activationSound).toEqual({ kind: 'custom', path: '/sounds/ping.wav' });
+    expect(resolved.indicator).toBe('banner');
+    expect(resolved.preRollMs).toBe(250);
+    expect(resolved.captureMaxSeconds).toBe(7);
+    expect(resolved.silenceStopMs).toBe(900);
+    expect(resolved.autoSubmit).toBe(true);
+    expect(resolved.retainAudio).toBe('session-temp');
+    expect(resolved.customModelDir).toBe('/models/wake');
+    expect(resolved.supervisor).toEqual({ maxRestarts: 5, restartBackoffMs: 500, crashWindowSeconds: 120 });
+    expect(resolved.browserBackend).toBe('webgpu');
+    expect(resolved.vadThreshold).toBe(0);
+    expect(resolved.blockers).toEqual([]);
+  });
+
+  test('the shipped defaults resolve to the shipped behaviour: off, and off everywhere but the terminal', () => {
+    for (const surface of ['tui', 'agent', 'webui'] as WakeSurface[]) {
+      const resolved = resolveWakeRuntimeSettings(wakeReader(), surface);
+      expect(resolved.enabled).toBe(false);
+      expect(resolved.active).toBe(false);
+      expect(resolved.surfaceEnabled).toBe(WAKE.surfaces[surface]);
+      expect(wakeSurfaceKey(surface)).toBe(`voice.wake.surfaces.${surface}`);
+    }
+    expect(WAKE.surfaces.tui).toBe(true);
+    expect(WAKE.surfaces.agent).toBe(false);
+    expect(WAKE.surfaces.webui).toBe(false);
+  });
+
+  test('a partial config source falls back to the shipped defaults rather than to zeroes', () => {
+    // A browser tab holding only part of the tree must not resolve threshold 0.
+    const resolved = resolveWakeRuntimeSettings(() => undefined, 'webui');
+    expect(resolved.tuning.threshold).toBe(0.9);
+    expect(resolved.captureMaxSeconds).toBe(10);
+    expect(resolved.supervisor.maxRestarts).toBe(3);
+    expect(resolved.modelIds).toEqual([DEFAULT_WAKE_MODEL_ID]);
+  });
+});
+
+describe('a row that cannot take effect says so — blocker or limitation, never silence', () => {
+  test('vadThreshold above 0 BLOCKS, because no VAD model is pinned to screen frames with', () => {
+    const resolved = resolveWakeRuntimeSettings(
+      wakeReader({ 'voice.wake.enabled': true, 'voice.wake.vadThreshold': 0.4 }), 'tui',
+    );
+    expect(resolved.active).toBe(false);
+    expect(resolved.blockers.map((b) => b.key)).toEqual(['voice.wake.vadThreshold']);
+    expect(resolved.blockers[0]?.detail).toContain('no voice-activity-detection model is available');
+    // And 0 — the shipped default — is the value that runs.
+    expect(resolveWakeRuntimeSettings(wakeReader({ 'voice.wake.enabled': true }), 'tui').active).toBe(true);
+  });
+
+  test('speex without libspeexdsp BLOCKS rather than capturing unfiltered', () => {
+    const blocked = resolveWakeRuntimeSettings(
+      wakeReader({ 'voice.wake.enabled': true, 'voice.wake.noiseSuppression': 'speex' }), 'tui',
+    );
+    expect(blocked.active).toBe(false);
+    expect(blocked.blockers[0]?.key).toBe('voice.wake.noiseSuppression');
+    const allowed = resolveWakeRuntimeSettings(
+      wakeReader({ 'voice.wake.enabled': true, 'voice.wake.noiseSuppression': 'speex' }),
+      'tui',
+      { speexAvailable: true },
+    );
+    expect(allowed.active).toBe(true);
+  });
+
+  test('retaining audio in a browser tab is a LIMITATION: it keeps listening and reports it', () => {
+    const resolved = resolveWakeRuntimeSettings(
+      wakeReader({ 'voice.wake.enabled': true, 'voice.wake.surfaces.webui': true, 'voice.wake.retainAudio': 'session-temp' }),
+      'webui',
+    );
+    expect(resolved.active).toBe(true);
+    expect(resolved.retainAudio).toBe('none');
+    expect(resolved.limitations.map((l) => l.key)).toContain('voice.wake.retainAudio');
+  });
+
+  test('a custom sound a browser cannot read falls back to the chime, stated', () => {
+    const resolved = resolveWakeRuntimeSettings(
+      wakeReader({ 'voice.wake.enabled': true, 'voice.wake.surfaces.webui': true, 'voice.wake.activationSound': 'custom', 'voice.wake.activationSoundPath': '/x.wav' }),
+      'webui',
+    );
+    expect(resolved.activationSound.kind).toBe('chime');
+    expect(resolved.limitations.map((l) => l.key)).toContain('voice.wake.activationSoundPath');
+    expect(resolved.active).toBe(true);
+  });
+
+  test('an empty model list disables detection WITHOUT stopping the service, as its row promises', () => {
+    const resolved = resolveWakeRuntimeSettings(
+      wakeReader({ 'voice.wake.enabled': true, 'voice.wake.models': '  ,, ' }), 'tui',
+    );
+    expect(resolved.modelIds).toEqual([]);
+    expect(resolved.active).toBe(true);
+    expect(resolved.blockers).toEqual([]);
+    expect(resolved.limitations.map((l) => l.key)).toContain('voice.wake.models');
+  });
+});
+
+describe('the feature is operable now, and the copy no longer says otherwise', () => {
+  test('notOperable is gone, so the gate follows the setting instead of refusing outright', () => {
+    expect(featureInoperability('wake-word-detection')).toBeNull();
+    expect(isFeatureGateEnabled({ isEnabled: () => true }, 'wake-word-detection')).toBe(true);
+    expect(isFeatureGateEnabled({ isEnabled: () => false }, 'wake-word-detection')).toBe(false);
+    expect(() => requireFeatureGate({ isEnabled: () => true }, 'wake-word-detection', 'listen')).not.toThrow();
+  });
+
+  test('no wake row still claims that turning it on does nothing', () => {
+    for (const row of voiceWakeConfigSettings) {
+      expect(row.description).not.toContain('NOT AVAILABLE IN THIS BUILD');
+      expect(row.description).not.toContain('does nothing yet');
+      expect(row.description).not.toContain('nothing is listening');
+    }
+    const flag = FEATURE_FLAGS.find((f) => f.id === 'wake-word-detection');
+    expect(flag?.notOperable).toBeUndefined();
+    expect(flag?.description).not.toContain('not available');
+  });
+
+  test('the rows that are still limited name their own limit, rather than a blanket claim', () => {
+    const rowFor = (key: string) => voiceWakeConfigSettings.find((r) => r.key === key)?.description ?? '';
+    // The agent has no capture host; its own row says so.
+    expect(rowFor('voice.wake.surfaces.agent')).toContain('NO CAPTURE HOST');
+    // The VAD row says no model is pinned and that a non-zero value refuses.
+    expect(rowFor('voice.wake.vadThreshold')).toContain('NO VAD MODEL IS PINNED');
+    // The browser cannot read a local sound path or retain audio; both say so.
+    expect(rowFor('voice.wake.activationSoundPath')).toContain('browser tab cannot read a path');
+    expect(rowFor('voice.wake.retainAudio')).toContain('no filesystem to retain into');
+    // The terminal and browser rows describe what they now actually do.
+    expect(rowFor('voice.wake.surfaces.tui')).toContain('recorder subprocess');
+    expect(rowFor('voice.wake.surfaces.webui')).toContain('browser tab');
   });
 });

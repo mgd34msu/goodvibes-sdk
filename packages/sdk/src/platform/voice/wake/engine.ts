@@ -17,8 +17,15 @@
  * No audio capture, no timers, no I/O: the host pushes frames in and gets
  * detections out, so the same engine object serves a recorder subprocess and a
  * `getUserMedia` stream.
+ *
+ * THE WARNING SINK IS INJECTED FOR THE SAME REASON THE SESSION IS
+ *
+ * This file used to import the platform logger, which writes files and therefore
+ * imports `node:fs` — enough to make the whole engine unbundleable for the browser
+ * tab it claims to run in. So a host passes {@link WakeEngineOptions.warn} in
+ * alongside the inference session it already supplies. A host that passes none
+ * gets no warnings, which is why every shipped host passes one.
  */
-import { logger } from '../../utils/logger.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { WakeDetector, WAKE_DETECTOR_DEFAULTS, type WakeFrameOutcome } from './detector.js';
 import {
@@ -47,6 +54,12 @@ export interface WakeEngineOptions {
   readonly now?: (() => number) | undefined;
   /** Samples per frame. Defaults to 1280 (80 ms at 16 kHz). */
   readonly chunkSamples?: number | undefined;
+  /**
+   * Where a model that misbehaves is reported. A classifier that fails to run is
+   * skipped rather than taking the detector down, and this is the only trace of
+   * that decision, so a host that wants to know supplies a sink.
+   */
+  readonly warn?: ((message: string, meta?: Readonly<Record<string, unknown>>) => void) | undefined;
 }
 
 /** Everything one frame produced. */
@@ -72,6 +85,7 @@ export class WakeWordEngine {
   readonly #detectors: Map<string, WakeDetector>;
   readonly #preRollMs: number;
   readonly #now: () => number;
+  readonly #warn: (message: string, meta?: Readonly<Record<string, unknown>>) => void;
   #framesSeen = 0;
 
   constructor(options: WakeEngineOptions) {
@@ -82,6 +96,7 @@ export class WakeWordEngine {
     this.#models = [...options.models];
     this.#preRollMs = options.preRollMs ?? 500;
     this.#now = options.now ?? (() => Date.now());
+    this.#warn = options.warn ?? ((): void => {});
     this.#detectors = new Map();
     for (const model of this.#models) {
       // A per-model threshold wins over the engine tuning, so a custom model
@@ -165,7 +180,7 @@ export class WakeWordEngine {
     const inputName = model.session.inputNames[0];
     const outputName = model.session.outputNames[0];
     if (inputName === undefined || outputName === undefined) {
-      logger.warn('wake model exposes no input/output', { modelId: model.id });
+      this.#warn('wake model exposes no input/output', { modelId: model.id });
       return null;
     }
     try {
@@ -177,12 +192,12 @@ export class WakeWordEngine {
       });
       const value = outputs[outputName]?.data[0];
       if (value === undefined || !Number.isFinite(value)) {
-        logger.warn('wake model produced no finite score', { modelId: model.id });
+        this.#warn('wake model produced no finite score', { modelId: model.id });
         return null;
       }
       return value;
     } catch (error) {
-      logger.warn('wake model inference failed', { modelId: model.id, error: summarizeError(error) });
+      this.#warn('wake model inference failed', { modelId: model.id, error: summarizeError(error) });
       return null;
     }
   }
