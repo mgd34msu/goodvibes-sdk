@@ -80,6 +80,20 @@ export class WakeDetector {
   }
 
   /**
+   * End any run in progress without scoring a frame, leaving the cooldown alone.
+   *
+   * What the speech gate calls when it withholds a frame: patience counts
+   * CONSECUTIVE scored frames, so a gap of screened-out non-speech must break a
+   * run rather than let it resume across the gap. Distinct from
+   * {@link WakeDetector.reset}, which also clears the cooldown and would let one
+   * utterance fire twice.
+   */
+  breakRun(): void {
+    this.#runFrames = 0;
+    this.#runPeak = 0;
+  }
+
+  /**
    * Offer one frame's score. `now` is injected rather than read from the clock
    * so cooldown behaviour is deterministic under test.
    */

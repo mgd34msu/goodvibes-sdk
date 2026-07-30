@@ -36651,7 +36651,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               "enum": [
                 "classifier",
                 "embedding",
-                "notice"
+                "notice",
+                "vad"
               ]
             },
             "offset": {
@@ -36674,7 +36675,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               "enum": [
                 "classifier",
                 "embedding",
-                "notice"
+                "notice",
+                "vad"
               ]
             },
             "offset": {
@@ -36712,7 +36714,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "voice.wake.provision",
         "title": "Download the Wake-Word Models",
-        "description": "Download and checksum-verify the pinned wake-word classifier, its NOTICE, and the speech-embedding front end into the goodvibes-managed directory — about 3.7 MB. Downloads only when you ask, and is resumable by re-running: an artifact that already matches its pin is skipped, and one that is present but fails verification is replaced rather than used. A failed or mismatched download keeps nothing at the destination. Single-flight: two surfaces asking at once join one download instead of racing for the same files.",
+        "description": "Download and checksum-verify the pinned wake-word classifier, its NOTICE, the speech-embedding front end and the speech gate voice.wake.vadThreshold runs, into the goodvibes-managed directory — about 3.7 MB. Downloads only when you ask, and is resumable by re-running: an artifact that already matches its pin is skipped, and one that is present but fails verification is replaced rather than used. A failed or mismatched download keeps nothing at the destination. Single-flight: two surfaces asking at once join one download instead of racing for the same files.",
         "category": "health",
         "source": "builtin",
         "access": "authenticated",
@@ -36736,6 +36738,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "type": "object",
           "properties": {
             "ready": {
+              "type": "boolean"
+            },
+            "vadReady": {
               "type": "boolean"
             },
             "modelVersion": {
@@ -36771,7 +36776,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                     "enum": [
                       "classifier",
                       "notice",
-                      "embedding"
+                      "embedding",
+                      "vad",
+                      "vad-notice"
                     ]
                   },
                   "state": {
@@ -36803,6 +36810,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           },
           "required": [
             "ready",
+            "vadReady",
             "modelVersion",
             "noticePath",
             "recallIsSyntheticOnly",
@@ -36815,7 +36823,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "voice.wake.status",
         "title": "Get Wake-Word Model State",
-        "description": "Whether the pinned wake-word artifacts are on disk and VERIFIED BY CONTENT: the \"hey goodvibes\" classifier, its attribution NOTICE, and the speech-embedding front end the classifier sits behind. Each reports verified, corrupt (present but failing its checksum — a truncated or swapped file, distinct from missing) and its byte size, with the total a fresh provision would download. Also restates that the model's published recall figures are measured on synthesised speech only, which any surface describing the model must carry. Never downloads. Read-only.",
+        "description": "Whether the pinned wake-word artifacts are on disk and VERIFIED BY CONTENT: the \"hey goodvibes\" classifier, its attribution NOTICE, the speech-embedding front end the classifier sits behind, and the speech gate voice.wake.vadThreshold runs (reported as vadReady, separately from ready, because the detector runs without it — the row defaults to 0). Each reports verified, corrupt (present but failing its checksum — a truncated or swapped file, distinct from missing) and its byte size, with the total a fresh provision would download. Also restates that the model's published recall figures are measured on synthesised speech only, which any surface describing the model must carry. Never downloads. Read-only.",
         "category": "health",
         "source": "builtin",
         "access": "authenticated",
@@ -36923,6 +36931,57 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               ],
               "additionalProperties": false
             },
+            "vad": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "verified": {
+                  "type": "boolean"
+                },
+                "corrupt": {
+                  "type": "boolean"
+                },
+                "bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path",
+                "verified",
+                "corrupt",
+                "bytes"
+              ],
+              "additionalProperties": false
+            },
+            "vadNotice": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "verified": {
+                  "type": "boolean"
+                },
+                "corrupt": {
+                  "type": "boolean"
+                },
+                "bytes": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path",
+                "verified",
+                "corrupt",
+                "bytes"
+              ],
+              "additionalProperties": false
+            },
+            "vadReady": {
+              "type": "boolean"
+            },
             "downloadBytes": {
               "type": "number"
             },
@@ -36946,6 +37005,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "classifier",
             "notice",
             "embedding",
+            "vad",
+            "vadNotice",
+            "vadReady",
             "downloadBytes",
             "modelVersion",
             "recallIsSyntheticOnly"

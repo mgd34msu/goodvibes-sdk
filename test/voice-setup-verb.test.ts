@@ -29,8 +29,8 @@ const stubStatus = { platform: 'linux-x64', state: 'not-provisioned', tts: { eng
 const stubInstall = { provisioned: true, platform: 'linux-x64', tts: { engine: 'piper', state: 'provisioned', binaryPath: '/m/piper', modelPath: '/m/voice.onnx' }, stt: { engine: 'whisper-cpp', state: 'unsupported-platform', reason: 'no prebuilt' }, components: [], configured: { set: [{ key: 'voice.local.ttsEngine', value: 'piper' }], skipped: [] } };
 
 const stubArtifact = { path: '/m/wake/x', verified: true, corrupt: false, bytes: 10 };
-const stubWakeStatus = { ready: true, reason: null, classifier: stubArtifact, notice: stubArtifact, embedding: stubArtifact, downloadBytes: 0, modelVersion: '1.0.0', recallIsSyntheticOnly: true };
-const stubWakeProvision = { ready: true, modelVersion: '1.0.0', noticePath: '/m/wake/NOTICE.txt', recallIsSyntheticOnly: true, outcomes: [] };
+const stubWakeStatus = { ready: true, reason: null, classifier: stubArtifact, notice: stubArtifact, embedding: stubArtifact, vad: stubArtifact, vadNotice: stubArtifact, vadReady: true, downloadBytes: 0, modelVersion: '1.0.0', recallIsSyntheticOnly: true };
+const stubWakeProvision = { ready: true, vadReady: true, modelVersion: '1.0.0', noticePath: '/m/wake/NOTICE.txt', recallIsSyntheticOnly: true, outcomes: [] };
 const stubChunk = { component: 'classifier', offset: 0, bytes: 4, totalBytes: 4, sha256: 'abc', dataBase64: 'AAEC', complete: true };
 
 const service: VoiceSetupGatewayService = {
@@ -147,9 +147,12 @@ describe('the wake-word verbs ride the same registered group', () => {
 
   test('an unrecognised component is refused with a written reason, not turned into a path', () => {
     expect(() => createWakeModelHandler(service)({ component: '../../etc/passwd' } as never))
-      .toThrow(/component must be classifier, embedding or notice/);
+      .toThrow(/component must be classifier, embedding, notice or vad/);
     expect(() => createWakeModelHandler(service)({} as never))
-      .toThrow(/component must be classifier, embedding or notice/);
+      .toThrow(/component must be classifier, embedding, notice or vad/);
+    // And the speech gate IS a recognised component: a browser tab reads it from
+    // here for the same reason it reads the classifier from here.
+    expect(createWakeModelHandler(service)({ component: 'vad' } as never)).toEqual(stubChunk);
   });
 
   test('all three verbs are in the live catalog with REST bindings, and register without throwing', () => {
@@ -220,7 +223,7 @@ describe('the chunked model read a browser tab reassembles', () => {
       provision: async () => {
         runs += 1;
         await new Promise<void>((r) => { release = r; });
-        return { ready: true, modelVersion: '1.0.0', outcomes: [], noticePath: null, recallIsSyntheticOnly: true };
+        return { ready: true, vadReady: true, modelVersion: '1.0.0', outcomes: [], noticePath: null, recallIsSyntheticOnly: true };
       },
     });
     const a = svc.provision();

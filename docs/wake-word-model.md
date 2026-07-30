@@ -22,13 +22,15 @@ the front of the sentence and race whatever still holds the device.
 > every other capability's setting does, and each surface is opted in by its own
 > `voice.wake.surfaces.*` row.
 >
-> Two limits remain, and each is written in its own settings row rather than
-> behind one blanket claim: `voice.wake.vadThreshold` above 0 refuses to start
-> because no VAD model is pinned to screen frames with, and a browser tab has no
-> filesystem for `voice.wake.retainAudio` or a local
-> `voice.wake.activationSoundPath`. `resolveWakeRuntimeSettings` reads every row
-> and reports these as blockers (the detector does not start) or limitations (it
-> runs, with that row not in force).
+> The limits that remain are written in their own settings rows rather than
+> behind one blanket claim: a browser tab has no filesystem for
+> `voice.wake.retainAudio` or a local `voice.wake.activationSoundPath`. Neither
+> the agent surface nor `voice.wake.vadThreshold` is one of them any more — the
+> agent captures through the same recorder subprocess the terminal uses, and
+> there is a pinned speech gate now, so a surface refuses a non-zero threshold
+> only when it has not loaded that gate. `resolveWakeRuntimeSettings` reads every
+> row and reports these as blockers (the detector does not start) or limitations
+> (it runs, with that row not in force).
 
 ## What is published
 
@@ -40,6 +42,17 @@ voice engine bundles, each with a `<asset>.sha256` sidecar.
 | `goodvibes-wakeword-hey-goodvibes-1.0.0.onnx` | 2,367,644 | `89a0b7b565d433cb73e3dd24476274fdbec2c71925a63185973303861c0467d9` |
 | `goodvibes-wakeword-hey-goodvibes-1.0.0.tflite` | 2,369,264 | `05da156c040e497d7e71f1892e4f773e46d8f9a3ef24ba1c2572d30241647c8a` |
 | `goodvibes-wakeword-hey-goodvibes-1.0.0.NOTICE.txt` | 5,574 | `7d85d7b37ac37dbe3753cabaae3ace8d8d35052ea6902cc9b27ec0051e594ab0` |
+| `goodvibes-vad-1.0.0.onnx` | 15,885 | `0ee90b4849f667211fc8fdd27f3c459560108db64b8978f17ae2b27c65596aab` |
+| `goodvibes-vad-1.0.0.tflite` | 18,136 | `f8f1903c075b3d8cb0c7998ae613bbbf31ad5c2bd4c090fde3f83cfed588fdcd` |
+| `goodvibes-vad-1.0.0.NOTICE.txt` | 6,786 | `3d8d27800798397e4b1974712e28753f0c149018be733421d84bfe6cc16546d0` |
+
+The three `goodvibes-vad-1.0.0` assets are the speech gate — see
+[The speech gate](#the-speech-gate-is-ours-too-and-it-rides-the-same-front-end).
+Their byte counts and checksums are of the built artifacts and are what the
+upload to the release tag must match; **they land with this round's release**.
+Until then a provision reports the gate as failed and `vadReady` false, while the
+detector itself stays ready, which is why the gate is not part of
+`WakeProvisionStatus.ready`.
 
 The `.onnx` and `.tflite` twins are bit-identical in every decision on every
 evaluation clip — they are the same classifier in two runtime formats.
@@ -251,6 +264,146 @@ detects.
 **Frames carry int16 magnitudes as floats, not normalised −1..1 audio.** That is
 the scale the classifier was trained on; normalised audio scores near zero
 forever and looks exactly like a microphone that is picking nothing up.
+
+## Noise suppression runs in the same place, on both surfaces
+
+`voice.wake.noiseSuppression: "speex"` is **SpeexDSP 1.2.1's preprocessor,
+compiled to WebAssembly and carried in the package** — 53,678 bytes, sha256
+`4829d9fa97e648ab9c45e9a685adba7bd762a4f948ec499c59b073bd03cce2bb`, with zero
+imports (no WASI syscalls, no JavaScript glue). It runs wherever `WebAssembly`
+exists, which is both shipped surfaces, for the same reason the inference runtime
+is a WASM backend: a native binding cannot run in the browser tab, and a setting
+that means different things on different surfaces is the problem rather than the
+fix. Build inputs, the pinned toolchain and the attribution are in
+`native/speexdsp-wasm/`; `bun scripts/build-speexdsp-wasm.ts` rebuilds it.
+
+**One application point, so no consumer can be missed.**
+`createNoiseSuppressingOpener` wraps whatever a host opens, and both consumers —
+the wake listener and the push-to-talk session — wrap the opener they are given.
+So the classifier scores filtered frames, the utterance recorded after a wake is
+filtered, the pre-roll carried from before the wake is filtered, and voice input
+is filtered. A host passes the same plain opener it always did. Wrapping is
+idempotent: the wrapper asks the opener underneath it for `none`, so a host that
+wraps its own opener as well filters once, not twice.
+
+**Measured, on a synthetic tone-plus-white-noise set** (a 1 kHz tone gated on and
+off under white noise, measured over the last four seconds of six with a
+960-sample guard band either side of each gate edge, because the suppressor
+overlap-adds a window twice its block length):
+
+| | noise floor | tone window | SNR |
+| --- | --- | --- | --- |
+| passthrough | 515.5 rms | 4277.3 rms | 18.38 dB |
+| speex | 112.7 rms | 4097.3 rms | 31.21 dB |
+
+**Noise floor down 13.20 dB, SNR up 12.83 dB, tone correlation 0.9990** — the
+floor comes down by about the 15 dB the filter is asked for while the tone
+survives. `test/voice-noise-suppression.test.ts` asserts those numbers with
+margin, and asserts that `none` is a true passthrough: the same frame objects, so
+the byte path with suppression off is the path that shipped.
+
+**Cost: 0.100 ms per 80 ms frame** (p95 0.112 ms, max 0.285 ms over 1000 frames
+after warm-up) — 0.13 % of one core, beside the detector's own 3.46 ms. Creating a
+stage costs 5.3 ms the first time (compiling the module) and 0.18 ms per stream
+after that, since the compiled module is shared and only the filter state is per
+stream. Frames are filtered in 20 ms blocks through one continuous state, not in
+80 ms ones: the suppressor estimates its noise floor over a window twice the
+block length, and an 80 ms block would track a room four times more slowly than
+SpeexDSP is tuned for.
+
+**What it is not.** The module carries the denoiser and nothing else — no echo
+canceller, no automatic gain control (which would move the loudness the
+classifier was trained against), and no voice-activity gate. Those stages are
+disabled explicitly in the build rather than left at upstream defaults.
+`voice.wake.vadThreshold` still has no model behind it and still refuses.
+
+**Attribution is mandatory here too.** SpeexDSP is BSD 3-clause, which requires
+its copyright notice, condition list and disclaimer to be reproduced with binary
+redistribution — and the base64 module inside the published package is binary
+redistribution. `native/speexdsp-wasm/NOTICE.txt` is that reproduction and
+`SPEEXDSP_PREPROCESS.noticePath` points at it. Nothing in the chain is
+NonCommercial, ShareAlike or NoDerivatives: SpeexDSP is BSD 3-clause and the
+linked C runtime (wasi-libc) is Apache-2.0-with-LLVM-exception / Apache-2.0 / MIT.
+
+## The speech gate is ours too, and it rides the same front end
+
+`voice.wake.vadThreshold` used to refuse: it named a stage with no model behind
+it. There is a model now, and it is **ours — trained by us**, on the same
+commercially-clean corpora class as the wake classifier. It is a
+**speech/non-speech head over the SAME 96-dimension embedding the wake classifier
+consumes**:
+
+```
+audio -> melspectrogram -> speech-embedding backbone -> ┬─> wake classifier
+                                                        └─> this speech gate
+```
+
+That shape is the point. The front end already runs once per 80 ms frame for the
+classifier, so the gate adds one tiny inference and **no extra front-end pass**,
+and it provisions with artifacts the surface already downloads. A standalone
+voice-activity detector would have brought its own front end, its own artifacts
+and its own provenance. Architecture: 96 inputs → fixed input standardisation →
+32 units (ReLU) → 16 units (ReLU) → 1 unit (sigmoid). 3,713 parameters, 15.9 kB.
+
+**What it does.** A frame whose speech probability falls below the threshold is
+**withheld from the classifiers** — the 2.4 MB classifier is not run for it — and
+the withheld frame breaks any run of above-threshold frames in progress, because
+patience counts consecutive SCORED frames. Cooldown is untouched: withholding a
+frame must not let one utterance fire twice.
+
+**Trained on.** 278,553 frames: LibriSpeech `train-clean-100` and MUSAN speech as
+positives, MUSAN noise and music as negatives, with per-file gain randomisation
+and **half the speech mixed with noise at 0–18 dB SNR** — a head trained on loud
+clean speech and quiet noise learns "loud", and would then gate the exact case
+the detector has to survive, someone speaking with a fan running. Labels for
+speech recordings are weak, derived from energy over the embedding's own 760 ms
+receptive field (≥60 % of the window above the recording's own floor is speech,
+≤5 % is non-speech, in between is dropped as ambiguous); the negative class is
+anchored by recordings that contain no speech at all. Every corpus is
+attribution-only or public domain — the same set the wake classifier's NOTICE
+credits — and `goodvibes-vad-1.0.0.NOTICE.txt` carries the attribution.
+
+**Measured on 106,390 held-out frames** (44,286 speech), from recordings disjoint
+from training by file and by speaker:
+
+| threshold | speech frames passed | non-speech frames withheld |
+|---|---|---|
+| 0.05 | 98.59 % | 77.68 % |
+| 0.10 | 97.78 % | 88.45 % |
+| 0.20 | 96.83 % | 93.76 % |
+| **0.30 (recommended)** | **96.03 %** | **95.65 %** |
+| 0.50 | 94.51 % | 97.35 % |
+| 0.70 | 92.62 % | 98.24 % |
+| 0.90 | 88.33 % | 99.03 % |
+
+**Run it at 0.30.** The two errors are not symmetric: a withheld speech frame is
+a wake that cannot fire, while a passed non-speech frame only costs one
+classifier inference that was going to be spent anyway. 0.30 is where speech pass
+rate starts falling faster than withholding rises. On the two individual held-out
+recordings recorded into `test/fixtures/wake-vad.json`, **0 % of the noise
+recording's frames pass and 95.8 % of the speech recording's do**, and the test
+suite asserts both.
+
+**`voice.wake.vadThreshold` still ships at 0** — the gate off. That is the
+configuration that has been exercised, and a gate can only ever cost a detection;
+0.30 is what to set it to when turning the gate on.
+
+**Cost: 0.025 ms per 80 ms frame** (p50 0.020 ms, p95 0.033 ms over 1000 frames
+after warm-up, measured through onnxruntime-node on the reference machine) —
+0.031 % of one core, beside the detector's own 3.46 ms.
+
+**The twins agree.** onnx vs Keras 1.8e-07, tflite vs Keras 5.4e-07 over 2,000
+held-out frames, with **zero gating decisions changed** at thresholds 0.2, 0.3 and
+0.5. The ONNX graph was assembled by hand from the trained weights (eight nodes)
+rather than run through a converter, then verified against Keras.
+
+**Both hosts, one artifact — with one host-side line each.** The gate is a
+session the host loads and hands to the engine, exactly as it does the classifier
+and the embedding, and the browser tab reads its bytes from the daemon
+(`voice.wake.model` with `component: "vad"`) because the release asset answers
+with no CORS header. A surface that has not loaded it refuses any threshold above
+0 rather than running unscreened frames through a stage the user configured —
+`WakeSurfaceCapabilities.vadAvailable` is that declaration.
 
 ## Known weaknesses
 

@@ -51,10 +51,18 @@ export interface RecorderCaptureOptions {
   /** `process.platform`; decides ffmpeg's input format. */
   readonly platform?: string | undefined;
   /**
-   * True only when this host ACTUALLY APPLIES speex suppression to the captured
-   * audio. No shipped host does — the stage needs libspeexdsp bindings the
-   * platform does not ship — so `speex` is refused rather than captured
-   * unfiltered through a filter the user configured.
+   * True only when the caller filters this recorder's frames ITSELF.
+   *
+   * A recorder subprocess produces raw audio and this module does not filter it.
+   * The platform's suppression stage does, one layer up:
+   * `createNoiseSuppressingOpener` wraps an opener like this one, and both
+   * consumers — {@link WakeListener} and {@link PushToTalkSession} — already
+   * wrap the opener a host hands them, which is why a host passes nothing here
+   * and still gets `voice.wake.noiseSuppression: "speex"` applied.
+   *
+   * A caller driving this opener DIRECTLY with `speex` and no filter of its own
+   * is refused rather than served unfiltered audio, which is what this flag
+   * exists to distinguish.
    */
   readonly speexAvailable?: boolean | undefined;
   readonly sampleRate?: number | undefined;
@@ -103,9 +111,10 @@ export function createRecorderCaptureOpener(options: RecorderCaptureOptions): Au
     if (request.noiseSuppression === 'speex' && options.speexAvailable !== true) {
       throw new AudioCaptureError(
         'noise-suppression-unavailable',
-        'voice.wake.noiseSuppression is set to "speex", but this host applies no speex suppression — the stage '
-        + 'needs libspeexdsp bindings the platform does not ship. Refusing rather than capturing unfiltered audio '
-        + 'through a filter you configured. Set the row back to "none".',
+        'voice.wake.noiseSuppression is set to "speex", but a recorder subprocess produces raw audio and this '
+        + 'opener does not filter it. The platform\'s speexdsp stage runs one layer up: wrap this opener with '
+        + 'createNoiseSuppressingOpener, which the wake listener and the push-to-talk session already do. '
+        + 'Refusing rather than handing you unfiltered audio through a filter you configured.',
       );
     }
     const resolved = resolveRecorderCommand(request.backend, {

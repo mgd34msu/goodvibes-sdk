@@ -8,6 +8,106 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventi
 
 ### Added
 
+- **`voice.wake.vadThreshold` screens frames now, with our own model — the second
+  row that named a stage nothing ran.** It refused at any value above 0 because no
+  voice-activity model was pinned. There is one now, and it is ours, trained by
+  us: a **speech/non-speech head over the SAME 96-dimension embedding the wake
+  classifier consumes**, so it adds one inference of **0.025 ms per 80 ms frame**
+  and no extra front-end pass, and provisions with artifacts the surface already
+  downloads. 15.9 kB, 3,713 parameters, Apache-2.0, onnx and tflite twins pinned
+  by byte count and sha256 in `WAKE_VAD_MODEL` beside the wake classifier.
+
+  - **A withheld frame reaches no classifier.** Below the threshold the frame is
+    kept out of the 2.4 MB classifier entirely, and it breaks any run of
+    above-threshold frames in progress — patience counts CONSECUTIVE scored
+    frames — while leaving the cooldown alone, so withholding cannot let one
+    utterance fire twice.
+  - **Measured on 106,390 held-out frames** (44,286 speech) from recordings
+    disjoint from training by file and by speaker: at the recommended 0.30 it
+    passes **96.0 % of speech frames** and withholds **95.7 % of non-speech**
+    ones. The manifest carries the whole threshold table so a surface can say what
+    a chosen value does instead of guessing. On the two individual held-out
+    recordings replayed by the test suite, 0 % of the noise recording's frames
+    pass and 95.8 % of the speech recording's do.
+  - **Trained on the same commercially-clean corpora class as the wake model** —
+    LibriSpeech train-clean-100 and MUSAN speech against MUSAN noise and music,
+    with per-file gain randomisation and half the speech mixed with noise at
+    0–18 dB SNR, because a head trained on loud clean speech would learn "loud"
+    and gate the case the detector most has to survive. Attribution travels in
+    `goodvibes-vad-1.0.0.NOTICE.txt`, pinned and checksummed like every other
+    asset.
+  - **The twins decide identically**: 1.8e-07 (onnx vs Keras) and 5.4e-07 (tflite
+    vs Keras) over 2,000 frames, zero gating decisions changed at 0.2, 0.3 or 0.5.
+  - **`voice.wake.vadThreshold` still ships at 0**, the gate off — the
+    configuration that has been exercised, and a gate can only ever cost a
+    detection. 0.30 is the measured operating point to set when turning it on.
+  - **Provisioned with the wake models, reported separately.**
+    `voice.wake.provision` fetches the gate and its NOTICE beside the classifier;
+    `voice.wake.status` reports them as `vad` / `vadNotice` / `vadReady`, which is
+    NOT folded into `ready`, because the detector runs without the gate and
+    folding it in would make every existing installation look broken until it
+    re-provisioned. The recovery sweeper reaps a gate that fails verification and
+    an unpinned gate version, like any other pinned artifact, and
+    `voice.wake.model` serves the gate's bytes to a browser tab
+    (`component: "vad"`), which cannot fetch the release asset itself.
+  - **A gate that fails passes frames through and says so** (`WakeFrameResult.vad`
+    carries `failed`), because gating on failure silently turns the wake word off
+    — indistinguishable to a user from a microphone that stopped working. A
+    surface that has not loaded the gate still refuses any threshold above 0
+    rather than leaving frames unscreened while the row claims otherwise.
+
+- **`voice.wake.noiseSuppression: "speex"` filters audio now, on every surface —
+  the value that refused everywhere is a filter that runs.** The row shipped with
+  two values and one of them named a stage nothing applied, so selecting it
+  stopped the detector with a written reason rather than pretending. The filter is
+  now **SpeexDSP 1.2.1's preprocessor, compiled to WebAssembly and carried in the
+  package**: 53,678 bytes, sha256
+  `4829d9fa97e648ab9c45e9a685adba7bd762a4f948ec499c59b073bd03cce2bb`, imports
+  nothing at all. Nothing to install, nothing to provision, no per-host library —
+  which is what makes the setting honest, because there is no state in which the
+  filter is configured but not running.
+
+  - **One application point, so no consumer can be missed.**
+    `createNoiseSuppressingOpener` wraps whatever a host opens, and both
+    consumers wrap the opener they are handed: the classifier scores filtered
+    frames, the utterance recorded after a wake is filtered, the pre-roll from
+    before the wake fired is filtered, and push-to-talk voice input is filtered.
+    A host passes the same plain opener it always did — no surface wiring
+    changed. Wrapping is idempotent (the wrapper asks the opener underneath it
+    for `none`), so a host that also wraps its own opener filters once.
+  - **Measured on signal, not smoke-tested.** Against a 1 kHz tone gated on and
+    off under white noise: **noise floor down 13.20 dB, SNR up 12.83 dB, tone
+    correlation 0.9990** — the floor falls by about the 15 dB the filter is asked
+    for while the tone survives. Asserted numerically in
+    `test/voice-noise-suppression.test.ts`, which also asserts that `none` is a
+    true passthrough: the same frame objects, so the byte path with suppression
+    off is exactly the path that shipped.
+  - **Cost: 0.100 ms per 80 ms frame** (p95 0.112 ms) — 0.13 % of one core,
+    beside the detector's own 3.46 ms. Frames are filtered in 20 ms blocks
+    through one continuous state, because the suppressor estimates its noise
+    floor over a window twice the block length and an 80 ms block would track a
+    room four times more slowly than SpeexDSP is tuned for.
+  - **Denoise only, stated in the build.** No echo canceller is compiled in, and
+    automatic gain control (which would move the loudness the classifier was
+    trained against), the voice-activity gate and the dereverb stage are disabled
+    explicitly rather than left at upstream defaults, so a default that moves
+    upstream cannot silently change what the setting does.
+    `voice.wake.vadThreshold` still has no model behind it and still refuses.
+  - **BSD-3-Clause, with the notice carried.** SpeexDSP requires its copyright
+    notice, conditions and disclaimer to be reproduced with binary
+    redistribution, and the embedded base64 is binary redistribution:
+    `native/speexdsp-wasm/NOTICE.txt` is that reproduction, the upstream license
+    is beside it verbatim, and `SPEEXDSP_PREPROCESS` points at both. Nothing in
+    the chain is NonCommercial, ShareAlike or NoDerivatives. The upstream archive
+    is pinned by sha256 and the toolchain by version, and
+    `bun scripts/build-speexdsp-wasm.ts` rebuilds the artifact from them
+    (`--check` re-verifies the committed one without a compiler).
+  - **A surface that genuinely cannot run it still says so.** The blocker did not
+    go away, it narrowed: a runtime with no `WebAssembly`, or a surface that
+    declares it does not apply the stage, refuses with that reason instead of
+    capturing unfiltered audio. So does a filter that fails mid-stream — the
+    stream stops rather than passing half-filtered frames on.
+
 - **Audio capture, as a capability the whole voice stack shares — so the wake
   word actually listens and the terminal can finally talk to speech-to-text.**
   The detector shipped complete and unused: twenty-five `voice.wake.*` rows, a

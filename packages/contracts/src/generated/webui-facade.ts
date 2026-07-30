@@ -8949,6 +8949,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
     "input": {},
     "output": {
       "ready": false,
+      "vadReady": false,
       "modelVersion": "sample",
       "noticePath": "sample",
       "recallIsSyntheticOnly": false,
@@ -8986,6 +8987,19 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
         "corrupt": false,
         "bytes": 0
       },
+      "vad": {
+        "path": "sample",
+        "verified": false,
+        "corrupt": false,
+        "bytes": 0
+      },
+      "vadNotice": {
+        "path": "sample",
+        "verified": false,
+        "corrupt": false,
+        "bytes": 0
+      },
+      "vadReady": false,
       "downloadBytes": 0,
       "modelVersion": "sample",
       "recallIsSyntheticOnly": false

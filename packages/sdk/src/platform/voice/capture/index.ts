@@ -10,6 +10,12 @@
  * device, so this module imports no `node:` builtin and a browser bundle can
  * carry all of it. `createRecorderCaptureOpener` is the host-shaped opener — it
  * takes `spawn` as an argument rather than importing it, for the same reason.
+ *
+ * `voice.wake.noiseSuppression` is applied here too, by
+ * `createNoiseSuppressingOpener` wrapping whatever the host opens: the filter is
+ * a WebAssembly module carried in the package, so it runs in a daemon child
+ * process and in a browser tab identically, and every consumer downstream of the
+ * device sees the same filtered frames. See ./noise-suppression.ts.
  */
 export {
   CAPTURE_SAMPLE_RATE,
@@ -36,7 +42,20 @@ export {
   concatSamples,
   encodeWavPcm16,
   bytesToBase64,
+  base64ToBytes,
 } from './frames.js';
+
+export {
+  SPEEXDSP_PREPROCESS,
+  SPEEX_BLOCK_SAMPLES,
+  noiseSuppressionSupport,
+  createSpeexNoiseSuppression,
+  createNoiseSuppressingOpener,
+  type NoiseSuppressionStage,
+  type NoiseSuppressionFactory,
+  type NoiseSuppressionSupport,
+  type NoiseSuppressingOpenerOptions,
+} from './noise-suppression.js';
 
 export {
   RECORDER_PROBE_ORDER,

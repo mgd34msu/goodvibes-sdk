@@ -35,9 +35,14 @@ export {
   OPENWAKEWORD_UPSTREAM_DEFAULT_THRESHOLD,
   resolveWakeWordModel,
   wakeWordProvisionBytes,
+  WAKE_VAD_MODEL,
+  wakeVadProvisionBytes,
+  resolveWakeVadThreshold,
   type WakeWordModelManifest,
   type WakeWordModelMeasurements,
   type WakeWordFrontEndManifest,
+  type WakeVadModelManifest,
+  type WakeVadThresholdRow,
 } from './wake-word-manifest.js';
 
 export {
