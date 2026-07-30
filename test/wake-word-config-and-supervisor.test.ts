@@ -398,13 +398,15 @@ describe('every row reaches the runtime — no row configures nothing', () => {
 });
 
 describe('a row that cannot take effect says so — blocker or limitation, never silence', () => {
-  test('vadThreshold above 0 BLOCKS, because no VAD model is pinned to screen frames with', () => {
+  test('vadThreshold above 0 BLOCKS on a surface that has not loaded the speech gate', () => {
     const resolved = resolveWakeRuntimeSettings(
       wakeReader({ 'voice.wake.enabled': true, 'voice.wake.vadThreshold': 0.4 }), 'tui',
     );
     expect(resolved.active).toBe(false);
     expect(resolved.blockers.map((b) => b.key)).toEqual(['voice.wake.vadThreshold']);
-    expect(resolved.blockers[0]?.detail).toContain('no voice-activity-detection model is available');
+    expect(resolved.blockers[0]?.detail).toContain('has not loaded the speech gate');
+    // And it names what the gate would do at the configured value, measured.
+    expect(resolved.blockers[0]?.detail).toContain('95.3% of speech frames');
     // And 0 — the shipped default — is the value that runs.
     expect(resolveWakeRuntimeSettings(wakeReader({ 'voice.wake.enabled': true }), 'tui').active).toBe(true);
   });
@@ -494,7 +496,7 @@ describe('the feature is operable now, and the copy no longer says otherwise', (
     // The agent has no capture host; its own row says so.
     expect(rowFor('voice.wake.surfaces.agent')).toContain('NO CAPTURE HOST');
     // The VAD row says no model is pinned and that a non-zero value refuses.
-    expect(rowFor('voice.wake.vadThreshold')).toContain('NO VAD MODEL IS PINNED');
+    expect(rowFor('voice.wake.vadThreshold')).toContain('REFUSES TO START');
     // The browser cannot read a local sound path or retain audio; both say so.
     expect(rowFor('voice.wake.activationSoundPath')).toContain('browser tab cannot read a path');
     expect(rowFor('voice.wake.retainAudio')).toContain('no filesystem to retain into');

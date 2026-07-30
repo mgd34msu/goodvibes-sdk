@@ -6843,6 +6843,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
     "status": 200,
     "body": {
       "ready": false,
+      "vadReady": false,
       "modelVersion": "sample",
       "noticePath": "sample",
       "recallIsSyntheticOnly": false,
@@ -6885,6 +6886,19 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
         "corrupt": false,
         "bytes": 0
       },
+      "vad": {
+        "path": "sample",
+        "verified": false,
+        "corrupt": false,
+        "bytes": 0
+      },
+      "vadNotice": {
+        "path": "sample",
+        "verified": false,
+        "corrupt": false,
+        "bytes": 0
+      },
+      "vadReady": false,
       "downloadBytes": 0,
       "modelVersion": "sample",
       "recallIsSyntheticOnly": false

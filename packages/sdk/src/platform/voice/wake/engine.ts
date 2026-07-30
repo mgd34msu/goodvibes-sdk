@@ -41,11 +41,48 @@ import type {
   WakeModelHandle,
 } from './types.js';
 
+/**
+ * The speech gate `voice.wake.vadThreshold` turns on.
+ *
+ * The head runs over the SAME embedding the classifiers consume, so gating costs
+ * one tiny inference per frame and no extra front-end pass. A host supplies the
+ * session exactly as it supplies the classifiers'.
+ */
+export interface WakeVadGate {
+  readonly session: WakeInferenceSession;
+  /**
+   * Speech probability a frame must reach to be scored, from
+   * `voice.wake.vadThreshold`. See `WAKE_VAD_MODEL.thresholds` for what a value
+   * does; `recommendedThreshold` is the measured operating point.
+   */
+  readonly threshold: number;
+}
+
+/** What the speech gate did with one frame. */
+export interface WakeVadOutcome {
+  /** Speech probability for this frame, or null when the gate could not run. */
+  readonly probability: number | null;
+  /** True when the frame was withheld from the classifiers. */
+  readonly gated: boolean;
+  /**
+   * True when the gate itself failed on this frame. The frame is then passed
+   * THROUGH to the classifiers and the failure is reported: a gate that cannot
+   * run must not turn the wake word off, because gating everything is
+   * indistinguishable to a user from a microphone that stopped working.
+   */
+  readonly failed: boolean;
+}
+
 export interface WakeEngineOptions {
   /** The speech-embedding backbone, shared by every model. */
   readonly embedding: WakeInferenceSession;
   /** Classifiers to run. An empty list means the engine scores nothing. */
   readonly models: readonly WakeModelHandle[];
+  /**
+   * The speech gate. Omitted means every frame reaches the classifiers, which is
+   * what `voice.wake.vadThreshold: 0` — the shipped default — asks for.
+   */
+  readonly vad?: WakeVadGate | undefined;
   /** Detector tuning; per-model thresholds still win. */
   readonly tuning?: Partial<WakeDetectorTuning> | undefined;
   /** Milliseconds of audio a detection carries from before it fired. */
@@ -70,12 +107,18 @@ export interface WakeFrameResult {
   readonly outcomes: ReadonlyMap<string, WakeFrameOutcome>;
   /** Models that confirmed a wake on this frame, in configuration order. */
   readonly detections: readonly WakeDetection[];
+  /**
+   * What the speech gate did, or null when no gate is running. A gated frame has
+   * empty scores and outcomes — it was never handed to a classifier.
+   */
+  readonly vad: WakeVadOutcome | null;
 }
 
 const EMPTY_RESULT: WakeFrameResult = {
   scores: new Map(),
   outcomes: new Map(),
   detections: [],
+  vad: null,
 };
 
 /** Frame-driven wake-word detector over a shared front end. */
@@ -83,6 +126,7 @@ export class WakeWordEngine {
   readonly #pipeline: WakeFeaturePipeline;
   readonly #models: readonly WakeModelHandle[];
   readonly #detectors: Map<string, WakeDetector>;
+  readonly #vad: WakeVadGate | null;
   readonly #preRollMs: number;
   readonly #now: () => number;
   readonly #warn: (message: string, meta?: Readonly<Record<string, unknown>>) => void;
@@ -94,6 +138,9 @@ export class WakeWordEngine {
       chunkSamples: options.chunkSamples ?? WAKE_CHUNK_SAMPLES,
     });
     this.#models = [...options.models];
+    // A gate configured at 0 is no gate: the row's own description says 0 means
+    // the stage is off, so it must not cost an inference per frame either.
+    this.#vad = options.vad !== undefined && options.vad.threshold > 0 ? options.vad : null;
     this.#preRollMs = options.preRollMs ?? 500;
     this.#now = options.now ?? (() => Date.now());
     this.#warn = options.warn ?? ((): void => {});
@@ -146,6 +193,14 @@ export class WakeWordEngine {
     this.#framesSeen += 1;
     const features = await this.#pipeline.pushChunk(samples);
     if (features === null || this.#models.length === 0) return EMPTY_RESULT;
+    const vad = this.#vad === null ? null : await this.#screen(features.data);
+    if (vad !== null && vad.gated) {
+      // A withheld frame breaks any run in progress — patience counts consecutive
+      // SCORED frames, and a gap of non-speech is exactly what should end a run —
+      // while cooldown is left alone, since no wake fired here.
+      for (const detector of this.#detectors.values()) detector.breakRun();
+      return { scores: new Map(), outcomes: new Map(), detections: [], vad };
+    }
     const at = this.#now();
     const scores = new Map<string, number>();
     const outcomes = new Map<string, WakeFrameOutcome>();
@@ -168,7 +223,45 @@ export class WakeWordEngine {
         preRoll: this.#preRollMs > 0 ? this.#pipeline.recentAudio(this.#preRollMs) : new Float32Array(0),
       });
     }
-    return { scores, outcomes, detections };
+    return { scores, outcomes, detections, vad };
+  }
+
+  /**
+   * Run the speech gate over the newest embedding frame.
+   *
+   * The newest frame is the LAST 96 values of the classifier window — the window
+   * is 16 frames of 96 in time order — so the gate reads what the front end just
+   * produced rather than re-running anything.
+   *
+   * A gate that fails passes the frame through and says so. The alternative,
+   * gating on failure, silently turns the wake word off.
+   */
+  async #screen(features: Float32Array): Promise<WakeVadOutcome> {
+    const gate = this.#vad;
+    if (gate === null) return { probability: null, gated: false, failed: false };
+    const inputName = gate.session.inputNames[0];
+    const outputName = gate.session.outputNames[0];
+    if (inputName === undefined || outputName === undefined) {
+      this.#warn('the speech gate exposes no input/output; frames are not being screened');
+      return { probability: null, gated: false, failed: true };
+    }
+    const newest = features.subarray(features.length - WAKE_EMBED_DIM);
+    try {
+      const outputs = await gate.session.run({
+        [inputName]: { data: newest, dims: [1, WAKE_EMBED_DIM] },
+      });
+      const value = outputs[outputName]?.data[0];
+      if (value === undefined || !Number.isFinite(value)) {
+        this.#warn('the speech gate produced no finite probability; frames are not being screened');
+        return { probability: null, gated: false, failed: true };
+      }
+      return { probability: value, gated: value < gate.threshold, failed: false };
+    } catch (error) {
+      this.#warn('the speech gate failed to run; frames are not being screened', {
+        error: summarizeError(error),
+      });
+      return { probability: null, gated: false, failed: true };
+    }
   }
 
   /**

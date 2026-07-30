@@ -38,7 +38,9 @@ import {
 } from '../provisioning/download-verified.js';
 import {
   resolveWakeWordModel,
+  WAKE_VAD_MODEL,
   WAKE_WORD_FRONT_END,
+  wakeVadProvisionBytes,
   wakeWordProvisionBytes,
   type WakeWordModelManifest,
 } from '../provisioning/wake-word-manifest.js';
@@ -63,6 +65,14 @@ export interface ManagedWakePaths {
   readonly noticePath: string;
   /** The speech-embedding backbone. */
   readonly embeddingPath: string;
+  /**
+   * The speech gate `voice.wake.vadThreshold` runs. It lives beside the embedding
+   * rather than with the classifiers because it is front-end infrastructure: one
+   * head shared by every wake model, over the embedding they all consume.
+   */
+  readonly vadPath: string;
+  /** The speech gate's attribution NOTICE. */
+  readonly vadNoticePath: string;
 }
 
 /** Resolve the managed wake-word paths for a model version. */
@@ -81,6 +91,8 @@ export function resolveManagedWakePaths(managedRoot: string, version?: string): 
     classifierPath: join(modelsDir, `goodvibes-wakeword-hey-goodvibes-${modelVersion}.onnx`),
     noticePath: join(modelsDir, `goodvibes-wakeword-hey-goodvibes-${modelVersion}.NOTICE.txt`),
     embeddingPath: join(frontEndDir, `speech-embedding-${WAKE_WORD_FRONT_END.embedding.version}.onnx`),
+    vadPath: join(frontEndDir, `goodvibes-vad-${WAKE_VAD_MODEL.version}.onnx`),
+    vadNoticePath: join(frontEndDir, `goodvibes-vad-${WAKE_VAD_MODEL.version}.NOTICE.txt`),
   };
 }
 
@@ -146,6 +158,16 @@ export interface WakeProvisionStatus {
   readonly classifier: WakeArtifactStatus;
   readonly notice: WakeArtifactStatus;
   readonly embedding: WakeArtifactStatus;
+  /** The speech gate's head and its NOTICE. */
+  readonly vad: WakeArtifactStatus;
+  readonly vadNotice: WakeArtifactStatus;
+  /**
+   * The speech gate is on disk and content-verified. Reported SEPARATELY from
+   * {@link ready}: `voice.wake.vadThreshold` defaults to 0, so a detector with no
+   * gate on disk is fully operational, and folding the gate into `ready` would
+   * make every existing installation look broken until it re-provisioned.
+   */
+  readonly vadReady: boolean;
   /** Total bytes a fresh provision would download. */
   readonly downloadBytes: number;
   /** The model version these paths resolve to, or null when unpinned. */
@@ -166,6 +188,8 @@ export function wakeProvisionStatus(options: {
   const model = resolveWakeWordModel(options.version);
   const paths = resolveManagedWakePaths(options.managedRoot, options.version);
   const embeddingSpec = WAKE_WORD_FRONT_END.embedding.download;
+  const vad = wakeArtifactStatus(paths.vadPath, WAKE_VAD_MODEL.onnx);
+  const vadNotice = wakeArtifactStatus(paths.vadNoticePath, WAKE_VAD_MODEL.notice);
   if (model === null) {
     const empty: WakeArtifactStatus = { path: '', verified: false, corrupt: false, bytes: 0 };
     return {
@@ -174,6 +198,9 @@ export function wakeProvisionStatus(options: {
       classifier: empty,
       notice: empty,
       embedding: wakeArtifactStatus(paths.embeddingPath, embeddingSpec),
+      vad,
+      vadNotice,
+      vadReady: vad.verified && vadNotice.verified,
       downloadBytes: 0,
       modelVersion: null,
       recallIsSyntheticOnly: true,
@@ -190,15 +217,21 @@ export function wakeProvisionStatus(options: {
     classifier,
     notice,
     embedding,
-    downloadBytes: wakeWordProvisionBytes(model) + embeddingSpec.bytes,
+    vad,
+    vadNotice,
+    vadReady: vad.verified && vadNotice.verified,
+    downloadBytes: wakeWordProvisionBytes(model) + embeddingSpec.bytes + wakeVadProvisionBytes(),
     modelVersion: model.version,
     recallIsSyntheticOnly: model.measurements.recallIsSyntheticOnly,
   };
 }
 
+/** One artifact provisioning names. */
+export type WakeProvisionComponent = 'classifier' | 'notice' | 'embedding' | 'vad' | 'vad-notice';
+
 /** Progress for one artifact during provisioning. */
 export interface WakeProvisionProgress {
-  readonly component: 'classifier' | 'notice' | 'embedding';
+  readonly component: WakeProvisionComponent;
   readonly phase: 'skip' | 'download' | 'verify' | 'done' | 'error';
   readonly message?: string | undefined;
   readonly bytesTotal?: number | undefined;
@@ -206,7 +239,7 @@ export interface WakeProvisionProgress {
 
 /** One artifact's outcome. */
 export interface WakeComponentOutcome {
-  readonly component: 'classifier' | 'notice' | 'embedding';
+  readonly component: WakeProvisionComponent;
   readonly state: 'installed' | 'skipped' | 'failed';
   readonly path: string;
   readonly bytes?: number | undefined;
@@ -216,6 +249,12 @@ export interface WakeComponentOutcome {
 
 export interface WakeProvisionResult {
   readonly ready: boolean;
+  /**
+   * The speech gate landed too. Separate from {@link ready} for the same reason
+   * {@link WakeProvisionStatus.vadReady} is: the detector runs without the gate,
+   * because `voice.wake.vadThreshold` is 0 unless someone turns it on.
+   */
+  readonly vadReady: boolean;
   readonly modelVersion: string | null;
   readonly outcomes: readonly WakeComponentOutcome[];
   /** The attribution NOTICE's path, which must travel with redistributed artifacts. */
@@ -247,6 +286,7 @@ export async function provisionWakeWordModels(options: WakeProvisionOptions): Pr
   if (model === null) {
     return {
       ready: false,
+      vadReady: false,
       modelVersion: null,
       outcomes: [
         {
@@ -267,15 +307,30 @@ export async function provisionWakeWordModels(options: WakeProvisionOptions): Pr
     { component: 'embedding', spec: WAKE_WORD_FRONT_END.embedding.download, dest: paths.embeddingPath },
     { component: 'classifier', spec: model.onnx, dest: paths.classifierPath },
     { component: 'notice', spec: model.notice, dest: paths.noticePath },
+    // The speech gate provisions WITH the wake models rather than on its own act:
+    // it is 20 kB beside their 3.7 MB, and a surface that has the detector but not
+    // the gate is a surface where voice.wake.vadThreshold refuses for a reason the
+    // user cannot act on.
+    { component: 'vad', spec: WAKE_VAD_MODEL.onnx, dest: paths.vadPath },
+    { component: 'vad-notice', spec: WAKE_VAD_MODEL.notice, dest: paths.vadNoticePath },
   ];
 
   const outcomes: WakeComponentOutcome[] = [];
   for (const step of plan) {
     outcomes.push(await provisionOne(step, options));
   }
-  const ready = outcomes.every((outcome) => outcome.state !== 'failed');
+  // The gate not landing does not make the detector unready: vadThreshold is 0 by
+  // default, and the detector runs without it. It is reported separately instead.
+  const detectorComponents: readonly WakeProvisionComponent[] = ['classifier', 'notice', 'embedding'];
+  const ready = outcomes
+    .filter((outcome) => detectorComponents.includes(outcome.component))
+    .every((outcome) => outcome.state !== 'failed');
+  const vadReady = outcomes
+    .filter((outcome) => outcome.component === 'vad' || outcome.component === 'vad-notice')
+    .every((outcome) => outcome.state !== 'failed');
   return {
     ready,
+    vadReady,
     modelVersion: model.version,
     outcomes,
     noticePath: ready ? paths.noticePath : null,

@@ -204,12 +204,16 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
     default: 0,
     ...numRange(0, 1),
     description:
-      'Speech-probability floor, 0 to 1, from a voice-activity detector run ahead of the wake classifier; frames below it are '
-      + 'discarded before scoring. 0 means the VAD stage is off, which is the shipped default: it costs an extra model download '
-      + 'and per-frame inference, and there is no measured false-accept evidence yet that justifies it. '
-      + 'NO VAD MODEL IS PINNED TODAY, so any value above 0 REFUSES TO START the detector with that reason stated, rather '
-      + 'than running unscreened frames through a stage you have configured. '
-      + 'It becomes usable when a VAD model joins the pinned manifest; until then 0 is the only value that runs.',
+      'Speech-probability floor, 0 to 1, from the speech gate run ahead of the wake classifier; frames below it are withheld '
+      + 'from scoring instead of being classified. The gate is our own speech/non-speech head over the SAME embedding the wake '
+      + 'classifier consumes, so it costs one extra inference of 0.025 ms per 80 ms frame — beside the detector\'s own 3.46 ms — '
+      + 'and no extra front end. It provisions with the wake models. '
+      + 'Measured on 106,390 held-out frames: at 0.3 it passes 96.0% of speech frames and withholds 95.7% of non-speech ones, '
+      + 'which is the recommended value; lower passes more speech and screens less, higher screens more and starts costing '
+      + 'wakes. 0 is the shipped default and turns the stage off entirely — it is the configuration that has been exercised '
+      + 'longest, and a gate can only ever cost you a detection. '
+      + 'A surface that has not loaded the gate REFUSES TO START with any value above 0, rather than running unscreened frames '
+      + 'through a stage you have configured.',
   },
   {
     key: 'voice.wake.noiseSuppression',

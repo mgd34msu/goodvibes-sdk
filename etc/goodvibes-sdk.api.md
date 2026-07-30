@@ -6534,7 +6534,7 @@ export interface OperatorMethodInputMap {
     };
     // (undocumented)
     "voice.wake.model.get": {
-        component: "classifier" | "embedding" | "notice";
+        component: "classifier" | "embedding" | "notice" | "vad";
         offset?: number;
         maxBytes?: number;
     };
@@ -23023,7 +23023,7 @@ export interface OperatorMethodOutputMap {
     };
     // (undocumented)
     "voice.wake.model.get": {
-        component: "classifier" | "embedding" | "notice";
+        component: "classifier" | "embedding" | "notice" | "vad";
         offset: number;
         bytes: number;
         totalBytes: number;
@@ -23034,11 +23034,12 @@ export interface OperatorMethodOutputMap {
     // (undocumented)
     "voice.wake.provision": {
         ready: boolean;
+        vadReady: boolean;
         modelVersion: null | string;
         noticePath: null | string;
         recallIsSyntheticOnly: boolean;
         outcomes: readonly ({
-            component: "classifier" | "embedding" | "notice";
+            component: "classifier" | "embedding" | "notice" | "vad" | "vad-notice";
             state: "failed" | "installed" | "skipped";
             path: string;
             bytes?: number;
@@ -23067,6 +23068,19 @@ export interface OperatorMethodOutputMap {
             corrupt: boolean;
             bytes: number;
         };
+        vad: {
+            path: string;
+            verified: boolean;
+            corrupt: boolean;
+            bytes: number;
+        };
+        vadNotice: {
+            path: string;
+            verified: boolean;
+            corrupt: boolean;
+            bytes: number;
+        };
+        vadReady: boolean;
         downloadBytes: number;
         modelVersion: null | string;
         recallIsSyntheticOnly: boolean;

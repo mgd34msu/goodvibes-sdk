@@ -31,7 +31,7 @@ import { randomBytes } from 'node:crypto';
 import { logger } from '../../utils/logger.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { fileMatches } from '../provisioning/download-verified.js';
-import { resolveWakeWordModel, WAKE_WORD_FRONT_END, WAKE_WORD_MODELS } from '../provisioning/wake-word-manifest.js';
+import { resolveWakeWordModel, WAKE_VAD_MODEL, WAKE_WORD_FRONT_END, WAKE_WORD_MODELS } from '../provisioning/wake-word-manifest.js';
 import { resolveManagedWakePaths } from './provisioning.js';
 
 /** Where a sweep's disclosure is written, inside the wake root. */
@@ -190,15 +190,28 @@ function sweepPinnedArtifacts(
     }
   }
   const embeddingSpec = WAKE_WORD_FRONT_END.embedding.download;
-  const embeddingName = `speech-embedding-${WAKE_WORD_FRONT_END.embedding.version}.onnx`;
+  // The front-end directory holds the embedding AND the speech gate. Both are
+  // pinned, so anything else in there is an artifact of a version the manifest no
+  // longer lists — including a gate from an earlier retrain.
+  const frontEndNames = new Set([
+    `speech-embedding-${WAKE_WORD_FRONT_END.embedding.version}.onnx`,
+    `goodvibes-vad-${WAKE_VAD_MODEL.version}.onnx`,
+    `goodvibes-vad-${WAKE_VAD_MODEL.version}.NOTICE.txt`,
+  ]);
   for (const entry of listFiles(paths.frontEndDir)) {
     if (entry.name.endsWith('.part')) continue;
-    if (entry.name !== embeddingName) {
+    if (!frontEndNames.has(entry.name)) {
       remove(entry.path, 'unpinned-version');
     }
   }
   if (existsSync(paths.embeddingPath) && !fileMatches(paths.embeddingPath, embeddingSpec)) {
     remove(paths.embeddingPath, 'failed-verification');
+  }
+  if (existsSync(paths.vadPath) && !fileMatches(paths.vadPath, WAKE_VAD_MODEL.onnx)) {
+    remove(paths.vadPath, 'failed-verification');
+  }
+  if (existsSync(paths.vadNoticePath) && !fileMatches(paths.vadNoticePath, WAKE_VAD_MODEL.notice)) {
+    remove(paths.vadNoticePath, 'failed-verification');
   }
 }
 
