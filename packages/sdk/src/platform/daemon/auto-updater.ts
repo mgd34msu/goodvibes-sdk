@@ -24,6 +24,22 @@
  * Every applied update leaves a receipt ("updated from X to Y at HH:MM") in
  * the daemon log and in the receipt store surfaced on next surface connect.
  *
+ * Two things this loop refuses to do quietly, both learned the hard way:
+ *
+ *   - It never re-installs a release that already crash looped here. A boot
+ *     rollback records the version it rejected; the loop reads that record on
+ *     every check and holds. Without it the loop and the rollback form a cycle
+ *     — install, fail three starts, roll back, reinstall the same release an
+ *     interval later — and the installed daemon oscillates instead of moving
+ *     forward. It resumes on its own as soon as a NEWER tag ships.
+ *   - It never fails silently. Checks that keep throwing are counted, and once
+ *     the count crosses the threshold the owner is told over a channel that
+ *     works (the same owner-alert path a failing channel uses), with a quiet
+ *     window so a persistent failure is one message rather than one an hour.
+ *     Recovery is stated too. A WARN line in a debug file is not telling
+ *     anybody: that is precisely how an installed daemon sat three releases
+ *     behind for three days.
+ *
  * Time, network, filesystem, activity, service actions, and process exit are
  * all injectable; the whole loop is provable under test.
  */
@@ -135,10 +151,38 @@ export interface DaemonAutoUpdaterOptions {
   readonly stopGracefully?: (() => Promise<void> | void) | undefined;
   /** Exits the current process after an unsupervised daemon is adopted. */
   readonly exitProcess?: ((code: number) => void) | undefined;
+  /**
+   * The version a crash-loop rollback rejected, or null when none stands.
+   * Consulted on every check: a release that already failed to start on this
+   * host is not installed a second time just because it is still the latest
+   * one. Read fresh each time (it lives in the lifecycle marker on disk), so a
+   * rejection recorded by the boot before this one is seen.
+   */
+  readonly rejectedVersion?: (() => string | null) | undefined;
+  /**
+   * Put one line in front of the owner over a channel that still works — the
+   * daemon's existing owner-alert path. Absent = no channel to alert on (an
+   * embedded daemon, a test), in which case the ERROR log line is the record.
+   */
+  readonly alertOwner?: ((text: string) => void) | undefined;
+  /**
+   * Consecutive failed checks before the owner is told. Default 3 — one flaky
+   * network hour is not news; three in a row means the daemon has stopped
+   * being able to update itself.
+   */
+  readonly alertAfterFailedChecks?: number | undefined;
+  /** Quiet window after an update alert, so a persistent failure is one message, not one per hour. Default 12h. */
+  readonly alertWindowMs?: number | undefined;
   readonly now?: (() => number) | undefined;
   readonly setTimer?: ((fn: () => void, ms: number) => ReturnType<typeof setTimeout>) | undefined;
   readonly clearTimer?: ((timer: ReturnType<typeof setTimeout>) => void) | undefined;
 }
+
+/** Default consecutive failed checks before the owner hears about it. */
+export const DEFAULT_UPDATE_ALERT_AFTER_FAILED_CHECKS = 3;
+
+/** Default quiet window between update alerts about the same ongoing failure. */
+export const DEFAULT_UPDATE_ALERT_WINDOW_MS = 12 * 60 * 60 * 1000;
 
 interface PendingSwap {
   readonly tag: string;
@@ -149,6 +193,14 @@ export class DaemonAutoUpdater {
   private readonly loop: PeriodicUpdateLoop;
   /** A downloaded-and-verified update waiting for an idle moment. */
   private pendingSwap: PendingSwap | null = null;
+  /** Consecutive checks that threw. Reset by any check that completes. */
+  private consecutiveFailures = 0;
+  /** When the owner was last told the daemon cannot update itself, or null. */
+  private failureAlertedAt: number | null = null;
+  /** The last error text told to the owner, so recovery can name what stopped. */
+  private lastFailureDetail: string | null = null;
+  /** Rejected releases already reported, so the skip is stated once per release, not hourly. */
+  private readonly reportedRejections = new Set<string>();
 
   constructor(private readonly options: DaemonAutoUpdaterOptions) {
     this.loop = new PeriodicUpdateLoop({
@@ -157,17 +209,95 @@ export class DaemonAutoUpdater {
       busyRetryMs: options.busyRetryMs,
       runCheck: async (): Promise<PeriodicCheckOutcome> => {
         await this.checkAndApply();
+        this.recordCheckSucceeded();
         return this.pendingSwap ? 'deferred' : 'settled';
       },
       onError: (error) => {
-        logger.warn('DaemonAutoUpdater: update check failed; will retry on the next interval', {
-          error: summarizeError(error),
-        });
+        this.recordCheckFailed(summarizeError(error));
         this.pendingSwap = null;
       },
       setTimer: options.setTimer,
       clearTimer: options.clearTimer,
     });
+  }
+
+  private now(): number {
+    return (this.options.now ?? Date.now)();
+  }
+
+  /**
+   * Put a line in front of the owner, and state it at ERROR either way. An
+   * update path that has stopped working is exactly the class of failure that
+   * spent three days as WARN lines in a debug log while three releases shipped
+   * and the installed daemon stayed where it was.
+   */
+  private alertOwner(text: string): void {
+    logger.error(`DaemonAutoUpdater: ${text}`);
+    try {
+      this.options.alertOwner?.(text);
+    } catch (error) {
+      logger.error('DaemonAutoUpdater: the owner alert about self-update could not be sent', {
+        error: summarizeError(error),
+      });
+    }
+  }
+
+  /**
+   * A check that threw. Counted rather than announced: one bad hour is a flaky
+   * network. Once the count reaches the threshold the owner is told once, and
+   * not again until the quiet window has passed.
+   */
+  private recordCheckFailed(detail: string): void {
+    this.consecutiveFailures += 1;
+    this.lastFailureDetail = detail;
+    const threshold = Math.max(1, this.options.alertAfterFailedChecks ?? DEFAULT_UPDATE_ALERT_AFTER_FAILED_CHECKS);
+    const windowMs = Math.max(0, this.options.alertWindowMs ?? DEFAULT_UPDATE_ALERT_WINDOW_MS);
+    const now = this.now();
+    if (this.consecutiveFailures < threshold) {
+      logger.warn('DaemonAutoUpdater: update check failed; will retry on the next interval', {
+        error: detail,
+        consecutiveFailures: this.consecutiveFailures,
+        alertAfter: threshold,
+      });
+      return;
+    }
+    if (this.failureAlertedAt !== null && now - this.failureAlertedAt < windowMs) {
+      logger.warn('DaemonAutoUpdater: update check still failing; the owner has already been told', {
+        error: detail,
+        consecutiveFailures: this.consecutiveFailures,
+      });
+      return;
+    }
+    this.failureAlertedAt = now;
+    this.alertOwner(
+      `the daemon has not been able to check for updates ${this.consecutiveFailures} times in a row`
+      + ` — it is still running v${normalizeVersion(this.options.currentVersion)} and will keep retrying.`
+      + ` Last error: ${detail}`,
+    );
+  }
+
+  /** A check that completed. Says so if the owner had been told it was failing. */
+  private recordCheckSucceeded(): void {
+    const wasAlerted = this.failureAlertedAt !== null;
+    const failures = this.consecutiveFailures;
+    this.consecutiveFailures = 0;
+    this.failureAlertedAt = null;
+    this.lastFailureDetail = null;
+    if (!wasAlerted) return;
+    this.alertOwner(
+      `update checks are working again after ${failures} consecutive failures`
+      + ` — the daemon is on v${normalizeVersion(this.options.currentVersion)} and checking on schedule`,
+    );
+  }
+
+  /** The most recent failure detail, exposed for the /status surface and tests. */
+  get lastCheckFailure(): string | null {
+    return this.lastFailureDetail;
+  }
+
+  /** Consecutive failed checks, exposed for the /status surface and tests. */
+  get failedCheckCount(): number {
+    return this.consecutiveFailures;
   }
 
   /** The delay before the first check, so callers can log the schedule they got. */
@@ -201,6 +331,17 @@ export class DaemonAutoUpdater {
       const latestTag = await resolveLatestReleaseTag(fetchImpl, this.options.releasesLatestUrl);
       if (compareVersions(this.options.currentVersion, latestTag) >= 0) {
         return; // already current
+      }
+      // A release that already crash looped on this host does not get installed
+      // again just because it is still the newest one. Without this the loop is
+      // a cycle: swap, fail to start three times, roll back, and one check
+      // interval later download the identical release and do it again — which
+      // is what kept an installed daemon pinned to an old build for days while
+      // three releases came and went.
+      const rejected = this.rejectedVersion();
+      if (rejected !== null && normalizeVersion(latestTag) === rejected) {
+        this.reportRejectedRelease(rejected);
+        return;
       }
       const targets = this.resolveTargets();
       if (!targets) {
@@ -257,6 +398,45 @@ export class DaemonAutoUpdater {
     );
 
     await this.restartIntoNewBinary();
+  }
+
+  /** The version a crash-loop rollback rejected, normalized, or null. Never throws into the loop. */
+  private rejectedVersion(): string | null {
+    try {
+      const raw = this.options.rejectedVersion?.() ?? null;
+      return raw === null || raw.trim().length === 0 ? null : normalizeVersion(raw);
+    } catch (error) {
+      // An unreadable marker must not stop the daemon from updating — the
+      // failure mode of guessing "nothing is rejected" is one retry of a bad
+      // release, and the failure mode of throwing is never updating again.
+      logger.warn('DaemonAutoUpdater: could not read the rejected-version record; proceeding as if none stands', {
+        error: summarizeError(error),
+      });
+      return null;
+    }
+  }
+
+  /**
+   * Say — once per rejected release, to the owner — that the newest release is
+   * being held back because it would not start here. Once per release, not once
+   * per check: this repeats hourly until a fixed release ships, and an alert
+   * that fires hourly is an alert nobody reads. The daemon resumes updating on
+   * its own the moment a NEWER tag appears; no owner action is required.
+   */
+  private reportRejectedRelease(rejected: string): void {
+    if (this.reportedRejections.has(rejected)) {
+      logger.info('DaemonAutoUpdater: the newest release is the one that failed to start here; still holding', {
+        rejected,
+        running: normalizeVersion(this.options.currentVersion),
+      });
+      return;
+    }
+    this.reportedRejections.add(rejected);
+    this.alertOwner(
+      `not installing v${rejected}: it was installed here, failed to start, and was rolled back automatically.`
+      + ` The daemon is staying on v${normalizeVersion(this.options.currentVersion)} and will update itself`
+      + ` as soon as a newer release ships. Run /update apply to force v${rejected} anyway`,
+    );
   }
 
   /** The update targets, or null when this platform/arch publishes no assets. */

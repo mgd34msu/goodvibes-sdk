@@ -21,6 +21,7 @@ export interface UpdateConfig {
   firstCheckSeconds: number;
   releasesUrl: string;
   rollbackAfterFailedStarts: number;
+  alertAfterFailedChecks: number;
 }
 
 declare module './schema-types.js' {
@@ -36,6 +37,7 @@ export const updateConfigDefaults = {
     firstCheckSeconds: 30,
     releasesUrl: 'https://github.com/mgd34msu/goodvibes-tui/releases/latest',
     rollbackAfterFailedStarts: 3,
+    alertAfterFailedChecks: 3,
   },
 } as const;
 
@@ -72,5 +74,12 @@ export const updateConfigSettings: ConfigSettingDefinition[] = [
     default: 3,
     description: 'Consecutive rapid boots that fail to reach a fully-started daemon before the startup path automatically restores the kept previous binary and restarts onto it. 0 leaves a bad update in place for a hand-run rollback',
     ...intRange(0, 10),
+  },
+  {
+    key: 'update.alertAfterFailedChecks',
+    type: 'number',
+    default: 3,
+    description: 'Consecutive failed update checks before the daemon tells the owner over a channel that still works that it can no longer update itself. Lower is louder; 1 reports the first failure. A repeat is held back for 12 hours so an ongoing outage is one message rather than one an hour',
+    ...intRange(1, 100),
   },
 ];

@@ -558,6 +558,7 @@ export type ConfigKey =
   | 'update.firstCheckSeconds'
   | 'update.releasesUrl'
   | 'update.rollbackAfterFailedStarts'
+  | 'update.alertAfterFailedChecks'
   | 'network.outboundTls.mode'
   | 'network.outboundTls.customCaFile'
   | 'network.outboundTls.customCaDir'

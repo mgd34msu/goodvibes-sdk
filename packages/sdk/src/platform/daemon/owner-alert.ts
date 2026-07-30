@@ -54,12 +54,18 @@ function byMostRecentlySeen(bindings: readonly AutomationRouteBinding[]): Automa
 /**
  * The conversations to try, in order: the failing surface's own newest first,
  * then every other surface's, newest first.
+ *
+ * `preferred` is null when the alert is not ABOUT a channel — the daemon
+ * failing to update itself, for instance. There is no surface to try first
+ * then, so the order is simply newest-used first, which is the same
+ * "best available proxy for works" the rest of this file runs on.
  */
 export function orderOwnerAlertRoutes(
   bindings: readonly AutomationRouteBinding[],
-  preferred: ChannelSurface,
+  preferred: ChannelSurface | null,
 ): AutomationRouteBinding[] {
   const ordered = byMostRecentlySeen(bindings);
+  if (preferred === null) return ordered;
   return [
     ...ordered.filter((binding) => binding.surfaceKind === preferred),
     ...ordered.filter((binding) => binding.surfaceKind !== preferred),
@@ -74,7 +80,7 @@ export function orderOwnerAlertRoutes(
 export async function deliverOwnerAlert(
   routeBindings: RouteBindingManager,
   delivery: Pick<DaemonSurfaceDeliveryHelper, 'deliverSurfaceNotice'>,
-  preferred: ChannelSurface,
+  preferred: ChannelSurface | null,
   text: string,
 ): Promise<AutomationRouteBinding | null> {
   let candidates: AutomationRouteBinding[];
