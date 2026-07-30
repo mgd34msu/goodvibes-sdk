@@ -43,7 +43,19 @@ export interface RegisterPollingWatcherInput {
 export interface WatcherRegistryOptions {
   readonly storePath?: string | undefined;
   readonly featureFlags?: FeatureFlagReader | undefined;
+  /**
+   * `watchers.recoveryWindowMinutes`, read at each use.
+   *
+   * A getter rather than a number for the same reason `PairingTokenManager`
+   * takes `maxPaired` as one: the registry outlives a config edit, and a
+   * captured number would mean the operator's new window applied at the next
+   * process start instead of the next restore.
+   */
+  readonly recoveryWindowMinutes?: (() => number) | undefined;
 }
+
+/** The shipped `watchers.recoveryWindowMinutes` default, for hosts that pass none. */
+const DEFAULT_RECOVERY_WINDOW_MINUTES = 10;
 
 interface RegisteredWatcher {
   readonly record: WatcherRecord;
@@ -139,11 +151,30 @@ export class WatcherRegistry {
   private runtimeDispatch: DomainDispatch | null = null;
   private runtimeBus: RuntimeEventBus | null = null;
   private readonly featureFlags: FeatureFlagReader;
+  private readonly readRecoveryWindowMinutes: () => number;
   private loaded = false;
 
   constructor(options: WatcherRegistryOptions = {}) {
     this.storePath = resolveWatcherStorePath(options.storePath);
     this.featureFlags = options.featureFlags ?? null;
+    this.readRecoveryWindowMinutes = options.recoveryWindowMinutes
+      ?? ((): number => DEFAULT_RECOVERY_WINDOW_MINUTES);
+  }
+
+  /**
+   * How far back a restart will still try to catch up, in milliseconds.
+   *
+   * A non-finite or negative value — which only a hand-edited settings file
+   * produces, since `ConfigManager.set()` holds the key to 0…1440 — reads as the
+   * shipped default rather than as "never catch up", because an unreadable number
+   * should not silently switch a recovery behaviour off.
+   */
+  private recoveryWindowMs(): number {
+    const minutes = this.readRecoveryWindowMinutes();
+    const usable = typeof minutes === 'number' && Number.isFinite(minutes) && minutes >= 0
+      ? minutes
+      : DEFAULT_RECOVERY_WINDOW_MINUTES;
+    return usable * 60_000;
   }
 
   private isEnabled(): boolean {
@@ -410,6 +441,8 @@ export class WatcherRegistry {
       }
     }
     this.loaded = true;
+    const recoveryWindowMs = this.recoveryWindowMs();
+    const restoredAt = now();
     for (const watcher of this.watchers.values()) {
       const normalized = this.normalizeRecord(watcher.record);
       this.watchers.set(normalized.id, {
@@ -429,8 +462,42 @@ export class WatcherRegistry {
         }, normalized.intervalMs ?? 60_000);
         timer.unref?.();
         this.timers.set(normalized.id, timer);
+        this.catchUpAfterRestart(normalized, restoredAt, recoveryWindowMs);
       }
     }
+  }
+
+  /**
+   * `watchers.recoveryWindowMinutes` — the restart half of the recovery story.
+   *
+   * A watcher that was running when the process stopped is re-armed above, but
+   * re-arming alone means it does nothing until its first interval tick: on a
+   * 30-minute poller, a restart used to cost half an hour of blindness on top of
+   * however long the daemon was down. `startWatcher` has always run once
+   * immediately for exactly that reason; the restore path never did.
+   *
+   * The window bounds that immediate catch-up. When the gap since the last
+   * heartbeat is inside it, the watcher runs at once and picks up what it missed.
+   * When the gap is longer, an immediate run would be reading a source whose
+   * events the checkpoint can no longer bracket, so the watcher waits for its
+   * normal tick and the skipped catch-up is stated in the log rather than left
+   * for someone to infer from a hole in the heartbeats. A window of 0 means
+   * "never catch up on restart", which is the honest floor of the key's range.
+   */
+  private catchUpAfterRestart(record: WatcherRecord, restoredAt: number, windowMs: number): void {
+    const lastSeenAt = record.lastHeartbeatAt;
+    const gapMs = lastSeenAt === undefined ? Number.POSITIVE_INFINITY : Math.max(0, restoredAt - lastSeenAt);
+    if (windowMs > 0 && gapMs <= windowMs) {
+      void this.runWatcher(record.id).catch((error: unknown) => {
+        logger.warn('Watcher recovery catch-up run failed', { watcherId: record.id, error: summarizeError(error) });
+      });
+      return;
+    }
+    logger.info('Watcher restart skipped missed-event catch-up', {
+      watcherId: record.id,
+      gapMs: Number.isFinite(gapMs) ? gapMs : null,
+      recoveryWindowMs: windowMs,
+    });
   }
 
   private normalizeRecord(record: WatcherRecord): WatcherRecord {

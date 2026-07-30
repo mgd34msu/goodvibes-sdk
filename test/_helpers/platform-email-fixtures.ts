@@ -105,13 +105,15 @@ export function testContainsSecretLikeText(text: string): boolean {
  */
 export const throwingEmailTransport: EmailTransportPort = {
   connectImapTls: () => { throw new Error('test transport: connectImapTls must not be reached'); },
+  connectImapPlain: () => { throw new Error('test transport: connectImapPlain must not be reached'); },
   connectSmtpTls: () => { throw new Error('test transport: connectSmtpTls must not be reached'); },
   connectSmtpStartTls: () => { throw new Error('test transport: connectSmtpStartTls must not be reached'); },
 };
 
 /**
  * An `EmailTransportPort` that records which member the service chose, without
- * connecting. Used to assert the smtpSecurity/port selection rule.
+ * connecting. Used to assert the smtpSecurity/port and imapSecurity selection
+ * rules.
  */
 export function recordingEmailTransport(): {
   readonly port: EmailTransportPort;
@@ -125,6 +127,7 @@ export function recordingEmailTransport(): {
   return {
     port: {
       connectImapTls: refuse('connectImapTls'),
+      connectImapPlain: refuse('connectImapPlain'),
       connectSmtpTls: refuse('connectSmtpTls'),
       connectSmtpStartTls: refuse('connectSmtpStartTls'),
     },

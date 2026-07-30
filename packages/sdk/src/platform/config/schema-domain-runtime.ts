@@ -358,7 +358,7 @@ export const runtimePrimaryConfigSettings: ConfigSettingDefinition[] = [
     key: 'controlPlane.webui.bundleDir',
     type: 'string',
     default: '',
-    description: 'Directory holding the built web UI bundle (index.html + assets) served when controlPlane.webui.serve is true. Empty disables serving.',
+    description: 'Directory holding the built web UI bundle (index.html + assets) served when controlPlane.webui.serve is true. Takes precedence over web.staticAssetsDir: this key is the specific answer for this daemon, so when it names a directory that is the one served. Empty falls back to web.staticAssetsDir.',
   },
   {
     key: 'controlPlane.cors.enabled',
@@ -472,7 +472,7 @@ export const runtimePrimaryConfigSettings: ConfigSettingDefinition[] = [
     key: 'web.staticAssetsDir',
     type: 'string',
     default: 'dist/web',
-    description: 'Static asset directory for the embedded web surface',
+    description: 'Static asset directory for the embedded web surface (index.html + assets), served when controlPlane.webui.serve is true. Used when controlPlane.webui.bundleDir is empty; that more specific key wins when it names a directory.',
   },
 ];
 
