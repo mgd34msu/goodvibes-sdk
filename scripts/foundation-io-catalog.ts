@@ -26,6 +26,7 @@ import { builtinGatewayOccasionsMethodDescriptors } from '../packages/sdk/src/pl
 import { builtinGatewayCalendarMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-calendar.ts';
 import { builtinGatewayBrowserMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-browser.ts';
 import { builtinGatewayRuntimeMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-runtime.ts';
+import { builtinGatewayModelMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-models.ts';
 import { builtinGatewayKnowledgeMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-knowledge.ts';
 import { builtinGatewayMediaMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-media.ts';
 import { builtinGatewayPushMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-push.ts';
@@ -57,6 +58,7 @@ export const ALL_GATEWAY_METHOD_DESCRIPTORS: readonly GatewayMethodDescriptor[] 
   ...builtinGatewayCalendarMethodDescriptors,
   ...builtinGatewayBrowserMethodDescriptors,
   ...builtinGatewayRuntimeMethodDescriptors,
+  ...builtinGatewayModelMethodDescriptors,
   ...builtinGatewayKnowledgeMethodDescriptors,
   ...builtinGatewayMediaMethodDescriptors,
   ...builtinGatewayAdminMethodDescriptors,

@@ -306,26 +306,39 @@ async function buildCurrentModelResponse(
 // Route dispatch
 // ---------------------------------------------------------------------------
 
+/**
+ * The paths this sub-router serves, and the method-catalog verb each one is.
+ *
+ * Exported because it is READ by the capability-route reconcile
+ * (control-plane/method-catalog-route-reconcile.ts): router.ts dispatches this
+ * sub-router before the shared route table, so the reconcile's probe cannot see
+ * these paths and used to skip them by prefix — which is how three verbs stayed
+ * outside the catalog with nothing noticing. The dispatch below is driven off
+ * this same table, so the two cannot drift.
+ */
+export const MODEL_ROUTES: readonly { readonly method: string; readonly path: string; readonly methodId: string }[] = [
+  { method: 'GET', path: '/api/models', methodId: 'models.list' },
+  { method: 'GET', path: '/api/models/current', methodId: 'models.current.get' },
+  { method: 'PATCH', path: '/api/models/current', methodId: 'models.current.set' },
+];
+
 export async function dispatchModelRoutes(
   req: Request,
   context: ModelRouteContext,
 ): Promise<Response | null> {
   const url = new URL(req.url);
   const { pathname } = url;
+  const matched = MODEL_ROUTES.find((entry) => entry.path === pathname && entry.method === req.method);
+  if (!matched) return null;
 
-  if (pathname === '/api/models' && req.method === 'GET') {
-    return handleListProviderModels(context);
+  switch (matched.methodId) {
+    case 'models.list':
+      return handleListProviderModels(context);
+    case 'models.current.get':
+      return handleGetCurrentModel(context);
+    default:
+      return handlePatchCurrentModel(req, context);
   }
-
-  if (pathname === '/api/models/current' && req.method === 'GET') {
-    return handleGetCurrentModel(context);
-  }
-
-  if (pathname === '/api/models/current' && req.method === 'PATCH') {
-    return handlePatchCurrentModel(req, context);
-  }
-
-  return null;
 }
 
 // ---------------------------------------------------------------------------
