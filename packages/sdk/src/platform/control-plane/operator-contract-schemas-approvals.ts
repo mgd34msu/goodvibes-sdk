@@ -58,6 +58,14 @@ export const SHARED_APPROVAL_RECORD_SCHEMA = objectSchema({
   // The honest failure when an accepted ask's spawn produced no attachable
   // session — recorded instead of a dead id.
   fixSessionError: STRING_SCHEMA,
+  // When a raise carried `timeoutMs`, the moment the ask expires if nobody has
+  // answered (approval-broker-raise.ts stamps it). Declared here because the
+  // record schema is closed: without it, `approvals.list` fails RESPONSE
+  // validation for any ask that has one, and a client that asked for the list
+  // gets a contract error instead of the pending asks. That is not theoretical
+  // — a daemon-hosted run's workspace-trust question is raised with a timeout,
+  // so the first hosted ask made every surface's approvals list unreadable.
+  expiresAt: NUMBER_SCHEMA,
   metadata: METADATA_SCHEMA,
   audit: arraySchema(SHARED_APPROVAL_AUDIT_SCHEMA),
 }, ['id', 'callId', 'status', 'request', 'createdAt', 'updatedAt', 'metadata', 'audit']);
