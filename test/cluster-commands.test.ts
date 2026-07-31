@@ -298,7 +298,11 @@ describe('showing the join key', () => {
     // The key itself is always printed, whatever the terminal does with OSC 52.
     expect(result.lines.join('\n')).toContain('gvj1-THEKEY');
     expect(result.lines.join('\n')).toContain('clipboard');
-    expect(result.rawOutput).toBe(clipboardEscapeSequence('gvj1-THEKEY'));
+    // Against the literal expected bytes, NOT against clipboardEscapeSequence
+    // itself — comparing the writer to the writer is true however broken it is,
+    // which is precisely how the ESC/BEL bytes once went missing unnoticed.
+    // The byte-level contract lives in cluster-render.test.ts.
+    expect(result.rawOutput).toBe(`${String.fromCharCode(0x1b)}]52;c;Z3ZqMS1USEVLRVk=${String.fromCharCode(0x07)}`);
   });
 
   test('outside a terminal it says no copy was attempted rather than claiming one', async () => {

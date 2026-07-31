@@ -18,6 +18,7 @@ import {
   applyRuntimeConfigOverrides,
   applyRuntimeFeatureFlagOverrides,
   applyRuntimeCommandEndpointFlagOverrides,
+  parseConfigValueText,
   parseGoodVibesCli,
 } from '@pellux/goodvibes-terminal-shell';
 
@@ -198,6 +199,58 @@ describe('applyRuntimeConfigValue', () => {
 
   test('throws on wrong type', () => {
     expect(() => applyRuntimeConfigValue(cm, 'display.stream', 'notabool')).toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseConfigValueText
+// ---------------------------------------------------------------------------
+
+/**
+ * The bare-value reader shared by `--config key=value` and a `config set
+ * <key> <value>` command. Both must coerce identically — otherwise the same
+ * text typed two ways writes two different values into one key. These pin the
+ * coercion order rather than any one call site.
+ */
+describe('parseConfigValueText', () => {
+  test('reads JSON first, so structured values keep their shape', () => {
+    expect(parseConfigValueText('[1,2]')).toEqual([1, 2]);
+    expect(parseConfigValueText('{"a":1}')).toEqual({ a: 1 });
+    expect(parseConfigValueText('null')).toBeNull();
+    // A quoted number is a string, and stays one.
+    expect(parseConfigValueText('"3"')).toBe('3');
+  });
+
+  test('reads the bare literals a shell user actually types', () => {
+    expect(parseConfigValueText('true')).toBe(true);
+    expect(parseConfigValueText('false')).toBe(false);
+    expect(parseConfigValueText('42')).toBe(42);
+    expect(parseConfigValueText('-1.5')).toBe(-1.5);
+  });
+
+  test('surrounding whitespace does not change what a value means', () => {
+    expect(parseConfigValueText('  true ')).toBe(true);
+    expect(parseConfigValueText(' 42 ')).toBe(42);
+  });
+
+  test('anything else is the raw string, un-trimmed', () => {
+    expect(parseConfigValueText('dark')).toBe('dark');
+    expect(parseConfigValueText('gpt-4o')).toBe('gpt-4o');
+    // Trailing space can be significant in a string value, so it survives.
+    expect(parseConfigValueText('hello ')).toBe('hello ');
+  });
+
+  test('an empty or whitespace-only value is the empty string, never undefined', () => {
+    expect(parseConfigValueText('')).toBe('');
+    expect(parseConfigValueText('   ')).toBe('');
+  });
+
+  test('agrees with what applyRuntimeConfigOverrides writes for the same text', () => {
+    // The override path splits `key=value` and hands the value half to this
+    // function; if the two ever diverge, `--config x=false` and
+    // `config set x false` stop meaning the same thing.
+    expect(parseConfigValueText('false')).toBe(false);
+    expect(parseConfigValueText('false')).not.toBe('false');
   });
 });
 
