@@ -24,6 +24,7 @@
  */
 
 import { existsSync, statSync } from 'node:fs';
+import { logger } from '../utils/logger.js';
 import type { ConfigManager } from '../config/manager.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import type { ShellPathService } from '../runtime/shell-paths.js';
@@ -34,9 +35,11 @@ import {
   HostedSessionManager,
   HostedSessionStore,
   type HostedSessionEventPublisher,
+  type HostedSessionLoadReport,
   type HostedSessionSpine,
   type HostedWorkspaceFloorFactory,
 } from '../hosted-sessions/index.js';
+import type { RuntimeServices } from '../runtime/services.js';
 
 /** What a product states to turn hosted sessions on. */
 export interface DaemonHostedSessionsOptions {
@@ -119,4 +122,51 @@ export function composeHostedSessions(input: HostedSessionCompositionInput): Hos
   manager.setEventPublisher(input.eventPublisher);
   registerHostedSessionGatewayMethods(input.gatewayMethods, manager);
   return manager;
+}
+
+/**
+ * The facade's one-line entry point. Everything this composition needs is
+ * already on the runtime graph, so the facade names the graph rather than
+ * spelling out six fields it would have to keep in step by hand — and an
+ * absent options object returns null rather than making the facade branch.
+ */
+export function composeHostedSessionsForFacade(
+  options: DaemonHostedSessionsOptions | undefined,
+  runtimeServices: RuntimeServices,
+  configManager: ConfigManager,
+  runtimeBus: RuntimeEventBus,
+  eventPublisher: HostedSessionEventPublisher,
+): HostedSessionManager | null {
+  // No options is the honest off state, not a missing wire: this daemon hosts
+  // no conversation loops and `sessions.hosted.*` refuses.
+  if (!options) return null;
+  return composeHostedSessions({
+    options,
+    configManager,
+    runtimeBus,
+    shellPaths: runtimeServices.shellPaths,
+    gatewayMethods: runtimeServices.gatewayMethods,
+    liveTurns: runtimeServices.sessionLiveTurnControls,
+    eventPublisher,
+    spine: runtimeServices.sessionBroker,
+  });
+}
+
+/**
+ * State what a restore pass found. A restart that could not bring a session
+ * back has to say so; leaving the counts only in the report object the caller
+ * may or may not read is how a silent loss stays silent.
+ */
+export function reportHostedSessionRestore(report: HostedSessionLoadReport): void {
+  if (report.restored.length === 0 && report.rejected.length === 0
+    && report.swept.length === 0 && report.evicted.length === 0) return;
+  logger.info('DaemonServer: hosted sessions restored', {
+    restored: report.restored.length,
+    rejected: report.rejected.length,
+    swept: report.swept.length,
+    evicted: report.evicted.length,
+    ...(report.rejected.length > 0
+      ? { rejectedFiles: report.rejected.map((entry) => `${entry.file}: ${entry.reason}`) }
+      : {}),
+  });
 }

@@ -134,8 +134,16 @@ export { registerGatewayVerbGroups } from './routes/register-gateway-verb-groups
 export type { GatewayVerbGroupDeps } from './routes/register-gateway-verb-groups.js';
 // Live-turn controls holder: an interactive consumer binds its Orchestrator so
 // sessions.toolCalls.cancel / sessions.queuedMessages.* act on the live runtime.
-export { SessionLiveTurnControlsHolder } from './routes/session-runtime.js';
-export type { SessionLiveTurnControls } from './routes/session-runtime.js';
+export { SessionLiveTurnControlsHolder, createSessionRuntimeControls } from './routes/session-runtime.js';
+export type {
+  SessionContextUsage,
+  SessionLiveTurnControls,
+  SessionRuntimeControls,
+} from './routes/session-runtime.js';
+// The hosted-session verb group: a product composing its own catalog attaches
+// these the way it attaches every other handler-registered group.
+export { registerHostedSessionGatewayMethods } from './routes/hosted-sessions.js';
+export type { HostedSessionVerbService } from './routes/hosted-sessions.js';
 // skills.* CRUD verb registration over the canonical SkillService (see routes/skills.ts).
 export { registerDevicesGatewayMethods } from './routes/devices.js';
 export type { DevicesGatewayService } from './routes/devices.js';

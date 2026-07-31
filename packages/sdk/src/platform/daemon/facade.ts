@@ -38,6 +38,7 @@ import type { DaemonTransportEventsHelper } from './transport-events.js';
 import type { DaemonHttpRouter } from './http/router.js';
 import type { CompanionChatManager } from '../companion/companion-chat-manager.js';
 import type { HostedSessionManager } from '../hosted-sessions/index.js';
+import { reportHostedSessionRestore } from './hosted-sessions-composition.js';
 import { isSurfaceDeliveryEnabled } from './surface-policy.js';
 import { AgentTaskAdapter } from '../runtime/tasks/adapters/agent-adapter.js';
 import {
@@ -141,7 +142,6 @@ export class DaemonServer {
   /** Lifecycle sidecar: clean-shutdown marker, receipts, hourly auto-update. */
   private lifecycle: DaemonLifecycleRuntime | null = null;
   private readonly companionChatManager: CompanionChatManager;
-  /** The hosted-session engine, or null when this daemon hosts no conversation loops. */
   private readonly hostedSessions: HostedSessionManager | null;
   private relayReachability: RelayReachability | null = null;
   private agentTaskAdapter: import('../runtime/tasks/adapters/agent-adapter.js').AgentTaskAdapter | null = null;
@@ -457,20 +457,8 @@ export class DaemonServer {
       await this.clusterCoordinator.start();
       this.channelHealth.start(); // after the coordinator, so the first sweep sees the ingress this node actually won rather than calling every surface dead mid-election
       await this.companionChatManager.init();
-      if (this.hostedSessions) {
-        // Restores surviving sessions and reconciles the rest — the report says
-        // what was restored, rejected, swept and evicted, so a restart that
-        // could not bring a session back says so instead of losing it quietly.
-        const restored = await this.hostedSessions.init();
-        if (restored.restored.length > 0 || restored.rejected.length > 0) {
-          logger.info('DaemonServer: hosted sessions restored', {
-            restored: restored.restored.length,
-            rejected: restored.rejected.length,
-            swept: restored.swept.length,
-            evicted: restored.evicted.length,
-          });
-        }
-      }
+      // Restore what survived; the report states what could not come back.
+      if (this.hostedSessions) reportHostedSessionRestore(await this.hostedSessions.init());
       // Init the canonical memory store so the daemon is a live single-writer memory service on accept (memory.records.add would else throw "not initialized" on a cold store).
       await this.runtimeServices.memoryStore.init();
       if (this.replyPoller === null) {
@@ -588,9 +576,7 @@ export class DaemonServer {
     this.relayReachability = null;
     this.httpRouter.dispose();
     this.companionChatManager.dispose();
-    // Every live hosted session is terminated with `daemon-shutdown` and
-    // persisted with that reason, so the next start reconciles from a record
-    // that says what happened rather than one claiming it is still running.
+    // Kill-policy sessions end here; survive-policy ones are parked with their transcript.
     if (this.hostedSessions) await this.hostedSessions.dispose();
 
     // Stop services with async teardown in reverse start order (sessionBroker,
