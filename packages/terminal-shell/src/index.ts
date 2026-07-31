@@ -5,9 +5,10 @@
  * single home for the runtime wiring that two front-ends must keep identical:
  * gateway verb-group composition, terminal enter/restore sequencing,
  * render-tick coalescing, the `cluster` command family and its daemon-target
- * convention, and the shared CLI argument parser and its supporting modules
- * (redaction, config overrides, endpoint resolution, feature-flag overrides).
- * Each capability is a thin, dependency-injected wrapper so a front-end's
+ * convention, the shared CLI argument parser and its supporting modules
+ * (redaction, config overrides, endpoint resolution, feature-flag overrides),
+ * the terminal output guard, and the startup reachability notice. Each
+ * capability is a thin, dependency-injected wrapper so a front-end's
  * composition root becomes a few named calls into this package instead of a
  * hand-maintained copy that drifts.
  *
@@ -137,3 +138,22 @@ export {
   applyRuntimeEndpointFlagOverrides,
   applyRuntimeCommandEndpointFlagOverrides,
 } from './cli-config-overrides.js';
+
+export {
+  allowTerminalWrite,
+  installTerminalOutputGuard,
+  installTuiTerminalOutputGuard,
+  type TerminalOutputInterceptSource,
+  type TerminalOutputIntercept,
+  type TerminalOutputGuard,
+  type TerminalOutputGuardOptions,
+  type TuiTerminalOutputGuardOptions,
+} from './terminal-output-guard.js';
+
+export {
+  buildReachabilityNotices,
+  reachabilityNoticeLines,
+  type ReachabilityNoticeKind,
+  type ReachabilityNotice,
+  type ReachabilityNoticeInput,
+} from './reachability-notice.js';
