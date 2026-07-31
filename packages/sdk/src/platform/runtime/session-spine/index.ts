@@ -33,3 +33,26 @@ export {
   type SessionReadFacade,
   type SessionUnionCacheOptions,
 } from './union-cache.js';
+
+// The one version-tolerant REST `SpineTransport`, unifying what the TUI and
+// the agent each maintained as a parallel implementation — see rest-transport.ts
+// for the divergence-resolution notes.
+export {
+  postSessionSpineRegister,
+  postSessionSpineClose,
+  createSessionSpineRestTransport,
+  createSessionSpineRestProbe,
+  extractSessionSpineReceipts,
+  createSessionSpineReceiptConsumer,
+} from './rest-transport.js';
+export type {
+  SessionSpineRestConnection,
+  SessionSpineRestFailureKind,
+  SessionSpineRestFailure,
+  SessionSpineRegisterSuccess,
+  SessionSpineRegisterResult,
+  SessionSpineCloseResult,
+  SessionSpineRestTransportOptions,
+  SessionSpineRestProbeOptions,
+  SessionSpineReceiptConsumerOptions,
+} from './rest-transport.js';

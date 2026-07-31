@@ -4,6 +4,36 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
 
+## [Unreleased]
+
+Hoists machinery the TUI and the agent were each forced to vendor as a local
+mirror because the published SDK had no public export path for it — the first
+lane of the daemon/TUI split (the daemon needs this surface public before it
+can be its own product; consumer adoption happens in a later stage, not
+here).
+
+### Added
+
+- **`platform/daemon`: `reportFatalBootFailure`, `writeFatalLine`,
+  `writeExitingStdoutLine` are now exported.** Both the TUI and the agent
+  carried an identical local mirror of this module because the 1.21.0
+  exports map had no entry for it despite the compiled file shipping in the
+  published tarball. The write loop now loops `writeSync` until every byte is
+  accepted (adopted from the agent's copy) rather than issuing one call,
+  because a large payload (e.g. `--help`/status-render output) can return a
+  short count and truncate rather than merely silence.
+- **`platform/daemon`: `createSafeHostServeFactory`, `createHostRequestFailureResponse`.**
+  The port-conflict-honest `Bun.serve` wrapper, hoisted from the TUI's
+  `daemon/safe-serve.ts` verbatim (it wraps only the request-handler
+  callback; a bind-time failure like `EADDRINUSE` still propagates
+  unchanged).
+- **`platform/workspace`: `CheckpointSessionResolver`, `CheckpointSessionResolveContext` types are now exported from the top-level barrel.** Previously reachable only from the non-public `platform/workspace/checkpoint` subpath; both the TUI and the agent had structurally mirrored the resolver's shape by hand.
+- **`platform/power`: `postPowerKeepAwakeSet`, `forwardKeepAwakeToAdoptedDaemon`.** The keep-awake-forward-to-adopted-daemon helper, unifying the TUI's and the agent's parallel implementations onto the agent's richer failure-classified version (the TUI's config-subscription and status-poll wiring stay consumer-local).
+- **`platform/providers`: `buildFallbackModelDefinition`, `ensureConfiguredModelIsRoutable`.** The pre-catalog fallback-model registration, unified onto the TUI's version (family-aware context-window and reasoning-effort inference) rather than the agent's flat 128k/32k + fixed-level-set copy.
+- **`platform/providers`: `createLaunchTolerantProviderRegistry`.** A `ProviderRegistry` construction that never throws over a missing provider API key at boot, hoisted unchanged from the agent (previously agent-only; the standalone daemon has the identical must-boot property).
+- **`platform/runtime/session-spine`: `createSessionSpineRestTransport`, `postSessionSpineRegister`, `postSessionSpineClose`, `createSessionSpineRestProbe`, `createSessionSpineReceiptConsumer`, `extractSessionSpineReceipts`.** The version-tolerant raw-REST `SpineTransport`, unified onto the agent's superset (folds failures into `ok`/`offline`/`rejected` — a durable auth/route rejection no longer retries forever — plus a reachability probe and a daemon-receipt consumer).
+- **`platform/runtime/memory-spine`: `createMemorySpineRestTransport`.** The full fifteen-verb REST `MemoryTransport`, unified onto the TUI's superset (implements `reviewQueue`/`vectorStats`/`doctor`, which the agent's copy left unwired, and reuses this platform's own `transport-http` helpers).
+
 ## [1.21.0] - 2026-07-30
 
 Hardens the daemon's own lifecycle after a night it handled badly: the

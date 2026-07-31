@@ -40,3 +40,12 @@ export {
   foldMemoryWireExtendedError,
   type MemoryWire404Disposition,
 } from './wire-verb-availability.js';
+
+// The one REST `MemoryTransport`, unifying what the TUI and the agent each
+// maintained as a parallel implementation — see rest-transport.ts for the
+// divergence-resolution notes (the TUI's full fifteen-verb coverage is the
+// superset adopted here).
+export {
+  createMemorySpineRestTransport,
+  type MemorySpineRestTransportOptions,
+} from './rest-transport.js';
