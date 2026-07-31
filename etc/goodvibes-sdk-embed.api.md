@@ -338,6 +338,7 @@ export class SharedSessionBroker {
     listSessions(limit?: number, options?: ListSharedSessionsOptions): SharedSessionRecord[];
     markInputDelivered(sessionId: string, inputId: string, options?: {
         readonly consumed?: boolean | undefined;
+        readonly agentId?: string | undefined;
     }): Promise<SharedSessionInputRecord | null>;
     // (undocumented)
     rebindRoute(bindingId: string, sessionId: string): Promise<SharedSessionRecord | null>;

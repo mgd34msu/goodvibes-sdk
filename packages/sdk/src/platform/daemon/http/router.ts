@@ -172,6 +172,8 @@ interface DaemonHttpRouterContext {
     binding: import('../../automation/routes.js').AutomationRouteBinding | undefined,
     input: { readonly agentId: string; readonly task: string; readonly agentTask?: string; readonly workflowChainId?: string; readonly sessionId?: string },
   ) => void;
+  /** A surface that ran the turn in its own process reports the answer; see DaemonSurfaceDeliveryHelper. */
+  readonly completeSurfaceReplyFromSurface: (input: { readonly agentId: string; readonly sessionId?: string | undefined; readonly body: string; readonly status?: 'completed' | 'failed' | 'cancelled' | undefined }) => Promise<boolean>;
   readonly surfaceDeliveryEnabled: (
     surface: 'slack' | 'discord' | 'ntfy' | 'webhook' | 'homeassistant' | 'telegram' | 'google-chat' | 'signal' | 'whatsapp' | 'telephony' | 'imessage' | 'msteams' | 'bluebubbles' | 'mattermost' | 'matrix',
   ) => boolean;
@@ -587,6 +589,7 @@ export class DaemonHttpRouter {
           binding as Parameters<typeof this.context.queueSurfaceReplyFromBinding>[0],
           input,
         ),
+        completeSurfaceReplyFromSurface: (input) => this.context.completeSurfaceReplyFromSurface(input),
         surfaceDeliveryEnabled: (surface) => this.context.surfaceDeliveryEnabled(surface),
         syncSpawnedAgentTask: (record, sessionId) => this.context.syncSpawnedAgentTask(
           record as Parameters<typeof this.context.syncSpawnedAgentTask>[0],

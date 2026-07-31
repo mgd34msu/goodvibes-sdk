@@ -19953,7 +19953,10 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
     "input": {
       "sessionId": "sample",
       "inputId": "sample",
-      "consumed": false
+      "consumed": false,
+      "agentId": "sample",
+      "answer": "sample",
+      "status": "sample"
     },
     "output": {
       "input": {
