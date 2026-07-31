@@ -325,6 +325,10 @@
       "types": "./dist/platform/intelligence/index.d.ts",
       "import": "./dist/platform/intelligence/index.js"
     },
+    "./platform/hosted-sessions": {
+      "types": "./dist/platform/hosted-sessions/index.d.ts",
+      "import": "./dist/platform/hosted-sessions/index.js"
+    },
     "./platform/knowledge": {
       "types": "./dist/platform/knowledge/index.d.ts",
       "import": "./dist/platform/knowledge/index.js"
