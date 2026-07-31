@@ -192,3 +192,90 @@ export type { DurabilityServices, DurabilityServicesInput } from './durability-s
 export { resolveDaemonCompanionToken, workspaceOperatorTokenCandidates } from './operator-token-cleanup.js';
 
 export { bindWriteLastSessionPointerToSurface } from './session-pointer-surface.js';
+
+export {
+  BINARY_INSTALL_COMMAND,
+  detectInstallKind,
+  fallbackUpdateCommand,
+} from './install-kind.js';
+export type { InstallKind } from './install-kind.js';
+
+export { buildReachabilityNotices, reachabilityNoticeLines } from './reachability-notice.js';
+export type {
+  ReachabilityNotice,
+  ReachabilityNoticeInput,
+  ReachabilityNoticeKind,
+} from './reachability-notice.js';
+
+export {
+  announceReachability,
+  boundedLatestRelease,
+  INSTALLED_COMMANDS,
+  LATEST_LOOKUP_TIMEOUT_MS,
+  probeVersionLine,
+  resolveSelfDirectory,
+  runReachabilityCheck,
+} from './reachability-check.js';
+export type { ReachabilityCheckInput, ReachabilityCheckResult } from './reachability-check.js';
+
+export { createAgentGraph } from './agent-graph-composition.js';
+export type { AgentGraph } from './agent-graph-composition.js';
+
+export { createChannelComposition } from './channel-composition.js';
+export type { ChannelComposition } from './channel-composition.js';
+
+export { createRemoteExecutionServices } from './remote-execution-composition.js';
+export type { RemoteExecutionServices } from './remote-execution-composition.js';
+
+export { wireIdlePowerAndLiveTurn } from './idle-power-services.js';
+export type { IdlePowerServices, IdlePowerServicesDeps } from './idle-power-services.js';
+
+export { WAKE_RECOVERY_COMMAND, wireVoiceSetup } from './voice-setup-services.js';
+export type { VoiceSetupServices, VoiceSetupServicesDeps } from './voice-setup-services.js';
+
+export { createSessionStorageServices } from './session-storage-services.js';
+export type { SessionStorageServices } from './session-storage-services.js';
+
+export {
+  codeIndexDbPath,
+  createCodeIndexServices,
+  createStoreRerooter,
+  isCodeIndexAutoStartEnabled,
+} from './code-index-services.js';
+export type { CodeIndexServices, CodeIndexServicesDeps } from './code-index-services.js';
+
+export { foldLegacyProjectMemory, runBootMemoryFold } from './memory-fold.js';
+export type { BootFoldLogger } from './memory-fold.js';
+
+export {
+  CONTROL_PLANE_FEATURE_FLAG,
+  DELIVERY_ENGINE_FEATURE_FLAG,
+  enableFeatureFlags,
+  getMissingSurfaceFeatureFlags,
+  getServerSurfaceFeatureFlags,
+  getSurfaceFeatureFlag,
+  isFeatureFlagEnabled,
+  ROUTE_BINDING_FEATURE_FLAG,
+  SERVICE_MANAGEMENT_FEATURE_FLAG,
+  surfaceFeatureGateSettingsKeys,
+} from './surface-feature-flags.js';
+
+export { WorkspaceRegistrationManager } from './workspace-registration.js';
+export type {
+  WorkspaceRegistrationEvaluation,
+  WorkspaceRegistrationManagerOptions,
+  WorkspaceRegistrationShellPaths,
+} from './workspace-registration.js';
+
+export {
+  detectPriorWorkspaceState,
+  readPersistedWorkspaceTrust,
+  trustGatedAsk,
+  WorkspaceTrustManager,
+} from './workspace-trust.js';
+export type {
+  PersistedWorkspaceTrustView,
+  WorkspaceTrustLevel,
+  WorkspaceTrustManagerOptions,
+  WorkspaceTrustPaths,
+} from './workspace-trust.js';

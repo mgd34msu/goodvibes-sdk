@@ -50,3 +50,15 @@ export {
   requireFeatureGate,
   surfaceFeatureGateId,
 } from './gates.js';
+
+export {
+  featureEnablementWrite,
+  FEATURE_SETTINGS_BY_ID,
+  featuresForEnablementKey,
+  getConfigSchemaSetting,
+  getFeatureSetting,
+  isFeatureConfigEnabled,
+  isFeatureDefaultEnabled,
+  isFeatureValueEnabled,
+} from './feature-settings-queries.js';
+export type { FeatureEnablementWrite } from './feature-settings-queries.js';
