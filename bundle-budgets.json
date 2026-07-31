@@ -422,6 +422,10 @@
     "gzip_bytes": 192,
     "rationale": "platform runtime re-export entry; measured 142 B gzip @ commit 4e5a5e2; headroom max(ceil(142*1.2)=171, 142+50=192) \u2192 192 (+50 B floor dominates by 21 B)"
   },
+  "./platform/runtime/config": {
+    "gzip_bytes": 351,
+    "rationale": "runtime config subpath: the key-level config-change emit bridge a client whose settings live in the daemon subscribes to instead of polling; the subpath shipped without a budget entry, so this records its first one. measured 292 B gzip; headroom max(ceil(292*1.2)=351, 292+50=342) -> 351 (1.2x dominates by 9 B)"
+  },
   "./platform/runtime/disposal": {
     "gzip_bytes": 2220,
     "rationale": "runtime-graph shutdown seam: the disposal scope (best-effort ordered teardown) plus the all-required RuntimePollerOwners registration helper the consumer forks call; re-anchored after three owners joined the required list (homeGraphService's post-sync self-improvement pump, agentOrchestrator's per-worktree ProjectIndex release, and cancelHostedAgentRuns for the agent runs the graph was hosting); measured 1850 B gzip on branch fix/complete-disposal-seam; headroom max(ceil(1850*1.2)=2220, 1850+50=1900) -> 2220 (1.2x dominates); previously 1700 B against a measured 1416 B"
