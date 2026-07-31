@@ -46,10 +46,20 @@ import { randomUUID } from 'node:crypto';
 import { ConfigManager } from '../packages/sdk/src/platform/config/manager.ts';
 import type { ConfigKey } from '../packages/sdk/src/platform/config/schema.ts';
 
-const SOURCE_PATH = join(
-  import.meta.dir,
-  '../packages/sdk/src/platform/control-plane/routes/register-gateway-verb-groups.ts',
-);
+/**
+ * The registrar, plus the CI-watch composition that was split out of it.
+ *
+ * The four fixed call sites are what this pins, and they no longer live in one
+ * file: the CI-watch group's construction (which carries the
+ * `deps.configManager?.get(key as ConfigKey)` read) moved to
+ * routes/ci-watch-composition.ts when the registrar hit the source cap. Reading
+ * both is what keeps the pin honest — checking only the original file would
+ * have reported green while the text it claims to guard sat next door.
+ */
+const SOURCE_PATHS = [
+  join(import.meta.dir, '../packages/sdk/src/platform/control-plane/routes/register-gateway-verb-groups.ts'),
+  join(import.meta.dir, '../packages/sdk/src/platform/control-plane/routes/ci-watch-composition.ts'),
+];
 
 function withRealConfigManager<T>(run: (configManager: ConfigManager) => T): T {
   const dir = join(tmpdir(), `gv-verb-groups-config-${randomUUID()}`);
@@ -189,7 +199,7 @@ describe('isCategoryEnabled / resolveWebPort / setPublicBaseUrl: inline casts, c
 // file. This pins the actual source text so one does: a revert of any of the
 // four fixed call sites back to a detached `as unknown as` cast fails here.
 describe('the real source file: no detached configManager.get/.set casts remain', () => {
-  const source = readFileSync(SOURCE_PATH, 'utf-8');
+  const source = SOURCE_PATHS.map((path) => readFileSync(path, 'utf-8')).join('\n');
 
   test('no `as unknown as` cast wraps configManager.get or .set', () => {
     expect(source).not.toMatch(/configManager\??\.(get|set)\s+as\s+unknown\s+as/);

@@ -1,19 +1,112 @@
 # Changelog
 
-This file tracks breaking changes, additions, fixes, and migration steps for each release of `@pellux/goodvibes-sdk`. Every release **must** have a corresponding `## [X.Y.Z]` section here before publishing — the publish script and CI enforce this.
-
-Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) conventions.
-
-## [Unreleased]
-
-Hoists machinery the TUI and the agent were each forced to vendor as a local
-mirror because the published SDK had no public export path for it — the first
-lane of the daemon/TUI split (the daemon needs this surface public before it
-can be its own product; consumer adoption happens in a later stage, not
-here).
+This file tracks breaking changes, additions, fixes, and migration steps for each release of `@pellux/goodvibes-sdk`. Every release **must** have a corresponding `## [Unreleased]
 
 ### Added
 
+
+- **`credentials.set` / `credentials.delete` — writing a credential through the
+  daemon.** `credentials.get` has been able to report which credentials are
+  configured since config sharing shipped; nothing could ever SET one. Every
+  product wrote secrets through an in-process `SecretsManager` against its own
+  disk, which works exactly as long as the client and the daemon share a
+  filesystem and produces the platform's oldest recurring failure the moment
+  they do not: a token pasted into a settings modal reports success, lands in a
+  store the daemon never reads, and the capability it configures stays dead with
+  nothing anywhere reporting a problem.
+
+  A write takes the same four steps as the plaintext credential sweep, for the
+  same reason: derive the secret-store name from the config path
+  (`daemonSecretKeyFor` — one derivation, platform-wide), store the value at the
+  scope the ownership rules resolve (a daemon-needed credential lands in the
+  daemon tier whichever surface sent it), read it BACK and compare, and only
+  then replace the config value with its `goodvibes://secrets/goodvibes/<KEY>`
+  reference. A read-back mismatch fails the call and leaves the setting exactly
+  as it was, because a config key pointing at a reference that resolves to
+  nothing reads as a configured-but-broken credential — worse than one that was
+  never written. The response carries key names, the resolved scope and the
+  reference now in config, and never the value or a value-derived fingerprint.
+  A key whose value is not credential material is refused rather than turned
+  into a reference (that is `config.set`'s job), and so is a value that is
+  itself a `goodvibes://` reference.
+
+  `admin` + `write:config` + `dangerous`, matching `config.set`: a credential
+  write is a config write whose value happens to be secret, and it must not be
+  reachable by a token granted only session access. Step-up rides the platform's
+  existing rule rather than a new per-verb flag — these are mutating calls, so a
+  call arriving over the relay with `relay.requireStepUpForMutations` on is
+  refused without a fresh WebAuthn assertion by the same dispatch gate that
+  already covers `config.set`. Handlers in
+  `control-plane/routes/credentials-write.ts`; ws-only invoke verbs, so no
+  advertised REST path is left unserved.
+
+- **`approvals.raise` — a surface creating an ask in the shared broker.**
+  `approvals.list/claim/approve/deny/cancel` could only ever act on asks the
+  daemon's own in-process callers had raised, so a surface outside that process
+  kept its own broker, prompted at its own terminal, and its asks were invisible
+  to every other surface and to the daemon's attention machinery (web push, the
+  fleet blocked-on-user signal).
+
+  The verb returns the PENDING record immediately and does not block: an HTTP
+  request parked across a person's attention span dies to any idle timeout
+  between here and there, and the decision has a better channel. An identical
+  in-flight ask (same session, tool and args) coalesces onto the existing record
+  — one prompt, one decision, `coalesced: true`. Optional `timeoutMs` expires
+  the ask (clamped to 12h); optional `waitMs` waits inline for callers that want
+  one round trip (clamped to 60s) and reports `decided: false` with the record
+  still pending when it runs out, never a decision nobody made. The daemon
+  remains the single source of the applied result: a surface renders what the
+  record says, not what it locally believes it asked for.
+
+- **`control.approval_update` in the event catalog — the push that replaces
+  polling.** The `approval-update` wire event has always been broadcast and
+  domain-tagged `permissions`; it was never described in the catalog, so a
+  client had to know it existed to subscribe to it. It is now a first-class
+  event descriptor carrying the whole approval record, which is what makes
+  `approvals.raise` usable: raise returns the record, and every transition of it
+  — starting with the pending one, which IS the prompt — arrives on the existing
+  `control.events.stream`.
+
+- **A `config` runtime-event domain, emitting key-level change notices.**
+  `ConfigManager.subscribe` is how live settings work inside a process, and it
+  is in-process by construction. A `subscribeConfig` consumer in a client
+  attached to a remote daemon therefore never fired: the value it was watching
+  could change on the daemon and the client would keep running on whatever it
+  read at startup. `CONFIG_KEY_CHANGED` carries the dotted key, its ownership
+  scope (daemon/client/user) and the new value — except for a secret-bearing
+  key, which travels by NAME ONLY, with `secret: true` and no `value` property
+  at all (absent rather than nulled, so a subscriber cannot mistake a withheld
+  credential for a cleared one). Wired at the composition root from
+  `ConfigManager`'s existing per-key subscription
+  (`runtime/config/emit-bridge.ts`), which also widens the external-file-edit
+  diff: that reload walks the keys something subscribed to, so a key nobody
+  watched was never compared.
+
+- **`evaluateDaemonCompatibility` — the client's half of the build-floor
+  handshake.** The daemon has published `X-Goodvibes-Client-Floor` on `/status`
+  for a while. This is the reverse: a client declares the oldest daemon build it
+  can work against and checks it against the version `/status` already returns,
+  getting back a verdict whose refusal names both versions and the one action
+  that fixes it — the same wording pattern the settings reader-floor refusal
+  uses, because the verb that happened to 404 is the symptom and the version is
+  the cause. A daemon whose version cannot be read is `unknown`, not `ok`. The
+  floor is the consumer's, not the SDK's; consumers adopt it and state what they
+  raised it for.
+
+### Changed
+
+- **`ApprovalBroker.raiseApproval`** returns both the record and the pending
+  decision; `requestApproval` is now a thin wrapper over it that keeps the
+  decision. The body moved to a free function in `approval-broker-raise.ts`
+  (same convention as `session-broker.ts` → `session-broker-intent.ts`), which
+  is also what kept that file under the source cap. Behaviour is unchanged
+  including the persist-before-publish ordering, the rollback on a failed
+  persist, and a local prompt running only for a record the call actually
+  created.
+- **The CI-watch verb group's construction** moved out of
+  `routes/register-gateway-verb-groups.ts` into
+  `routes/ci-watch-composition.ts` as a free function over the same deps object
+  — the split that file's line budget required, with no behaviour change.
 - **`platform/daemon`: `reportFatalBootFailure`, `writeFatalLine`,
   `writeExitingStdoutLine` are now exported.** Both the TUI and the agent
   carried an identical local mirror of this module because the 1.21.0

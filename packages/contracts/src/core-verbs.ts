@@ -169,7 +169,7 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
   ],
   'approval-and-routing': [
     // Domain verbs specific to the approvals/routing/session-target model.
-    'approve', 'claim', 'deny', 'default', 'named', 'assign', 'resolve', 'authorize',
+    'approve', 'claim', 'deny', 'raise', 'default', 'named', 'assign', 'resolve', 'authorize',
     'audit', 'edit', 'diff', 'restore', 'revoke', 'rotate', 'disconnect',
   ],
   'session-and-work-lifecycle': [

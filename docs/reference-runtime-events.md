@@ -144,6 +144,39 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
 }
 ```
 
+### `config`
+
+- `runtime.config` -> `config`
+
+#### `runtime.config` payload schema
+
+```json
+{
+  "type": "object",
+  "additionalProperties": {
+    "anyOf": [
+      {
+        "type": "string"
+      },
+      {
+        "type": "number"
+      },
+      {
+        "type": "boolean"
+      },
+      {
+        "type": "null"
+      },
+      {},
+      {
+        "type": "array",
+        "items": {}
+      }
+    ]
+  }
+}
+```
+
 ### `control-plane`
 
 - `runtime.control-plane` -> `control-plane`
@@ -410,7 +443,448 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
 
 ### `permissions`
 
+- `control.approval_update` -> `approval-update`
 - `runtime.permissions` -> `permissions`
+
+#### `control.approval_update` payload schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "approval": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "callId": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "routeId": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "claimed",
+            "approved",
+            "denied",
+            "cancelled",
+            "expired"
+          ]
+        },
+        "request": {
+          "type": "object",
+          "properties": {
+            "callId": {
+              "type": "string"
+            },
+            "tool": {
+              "type": "string"
+            },
+            "args": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            },
+            "category": {
+              "type": "string",
+              "enum": [
+                "read",
+                "write",
+                "execute",
+                "delegate"
+              ]
+            },
+            "analysis": {
+              "type": "object",
+              "properties": {
+                "classification": {
+                  "type": "string"
+                },
+                "riskLevel": {
+                  "type": "string",
+                  "enum": [
+                    "low",
+                    "medium",
+                    "high",
+                    "critical"
+                  ]
+                },
+                "summary": {
+                  "type": "string"
+                },
+                "reasons": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "target": {
+                  "type": "string"
+                },
+                "targetKind": {
+                  "type": "string",
+                  "enum": [
+                    "command",
+                    "path",
+                    "url",
+                    "task",
+                    "generic"
+                  ]
+                },
+                "surface": {
+                  "type": "string",
+                  "enum": [
+                    "filesystem",
+                    "shell",
+                    "network",
+                    "orchestration",
+                    "platform",
+                    "generic"
+                  ]
+                },
+                "blastRadius": {
+                  "type": "string",
+                  "enum": [
+                    "local",
+                    "project",
+                    "external",
+                    "delegated",
+                    "platform"
+                  ]
+                },
+                "sideEffects": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "host": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "classification",
+                "riskLevel",
+                "summary",
+                "reasons"
+              ],
+              "additionalProperties": false
+            },
+            "workingDirectory": {
+              "type": "string"
+            },
+            "attribution": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "background-agent"
+                      ]
+                    },
+                    "agentId": {
+                      "type": "string"
+                    },
+                    "template": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "agentId"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "mcp-server"
+                      ]
+                    },
+                    "serverName": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "serverName"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "sandbox-escalation"
+                      ]
+                    },
+                    "sandbox": {
+                      "type": "string"
+                    },
+                    "escalations": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "sandbox",
+                    "escalations"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "rememberOptions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "tier": {
+                    "type": "string",
+                    "enum": [
+                      "session",
+                      "exact",
+                      "command-class",
+                      "path",
+                      "tool"
+                    ]
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "detail": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "tier",
+                  "label",
+                  "detail"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "callId",
+            "tool",
+            "args",
+            "category",
+            "analysis"
+          ],
+          "additionalProperties": false
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "number"
+        },
+        "claimedBy": {
+          "type": "string"
+        },
+        "claimedAt": {
+          "type": "number"
+        },
+        "resolvedAt": {
+          "type": "number"
+        },
+        "resolvedBy": {
+          "type": "string"
+        },
+        "decision": {
+          "type": "object",
+          "properties": {
+            "approved": {
+              "type": "boolean"
+            },
+            "remember": {
+              "type": "boolean"
+            },
+            "rememberTier": {
+              "type": "string",
+              "enum": [
+                "session",
+                "exact",
+                "command-class",
+                "path",
+                "tool"
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "modifiedArgs": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            }
+          },
+          "required": [
+            "approved"
+          ],
+          "additionalProperties": false
+        },
+        "fixSessionId": {
+          "type": "string"
+        },
+        "fixSessionError": {
+          "type": "string"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": {}
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        },
+        "audit": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "action": {
+                "type": "string",
+                "enum": [
+                  "created",
+                  "claimed",
+                  "approved",
+                  "denied",
+                  "cancelled",
+                  "expired",
+                  "updated"
+                ]
+              },
+              "actor": {
+                "type": "string"
+              },
+              "actorSurface": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "number"
+              },
+              "note": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "action",
+              "actor",
+              "createdAt"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "id",
+        "callId",
+        "status",
+        "request",
+        "createdAt",
+        "updatedAt",
+        "metadata",
+        "audit"
+      ],
+      "additionalProperties": false
+    },
+    "createdAt": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "approval",
+    "createdAt"
+  ],
+  "additionalProperties": false
+}
+```
 
 #### `runtime.permissions` payload schema
 
