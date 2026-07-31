@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import { AgentManager } from '../tools/agent/index.js';
 import { resolveHostBinding } from './host-resolver.js';
+import { composeHostedSessions } from './hosted-sessions-composition.js';
 import { WorkProposalStore } from '../agents/work-proposal-store.js';
 import { readConversationGateConfig, type ConversationGateConfigReader } from '../agents/conversation-gate.js';
 import { continuationChainOptions, decideContinuationEscalation } from '../agents/conversation-continuation.js';
@@ -381,6 +382,24 @@ export function resolveDaemonFacadeRuntime(config: DaemonConfig): ResolvedDaemon
     controlPlaneGateway.publishEvent(event, payload);
   });
 
+  // Daemon-hosted sessions, when this product stated how a workspace floor is
+  // built. Composed here rather than in the runtime graph because the engine
+  // needs the control-plane gateway to publish its lifecycle channel, and the
+  // gateway is built here — the same reason the approval broker's publisher and
+  // the companion manager are wired at this point.
+  const hostedSessions = config.hostedSessions
+    ? composeHostedSessions({
+        options: config.hostedSessions,
+        configManager: resolvedConfigManager,
+        runtimeBus,
+        shellPaths: runtimeServices.shellPaths,
+        gatewayMethods: runtimeServices.gatewayMethods,
+        liveTurns: runtimeServices.sessionLiveTurnControls,
+        eventPublisher: controlPlaneGateway,
+        spine: runtimeServices.sessionBroker,
+      })
+    : null;
+
   // Host and port precedence: constructor-injected config.host/config.port win,
   // then fall back to the hostMode-aware binding resolution from configManager.
   // Directly-passed overrides are critical for tests (which bind random high
@@ -440,6 +459,7 @@ export function resolveDaemonFacadeRuntime(config: DaemonConfig): ResolvedDaemon
     serveFactory: config.serveFactory ?? Bun.serve,
     githubWebhookSecret: config.githubWebhookSecret ?? process.env.GITHUB_WEBHOOK_SECRET ?? null,
     companionChatManager,
+    hostedSessions,
   };
 }
 

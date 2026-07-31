@@ -25,7 +25,26 @@
 export type { DaemonReachability, DaemonVerbCaller } from './daemon-verbs.js';
 
 export { createClientApprovalRaiser } from './approval-raiser.js';
-export type { ClientApprovalRaiserOptions, LocalPermissionPrompt } from './approval-raiser.js';
+export type {
+  ApprovalUpdateSubscriber,
+  ClientApprovalRaiserOptions,
+  LocalPermissionPrompt,
+} from './approval-raiser.js';
+
+export {
+  APPROVAL_UPDATE_DOMAIN,
+  APPROVAL_UPDATE_WIRE_EVENT,
+  approvalUpdateStreamUrl,
+  awaitApprovalDecision,
+  readApprovalUpdateNotice,
+  watchApprovalUpdates,
+} from './approval-updates.js';
+export type {
+  ApprovalUpdateNotice,
+  ApprovalUpdateRecord,
+  ApprovalUpdateSubscription,
+  WatchApprovalUpdatesOptions,
+} from './approval-updates.js';
 
 export { createDaemonConfigClient, isDaemonOwnedConfigKey } from './config-client.js';
 export type { DaemonConfigClient } from './config-client.js';
