@@ -61,6 +61,10 @@ export type {
   SharedSessionCompletion,
   SharedSessionContinuationRequest,
   SharedSessionContinuationResult,
+  // The runner shape a host binds into the dispatch seam. Nine of its siblings
+  // were already public and this one was not, so a client naming the seam it
+  // implements had to re-declare the runner structurally instead of importing it.
+  SharedSessionContinuationRunner,
   SharedSessionHelperModelOverride,
   SharedSessionInputIntent,
   SharedSessionInputRecord,
