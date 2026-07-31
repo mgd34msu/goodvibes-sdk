@@ -25,6 +25,15 @@
  * (`@pellux/goodvibes-sdk/platform/runtime`, the `operations` namespace):
  * SDK-side code needs it too, and the SDK cannot import this package.
  *
+ * Alongside the wiring sits the terminal IDIOM: the arithmetic and policy a
+ * character-cell surface needs before it can draw anything — capability
+ * probing and color downsampling, shell/split/overlay geometry, display-width
+ * text fitting, escape-sequence sanitization of untrusted content, and the
+ * key-semantics and list-filter conventions two terminal front-ends must
+ * answer identically or feel like different products. None of it is
+ * front-end-specific; all of it is meaningless outside a terminal, which is
+ * why it lives here rather than in the SDK core.
+ *
  * See ./conformance for the descriptor/handler gate a consumer runs against its
  * own composition in CI.
  */
@@ -184,3 +193,81 @@ export {
   type TerminalOutputGuardOptions,
   type FullScreenTerminalOutputGuardOptions,
 } from './terminal-output-guard.js';
+
+export {
+  classifyBindPosture,
+  isLoopbackHost,
+  isNetworkFacing,
+  type BindPosture,
+  type BindPostureKind,
+} from './cli-network-posture.js';
+
+export {
+  SYNC_BEGIN,
+  SYNC_END,
+  downsampleColor,
+  nearestAnsi16Fg,
+  nearestAnsi256,
+  probeTermCaps,
+  wrapSynced,
+  type ColorCapability,
+  type TermColorCaps,
+} from './term-caps.js';
+
+export { stripDangerousAnsi } from './ansi-sanitize.js';
+
+export {
+  createShellLayout,
+  createSplitPaneLayout,
+  type Rect,
+  type ShellLayout,
+  type ShellLayoutRequest,
+  type SplitPaneLayout,
+} from './layout-engine.js';
+
+export {
+  getSurfaceContentRows,
+  getTrackedVisibleWindow,
+  getVisibleWindow,
+  sliceVisibleWindow,
+  type SurfaceViewportRequest,
+  type VisibleWindow,
+} from './surface-layout.js';
+
+export {
+  getOverlayContentBudget,
+  getOverlayMaxWidth,
+  getOverlaySurfaceMetrics,
+  getOverlayWidthClass,
+  getStableOverlayContentRows,
+  type OverlaySurfaceMetrics,
+  type OverlaySurfaceMetricsOptions,
+  type OverlayViewportBudgetOptions,
+  type OverlayWidthClass,
+} from './overlay-viewport.js';
+
+export {
+  fitLabelDetailColumns,
+  wrapWithHangingIndent,
+} from './text-layout.js';
+
+export { computePromptContentWidth } from './prompt-content-width.js';
+
+export {
+  isTextBackspace,
+  isTextForwardDelete,
+} from './delete-key-policy.js';
+
+export {
+  POPULAR_PROVIDERS,
+  filterProviders,
+  groupProviders,
+} from './model-picker-provider-filter.js';
+
+export { BookmarkModal } from './bookmark-modal.js';
+
+export {
+  startMcpConfigAutoReload,
+  type McpRuntimeReloadHandle,
+  type McpRuntimeReloadOptions,
+} from './mcp-runtime-reload.js';
