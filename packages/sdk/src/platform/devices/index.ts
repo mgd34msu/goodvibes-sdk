@@ -53,6 +53,7 @@ export {
   parseDeviceCapabilityWorkResult,
   validateDeviceCapabilityInput,
   decodeDeviceCapabilityMedia,
+  encodeDeviceCapabilityMedia,
 } from './device-peer-work.js';
 export type {
   DeviceCapabilityWorkRequest,
@@ -92,6 +93,7 @@ export {
   DEFAULT_DEVICE_CAPABILITY_POLICY,
   isAllowAlwaysOffered,
   capabilityDisabledReason,
+  resolveDeviceRequestTimeoutMs,
 } from './device-capability-service.js';
 export { resolveDevicePolicySource } from './device-policy-source.js';
 export type { DevicePolicySource } from './device-policy-source.js';

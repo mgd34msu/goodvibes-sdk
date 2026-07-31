@@ -3,7 +3,7 @@
   "info": {
     "title": "GoodVibes Operator API",
     "version": "1.21.0",
-    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 486 cataloged methods: 428 with dedicated REST bindings, 58 reachable only through the generic invoke endpoint. 0 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
+    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 494 cataloged methods: 431 with dedicated REST bindings, 63 reachable only through the generic invoke endpoint. 0 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
   },
   "servers": [
     {
@@ -82921,6 +82921,440 @@
         ]
       }
     },
+    "/api/devices/artifacts": {
+      "get": {
+        "operationId": "devices.artifacts.list",
+        "summary": "List Retained Device Captures",
+        "description": "The camera and screen captures still inside their retention window, newest first, with when each was captured, when it will be deleted, and the reason the request stated. Expired captures are never listed — retention is enforced by the store, not by this verb filtering them out of a longer list.",
+        "tags": [
+          "runtime"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "artifacts": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "artifactId": {
+                            "type": "string"
+                          },
+                          "nodeId": {
+                            "type": "string"
+                          },
+                          "capabilityId": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string"
+                          },
+                          "mediaType": {
+                            "type": "string"
+                          },
+                          "byteLength": {
+                            "type": "number"
+                          },
+                          "capturedAt": {
+                            "type": "number"
+                          },
+                          "expiresAt": {
+                            "type": "number"
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "daemonPath": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "artifactId",
+                          "nodeId",
+                          "capabilityId",
+                          "kind",
+                          "mediaType",
+                          "byteLength",
+                          "capturedAt",
+                          "expiresAt",
+                          "reason",
+                          "daemonPath"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "retained": {
+                      "type": "number"
+                    },
+                    "retentionHours": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "artifacts",
+                    "retained",
+                    "retentionHours"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "read:remote"
+        ],
+        "parameters": [
+          {
+            "name": "nodeId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number"
+            }
+          }
+        ]
+      }
+    },
+    "/api/devices/artifacts/{artifactId}": {
+      "get": {
+        "operationId": "devices.artifacts.read",
+        "summary": "Read a Retained Device Capture",
+        "description": "Return one retained capture's bytes, base64-encoded, for a caller that is not running on the daemon host and so cannot open the file itself. The store re-hashes the bytes against the digest recorded when the capture was retained and refuses to serve a mismatch, so a torn or half-written file is never handed back as if it were the picture that was taken. A capture that is gone — expired, swept, missing, or corrupted — is an honest 404 naming which of those it was.",
+        "tags": [
+          "runtime"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "artifact": {
+                      "type": "object",
+                      "properties": {
+                        "artifactId": {
+                          "type": "string"
+                        },
+                        "nodeId": {
+                          "type": "string"
+                        },
+                        "capabilityId": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string"
+                        },
+                        "mediaType": {
+                          "type": "string"
+                        },
+                        "byteLength": {
+                          "type": "number"
+                        },
+                        "capturedAt": {
+                          "type": "number"
+                        },
+                        "expiresAt": {
+                          "type": "number"
+                        },
+                        "reason": {
+                          "type": "string"
+                        },
+                        "daemonPath": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "artifactId",
+                        "nodeId",
+                        "capabilityId",
+                        "kind",
+                        "mediaType",
+                        "byteLength",
+                        "capturedAt",
+                        "expiresAt",
+                        "reason",
+                        "daemonPath"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "dataBase64": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "artifact",
+                    "dataBase64"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "read:remote"
+        ],
+        "parameters": [
+          {
+            "name": "artifactId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/devices/capability/request": {
+      "post": {
+        "operationId": "devices.capability.request",
+        "summary": "Request a Capability From a Paired Device",
+        "description": "Ask one paired device node for one capability — a photo, a screen capture, a location fix, its clipboard, a notification, a link to open, a buzz — and return what came back. The reason is required and is shown VERBATIM on the confirmation prompt, so the person deciding sees what the caller said it was for. Every gate lives in the daemon-owned device runtime and this verb re-decides none of them: a durable grant is re-read from disk (never cached), a request with no grant asks the person on whatever surface they are looking at, a capability turned off by configuration is refused with the configuration key that turned it off, and a capture is retained under the configured retention window and disclosed. A refusal is returned as ok:false with the reason and a machine-readable refusal code — it is an answer, not an error. A capability that produces a capture returns an artifact REFERENCE; fetch the bytes with devices.artifacts.read.",
+        "tags": [
+          "runtime"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "nodeId": {
+                      "type": "string"
+                    },
+                    "capabilityId": {
+                      "type": "string"
+                    },
+                    "capabilityTitle": {
+                      "type": "string"
+                    },
+                    "authority": {
+                      "type": "string"
+                    },
+                    "grantId": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        {
+                          "type": "array",
+                          "items": {}
+                        }
+                      ]
+                    },
+                    "artifact": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "artifactId": {
+                              "type": "string"
+                            },
+                            "nodeId": {
+                              "type": "string"
+                            },
+                            "capabilityId": {
+                              "type": "string"
+                            },
+                            "kind": {
+                              "type": "string"
+                            },
+                            "mediaType": {
+                              "type": "string"
+                            },
+                            "byteLength": {
+                              "type": "number"
+                            },
+                            "capturedAt": {
+                              "type": "number"
+                            },
+                            "expiresAt": {
+                              "type": "number"
+                            },
+                            "reason": {
+                              "type": "string"
+                            },
+                            "daemonPath": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "artifactId",
+                            "nodeId",
+                            "capabilityId",
+                            "kind",
+                            "mediaType",
+                            "byteLength",
+                            "capturedAt",
+                            "expiresAt",
+                            "reason",
+                            "daemonPath"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "refusal": {
+                      "type": "string"
+                    },
+                    "detail": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "nodeId",
+                    "capabilityId",
+                    "capabilityTitle",
+                    "authority",
+                    "grantId",
+                    "artifact",
+                    "refusal",
+                    "detail"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "write:remote"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "nodeId": {
+                    "type": "string"
+                  },
+                  "capabilityId": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "input": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {},
+                        {
+                          "type": "array",
+                          "items": {}
+                        }
+                      ]
+                    }
+                  },
+                  "sessionId": {
+                    "type": "string"
+                  },
+                  "timeoutMs": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "nodeId",
+                  "capabilityId",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/devices/grants": {
       "get": {
         "operationId": "devices.grants.list",
@@ -100305,6 +100739,11 @@
           "quota.fanout.get",
           "quota.snapshot.get",
           "rewind.apply",
+          "rewind.conversation.host.register",
+          "rewind.conversation.host.release",
+          "rewind.conversation.hosts.list",
+          "rewind.conversation.requests.answer",
+          "rewind.conversation.requests.take",
           "rewind.plan",
           "sessions.changes.get",
           "sessions.search",
@@ -104085,6 +104524,51 @@
       "outputSchemaCoverage": "typed"
     },
     {
+      "id": "rewind.conversation.host.register",
+      "category": "rewind",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "rewind.conversation.host.release",
+      "category": "rewind",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "rewind.conversation.hosts.list",
+      "category": "rewind",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "rewind.conversation.requests.answer",
+      "category": "rewind",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "rewind.conversation.requests.take",
+      "category": "rewind",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
       "id": "rewind.plan",
       "category": "rewind",
       "access": "authenticated",
@@ -104143,6 +104627,33 @@
       "category": "routes",
       "access": "authenticated",
       "rest": "GET /api/surfaces",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "devices.artifacts.list",
+      "category": "runtime",
+      "access": "authenticated",
+      "rest": "GET /api/devices/artifacts",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "devices.artifacts.read",
+      "category": "runtime",
+      "access": "authenticated",
+      "rest": "GET /api/devices/artifacts/{artifactId}",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "devices.capability.request",
+      "category": "runtime",
+      "access": "authenticated",
+      "rest": "POST /api/devices/capability/request",
       "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"

@@ -4,6 +4,92 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 ### Added
 
+- **Conversation-scope rewind, served by the surface that actually hosts the
+  conversation.** Files rewind works from anywhere, because the workspace
+  checkpoint store is the daemon's. The conversation half is answerable only by
+  the process running the loop, and the port the daemon wired resolved a
+  session's conversation out of an in-process map nothing outside the daemon
+  could populate. So `rewind.plan` with scope `conversation` reported
+  `available: true, messagesToDrop: 0` for every session hosted by a client —
+  indistinguishable, to every reader, from a conversation already at the anchor.
+  A confident wrong answer, which is the worst shape one can take.
+
+  Five verbs, all ws-only, in a new route module
+  (`routes/rewind-conversation-hosts.ts`) over a new broker
+  (`platform/rewind/conversation-host-broker.ts`). A surface offers the
+  conversation it is running with `rewind.conversation.host.register`, collects
+  the questions the daemon puts to it with
+  `rewind.conversation.requests.take` (optionally holding the call open until
+  one arrives), and reports back with `rewind.conversation.requests.answer`.
+  `rewind.conversation.host.release` withdraws the offer and
+  `rewind.conversation.hosts.list` shows who is holding what, so "conversation
+  rewind is unavailable for that session" is checkable rather than taken on
+  trust.
+
+  There is no cross-surface path, deliberately: only the process holding the
+  messages can count or drop them, so anyone else's answer would be a guess.
+  The shape mirrors the approval broker, the platform's existing reverse call —
+  a request, a resolver beside it, a bounded deadline, and every outcome
+  RESOLVING rather than rejecting so no caller is left holding a promise. It
+  differs in delivery, because an approval waits on a person and a rewind ask is
+  answered by a program in milliseconds while `rewind.plan` is waiting on it, so
+  the host takes its work on its own connection instead of on an event stream.
+
+  Nothing is persisted. A registration is a claim about a live process, worthless
+  once either end may be gone, so it carries a lease the host renews by polling
+  and an unrenewed one is dropped on the next access — bounded by time rather
+  than by a sweep, with ceilings on hosts and on unanswered questions per host.
+
+  `RewindConversationPreview` and `RewindConversationOutcome` gained an optional
+  availability channel (`available`, `unavailableReason`), and
+  `UnifiedRewindService` turns it into a plan/receipt warning. A port that omits
+  it is treated as available exactly as before, so an in-process consumer that
+  always holds its conversation is unaffected. `conversationRewindPort` on
+  `GatewayVerbGroupDeps` is now the FALLBACK, consulted for sessions no surface
+  has offered: a process holding the messages is a better authority on them than
+  a store that merely might have them. A timed-out `rewind` reports that it
+  could not be confirmed whether the surface truncated, and never that nothing
+  was dropped — the one claim nobody in the daemon is in a position to make.
+
+- **A route to a paired phone for a surface that does not host the device
+  runtime.** The `devices.*` family could list paired nodes, list the durable
+  grants and revoke them, and run the housekeeping sweep. It could not ask a
+  phone for anything: `DeviceCapabilityService.request` was reachable only
+  in-process, through the `phone` tool, so a client with no device posture
+  runtime of its own had a grants surface it could read and a camera it could
+  never open. Three verbs close that.
+
+  `devices.capability.request` (POST `/api/devices/capability/request`,
+  `write:remote`) takes a node id, a capability id, the capability's inputs, a
+  required reason, and an optional shorter deadline, and returns the runtime's
+  own outcome. It re-decides nothing: the durable-grant lookup, the confirmation
+  prompt, the configuration gate, the capture retention and the disclosure all
+  stay inside the runtime, which is the point — a second copy of the grant rule
+  living at a route is a second copy that can disagree with the first. A refusal
+  comes back as `ok: false` with the runtime's reason and a machine-readable
+  code rather than an HTTP error, because a person declining to hand over their
+  camera is an answer, not a fault.
+
+  `devices.artifacts.list` and `devices.artifacts.read` (`read:remote`) are the
+  capture half. The in-process tool read capture bytes straight off the daemon's
+  disk, which a surface on another machine cannot do; `read` returns them
+  base64-encoded, and the store re-hashes them against the digest recorded when
+  the capture was taken, so a torn or half-written file is a 404 naming the
+  mismatch rather than bytes presented as the picture that was taken.
+
+  Two supporting changes in `platform/devices`. `DeviceCapabilityService.request`
+  now accepts an optional `timeoutMs` that can only SHORTEN the configured
+  device deadline (`resolveDeviceRequestTimeoutMs`, exported) — a surface that
+  stops waiting after ten seconds should not leave a phone working for sixty,
+  and a caller that could extend it would be setting the posture from the wire.
+  The prompt keeps the configured deadline either way, because the person
+  answering it is not the caller. And the host half of the input check that
+  `device-peer-work.ts` describes ("runs on the host before dispatch AND on the
+  node") moved into `request` itself, ahead of the prompt, with a new
+  `invalid-input` refusal: it used to live in the `phone` tool, so the verb path
+  would have had no host-side check at all, and asking someone to approve a
+  request that cannot run spends their attention on nothing.
+
 - **A composition shape for a product that runs its own conversation loop and
   nothing else.** `RuntimeServices` is the daemon-grade graph: a hundred-odd
   required fields, several of them concretely-typed daemon furniture — the

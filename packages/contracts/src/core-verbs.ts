@@ -276,6 +276,31 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     // whole-session rewind surface, sibling to checkpoint-restore-safety.
     'plan', 'apply',
   ],
+  'conversation-rewind-hosting': [
+    // The surface-facing half of conversation-scope rewind
+    // (rewind.conversation.requests.take). Conversation rewind is answerable
+    // only by the process running the loop, so the daemon puts a question to
+    // the surface that offered the conversation and waits for it; `take` is how
+    // that surface collects the questions addressed to it.
+    //
+    // Deliberately not `list`: listing is read-only and repeatable, and this is
+    // neither. Taking a request marks it as claimed by this host so a second
+    // poll does not hand the same question out twice, and renews the host's
+    // lease on the strength of the surface having shown up. A verb that changes
+    // what the next caller sees is not a list, and naming it one would describe
+    // something other than what happens.
+    'take',
+  ],
+  'paired-device-capability': [
+    // devices.capability.request — asking a paired phone for its camera,
+    // screen, location, clipboard, or a device command. Not `run` and not
+    // `invoke`: neither of those words carries the thing that makes this verb
+    // what it is, which is that the daemon ASKS and the person holding the
+    // phone may say no. The result is as often a refusal a person chose as it
+    // is an outcome, and `request` is the only one of the three that is honest
+    // about who decides.
+    'request',
+  ],
   'hunk-revert-safety': [
     // Per-hunk reverse-apply on the live working tree (checkpoints.revertHunkPreview /
     // checkpoints.revertHunk): the comment-on-hunk review surfaces hand back ONE
