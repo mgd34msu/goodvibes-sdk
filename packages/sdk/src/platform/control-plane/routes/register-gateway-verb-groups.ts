@@ -31,6 +31,8 @@ import { registerPrincipalsGatewayMethods } from './principals.js';
 import { composeOwnerProfile } from './owner-profile-composition.js';
 import { PrincipalRegistry, PrincipalStore } from '../../principals/index.js';
 import { registerChannelProfilesGatewayMethods } from './channel-profiles.js';
+import { registerChannelSyncGatewayMethods } from './channel-sync.js';
+import { ChannelSyncRegistry, ChannelSyncStore } from '../../channel-sync/index.js';
 import { registerChannelTestGatewayMethods } from './channel-test.js';
 import { registerWorktreeSetupGatewayMethods } from './worktree-setup.js';
 import { WorktreeRegistry } from '../../runtime/worktree/registry.js';
@@ -468,6 +470,17 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
     new ChannelProfileStore(deps.shellPaths.resolveUserPath('control-plane', 'channel-profiles.json')),
   );
   registerChannelProfilesGatewayMethods(catalog, channelProfileRegistry);
+
+  // The channel routing table and the draft mirror: what a surface needs to
+  // draw the same channel screen on a second device. Same snapshot pattern and
+  // the same state directory as the profile bindings above; the two are
+  // deliberately separate tables (see platform/channel-sync's header).
+  registerChannelSyncGatewayMethods(
+    catalog,
+    new ChannelSyncRegistry(
+      new ChannelSyncStore(deps.shellPaths.resolveUserPath('control-plane', 'channel-sync.json')),
+    ),
+  );
 
   // Wire the inbound-intake enrichment onto the transport intake chokepoint: from
   // here on, every channel-originated session is attributed to its sending

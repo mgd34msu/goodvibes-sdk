@@ -92,7 +92,7 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
   methodDescriptor({
     id: 'control.status',
     title: 'Daemon Status',
-    description: 'Return daemon status and version. Pass receipts=consume to also receive undelivered daemon receipts (update/crash/migration notices) and mark them delivered — exactly once across all consuming readers. Without the flag no receipts are returned or consumed, so identity probes and keepalives never eat them.',
+    description: 'Return daemon status and version. THREE version fields, because there are two versions and they are not the same number: `buildVersion` is the running artifact\'s own release version — what a person installed, and what the auto-update loop compares against release tags — and `platformVersion` is the SDK build it is composed from. `version` carries the build version and exists because every client already reads it; on an embedded daemon that ships no artifact of its own, all three are the platform build. Pass receipts=consume to also receive undelivered daemon receipts (update/crash/migration notices) and mark them delivered — exactly once across all consuming readers. Without the flag no receipts are returned or consumed, so identity probes and keepalives never eat them.',
     category: 'control-plane',
     scopes: ['read:control-plane'],
     http: { method: 'GET', path: '/status' },
@@ -106,12 +106,14 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
     outputSchema: objectSchema({
       status: STRING_SCHEMA,
       version: STRING_SCHEMA,
+      buildVersion: STRING_SCHEMA,
+      platformVersion: STRING_SCHEMA,
       receipts: arraySchema(objectSchema({
         id: STRING_SCHEMA,
         text: STRING_SCHEMA,
         at: NUMBER_SCHEMA,
       }, ['id', 'text', 'at'])),
-    }, ['status', 'version']),
+    }, ['status', 'version', 'buildVersion', 'platformVersion']),
   }),
   methodDescriptor({
     id: 'control.snapshot',

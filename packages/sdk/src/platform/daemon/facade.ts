@@ -3,6 +3,7 @@ import { logger } from '../utils/logger.js';
 import { jsonErrorResponse } from './http/error-response.js';
 import { summarizeError } from '../utils/error-display.js';
 import { DaemonLifecycleRuntime, createDaemonOwnerAlerter, importLegacyDaemonSessionStores, registerDaemonHeartbeatWatcher } from './facade-lifecycle.js';
+import { registerUpdateGatewayMethods } from '../control-plane/routes/update.js';
 import { AgentManager } from '../tools/agent/index.js';
 import type { AgentRecord } from '../tools/agent/index.js';
 import type { ConfigManager } from '../config/manager.js';
@@ -257,10 +258,16 @@ export class DaemonServer {
     // A hosted session may be running with nobody attached, so an undeliverable
     // message to one has no screen to appear on. Same alerter, same reason.
     this.hostedSessions?.setOwnerAlerter(createDaemonOwnerAlerter(this.routeBindings, this.surfaceDeliveryHelper));
+    // Whether this daemon is keeping itself current, asked over the wire
+    // rather than read out of a log on the host — see routes/update.ts.
+    registerUpdateGatewayMethods(this.runtimeServices.gatewayMethods, this.lifecycle);
     this.httpRouter.setDaemonStatusProviders({
       // Update/crash receipts, and which node currently reads the inbox.
       collectReceipts: () => this.collectDaemonReceipts(),
       collectClusterStatus: () => this.clusterCoordinator.status(),
+      // The artifact's own release version, when this host ships one. Reported
+      // beside the platform build rather than instead of it.
+      buildVersion: () => this.config.updateArtifact?.version ?? null,
     });
 
     // Wire AgentTaskAdapter to the RuntimeEventBus so task records reach terminal states on agent finish.
