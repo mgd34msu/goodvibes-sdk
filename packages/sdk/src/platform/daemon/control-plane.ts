@@ -19,7 +19,8 @@ import { resolveGatewayPathTemplate, readBodyBounded } from './helpers.js';
 import { SYNTHESIZED_DISPATCH_HEADER, guardSelfDispatch, guardSynthesizedDepth } from './gateway-self-dispatch.js';
 import { summarizeError } from '../utils/error-display.js';
 import { validateInvocationInput } from '../control-plane/invoke-input-validation.js';
-import { isGatewayVerbError } from '../control-plane/routes/gateway-verb-error.js';
+import { readGatewayVerbRefusal } from '../control-plane/routes/gateway-verb-error.js';
+import { buildErrorResponseBody } from './http/error-response.js';
 import { SDKErrorCodes } from '@pellux/goodvibes-errors';
 import {
   buildMissingScopeBody,
@@ -105,6 +106,11 @@ const WS_CALL_MAX_RESPONSE_BYTES = 8 * 1024 * 1024;
  * rather than growing the native buffer without bound to a stalled consumer.
  */
 const WS_EVENT_MAX_BUFFERED_BYTES = 4 * 1024 * 1024;
+
+/** The one envelope every refusal this dispatcher mints is written in. */
+function refusalBody(message: string, code: string, status: number): ReturnType<typeof buildErrorResponseBody> {
+  return buildErrorResponseBody({ message, code, status });
+}
 
 export class DaemonControlPlaneHelper {
   /** Live WS 'call' invocations (full lifetime incl. response buffering). */
@@ -636,13 +642,10 @@ export class DaemonControlPlaneHelper {
       return {
         status: 404,
         ok: false,
-        body: {
-          error: `Unknown gateway method: ${input.methodId}`,
-          // Machine-readable, mirroring the NOT_INVOKABLE convention just below
-          // (validateGatewayInvocation) — the uncataloged-id 404 gets its own code so
-          // no consumer has to string-match "Unknown gateway method".
-          code: SDKErrorCodes.METHOD_NOT_FOUND,
-        },
+        // Machine-readable, mirroring the NOT_INVOKABLE convention just below
+        // (validateGatewayInvocation) — the uncataloged-id 404 gets its own code so
+        // no consumer has to string-match "Unknown gateway method".
+        body: refusalBody(`Unknown gateway method: ${input.methodId}`, SDKErrorCodes.METHOD_NOT_FOUND, 404),
       };
     }
     const denied = this.validateGatewayInvocation(descriptor, input.context);
@@ -656,7 +659,11 @@ export class DaemonControlPlaneHelper {
     if (carriesBody) {
       const invalid = validateInvocationInput(descriptor, input.body);
       if (invalid) {
-        return { status: 400, ok: false, body: { error: invalid.detail, code: invalid.code } };
+        return {
+          status: 400,
+          ok: false,
+          body: refusalBody(invalid.detail, invalid.code, 400),
+        };
       }
     }
     if (this.context.gatewayMethods.hasHandler(input.methodId)) {
@@ -695,27 +702,37 @@ export class DaemonControlPlaneHelper {
         return { status: 200, ok: true, body };
       } catch (error) {
         // A handler-registered verb (fleet.*, checkpoints.*,
-        // sessions.search — see CHANGELOG 1.0.0) may throw a GatewayVerbError to report an honest
-        // caller-error status (400/404) instead of the blanket 500 below —
-        // see routes/gateway-verb-error.ts for why this seam is needed.
-        if (isGatewayVerbError(error)) {
+        // sessions.search — see CHANGELOG 1.0.0) reports an honest caller-error
+        // status (400/403/404) instead of the blanket 500 below by throwing a
+        // refusal — read by shape, so a consuming runtime's own error class
+        // counts too. See routes/gateway-verb-error.ts.
+        const refusal = readGatewayVerbRefusal(error);
+        if (refusal) {
           return {
-            status: error.status,
+            status: refusal.status,
             ok: false,
-            body: { error: error.message, code: error.code },
+            body: refusalBody(refusal.message, refusal.code, refusal.status),
           };
         }
         return {
           status: 500,
           ok: false,
-          body: { error: summarizeError(error) },
+          body: buildErrorResponseBody(summarizeError(error), { status: 500 }),
         };
       } finally {
         this.wsCallsInFlight -= 1;
       }
     }
     if (!descriptor.http) {
-      return { status: 501, ok: false, body: { error: `Gateway method is not invokable: ${input.methodId}` } };
+      // Cataloged, no handler registered here, and no route to synthesize a
+      // request against. The code is the same one `validateGatewayInvocation`
+      // uses for a declared-uninvokable method: from a caller's side both are
+      // "this id exists and this daemon will not dispatch it".
+      return {
+        status: 501,
+        ok: false,
+        body: refusalBody(`Gateway method is not invokable: ${input.methodId}`, SDKErrorCodes.NOT_INVOKABLE, 501),
+      };
     }
     const resolvedPath = resolveGatewayPathTemplate(descriptor.http.path, input.query, input.body);
     // A path routing back to this same methodId would re-enter rather than
@@ -728,7 +745,7 @@ export class DaemonControlPlaneHelper {
         status: 400,
         ok: false,
         body: {
-          error: `Missing path parameter${resolvedPath.missing.length === 1 ? '' : 's'} for ${input.methodId}: ${resolvedPath.missing.join(', ')}`,
+          ...refusalBody(`Missing path parameter${resolvedPath.missing.length === 1 ? '' : 's'} for ${input.methodId}: ${resolvedPath.missing.join(', ')}`, 'INVALID_ARGUMENT', 400),
           missing: [...resolvedPath.missing],
         },
       };
