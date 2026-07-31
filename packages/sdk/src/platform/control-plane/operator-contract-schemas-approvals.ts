@@ -123,3 +123,30 @@ export const APPROVAL_ACTION_OUTPUT_SCHEMA = objectSchema({
   approval: SHARED_APPROVAL_RECORD_SCHEMA,
   recorded: APPROVAL_RECORDED_DECISION_SCHEMA,
 }, ['approval']);
+
+// approvals.raise — a surface CREATING an ask in the shared broker, which no
+// verb could do before (list/claim/approve/deny/cancel could only act on asks
+// the daemon's own in-process callers had raised). `request` is the same ask
+// object every surface already renders. `waitMs` is an optional bounded inline
+// wait for callers that want one round trip; the decision's real channel is the
+// `approval-update` event, and a wait that runs out returns the still-pending
+// record rather than an error.
+export const APPROVAL_RAISE_INPUT_SCHEMA = objectSchema({
+  request: PERMISSION_PROMPT_REQUEST_SCHEMA,
+  sessionId: STRING_SCHEMA,
+  routeId: STRING_SCHEMA,
+  metadata: METADATA_SCHEMA,
+  timeoutMs: NUMBER_SCHEMA,
+  waitMs: NUMBER_SCHEMA,
+}, ['request'], { additionalProperties: false });
+
+// `coalesced` says the ask attached to an identical one already in flight, so
+// the returned record is older than this call and only one prompt exists.
+// `decided` is true only when a decision genuinely landed inside waitMs — a
+// wait that ran out reports false with the record still pending, never a
+// decision nobody made.
+export const APPROVAL_RAISE_OUTPUT_SCHEMA = objectSchema({
+  approval: SHARED_APPROVAL_RECORD_SCHEMA,
+  coalesced: BOOLEAN_SCHEMA,
+  decided: BOOLEAN_SCHEMA,
+}, ['approval', 'coalesced', 'decided'], { additionalProperties: false });

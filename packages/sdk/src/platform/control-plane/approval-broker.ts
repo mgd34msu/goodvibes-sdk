@@ -8,6 +8,7 @@ import type { ControlPlaneSurfaceMessage } from './types.js';
 import { logger } from '../utils/logger.js';
 import { isRecord } from '../utils/record-coerce.js';
 import { resolveApprovalHunkSelection } from './approval-hunk-apply.js';
+import { raiseSharedApproval, type RaisedApproval } from './approval-broker-raise.js';
 
 export type SharedApprovalStatus = 'pending' | 'claimed' | 'approved' | 'denied' | 'cancelled' | 'expired';
 
@@ -363,81 +364,37 @@ export class ApprovalBroker {
     return this.approvals.get(approvalId) ?? null;
   }
 
-  async requestApproval(input: RequestSharedApprovalInput): Promise<PermissionPromptDecision> {
-    await this.start();
-    const now = Date.now();
-
-    // Duplicate in-flight asks coalesce on (session, tool, args): the second
-    // identical ask attaches to the first's pending record — ONE prompt, and
-    // one decision resolves both. No second record, no second local prompt.
-    const coalesceKey = approvalCoalesceKey(input.sessionId, input.request.tool, input.request.args);
-    for (const existing of this.approvals.values()) {
-      if ((existing.status === 'pending' || existing.status === 'claimed')
-        && approvalCoalesceKey(existing.sessionId, existing.request.tool, existing.request.args) === coalesceKey) {
-        const pending = this.pendingResolvers.get(existing.id);
-        if (pending) {
-          return new Promise<PermissionPromptDecision>((resolve) => {
-            pending.resolvers.push(resolve);
-          });
-        }
-      }
-    }
-
-    const approval: SharedApprovalRecord = {
-      id: `approval-${randomUUID().slice(0, 8)}`,
-      callId: input.request.callId,
-      sessionId: input.sessionId,
-      routeId: input.routeId,
-      status: 'pending',
-      request: input.request,
-      createdAt: now,
-      updatedAt: now,
-      ...(input.timeoutMs && input.timeoutMs > 0 ? { expiresAt: now + input.timeoutMs } : {}),
-      metadata: input.metadata ?? {},
-      audit: [buildAudit('created', 'approval-broker', 'service')],
-    };
-    const pendingDecision = new Promise<PermissionPromptDecision>((resolve) => {
-      const timer = input.timeoutMs && input.timeoutMs > 0
-        ? setTimeout(() => {
-            void this.expireApproval(approval.id, `timed out after ${input.timeoutMs}ms`).catch((error: unknown) => {
-              logger.warn('Approval expiration failed', {
-                approvalId: approval.id,
-                error: error instanceof Error ? error.message : String(error),
-              });
-            });
-          }, input.timeoutMs)
-        : undefined;
-      timer?.unref?.();
-      this.pendingResolvers.set(approval.id, { resolvers: [resolve], timer });
+  /**
+   * Raise an ask and hand back BOTH the record it produced and the decision
+   * still to come.
+   *
+   * Two callers want different halves of the same act. The in-process
+   * permission path (`requestApproval`, just below) wants the decision:
+   * it is awaiting a person. The wire path (`approvals.raise`,
+   * routes/approvals-raise.ts) wants the RECORD, immediately — an HTTP request
+   * must not stay open across someone's attention span, and the id returned
+   * here is what ties that caller to the `approval-update` stream where the
+   * decision actually lands. The body lives in approval-broker-raise.ts.
+   *
+   * A `localPrompt` is honoured exactly as before: it runs only for a record
+   * this call actually created (a coalesced ask attaches to a prompt that is
+   * already on screen), after the record is persisted and published, and its
+   * answer resolves the record through the same path a wire decision takes.
+   */
+  async raiseApproval(input: RequestSharedApprovalInput): Promise<RaisedApproval> {
+    const raised = await raiseSharedApproval(input, {
+      start: () => this.start(),
+      approvals: this.approvals,
+      pendingResolvers: this.pendingResolvers,
+      persist: () => this.persist(),
+      publish: (approval) => this.publish(approval),
+      expire: (approvalId, note) => this.expireApproval(approvalId, note),
+      buildAudit,
+      coalesceKey: approvalCoalesceKey,
     });
-    this.approvals.set(approval.id, approval);
-    try {
-      await this.persist();
-    } catch (error) {
-      const pending = this.pendingResolvers.get(approval.id);
-      if (pending) {
-        if (pending.timer) clearTimeout(pending.timer);
-        this.pendingResolvers.delete(approval.id);
-      }
-      this.approvals.delete(approval.id);
-      // The record is out of the map; get it out of the file too, explicitly.
-      //
-      // A write that failed did not necessarily leave the file untouched by
-      // this record: a write queued BEHIND it captures the map when it runs,
-      // and whether that capture happens before or after the delete above is a
-      // question about microtask ordering, which is not a thing a payment
-      // record's durability should rest on. Writing the corrected map settles
-      // it. If this write fails too the store is simply unavailable, and the
-      // caller is already being told that by the error below — so its own
-      // failure is swallowed rather than replacing the real one.
-      await this.persist().catch(() => undefined);
-      throw error;
-    }
-    this.publish(approval);
-
-    if (input.localPrompt) {
+    if (input.localPrompt && !raised.coalesced) {
       void input.localPrompt(input.request)
-        .then((decision) => this.resolveApproval(approval.id, {
+        .then((decision) => this.resolveApproval(raised.approval.id, {
           approved: decision.approved,
           remember: decision.remember,
           rememberTier: decision.rememberTier,
@@ -447,12 +404,16 @@ export class ApprovalBroker {
           actorSurface: input.localPromptSurface ?? 'tui',
         }))
         .catch((error) => logger.warn('Local approval prompt failed', {
-          approvalId: approval.id,
+          approvalId: raised.approval.id,
           error: error instanceof Error ? error.message : String(error),
         }));
     }
+    return raised;
+  }
 
-    return pendingDecision;
+  /** Raise an ask and wait for the answer — the in-process permission path. */
+  async requestApproval(input: RequestSharedApprovalInput): Promise<PermissionPromptDecision> {
+    return (await this.raiseApproval(input)).decision;
   }
 
   async claimApproval(approvalId: string, actor: string, actorSurface = 'web', note?: string): Promise<SharedApprovalRecord | null> {

@@ -557,6 +557,83 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       ]
     }
   },
+  "approvals.raise": {
+    "methodId": "approvals.raise",
+    "http": null,
+    "status": 200,
+    "body": {
+      "approval": {
+        "id": "sample",
+        "callId": "sample",
+        "sessionId": "sample",
+        "routeId": "sample",
+        "status": "pending",
+        "request": {
+          "callId": "sample",
+          "tool": "sample",
+          "args": {},
+          "category": "read",
+          "analysis": {
+            "classification": "sample",
+            "riskLevel": "low",
+            "summary": "sample",
+            "reasons": [
+              "sample"
+            ],
+            "target": "sample",
+            "targetKind": "command",
+            "surface": "filesystem",
+            "blastRadius": "local",
+            "sideEffects": [
+              "sample"
+            ],
+            "host": "sample"
+          },
+          "workingDirectory": "sample",
+          "attribution": {
+            "kind": "background-agent",
+            "agentId": "sample",
+            "template": "sample"
+          },
+          "rememberOptions": [
+            {
+              "tier": "session",
+              "label": "sample",
+              "detail": "sample"
+            }
+          ]
+        },
+        "createdAt": 0,
+        "updatedAt": 0,
+        "claimedBy": "sample",
+        "claimedAt": 0,
+        "resolvedAt": 0,
+        "resolvedBy": "sample",
+        "decision": {
+          "approved": false,
+          "remember": false,
+          "rememberTier": "session",
+          "reason": "sample",
+          "modifiedArgs": {}
+        },
+        "fixSessionId": "sample",
+        "fixSessionError": "sample",
+        "metadata": {},
+        "audit": [
+          {
+            "id": "sample",
+            "action": "created",
+            "actor": "sample",
+            "actorSurface": "sample",
+            "createdAt": 0,
+            "note": "sample"
+          }
+        ]
+      },
+      "coalesced": false,
+      "decided": false
+    }
+  },
   "artifacts.content.get": {
     "methodId": "artifacts.content.get",
     "http": {
@@ -5061,6 +5138,18 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       "daemonOwned": false
     }
   },
+  "credentials.delete": {
+    "methodId": "credentials.delete",
+    "http": null,
+    "status": 200,
+    "body": {
+      "success": false,
+      "key": "sample",
+      "secretKey": "sample",
+      "scope": "sample",
+      "cleared": false
+    }
+  },
   "credentials.get": {
     "methodId": "credentials.get",
     "http": {
@@ -5082,6 +5171,21 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           "refSource": "sample"
         }
       ]
+    }
+  },
+  "credentials.set": {
+    "methodId": "credentials.set",
+    "http": null,
+    "status": 200,
+    "body": {
+      "success": false,
+      "key": "sample",
+      "secretKey": "sample",
+      "scope": "sample",
+      "reference": "sample",
+      "configScope": "sample",
+      "ownership": "sample",
+      "credentialScope": "sample"
     }
   },
   "continuity.snapshot": {
