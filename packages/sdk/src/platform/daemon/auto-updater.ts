@@ -91,14 +91,27 @@ export interface DaemonInstalledFile {
 }
 
 /**
- * The set of files a daemon update owns: the daemon binary, plus the app
- * binary and the sqlite-vec addon when they are installed beside it — they
- * travel with the daemon, so an update refreshes any that are present in the
- * same verified pass and never leaves a mismatched pair installed.
+ * The set of files a daemon update owns: the daemon binary, plus the
+ * sqlite-vec addon when it is installed beside it — the addon is compiled
+ * against the same build and ships in the same release, so an update refreshes
+ * it in the same verified pass and never leaves a mismatched pair installed.
+ *
+ * THE TERMINAL APP BINARY IS NOT IN THIS SET, deliberately. It used to be:
+ * both binaries were built and released from the terminal app's repository, so
+ * one release carried both and refreshing the pair together was the only way to
+ * keep them matched. The daemon is now its own product with its own repository
+ * and its own release line, and a daemon-repository release publishes no
+ * `goodvibes-<os>-<arch>` asset at all. A daemon that still claimed the app
+ * binary would look for an asset that does not exist, and — worse, if one ever
+ * did appear under that name — would overwrite a terminal app that updates
+ * itself from a different repository on a different version line. Each product
+ * updates its own binary now; `goodvibes` sitting in the same directory is a
+ * neighbour, not cargo.
  *
  * One source of truth, shared by the update swap and the crash-loop rollback,
  * so the files a bad update replaced are exactly the files a rollback
- * restores.
+ * restores. (A rollback therefore also leaves the app binary alone: it restores
+ * only what the update it is undoing actually replaced.)
  */
 export function resolveDaemonInstalledFiles(location: DaemonUpdateInstallLocation): DaemonInstalledFile[] {
   const io = location.io;
@@ -108,10 +121,6 @@ export function resolveDaemonInstalledFiles(location: DaemonUpdateInstallLocatio
   const files: DaemonInstalledFile[] = [
     { label: 'daemon binary', path: location.execPath, assetName: artifacts?.daemon ?? null, executable: true },
   ];
-  const appPath = join(execDir, 'goodvibes');
-  if (exists(appPath)) {
-    files.push({ label: 'app binary', path: appPath, assetName: artifacts?.app ?? null, executable: true });
-  }
   const addon = resolveSqliteVecAsset(location.platform, location.arch);
   if (addon) {
     const addonPath = join(execDir, 'lib', addon.dirName, addon.fileName);
