@@ -413,6 +413,10 @@
       "types": "./dist/platform/runtime/index.d.ts",
       "import": "./dist/platform/runtime/index.js"
     },
+    "./platform/runtime/client": {
+      "types": "./dist/platform/runtime/client/index.d.ts",
+      "import": "./dist/platform/runtime/client/index.js"
+    },
     "./platform/runtime/client-services": {
       "types": "./dist/platform/runtime/client-services.d.ts",
       "import": "./dist/platform/runtime/client-services.js"
