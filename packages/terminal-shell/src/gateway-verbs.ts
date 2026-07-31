@@ -29,6 +29,8 @@ import {
   type ArchivableProcessRegistry,
   type ProcessRegistryDeps,
 } from '@pellux/goodvibes-sdk/platform/runtime/fleet';
+import { ObservedAgentSource } from '@pellux/goodvibes-sdk/platform/runtime/fleet/observed';
+import { computeUsageCostUsd, type ProviderRegistry } from '@pellux/goodvibes-sdk/platform/providers';
 
 /**
  * Attach handlers for the ws-only gateway verb groups (fleet.* / checkpoints.* /
@@ -62,6 +64,41 @@ export function attachWsOnlyGatewayVerbHandlers(
  */
 export function createArchivableFleetRegistry(deps: ProcessRegistryDeps): ArchivableProcessRegistry {
   return withFleetArchive(createProcessRegistry(deps));
+}
+
+export interface FleetServicesDeps
+  extends Omit<ProcessRegistryDeps, 'observedAgents' | 'priceUsage'> {
+  /**
+   * Turns on the observed foreign-agent source: externally-launched coding-agent
+   * sessions observed read-only on the host fold in as 'observed-external' rows
+   * (visibility + steer; never counted against fleet.maxSize, never stopped).
+   * The host that owns the scan sets it; a front-end reading that host's
+   * snapshot leaves it off so nothing double-scans. Absence ⇒ a quiet empty set.
+   */
+  readonly observeExternalAgents?: boolean | undefined;
+  /** Backs the honest pricing resolver folded into `priceUsage` below. */
+  readonly providerRegistry: Pick<ProviderRegistry, 'resolveModelPricing'>;
+}
+
+/**
+ * The archive-aware fleet registry plus the two decisions every front-end makes
+ * around it: whether this process observes foreign agents, and how a row's
+ * usage becomes money.
+ */
+export function createFleetServices(
+  deps: FleetServicesDeps,
+): { processRegistry: ArchivableProcessRegistry } {
+  const { observeExternalAgents, providerRegistry, ...registryDeps } = deps;
+  const observedAgents = observeExternalAgents ? new ObservedAgentSource() : undefined;
+  const processRegistry = createArchivableFleetRegistry({
+    ...registryDeps,
+    observedAgents,
+    // Honest-unpriced through the ONE pricing resolver (manual -> registration
+    // -> provider-served -> catalog -> unknown); unknown/subscription yields
+    // null, never $0.
+    priceUsage: (model, usage) => (model ? computeUsageCostUsd(providerRegistry.resolveModelPricing(model), usage) : null),
+  });
+  return { processRegistry };
 }
 
 export type { GatewayVerbGroupDeps, ProcessRegistryDeps, ArchivableProcessRegistry };

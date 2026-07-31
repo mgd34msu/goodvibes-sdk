@@ -214,7 +214,11 @@ export function renderDiscovered(groups: readonly DiscoveredGroup[], now: number
  * instead of an escape sequence it acts on.
  */
 export function clipboardEscapeSequence(value: string): string {
-  return `\x1b]52;c;${Buffer.from(value, 'utf8').toString('base64')}\x07`;
+  // The introducer and terminator are spelled as escapes, not written as raw
+  // control bytes: a literal ESC/BEL in source survives nothing that treats the
+  // file as text, and a sequence missing either one is not an escape sequence
+  // at all — it is the payload printed to the screen.
+  return `\u001b]52;c;${Buffer.from(value, 'utf8').toString('base64')}\u0007`;
 }
 
 export interface JoinKeyRendering {
