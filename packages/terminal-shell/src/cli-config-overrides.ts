@@ -16,7 +16,22 @@ const CONFIG_SCHEMA_BY_KEY = new Map<string, ConfigSetting>(
   CONFIG_SCHEMA.map((setting) => [setting.key, setting]),
 );
 
-function parseConfigOverrideValue(value: string): unknown {
+/**
+ * Read a settings value as a command line writes it.
+ *
+ * Two entry points need this and must agree: `--config key=value`, which
+ * arrives as one string and is split here, and a `config set <key> <value>`
+ * command, which arrives with the halves already apart. If they coerce
+ * differently then `--config x=false` and `config set x false` write different
+ * things into the same key, which is the sort of divergence nobody notices
+ * until a boolean setting is mysteriously the string "false".
+ *
+ * The order is deliberate: JSON first, so `[1,2]`, `{"a":1}`, `"3"` and `null`
+ * all mean what they look like; then the three bare literals a shell user
+ * actually types (`true`, `false`, a number); then the raw string, returned
+ * un-trimmed because trailing space can be significant in a string value.
+ */
+export function parseConfigValueText(value: string): unknown {
   const trimmed = value.trim();
   if (trimmed.length === 0) return '';
   try {
@@ -183,7 +198,7 @@ export function applyRuntimeConfigOverrides(
     const key = override.slice(0, index) as ConfigKey;
     const rawValue = override.slice(index + 1);
     try {
-      applyRuntimeConfigValue(configManager, key, parseConfigOverrideValue(rawValue));
+      applyRuntimeConfigValue(configManager, key, parseConfigValueText(rawValue));
     } catch (error) {
       errors.push(error instanceof Error ? `Invalid --config ${override}: ${error.message}` : `Invalid --config ${override}`);
     }

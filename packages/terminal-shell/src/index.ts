@@ -173,6 +173,7 @@ export {
 } from './cli-feature-settings.js';
 
 export {
+  parseConfigValueText,
   applyRuntimeConfigDefault,
   applyTerminalRuntimeConfigDefaults,
   applyConfiguredHitlMode,
