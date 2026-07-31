@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `486`
+- Methods: `489`
 - Events: `34`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -86146,6 +86146,408 @@ Return registered channel and control surfaces.
 ```
 
 ### runtime
+
+#### `devices.artifacts.list`
+
+The camera and screen captures still inside their retention window, newest first, with when each was captured, when it will be deleted, and the reason the request stated. Expired captures are never listed — retention is enforced by the store, not by this verb filtering them out of a longer list.
+
+- Title: `List Retained Device Captures`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/devices/artifacts`
+- Scopes: `read:remote`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "nodeId": {
+      "type": "string"
+    },
+    "limit": {
+      "type": "number"
+    }
+  },
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "artifactId": {
+            "type": "string"
+          },
+          "nodeId": {
+            "type": "string"
+          },
+          "capabilityId": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "mediaType": {
+            "type": "string"
+          },
+          "byteLength": {
+            "type": "number"
+          },
+          "capturedAt": {
+            "type": "number"
+          },
+          "expiresAt": {
+            "type": "number"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "daemonPath": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artifactId",
+          "nodeId",
+          "capabilityId",
+          "kind",
+          "mediaType",
+          "byteLength",
+          "capturedAt",
+          "expiresAt",
+          "reason",
+          "daemonPath"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "retained": {
+      "type": "number"
+    },
+    "retentionHours": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "artifacts",
+    "retained",
+    "retentionHours"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `devices.artifacts.read`
+
+Return one retained capture's bytes, base64-encoded, for a caller that is not running on the daemon host and so cannot open the file itself. The store re-hashes the bytes against the digest recorded when the capture was retained and refuses to serve a mismatch, so a torn or half-written file is never handed back as if it were the picture that was taken. A capture that is gone — expired, swept, missing, or corrupted — is an honest 404 naming which of those it was.
+
+- Title: `Read a Retained Device Capture`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/devices/artifacts/{artifactId}`
+- Scopes: `read:remote`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "artifactId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifactId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "artifact": {
+      "type": "object",
+      "properties": {
+        "artifactId": {
+          "type": "string"
+        },
+        "nodeId": {
+          "type": "string"
+        },
+        "capabilityId": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "mediaType": {
+          "type": "string"
+        },
+        "byteLength": {
+          "type": "number"
+        },
+        "capturedAt": {
+          "type": "number"
+        },
+        "expiresAt": {
+          "type": "number"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "daemonPath": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifactId",
+        "nodeId",
+        "capabilityId",
+        "kind",
+        "mediaType",
+        "byteLength",
+        "capturedAt",
+        "expiresAt",
+        "reason",
+        "daemonPath"
+      ],
+      "additionalProperties": false
+    },
+    "dataBase64": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifact",
+    "dataBase64"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `devices.capability.request`
+
+Ask one paired device node for one capability — a photo, a screen capture, a location fix, its clipboard, a notification, a link to open, a buzz — and return what came back. The reason is required and is shown VERBATIM on the confirmation prompt, so the person deciding sees what the caller said it was for. Every gate lives in the daemon-owned device runtime and this verb re-decides none of them: a durable grant is re-read from disk (never cached), a request with no grant asks the person on whatever surface they are looking at, a capability turned off by configuration is refused with the configuration key that turned it off, and a capture is retained under the configured retention window and disclosed. A refusal is returned as ok:false with the reason and a machine-readable refusal code — it is an answer, not an error. A capability that produces a capture returns an artifact REFERENCE; fetch the bytes with devices.artifacts.read.
+
+- Title: `Request a Capability From a Paired Device`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/devices/capability/request`
+- Scopes: `write:remote`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "nodeId": {
+      "type": "string"
+    },
+    "capabilityId": {
+      "type": "string"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {},
+          {
+            "type": "array",
+            "items": {}
+          }
+        ]
+      }
+    },
+    "sessionId": {
+      "type": "string"
+    },
+    "timeoutMs": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "nodeId",
+    "capabilityId",
+    "reason"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "ok": {
+      "type": "boolean"
+    },
+    "nodeId": {
+      "type": "string"
+    },
+    "capabilityId": {
+      "type": "string"
+    },
+    "capabilityTitle": {
+      "type": "string"
+    },
+    "authority": {
+      "type": "string"
+    },
+    "grantId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "data": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": {}
+        },
+        {
+          "type": "array",
+          "items": {}
+        }
+      ]
+    },
+    "artifact": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "artifactId": {
+              "type": "string"
+            },
+            "nodeId": {
+              "type": "string"
+            },
+            "capabilityId": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string"
+            },
+            "mediaType": {
+              "type": "string"
+            },
+            "byteLength": {
+              "type": "number"
+            },
+            "capturedAt": {
+              "type": "number"
+            },
+            "expiresAt": {
+              "type": "number"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "daemonPath": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "artifactId",
+            "nodeId",
+            "capabilityId",
+            "kind",
+            "mediaType",
+            "byteLength",
+            "capturedAt",
+            "expiresAt",
+            "reason",
+            "daemonPath"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "refusal": {
+      "type": "string"
+    },
+    "detail": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "ok",
+    "nodeId",
+    "capabilityId",
+    "capabilityTitle",
+    "authority",
+    "grantId",
+    "artifact",
+    "refusal",
+    "detail"
+  ],
+  "additionalProperties": false
+}
+```
 
 #### `devices.grants.list`
 

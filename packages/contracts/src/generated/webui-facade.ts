@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.21.0
- * Methods: 486 total, 428 REST-routed, 58 ws-only invoke.
+ * Methods: 489 total, 431 REST-routed, 58 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -1436,6 +1436,18 @@ export const WEBUI_METHOD_ROUTES: Readonly<Record<string, WebuiRouteDefinition>>
     "method": "GET",
     "path": "/api/surfaces"
   },
+  "devices.artifacts.list": {
+    "method": "GET",
+    "path": "/api/devices/artifacts"
+  },
+  "devices.artifacts.read": {
+    "method": "GET",
+    "path": "/api/devices/artifacts/{artifactId}"
+  },
+  "devices.capability.request": {
+    "method": "POST",
+    "path": "/api/devices/capability/request"
+  },
   "devices.grants.list": {
     "method": "GET",
     "path": "/api/devices/grants"
@@ -2222,6 +2234,9 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "routes.bindings.update": "rest",
   "routes.snapshot": "rest",
   "surfaces.list": "rest",
+  "devices.artifacts.list": "rest",
+  "devices.artifacts.read": "rest",
+  "devices.capability.request": "rest",
   "devices.grants.list": "rest",
   "devices.grants.revoke": "rest",
   "devices.housekeeping.run": "rest",
@@ -18575,6 +18590,83 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "metadata": {}
         }
       ]
+    }
+  },
+  "devices.artifacts.list": {
+    "input": {
+      "nodeId": "sample",
+      "limit": 0
+    },
+    "output": {
+      "artifacts": [
+        {
+          "artifactId": "sample",
+          "nodeId": "sample",
+          "capabilityId": "sample",
+          "kind": "sample",
+          "mediaType": "sample",
+          "byteLength": 0,
+          "capturedAt": 0,
+          "expiresAt": 0,
+          "reason": "sample",
+          "daemonPath": "sample"
+        }
+      ],
+      "retained": 0,
+      "retentionHours": 0
+    }
+  },
+  "devices.artifacts.read": {
+    "input": {
+      "artifactId": "sample"
+    },
+    "output": {
+      "artifact": {
+        "artifactId": "sample",
+        "nodeId": "sample",
+        "capabilityId": "sample",
+        "kind": "sample",
+        "mediaType": "sample",
+        "byteLength": 0,
+        "capturedAt": 0,
+        "expiresAt": 0,
+        "reason": "sample",
+        "daemonPath": "sample"
+      },
+      "dataBase64": "sample"
+    }
+  },
+  "devices.capability.request": {
+    "input": {
+      "nodeId": "sample",
+      "capabilityId": "sample",
+      "reason": "sample",
+      "input": {},
+      "sessionId": "sample",
+      "timeoutMs": 0
+    },
+    "output": {
+      "ok": false,
+      "nodeId": "sample",
+      "capabilityId": "sample",
+      "capabilityTitle": "sample",
+      "authority": "sample",
+      "grantId": "sample",
+      "data": "sample",
+      "artifact": {
+        "artifactId": "sample",
+        "nodeId": "sample",
+        "capabilityId": "sample",
+        "kind": "sample",
+        "mediaType": "sample",
+        "byteLength": 0,
+        "capturedAt": 0,
+        "expiresAt": 0,
+        "reason": "sample",
+        "daemonPath": "sample"
+      },
+      "refusal": "sample",
+      "detail": "sample"
     }
   },
   "devices.grants.list": {

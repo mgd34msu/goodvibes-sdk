@@ -125,6 +125,27 @@ export function parseDeviceCapabilityWorkResult(payload: unknown): DeviceCapabil
   };
 }
 
+/**
+ * Encode capture bytes the way this contract carries them — the exact inverse
+ * of `decodeDeviceCapabilityMedia`.
+ *
+ * The node encodes a capture to reach the host; the host encodes the same bytes
+ * again to reach a surface that is not on its disk (devices.artifacts.read).
+ * One definition of "base64 of a capture" means those two directions cannot
+ * drift apart, and it stays runtime-neutral: `btoa` exists in a browser node
+ * and in the daemon alike, where `Buffer` does not.
+ */
+export function encodeDeviceCapabilityMedia(bytes: Uint8Array): string {
+  let binary = '';
+  // Chunked so a multi-megabyte screenshot does not blow the argument limit
+  // that spreading the whole array into String.fromCharCode would hit.
+  const chunkSize = 8192;
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+  }
+  return btoa(binary);
+}
+
 /** Decode a completion's media payload into bytes, or null when there is none. */
 export function decodeDeviceCapabilityMedia(result: DeviceCapabilityWorkResult): Uint8Array | null {
   if (!result.mediaBase64) return null;
