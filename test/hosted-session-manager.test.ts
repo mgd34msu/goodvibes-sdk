@@ -52,6 +52,9 @@ async function declineEverything(input: { readonly request: { readonly tool: str
 function buildManager(options?: {
   readonly detachPolicy?: HostedDetachPolicy | undefined;
   readonly maxSessions?: number | undefined;
+  readonly attachmentTtlMs?: number | undefined;
+  readonly now?: (() => number) | undefined;
+  readonly listClients?: (() => readonly { readonly id: string }[]) | undefined;
 }): HostedSessionManager {
   const runtimeBus = new RuntimeEventBus();
   const configManager = new ConfigManager({
@@ -84,14 +87,17 @@ function buildManager(options?: {
     settings: {
       detachPolicy: () => options?.detachPolicy ?? 'kill',
       maxSessions: () => options?.maxSessions ?? 8,
+      attachmentTtlMs: () => options?.attachmentTtlMs ?? 10 * 60_000,
     },
     runtimeBus,
     systemPrompt: ({ workspaceRoot }) => `hosted in ${workspaceRoot}`,
     liveTurns,
     isWorkspaceUsable: () => true,
+    ...(options?.now === undefined ? {} : { now: options.now }),
   });
   manager.setEventPublisher({
     publishEvent: (_event, payload) => { published.push(payload as HostedSessionUpdatePayload); },
+    ...(options?.listClients === undefined ? {} : { listClients: options.listClients }),
   });
   return manager;
 }
@@ -438,5 +444,115 @@ test('a steer queued on the spine reaches the hosted loop, and the participant s
   expect(consumed).toContain(`${created.id}:input-1`);
   // Registered at create, and re-registered on every tick since.
   expect(registrations.filter((entry) => entry.sessionId === created.id).length).toBeGreaterThan(1);
+  await manager.dispose();
+});
+
+// ---------------------------------------------------------------------------
+// Attachment leases
+// ---------------------------------------------------------------------------
+//
+// An attachment is a claim about a live process, and detach was the only thing
+// that ever ended one. A client that crashed or closed its tab never calls it,
+// so a kill-policy session — the default — waited for a departure that was
+// never coming, holding a workspace floor and a model connection for nobody.
+
+test('an attachment nobody renews lapses, and a kill-policy session ends with it', async () => {
+  let clock = 1_000;
+  const manager = buildManager({ detachPolicy: 'kill', attachmentTtlMs: 60_000, now: () => clock });
+  await manager.init();
+  const created = await manager.create({ workspaceRoot: workspace, clientId: 'crashed-tui' });
+  expect(created.attachedClients).toEqual(['crashed-tui']);
+
+  // Still inside the lease: nothing happens.
+  clock += 30_000;
+  await manager.reapAttachments();
+  expect(manager.get(created.id)?.status).toBe('idle');
+
+  clock += 40_000;
+  await manager.reapAttachments();
+
+  const after = manager.get(created.id);
+  expect(after?.status).toBe('terminated');
+  expect(after?.terminatedReason).toBe('detached');
+  expect(after?.attachedClients).toEqual([]);
+  expect(liveTurns.hasSession(created.id)).toBe(false);
+  await manager.dispose();
+});
+
+test('a survive-policy session outlives a lapsed attachment, idle and reattachable', async () => {
+  let clock = 1_000;
+  const manager = buildManager({ detachPolicy: 'survive', attachmentTtlMs: 60_000, now: () => clock });
+  await manager.init();
+  const created = await manager.create({ workspaceRoot: workspace, clientId: 'closed-tab' });
+
+  clock += 61_000;
+  await manager.reapAttachments();
+
+  const after = manager.get(created.id);
+  expect(after?.status).toBe('idle');
+  expect(after?.attachedClients).toEqual([]);
+  await manager.dispose();
+});
+
+test('attaching again renews the lease, so a client that keeps showing up is never reaped', async () => {
+  let clock = 1_000;
+  const manager = buildManager({ detachPolicy: 'kill', attachmentTtlMs: 60_000, now: () => clock });
+  await manager.init();
+  const created = await manager.create({ workspaceRoot: workspace, clientId: 'a' });
+
+  for (let round = 0; round < 4; round += 1) {
+    clock += 50_000;
+    await manager.attach(created.id, 'a');
+    await manager.reapAttachments();
+  }
+
+  expect(manager.get(created.id)?.status).toBe('idle');
+  expect(manager.get(created.id)?.attachedClients).toEqual(['a']);
+  await manager.dispose();
+});
+
+test('a client the control plane can still see renews without any call of its own', async () => {
+  let clock = 1_000;
+  const connected = new Set(['web-1']);
+  const manager = buildManager({
+    detachPolicy: 'kill',
+    attachmentTtlMs: 60_000,
+    now: () => clock,
+    listClients: () => [...connected].map((id) => ({ id })),
+  });
+  await manager.init();
+  const created = await manager.create({ workspaceRoot: workspace, clientId: 'web-1' });
+
+  // Watching a long turn in silence: no attach call, no detach, still there.
+  clock += 200_000;
+  await manager.reapAttachments();
+  expect(manager.get(created.id)?.status).toBe('idle');
+
+  // The stream drops. Now the same silence means the client is gone.
+  connected.clear();
+  clock += 61_000;
+  await manager.reapAttachments();
+  expect(manager.get(created.id)?.status).toBe('terminated');
+  expect(manager.get(created.id)?.terminatedReason).toBe('detached');
+  await manager.dispose();
+});
+
+test('a per-attachment leaseMs is honored, and clamped to the floor', async () => {
+  let clock = 1_000;
+  const manager = buildManager({ detachPolicy: 'survive', attachmentTtlMs: 10 * 60_000, now: () => clock });
+  await manager.init();
+  const created = await manager.create({ workspaceRoot: workspace, clientId: 'a' });
+  // One second is below the 30s floor and is raised to it, not honored literally.
+  await manager.attach(created.id, 'short', { leaseMs: 1_000 });
+
+  clock += 20_000;
+  await manager.reapAttachments();
+  expect(manager.get(created.id)?.attachedClients).toContain('short');
+
+  clock += 15_000;
+  await manager.reapAttachments();
+  expect(manager.get(created.id)?.attachedClients).not.toContain('short');
+  // The default-lease attachment is untouched by the short one lapsing.
+  expect(manager.get(created.id)?.attachedClients).toContain('a');
   await manager.dispose();
 });

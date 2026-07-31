@@ -254,6 +254,9 @@ export class DaemonServer {
       stopGracefully: () => this.stop(), // update/rollback restarts take the normal stop path, so shutdown hooks fire
       alertOwner: createDaemonOwnerAlerter(this.routeBindings, this.surfaceDeliveryHelper),
     });
+    // A hosted session may be running with nobody attached, so an undeliverable
+    // message to one has no screen to appear on. Same alerter, same reason.
+    this.hostedSessions?.setOwnerAlerter(createDaemonOwnerAlerter(this.routeBindings, this.surfaceDeliveryHelper));
     this.httpRouter.setDaemonStatusProviders({
       // Update/crash receipts, and which node currently reads the inbox.
       collectReceipts: () => this.collectDaemonReceipts(),

@@ -437,7 +437,7 @@ export interface OperatorMethodInputMap {
   "sessions.detach": { sessionId: string; surfaceId: string; };
   "sessions.followUp": ({ body: string; surfaceKind?: string; surfaceId?: string; routing?: { providerId?: string; modelId?: string; providerSelection?: "concrete" | "inherit-current" | "synthetic"; providerFailurePolicy?: "fail" | "ordered-fallbacks"; fallbackModels?: readonly string[]; helperModel?: { providerId: string; modelId: string; }; executionIntent?: { riskClass?: "dangerous" | "elevated" | "safe"; requiresApproval?: boolean; networkPolicy?: "allow" | "deny" | "inherit" | "scoped"; filesystemPolicy?: "inherit" | "isolated" | "read-only" | "workspace-write"; }; tools?: readonly string[]; reasoningEffort?: "high" | "instant" | "low" | "max" | "medium" | "minimal" | "none" | "xhigh"; }; } & { readonly [key: string]: unknown });
   "sessions.get": { sessionId: string; };
-  "sessions.hosted.attach": { sessionId: string; clientId: string; };
+  "sessions.hosted.attach": { sessionId: string; clientId: string; leaseMs?: number; };
   "sessions.hosted.create": { workspaceRoot: string; title?: string; modelId?: string; initialPrompt?: string; detachPolicy?: "kill" | "survive"; clientId?: string; };
   "sessions.hosted.detach": { sessionId: string; clientId: string; };
   "sessions.hosted.kill": { sessionId: string; };

@@ -6155,6 +6155,7 @@ export interface OperatorMethodInputMap {
     "sessions.hosted.attach": {
         sessionId: string;
         clientId: string;
+        leaseMs?: number;
     };
     // (undocumented)
     "sessions.hosted.create": {

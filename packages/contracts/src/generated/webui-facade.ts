@@ -19744,7 +19744,8 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
   "sessions.hosted.attach": {
     "input": {
       "sessionId": "sample",
-      "clientId": "sample"
+      "clientId": "sample",
+      "leaseMs": 0
     },
     "output": {
       "session": {

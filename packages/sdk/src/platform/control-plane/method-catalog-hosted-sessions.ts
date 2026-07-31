@@ -93,7 +93,7 @@ export const builtinGatewayHostedSessionMethodDescriptors: readonly GatewayMetho
   methodDescriptor({
     id: 'sessions.hosted.attach',
     title: 'Attach to a Daemon-Hosted Session',
-    description: 'Join a hosted session and receive its transcript so far, so a client that was never connected — or one reconnecting after the daemon restarted — renders what it missed instead of an empty screen. A session restored from disk has its loop rebuilt on this call, with a system line in the transcript stating that its in-flight turn did not survive the restart. Live output continues on the `turn` and `tools` event domains, filtered on this session id. Attaching is what keeps a `kill`-policy session alive: the policy is applied when the LAST client detaches. ws-only invoke verb; no REST binding.',
+    description: 'Join a hosted session and receive its transcript so far, so a client that was never connected — or one reconnecting after the daemon restarted — renders what it missed instead of an empty screen. A session restored from disk has its loop rebuilt on this call, with a system line in the transcript stating that its in-flight turn did not survive the restart. Live output continues on the `turn` and `tools` event domains, filtered on this session id. Attaching is what keeps a `kill`-policy session alive: the policy is applied when the LAST client detaches. An attachment carries a LEASE — `hostedSessions.attachmentTtlMs`, ten minutes by default, or `leaseMs` for this attachment alone — because a client that crashed or closed its tab never calls detach, and a claim nothing expires would hold a kill-policy session open forever. Calling attach again with the same `clientId` renews it, and a client whose control-plane connection is still open renews automatically, so an attached client watching a long turn in silence is never reaped. When the last attachment lapses the session is treated as detached and its policy decides. ws-only invoke verb; no REST binding.',
     category: 'sessions',
     transport: ['ws'],
     scopes: ['write:sessions'],
@@ -103,6 +103,7 @@ export const builtinGatewayHostedSessionMethodDescriptors: readonly GatewayMetho
     inputSchema: objectSchema({
       sessionId: STRING_SCHEMA,
       clientId: STRING_SCHEMA,
+      leaseMs: NUMBER_SCHEMA,
     }, ['sessionId', 'clientId']),
     outputSchema: objectSchema({
       session: HOSTED_SESSION_RECORD_SCHEMA,

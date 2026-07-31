@@ -115,6 +115,7 @@ export function composeHostedSessions(input: HostedSessionCompositionInput): Hos
     settings: {
       detachPolicy: () => config.get('hostedSessions.detachPolicy'),
       maxSessions: () => config.get('hostedSessions.maxSessions'),
+      attachmentTtlMs: () => config.get('hostedSessions.attachmentTtlMs'),
     },
     runtimeBus: input.runtimeBus,
     systemPrompt: input.options.systemPrompt ?? defaultHostedSystemPrompt,
