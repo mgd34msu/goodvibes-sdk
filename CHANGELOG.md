@@ -4,6 +4,75 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 ### Added
 
+- **Daemon-hosted sessions (`platform/hosted-sessions`, `sessions.hosted.*`).**
+  A conversation loop composed INSIDE the daemon: the same `Orchestrator`, the
+  same `registerAllTools` registry rooted at a workspace, the same permission
+  manager with whatever ask seam the product wired. Until now the daemon could
+  SEE a surface's sessions and steer them, but the loop always ran in the client,
+  so closing the client ended the work.
+
+  One workspace floor is shared by every session in that workspace, not one per
+  session. The floor's cost is a provider model-discovery pass, config file
+  watchers, a plugin manager, an MCP registry and a project index — per-machine
+  or per-workspace truths that duplicate badly, and two sessions editing one tree
+  with two file caches would disagree about the file they both just wrote. What
+  differs per session is the conversation, the queued mid-turn messages, the
+  tool-call aborts and context accounting, and that is what the per-session
+  `Orchestrator` and its own tool registry own. Floors are reference-counted and
+  released when their last session goes.
+
+  Five verbs, lifecycle only: `sessions.hosted.create/attach/detach/kill/list`.
+  Driving a hosted turn uses the verbs that already exist — `sessions.steer`,
+  `sessions.followUp`, `sessions.toolCalls.cancel`,
+  `sessions.queuedMessages.*` — which now resolve a hosted session's id the same
+  way they resolve the daemon's local runtime (`SessionLiveTurnControlsHolder`
+  gained per-session bindings). Streamed tokens and tool events need no new
+  channel either: the hosted loop is the ordinary orchestrator, so it emits them
+  on the `turn` and `tools` runtime domains stamped with the hosted session's id,
+  and the control-plane SSE stream already forwards those. The new
+  `control.hosted_session_update` event carries lifecycle only.
+
+  **Detach is a setting, and its default preserves what people expect.**
+  `hostedSessions.detachPolicy` defaults to `kill` — closing a client has always
+  ended its work — and `survive` is the opt-in that makes a session outlive both
+  the client and a daemon restart. A session may override the setting when it is
+  created, and every record reports the policy that would apply on the next
+  detach, so a client can show what leaving will do before it leaves. Also
+  configurable: `hostedSessions.maxSessions`, `maxMessagesPerSession`,
+  `terminatedRetentionMs`. All four are daemon-owned.
+
+  Disk state gets the standing persisted-state treatment: a bounded session
+  count and a bounded per-session transcript (the tail is kept), every file
+  content-validated on load with unusable ones moved aside rather than dropped,
+  terminated records swept on a retention window, and a load report the daemon
+  states at boot. A restart restores a survive-policy session idle with a system
+  line saying its turn did not finish, and terminates anything else with a named
+  reason — `daemon-shutdown`, `detached`, `killed`, `restart-unresumable`. A
+  hosted session never simply disappears.
+
+  Hosting is OFF until a product states how a workspace floor is built
+  (`DaemonConfig.hostedSessions`, composed by `composeHostedSessions`), because
+  that statement is where the product's trust posture lives and the only posture
+  a default could pick is no gate at all.
+
+- **Approval decisions arrive when they happen (`watchApprovalUpdates`).**
+  `control.approval_update` already carried every transition of every approval
+  record the moment the broker wrote it, and nothing consumed it: the client
+  raise seam re-read `approvals.list` every 750ms and surfaces' approval panels
+  every 15s, so an ask raised on a phone could take fifteen seconds to reach the
+  terminal that could answer it. `watchApprovalUpdates` subscribes to that
+  channel narrowed to the `permissions` domain, and
+  `createClientApprovalRaiser` takes a `subscribeApprovalUpdates` seam and
+  prefers it — with one read immediately after subscribing, because a decision
+  can land between the raise and the subscription and a push channel cannot
+  deliver what happened before it opened. Polling remains a real fallback for a
+  client with no stream seam wired or whose stream the daemon refused.
+
+- **`SharedSessionKind` gains `hosted`**, so a daemon-hosted session appears in
+  the shared spine's union list alongside every other session kind. The type, the
+  wire schema, both route validators and the broker's own set move together, the
+  way `acp` did.
+
 - **The client seams themselves, not just the sockets they plug into
   (`platform/runtime/client`).** `client-services.ts` already held the COMPOSITION
   shape for a surface that runs its own loop and reaches a daemon for
