@@ -3,7 +3,7 @@
   "info": {
     "title": "GoodVibes Operator API",
     "version": "1.21.0",
-    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 483 cataloged methods: 428 with dedicated REST bindings, 55 reachable only through the generic invoke endpoint. 0 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
+    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 486 cataloged methods: 428 with dedicated REST bindings, 58 reachable only through the generic invoke endpoint. 0 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
   },
   "servers": [
     {
@@ -100256,6 +100256,7 @@
         "x-invoke-only-methods": [
           "acp.agents.list",
           "acp.sessions.create",
+          "approvals.raise",
           "channels.test.send",
           "checkpoints.create",
           "checkpoints.diff",
@@ -100265,6 +100266,8 @@
           "checkpoints.revertHunk",
           "checkpoints.revertHunkPreview",
           "cost.attribution.get",
+          "credentials.delete",
+          "credentials.set",
           "email.expectation.cancel",
           "email.expectation.list",
           "email.expectation.open",
@@ -100576,6 +100579,15 @@
       "category": "approvals",
       "access": "authenticated",
       "rest": "GET /api/approvals",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "approvals.raise",
+      "category": "approvals",
+      "access": "authenticated",
+      "rest": null,
       "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"
@@ -101760,10 +101772,28 @@
       "outputSchemaCoverage": "typed"
     },
     {
+      "id": "credentials.delete",
+      "category": "config",
+      "access": "admin",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
       "id": "credentials.get",
       "category": "config",
       "access": "admin",
       "rest": "GET /config/credentials",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "credentials.set",
+      "category": "config",
+      "access": "admin",
+      "rest": null,
       "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"

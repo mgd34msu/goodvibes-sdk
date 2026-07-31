@@ -48,6 +48,8 @@ import type {
 } from '../../packages/sdk/src/platform/control-plane/method-catalog-shared.js';
 
 import { registerAcpGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/acp.js';
+import { registerApprovalRaiseGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/approvals-raise.js';
+import { registerCredentialWriteGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/credentials-write.js';
 import { registerBrowserGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/browser.js';
 import { registerCalendarGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/calendar.js';
 import { registerChannelProfilesGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/channel-profiles.js';
@@ -119,6 +121,8 @@ function stubDeps(): never {
  */
 const ROUTE_REGISTRARS: ReadonlyArray<readonly [string, (catalog: GatewayMethodCatalog) => void]> = [
   ['acp', (catalog) => registerAcpGatewayMethods(catalog, stubDeps())],
+  ['approvals-raise', (catalog) => registerApprovalRaiseGatewayMethods(catalog, stubDeps())],
+  ['credentials-write', (catalog) => registerCredentialWriteGatewayMethods(catalog, stubDeps())],
   ['browser', (catalog) => registerBrowserGatewayMethods(catalog, stubDeps())],
   ['calendar', (catalog) => registerCalendarGatewayMethods(catalog, stubDeps())],
   ['channel-profiles', (catalog) => registerChannelProfilesGatewayMethods(catalog, stubDeps())],
@@ -163,6 +167,7 @@ const ROUTE_REGISTRARS: ReadonlyArray<readonly [string, (catalog: GatewayMethodC
  */
 export const EXPECTED_ROUTE_REGISTRARS: readonly string[] = [
   'registerAcpGatewayMethods',
+  'registerApprovalRaiseGatewayMethods',
   'registerBrowserGatewayMethods',
   'registerCalendarGatewayMethods',
   'registerChannelProfilesGatewayMethods',
@@ -171,6 +176,7 @@ export const EXPECTED_ROUTE_REGISTRARS: readonly string[] = [
   'registerCheckpointGatewayMethods',
   'registerCiGatewayMethods',
   'registerCostGatewayMethods',
+  'registerCredentialWriteGatewayMethods',
   'registerDaemonEmailVerbs',
   'registerDevicesGatewayMethods',
   'registerEmailGatewayMethods',

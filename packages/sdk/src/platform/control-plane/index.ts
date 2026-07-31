@@ -17,6 +17,12 @@ export {
 } from './client-compatibility.js';
 export type { ClientCompatibilityStatus, ClientCompatibilityVerdict } from './client-compatibility.js';
 export {
+  evaluateDaemonCompatibility,
+  evaluateDaemonStatusCompatibility,
+  readDaemonVersion,
+} from './daemon-compatibility.js';
+export type { DaemonCompatibilityStatus, DaemonCompatibilityVerdict } from './daemon-compatibility.js';
+export {
   GatewayMethodCatalog,
 } from './method-catalog.js';
 export type {

@@ -22,7 +22,7 @@ import { registerTailscaleGatewayMethods } from './tailscale.js';
 import { registerAcpGatewayMethods } from './acp.js';
 import { discoverAcpAgents, type AcpHostService } from '../../acp/host.js';
 import { createFleetConflictsListHandler, createFleetConflictsResolveHandler, type FleetConflictsDeps } from './fleet.js';
-import { startCiFixSession, startConflictResolutionSession } from './seeded-sessions.js';
+import { startConflictResolutionSession } from './seeded-sessions.js';
 // Compatibility re-export: consumers/tests import startCiFixSession from here.
 export { startCiFixSession, startConflictResolutionSession } from './seeded-sessions.js';
 import { defaultTailscaleRunner, TailscaleServeReceiptStore, type TailscaleCommandRunner } from '../../remote-access/tailscale.js';
@@ -39,6 +39,12 @@ import { registerCostGatewayMethods } from './cost.js';
 import { registerPermissionRulesGatewayMethods } from './permission-rules.js';
 import type { UserPermissionRuleStore } from '../../permissions/user-rule-store.js';
 import { registerMemoryProjectionsGatewayMethods, type MemoryProjectionSource } from './memory-projections.js';
+import {
+  registerCredentialWriteGatewayMethods,
+  type CredentialWriteConfig,
+  type CredentialWriteSecrets,
+} from './credentials-write.js';
+import { registerApprovalRaiseGatewayMethods, type ApprovalRaiseService } from './approvals-raise.js';
 import { CostAttributionService, type ResolvePricing } from '../../runtime/cost/attribution.js';
 import { QuotaWindowTracker } from '../../runtime/cost/quota-window.js';
 import {
@@ -59,10 +65,9 @@ import type { ProviderRegistry } from '../../providers/registry.js';
 import type { AutomationManager } from '../../automation/index.js';
 import type { ChannelDeliveryRouter } from '../../channels/delivery-router.js';
 import { parseChannelDeliveryTarget } from '../../channels/delivery/types.js';
-import { registerCiGatewayMethods } from './ci.js';
-import { CiWatchAutoMinter, CiWatchService, CiWatchStore, createGhCliCiSource, registerCiWatchPolling, type CiPollingHost, type FixSessionBrief, type FixSessionStartOutcome } from '../../ci-watch/index.js';
+import { composeCiWatchGatewayVerbs } from './ci-watch-composition.js';
+import type { CiPollingHost, FixSessionStartOutcome } from '../../ci-watch/index.js';
 import { summarizeError } from '../../utils/error-display.js';
-import { randomUUID } from 'node:crypto';
 import type { PermissionPromptDecision, PermissionPromptRequest } from '../../permissions/prompt.js';
 import { logger } from '../../utils/logger.js';
 import { registerFlagsGraduationGatewayMethods } from './flags-graduation.js';
@@ -307,6 +312,30 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
    * unhandled, a graceful degrade exactly like the other optional groups.
    */
   readonly memoryRegistry?: MemoryProjectionSource | undefined;
+  /**
+   * The config + secret pair the credentials.set/.clear verbs write through —
+   * the only way a surface that is not on this filesystem can finish a settings
+   * modal that asks for a token. A SEPARATE bundle rather than a widening of
+   * `configManager`/`secretsManager` above, because those two are deliberately
+   * narrow Picks that several partial compositions satisfy today, and a
+   * credential write needs members (`setDynamic`, `delete`) neither of them
+   * declares. Absent → the verbs stay cataloged-but-unhandled, a graceful
+   * degrade exactly like the other optional groups.
+   */
+  readonly credentialWrites?: {
+    readonly config: CredentialWriteConfig;
+    readonly secrets: CredentialWriteSecrets;
+    readonly additionalSecretKeys?: readonly string[] | undefined;
+  } | undefined;
+  /**
+   * The broker a surface RAISES an ask into (approvals.raise). Separate from
+   * `approvalBroker` above, which is the push fan-out's read-only
+   * `ApprovalSource` view: raising needs the two members that view does not
+   * declare. The real composition passes the same ApprovalBroker instance to
+   * both. Absent → approvals.raise stays cataloged-but-unhandled, and the
+   * decide verbs are unaffected.
+   */
+  readonly approvalRaise?: ApprovalRaiseService | undefined;
 }
 
 /** Adapt a fleet event payload down to the structural notice the push source needs. */
@@ -443,107 +472,10 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
     });
   }
 
-  // CI-watch: the per-job status tool + standing subscriptions. The gh-CLI
-  // source and the watch store are always available; the completion notifier
-  // binds to the channel delivery router when present, and the opt-in fix-session
-  // starts a one-shot isolated automation job when the automation manager is
-  // present (absent → the trigger is recorded honestly but no session starts).
-  const ciWatchService = new CiWatchService({
-    source: createGhCliCiSource(),
-    store: new CiWatchStore(deps.shellPaths.resolveUserPath('control-plane', 'ci-watches.json')),
-    ...(deps.channelDeliveryRouter
-      ? {
-        notifier: async (channel: string, title: string, body: string): Promise<string | undefined> =>
-          deps.channelDeliveryRouter!.deliver({
-            target: parseChannelDeliveryTarget(channel),
-            body,
-            title,
-            jobId: 'ci-watch',
-            runId: `ci-${Date.now()}`,
-            includeLinks: false,
-          }),
-      }
-      : {}),
-    ...(deps.automationManager
-      ? { fixSessionStarter: (brief) => startCiFixSession(deps.automationManager!, brief) }
-      : {}),
-    // "Fix this?" on a red run: the offer rides the SAME approval broker as a
-    // permission ask, so every surface's attention machinery renders it;
-    // acceptance starts the fix-session seeded with the failing jobs' logs.
-    // The accepted offer's started session id is stamped back onto the
-    // RESOLVED approval record (broker seam, published live) so the surface
-    // that accepted has an in-process handle — the offerCallId returned below
-    // is what ties the started session to its approval record.
-    ...(deps.stampFixSessionOnApproval
-      ? { stampFixSession: deps.stampFixSessionOnApproval }
-      : {}),
-    ...(deps.requestApproval
-      ? {
-        fixSessionOffer: async (brief: FixSessionBrief): Promise<{ accepted: boolean; offerCallId: string }> => {
-          const where = brief.prNumber !== undefined ? `PR #${brief.prNumber}` : (brief.ref ?? 'watched ref');
-          const offerCallId = `ci-fix-${randomUUID().slice(0, 8)}`;
-          const decision = await deps.requestApproval!({
-            request: {
-              callId: offerCallId,
-              tool: 'ci:fix-session',
-              args: {
-                repo: brief.repo,
-                ...(brief.ref ? { ref: brief.ref } : {}),
-                ...(brief.prNumber !== undefined ? { prNumber: brief.prNumber } : {}),
-                failingJobs: [...brief.failingJobs],
-              },
-              category: 'delegate',
-              analysis: {
-                classification: 'ci-fix-session',
-                riskLevel: 'medium',
-                summary: `CI went red on ${brief.repo} (${where}) — start a fix session for ${brief.failingJobs.join(', ') || 'the failing jobs'}?`,
-                reasons: [
-                  `The watched CI run on ${brief.repo} reached a failed verdict.`,
-                  'Accepting starts an isolated fix session seeded with the failing jobs\' logs; declining leaves the red run untouched.',
-                ],
-                surface: 'orchestration',
-                blastRadius: 'delegated',
-              },
-            },
-            metadata: { source: 'ci-watch', repo: brief.repo },
-          });
-          return { accepted: decision.approved, offerCallId };
-        },
-      }
-      : {}),
-  });
-  registerCiGatewayMethods(catalog, ciWatchService);
-  // Self-minting at the push seam: a successful exec containing `git push` /
-  // `gh pr create` mints a watch for the pushed branch (delivery defaults to
-  // the operator web surface; the watch retires itself after its verdict).
-  if (deps.onCiAutoWatch && deps.workingDirectory) {
-    const autoMinter = new CiWatchAutoMinter({ service: ciWatchService, workingDirectory: deps.workingDirectory });
-    deps.onCiAutoWatch((toolName, args, success) => autoMinter.onToolExecuted(toolName, args, success));
-  }
-  // The daemon polls registered watches on the watchers.ciPollIntervalMs
-  // cadence (15s floor, sequential passes, overlap-guarded) via the existing
-  // watcher-registry polling machinery — a standing watch no longer stands
-  // still until someone runs the manual verb. When the watcher framework is
-  // turned off (watchers.enabled false) the poll is honestly skipped: the
-  // manual ci.watches.run verb still works, so nothing is silently faked.
-  // Defensive config access: some conformance/composition callers pass a
-  // partial deps object at runtime (see terminal-shell's ws-only attachment).
-  const readConfig = (key: string): unknown => deps.configManager?.get(key as ConfigKey);
-  const watchersEnabled = readConfig('watchers.enabled') !== false;
-  if (deps.watcherRegistry && watchersEnabled) {
-    const configuredCadence = readConfig('watchers.ciPollIntervalMs');
-    try {
-      registerCiWatchPolling(deps.watcherRegistry, ciWatchService, {
-        ...(typeof configuredCadence === 'number' ? { intervalMs: configuredCadence } : {}),
-      });
-    } catch (error) {
-      // A gated/refusing watcher registry must never fail daemon composition —
-      // CI watches degrade to the manual verb, stated honestly in the log.
-      logger.warn('[ci-watch] recurring poll not registered; watches run via the manual verb only', {
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
+  // CI-watch (the per-job status tool, the auto-minter and the recurring
+  // poll): constructed in routes/ci-watch-composition.ts — the free-function
+  // split this file's line budget required, with no behaviour change.
+  composeCiWatchGatewayVerbs(catalog, deps);
 
   // channels.test.send — live per-channel test-message probe over the daemon's
   // delivery router. Registered only when the router is wired; absent, the verb
@@ -743,6 +675,24 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   // when the composition root wires the store, like every optional group here.
   if (deps.userPermissionRuleStore) {
     registerPermissionRulesGatewayMethods(catalog, { userRuleStore: deps.userPermissionRuleStore });
+  }
+
+  // credentials.set / credentials.delete — a credential written THROUGH the
+  // daemon: into the encrypted store at the scope the ownership rules resolve,
+  // read back and verified, with only a goodvibes://secrets/ reference left in
+  // config, and the value never echoed anywhere. Registered only when the
+  // composition wires a real config+secret pair; absent, the verbs stay
+  // cataloged-but-unhandled rather than a facade that reports a stored
+  // credential nothing can read.
+  if (deps.credentialWrites) {
+    registerCredentialWriteGatewayMethods(catalog, deps.credentialWrites);
+  }
+
+  // approvals.raise — a surface CREATING an ask in the shared broker, the write
+  // counterpart to the decide verbs. Registered only when the raising view of
+  // the broker is wired.
+  if (deps.approvalRaise) {
+    registerApprovalRaiseGatewayMethods(catalog, deps.approvalRaise);
   }
 
   // Memory projection read verbs (memory.projections.list/get) over the canonical

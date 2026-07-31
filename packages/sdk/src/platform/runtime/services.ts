@@ -134,6 +134,7 @@ import {
   type WorkflowServices,
 } from '../tools/workflow/index.js';
 import { createProcessRegistry, withFleetArchive, attachFleetEmitBridge, type ArchivableProcessRegistry } from './fleet/index.js';
+import { attachConfigEmitBridge } from './config/index.js';
 import { ObservedAgentSource } from './fleet/observed/source.js';
 import { createOrchestrationEngine, createProviderBackedAttemptJudge, type OrchestrationEngine } from '../orchestration/index.js';
 import { createFixWorkstreamRunner } from '../orchestration/fix-workstream-runner.js';
@@ -1015,6 +1016,8 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
 
   // Surface fleet lifecycle deltas on the runtime bus `fleet` domain (gateway fans it out; no polling). sessionPresence gates needs-input push suppression. Both subscriptions live for the registry's lifetime.
   attachFleetEmitBridge({ registry: processRegistry, bus: options.runtimeBus });
+  // Key-level config changes on the runtime bus `config` domain, so a client whose settings live in the daemon gets live notices instead of polling; secret-bearing keys travel by name only (runtime/config/emit-bridge.ts).
+  disposalScope.registry.add('config event bridge', attachConfigEmitBridge({ config: { subscribe: (key, cb) => configManager.subscribe(key as never, cb as never) }, bus: options.runtimeBus }));
   const isAttached = (sessionId: string): boolean => {
     const s = sessionBroker.getSession(sessionId);
     return s ? hasFreshSurfaceParticipant(s, Date.now(), SURFACE_ROUTE_FRESHNESS_MS) : false;
@@ -1070,7 +1073,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     resetLocalEngineFailureState: () => voiceProviders.get('local')?.resetEngineFailureState?.(),
     admitExpensiveWork: (label) => admitExpensiveWork(label),
   });
-  registerGatewayVerbGroups(gatewayMethods, { homeDirectory, processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, requestApproval: (input) => approvalBroker.requestApproval(input), stampFixSessionOnApproval: (offerCallId, outcome) => approvalBroker.stampFixSession(offerCallId, outcome), watcherRegistry, userPermissionRuleStore, shellPaths, runtimeBus: options.runtimeBus, sessionPresence: { isAttached }, configManager, runtimeStore: options.runtimeStore, channelDeliveryRouter, providerRegistry, automationManager, sessionLister: sessionBroker, sessionIntake: sessionBroker, workingDirectory, attemptsController: orchestrationEngine, stepUpService, memoryRegistry, pairingTokens, acpHost, sessionLiveTurnControls, powerManager, memoryGovernor, voiceSetup, disposal: disposalScope.registry, onCiAutoWatch: (observer) => { ciAutoWatchObserver = observer; } }); // see routes/register-gateway-verb-groups.ts
+  registerGatewayVerbGroups(gatewayMethods, { homeDirectory, processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, requestApproval: (input) => approvalBroker.requestApproval(input), stampFixSessionOnApproval: (offerCallId, outcome) => approvalBroker.stampFixSession(offerCallId, outcome), watcherRegistry, userPermissionRuleStore, shellPaths, runtimeBus: options.runtimeBus, sessionPresence: { isAttached }, configManager, runtimeStore: options.runtimeStore, channelDeliveryRouter, providerRegistry, automationManager, sessionLister: sessionBroker, sessionIntake: sessionBroker, workingDirectory, attemptsController: orchestrationEngine, stepUpService, memoryRegistry, pairingTokens, acpHost, sessionLiveTurnControls, powerManager, memoryGovernor, voiceSetup, credentialWrites: { config: configManager, secrets: secretsManager }, approvalRaise: approvalBroker, disposal: disposalScope.registry, onCiAutoWatch: (observer) => { ciAutoWatchObserver = observer; } }); // see routes/register-gateway-verb-groups.ts
   // Teardown for every poller started above. RuntimePollerOwners is all-required,
   // so a poller added to this graph later cannot compile without being named here.
   registerRuntimePollers(disposalScope.registry, {
