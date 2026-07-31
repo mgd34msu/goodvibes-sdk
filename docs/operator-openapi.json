@@ -3,7 +3,7 @@
   "info": {
     "title": "GoodVibes Operator API",
     "version": "1.21.0",
-    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 499 cataloged methods: 431 with dedicated REST bindings, 68 reachable only through the generic invoke endpoint. 0 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
+    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 502 cataloged methods: 434 with dedicated REST bindings, 68 reachable only through the generic invoke endpoint. 0 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
   },
   "servers": [
     {
@@ -76727,6 +76727,551 @@
         }
       }
     },
+    "/api/models/current": {
+      "get": {
+        "operationId": "models.current.get",
+        "summary": "Current Model",
+        "description": "The model this daemon would use for a turn right now, with whether its provider is actually configured and by which authentication route. `model` is null when nothing is selected — which is a real state, not an error, and a caller rendering a picker needs to tell it from a selection whose provider has lost its credentials.",
+        "tags": [
+          "providers"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "model": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "registryKey": {
+                              "type": "string"
+                            },
+                            "provider": {
+                              "type": "string"
+                            },
+                            "id": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "registryKey",
+                            "provider",
+                            "id"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "configured": {
+                      "type": "boolean"
+                    },
+                    "configuredVia": {
+                      "type": "string",
+                      "enum": [
+                        "env",
+                        "secrets",
+                        "subscription",
+                        "anonymous"
+                      ]
+                    },
+                    "routes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "route": {
+                            "type": "string",
+                            "enum": [
+                              "api-key",
+                              "secret-ref",
+                              "service-oauth",
+                              "subscription-oauth",
+                              "anonymous",
+                              "none"
+                            ]
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "configured": {
+                            "type": "boolean"
+                          },
+                          "usable": {
+                            "type": "boolean"
+                          },
+                          "freshness": {
+                            "type": "string",
+                            "enum": [
+                              "healthy",
+                              "expiring",
+                              "expired",
+                              "pending",
+                              "unconfigured"
+                            ]
+                          },
+                          "detail": {
+                            "type": "string"
+                          },
+                          "envVars": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "secretKeys": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "serviceNames": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "providerId": {
+                            "type": "string"
+                          },
+                          "repairHints": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "route",
+                          "label",
+                          "configured"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "model",
+                    "configured"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "read:providers"
+        ]
+      },
+      "patch": {
+        "operationId": "models.current.set",
+        "summary": "Switch the Current Model",
+        "description": "Switch the daemon's current model live, by the registry key `models.list` returns. The switch applies to the next turn on every surface this daemon serves and is persisted, so it survives a restart; `persisted` says whether the write to settings succeeded. An unknown key is refused with MODEL_NOT_FOUND and a provider with no usable credentials with PROVIDER_NOT_CONFIGURED, naming the environment variables it looked for — a caller must not have to guess which of the two happened.",
+        "tags": [
+          "providers"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "model": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "registryKey": {
+                              "type": "string"
+                            },
+                            "provider": {
+                              "type": "string"
+                            },
+                            "id": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "registryKey",
+                            "provider",
+                            "id"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "configured": {
+                      "type": "boolean"
+                    },
+                    "configuredVia": {
+                      "type": "string",
+                      "enum": [
+                        "env",
+                        "secrets",
+                        "subscription",
+                        "anonymous"
+                      ]
+                    },
+                    "routes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "route": {
+                            "type": "string",
+                            "enum": [
+                              "api-key",
+                              "secret-ref",
+                              "service-oauth",
+                              "subscription-oauth",
+                              "anonymous",
+                              "none"
+                            ]
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "configured": {
+                            "type": "boolean"
+                          },
+                          "usable": {
+                            "type": "boolean"
+                          },
+                          "freshness": {
+                            "type": "string",
+                            "enum": [
+                              "healthy",
+                              "expiring",
+                              "expired",
+                              "pending",
+                              "unconfigured"
+                            ]
+                          },
+                          "detail": {
+                            "type": "string"
+                          },
+                          "envVars": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "secretKeys": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "serviceNames": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "providerId": {
+                            "type": "string"
+                          },
+                          "repairHints": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "route",
+                          "label",
+                          "configured"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "persisted": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "model",
+                    "configured",
+                    "persisted"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "write:providers"
+        ],
+        "x-dangerous": true,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "registryKey": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "registryKey"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/models": {
+      "get": {
+        "operationId": "models.list",
+        "summary": "Model Catalog",
+        "description": "Every provider this daemon knows about with the models it offers, whether it is configured, and how it was configured. A GET also triggers the TTL-respecting live-discovery re-check that the terminal's model picker triggers on open, so a locally served model that appeared since the last read shows up on the next one. `currentModel` is the daemon's current selection, or null when nothing is selected. `secretsResolutionSkipped` is true when secret-backed credentials were not resolved for this read, so a caller can tell \"not configured\" from \"not checked\".",
+        "tags": [
+          "providers"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "providers": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "configured": {
+                            "type": "boolean"
+                          },
+                          "configuredVia": {
+                            "type": "string",
+                            "enum": [
+                              "env",
+                              "secrets",
+                              "subscription",
+                              "anonymous"
+                            ]
+                          },
+                          "envVars": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "routes": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "route": {
+                                  "type": "string",
+                                  "enum": [
+                                    "api-key",
+                                    "secret-ref",
+                                    "service-oauth",
+                                    "subscription-oauth",
+                                    "anonymous",
+                                    "none"
+                                  ]
+                                },
+                                "label": {
+                                  "type": "string"
+                                },
+                                "configured": {
+                                  "type": "boolean"
+                                },
+                                "usable": {
+                                  "type": "boolean"
+                                },
+                                "freshness": {
+                                  "type": "string",
+                                  "enum": [
+                                    "healthy",
+                                    "expiring",
+                                    "expired",
+                                    "pending",
+                                    "unconfigured"
+                                  ]
+                                },
+                                "detail": {
+                                  "type": "string"
+                                },
+                                "envVars": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "secretKeys": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "serviceNames": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "providerId": {
+                                  "type": "string"
+                                },
+                                "repairHints": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "route",
+                                "label",
+                                "configured"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "models": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "registryKey": {
+                                  "type": "string"
+                                },
+                                "provider": {
+                                  "type": "string"
+                                },
+                                "label": {
+                                  "type": "string"
+                                },
+                                "contextWindow": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "registryKey",
+                                "provider"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "label",
+                          "configured",
+                          "envVars",
+                          "models"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "currentModel": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "registryKey": {
+                              "type": "string"
+                            },
+                            "provider": {
+                              "type": "string"
+                            },
+                            "id": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "registryKey",
+                            "provider",
+                            "id"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "secretsResolutionSkipped": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "providers",
+                    "currentModel",
+                    "secretsResolutionSkipped"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "read:providers"
+        ]
+      }
+    },
     "/api/providers/{providerId}": {
       "get": {
         "operationId": "providers.get",
@@ -104288,6 +104833,33 @@
       "category": "profile",
       "access": "authenticated",
       "rest": "POST /api/profile/undo",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "models.current.get",
+      "category": "providers",
+      "access": "authenticated",
+      "rest": "GET /api/models/current",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "models.current.set",
+      "category": "providers",
+      "access": "authenticated",
+      "rest": "PATCH /api/models/current",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "models.list",
+      "category": "providers",
+      "access": "authenticated",
+      "rest": "GET /api/models",
       "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"

@@ -14583,6 +14583,146 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       "disclosure": "sample"
     }
   },
+  "models.current.get": {
+    "methodId": "models.current.get",
+    "http": {
+      "method": "GET",
+      "path": "/api/models/current"
+    },
+    "status": 200,
+    "body": {
+      "model": {
+        "registryKey": "sample",
+        "provider": "sample",
+        "id": "sample"
+      },
+      "configured": false,
+      "configuredVia": "env",
+      "routes": [
+        {
+          "route": "api-key",
+          "label": "sample",
+          "configured": false,
+          "usable": false,
+          "freshness": "healthy",
+          "detail": "sample",
+          "envVars": [
+            "sample"
+          ],
+          "secretKeys": [
+            "sample"
+          ],
+          "serviceNames": [
+            "sample"
+          ],
+          "providerId": "sample",
+          "repairHints": [
+            "sample"
+          ]
+        }
+      ]
+    }
+  },
+  "models.current.set": {
+    "methodId": "models.current.set",
+    "http": {
+      "method": "PATCH",
+      "path": "/api/models/current"
+    },
+    "status": 200,
+    "body": {
+      "model": {
+        "registryKey": "sample",
+        "provider": "sample",
+        "id": "sample"
+      },
+      "configured": false,
+      "configuredVia": "env",
+      "routes": [
+        {
+          "route": "api-key",
+          "label": "sample",
+          "configured": false,
+          "usable": false,
+          "freshness": "healthy",
+          "detail": "sample",
+          "envVars": [
+            "sample"
+          ],
+          "secretKeys": [
+            "sample"
+          ],
+          "serviceNames": [
+            "sample"
+          ],
+          "providerId": "sample",
+          "repairHints": [
+            "sample"
+          ]
+        }
+      ],
+      "persisted": false
+    }
+  },
+  "models.list": {
+    "methodId": "models.list",
+    "http": {
+      "method": "GET",
+      "path": "/api/models"
+    },
+    "status": 200,
+    "body": {
+      "providers": [
+        {
+          "id": "sample",
+          "label": "sample",
+          "configured": false,
+          "configuredVia": "env",
+          "envVars": [
+            "sample"
+          ],
+          "routes": [
+            {
+              "route": "api-key",
+              "label": "sample",
+              "configured": false,
+              "usable": false,
+              "freshness": "healthy",
+              "detail": "sample",
+              "envVars": [
+                "sample"
+              ],
+              "secretKeys": [
+                "sample"
+              ],
+              "serviceNames": [
+                "sample"
+              ],
+              "providerId": "sample",
+              "repairHints": [
+                "sample"
+              ]
+            }
+          ],
+          "models": [
+            {
+              "id": "sample",
+              "registryKey": "sample",
+              "provider": "sample",
+              "label": "sample",
+              "contextWindow": 0
+            }
+          ]
+        }
+      ],
+      "currentModel": {
+        "registryKey": "sample",
+        "provider": "sample",
+        "id": "sample"
+      },
+      "secretsResolutionSkipped": false
+    }
+  },
   "providers.get": {
     "methodId": "providers.get",
     "http": {

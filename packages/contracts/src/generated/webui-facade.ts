@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.21.0
- * Methods: 499 total, 431 REST-routed, 68 ws-only invoke.
+ * Methods: 502 total, 434 REST-routed, 68 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -1340,6 +1340,18 @@ export const WEBUI_METHOD_ROUTES: Readonly<Record<string, WebuiRouteDefinition>>
     "method": "POST",
     "path": "/api/profile/undo"
   },
+  "models.current.get": {
+    "method": "GET",
+    "path": "/api/models/current"
+  },
+  "models.current.set": {
+    "method": "PATCH",
+    "path": "/api/models/current"
+  },
+  "models.list": {
+    "method": "GET",
+    "path": "/api/models"
+  },
   "providers.get": {
     "method": "GET",
     "path": "/api/providers/{providerId}"
@@ -2208,6 +2220,9 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "profile.set": "rest",
   "profile.status": "rest",
   "profile.undo": "rest",
+  "models.current.get": "rest",
+  "models.current.set": "rest",
+  "models.list": "rest",
   "providers.get": "rest",
   "providers.list": "rest",
   "providers.usage.get": "rest",
@@ -17146,6 +17161,133 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
         }
       ],
       "disclosure": "sample"
+    }
+  },
+  "models.current.get": {
+    "input": {},
+    "output": {
+      "model": {
+        "registryKey": "sample",
+        "provider": "sample",
+        "id": "sample"
+      },
+      "configured": false,
+      "configuredVia": "env",
+      "routes": [
+        {
+          "route": "api-key",
+          "label": "sample",
+          "configured": false,
+          "usable": false,
+          "freshness": "healthy",
+          "detail": "sample",
+          "envVars": [
+            "sample"
+          ],
+          "secretKeys": [
+            "sample"
+          ],
+          "serviceNames": [
+            "sample"
+          ],
+          "providerId": "sample",
+          "repairHints": [
+            "sample"
+          ]
+        }
+      ]
+    }
+  },
+  "models.current.set": {
+    "input": {
+      "registryKey": "sample"
+    },
+    "output": {
+      "model": {
+        "registryKey": "sample",
+        "provider": "sample",
+        "id": "sample"
+      },
+      "configured": false,
+      "configuredVia": "env",
+      "routes": [
+        {
+          "route": "api-key",
+          "label": "sample",
+          "configured": false,
+          "usable": false,
+          "freshness": "healthy",
+          "detail": "sample",
+          "envVars": [
+            "sample"
+          ],
+          "secretKeys": [
+            "sample"
+          ],
+          "serviceNames": [
+            "sample"
+          ],
+          "providerId": "sample",
+          "repairHints": [
+            "sample"
+          ]
+        }
+      ],
+      "persisted": false
+    }
+  },
+  "models.list": {
+    "input": {},
+    "output": {
+      "providers": [
+        {
+          "id": "sample",
+          "label": "sample",
+          "configured": false,
+          "configuredVia": "env",
+          "envVars": [
+            "sample"
+          ],
+          "routes": [
+            {
+              "route": "api-key",
+              "label": "sample",
+              "configured": false,
+              "usable": false,
+              "freshness": "healthy",
+              "detail": "sample",
+              "envVars": [
+                "sample"
+              ],
+              "secretKeys": [
+                "sample"
+              ],
+              "serviceNames": [
+                "sample"
+              ],
+              "providerId": "sample",
+              "repairHints": [
+                "sample"
+              ]
+            }
+          ],
+          "models": [
+            {
+              "id": "sample",
+              "registryKey": "sample",
+              "provider": "sample",
+              "label": "sample",
+              "contextWindow": 0
+            }
+          ]
+        }
+      ],
+      "currentModel": {
+        "registryKey": "sample",
+        "provider": "sample",
+        "id": "sample"
+      },
+      "secretsResolutionSkipped": false
     }
   },
   "providers.get": {

@@ -59,6 +59,9 @@ import {
   builtinGatewayRuntimeMethodDescriptors,
 } from './method-catalog-runtime.js';
 import {
+  builtinGatewayModelMethodDescriptors,
+} from './method-catalog-models.js';
+import {
   builtinGatewayPrincipalsMethodDescriptors,
 } from './method-catalog-principals.js';
 import {
@@ -131,6 +134,7 @@ const BUILTIN_GATEWAY_METHODS: readonly GatewayMethodDescriptor[] = [
   ...builtinGatewayCalendarMethodDescriptors,
   ...builtinGatewayBrowserMethodDescriptors,
   ...builtinGatewayRuntimeMethodDescriptors,
+  ...builtinGatewayModelMethodDescriptors,
   ...builtinGatewayKnowledgeMethodDescriptors,
   ...builtinGatewayMediaMethodDescriptors,
   ...builtinGatewayAdminMethodDescriptors,

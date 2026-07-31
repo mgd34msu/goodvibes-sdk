@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `499`
+- Methods: `502`
 - Events: `35`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -78997,6 +78997,534 @@ Promote a field's most recent superseded value back to the active line, so a wro
 
 ### providers
 
+#### `models.current.get`
+
+The model this daemon would use for a turn right now, with whether its provider is actually configured and by which authentication route. `model` is null when nothing is selected — which is a real state, not an error, and a caller rendering a picker needs to tell it from a selection whose provider has lost its credentials.
+
+- Title: `Current Model`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/models/current`
+- Scopes: `read:providers`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "model": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "registryKey": {
+              "type": "string"
+            },
+            "provider": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "registryKey",
+            "provider",
+            "id"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "configured": {
+      "type": "boolean"
+    },
+    "configuredVia": {
+      "type": "string",
+      "enum": [
+        "env",
+        "secrets",
+        "subscription",
+        "anonymous"
+      ]
+    },
+    "routes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "route": {
+            "type": "string",
+            "enum": [
+              "api-key",
+              "secret-ref",
+              "service-oauth",
+              "subscription-oauth",
+              "anonymous",
+              "none"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "configured": {
+            "type": "boolean"
+          },
+          "usable": {
+            "type": "boolean"
+          },
+          "freshness": {
+            "type": "string",
+            "enum": [
+              "healthy",
+              "expiring",
+              "expired",
+              "pending",
+              "unconfigured"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          },
+          "envVars": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "secretKeys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "serviceNames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "providerId": {
+            "type": "string"
+          },
+          "repairHints": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "route",
+          "label",
+          "configured"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "model",
+    "configured"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `models.current.set`
+
+Switch the daemon's current model live, by the registry key `models.list` returns. The switch applies to the next turn on every surface this daemon serves and is persisted, so it survives a restart; `persisted` says whether the write to settings succeeded. An unknown key is refused with MODEL_NOT_FOUND and a provider with no usable credentials with PROVIDER_NOT_CONFIGURED, naming the environment variables it looked for — a caller must not have to guess which of the two happened.
+
+- Title: `Switch the Current Model`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `PATCH /api/models/current`
+- Scopes: `write:providers`
+- Emits events: none
+- Dangerous: `yes`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "registryKey": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "registryKey"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "model": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "registryKey": {
+              "type": "string"
+            },
+            "provider": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "registryKey",
+            "provider",
+            "id"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "configured": {
+      "type": "boolean"
+    },
+    "configuredVia": {
+      "type": "string",
+      "enum": [
+        "env",
+        "secrets",
+        "subscription",
+        "anonymous"
+      ]
+    },
+    "routes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "route": {
+            "type": "string",
+            "enum": [
+              "api-key",
+              "secret-ref",
+              "service-oauth",
+              "subscription-oauth",
+              "anonymous",
+              "none"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "configured": {
+            "type": "boolean"
+          },
+          "usable": {
+            "type": "boolean"
+          },
+          "freshness": {
+            "type": "string",
+            "enum": [
+              "healthy",
+              "expiring",
+              "expired",
+              "pending",
+              "unconfigured"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          },
+          "envVars": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "secretKeys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "serviceNames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "providerId": {
+            "type": "string"
+          },
+          "repairHints": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "route",
+          "label",
+          "configured"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "persisted": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "model",
+    "configured",
+    "persisted"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `models.list`
+
+Every provider this daemon knows about with the models it offers, whether it is configured, and how it was configured. A GET also triggers the TTL-respecting live-discovery re-check that the terminal's model picker triggers on open, so a locally served model that appeared since the last read shows up on the next one. `currentModel` is the daemon's current selection, or null when nothing is selected. `secretsResolutionSkipped` is true when secret-backed credentials were not resolved for this read, so a caller can tell "not configured" from "not checked".
+
+- Title: `Model Catalog`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `GET /api/models`
+- Scopes: `read:providers`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "providers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "configured": {
+            "type": "boolean"
+          },
+          "configuredVia": {
+            "type": "string",
+            "enum": [
+              "env",
+              "secrets",
+              "subscription",
+              "anonymous"
+            ]
+          },
+          "envVars": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "routes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "route": {
+                  "type": "string",
+                  "enum": [
+                    "api-key",
+                    "secret-ref",
+                    "service-oauth",
+                    "subscription-oauth",
+                    "anonymous",
+                    "none"
+                  ]
+                },
+                "label": {
+                  "type": "string"
+                },
+                "configured": {
+                  "type": "boolean"
+                },
+                "usable": {
+                  "type": "boolean"
+                },
+                "freshness": {
+                  "type": "string",
+                  "enum": [
+                    "healthy",
+                    "expiring",
+                    "expired",
+                    "pending",
+                    "unconfigured"
+                  ]
+                },
+                "detail": {
+                  "type": "string"
+                },
+                "envVars": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "secretKeys": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "serviceNames": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "providerId": {
+                  "type": "string"
+                },
+                "repairHints": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "route",
+                "label",
+                "configured"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "registryKey": {
+                  "type": "string"
+                },
+                "provider": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "contextWindow": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "registryKey",
+                "provider"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "configured",
+          "envVars",
+          "models"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "currentModel": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "registryKey": {
+              "type": "string"
+            },
+            "provider": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "registryKey",
+            "provider",
+            "id"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "secretsResolutionSkipped": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "providers",
+    "currentModel",
+    "secretsResolutionSkipped"
+  ],
+  "additionalProperties": false
+}
+```
+
 #### `providers.get`
 
 Return runtime metadata for a single provider.
@@ -91287,7 +91815,7 @@ Return metadata for a shared session.
 
 #### `sessions.hosted.attach`
 
-Join a hosted session and receive its transcript so far, so a client that was never connected — or one reconnecting after the daemon restarted — renders what it missed instead of an empty screen. A session restored from disk has its loop rebuilt on this call, with a system line in the transcript stating that its in-flight turn did not survive the restart. Live output continues on the `turn` and `tools` event domains, filtered on this session id. Attaching is what keeps a `kill`-policy session alive: the policy is applied when the LAST client detaches. ws-only invoke verb; no REST binding.
+Join a hosted session and receive its transcript so far, so a client that was never connected — or one reconnecting after the daemon restarted — renders what it missed instead of an empty screen. A session restored from disk has its loop rebuilt on this call, with a system line in the transcript stating that its in-flight turn did not survive the restart. Live output continues on the `turn` and `tools` event domains, filtered on this session id. Attaching is what keeps a `kill`-policy session alive: the policy is applied when the LAST client detaches. An attachment carries a LEASE — `hostedSessions.attachmentTtlMs`, ten minutes by default, or `leaseMs` for this attachment alone — because a client that crashed or closed its tab never calls detach, and a claim nothing expires would hold a kill-policy session open forever. Calling attach again with the same `clientId` renews it, and a client whose control-plane connection is still open renews automatically, so an attached client watching a long turn in silence is never reaped. When the last attachment lapses the session is treated as detached and its policy decides. ws-only invoke verb; no REST binding.
 
 - Title: `Attach to a Daemon-Hosted Session`
 - Source: `builtin`
@@ -91310,6 +91838,9 @@ Join a hosted session and receive its transcript so far, so a client that was ne
     },
     "clientId": {
       "type": "string"
+    },
+    "leaseMs": {
+      "type": "number"
     }
   },
   "required": [
@@ -105962,13 +106493,13 @@ Initial SSE/WebSocket handshake event emitted after a control-plane subscription
 
 #### `control.session_update`
 
-Shared-session lifecycle broadcast. Every session created / closed / deleted / reopened / agent-bound / agent-completed / message-appended / message-forwarded / route-attached and every input & follow-up lifecycle transition is published on the single `session-update` wire event; the specific lifecycle name is the discriminated `payload.event` field. Cross-surface invalidation mapping (webui/TUI): created ⇐ session-created; updated ⇐ session-message-appended / session-agent-completed / session-route-attached / session-reopened; steered ⇐ session-input-delivered / session-message-forwarded; closed ⇐ session-closed; deleted ⇐ session-deleted (a hard removal — the record is gone, not merely closed). This channel is un-domained: it reaches every live SSE/WS client regardless of subscribed domains, and is dropped entirely when the control-plane-gateway flag is turned off (no phantom buffering).
+Shared-session lifecycle broadcast. Every session created / closed / deleted / reopened / agent-bound / agent-completed / message-appended / message-forwarded / route-attached and every input & follow-up lifecycle transition is published on the single `session-update` wire event; the specific lifecycle name is the discriminated `payload.event` field. Cross-surface invalidation mapping (webui/TUI): created ⇐ session-created; updated ⇐ session-message-appended / session-agent-completed / session-route-attached / session-reopened; steered ⇐ session-input-delivered / session-message-forwarded; closed ⇐ session-closed; deleted ⇐ session-deleted (a hard removal — the record is gone, not merely closed). Domain-tagged `session` (gateway-scope-enforcement.ts EVENT_DOMAIN), the same tag control.hosted_session_update carries: both are session lifecycle, so a client that narrows with ?domains=… must include `session` to receive EITHER of them, and one that opted into no narrowing receives both. It is dropped entirely when the control-plane-gateway flag is turned off (no phantom buffering).
 
 - Title: `Session Lifecycle Update`
 - Source: `builtin`
 - Transport: `sse`, `ws`
 - Scopes: `read:sessions`
-- Domains: none
+- Domains: `session`
 - Wire events: `session-update`
 
 ##### Payload schema
