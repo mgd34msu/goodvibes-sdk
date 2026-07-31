@@ -19,6 +19,13 @@ export interface HostedSessionsSettings {
   maxSessions: number;
   maxMessagesPerSession: number;
   terminatedRetentionMs: number;
+  /**
+   * Whether a surface that receives inbound channel messages hands the
+   * conversation to the daemon to host instead of answering it in its own
+   * process. Off by default: today an inbound message is answered by the
+   * process that received it, and that is what people's channels already do.
+   */
+  promoteInboundConversations: boolean;
 }
 
 declare module './schema-types.js' {
@@ -33,6 +40,7 @@ export const hostedSessionsConfigDefaults = {
     maxSessions: 8,
     maxMessagesPerSession: 500,
     terminatedRetentionMs: 24 * 60 * 60_000,
+    promoteInboundConversations: false,
   },
 };
 
@@ -61,5 +69,11 @@ export const hostedSessionsConfigSettings: ConfigSettingDefinition[] = [
     type: 'number',
     default: 24 * 60 * 60_000,
     description: 'How long a terminated hosted session\'s record is kept before it is retired, in milliseconds. Until then it is still listable with its termination reason, so a session that ended can be asked about rather than having simply vanished.',
+  },
+  {
+    key: 'hostedSessions.promoteInboundConversations',
+    type: 'boolean',
+    default: false,
+    description: 'Hand inbound channel conversations to the daemon to host, instead of answering them inside the surface process that received them. Off (default): a message from Telegram, Slack, email or any other channel is answered by that process, and it stops when the process stops. On: the first message of a conversation creates a daemon-hosted session and every later message is steered into it, so the conversation keeps its context and keeps running while no surface is open. What happens when the last client leaves is still hostedSessions.detachPolicy.',
   },
 ];
