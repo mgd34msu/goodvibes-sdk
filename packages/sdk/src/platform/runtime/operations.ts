@@ -237,12 +237,22 @@ export { createSessionStorageServices } from './session-storage-services.js';
 export type { SessionStorageServices } from './session-storage-services.js';
 
 export {
+  CODE_INDEX_ENABLED_CONFIG_KEY,
+  CODE_INDEX_MAX_FILE_BYTES,
+  CODE_INDEX_MAX_FILES,
+  CODE_INDEX_MAX_TOTAL_BYTES,
   codeIndexDbPath,
   createCodeIndexServices,
   createStoreRerooter,
   isCodeIndexAutoStartEnabled,
+  isCodeInjectionSettingEnabled,
 } from './code-index-services.js';
 export type { CodeIndexServices, CodeIndexServicesDeps } from './code-index-services.js';
+
+export {
+  applyProviderOptimizerConfigMode,
+  bindProviderOptimizerFeatureFlag,
+} from './provider-optimizer-wiring.js';
 
 export { foldLegacyProjectMemory, runBootMemoryFold } from './memory-fold.js';
 export type { BootFoldLogger } from './memory-fold.js';

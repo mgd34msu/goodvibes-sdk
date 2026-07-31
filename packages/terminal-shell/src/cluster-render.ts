@@ -206,9 +206,15 @@ export function renderDiscovered(groups: readonly DiscoveredGroup[], now: number
  * also not universally supported and gives no acknowledgement, so this NEVER
  * claims success — it says what it attempted, and the key is printed either
  * way. Silently doing nothing would be the worst of the three options.
+ *
+ * The introducer and the terminator are written as `\x1b` and `\x07` rather
+ * than as the bytes themselves: a literal control character in source survives
+ * nothing — not a copy between files, not an editor, not a diff — and without
+ * them this returns a printable string a terminal shows to the operator
+ * instead of an escape sequence it acts on.
  */
 export function clipboardEscapeSequence(value: string): string {
-  return `]52;c;${Buffer.from(value, 'utf8').toString('base64')}`;
+  return `\x1b]52;c;${Buffer.from(value, 'utf8').toString('base64')}\x07`;
 }
 
 export interface JoinKeyRendering {
