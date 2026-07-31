@@ -43,3 +43,13 @@ export {
   type MemoryTripwireReceipt,
   type ExpensiveWorkDecision,
 } from './memory-governor.js';
+
+export {
+  formatMb,
+  formatMemoryBytes,
+  memoryPressureLevel,
+  memoryPressureLine,
+  memoryStatusLines,
+  memoryTierNote,
+} from './status.js';
+export type { MemoryGovernorSnapshotResult, MemoryPressurePayload } from './status.js';

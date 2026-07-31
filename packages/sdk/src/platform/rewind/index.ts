@@ -49,3 +49,21 @@ export type {
   RewindRefusal,
   RewindApplyResult,
 } from './types.js';
+
+export {
+  ANCHOR_SIDECAR_SETTLE_MS,
+  ANCHOR_TMP_MAX_AGE_MS,
+  clearTurnAnchors,
+  getTurnAnchors,
+  persistTurnAnchors,
+  reapOrphanedAnchorSidecars,
+  recordTurnAnchor,
+  resolveTurnAnchor,
+  restoreTurnAnchors,
+  summarizeTurnLabel,
+} from './turn-anchors.js';
+export type {
+  AnchorSidecarReapOptions,
+  AnchorSidecarReapResult,
+  TurnAnchor,
+} from './turn-anchors.js';
