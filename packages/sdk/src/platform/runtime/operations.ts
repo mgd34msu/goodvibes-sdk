@@ -129,3 +129,66 @@ export type {
   Pruner,
   RetentionStats,
 } from './retention/index.js';
+
+export { FocusTracker } from './focus-tracker.js';
+export {
+  FORCE_NOTIFY_DURATION_MS,
+  readBooleanConfig,
+  readNotifyOnlyWhenUnfocused,
+  shouldFireAlert,
+} from './alert-gating.js';
+export type { ConfigGet } from './alert-gating.js';
+
+export {
+  JOURNAL_ORPHAN_MAX_AGE_MS,
+  JOURNAL_ORPHAN_MAX_FILES,
+  JOURNAL_SCHEMA_VERSION,
+  journalPathFor,
+  openTranscriptJournal,
+  reapOrphanedJournals,
+  replayJournal,
+} from './transcript-journal.js';
+export type {
+  JournalEventType,
+  JournalHeader,
+  JournalReapOptions,
+  JournalReapResult,
+  JournalRecord,
+  ReplayResult,
+  TranscriptJournal,
+} from './transcript-journal.js';
+
+export {
+  checkSessionLiveness,
+  isPidAlive,
+  LIVENESS_MARKER_MAX_FILES,
+  LIVENESS_STALE_AFTER_MS,
+  livenessMarkerDirFor,
+  livenessMarkerPathFor,
+  reapStaleLivenessMarkers,
+  removeLivenessMarker,
+  writeLivenessMarker,
+} from './session-liveness-marker.js';
+export type {
+  LivenessMarker,
+  LivenessReapOptions,
+  LivenessReapResult,
+  SessionLivenessCheck,
+} from './session-liveness-marker.js';
+
+export {
+  DURABILITY_HOUSEKEEPING_INTERVAL_MS,
+  runDurabilityHousekeeping,
+  startDurabilityHousekeeping,
+} from './durability-housekeeping.js';
+export type {
+  DurabilityHousekeepingInput,
+  DurabilityHousekeepingOutcome,
+} from './durability-housekeeping.js';
+
+export { createDurabilityServices } from './durability-services.js';
+export type { DurabilityServices, DurabilityServicesInput } from './durability-services.js';
+
+export { resolveDaemonCompanionToken, workspaceOperatorTokenCandidates } from './operator-token-cleanup.js';
+
+export { bindWriteLastSessionPointerToSurface } from './session-pointer-surface.js';

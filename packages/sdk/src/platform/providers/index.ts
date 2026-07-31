@@ -244,3 +244,26 @@ export { ProviderOptimizer } from './optimizer.js';
 export type { FallbackTestResult, FallbackTransition } from './optimizer.js';
 export { getTierForContextWindow, getTierPromptSupplement } from './tier-prompts.js';
 export { getProviderRuntimeSnapshot, getProviderUsageSnapshot, listProviderRuntimeSnapshots } from './runtime-snapshot.js';
+
+export {
+  BUDGET_ALERT_USD_CONFIG_KEY,
+  BUDGET_ALERT_USD_DEFAULT,
+  calcSessionCost,
+  computeBudgetBreach,
+  describePricingSource,
+  getPricing,
+  isModelPriced,
+  MODEL_PRICES_CONFIG_KEY,
+  readBudgetAlertUsd,
+  resolvePricing,
+  setModelPricingResolver,
+  setPricingSource,
+  wireCostPricing,
+  writeManualModelPrice,
+} from './session-cost.js';
+export type {
+  BudgetAlertConfigAccess,
+  ModelPricing,
+  PricingResult,
+  PricingSourceKind,
+} from './session-cost.js';

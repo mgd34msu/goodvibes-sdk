@@ -95,3 +95,28 @@ export {
   sortedPhases,
 } from './scheduler.js';
 export type { DependencyStatus, PhaseClaim } from './scheduler.js';
+
+export { createWorkstreamServices } from './workstream-services.js';
+export type { WorkstreamCommandService, WorkstreamServices, WorkstreamServicesDeps } from './workstream-services.js';
+export type { WorkstreamDraft, WorkstreamDraftProvenance } from './workstream-draft-types.js';
+export {
+  editItemBrief,
+  moveItemInSpec,
+  removeItemFromSpec,
+  resolveItemIndex,
+} from './workstream-draft-edits.js';
+export type { DraftEditResult } from './workstream-draft-edits.js';
+export {
+  createWorkstreamDraftStore,
+  formatWorkstreamDraftReclaim,
+  WORKSTREAM_DRAFT_CAP,
+  WORKSTREAM_DRAFT_SWEEP_INTERVAL_MS,
+  WORKSTREAM_DRAFT_TTL_MS,
+} from './workstream-draft-store.js';
+export type {
+  WorkstreamDraftReclaim,
+  WorkstreamDraftStore,
+  WorkstreamDraftStoreOptions,
+} from './workstream-draft-store.js';
+export { validateAttempts } from './workstream-attempts-validation.js';
+export type { AttemptsValidation } from './workstream-attempts-validation.js';
