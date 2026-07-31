@@ -129,7 +129,7 @@ function validateIsoDate(value: string, field: string): string {
   if (Number.isNaN(new Date(value).getTime())) {
     throw new GatewayVerbError(
       `Field '${field}' must be a valid ISO-8601 date.`,
-      'CALENDAR_BAD_INPUT',
+      'INVALID_ARGUMENT',
       400,
     );
   }
@@ -437,7 +437,7 @@ export function createCalDavCalendarGatewayService(
       if (new Date(end).getTime() < new Date(start).getTime()) {
         throw new GatewayVerbError(
           "Field 'end' must not be before 'start'.",
-          'CALENDAR_BAD_INPUT',
+          'INVALID_ARGUMENT',
           400,
         );
       }

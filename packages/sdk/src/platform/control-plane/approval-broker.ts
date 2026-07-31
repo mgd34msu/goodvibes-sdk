@@ -486,7 +486,7 @@ export class ApprovalBroker {
        * surface (TUI, webui) produces identical results. It supersedes any
        * `modifiedArgs` passed by the caller. Omitting it is the back-compat
        * whole-request approve-all path. An out-of-range index or a non-edit
-       * approval throws a VALIDATION_FAILED (400) error, mirroring the closed-
+       * approval throws an INVALID_ARGUMENT (400) error, mirroring the closed-
        * session guard's honest-4xx shape.
        */
       readonly selectedHunks?: readonly number[] | undefined;
@@ -517,7 +517,7 @@ export class ApprovalBroker {
       const resolution = resolveApprovalHunkSelection(approval.request, input.selectedHunks);
       if (!resolution.ok) {
         throw Object.assign(new Error(resolution.reason), {
-          code: SDKErrorCodes.VALIDATION_FAILED,
+          code: 'INVALID_ARGUMENT',
           status: 400,
         });
       }

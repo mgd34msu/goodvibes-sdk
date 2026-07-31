@@ -277,7 +277,7 @@ describe('calendar.events.list', () => {
     const http = fakeHttp(() => ok(body));
     const error = await expectVerbError(() => service(http.port).listEvents({ from: 'next tuesday' }));
     expect(error.message).toBe("Field 'from' must be a valid ISO-8601 date.");
-    expect(error.code).toBe('CALENDAR_BAD_INPUT');
+    expect(error.code).toBe('INVALID_ARGUMENT');
     expect(http.requests).toHaveLength(0);
   });
 
@@ -430,7 +430,7 @@ describe('calendar.events.create', () => {
       }),
     );
     expect(error.message).toBe("Field 'end' must not be before 'start'.");
-    expect(error.code).toBe('CALENDAR_BAD_INPUT');
+    expect(error.code).toBe('INVALID_ARGUMENT');
     expect(http.requests).toHaveLength(0);
   });
 });

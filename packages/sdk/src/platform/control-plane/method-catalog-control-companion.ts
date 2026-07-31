@@ -47,7 +47,7 @@ const COMPANION_CHAT_MESSAGE_PAYLOAD_PROPERTIES: Record<string, Record<string, u
 /**
  * Companion chat refuses a message carrying no text AND no attachments
  * (companion/companion-chat-routes.ts: `content, body, or attachments are
- * required`, 400 INVALID_INPUT). None of the three is required on its own, so
+ * required`, 400 INVALID_ARGUMENT). None of the three is required on its own, so
  * a flat `required` array cannot state this — listing any one of them would
  * refuse an attachment-only message, which is a call that works today. The
  * union says exactly what the handler does.

@@ -118,7 +118,7 @@ test('an unknown session is a 404 that names the id', async () => {
     attach: async () => { throw new HostedSessionNotFoundError('hosted-x'); },
   }));
   await expect(handler(invocation({ sessionId: 'hosted-x', clientId: 'a' }))).rejects.toMatchObject({
-    code: 'HOSTED_SESSION_NOT_FOUND',
+    code: 'SESSION_NOT_FOUND',
     status: 404,
   });
 });

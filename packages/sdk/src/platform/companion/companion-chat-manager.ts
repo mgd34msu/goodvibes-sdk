@@ -601,7 +601,7 @@ export class CompanionChatManager {
 
     const attachments = resolveAttachments(options.attachments ?? [], this.artifactStore);
     if (!content.trim() && attachments.length === 0) {
-      throw Object.assign(new Error('content or attachments are required'), { code: 'INVALID_INPUT', status: 400 });
+      throw Object.assign(new Error('content or attachments are required'), { code: 'INVALID_ARGUMENT', status: 400 });
     }
 
     const messageId = randomUUID();
