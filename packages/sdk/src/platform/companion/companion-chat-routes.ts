@@ -238,7 +238,7 @@ function readOptionalNonEmptyString(
   const value = body[key]!;
   if (typeof value !== 'string' || value.trim().length === 0) {
     return Response.json(
-      { error: `${key} must be a non-empty string`, code: 'INVALID_INPUT' },
+      { error: `${key} must be a non-empty string`, code: 'INVALID_ARGUMENT' },
       { status: 400 },
     );
   }
@@ -253,7 +253,7 @@ function readOptionalSystemPrompt(
   if (value === null) return null;
   if (typeof value !== 'string') {
     return Response.json(
-      { error: 'systemPrompt must be a string or null', code: 'INVALID_INPUT' },
+      { error: 'systemPrompt must be a string or null', code: 'INVALID_ARGUMENT' },
       { status: 400 },
     );
   }
@@ -298,7 +298,7 @@ async function handleUpdateSession(
 
   if (Object.keys(input).length === 0) {
     return Response.json(
-      { error: 'At least one of title, provider, model, or systemPrompt is required', code: 'INVALID_INPUT' },
+      { error: 'At least one of title, provider, model, or systemPrompt is required', code: 'INVALID_ARGUMENT' },
       { status: 400 },
     );
   }
@@ -364,7 +364,7 @@ async function handleDeleteSession(
 /**
  * Read the message content from an incoming POST body.
  * Returns empty string when neither field is present — the caller must
- * check for empty and return 400 INVALID_INPUT.
+ * check for empty and return 400 INVALID_ARGUMENT.
  *
  * @param body - Parsed JSON body from the request.
  * @returns Raw (un-trimmed) string value, or '' if neither field is present.
@@ -384,7 +384,7 @@ function readCompanionChatAttachments(
   if (raw === undefined) return [];
   if (!Array.isArray(raw)) {
     return Response.json(
-      { error: 'attachments must be an array', code: 'INVALID_INPUT' },
+      { error: 'attachments must be an array', code: 'INVALID_ARGUMENT' },
       { status: 400 },
     );
   }
@@ -392,14 +392,14 @@ function readCompanionChatAttachments(
   for (const [index, item] of raw.entries()) {
     if (typeof item !== 'object' || item === null || Array.isArray(item)) {
       return Response.json(
-        { error: `attachments[${index}] must be an object`, code: 'INVALID_INPUT' },
+        { error: `attachments[${index}] must be an object`, code: 'INVALID_ARGUMENT' },
         { status: 400 },
       );
     }
     const record = item as Record<string, unknown>;
     if (typeof record['artifactId'] !== 'string' || record['artifactId'].trim().length === 0) {
       return Response.json(
-        { error: `attachments[${index}].artifactId is required`, code: 'INVALID_INPUT' },
+        { error: `attachments[${index}].artifactId is required`, code: 'INVALID_ARGUMENT' },
         { status: 400 },
       );
     }
@@ -426,7 +426,7 @@ function readCompanionChatAttachments(
  *
  * Accepts either `{body}` or `{content}` in the request payload.
  * If both are present, `{body}` takes precedence (shared-session canonical field).
- * Returns 400 INVALID_INPUT when neither field is present or both are empty.
+ * Returns 400 INVALID_ARGUMENT when neither field is present or both are empty.
  */
 async function handlePostMessage(
   req: Request,
@@ -455,7 +455,7 @@ async function handlePostMessage(
 
   if (!input.content.trim() && attachments.length === 0) {
     return Response.json(
-      { error: 'content, body, or attachments are required', code: 'INVALID_INPUT' },
+      { error: 'content, body, or attachments are required', code: 'INVALID_ARGUMENT' },
       { status: 400 },
     );
   }
@@ -547,7 +547,7 @@ async function handleEditMessage(
 
   const messageId = typeof body['messageId'] === 'string' ? body['messageId'].trim() : '';
   if (!messageId) {
-    return Response.json({ error: 'messageId is required', code: 'INVALID_INPUT' }, { status: 400 });
+    return Response.json({ error: 'messageId is required', code: 'INVALID_ARGUMENT' }, { status: 400 });
   }
   const attachments = readCompanionChatAttachments(body);
   if (attachments instanceof Response) return attachments;
@@ -640,7 +640,7 @@ async function handleSteerMessage(
   if (attachments instanceof Response) return attachments;
   if (!rawContent.trim() && attachments.length === 0) {
     return Response.json(
-      { error: 'content, body, or attachments are required', code: 'INVALID_INPUT' },
+      { error: 'content, body, or attachments are required', code: 'INVALID_ARGUMENT' },
       { status: 400 },
     );
   }

@@ -91,7 +91,11 @@ function optionalDetachPolicy(params: Record<string, unknown>): HostedDetachPoli
 export function toGatewayVerbError(error: unknown): never {
   if (error instanceof GatewayVerbError) throw error;
   if (error instanceof HostedSessionNotFoundError) {
-    throw new GatewayVerbError(error.message, 'HOSTED_SESSION_NOT_FOUND', 404);
+    // SESSION_NOT_FOUND, not a hosted-specific spelling: it is the same
+    // condition the rest of the session surface reports under that code, and
+    // clients already branch on it. A second word for "no session with this id"
+    // only means the branch that handles it misses half the cases.
+    throw new GatewayVerbError(error.message, 'SESSION_NOT_FOUND', 404);
   }
   if (error instanceof HostedSessionUnavailableError) {
     // 409, not 404: the session exists and the caller can read why it cannot

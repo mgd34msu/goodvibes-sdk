@@ -174,7 +174,7 @@ export function applyEditBranch(
 ): EditBranchPlan {
   const attachments = resolveAttachments(input.attachments ?? [], artifactStore);
   if (!input.content.trim() && attachments.length === 0) {
-    throw branchError('content or attachments are required', 'INVALID_INPUT', 400);
+    throw branchError('content or attachments are required', 'INVALID_ARGUMENT', 400);
   }
 
   const targetIndex = session.messages.findIndex((m) => m.id === input.messageId);

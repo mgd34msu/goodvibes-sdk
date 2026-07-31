@@ -279,10 +279,10 @@ describe('ApprovalBroker.resolveApproval with selectedHunks', () => {
     expect(record?.decision?.modifiedArgs).toBeUndefined();
   });
 
-  test('out-of-range selectedHunks throws a VALIDATION_FAILED (400) error', async () => {
+  test('out-of-range selectedHunks throws an INVALID_ARGUMENT (400) error', async () => {
     const { broker, id } = await seed();
     await expect(broker.resolveApproval(id, { approved: true, selectedHunks: [9], actor: 'web', actorSurface: 'web' }))
-      .rejects.toMatchObject({ code: 'VALIDATION_FAILED', status: 400 });
+      .rejects.toMatchObject({ code: 'INVALID_ARGUMENT', status: 400 });
   });
 
   test('selectedHunks on a DENY is ignored (deny is always whole-request)', async () => {

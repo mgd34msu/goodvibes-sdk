@@ -720,7 +720,7 @@ describe('companion-chat-routes: turn cancel + steer', () => {
     expect(messages.some((m) => m.role === 'user' && m.content === 'urgent question')).toBe(true);
   });
 
-  test('POST /messages/steer with an empty payload returns 400 INVALID_INPUT', async () => {
+  test('POST /messages/steer with an empty payload returns 400 INVALID_ARGUMENT', async () => {
     const manager = makeTurnControlManager();
     const context = makeContext(manager);
     const session = manager.createSession({ provider: 'p', model: 'm' });
@@ -734,6 +734,6 @@ describe('companion-chat-routes: turn cancel + steer', () => {
     );
     expect(res?.status).toBe(400);
     const body = (await res!.json()) as { code: string };
-    expect(body.code).toBe('INVALID_INPUT');
+    expect(body.code).toBe('INVALID_ARGUMENT');
   });
 });
