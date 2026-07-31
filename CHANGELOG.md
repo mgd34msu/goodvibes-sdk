@@ -4,6 +4,65 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 ### Added
 
+- **A composition shape for a product that runs its own conversation loop and
+  nothing else.** `RuntimeServices` is the daemon-grade graph: a hundred-odd
+  required fields, several of them concretely-typed daemon furniture — the
+  persisting `SharedSessionBroker`, the `GatewayMethodCatalog` that SERVES
+  verbs, the watcher registry, channel delivery, automation, pairing tokens. A
+  terminal or a chat surface could not type-check against it without
+  constructing all of that, which is how both surface products ended up
+  embedding a daemon they did not want.
+
+  `ClientRuntimeServices` (`platform/runtime/client-services.ts`, exported from
+  `platform/runtime` as `bootstrap.*`) is the other shape, built by
+  `createClientRuntimeServices`. The rule applied to every field: it belongs
+  there when the surface's own turn cannot run correctly without it in-process,
+  and everything a daemon can answer over a verb is out. In: the agent graph and
+  its tool-facing state, the model stack, permissions as a client (a manager, a
+  rule store for approvals this surface remembers, and the raise seam that
+  carries an ask to whoever prompts), config/secrets/services, the event
+  bus/store/dispatch, hooks, plugins, MCP, the file cache and project index the
+  file tools read, transcript persistence, and the session and memory spine
+  CLIENTS. Out: the broker as a server, the gateway catalog, watchers, channels
+  and delivery, automation, cluster, device posture, the knowledge/home-graph/
+  code-index stores and their schedulers, voice and media, fleet aggregation,
+  remote supervision, retention and snapshot schedulers, the memory governor.
+
+  Two fields keep their `RuntimeServices` names but are typed as interfaces
+  rather than concrete classes, which is what lets a surface stop owning the
+  objects behind them. `sessionBroker` is now the inbound-dispatch seam
+  (`SessionContinuationDispatch` — bind a continuation runner, nothing else): a
+  surface still runs the loop, so it must be able to receive work for a session
+  it hosts without owning a persisting register to do it, and `SharedSessionBroker`
+  satisfies the seam unchanged, as does a wire-backed poller over
+  `sessions.inputs.*`. `userPermissionRuleStore` is now `UserPermissionRuleAccess`
+  (read the remembered rules, add one) — the Pick `PermissionManager` already
+  took, given a name, so a surface can remember its own approvals while the
+  canonical store and its `permissions.rules.*` verbs stay with the daemon.
+
+  Purely additive: `RuntimeServices` is unchanged, both consumer compile-pins
+  against it still hold, and the daemon-grade graph still satisfies the shared
+  part of the client shape field for field — `ClientRuntimeServicesFromHost`,
+  pinned at compile time in `test/types/client-runtime-shape.ts`, so a helper
+  typed against the narrow view accepts either composition.
+
+- **One implementation of each piece both compositions build.** The pure-client
+  factory is not a fork of `createRuntimeServices`: the parts they share moved
+  into free functions that both now call — `resolveRuntimeFeatureFlags`
+  (`runtime/feature-flag-composition.ts`, which owns the subtle "who owns the
+  manager" rule: a caller's manager is used as-is, never re-loaded or
+  double-bridged), `createProviderStack` (`runtime/provider-stack.ts`: the
+  stores, the registry, the ONE live credential chain, the tool LLM and the
+  optimizer bound to its flag and config mode), `createAgentGraph`
+  (`runtime/agent-graph.ts`: the four objects plus the two post-construction
+  links — conversation sink and cancellation source — that a hand-written second
+  copy drops silently), and the permission set in
+  `runtime/permissions/permission-composition.ts` (`createUserPermissionRuleStore`
+  with its fail-safe init, `createPolicyRuntimeState`,
+  `createBrokeredPermissionManager` carrying background-agent attribution, and
+  `createApprovalDerivedHandlers` for the three handlers that must ride the same
+  ask seam as a tool permission). `services.ts` calls all of them instead of
+  spelling them out, and shrank by 61 lines doing it.
 
 - **`credentials.set` / `credentials.delete` — writing a credential through the
   daemon.** `credentials.get` has been able to report which credentials are

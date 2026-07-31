@@ -35,11 +35,11 @@ import {
 } from '../knowledge/store-config.js';
 import { MediaProviderRegistry, ensureBuiltinMediaProviders } from '../media/index.js';
 import { MultimodalService } from '../multimodal/index.js';
-import { AgentManager, cancelAllAgentRuns } from '../tools/agent/index.js';
-import { AgentMessageBus } from '../agents/message-bus.js';
+import { cancelAllAgentRuns, type AgentManager } from '../tools/agent/index.js';
+import type { AgentMessageBus } from '../agents/message-bus.js';
 import { WrfcController } from '../agents/wrfc-controller.js';
-import { AgentOrchestrator } from '../agents/orchestrator.js';
-import { ArchetypeLoader } from '../agents/archetypes.js';
+import type { AgentOrchestrator } from '../agents/orchestrator.js';
+import type { ArchetypeLoader } from '../agents/archetypes.js';
 import { continuationChainOptions } from '../agents/conversation-continuation.js';
 import { ProcessManager } from '../tools/shared/process-manager.js';
 import { ModeManager } from '../state/mode-manager.js';
@@ -80,25 +80,26 @@ import { AcpHostService } from '../acp/host.js';
 import { WebhookNotifier } from '../integrations/webhooks.js';
 import { McpRegistry } from '../mcp/registry.js';
 import { createMcpElicitationApprovalHandler } from '../mcp/elicitation.js';
-import { buildSandboxEscalationHandler } from './permissions/sandbox-escalation-wiring.js';
-import { buildExecPromptAnswerHandler } from './permissions/exec-prompt-wiring.js';
-import { buildLocalhostFetchApproval } from './permissions/localhost-fetch-approval.js';
-import { applyProviderOptimizerConfigMode, bindProviderOptimizerFeatureFlag } from './provider-optimizer-wiring.js';
+import {
+  createApprovalDerivedHandlers,
+  createBrokeredPermissionManager,
+  createPolicyRuntimeState,
+  createUserPermissionRuleStore,
+} from './permissions/permission-composition.js';
 import {
   FeatureAnnouncementStore,
-  createSandboxContainmentAnnouncer,
   featureAnnouncementsPath,
 } from './feature-announcements.js';
 import { ContextAccountingHolder } from '../tools/context-accounting/index.js';
 import { DeterministicReplayEngine } from '../core/deterministic-replay.js';
-import { ProviderOptimizer } from '../providers/optimizer.js';
-import { ProviderRegistry } from '../providers/registry.js';
-import { ProviderCapabilityRegistry } from '../providers/capabilities.js';
-import { CacheHitTracker } from '../providers/cache-strategy.js';
-import { FavoritesStore } from '../providers/favorites.js';
-import { BenchmarkStore } from '../providers/model-benchmarks.js';
-import { ModelLimitsService } from '../providers/model-limits.js';
-import { UserPermissionRuleStore } from '../permissions/user-rule-store.js';
+import type { ProviderOptimizer } from '../providers/optimizer.js';
+import type { ProviderRegistry } from '../providers/registry.js';
+import type { ProviderCapabilityRegistry } from '../providers/capabilities.js';
+import type { CacheHitTracker } from '../providers/cache-strategy.js';
+import type { FavoritesStore } from '../providers/favorites.js';
+import type { BenchmarkStore } from '../providers/model-benchmarks.js';
+import type { ModelLimitsService } from '../providers/model-limits.js';
+import type { UserPermissionRuleStore } from '../permissions/user-rule-store.js';
 import { buildPricingSeams } from './cost/pricing-seams.js';
 import { SessionMemoryStore } from '../core/session-memory.js';
 import { SessionLineageTracker } from '../core/session-lineage.js';
@@ -109,19 +110,17 @@ import { FileStateCache } from '../state/file-cache.js';
 import { ProjectIndex } from '../state/project-index.js';
 import { IdempotencyStore } from './idempotency/index.js';
 import { OverflowHandler } from '../tools/shared/overflow.js';
-import { ToolLLM } from '../config/tool-llm.js';
+import type { ToolLLM } from '../config/tool-llm.js';
 import { ComponentHealthMonitor } from './perf/component-health-monitor.js';
 import { WorktreeRegistry } from './worktree/registry.js';
 import { SandboxSessionRegistry } from './sandbox/session-registry.js';
 import { createShellPathService, type ShellPathService } from './shell-paths.js';
 import type { FeatureFlagManager } from './feature-flags/index.js';
-import { createFeatureFlagManager } from './feature-flags/index.js';
-import { installComposedTelemetry } from './telemetry/index.js';
-import { deriveFeatureStates, bindFeatureSettingsBridge } from './feature-flags/feature-settings.js';
-import { PolicyRuntimeState } from './permissions/policy-runtime.js';
-import { loadConfiguredPolicyBundle } from './permissions/policy-config-loader.js';
+import { resolveRuntimeFeatureFlags } from './feature-flag-composition.js';
+import { createProviderStack } from './provider-stack.js';
+import { createAgentGraph } from './agent-graph.js';
+import type { PolicyRuntimeState } from './permissions/policy-runtime.js';
 import { bindPermissionModeChangeEvent } from '../permissions/mode-change-emitter.js';
-import { PermissionManager, createPermissionConfigReader } from '../permissions/manager.js';
 import { requireSurfaceRoot } from './surface-root.js';
 import {
   createNoopKeybindingsManager,
@@ -336,14 +335,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const surfaceRoot = requireSurfaceRoot(options.surfaceRoot, 'RuntimeServicesOptions surfaceRoot');
   const shellPaths = createShellPathService({ workingDirectory, homeDirectory });
   const configManager = options.configManager;
-  const featureFlags = options.featureFlags ?? createFeatureFlagManager();
-  if (options.featureFlags === undefined) {
-    // Gate states derive from domain settings keys; the bridge keeps live
-    // config.set changes flowing. Wired only for a manager this call owns.
-    featureFlags.loadFromConfig({ flags: deriveFeatureStates(configManager) });
-    bindFeatureSettingsBridge(configManager, featureFlags);
-  }
-  installComposedTelemetry(featureFlags); // telemetry.otelMode -> the process tracer
+  const featureFlags = resolveRuntimeFeatureFlags({ configManager, featureFlags: options.featureFlags });
   const runtimeDispatch = createDomainDispatch(options.runtimeStore);
   const gatewayMethods = new GatewayMethodCatalog();
   const panelManager = options.panelManager ?? createNoopPanelManager();
@@ -369,34 +361,27 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     secretsManager,
     subscriptionManager,
   });
-  const providerCapabilityRegistry = new ProviderCapabilityRegistry();
-  const cacheHitTracker = new CacheHitTracker();
-  const favoritesStore = new FavoritesStore({ dir: shellPaths.resolveUserPath(surfaceRoot) });
-  const benchmarkStore = new BenchmarkStore({ dir: shellPaths.resolveUserPath(surfaceRoot) });
-  const modelLimitsService = new ModelLimitsService({
-    cachePath: shellPaths.resolveUserPath(surfaceRoot, 'model-limits.json'),
-  });
-  const providerRegistry = new ProviderRegistry({
-    configManager,
-    subscriptionManager,
-    secretsManager,
-    serviceRegistry,
-    capabilityRegistry: providerCapabilityRegistry,
+  // The model stack — one implementation, shared with the pure-client
+  // composition (provider-stack.ts): stores, registry, the live credential
+  // chain, the tool LLM and the optimizer bound to its flag and config mode.
+  const {
+    providerCapabilityRegistry,
     cacheHitTracker,
     favoritesStore,
     benchmarkStore,
     modelLimitsService,
+    providerRegistry,
+    toolLLM,
+    providerOptimizer,
+  } = createProviderStack({
+    configManager,
+    subscriptionManager,
+    secretsManager,
+    serviceRegistry,
     featureFlags,
     runtimeBus: options.runtimeBus,
-  });
-  providerRegistry.initCustomProviders(); providerRegistry.initProviderModelDiscovery();
-  // ONE credential chain (env -> secrets -> subscription): boot applies secrets-backed keys; every secrets write/delete re-registers builtins LIVE (no restart); badges/picker/chat read the same instances.
-  secretsManager.onDidChange(() => void providerRegistry.refreshProviderCredentials().catch((error) => logger.warn('live credential refresh failed', { error: summarizeError(error) })));
-  void providerRegistry.refreshProviderCredentials().catch((error) => logger.warn('boot credential refresh failed', { error: summarizeError(error) }));
-  const toolLLM = new ToolLLM({
-    configManager,
-    providerRegistry,
-    runtimeBus: options.runtimeBus,
+    shellPaths,
+    surfaceRoot,
   });
   const localUserAuthManager = new UserAuthManager({ bootstrapFilePath: shellPaths.resolveUserPath(surfaceRoot, 'auth-users.json'), bootstrapCredentialPath: shellPaths.resolveUserPath(surfaceRoot, 'auth-bootstrap.txt') });
   // Per-pairing named revocable operator tokens (device-scoped); consulted by the operator-auth path. The cap is read per mint, so a `device.nodes.maxPaired` change applies to the next pairing without a restart.
@@ -415,28 +400,16 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     recoveryWindowMinutes: () => Number(configManager.get('watchers.recoveryWindowMinutes')), // read per restore
   });
   watcherRegistry.attachRuntime({ runtimeStore: options.runtimeStore, runtimeBus: options.runtimeBus });
-  const agentMessageBus = new AgentMessageBus(); agentMessageBus.setRuntimeBus(options.runtimeBus);
-  const archetypeLoader = new ArchetypeLoader(join(workingDirectory, '.goodvibes', 'agents'));
-  const agentOrchestrator = new AgentOrchestrator({ messageBus: agentMessageBus });
-  agentOrchestrator.setRuntimeBus(options.runtimeBus);
-  const agentManager = new AgentManager({
-    archetypeLoader,
-    messageBus: agentMessageBus,
-    executor: agentOrchestrator,
+  // The agent graph in its one working order — shared with the pure-client
+  // composition (agent-graph.ts), because the two post-construction links
+  // (conversation sink, cancellation source) are easy to omit and silent when
+  // omitted.
+  const { archetypeLoader, agentMessageBus, agentOrchestrator, agentManager } = createAgentGraph({
+    runtimeBus: options.runtimeBus,
     configManager,
     providerRegistry,
+    workingDirectory,
   });
-  // Conversation-snapshot sink bridge: AgentOrchestrator predates AgentManager, so it's
-  // wired via setConversationSink, not a constructor dep (same ordering constraint as setRuntimeBus above).
-  agentOrchestrator.setConversationSink({
-    register: (agentId, source) => agentManager.registerConversationSource(agentId, source),
-    release: (agentId) => agentManager.releaseConversationSource(agentId),
-  });
-  // Cooperative cancellation bridge: same ordering constraint/setter pattern as setConversationSink above.
-  agentOrchestrator.setCancellationSource({
-    get: (agentId) => agentManager.getCancellationSignal(agentId),
-  });
-  agentManager.setRuntimeBus(options.runtimeBus);
   const wrfcController = new WrfcController(options.runtimeBus, agentMessageBus, {
     agentManager,
     configManager,
@@ -750,9 +723,6 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const worktreeRegistry = new WorktreeRegistry(workingDirectory, { surfaceRoot });
   const webhookNotifier = new WebhookNotifier();
   const replayEngine = new DeterministicReplayEngine(workingDirectory);
-  const providerOptimizer = new ProviderOptimizer(providerRegistry, providerCapabilityRegistry, false);
-  bindProviderOptimizerFeatureFlag(featureFlags, providerOptimizer);
-  applyProviderOptimizerConfigMode(configManager, providerOptimizer);
   // Poll-free runtime event for permission-mode changes so surfaces can render a live mode pill.
   bindPermissionModeChangeEvent(configManager, options.runtimeBus, 'runtime');
   const sessionMemoryStore = new SessionMemoryStore();
@@ -766,8 +736,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     featureFlags,
     spillBackend: configManager.get('tools.overflowSpillBackend'),
   });
-  const policyRuntimeState = new PolicyRuntimeState();
-  loadConfiguredPolicyBundle(configManager, featureFlags, policyRuntimeState);
+  const policyRuntimeState = createPolicyRuntimeState(configManager, featureFlags);
   const fileCache = new FileStateCache();
   const projectIndex = new ProjectIndex(workingDirectory);
   const channelDeliveryRouter = new ChannelDeliveryRouter({
@@ -813,66 +782,36 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   });
   // Durable user-origin permission rules (remembered approvals): one store per project, shared by
   // every PermissionManager here; permissions.rules.* lists/deletes. Background init is fail-safe.
-  const userPermissionRuleStore = new UserPermissionRuleStore(join(configManager.getControlPlaneConfigDir(), 'permission-rules.json'));
-  void userPermissionRuleStore.init().catch((error) => logger.warn('user permission rule store init failed; asks will prompt', { error: summarizeError(error) }));
-  // Background/subagent tool calls are brokered through the SAME session
-  // permission mode as the foreground turn loop. The ask handler is the shared
-  // approval broker, so a background ask surfaces through the same blocked-on-
-  // user machinery — here carrying the subagent's attribution. The escape hatch
-  // (config permissions.backgroundAgents: 'allow-all') exempts background agents.
-  const backgroundPermissionManager = new PermissionManager(
-    (request) => approvalBroker.requestApproval({
-      request,
-      ...(request.attribution?.kind === 'background-agent'
-        ? {
-            routeId: request.attribution.agentId,
-            metadata: {
-              source: 'background-agent',
-              agentId: request.attribution.agentId,
-              ...(request.attribution.template ? { agentTemplate: request.attribution.template } : {}),
-            },
-          }
-        : {}),
-    }),
-    createPermissionConfigReader(configManager),
+  // Same store + same manager wiring the pure-client composition uses (permissions/permission-composition.ts).
+  const userPermissionRuleStore = createUserPermissionRuleStore(configManager);
+  const backgroundPermissionManager = createBrokeredPermissionManager({
+    requestApproval: (input) => approvalBroker.requestApproval(input),
+    configManager,
     policyRuntimeState,
     hookDispatcher,
     featureFlags,
-    userPermissionRuleStore,
-  );
+    userRuleStore: userPermissionRuleStore,
+  });
   // The interactive session binds its Orchestrator-backed source onto this holder
   // after construction; passing it through here registers the context_accounting
   // tool on the shared roster (every consumer inherits it, like repo_map).
   const contextAccountingHolder = new ContextAccountingHolder();
-  // Sandbox boundary escalations ride the SAME approval broker as a permission
-  // ask and an MCP elicitation — one learned pattern, not five. The optional
-  // model-judgment tier (dark flag) annotates or opt-in auto-approves the ask;
-  // it never converts allow→deny and never touches the frozen catastrophic block.
-  // (Wiring + judgment provider live in permissions/sandbox-escalation-wiring.ts.)
-  const sandboxEscalationHandler = buildSandboxEscalationHandler({
+  // The three handlers that must ride the SAME ask seam as a tool permission
+  // (sandbox-boundary escalation, a blocked exec prompt, a loopback fetch) plus
+  // the announce-once containment receipt — one implementation, shared with the
+  // pure-client composition (permissions/permission-composition.ts).
+  // (Announcement store constructed above, before the consolidation scheduler.)
+  const {
+    sandboxEscalationHandler,
+    execPromptAnswerHandler,
+    localhostFetchApproval,
+    onSandboxedRun,
+  } = createApprovalDerivedHandlers({
     requestApproval: (input) => approvalBroker.requestApproval(input),
     providerRegistry,
     configManager,
     featureFlags,
-  });
-  // An exec command blocked on a terminal prompt (host-key confirmation,
-  // credential ask) rides the same broker: the pending prompt surfaces through
-  // every surface's approval machinery and the typed answer feeds the same
-  // continuing run. (Wiring lives in permissions/exec-prompt-wiring.ts.)
-  const execPromptAnswerHandler = buildExecPromptAnswerHandler({
-    requestApproval: (input) => approvalBroker.requestApproval(input),
-  });
-  // Localhost dev-server fetches ride the same broker: ask once, one-tap
-  // "allow for this project", persisted as fetch.allowLocalhost.
-  const localhostFetchApproval = buildLocalhostFetchApproval({
-    requestApproval: (input) => approvalBroker.requestApproval(input),
-    configManager,
-  });
-  // Announce-once receipts for default-on features: the first contained exec
-  // run yields the one-time containment line (persisted, once per install).
-  // (Store constructed above, before the consolidation scheduler.)
-  const onSandboxedRun = createSandboxContainmentAnnouncer(announcementStore, (announcement) => {
-    logger.info(announcement.text, { announcement: announcement.id });
+    announcementStore,
   });
   // Late-bound CI auto-watch observer (filled by registerGatewayVerbGroups below).
   let ciAutoWatchObserver: ((toolName: string, args: Record<string, unknown>, success: boolean) => void) | null = null;
