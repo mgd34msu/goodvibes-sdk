@@ -20,11 +20,18 @@
  *    immediately — it deliberately does not park an HTTP request across a
  *    person's attention span.
  * 2. Prompt locally at the same time.
- * 3. Watch the raised id for a decision made elsewhere, by polling
- *    `approvals.list` on a short interval. (The `control.approval_update`
- *    stream carries the same transitions; polling is what this seam uses
- *    because a permission ask blocks a tool call for seconds, not hours, and a
- *    poll needs no long-lived connection to survive a laptop lid.)
+ * 3. Watch the raised id for a decision made elsewhere. The channel for that is
+ *    `control.approval_update`, which carries every transition of the record the
+ *    moment the broker records it — so a decision made on a phone reaches this
+ *    surface in the time one SSE frame takes, not in the time one poll interval
+ *    takes. A product wires the stream in through `subscribeApprovalUpdates`.
+ *
+ *    Polling `approvals.list` remains as the FALLBACK, and it is a real one, not
+ *    a formality: a client with no stream seam wired, or one whose stream the
+ *    daemon refused, still gets its answer. There is also one read immediately
+ *    after subscribing, because a decision can land between the raise and the
+ *    subscription and a push channel cannot deliver what happened before it
+ *    opened.
  * 4. Whichever answers first is the decision. If the local prompt answered, the
  *    daemon is TOLD (`approvals.approve`/`approvals.deny`) so its record — the
  *    one every other surface reads — matches what happened here.
@@ -49,6 +56,20 @@ import { logger, summarizeError } from '../../utils/index.js';
 import type { PermissionPromptDecision, PermissionPromptRequest } from '../../permissions/prompt.js';
 import type { ApprovalRaiser } from '../permissions/permission-composition.js';
 import type { DaemonVerbCaller } from './daemon-verbs.js';
+import type { ApprovalUpdateNotice, ApprovalUpdateSubscription } from './approval-updates.js';
+
+/**
+ * How this surface opens the approval-update stream. A product supplies it
+ * because resolving a base URL and proving this surface may subscribe are
+ * trust-boundary concerns the SDK core deliberately never reaches into — the
+ * same carve-out `DaemonVerbCaller` records.
+ *
+ * Returning null means "no stream right now", which is a supported answer:
+ * the raiser falls back to reading the record on an interval.
+ */
+export type ApprovalUpdateSubscriber = (
+  onUpdate: (notice: ApprovalUpdateNotice) => void,
+) => Promise<ApprovalUpdateSubscription | null>;
 
 /** The local ask: draw a prompt on this surface and resolve with what the user chose. */
 export type LocalPermissionPrompt = (request: PermissionPromptRequest) => Promise<PermissionPromptDecision>;
@@ -68,7 +89,12 @@ export interface ClientApprovalRaiserOptions {
   readonly actor: string;
   /** The live session id an ask belongs to, when there is one. */
   readonly sessionId?: () => string | null | undefined;
-  /** Poll interval override (tests). */
+  /**
+   * The push channel for decisions made elsewhere. Omitted ⇒ this surface
+   * reads the record on an interval instead, which still works and is slower.
+   */
+  readonly subscribeApprovalUpdates?: ApprovalUpdateSubscriber | undefined;
+  /** Poll interval override (tests), and the fallback interval. */
   readonly pollIntervalMs?: number;
   /** Injectable sleep (tests). */
   readonly sleep?: (ms: number) => Promise<void>;
@@ -76,8 +102,12 @@ export interface ClientApprovalRaiserOptions {
 
 interface RaisedRecord {
   readonly id: string;
-  readonly status?: string;
-  readonly decision?: { readonly approved?: boolean; readonly remember?: boolean; readonly note?: string } | undefined;
+  readonly status?: string | undefined;
+  readonly decision?: {
+    readonly approved?: boolean | undefined;
+    readonly remember?: boolean | undefined;
+    readonly note?: string | undefined;
+  } | undefined;
 }
 
 /** A record the daemon considers answered, mapped to the decision this surface returns. */
@@ -141,8 +171,8 @@ export function createClientApprovalRaiser(options: ClientApprovalRaiserOptions)
     }
   };
 
-  /** Resolve when the daemon's record for this id is answered. Never rejects. */
-  const watchRemote = async (approvalId: string, done: () => boolean): Promise<PermissionPromptDecision | null> => {
+  /** The fallback: read the record back on an interval until it is answered. */
+  const pollRemote = async (approvalId: string, done: () => boolean): Promise<PermissionPromptDecision | null> => {
     while (!done()) {
       await sleep(pollIntervalMs);
       if (done()) return null;
@@ -150,6 +180,58 @@ export function createClientApprovalRaiser(options: ClientApprovalRaiserOptions)
       if (decision) return decision;
     }
     return null;
+  };
+
+  /**
+   * The push path: subscribe, then read once to close the gap between the raise
+   * and the subscription, then wait for the frame that decides this id.
+   *
+   * Resolves null when the local prompt won, when the stream ended without a
+   * decision, or when no stream could be opened — the caller falls back.
+   */
+  const watchRemoteOverStream = async (
+    subscribe: ApprovalUpdateSubscriber,
+    approvalId: string,
+    done: () => boolean,
+  ): Promise<{ readonly subscribed: boolean; readonly decision: PermissionPromptDecision | null }> => {
+    let settle: ((decision: PermissionPromptDecision | null) => void) | null = null;
+    const decided = new Promise<PermissionPromptDecision | null>((resolve) => { settle = resolve; });
+    let subscription: ApprovalUpdateSubscription | null = null;
+    try {
+      subscription = await subscribe((notice) => {
+        if (notice.approval.id !== approvalId) return;
+        if (done()) { settle?.(null); return; }
+        const decision = readRemoteDecision(notice.approval);
+        if (decision) settle?.(decision);
+      });
+    } catch (error) {
+      logger.debug('[approvals] opening the approval-update stream failed; reading the record instead', {
+        error: summarizeError(error),
+      });
+      return { subscribed: false, decision: null };
+    }
+    if (!subscription) return { subscribed: false, decision: null };
+    try {
+      // The gap read. A decision taken before the stream opened would otherwise
+      // never arrive on it, and this seam would wait for an event that is
+      // already in the past.
+      const alreadyDecided = readRemoteDecision(await readRaised(approvalId));
+      if (alreadyDecided) return { subscribed: true, decision: alreadyDecided };
+      if (done()) return { subscribed: true, decision: null };
+      return { subscribed: true, decision: await decided };
+    } finally {
+      subscription.close();
+    }
+  };
+
+  /** Resolve when the daemon's record for this id is answered. Never rejects. */
+  const watchRemote = async (approvalId: string, done: () => boolean): Promise<PermissionPromptDecision | null> => {
+    const subscribe = options.subscribeApprovalUpdates;
+    if (subscribe) {
+      const pushed = await watchRemoteOverStream(subscribe, approvalId, done);
+      if (pushed.subscribed) return pushed.decision;
+    }
+    return await pollRemote(approvalId, done);
   };
 
   /** Tell the daemon what this surface decided, so its record is the truth. */

@@ -79,6 +79,13 @@ export const DAEMON_OWNED_CONFIG_PREFIXES: readonly string[] = [
   // the TUI or the agent reported success, landed in that client's file, and
   // changed nothing about what an inbound Telegram or ntfy message did.
   'conversationGate.',
+  // Hosted sessions run IN the daemon, so the process that reads the detach
+  // policy, enforces the session cap and bounds the persisted transcript is the
+  // daemon. Left client-owned, a detach policy flipped to `survive` from the
+  // terminal would land in the terminal's silo while the daemon — the process
+  // that actually decides whether a session outlives its client — kept reading
+  // the default, and the setting would report success and change nothing.
+  'hostedSessions.',
   // Leader election decides which node CONSUMES inbound channel messages, and
   // the daemon is the process that does that consuming. Left client-owned, the
   // group, port and shared phrase would live in whichever client the operator

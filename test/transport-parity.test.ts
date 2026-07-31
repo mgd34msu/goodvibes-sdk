@@ -107,6 +107,16 @@ const DIRECT_TRANSPORT_COVERAGE: Record<string, string> = {
   // TUI holds directly — 'http-only' documents the deliberate skip, exactly as
   // sessions.search / checkpoints.* do.
   'sessions.changes.get': 'http-only',
+  // sessions.hosted.*: a hosted session's loop runs INSIDE the daemon process,
+  // so there is nothing for a DirectTransport to reach — an in-process caller
+  // that wanted one would be the daemon asking itself. Every consumer is a
+  // client on the other side of the wire, which is what these verbs exist for;
+  // the same deliberate 'http-only' skip as the live-turn verbs above.
+  'sessions.hosted.create': 'http-only',
+  'sessions.hosted.attach': 'http-only',
+  'sessions.hosted.detach': 'http-only',
+  'sessions.hosted.kill': 'http-only',
+  'sessions.hosted.list': 'http-only',
   // fleet.*: the TUI's fleet panel (src/panels/fleet-read-model.ts)
   // already holds a direct reference to the SDK's ProcessRegistry and calls
   // `registry.query()` in-process — it does NOT go through operator-client

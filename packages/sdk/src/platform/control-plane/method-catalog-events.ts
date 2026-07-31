@@ -2,6 +2,7 @@ import type { GatewayEventDescriptor } from './method-catalog-shared.js';
 import { STRING_SCHEMA,NUMBER_SCHEMA,JSON_OBJECT_SCHEMA,arraySchema,objectSchema,eventDescriptor,runtimeDomainEvent } from './method-catalog-shared.js';
 import { CONTROL_PLANE_SURFACE_MESSAGE_SCHEMA } from './operator-contract-schemas.js';
 import { SHARED_APPROVAL_RECORD_SCHEMA } from './operator-contract-schemas-approvals.js';
+import { HOSTED_SESSION_RECORD_SCHEMA } from './method-catalog-hosted-sessions.js';
 import { RUNTIME_EVENT_DOMAINS, type RuntimeEventDomain } from '../../events/domain-map.js';
 
 /**
@@ -54,6 +55,21 @@ export const SESSION_UPDATE_INTENT_MAP = {
   closed: ['session-closed'],
   deleted: ['session-deleted'],
 } as const satisfies Record<string, readonly (typeof SESSION_UPDATE_WIRE_EVENTS)[number][]>;
+
+/**
+ * The lifecycle names carried in a `hosted-session-update` frame's
+ * `payload.event`. Kept beside the descriptor so a subscriber switches on a
+ * contract-backed list rather than guessing from observed behavior.
+ */
+export const HOSTED_SESSION_UPDATE_WIRE_EVENTS = [
+  'hosted-session-created',
+  'hosted-session-attached',
+  'hosted-session-detached',
+  'hosted-session-turn-started',
+  'hosted-session-turn-ended',
+  'hosted-session-terminated',
+  'hosted-session-restored',
+] as const;
 
 const RUNTIME_DOMAIN_DESCRIPTIONS = {
   session: 'Shared-session lifecycle, participant, and message events.',
@@ -153,6 +169,37 @@ export const builtinGatewayEventDescriptors: readonly GatewayEventDescriptor[] =
       approval: SHARED_APPROVAL_RECORD_SCHEMA,
       createdAt: NUMBER_SCHEMA,
     }, ['approval', 'createdAt']),
+  }),
+  eventDescriptor({
+    id: 'control.hosted_session_update',
+    title: 'Hosted Session Lifecycle Update',
+    description:
+      'Every lifecycle transition of a session whose loop runs INSIDE the daemon: created, attached, '
+      + 'detached, turn started, turn ended, terminated, and restored after a restart. The payload '
+      + 'carries the whole hosted-session record plus the transition name, the client it is about '
+      + '(attach/detach) and a short detail — so a subscriber renders the change from the event and '
+      + 'needs no follow-up read. '
+      + 'This channel is LIFECYCLE ONLY. The turn itself — streamed tokens, tool calls, tool results, '
+      + 'turn transitions — is already on the `turn` and `tools` runtime domains, stamped with the '
+      + 'hosted session id, because a hosted session runs the ordinary orchestrator; a client watches '
+      + 'those exactly as it does for a local session and filters on the id it was handed. A second '
+      + 'copy of that stream is not published here. '
+      + 'Domain-tagged `session`, so a client narrowing with ?domains=… must include `session` to '
+      + 'receive it. The record is the daemon\'s: `effectiveDetachPolicy` says what leaving would do '
+      + 'right now, and `terminatedReason` says why a session ended — a hosted session never simply '
+      + 'disappears.',
+    category: 'transport',
+    transport: ['sse', 'ws'],
+    scopes: ['read:sessions'],
+    wireEvents: ['hosted-session-update'],
+    domains: ['session'],
+    outputSchema: objectSchema({
+      event: { type: 'string', enum: [...HOSTED_SESSION_UPDATE_WIRE_EVENTS] },
+      session: HOSTED_SESSION_RECORD_SCHEMA,
+      createdAt: NUMBER_SCHEMA,
+      clientId: STRING_SCHEMA,
+      detail: STRING_SCHEMA,
+    }, ['event', 'session', 'createdAt']),
   }),
   eventDescriptor({
     id: 'control.session_update',

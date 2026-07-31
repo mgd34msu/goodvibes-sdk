@@ -34,6 +34,7 @@ import type { DaemonSurfaceActionHelper } from './surface-actions.js';
 import type { DaemonTransportEventsHelper } from './transport-events.js';
 import type { DaemonHttpRouter } from './http/router.js';
 import type { CompanionChatManager } from '../companion/companion-chat-manager.js';
+import type { HostedSessionManager } from '../hosted-sessions/index.js';
 import type { RuntimeServices } from '../runtime/services.js';
 import type { PendingSurfaceReply } from './types.js';
 import type { ResolvedInboundTlsContext } from '../runtime/network/index.js';
@@ -84,6 +85,13 @@ export interface ResolvedDaemonFacadeRuntime {
   readonly serveFactory: typeof Bun.serve;
   readonly githubWebhookSecret: string | null;
   readonly companionChatManager: CompanionChatManager;
+  /**
+   * The hosted-session engine, or null when this daemon was not told how to
+   * build a workspace floor. Null is the honest state, not a missing wire: the
+   * verbs are cataloged, unhandled, and refuse — see
+   * daemon/hosted-sessions-composition.ts.
+   */
+  readonly hostedSessions: HostedSessionManager | null;
 }
 
 export interface DaemonFacadeCollaborators {

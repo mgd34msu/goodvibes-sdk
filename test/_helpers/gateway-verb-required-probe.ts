@@ -78,6 +78,7 @@ import { registerRewindGatewayMethods } from '../../packages/sdk/src/platform/co
 import { createConversationRewindHostBroker, registerRewindConversationHostGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/rewind-conversation-hosts.js';
 import { registerRuntimeMetricsGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/runtime-metrics.js';
 import { registerSessionRuntimeGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/session-runtime.js';
+import { registerHostedSessionGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/hosted-sessions.js';
 import { registerSkillsGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/skills.js';
 import { registerStepUpGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/stepup.js';
 import { registerTailscaleGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/tailscale.js';
@@ -154,6 +155,7 @@ const ROUTE_REGISTRARS: ReadonlyArray<readonly [string, (catalog: GatewayMethodC
   // runs. A stub here would probe a function that does not exist in production.
   ['rewind-conversation-hosts', (catalog) => registerRewindConversationHostGatewayMethods(catalog, createConversationRewindHostBroker())],
   ['runtime-metrics', (catalog) => registerRuntimeMetricsGatewayMethods(catalog)],
+  ['hosted-sessions', (catalog) => registerHostedSessionGatewayMethods(catalog, stubDeps())],
   ['session-runtime', (catalog) => registerSessionRuntimeGatewayMethods(catalog, stubDeps())],
   ['skills', (catalog) => registerSkillsGatewayMethods(catalog, stubDeps())],
   ['stepup', (catalog) => registerStepUpGatewayMethods(catalog, stubDeps())],
@@ -193,6 +195,7 @@ export const EXPECTED_ROUTE_REGISTRARS: readonly string[] = [
   'registerFleetCheckpointsSearchGatewayMethods',
   'registerFleetGatewayMethods',
   'registerGatewayVerbGroups',
+  'registerHostedSessionGatewayMethods',
   'registerMemoryGatewayMethods',
   'registerMemoryProjectionsGatewayMethods',
   'registerPairingGatewayMethods',

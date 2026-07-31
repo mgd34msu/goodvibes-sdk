@@ -356,6 +356,7 @@ export type ConfigKey =
   | 'controlPlane.host'
   | 'controlPlane.port'
   | 'controlPlane.publicBaseUrl' | 'conversationGate.mode' | 'conversationGate.proposalTtlMs' | 'conversationGate.maxPendingProposals'
+  | 'hostedSessions.detachPolicy' | 'hostedSessions.maxSessions' | 'hostedSessions.maxMessagesPerSession' | 'hostedSessions.terminatedRetentionMs'
   | 'controlPlane.streamMode'
   | 'controlPlane.allowRemote'
   | 'controlPlane.trustProxy'

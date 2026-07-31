@@ -89531,6 +89531,726 @@
         "invokable": true
       },
       {
+        "id": "sessions.hosted.attach",
+        "title": "Attach to a Daemon-Hosted Session",
+        "description": "Join a hosted session and receive its transcript so far, so a client that was never connected — or one reconnecting after the daemon restarted — renders what it missed instead of an empty screen. A session restored from disk has its loop rebuilt on this call, with a system line in the transcript stating that its in-flight turn did not survive the restart. Live output continues on the `turn` and `tools` event domains, filtered on this session id. Attaching is what keeps a `kill`-policy session alive: the policy is applied when the LAST client detaches. ws-only invoke verb; no REST binding.",
+        "category": "sessions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "write:sessions"
+        ],
+        "events": [
+          "control.hosted_session_update"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "clientId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId",
+            "clientId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "session": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "workspaceRoot": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "idle",
+                    "running",
+                    "terminated"
+                  ]
+                },
+                "detachPolicy": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "kill",
+                        "survive"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "effectiveDetachPolicy": {
+                  "type": "string",
+                  "enum": [
+                    "kill",
+                    "survive"
+                  ]
+                },
+                "attachedClients": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "providerId": {
+                  "type": "string"
+                },
+                "modelId": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "turnCount": {
+                  "type": "number"
+                },
+                "messageCount": {
+                  "type": "number"
+                },
+                "lastTurnAt": {
+                  "type": "number"
+                },
+                "terminatedAt": {
+                  "type": "number"
+                },
+                "terminatedReason": {
+                  "type": "string"
+                },
+                "restoredFromDisk": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "workspaceRoot",
+                "title",
+                "status",
+                "detachPolicy",
+                "effectiveDetachPolicy",
+                "attachedClients",
+                "createdAt",
+                "updatedAt",
+                "turnCount",
+                "messageCount",
+                "restoredFromDisk"
+              ],
+              "additionalProperties": false
+            },
+            "history": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "user",
+                      "assistant",
+                      "system",
+                      "tool"
+                    ]
+                  },
+                  "content": {
+                    "type": "string"
+                  },
+                  "at": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "role",
+                  "content"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "session",
+            "history"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "sessions.hosted.create",
+        "title": "Create a Daemon-Hosted Session",
+        "description": "Compose a full conversation loop INSIDE the daemon for a workspace: the same orchestrator, tool registry and permission gate a terminal runs, hosted here so the conversation does not depend on the client that started it staying open. `workspaceRoot` must be absolute — a relative path would resolve against the daemon's own directory, which is never what the caller meant. `modelId` is resolved against this daemon's live model registry when given, so an unknown or ambiguous id is refused here rather than at the first turn; omitted, the session follows the daemon's current selection. `detachPolicy` overrides the `hostedSessions.detachPolicy` setting for this session alone. `initialPrompt` is submitted as the first user message and the call does NOT wait for that turn — watch the `turn` and `tools` event domains filtered on the returned session id. Refused with the live count and the setting named when `hostedSessions.maxSessions` is already reached. ws-only invoke verb; no REST binding.",
+        "category": "sessions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "write:sessions"
+        ],
+        "events": [
+          "control.hosted_session_update",
+          "control.session_update"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "workspaceRoot": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "modelId": {
+              "type": "string"
+            },
+            "initialPrompt": {
+              "type": "string"
+            },
+            "detachPolicy": {
+              "type": "string",
+              "enum": [
+                "kill",
+                "survive"
+              ]
+            },
+            "clientId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "workspaceRoot"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "session": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "workspaceRoot": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "idle",
+                    "running",
+                    "terminated"
+                  ]
+                },
+                "detachPolicy": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "kill",
+                        "survive"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "effectiveDetachPolicy": {
+                  "type": "string",
+                  "enum": [
+                    "kill",
+                    "survive"
+                  ]
+                },
+                "attachedClients": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "providerId": {
+                  "type": "string"
+                },
+                "modelId": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "turnCount": {
+                  "type": "number"
+                },
+                "messageCount": {
+                  "type": "number"
+                },
+                "lastTurnAt": {
+                  "type": "number"
+                },
+                "terminatedAt": {
+                  "type": "number"
+                },
+                "terminatedReason": {
+                  "type": "string"
+                },
+                "restoredFromDisk": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "workspaceRoot",
+                "title",
+                "status",
+                "detachPolicy",
+                "effectiveDetachPolicy",
+                "attachedClients",
+                "createdAt",
+                "updatedAt",
+                "turnCount",
+                "messageCount",
+                "restoredFromDisk"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "session"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "sessions.hosted.detach",
+        "title": "Detach from a Daemon-Hosted Session",
+        "description": "Leave a hosted session. When other clients are still attached, nothing else happens. When this was the LAST client, the effective detach policy decides: `kill` (the default, and what closing a client has always done) terminates the session with the reason `detached`; `survive` leaves it idle and reattachable. The policy is the session's own override when it was created with one and the `hostedSessions.detachPolicy` setting otherwise, and the returned record says which applied and what the session now is — never a guess by the caller. ws-only invoke verb; no REST binding.",
+        "category": "sessions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "write:sessions"
+        ],
+        "events": [
+          "control.hosted_session_update"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "clientId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId",
+            "clientId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "session": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "workspaceRoot": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "idle",
+                    "running",
+                    "terminated"
+                  ]
+                },
+                "detachPolicy": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "kill",
+                        "survive"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "effectiveDetachPolicy": {
+                  "type": "string",
+                  "enum": [
+                    "kill",
+                    "survive"
+                  ]
+                },
+                "attachedClients": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "providerId": {
+                  "type": "string"
+                },
+                "modelId": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "turnCount": {
+                  "type": "number"
+                },
+                "messageCount": {
+                  "type": "number"
+                },
+                "lastTurnAt": {
+                  "type": "number"
+                },
+                "terminatedAt": {
+                  "type": "number"
+                },
+                "terminatedReason": {
+                  "type": "string"
+                },
+                "restoredFromDisk": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "workspaceRoot",
+                "title",
+                "status",
+                "detachPolicy",
+                "effectiveDetachPolicy",
+                "attachedClients",
+                "createdAt",
+                "updatedAt",
+                "turnCount",
+                "messageCount",
+                "restoredFromDisk"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "session"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "sessions.hosted.kill",
+        "title": "End a Daemon-Hosted Session",
+        "description": "End a hosted session regardless of who is attached or what its detach policy says: the in-flight turn is interrupted, its loop is taken apart, its workspace floor is released when it was the last session using it, and the record is kept — terminated, with the reason `killed` — until `hostedSessions.terminatedRetentionMs` retires it. Killing an already-terminated session returns that record unchanged rather than reporting an error for work that is already done. ws-only invoke verb; no REST binding.",
+        "category": "sessions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "write:sessions"
+        ],
+        "events": [
+          "control.hosted_session_update",
+          "control.session_update"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "session": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "workspaceRoot": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "idle",
+                    "running",
+                    "terminated"
+                  ]
+                },
+                "detachPolicy": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "kill",
+                        "survive"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "effectiveDetachPolicy": {
+                  "type": "string",
+                  "enum": [
+                    "kill",
+                    "survive"
+                  ]
+                },
+                "attachedClients": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "providerId": {
+                  "type": "string"
+                },
+                "modelId": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "turnCount": {
+                  "type": "number"
+                },
+                "messageCount": {
+                  "type": "number"
+                },
+                "lastTurnAt": {
+                  "type": "number"
+                },
+                "terminatedAt": {
+                  "type": "number"
+                },
+                "terminatedReason": {
+                  "type": "string"
+                },
+                "restoredFromDisk": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "workspaceRoot",
+                "title",
+                "status",
+                "detachPolicy",
+                "effectiveDetachPolicy",
+                "attachedClients",
+                "createdAt",
+                "updatedAt",
+                "turnCount",
+                "messageCount",
+                "restoredFromDisk"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "session"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "sessions.hosted.list",
+        "title": "List Daemon-Hosted Sessions",
+        "description": "Every session this daemon hosts, most recently updated first. Terminated sessions are excluded unless `includeTerminated` is set — they are kept, with the reason they ended, until the retention window retires them, so a session that stopped can be asked about instead of having simply vanished. Each record carries the policy that would apply on the next detach, so a client can show what leaving will do before it leaves. ws-only invoke verb; no REST binding.",
+        "category": "sessions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "read:sessions"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "includeTerminated": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "sessions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "workspaceRoot": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "idle",
+                      "running",
+                      "terminated"
+                    ]
+                  },
+                  "detachPolicy": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "kill",
+                          "survive"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "effectiveDetachPolicy": {
+                    "type": "string",
+                    "enum": [
+                      "kill",
+                      "survive"
+                    ]
+                  },
+                  "attachedClients": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "providerId": {
+                    "type": "string"
+                  },
+                  "modelId": {
+                    "type": "string"
+                  },
+                  "createdAt": {
+                    "type": "number"
+                  },
+                  "updatedAt": {
+                    "type": "number"
+                  },
+                  "turnCount": {
+                    "type": "number"
+                  },
+                  "messageCount": {
+                    "type": "number"
+                  },
+                  "lastTurnAt": {
+                    "type": "number"
+                  },
+                  "terminatedAt": {
+                    "type": "number"
+                  },
+                  "terminatedReason": {
+                    "type": "string"
+                  },
+                  "restoredFromDisk": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "id",
+                  "workspaceRoot",
+                  "title",
+                  "status",
+                  "detachPolicy",
+                  "effectiveDetachPolicy",
+                  "attachedClients",
+                  "createdAt",
+                  "updatedAt",
+                  "turnCount",
+                  "messageCount",
+                  "restoredFromDisk"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "sessions"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "sessions.inputs.cancel",
         "title": "Cancel Shared Session Input",
         "description": "Cancel a queued shared-session input before it is delivered or spawned.",
@@ -92046,7 +92766,8 @@
                 "companion-task",
                 "companion-chat",
                 "automation",
-                "acp"
+                "acp",
+                "hosted"
               ]
             },
             "project": {
@@ -103162,6 +103883,152 @@
         }
       },
       {
+        "id": "control.hosted_session_update",
+        "title": "Hosted Session Lifecycle Update",
+        "description": "Every lifecycle transition of a session whose loop runs INSIDE the daemon: created, attached, detached, turn started, turn ended, terminated, and restored after a restart. The payload carries the whole hosted-session record plus the transition name, the client it is about (attach/detach) and a short detail — so a subscriber renders the change from the event and needs no follow-up read. This channel is LIFECYCLE ONLY. The turn itself — streamed tokens, tool calls, tool results, turn transitions — is already on the `turn` and `tools` runtime domains, stamped with the hosted session id, because a hosted session runs the ordinary orchestrator; a client watches those exactly as it does for a local session and filters on the id it was handed. A second copy of that stream is not published here. Domain-tagged `session`, so a client narrowing with ?domains=… must include `session` to receive it. The record is the daemon's: `effectiveDetachPolicy` says what leaving would do right now, and `terminatedReason` says why a session ended — a hosted session never simply disappears.",
+        "category": "transport",
+        "source": "builtin",
+        "transport": [
+          "sse",
+          "ws"
+        ],
+        "scopes": [
+          "read:sessions"
+        ],
+        "domains": [
+          "session"
+        ],
+        "wireEvents": [
+          "hosted-session-update"
+        ],
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "event": {
+              "type": "string",
+              "enum": [
+                "hosted-session-created",
+                "hosted-session-attached",
+                "hosted-session-detached",
+                "hosted-session-turn-started",
+                "hosted-session-turn-ended",
+                "hosted-session-terminated",
+                "hosted-session-restored"
+              ]
+            },
+            "session": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "workspaceRoot": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "idle",
+                    "running",
+                    "terminated"
+                  ]
+                },
+                "detachPolicy": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "kill",
+                        "survive"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "effectiveDetachPolicy": {
+                  "type": "string",
+                  "enum": [
+                    "kill",
+                    "survive"
+                  ]
+                },
+                "attachedClients": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "providerId": {
+                  "type": "string"
+                },
+                "modelId": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "turnCount": {
+                  "type": "number"
+                },
+                "messageCount": {
+                  "type": "number"
+                },
+                "lastTurnAt": {
+                  "type": "number"
+                },
+                "terminatedAt": {
+                  "type": "number"
+                },
+                "terminatedReason": {
+                  "type": "string"
+                },
+                "restoredFromDisk": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "workspaceRoot",
+                "title",
+                "status",
+                "detachPolicy",
+                "effectiveDetachPolicy",
+                "attachedClients",
+                "createdAt",
+                "updatedAt",
+                "turnCount",
+                "messageCount",
+                "restoredFromDisk"
+              ],
+              "additionalProperties": false
+            },
+            "createdAt": {
+              "type": "number"
+            },
+            "clientId": {
+              "type": "string"
+            },
+            "detail": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "event",
+            "session",
+            "createdAt"
+          ],
+          "additionalProperties": false
+        }
+      },
+      {
         "id": "control.ready",
         "title": "Ready Handshake",
         "description": "Initial SSE/WebSocket handshake event emitted after a control-plane subscription is opened.",
@@ -103468,20 +104335,20 @@
       }
     ],
     "schemaCoverage": {
-      "methods": 494,
-      "typedInputs": 494,
+      "methods": 499,
+      "typedInputs": 499,
       "genericInputs": 0,
-      "typedOutputs": 494,
+      "typedOutputs": 499,
       "genericOutputs": 0
     },
     "eventCoverage": {
-      "events": 34,
-      "withDomains": 30,
-      "withWireEvents": 34
+      "events": 35,
+      "withDomains": 31,
+      "withWireEvents": 35
     },
     "validationCoverage": {
-      "methods": 494,
-      "validated": 487,
+      "methods": 499,
+      "validated": 492,
       "skippedGeneric": 0,
       "skippedUntyped": 7
     }

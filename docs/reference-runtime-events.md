@@ -1082,7 +1082,139 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
 
 ### `session`
 
+- `control.hosted_session_update` -> `hosted-session-update`
 - `runtime.session` -> `session`
+
+#### `control.hosted_session_update` payload schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "event": {
+      "type": "string",
+      "enum": [
+        "hosted-session-created",
+        "hosted-session-attached",
+        "hosted-session-detached",
+        "hosted-session-turn-started",
+        "hosted-session-turn-ended",
+        "hosted-session-terminated",
+        "hosted-session-restored"
+      ]
+    },
+    "session": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "workspaceRoot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "idle",
+            "running",
+            "terminated"
+          ]
+        },
+        "detachPolicy": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "kill",
+                "survive"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "effectiveDetachPolicy": {
+          "type": "string",
+          "enum": [
+            "kill",
+            "survive"
+          ]
+        },
+        "attachedClients": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "modelId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "number"
+        },
+        "turnCount": {
+          "type": "number"
+        },
+        "messageCount": {
+          "type": "number"
+        },
+        "lastTurnAt": {
+          "type": "number"
+        },
+        "terminatedAt": {
+          "type": "number"
+        },
+        "terminatedReason": {
+          "type": "string"
+        },
+        "restoredFromDisk": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "workspaceRoot",
+        "title",
+        "status",
+        "detachPolicy",
+        "effectiveDetachPolicy",
+        "attachedClients",
+        "createdAt",
+        "updatedAt",
+        "turnCount",
+        "messageCount",
+        "restoredFromDisk"
+      ],
+      "additionalProperties": false
+    },
+    "createdAt": {
+      "type": "number"
+    },
+    "clientId": {
+      "type": "string"
+    },
+    "detail": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "event",
+    "session",
+    "createdAt"
+  ],
+  "additionalProperties": false
+}
+```
 
 #### `runtime.session` payload schema
 
