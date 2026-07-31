@@ -160,6 +160,15 @@ export function createHostedSessionListHandler(service: HostedSessionVerbService
   };
 }
 
+/** Every verb this module owns, in the order a client meets them. */
+export const HOSTED_SESSION_METHOD_IDS: readonly string[] = [
+  'sessions.hosted.create',
+  'sessions.hosted.attach',
+  'sessions.hosted.detach',
+  'sessions.hosted.kill',
+  'sessions.hosted.list',
+];
+
 /**
  * Attach the hosted-session handlers to their descriptors. A missing descriptor
  * is a silent no-op, matching every other route group here.
@@ -170,11 +179,38 @@ export function registerHostedSessionGatewayMethods(
 ): void {
   const attach = (id: string, handler: GatewayMethodHandler): void => {
     const descriptor = catalog.get(id);
-    if (descriptor) catalog.register(descriptor, handler, { replace: true });
+    if (!descriptor) return;
+    // An engine arriving after `refuseHostedSessionGatewayMethods` ran undoes
+    // that refusal: a registered handler is the authority on whether a verb
+    // works, and leaving the flag set would refuse a call this daemon can serve.
+    const invokable = descriptor.invokable === false ? { ...descriptor, invokable: true } : descriptor;
+    catalog.register(invokable, handler, { replace: true });
   };
   attach('sessions.hosted.create', createHostedSessionCreateHandler(service));
   attach('sessions.hosted.attach', createHostedSessionAttachHandler(service));
   attach('sessions.hosted.detach', createHostedSessionDetachHandler(service));
   attach('sessions.hosted.kill', createHostedSessionKillHandler(service));
   attach('sessions.hosted.list', createHostedSessionListHandler(service));
+}
+
+/**
+ * Say, in the catalog, that this daemon hosts nothing.
+ *
+ * The descriptors are builtins: they are present whether or not a product
+ * stated how a hosted session's workspace floor is built. With no engine there
+ * is no handler either, and dispatch fell through to the branch for a verb with
+ * neither handler nor route — a 501 whose body carried no code, and a plain
+ * `Error` for anyone calling `catalog.invoke()` directly, which is a 500. Both
+ * read as "this daemon is broken" for a capability that is simply off.
+ *
+ * Marking them uninvokable makes the refusal the one the catalog already
+ * promises for a cataloged-but-not-dispatchable verb: an honest 400 with
+ * `NOT_INVOKABLE`, before any handler lookup, on every path.
+ */
+export function refuseHostedSessionGatewayMethods(catalog: GatewayMethodCatalog): void {
+  for (const id of HOSTED_SESSION_METHOD_IDS) {
+    const descriptor = catalog.get(id);
+    if (!descriptor || descriptor.invokable === false) continue;
+    catalog.register({ ...descriptor, invokable: false }, undefined, { replace: true });
+  }
 }

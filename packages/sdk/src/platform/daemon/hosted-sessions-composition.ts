@@ -29,7 +29,10 @@ import type { ConfigManager } from '../config/manager.js';
 import type { RuntimeEventBus } from '../runtime/events/index.js';
 import type { ShellPathService } from '../runtime/shell-paths.js';
 import type { SessionLiveTurnControlsHolder } from '../control-plane/routes/session-runtime.js';
-import { registerHostedSessionGatewayMethods } from '../control-plane/routes/hosted-sessions.js';
+import {
+  refuseHostedSessionGatewayMethods,
+  registerHostedSessionGatewayMethods,
+} from '../control-plane/routes/hosted-sessions.js';
 import type { GatewayMethodCatalog } from '../control-plane/method-catalog.js';
 import {
   HostedSessionManager,
@@ -138,8 +141,12 @@ export function composeHostedSessionsForFacade(
   eventPublisher: HostedSessionEventPublisher,
 ): HostedSessionManager | null {
   // No options is the honest off state, not a missing wire: this daemon hosts
-  // no conversation loops and `sessions.hosted.*` refuses.
-  if (!options) return null;
+  // no conversation loops, and the verbs say so with the catalog's own coded
+  // refusal rather than a bodiless 501 or a plain-Error 500.
+  if (!options) {
+    refuseHostedSessionGatewayMethods(runtimeServices.gatewayMethods);
+    return null;
+  }
   return composeHostedSessions({
     options,
     configManager,

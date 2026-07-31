@@ -68,3 +68,49 @@ export class GatewayVerbError extends Error {
 export function isGatewayVerbError(error: unknown): error is GatewayVerbError {
   return error instanceof GatewayVerbError;
 }
+
+/** A handler's refusal, read off whatever class the handler threw. */
+export interface GatewayVerbRefusal {
+  readonly status: number;
+  readonly code: string;
+  readonly message: string;
+  /** The input field the refusal is about, when it names one. */
+  readonly field: string | undefined;
+}
+
+/**
+ * Read a refusal from a thrown value by SHAPE rather than by class.
+ *
+ * `instanceof GatewayVerbError` only recognizes refusals thrown by handlers
+ * compiled against this module. A handler registered by a consuming runtime —
+ * the daemon product registers its own, and its confirmation gate refuses with
+ * a 403 the caller is meant to act on — throws its own error class carrying the
+ * same two facts. Recognized only by class, every one of those reached the
+ * client as a blanket 500, so a refusal a caller could answer read as a daemon
+ * fault.
+ *
+ * The shape is deliberately narrow: an integer HTTP error status and a
+ * non-empty machine code. Both together are a statement that the thrower meant
+ * this to be a wire refusal; a plain `Error` carries neither and still collapses
+ * to 500.
+ */
+export function readGatewayVerbRefusal(error: unknown): GatewayVerbRefusal | null {
+  if (isGatewayVerbError(error)) {
+    return { status: error.status, code: error.code, message: error.message, field: error.field };
+  }
+  if (!error || typeof error !== 'object') return null;
+  const candidate = error as { status?: unknown; code?: unknown; message?: unknown; field?: unknown };
+  if (typeof candidate.status !== 'number' || !Number.isInteger(candidate.status)) return null;
+  if (candidate.status < 400 || candidate.status > 599) return null;
+  const code = typeof candidate.code === 'string' ? candidate.code.trim() : '';
+  if (!code) return null;
+  const message = typeof candidate.message === 'string' && candidate.message.trim()
+    ? candidate.message.trim()
+    : `The handler refused this call: ${code}`;
+  return {
+    status: candidate.status,
+    code,
+    message,
+    field: typeof candidate.field === 'string' && candidate.field.trim() ? candidate.field.trim() : undefined,
+  };
+}

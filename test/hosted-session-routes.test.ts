@@ -18,10 +18,15 @@ import {
   createHostedSessionDetachHandler,
   createHostedSessionKillHandler,
   createHostedSessionListHandler,
+  refuseHostedSessionGatewayMethods,
   registerHostedSessionGatewayMethods,
+  HOSTED_SESSION_METHOD_IDS,
   type HostedSessionVerbService,
 } from '../packages/sdk/src/platform/control-plane/routes/hosted-sessions.ts';
 import { GatewayMethodCatalog } from '../packages/sdk/src/platform/control-plane/method-catalog.ts';
+import { readGatewayVerbRefusal } from '../packages/sdk/src/platform/control-plane/routes/gateway-verb-error.ts';
+import { DaemonControlPlaneHelper, type DaemonControlPlaneContext } from '../packages/sdk/src/platform/daemon/control-plane.ts';
+import { SDKErrorCodes } from '../packages/errors/src/index.ts';
 import {
   HostedSessionArgumentError,
   HostedSessionLimitError,
@@ -182,14 +187,45 @@ test('list excludes terminated sessions unless asked', () => {
 test('every hosted verb descriptor gets a handler attached', () => {
   const catalog = new GatewayMethodCatalog();
   registerHostedSessionGatewayMethods(catalog, service({}));
-  for (const id of [
-    'sessions.hosted.create',
-    'sessions.hosted.attach',
-    'sessions.hosted.detach',
-    'sessions.hosted.kill',
-    'sessions.hosted.list',
-  ]) {
+  for (const id of HOSTED_SESSION_METHOD_IDS) {
     expect(catalog.get(id), `${id} descriptor`).toBeDefined();
     expect(catalog.hasHandler(id), `${id} handler`).toBe(true);
+  }
+});
+
+// A daemon that never stated how a hosted session's workspace floor is built
+// hosts nothing, and the verbs have to say that as a refusal a client can act
+// on. They used to reach the branch for a verb with neither handler nor route:
+// a 501 carrying no code over the wire, and a plain Error — a 500 — for anyone
+// invoking the catalog directly.
+test('with no engine the hosted verbs refuse with the catalog\'s own code, on every path', async () => {
+  const catalog = new GatewayMethodCatalog();
+  refuseHostedSessionGatewayMethods(catalog);
+  const helper = new DaemonControlPlaneHelper({ gatewayMethods: catalog } as unknown as DaemonControlPlaneContext);
+
+  for (const id of HOSTED_SESSION_METHOD_IDS) {
+    expect(catalog.get(id)?.invokable, `${id} invokable`).toBe(false);
+
+    const dispatched = await helper.invokeGatewayMethodCall({ authToken: 't', methodId: id, body: {} });
+    expect(dispatched.status, `${id} status`).toBe(400);
+    expect((dispatched.body as Record<string, unknown>).code, `${id} code`).toBe(SDKErrorCodes.NOT_INVOKABLE);
+
+    let caught: unknown;
+    try {
+      await catalog.invoke(id, { methodId: id, body: {}, context: {} } as unknown as GatewayMethodInvocation);
+    } catch (error) {
+      caught = error;
+    }
+    expect(readGatewayVerbRefusal(caught)?.code, `${id} direct-invoke code`).toBe('NOT_INVOKABLE');
+  }
+});
+
+test('registering the engine leaves the verbs invokable', () => {
+  const catalog = new GatewayMethodCatalog();
+  refuseHostedSessionGatewayMethods(catalog);
+  registerHostedSessionGatewayMethods(catalog, service({}));
+  for (const id of HOSTED_SESSION_METHOD_IDS) {
+    expect(catalog.hasHandler(id), `${id} handler`).toBe(true);
+    expect(catalog.get(id)?.invokable, `${id} invokable`).not.toBe(false);
   }
 });
