@@ -4,6 +4,26 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 ### Added
 
+- **The reachability check and the composition wiring (`platform/runtime`).**
+  `reachability-check.ts` answers, at every boot, whether this is the build the
+  shell actually reaches and whether it is the current release: the PATH scan,
+  the bounded `--version` probe, the self-directory resolution, and the bounded
+  latest-release lookup, with the notice wording in `reachability-notice.ts` and
+  the install-kind question it turns on in `install-kind.ts`. WHERE the lines go
+  stays with the product, because only the product knows what it can print with
+  at that moment; `fallbackUpdateCommand` takes the package name for the same
+  reason.
+
+  Alongside it, the composition wiring each surface had a copy of: the agent
+  graph, the channel registry, remote execution, idle power and the live-turn
+  holder, managed voice setup, the session-storage handle, the code index, the
+  legacy memory fold, the surface feature-flag gates and the feature-settings
+  queries, and workspace registration and trust. The four that differed did so
+  in exactly one way — the storage scope they wrote under — so
+  `createSessionStorageServices`, `createCodeIndexServices`, `codeIndexDbPath`,
+  `createStoreRerooter`, `WorkspaceTrustManager`, `detectPriorWorkspaceState` and
+  `readPersistedWorkspaceTrust` take a `surfaceRoot` and the difference is gone.
+
 - **The engine policy every surface product was writing twice (`platform/config`,
   `platform/runtime`, `platform/rewind`, `platform/pairing`, `platform/providers`,
   `platform/orchestration`, `platform/workflow`, `platform/state`, `platform/types`).**
