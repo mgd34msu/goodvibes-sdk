@@ -443,7 +443,7 @@ export interface OperatorMethodInputMap {
   "sessions.hosted.kill": { sessionId: string; };
   "sessions.hosted.list": { includeTerminated?: boolean; };
   "sessions.inputs.cancel": { sessionId: string; inputId: string; };
-  "sessions.inputs.deliver": { sessionId: string; inputId: string; consumed?: boolean; };
+  "sessions.inputs.deliver": { sessionId: string; inputId: string; consumed?: boolean; agentId?: string; answer?: string; status?: string; };
   "sessions.inputs.list": { sessionId: string; limit?: number; state?: string; since?: number; };
   "sessions.integration.snapshot": {  };
   "sessions.list": {  };

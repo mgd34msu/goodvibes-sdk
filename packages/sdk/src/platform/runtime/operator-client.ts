@@ -53,8 +53,26 @@ export interface OperatorSessionsClient {
   followUpMessage(input: SubmitSharedSessionMessageInput): Promise<SharedSessionSubmission>;
   cancelInput(sessionId: string, inputId: string): Promise<SharedSessionInputRecord | null>;
   /** A live surface marks a collected input delivered (`consumed:false`) or
-   * consumed/completed (`consumed:true`). See sessions.inputs.deliver. */
-  deliverInput(sessionId: string, inputId: string, options?: { readonly consumed?: boolean | undefined }): Promise<SharedSessionInputRecord | null>;
+   * consumed/completed (`consumed:true`), optionally naming the agent that is
+   * answering it (`agentId`, which binds the reply) and that agent's finished
+   * output (`answer`/`status`, reported with `consumed:true`).
+   * See sessions.inputs.deliver. */
+  deliverInput(sessionId: string, inputId: string, options?: SurfaceInputDeliveryOptions): Promise<SharedSessionInputRecord | null>;
+}
+
+/**
+ * What a live surface reports when it hands a collected input back.
+ *
+ * `agentId` names the agent answering THIS input — the pairing only the
+ * surface running the loop knows, and the thing that binds a channel reply.
+ * `answer`/`status` carry that agent's finished output once the surface's turn
+ * ends, so the daemon can write it into the session and deliver it.
+ */
+export interface SurfaceInputDeliveryOptions {
+  readonly consumed?: boolean | undefined;
+  readonly agentId?: string | undefined;
+  readonly answer?: string | undefined;
+  readonly status?: 'completed' | 'failed' | 'cancelled' | undefined;
 }
 
 export interface OperatorTasksClient {
@@ -161,7 +179,7 @@ export function createOperatorClient(services: OperatorClientServices): Operator
     steerMessage: (input: SteerSharedSessionMessageInput): Promise<SharedSessionSubmission> => services.sessionBroker.steerMessage(input),
     followUpMessage: (input: SubmitSharedSessionMessageInput): Promise<SharedSessionSubmission> => services.sessionBroker.followUpMessage(input),
     cancelInput: (sessionId: string, inputId: string): Promise<SharedSessionInputRecord | null> => services.sessionBroker.cancelInput(sessionId, inputId),
-    deliverInput: (sessionId: string, inputId: string, options: { readonly consumed?: boolean | undefined } = {}): Promise<SharedSessionInputRecord | null> => services.sessionBroker.markInputDelivered(sessionId, inputId, options),
+    deliverInput: (sessionId: string, inputId: string, options: SurfaceInputDeliveryOptions = {}): Promise<SharedSessionInputRecord | null> => services.sessionBroker.markInputDelivered(sessionId, inputId, options),
   } satisfies OperatorSessionsClient;
 
   const tasks = {

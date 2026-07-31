@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import type { SubmitSharedSessionMessageInput } from './session-types.js';
-import type { SharedSessionInputIntent, SharedSessionInputRecord } from './session-intents.js';
+import type { SharedSessionInputIntent, SharedSessionInputRecord, SharedSessionSurfaceReplyBinding } from './session-intents.js';
 import type { SharedSessionRecord } from './session-types.js';
 import { countPendingSessionInputs, sortInputs } from './session-broker-state.js';
+import { bindSharedSessionAgent } from './session-broker-sessions.js';
 
 export interface SharedSessionInputStore {
   readonly sessions: Map<string, SharedSessionRecord>;
@@ -147,6 +148,60 @@ export function markSurfaceInputDelivered(
     if (entry.state !== 'queued') return entry;
     return { ...entry, state: 'delivered', updatedAt: Date.now() };
   });
+}
+
+/**
+ * Apply a live surface's report about a queued input: it collected the input
+ * (`consumed:false`), or finished acting on it (`consumed:true`), and — when it
+ * names one — the agent that is answering it.
+ *
+ * The agent pairing is the half that routes an answer home. The daemon's own
+ * spawn takes `bindAgent`, which claims whatever input is NEXT in the queue for
+ * the agent it just started; a surface has already named the exact input, so
+ * this stamps that one, makes the agent the session's active agent, and
+ * announces the reply binding. The announcement is the whole point: without it
+ * a message that arrived over a channel and was dispatched to a surface was
+ * answered into nothing. Idempotent — a repeated report re-announces, and the
+ * binder is required to be idempotent for exactly that reason.
+ */
+export function applySurfaceInputDelivery(
+  store: SharedSessionInputStore,
+  sessionId: string,
+  inputId: string,
+  options: { readonly consumed?: boolean | undefined; readonly agentId?: string | undefined },
+  hooks: {
+    readonly publish: (event: string, payload: unknown) => void;
+    readonly publishInput: (event: string, input: SharedSessionInputRecord, extra: Record<string, unknown>) => void;
+    readonly announce: (binding: SharedSessionSurfaceReplyBinding) => void;
+  },
+): SharedSessionInputRecord | null {
+  const consumed = options.consumed === true;
+  const updated = markSurfaceInputDelivered(store, sessionId, inputId, consumed);
+  if (!updated) return null;
+  const agentId = options.agentId?.trim();
+  let record = updated;
+  if (agentId) {
+    const session = store.sessions.get(sessionId);
+    if (session) {
+      const rebound = bindSharedSessionAgent(session, agentId);
+      store.sessions.set(sessionId, rebound);
+      hooks.publish('session-agent-bound', rebound);
+    }
+    record = updateSharedSessionInput(store, sessionId, inputId, (entry) => ({
+      ...entry, activeAgentId: agentId, updatedAt: Date.now(),
+    })) ?? updated;
+    hooks.announce({
+      sessionId,
+      agentId,
+      ...(record.routeId ? { routeId: record.routeId } : {}),
+      ...(record.surfaceKind ? { surfaceKind: record.surfaceKind } : {}),
+      task: record.body,
+      reason: 'continuation-runner',
+    });
+  }
+  refreshPendingInputCount(store, sessionId);
+  hooks.publishInput(consumed ? 'session-input-completed' : 'session-input-delivered', record, agentId ? { agentId } : {});
+  return record;
 }
 
 export function finalizeAgentSessionInputs(

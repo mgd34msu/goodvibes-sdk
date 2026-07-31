@@ -586,7 +586,7 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
   methodDescriptor({
     id: 'sessions.inputs.deliver',
     title: 'Mark Shared Session Input Delivered',
-    description: 'A live registered surface reports that it collected a queued input (moves it to `delivered`) or finished acting on it (`consumed:true` moves it to `completed`). This is how a surface-managed session — where steer/follow-up inputs queue for the surface rather than spawn a daemon executor — closes the input lifecycle honestly. Only queued/delivered inputs advance; others are returned unchanged.',
+    description: 'A live registered surface reports that it collected a queued input (moves it to `delivered`) or finished acting on it (`consumed:true` moves it to `completed`). This is how a surface-managed session — where steer/follow-up inputs queue for the surface rather than spawn a daemon executor — closes the input lifecycle honestly. Only queued/delivered inputs advance; others are returned unchanged. `agentId` names the agent the surface is running for this input: it binds the reply so a message that arrived over a channel gets its answer routed back to that conversation, the same binding the daemon makes for the executors it spawns itself. `answer` (sent with `consumed:true`, optionally with `status`) is the output that agent finished with — the daemon writes it into the session and delivers it to the channel.',
     category: 'sessions',
     scopes: ['write:sessions'],
     http: { method: 'POST', path: '/api/sessions/{sessionId}/inputs/{inputId}/deliver' },
@@ -595,6 +595,9 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
       sessionId: STRING_SCHEMA,
       inputId: STRING_SCHEMA,
       consumed: BOOLEAN_SCHEMA,
+      agentId: STRING_SCHEMA,
+      answer: STRING_SCHEMA,
+      status: STRING_SCHEMA,
     }, ['sessionId', 'inputId']),
     outputSchema: entityOutputSchema('input', SHARED_SESSION_INPUT_RECORD_SCHEMA),
   }),

@@ -207,11 +207,17 @@ function createOperatorClient(
         const response = await withNullOnNotFound(() => operatorApi.sessions.inputs.cancel(sessionId, inputId));
         return response?.input ? normalizeSharedSessionInput(response.input as Record<string, unknown>) : null;
       },
-      deliverInput: async (sessionId, inputId, options?: { readonly consumed?: boolean | undefined }): Promise<SharedSessionInputRecord | null> => {
+      deliverInput: async (sessionId, inputId, options?): Promise<SharedSessionInputRecord | null> => {
         const response = await withNullOnNotFound(() => operatorApi.invoke<{ input?: Record<string, unknown> }>('sessions.inputs.deliver', {
           sessionId,
           inputId,
           ...(options?.consumed === true ? { consumed: true } : {}),
+          // The agent this surface is running for the input, and (once its turn
+          // ends) what it produced. Both are what let a message that arrived
+          // over a channel and was dispatched HERE get its answer back there.
+          ...(options?.agentId ? { agentId: options.agentId } : {}),
+          ...(options?.answer !== undefined ? { answer: options.answer } : {}),
+          ...(options?.status ? { status: options.status } : {}),
         }));
         return response?.input ? normalizeSharedSessionInput(response.input) : null;
       },
