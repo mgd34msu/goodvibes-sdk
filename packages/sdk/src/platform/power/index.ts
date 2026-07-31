@@ -12,3 +12,21 @@ export type { RuntimePowerWiringInput } from './runtime-wiring.js';
 export type { PowerWorkSignalBus } from './work-signals.js';
 export { createUnavailablePowerSeam } from './types.js';
 export type { PowerPlatformSeam, PowerInhibitHandle, PowerInhibitClass } from './types.js';
+// Forward the owner keep-awake toggle to an adopted external daemon (the
+// daemon-held keep-awake ruling) — the one implementation, unifying the TUI's
+// and the agent's previously-parallel forward helpers.
+export {
+  postPowerKeepAwakeSet,
+  forwardKeepAwakeToAdoptedDaemon,
+  POWER_KEEP_AWAKE_SET_PATH,
+  POWER_KEEP_AWAKE_SET_TIMEOUT_MS,
+} from './keep-awake-remote.js';
+export type {
+  PowerKeepAwakeRemoteConnection,
+  PowerKeepAwakeRemoteFailureKind,
+  PowerKeepAwakeRemoteSuccess,
+  PowerKeepAwakeRemoteFailure,
+  PowerKeepAwakeRemoteResult,
+  ForwardKeepAwakeDeps,
+  ForwardKeepAwakeOutcome,
+} from './keep-awake-remote.js';
