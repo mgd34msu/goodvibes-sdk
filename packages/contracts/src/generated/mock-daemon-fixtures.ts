@@ -17232,6 +17232,170 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       ]
     }
   },
+  "sessions.hosted.attach": {
+    "methodId": "sessions.hosted.attach",
+    "http": {
+      "method": "POST",
+      "path": "/api/sessions/hosted/{sessionId}/attach"
+    },
+    "status": 200,
+    "body": {
+      "session": {
+        "id": "sample",
+        "workspaceRoot": "sample",
+        "title": "sample",
+        "status": "idle",
+        "detachPolicy": "kill",
+        "effectiveDetachPolicy": "kill",
+        "attachedClients": [
+          "sample"
+        ],
+        "providerId": "sample",
+        "modelId": "sample",
+        "createdAt": 0,
+        "updatedAt": 0,
+        "turnCount": 0,
+        "messageCount": 0,
+        "lastTurnAt": 0,
+        "terminatedAt": 0,
+        "terminatedReason": "sample",
+        "restoredFromDisk": false
+      },
+      "history": [
+        {
+          "role": "user",
+          "content": "sample",
+          "at": 0
+        }
+      ]
+    }
+  },
+  "sessions.hosted.create": {
+    "methodId": "sessions.hosted.create",
+    "http": {
+      "method": "POST",
+      "path": "/api/sessions/hosted"
+    },
+    "status": 200,
+    "body": {
+      "session": {
+        "id": "sample",
+        "workspaceRoot": "sample",
+        "title": "sample",
+        "status": "idle",
+        "detachPolicy": "kill",
+        "effectiveDetachPolicy": "kill",
+        "attachedClients": [
+          "sample"
+        ],
+        "providerId": "sample",
+        "modelId": "sample",
+        "createdAt": 0,
+        "updatedAt": 0,
+        "turnCount": 0,
+        "messageCount": 0,
+        "lastTurnAt": 0,
+        "terminatedAt": 0,
+        "terminatedReason": "sample",
+        "restoredFromDisk": false
+      }
+    }
+  },
+  "sessions.hosted.detach": {
+    "methodId": "sessions.hosted.detach",
+    "http": {
+      "method": "POST",
+      "path": "/api/sessions/hosted/{sessionId}/detach"
+    },
+    "status": 200,
+    "body": {
+      "session": {
+        "id": "sample",
+        "workspaceRoot": "sample",
+        "title": "sample",
+        "status": "idle",
+        "detachPolicy": "kill",
+        "effectiveDetachPolicy": "kill",
+        "attachedClients": [
+          "sample"
+        ],
+        "providerId": "sample",
+        "modelId": "sample",
+        "createdAt": 0,
+        "updatedAt": 0,
+        "turnCount": 0,
+        "messageCount": 0,
+        "lastTurnAt": 0,
+        "terminatedAt": 0,
+        "terminatedReason": "sample",
+        "restoredFromDisk": false
+      }
+    }
+  },
+  "sessions.hosted.kill": {
+    "methodId": "sessions.hosted.kill",
+    "http": {
+      "method": "POST",
+      "path": "/api/sessions/hosted/{sessionId}/kill"
+    },
+    "status": 200,
+    "body": {
+      "session": {
+        "id": "sample",
+        "workspaceRoot": "sample",
+        "title": "sample",
+        "status": "idle",
+        "detachPolicy": "kill",
+        "effectiveDetachPolicy": "kill",
+        "attachedClients": [
+          "sample"
+        ],
+        "providerId": "sample",
+        "modelId": "sample",
+        "createdAt": 0,
+        "updatedAt": 0,
+        "turnCount": 0,
+        "messageCount": 0,
+        "lastTurnAt": 0,
+        "terminatedAt": 0,
+        "terminatedReason": "sample",
+        "restoredFromDisk": false
+      }
+    }
+  },
+  "sessions.hosted.list": {
+    "methodId": "sessions.hosted.list",
+    "http": {
+      "method": "GET",
+      "path": "/api/sessions/hosted"
+    },
+    "status": 200,
+    "body": {
+      "sessions": [
+        {
+          "id": "sample",
+          "workspaceRoot": "sample",
+          "title": "sample",
+          "status": "idle",
+          "detachPolicy": "kill",
+          "effectiveDetachPolicy": "kill",
+          "attachedClients": [
+            "sample"
+          ],
+          "providerId": "sample",
+          "modelId": "sample",
+          "createdAt": 0,
+          "updatedAt": 0,
+          "turnCount": 0,
+          "messageCount": 0,
+          "lastTurnAt": 0,
+          "terminatedAt": 0,
+          "terminatedReason": "sample",
+          "restoredFromDisk": false
+        }
+      ]
+    }
+  },
   "sessions.inputs.cancel": {
     "methodId": "sessions.inputs.cancel",
     "http": {
