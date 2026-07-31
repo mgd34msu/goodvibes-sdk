@@ -6948,6 +6948,7 @@ export interface OperatorMethodOutputMap {
             };
             fixSessionId?: string;
             fixSessionError?: string;
+            expiresAt?: number;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
                     readonly [key: string]: JsonValue;
@@ -7036,6 +7037,7 @@ export interface OperatorMethodOutputMap {
             };
             fixSessionId?: string;
             fixSessionError?: string;
+            expiresAt?: number;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
                     readonly [key: string]: JsonValue;
@@ -7124,6 +7126,7 @@ export interface OperatorMethodOutputMap {
             };
             fixSessionId?: string;
             fixSessionError?: string;
+            expiresAt?: number;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
                     readonly [key: string]: JsonValue;
@@ -7212,6 +7215,7 @@ export interface OperatorMethodOutputMap {
             };
             fixSessionId?: string;
             fixSessionError?: string;
+            expiresAt?: number;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
                     readonly [key: string]: JsonValue;
@@ -7320,6 +7324,7 @@ export interface OperatorMethodOutputMap {
             };
             fixSessionId?: string;
             fixSessionError?: string;
+            expiresAt?: number;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
                     readonly [key: string]: JsonValue;
@@ -7404,6 +7409,7 @@ export interface OperatorMethodOutputMap {
             };
             fixSessionId?: string;
             fixSessionError?: string;
+            expiresAt?: number;
             metadata: ({} & {
                 readonly [key: string]: ({} & {
                     readonly [key: string]: JsonValue;

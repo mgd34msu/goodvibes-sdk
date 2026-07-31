@@ -2524,6 +2524,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
         },
         "fixSessionId": "sample",
         "fixSessionError": "sample",
+        "expiresAt": 0,
         "metadata": {},
         "audit": [
           {
@@ -2607,6 +2608,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
         },
         "fixSessionId": "sample",
         "fixSessionError": "sample",
+        "expiresAt": 0,
         "metadata": {},
         "audit": [
           {
@@ -2688,6 +2690,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
         },
         "fixSessionId": "sample",
         "fixSessionError": "sample",
+        "expiresAt": 0,
         "metadata": {},
         "audit": [
           {
@@ -2773,6 +2776,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
         },
         "fixSessionId": "sample",
         "fixSessionError": "sample",
+        "expiresAt": 0,
         "metadata": {},
         "audit": [
           {
@@ -2873,6 +2877,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           },
           "fixSessionId": "sample",
           "fixSessionError": "sample",
+          "expiresAt": 0,
           "metadata": {},
           "audit": [
             {
@@ -2988,6 +2993,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
         },
         "fixSessionId": "sample",
         "fixSessionError": "sample",
+        "expiresAt": 0,
         "metadata": {},
         "audit": [
           {

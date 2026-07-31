@@ -185,6 +185,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
         },
         "fixSessionId": "sample",
         "fixSessionError": "sample",
+        "expiresAt": 0,
         "metadata": {},
         "audit": [
           {
@@ -269,6 +270,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
         },
         "fixSessionId": "sample",
         "fixSessionError": "sample",
+        "expiresAt": 0,
         "metadata": {},
         "audit": [
           {
@@ -353,6 +355,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
         },
         "fixSessionId": "sample",
         "fixSessionError": "sample",
+        "expiresAt": 0,
         "metadata": {},
         "audit": [
           {
@@ -437,6 +440,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
         },
         "fixSessionId": "sample",
         "fixSessionError": "sample",
+        "expiresAt": 0,
         "metadata": {},
         "audit": [
           {
@@ -542,6 +546,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           },
           "fixSessionId": "sample",
           "fixSessionError": "sample",
+          "expiresAt": 0,
           "metadata": {},
           "audit": [
             {
@@ -618,6 +623,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
         },
         "fixSessionId": "sample",
         "fixSessionError": "sample",
+        "expiresAt": 0,
         "metadata": {},
         "audit": [
           {
