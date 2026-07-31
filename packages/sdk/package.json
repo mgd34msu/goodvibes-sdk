@@ -485,6 +485,10 @@
       "types": "./dist/platform/runtime/path-shadow.d.ts",
       "import": "./dist/platform/runtime/path-shadow.js"
     },
+    "./platform/runtime/config": {
+      "types": "./dist/platform/runtime/config/index.d.ts",
+      "import": "./dist/platform/runtime/config/index.js"
+    },
     "./platform/runtime/state": {
       "types": "./dist/platform/runtime/state.d.ts",
       "import": "./dist/platform/runtime/state.js"
