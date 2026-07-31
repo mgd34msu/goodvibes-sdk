@@ -238,6 +238,42 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   floor is the consumer's, not the SDK's; consumers adopt it and state what they
   raised it for.
 
+- **Five declarations that consumers were copying because they could not import
+  them.** Each one was already implemented here and reachable by nothing: a
+  consumer that needed the name wrote the name out again, and a hand copy of a
+  contract it must stay assignable to is a copy that drifts silently.
+  - `RemotePeerAuth` and `DistributedRuntimeRouteService`
+    (`@pellux/goodvibes-daemon-sdk/remote-routes`) were declared without the
+    `export` keyword, so the daemon product mirrored the alias and all seventeen
+    method signatures by hand to implement the service the facade injects.
+  - `SharedSessionContinuationRunner` (`@pellux/goodvibes-sdk/platform/control-plane`)
+    was the one member of `session-intents` the barrel did not re-export, beside
+    nine of its siblings that were, so a client naming the seam it implements
+    declared the runner structurally.
+  - `ManagedServiceActionResult` (`@pellux/goodvibes-sdk/platform/daemon`) is the
+    return type of the injectable `actionRunner`; a host supplying one has to
+    name it, and only `ManagedServiceStatus` was on the barrel.
+  - `createBrokeredPermissionManager` and `BrokeredPermissionManagerOptions`
+    (`@pellux/goodvibes-sdk/platform/runtime/client-services`) join the two types
+    that module already published. Three compositions broker their asks and all
+    three need the same mapping from a background-agent attribution to the
+    raise's `routeId`/`metadata`.
+
+- **`OrchestratorUsageTotals`** (`@pellux/goodvibes-sdk/platform/core`) and
+  **`TurnInjectionRecord`** (`@pellux/goodvibes-sdk/platform/agents`). Both were
+  reachable as shapes and not as names: the usage totals were an inferred object
+  literal on `Orchestrator.usage`, and the injection record was only the element
+  type of `AgentRecord.turnInjections`. A caller that has to declare the type —
+  folding usage across conversations, rendering one injection row — wrote the
+  fields out again or derived them positionally from an array.
+
+- **`resolveWebPort`** (`@pellux/goodvibes-sdk/platform/daemon`), beside the
+  daemon host/port resolvers the barrel already publishes. Two products
+  re-implemented the web endpoint's port coercion inline for their endpoint
+  displays, because only the daemon-port half was reachable — so one binding was
+  validated by this package and its neighbour by a transcription of what this
+  package used to do before `resolveWebBinding` existed.
+
 ### Changed
 
 - **The daemon updates itself from the daemon's own repository.** The shipped

@@ -275,8 +275,8 @@
     "rationale": "public platform seam; measured 285 B gzip @ commit 4e5a5e2; headroom max(ceil(285*1.2)=342, 285+50=335) \u2192 342 (1.2x dominates by 7 B)"
   },
   "./platform/daemon": {
-    "gzip_bytes": 908,
-    "rationale": "fatal-boot-report exports (reportFatalBootFailure/writeFatalLine/writeExitingStdoutLine) plus the hoisted port-conflict-honest safe-serve wrapper (createSafeHostServeFactory/createHostRequestFailureResponse) joined the barrel in the 2026-07-30 daemon/TUI split hoist lane; measured 756 B gzip; headroom max(ceil(756*1.2)=908, 756+50=806) -> 908 (1.2x dominates)"
+    "gzip_bytes": 1096,
+    "rationale": "fatal-boot-report exports (reportFatalBootFailure/writeFatalLine/writeExitingStdoutLine) plus the hoisted port-conflict-honest safe-serve wrapper (createSafeHostServeFactory/createHostRequestFailureResponse) joined the barrel in the 2026-07-30 daemon/TUI split hoist lane; re-anchored 2026-07-31 when resolveWebPort and the ManagedServiceActionResult type joined it, retiring the two copies of the web-port coercion (terminal + daemon endpoint display) and the agent's structural mirror of the action-runner result; measured 913 B gzip; headroom max(ceil(913*1.2)=1096, 913+50=963) -> 1096 (1.2x dominates); previously 908 B"
   },
   "./platform/daemon/auto-updater": {
     "gzip_bytes": 7070,

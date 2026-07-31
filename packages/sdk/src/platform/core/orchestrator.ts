@@ -79,6 +79,7 @@ import {
   recordTurnInjection,
   type TurnInjectionRecord,
 } from '../agents/turn-knowledge-injection.js';
+import type { OrchestratorUsageTotals } from './orchestrator-usage.js';
 
 /** Minimal interface for hook dispatch — allows any hook dispatcher implementation */
 interface HookDispatcherLike {
@@ -156,7 +157,7 @@ export interface OrchestratorOptions {
 export class Orchestrator {
   public isThinking = false;
   public thinkingFrame = 0;
-  public usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+  public usage: OrchestratorUsageTotals = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
   /**
    * Input tokens from the most recent LLM response (incl. cache read/write) —
    * current context-window usage; 0 before the first response.
