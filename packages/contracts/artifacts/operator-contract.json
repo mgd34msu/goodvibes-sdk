@@ -1125,6 +1125,9 @@
                 "fixSessionError": {
                   "type": "string"
                 },
+                "expiresAt": {
+                  "type": "number"
+                },
                 "metadata": {
                   "type": "object",
                   "additionalProperties": {
@@ -1632,6 +1635,9 @@
                 "fixSessionError": {
                   "type": "string"
                 },
+                "expiresAt": {
+                  "type": "number"
+                },
                 "metadata": {
                   "type": "object",
                   "additionalProperties": {
@@ -2132,6 +2138,9 @@
                 },
                 "fixSessionError": {
                   "type": "string"
+                },
+                "expiresAt": {
+                  "type": "number"
                 },
                 "metadata": {
                   "type": "object",
@@ -2652,6 +2661,9 @@
                 },
                 "fixSessionError": {
                   "type": "string"
+                },
+                "expiresAt": {
+                  "type": "number"
                 },
                 "metadata": {
                   "type": "object",
@@ -3278,6 +3290,9 @@
                   },
                   "fixSessionError": {
                     "type": "string"
+                  },
+                  "expiresAt": {
+                    "type": "number"
                   },
                   "metadata": {
                     "type": "object",
@@ -4014,6 +4029,9 @@
                 },
                 "fixSessionError": {
                   "type": "string"
+                },
+                "expiresAt": {
+                  "type": "number"
                 },
                 "metadata": {
                   "type": "object",
@@ -103755,6 +103773,9 @@
                 },
                 "fixSessionError": {
                   "type": "string"
+                },
+                "expiresAt": {
+                  "type": "number"
                 },
                 "metadata": {
                   "type": "object",

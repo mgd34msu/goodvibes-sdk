@@ -1127,6 +1127,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "fixSessionError": {
                   "type": "string"
                 },
+                "expiresAt": {
+                  "type": "number"
+                },
                 "metadata": {
                   "type": "object",
                   "additionalProperties": {
@@ -1634,6 +1637,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "fixSessionError": {
                   "type": "string"
                 },
+                "expiresAt": {
+                  "type": "number"
+                },
                 "metadata": {
                   "type": "object",
                   "additionalProperties": {
@@ -2134,6 +2140,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 },
                 "fixSessionError": {
                   "type": "string"
+                },
+                "expiresAt": {
+                  "type": "number"
                 },
                 "metadata": {
                   "type": "object",
@@ -2654,6 +2663,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 },
                 "fixSessionError": {
                   "type": "string"
+                },
+                "expiresAt": {
+                  "type": "number"
                 },
                 "metadata": {
                   "type": "object",
@@ -3280,6 +3292,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                   },
                   "fixSessionError": {
                     "type": "string"
+                  },
+                  "expiresAt": {
+                    "type": "number"
                   },
                   "metadata": {
                     "type": "object",
@@ -4016,6 +4031,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 },
                 "fixSessionError": {
                   "type": "string"
+                },
+                "expiresAt": {
+                  "type": "number"
                 },
                 "metadata": {
                   "type": "object",
@@ -103757,6 +103775,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 },
                 "fixSessionError": {
                   "type": "string"
+                },
+                "expiresAt": {
+                  "type": "number"
                 },
                 "metadata": {
                   "type": "object",
