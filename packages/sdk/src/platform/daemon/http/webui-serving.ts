@@ -51,6 +51,68 @@ export interface WebuiServingPosture {
   };
   /** OpenAI-compatible path prefix (reserved so bundle serving never shadows it). */
   readonly openaiPathPrefix: string;
+  /**
+   * Top-level path roots the daemon's own routes own. A GET at one of these is
+   * never answered from the bundle directory — see {@link reservedApiPathRoots}.
+   */
+  readonly reservedApiPaths: readonly string[];
+}
+
+/**
+ * The path roots the daemon serves regardless of what any method descriptor
+ * says: the API tree, the login post, the inbound webhook tree and the task
+ * route. Everything else is derived from the operator contract's own http
+ * bindings, so a route added there is reserved without a second list to keep
+ * in step.
+ */
+export const BASE_RESERVED_API_PATHS: readonly string[] = ['/api', '/login', '/webhook', '/task'];
+
+/**
+ * The reserved set, from the operator contract's advertised paths.
+ *
+ * Every method descriptor with an http binding is a promise that this daemon
+ * answers that path. `/status`, `/config` and `/config/credentials` are the
+ * top-level ones, and a bundle served at `/` was answering all three with the
+ * app shell: an extension-less GET looks exactly like an SPA navigation, so the
+ * shell came back with 200 text/html and every client's liveness probe, the web
+ * surface's own admin reads and the version gate read HTML instead of JSON.
+ *
+ * Only the FIRST segment is taken. `/config/credentials` reserves `/config`,
+ * which is the boundary a client's path actually falls inside; reserving the
+ * full template instead would leave `/config` itself shadowed.
+ */
+export function reservedApiPathRoots(descriptorPaths: Iterable<string>): readonly string[] {
+  const roots = new Set<string>(BASE_RESERVED_API_PATHS);
+  for (const path of descriptorPaths) {
+    if (typeof path !== 'string' || !path.startsWith('/')) continue;
+    const first = path.slice(1).split('/')[0] ?? '';
+    // A templated first segment (`/{id}/…`) would reserve an unbounded root.
+    if (!first || first.startsWith('{')) continue;
+    roots.add(`/${first}`);
+  }
+  return [...roots].sort();
+}
+
+/** What the posture read needs from the method catalog: the advertised paths. */
+export interface WebuiServingRouteAuthority {
+  list(): readonly { readonly http?: { readonly path: string } | undefined }[];
+}
+
+/**
+ * Derived once per catalog. The posture is read on every request and the walk
+ * is over the whole catalog, so the result is memoized against the catalog
+ * object itself. A plugin registering a method later does not invalidate it:
+ * plugin bindings live under `/api`, which is reserved unconditionally.
+ */
+const reservedPathsByAuthority = new WeakMap<WebuiServingRouteAuthority, readonly string[]>();
+
+function reservedApiPathsFor(authority: WebuiServingRouteAuthority | undefined): readonly string[] {
+  if (!authority) return BASE_RESERVED_API_PATHS;
+  const memoized = reservedPathsByAuthority.get(authority);
+  if (memoized) return memoized;
+  const derived = reservedApiPathRoots(authority.list().map((descriptor) => descriptor.http?.path ?? ''));
+  reservedPathsByAuthority.set(authority, derived);
+  return derived;
 }
 
 function readConfig(configManager: ConfigManager, key: string): unknown {
@@ -86,7 +148,10 @@ function readTrimmedString(configManager: ConfigManager, key: string): string {
  * `controlPlane.webui.serve` remains the only switch; neither directory key
  * turns serving on by itself.
  */
-export function resolveWebuiServingPosture(configManager: ConfigManager): WebuiServingPosture {
+export function resolveWebuiServingPosture(
+  configManager: ConfigManager,
+  routeAuthority?: WebuiServingRouteAuthority,
+): WebuiServingPosture {
   const serveBundle = readConfig(configManager, 'controlPlane.webui.serve') === true;
   const bundleDirConfigured = readTrimmedString(configManager, 'controlPlane.webui.bundleDir');
   const staticAssetsDir = readTrimmedString(configManager, 'web.staticAssetsDir');
@@ -100,6 +165,7 @@ export function resolveWebuiServingPosture(configManager: ConfigManager): WebuiS
     bundleDirSource: bundleDirConfigured ? 'controlPlane.webui.bundleDir' : staticAssetsDir ? 'web.staticAssetsDir' : '',
     cors: { enabled: corsEnabled, allowedOrigins },
     openaiPathPrefix: typeof openaiPrefixRaw === 'string' && openaiPrefixRaw.trim() ? openaiPrefixRaw.trim() : '/v1',
+    reservedApiPaths: reservedApiPathsFor(routeAuthority),
   };
 }
 
@@ -217,8 +283,8 @@ function contentTypeFor(pathname: string): string {
 /** True when a path belongs to the daemon API/route surface and must never be
  *  served as a static file (API routes keep precedence). Boundary-aware so a SPA
  *  route like `/tasks` is not mistaken for the daemon's `/task` route. */
-function isReservedApiPath(pathname: string, openaiPrefix: string): boolean {
-  const reserved = ['/api', '/login', '/webhook', '/task', openaiPrefix];
+function isReservedApiPath(pathname: string, posture: WebuiServingPosture): boolean {
+  const reserved = [...posture.reservedApiPaths, posture.openaiPathPrefix];
   return reserved.some((base) => pathname === base || pathname.startsWith(`${base}/`));
 }
 
@@ -273,7 +339,7 @@ export async function serveWebuiBundle(req: Request, posture: WebuiServingPostur
     return new Response('Bad Request', { status: 400 });
   }
   if (pathname.includes('\0')) return new Response('Bad Request', { status: 400 });
-  if (isReservedApiPath(pathname, posture.openaiPathPrefix)) return null;
+  if (isReservedApiPath(pathname, posture)) return null;
 
   const root = resolve(posture.bundleDir);
   const relative = pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, '');
