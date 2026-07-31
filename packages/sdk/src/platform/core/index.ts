@@ -18,6 +18,7 @@ export * from './orchestrator-runtime.js';
 export * from './orchestrator-tool-runtime.js';
 export * from './orchestrator-turn-helpers.js';
 export * from './orchestrator-turn-loop.js';
+export * from './orchestrator-usage.js';
 export * from './orchestrator.js';
 export * from './plan-command-handler.js';
 export * from './plan-decomposition.js';
