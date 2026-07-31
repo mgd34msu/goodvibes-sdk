@@ -114,6 +114,7 @@ import type { RuntimeEventBus } from './events/index.js';
 import type { FeatureFlagManager } from './feature-flags/index.js';
 import { resolveRuntimeFeatureFlags } from './feature-flag-composition.js';
 import { createProviderStack } from './provider-stack.js';
+import type { ProviderModelDiscoveryMode, ProviderRegistryFactory } from './provider-stack.js';
 import { createAgentGraph } from './agent-graph.js';
 import { attachConfigEmitBridge } from './config/index.js';
 import { FeatureAnnouncementStore, featureAnnouncementsPath } from './feature-announcements.js';
@@ -130,6 +131,15 @@ import type { SessionSpineClient } from './session-spine/index.js';
 import { MemorySpineClient, type MemoryAccess, type MemoryTransport } from './memory-spine/index.js';
 
 export type { ApprovalRaiser, UserPermissionRuleAccess } from './permissions/permission-composition.js';
+// The three floor options a product may need to preserve a posture the default
+// would silently reverse — launch tolerance, discovery timing, and whether a
+// hook can reach the agent manager. Re-exported here so a caller configures the
+// floor through one import rather than reaching into provider-stack.
+export type {
+  ProviderModelDiscoveryMode,
+  ProviderRegistryConstructionOptions,
+  ProviderRegistryFactory,
+} from './provider-stack.js';
 // The manager itself, beside the two types this module already published. Every
 // composition that brokers its asks — this one, the SDK's daemon-grade graph,
 // and the daemon product's — needs the same mapping from a background-agent
@@ -325,6 +335,31 @@ export interface ClientRuntimeServicesOptions {
   readonly isSessionLive?: ((sessionId: string) => boolean) | undefined;
   /** The daemon's state root when this host was told one; threaded into the secrets manager. */
   readonly daemonHome?: string | undefined;
+  /**
+   * How the provider registry is constructed. Default: `new ProviderRegistry`.
+   *
+   * A product that must boot with broken or absent provider credentials passes
+   * `createLaunchTolerantProviderRegistry`. Without this, adopting the floor
+   * would silently trade launch tolerance for a crash before the first frame.
+   */
+  readonly providerRegistryFactory?: ProviderRegistryFactory | undefined;
+  /**
+   * Whether provider model discovery runs at construction. Default: `run`.
+   *
+   * `skip` is for a composition that will not outlive discovery's unawaited
+   * write — a suite against a temp workspace, a one-shot subcommand.
+   */
+  readonly modelDiscovery?: ProviderModelDiscoveryMode | undefined;
+  /**
+   * Whether the hook dispatcher is handed the agent manager. Default: `attach`.
+   *
+   * `withhold` is a deliberate capability boundary, not an oversight: a hook
+   * that cannot reach the agent manager cannot spawn an agent, and at least one
+   * product pins that refusal as a feature. It is spelled out as an option
+   * precisely so the absence stays legible — an omitted dependency reads as a
+   * wiring bug to the next person, a named `withhold` reads as the decision it is.
+   */
+  readonly hookAgentManager?: 'attach' | 'withhold' | undefined;
 }
 
 /**
@@ -368,6 +403,8 @@ export function createClientRuntimeServices(options: ClientRuntimeServicesOption
     runtimeBus: options.runtimeBus,
     shellPaths,
     surfaceRoot,
+    ...(options.providerRegistryFactory === undefined ? {} : { providerRegistryFactory: options.providerRegistryFactory }),
+    ...(options.modelDiscovery === undefined ? {} : { modelDiscovery: options.modelDiscovery }),
   });
 
   const agents = createAgentGraph({
@@ -379,7 +416,12 @@ export function createClientRuntimeServices(options: ClientRuntimeServicesOption
 
   const hookActivityTracker = new HookActivityTracker();
   const hookDispatcher = new HookDispatcher(
-    { agentManager: agents.agentManager, toolLLM: providers.toolLLM, projectRoot: workingDirectory },
+    {
+      // Withheld only when the caller says so by name — see `hookAgentManager`.
+      ...((options.hookAgentManager ?? 'attach') === 'attach' ? { agentManager: agents.agentManager } : {}),
+      toolLLM: providers.toolLLM,
+      projectRoot: workingDirectory,
+    },
     hookActivityTracker,
   );
   configManager.attachHookDispatcher(hookDispatcher);

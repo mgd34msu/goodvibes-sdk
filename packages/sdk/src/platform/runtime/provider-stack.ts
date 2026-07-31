@@ -39,6 +39,34 @@ import {
 } from './provider-optimizer-wiring.js';
 import type { ShellPathService } from './shell-paths.js';
 
+/** The registry constructor's own option bag, named so a factory can be typed against it. */
+export type ProviderRegistryConstructionOptions = ConstructorParameters<typeof ProviderRegistry>[0];
+
+/**
+ * How the registry itself is built.
+ *
+ * The default is `new ProviderRegistry(...)`. A product that must survive a boot
+ * with broken or absent provider credentials passes
+ * `createLaunchTolerantProviderRegistry` here instead — it constructs under
+ * placeholder env vars so a misconfigured key is a degraded provider rather than
+ * a crash before the first frame. That is a real product posture, not a
+ * preference, so it is an injection point rather than a second composition.
+ */
+export type ProviderRegistryFactory = (options: ProviderRegistryConstructionOptions) => ProviderRegistry;
+
+/**
+ * Whether model discovery runs at construction.
+ *
+ * `run` (the default, and what every composition did before this option existed)
+ * kicks off the provider model-discovery pass. `skip` exists because that pass
+ * writes asynchronously and unawaited: a short-lived composition — a test
+ * against a temp workspace, a one-shot CLI subcommand — can be torn down before
+ * the write lands, which surfaces as a write into a directory that no longer
+ * exists. Skipping is a statement that this composition will not outlive the
+ * write, never a claim that discovery is unwanted.
+ */
+export type ProviderModelDiscoveryMode = 'run' | 'skip';
+
 export interface ProviderStackOptions {
   readonly configManager: ConfigManager;
   readonly subscriptionManager: SubscriptionManager;
@@ -49,6 +77,10 @@ export interface ProviderStackOptions {
   readonly shellPaths: ShellPathService;
   /** The product's storage root (`tui`, `agent`, `daemon`, …); the per-user stores hang off it. */
   readonly surfaceRoot: string;
+  /** How to construct the registry. Default: `new ProviderRegistry(...)`. */
+  readonly providerRegistryFactory?: ProviderRegistryFactory | undefined;
+  /** Whether to run model discovery at construction. Default: `run`. */
+  readonly modelDiscovery?: ProviderModelDiscoveryMode | undefined;
 }
 
 /** Everything a composition needs to choose and call a model. */
@@ -72,7 +104,9 @@ export function createProviderStack(options: ProviderStackOptions): ProviderStac
   const modelLimitsService = new ModelLimitsService({
     cachePath: shellPaths.resolveUserPath(surfaceRoot, 'model-limits.json'),
   });
-  const providerRegistry = new ProviderRegistry({
+  const buildProviderRegistry = options.providerRegistryFactory
+    ?? ((registryOptions: ProviderRegistryConstructionOptions) => new ProviderRegistry(registryOptions));
+  const providerRegistry = buildProviderRegistry({
     configManager,
     subscriptionManager: options.subscriptionManager,
     secretsManager: options.secretsManager,
@@ -85,7 +119,10 @@ export function createProviderStack(options: ProviderStackOptions): ProviderStac
     featureFlags: options.featureFlags,
     runtimeBus: options.runtimeBus,
   });
-  providerRegistry.initCustomProviders(); providerRegistry.initProviderModelDiscovery();
+  providerRegistry.initCustomProviders();
+  // Default `run`: every composition did this unconditionally before the option
+  // existed, so an omitted option changes nothing.
+  if ((options.modelDiscovery ?? 'run') === 'run') providerRegistry.initProviderModelDiscovery();
   // ONE credential chain (env -> secrets -> subscription): boot applies secrets-backed keys; every secrets write/delete re-registers builtins LIVE (no restart); badges/picker/chat read the same instances.
   options.secretsManager.onDidChange(() => void providerRegistry.refreshProviderCredentials().catch((error) => logger.warn('live credential refresh failed', { error: summarizeError(error) })));
   void providerRegistry.refreshProviderCredentials().catch((error) => logger.warn('boot credential refresh failed', { error: summarizeError(error) }));
