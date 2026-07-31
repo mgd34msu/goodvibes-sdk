@@ -4,6 +4,43 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 ### Added
 
+- **The engine policy every surface product was writing twice (`platform/config`,
+  `platform/runtime`, `platform/rewind`, `platform/pairing`, `platform/providers`,
+  `platform/orchestration`, `platform/workflow`, `platform/state`, `platform/types`).**
+  Twenty-five modules that answer the same question on every surface now answer
+  it in one place: how a durable file is written (`atomicWriteFileSync`) and read
+  back with its version gate and quarantine (`readVersioned`,
+  `reapQuarantinedFiles`); what a crash leaves behind and who reclaims it
+  (`runDurabilityHousekeeping` / `startDurabilityHousekeeping` over transcript
+  journals, liveness markers, quarantine files and rewind-anchor sidecars, plus
+  `createDurabilityServices` wiring them beside the snapshot scheduler and the
+  permission rule store); where a session's WAL journal
+  (`openTranscriptJournal`, `replayJournal`) and multi-instance liveness marker
+  (`writeLivenessMarker`, `checkSessionLiveness`) live; the rewind turn-anchor
+  registry (`recordTurnAnchor`, `resolveTurnAnchor`) and its optional sidecar;
+  what a model costs and when a budget is breached (`resolvePricing`,
+  `calcSessionCost`, `computeBudgetBreach`, `readBudgetAlertUsd`); the stable
+  name a printed or QR pairing link should carry (`resolveStableHost`,
+  `resolvePairingWebOrigin`, `mintPairingHandoff`) and the plain-language offer
+  and posture copy that goes with it; the unfocused-alert gate (`FocusTracker`,
+  `shouldFireAlert`); the memory-governor status projection; the daemon
+  credential-status fold (`deriveCredentialAvailability`); the per-project work
+  plan (`WorkPlanStore`); and the workstream draft a human reviews before
+  anything is spent (`createWorkstreamServices`, the draft store, the item edits
+  and the best-of-N validation).
+
+  Everything here is policy over an injected shape, so nothing decides something
+  a product owns. `WorkPlanStore` takes the surface root it writes under and the
+  source it records. `resolveDaemonCompanionToken` takes the peer name it mints
+  under, and `workspaceOperatorTokenCandidates` takes the surface root it looks
+  under. `turn-anchors` is two layers — an in-memory registry that touches no
+  disk, and an opt-in per-call sidecar for hosts that want anchors to survive a
+  resume. `resolvePairingWebOrigin` reads the stored `web.*` keys and resolves
+  the port through `resolveWebPort`, the same resolver that binds the listener,
+  so a printed origin can never name a port nothing is listening on. And every
+  priced answer in `session-cost` goes through `computeUsageCostUsd`, so cache
+  traffic is billed at its own rate in exactly one place.
+
 - **Daemon-hosted sessions (`platform/hosted-sessions`, `sessions.hosted.*`).**
   A conversation loop composed INSIDE the daemon: the same `Orchestrator`, the
   same `registerAllTools` registry rooted at a workspace, the same permission

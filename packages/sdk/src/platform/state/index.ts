@@ -186,3 +186,5 @@ export type {
   CodeIndexReindexTarget,
   CodeIndexReindexSchedulerDeps,
 } from './code-index-reindex.js';
+
+export { formatConsolidationReceipt } from './consolidation-receipt.js';

@@ -55,3 +55,52 @@ export type {
   OriginCapability,
   BrowserGatedCapability,
 } from './origin-posture.js';
+
+export {
+  firstNonInternalIpv4,
+  mdnsLocalName,
+  parseIpRouteSrc,
+  parseTailscaleStatus,
+  probeStableHostInputs,
+  resolveStableHost,
+  stableUrlHostForBindHost,
+} from './stable-host.js';
+export type {
+  ResolvedStableHost,
+  StableHostInputs,
+  StableHostKind,
+  TailscaleState,
+} from './stable-host.js';
+
+export {
+  availablePairingOffers,
+  defaultPairingTokenName,
+  mintPairingHandoff,
+  pairingQrContent,
+} from './handoff-mint.js';
+export type {
+  MintPairingHandoffInput,
+  PairingHandoff,
+  PairingOfferAvailability,
+  PairingTokenMinter,
+} from './handoff-mint.js';
+
+export {
+  formatCreated,
+  formatDeviceLine,
+  formatLastSeen,
+  resolveTokenByIdPrefix,
+  shortTokenId,
+} from './device-lines.js';
+
+export {
+  formatPairingOffers,
+  formatPostureCapabilities,
+  PAIRING_OFFER_COPY,
+  pairingPostureNotice,
+  POSTURE_CAPABILITY_LABEL,
+} from './offer-copy.js';
+export type { PairingOfferCopy } from './offer-copy.js';
+
+export { ensurePublicBaseUrl, isHttpOnLan, resolvePairingWebOrigin } from './web-origin.js';
+export type { PairingWebOrigin } from './web-origin.js';

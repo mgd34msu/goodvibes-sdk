@@ -74,3 +74,5 @@ export type {
   ToolResult,
   ToolSideEffect,
 } from './tools.js';
+export type { Cell, Line } from './grid.js';
+export { createEmptyCell, createEmptyLine, createStyledCell } from './grid.js';
