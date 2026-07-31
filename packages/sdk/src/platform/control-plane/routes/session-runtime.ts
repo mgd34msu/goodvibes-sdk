@@ -107,6 +107,18 @@ export interface SessionLiveTurnControls {
  */
 export class SessionLiveTurnControlsHolder {
   private controls: SessionLiveTurnControls | null = null;
+  /**
+   * Per-session bindings, for a host that runs SEVERAL loops at once.
+   *
+   * The single slot above is the interactive host's: one process, one
+   * conversation, and `sessions.toolCalls.cancel` against "the local runtime"
+   * means that one. A daemon hosting sessions runs many at the same time, and
+   * "the local runtime" is no longer a single thing — so each hosted loop binds
+   * under its own id and the verbs resolve by id first, falling back to the
+   * single slot for the interactive case that has always worked that way.
+   */
+  private readonly bySession = new Map<string, SessionLiveTurnControls>();
+
   bind(controls: SessionLiveTurnControls): void {
     this.controls = controls;
   }
@@ -116,6 +128,23 @@ export class SessionLiveTurnControlsHolder {
   }
   get(): SessionLiveTurnControls | null {
     return this.controls;
+  }
+
+  /** Bind one session's live-turn controls by id. Replaces any previous binding for that id. */
+  bindSession(sessionId: string, controls: SessionLiveTurnControls): void {
+    this.bySession.set(sessionId, controls);
+  }
+  /** Unbind only when the caller is still the bound instance for that id (idempotent). */
+  unbindSession(sessionId: string, controls: SessionLiveTurnControls): void {
+    if (this.bySession.get(sessionId) === controls) this.bySession.delete(sessionId);
+  }
+  /** The controls bound for this session id, or null. */
+  getSession(sessionId: string): SessionLiveTurnControls | null {
+    return this.bySession.get(sessionId) ?? null;
+  }
+  /** Whether any loop is bound under this id. */
+  hasSession(sessionId: string): boolean {
+    return this.bySession.has(sessionId);
   }
 }
 
@@ -130,8 +159,15 @@ export interface SessionRuntimeControls {
   getPermissionMode(): PermissionMode;
   setPermissionMode(mode: PermissionMode): void;
   getContextUsage(): SessionContextUsage;
-  /** The live-turn controls currently bound, or null when no interactive runtime is attached. */
-  getLiveTurnControls(): SessionLiveTurnControls | null;
+  /**
+   * The live-turn controls for this session id.
+   *
+   * Takes the id because a daemon hosting sessions runs several loops at once:
+   * a per-session binding answers for a hosted session, and the single
+   * interactive binding answers for the local runtime. Null when neither is
+   * bound, which the verbs report as an honest refusal.
+   */
+  getLiveTurnControls(sessionId: string): SessionLiveTurnControls | null;
 }
 
 function requireLocalSessionId(controls: SessionRuntimeControls, params: Record<string, unknown>): string {
@@ -172,8 +208,8 @@ export function createSessionPermissionModeSetHandler(controls: SessionRuntimeCo
 }
 
 /** Resolve the bound live-turn controls or refuse honestly (no fabricated success). */
-function requireLiveTurnControls(controls: SessionRuntimeControls): SessionLiveTurnControls {
-  const live = controls.getLiveTurnControls();
+function requireLiveTurnControls(controls: SessionRuntimeControls, sessionId: string): SessionLiveTurnControls {
+  const live = controls.getLiveTurnControls(sessionId);
   if (!live) {
     throw new GatewayVerbError(
       'No interactive runtime is bound on this daemon — live-turn controls are unavailable for this session.',
@@ -188,7 +224,7 @@ export function createSessionToolCallCancelHandler(controls: SessionRuntimeContr
   return (invocation) => {
     const params = readInvocationParams(invocation);
     const sessionId = requireLocalSessionId(controls, params);
-    const live = requireLiveTurnControls(controls);
+    const live = requireLiveTurnControls(controls, sessionId);
     const callId = typeof params.callId === 'string' ? params.callId.trim() : '';
     if (!callId) {
       throw new GatewayVerbError('callId is required', 'INVALID_ARGUMENT', 400, 'callId');
@@ -207,7 +243,7 @@ export function createSessionToolCallCancelHandler(controls: SessionRuntimeContr
 export function createSessionQueuedMessagesListHandler(controls: SessionRuntimeControls): GatewayMethodHandler {
   return (invocation) => {
     const sessionId = requireLocalSessionId(controls, readInvocationParams(invocation));
-    const live = requireLiveTurnControls(controls);
+    const live = requireLiveTurnControls(controls, sessionId);
     return { sessionId, messages: live.listQueuedMessages() };
   };
 }
@@ -216,7 +252,7 @@ export function createSessionQueuedMessageEditHandler(controls: SessionRuntimeCo
   return (invocation) => {
     const params = readInvocationParams(invocation);
     const sessionId = requireLocalSessionId(controls, params);
-    const live = requireLiveTurnControls(controls);
+    const live = requireLiveTurnControls(controls, sessionId);
     const messageId = typeof params.messageId === 'string' ? params.messageId.trim() : '';
     const text = typeof params.text === 'string' ? params.text : '';
     if (!messageId) {
@@ -240,7 +276,7 @@ export function createSessionQueuedMessageDeleteHandler(controls: SessionRuntime
   return (invocation) => {
     const params = readInvocationParams(invocation);
     const sessionId = requireLocalSessionId(controls, params);
-    const live = requireLiveTurnControls(controls);
+    const live = requireLiveTurnControls(controls, sessionId);
     const messageId = typeof params.messageId === 'string' ? params.messageId.trim() : '';
     if (!messageId) {
       throw new GatewayVerbError('messageId is required', 'INVALID_ARGUMENT', 400, 'messageId');
@@ -306,11 +342,16 @@ export function createSessionRuntimeControls(deps: {
   const LOCAL_RUNTIME_ALIAS = 'runtime';
   return {
     isLocalSession(sessionId: string): boolean {
+      // A session this process HOSTS is local by the only definition that
+      // matters here: this daemon owns its loop and can answer for it. Without
+      // this branch every hosted session's cancel and queued-message verbs
+      // refused with SESSION_NOT_LOCAL while the loop ran in this very process.
+      if (deps.liveTurnHolder?.hasSession(sessionId) === true) return true;
       const localId = deps.store.getState().session.id;
       return sessionId === LOCAL_RUNTIME_ALIAS || (localId.length > 0 && sessionId === localId);
     },
-    getLiveTurnControls(): SessionLiveTurnControls | null {
-      return deps.liveTurnHolder?.get() ?? null;
+    getLiveTurnControls(sessionId: string): SessionLiveTurnControls | null {
+      return deps.liveTurnHolder?.getSession(sessionId) ?? deps.liveTurnHolder?.get() ?? null;
     },
     getPermissionMode(): PermissionMode {
       return deps.config.get('permissions.mode');
