@@ -126,6 +126,22 @@ export const REPLICATED_CONFIG_DOMAINS: readonly string[] = [
   // machine's hardware. The channel credentials it resolves through are a
   // separate concern with their own replication rules.
   'occasions.',
+
+  // Whether a daemon-hosted session outlives the client that opened it, how
+  // much of its transcript is kept, and how long a terminated one stays
+  // answerable.
+  //
+  // Replicated for the reason `conversationGate.` is: these decide what the
+  // PLATFORM does with the operator's work, and a group where one node ended a
+  // session on detach while another kept it running would be the same
+  // assistant behaving two different ways depending on which machine he
+  // happened to be talking to — with the difference showing up as work that
+  // silently stopped.
+  //
+  // `hostedSessions.maxSessions` is the exception and is ruled node-local
+  // below: how many conversation loops a machine can hold at once is a fact
+  // about that machine's memory, not a decision about him.
+  'hostedSessions.',
 ];
 
 /**
@@ -170,6 +186,12 @@ const NODE_LOCAL_CONFIG_KEYS: readonly string[] = [
   // own pass. Replicating the marker would tell it the work was done and leave
   // the credentials sitting in the clear where nobody looks again.
   'google.credentials.migratedFrom',
+  // How many daemon-hosted conversation loops THIS machine may hold at once.
+  // Each one is a composed runtime with a model stack, a tool registry and a
+  // transcript in memory, so the right number on a laptop and the right number
+  // on a server are different numbers. The rest of `hostedSessions.*`
+  // replicates: it is policy about the operator's work, not about the hardware.
+  'hostedSessions.maxSessions',
 ];
 
 /** Why a daemon-owned path is or is not replicated. */

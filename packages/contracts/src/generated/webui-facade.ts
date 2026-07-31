@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.21.0
- * Methods: 499 total, 436 REST-routed, 63 ws-only invoke.
+ * Methods: 499 total, 431 REST-routed, 68 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -1524,26 +1524,6 @@ export const WEBUI_METHOD_ROUTES: Readonly<Record<string, WebuiRouteDefinition>>
     "method": "GET",
     "path": "/api/sessions/{sessionId}"
   },
-  "sessions.hosted.attach": {
-    "method": "POST",
-    "path": "/api/sessions/hosted/{sessionId}/attach"
-  },
-  "sessions.hosted.create": {
-    "method": "POST",
-    "path": "/api/sessions/hosted"
-  },
-  "sessions.hosted.detach": {
-    "method": "POST",
-    "path": "/api/sessions/hosted/{sessionId}/detach"
-  },
-  "sessions.hosted.kill": {
-    "method": "POST",
-    "path": "/api/sessions/hosted/{sessionId}/kill"
-  },
-  "sessions.hosted.list": {
-    "method": "GET",
-    "path": "/api/sessions/hosted"
-  },
   "sessions.inputs.cancel": {
     "method": "POST",
     "path": "/api/sessions/{sessionId}/inputs/{inputId}/cancel"
@@ -1848,6 +1828,11 @@ export const WEBUI_WS_INVOKE_METHOD_IDS: readonly string[] = [
   "rewind.conversation.requests.take",
   "rewind.plan",
   "sessions.changes.get",
+  "sessions.hosted.attach",
+  "sessions.hosted.create",
+  "sessions.hosted.detach",
+  "sessions.hosted.kill",
+  "sessions.hosted.list",
   "sessions.search",
   "worktrees.discard",
   "worktrees.setup.run"
@@ -2287,11 +2272,11 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "sessions.detach": "rest",
   "sessions.followUp": "rest",
   "sessions.get": "rest",
-  "sessions.hosted.attach": "rest",
-  "sessions.hosted.create": "rest",
-  "sessions.hosted.detach": "rest",
-  "sessions.hosted.kill": "rest",
-  "sessions.hosted.list": "rest",
+  "sessions.hosted.attach": "ws-invoke",
+  "sessions.hosted.create": "ws-invoke",
+  "sessions.hosted.detach": "ws-invoke",
+  "sessions.hosted.kill": "ws-invoke",
+  "sessions.hosted.list": "ws-invoke",
   "sessions.inputs.cancel": "rest",
   "sessions.inputs.deliver": "rest",
   "sessions.inputs.list": "rest",
