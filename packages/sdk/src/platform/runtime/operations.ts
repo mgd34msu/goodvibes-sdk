@@ -159,6 +159,16 @@ export type {
 } from './transcript-journal.js';
 
 export {
+  replayJournalForSession,
+  replayJournalIntoConversation,
+} from './transcript-journal-replay.js';
+export type {
+  JournalReplayConversation,
+  ReplayIntoConversationOptions,
+  ReplayIntoConversationResult,
+} from './transcript-journal-replay.js';
+
+export {
   checkSessionLiveness,
   isPidAlive,
   LIVENESS_MARKER_MAX_FILES,
