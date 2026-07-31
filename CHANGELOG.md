@@ -259,6 +259,14 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
     three need the same mapping from a background-agent attribution to the
     raise's `routeId`/`metadata`.
 
+- **`OrchestratorUsageTotals`** (`@pellux/goodvibes-sdk/platform/core`) and
+  **`TurnInjectionRecord`** (`@pellux/goodvibes-sdk/platform/agents`). Both were
+  reachable as shapes and not as names: the usage totals were an inferred object
+  literal on `Orchestrator.usage`, and the injection record was only the element
+  type of `AgentRecord.turnInjections`. A caller that has to declare the type —
+  folding usage across conversations, rendering one injection row — wrote the
+  fields out again or derived them positionally from an array.
+
 - **`resolveWebPort`** (`@pellux/goodvibes-sdk/platform/daemon`), beside the
   daemon host/port resolvers the barrel already publishes. Two products
   re-implemented the web endpoint's port coercion inline for their endpoint
