@@ -52,9 +52,10 @@ export type { DaemonConfigClient } from './config-client.js';
 export { createDaemonCredentialsClient } from './credentials-client.js';
 export type { CredentialWriteReceipt, DaemonCredentialsClient } from './credentials-client.js';
 
-export { createWireSessionDispatch } from './session-dispatch.js';
+export { createWireSessionDispatch, readSurfaceAgentOutcome } from './session-dispatch.js';
 export type {
   SessionInputsWireClient,
+  SurfaceAgentOutcome,
   WireSessionDispatch,
   WireSessionDispatchOptions,
 } from './session-dispatch.js';

@@ -42,10 +42,10 @@ import {
   sortSessions,
 } from './session-broker-state.js';
 import {
+  applySurfaceInputDelivery,
   claimNextQueuedSessionInput,
   filterSessionInputsSince,
   finalizeAgentSessionInputs,
-  markSurfaceInputDelivered,
   refreshPendingInputCount,
   touchSharedSession,
   updateSharedSessionInput,
@@ -720,23 +720,23 @@ export class SharedSessionBroker {
   }
 
   /** A live surface reports a collected input delivered (`consumed:false`) or
-   * consumed/completed (`consumed:true`); emits a session_update. Lifecycle rules
-   * live in the module helper `markSurfaceInputDelivered`. */
+   * consumed/completed (`consumed:true`), optionally naming the agent answering it.
+   * Lifecycle, the agent pairing and the events live in `applySurfaceInputDelivery`. */
   async markInputDelivered(
     sessionId: string,
     inputId: string,
-    options: { readonly consumed?: boolean | undefined } = {},
+    options: { readonly consumed?: boolean | undefined; readonly agentId?: string | undefined } = {},
   ): Promise<SharedSessionInputRecord | null> {
     await this.start();
-    const consumed = options.consumed === true;
-    const updated = markSurfaceInputDelivered(this.sessionInputStore(), sessionId, inputId, consumed);
-    if (!updated) return null;
-    this.refreshPendingInputCount(sessionId);
+    const applied = applySurfaceInputDelivery(this.sessionInputStore(), sessionId, inputId, options, {
+      publish: (event, payload) => this.publishUpdate(event, payload),
+      publishInput: (event, input, extra) => this.publishInputLifecycleEvent(event, input, extra),
+      announce: (binding) => this.announceSurfaceReply(binding),
+    });
+    if (!applied) return null;
     await this.persist();
-    this.publishInputLifecycleEvent(consumed ? 'session-input-completed' : 'session-input-delivered', updated);
-    return updated;
+    return applied;
   }
-
 
   private async runQueuedFollowUp(sessionId: string): Promise<{ input: SharedSessionInputRecord; agentId: string } | null> {
     const bucket = this.inputs.get(sessionId) ?? [];

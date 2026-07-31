@@ -84,7 +84,18 @@ export interface HttpTransportSessionsClient {
   steerMessage(sessionId: string, input: HttpSteerSessionMessageInput): Promise<SharedSessionSubmission>;
   followUpMessage(sessionId: string, input: HttpSessionMessageInput): Promise<SharedSessionSubmission>;
   cancelInput(sessionId: string, inputId: string): Promise<SharedSessionInputRecord | null>;
-  deliverInput(sessionId: string, inputId: string, options?: { readonly consumed?: boolean | undefined }): Promise<SharedSessionInputRecord | null>;
+  deliverInput(
+    sessionId: string,
+    inputId: string,
+    options?: {
+      readonly consumed?: boolean | undefined;
+      /** The agent this surface is running for the input — binds the channel reply. */
+      readonly agentId?: string | undefined;
+      /** That agent's finished output, reported with `consumed:true`. */
+      readonly answer?: string | undefined;
+      readonly status?: 'completed' | 'failed' | 'cancelled' | undefined;
+    },
+  ): Promise<SharedSessionInputRecord | null>;
 }
 
 export interface HttpTransportTasksClient {

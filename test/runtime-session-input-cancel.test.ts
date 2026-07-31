@@ -95,6 +95,7 @@ function makeContext(inputs: Map<string, InputRecord>): DaemonRuntimeRouteContex
     },
     trySpawnAgent: () => new Response(JSON.stringify({ error: 'not expected' }), { status: 500 }),
     queueSurfaceReplyFromBinding: () => {},
+    completeSurfaceReplyFromSurface: async () => false,
     surfaceDeliveryEnabled: () => false,
     syncSpawnedAgentTask: () => {},
     syncFinishedAgentTask: () => {},

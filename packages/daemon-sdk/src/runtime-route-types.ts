@@ -192,7 +192,7 @@ export interface DaemonRuntimeRouteContext {
     getMessages(sessionId: string, limit: number): unknown[];
     getInputs(sessionId: string, limit: number): unknown[];
     getInputsSince(sessionId: string, options: { state?: string | undefined; since?: number | undefined; limit?: number | undefined }): unknown[];
-    markInputDelivered(sessionId: string, inputId: string, options: { consumed?: boolean | undefined }): Promise<unknown | null>;
+    markInputDelivered(sessionId: string, inputId: string, options: { consumed?: boolean | undefined; agentId?: string | undefined }): Promise<unknown | null>;
     closeSession(sessionId: string): Promise<{ id: string } | null>;
     reopenSession(sessionId: string): Promise<{ id: string } | null>;
     detachParticipant(sessionId: string, surfaceId: string): Promise<{ id: string; status: string } | null>;
@@ -262,6 +262,21 @@ export interface DaemonRuntimeRouteContext {
     binding: AutomationRouteBinding | undefined,
     input: { readonly agentId: string; readonly task: string; readonly sessionId?: string; },
   ) => void;
+
+  /**
+   * A surface that ran the turn in its own process reports the answer, so the
+   * daemon can write it into the shared session and push it down the reply
+   * pipeline. The daemon's own completion poll only ever sees agents THIS
+   * process spawned, so without this an answer produced by a client that
+   * collected the input over `sessions.inputs.list` never reached the
+   * conversation it came from.
+   */
+  readonly completeSurfaceReplyFromSurface: (input: {
+    readonly agentId: string;
+    readonly sessionId?: string | undefined;
+    readonly body: string;
+    readonly status?: 'completed' | 'failed' | 'cancelled' | undefined;
+  }) => Promise<boolean>;
   readonly surfaceDeliveryEnabled: (surface: 'slack' | 'discord' | 'ntfy' | 'webhook' | 'homeassistant' | 'telegram' | 'google-chat' | 'signal' | 'whatsapp' | 'imessage' | 'msteams' | 'bluebubbles' | 'mattermost' | 'matrix') => boolean;
   readonly syncSpawnedAgentTask: (record: AgentRecordLike, sessionId?: string) => void;
   readonly syncFinishedAgentTask: (record: AgentRecordLike) => void;

@@ -17,6 +17,7 @@ import { renderNoticeForSurface } from '../email/inbound-notice-channels.js';
 import type { StructuredNotice } from '../email/inbound-notice.js';
 import { resolveSecretInput } from '../config/secret-refs.js';
 import { isOwnerFacingProgress } from '../agents/progress-audience.js';
+import { renderAgentCompletionAnswer } from '../agents/completion-answer.js';
 import {
   deliverDiscordAgentReply,
   deliverNtfyAgentReply,
@@ -398,6 +399,63 @@ export class DaemonSurfaceDeliveryHelper {
     this.context.channelReplyPipeline.trackPending(pending);
   }
 
+  /**
+   * A surface that ran the turn in ITS OWN process reports the answer.
+   *
+   * `pollPendingSurfaceReplies` below is the same three steps — write the
+   * answer into the shared session, push it down the reply pipeline, drop the
+   * pending entry — driven by this daemon's own AgentManager. That loop can
+   * only ever see agents THIS process spawned, so an answer produced by a TUI
+   * or agent process that collected the input over `sessions.inputs.list` was
+   * invisible to it: the pending reply sat until the pipeline's own retention
+   * dropped it, and the conversation got silence.
+   *
+   * Returns whether a channel delivery was attempted. `false` is the ordinary
+   * outcome for a session with no channel behind it (a local terminal), and is
+   * not an error — the session message is still written.
+   */
+  async completeSurfaceReplyFromSurface(input: {
+    readonly agentId: string;
+    readonly sessionId?: string | undefined;
+    readonly body: string;
+    readonly status?: 'completed' | 'failed' | 'cancelled' | undefined;
+  }): Promise<boolean> {
+    const pending = this.context.pendingSurfaceReplies.get(input.agentId);
+    const status = input.status ?? 'completed';
+    const sessionId = input.sessionId ?? pending?.sessionId;
+    if (sessionId) {
+      await this.context.sessionBroker.completeAgent(sessionId, input.agentId, input.body, {
+        status,
+        ...(pending?.routeId ? { routeId: pending.routeId } : {}),
+      });
+    }
+    if (!pending) return false;
+    try {
+      await this.context.channelReplyPipeline.deliverFinal(input.agentId, input.body, {
+        keepTracking: pending.surfaceKind === 'ntfy' && typeof pending.workflowChainId === 'string',
+      });
+    } catch (error) {
+      logger.error('Agent reply delivery failed — the answer did not reach its conversation', {
+        surface: pending.surfaceKind,
+        agentId: input.agentId,
+        sessionId: sessionId ?? null,
+        bindingId: pending.routeId ?? null,
+        reason: summarizeError(error),
+      });
+      this.recordUndeliveredReply({
+        surfaceKind: pending.surfaceKind as ChannelSurface,
+        agentId: input.agentId,
+        sessionId: pending.sessionId,
+        routeId: pending.routeId,
+        phase: 'final',
+        body: input.body,
+        reason: summarizeError(error),
+      });
+    }
+    this.context.pendingSurfaceReplies.delete(input.agentId);
+    return true;
+  }
+
   async pollPendingSurfaceReplies(syncFinishedAgentTask: (record: import('../tools/agent/index.js').AgentRecord) => void): Promise<void> {
     if (this.context.pendingSurfaceReplies.size === 0) return;
     const completed: string[] = [];
@@ -441,7 +499,7 @@ export class DaemonSurfaceDeliveryHelper {
       if (!record || (record.status !== 'completed' && record.status !== 'failed' && record.status !== 'cancelled')) {
         continue;
       }
-      const message = this.renderAgentCompletionForSurface(pending, record);
+      const message = this.renderAgentCompletionForSurface(record);
       syncFinishedAgentTask(record);
       if (pending.sessionId) {
         await this.context.sessionBroker.completeAgent(pending.sessionId, pending.agentId, message, {
@@ -707,7 +765,6 @@ export class DaemonSurfaceDeliveryHelper {
   }
 
   private renderAgentCompletionForSurface(
-    pending: PendingSurfaceReply,
     record: import('../tools/agent/index.js').AgentRecord,
   ): string {
     // ntfy used to take a branch of its own here that never looked at the
@@ -718,26 +775,9 @@ export class DaemonSurfaceDeliveryHelper {
     // for the answer to depend on which app is displaying it, so the branch is
     // gone and ntfy renders what everyone else renders.
     //
-    // The one piece of ntfy-specific information worth keeping is the WRFC
-    // continuation notice, and only when the agent finished with nothing to
-    // say — otherwise it displaced the reply it was supposed to accompany.
-    if (record.status === 'completed') {
-      const answer = (record.fullOutput ?? record.streamingContent ?? '').trim();
-      if (answer) return answer;
-      // Nothing to report. Owner ruling: silence is the right outcome for work
-      // that produced nothing, so this returns an empty body and the pipeline
-      // closes the run out without notifying anyone. The WRFC continuation
-      // notice is the one exception — a chain that is still running is a fact
-      // the owner is owed, because more messages are coming.
-      //
-      // A run that owes a PERSON an answer cannot arrive here empty: the agent
-      // runtime regenerates the reply once and then substitutes a plain notice
-      // (agents/conversational-reply-recovery.ts), so `answer` is set above.
-      const wrfcId = typeof record.wrfcId === 'string' ? record.wrfcId.trim() : '';
-      return wrfcId ? 'Finished the first pass. Review, fix, and gate updates will follow here.' : '';
-    }
-    // `record.progress` is deliberately NOT a fallback: it is a status line
-    // ("Turn 3 · Read(src/parse.ts)"), and a status line is not an outcome.
-    return String(record.error ?? record.status);
+    // The rule itself lives in agents/completion-answer.ts, because a surface
+    // that ran a dispatched turn in its own process renders the same answer
+    // before reporting it back — see runtime/client/session-dispatch.ts.
+    return renderAgentCompletionAnswer(record);
   }
 }

@@ -6188,6 +6188,9 @@ export interface OperatorMethodInputMap {
         sessionId: string;
         inputId: string;
         consumed?: boolean;
+        agentId?: string;
+        answer?: string;
+        status?: string;
     };
     // (undocumented)
     "sessions.inputs.list": {
