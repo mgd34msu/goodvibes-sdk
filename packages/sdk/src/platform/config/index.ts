@@ -304,3 +304,32 @@ export type {
   ToolLLMChatOptions,
   ToolLLMDeps,
 } from './tool-llm.js';
+
+export { atomicWriteFileSync } from './atomic-write.js';
+export type { AtomicWriteOptions } from './atomic-write.js';
+
+export {
+  QUARANTINE_MAX_FILES_PER_DIR,
+  QUARANTINE_RETENTION_MS,
+  readVersioned,
+  reapQuarantinedFiles,
+  UNRECOGNIZED_SUFFIX,
+} from './read-versioned.js';
+export type {
+  QuarantineReapOptions,
+  QuarantineReapResult,
+  ReadVersionedOptions,
+  VersionMigration,
+} from './read-versioned.js';
+
+export {
+  credentialReadModeFromHostMode,
+  deriveCredentialAvailability,
+  readClientCredentialStatus,
+} from './credential-availability.js';
+export type {
+  CredentialAvailability,
+  CredentialReadMode,
+  CredentialStatusEntry,
+  CredentialStatusOutcome,
+} from './credential-availability.js';

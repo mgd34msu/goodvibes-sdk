@@ -383,8 +383,8 @@
     "rationale": "new entry: the owner-profile surface \u2014 surface list, field/section registry with tier split, document parser and provenance split, projection and load state, and the OwnerProfileStore that is the only writer the barrel exposes (writer.ts mutations stay internal so the trust gate cannot be walked around); measured 859 B gzip @ commit 625afa04; headroom max(ceil(859*1.2)=1031, 859+50=909) \u2192 1031 (1.2x dominates by 122 B)"
   },
   "./platform/pairing": {
-    "gzip_bytes": 454,
-    "rationale": "public facade grew again with the origin TLS/capability posture exports (describeOriginPosture + the LAN plain-http notice line); measured 378 B gzip; headroom max(ceil(378*1.2)=454, 378+50=428) \u2192 454 (1.2x dominates)"
+    "gzip_bytes": 797,
+    "rationale": "facade now also carries the stable-host ladder, the handoff minting policy, the device-line and offer copy, and the pairing web-origin resolver; measured 664 B gzip @ commit f3c14554; headroom max(ceil(664*1.2)=797, 664+50=714) -> 797 (1.2x dominates)"
   },
   "./platform/payments": {
     "gzip_bytes": 2823,
@@ -419,8 +419,8 @@
     "rationale": "relay reachability + WebAuthn step-up composition surface (StepUpService, createRelayReachability, step-up policy); re-measured 491 B gzip after the certificate-minting helper was deleted (bundler chunk reshuffle moved shared bytes into this entry even as the surface shrank); headroom max(ceil(491*1.2)=590, 491+50=541) -> 590 (1.2x dominates)"
   },
   "./platform/rewind": {
-    "gzip_bytes": 503,
-    "rationale": "unified message-anchored rewind service export (UnifiedRewindService + token store + IO types) plus the conversation host broker that lets the surface hosting a conversation serve a conversation-scope rewind; re-measured 419 B gzip; headroom max(ceil(419*1.2)=503, 419+50=469) \u2192 503 (1.2x dominates)"
+    "gzip_bytes": 622,
+    "rationale": "unified message-anchored rewind service export (UnifiedRewindService + token store + IO types) plus the conversation host broker that lets the surface hosting a conversation serve a conversation-scope rewind; re-measured 518 B gzip @ commit f3c14554 with the turn-anchor registry and its sidecar reap added; headroom max(ceil(518*1.2)=622, 518+50=568) -> 622 (1.2x dominates)"
   },
   "./platform/runtime/client-services": {
     "gzip_bytes": 5852,
@@ -599,8 +599,8 @@
     "rationale": "new public package export budget; measured 197 B gzip @ v0.33.0 release verification; headroom max(ceil(197*1.2)=237, 197+50=247) -> 247 (+50 B floor dominates)"
   },
   "./platform/workflow": {
-    "gzip_bytes": 109,
-    "rationale": "new public package export budget; measured 59 B gzip @ v0.33.0 release verification; headroom max(ceil(59*1.2)=71, 59+50=109) -> 109 (+50 B floor dominates)"
+    "gzip_bytes": 231,
+    "rationale": "facade now also carries the per-project work plan store and its retention constants; measured 181 B gzip @ commit f3c14554; headroom max(ceil(181*1.2)=218, 181+50=231) -> 231 (+50 B floor dominates)"
   },
   "./platform/workspace": {
     "gzip_bytes": 131,
