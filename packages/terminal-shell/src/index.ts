@@ -31,6 +31,8 @@
 export {
   attachWsOnlyGatewayVerbHandlers,
   createArchivableFleetRegistry,
+  createFleetServices,
+  type FleetServicesDeps,
   type GatewayVerbGroupDeps,
   type ProcessRegistryDeps,
   type ArchivableProcessRegistry,

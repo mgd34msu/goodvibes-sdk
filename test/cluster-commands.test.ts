@@ -299,6 +299,11 @@ describe('showing the join key', () => {
     expect(result.lines.join('\n')).toContain('gvj1-THEKEY');
     expect(result.lines.join('\n')).toContain('clipboard');
     expect(result.rawOutput).toBe(clipboardEscapeSequence('gvj1-THEKEY'));
+    // Pinned as literal bytes, not against the function that produced them: a
+    // self-comparison stays green even if the sequence loses the ESC that makes
+    // it a sequence at all, at which point the terminal prints the payload
+    // instead of taking the clipboard write.
+    expect(result.rawOutput).toBe(`\u001b]52;c;${Buffer.from('gvj1-THEKEY', 'utf8').toString('base64')}\u0007`);
   });
 
   test('outside a terminal it says no copy was attempted rather than claiming one', async () => {

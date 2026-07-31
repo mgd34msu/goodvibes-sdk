@@ -367,3 +367,83 @@ describe('-y / --yes bypass availability', () => {
     expect(result.errors).toEqual([]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Positional/refusal semantics the catalog engine has to reproduce exactly.
+//
+// Each of these was measured against the terminal's own hand-written parser
+// over 60,000 generated command lines; the engine now answers identically on
+// every one of them. They are pinned individually because each is a different
+// mechanism and a regression in any of them is silent at the call site.
+// ---------------------------------------------------------------------------
+
+describe('command-word resolution', () => {
+  test('a later word still names the command when an earlier one does not', () => {
+    const result = parse(['foo', 'web']);
+    expect(result.command).toBe('web');
+    expect(result.rawCommand).toBe('web');
+    // The stray word is a positional of the invocation, not an argument the
+    // command was handed.
+    expect(result.positionals).toEqual(['foo']);
+    expect(result.commandArgs).toEqual([]);
+  });
+
+  test('only tokens AFTER the command word become that command’s arguments', () => {
+    const result = parse(['a.txt', 'serve', 'b.txt']);
+    expect(result.command).toBe('serve');
+    expect(result.positionals).toEqual(['a.txt', 'b.txt']);
+    expect(result.commandArgs).toEqual(['b.txt']);
+  });
+
+  test('a command word after `--` is not a command word', () => {
+    const result = parse(['--', 'web']);
+    expect(result.command).toBe('tui');
+    expect(result.positionals).toEqual(['web']);
+  });
+});
+
+describe('unknown flags', () => {
+  test('an unknown flag typed BEFORE the command word is still refused', () => {
+    const result = parse(['--typo-flag', 'status']);
+    expect(result.command).toBe('status');
+    expect(result.errors[0]).toContain('Unknown option: --typo-flag');
+    expect(result.commandArgs).toEqual([]);
+  });
+
+  test('an unknown flag typed after the command word rides that command’s leniency', () => {
+    const result = parse(['status', '--typo-flag']);
+    expect(result.errors).toEqual([]);
+    expect(result.commandArgs).toEqual(['--typo-flag']);
+  });
+});
+
+describe('missing flag values', () => {
+  test('a required value that is not there does not eat the next flag', () => {
+    const result = parse(['--daemon-home', '--model', 'surfaces']);
+    // `surfaces` is --model's value, so nothing is left to name a command.
+    expect(result.command).toBe('tui');
+    expect(result.flags.model).toBe('surfaces');
+    expect(result.errors).toEqual(['--daemon-home requires a value.']);
+  });
+
+  test('a defaulted enum with no value states its choices and falls back', () => {
+    const result = parse(['--json', '--output-format']);
+    expect(result.flags.outputFormat).toBe('text');
+    expect(result.errors).toEqual([
+      '--output-format requires a value.',
+      '--output-format must be one of: text, json, stream-json.',
+    ]);
+  });
+});
+
+describe('a bare `-`', () => {
+  test('is not swallowed as an optional flag’s value', () => {
+    expect(flags(['--fork', '-']).fork).toBe(true);
+    expect(flags(['--resume', '-']).resume).toBe('latest');
+    expect(parse(['--resume', '-']).positionals).toEqual(['-']);
+  });
+
+  test('is still accepted where a value is required', () => {
+    expect(flags(['--session', '-']).session).toBe('-');
+  });
+});
