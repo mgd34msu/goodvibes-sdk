@@ -31,6 +31,20 @@
  * amount of monkey-patching upstream can intercept it. That is the whole
  * property this module exists to provide, and it is why every early-exit site
  * in the daemon boot path routes through here.
+ *
+ * ── Consumer-mirror reconciliation (2026-07-30 daemon/TUI split, hoist lane) ──
+ *
+ * Both the TUI and the agent carried independent, near-verbatim copies of this
+ * module (their own compiled builds predated this file's `platform/daemon`
+ * exports-map entry). The agent's copy split the descriptor write into its own
+ * `fatal-boot-write.ts` and looped `writeSync` until every byte was accepted,
+ * because that repo also routes `--help`, `--version`, completion output and
+ * the whole `status` render through these functions — a single `writeSync` of
+ * several kilobytes into a pipe can return a short count, truncating the
+ * output rather than silencing it (a quieter version of the same defect this
+ * module exists to close). That loop is strictly better than a bare one-shot
+ * `writeSync` for a module already used for stdout payloads larger than a
+ * fatal-error line, so it is adopted here as the single implementation.
  */
 
 import { writeSync } from 'node:fs';
@@ -41,9 +55,23 @@ import { flushActivityLogSync, logger } from '../utils/logger.js';
 const STDOUT_FD = 1;
 const STDERR_FD = 2;
 
+/**
+ * Write `line` to `fd`, looping until every byte is accepted (or the
+ * descriptor stops making progress). A single `writeSync` call can return a
+ * short count for a large payload; looping is what lets this module also
+ * back callers like `--help`/`--version`/status-render output, not just a
+ * short fatal line.
+ */
 function writeLineToFd(fd: number, line: string): void {
   try {
-    writeSync(fd, line.endsWith('\n') ? line : `${line}\n`);
+    const payload = Buffer.from(line.endsWith('\n') ? line : `${line}\n`, 'utf-8');
+    let written = 0;
+    while (written < payload.length) {
+      const n = writeSync(fd, payload, written, payload.length - written);
+      // A zero-byte write would spin forever; stop and take what got through.
+      if (n <= 0) break;
+      written += n;
+    }
   } catch {
     // A closed or unwritable descriptor must never turn a diagnostic into a
     // second failure. There is nothing further to fall back to: this IS the
