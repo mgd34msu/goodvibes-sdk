@@ -142,7 +142,7 @@ export function applyRuntimeConfigDefault(configManager: ConfigManager, key: Con
  * only applies the default in-memory when the key is absent from both (e.g.
  * a new install); an explicit user value is respected. No disk write.
  */
-export function applyTuiRuntimeConfigDefaults(configManager: ConfigManager): void {
+export function applyTerminalRuntimeConfigDefaults(configManager: ConfigManager): void {
   applyRuntimeConfigDefault(configManager, 'display.showTokenSpeed', true);
 }
 

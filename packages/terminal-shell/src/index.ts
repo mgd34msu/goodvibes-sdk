@@ -7,10 +7,13 @@
  * render-tick coalescing, the `cluster` command family and its daemon-target
  * convention, the shared CLI argument parser and its supporting modules
  * (redaction, config overrides, endpoint resolution, feature-flag overrides),
- * the terminal output guard, and the startup reachability notice. Each
- * capability is a thin, dependency-injected wrapper so a front-end's
- * composition root becomes a few named calls into this package instead of a
- * hand-maintained copy that drifts.
+ * and the terminal output guard. Each capability is a thin, dependency-injected
+ * wrapper so a front-end's composition root becomes a few named calls into
+ * this package instead of a hand-maintained copy that drifts.
+ *
+ * The startup reachability notice lives in the SDK core instead
+ * (`@pellux/goodvibes-sdk/platform/runtime`, the `operations` namespace):
+ * SDK-side code needs it too, and the SDK cannot import this package.
  *
  * See ./conformance for the descriptor/handler gate a consumer runs against its
  * own composition in CI.
@@ -130,7 +133,7 @@ export {
 
 export {
   applyRuntimeConfigDefault,
-  applyTuiRuntimeConfigDefaults,
+  applyTerminalRuntimeConfigDefaults,
   applyConfiguredHitlMode,
   applyRuntimeConfigValue,
   applyRuntimeConfigOverrides,
@@ -142,18 +145,10 @@ export {
 export {
   allowTerminalWrite,
   installTerminalOutputGuard,
-  installTuiTerminalOutputGuard,
+  installFullScreenTerminalOutputGuard,
   type TerminalOutputInterceptSource,
   type TerminalOutputIntercept,
   type TerminalOutputGuard,
   type TerminalOutputGuardOptions,
-  type TuiTerminalOutputGuardOptions,
+  type FullScreenTerminalOutputGuardOptions,
 } from './terminal-output-guard.js';
-
-export {
-  buildReachabilityNotices,
-  reachabilityNoticeLines,
-  type ReachabilityNoticeKind,
-  type ReachabilityNotice,
-  type ReachabilityNoticeInput,
-} from './reachability-notice.js';
