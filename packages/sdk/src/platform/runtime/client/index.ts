@@ -118,6 +118,35 @@ export type {
   DaemonServiceStartResult,
 } from './daemon-autostart.js';
 
+export {
+  createDaemonHandoverProgress,
+  DAEMON_HANDOVER_TIMEOUT_MS,
+  DAEMON_REPO_RELEASES_LATEST_URL,
+  DAEMON_SPLIT_FLOOR_VERSION,
+  DAEMON_VERSION_PROBE_TIMEOUT_MS,
+  daemonReleaseDownloadBaseUrl,
+  decideDaemonHandover,
+  HANDOVER_ABORTED_MESSAGE,
+  isPreSplitDaemonVersion,
+  parseDaemonVersionOutput,
+  performDaemonHandover,
+  readInstalledDaemonVersion,
+  resolveHandoverServiceName,
+  restartHandedOverDaemon,
+  runDaemonHandover,
+} from './daemon-handover.js';
+export type {
+  DaemonHandoverDecision,
+  DaemonHandoverDecisionInput,
+  DaemonHandoverOutcome,
+  DaemonHandoverProgress,
+  DaemonHandoverSkipReason,
+  DaemonRestartOutcome,
+  PerformDaemonHandoverOptions,
+  RunCommandLike,
+  RunDaemonHandoverOptions,
+} from './daemon-handover.js';
+
 export { createSpineAdoptionSync } from './spine-adoption.js';
 export type {
   InboundInputsActivation,
