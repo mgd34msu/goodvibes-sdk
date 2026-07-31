@@ -191,7 +191,8 @@ interface HttpListenerConfig {
    * Requires trustProxy=true. Prevents header-injection bypass: a peer that is
    * not a Cloudflare edge node cannot fake CF-Connecting-IP to manipulate rate
    * limiting. When trustProxy=false, CF-Connecting-IP is ignored regardless.
-   * Default: false.
+   * Overrides the httpListener.trustCloudflare config value when set; absent,
+   * that key decides. Default: false.
    */
   trustCloudflare?: boolean | undefined;
   /** Pre-configured UserAuthManager owned by the runtime service graph. */
@@ -306,7 +307,12 @@ export class HttpListener {
     // scrypt-cost-throttled online brute-force attacks.
     this.loginRateLimiter = new RateLimiter(config.loginRateLimit ?? 5);
     this.trustProxy = config.trustProxy ?? Boolean(this.configManager.get('httpListener.trustProxy'));
-    this.trustCloudflare = config.trustCloudflare ?? false;
+    // Falls back to config exactly as trustProxy does. It had no fallback and
+    // no config key at all, so the only way to turn it on was to construct the
+    // listener by hand with the flag set — which no shipped composition does.
+    // The Cloudflare-range check the listener carries was therefore dead code
+    // on every daemon anyone actually runs.
+    this.trustCloudflare = config.trustCloudflare ?? Boolean(this.configManager.get('httpListener.trustCloudflare'));
     this.serveFactory = config.serveFactory ?? Bun.serve;
   }
 

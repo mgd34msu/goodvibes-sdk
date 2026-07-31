@@ -208,7 +208,7 @@ describe('per-hunk approvals over HTTP', () => {
   //   - shape/type errors (missing required, wrong element type) -> S1 gate
   //     (code INVALID_INPUT), pre-empting our handlers — fine, still honest;
   //   - request-specific errors (hunk index out of range) -> OUR broker
-  //     (VALIDATION_FAILED), because only it knows the pending edit list.
+  //     (INVALID_ARGUMENT), because only it knows the pending edit list.
   // The plain-HTTP tests above bypass the gate entirely and pin our handler
   // paths (surfaceId 400, malformed/oob selectedHunks 400).
   // -------------------------------------------------------------------------

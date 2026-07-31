@@ -310,6 +310,7 @@ export class SharedSessionBroker {
     //
     // (undocumented)
     ensureSession(input?: EnsureSharedSessionInput): Promise<SharedSessionRecord>;
+    failInput(sessionId: string, inputId: string, error: string): Promise<SharedSessionInputRecord | null>;
     // Warning: (ae-forgotten-export) The symbol "FindSharedSessionOptions" needs to be exported by the entry point embed.d.ts
     //
     // (undocumented)

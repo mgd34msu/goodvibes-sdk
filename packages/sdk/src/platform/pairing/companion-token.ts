@@ -1,12 +1,42 @@
 import { randomBytes } from 'node:crypto';
-import { readFileSync, writeFileSync, mkdirSync, existsSync, chmodSync, unlinkSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, chmodSync, renameSync, unlinkSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { logger } from '../utils/logger.js';
+
+/**
+ * What was done with an operator-token file that could not be read.
+ *
+ * A token store is a fleet's shared secret: every paired client authenticates
+ * with the value in it. When the file was unreadable — truncated by a crash
+ * mid-write, half-written, or overwritten with something that is not a token
+ * record — the read fell through and MINTED A NEW TOKEN over the top of it.
+ * That is a fleet-wide 401 with no record of what happened and no way back:
+ * the bytes that every client was holding are gone, and nothing says so.
+ *
+ * So the unreadable file is moved aside first, under a `.unrecognized`
+ * neighbour, and the event is reported. The rotation still happens — a daemon
+ * with no readable token cannot serve — but it is now a stated one, with the
+ * old file still on disk.
+ */
+export interface CompanionTokenQuarantine {
+  /** The token store that could not be read. */
+  readonly from: string;
+  /** Where its bytes were moved. Empty when the move itself failed. */
+  readonly to: string;
+  /** Why it was not usable, in one line. */
+  readonly reason: string;
+}
 
 export interface CompanionPairingResult {
   readonly token: string;
   readonly peerId: string;
   readonly createdAt: number;
+  /**
+   * Present only when an unreadable token store was moved aside to mint this
+   * one. A caller that surfaces anything to an operator must surface this:
+   * every paired client has to pair again.
+   */
+  readonly quarantined?: CompanionTokenQuarantine | undefined;
 }
 
 export interface CompanionConnectionInfo {
@@ -28,6 +58,12 @@ export interface CompanionTokenRecord {
 export interface CompanionTokenOptions {
   readonly daemonHomeDir: string;
   readonly regenerate?: boolean | undefined;
+  /**
+   * Where a quarantine is recorded for the next surface that looks — the
+   * daemon's own receipt store (platform/daemon/receipts.ts). Omitted ⇒ the
+   * event is logged and returned but nothing carries it to a person.
+   */
+  readonly receipts?: { record(text: string): unknown } | undefined;
 }
 
 export interface PruneStaleOperatorTokensOptions {
@@ -95,16 +131,13 @@ export function getOrCreateCompanionToken(
   const options = normalizeCompanionTokenOptions(first, second);
   const tokenPath = resolveSharedTokenPath(options.daemonHomeDir);
 
+  let quarantined: CompanionTokenQuarantine | undefined;
   if (!options.regenerate && existsSync(tokenPath)) {
-    try {
-      const raw = readFileSync(tokenPath, 'utf-8');
-      const record = JSON.parse(raw) as CompanionTokenRecord;
-      if (typeof record.token === 'string' && typeof record.peerId === 'string') {
-        return { token: record.token, peerId: record.peerId, createdAt: record.createdAt };
-      }
-    } catch {
-      // Fall through to regenerate
+    const loaded = readTokenRecord(tokenPath);
+    if (loaded.record) {
+      return { token: loaded.record.token, peerId: loaded.record.peerId, createdAt: loaded.record.createdAt };
     }
+    quarantined = quarantineTokenStore(tokenPath, loaded.reason, options.receipts);
   }
 
   const record: CompanionTokenRecord = {
@@ -126,7 +159,93 @@ export function getOrCreateCompanionToken(
     });
   }
 
-  return { token: record.token, peerId: record.peerId, createdAt: record.createdAt };
+  return {
+    token: record.token,
+    peerId: record.peerId,
+    createdAt: record.createdAt,
+    ...(quarantined === undefined ? {} : { quarantined }),
+  };
+}
+
+/** Read the stored record, or say in one line why it is not usable. */
+function readTokenRecord(tokenPath: string): { record: CompanionTokenRecord | null; reason: string } {
+  let raw: string;
+  try {
+    raw = readFileSync(tokenPath, 'utf-8');
+  } catch (error) {
+    return { record: null, reason: `the file could not be read (${String(error)})` };
+  }
+  if (!raw.trim()) {
+    // The classic torn write: created or truncated, then the process died
+    // before the content landed.
+    return { record: null, reason: 'the file is empty' };
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { record: null, reason: 'the file is not valid JSON' };
+  }
+  const candidate = parsed as Partial<CompanionTokenRecord> | null;
+  if (!candidate || typeof candidate !== 'object') return { record: null, reason: 'the file is not a token record' };
+  if (typeof candidate.token !== 'string' || !candidate.token) return { record: null, reason: 'the record carries no token' };
+  if (typeof candidate.peerId !== 'string' || !candidate.peerId) return { record: null, reason: 'the record carries no peer id' };
+  return {
+    record: {
+      token: candidate.token,
+      peerId: candidate.peerId,
+      createdAt: typeof candidate.createdAt === 'number' ? candidate.createdAt : Date.now(),
+    },
+    reason: '',
+  };
+}
+
+/** Move an unreadable token store aside, loudly. Never throws. */
+function quarantineTokenStore(
+  tokenPath: string,
+  reason: string,
+  receipts?: { record(text: string): unknown } | undefined,
+): CompanionTokenQuarantine {
+  let destination = '';
+  try {
+    destination = nextUnrecognizedPath(tokenPath);
+    renameSync(tokenPath, destination);
+  } catch (error) {
+    destination = '';
+    logger.error('The unreadable operator token store could not be moved aside; it is about to be overwritten', {
+      path: tokenPath,
+      reason,
+      error: String(error),
+    });
+  }
+  logger.error('The operator token store was unreadable — a new token was issued and every paired client must pair again', {
+    path: tokenPath,
+    reason,
+    ...(destination ? { movedTo: destination } : {}),
+  });
+  try {
+    receipts?.record(
+      `the operator token store was unreadable (${reason}) — a new token was issued, so every paired client must pair again`
+      + (destination ? `; the old file is at ${destination}` : ''),
+    );
+  } catch (error) {
+    logger.error('The operator token quarantine could not be recorded as a receipt', {
+      path: tokenPath,
+      error: String(error),
+    });
+  }
+  return { from: tokenPath, to: destination, reason };
+}
+
+/** `<path>.unrecognized`, or the first numbered neighbour that is free. */
+function nextUnrecognizedPath(tokenPath: string): string {
+  const base = `${tokenPath}.unrecognized`;
+  if (!existsSync(base)) return base;
+  for (let index = 2; index < 1_000; index += 1) {
+    const candidate = `${base}.${index}`;
+    if (!existsSync(candidate)) return candidate;
+  }
+  return `${base}.${Date.now()}`;
 }
 
 /**

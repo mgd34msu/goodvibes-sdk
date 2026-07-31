@@ -115,6 +115,17 @@ export const GATEWAY_REST_ROUTES: readonly GatewayRestRoute[] = [
   route('DELETE', '/api/ci/watches/{watchId}', 'ci.watches.delete'),
   route('POST', '/api/ci/watches/{watchId}/run', 'ci.watches.run'),
   // channels.profiles.*
+  // channels.routing.* / channels.drafts.* — the daemon-mirrored routing table
+  // and draft store (sdk platform/channel-sync). Both families advertised these
+  // paths long before anything served them and carried `invokable: false` to
+  // say so; the store and handlers exist now, so the paths resolve here.
+  route('GET', '/api/channels/routing', 'channels.routing.list'),
+  route('POST', '/api/channels/routing', 'channels.routing.assign'),
+  route('DELETE', '/api/channels/routing/{assignmentId}', 'channels.routing.delete'),
+  route('GET', '/api/channels/drafts', 'channels.drafts.list'),
+  route('POST', '/api/channels/drafts', 'channels.drafts.save'),
+  route('GET', '/api/channels/drafts/{draftId}', 'channels.drafts.get'),
+  route('DELETE', '/api/channels/drafts/{draftId}', 'channels.drafts.delete'),
   route('GET', '/api/channels/profiles', 'channels.profiles.list'),
   route('POST', '/api/channels/profiles', 'channels.profiles.set'),
   route('GET', '/api/channels/profiles/{surfaceKind}', 'channels.profiles.get'),

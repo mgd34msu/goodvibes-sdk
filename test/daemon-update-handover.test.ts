@@ -83,4 +83,69 @@ describe('the files a daemon update owns', () => {
     expect(files).toHaveLength(1);
     expect(files[0]?.label).toBe('daemon binary');
   });
+
+  // The install script puts all three products in one directory, so every
+  // sibling binary is present on a real box. The set is the daemon's own files
+  // and nothing else: each product updates itself from its own repository, and
+  // an all-or-nothing set that names a sibling's asset fails every check
+  // forever once that asset is not published alongside the daemon's.
+  test('no sibling product binary is claimed, whichever ones are installed beside it', () => {
+    const siblings = [
+      '/home/someone/.local/bin/goodvibes',
+      '/home/someone/.local/bin/goodvibes-agent',
+      '/home/someone/.local/bin/goodvibes-webui',
+    ];
+    const files = resolveDaemonInstalledFiles({
+      execPath,
+      platform: 'linux',
+      arch: 'x64',
+      io: presentFiles([execPath, addonPath, ...siblings]),
+    });
+    expect(files.map((file) => file.path)).toEqual([execPath, addonPath]);
+    for (const sibling of siblings) {
+      expect(files.map((file) => file.path), sibling).not.toContain(sibling);
+    }
+  });
+
+  test('the same set holds on every platform/arch the daemon publishes for', () => {
+    for (const [platform, arch] of [['linux', 'x64'], ['linux', 'arm64'], ['darwin', 'x64'], ['darwin', 'arm64']] as const) {
+      const files = resolveDaemonInstalledFiles({
+        execPath,
+        platform,
+        arch,
+        io: presentFiles([execPath, appPath]),
+      });
+      expect(files.map((file) => file.label), `${platform}/${arch}`).toEqual(['daemon binary']);
+    }
+  });
+
+  // An addon that is not installed is not a missing asset — it is a machine
+  // that never had one. It must not appear in the set, because a set naming an
+  // asset that will not be downloaded fails the whole all-or-nothing pass.
+  test('an absent optional addon leaves the set applicable rather than bricked', () => {
+    const withAddon = resolveDaemonInstalledFiles({
+      execPath, platform: 'linux', arch: 'x64', io: presentFiles([execPath, addonPath]),
+    });
+    const withoutAddon = resolveDaemonInstalledFiles({
+      execPath, platform: 'linux', arch: 'x64', io: presentFiles([execPath]),
+    });
+    expect(withAddon.map((file) => file.assetName)).toEqual(['goodvibes-daemon-linux-x64', 'sqlite-vec-linux-x64.so']);
+    expect(withoutAddon.map((file) => file.assetName)).toEqual(['goodvibes-daemon-linux-x64']);
+    // Every entry in either set names a real asset: nothing in the set is
+    // unresolvable, which is what an all-or-nothing download requires.
+    for (const file of [...withAddon, ...withoutAddon]) {
+      expect(file.assetName, file.label).not.toBeNull();
+    }
+  });
+
+  // A platform the daemon publishes no assets for: the addon is skipped and the
+  // daemon binary carries a null assetName, which resolveTargets reads as "no
+  // update to apply here" rather than downloading something that is not there.
+  test('a platform with no published assets yields no downloadable target', () => {
+    const files = resolveDaemonInstalledFiles({
+      execPath, platform: 'win32', arch: 'x64', io: presentFiles([execPath, appPath, addonPath]),
+    });
+    expect(files.map((file) => file.label)).toEqual(['daemon binary']);
+    expect(files[0]?.assetName).toBeNull();
+  });
 });

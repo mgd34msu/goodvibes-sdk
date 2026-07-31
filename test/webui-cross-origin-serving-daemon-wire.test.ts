@@ -204,6 +204,71 @@ describe('API precedence + auth hold with serving ON', () => {
     const body = await res.json() as { sessions: unknown[] };
     expect(Array.isArray(body.sessions)).toBe(true);
   });
+
+  // /status and /config are extension-less GETs at the top level, which is
+  // exactly the shape the SPA fallback answers with index.html. They are the
+  // daemon's, and every client reads them: /status carries the client
+  // compatibility floor header on the probe each surface already makes, and
+  // /config backs the web surface's own admin, receipts and settings reads.
+  test('GET /status is the daemon\'s JSON, never the app shell, and carries the floor header', async () => {
+    const res = await fetch(`${servingOn.url}/status`, { headers: auth() });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type') ?? '').toContain('application/json');
+    expect(res.headers.get('x-goodvibes-client-floor')).toBeTruthy();
+    const body = await res.json() as { version?: unknown };
+    expect(typeof body.version).toBe('string');
+  });
+
+  test('the floor header rides /status on the plain path too, not only with serving on', async () => {
+    // The forward floor is only load-bearing if the router actually WRITES it:
+    // clients read it on the /status probe they already make, and a constant
+    // threaded into a context with no emitter is an inert gate. Pinned on both
+    // daemons — bundle serving on and off — because bundle serving is what was
+    // shadowing this route in the first place.
+    const withServing = await fetch(`${servingOn.url}/status`, { headers: auth() });
+    const withoutServing = await fetch(`${servingOff.url}/status`, { headers: auth() });
+    expect(withServing.headers.get('x-goodvibes-client-floor')).toBeTruthy();
+    expect(withoutServing.headers.get('x-goodvibes-client-floor')).toBeTruthy();
+    // The same value on both: the floor is a property of the build, not of
+    // whichever optional capability happens to be switched on.
+    expect(withServing.headers.get('x-goodvibes-client-floor'))
+      .toBe(withoutServing.headers.get('x-goodvibes-client-floor'));
+    await withServing.body?.cancel();
+    await withoutServing.body?.cancel();
+  });
+
+  test('the floor header survives the CORS decoration wrapper', async () => {
+    // applyCorsHeaders rebuilds the Response, so a header set upstream can be
+    // dropped by a copy that forgets it. This is the cross-origin read the web
+    // surface actually makes.
+    const res = await fetch(`${servingOn.url}/status`, { headers: auth({ origin: ALLOWED_ORIGIN }) });
+    expect(res.headers.get('x-goodvibes-client-floor')).toBeTruthy();
+    expect(res.headers.get('access-control-allow-origin')).toBe(ALLOWED_ORIGIN);
+    await res.body?.cancel();
+  });
+
+  test('GET /status without a token is the daemon\'s own refusal, not a 200 HTML shell', async () => {
+    const res = await fetch(`${servingOn.url}/status`);
+    expect(res.status).not.toBe(200);
+    const body = await res.text();
+    expect(body).not.toContain('<div id="root"></div>');
+  });
+
+  test('GET /config and /config/credentials reach the daemon, not the bundle', async () => {
+    for (const path of ['/config', '/config/credentials']) {
+      const res = await fetch(`${servingOn.url}${path}`, { headers: auth() });
+      expect(res.headers.get('content-type') ?? '').toContain('application/json');
+      const body = await res.text();
+      expect(body).not.toContain('<div id="root"></div>');
+    }
+  });
+
+  test('an SPA route that merely starts with a reserved root still falls back to the shell', async () => {
+    // Boundary-aware reservation: `/configuration` is not `/config`.
+    const res = await fetch(`${servingOn.url}/configuration`, { headers: { accept: 'text/html' } });
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain('<div id="root"></div>');
+  });
 });
 
 describe('CORS preflight + emission (allowlist-gated, no wildcard)', () => {

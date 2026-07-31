@@ -2,6 +2,7 @@ import { dispatchDaemonApiRoutes } from '@pellux/goodvibes-daemon-sdk';
 import { GATEWAY_REST_ROUTES } from '@pellux/goodvibes-daemon-sdk';
 import type { DaemonApiRouteHandlers } from '@pellux/goodvibes-daemon-sdk';
 import type { GatewayMethodDescriptor } from './method-catalog-shared.js';
+import { MODEL_ROUTES } from '../daemon/http/model-routes.js';
 
 /**
  * method-catalog-route-reconcile.ts
@@ -81,9 +82,24 @@ export const SPECIALIZED_SUB_ROUTER_PREFIXES: readonly string[] = [
   '/api/batch',
   '/api/cloudflare',
   '/api/homeassistant',
-  '/api/models',
   '/api/companion/chat',
   '/api/projects/planning',
+];
+
+/**
+ * Sub-routers that publish their own path table, so the probe can check them
+ * for real instead of skipping them by prefix.
+ *
+ * `/api/models` used to be on the list above, and that is how `models.list`,
+ * `models.current.get` and `models.current.set` stayed outside the method
+ * catalog while every consumer called them: the reconcile's only question is
+ * "does this descriptor's advertised path resolve", and a prefix it never looks
+ * at cannot answer it either way. A sub-router that exports what it serves is
+ * checkable, and a descriptor pointing at a path it does not serve now reddens
+ * exactly as it does for every route in the shared table.
+ */
+const DECLARED_SUB_ROUTER_ROUTES: readonly { readonly method: string; readonly path: string }[] = [
+  ...MODEL_ROUTES.map((entry) => ({ method: entry.method, path: entry.path })),
 ];
 
 /**
@@ -133,6 +149,7 @@ export function createDaemonSdkRouteProbe(): RouteProbe {
   ) as unknown as DaemonApiRouteHandlers;
 
   return async (method, path) => {
+    if (DECLARED_SUB_ROUTER_ROUTES.some((entry) => entry.method === method && entry.path === path)) return true;
     const request = new Request(`http://reconcile-probe.invalid${path}`, { method });
     const response = await dispatchDaemonApiRoutes(request, inertHandlers);
     return response !== null;

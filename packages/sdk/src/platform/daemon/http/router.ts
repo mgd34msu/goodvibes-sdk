@@ -251,7 +251,7 @@ export class DaemonHttpRouter {
         // no bundle, daemon behaves exactly as before). CORS preflight is answered
         // pre-auth (a browser OPTIONS carries no credentials; only allowlisted
         // origins are granted, never a wildcard).
-        const serving = resolveWebuiServingPosture(this.context.configManager);
+        const serving = resolveWebuiServingPosture(this.context.configManager, this.context.gatewayMethods);
         if (serving.cors.enabled && req.method === 'OPTIONS') {
           return applyCorsHeaders(req, handleCorsPreflight(req, serving), serving);
         }

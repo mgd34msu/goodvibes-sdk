@@ -166,7 +166,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'controlPlane.host' ? string :
   K extends 'controlPlane.port' ? number :
   K extends 'controlPlane.publicBaseUrl' ? string : K extends 'conversationGate.mode' ? 'propose' | 'confirm-all' | 'off' : K extends 'conversationGate.proposalTtlMs' ? number : K extends 'conversationGate.maxPendingProposals' ? number :
-  K extends 'hostedSessions.detachPolicy' ? 'kill' | 'survive' : K extends 'hostedSessions.maxSessions' ? number : K extends 'hostedSessions.maxMessagesPerSession' ? number : K extends 'hostedSessions.terminatedRetentionMs' ? number : K extends 'hostedSessions.promoteInboundConversations' ? boolean :
+  K extends 'hostedSessions.detachPolicy' ? 'kill' | 'survive' : K extends 'hostedSessions.maxSessions' ? number : K extends 'hostedSessions.maxMessagesPerSession' ? number : K extends 'hostedSessions.terminatedRetentionMs' ? number : K extends 'hostedSessions.attachmentTtlMs' ? number : K extends 'hostedSessions.promoteInboundConversations' ? boolean :
   K extends 'controlPlane.streamMode' ? 'sse' | 'websocket' | 'both' :
   K extends 'controlPlane.allowRemote' ? boolean :
   K extends 'controlPlane.trustProxy' ? boolean :
@@ -182,7 +182,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'httpListener.hostMode' ? 'local' | 'network' | 'custom' :
   K extends 'httpListener.host' ? string :
   K extends 'httpListener.port' ? number :
-  K extends 'httpListener.trustProxy' ? boolean :
+  K extends 'httpListener.trustProxy' ? boolean : K extends 'httpListener.trustCloudflare' ? boolean :
   K extends 'httpListener.tls.mode' ? 'off' | 'proxy' | 'direct' :
   K extends 'httpListener.tls.certFile' ? string :
   K extends 'httpListener.tls.keyFile' ? string :

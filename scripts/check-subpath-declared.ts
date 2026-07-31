@@ -62,6 +62,7 @@ const PLATFORM_DIR = resolve(PACKAGE_DIR, 'src', 'platform');
  */
 const KNOWN_UNDECLARED: readonly string[] = [
   './platform/channel-profiles',
+  './platform/channel-sync',
   './platform/checkin',
   './platform/ci-watch',
   './platform/principals',

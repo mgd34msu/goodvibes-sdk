@@ -31,6 +31,8 @@ import { crashLoopRollbackReceipt, decideCrashLoopRollback } from './boot-rollba
 import { rollbackKeptPrevious, realUpdateFileIo, type UpdateFileIo } from '../runtime/self-update.js';
 import { currentProcessSignals, isCompiledBinaryInvocation } from './daemon-exec-invocation.js';
 import { deliverOwnerAlert } from './owner-alert.js';
+import type { DaemonUpdateStatus } from './update-status.js';
+export type { DaemonUpdateStatus } from './update-status.js';
 import type { RouteBindingManager } from '../channels/route-manager.js';
 import type { DaemonSurfaceDeliveryHelper } from './surface-delivery.js';
 import { discoverLegacySessionSources, importLegacySessionStores } from '../control-plane/index.js';
@@ -197,6 +199,8 @@ export interface DaemonLifecycleRuntimeOptions {
 export class DaemonLifecycleRuntime {
   private autoUpdater: DaemonAutoUpdater | null = null;
   private store: DaemonReceiptStore | null = null;
+  /** Why the self-update loop is not running. Empty once it is. */
+  private updateLoopOffReason = 'the daemon has not finished starting';
   private promotionTimer: ReturnType<typeof setInterval> | null = null;
   /**
    * Whether THIS process has ever reached a fully-started daemon.
@@ -535,6 +539,7 @@ export class DaemonLifecycleRuntime {
     const { configManager } = this.options;
     const auto = configManager.get('update.auto');
     if (auto !== true) {
+      this.updateLoopOffReason = 'update.auto is not true, so this daemon will not update itself';
       logger.info('DaemonServer: auto-update loop off — update.auto is not true; this daemon will not update itself', {
         'update.auto': auto,
       });
@@ -547,11 +552,13 @@ export class DaemonLifecycleRuntime {
       // comparing it against the host's release tags would be meaningless and
       // the swap would replace the wrong executable. Logged so an operator
       // who set update.auto sees why no loop is running.
+      this.updateLoopOffReason = 'this host manages its own updates: no artifact identity was provided, and the SDK package version is never assumed to be the shipped one';
       logger.info('DaemonServer: auto-update loop off — no update artifact identity provided (host-managed updates)');
       return;
     }
     const releasesUrl = String(configManager.get('update.releasesUrl') ?? '').trim();
     if (!releasesUrl) {
+      this.updateLoopOffReason = 'update.releasesUrl is empty, so there is nowhere to resolve release tags from';
       logger.info('DaemonServer: auto-update loop off — update.releasesUrl is empty, so there is nowhere to resolve release tags from');
       return;
     }
@@ -577,6 +584,7 @@ export class DaemonLifecycleRuntime {
       ...(this.options.stopGracefully ? { stopGracefully: this.options.stopGracefully } : {}),
     });
     this.autoUpdater = updater;
+    this.updateLoopOffReason = '';
     updater.start();
     // The positive case is logged too: "no update happened" should be
     // readable as either "the loop never ran" or "the loop ran and found
@@ -597,6 +605,62 @@ export class DaemonLifecycleRuntime {
   private rejectedUpdateVersion(): string | null {
     const marker = readLifecycleMarker(this.markerPath(), this.options.markerIo);
     return marker?.rejectedVersion ?? null;
+  }
+
+  /**
+   * What this daemon can say about updating itself, from the state the loop
+   * already keeps.
+   *
+   * EVERY gate that leaves the loop off is named here, not just logged. "The
+   * daemon has not updated" reads identically whether there is nothing to
+   * update to, the loop was never armed, or every check has been failing for a
+   * week — and the difference between those is the whole question.
+   */
+  updateStatus(): DaemonUpdateStatus {
+    const updater = this.autoUpdater;
+    const rejectedVersion = this.rejectedUpdateVersion();
+    if (!updater) {
+      return {
+        armed: false,
+        offReason: this.updateLoopOffReason,
+        currentVersion: this.options.updateArtifact?.version ?? null,
+        releasesUrl: String(this.options.configManager.get('update.releasesUrl') ?? '').trim(),
+        checkIntervalMs: null,
+        firstCheckDelayMs: null,
+        failedCheckCount: 0,
+        lastCheckFailure: null,
+        pendingVersion: null,
+        rejectedVersion,
+      };
+    }
+    const snapshot = updater.snapshot();
+    return {
+      armed: true,
+      offReason: '',
+      currentVersion: snapshot.currentVersion,
+      releasesUrl: snapshot.releasesUrl,
+      checkIntervalMs: snapshot.checkIntervalMs,
+      firstCheckDelayMs: snapshot.firstCheckDelayMs,
+      failedCheckCount: snapshot.failedCheckCount,
+      lastCheckFailure: snapshot.lastCheckFailure,
+      pendingVersion: snapshot.pendingVersion,
+      rejectedVersion,
+    };
+  }
+
+  /**
+   * Run one check now rather than waiting for the next interval, and report
+   * what the loop knows afterwards.
+   *
+   * The same tick the schedule runs — not a second code path — so what an
+   * on-demand check does and what the hourly one does cannot diverge. A check
+   * that throws is recorded by the loop exactly as a scheduled failure is, and
+   * the returned status carries it; this never rejects, because "the check
+   * failed" is an answer and the caller asked for the state.
+   */
+  async checkForUpdatesNow(): Promise<DaemonUpdateStatus> {
+    await this.autoUpdater?.tick();
+    return this.updateStatus();
   }
 
   /** The service-manager actions shared by the update swap and boot promotion. */

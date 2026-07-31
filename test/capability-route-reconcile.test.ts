@@ -52,13 +52,12 @@ import {
  * shipped green without hiding the debt or masking a future regression in
  * some OTHER method in those same files that wasn't already on this list.
  *
- * Retired to empty: every method above is now re-verified against the real
- * dispatch chain (still no route anywhere — channel-routes.ts defines no
- * inbox/routing/drafts handler, and there is no calendar-routes.ts at all)
- * and marked `invokable: false` at the source, so the gate now guards them
- * for real instead of grandfathering them. Re-add an entry only if a new,
- * genuinely pre-existing, out-of-ownership case shows up — shrink this
- * list, don't grow it.
+ * Retired to empty, and it has stayed empty as the debt was actually paid:
+ * calendar.* and the channels.routing and channels.drafts families are now SERVED, and
+ * channels.inbox.list is marked `invokable: false` at the source, so the gate
+ * guards all of them for real instead of grandfathering them. Re-add an entry
+ * only if a new, genuinely pre-existing, out-of-ownership case shows up —
+ * shrink this list, don't grow it.
  */
 const KNOWN_PRE_EXISTING_ROUTE_DEBT: readonly string[] = [];
 

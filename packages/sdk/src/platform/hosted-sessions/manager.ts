@@ -49,6 +49,12 @@ import { createHostedSessionRuntime, newHostedSessionId, type HostedSessionRunti
 import { HostedWorkspaceFloors, type HostedWorkspaceFloorFactory, type HostedWorkspaceFloorLease } from './workspace-floor.js';
 import { HostedSessionStore, type HostedSessionLoadReport } from './store.js';
 import { HostedSessionSpineIntake, type HostedSessionSpine } from './spine-intake.js';
+import {
+  HOSTED_ATTACHMENT_DEFAULT_LEASE_MS,
+  HostedSessionAttachments,
+  attachmentSweepIntervalFor,
+  clampAttachmentLease,
+} from './attachments.js';
 export type { HostedSessionSpine } from './spine-intake.js';
 import type {
   CreateHostedSessionInput,
@@ -66,6 +72,11 @@ export const HOSTED_SESSION_WIRE_EVENT = 'hosted-session-update';
 /** The subset of the control-plane gateway this engine publishes through. */
 export interface HostedSessionEventPublisher {
   publishEvent(event: string, payload: unknown, filter?: { clientId?: string }): void;
+  /**
+   * Live control-plane clients, when the publisher is the gateway. Read as the
+   * second renewal signal for an attachment lease — see ./attachments.ts.
+   */
+  listClients?(): readonly { readonly id: string }[];
 }
 
 /** The live settings this engine reads. Read on every use, never cached. */
@@ -74,6 +85,8 @@ export interface HostedSessionSettings {
   detachPolicy(): HostedDetachPolicy;
   /** `hostedSessions.maxSessions` — the cap on LIVE (non-terminated) sessions. */
   maxSessions(): number;
+  /** `hostedSessions.attachmentTtlMs` — how long an attachment stands unrenewed. */
+  attachmentTtlMs?(): number;
 }
 
 /** Per-session live-turn registration, so the session verbs can reach a hosted turn. */
@@ -105,6 +118,8 @@ export interface HostedSessionManagerOptions {
   readonly intakeIntervalMs?: number | undefined;
   /** Clock seam for tests. */
   readonly now?: (() => number) | undefined;
+  /** How often lapsed attachments are swept. Omitted ⇒ see attachmentSweepIntervalFor. */
+  readonly attachmentSweepIntervalMs?: number | undefined;
 }
 
 /** What `attach` hands back: the record plus the history a client renders. */
@@ -120,7 +135,7 @@ interface LiveSession {
   lease: HostedWorkspaceFloorLease | null;
   /** Restored conversation payload, replayed when the runtime is composed. */
   restoredConversation: unknown;
-  readonly attached: Set<string>;
+  readonly attached: HostedSessionAttachments;
 }
 
 const RESTART_NOTICE = 'This session was interrupted by a daemon restart. The turn that was running did not finish.';
@@ -130,11 +145,14 @@ export class HostedSessionManager {
   private readonly floors: HostedWorkspaceFloors;
   private readonly now: () => number;
   private publisher: HostedSessionEventPublisher | null = null;
+  private alerter: ((text: string) => void) | null = null;
   private busUnsubscribers: (() => void)[] = [];
   private disposed = false;
   private lastLoadReport: HostedSessionLoadReport | null = null;
   /** The spine half: registration, heartbeats, and collecting queued inputs. */
   private readonly spine: HostedSessionSpineIntake;
+  /** Sweeps attachments whose lease ran out — see ./attachments.ts. */
+  private attachmentTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(private readonly options: HostedSessionManagerOptions) {
     this.floors = new HostedWorkspaceFloors(options.floorFactory);
@@ -145,7 +163,18 @@ export class HostedSessionManager {
       liveSessions: () => this.list(),
       deliver: (sessionId, text) => this.deliver(sessionId, text),
       now: () => this.now(),
+      alertOwner: (text) => this.alerter?.(text),
     });
+  }
+
+  /** Where an incident nobody is attached to see goes. Wired by the daemon. */
+  setOwnerAlerter(alerter: ((text: string) => void) | null): void {
+    this.alerter = alerter;
+  }
+
+  /** The configured attachment lease, clamped. Read live, never cached. */
+  private attachmentLeaseMs(): number {
+    return clampAttachmentLease(this.options.settings.attachmentTtlMs?.(), HOSTED_ATTACHMENT_DEFAULT_LEASE_MS);
   }
 
   /** Where lifecycle notices go. Wired by the composition that owns the gateway. */
@@ -167,7 +196,7 @@ export class HostedSessionManager {
         runtime: null,
         lease: null,
         restoredConversation: persisted.conversation,
-        attached: new Set<string>(),
+        attached: new HostedSessionAttachments(),
       });
       if (restored.terminated) {
         // Persist the reconciliation so the next restart does not repeat it.
@@ -179,6 +208,7 @@ export class HostedSessionManager {
     }
     this.observeTurnEvents();
     this.spine.start();
+    this.startAttachmentSweep();
     if (report.rejected.length > 0 || report.swept.length > 0 || report.evicted.length > 0) {
       logger.info('[hosted-sessions] restored persisted sessions', {
         restored: report.restored.length,
@@ -329,8 +359,9 @@ export class HostedSessionManager {
         runtime,
         lease,
         restoredConversation: null,
-        attached: new Set(input.clientId ? [input.clientId] : []),
+        attached: new HostedSessionAttachments(),
       };
+      if (input.clientId) live.attached.renew(input.clientId, at, this.attachmentLeaseMs());
       this.sessions.set(sessionId, live);
       this.options.liveTurns?.bindSession(sessionId, runtime.liveTurnControls);
     } catch (error) {
@@ -354,13 +385,20 @@ export class HostedSessionManager {
    * Attach a client. Composes the loop when the session came back from disk,
    * and hands back the history so the client can render what it missed.
    */
-  async attach(sessionId: string, clientId: string): Promise<HostedSessionAttachment> {
+  async attach(
+    sessionId: string,
+    clientId: string,
+    options?: { readonly leaseMs?: number | undefined },
+  ): Promise<HostedSessionAttachment> {
     const live = this.requireLive(sessionId);
     await this.ensureComposed(live);
-    live.attached.add(clientId);
+    // Attaching again is how a client renews: the call was always idempotent,
+    // and this is the same "polling renews the lease" shape the rewind host
+    // registration uses. See ./attachments.ts.
+    live.attached.renew(clientId, this.now(), clampAttachmentLease(options?.leaseMs, this.attachmentLeaseMs()));
     live.record = {
       ...live.record,
-      attachedClients: [...live.attached],
+      attachedClients: live.attached.clientIds(),
       updatedAt: this.now(),
     };
     this.publish('hosted-session-attached', live.record, { clientId });
@@ -376,7 +414,7 @@ export class HostedSessionManager {
   async detach(sessionId: string, clientId: string): Promise<HostedSessionRecord> {
     const live = this.requireKnown(sessionId);
     live.attached.delete(clientId);
-    live.record = { ...live.record, attachedClients: [...live.attached], updatedAt: this.now() };
+    live.record = { ...live.record, attachedClients: live.attached.clientIds(), updatedAt: this.now() };
     this.publish('hosted-session-detached', live.record, { clientId });
     if (live.attached.size > 0 || live.record.status === 'terminated') {
       await this.persist(live.record);
@@ -389,6 +427,37 @@ export class HostedSessionManager {
     live.record = { ...live.record, effectiveDetachPolicy: policy };
     await this.persist(live.record);
     return live.record;
+  }
+
+  /** Begin expiring attachments nobody renewed. Idempotent. */
+  private startAttachmentSweep(): void {
+    if (this.attachmentTimer) return;
+    const interval = this.options.attachmentSweepIntervalMs ?? attachmentSweepIntervalFor(this.attachmentLeaseMs());
+    this.attachmentTimer = setInterval(() => { void this.reapAttachments(); }, interval);
+    (this.attachmentTimer as unknown as { unref?: () => void }).unref?.();
+  }
+
+  /**
+   * One sweep. A lapsed attachment goes through `detach` rather than being
+   * removed quietly: the client did leave, it just never said so, and the
+   * session's own policy decides whether that ends it. Public so a test can
+   * drive it without waiting on a timer.
+   */
+  async reapAttachments(): Promise<void> {
+    const publisher = this.publisher;
+    const connected = publisher?.listClients
+      ? (clientId: string): boolean => publisher.listClients!().some((client) => client.id === clientId)
+      : undefined;
+    for (const live of [...this.sessions.values()]) {
+      if (live.record.status === 'terminated') continue;
+      for (const clientId of live.attached.expire(this.now(), this.attachmentLeaseMs(), connected)) {
+        logger.info('[hosted-sessions] an attachment lapsed without renewal; treating it as a detach', {
+          sessionId: live.record.id,
+          clientId,
+        });
+        await this.detach(live.record.id, clientId).catch(() => undefined);
+      }
+    }
   }
 
   /** End a hosted session on request. */
@@ -580,7 +649,9 @@ export class HostedSessionManager {
     try {
       this.publisher?.publishEvent(HOSTED_SESSION_WIRE_EVENT, payload);
     } catch (error) {
-      logger.debug('[hosted-sessions] publishing a lifecycle notice failed', {
+      // Warn, not debug: this channel is the only account of what happened to a
+      // session, so a notice that did not go out is a transition nobody saw.
+      logger.warn('[hosted-sessions] publishing a lifecycle notice failed', {
         sessionId: session.id,
         error: summarizeError(error),
       });
@@ -640,6 +711,10 @@ export class HostedSessionManager {
     if (this.disposed) return;
     this.disposed = true;
     this.spine.stop();
+    if (this.attachmentTimer) {
+      clearInterval(this.attachmentTimer);
+      this.attachmentTimer = null;
+    }
     for (const unsubscribe of this.busUnsubscribers.splice(0)) {
       try {
         unsubscribe();
