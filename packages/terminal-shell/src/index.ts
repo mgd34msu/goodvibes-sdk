@@ -4,10 +4,12 @@
  * Shared terminal-shell plumbing for GoodVibes daemon front-ends. This is the
  * single home for the runtime wiring that two front-ends must keep identical:
  * gateway verb-group composition, terminal enter/restore sequencing,
- * render-tick coalescing, and the `cluster` command family and its
- * daemon-target convention. Each capability is a thin, dependency-injected
- * wrapper so a front-end's composition root becomes a few named calls into
- * this package instead of a hand-maintained copy that drifts.
+ * render-tick coalescing, the `cluster` command family and its daemon-target
+ * convention, and the shared CLI argument parser and its supporting modules
+ * (redaction, config overrides, endpoint resolution, feature-flag overrides).
+ * Each capability is a thin, dependency-injected wrapper so a front-end's
+ * composition root becomes a few named calls into this package instead of a
+ * hand-maintained copy that drifts.
  *
  * See ./conformance for the descriptor/handler gate a consumer runs against its
  * own composition in CI.
@@ -79,3 +81,59 @@ export {
   type DaemonFetch,
   type DaemonVerbOutcome,
 } from './cluster-remote-daemon-target.js';
+
+export type {
+  GoodVibesCliCommand,
+  GoodVibesCliOutputFormat,
+  CliCommandOutput,
+  GoodVibesCliFlags,
+  GoodVibesCliParseResult,
+  CliCommandRuntime,
+} from './cli-types.js';
+
+export { parseGoodVibesCli } from './cli-parser.js';
+
+export {
+  REDACTED_VALUE,
+  isSensitiveConfigPath,
+  isRedactedValue,
+  redactConfig,
+  redactText,
+  collectSensitiveConfigValues,
+  redactSerializedSecrets,
+  type RedactedConfigResult,
+} from './cli-redaction.js';
+
+export {
+  RUNTIME_ENDPOINT_DEFAULT_PORTS,
+  RUNTIME_ENDPOINT_CONFIG_KEYS,
+  formatRuntimeEndpointBinding,
+  hostModeForHostname,
+  resolveRuntimeEndpointBinding,
+  type RuntimeEndpointId,
+  type RuntimeHostMode,
+  type RuntimeEndpointBinding,
+} from './cli-endpoints.js';
+
+export {
+  FEATURE_SETTINGS_BY_ID,
+  getFeatureSetting,
+  getConfigSchemaSetting,
+  isFeatureDefaultEnabled,
+  featuresForEnablementKey,
+  isFeatureValueEnabled,
+  isFeatureConfigEnabled,
+  featureEnablementWrite,
+  type FeatureEnablementWrite,
+} from './cli-feature-settings.js';
+
+export {
+  applyRuntimeConfigDefault,
+  applyTuiRuntimeConfigDefaults,
+  applyConfiguredHitlMode,
+  applyRuntimeConfigValue,
+  applyRuntimeConfigOverrides,
+  applyRuntimeFeatureFlagOverrides,
+  applyRuntimeEndpointFlagOverrides,
+  applyRuntimeCommandEndpointFlagOverrides,
+} from './cli-config-overrides.js';
