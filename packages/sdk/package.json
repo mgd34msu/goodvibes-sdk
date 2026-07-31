@@ -465,6 +465,10 @@
       "types": "./dist/platform/runtime/observability.d.ts",
       "import": "./dist/platform/runtime/observability.js"
     },
+    "./platform/runtime/operations": {
+      "types": "./dist/platform/runtime/operations.d.ts",
+      "import": "./dist/platform/runtime/operations.js"
+    },
     "./platform/runtime/permissions/exec-prompt-wiring": {
       "types": "./dist/platform/runtime/permissions/exec-prompt-wiring.d.ts",
       "import": "./dist/platform/runtime/permissions/exec-prompt-wiring.js"

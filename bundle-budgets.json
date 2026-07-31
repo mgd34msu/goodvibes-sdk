@@ -427,8 +427,12 @@
     "rationale": "the client composition shape (createClientRuntimeServices and its graph) published on its own import path; measured 4876 B gzip; headroom max(ceil(4876*1.2)=5852, 4876+50=4926) \u2192 5852 (1.2x dominates)"
   },
   "./platform/runtime/client": {
-    "gzip_bytes": 1238,
-    "rationale": "the client seam modules (approval raiser, daemon config/credentials clients, wire session dispatch, conversation rewind host, devices client + phone tool, tasks union, fleet merge policy, spine adoption, daemon autostart) published on their own import path; measured 1031 B gzip; headroom max(ceil(1031*1.2)=1238, 1031+50=1081) -> 1238 (1.2x dominates)"
+    "gzip_bytes": 1572,
+    "rationale": "the client seam modules (approval raiser, daemon config/credentials clients, wire session dispatch, conversation rewind host, devices client + phone tool, tasks union, fleet merge policy, spine adoption, daemon autostart, daemon handover) published on their own import path; re-anchored when the old-to-new daemon handover joined the family; measured 1310 B gzip; headroom max(ceil(1310*1.2)=1572, 1310+50=1360) -> 1572 (1.2x dominates)"
+  },
+  "./platform/runtime/operations": {
+    "gzip_bytes": 2199,
+    "rationale": "the runtime operations namespace published on its own import path so a consumer names the symbol it wants instead of reaching through the platform/runtime namespace object; measured 1832 B gzip; headroom max(ceil(1832*1.2)=2199, 1832+50=1882) -> 2199 (1.2x dominates)"
   },
   "./platform/runtime": {
     "gzip_bytes": 192,
