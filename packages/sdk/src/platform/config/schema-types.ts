@@ -375,6 +375,7 @@ export type ConfigKey =
   | 'httpListener.host'
   | 'httpListener.port'
   | 'httpListener.trustProxy'
+  | 'httpListener.trustCloudflare'
   | 'httpListener.tls.mode'
   | 'httpListener.tls.certFile'
   | 'httpListener.tls.keyFile'

@@ -51,6 +51,9 @@ export const builtinGatewayUpdateMethodDescriptors: readonly GatewayMethodDescri
     category: 'control-plane',
     scopes: ['read:control-plane'],
     transport: ['ws'],
+    // Declared and empty rather than omitted: the invoke gate skips a verb with
+    // no typed inputSchema, so "takes nothing" has to be stated to be enforced.
+    inputSchema: objectSchema({}, []),
     outputSchema: UPDATE_STATUS_SCHEMA,
   }),
   methodDescriptor({
@@ -61,6 +64,7 @@ export const builtinGatewayUpdateMethodDescriptors: readonly GatewayMethodDescri
     scopes: ['write:control-plane'],
     access: 'admin',
     transport: ['ws'],
+    inputSchema: objectSchema({}, []),
     outputSchema: UPDATE_STATUS_SCHEMA,
   }),
 ];

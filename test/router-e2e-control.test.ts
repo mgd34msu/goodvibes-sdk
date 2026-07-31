@@ -94,9 +94,15 @@ describe('router-e2e control — GET /status (happy path)', () => {
     expect(authenticated).not.toBeNull();
     expect(authenticated!.status).toBe(200);
     expect(statusRequests[1]).toBe(authenticatedRequest);
+    // Three version fields, not one: `version` is what every client already
+    // reads and carries the running artifact's build; `platformVersion` is the
+    // SDK composition underneath it. This stub states no artifact identity, so
+    // all three are the platform build.
     expect(await authenticated!.json()).toEqual({
       status: 'running',
       version: '0.0.0-test',
+      buildVersion: '0.0.0-test',
+      platformVersion: '0.0.0-test',
     });
   });
 

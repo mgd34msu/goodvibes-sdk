@@ -65,6 +65,9 @@ import {
   builtinGatewayUpdateMethodDescriptors,
 } from './method-catalog-update.js';
 import {
+  builtinGatewayRelayMethodDescriptors,
+} from './method-catalog-relay.js';
+import {
   builtinGatewayPrincipalsMethodDescriptors,
 } from './method-catalog-principals.js';
 import {
@@ -139,6 +142,7 @@ const BUILTIN_GATEWAY_METHODS: readonly GatewayMethodDescriptor[] = [
   ...builtinGatewayRuntimeMethodDescriptors,
   ...builtinGatewayModelMethodDescriptors,
   ...builtinGatewayUpdateMethodDescriptors,
+  ...builtinGatewayRelayMethodDescriptors,
   ...builtinGatewayKnowledgeMethodDescriptors,
   ...builtinGatewayMediaMethodDescriptors,
   ...builtinGatewayAdminMethodDescriptors,

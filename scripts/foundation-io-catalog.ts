@@ -28,6 +28,7 @@ import { builtinGatewayBrowserMethodDescriptors } from '../packages/sdk/src/plat
 import { builtinGatewayRuntimeMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-runtime.ts';
 import { builtinGatewayModelMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-models.ts';
 import { builtinGatewayUpdateMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-update.ts';
+import { builtinGatewayRelayMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-relay.ts';
 import { builtinGatewayKnowledgeMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-knowledge.ts';
 import { builtinGatewayMediaMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-media.ts';
 import { builtinGatewayPushMethodDescriptors } from '../packages/sdk/src/platform/control-plane/method-catalog-push.ts';
@@ -61,6 +62,7 @@ export const ALL_GATEWAY_METHOD_DESCRIPTORS: readonly GatewayMethodDescriptor[] 
   ...builtinGatewayRuntimeMethodDescriptors,
   ...builtinGatewayModelMethodDescriptors,
   ...builtinGatewayUpdateMethodDescriptors,
+  ...builtinGatewayRelayMethodDescriptors,
   ...builtinGatewayKnowledgeMethodDescriptors,
   ...builtinGatewayMediaMethodDescriptors,
   ...builtinGatewayAdminMethodDescriptors,

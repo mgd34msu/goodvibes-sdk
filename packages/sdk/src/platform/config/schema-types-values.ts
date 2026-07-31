@@ -182,7 +182,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'httpListener.hostMode' ? 'local' | 'network' | 'custom' :
   K extends 'httpListener.host' ? string :
   K extends 'httpListener.port' ? number :
-  K extends 'httpListener.trustProxy' ? boolean :
+  K extends 'httpListener.trustProxy' ? boolean : K extends 'httpListener.trustCloudflare' ? boolean :
   K extends 'httpListener.tls.mode' ? 'off' | 'proxy' | 'direct' :
   K extends 'httpListener.tls.certFile' ? string :
   K extends 'httpListener.tls.keyFile' ? string :
