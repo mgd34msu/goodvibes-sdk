@@ -36,7 +36,11 @@ import type {
  */
 export interface HostedSessionVerbService {
   create(input: CreateHostedSessionInput): Promise<HostedSessionRecord>;
-  attach(sessionId: string, clientId: string): Promise<HostedSessionAttachment>;
+  attach(
+    sessionId: string,
+    clientId: string,
+    options?: { readonly leaseMs?: number | undefined },
+  ): Promise<HostedSessionAttachment>;
   detach(sessionId: string, clientId: string): Promise<HostedSessionRecord>;
   kill(sessionId: string): Promise<HostedSessionRecord>;
   list(options?: { readonly includeTerminated?: boolean | undefined }): readonly HostedSessionRecord[];
@@ -60,6 +64,15 @@ function optionalString(params: Record<string, unknown>, field: string): string 
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
+function optionalPositiveNumber(params: Record<string, unknown>, field: string): number | undefined {
+  const value = params[field];
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    throw new GatewayVerbError(`Invalid ${field}: expected a positive number of milliseconds`, 'INVALID_ARGUMENT', 400, field);
+  }
+  return value;
+}
+
 function optionalDetachPolicy(params: Record<string, unknown>): HostedDetachPolicy | undefined {
   const value = params['detachPolicy'];
   if (value === undefined || value === null) return undefined;
@@ -78,7 +91,11 @@ function optionalDetachPolicy(params: Record<string, unknown>): HostedDetachPoli
 export function toGatewayVerbError(error: unknown): never {
   if (error instanceof GatewayVerbError) throw error;
   if (error instanceof HostedSessionNotFoundError) {
-    throw new GatewayVerbError(error.message, 'HOSTED_SESSION_NOT_FOUND', 404);
+    // SESSION_NOT_FOUND, not a hosted-specific spelling: it is the same
+    // condition the rest of the session surface reports under that code, and
+    // clients already branch on it. A second word for "no session with this id"
+    // only means the branch that handles it misses half the cases.
+    throw new GatewayVerbError(error.message, 'SESSION_NOT_FOUND', 404);
   }
   if (error instanceof HostedSessionUnavailableError) {
     // 409, not 404: the session exists and the caller can read why it cannot
@@ -122,8 +139,13 @@ export function createHostedSessionCreateHandler(service: HostedSessionVerbServi
 export function createHostedSessionAttachHandler(service: HostedSessionVerbService): GatewayMethodHandler {
   return async (invocation) => {
     const params = readInvocationParams(invocation);
+    const leaseMs = optionalPositiveNumber(params, 'leaseMs');
     try {
-      return await service.attach(requireString(params, 'sessionId'), requireString(params, 'clientId'));
+      return await service.attach(
+        requireString(params, 'sessionId'),
+        requireString(params, 'clientId'),
+        ...(leaseMs === undefined ? [] : [{ leaseMs }]),
+      );
     } catch (error) {
       return toGatewayVerbError(error);
     }
@@ -160,6 +182,15 @@ export function createHostedSessionListHandler(service: HostedSessionVerbService
   };
 }
 
+/** Every verb this module owns, in the order a client meets them. */
+export const HOSTED_SESSION_METHOD_IDS: readonly string[] = [
+  'sessions.hosted.create',
+  'sessions.hosted.attach',
+  'sessions.hosted.detach',
+  'sessions.hosted.kill',
+  'sessions.hosted.list',
+];
+
 /**
  * Attach the hosted-session handlers to their descriptors. A missing descriptor
  * is a silent no-op, matching every other route group here.
@@ -170,11 +201,38 @@ export function registerHostedSessionGatewayMethods(
 ): void {
   const attach = (id: string, handler: GatewayMethodHandler): void => {
     const descriptor = catalog.get(id);
-    if (descriptor) catalog.register(descriptor, handler, { replace: true });
+    if (!descriptor) return;
+    // An engine arriving after `refuseHostedSessionGatewayMethods` ran undoes
+    // that refusal: a registered handler is the authority on whether a verb
+    // works, and leaving the flag set would refuse a call this daemon can serve.
+    const invokable = descriptor.invokable === false ? { ...descriptor, invokable: true } : descriptor;
+    catalog.register(invokable, handler, { replace: true });
   };
   attach('sessions.hosted.create', createHostedSessionCreateHandler(service));
   attach('sessions.hosted.attach', createHostedSessionAttachHandler(service));
   attach('sessions.hosted.detach', createHostedSessionDetachHandler(service));
   attach('sessions.hosted.kill', createHostedSessionKillHandler(service));
   attach('sessions.hosted.list', createHostedSessionListHandler(service));
+}
+
+/**
+ * Say, in the catalog, that this daemon hosts nothing.
+ *
+ * The descriptors are builtins: they are present whether or not a product
+ * stated how a hosted session's workspace floor is built. With no engine there
+ * is no handler either, and dispatch fell through to the branch for a verb with
+ * neither handler nor route — a 501 whose body carried no code, and a plain
+ * `Error` for anyone calling `catalog.invoke()` directly, which is a 500. Both
+ * read as "this daemon is broken" for a capability that is simply off.
+ *
+ * Marking them uninvokable makes the refusal the one the catalog already
+ * promises for a cataloged-but-not-dispatchable verb: an honest 400 with
+ * `NOT_INVOKABLE`, before any handler lookup, on every path.
+ */
+export function refuseHostedSessionGatewayMethods(catalog: GatewayMethodCatalog): void {
+  for (const id of HOSTED_SESSION_METHOD_IDS) {
+    const descriptor = catalog.get(id);
+    if (!descriptor || descriptor.invokable === false) continue;
+    catalog.register({ ...descriptor, invokable: false }, undefined, { replace: true });
+  }
 }

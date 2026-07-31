@@ -213,13 +213,17 @@ export const builtinGatewayEventDescriptors: readonly GatewayEventDescriptor[] =
       + 'created ⇐ session-created; updated ⇐ session-message-appended / session-agent-completed / '
       + 'session-route-attached / session-reopened; steered ⇐ session-input-delivered / '
       + 'session-message-forwarded; closed ⇐ session-closed; deleted ⇐ session-deleted (a hard '
-      + 'removal — the record is gone, not merely closed). This channel is un-domained: it '
-      + 'reaches every live SSE/WS client regardless of subscribed domains, and is dropped '
-      + 'entirely when the control-plane-gateway flag is turned off (no phantom buffering).',
+      + 'removal — the record is gone, not merely closed). '
+      + 'Domain-tagged `session` (gateway-scope-enforcement.ts EVENT_DOMAIN), the same tag '
+      + 'control.hosted_session_update carries: both are session lifecycle, so a client that '
+      + 'narrows with ?domains=… must include `session` to receive EITHER of them, and one that '
+      + 'opted into no narrowing receives both. It is dropped entirely when the '
+      + 'control-plane-gateway flag is turned off (no phantom buffering).',
     category: 'transport',
     transport: ['sse', 'ws'],
     scopes: ['read:sessions'],
     wireEvents: ['session-update'],
+    domains: ['session'],
     outputSchema: objectSchema({
       event: { type: 'string', enum: [...SESSION_UPDATE_WIRE_EVENTS] },
       payload: JSON_OBJECT_SCHEMA,

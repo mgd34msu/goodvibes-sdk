@@ -47,6 +47,7 @@ const PLATFORM_DIR = join(PACKAGE_DIR, 'src', 'platform');
  */
 const INTERNAL_PLATFORM_MODULES: readonly string[] = [
   'channel-profiles',
+  'channel-sync',
   'checkin',
   'ci-watch',
   'principals',

@@ -617,25 +617,28 @@ export const builtinGatewayChannelMethodDescriptors: readonly GatewayMethodDescr
     dangerous: true,
   }),
   /**
-   * Route-reconcile debt (surfaced by an audit finding, retired here): the eight
-   * channels.inbox.* / channels.routing.* / channels.drafts.* methods below
-   * advertise http paths with no dispatch route anywhere — confirmed by
-   * reading router.ts, every dispatch chain it delegates to (operator.ts in
-   * particular, which is where every other channels.* path is matched), and
-   * grepping the full path across packages/sdk/src and
-   * packages/daemon-sdk/src: channel-routes.ts defines no inbox/routing/
-   * drafts handler at all, so there is nothing for a route to call even in
-   * principle. These were originally grandfathered into
-   * KNOWN_PRE_EXISTING_ROUTE_DEBT in test/capability-route-reconcile.test.ts
-   * as an out-of-ownership finding the audit incidentally surfaced; marked
-   * `invokable: false` here so the published contract and the live
-   * method-dispatch path both say "cataloged, not callable" instead of
-   * letting a caller discover the 404 the hard way. Un-mark a method once
-   * its real route or handler exists — the route-reconcile regression gate
+   * Route-reconcile debt, mostly retired.
+   *
+   * Eight methods here — channels.inbox.*, channels.routing.*,
+   * channels.drafts.* — advertised http paths that no dispatch route served,
+   * and were marked `invokable: false` so the published contract and the live
+   * method-dispatch path both said "cataloged, not callable" rather than
+   * letting a caller find the 404 on their own.
+   *
+   * SEVEN OF THEM ARE NOW SERVED. The routing table and the draft mirror have
+   * a store (platform/channel-sync), handlers (control-plane/routes/channel-
+   * sync.ts) and entries in the gateway REST table, so their advertised paths
+   * resolve and the flag is gone from each.
+   *
+   * `channels.inbox.list` KEEPS IT, and the reason is worth stating rather than
+   * leaving as an omission: it promises per-provider inbound feeds fetched LIVE
+   * from Slack, Discord and email APIs, and nothing in this SDK reads a
+   * provider's inbox. Serving it means building that aggregator, not adding a
+   * route; until then the honest answer is the one the flag already gives.
+   * Un-mark it once something serves it — the route-reconcile regression gate
    * (method-catalog-route-reconcile.ts, exercised in
-   * test/capability-route-reconcile.test.ts) will catch it if this
-   * comment goes stale and a route reappears without the flag being
-   * cleared.
+   * test/capability-route-reconcile.test.ts) catches the reverse mistake, a
+   * route appearing while the flag stays on.
    */
   methodDescriptor({
     id: 'channels.inbox.list',
@@ -674,7 +677,6 @@ export const builtinGatewayChannelMethodDescriptors: readonly GatewayMethodDescr
       routes: arraySchema(CHANNEL_ROUTING_RULE_SCHEMA),
       total: NUMBER_SCHEMA,
     }, ['routes', 'total']),
-    invokable: false,
   }),
   methodDescriptor({
     id: 'channels.routing.assign',
@@ -702,7 +704,6 @@ export const builtinGatewayChannelMethodDescriptors: readonly GatewayMethodDescr
       updatedAt: STRING_SCHEMA,
     }, ['assignmentId', 'surfaceKind', 'profileId', 'createdAt', 'updatedAt']),
     dangerous: true,
-    invokable: false,
   }),
   methodDescriptor({
     id: 'channels.routing.delete',
@@ -718,7 +719,6 @@ export const builtinGatewayChannelMethodDescriptors: readonly GatewayMethodDescr
       assignmentId: STRING_SCHEMA,
     }, ['deleted', 'assignmentId']),
     dangerous: true,
-    invokable: false,
   }),
   methodDescriptor({
     id: 'channels.drafts.list',
@@ -735,7 +735,6 @@ export const builtinGatewayChannelMethodDescriptors: readonly GatewayMethodDescr
       drafts: arraySchema(CHANNEL_DRAFT_SCHEMA),
       total: NUMBER_SCHEMA,
     }, ['drafts', 'total']),
-    invokable: false,
   }),
   methodDescriptor({
     id: 'channels.drafts.get',
@@ -746,7 +745,6 @@ export const builtinGatewayChannelMethodDescriptors: readonly GatewayMethodDescr
     http: { method: 'GET', path: '/api/channels/drafts/{draftId}' },
     inputSchema: objectSchema({ draftId: STRING_SCHEMA }, ['draftId']),
     outputSchema: CHANNEL_DRAFT_GET_OUTPUT_SCHEMA,
-    invokable: false,
   }),
   methodDescriptor({
     id: 'channels.drafts.save',
@@ -762,7 +760,6 @@ export const builtinGatewayChannelMethodDescriptors: readonly GatewayMethodDescr
       created: BOOLEAN_SCHEMA,
     }, ['draft', 'created']),
     dangerous: true,
-    invokable: false,
   }),
   methodDescriptor({
     id: 'channels.drafts.delete',
@@ -778,6 +775,5 @@ export const builtinGatewayChannelMethodDescriptors: readonly GatewayMethodDescr
       draftId: STRING_SCHEMA,
     }, ['deleted', 'draftId']),
     dangerous: true,
-    invokable: false,
   }),
 ];

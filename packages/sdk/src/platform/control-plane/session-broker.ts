@@ -738,6 +738,29 @@ export class SharedSessionBroker {
     return applied;
   }
 
+  /**
+   * A surface reports a collected input it could not act on.
+   *
+   * The counterpart to `markInputDelivered(consumed: true)`, and the reason
+   * that call is not the only terminal one: a surface that collected an input
+   * and then failed to hand it to its loop used to mark it completed anyway,
+   * which is a record saying the owner's message was answered when nothing
+   * received it. This moves it to `failed` with the reason attached, so the
+   * lifecycle event says what happened and the record can be read afterwards.
+   */
+  async failInput(sessionId: string, inputId: string, error: string): Promise<SharedSessionInputRecord | null> {
+    await this.start();
+    const updated = updateSharedSessionInput(this.sessionInputStore(), sessionId, inputId, (entry) => {
+      if (entry.state !== 'queued' && entry.state !== 'delivered') return entry;
+      return { ...entry, state: 'failed', updatedAt: Date.now(), error };
+    });
+    if (!updated || updated.state !== 'failed') return null;
+    this.refreshPendingInputCount(sessionId);
+    await this.persist();
+    this.publishInputLifecycleEvent('session-input-failed', updated);
+    return updated;
+  }
+
   private async runQueuedFollowUp(sessionId: string): Promise<{ input: SharedSessionInputRecord; agentId: string } | null> {
     const bucket = this.inputs.get(sessionId) ?? [];
     const next = bucket.find((entry) => entry.intent === 'follow-up' && entry.state === 'queued');

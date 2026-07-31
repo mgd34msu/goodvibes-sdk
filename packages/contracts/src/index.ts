@@ -35,6 +35,7 @@ export {
   CORE_VERBS,
   EXEMPT_VERB_CATEGORIES,
   EXEMPT_VERBS,
+  SCOPED_EXEMPT_VERB_CATEGORIES,
   classifyVerb,
   verbTailOf,
 } from './core-verbs.js';

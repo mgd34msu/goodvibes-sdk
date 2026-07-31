@@ -56,6 +56,12 @@ export interface HttpListenerRuntimeConfig {
   host: string;
   port: number;
   trustProxy: boolean;
+  /**
+   * Whether CF-Connecting-IP is honored — and only from a peer inside a
+   * published Cloudflare range. Meaningless without `trustProxy`, which is why
+   * it is a second key rather than a third value of the first one.
+   */
+  trustCloudflare: boolean;
   tls: {
     mode: 'off' | 'proxy' | 'direct';
     certFile: string;

@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.21.0
- * Methods: 499 total, 431 REST-routed, 68 ws-only invoke.
+ * Methods: 506 total, 434 REST-routed, 72 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -1340,6 +1340,18 @@ export const WEBUI_METHOD_ROUTES: Readonly<Record<string, WebuiRouteDefinition>>
     "method": "POST",
     "path": "/api/profile/undo"
   },
+  "models.current.get": {
+    "method": "GET",
+    "path": "/api/models/current"
+  },
+  "models.current.set": {
+    "method": "PATCH",
+    "path": "/api/models/current"
+  },
+  "models.list": {
+    "method": "GET",
+    "path": "/api/models"
+  },
   "providers.get": {
     "method": "GET",
     "path": "/api/providers/{providerId}"
@@ -1781,6 +1793,10 @@ export const WEBUI_WS_INVOKE_METHOD_IDS: readonly string[] = [
   "checkpoints.revertHunkPreview",
   "credentials.delete",
   "credentials.set",
+  "relay.pairing.mint",
+  "relay.reachability.get",
+  "update.check",
+  "update.status",
   "cost.attribution.get",
   "email.expectation.cancel",
   "email.expectation.list",
@@ -1996,6 +2012,10 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "control.snapshot": "rest",
   "control.status": "rest",
   "control.web": "rest",
+  "relay.pairing.mint": "ws-invoke",
+  "relay.reachability.get": "ws-invoke",
+  "update.check": "ws-invoke",
+  "update.status": "ws-invoke",
   "cost.attribution.get": "ws-invoke",
   "deliveries.get": "rest",
   "deliveries.list": "rest",
@@ -2208,6 +2228,9 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "profile.set": "rest",
   "profile.status": "rest",
   "profile.undo": "rest",
+  "models.current.get": "rest",
+  "models.current.set": "rest",
+  "models.list": "rest",
   "providers.get": "rest",
   "providers.list": "rest",
   "providers.usage.get": "rest",
@@ -7974,6 +7997,8 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
     "output": {
       "status": "sample",
       "version": "sample",
+      "buildVersion": "sample",
+      "platformVersion": "sample",
       "receipts": [
         {
           "id": "sample",
@@ -7987,6 +8012,56 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
     "input": {},
     "output": {
       "html": "sample"
+    }
+  },
+  "relay.pairing.mint": {
+    "input": {},
+    "output": {
+      "pairing": {
+        "protocol": 0,
+        "relayUrl": "sample",
+        "rid": "sample",
+        "daemonPublicKey": "sample",
+        "label": "sample"
+      },
+      "status": "disabled"
+    }
+  },
+  "relay.reachability.get": {
+    "input": {},
+    "output": {
+      "status": "disabled",
+      "configured": false
+    }
+  },
+  "update.check": {
+    "input": {},
+    "output": {
+      "armed": false,
+      "offReason": "sample",
+      "currentVersion": "sample",
+      "releasesUrl": "sample",
+      "checkIntervalMs": 0,
+      "firstCheckDelayMs": 0,
+      "failedCheckCount": 0,
+      "lastCheckFailure": "sample",
+      "pendingVersion": "sample",
+      "rejectedVersion": "sample"
+    }
+  },
+  "update.status": {
+    "input": {},
+    "output": {
+      "armed": false,
+      "offReason": "sample",
+      "currentVersion": "sample",
+      "releasesUrl": "sample",
+      "checkIntervalMs": 0,
+      "firstCheckDelayMs": 0,
+      "failedCheckCount": 0,
+      "lastCheckFailure": "sample",
+      "pendingVersion": "sample",
+      "rejectedVersion": "sample"
     }
   },
   "cost.attribution.get": {
@@ -17148,6 +17223,133 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
       "disclosure": "sample"
     }
   },
+  "models.current.get": {
+    "input": {},
+    "output": {
+      "model": {
+        "registryKey": "sample",
+        "provider": "sample",
+        "id": "sample"
+      },
+      "configured": false,
+      "configuredVia": "env",
+      "routes": [
+        {
+          "route": "api-key",
+          "label": "sample",
+          "configured": false,
+          "usable": false,
+          "freshness": "healthy",
+          "detail": "sample",
+          "envVars": [
+            "sample"
+          ],
+          "secretKeys": [
+            "sample"
+          ],
+          "serviceNames": [
+            "sample"
+          ],
+          "providerId": "sample",
+          "repairHints": [
+            "sample"
+          ]
+        }
+      ]
+    }
+  },
+  "models.current.set": {
+    "input": {
+      "registryKey": "sample"
+    },
+    "output": {
+      "model": {
+        "registryKey": "sample",
+        "provider": "sample",
+        "id": "sample"
+      },
+      "configured": false,
+      "configuredVia": "env",
+      "routes": [
+        {
+          "route": "api-key",
+          "label": "sample",
+          "configured": false,
+          "usable": false,
+          "freshness": "healthy",
+          "detail": "sample",
+          "envVars": [
+            "sample"
+          ],
+          "secretKeys": [
+            "sample"
+          ],
+          "serviceNames": [
+            "sample"
+          ],
+          "providerId": "sample",
+          "repairHints": [
+            "sample"
+          ]
+        }
+      ],
+      "persisted": false
+    }
+  },
+  "models.list": {
+    "input": {},
+    "output": {
+      "providers": [
+        {
+          "id": "sample",
+          "label": "sample",
+          "configured": false,
+          "configuredVia": "env",
+          "envVars": [
+            "sample"
+          ],
+          "routes": [
+            {
+              "route": "api-key",
+              "label": "sample",
+              "configured": false,
+              "usable": false,
+              "freshness": "healthy",
+              "detail": "sample",
+              "envVars": [
+                "sample"
+              ],
+              "secretKeys": [
+                "sample"
+              ],
+              "serviceNames": [
+                "sample"
+              ],
+              "providerId": "sample",
+              "repairHints": [
+                "sample"
+              ]
+            }
+          ],
+          "models": [
+            {
+              "id": "sample",
+              "registryKey": "sample",
+              "provider": "sample",
+              "label": "sample",
+              "contextWindow": 0
+            }
+          ]
+        }
+      ],
+      "currentModel": {
+        "registryKey": "sample",
+        "provider": "sample",
+        "id": "sample"
+      },
+      "secretsResolutionSkipped": false
+    }
+  },
   "providers.get": {
     "input": {
       "providerId": "sample"
@@ -19744,7 +19946,8 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
   "sessions.hosted.attach": {
     "input": {
       "sessionId": "sample",
-      "clientId": "sample"
+      "clientId": "sample",
+      "leaseMs": 0
     },
     "output": {
       "session": {

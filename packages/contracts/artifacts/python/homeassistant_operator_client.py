@@ -139,6 +139,8 @@ class ControlStatusInput(TypedDict, total=True):
 class ControlStatusOutput(TypedDict, total=True):
     status: str
     version: str
+    buildVersion: str
+    platformVersion: str
     receipts: NotRequired[list[Mapping[str, Any]]]
 
 # homeassistant.homeGraph.askHomeGraph

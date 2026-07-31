@@ -53,7 +53,10 @@ import { registerCredentialWriteGatewayMethods } from '../../packages/sdk/src/pl
 import { registerBrowserGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/browser.js';
 import { registerCalendarGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/calendar.js';
 import { registerChannelProfilesGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/channel-profiles.js';
+import { registerChannelSyncGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/channel-sync.js';
 import { registerChannelTestGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/channel-test.js';
+import { registerRelayGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/relay.js';
+import { registerUpdateGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/update.js';
 import { registerCheckinGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/checkin.js';
 import { registerCiGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/ci.js';
 import { registerCostGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/cost.js';
@@ -128,6 +131,7 @@ const ROUTE_REGISTRARS: ReadonlyArray<readonly [string, (catalog: GatewayMethodC
   ['browser', (catalog) => registerBrowserGatewayMethods(catalog, stubDeps())],
   ['calendar', (catalog) => registerCalendarGatewayMethods(catalog, stubDeps())],
   ['channel-profiles', (catalog) => registerChannelProfilesGatewayMethods(catalog, stubDeps())],
+  ['channel-sync', (catalog) => registerChannelSyncGatewayMethods(catalog, stubDeps())],
   ['channel-test', (catalog) => registerChannelTestGatewayMethods(catalog, stubDeps())],
   ['checkin', (catalog) => registerCheckinGatewayMethods(catalog, stubDeps())],
   ['ci', (catalog) => registerCiGatewayMethods(catalog, stubDeps())],
@@ -149,6 +153,9 @@ const ROUTE_REGISTRARS: ReadonlyArray<readonly [string, (catalog: GatewayMethodC
   ['power', (catalog) => registerPowerGatewayMethods(catalog, stubDeps())],
   ['principals', (catalog) => registerPrincipalsGatewayMethods(catalog, stubDeps())],
   ['push', (catalog) => registerPushGatewayMethods(catalog, stubDeps())],
+  // The accessor shape the daemon passes: the controller is built at start and
+  // dropped at stop, so the verbs take a function rather than an instance.
+  ['relay', (catalog) => registerRelayGatewayMethods(catalog, () => stubDeps())],
   ['rewind', (catalog) => registerRewindGatewayMethods(catalog, stubDeps())],
   // A real broker rather than a stub: it holds no I/O and no timers until a
   // request is raised, and the probe's point is to run the handler the daemon
@@ -160,6 +167,7 @@ const ROUTE_REGISTRARS: ReadonlyArray<readonly [string, (catalog: GatewayMethodC
   ['skills', (catalog) => registerSkillsGatewayMethods(catalog, stubDeps())],
   ['stepup', (catalog) => registerStepUpGatewayMethods(catalog, stubDeps())],
   ['tailscale', (catalog) => registerTailscaleGatewayMethods(catalog, stubDeps())],
+  ['update', (catalog) => registerUpdateGatewayMethods(catalog, stubDeps())],
   ['voice-setup', (catalog) => registerVoiceSetupGatewayMethods(catalog, stubDeps())],
   ['workspaces', (catalog) => registerWorkspacesGatewayMethods(catalog, stubDeps())],
   ['worktree-setup', (catalog) => registerWorktreeSetupGatewayMethods(catalog, stubDeps())],
@@ -178,6 +186,7 @@ export const EXPECTED_ROUTE_REGISTRARS: readonly string[] = [
   'registerBrowserGatewayMethods',
   'registerCalendarGatewayMethods',
   'registerChannelProfilesGatewayMethods',
+  'registerChannelSyncGatewayMethods',
   'registerChannelTestGatewayMethods',
   'registerCheckinGatewayMethods',
   'registerCheckpointGatewayMethods',
@@ -204,6 +213,7 @@ export const EXPECTED_ROUTE_REGISTRARS: readonly string[] = [
   'registerPowerGatewayMethods',
   'registerPrincipalsGatewayMethods',
   'registerPushGatewayMethods',
+  'registerRelayGatewayMethods',
   'registerRewindConversationHostGatewayMethods',
   'registerRewindGatewayMethods',
   'registerRuntimeMetricsGatewayMethods',
@@ -211,6 +221,7 @@ export const EXPECTED_ROUTE_REGISTRARS: readonly string[] = [
   'registerSkillsGatewayMethods',
   'registerStepUpGatewayMethods',
   'registerTailscaleGatewayMethods',
+  'registerUpdateGatewayMethods',
   'registerVoiceSetupGatewayMethods',
   'registerWorkspacesGatewayMethods',
   'registerWorktreeSetupGatewayMethods',

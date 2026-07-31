@@ -23,6 +23,7 @@ import { PersistentStore } from '../packages/sdk/src/platform/state/persistent-s
 import { RouteBindingManager } from '../packages/sdk/src/platform/channels/index.js';
 import { buildOperatorContract } from '../packages/sdk/src/platform/control-plane/operator-contract.js';
 import { GatewayMethodCatalog } from '../packages/sdk/src/platform/control-plane/method-catalog.js';
+import { EVENT_DOMAIN } from '../packages/sdk/src/platform/control-plane/gateway-scope-enforcement.js';
 import {
   SESSION_UPDATE_WIRE_EVENTS,
   SESSION_UPDATE_INTENT_MAP,
@@ -139,6 +140,29 @@ describe('S2c — the session-update channel is contract-declared', () => {
     expect(schema.properties.event.enum).toContain('session-created');
     expect(schema.properties.event.enum).toContain('session-closed');
     expect(schema.properties.event.enum).toEqual([...SESSION_UPDATE_WIRE_EVENTS]);
+  });
+
+  // The catalog said session-update was un-domained while the runtime filter
+  // tagged it `session`, so the contract promised a narrowed client something
+  // the fan-out did not deliver. Both session-lifecycle channels carry the
+  // same tag, and the tag they carry is the one the filter actually applies.
+  test('every declared event domain is the one the fan-out filter enforces', () => {
+    const contract = buildOperatorContract(new GatewayMethodCatalog());
+    for (const descriptor of contract.operator.events) {
+      for (const wireEvent of descriptor.wireEvents ?? []) {
+        const enforced = EVENT_DOMAIN[wireEvent];
+        if (enforced === undefined) continue;
+        expect(descriptor.domains ?? [], `${descriptor.id} -> ${wireEvent}`).toContain(enforced);
+      }
+    }
+  });
+
+  test('the two session-lifecycle channels are tagged the same way', () => {
+    const contract = buildOperatorContract(new GatewayMethodCatalog());
+    const shared = contract.operator.events.find((e) => e.id === 'control.session_update');
+    const hosted = contract.operator.events.find((e) => e.id === 'control.hosted_session_update');
+    expect(shared!.domains).toEqual(['session']);
+    expect(hosted!.domains).toEqual(['session']);
   });
 });
 

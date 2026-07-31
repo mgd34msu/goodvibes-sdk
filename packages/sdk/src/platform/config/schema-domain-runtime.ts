@@ -148,6 +148,7 @@ export const runtimeConfigDefaults = {
     host: '127.0.0.1',
     port: 3422,
     trustProxy: false,
+    trustCloudflare: false,
     tls: {
       mode: 'off',
       certFile: '',
@@ -416,6 +417,12 @@ export const runtimePrimaryConfigSettings: ConfigSettingDefinition[] = [
     type: 'boolean',
     default: false,
     description: 'Trust proxy forwarding headers such as x-forwarded-for for the webhook listener',
+  },
+  {
+    key: 'httpListener.trustCloudflare',
+    type: 'boolean',
+    default: false,
+    description: 'Read the real client IP from CF-Connecting-IP, and only when the connecting peer is inside a published Cloudflare range. Requires httpListener.trustProxy: with it off, CF-Connecting-IP is ignored no matter what this says. The range check is the point — without it any peer could send a CF-Connecting-IP header and choose which address the rate limiter and the audit log recorded. Leave off unless this listener genuinely sits behind Cloudflare.',
   },
   {
     key: 'httpListener.tls.mode',

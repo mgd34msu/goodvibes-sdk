@@ -22969,7 +22969,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "additionalProperties": false
         },
         "dangerous": true,
-        "invokable": false
+        "invokable": true
       },
       {
         "id": "channels.drafts.get",
@@ -23055,7 +23055,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           },
           "additionalProperties": true
         },
-        "invokable": false
+        "invokable": true
       },
       {
         "id": "channels.drafts.list",
@@ -23162,7 +23162,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
-        "invokable": false
+        "invokable": true
       },
       {
         "id": "channels.drafts.save",
@@ -23314,7 +23314,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "additionalProperties": false
         },
         "dangerous": true,
-        "invokable": false
+        "invokable": true
       },
       {
         "id": "channels.inbox.list",
@@ -24865,7 +24865,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "additionalProperties": false
         },
         "dangerous": true,
-        "invokable": false
+        "invokable": true
       },
       {
         "id": "channels.routing.delete",
@@ -24914,7 +24914,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "additionalProperties": false
         },
         "dangerous": true,
-        "invokable": false
+        "invokable": true
       },
       {
         "id": "channels.routing.list",
@@ -24999,7 +24999,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
-        "invokable": false
+        "invokable": true
       },
       {
         "id": "channels.setup.get",
@@ -32163,7 +32163,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "control.status",
         "title": "Daemon Status",
-        "description": "Return daemon status and version. Pass receipts=consume to also receive undelivered daemon receipts (update/crash/migration notices) and mark them delivered — exactly once across all consuming readers. Without the flag no receipts are returned or consumed, so identity probes and keepalives never eat them.",
+        "description": "Return daemon status and version. THREE version fields, because there are two versions and they are not the same number: `buildVersion` is the running artifact's own release version — what a person installed, and what the auto-update loop compares against release tags — and `platformVersion` is the SDK build it is composed from. `version` carries the build version and exists because every client already reads it; on an embedded daemon that ships no artifact of its own, all three are the platform build. Pass receipts=consume to also receive undelivered daemon receipts (update/crash/migration notices) and mark them delivered — exactly once across all consuming readers. Without the flag no receipts are returned or consumed, so identity probes and keepalives never eat them.",
         "category": "control-plane",
         "source": "builtin",
         "access": "authenticated",
@@ -32200,6 +32200,12 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "version": {
               "type": "string"
             },
+            "buildVersion": {
+              "type": "string"
+            },
+            "platformVersion": {
+              "type": "string"
+            },
             "receipts": {
               "type": "array",
               "items": {
@@ -32226,7 +32232,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           },
           "required": [
             "status",
-            "version"
+            "version",
+            "buildVersion",
+            "platformVersion"
           ],
           "additionalProperties": false
         },
@@ -32270,6 +32278,345 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "metadata": {
           "responseKind": "html"
         }
+      },
+      {
+        "id": "relay.pairing.mint",
+        "title": "Mint A Relay Pairing Payload",
+        "description": "Return the pairing payload a surface scans to reach this daemon through the relay: the relay URL to dial, the rendezvous id the daemon registered under, and the daemon's static public key. `pairing` is null — not an error — when there is no live registration to mint against, which is the honest answer for a daemon whose relay is off or has not connected yet, and is the same value the in-process capability returns. Minting does not create a second identity or a second registration; it describes the one that exists.",
+        "category": "control-plane",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "write:control-plane"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "pairing": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "protocol": {
+                      "type": "number"
+                    },
+                    "relayUrl": {
+                      "type": "string"
+                    },
+                    "rid": {
+                      "type": "string"
+                    },
+                    "daemonPublicKey": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "protocol",
+                    "relayUrl",
+                    "rid",
+                    "daemonPublicKey"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "disabled",
+                "idle",
+                "connecting",
+                "registered",
+                "reconnecting",
+                "stopped"
+              ]
+            }
+          },
+          "required": [
+            "pairing",
+            "status"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "relay.reachability.get",
+        "title": "Relay Reachability",
+        "description": "Whether this daemon is registered with the relay, and what state its registration is in. `disabled` is a distinct answer from every other one and the distinction is the point: it means a gate is off — `relay.enabled`, the relay-connect capability, or an empty `relay.url` — rather than that a connection is failing. `idle` means the gates are open and nothing has started; `connecting`, `registered` and `reconnecting` are the live registration; `stopped` is a controller that was told to stop. `configured` says whether all three gates are open, so a caller can render \"turn it on\" instead of \"it is broken\". ws-only invoke verb; no REST binding.",
+        "category": "control-plane",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "read:control-plane"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "disabled",
+                "idle",
+                "connecting",
+                "registered",
+                "reconnecting",
+                "stopped"
+              ]
+            },
+            "configured": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "status",
+            "configured"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "update.check",
+        "title": "Check For An Update Now",
+        "description": "Run one update check immediately instead of waiting for the next interval, and return the status afterwards. This is the same tick the schedule runs, so an on-demand check and the hourly one cannot reach different conclusions. It never forces an install: a downloaded-and-verified release still waits for a moment when no work is in flight, which the returned `pendingVersion` reports. A check that fails is reported in `failedCheckCount` and `lastCheckFailure` rather than refused — the caller asked what the state is, and \"the check failed\" is the answer. On a daemon with no loop armed this returns the same status `update.status` would, with `offReason` saying why nothing ran.",
+        "category": "control-plane",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "write:control-plane"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "armed": {
+              "type": "boolean"
+            },
+            "offReason": {
+              "type": "string"
+            },
+            "currentVersion": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "releasesUrl": {
+              "type": "string"
+            },
+            "checkIntervalMs": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "firstCheckDelayMs": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "failedCheckCount": {
+              "type": "number"
+            },
+            "lastCheckFailure": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "pendingVersion": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "rejectedVersion": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "armed",
+            "offReason",
+            "currentVersion",
+            "releasesUrl",
+            "checkIntervalMs",
+            "firstCheckDelayMs",
+            "failedCheckCount",
+            "lastCheckFailure",
+            "pendingVersion",
+            "rejectedVersion"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "update.status",
+        "title": "Self-Update Status",
+        "description": "Whether this daemon is keeping itself current, and — when it is not — the reason in one line. `armed` is false whenever no loop is running and `offReason` says which gate stopped it: update.auto not set, no artifact identity (a host that manages its own updates), or no release URL to resolve tags from. `failedCheckCount` with `lastCheckFailure` is the case that used to be invisible: checks running on schedule and failing every time, which looks exactly like having nothing to update to. `pendingVersion` is a release already downloaded and verified, waiting for a moment when no work is in flight. `rejectedVersion` is a release that was installed here, failed to start, and was rolled back — it is deliberately not reinstalled.",
+        "category": "control-plane",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "read:control-plane"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "armed": {
+              "type": "boolean"
+            },
+            "offReason": {
+              "type": "string"
+            },
+            "currentVersion": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "releasesUrl": {
+              "type": "string"
+            },
+            "checkIntervalMs": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "firstCheckDelayMs": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "failedCheckCount": {
+              "type": "number"
+            },
+            "lastCheckFailure": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "pendingVersion": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "rejectedVersion": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "armed",
+            "offReason",
+            "currentVersion",
+            "releasesUrl",
+            "checkIntervalMs",
+            "firstCheckDelayMs",
+            "failedCheckCount",
+            "lastCheckFailure",
+            "pendingVersion",
+            "rejectedVersion"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
       },
       {
         "id": "cost.attribution.get",
@@ -77590,6 +77937,523 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "models.current.get",
+        "title": "Current Model",
+        "description": "The model this daemon would use for a turn right now, with whether its provider is actually configured and by which authentication route. `model` is null when nothing is selected — which is a real state, not an error, and a caller rendering a picker needs to tell it from a selection whose provider has lost its credentials.",
+        "category": "providers",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:providers"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/models/current"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "model": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "registryKey": {
+                      "type": "string"
+                    },
+                    "provider": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "registryKey",
+                    "provider",
+                    "id"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "configured": {
+              "type": "boolean"
+            },
+            "configuredVia": {
+              "type": "string",
+              "enum": [
+                "env",
+                "secrets",
+                "subscription",
+                "anonymous"
+              ]
+            },
+            "routes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "route": {
+                    "type": "string",
+                    "enum": [
+                      "api-key",
+                      "secret-ref",
+                      "service-oauth",
+                      "subscription-oauth",
+                      "anonymous",
+                      "none"
+                    ]
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "configured": {
+                    "type": "boolean"
+                  },
+                  "usable": {
+                    "type": "boolean"
+                  },
+                  "freshness": {
+                    "type": "string",
+                    "enum": [
+                      "healthy",
+                      "expiring",
+                      "expired",
+                      "pending",
+                      "unconfigured"
+                    ]
+                  },
+                  "detail": {
+                    "type": "string"
+                  },
+                  "envVars": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "secretKeys": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "serviceNames": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "providerId": {
+                    "type": "string"
+                  },
+                  "repairHints": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "route",
+                  "label",
+                  "configured"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "model",
+            "configured"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "models.current.set",
+        "title": "Switch the Current Model",
+        "description": "Switch the daemon's current model live, by the registry key `models.list` returns. The switch applies to the next turn on every surface this daemon serves and is persisted, so it survives a restart; `persisted` says whether the write to settings succeeded. An unknown key is refused with MODEL_NOT_FOUND and a provider with no usable credentials with PROVIDER_NOT_CONFIGURED, naming the environment variables it looked for — a caller must not have to guess which of the two happened.",
+        "category": "providers",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:providers"
+        ],
+        "http": {
+          "method": "PATCH",
+          "path": "/api/models/current"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "registryKey": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "registryKey"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "model": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "registryKey": {
+                      "type": "string"
+                    },
+                    "provider": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "registryKey",
+                    "provider",
+                    "id"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "configured": {
+              "type": "boolean"
+            },
+            "configuredVia": {
+              "type": "string",
+              "enum": [
+                "env",
+                "secrets",
+                "subscription",
+                "anonymous"
+              ]
+            },
+            "routes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "route": {
+                    "type": "string",
+                    "enum": [
+                      "api-key",
+                      "secret-ref",
+                      "service-oauth",
+                      "subscription-oauth",
+                      "anonymous",
+                      "none"
+                    ]
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "configured": {
+                    "type": "boolean"
+                  },
+                  "usable": {
+                    "type": "boolean"
+                  },
+                  "freshness": {
+                    "type": "string",
+                    "enum": [
+                      "healthy",
+                      "expiring",
+                      "expired",
+                      "pending",
+                      "unconfigured"
+                    ]
+                  },
+                  "detail": {
+                    "type": "string"
+                  },
+                  "envVars": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "secretKeys": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "serviceNames": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "providerId": {
+                    "type": "string"
+                  },
+                  "repairHints": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "route",
+                  "label",
+                  "configured"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "persisted": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "model",
+            "configured",
+            "persisted"
+          ],
+          "additionalProperties": false
+        },
+        "dangerous": true,
+        "invokable": true
+      },
+      {
+        "id": "models.list",
+        "title": "Model Catalog",
+        "description": "Every provider this daemon knows about with the models it offers, whether it is configured, and how it was configured. A GET also triggers the TTL-respecting live-discovery re-check that the terminal's model picker triggers on open, so a locally served model that appeared since the last read shows up on the next one. `currentModel` is the daemon's current selection, or null when nothing is selected. `secretsResolutionSkipped` is true when secret-backed credentials were not resolved for this read, so a caller can tell \"not configured\" from \"not checked\".",
+        "category": "providers",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:providers"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/models"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "providers": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "configured": {
+                    "type": "boolean"
+                  },
+                  "configuredVia": {
+                    "type": "string",
+                    "enum": [
+                      "env",
+                      "secrets",
+                      "subscription",
+                      "anonymous"
+                    ]
+                  },
+                  "envVars": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "routes": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "route": {
+                          "type": "string",
+                          "enum": [
+                            "api-key",
+                            "secret-ref",
+                            "service-oauth",
+                            "subscription-oauth",
+                            "anonymous",
+                            "none"
+                          ]
+                        },
+                        "label": {
+                          "type": "string"
+                        },
+                        "configured": {
+                          "type": "boolean"
+                        },
+                        "usable": {
+                          "type": "boolean"
+                        },
+                        "freshness": {
+                          "type": "string",
+                          "enum": [
+                            "healthy",
+                            "expiring",
+                            "expired",
+                            "pending",
+                            "unconfigured"
+                          ]
+                        },
+                        "detail": {
+                          "type": "string"
+                        },
+                        "envVars": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "secretKeys": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "serviceNames": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "providerId": {
+                          "type": "string"
+                        },
+                        "repairHints": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "route",
+                        "label",
+                        "configured"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "models": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "registryKey": {
+                          "type": "string"
+                        },
+                        "provider": {
+                          "type": "string"
+                        },
+                        "label": {
+                          "type": "string"
+                        },
+                        "contextWindow": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "registryKey",
+                        "provider"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "label",
+                  "configured",
+                  "envVars",
+                  "models"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "currentModel": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "registryKey": {
+                      "type": "string"
+                    },
+                    "provider": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "registryKey",
+                    "provider",
+                    "id"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "secretsResolutionSkipped": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "providers",
+            "currentModel",
+            "secretsResolutionSkipped"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "providers.get",
         "title": "Provider Snapshot",
         "description": "Return runtime metadata for a single provider.",
@@ -89553,7 +90417,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "sessions.hosted.attach",
         "title": "Attach to a Daemon-Hosted Session",
-        "description": "Join a hosted session and receive its transcript so far, so a client that was never connected — or one reconnecting after the daemon restarted — renders what it missed instead of an empty screen. A session restored from disk has its loop rebuilt on this call, with a system line in the transcript stating that its in-flight turn did not survive the restart. Live output continues on the `turn` and `tools` event domains, filtered on this session id. Attaching is what keeps a `kill`-policy session alive: the policy is applied when the LAST client detaches. ws-only invoke verb; no REST binding.",
+        "description": "Join a hosted session and receive its transcript so far, so a client that was never connected — or one reconnecting after the daemon restarted — renders what it missed instead of an empty screen. A session restored from disk has its loop rebuilt on this call, with a system line in the transcript stating that its in-flight turn did not survive the restart. Live output continues on the `turn` and `tools` event domains, filtered on this session id. Attaching is what keeps a `kill`-policy session alive: the policy is applied when the LAST client detaches. An attachment carries a LEASE — `hostedSessions.attachmentTtlMs`, ten minutes by default, or `leaseMs` for this attachment alone — because a client that crashed or closed its tab never calls detach, and a claim nothing expires would hold a kill-policy session open forever. Calling attach again with the same `clientId` renews it, and a client whose control-plane connection is still open renews automatically, so an attached client watching a long turn in silence is never reaped. When the last attachment lapses the session is treated as detached and its policy decides. ws-only invoke verb; no REST binding.",
         "category": "sessions",
         "source": "builtin",
         "access": "authenticated",
@@ -89574,6 +90438,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             },
             "clientId": {
               "type": "string"
+            },
+            "leaseMs": {
+              "type": "number"
             }
           },
           "required": [
@@ -104103,7 +104970,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "control.session_update",
         "title": "Session Lifecycle Update",
-        "description": "Shared-session lifecycle broadcast. Every session created / closed / deleted / reopened / agent-bound / agent-completed / message-appended / message-forwarded / route-attached and every input & follow-up lifecycle transition is published on the single `session-update` wire event; the specific lifecycle name is the discriminated `payload.event` field. Cross-surface invalidation mapping (webui/TUI): created ⇐ session-created; updated ⇐ session-message-appended / session-agent-completed / session-route-attached / session-reopened; steered ⇐ session-input-delivered / session-message-forwarded; closed ⇐ session-closed; deleted ⇐ session-deleted (a hard removal — the record is gone, not merely closed). This channel is un-domained: it reaches every live SSE/WS client regardless of subscribed domains, and is dropped entirely when the control-plane-gateway flag is turned off (no phantom buffering).",
+        "description": "Shared-session lifecycle broadcast. Every session created / closed / deleted / reopened / agent-bound / agent-completed / message-appended / message-forwarded / route-attached and every input & follow-up lifecycle transition is published on the single `session-update` wire event; the specific lifecycle name is the discriminated `payload.event` field. Cross-surface invalidation mapping (webui/TUI): created ⇐ session-created; updated ⇐ session-message-appended / session-agent-completed / session-route-attached / session-reopened; steered ⇐ session-input-delivered / session-message-forwarded; closed ⇐ session-closed; deleted ⇐ session-deleted (a hard removal — the record is gone, not merely closed). Domain-tagged `session` (gateway-scope-enforcement.ts EVENT_DOMAIN), the same tag control.hosted_session_update carries: both are session lifecycle, so a client that narrows with ?domains=… must include `session` to receive EITHER of them, and one that opted into no narrowing receives both. It is dropped entirely when the control-plane-gateway flag is turned off (no phantom buffering).",
         "category": "transport",
         "source": "builtin",
         "transport": [
@@ -104112,6 +104979,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         ],
         "scopes": [
           "read:sessions"
+        ],
+        "domains": [
+          "session"
         ],
         "wireEvents": [
           "session-update"
@@ -104367,20 +105237,20 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 499,
-      "typedInputs": 499,
+      "methods": 506,
+      "typedInputs": 506,
       "genericInputs": 0,
-      "typedOutputs": 499,
+      "typedOutputs": 506,
       "genericOutputs": 0
     },
     "eventCoverage": {
       "events": 35,
-      "withDomains": 31,
+      "withDomains": 32,
       "withWireEvents": 35
     },
     "validationCoverage": {
-      "methods": 499,
-      "validated": 492,
+      "methods": 506,
+      "validated": 499,
       "skippedGeneric": 0,
       "skippedUntyped": 7
     }

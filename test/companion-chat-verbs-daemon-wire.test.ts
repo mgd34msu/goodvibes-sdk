@@ -206,7 +206,7 @@ describe('companion.chat.messages.edit — edit + branch over the wire', () => {
     expect(branched.supersededAt).toBeUndefined();
   });
 
-  test('edit without a messageId is an honest 400 INVALID_INPUT', async () => {
+  test('edit without a messageId is an honest 400 INVALID_ARGUMENT', async () => {
     const res = await fetch(`${daemon.url}/api/companion/chat/sessions/seed-edit/messages/edit`, {
       method: 'POST',
       headers: auth(),
@@ -214,7 +214,7 @@ describe('companion.chat.messages.edit — edit + branch over the wire', () => {
     });
     expect(res.status).toBe(400);
     const body = await res.json() as { code: string };
-    expect(body.code).toBe('INVALID_INPUT');
+    expect(body.code).toBe('INVALID_ARGUMENT');
   });
 });
 

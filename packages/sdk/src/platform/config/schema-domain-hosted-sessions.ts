@@ -20,6 +20,13 @@ export interface HostedSessionsSettings {
   maxMessagesPerSession: number;
   terminatedRetentionMs: number;
   /**
+   * How long a client's attachment stands without renewal, in milliseconds.
+   * An attachment is a claim about a live process; a client that crashed or
+   * closed its tab makes no detach call, so the claim has to expire or a
+   * kill-policy session waits for a departure that never arrives.
+   */
+  attachmentTtlMs: number;
+  /**
    * Whether a surface that receives inbound channel messages hands the
    * conversation to the daemon to host instead of answering it in its own
    * process. Off by default: today an inbound message is answered by the
@@ -40,6 +47,7 @@ export const hostedSessionsConfigDefaults = {
     maxSessions: 8,
     maxMessagesPerSession: 500,
     terminatedRetentionMs: 24 * 60 * 60_000,
+    attachmentTtlMs: 10 * 60_000,
     promoteInboundConversations: false,
   },
 };
@@ -69,6 +77,12 @@ export const hostedSessionsConfigSettings: ConfigSettingDefinition[] = [
     type: 'number',
     default: 24 * 60 * 60_000,
     description: 'How long a terminated hosted session\'s record is kept before it is retired, in milliseconds. Until then it is still listable with its termination reason, so a session that ended can be asked about rather than having simply vanished.',
+  },
+  {
+    key: 'hostedSessions.attachmentTtlMs',
+    type: 'number',
+    default: 10 * 60_000,
+    description: 'How long a client stays attached to a daemon-hosted session without renewing, in milliseconds. Attaching again renews it, and a client whose control-plane connection is still open renews automatically. A client that crashed or closed its tab never detaches, so without this its attachment stands forever and a kill-policy session waits for a departure that never comes. When the last attachment lapses the session is treated as detached, and hostedSessions.detachPolicy decides what happens next. Clamped to at least 30 seconds and at most a day.',
   },
   {
     key: 'hostedSessions.promoteInboundConversations',

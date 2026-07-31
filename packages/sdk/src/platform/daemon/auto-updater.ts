@@ -198,6 +198,24 @@ interface PendingSwap {
   readonly targets: readonly UpdateTarget[];
 }
 
+/** The live state of one daemon's self-update loop. */
+export interface DaemonUpdateLoopSnapshot {
+  /** The running artifact's version, as the loop compares it. */
+  readonly currentVersion: string;
+  /** Where release tags are resolved from. */
+  readonly releasesUrl: string;
+  /** The steady-state cadence between checks. */
+  readonly checkIntervalMs: number;
+  /** The delay before the first check after a boot. */
+  readonly firstCheckDelayMs: number;
+  /** Consecutive checks that threw. Zero once one completes. */
+  readonly failedCheckCount: number;
+  /** What the most recent failing check said, or null when none is failing. */
+  readonly lastCheckFailure: string | null;
+  /** A downloaded-and-verified release waiting for an idle moment, or null. */
+  readonly pendingVersion: string | null;
+}
+
 export class DaemonAutoUpdater {
   private readonly loop: PeriodicUpdateLoop;
   /** A downloaded-and-verified update waiting for an idle moment. */
@@ -302,6 +320,28 @@ export class DaemonAutoUpdater {
   /** The most recent failure detail, exposed for the /status surface and tests. */
   get lastCheckFailure(): string | null {
     return this.lastFailureDetail;
+  }
+
+  /**
+   * What the loop knows right now, as one readable record.
+   *
+   * Everything here was already tracked and already decided the loop's
+   * behaviour; none of it was answerable from outside the process. "Is this
+   * daemon updating itself, and if not why not" was a question only the log
+   * could answer, and only to someone with shell access to the host — which is
+   * how three releases shipped past a daemon whose checks had been failing for
+   * days with nobody able to see it from any surface.
+   */
+  snapshot(): DaemonUpdateLoopSnapshot {
+    return {
+      currentVersion: normalizeVersion(this.options.currentVersion),
+      releasesUrl: this.options.releasesLatestUrl,
+      checkIntervalMs: this.loop.checkIntervalMs,
+      firstCheckDelayMs: this.loop.firstCheckDelayMs,
+      failedCheckCount: this.consecutiveFailures,
+      lastCheckFailure: this.lastFailureDetail,
+      pendingVersion: this.pendingSwap ? normalizeVersion(this.pendingSwap.tag) : null,
+    };
   }
 
   /** Consecutive failed checks, exposed for the /status surface and tests. */

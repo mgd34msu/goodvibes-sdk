@@ -1086,6 +1086,7 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
 ### `session`
 
 - `control.hosted_session_update` -> `hosted-session-update`
+- `control.session_update` -> `session-update`
 - `runtime.session` -> `session`
 
 #### `control.hosted_session_update` payload schema
@@ -1213,6 +1214,74 @@ Schema blocks below are emitted directly from the synced contract JSON and may c
   "required": [
     "event",
     "session",
+    "createdAt"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `control.session_update` payload schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "event": {
+      "type": "string",
+      "enum": [
+        "session-created",
+        "session-closed",
+        "session-deleted",
+        "session-reopened",
+        "session-agent-bound",
+        "session-agent-completed",
+        "session-message-appended",
+        "session-message-forwarded",
+        "session-route-attached",
+        "session-detached",
+        "session-input-queued",
+        "session-input-queued-for-surface",
+        "session-input-delivered",
+        "session-input-spawned",
+        "session-input-completed",
+        "session-input-failed",
+        "session-input-rejected",
+        "session-input-cancelled",
+        "session-follow-up-queued",
+        "session-follow-up-spawned"
+      ]
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {},
+          {
+            "type": "array",
+            "items": {}
+          }
+        ]
+      }
+    },
+    "createdAt": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "event",
+    "payload",
     "createdAt"
   ],
   "additionalProperties": false
