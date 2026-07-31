@@ -5,11 +5,21 @@
  * single home for the runtime wiring that two front-ends must keep identical:
  * gateway verb-group composition, terminal enter/restore sequencing,
  * render-tick coalescing, the `cluster` command family and its daemon-target
- * convention, the shared CLI argument parser and its supporting modules
- * (redaction, config overrides, endpoint resolution, feature-flag overrides),
- * and the terminal output guard. Each capability is a thin, dependency-injected
- * wrapper so a front-end's composition root becomes a few named calls into
- * this package instead of a hand-maintained copy that drifts.
+ * convention, and the terminal output guard. Each capability is a thin,
+ * dependency-injected wrapper so a front-end's composition root becomes a
+ * few named calls into this package instead of a hand-maintained copy that
+ * drifts.
+ *
+ * The CLI argument surface is a generic engine (cli-parser-engine.ts) over a
+ * declarative catalog contract (cli-catalog-types.ts): a daemon-shaped
+ * front-end and a terminal-shaped one need different command vocabularies —
+ * different commands, different flags, different unknown-token policy — over
+ * the SAME token/value/arity/refusal mechanics. `parseGoodVibesCli` is that
+ * engine driven by this package's own catalog instance
+ * (cli-command-catalog.ts, exported as `GOODVIBES_CLI_CATALOG`) plus its
+ * supporting modules (redaction, config overrides, endpoint resolution,
+ * feature-flag overrides). A different vocabulary is a different catalog
+ * against the same engine, not a forked parser.
  *
  * The startup reachability notice lives in the SDK core instead
  * (`@pellux/goodvibes-sdk/platform/runtime`, the `operations` namespace):
@@ -94,6 +104,28 @@ export type {
   GoodVibesCliParseResult,
   CliCommandRuntime,
 } from './cli-types.js';
+
+export {
+  type CliFlagKind,
+  type CliFlagValue,
+  type CommandFlagSpec,
+  type CommandSpec,
+  type RejectedFlagSpec,
+  type CliCatalog,
+  type EngineParseResult,
+  catalogFlagArity,
+  catalogCommandSpec,
+  resolveCatalogCommand,
+  catalogFlagsForCommand,
+  findCatalogFlagArityConflicts,
+} from './cli-catalog-types.js';
+
+export { parseWithCatalog } from './cli-parser-engine.js';
+
+export {
+  GOODVIBES_CLI_CATALOG,
+  type GoodVibesCliFlagField,
+} from './cli-command-catalog.js';
 
 export { parseGoodVibesCli } from './cli-parser.js';
 
