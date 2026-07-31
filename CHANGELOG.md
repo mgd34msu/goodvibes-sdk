@@ -21,7 +21,8 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   `Orchestrator` and its own tool registry own. Floors are reference-counted and
   released when their last session goes.
 
-  Five verbs, lifecycle only: `sessions.hosted.create/attach/detach/kill/list`.
+  Five verbs, lifecycle only: `sessions.hosted.create/attach/detach/kill/list`
+  (ws-only invoke, like `approvals.raise` — no REST binding).
   Driving a hosted turn uses the verbs that already exist — `sessions.steer`,
   `sessions.followUp`, `sessions.toolCalls.cancel`,
   `sessions.queuedMessages.*` — which now resolve a hosted session's id the same
@@ -31,6 +32,20 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   on the `turn` and `tools` runtime domains stamped with the hosted session's id,
   and the control-plane SSE stream already forwards those. The new
   `control.hosted_session_update` event carries lifecycle only.
+
+  A steer reaches a hosted turn through the machinery that already routes one:
+  the broker queues an input for a session's live SURFACE participant, and for
+  a hosted session the engine IS that surface, so it collects the queued input
+  and hands it to the loop (`HostedSessionSpineIntake`) — the same contract
+  `createWireSessionDispatch` implements for a client across the wire. The
+  participant heartbeat rides the same tick, because a stale one would make the
+  broker spawn a background agent instead: the conversation would keep
+  answering, from the wrong thing.
+
+  `ProviderRegistry.listDiscoveredServers()` is new for the same reason: a
+  process that builds a SECOND registry has to see the same LOCAL models, and
+  without it a machine's own Ollama or LM Studio was routable for the daemon's
+  agents and invisible to a hosted session on the same box.
 
   **Detach is a setting, and its default preserves what people expect.**
   `hostedSessions.detachPolicy` defaults to `kill` — closing a client has always

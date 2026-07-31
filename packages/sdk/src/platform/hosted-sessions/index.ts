@@ -30,11 +30,16 @@ export type {
   HostedSessionEventPublisher,
   HostedSessionManagerOptions,
   HostedSessionSettings,
-  HostedSessionSpine,
 } from './manager.js';
 
 export { createHostedSessionRuntime, newHostedSessionId } from './session-runtime.js';
 export type { HostedSessionRuntime, HostedSessionRuntimeOptions } from './session-runtime.js';
+
+export { HostedSessionSpineIntake } from './spine-intake.js';
+export type {
+  HostedSessionSpine,
+  HostedSessionSpineIntakeOptions,
+} from './spine-intake.js';
 
 export { HostedWorkspaceFloors } from './workspace-floor.js';
 export type {

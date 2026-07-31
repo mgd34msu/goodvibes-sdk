@@ -48,6 +48,8 @@ import { resolveHostedModelDefinition } from './model-route.js';
 import { createHostedSessionRuntime, newHostedSessionId, type HostedSessionRuntime } from './session-runtime.js';
 import { HostedWorkspaceFloors, type HostedWorkspaceFloorFactory, type HostedWorkspaceFloorLease } from './workspace-floor.js';
 import { HostedSessionStore, type HostedSessionLoadReport } from './store.js';
+import { HostedSessionSpineIntake, type HostedSessionSpine } from './spine-intake.js';
+export type { HostedSessionSpine } from './spine-intake.js';
 import type {
   CreateHostedSessionInput,
   HostedDetachPolicy,
@@ -74,22 +76,6 @@ export interface HostedSessionSettings {
   maxSessions(): number;
 }
 
-/** The narrow view of the shared session broker hosted sessions register into. */
-export interface HostedSessionSpine {
-  register(input: {
-    readonly sessionId: string;
-    readonly kind: 'hosted';
-    readonly project?: string | undefined;
-    readonly title?: string | undefined;
-    readonly participant: {
-      readonly surfaceKind: 'service';
-      readonly surfaceId: string;
-      readonly lastSeenAt: number;
-    };
-  }): Promise<unknown>;
-  closeSession(sessionId: string): Promise<unknown>;
-}
-
 /** Per-session live-turn registration, so the session verbs can reach a hosted turn. */
 export interface HostedLiveTurnRegistry {
   bindSession(sessionId: string, controls: SessionLiveTurnControls): void;
@@ -110,6 +96,13 @@ export interface HostedSessionManagerOptions {
   readonly spine?: HostedSessionSpine | undefined;
   /** Whether a workspace root is acceptable. Omitted ⇒ any absolute path. */
   readonly isWorkspaceUsable?: ((workspaceRoot: string) => boolean) | undefined;
+  /**
+   * How often queued inputs are collected and each live session's participant
+   * heartbeat is refreshed. Default 750ms — the same order as every other
+   * inbound-dispatch client here, and the reason a steer reaches a hosted turn
+   * in well under a second rather than on some slower sweep.
+   */
+  readonly intakeIntervalMs?: number | undefined;
   /** Clock seam for tests. */
   readonly now?: (() => number) | undefined;
 }
@@ -130,7 +123,6 @@ interface LiveSession {
   readonly attached: Set<string>;
 }
 
-const HOSTED_PARTICIPANT_SURFACE_ID = 'daemon:hosted-sessions';
 const RESTART_NOTICE = 'This session was interrupted by a daemon restart. The turn that was running did not finish.';
 
 export class HostedSessionManager {
@@ -141,10 +133,19 @@ export class HostedSessionManager {
   private busUnsubscribers: (() => void)[] = [];
   private disposed = false;
   private lastLoadReport: HostedSessionLoadReport | null = null;
+  /** The spine half: registration, heartbeats, and collecting queued inputs. */
+  private readonly spine: HostedSessionSpineIntake;
 
   constructor(private readonly options: HostedSessionManagerOptions) {
     this.floors = new HostedWorkspaceFloors(options.floorFactory);
     this.now = options.now ?? ((): number => Date.now());
+    this.spine = new HostedSessionSpineIntake({
+      ...(options.spine === undefined ? {} : { spine: options.spine }),
+      ...(options.intakeIntervalMs === undefined ? {} : { intervalMs: options.intakeIntervalMs }),
+      liveSessions: () => this.list(),
+      deliver: (sessionId, text) => this.deliver(sessionId, text),
+      now: () => this.now(),
+    });
   }
 
   /** Where lifecycle notices go. Wired by the composition that owns the gateway. */
@@ -177,6 +178,7 @@ export class HostedSessionManager {
       });
     }
     this.observeTurnEvents();
+    this.spine.start();
     if (report.rejected.length > 0 || report.swept.length > 0 || report.evicted.length > 0) {
       logger.info('[hosted-sessions] restored persisted sessions', {
         restored: report.restored.length,
@@ -336,7 +338,7 @@ export class HostedSessionManager {
       throw error;
     }
 
-    await this.registerOnSpine(record);
+    await this.spine.register(record);
     await this.persist(record);
     this.publish('hosted-session-created', record, { ...(input.clientId ? { clientId: input.clientId } : {}) });
 
@@ -526,7 +528,7 @@ export class HostedSessionManager {
       updatedAt: at,
     };
     await this.persist(live.record);
-    await this.closeOnSpine(live.record.id);
+    await this.spine.close(live.record.id);
     this.publish('hosted-session-terminated', live.record, { detail });
     return live.record;
   }
@@ -598,40 +600,6 @@ export class HostedSessionManager {
     }
   }
 
-  private async registerOnSpine(record: HostedSessionRecord): Promise<void> {
-    if (!this.options.spine) return;
-    try {
-      await this.options.spine.register({
-        sessionId: record.id,
-        kind: 'hosted',
-        project: record.workspaceRoot,
-        title: record.title,
-        participant: {
-          surfaceKind: 'service',
-          surfaceId: HOSTED_PARTICIPANT_SURFACE_ID,
-          lastSeenAt: this.now(),
-        },
-      });
-    } catch (error) {
-      logger.warn('[hosted-sessions] registering a hosted session on the shared spine failed; it runs but is not in the union list', {
-        sessionId: record.id,
-        error: summarizeError(error),
-      });
-    }
-  }
-
-  private async closeOnSpine(sessionId: string): Promise<void> {
-    if (!this.options.spine) return;
-    try {
-      await this.options.spine.closeSession(sessionId);
-    } catch (error) {
-      logger.debug('[hosted-sessions] closing a hosted session on the shared spine failed', {
-        sessionId,
-        error: summarizeError(error),
-      });
-    }
-  }
-
   private requireWorkspace(raw: string): string {
     const workspaceRoot = raw.trim();
     if (!workspaceRoot.startsWith('/')) {
@@ -671,6 +639,7 @@ export class HostedSessionManager {
   async dispose(): Promise<void> {
     if (this.disposed) return;
     this.disposed = true;
+    this.spine.stop();
     for (const unsubscribe of this.busUnsubscribers.splice(0)) {
       try {
         unsubscribe();

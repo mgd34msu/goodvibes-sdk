@@ -371,3 +371,72 @@ test('sessions in one workspace share a floor; a second workspace gets its own',
   expect(disposals).toHaveLength(2);
   await manager.dispose();
 });
+
+test('a steer queued on the spine reaches the hosted loop, and the participant stays fresh', async () => {
+  // The broker routes a steer to a live SURFACE participant when it has one and
+  // spawns a background agent when it does not, so both halves matter: the
+  // engine has to collect what was queued for it AND keep its heartbeat fresh,
+  // or a hosted session quietly stops receiving its own steers.
+  const registrations: { sessionId: string; lastSeenAt: number }[] = [];
+  const queued = new Map<string, { id: string; body: string }[]>();
+  const delivered: string[] = [];
+  const consumed: string[] = [];
+
+  const spine = {
+    register: async (input: { sessionId: string; participant: { lastSeenAt: number } }) => {
+      registrations.push({ sessionId: input.sessionId, lastSeenAt: input.participant.lastSeenAt });
+      return {};
+    },
+    closeSession: async () => ({}),
+    getInputsSince: (sessionId: string) => queued.get(sessionId) ?? [],
+    markInputDelivered: async (sessionId: string, inputId: string, options?: { consumed?: boolean }) => {
+      (options?.consumed === true ? consumed : delivered).push(`${sessionId}:${inputId}`);
+      if (options?.consumed === true) queued.set(sessionId, (queued.get(sessionId) ?? []).filter((i) => i.id !== inputId));
+      return {};
+    },
+  };
+
+  const runtimeBus = new RuntimeEventBus();
+  const configManager = new ConfigManager({
+    surfaceRoot: 'goodvibes', configDir: join(root, 'cfg'), workingDir: root, homeDir: root,
+  });
+  const submitted: string[] = [];
+  const manager = new HostedSessionManager({
+    floorFactory: ({ workspaceRoot }): HostedWorkspaceFloor => {
+      const services = createClientRuntimeServices({
+        configManager, runtimeBus, runtimeStore: createRuntimeStore(), surfaceRoot: 'goodvibes',
+        workingDir: workspaceRoot, homeDirectory: root, requestApproval: declineEverything, modelDiscovery: 'skip',
+      });
+      disposals.push(() => services.dispose());
+      return { services, dispose: (): void => services.dispose() };
+    },
+    store: new HostedSessionStore(stateDir, { maxSessions: 20, maxMessagesPerSession: 100, terminatedRetentionMs: 60_000 }),
+    settings: { detachPolicy: () => 'survive', maxSessions: () => 8 },
+    runtimeBus,
+    systemPrompt: () => 'hosted',
+    liveTurns,
+    spine,
+    isWorkspaceUsable: () => true,
+    intakeIntervalMs: 10,
+  });
+  await manager.init();
+  const created = await manager.create({ workspaceRoot: workspace, clientId: 'a' });
+
+  // Replace the loop's submit with a recorder: this test is about the intake
+  // path reaching it, not about what a provider would answer.
+  const runtime = manager as unknown as { sessions: Map<string, { runtime: { submit: (text: string) => Promise<void> } | null }> };
+  const live = runtime.sessions.get(created.id)!;
+  live.runtime!.submit = async (text: string): Promise<void> => { submitted.push(text); };
+
+  queued.set(created.id, [{ id: 'input-1', body: 'steer this hosted session' }]);
+  for (let attempt = 0; attempt < 50 && submitted.length === 0; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+
+  expect(submitted).toEqual(['steer this hosted session']);
+  expect(delivered).toContain(`${created.id}:input-1`);
+  expect(consumed).toContain(`${created.id}:input-1`);
+  // Registered at create, and re-registered on every tick since.
+  expect(registrations.filter((entry) => entry.sessionId === created.id).length).toBeGreaterThan(1);
+  await manager.dispose();
+});
