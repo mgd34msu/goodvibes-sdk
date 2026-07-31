@@ -28,6 +28,12 @@ import type { DaemonSystemRouteContext, WatcherRecord } from './system-route-typ
  * never a fabricated default.
  */
 export interface DaemonStatusProviders {
+  /**
+   * The running artifact's own release version, when this host ships one. The
+   * platform build is reported separately and is never a stand-in for it —
+   * see ControlRouteContext.buildVersion in daemon-sdk/src/control-routes.ts.
+   */
+  readonly buildVersion?: (() => string | null) | undefined;
   /** Undelivered daemon receipts (update, crash-restart, migration notices). */
   readonly collectReceipts?: (() => readonly { id: string; text: string; at: number }[]) | undefined;
   /**

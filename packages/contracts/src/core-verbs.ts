@@ -453,6 +453,16 @@ export const SCOPED_EXEMPT_VERB_CATEGORIES: Readonly<Record<string, ScopedVerbEx
     // create/delete shape of an id-bearing resource, and giving them those
     // words would promise a registration record that a caller could then fetch.
   },
+  'self-update-probe': {
+    namespaces: ['update'],
+    verbs: ['check'],
+    // `update.check` runs one self-update check now instead of waiting for the
+    // next interval. It is not `get` or `status` — those read what is already
+    // known, and this reaches the network and can change what is known. It is
+    // not `run` either: running the update is a separate thing that still waits
+    // for a moment when no work is in flight, and naming this `run` would
+    // promise an install this call deliberately does not perform.
+  },
   'memory-record-append': {
     namespaces: ['memory.records'],
     verbs: ['add'],

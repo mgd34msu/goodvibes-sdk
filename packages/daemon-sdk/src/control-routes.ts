@@ -35,7 +35,24 @@ interface ControlPlaneGatewayLike {
 
 interface ControlRouteContext {
   readonly authToken: string | null;
+  /**
+   * The PLATFORM build this daemon is composed from — the SDK's own version.
+   *
+   * It is not the version of the product a person installed, and it used to be
+   * the only thing /status reported. A daemon shipped from its own repository
+   * on its own release line answered every version read with the SDK version
+   * it happened to be built against, so an updater comparing release tags and a
+   * client checking whether the daemon was new enough were both reading a
+   * number about a different artifact. See {@link buildVersion}.
+   */
   readonly version: string;
+  /**
+   * The RUNNING ARTIFACT's own release version, when the host stated one
+   * (`updateArtifact.version` — the same value the auto-update loop compares
+   * against release tags). Absent on an embedded daemon that ships no artifact
+   * of its own, where the platform build is the only version there is.
+   */
+  readonly buildVersion?: (() => string | null) | undefined;
   readonly sessionCookieName: string;
   readonly controlPlaneGateway: ControlPlaneGatewayLike;
   readonly extractAuthToken: (req: Request) => string;
@@ -160,9 +177,18 @@ export function createDaemonControlRouteHandlers(
       const floorHeader = context.clientCompatibilityFloor && context.clientCompatibilityFloorHeader
         ? { [context.clientCompatibilityFloorHeader]: context.clientCompatibilityFloor }
         : undefined;
+      // Two versions, both named. `version` keeps the meaning every existing
+      // reader already assumes it has — which build of this product is running
+      // — and that is the artifact's own version whenever the host stated one.
+      // `platformVersion` is the SDK composition underneath it, which nothing
+      // could previously ask for separately because it was occupying the only
+      // field there was.
+      const buildVersion = context.buildVersion?.() ?? null;
       return Response.json({
         status: 'running',
-        version: context.version,
+        version: buildVersion ?? context.version,
+        buildVersion: buildVersion ?? context.version,
+        platformVersion: context.version,
         ...(consumeReceipts && context.collectReceipts ? { receipts: context.collectReceipts() } : {}),
         ...(context.collectClusterStatus ? { cluster: context.collectClusterStatus() } : {}),
       }, floorHeader ? { headers: floorHeader } : undefined);
