@@ -32,7 +32,7 @@ import { trackDisposables } from './_helpers/disposables.ts';
 const disposables = trackDisposables();
 
 const ALL_KINDS: readonly SharedSessionKind[] = [
-  'tui', 'agent', 'webui', 'companion-task', 'companion-chat', 'automation', 'acp',
+  'tui', 'agent', 'webui', 'companion-task', 'companion-chat', 'automation', 'acp', 'hosted',
 ];
 
 function makeRouteBindings(): RouteBindingManager {

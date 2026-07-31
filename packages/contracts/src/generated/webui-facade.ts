@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.21.0
- * Methods: 494 total, 431 REST-routed, 63 ws-only invoke.
+ * Methods: 499 total, 431 REST-routed, 68 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -1828,6 +1828,11 @@ export const WEBUI_WS_INVOKE_METHOD_IDS: readonly string[] = [
   "rewind.conversation.requests.take",
   "rewind.plan",
   "sessions.changes.get",
+  "sessions.hosted.attach",
+  "sessions.hosted.create",
+  "sessions.hosted.detach",
+  "sessions.hosted.kill",
+  "sessions.hosted.list",
   "sessions.search",
   "worktrees.discard",
   "worktrees.setup.run"
@@ -2267,6 +2272,11 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "sessions.detach": "rest",
   "sessions.followUp": "rest",
   "sessions.get": "rest",
+  "sessions.hosted.attach": "ws-invoke",
+  "sessions.hosted.create": "ws-invoke",
+  "sessions.hosted.detach": "ws-invoke",
+  "sessions.hosted.kill": "ws-invoke",
+  "sessions.hosted.list": "ws-invoke",
   "sessions.inputs.cancel": "rest",
   "sessions.inputs.deliver": "rest",
   "sessions.inputs.list": "rest",
@@ -19721,6 +19731,162 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "userId": "sample",
           "displayName": "sample",
           "metadata": {}
+        }
+      ]
+    }
+  },
+  "sessions.hosted.attach": {
+    "input": {
+      "sessionId": "sample",
+      "clientId": "sample"
+    },
+    "output": {
+      "session": {
+        "id": "sample",
+        "workspaceRoot": "sample",
+        "title": "sample",
+        "status": "idle",
+        "detachPolicy": "kill",
+        "effectiveDetachPolicy": "kill",
+        "attachedClients": [
+          "sample"
+        ],
+        "providerId": "sample",
+        "modelId": "sample",
+        "createdAt": 0,
+        "updatedAt": 0,
+        "turnCount": 0,
+        "messageCount": 0,
+        "lastTurnAt": 0,
+        "terminatedAt": 0,
+        "terminatedReason": "sample",
+        "restoredFromDisk": false
+      },
+      "history": [
+        {
+          "role": "user",
+          "content": "sample",
+          "at": 0
+        }
+      ]
+    }
+  },
+  "sessions.hosted.create": {
+    "input": {
+      "workspaceRoot": "sample",
+      "title": "sample",
+      "modelId": "sample",
+      "initialPrompt": "sample",
+      "detachPolicy": "kill",
+      "clientId": "sample"
+    },
+    "output": {
+      "session": {
+        "id": "sample",
+        "workspaceRoot": "sample",
+        "title": "sample",
+        "status": "idle",
+        "detachPolicy": "kill",
+        "effectiveDetachPolicy": "kill",
+        "attachedClients": [
+          "sample"
+        ],
+        "providerId": "sample",
+        "modelId": "sample",
+        "createdAt": 0,
+        "updatedAt": 0,
+        "turnCount": 0,
+        "messageCount": 0,
+        "lastTurnAt": 0,
+        "terminatedAt": 0,
+        "terminatedReason": "sample",
+        "restoredFromDisk": false
+      }
+    }
+  },
+  "sessions.hosted.detach": {
+    "input": {
+      "sessionId": "sample",
+      "clientId": "sample"
+    },
+    "output": {
+      "session": {
+        "id": "sample",
+        "workspaceRoot": "sample",
+        "title": "sample",
+        "status": "idle",
+        "detachPolicy": "kill",
+        "effectiveDetachPolicy": "kill",
+        "attachedClients": [
+          "sample"
+        ],
+        "providerId": "sample",
+        "modelId": "sample",
+        "createdAt": 0,
+        "updatedAt": 0,
+        "turnCount": 0,
+        "messageCount": 0,
+        "lastTurnAt": 0,
+        "terminatedAt": 0,
+        "terminatedReason": "sample",
+        "restoredFromDisk": false
+      }
+    }
+  },
+  "sessions.hosted.kill": {
+    "input": {
+      "sessionId": "sample"
+    },
+    "output": {
+      "session": {
+        "id": "sample",
+        "workspaceRoot": "sample",
+        "title": "sample",
+        "status": "idle",
+        "detachPolicy": "kill",
+        "effectiveDetachPolicy": "kill",
+        "attachedClients": [
+          "sample"
+        ],
+        "providerId": "sample",
+        "modelId": "sample",
+        "createdAt": 0,
+        "updatedAt": 0,
+        "turnCount": 0,
+        "messageCount": 0,
+        "lastTurnAt": 0,
+        "terminatedAt": 0,
+        "terminatedReason": "sample",
+        "restoredFromDisk": false
+      }
+    }
+  },
+  "sessions.hosted.list": {
+    "input": {
+      "includeTerminated": false
+    },
+    "output": {
+      "sessions": [
+        {
+          "id": "sample",
+          "workspaceRoot": "sample",
+          "title": "sample",
+          "status": "idle",
+          "detachPolicy": "kill",
+          "effectiveDetachPolicy": "kill",
+          "attachedClients": [
+            "sample"
+          ],
+          "providerId": "sample",
+          "modelId": "sample",
+          "createdAt": 0,
+          "updatedAt": 0,
+          "turnCount": 0,
+          "messageCount": 0,
+          "lastTurnAt": 0,
+          "terminatedAt": 0,
+          "terminatedReason": "sample",
+          "restoredFromDisk": false
         }
       ]
     }

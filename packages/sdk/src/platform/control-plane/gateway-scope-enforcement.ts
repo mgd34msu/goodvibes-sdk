@@ -22,6 +22,7 @@ import type { RuntimeEventDomain } from '../runtime/events/index.js';
  */
 export const CHANNEL_REQUIRED_SCOPE: Readonly<Record<string, string>> = {
   'session-update': 'read:sessions',
+  'hosted-session-update': 'read:sessions',
 };
 
 /** The subset of a live client this decision needs. */
@@ -75,6 +76,10 @@ export const EVENT_DOMAIN: Readonly<Record<string, RuntimeEventDomain>> = {
   // tag is the same defense-in-depth as `session-detached` if it is ever promoted
   // to a top-level broadcast.
   'session-deleted': 'session',
+  // The hosted-session engine's lifecycle channel: which sessions the daemon
+  // hosts and what happened to them. Turn content is NOT here — it rides the
+  // `turn`/`tools` runtime domains (see method-catalog-hosted-sessions.ts).
+  'hosted-session-update': 'session',
 };
 
 /**

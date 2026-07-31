@@ -65,6 +65,8 @@ export class ProviderRegistry {
   private currentModelRegistryKey: string;
   private readonly configuredModel: ConfiguredModelFollower; // live `provider.model` view, re-read at use time
   private discoveredProviderNames: Set<string> = new Set();
+  /** The servers the last registerDiscoveredProviders call was given, verbatim. */
+  private discoveredServers: readonly DiscoveredServer[] = [];
   private runtimeProviderNames: Set<string> = new Set();
   private customModels: ModelDefinition[] = [];
   private runtimeModels: ModelDefinition[] = [];
@@ -263,6 +265,20 @@ export class ProviderRegistry {
     };
   }
 
+  /**
+   * The locally discovered servers this registry currently holds.
+   *
+   * Exposed because a process may build a SECOND registry that has to see the
+   * same local models — the daemon composes one per hosted-session workspace,
+   * and without this the machine's own Ollama or LM Studio would be routable
+   * for the daemon's agents and invisible to a hosted session on the same box.
+   * Returns what was registered, so a caller re-registers the same servers
+   * rather than reconstructing them from provider objects.
+   */
+  listDiscoveredServers(): readonly DiscoveredServer[] {
+    return this.discoveredServers;
+  }
+
   listProviders(): readonly LLMProvider[] {
     return [...this.providers.values()].sort((a, b) => a.name.localeCompare(b.name));
   }
@@ -273,6 +289,7 @@ export class ProviderRegistry {
    * Does not overwrite built-in or custom-loaded providers/models.
    */
   registerDiscoveredProviders(servers: DiscoveredServer[]): void {
+    this.discoveredServers = [...servers];
     // Unregister previously discovered providers
     for (const name of this.discoveredProviderNames) {
       this.providers.delete(name);

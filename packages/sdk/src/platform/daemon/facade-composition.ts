@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import { AgentManager } from '../tools/agent/index.js';
 import { resolveHostBinding } from './host-resolver.js';
+import { composeHostedSessionsForFacade } from './hosted-sessions-composition.js';
 import { WorkProposalStore } from '../agents/work-proposal-store.js';
 import { readConversationGateConfig, type ConversationGateConfigReader } from '../agents/conversation-gate.js';
 import { continuationChainOptions, decideContinuationEscalation } from '../agents/conversation-continuation.js';
@@ -381,6 +382,9 @@ export function resolveDaemonFacadeRuntime(config: DaemonConfig): ResolvedDaemon
     controlPlaneGateway.publishEvent(event, payload);
   });
 
+  // Hosted sessions: composed here because the engine publishes its lifecycle channel through the gateway built here.
+  const hostedSessions = composeHostedSessionsForFacade(config.hostedSessions, runtimeServices, resolvedConfigManager, runtimeBus, controlPlaneGateway);
+
   // Host and port precedence: constructor-injected config.host/config.port win,
   // then fall back to the hostMode-aware binding resolution from configManager.
   // Directly-passed overrides are critical for tests (which bind random high
@@ -440,6 +444,7 @@ export function resolveDaemonFacadeRuntime(config: DaemonConfig): ResolvedDaemon
     serveFactory: config.serveFactory ?? Bun.serve,
     githubWebhookSecret: config.githubWebhookSecret ?? process.env.GITHUB_WEBHOOK_SECRET ?? null,
     companionChatManager,
+    hostedSessions,
   };
 }
 

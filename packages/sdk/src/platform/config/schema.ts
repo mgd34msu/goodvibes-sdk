@@ -32,6 +32,7 @@ import './schema-domain-conversation-gate.js';
 import './schema-domain-device.js';
 import './schema-domain-features.js';
 import './schema-domain-fleet.js';
+import './schema-domain-hosted-sessions.js';
 import './schema-domain-learning.js';
 import './schema-domain-memory.js';
 import './schema-domain-owner-profile.js';
@@ -44,6 +45,7 @@ import './schema-domain-voice-local.js';
 import { coreConfigDefaults, coreHeadConfigSettings, coreTailConfigSettings } from './schema-domain-core.js';
 import { runtimeConfigDefaults, runtimePrimaryConfigSettings, runtimeSecondaryConfigSettings } from './schema-domain-runtime.js';
 import { conversationGateConfigDefaults, conversationGateConfigSettings } from './schema-domain-conversation-gate.js';
+import { hostedSessionsConfigDefaults, hostedSessionsConfigSettings } from './schema-domain-hosted-sessions.js';
 import { atRestConfigDefaults, atRestConfigSettings } from './schema-domain-at-rest.js';
 import { learningConfigDefaults, learningConfigSettings } from './schema-domain-learning.js';
 import { powerConfigDefaults, powerConfigSettings } from './schema-domain-power.js';
@@ -94,6 +96,7 @@ export const DEFAULT_CONFIG = {
   relay: runtimeConfigDefaults.relay,
   runtime: runtimeConfigDefaults.runtime,
   conversationGate: conversationGateConfigDefaults.conversationGate,
+  hostedSessions: hostedSessionsConfigDefaults.hostedSessions,
   telemetry: runtimeConfigDefaults.telemetry,
   atRest: atRestConfigDefaults.atRest,
   worktree: runtimeConfigDefaults.worktree,
@@ -129,6 +132,7 @@ export const CONFIG_SCHEMA: ConfigSetting[] = [
   ...coreHeadConfigSettings,
   ...runtimePrimaryConfigSettings,
   ...conversationGateConfigSettings,
+  ...hostedSessionsConfigSettings,
   ...atRestConfigSettings,
   ...paymentsConfigSettings,
   ...daemonLocationConfigSettings,

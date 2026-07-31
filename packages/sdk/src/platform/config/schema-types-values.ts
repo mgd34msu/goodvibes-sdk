@@ -166,6 +166,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'controlPlane.host' ? string :
   K extends 'controlPlane.port' ? number :
   K extends 'controlPlane.publicBaseUrl' ? string : K extends 'conversationGate.mode' ? 'propose' | 'confirm-all' | 'off' : K extends 'conversationGate.proposalTtlMs' ? number : K extends 'conversationGate.maxPendingProposals' ? number :
+  K extends 'hostedSessions.detachPolicy' ? 'kill' | 'survive' : K extends 'hostedSessions.maxSessions' ? number : K extends 'hostedSessions.maxMessagesPerSession' ? number : K extends 'hostedSessions.terminatedRetentionMs' ? number :
   K extends 'controlPlane.streamMode' ? 'sse' | 'websocket' | 'both' :
   K extends 'controlPlane.allowRemote' ? boolean :
   K extends 'controlPlane.trustProxy' ? boolean :

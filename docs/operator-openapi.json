@@ -3,7 +3,7 @@
   "info": {
     "title": "GoodVibes Operator API",
     "version": "1.21.0",
-    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 494 cataloged methods: 431 with dedicated REST bindings, 63 reachable only through the generic invoke endpoint. 0 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
+    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 499 cataloged methods: 431 with dedicated REST bindings, 68 reachable only through the generic invoke endpoint. 0 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
   },
   "servers": [
     {
@@ -90655,7 +90655,8 @@
                       "companion-task",
                       "companion-chat",
                       "automation",
-                      "acp"
+                      "acp",
+                      "hosted"
                     ]
                   },
                   "project": {
@@ -100746,6 +100747,11 @@
           "rewind.conversation.requests.take",
           "rewind.plan",
           "sessions.changes.get",
+          "sessions.hosted.attach",
+          "sessions.hosted.create",
+          "sessions.hosted.detach",
+          "sessions.hosted.kill",
+          "sessions.hosted.list",
           "sessions.search",
           "tailscale.get",
           "tailscale.serve.run",
@@ -104834,6 +104840,51 @@
       "category": "sessions",
       "access": "authenticated",
       "rest": "GET /api/sessions/{sessionId}",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "sessions.hosted.attach",
+      "category": "sessions",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "sessions.hosted.create",
+      "category": "sessions",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "sessions.hosted.detach",
+      "category": "sessions",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "sessions.hosted.kill",
+      "category": "sessions",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "sessions.hosted.list",
+      "category": "sessions",
+      "access": "authenticated",
+      "rest": null,
       "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"

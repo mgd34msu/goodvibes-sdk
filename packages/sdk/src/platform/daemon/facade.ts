@@ -37,6 +37,8 @@ import type { DaemonSurfaceActionHelper } from './surface-actions.js';
 import type { DaemonTransportEventsHelper } from './transport-events.js';
 import type { DaemonHttpRouter } from './http/router.js';
 import type { CompanionChatManager } from '../companion/companion-chat-manager.js';
+import type { HostedSessionManager } from '../hosted-sessions/index.js';
+import { reportHostedSessionRestore } from './hosted-sessions-composition.js';
 import { isSurfaceDeliveryEnabled } from './surface-policy.js';
 import { AgentTaskAdapter } from '../runtime/tasks/adapters/agent-adapter.js';
 import {
@@ -140,6 +142,7 @@ export class DaemonServer {
   /** Lifecycle sidecar: clean-shutdown marker, receipts, hourly auto-update. */
   private lifecycle: DaemonLifecycleRuntime | null = null;
   private readonly companionChatManager: CompanionChatManager;
+  private readonly hostedSessions: HostedSessionManager | null;
   private relayReachability: RelayReachability | null = null;
   private agentTaskAdapter: import('../runtime/tasks/adapters/agent-adapter.js').AgentTaskAdapter | null = null;
   private agentTaskAdapterUnsub: (() => void) | null = null;
@@ -193,6 +196,7 @@ export class DaemonServer {
     this.serveFactory = resolved.serveFactory;
     this.githubWebhookSecret = resolved.githubWebhookSecret;
     this.companionChatManager = resolved.companionChatManager;
+    this.hostedSessions = resolved.hostedSessions;
 
     const collaborators = createDaemonFacadeCollaborators({
       runtime: resolved,
@@ -453,6 +457,8 @@ export class DaemonServer {
       await this.clusterCoordinator.start();
       this.channelHealth.start(); // after the coordinator, so the first sweep sees the ingress this node actually won rather than calling every surface dead mid-election
       await this.companionChatManager.init();
+      // Restore what survived; the report states what could not come back.
+      if (this.hostedSessions) reportHostedSessionRestore(await this.hostedSessions.init());
       // Init the canonical memory store so the daemon is a live single-writer memory service on accept (memory.records.add would else throw "not initialized" on a cold store).
       await this.runtimeServices.memoryStore.init();
       if (this.replyPoller === null) {
@@ -570,6 +576,8 @@ export class DaemonServer {
     this.relayReachability = null;
     this.httpRouter.dispose();
     this.companionChatManager.dispose();
+    // Kill-policy sessions end here; survive-policy ones are parked with their transcript.
+    if (this.hostedSessions) await this.hostedSessions.dispose();
 
     // Stop services with async teardown in reverse start order (sessionBroker,
     // approvalBroker, channelPolicy, distributedRuntime end when the socket closes).

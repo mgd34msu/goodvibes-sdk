@@ -64,7 +64,11 @@ export type SharedSessionKind =
   | 'automation'
   // A hosted third-party coding agent (Claude Code / Codex CLI / opencode)
   // running as a daemon session over the Agent Client Protocol.
-  | 'acp';
+  | 'acp'
+  // A first-party conversation loop composed INSIDE the daemon
+  // (platform/hosted-sessions): the same orchestrator a terminal runs, hosted
+  // here so the conversation does not depend on a client staying open.
+  | 'hosted';
 
 /**
  * Why a session was closed. Drives the honest reopen-on-heartbeat rule:
