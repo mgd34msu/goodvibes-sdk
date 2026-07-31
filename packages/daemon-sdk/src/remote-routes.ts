@@ -9,14 +9,23 @@ import {
   type JsonRecord,
 } from './route-helpers.js';
 
-type RemotePeerAuth = unknown;
+/**
+ * The auth object the remote route handlers carry through untouched.
+ *
+ * Exported because a host composing these handlers has to name the type in its
+ * own signatures, and a declaration it cannot import is a declaration it copies:
+ * the daemon product mirrored this alias and the 17-method service interface
+ * below by hand, verbatim, purely because neither carried the keyword.
+ */
+export type RemotePeerAuth = unknown;
 const MAX_REMOTE_RESULT_BYTES = 1_000_000;
 const MAX_REMOTE_PAYLOAD_BYTES = 1_000_000;
 const MAX_REMOTE_CAPABILITIES = 128;
 const MAX_REMOTE_COMMANDS = 128;
 const MAX_REMOTE_SCOPES = 128;
 
-interface DistributedRuntimeRouteService {
+/** The service surface the remote management routes call into. See {@link RemotePeerAuth}. */
+export interface DistributedRuntimeRouteService {
   listPairRequests(): unknown;
   approvePairRequest(requestId: string, input: Record<string, unknown>): Promise<unknown | null>;
   rejectPairRequest(requestId: string, input: Record<string, unknown>): Promise<unknown | null>;

@@ -130,6 +130,13 @@ import type { SessionSpineClient } from './session-spine/index.js';
 import { MemorySpineClient, type MemoryAccess, type MemoryTransport } from './memory-spine/index.js';
 
 export type { ApprovalRaiser, UserPermissionRuleAccess } from './permissions/permission-composition.js';
+// The manager itself, beside the two types this module already published. Every
+// composition that brokers its asks — this one, the SDK's daemon-grade graph,
+// and the daemon product's — needs the same mapping from a background-agent
+// attribution to the raise's routeId/metadata, and a composition that cannot
+// import it writes that mapping out again.
+export { createBrokeredPermissionManager } from './permissions/permission-composition.js';
+export type { BrokeredPermissionManagerOptions } from './permissions/permission-composition.js';
 
 /**
  * The inbound-dispatch seam: how a surface binds its loop to work that arrives
