@@ -422,6 +422,10 @@
     "gzip_bytes": 5852,
     "rationale": "the client composition shape (createClientRuntimeServices and its graph) published on its own import path; measured 4876 B gzip; headroom max(ceil(4876*1.2)=5852, 4876+50=4926) \u2192 5852 (1.2x dominates)"
   },
+  "./platform/runtime/client": {
+    "gzip_bytes": 1238,
+    "rationale": "the client seam modules (approval raiser, daemon config/credentials clients, wire session dispatch, conversation rewind host, devices client + phone tool, tasks union, fleet merge policy, spine adoption, daemon autostart) published on their own import path; measured 1031 B gzip; headroom max(ceil(1031*1.2)=1238, 1031+50=1081) -> 1238 (1.2x dominates)"
+  },
   "./platform/runtime": {
     "gzip_bytes": 192,
     "rationale": "platform runtime re-export entry; measured 142 B gzip @ commit 4e5a5e2; headroom max(ceil(142*1.2)=171, 142+50=192) \u2192 192 (+50 B floor dominates by 21 B)"
