@@ -101,6 +101,15 @@ export interface DaemonConfig {
    * for an embedder that composes no group runtime.
    */
   clusterGroupVerbs?: import('./http/cluster-group-routes.js').ClusterGroupVerbs | undefined;
+  /**
+   * Turn on daemon-hosted sessions (`sessions.hosted.*`).
+   *
+   * Absent means this daemon hosts no conversation loops and the verbs refuse
+   * honestly — which is the right answer for an embedder that has not stated
+   * how a workspace floor is built, because that statement is where its trust
+   * posture lives. See daemon/hosted-sessions-composition.ts.
+   */
+  hostedSessions?: import('./hosted-sessions-composition.js').DaemonHostedSessionsOptions | undefined;
 }
 
 export interface DaemonDangerConfig {

@@ -12,6 +12,14 @@ export { reportFatalBootFailure, writeExitingStdoutLine, writeFatalLine } from '
 export { createHostRequestFailureResponse, createSafeHostServeFactory } from './safe-serve.js';
 export type { DaemonUpdateArtifact } from './facade-lifecycle.js';
 export { HttpListener } from './http-listener.js';
+// Hosted sessions: the composition a product wires, and the option shape it
+// states its trust posture through. The engine itself is
+// `@pellux/goodvibes-sdk/platform/hosted-sessions`.
+export { composeHostedSessions } from './hosted-sessions-composition.js';
+export type {
+  DaemonHostedSessionsOptions,
+  HostedSessionCompositionInput,
+} from './hosted-sessions-composition.js';
 export { PlatformServiceManager } from './service-manager.js';
 // ManagedServiceActionResult joins ManagedServiceStatus: it is the return type
 // of the injectable `actionRunner`, so a host supplying one has to name it. The
