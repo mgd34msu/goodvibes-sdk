@@ -194,14 +194,14 @@ export interface PaymentFillCardResult {
 
 function readString(value: unknown, field: string): string {
   if (typeof value !== 'string' || value.trim().length === 0) {
-    throw new GatewayVerbError(`${field} is required.`, 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError(`${field} is required.`, 'INVALID_ARGUMENT', 400, field);
   }
   return value.trim();
 }
 
 function readInteger(value: unknown, field: string): number {
   if (typeof value !== 'number' || !Number.isInteger(value)) {
-    throw new GatewayVerbError(`${field} must be a whole number.`, 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError(`${field} must be a whole number.`, 'INVALID_ARGUMENT', 400, field);
   }
   return value;
 }
@@ -319,18 +319,18 @@ function sanitizeFillResult(result: PaymentFillCardResult): PaymentFillCardResul
 
 function readStringArray(value: unknown, field: string): readonly string[] {
   if (value === undefined) return [];
-  if (!Array.isArray(value)) throw new GatewayVerbError(`${field} must be an array of strings.`, 'INVALID_ARGUMENT', 400);
+  if (!Array.isArray(value)) throw new GatewayVerbError(`${field} must be an array of strings.`, 'INVALID_ARGUMENT', 400, field);
   return value.map((entry, index) => readString(entry, `${field}[${String(index)}]`));
 }
 
 function readObjectArray(value: unknown, field: string, required: boolean): readonly Record<string, unknown>[] {
   if (value === undefined && !required) return [];
   if (!Array.isArray(value) || (required && value.length === 0)) {
-    throw new GatewayVerbError(`${field} is required and must be a non-empty array.`, 'INVALID_ARGUMENT', 400);
+    throw new GatewayVerbError(`${field} is required and must be a non-empty array.`, 'INVALID_ARGUMENT', 400, field);
   }
   return value.map((entry, index) => {
     if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
-      throw new GatewayVerbError(`${field}[${String(index)}] must be an object.`, 'INVALID_ARGUMENT', 400);
+      throw new GatewayVerbError(`${field}[${String(index)}] must be an object.`, 'INVALID_ARGUMENT', 400, `${field}[${String(index)}]`);
     }
     return entry as Record<string, unknown>;
   });
@@ -437,11 +437,12 @@ export function createPaymentsCheckoutFillCardHandler(service: PaymentsGatewaySe
         'targets is required: name each card field you found and the ref to type it into.',
         'INVALID_ARGUMENT',
         400,
+        'targets',
       );
     }
     const targets = rawTargets.map((entry, index) => {
       if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
-        throw new GatewayVerbError(`targets[${String(index)}] must be an object.`, 'INVALID_ARGUMENT', 400);
+        throw new GatewayVerbError(`targets[${String(index)}] must be an object.`, 'INVALID_ARGUMENT', 400, `targets[${String(index)}]`);
       }
       const record = entry as Record<string, unknown>;
       return {

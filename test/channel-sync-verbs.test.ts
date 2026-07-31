@@ -66,7 +66,7 @@ describe('the routing table', () => {
     expect(listed.total).toBe(1);
     expect(listed.routes[0]?.profileId).toBe('p2');
     // The created stamp survives the replacement; only updatedAt moves.
-    expect(second.createdAt).toBe(listed.routes[0]?.createdAt);
+    expect(second.createdAt).toBe(listed.routes[0]!.createdAt);
   });
 
   test('a surface-wide rule and a channel-scoped one are different rows', async () => {

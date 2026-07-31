@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.21.0
- * Methods: 502 total, 434 REST-routed, 68 ws-only invoke.
+ * Methods: 506 total, 434 REST-routed, 72 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -1793,6 +1793,10 @@ export const WEBUI_WS_INVOKE_METHOD_IDS: readonly string[] = [
   "checkpoints.revertHunkPreview",
   "credentials.delete",
   "credentials.set",
+  "relay.pairing.mint",
+  "relay.reachability.get",
+  "update.check",
+  "update.status",
   "cost.attribution.get",
   "email.expectation.cancel",
   "email.expectation.list",
@@ -2008,6 +2012,10 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "control.snapshot": "rest",
   "control.status": "rest",
   "control.web": "rest",
+  "relay.pairing.mint": "ws-invoke",
+  "relay.reachability.get": "ws-invoke",
+  "update.check": "ws-invoke",
+  "update.status": "ws-invoke",
   "cost.attribution.get": "ws-invoke",
   "deliveries.get": "rest",
   "deliveries.list": "rest",
@@ -7989,6 +7997,8 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
     "output": {
       "status": "sample",
       "version": "sample",
+      "buildVersion": "sample",
+      "platformVersion": "sample",
       "receipts": [
         {
           "id": "sample",
@@ -8002,6 +8012,56 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
     "input": {},
     "output": {
       "html": "sample"
+    }
+  },
+  "relay.pairing.mint": {
+    "input": {},
+    "output": {
+      "pairing": {
+        "protocol": 0,
+        "relayUrl": "sample",
+        "rid": "sample",
+        "daemonPublicKey": "sample",
+        "label": "sample"
+      },
+      "status": "disabled"
+    }
+  },
+  "relay.reachability.get": {
+    "input": {},
+    "output": {
+      "status": "disabled",
+      "configured": false
+    }
+  },
+  "update.check": {
+    "input": {},
+    "output": {
+      "armed": false,
+      "offReason": "sample",
+      "currentVersion": "sample",
+      "releasesUrl": "sample",
+      "checkIntervalMs": 0,
+      "firstCheckDelayMs": 0,
+      "failedCheckCount": 0,
+      "lastCheckFailure": "sample",
+      "pendingVersion": "sample",
+      "rejectedVersion": "sample"
+    }
+  },
+  "update.status": {
+    "input": {},
+    "output": {
+      "armed": false,
+      "offReason": "sample",
+      "currentVersion": "sample",
+      "releasesUrl": "sample",
+      "checkIntervalMs": 0,
+      "firstCheckDelayMs": 0,
+      "failedCheckCount": 0,
+      "lastCheckFailure": "sample",
+      "pendingVersion": "sample",
+      "rejectedVersion": "sample"
     }
   },
   "cost.attribution.get": {

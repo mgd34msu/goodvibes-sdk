@@ -219,6 +219,34 @@ describe('API precedence + auth hold with serving ON', () => {
     expect(typeof body.version).toBe('string');
   });
 
+  test('the floor header rides /status on the plain path too, not only with serving on', async () => {
+    // The forward floor is only load-bearing if the router actually WRITES it:
+    // clients read it on the /status probe they already make, and a constant
+    // threaded into a context with no emitter is an inert gate. Pinned on both
+    // daemons — bundle serving on and off — because bundle serving is what was
+    // shadowing this route in the first place.
+    const withServing = await fetch(`${servingOn.url}/status`, { headers: auth() });
+    const withoutServing = await fetch(`${servingOff.url}/status`, { headers: auth() });
+    expect(withServing.headers.get('x-goodvibes-client-floor')).toBeTruthy();
+    expect(withoutServing.headers.get('x-goodvibes-client-floor')).toBeTruthy();
+    // The same value on both: the floor is a property of the build, not of
+    // whichever optional capability happens to be switched on.
+    expect(withServing.headers.get('x-goodvibes-client-floor'))
+      .toBe(withoutServing.headers.get('x-goodvibes-client-floor'));
+    await withServing.body?.cancel();
+    await withoutServing.body?.cancel();
+  });
+
+  test('the floor header survives the CORS decoration wrapper', async () => {
+    // applyCorsHeaders rebuilds the Response, so a header set upstream can be
+    // dropped by a copy that forgets it. This is the cross-origin read the web
+    // surface actually makes.
+    const res = await fetch(`${servingOn.url}/status`, { headers: auth({ origin: ALLOWED_ORIGIN }) });
+    expect(res.headers.get('x-goodvibes-client-floor')).toBeTruthy();
+    expect(res.headers.get('access-control-allow-origin')).toBe(ALLOWED_ORIGIN);
+    await res.body?.cancel();
+  });
+
   test('GET /status without a token is the daemon\'s own refusal, not a 200 HTML shell', async () => {
     const res = await fetch(`${servingOn.url}/status`);
     expect(res.status).not.toBe(200);

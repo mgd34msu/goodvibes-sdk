@@ -3,7 +3,7 @@
   "info": {
     "title": "GoodVibes Operator API",
     "version": "1.21.0",
-    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 502 cataloged methods: 434 with dedicated REST bindings, 68 reachable only through the generic invoke endpoint. 0 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
+    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 506 cataloged methods: 434 with dedicated REST bindings, 72 reachable only through the generic invoke endpoint. 0 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
   },
   "servers": [
     {
@@ -32261,7 +32261,7 @@
       "get": {
         "operationId": "control.status",
         "summary": "Daemon Status",
-        "description": "Return daemon status and version. Pass receipts=consume to also receive undelivered daemon receipts (update/crash/migration notices) and mark them delivered — exactly once across all consuming readers. Without the flag no receipts are returned or consumed, so identity probes and keepalives never eat them.",
+        "description": "Return daemon status and version. THREE version fields, because there are two versions and they are not the same number: `buildVersion` is the running artifact's own release version — what a person installed, and what the auto-update loop compares against release tags — and `platformVersion` is the SDK build it is composed from. `version` carries the build version and exists because every client already reads it; on an embedded daemon that ships no artifact of its own, all three are the platform build. Pass receipts=consume to also receive undelivered daemon receipts (update/crash/migration notices) and mark them delivered — exactly once across all consuming readers. Without the flag no receipts are returned or consumed, so identity probes and keepalives never eat them.",
         "tags": [
           "control-plane"
         ],
@@ -32277,6 +32277,12 @@
                       "type": "string"
                     },
                     "version": {
+                      "type": "string"
+                    },
+                    "buildVersion": {
+                      "type": "string"
+                    },
+                    "platformVersion": {
                       "type": "string"
                     },
                     "receipts": {
@@ -32305,7 +32311,9 @@
                   },
                   "required": [
                     "status",
-                    "version"
+                    "version",
+                    "buildVersion",
+                    "platformVersion"
                   ],
                   "additionalProperties": false
                 }
@@ -101308,6 +101316,8 @@
           "push.vapid.get",
           "quota.fanout.get",
           "quota.snapshot.get",
+          "relay.pairing.mint",
+          "relay.reachability.get",
           "rewind.apply",
           "rewind.conversation.host.register",
           "rewind.conversation.host.release",
@@ -101324,6 +101334,8 @@
           "sessions.search",
           "tailscale.get",
           "tailscale.serve.run",
+          "update.check",
+          "update.status",
           "worktrees.discard",
           "worktrees.setup.run"
         ]
@@ -102925,6 +102937,42 @@
       "category": "control-plane",
       "access": "authenticated",
       "rest": "GET /api/control-plane/web",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "relay.pairing.mint",
+      "category": "control-plane",
+      "access": "admin",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "relay.reachability.get",
+      "category": "control-plane",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "update.check",
+      "category": "control-plane",
+      "access": "admin",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "update.status",
+      "category": "control-plane",
+      "access": "authenticated",
+      "rest": null,
       "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"

@@ -5738,6 +5738,8 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
     "body": {
       "status": "sample",
       "version": "sample",
+      "buildVersion": "sample",
+      "platformVersion": "sample",
       "receipts": [
         {
           "id": "sample",
@@ -5756,6 +5758,64 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
     "status": 200,
     "body": {
       "html": "sample"
+    }
+  },
+  "relay.pairing.mint": {
+    "methodId": "relay.pairing.mint",
+    "http": null,
+    "status": 200,
+    "body": {
+      "pairing": {
+        "protocol": 0,
+        "relayUrl": "sample",
+        "rid": "sample",
+        "daemonPublicKey": "sample",
+        "label": "sample"
+      },
+      "status": "disabled"
+    }
+  },
+  "relay.reachability.get": {
+    "methodId": "relay.reachability.get",
+    "http": null,
+    "status": 200,
+    "body": {
+      "status": "disabled",
+      "configured": false
+    }
+  },
+  "update.check": {
+    "methodId": "update.check",
+    "http": null,
+    "status": 200,
+    "body": {
+      "armed": false,
+      "offReason": "sample",
+      "currentVersion": "sample",
+      "releasesUrl": "sample",
+      "checkIntervalMs": 0,
+      "firstCheckDelayMs": 0,
+      "failedCheckCount": 0,
+      "lastCheckFailure": "sample",
+      "pendingVersion": "sample",
+      "rejectedVersion": "sample"
+    }
+  },
+  "update.status": {
+    "methodId": "update.status",
+    "http": null,
+    "status": 200,
+    "body": {
+      "armed": false,
+      "offReason": "sample",
+      "currentVersion": "sample",
+      "releasesUrl": "sample",
+      "checkIntervalMs": 0,
+      "firstCheckDelayMs": 0,
+      "failedCheckCount": 0,
+      "lastCheckFailure": "sample",
+      "pendingVersion": "sample",
+      "rejectedVersion": "sample"
     }
   },
   "cost.attribution.get": {

@@ -47,6 +47,7 @@ const PLATFORM_DIR = join(ROOT, 'packages/sdk/src/platform');
  */
 const INTENTIONALLY_INTERNAL: Readonly<Record<string, string>> = {
   'channel-profiles': 'daemon-owned registry; consumers reach it through the channel-profiles.* verbs',
+  'channel-sync': 'daemon-owned routing table and draft mirror; consumers reach it through the channels.routing.* and channels.drafts.* verbs',
   checkin: 'daemon-owned scheduler; consumers configure it through checkin.* config keys and verbs',
   'ci-watch': 'daemon-owned watcher; consumers reach it through the ci.* verbs',
   principals: 'daemon-owned registry; consumers reach it through the principals.* verbs',

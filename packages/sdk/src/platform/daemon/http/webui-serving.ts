@@ -107,7 +107,11 @@ export interface WebuiServingRouteAuthority {
 const reservedPathsByAuthority = new WeakMap<WebuiServingRouteAuthority, readonly string[]>();
 
 function reservedApiPathsFor(authority: WebuiServingRouteAuthority | undefined): readonly string[] {
-  if (!authority) return BASE_RESERVED_API_PATHS;
+  // A catalog that cannot list is not a fault: embedders and tests hand the
+  // router a stand-in with only the members they use, and a posture read runs
+  // on EVERY request. Falling back to the unconditional roots keeps the API
+  // tree reserved and costs such a caller only the derived entries.
+  if (!authority || typeof authority.list !== 'function') return BASE_RESERVED_API_PATHS;
   const memoized = reservedPathsByAuthority.get(authority);
   if (memoized) return memoized;
   const derived = reservedApiPathRoots(authority.list().map((descriptor) => descriptor.http?.path ?? ''));
