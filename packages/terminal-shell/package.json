@@ -18,6 +18,10 @@
       "types": "./dist/conformance.d.ts",
       "import": "./dist/conformance.js"
     },
+    "./terminal-output-guard": {
+      "types": "./dist/terminal-output-guard.d.ts",
+      "import": "./dist/terminal-output-guard.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [
