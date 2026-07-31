@@ -176,8 +176,15 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     // Session/task-graph-specific state transitions that are not the generic
     // enable/disable/cancel vocabulary (they carry session semantics:
     // steering a live turn, delivering an out-of-band input, etc).
+    //
+    // `kill` (sessions.hosted.kill) is deliberately not `close`. A hosted
+    // session's loop runs in the daemon, so ending it interrupts a turn in
+    // flight, takes the loop apart and releases the workspace floor — while
+    // `close` on a shared session record means the record is no longer active
+    // and is reopenable. Naming both `close` would give one word two outcomes,
+    // one of which cannot be undone.
     'detach', 'followUp', 'deliver', 'steer', 'reorder', 'clearCompleted', 'record',
-    'evaluate', 'send', 'read', 'save',
+    'evaluate', 'send', 'read', 'save', 'kill',
   ],
   'reporting-and-diagnostics': [
     // Read-shaped diagnostic/reporting endpoints named for their specific

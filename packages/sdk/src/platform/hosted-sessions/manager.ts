@@ -489,13 +489,17 @@ export class HostedSessionManager {
     }
   }
 
-  private async terminate(
-    live: LiveSession,
-    reason: HostedSessionTerminationReason,
-    detail: string,
-  ): Promise<HostedSessionRecord> {
-    const at = this.now();
+  /**
+   * Take a session's loop apart, keeping its transcript.
+   *
+   * The capture is the load-bearing half: `persist` reads the conversation off
+   * the live runtime, so disposing first and persisting after would write an
+   * empty transcript over a real one — a session that came back from a restart
+   * with nothing in it, which is the silent loss this engine exists to avoid.
+   */
+  private teardownRuntime(live: LiveSession): void {
     if (live.runtime) {
+      live.restoredConversation = live.runtime.conversation.toJSON();
       live.runtime.cancel();
       this.options.liveTurns?.unbindSession(live.record.id, live.runtime.liveTurnControls);
       live.runtime.dispose();
@@ -503,6 +507,15 @@ export class HostedSessionManager {
     }
     live.lease?.release();
     live.lease = null;
+  }
+
+  private async terminate(
+    live: LiveSession,
+    reason: HostedSessionTerminationReason,
+    detail: string,
+  ): Promise<HostedSessionRecord> {
+    const at = this.now();
+    this.teardownRuntime(live);
     live.attached.clear();
     live.record = {
       ...live.record,
@@ -667,9 +680,39 @@ export class HostedSessionManager {
     }
     for (const live of [...this.sessions.values()]) {
       if (live.record.status === 'terminated') continue;
+      // A survive-policy session is not ended by the daemon stopping. That is
+      // the whole claim `survive` makes: outliving the client is the small half,
+      // outliving a restart (an update swapping the binary, a reboot) is the
+      // half that makes it worth having. Its loop comes down, its transcript is
+      // written, and the next start restores it idle with an honest line about
+      // the turn that did not finish. A kill-policy session ends here, with the
+      // reason that actually applies.
+      if (this.effectivePolicy(live.record.detachPolicy) === 'survive') {
+        await this.parkForShutdown(live).catch(() => undefined);
+        continue;
+      }
       await this.terminate(live, 'daemon-shutdown', 'the daemon is stopping').catch(() => undefined);
     }
     await this.floors.dispose();
+  }
+
+  /**
+   * Park a surviving session across a shutdown: loop down, record kept idle,
+   * transcript written.
+   */
+  private async parkForShutdown(live: LiveSession): Promise<void> {
+    this.teardownRuntime(live);
+    live.attached.clear();
+    live.record = {
+      ...live.record,
+      status: 'idle',
+      attachedClients: [],
+      updatedAt: this.now(),
+    };
+    await this.persist(live.record);
+    this.publish('hosted-session-detached', live.record, {
+      detail: 'the daemon is stopping; this session survives and is reattachable after the restart',
+    });
   }
 }
 
