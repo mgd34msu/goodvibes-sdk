@@ -72,6 +72,43 @@ export type {
 // parameter takes — consumers name this alias instead of re-anchoring through
 // the positional `Parameters<typeof startHostServices>[3]`.
 export type { RuntimeServices } from './services.js';
+// The OTHER composition shape: what a surface product's interactive loop needs
+// in-process, without the daemon-grade furniture `RuntimeServices` requires.
+// Purely additive — `RuntimeServices` is unchanged and still satisfies the
+// shared part of it (`ClientRuntimeServicesFromHost`).
+export {
+  createClientRuntimeServices,
+  createHeldSessionDispatch,
+  asClientRuntimeView,
+} from './client-services.js';
+export type {
+  ClientRuntimeServices,
+  ClientRuntimeServicesOptions,
+  ClientRuntimeServicesFromHost,
+  ClientOnlyServiceMember,
+  SessionContinuationDispatch,
+  ApprovalRaiser,
+  UserPermissionRuleAccess,
+} from './client-services.js';
+// The free functions both compositions share, so a product that hand-composes
+// a graph builds each piece the one way rather than a fourth way.
+export { resolveRuntimeFeatureFlags } from './feature-flag-composition.js';
+export type { RuntimeFeatureFlagOptions } from './feature-flag-composition.js';
+export { createProviderStack } from './provider-stack.js';
+export type { ProviderStack, ProviderStackOptions } from './provider-stack.js';
+export { createAgentGraph } from './agent-graph.js';
+export type { AgentGraph, AgentGraphOptions } from './agent-graph.js';
+export {
+  createApprovalDerivedHandlers,
+  createBrokeredPermissionManager,
+  createPolicyRuntimeState,
+  createUserPermissionRuleStore,
+} from './permissions/permission-composition.js';
+export type {
+  ApprovalDerivedHandlers,
+  ApprovalDerivedHandlerOptions,
+  BrokeredPermissionManagerOptions,
+} from './permissions/permission-composition.js';
 export { createOperatorClient } from './operator-client.js';
 export type { OperatorClient } from './operator-client.js';
 export { createPeerClient } from './peer-client.js';
