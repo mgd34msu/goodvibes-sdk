@@ -28,7 +28,8 @@ import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/ind
 import { createRuntimeStore } from '../packages/sdk/src/platform/runtime/store/index.ts';
 import { createClientRuntimeServices, type ClientRuntimeServices } from '../packages/sdk/src/platform/runtime/client-services.ts';
 import { createHostedSessionRuntime } from '../packages/sdk/src/platform/hosted-sessions/session-runtime.ts';
-import type { ChatRequest, ChatResponse, LLMProvider, ModelDefinition } from '../packages/sdk/src/platform/providers/interface.ts';
+import type { ChatRequest, ChatResponse, LLMProvider } from '../packages/sdk/src/platform/providers/interface.ts';
+import type { ModelDefinition } from '../packages/sdk/src/platform/providers/registry.ts';
 import type { PermissionPromptDecision } from '../packages/sdk/src/platform/permissions/prompt.ts';
 
 const PROVIDER = 'stub';
@@ -48,7 +49,7 @@ function textAnswer(content: string): ChatResponse {
     content,
     toolCalls: [],
     usage: { inputTokens: 10, outputTokens: 5 },
-    stopReason: 'stop',
+    stopReason: 'completed',
   };
 }
 
@@ -151,7 +152,7 @@ test('a tool the model calls actually runs, rooted at this session\'s workspace'
     content: '',
     toolCalls: [{ id: 'call-1', name: 'read', arguments: { files: [{ path: 'note.txt' }] } }],
     usage: { inputTokens: 10, outputTokens: 5 },
-    stopReason: 'tool_use',
+    stopReason: 'tool_call',
   } as unknown as ChatResponse);
   answers.push(textAnswer('The note says what it says.'));
 
