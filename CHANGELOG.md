@@ -240,6 +240,28 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 ### Changed
 
+- **The daemon updates itself from the daemon's own repository.** The shipped
+  default of `update.releasesUrl` is now
+  `https://github.com/mgd34msu/goodvibes-daemon/releases/latest`; it named the
+  terminal app's repository because the daemon binary used to be built and
+  released there. This one default is what carries an already-installed daemon
+  onto the new release line without anyone touching the machine: the release
+  asset names are unchanged (`goodvibes-daemon-<os>-<arch>`,
+  `sqlite-vec-<os>-<arch>`) and the service unit's `ExecStart` is path-stable,
+  so the running daemon's next hourly check resolves a tag from the new
+  repository, downloads the same-named asset, and swaps itself in place. A user
+  who explicitly wrote `update.releasesUrl` into their settings keeps their
+  value — an override is an answer, and this default never re-derives over one.
+- **A daemon update no longer replaces the terminal app binary beside it.**
+  `resolveDaemonInstalledFiles` listed `goodvibes` in the same directory as
+  cargo, which was right while one release carried both binaries. A
+  daemon-repository release publishes no `goodvibes-<os>-<arch>` asset at all,
+  so keeping it listed would have the daemon looking for a file that does not
+  exist — and, if one ever appeared under that name, overwriting a product that
+  updates itself from a different repository on a different version line. The
+  daemon binary and the sqlite-vec addon beside it are still owned and still
+  refreshed in one verified pass. The crash-loop rollback reads the same list,
+  so it now restores exactly what the update it is undoing replaced.
 - **`ApprovalBroker.raiseApproval`** returns both the record and the pending
   decision; `requestApproval` is now a thin wrapper over it that keeps the
   decision. The body moved to a free function in `approval-broker-raise.ts`
