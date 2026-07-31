@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `489`
+- Methods: `494`
 - Events: `34`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -84975,6 +84975,479 @@ Apply a unified rewind to a session turn anchor, restoring files and/or conversa
     "receipt",
     "refused",
     "refusal"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `rewind.conversation.host.register`
+
+Register the conversation this surface is running for a session, so a conversation-scope rewind of it can actually be served. Only the process holding the messages can count or drop them: without this, rewind.plan for a session hosted anywhere but the daemon reports the conversation half unavailable, and files rewind is unaffected either way. Re-registering with the hostId returned here RENEWS the offer; registering without one claims the session and replaces whoever held it, answering that surface's outstanding requests as unavailable. The registration is a lease, not a reservation — it lapses unless the surface keeps taking its requests, and nothing about it survives a daemon restart, because a claim about a live process is worthless once the process on either end may be gone.
+
+- Title: `Offer This Surface's Live Conversation for Rewind`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `write:sessions`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "hostId": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string"
+    },
+    "leaseMs": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "sessionId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "host": {
+      "type": "object",
+      "properties": {
+        "hostId": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "registeredAt": {
+          "type": "number"
+        },
+        "leaseExpiresAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "hostId",
+        "sessionId",
+        "label",
+        "registeredAt",
+        "leaseExpiresAt"
+      ],
+      "additionalProperties": false
+    },
+    "renewed": {
+      "type": "boolean"
+    },
+    "maxWaitMs": {
+      "type": "number"
+    },
+    "answerTimeoutMs": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "host",
+    "renewed",
+    "maxWaitMs",
+    "answerTimeoutMs"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `rewind.conversation.host.release`
+
+Withdraw this surface's offer to serve a session's conversation — when the session ends, or the surface is going away. Outstanding requests put to it are answered unavailable rather than left to time out. Only the registered host may release its own session; anyone else is refused.
+
+- Title: `Withdraw a Conversation Rewind Offer`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `write:sessions`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "hostId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sessionId",
+    "hostId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "released": {
+      "type": "boolean"
+    },
+    "host": {
+      "type": "object",
+      "properties": {
+        "hostId": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "registeredAt": {
+          "type": "number"
+        },
+        "leaseExpiresAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "hostId",
+        "sessionId",
+        "label",
+        "registeredAt",
+        "leaseExpiresAt"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "released",
+    "host"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `rewind.conversation.hosts.list`
+
+Which sessions have a surface offering their live conversation right now, how each surface names itself, and when its lease runs out. This is what makes "conversation rewind is unavailable for that session" checkable rather than something a person has to take on trust.
+
+- Title: `List Conversation Rewind Hosts`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `read:sessions`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "hosts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "hostId": {
+            "type": "string"
+          },
+          "sessionId": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "registeredAt": {
+            "type": "number"
+          },
+          "leaseExpiresAt": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "hostId",
+          "sessionId",
+          "label",
+          "registeredAt",
+          "leaseExpiresAt"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "hosts"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `rewind.conversation.requests.answer`
+
+Report what this surface found or did. Which fields are expected follows from the REQUEST, which already says whether it was a preview or a rewind — an answer that restated that could only disagree with it, silently. For a preview: messagesToDrop and messagesRemaining. For a rewind: droppedMessages and the undoSnapshotId that restores them. For either, a non-empty unavailableReason instead, which is the honest answer when the conversation is gone or this surface cannot serve it — and saying so beats staying silent, because silence becomes a timeout and a timed-out rewind cannot tell whether the messages were dropped. Only the surface a request was put to may answer it.
+
+- Title: `Answer a Conversation Rewind Request`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `write:sessions`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "hostId": {
+      "type": "string"
+    },
+    "requestId": {
+      "type": "string"
+    },
+    "messagesToDrop": {
+      "type": "number"
+    },
+    "messagesRemaining": {
+      "type": "number"
+    },
+    "droppedMessages": {
+      "type": "number"
+    },
+    "undoSnapshotId": {
+      "type": "string"
+    },
+    "unavailableReason": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "hostId",
+    "requestId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "accepted": {
+      "type": "boolean"
+    },
+    "request": {
+      "type": "object",
+      "properties": {
+        "requestId": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "turnId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "preview",
+            "rewind"
+          ]
+        },
+        "expiresAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "requestId",
+        "sessionId",
+        "turnId",
+        "kind",
+        "expiresAt"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "accepted",
+    "request"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### `rewind.conversation.requests.take`
+
+Collect the conversation questions waiting for this host — how many messages a rewind to an anchor would drop, or a request to actually drop them — and renew its lease, because a surface that is polling is a surface that is alive. With nothing waiting, pass waitMs to hold the call open until something arrives; an empty result is a normal answer, not an error. Answer each request with rewind.conversation.requests.answer before its expiresAt, or the caller waiting on it is told, honestly, that this surface did not answer in time.
+
+- Title: `Take Conversation Rewind Requests`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `ws`
+- HTTP: none
+- Scopes: `read:sessions`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "hostId": {
+      "type": "string"
+    },
+    "waitMs": {
+      "type": "number"
+    },
+    "limit": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "hostId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "requests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string"
+          },
+          "sessionId": {
+            "type": "string"
+          },
+          "turnId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "preview",
+              "rewind"
+            ]
+          },
+          "expiresAt": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "requestId",
+          "sessionId",
+          "turnId",
+          "kind",
+          "expiresAt"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "host": {
+      "type": "object",
+      "properties": {
+        "hostId": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "registeredAt": {
+          "type": "number"
+        },
+        "leaseExpiresAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "hostId",
+        "sessionId",
+        "label",
+        "registeredAt",
+        "leaseExpiresAt"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "requests",
+    "host"
   ],
   "additionalProperties": false
 }

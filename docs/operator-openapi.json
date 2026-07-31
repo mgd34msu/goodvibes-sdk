@@ -3,7 +3,7 @@
   "info": {
     "title": "GoodVibes Operator API",
     "version": "1.21.0",
-    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 489 cataloged methods: 431 with dedicated REST bindings, 58 reachable only through the generic invoke endpoint. 0 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
+    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 494 cataloged methods: 431 with dedicated REST bindings, 63 reachable only through the generic invoke endpoint. 0 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
   },
   "servers": [
     {
@@ -100739,6 +100739,11 @@
           "quota.fanout.get",
           "quota.snapshot.get",
           "rewind.apply",
+          "rewind.conversation.host.register",
+          "rewind.conversation.host.release",
+          "rewind.conversation.hosts.list",
+          "rewind.conversation.requests.answer",
+          "rewind.conversation.requests.take",
           "rewind.plan",
           "sessions.changes.get",
           "sessions.search",
@@ -104511,6 +104516,51 @@
     },
     {
       "id": "rewind.apply",
+      "category": "rewind",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "rewind.conversation.host.register",
+      "category": "rewind",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "rewind.conversation.host.release",
+      "category": "rewind",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "rewind.conversation.hosts.list",
+      "category": "rewind",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "rewind.conversation.requests.answer",
+      "category": "rewind",
+      "access": "authenticated",
+      "rest": null,
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "rewind.conversation.requests.take",
       "category": "rewind",
       "access": "authenticated",
       "rest": null,

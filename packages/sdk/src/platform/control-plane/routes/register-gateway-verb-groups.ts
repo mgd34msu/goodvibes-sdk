@@ -75,6 +75,10 @@ import { registerRuntimeMetricsGatewayMethods } from './runtime-metrics.js';
 import { registerStepUpGatewayMethods, type StepUpGatewayService } from './stepup.js';
 import { dirname } from 'node:path';
 import { registerRewindGatewayMethods } from './rewind.js';
+import {
+  createConversationRewindHostBroker,
+  registerRewindConversationHostGatewayMethods,
+} from './rewind-conversation-hosts.js';
 import { registerWorkspacesGatewayMethods } from './workspaces.js';
 import { WorkspaceRegistrationStore } from '../../workspace/registration/index.js';
 import { UnifiedRewindService } from '../../rewind/index.js';
@@ -289,12 +293,18 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
   readonly onCiAutoWatch?: ((observer: (toolName: string, args: Record<string, unknown>, success: boolean) => void) => void) | undefined;
   /**
    * Optional: a daemon-side conversation store port for the conversation half of
-   * the unified rewind (rewind.plan/apply with scope 'conversation' or 'both').
-   * When present, conversation rewind becomes available on the wire; absent (the
-   * default — no daemon-hosted mutable conversation store is wired today) the
-   * conversation part is honestly reported unavailable in a plan warning rather
-   * than faked, exactly as before this parameter existed. The files half is
-   * unaffected either way.
+   * the unified rewind (rewind.plan/apply with scope 'conversation' or 'both'),
+   * for sessions THIS process hosts the conversation for.
+   *
+   * It is no longer the only way that half gets served, and is no longer the
+   * first one consulted. A surface running its own loop offers its live
+   * conversation through the rewind.conversation.* verbs, and that offer wins
+   * for its session — a process holding the messages is a better authority on
+   * them than a store that merely might have them. This port is the fallback,
+   * for sessions no surface has offered.
+   *
+   * With neither, the conversation half is reported unavailable with the reason
+   * in a plan warning rather than faked. The files half is unaffected either way.
    */
   readonly conversationRewindPort?: RewindConversationPort | null | undefined;
   /**
@@ -724,9 +734,23 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   // — the default today — the conversation part is honestly reported unavailable
   // rather than faked. Receipt events fan out on the workspace domain when the
   // runtime bus is present.
+  //
+  // The conversation half is served by whichever surface is running the
+  // session's loop, which it offers through the rewind.conversation.* verbs
+  // below. That broker is always constructed, because it is the only way a
+  // pure-client surface can serve conversation rewind at all, and it falls
+  // through to an in-process conversationRewindPort for sessions this daemon
+  // hosts itself. With neither, the conversation half is reported unavailable
+  // with the reason rather than answered with a zero.
+  const conversationHosts = createConversationRewindHostBroker({
+    fallback: deps.conversationRewindPort ?? null,
+  });
+  registerRewindConversationHostGatewayMethods(catalog, conversationHosts);
+  deps.disposal?.add('conversation rewind hosts', () => conversationHosts.shutdown());
+
   const rewindService = new UnifiedRewindService({
     workspace: deps.workspaceCheckpointManager,
-    conversation: deps.conversationRewindPort ?? null,
+    conversation: conversationHosts,
     ...(deps.runtimeBus
       ? {
         emit: (event: WorkspaceEvent, sessionId: string): void => {
