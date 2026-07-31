@@ -164,6 +164,30 @@ describe('memory-spine — client-of-adopted-daemon mode', () => {
     expect(local.calls).toEqual(['add:back-offline']);
     expect(wire.calls).toEqual([]);
   });
+
+  test('deactivating says so, with the reason — never a silent flip', () => {
+    // This wording was pinned from a consumer repo until that consumer stopped
+    // carrying its own copy of the wire transport. The behaviour is this
+    // client's, so the pin belongs here: a surface that silently reverted to
+    // local memory would look identical to one still mirroring, and the note is
+    // the only thing that distinguishes them in a log after the fact.
+    const notes: Array<{ message: string; meta: unknown }> = [];
+    const local = spyLocalStore();
+    const wire = spyTransport();
+    const client = new MemorySpineClient({
+      local: createLocalMemoryAccess(local.store),
+      transport: wire.transport,
+      log: {
+        debug: () => { /* not the channel under test */ },
+        info: (message: string, meta?: unknown) => { notes.push({ message, meta }); },
+      },
+    });
+
+    client.deactivate("daemon mode changed to 'unavailable'");
+    const deactivateNote = notes.find((note) => note.message.includes('deactivated'));
+    expect(deactivateNote?.message).toBe('memory spine deactivated — reverting to owned-local memory access');
+    expect(deactivateNote?.meta).toEqual({ reason: "daemon mode changed to 'unavailable'" });
+  });
 });
 
 describe('memory-spine — extended catalog (full detach)', () => {

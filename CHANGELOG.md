@@ -4,6 +4,40 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 ### Added
 
+- **The client seams themselves, not just the sockets they plug into
+  (`platform/runtime/client`).** `client-services.ts` already held the COMPOSITION
+  shape for a surface that runs its own loop and reaches a daemon for
+  everything else, plus the two seam TYPES that shape depends on
+  (`ApprovalRaiser`, `SessionContinuationDispatch`). What it did not hold was a
+  single implementation of either, so both surface products wrote their own —
+  and an audit of the split found the bill: two parallel implementations of one
+  bounded daemon-start policy, three divergent shapes of one conversation-rewind
+  port contract, a device-posture runtime bound in-process in one product while
+  the daemon owned the grants ledger, and a permission ask that was visible only
+  to the surface that raised it.
+
+  Twelve modules now live here, each policy over one injected I/O shape —
+  `DaemonVerbCaller`, two methods: `createClientApprovalRaiser` (raise on the
+  daemon, prompt locally, first real answer wins, write the local decision
+  back), `createDaemonConfigClient` and `createDaemonCredentialsClient`
+  (daemon-owned writes refuse rather than landing in a file nothing reads; the
+  reference and its value stay one verb apart from never), `createWireSessionDispatch`
+  (the register-only inbound client), `createConversationRewindHost` (the surface
+  half of the reverse call whose daemon half was already here),
+  `createDevicesClient` + `createClientPhoneTool` (the tool follows the loop, the
+  runtime follows the daemon), `createTasksClient` and the fleet union policy
+  (local rows authoritative, daemon rows fill in, an act on a row you do not own
+  refuses with a reason), `createSpineAdoptionSync` (idempotent per base URL,
+  with the two products' activation timings as an option rather than a second
+  implementation), and `autostartInstalledDaemon` (the union of the two products'
+  bounded-start policies, including the attempt-counted wait that terminates
+  under an injected no-op sleep).
+
+  What deliberately did NOT move: resolving WHICH daemon a surface talks to.
+  That is the consumer trust-boundary carve-out recorded beside the spine
+  transports, and it stays with each product, which passes the resolved caller
+  in.
+
 - **Conversation-scope rewind, served by the surface that actually hosts the
   conversation.** Files rewind works from anywhere, because the workspace
   checkpoint store is the daemon's. The conversation half is answerable only by
