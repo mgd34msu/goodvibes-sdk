@@ -36,7 +36,11 @@ import type {
  */
 export interface HostedSessionVerbService {
   create(input: CreateHostedSessionInput): Promise<HostedSessionRecord>;
-  attach(sessionId: string, clientId: string): Promise<HostedSessionAttachment>;
+  attach(
+    sessionId: string,
+    clientId: string,
+    options?: { readonly leaseMs?: number | undefined },
+  ): Promise<HostedSessionAttachment>;
   detach(sessionId: string, clientId: string): Promise<HostedSessionRecord>;
   kill(sessionId: string): Promise<HostedSessionRecord>;
   list(options?: { readonly includeTerminated?: boolean | undefined }): readonly HostedSessionRecord[];
@@ -58,6 +62,15 @@ function optionalString(params: Record<string, unknown>, field: string): string 
   }
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function optionalPositiveNumber(params: Record<string, unknown>, field: string): number | undefined {
+  const value = params[field];
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    throw new GatewayVerbError(`Invalid ${field}: expected a positive number of milliseconds`, 'INVALID_ARGUMENT', 400, field);
+  }
+  return value;
 }
 
 function optionalDetachPolicy(params: Record<string, unknown>): HostedDetachPolicy | undefined {
@@ -122,8 +135,13 @@ export function createHostedSessionCreateHandler(service: HostedSessionVerbServi
 export function createHostedSessionAttachHandler(service: HostedSessionVerbService): GatewayMethodHandler {
   return async (invocation) => {
     const params = readInvocationParams(invocation);
+    const leaseMs = optionalPositiveNumber(params, 'leaseMs');
     try {
-      return await service.attach(requireString(params, 'sessionId'), requireString(params, 'clientId'));
+      return await service.attach(
+        requireString(params, 'sessionId'),
+        requireString(params, 'clientId'),
+        ...(leaseMs === undefined ? [] : [{ leaseMs }]),
+      );
     } catch (error) {
       return toGatewayVerbError(error);
     }

@@ -35,6 +35,15 @@ export type {
 export { createHostedSessionRuntime, newHostedSessionId } from './session-runtime.js';
 export type { HostedSessionRuntime, HostedSessionRuntimeOptions } from './session-runtime.js';
 
+export {
+  HOSTED_ATTACHMENT_DEFAULT_LEASE_MS,
+  HOSTED_ATTACHMENT_MAX_LEASE_MS,
+  HOSTED_ATTACHMENT_MIN_LEASE_MS,
+  HostedSessionAttachments,
+  attachmentSweepIntervalFor,
+  clampAttachmentLease,
+} from './attachments.js';
+
 export { HostedSessionSpineIntake } from './spine-intake.js';
 export type {
   HostedSessionSpine,
