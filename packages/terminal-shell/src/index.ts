@@ -35,11 +35,16 @@
  * why it lives here rather than in the SDK core.
  *
  * See ./conformance for the descriptor/handler gate a consumer runs against its
- * own composition in CI.
+ * own composition in CI, and ./terminal-output-guard for the write guard on its
+ * own import path — a renderer needs `allowTerminalWrite` and nothing else in
+ * this barrel, and reaching it through the barrel would load the whole
+ * gateway/fleet graph on the startup path.
  */
 export {
   attachWsOnlyGatewayVerbHandlers,
   createArchivableFleetRegistry,
+  createFleetServices,
+  type FleetServicesDeps,
   type GatewayVerbGroupDeps,
   type ProcessRegistryDeps,
   type ArchivableProcessRegistry,

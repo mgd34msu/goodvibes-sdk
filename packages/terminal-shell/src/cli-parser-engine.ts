@@ -38,6 +38,20 @@ function isOptionToken(token: string): boolean {
   return token.startsWith('-') && token !== '-';
 }
 
+/**
+ * Whether a token may stand as an OPTIONAL flag's value.
+ *
+ * Stricter than `isOptionToken` by exactly one token: a bare `-` is the stdin
+ * convention, a positional in its own right, and swallowing it as `--fork`'s or
+ * `--resume`'s value would turn "resume the latest session, reading stdin" into
+ * "resume the session named `-`". A REQUIRED value is a different question — a
+ * flag that must have one and is handed `-` gets `-`, because refusing it would
+ * only produce a "requires a value" error over a token the user did supply.
+ */
+function canBeOptionalValue(token: string | undefined): token is string {
+  return token !== undefined && !token.startsWith('-');
+}
+
 /** `--name=value` split into its two halves; a bare `--name` yields no value. */
 function splitOption(token: string): { readonly name: string; readonly value: string | undefined } {
   const index = token.indexOf('=');
@@ -46,41 +60,57 @@ function splitOption(token: string): { readonly name: string; readonly value: st
 }
 
 /**
- * Whether a token of this kind consumes the FOLLOWING token as its value,
- * used both by the command-word pre-scan (before any command is known) and
- * by the main pass when a flag turns out to be unaccepted here. `boolean` and
- * `const` never do; `string-optional` does only when the next token exists
- * and is not itself option-shaped (mirrors the real application logic
- * below); everything else always does.
+ * Whether a token of this kind consumes the FOLLOWING token as its value, used
+ * both by the command-word scan (before any command is known) and by the main
+ * pass when a flag turns out to be unaccepted here.
+ *
+ * It has to answer exactly what the main pass will actually do, or the two
+ * disagree about which tokens are values and the scan reports a flag's
+ * neighbour as the command word. `boolean` and `const` never consume;
+ * `string-optional` consumes only what {@link canBeOptionalValue} allows; every
+ * other kind consumes only a token that is really there and is not itself
+ * option-shaped — a flag whose value is missing is refused, and refusing it does
+ * not eat the next token.
  */
 function kindConsumesNextValue(kind: CliFlagKind, argv: readonly string[], index: number): boolean {
   if (kind === 'boolean' || kind === 'const') return false;
-  if (kind === 'string-optional') {
-    const next = argv[index + 1];
-    return next !== undefined && !isOptionToken(next);
-  }
-  return true;
+  const next = argv[index + 1];
+  if (kind === 'string-optional') return canBeOptionalValue(next);
+  return next !== undefined && !isOptionToken(next);
 }
 
 /**
- * The first non-flag token, and where it sits — the candidate command word,
- * resolved or not.
+ * The command-word candidate: a non-flag token, and where it sits.
  *
  * This runs before the command is known, so it cannot use that command's own
  * flag list to decide which tokens are option VALUES rather than the
  * candidate word. It uses the catalog-wide arity table instead: every token
  * that appears in more than one command's flags has the same kind in all of
  * them, which `findCatalogFlagArityConflicts` holds a catalog to.
+ *
+ * `keepLooking` is what separates the two catalog postures. A catalog that
+ * REJECTS an unmatched word is answered by the first non-flag token and nothing
+ * after it — that token is either the command or the refusal. A catalog that
+ * lets an unmatched word pass through as an ordinary positional has to keep
+ * looking, because in `run a-file.txt` the word that names the command may not
+ * be the first one: stopping at the first token would silently start the
+ * default command instead.
  */
-function findFirstNonFlagToken(
+function findCommandWordToken(
   argv: readonly string[],
   arity: ReadonlyMap<string, CliFlagKind>,
   rejectedFlags: Readonly<Record<string, { readonly takesValue: boolean }>> | undefined,
+  keepLooking: (token: string) => boolean,
 ): { readonly token: string; readonly index: number } | null {
+  let first: { readonly token: string; readonly index: number } | null = null;
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index]!;
-    if (token === '--') return null;
-    if (!isOptionToken(token)) return { token, index };
+    if (token === '--') break;
+    if (!isOptionToken(token)) {
+      if (first === null) first = { token, index };
+      if (!keepLooking(token)) return { token, index };
+      continue;
+    }
     const { name, value } = splitOption(token);
     if (value !== undefined) continue;
     const kind = arity.get(name);
@@ -93,7 +123,7 @@ function findFirstNonFlagToken(
     // naming the flag that is actually the problem.
     if (rejectedFlags?.[name]?.takesValue === true) index += 1;
   }
-  return null;
+  return first;
 }
 
 function parsePort(value: string, optionName: string, errors: string[]): number | undefined {
@@ -189,7 +219,13 @@ export function parseWithCatalog<TCommand extends string, TField extends string,
   const flags = catalog.createDefaultFlags();
 
   const arity = catalogFlagArity(catalog);
-  const found = findFirstNonFlagToken(argv, arity, catalog.rejectedFlags);
+  const rejects = catalog.unmatchedFirstToken === 'reject';
+  const found = findCommandWordToken(
+    argv,
+    arity,
+    catalog.rejectedFlags,
+    (token) => !rejects && resolveCatalogCommand(catalog, token) === undefined,
+  );
 
   let command: TCommand = catalog.defaultCommand;
   let rawCommand: string | undefined;
@@ -240,8 +276,14 @@ export function parseWithCatalog<TCommand extends string, TField extends string,
       continue;
     }
 
+    // A token belongs to the COMMAND only if it was typed after the command
+    // word. Anything before it was typed before the line said which command was
+    // being run, so it is a bare positional of the invocation, not an argument
+    // handed on to that command.
+    const afterCommandWord = sawCommand && index > found!.index;
+
     if (ddashSeen) {
-      if (sawCommand) commandArgs.push(token); else positionals.push(token);
+      if (afterCommandWord) commandArgs.push(token); else positionals.push(token);
       continue;
     }
     if (token === '--') {
@@ -251,7 +293,7 @@ export function parseWithCatalog<TCommand extends string, TField extends string,
 
     if (!isOptionToken(token)) {
       positionals.push(token);
-      if (sawCommand) commandArgs.push(token);
+      if (afterCommandWord) commandArgs.push(token);
       continue;
     }
 
@@ -265,7 +307,11 @@ export function parseWithCatalog<TCommand extends string, TField extends string,
         if (inlineValue === undefined && rejected.takesValue) index += 1;
         continue;
       }
-      if (sawCommand && lenient) {
+      // Lenient passthrough is a property of the position, not of the whole
+      // line: a flag typed BEFORE the command word was typed before anything
+      // said which command would tolerate it, so it is still a refusal. Only
+      // what follows the command word rides on that command's leniency.
+      if (afterCommandWord && lenient) {
         commandArgs.push(token);
         continue;
       }
@@ -290,7 +336,7 @@ export function parseWithCatalog<TCommand extends string, TField extends string,
         let raw: string | undefined = inlineValue;
         if (raw === undefined) {
           const next = argv[index + 1];
-          if (next !== undefined && !isOptionToken(next)) { raw = next; index += 1; }
+          if (canBeOptionalValue(next)) { raw = next; index += 1; }
         }
         setField(flags, flagSpec.field, raw ?? flagSpec.bareValue);
         break;
@@ -322,7 +368,18 @@ export function parseWithCatalog<TCommand extends string, TField extends string,
       case 'enum': {
         const consumed = consumeValue(argv, index, inlineValue);
         index = consumed.nextIndex;
-        if (consumed.value === undefined) { errors.push(`${name} requires a value.`); break; }
+        if (consumed.value === undefined) {
+          errors.push(`${name} requires a value.`);
+          // A defaulted enum states its allowed values on a missing value too,
+          // and falls back to that default: the flag was written, so leaving
+          // whatever an earlier flag happened to set would report a choice the
+          // line did not make.
+          if (flagSpec.enumDefault !== undefined) {
+            if (flagSpec.enumValues) errors.push(`${name} must be one of: ${flagSpec.enumValues.join(', ')}.`);
+            setField(flags, flagSpec.field, flagSpec.enumDefault);
+          }
+          break;
+        }
         if (flagSpec.enumValues && !flagSpec.enumValues.includes(consumed.value)) {
           errors.push(`${name} must be one of: ${flagSpec.enumValues.join(', ')}.`);
           if (flagSpec.enumDefault !== undefined) setField(flags, flagSpec.field, flagSpec.enumDefault);
