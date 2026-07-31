@@ -15,6 +15,7 @@ import {
   BANNED_VERBS,
   CORE_VERBS,
   EXEMPT_VERB_CATEGORIES,
+  SCOPED_EXEMPT_VERB_CATEGORIES,
   classifyVerb,
   verbTailOf,
 } from '../packages/contracts/src/core-verbs.js';
@@ -63,6 +64,69 @@ describe('core-verbs conformance', () => {
       }
     }
     expect(conflicts).toEqual([]);
+  });
+
+  // A generic tail is granted per NAMESPACE, so the same word appearing under
+  // two scoped categories is the mechanism working. What must never repeat is
+  // one namespace+verb pair being decided twice, or a tail carrying both a
+  // repo-wide grant and a scoped one — the scoped entry would then be decoration.
+  test('a scoped exemption is decided exactly once per namespace and verb', () => {
+    const seen = new Map<string, string>();
+    const conflicts: string[] = [];
+    for (const [category, exemption] of Object.entries(SCOPED_EXEMPT_VERB_CATEGORIES)) {
+      for (const namespace of exemption.namespaces) {
+        for (const verb of exemption.verbs) {
+          const key = `${namespace}.${verb}`;
+          const existing = seen.get(key);
+          if (existing) conflicts.push(`"${key}" in both "${existing}" and "${category}"`);
+          else seen.set(key, category);
+        }
+      }
+    }
+    expect(conflicts).toEqual([]);
+  });
+
+  test('no verb is exempted both repo-wide and under a namespace', () => {
+    const repoWide = new Set(Object.values(EXEMPT_VERB_CATEGORIES).flat());
+    const overlap = Object.values(SCOPED_EXEMPT_VERB_CATEGORIES)
+      .flatMap((exemption) => exemption.verbs)
+      .filter((verb) => repoWide.has(verb));
+    expect(overlap).toEqual([]);
+  });
+
+  test('a scoped verb is refused outside the namespaces it was granted in', () => {
+    // The defect this mechanism closes: `occasions.remove` and
+    // `workspaces.registrations.remove` both landed on a rationale written
+    // entirely about `mcp.servers.remove`.
+    expect(classifyVerb('mcp.servers.remove').kind).toBe('exempt');
+    expect(classifyVerb('occasions.remove').kind).toBe('exempt');
+    expect(classifyVerb('workspaces.registrations.remove').kind).toBe('exempt');
+    expect(classifyVerb('memory.records.add').kind).toBe('exempt');
+    expect(classifyVerb('memory.records.links.add').kind).toBe('exempt');
+
+    expect(classifyVerb('watchers.remove').kind).toBe('unclassified');
+    expect(classifyVerb('skills.add').kind).toBe('unclassified');
+    // Boundary-aware: a namespace grant does not leak to a longer sibling name.
+    expect(classifyVerb('workspaces.registrationsExtra.remove').kind).toBe('unclassified');
+  });
+
+  test('every scoped exemption names at least one live method id', () => {
+    const stale: string[] = [];
+    for (const [category, exemption] of Object.entries(SCOPED_EXEMPT_VERB_CATEGORIES)) {
+      for (const namespace of exemption.namespaces) {
+        for (const verb of exemption.verbs) {
+          const covered = OPERATOR_METHOD_IDS.some(
+            (id) => id.startsWith(`${namespace}.`) && verbTailOf(id) === verb,
+          );
+          if (!covered) stale.push(`${category}: ${namespace}.* ${verb}`);
+        }
+      }
+    }
+    expect(
+      stale,
+      `These scoped exemptions grant a verb no live method id uses: ${stale.join(', ')}. ` +
+        `An exemption that outlives the id it was written for is a standing grant nobody decided on.`,
+    ).toEqual([]);
   });
 
   test('no exempt verb is also a core verb', () => {

@@ -222,18 +222,18 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
   ],
   'memory-record-store': [
     // The daemon-owned canonical memory store mirrors the MemoryStore engine's
-    // own long-standing API verbs rather than the generic CRUD words. `add`
-    // (MemoryStore.add stamps a new record at the recall-confidence floor — the
-    // recall-honesty contract is written in terms of `add`, not `create`) and
-    // `update-review` (mutates ONLY a record's review signal —
+    // own long-standing API verbs rather than the generic CRUD words.
+    // `update-review` mutates ONLY a record's review signal —
     // reviewState/confidence/reviewer/staleReason — a narrower, honesty-load-
-    // bearing operation than a generic `update` that would also touch content).
+    // bearing operation than a generic `update` that would also touch content.
     // `search-semantic` is the store's scored semantic-ranking read (returns
     // distance/similarity/score), a distinct engine verb from the literal `search`
     // (a CORE verb) it sits beside — the MemoryStore engine has always exposed
     // searchSemantic separately, so the wire mirrors that name rather than folding
     // it into a flag on `search` whose output shape differs.
-    'add', 'update-review', 'search-semantic',
+    // `add` is NOT here: it is a word any family could plausibly use, so it is
+    // namespace-scoped in SCOPED_EXEMPT_VERB_CATEGORIES below.
+    'update-review', 'search-semantic',
   ],
   'push-delivery': [
     // Browser-push delivery action: `verify` sends a live test notification to
@@ -393,23 +393,87 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     // test/payments-purchase-execution.test.ts.
     'begin', 'fillCard',
   ],
-  'legacy-verb-aliases': [
-    // KNOWN, OUT-OF-SCOPE minor inconsistency (not one of the ranked
-    // worst-class collisions): mcp.servers.remove means exactly what `delete`
-    // means everywhere else in the catalog. Flagged here rather than fixed,
-    // per the scope discipline of fixing only the ranked worst-class
-    // items (schedule/memory/tasks/session-orphan/sessions-visibility) —
-    // renaming every already-consistent-but-differently-worded single
-    // outlier was explicitly out of scope for this pass. A
-    // future pass can fold this into `delete`.
-    'remove',
-  ],
 } as const;
 
-/** Flattened set of every exempt (non-core, non-banned) verb, for fast lookup. */
-export const EXEMPT_VERBS: ReadonlySet<string> = new Set(
-  Object.values(EXEMPT_VERB_CATEGORIES).flat(),
-);
+/**
+ * An exemption that applies only inside named method-id namespaces.
+ *
+ * WHY BOTH SHAPES EXIST. The table above is keyed by verb TAIL alone, which is
+ * right for a word that could only ever belong to one domain: nothing outside
+ * Home Assistant is going to call a method `askHomeGraph`, so listing it once
+ * grants nothing anywhere else.
+ *
+ * It is wrong for a word any family could plausibly reach for. `remove` was
+ * exempted with a rationale written entirely about `mcp.servers.remove`, and
+ * two later ids — `occasions.remove` and `workspaces.registrations.remove` —
+ * landed on the strength of that entry without anyone deciding they should.
+ * `add` did the same on a rationale about the MemoryStore engine's API. The
+ * exemption is supposed to be a decision about a named operation; a bare tail
+ * turns it into a decision about a word.
+ *
+ * So a generic tail is exempted as a PAIR: the namespaces it is granted in, and
+ * the verbs. A new id ending in `remove` outside these namespaces fails the
+ * conformance lint and has to state its own case.
+ */
+export interface ScopedVerbExemption {
+  /** Method-id prefixes this exemption covers, matched at a dot boundary. */
+  readonly namespaces: readonly string[];
+  /** The verb tails granted inside those namespaces. */
+  readonly verbs: readonly string[];
+}
+
+export const SCOPED_EXEMPT_VERB_CATEGORIES: Readonly<Record<string, ScopedVerbExemption>> = {
+  'mcp-server-registry-alias': {
+    namespaces: ['mcp.servers'],
+    verbs: ['remove'],
+    // KNOWN, OUT-OF-SCOPE minor inconsistency (not one of the ranked
+    // worst-class collisions): mcp.servers.remove means exactly what `delete`
+    // means everywhere else in the catalog. Flagged rather than fixed, per the
+    // scope discipline of fixing only the ranked worst-class items
+    // (schedule/memory/tasks/session-orphan/sessions-visibility). A future pass
+    // can fold it into `delete`; until then the grant stops at this namespace.
+  },
+  'occasion-erasure': {
+    namespaces: ['occasions'],
+    verbs: ['remove'],
+    // `occasions.remove` takes out one occasion AND every record the machine
+    // kept against it — answers, gift history, open items, interviews, calendar
+    // mirrors. `delete` is the catalog's word for retiring a record, and most
+    // of the ids using it leave a tombstone; this one is the erasure a person
+    // asks for when someone has died or a marriage has ended, and naming it
+    // `delete` would file it beside calls that keep what they claim to remove.
+  },
+  'workspace-coverage-roots': {
+    namespaces: ['workspaces.registrations'],
+    verbs: ['add', 'remove'],
+    // A registration is not a record with a lifecycle; it is a root whose whole
+    // subtree becomes covered by it. `add` is idempotent and answers
+    // alreadyRegistered rather than creating a second anything, and `remove`
+    // answers removed:false for a root that was never there — neither has the
+    // create/delete shape of an id-bearing resource, and giving them those
+    // words would promise a registration record that a caller could then fetch.
+  },
+  'memory-record-append': {
+    namespaces: ['memory.records'],
+    verbs: ['add'],
+    // MemoryStore.add stamps a new record at the recall-confidence floor, and
+    // the recall-honesty contract is written in terms of `add`, not `create`.
+    // The wire mirrors the engine's own long-standing verb so the two cannot
+    // describe the same operation with two different words.
+  },
+};
+
+/**
+ * Flattened set of every exempt (non-core, non-banned) verb, for fast lookup.
+ *
+ * Membership here is NOT a grant: a scoped verb appears in this set and is
+ * still refused outside its namespaces. Use {@link classifyVerb}, which is
+ * given the whole method id, for any decision about a specific method.
+ */
+export const EXEMPT_VERBS: ReadonlySet<string> = new Set([
+  ...Object.values(EXEMPT_VERB_CATEGORIES).flat(),
+  ...Object.values(SCOPED_EXEMPT_VERB_CATEGORIES).flatMap((exemption) => exemption.verbs),
+]);
 
 /**
  * Classify a single operator-method id's verb tail (its final dotted
@@ -433,6 +497,12 @@ export function classifyVerb(methodId: string): VerbClassification {
   }
   if ((CORE_VERBS as readonly string[]).includes(verb)) {
     return { kind: 'core', verb: verb as CoreVerb };
+  }
+  for (const [category, exemption] of Object.entries(SCOPED_EXEMPT_VERB_CATEGORIES)) {
+    if (!exemption.verbs.includes(verb)) continue;
+    if (exemption.namespaces.some((namespace) => methodId.startsWith(`${namespace}.`))) {
+      return { kind: 'exempt', verb, category };
+    }
   }
   for (const [category, verbs] of Object.entries(EXEMPT_VERB_CATEGORIES)) {
     if (verbs.includes(verb)) {

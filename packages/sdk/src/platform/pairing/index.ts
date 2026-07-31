@@ -9,6 +9,8 @@ export {
 export type {
   CompanionPairingResult,
   CompanionConnectionInfo,
+  CompanionTokenOptions,
+  CompanionTokenQuarantine,
   CompanionTokenRecord,
 } from './companion-token.js';
 export {

@@ -11,7 +11,7 @@
  */
 
 import { describe, expect, test, afterEach } from 'bun:test';
-import { mkdtempSync, rmSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
@@ -76,5 +76,89 @@ describe('regenerateCompanionToken (rotation)', () => {
     regenerateCompanionToken({ daemonHomeDir });
     const mode = statSync(join(daemonHomeDir, 'operator-tokens.json')).mode & 0o777;
     expect(mode).toBe(0o600);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// An unreadable token store
+// ---------------------------------------------------------------------------
+//
+// The store is a fleet's shared secret. When it could not be read the code
+// fell through and minted a new token OVER the top of it: every paired client
+// 401s, the bytes they were holding are gone, and nothing anywhere says why.
+
+describe('an operator token store that cannot be read', () => {
+  test.each([
+    ['not valid JSON', 'this is not json at all'],
+    ['a torn write', ''],
+    ['a JSON value that is not a token record', '[1,2,3]'],
+    ['a record with no token', JSON.stringify({ peerId: 'abc', createdAt: 1 })],
+  ])('%s is moved aside, not silently overwritten', (_label, contents) => {
+    const daemonHomeDir = mkdtempSync(join(tmpdir(), 'operator-token-quarantine-'));
+    try {
+      const tokenPath = join(daemonHomeDir, 'operator-tokens.json');
+      writeFileSync(tokenPath, contents);
+
+      const result = getOrCreateCompanionToken({ daemonHomeDir });
+
+      expect(result.token).toStartWith('gv_');
+      expect(result.quarantined).toBeDefined();
+      expect(result.quarantined!.from).toBe(tokenPath);
+      expect(result.quarantined!.to).toBe(`${tokenPath}.unrecognized`);
+      expect(result.quarantined!.reason).toBeTruthy();
+      // The old bytes are still on disk, exactly as they were.
+      expect(readFileSync(`${tokenPath}.unrecognized`, 'utf-8')).toBe(contents);
+      // And the store now holds the new token.
+      expect(readStore(daemonHomeDir).token).toBe(result.token);
+    } finally {
+      rmSync(daemonHomeDir, { recursive: true, force: true });
+    }
+  });
+
+  test('the quarantine is recorded as a receipt saying clients must pair again', () => {
+    const daemonHomeDir = mkdtempSync(join(tmpdir(), 'operator-token-receipt-'));
+    try {
+      writeFileSync(join(daemonHomeDir, 'operator-tokens.json'), '{ truncated');
+      const receipts: string[] = [];
+
+      getOrCreateCompanionToken({ daemonHomeDir, receipts: { record: (text) => receipts.push(text) } });
+
+      expect(receipts).toHaveLength(1);
+      expect(receipts[0]).toContain('pair again');
+      expect(receipts[0]).toContain('.unrecognized');
+    } finally {
+      rmSync(daemonHomeDir, { recursive: true, force: true });
+    }
+  });
+
+  test('a second unreadable store does not overwrite the first one moved aside', () => {
+    const daemonHomeDir = mkdtempSync(join(tmpdir(), 'operator-token-second-'));
+    try {
+      const tokenPath = join(daemonHomeDir, 'operator-tokens.json');
+      writeFileSync(tokenPath, 'first corruption');
+      getOrCreateCompanionToken({ daemonHomeDir });
+      writeFileSync(tokenPath, 'second corruption');
+      const second = getOrCreateCompanionToken({ daemonHomeDir });
+
+      expect(second.quarantined!.to).toBe(`${tokenPath}.unrecognized.2`);
+      expect(readFileSync(`${tokenPath}.unrecognized`, 'utf-8')).toBe('first corruption');
+      expect(readFileSync(`${tokenPath}.unrecognized.2`, 'utf-8')).toBe('second corruption');
+    } finally {
+      rmSync(daemonHomeDir, { recursive: true, force: true });
+    }
+  });
+
+  test('a readable store is untouched and reports no quarantine', () => {
+    const daemonHomeDir = mkdtempSync(join(tmpdir(), 'operator-token-intact-'));
+    try {
+      const first = getOrCreateCompanionToken({ daemonHomeDir });
+      const second = getOrCreateCompanionToken({ daemonHomeDir });
+
+      expect(second.token).toBe(first.token);
+      expect(second.quarantined).toBeUndefined();
+      expect(existsSync(join(daemonHomeDir, 'operator-tokens.json.unrecognized'))).toBe(false);
+    } finally {
+      rmSync(daemonHomeDir, { recursive: true, force: true });
+    }
   });
 });
