@@ -26,7 +26,10 @@
  * SDK-side code needs it too, and the SDK cannot import this package.
  *
  * See ./conformance for the descriptor/handler gate a consumer runs against its
- * own composition in CI.
+ * own composition in CI, and ./terminal-output-guard for the write guard on its
+ * own import path — a renderer needs `allowTerminalWrite` and nothing else in
+ * this barrel, and reaching it through the barrel would load the whole
+ * gateway/fleet graph on the startup path.
  */
 export {
   attachWsOnlyGatewayVerbHandlers,
