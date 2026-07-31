@@ -4,6 +4,53 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 ### Added
 
+- **Conversation-scope rewind, served by the surface that actually hosts the
+  conversation.** Files rewind works from anywhere, because the workspace
+  checkpoint store is the daemon's. The conversation half is answerable only by
+  the process running the loop, and the port the daemon wired resolved a
+  session's conversation out of an in-process map nothing outside the daemon
+  could populate. So `rewind.plan` with scope `conversation` reported
+  `available: true, messagesToDrop: 0` for every session hosted by a client —
+  indistinguishable, to every reader, from a conversation already at the anchor.
+  A confident wrong answer, which is the worst shape one can take.
+
+  Five verbs, all ws-only, in a new route module
+  (`routes/rewind-conversation-hosts.ts`) over a new broker
+  (`platform/rewind/conversation-host-broker.ts`). A surface offers the
+  conversation it is running with `rewind.conversation.host.register`, collects
+  the questions the daemon puts to it with
+  `rewind.conversation.requests.take` (optionally holding the call open until
+  one arrives), and reports back with `rewind.conversation.requests.answer`.
+  `rewind.conversation.host.release` withdraws the offer and
+  `rewind.conversation.hosts.list` shows who is holding what, so "conversation
+  rewind is unavailable for that session" is checkable rather than taken on
+  trust.
+
+  There is no cross-surface path, deliberately: only the process holding the
+  messages can count or drop them, so anyone else's answer would be a guess.
+  The shape mirrors the approval broker, the platform's existing reverse call —
+  a request, a resolver beside it, a bounded deadline, and every outcome
+  RESOLVING rather than rejecting so no caller is left holding a promise. It
+  differs in delivery, because an approval waits on a person and a rewind ask is
+  answered by a program in milliseconds while `rewind.plan` is waiting on it, so
+  the host takes its work on its own connection instead of on an event stream.
+
+  Nothing is persisted. A registration is a claim about a live process, worthless
+  once either end may be gone, so it carries a lease the host renews by polling
+  and an unrenewed one is dropped on the next access — bounded by time rather
+  than by a sweep, with ceilings on hosts and on unanswered questions per host.
+
+  `RewindConversationPreview` and `RewindConversationOutcome` gained an optional
+  availability channel (`available`, `unavailableReason`), and
+  `UnifiedRewindService` turns it into a plan/receipt warning. A port that omits
+  it is treated as available exactly as before, so an in-process consumer that
+  always holds its conversation is unaffected. `conversationRewindPort` on
+  `GatewayVerbGroupDeps` is now the FALLBACK, consulted for sessions no surface
+  has offered: a process holding the messages is a better authority on them than
+  a store that merely might have them. A timed-out `rewind` reports that it
+  could not be confirmed whether the surface truncated, and never that nothing
+  was dropped — the one claim nobody in the daemon is in a position to make.
+
 - **A route to a paired phone for a surface that does not host the device
   runtime.** The `devices.*` family could list paired nodes, list the durable
   grants and revoke them, and run the housekeeping sweep. It could not ask a

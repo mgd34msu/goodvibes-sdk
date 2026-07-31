@@ -179,6 +179,12 @@ export class UnifiedRewindService {
       return { available: false, messagesToDrop: 0, messagesRemaining: 0 };
     }
     const preview = await this.conversation.preview(anchor);
+    if (preview.available === false) {
+      warnings.push(preview.unavailableReason?.trim()
+        ? `conversation rewind unavailable: ${preview.unavailableReason.trim()}`
+        : 'conversation rewind unavailable: no conversation is reachable for this session');
+      return { available: false, messagesToDrop: 0, messagesRemaining: 0 };
+    }
     return { available: true, messagesToDrop: preview.messagesToDrop, messagesRemaining: preview.messagesRemaining };
   }
 
@@ -218,6 +224,12 @@ export class UnifiedRewindService {
       return { conversation: { rewound: false, droppedMessages: 0, undoSnapshotId: null }, undoConversation: null };
     }
     const outcome = await this.conversation.rewind(anchor);
+    if (outcome.available === false) {
+      warnings.push(outcome.unavailableReason?.trim()
+        ? `conversation rewind skipped: ${outcome.unavailableReason.trim()}`
+        : 'conversation rewind skipped: no conversation is reachable for this session');
+      return { conversation: { rewound: false, droppedMessages: 0, undoSnapshotId: null }, undoConversation: null };
+    }
     return {
       conversation: { rewound: true, droppedMessages: outcome.droppedMessages, undoSnapshotId: outcome.undoSnapshotId },
       undoConversation: { undoSnapshotId: outcome.undoSnapshotId },

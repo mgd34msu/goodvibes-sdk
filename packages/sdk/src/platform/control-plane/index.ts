@@ -135,5 +135,11 @@ export type { SessionLiveTurnControls } from './routes/session-runtime.js';
 // skills.* CRUD verb registration over the canonical SkillService (see routes/skills.ts).
 export { registerDevicesGatewayMethods } from './routes/devices.js';
 export type { DevicesGatewayService } from './routes/devices.js';
+// Conversation-scope rewind served by the surface hosting the conversation
+// (see routes/rewind-conversation-hosts.ts).
+export {
+  createConversationRewindHostBroker,
+  registerRewindConversationHostGatewayMethods,
+} from './routes/rewind-conversation-hosts.js';
 export { registerSkillsGatewayMethods } from './routes/skills.js';
 export type { SkillsGatewayService } from './routes/skills.js';

@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.21.0
- * Methods: 489 total, 431 REST-routed, 58 ws-only invoke.
+ * Methods: 494 total, 431 REST-routed, 63 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -1821,6 +1821,11 @@ export const WEBUI_WS_INVOKE_METHOD_IDS: readonly string[] = [
   "tailscale.get",
   "tailscale.serve.run",
   "rewind.apply",
+  "rewind.conversation.host.register",
+  "rewind.conversation.host.release",
+  "rewind.conversation.hosts.list",
+  "rewind.conversation.requests.answer",
+  "rewind.conversation.requests.take",
   "rewind.plan",
   "sessions.changes.get",
   "sessions.search",
@@ -2227,6 +2232,11 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "tailscale.serve.run": "ws-invoke",
   "review.snapshot": "rest",
   "rewind.apply": "ws-invoke",
+  "rewind.conversation.host.register": "ws-invoke",
+  "rewind.conversation.host.release": "ws-invoke",
+  "rewind.conversation.hosts.list": "ws-invoke",
+  "rewind.conversation.requests.answer": "ws-invoke",
+  "rewind.conversation.requests.take": "ws-invoke",
   "rewind.plan": "ws-invoke",
   "routes.bindings.create": "rest",
   "routes.bindings.delete": "rest",
@@ -18399,6 +18409,102 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
         "options": [
           "sample"
         ]
+      }
+    }
+  },
+  "rewind.conversation.host.register": {
+    "input": {
+      "sessionId": "sample",
+      "hostId": "sample",
+      "label": "sample",
+      "leaseMs": 0
+    },
+    "output": {
+      "host": {
+        "hostId": "sample",
+        "sessionId": "sample",
+        "label": "sample",
+        "registeredAt": 0,
+        "leaseExpiresAt": 0
+      },
+      "renewed": false,
+      "maxWaitMs": 0,
+      "answerTimeoutMs": 0
+    }
+  },
+  "rewind.conversation.host.release": {
+    "input": {
+      "sessionId": "sample",
+      "hostId": "sample"
+    },
+    "output": {
+      "released": false,
+      "host": {
+        "hostId": "sample",
+        "sessionId": "sample",
+        "label": "sample",
+        "registeredAt": 0,
+        "leaseExpiresAt": 0
+      }
+    }
+  },
+  "rewind.conversation.hosts.list": {
+    "input": {},
+    "output": {
+      "hosts": [
+        {
+          "hostId": "sample",
+          "sessionId": "sample",
+          "label": "sample",
+          "registeredAt": 0,
+          "leaseExpiresAt": 0
+        }
+      ]
+    }
+  },
+  "rewind.conversation.requests.answer": {
+    "input": {
+      "hostId": "sample",
+      "requestId": "sample",
+      "messagesToDrop": 0,
+      "messagesRemaining": 0,
+      "droppedMessages": 0,
+      "undoSnapshotId": "sample",
+      "unavailableReason": "sample"
+    },
+    "output": {
+      "accepted": false,
+      "request": {
+        "requestId": "sample",
+        "sessionId": "sample",
+        "turnId": "sample",
+        "kind": "preview",
+        "expiresAt": 0
+      }
+    }
+  },
+  "rewind.conversation.requests.take": {
+    "input": {
+      "hostId": "sample",
+      "waitMs": 0,
+      "limit": 0
+    },
+    "output": {
+      "requests": [
+        {
+          "requestId": "sample",
+          "sessionId": "sample",
+          "turnId": "sample",
+          "kind": "preview",
+          "expiresAt": 0
+        }
+      ],
+      "host": {
+        "hostId": "sample",
+        "sessionId": "sample",
+        "label": "sample",
+        "registeredAt": 0,
+        "leaseExpiresAt": 0
       }
     }
   },

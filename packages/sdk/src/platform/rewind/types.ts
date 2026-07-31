@@ -58,23 +58,47 @@ export interface RewindWorkspacePort {
   ): Promise<RewindRestoreResult>;
 }
 
+/**
+ * Whether a port could answer for THIS anchor, and why not when it could not.
+ *
+ * A wired port used to mean an available conversation, because the only port
+ * was one an in-process consumer built around a conversation it was holding.
+ * That stopped being true the moment a port had to resolve a conversation per
+ * session: a daemon that wires a port and hosts no conversation for the session
+ * being asked about answered "0 messages to drop" — indistinguishable, to every
+ * reader, from a conversation that is genuinely already at the anchor. That is
+ * the worst shape a wrong answer can take, because it reads as a confident one.
+ *
+ * `available` is optional so a port that always holds its conversation says
+ * nothing and is treated as available, exactly as before. A port that resolves
+ * per session sets `available: false` with a reason a person can act on.
+ */
+export interface RewindConversationAvailability {
+  readonly available?: boolean | undefined;
+  /** Stated when `available` is false; surfaces as a plan/receipt warning. */
+  readonly unavailableReason?: string | undefined;
+}
+
 /** Conversation dry-run preview: how much of the session would be truncated. */
-export interface RewindConversationPreview {
+export interface RewindConversationPreview extends RewindConversationAvailability {
   readonly messagesToDrop: number;
   readonly messagesRemaining: number;
 }
 
 /** Conversation rewind outcome, carrying the undo handle for redo. */
-export interface RewindConversationOutcome {
+export interface RewindConversationOutcome extends RewindConversationAvailability {
   readonly droppedMessages: number;
   /** Opaque handle to the captured pre-rewind conversation, for restore-the-restore. */
   readonly undoSnapshotId: string;
 }
 
 /**
- * The conversation store port. Wired by an in-process consumer that hosts a
- * mutable conversation (e.g. a ConversationManager). Absent → conversation
- * rewind is honestly reported unavailable rather than faked.
+ * The conversation store port. Wired by a consumer that can reach a mutable
+ * conversation — an in-process one it holds (e.g. a ConversationManager), or a
+ * surface that offered its live conversation over the control plane. Absent →
+ * conversation rewind is honestly reported unavailable rather than faked, and a
+ * port present but unable to answer for a given session says so through
+ * {@link RewindConversationAvailability}.
  */
 export interface RewindConversationPort {
   preview(anchor: RewindAnchor): Promise<RewindConversationPreview>;

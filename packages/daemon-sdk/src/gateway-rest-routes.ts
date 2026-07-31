@@ -160,6 +160,11 @@ export const GATEWAY_REST_ROUTES: readonly GatewayRestRoute[] = [
   // devices.* — paired-phone capability nodes, the durable "always allow"
   // grants surface, and the housekeeping sweep with its disclosure.
   route('GET', '/api/devices/nodes', 'devices.nodes.list'),
+  // Asking one of those nodes for a capability, and reading back a capture a
+  // caller that is not on this host's disk cannot open for itself.
+  route('POST', '/api/devices/capability/request', 'devices.capability.request'),
+  route('GET', '/api/devices/artifacts', 'devices.artifacts.list'),
+  route('GET', '/api/devices/artifacts/{artifactId}', 'devices.artifacts.read'),
   route('GET', '/api/devices/grants', 'devices.grants.list'),
   route('POST', '/api/devices/grants/revoke', 'devices.grants.revoke'),
   route('POST', '/api/devices/housekeeping', 'devices.housekeeping.run'),
