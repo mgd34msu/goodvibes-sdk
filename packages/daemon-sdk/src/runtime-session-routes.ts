@@ -441,17 +441,46 @@ function readPositiveInt(value: string | null): number | undefined {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
 }
 
+const SURFACE_ANSWER_STATUSES = new Set(['completed', 'failed', 'cancelled']);
+
+function readSurfaceAnswerStatus(value: unknown): 'completed' | 'failed' | 'cancelled' | undefined {
+  return typeof value === 'string' && SURFACE_ANSWER_STATUSES.has(value)
+    ? value as 'completed' | 'failed' | 'cancelled'
+    : undefined;
+}
+
 /** Handle POST /api/sessions/:sessionId/inputs/:inputId/deliver — a live surface reports
- * collection (`{consumed:true}` = completed, else delivered); optional body, null/bare = consumed:false. */
+ * collection (`{consumed:true}` = completed, else delivered); optional body, null/bare = consumed:false.
+ *
+ * `agentId` is the surface naming the agent that is answering this input: it
+ * binds the reply so a message that arrived over a channel and was dispatched
+ * to a surface gets its answer routed back, on the same path the daemon's own
+ * spawn takes. `answer` (with `consumed:true`) is that agent's finished output,
+ * reported when the surface's turn ends — the daemon writes it into the shared
+ * session and pushes it down the reply pipeline. */
 async function handleDeliverSharedSessionInput(
   context: DaemonRuntimeRouteContext, sessionId: string, inputId: string, req: Request,
 ): Promise<Response> {
   const body = await context.parseOptionalJsonBody(req);
   if (body instanceof Response) return body;
   const consumed = body?.consumed === true;
-  const input = await context.sessionBroker.markInputDelivered(sessionId, inputId, { consumed });
+  const agentId = typeof body?.agentId === 'string' && body.agentId.trim() ? body.agentId.trim() : undefined;
+  const answer = typeof body?.answer === 'string' ? body.answer : undefined;
+  const input = await context.sessionBroker.markInputDelivered(sessionId, inputId, {
+    consumed,
+    ...(agentId ? { agentId } : {}),
+  });
   if (!input) {
     return jsonErrorResponse({ error: 'Unknown shared session input' }, { status: 404 });
+  }
+  if (agentId && answer !== undefined) {
+    const status = readSurfaceAnswerStatus(body?.status);
+    await context.completeSurfaceReplyFromSurface({
+      agentId,
+      sessionId,
+      body: answer,
+      ...(status ? { status } : {}),
+    });
   }
   return context.recordApiResponse(req, `/api/sessions/${sessionId}/inputs/${inputId}/deliver`, Response.json({ input }, { status: 200 }));
 }

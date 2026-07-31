@@ -392,6 +392,36 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   validated by this package and its neighbour by a transcription of what this
   package used to do before `resolveWebBinding` existed.
 
+### Fixed
+
+- **A conversation the daemon dispatches to a surface now gets its answer back
+  to the channel it came from (`sessions.inputs.deliver`, `platform/runtime/client/session-dispatch`).**
+  When the daemon spawns a continuation itself, `SharedSessionBroker.bindAgent`
+  pairs the agent with the input it was started for, announces the pairing, and
+  the daemon's completion poll delivers the answer. None of that could happen
+  for work the daemon handed to a client process: `createWireSessionDispatch`
+  discarded the id its runner returned, so no pairing existed, and the
+  completion poll only ever sees agents the daemon spawned itself, so no answer
+  arrived either. A message from Telegram/Slack/ntfy could be received,
+  answered on the surface, and heard by nobody.
+
+  `sessions.inputs.deliver` now takes three optional fields, and the dispatcher
+  reports both halves of the pairing over them: `agentId` with the collected
+  acknowledgement ("this agent is answering this input"), which binds the reply
+  through the same announcement path (`SharedSessionSurfaceReplyBinding` reason
+  `continuation-runner`); then `answer` + `status` with the consumed
+  acknowledgement, which writes the answer into the shared session and pushes it
+  down the reply pipeline. The finish half needs the surface's own read of its
+  agent register — the new `readAgentOutcome` option, with
+  `readSurfaceAgentOutcome` as the mapping from an agent record. A host that
+  supplies no reader keeps one acknowledgement and still names the agent, so the
+  reply binds either way.
+
+  The answer text is now one rule in one place (`platform/agents`:
+  `renderAgentCompletionAnswer`), used by the daemon's completion poll and by a
+  surface reporting a dispatched run, so an answer does not read differently
+  depending on which process happened to execute it.
+
 ### Changed
 
 - **The daemon updates itself from the daemon's own repository.** The shipped

@@ -940,6 +940,9 @@ Approve a pending approval. Optionally pass selectedHunks (edit-tool approvals o
         "fixSessionError": {
           "type": "string"
         },
+        "expiresAt": {
+          "type": "number"
+        },
         "metadata": {
           "type": "object",
           "additionalProperties": {
@@ -1451,6 +1454,9 @@ Cancel a pending approval.
         "fixSessionError": {
           "type": "string"
         },
+        "expiresAt": {
+          "type": "number"
+        },
         "metadata": {
           "type": "object",
           "additionalProperties": {
@@ -1955,6 +1961,9 @@ Claim a pending approval for operator handling.
         },
         "fixSessionError": {
           "type": "string"
+        },
+        "expiresAt": {
+          "type": "number"
         },
         "metadata": {
           "type": "object",
@@ -2479,6 +2488,9 @@ Deny a pending approval. rememberTier generalizes the denial (a generalizing tie
         },
         "fixSessionError": {
           "type": "string"
+        },
+        "expiresAt": {
+          "type": "number"
         },
         "metadata": {
           "type": "object",
@@ -3109,6 +3121,9 @@ Return pending and historical approval records.
           },
           "fixSessionError": {
             "type": "string"
+          },
+          "expiresAt": {
+            "type": "number"
           },
           "metadata": {
             "type": "object",
@@ -3854,6 +3869,9 @@ Raise a permission ask INTO the shared broker from a surface that is not in the 
         },
         "fixSessionError": {
           "type": "string"
+        },
+        "expiresAt": {
+          "type": "number"
         },
         "metadata": {
           "type": "object",
@@ -92284,7 +92302,7 @@ Cancel a queued shared-session input before it is delivered or spawned.
 
 #### `sessions.inputs.deliver`
 
-A live registered surface reports that it collected a queued input (moves it to `delivered`) or finished acting on it (`consumed:true` moves it to `completed`). This is how a surface-managed session — where steer/follow-up inputs queue for the surface rather than spawn a daemon executor — closes the input lifecycle honestly. Only queued/delivered inputs advance; others are returned unchanged.
+A live registered surface reports that it collected a queued input (moves it to `delivered`) or finished acting on it (`consumed:true` moves it to `completed`). This is how a surface-managed session — where steer/follow-up inputs queue for the surface rather than spawn a daemon executor — closes the input lifecycle honestly. Only queued/delivered inputs advance; others are returned unchanged. `agentId` names the agent the surface is running for this input: it binds the reply so a message that arrived over a channel gets its answer routed back to that conversation, the same binding the daemon makes for the executors it spawns itself. `answer` (sent with `consumed:true`, optionally with `status`) is the output that agent finished with — the daemon writes it into the session and delivers it to the channel.
 
 - Title: `Mark Shared Session Input Delivered`
 - Source: `builtin`
@@ -92310,6 +92328,15 @@ A live registered surface reports that it collected a queued input (moves it to 
     },
     "consumed": {
       "type": "boolean"
+    },
+    "agentId": {
+      "type": "string"
+    },
+    "answer": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
     }
   },
   "required": [
@@ -105622,6 +105649,9 @@ Every approval record transition, pushed the moment the broker records it: an as
         },
         "fixSessionError": {
           "type": "string"
+        },
+        "expiresAt": {
+          "type": "number"
         },
         "metadata": {
           "type": "object",

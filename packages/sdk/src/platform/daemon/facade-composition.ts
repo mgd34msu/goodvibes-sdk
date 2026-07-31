@@ -457,10 +457,7 @@ export function resolveDaemonFacadeRuntime(config: DaemonConfig): ResolvedDaemon
  * an idle daemon produced byte-identical evidence, which is how a real delivery
  * failure stayed invisible.
  */
-function recordSurfaceDeliveryAttempt(
-  runtime: ResolvedDaemonFacadeRuntime,
-  entry: SurfaceDeliveryLedgerEntry,
-): void {
+function recordSurfaceDeliveryAttempt(runtime: ResolvedDaemonFacadeRuntime, entry: SurfaceDeliveryLedgerEntry): void {
   const surfaceKind = (ROUTE_SURFACE_KINDS as readonly string[]).includes(entry.surfaceKind)
     ? entry.surfaceKind as RouteSurfaceKind
     : 'webhook';
@@ -694,6 +691,7 @@ export function createDaemonFacadeCollaborators(
     describeAuthenticatedPrincipal: options.describeAuthenticatedPrincipal,
     invokeGatewayMethodCall: options.invokeGatewayMethodCall,
     queueSurfaceReplyFromBinding: (binding, input) => surfaceDeliveryHelper.queueSurfaceReplyFromBinding(binding, input),
+    completeSurfaceReplyFromSurface: (input) => surfaceDeliveryHelper.completeSurfaceReplyFromSurface(input),
     surfaceDeliveryEnabled: options.surfaceDeliveryEnabled,
     syncSpawnedAgentTask: options.syncSpawnedAgentTask,
     syncFinishedAgentTask: options.syncFinishedAgentTask,
