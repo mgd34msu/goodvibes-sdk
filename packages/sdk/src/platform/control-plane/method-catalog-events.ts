@@ -1,6 +1,7 @@
 import type { GatewayEventDescriptor } from './method-catalog-shared.js';
 import { STRING_SCHEMA,NUMBER_SCHEMA,JSON_OBJECT_SCHEMA,arraySchema,objectSchema,eventDescriptor,runtimeDomainEvent } from './method-catalog-shared.js';
 import { CONTROL_PLANE_SURFACE_MESSAGE_SCHEMA } from './operator-contract-schemas.js';
+import { SHARED_APPROVAL_RECORD_SCHEMA } from './operator-contract-schemas-approvals.js';
 import { RUNTIME_EVENT_DOMAINS, type RuntimeEventDomain } from '../../events/domain-map.js';
 
 /**
@@ -83,6 +84,7 @@ const RUNTIME_DOMAIN_DESCRIPTIONS = {
   knowledge: 'Knowledge ingest, extraction, projection, packet, and job events.',
   workspace: 'Workspace swap lifecycle events (start, complete, refuse).',
   fleet: 'Live process-registry node lifecycle events (started, state-changed, finished, blocked-on-user, unblocked) — the poll-free counterpart to fleet.snapshot.',
+  config: 'Key-level settings-change notices (CONFIG_KEY_CHANGED), carrying the dotted key, its ownership scope (daemon/client/user) and the new value — EXCEPT for a secret-bearing key, which travels by name only with secret:true and no value field at all. The poll-free counterpart to config.get for a client whose settings live in the daemon: an in-process ConfigManager.subscribe cannot see a write that happened on another machine, so a client without this stream keeps running on whatever it read at startup.',
 } satisfies Record<RuntimeEventDomain, string>;
 
 export const builtinGatewayEventDescriptors: readonly GatewayEventDescriptor[] = [
@@ -123,6 +125,34 @@ export const builtinGatewayEventDescriptors: readonly GatewayEventDescriptor[] =
     scopes: ['read:events'],
     wireEvents: ['surface-message'],
     outputSchema: CONTROL_PLANE_SURFACE_MESSAGE_SCHEMA,
+  }),
+  eventDescriptor({
+    id: 'control.approval_update',
+    title: 'Approval Record Update',
+    description:
+      'Every approval record transition, pushed the moment the broker records it: an ask RAISED (status '
+      + 'pending — this is the prompt arriving), claimed by a surface, approved, denied, cancelled, expired, '
+      + 'or updated in place (a started fix session stamped onto an accepted offer). The payload is the whole '
+      + '`approval` record plus the `createdAt` of the notice, so a subscriber renders the prompt from the '
+      + 'event and never needs a follow-up read to draw it. '
+      + 'This is the channel that makes approvals.raise usable from a surface that is not in the daemon '
+      + 'process: raise returns the pending record and the DECISION arrives here, so a client gets '
+      + 'keystroke-fast prompt delivery instead of polling approvals.list on a timer. '
+      + 'Domain-tagged `permissions` (gateway-scope-enforcement.ts EVENT_DOMAIN), so a client that opened '
+      + 'the stream with ?domains=… must include `permissions` to receive it; a client that opted into no '
+      + 'domain narrowing receives it as before. '
+      + 'The record is the daemon\'s, not the subscriber\'s: several surfaces see the same transition and the '
+      + 'daemon remains the single source of the applied result — a surface renders what the record says '
+      + 'rather than what it locally decided.',
+    category: 'transport',
+    transport: ['sse', 'ws'],
+    scopes: ['read:events'],
+    wireEvents: ['approval-update'],
+    domains: ['permissions'],
+    outputSchema: objectSchema({
+      approval: SHARED_APPROVAL_RECORD_SCHEMA,
+      createdAt: NUMBER_SCHEMA,
+    }, ['approval', 'createdAt']),
   }),
   eventDescriptor({
     id: 'control.session_update',

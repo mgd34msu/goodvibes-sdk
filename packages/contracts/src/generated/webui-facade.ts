@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.21.0
- * Methods: 483 total, 428 REST-routed, 55 ws-only invoke.
+ * Methods: 486 total, 428 REST-routed, 58 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -1758,6 +1758,7 @@ export const WEBUI_METHOD_ROUTES: Readonly<Record<string, WebuiRouteDefinition>>
 export const WEBUI_WS_INVOKE_METHOD_IDS: readonly string[] = [
   "acp.agents.list",
   "acp.sessions.create",
+  "approvals.raise",
   "channels.test.send",
   "checkpoints.create",
   "checkpoints.diff",
@@ -1766,6 +1767,8 @@ export const WEBUI_WS_INVOKE_METHOD_IDS: readonly string[] = [
   "checkpoints.restorePreview",
   "checkpoints.revertHunk",
   "checkpoints.revertHunkPreview",
+  "credentials.delete",
+  "credentials.set",
   "cost.attribution.get",
   "email.expectation.cancel",
   "email.expectation.list",
@@ -1823,6 +1826,7 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "approvals.claim": "rest",
   "approvals.deny": "rest",
   "approvals.list": "rest",
+  "approvals.raise": "ws-invoke",
   "artifacts.content.get": "rest",
   "artifacts.create": "rest",
   "artifacts.get": "rest",
@@ -1954,7 +1958,9 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "companion.chat.turns.cancel": "rest",
   "config.get": "rest",
   "config.set": "rest",
+  "credentials.delete": "ws-invoke",
   "credentials.get": "rest",
+  "credentials.set": "ws-invoke",
   "continuity.snapshot": "rest",
   "control.auth.current": "rest",
   "control.auth.login": "rest",
@@ -2845,6 +2851,122 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           ]
         }
       ]
+    }
+  },
+  "approvals.raise": {
+    "input": {
+      "request": {
+        "callId": "sample",
+        "tool": "sample",
+        "args": {},
+        "category": "read",
+        "analysis": {
+          "classification": "sample",
+          "riskLevel": "low",
+          "summary": "sample",
+          "reasons": [
+            "sample"
+          ],
+          "target": "sample",
+          "targetKind": "command",
+          "surface": "filesystem",
+          "blastRadius": "local",
+          "sideEffects": [
+            "sample"
+          ],
+          "host": "sample"
+        },
+        "workingDirectory": "sample",
+        "attribution": {
+          "kind": "background-agent",
+          "agentId": "sample",
+          "template": "sample"
+        },
+        "rememberOptions": [
+          {
+            "tier": "session",
+            "label": "sample",
+            "detail": "sample"
+          }
+        ]
+      },
+      "sessionId": "sample",
+      "routeId": "sample",
+      "metadata": {},
+      "timeoutMs": 0,
+      "waitMs": 0
+    },
+    "output": {
+      "approval": {
+        "id": "sample",
+        "callId": "sample",
+        "sessionId": "sample",
+        "routeId": "sample",
+        "status": "pending",
+        "request": {
+          "callId": "sample",
+          "tool": "sample",
+          "args": {},
+          "category": "read",
+          "analysis": {
+            "classification": "sample",
+            "riskLevel": "low",
+            "summary": "sample",
+            "reasons": [
+              "sample"
+            ],
+            "target": "sample",
+            "targetKind": "command",
+            "surface": "filesystem",
+            "blastRadius": "local",
+            "sideEffects": [
+              "sample"
+            ],
+            "host": "sample"
+          },
+          "workingDirectory": "sample",
+          "attribution": {
+            "kind": "background-agent",
+            "agentId": "sample",
+            "template": "sample"
+          },
+          "rememberOptions": [
+            {
+              "tier": "session",
+              "label": "sample",
+              "detail": "sample"
+            }
+          ]
+        },
+        "createdAt": 0,
+        "updatedAt": 0,
+        "claimedBy": "sample",
+        "claimedAt": 0,
+        "resolvedAt": 0,
+        "resolvedBy": "sample",
+        "decision": {
+          "approved": false,
+          "remember": false,
+          "rememberTier": "session",
+          "reason": "sample",
+          "modifiedArgs": {}
+        },
+        "fixSessionId": "sample",
+        "fixSessionError": "sample",
+        "metadata": {},
+        "audit": [
+          {
+            "id": "sample",
+            "action": "created",
+            "actor": "sample",
+            "actorSurface": "sample",
+            "createdAt": 0,
+            "note": "sample"
+          }
+        ]
+      },
+      "coalesced": false,
+      "decided": false
     }
   },
   "artifacts.content.get": {
@@ -7264,6 +7386,18 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
       "daemonOwned": false
     }
   },
+  "credentials.delete": {
+    "input": {
+      "key": "sample"
+    },
+    "output": {
+      "success": false,
+      "key": "sample",
+      "secretKey": "sample",
+      "scope": "sample",
+      "cleared": false
+    }
+  },
   "credentials.get": {
     "input": {
       "key": "sample"
@@ -7282,6 +7416,22 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "refSource": "sample"
         }
       ]
+    }
+  },
+  "credentials.set": {
+    "input": {
+      "key": "sample",
+      "value": "sample"
+    },
+    "output": {
+      "success": false,
+      "key": "sample",
+      "secretKey": "sample",
+      "scope": "sample",
+      "reference": "sample",
+      "configScope": "sample",
+      "ownership": "sample",
+      "credentialScope": "sample"
     }
   },
   "continuity.snapshot": {

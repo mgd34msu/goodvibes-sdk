@@ -133,6 +133,48 @@ export const CREDENTIALS_SNAPSHOT_SCHEMA = objectSchema({
   credentials: arraySchema(CREDENTIAL_STATUS_RECORD_SCHEMA),
 }, ['available', 'credentials']);
 
+/**
+ * Input of `credentials.set` — the config key whose value is a credential, and
+ * the credential itself. `key` is a CONFIG path (`surfaces.telegram.botToken`),
+ * not a secret-store name: the store name is derived from it so one derivation
+ * governs, and the config key is what the operator actually knows.
+ */
+export const CREDENTIAL_SET_INPUT_SCHEMA = objectSchema({
+  key: STRING_SCHEMA,
+  value: STRING_SCHEMA,
+}, ['key', 'value'], { additionalProperties: false });
+
+/** Input of `credentials.delete` — the config key to remove a credential from. */
+export const CREDENTIAL_DELETE_INPUT_SCHEMA = objectSchema({
+  key: STRING_SCHEMA,
+}, ['key'], { additionalProperties: false });
+
+/**
+ * Output of `credentials.set`. Carries NO secret material by construction —
+ * not the value, and not a value-derived fingerprint (a hash of a short secret
+ * is a way to confirm a guess). Everything here is a name, a scope, or a
+ * sentence about where the write went.
+ */
+export const CREDENTIAL_SET_OUTPUT_SCHEMA = objectSchema({
+  success: BOOLEAN_SCHEMA,
+  key: STRING_SCHEMA,
+  secretKey: STRING_SCHEMA,
+  scope: STRING_SCHEMA,
+  reference: STRING_SCHEMA,
+  configScope: STRING_SCHEMA,
+  ownership: STRING_SCHEMA,
+  credentialScope: STRING_SCHEMA,
+}, ['success', 'key', 'secretKey', 'scope', 'reference'], { additionalProperties: false });
+
+/** Output of `credentials.delete`. `cleared: false` = nothing was stored (a miss, not an error). */
+export const CREDENTIAL_DELETE_OUTPUT_SCHEMA = objectSchema({
+  success: BOOLEAN_SCHEMA,
+  key: STRING_SCHEMA,
+  secretKey: STRING_SCHEMA,
+  scope: STRING_SCHEMA,
+  cleared: BOOLEAN_SCHEMA,
+}, ['success', 'key', 'secretKey', 'scope', 'cleared'], { additionalProperties: false });
+
 const AUTOMATION_JOB_STATUS_SCHEMA = enumSchema(['enabled', 'paused', 'error', 'archived']);
 const AUTOMATION_RUN_STATUS_SCHEMA = enumSchema(['queued', 'running', 'completed', 'failed', 'cancelled', 'missed']);
 const AUTOMATION_RUN_TRIGGER_SCHEMA = enumSchema([

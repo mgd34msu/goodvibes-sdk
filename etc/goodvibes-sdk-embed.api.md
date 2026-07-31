@@ -36,9 +36,10 @@ import type { StoreApi } from 'zustand';
 // Warning: (ae-forgotten-export) The symbol "KnowledgeEvent" needs to be exported by the entry point embed.d.ts
 // Warning: (ae-forgotten-export) The symbol "WorkspaceEvent" needs to be exported by the entry point embed.d.ts
 // Warning: (ae-forgotten-export) The symbol "FleetEvent" needs to be exported by the entry point embed.d.ts
+// Warning: (ae-forgotten-export) The symbol "ConfigEvent" needs to be exported by the entry point embed.d.ts
 //
 // @public
-export type AnyRuntimeEvent = SessionEvent | TurnEvent | ProviderEvent | ToolEvent | TaskEvent | AgentEvent | WorkflowEvent | OrchestrationEvent | CommunicationEvent | PlannerEvent | PermissionEvent | PluginEvent | McpEvent | TransportEvent | CompactionEvent | GoodVibesUIEvent | OpsEvent | ForensicsEvent | SecurityEvent | AutomationEvent | RouteEvent | ControlPlaneEvent | DeliveryEvent | WatcherEvent | SurfaceEvent | KnowledgeEvent | WorkspaceEvent | FleetEvent;
+export type AnyRuntimeEvent = SessionEvent | TurnEvent | ProviderEvent | ToolEvent | TaskEvent | AgentEvent | WorkflowEvent | OrchestrationEvent | CommunicationEvent | PlannerEvent | PermissionEvent | PluginEvent | McpEvent | TransportEvent | CompactionEvent | GoodVibesUIEvent | OpsEvent | ForensicsEvent | SecurityEvent | AutomationEvent | RouteEvent | ControlPlaneEvent | DeliveryEvent | WatcherEvent | SurfaceEvent | KnowledgeEvent | WorkspaceEvent | FleetEvent | ConfigEvent;
 
 // @public (undocumented)
 export class ApprovalBroker {
@@ -56,6 +57,9 @@ export class ApprovalBroker {
     //
     // (undocumented)
     listApprovals(limit?: number): SharedApprovalRecord[];
+    // Warning: (ae-forgotten-export) The symbol "RequestSharedApprovalInput" needs to be exported by the entry point embed.d.ts
+    // Warning: (ae-forgotten-export) The symbol "RaisedApproval" needs to be exported by the entry point embed.d.ts
+    raiseApproval(input: RequestSharedApprovalInput): Promise<RaisedApproval>;
     // (undocumented)
     recordRemoteUpdate(approvalId: string, input: {
         readonly actor: string;
@@ -63,9 +67,6 @@ export class ApprovalBroker {
         readonly note?: string | undefined;
         readonly metadata?: Record<string, unknown> | undefined;
     }): Promise<SharedApprovalRecord | null>;
-    // Warning: (ae-forgotten-export) The symbol "RequestSharedApprovalInput" needs to be exported by the entry point embed.d.ts
-    //
-    // (undocumented)
     requestApproval(input: RequestSharedApprovalInput): Promise<PermissionPromptDecision>;
     // (undocumented)
     resolveApproval(approvalId: string, input: {
@@ -429,8 +430,8 @@ export interface SubmitSharedSessionMessageInput {
 
 // Warnings were encountered during analysis:
 //
-// packages/sdk/src/platform/control-plane/approval-broker.ts:273:7 - (ae-forgotten-export) The symbol "PersistentStore" needs to be exported by the entry point embed.d.ts
-// packages/sdk/src/platform/control-plane/approval-broker.ts:273:7 - (ae-forgotten-export) The symbol "SharedApprovalStoreSnapshot" needs to be exported by the entry point embed.d.ts
+// packages/sdk/src/platform/control-plane/approval-broker.ts:274:7 - (ae-forgotten-export) The symbol "PersistentStore" needs to be exported by the entry point embed.d.ts
+// packages/sdk/src/platform/control-plane/approval-broker.ts:274:7 - (ae-forgotten-export) The symbol "SharedApprovalStoreSnapshot" needs to be exported by the entry point embed.d.ts
 // packages/sdk/src/platform/control-plane/session-broker.ts:113:5 - (ae-forgotten-export) The symbol "SharedSessionStoreSnapshot" needs to be exported by the entry point embed.d.ts
 // packages/sdk/src/platform/control-plane/session-broker.ts:115:5 - (ae-forgotten-export) The symbol "RouteBindingManager" needs to be exported by the entry point embed.d.ts
 // packages/sdk/src/platform/control-plane/session-broker.ts:116:5 - (ae-forgotten-export) The symbol "SharedSessionAgentStatusProvider" needs to be exported by the entry point embed.d.ts

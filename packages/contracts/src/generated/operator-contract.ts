@@ -3379,6 +3379,743 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "approvals.raise",
+        "title": "Raise Approval",
+        "description": "Raise a permission ask INTO the shared broker from a surface that is not in the daemon's process — the write counterpart to approvals.list/claim/approve/deny/cancel, which could only ever act on asks the daemon's own in-process callers had created. The ask becomes a record every surface can see and decide, and the daemon's attention machinery (web push, blocked-on-user) fans it out. Returns the PENDING record immediately and does NOT block waiting for an answer: the decision arrives on the control.approval_update event (SSE/WS, `permissions` domain), which is the channel to watch using the returned id. An identical ask already in flight (same session, tool and args) coalesces onto the existing record — one prompt, one decision, `coalesced: true`, and the returned record is that earlier one. Optional timeoutMs expires the ask if nobody answers (clamped to 12h); optional waitMs waits inline for a decision for callers that want one round trip (clamped to 60s) and reports `decided: false` with the record still pending when it runs out, never a decision that was not made. ws-only invoke verb; no REST binding.",
+        "category": "approvals",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "write:approvals"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "request": {
+              "type": "object",
+              "properties": {
+                "callId": {
+                  "type": "string"
+                },
+                "tool": {
+                  "type": "string"
+                },
+                "args": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                },
+                "category": {
+                  "type": "string",
+                  "enum": [
+                    "read",
+                    "write",
+                    "execute",
+                    "delegate"
+                  ]
+                },
+                "analysis": {
+                  "type": "object",
+                  "properties": {
+                    "classification": {
+                      "type": "string"
+                    },
+                    "riskLevel": {
+                      "type": "string",
+                      "enum": [
+                        "low",
+                        "medium",
+                        "high",
+                        "critical"
+                      ]
+                    },
+                    "summary": {
+                      "type": "string"
+                    },
+                    "reasons": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "target": {
+                      "type": "string"
+                    },
+                    "targetKind": {
+                      "type": "string",
+                      "enum": [
+                        "command",
+                        "path",
+                        "url",
+                        "task",
+                        "generic"
+                      ]
+                    },
+                    "surface": {
+                      "type": "string",
+                      "enum": [
+                        "filesystem",
+                        "shell",
+                        "network",
+                        "orchestration",
+                        "platform",
+                        "generic"
+                      ]
+                    },
+                    "blastRadius": {
+                      "type": "string",
+                      "enum": [
+                        "local",
+                        "project",
+                        "external",
+                        "delegated",
+                        "platform"
+                      ]
+                    },
+                    "sideEffects": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "host": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "classification",
+                    "riskLevel",
+                    "summary",
+                    "reasons"
+                  ],
+                  "additionalProperties": false
+                },
+                "workingDirectory": {
+                  "type": "string"
+                },
+                "attribution": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "background-agent"
+                          ]
+                        },
+                        "agentId": {
+                          "type": "string"
+                        },
+                        "template": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "agentId"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "mcp-server"
+                          ]
+                        },
+                        "serverName": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "serverName"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "sandbox-escalation"
+                          ]
+                        },
+                        "sandbox": {
+                          "type": "string"
+                        },
+                        "escalations": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "sandbox",
+                        "escalations"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "rememberOptions": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "tier": {
+                        "type": "string",
+                        "enum": [
+                          "session",
+                          "exact",
+                          "command-class",
+                          "path",
+                          "tool"
+                        ]
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "detail": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "tier",
+                      "label",
+                      "detail"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "callId",
+                "tool",
+                "args",
+                "category",
+                "analysis"
+              ],
+              "additionalProperties": false
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "routeId": {
+              "type": "string"
+            },
+            "metadata": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            },
+            "timeoutMs": {
+              "type": "number"
+            },
+            "waitMs": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "request"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "approval": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "callId": {
+                  "type": "string"
+                },
+                "sessionId": {
+                  "type": "string"
+                },
+                "routeId": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "pending",
+                    "claimed",
+                    "approved",
+                    "denied",
+                    "cancelled",
+                    "expired"
+                  ]
+                },
+                "request": {
+                  "type": "object",
+                  "properties": {
+                    "callId": {
+                      "type": "string"
+                    },
+                    "tool": {
+                      "type": "string"
+                    },
+                    "args": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          {
+                            "type": "array",
+                            "items": {}
+                          }
+                        ]
+                      }
+                    },
+                    "category": {
+                      "type": "string",
+                      "enum": [
+                        "read",
+                        "write",
+                        "execute",
+                        "delegate"
+                      ]
+                    },
+                    "analysis": {
+                      "type": "object",
+                      "properties": {
+                        "classification": {
+                          "type": "string"
+                        },
+                        "riskLevel": {
+                          "type": "string",
+                          "enum": [
+                            "low",
+                            "medium",
+                            "high",
+                            "critical"
+                          ]
+                        },
+                        "summary": {
+                          "type": "string"
+                        },
+                        "reasons": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "target": {
+                          "type": "string"
+                        },
+                        "targetKind": {
+                          "type": "string",
+                          "enum": [
+                            "command",
+                            "path",
+                            "url",
+                            "task",
+                            "generic"
+                          ]
+                        },
+                        "surface": {
+                          "type": "string",
+                          "enum": [
+                            "filesystem",
+                            "shell",
+                            "network",
+                            "orchestration",
+                            "platform",
+                            "generic"
+                          ]
+                        },
+                        "blastRadius": {
+                          "type": "string",
+                          "enum": [
+                            "local",
+                            "project",
+                            "external",
+                            "delegated",
+                            "platform"
+                          ]
+                        },
+                        "sideEffects": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "host": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "classification",
+                        "riskLevel",
+                        "summary",
+                        "reasons"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "workingDirectory": {
+                      "type": "string"
+                    },
+                    "attribution": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "background-agent"
+                              ]
+                            },
+                            "agentId": {
+                              "type": "string"
+                            },
+                            "template": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "agentId"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "mcp-server"
+                              ]
+                            },
+                            "serverName": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "serverName"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "sandbox-escalation"
+                              ]
+                            },
+                            "sandbox": {
+                              "type": "string"
+                            },
+                            "escalations": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "sandbox",
+                            "escalations"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "rememberOptions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "tier": {
+                            "type": "string",
+                            "enum": [
+                              "session",
+                              "exact",
+                              "command-class",
+                              "path",
+                              "tool"
+                            ]
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "detail": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "tier",
+                          "label",
+                          "detail"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "callId",
+                    "tool",
+                    "args",
+                    "category",
+                    "analysis"
+                  ],
+                  "additionalProperties": false
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "claimedBy": {
+                  "type": "string"
+                },
+                "claimedAt": {
+                  "type": "number"
+                },
+                "resolvedAt": {
+                  "type": "number"
+                },
+                "resolvedBy": {
+                  "type": "string"
+                },
+                "decision": {
+                  "type": "object",
+                  "properties": {
+                    "approved": {
+                      "type": "boolean"
+                    },
+                    "remember": {
+                      "type": "boolean"
+                    },
+                    "rememberTier": {
+                      "type": "string",
+                      "enum": [
+                        "session",
+                        "exact",
+                        "command-class",
+                        "path",
+                        "tool"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "modifiedArgs": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          {
+                            "type": "array",
+                            "items": {}
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "approved"
+                  ],
+                  "additionalProperties": false
+                },
+                "fixSessionId": {
+                  "type": "string"
+                },
+                "fixSessionError": {
+                  "type": "string"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                },
+                "audit": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "action": {
+                        "type": "string",
+                        "enum": [
+                          "created",
+                          "claimed",
+                          "approved",
+                          "denied",
+                          "cancelled",
+                          "expired",
+                          "updated"
+                        ]
+                      },
+                      "actor": {
+                        "type": "string"
+                      },
+                      "actorSurface": {
+                        "type": "string"
+                      },
+                      "createdAt": {
+                        "type": "number"
+                      },
+                      "note": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "action",
+                      "actor",
+                      "createdAt"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "callId",
+                "status",
+                "request",
+                "createdAt",
+                "updatedAt",
+                "metadata",
+                "audit"
+              ],
+              "additionalProperties": false
+            },
+            "coalesced": {
+              "type": "boolean"
+            },
+            "decided": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "approval",
+            "coalesced",
+            "decided"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "artifacts.content.get",
         "title": "Get Artifact Content",
         "description": "Return the raw content bytes for a stored artifact.",
@@ -28882,6 +29619,62 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "credentials.delete",
+        "title": "Delete Credential",
+        "description": "Remove a credential: the stored secret first, then the config reference pointing at it. That order is deliberate — clearing the config first would strand a secret nothing points at and nothing reaps, while this order leaves, for an instant, a reference resolving to nothing, which every reader already treats as configured-but-broken (the honest state for a credential mid-removal). `cleared: false` means nothing was stored under that key: a miss, not an error, because asking for a credential to be gone when it already is has succeeded. ws-only invoke verb; no REST binding. Mutating, so a relay call is covered by relay.requireStepUpForMutations exactly as config.set is.",
+        "category": "config",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "write:config"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "key": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "key"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "success": {
+              "type": "boolean"
+            },
+            "key": {
+              "type": "string"
+            },
+            "secretKey": {
+              "type": "string"
+            },
+            "scope": {
+              "type": "string"
+            },
+            "cleared": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "success",
+            "key",
+            "secretKey",
+            "scope",
+            "cleared"
+          ],
+          "additionalProperties": false
+        },
+        "dangerous": true,
+        "invokable": true
+      },
+      {
         "id": "credentials.get",
         "title": "Get Credential Status",
         "description": "Return secret-free credential status (configured/usable) for the shared store. Never returns raw secret bytes. Optional ?key= narrows to one credential.",
@@ -28963,6 +29756,75 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           ],
           "additionalProperties": false
         },
+        "invokable": true
+      },
+      {
+        "id": "credentials.set",
+        "title": "Set Credential",
+        "description": "Store a credential for a secret-bearing config key THROUGH the daemon, so a surface no longer has to write it into its own on-disk secret store — the write counterpart to credentials.get, and the reason a client on another machine can now finish a settings modal at all. `key` is the config path (e.g. surfaces.telegram.botToken); the secret-store name is derived from it. The value goes into the encrypted store at the scope the ownership rules resolve (a daemon-needed credential lands in the daemon tier whoever asked), is read BACK and compared, and only then does the config key take its goodvibes://secrets/goodvibes/<KEY> reference. A read-back mismatch fails the call and leaves the setting exactly as it was, because a reference resolving to nothing reads as a configured-but-broken credential. The response is secret-free: key names, the resolved scope, the reference now in config, and two plain sentences about where the setting and the credential are filed — never the value. Refuses a key that is not credential-bearing (use config.set) and refuses a value that is itself a goodvibes:// reference. ws-only invoke verb; no REST binding. Mutating, so a relay call is covered by relay.requireStepUpForMutations exactly as config.set is.",
+        "category": "config",
+        "source": "builtin",
+        "access": "admin",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "write:config"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "key": {
+              "type": "string"
+            },
+            "value": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "key",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "success": {
+              "type": "boolean"
+            },
+            "key": {
+              "type": "string"
+            },
+            "secretKey": {
+              "type": "string"
+            },
+            "scope": {
+              "type": "string"
+            },
+            "reference": {
+              "type": "string"
+            },
+            "configScope": {
+              "type": "string"
+            },
+            "ownership": {
+              "type": "string"
+            },
+            "credentialScope": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "success",
+            "key",
+            "secretKey",
+            "scope",
+            "reference"
+          ],
+          "additionalProperties": false
+        },
+        "dangerous": true,
         "invokable": true
       },
       {
@@ -99896,6 +100758,50 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         }
       },
       {
+        "id": "runtime.config",
+        "title": "config Domain Events",
+        "description": "Key-level settings-change notices (CONFIG_KEY_CHANGED), carrying the dotted key, its ownership scope (daemon/client/user) and the new value — EXCEPT for a secret-bearing key, which travels by name only with secret:true and no value field at all. The poll-free counterpart to config.get for a client whose settings live in the daemon: an in-process ConfigManager.subscribe cannot see a write that happened on another machine, so a client without this stream keeps running on whatever it read at startup.",
+        "category": "runtime-domain",
+        "source": "builtin",
+        "transport": [
+          "sse",
+          "ws"
+        ],
+        "scopes": [
+          "read:events"
+        ],
+        "domains": [
+          "config"
+        ],
+        "wireEvents": [
+          "config"
+        ],
+        "outputSchema": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {},
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        }
+      },
+      {
         "id": "runtime.control-plane",
         "title": "control-plane Domain Events",
         "description": "Control-plane client, auth, and subscription events.",
@@ -100952,6 +101858,461 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         }
       },
       {
+        "id": "control.approval_update",
+        "title": "Approval Record Update",
+        "description": "Every approval record transition, pushed the moment the broker records it: an ask RAISED (status pending — this is the prompt arriving), claimed by a surface, approved, denied, cancelled, expired, or updated in place (a started fix session stamped onto an accepted offer). The payload is the whole `approval` record plus the `createdAt` of the notice, so a subscriber renders the prompt from the event and never needs a follow-up read to draw it. This is the channel that makes approvals.raise usable from a surface that is not in the daemon process: raise returns the pending record and the DECISION arrives here, so a client gets keystroke-fast prompt delivery instead of polling approvals.list on a timer. Domain-tagged `permissions` (gateway-scope-enforcement.ts EVENT_DOMAIN), so a client that opened the stream with ?domains=… must include `permissions` to receive it; a client that opted into no domain narrowing receives it as before. The record is the daemon's, not the subscriber's: several surfaces see the same transition and the daemon remains the single source of the applied result — a surface renders what the record says rather than what it locally decided.",
+        "category": "transport",
+        "source": "builtin",
+        "transport": [
+          "sse",
+          "ws"
+        ],
+        "scopes": [
+          "read:events"
+        ],
+        "domains": [
+          "permissions"
+        ],
+        "wireEvents": [
+          "approval-update"
+        ],
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "approval": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "callId": {
+                  "type": "string"
+                },
+                "sessionId": {
+                  "type": "string"
+                },
+                "routeId": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "pending",
+                    "claimed",
+                    "approved",
+                    "denied",
+                    "cancelled",
+                    "expired"
+                  ]
+                },
+                "request": {
+                  "type": "object",
+                  "properties": {
+                    "callId": {
+                      "type": "string"
+                    },
+                    "tool": {
+                      "type": "string"
+                    },
+                    "args": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          {
+                            "type": "array",
+                            "items": {}
+                          }
+                        ]
+                      }
+                    },
+                    "category": {
+                      "type": "string",
+                      "enum": [
+                        "read",
+                        "write",
+                        "execute",
+                        "delegate"
+                      ]
+                    },
+                    "analysis": {
+                      "type": "object",
+                      "properties": {
+                        "classification": {
+                          "type": "string"
+                        },
+                        "riskLevel": {
+                          "type": "string",
+                          "enum": [
+                            "low",
+                            "medium",
+                            "high",
+                            "critical"
+                          ]
+                        },
+                        "summary": {
+                          "type": "string"
+                        },
+                        "reasons": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "target": {
+                          "type": "string"
+                        },
+                        "targetKind": {
+                          "type": "string",
+                          "enum": [
+                            "command",
+                            "path",
+                            "url",
+                            "task",
+                            "generic"
+                          ]
+                        },
+                        "surface": {
+                          "type": "string",
+                          "enum": [
+                            "filesystem",
+                            "shell",
+                            "network",
+                            "orchestration",
+                            "platform",
+                            "generic"
+                          ]
+                        },
+                        "blastRadius": {
+                          "type": "string",
+                          "enum": [
+                            "local",
+                            "project",
+                            "external",
+                            "delegated",
+                            "platform"
+                          ]
+                        },
+                        "sideEffects": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "host": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "classification",
+                        "riskLevel",
+                        "summary",
+                        "reasons"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "workingDirectory": {
+                      "type": "string"
+                    },
+                    "attribution": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "background-agent"
+                              ]
+                            },
+                            "agentId": {
+                              "type": "string"
+                            },
+                            "template": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "agentId"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "mcp-server"
+                              ]
+                            },
+                            "serverName": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "serverName"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "sandbox-escalation"
+                              ]
+                            },
+                            "sandbox": {
+                              "type": "string"
+                            },
+                            "escalations": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "sandbox",
+                            "escalations"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "rememberOptions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "tier": {
+                            "type": "string",
+                            "enum": [
+                              "session",
+                              "exact",
+                              "command-class",
+                              "path",
+                              "tool"
+                            ]
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "detail": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "tier",
+                          "label",
+                          "detail"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "callId",
+                    "tool",
+                    "args",
+                    "category",
+                    "analysis"
+                  ],
+                  "additionalProperties": false
+                },
+                "createdAt": {
+                  "type": "number"
+                },
+                "updatedAt": {
+                  "type": "number"
+                },
+                "claimedBy": {
+                  "type": "string"
+                },
+                "claimedAt": {
+                  "type": "number"
+                },
+                "resolvedAt": {
+                  "type": "number"
+                },
+                "resolvedBy": {
+                  "type": "string"
+                },
+                "decision": {
+                  "type": "object",
+                  "properties": {
+                    "approved": {
+                      "type": "boolean"
+                    },
+                    "remember": {
+                      "type": "boolean"
+                    },
+                    "rememberTier": {
+                      "type": "string",
+                      "enum": [
+                        "session",
+                        "exact",
+                        "command-class",
+                        "path",
+                        "tool"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "modifiedArgs": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          {
+                            "type": "array",
+                            "items": {}
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "approved"
+                  ],
+                  "additionalProperties": false
+                },
+                "fixSessionId": {
+                  "type": "string"
+                },
+                "fixSessionError": {
+                  "type": "string"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "array",
+                        "items": {}
+                      }
+                    ]
+                  }
+                },
+                "audit": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "action": {
+                        "type": "string",
+                        "enum": [
+                          "created",
+                          "claimed",
+                          "approved",
+                          "denied",
+                          "cancelled",
+                          "expired",
+                          "updated"
+                        ]
+                      },
+                      "actor": {
+                        "type": "string"
+                      },
+                      "actorSurface": {
+                        "type": "string"
+                      },
+                      "createdAt": {
+                        "type": "number"
+                      },
+                      "note": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "action",
+                      "actor",
+                      "createdAt"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "callId",
+                "status",
+                "request",
+                "createdAt",
+                "updatedAt",
+                "metadata",
+                "audit"
+              ],
+              "additionalProperties": false
+            },
+            "createdAt": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "approval",
+            "createdAt"
+          ],
+          "additionalProperties": false
+        }
+      },
+      {
         "id": "control.heartbeat",
         "title": "Heartbeat",
         "description": "Keepalive event emitted by the SSE control-plane transport.",
@@ -101291,20 +102652,20 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 483,
-      "typedInputs": 483,
+      "methods": 486,
+      "typedInputs": 486,
       "genericInputs": 0,
-      "typedOutputs": 483,
+      "typedOutputs": 486,
       "genericOutputs": 0
     },
     "eventCoverage": {
-      "events": 32,
-      "withDomains": 28,
-      "withWireEvents": 32
+      "events": 34,
+      "withDomains": 30,
+      "withWireEvents": 34
     },
     "validationCoverage": {
-      "methods": 483,
-      "validated": 476,
+      "methods": 486,
+      "validated": 479,
       "skippedGeneric": 0,
       "skippedUntyped": 7
     }
