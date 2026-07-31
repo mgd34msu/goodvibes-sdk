@@ -75,6 +75,7 @@ import { registerPowerGatewayMethods } from '../../packages/sdk/src/platform/con
 import { registerPrincipalsGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/principals.js';
 import { registerPushGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/push.js';
 import { registerRewindGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/rewind.js';
+import { createConversationRewindHostBroker, registerRewindConversationHostGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/rewind-conversation-hosts.js';
 import { registerRuntimeMetricsGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/runtime-metrics.js';
 import { registerSessionRuntimeGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/session-runtime.js';
 import { registerSkillsGatewayMethods } from '../../packages/sdk/src/platform/control-plane/routes/skills.js';
@@ -148,6 +149,10 @@ const ROUTE_REGISTRARS: ReadonlyArray<readonly [string, (catalog: GatewayMethodC
   ['principals', (catalog) => registerPrincipalsGatewayMethods(catalog, stubDeps())],
   ['push', (catalog) => registerPushGatewayMethods(catalog, stubDeps())],
   ['rewind', (catalog) => registerRewindGatewayMethods(catalog, stubDeps())],
+  // A real broker rather than a stub: it holds no I/O and no timers until a
+  // request is raised, and the probe's point is to run the handler the daemon
+  // runs. A stub here would probe a function that does not exist in production.
+  ['rewind-conversation-hosts', (catalog) => registerRewindConversationHostGatewayMethods(catalog, createConversationRewindHostBroker())],
   ['runtime-metrics', (catalog) => registerRuntimeMetricsGatewayMethods(catalog)],
   ['session-runtime', (catalog) => registerSessionRuntimeGatewayMethods(catalog, stubDeps())],
   ['skills', (catalog) => registerSkillsGatewayMethods(catalog, stubDeps())],
@@ -196,6 +201,7 @@ export const EXPECTED_ROUTE_REGISTRARS: readonly string[] = [
   'registerPowerGatewayMethods',
   'registerPrincipalsGatewayMethods',
   'registerPushGatewayMethods',
+  'registerRewindConversationHostGatewayMethods',
   'registerRewindGatewayMethods',
   'registerRuntimeMetricsGatewayMethods',
   'registerSessionRuntimeGatewayMethods',

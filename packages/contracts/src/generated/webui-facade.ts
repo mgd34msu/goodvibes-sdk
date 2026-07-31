@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 1.21.0
- * Methods: 486 total, 428 REST-routed, 58 ws-only invoke.
+ * Methods: 494 total, 431 REST-routed, 63 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -1436,6 +1436,18 @@ export const WEBUI_METHOD_ROUTES: Readonly<Record<string, WebuiRouteDefinition>>
     "method": "GET",
     "path": "/api/surfaces"
   },
+  "devices.artifacts.list": {
+    "method": "GET",
+    "path": "/api/devices/artifacts"
+  },
+  "devices.artifacts.read": {
+    "method": "GET",
+    "path": "/api/devices/artifacts/{artifactId}"
+  },
+  "devices.capability.request": {
+    "method": "POST",
+    "path": "/api/devices/capability/request"
+  },
   "devices.grants.list": {
     "method": "GET",
     "path": "/api/devices/grants"
@@ -1809,6 +1821,11 @@ export const WEBUI_WS_INVOKE_METHOD_IDS: readonly string[] = [
   "tailscale.get",
   "tailscale.serve.run",
   "rewind.apply",
+  "rewind.conversation.host.register",
+  "rewind.conversation.host.release",
+  "rewind.conversation.hosts.list",
+  "rewind.conversation.requests.answer",
+  "rewind.conversation.requests.take",
   "rewind.plan",
   "sessions.changes.get",
   "sessions.search",
@@ -2215,6 +2232,11 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "tailscale.serve.run": "ws-invoke",
   "review.snapshot": "rest",
   "rewind.apply": "ws-invoke",
+  "rewind.conversation.host.register": "ws-invoke",
+  "rewind.conversation.host.release": "ws-invoke",
+  "rewind.conversation.hosts.list": "ws-invoke",
+  "rewind.conversation.requests.answer": "ws-invoke",
+  "rewind.conversation.requests.take": "ws-invoke",
   "rewind.plan": "ws-invoke",
   "routes.bindings.create": "rest",
   "routes.bindings.delete": "rest",
@@ -2222,6 +2244,9 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "routes.bindings.update": "rest",
   "routes.snapshot": "rest",
   "surfaces.list": "rest",
+  "devices.artifacts.list": "rest",
+  "devices.artifacts.read": "rest",
+  "devices.capability.request": "rest",
   "devices.grants.list": "rest",
   "devices.grants.revoke": "rest",
   "devices.housekeeping.run": "rest",
@@ -18387,6 +18412,102 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
       }
     }
   },
+  "rewind.conversation.host.register": {
+    "input": {
+      "sessionId": "sample",
+      "hostId": "sample",
+      "label": "sample",
+      "leaseMs": 0
+    },
+    "output": {
+      "host": {
+        "hostId": "sample",
+        "sessionId": "sample",
+        "label": "sample",
+        "registeredAt": 0,
+        "leaseExpiresAt": 0
+      },
+      "renewed": false,
+      "maxWaitMs": 0,
+      "answerTimeoutMs": 0
+    }
+  },
+  "rewind.conversation.host.release": {
+    "input": {
+      "sessionId": "sample",
+      "hostId": "sample"
+    },
+    "output": {
+      "released": false,
+      "host": {
+        "hostId": "sample",
+        "sessionId": "sample",
+        "label": "sample",
+        "registeredAt": 0,
+        "leaseExpiresAt": 0
+      }
+    }
+  },
+  "rewind.conversation.hosts.list": {
+    "input": {},
+    "output": {
+      "hosts": [
+        {
+          "hostId": "sample",
+          "sessionId": "sample",
+          "label": "sample",
+          "registeredAt": 0,
+          "leaseExpiresAt": 0
+        }
+      ]
+    }
+  },
+  "rewind.conversation.requests.answer": {
+    "input": {
+      "hostId": "sample",
+      "requestId": "sample",
+      "messagesToDrop": 0,
+      "messagesRemaining": 0,
+      "droppedMessages": 0,
+      "undoSnapshotId": "sample",
+      "unavailableReason": "sample"
+    },
+    "output": {
+      "accepted": false,
+      "request": {
+        "requestId": "sample",
+        "sessionId": "sample",
+        "turnId": "sample",
+        "kind": "preview",
+        "expiresAt": 0
+      }
+    }
+  },
+  "rewind.conversation.requests.take": {
+    "input": {
+      "hostId": "sample",
+      "waitMs": 0,
+      "limit": 0
+    },
+    "output": {
+      "requests": [
+        {
+          "requestId": "sample",
+          "sessionId": "sample",
+          "turnId": "sample",
+          "kind": "preview",
+          "expiresAt": 0
+        }
+      ],
+      "host": {
+        "hostId": "sample",
+        "sessionId": "sample",
+        "label": "sample",
+        "registeredAt": 0,
+        "leaseExpiresAt": 0
+      }
+    }
+  },
   "rewind.plan": {
     "input": {
       "sessionId": "sample",
@@ -18575,6 +18696,83 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "metadata": {}
         }
       ]
+    }
+  },
+  "devices.artifacts.list": {
+    "input": {
+      "nodeId": "sample",
+      "limit": 0
+    },
+    "output": {
+      "artifacts": [
+        {
+          "artifactId": "sample",
+          "nodeId": "sample",
+          "capabilityId": "sample",
+          "kind": "sample",
+          "mediaType": "sample",
+          "byteLength": 0,
+          "capturedAt": 0,
+          "expiresAt": 0,
+          "reason": "sample",
+          "daemonPath": "sample"
+        }
+      ],
+      "retained": 0,
+      "retentionHours": 0
+    }
+  },
+  "devices.artifacts.read": {
+    "input": {
+      "artifactId": "sample"
+    },
+    "output": {
+      "artifact": {
+        "artifactId": "sample",
+        "nodeId": "sample",
+        "capabilityId": "sample",
+        "kind": "sample",
+        "mediaType": "sample",
+        "byteLength": 0,
+        "capturedAt": 0,
+        "expiresAt": 0,
+        "reason": "sample",
+        "daemonPath": "sample"
+      },
+      "dataBase64": "sample"
+    }
+  },
+  "devices.capability.request": {
+    "input": {
+      "nodeId": "sample",
+      "capabilityId": "sample",
+      "reason": "sample",
+      "input": {},
+      "sessionId": "sample",
+      "timeoutMs": 0
+    },
+    "output": {
+      "ok": false,
+      "nodeId": "sample",
+      "capabilityId": "sample",
+      "capabilityTitle": "sample",
+      "authority": "sample",
+      "grantId": "sample",
+      "data": "sample",
+      "artifact": {
+        "artifactId": "sample",
+        "nodeId": "sample",
+        "capabilityId": "sample",
+        "kind": "sample",
+        "mediaType": "sample",
+        "byteLength": 0,
+        "capturedAt": 0,
+        "expiresAt": 0,
+        "reason": "sample",
+        "daemonPath": "sample"
+      },
+      "refusal": "sample",
+      "detail": "sample"
     }
   },
   "devices.grants.list": {

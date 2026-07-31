@@ -415,8 +415,12 @@
     "rationale": "relay reachability + WebAuthn step-up composition surface (StepUpService, createRelayReachability, step-up policy); re-measured 491 B gzip after the certificate-minting helper was deleted (bundler chunk reshuffle moved shared bytes into this entry even as the surface shrank); headroom max(ceil(491*1.2)=590, 491+50=541) -> 590 (1.2x dominates)"
   },
   "./platform/rewind": {
-    "gzip_bytes": 374,
-    "rationale": "unified message-anchored rewind service export (UnifiedRewindService + token store + IO types); measured 311 B gzip; headroom max(ceil(311*1.2)=374, 311+50=361) \u2192 374 (1.2x dominates by 13 B)"
+    "gzip_bytes": 503,
+    "rationale": "unified message-anchored rewind service export (UnifiedRewindService + token store + IO types) plus the conversation host broker that lets the surface hosting a conversation serve a conversation-scope rewind; re-measured 419 B gzip; headroom max(ceil(419*1.2)=503, 419+50=469) \u2192 503 (1.2x dominates)"
+  },
+  "./platform/runtime/client-services": {
+    "gzip_bytes": 5852,
+    "rationale": "the client composition shape (createClientRuntimeServices and its graph) published on its own import path; measured 4876 B gzip; headroom max(ceil(4876*1.2)=5852, 4876+50=4926) \u2192 5852 (1.2x dominates)"
   },
   "./platform/runtime": {
     "gzip_bytes": 192,

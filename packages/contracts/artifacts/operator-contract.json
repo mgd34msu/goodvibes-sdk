@@ -83394,6 +83394,434 @@
         "invokable": true
       },
       {
+        "id": "rewind.conversation.host.register",
+        "title": "Offer This Surface's Live Conversation for Rewind",
+        "description": "Register the conversation this surface is running for a session, so a conversation-scope rewind of it can actually be served. Only the process holding the messages can count or drop them: without this, rewind.plan for a session hosted anywhere but the daemon reports the conversation half unavailable, and files rewind is unaffected either way. Re-registering with the hostId returned here RENEWS the offer; registering without one claims the session and replaces whoever held it, answering that surface's outstanding requests as unavailable. The registration is a lease, not a reservation — it lapses unless the surface keeps taking its requests, and nothing about it survives a daemon restart, because a claim about a live process is worthless once the process on either end may be gone.",
+        "category": "rewind",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "write:sessions"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "hostId": {
+              "type": "string"
+            },
+            "label": {
+              "type": "string"
+            },
+            "leaseMs": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "sessionId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "host": {
+              "type": "object",
+              "properties": {
+                "hostId": {
+                  "type": "string"
+                },
+                "sessionId": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "registeredAt": {
+                  "type": "number"
+                },
+                "leaseExpiresAt": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "hostId",
+                "sessionId",
+                "label",
+                "registeredAt",
+                "leaseExpiresAt"
+              ],
+              "additionalProperties": false
+            },
+            "renewed": {
+              "type": "boolean"
+            },
+            "maxWaitMs": {
+              "type": "number"
+            },
+            "answerTimeoutMs": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "host",
+            "renewed",
+            "maxWaitMs",
+            "answerTimeoutMs"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "rewind.conversation.host.release",
+        "title": "Withdraw a Conversation Rewind Offer",
+        "description": "Withdraw this surface's offer to serve a session's conversation — when the session ends, or the surface is going away. Outstanding requests put to it are answered unavailable rather than left to time out. Only the registered host may release its own session; anyone else is refused.",
+        "category": "rewind",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "write:sessions"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sessionId": {
+              "type": "string"
+            },
+            "hostId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId",
+            "hostId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "released": {
+              "type": "boolean"
+            },
+            "host": {
+              "type": "object",
+              "properties": {
+                "hostId": {
+                  "type": "string"
+                },
+                "sessionId": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "registeredAt": {
+                  "type": "number"
+                },
+                "leaseExpiresAt": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "hostId",
+                "sessionId",
+                "label",
+                "registeredAt",
+                "leaseExpiresAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "released",
+            "host"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "rewind.conversation.hosts.list",
+        "title": "List Conversation Rewind Hosts",
+        "description": "Which sessions have a surface offering their live conversation right now, how each surface names itself, and when its lease runs out. This is what makes \"conversation rewind is unavailable for that session\" checkable rather than something a person has to take on trust.",
+        "category": "rewind",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "read:sessions"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "hosts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "hostId": {
+                    "type": "string"
+                  },
+                  "sessionId": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "registeredAt": {
+                    "type": "number"
+                  },
+                  "leaseExpiresAt": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "hostId",
+                  "sessionId",
+                  "label",
+                  "registeredAt",
+                  "leaseExpiresAt"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "hosts"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "rewind.conversation.requests.answer",
+        "title": "Answer a Conversation Rewind Request",
+        "description": "Report what this surface found or did. Which fields are expected follows from the REQUEST, which already says whether it was a preview or a rewind — an answer that restated that could only disagree with it, silently. For a preview: messagesToDrop and messagesRemaining. For a rewind: droppedMessages and the undoSnapshotId that restores them. For either, a non-empty unavailableReason instead, which is the honest answer when the conversation is gone or this surface cannot serve it — and saying so beats staying silent, because silence becomes a timeout and a timed-out rewind cannot tell whether the messages were dropped. Only the surface a request was put to may answer it.",
+        "category": "rewind",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "write:sessions"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "hostId": {
+              "type": "string"
+            },
+            "requestId": {
+              "type": "string"
+            },
+            "messagesToDrop": {
+              "type": "number"
+            },
+            "messagesRemaining": {
+              "type": "number"
+            },
+            "droppedMessages": {
+              "type": "number"
+            },
+            "undoSnapshotId": {
+              "type": "string"
+            },
+            "unavailableReason": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "hostId",
+            "requestId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "accepted": {
+              "type": "boolean"
+            },
+            "request": {
+              "type": "object",
+              "properties": {
+                "requestId": {
+                  "type": "string"
+                },
+                "sessionId": {
+                  "type": "string"
+                },
+                "turnId": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "preview",
+                    "rewind"
+                  ]
+                },
+                "expiresAt": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "requestId",
+                "sessionId",
+                "turnId",
+                "kind",
+                "expiresAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "accepted",
+            "request"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "rewind.conversation.requests.take",
+        "title": "Take Conversation Rewind Requests",
+        "description": "Collect the conversation questions waiting for this host — how many messages a rewind to an anchor would drop, or a request to actually drop them — and renew its lease, because a surface that is polling is a surface that is alive. With nothing waiting, pass waitMs to hold the call open until something arrives; an empty result is a normal answer, not an error. Answer each request with rewind.conversation.requests.answer before its expiresAt, or the caller waiting on it is told, honestly, that this surface did not answer in time.",
+        "category": "rewind",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "ws"
+        ],
+        "scopes": [
+          "read:sessions"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "hostId": {
+              "type": "string"
+            },
+            "waitMs": {
+              "type": "number"
+            },
+            "limit": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "hostId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "requests": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string"
+                  },
+                  "sessionId": {
+                    "type": "string"
+                  },
+                  "turnId": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "preview",
+                      "rewind"
+                    ]
+                  },
+                  "expiresAt": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "requestId",
+                  "sessionId",
+                  "turnId",
+                  "kind",
+                  "expiresAt"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "host": {
+              "type": "object",
+              "properties": {
+                "hostId": {
+                  "type": "string"
+                },
+                "sessionId": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "registeredAt": {
+                  "type": "number"
+                },
+                "leaseExpiresAt": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "hostId",
+                "sessionId",
+                "label",
+                "registeredAt",
+                "leaseExpiresAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "requests",
+            "host"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "rewind.plan",
         "title": "Preview a Unified Rewind",
         "description": "Dry-run preview of a unified rewind to a session turn anchor: exactly what restoring files (the nearest workspace checkpoint), conversation (truncating session state to the anchor), or both would change, and a short-lived single-use confirm token authorizing the matching rewind.apply. Read-only — nothing is changed. A part with no store wired on this runtime is reported unavailable in a warning, never faked.",
@@ -84537,6 +84965,396 @@
           },
           "required": [
             "surfaces"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "devices.artifacts.list",
+        "title": "List Retained Device Captures",
+        "description": "The camera and screen captures still inside their retention window, newest first, with when each was captured, when it will be deleted, and the reason the request stated. Expired captures are never listed — retention is enforced by the store, not by this verb filtering them out of a longer list.",
+        "category": "runtime",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:remote"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/devices/artifacts"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "nodeId": {
+              "type": "string"
+            },
+            "limit": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "artifacts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "artifactId": {
+                    "type": "string"
+                  },
+                  "nodeId": {
+                    "type": "string"
+                  },
+                  "capabilityId": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "mediaType": {
+                    "type": "string"
+                  },
+                  "byteLength": {
+                    "type": "number"
+                  },
+                  "capturedAt": {
+                    "type": "number"
+                  },
+                  "expiresAt": {
+                    "type": "number"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "daemonPath": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "artifactId",
+                  "nodeId",
+                  "capabilityId",
+                  "kind",
+                  "mediaType",
+                  "byteLength",
+                  "capturedAt",
+                  "expiresAt",
+                  "reason",
+                  "daemonPath"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "retained": {
+              "type": "number"
+            },
+            "retentionHours": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "artifacts",
+            "retained",
+            "retentionHours"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "devices.artifacts.read",
+        "title": "Read a Retained Device Capture",
+        "description": "Return one retained capture's bytes, base64-encoded, for a caller that is not running on the daemon host and so cannot open the file itself. The store re-hashes the bytes against the digest recorded when the capture was retained and refuses to serve a mismatch, so a torn or half-written file is never handed back as if it were the picture that was taken. A capture that is gone — expired, swept, missing, or corrupted — is an honest 404 naming which of those it was.",
+        "category": "runtime",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "read:remote"
+        ],
+        "http": {
+          "method": "GET",
+          "path": "/api/devices/artifacts/{artifactId}"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "artifactId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "artifactId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "artifact": {
+              "type": "object",
+              "properties": {
+                "artifactId": {
+                  "type": "string"
+                },
+                "nodeId": {
+                  "type": "string"
+                },
+                "capabilityId": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "mediaType": {
+                  "type": "string"
+                },
+                "byteLength": {
+                  "type": "number"
+                },
+                "capturedAt": {
+                  "type": "number"
+                },
+                "expiresAt": {
+                  "type": "number"
+                },
+                "reason": {
+                  "type": "string"
+                },
+                "daemonPath": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "artifactId",
+                "nodeId",
+                "capabilityId",
+                "kind",
+                "mediaType",
+                "byteLength",
+                "capturedAt",
+                "expiresAt",
+                "reason",
+                "daemonPath"
+              ],
+              "additionalProperties": false
+            },
+            "dataBase64": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "artifact",
+            "dataBase64"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
+        "id": "devices.capability.request",
+        "title": "Request a Capability From a Paired Device",
+        "description": "Ask one paired device node for one capability — a photo, a screen capture, a location fix, its clipboard, a notification, a link to open, a buzz — and return what came back. The reason is required and is shown VERBATIM on the confirmation prompt, so the person deciding sees what the caller said it was for. Every gate lives in the daemon-owned device runtime and this verb re-decides none of them: a durable grant is re-read from disk (never cached), a request with no grant asks the person on whatever surface they are looking at, a capability turned off by configuration is refused with the configuration key that turned it off, and a capture is retained under the configured retention window and disclosed. A refusal is returned as ok:false with the reason and a machine-readable refusal code — it is an answer, not an error. A capability that produces a capture returns an artifact REFERENCE; fetch the bytes with devices.artifacts.read.",
+        "category": "runtime",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:remote"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/devices/capability/request"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "nodeId": {
+              "type": "string"
+            },
+            "capabilityId": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "input": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  },
+                  {},
+                  {
+                    "type": "array",
+                    "items": {}
+                  }
+                ]
+              }
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "timeoutMs": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "nodeId",
+            "capabilityId",
+            "reason"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            },
+            "nodeId": {
+              "type": "string"
+            },
+            "capabilityId": {
+              "type": "string"
+            },
+            "capabilityTitle": {
+              "type": "string"
+            },
+            "authority": {
+              "type": "string"
+            },
+            "grantId": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "data": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "array",
+                  "items": {}
+                }
+              ]
+            },
+            "artifact": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "artifactId": {
+                      "type": "string"
+                    },
+                    "nodeId": {
+                      "type": "string"
+                    },
+                    "capabilityId": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "mediaType": {
+                      "type": "string"
+                    },
+                    "byteLength": {
+                      "type": "number"
+                    },
+                    "capturedAt": {
+                      "type": "number"
+                    },
+                    "expiresAt": {
+                      "type": "number"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "daemonPath": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "artifactId",
+                    "nodeId",
+                    "capabilityId",
+                    "kind",
+                    "mediaType",
+                    "byteLength",
+                    "capturedAt",
+                    "expiresAt",
+                    "reason",
+                    "daemonPath"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "refusal": {
+              "type": "string"
+            },
+            "detail": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "ok",
+            "nodeId",
+            "capabilityId",
+            "capabilityTitle",
+            "authority",
+            "grantId",
+            "artifact",
+            "refusal",
+            "detail"
           ],
           "additionalProperties": false
         },
@@ -102650,10 +103468,10 @@
       }
     ],
     "schemaCoverage": {
-      "methods": 486,
-      "typedInputs": 486,
+      "methods": 494,
+      "typedInputs": 494,
       "genericInputs": 0,
-      "typedOutputs": 486,
+      "typedOutputs": 494,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -102662,8 +103480,8 @@
       "withWireEvents": 34
     },
     "validationCoverage": {
-      "methods": 486,
-      "validated": 479,
+      "methods": 494,
+      "validated": 487,
       "skippedGeneric": 0,
       "skippedUntyped": 7
     }

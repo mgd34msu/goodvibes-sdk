@@ -15883,6 +15883,92 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       }
     }
   },
+  "rewind.conversation.host.register": {
+    "methodId": "rewind.conversation.host.register",
+    "http": null,
+    "status": 200,
+    "body": {
+      "host": {
+        "hostId": "sample",
+        "sessionId": "sample",
+        "label": "sample",
+        "registeredAt": 0,
+        "leaseExpiresAt": 0
+      },
+      "renewed": false,
+      "maxWaitMs": 0,
+      "answerTimeoutMs": 0
+    }
+  },
+  "rewind.conversation.host.release": {
+    "methodId": "rewind.conversation.host.release",
+    "http": null,
+    "status": 200,
+    "body": {
+      "released": false,
+      "host": {
+        "hostId": "sample",
+        "sessionId": "sample",
+        "label": "sample",
+        "registeredAt": 0,
+        "leaseExpiresAt": 0
+      }
+    }
+  },
+  "rewind.conversation.hosts.list": {
+    "methodId": "rewind.conversation.hosts.list",
+    "http": null,
+    "status": 200,
+    "body": {
+      "hosts": [
+        {
+          "hostId": "sample",
+          "sessionId": "sample",
+          "label": "sample",
+          "registeredAt": 0,
+          "leaseExpiresAt": 0
+        }
+      ]
+    }
+  },
+  "rewind.conversation.requests.answer": {
+    "methodId": "rewind.conversation.requests.answer",
+    "http": null,
+    "status": 200,
+    "body": {
+      "accepted": false,
+      "request": {
+        "requestId": "sample",
+        "sessionId": "sample",
+        "turnId": "sample",
+        "kind": "preview",
+        "expiresAt": 0
+      }
+    }
+  },
+  "rewind.conversation.requests.take": {
+    "methodId": "rewind.conversation.requests.take",
+    "http": null,
+    "status": 200,
+    "body": {
+      "requests": [
+        {
+          "requestId": "sample",
+          "sessionId": "sample",
+          "turnId": "sample",
+          "kind": "preview",
+          "expiresAt": 0
+        }
+      ],
+      "host": {
+        "hostId": "sample",
+        "sessionId": "sample",
+        "label": "sample",
+        "registeredAt": 0,
+        "leaseExpiresAt": 0
+      }
+    }
+  },
   "rewind.plan": {
     "methodId": "rewind.plan",
     "http": null,
@@ -16069,6 +16155,86 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
           "metadata": {}
         }
       ]
+    }
+  },
+  "devices.artifacts.list": {
+    "methodId": "devices.artifacts.list",
+    "http": {
+      "method": "GET",
+      "path": "/api/devices/artifacts"
+    },
+    "status": 200,
+    "body": {
+      "artifacts": [
+        {
+          "artifactId": "sample",
+          "nodeId": "sample",
+          "capabilityId": "sample",
+          "kind": "sample",
+          "mediaType": "sample",
+          "byteLength": 0,
+          "capturedAt": 0,
+          "expiresAt": 0,
+          "reason": "sample",
+          "daemonPath": "sample"
+        }
+      ],
+      "retained": 0,
+      "retentionHours": 0
+    }
+  },
+  "devices.artifacts.read": {
+    "methodId": "devices.artifacts.read",
+    "http": {
+      "method": "GET",
+      "path": "/api/devices/artifacts/{artifactId}"
+    },
+    "status": 200,
+    "body": {
+      "artifact": {
+        "artifactId": "sample",
+        "nodeId": "sample",
+        "capabilityId": "sample",
+        "kind": "sample",
+        "mediaType": "sample",
+        "byteLength": 0,
+        "capturedAt": 0,
+        "expiresAt": 0,
+        "reason": "sample",
+        "daemonPath": "sample"
+      },
+      "dataBase64": "sample"
+    }
+  },
+  "devices.capability.request": {
+    "methodId": "devices.capability.request",
+    "http": {
+      "method": "POST",
+      "path": "/api/devices/capability/request"
+    },
+    "status": 200,
+    "body": {
+      "ok": false,
+      "nodeId": "sample",
+      "capabilityId": "sample",
+      "capabilityTitle": "sample",
+      "authority": "sample",
+      "grantId": "sample",
+      "data": "sample",
+      "artifact": {
+        "artifactId": "sample",
+        "nodeId": "sample",
+        "capabilityId": "sample",
+        "kind": "sample",
+        "mediaType": "sample",
+        "byteLength": 0,
+        "capturedAt": 0,
+        "expiresAt": 0,
+        "reason": "sample",
+        "daemonPath": "sample"
+      },
+      "refusal": "sample",
+      "detail": "sample"
     }
   },
   "devices.grants.list": {
