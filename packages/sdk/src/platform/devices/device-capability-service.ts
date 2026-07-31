@@ -2,15 +2,16 @@
  * device-capability-service.ts — the one path a paired device's camera, screen,
  * location, clipboard, or device command is reached through.
  *
- * Every request walks the same six steps, in this order, with no shortcuts:
+ * Every request walks the same seven steps, in this order, with no shortcuts:
  *   1. the node must be paired and must have announced the capability,
  *   2. configuration must allow the capability at all,
- *   3. a live grant is looked up (re-read from disk, never cached in process),
- *   4. with no grant, the person is asked — ask-every-time is the default for
+ *   3. the request's inputs must satisfy the capability's declared fields,
+ *   4. a live grant is looked up (re-read from disk, never cached in process),
+ *   5. with no grant, the person is asked — ask-every-time is the default for
  *      EVERY capture and effect, and "always allow" is offered on every
  *      capability per the owner ruling of 2026-07-25,
- *   5. the work is dispatched to the node over the peer transport,
- *   6. bytes that came back are retained under the capture TTL and disclosed.
+ *   6. the work is dispatched to the node over the peer transport,
+ *   7. bytes that came back are retained under the capture TTL and disclosed.
  *
  * The dispatcher and the confirmation handler are injected, which is what keeps
  * this node-kind neutral: the same service serves a web PWA node and a native
@@ -24,6 +25,7 @@ import {
 } from './device-capability-contract.js';
 import type { DeviceCapabilityGrant, DeviceGrantStore } from './device-grants.js';
 import type { DeviceCaptureArtifact, DeviceCaptureArtifactStore } from './device-capture-artifacts.js';
+import { validateDeviceCapabilityInput } from './device-peer-work.js';
 import { resolveDevicePolicySource, type DevicePolicySource } from './device-policy-source.js';
 
 /** How the feature behaves overall (`device.capabilities.mode`). */
@@ -124,6 +126,7 @@ export type DeviceRequestRefusal =
   | 'capability-unsupported'
   | 'capability-gated-by-secure-context'
   | 'disabled-by-config'
+  | 'invalid-input'
   | 'denied-by-person'
   | 'dispatch-failed';
 
@@ -179,6 +182,31 @@ export function isAllowAlwaysOffered(
   if (descriptor.id === 'device.location.precise' && policy.locationPrecision === 'ask-precise') return false;
   if (policy.allowAlwaysOffer === 'standard-only' && descriptor.sensitivity === 'elevated') return false;
   return true;
+}
+
+/**
+ * The deadline one request gives the device, from the configured posture and
+ * whatever the caller asked for.
+ *
+ * A caller may ask for a SHORTER deadline than the configured one and get it —
+ * a surface that will stop waiting after ten seconds should not leave a phone
+ * working for sixty. It can never ask for a LONGER one: `device.requestTimeoutMs`
+ * is the posture, and a caller that could extend it would be setting the posture
+ * from the wire. A missing, zero, or nonsense value is simply the configured
+ * deadline.
+ *
+ * This bounds the DISPATCH only. The confirmation prompt keeps the configured
+ * deadline in every case, because the person answering it is not the caller and
+ * their time is not the caller's to shorten.
+ */
+export function resolveDeviceRequestTimeoutMs(
+  policy: DeviceCapabilityPolicy,
+  requestedMs: number | undefined,
+): number {
+  if (requestedMs === undefined || !Number.isFinite(requestedMs) || requestedMs <= 0) {
+    return policy.requestTimeoutMs;
+  }
+  return Math.min(Math.floor(requestedMs), policy.requestTimeoutMs);
 }
 
 /** Configuration-level availability, before any node or person is consulted. */
@@ -239,6 +267,11 @@ export class DeviceCapabilityService {
     readonly input?: Readonly<Record<string, unknown>> | undefined;
     readonly reason: string;
     readonly sessionId?: string | undefined;
+    /**
+     * A shorter deadline for the device than the configured one. Clamped by
+     * `resolveDeviceRequestTimeoutMs` — it can only shorten, never extend.
+     */
+    readonly timeoutMs?: number | undefined;
   }): Promise<DeviceCapabilityOutcome> {
     // One read for the whole request: the posture that gates the capability, the
     // posture that decides whether a durable grant may be offered, and the
@@ -293,6 +326,31 @@ export class DeviceCapabilityService {
         nodeId: node.nodeId,
         refusal: 'disabled-by-config',
         detail: disabled,
+      };
+    }
+
+    // The host half of the two-sided input check device-peer-work.ts describes
+    // ("runs on the host before dispatch AND on the node, so neither side has
+    // to trust the other's validation"). It lives here rather than in a caller
+    // because this is the one path a capability is reached through: the `phone`
+    // tool checked its own arguments, and when the control-plane verb became a
+    // second caller the host half would otherwise have been simply absent from
+    // it — a malformed request travelling to somebody's phone before anything
+    // noticed.
+    //
+    // Ordered before the confirmation prompt on purpose. Asking a person to
+    // approve a request that cannot run, and only then refusing it, spends
+    // their attention on nothing.
+    const problems = validateDeviceCapabilityInput(descriptor.id, { ...(input.input ?? {}), reason: input.reason });
+    if (problems.length > 0) {
+      return {
+        ok: false,
+        capabilityId: descriptor.id,
+        nodeId: node.nodeId,
+        refusal: 'invalid-input',
+        detail: `${descriptor.title} needs ${problems
+          .map((problem) => `${problem.field} (${problem.problem}, expected ${problem.expected})`)
+          .join('; ')}.`,
       };
     }
 
@@ -355,7 +413,7 @@ export class DeviceCapabilityService {
       nodeId: node.nodeId,
       capabilityId: descriptor.id,
       input: { ...(input.input ?? {}), reason: input.reason },
-      timeoutMs: policy.requestTimeoutMs,
+      timeoutMs: resolveDeviceRequestTimeoutMs(policy, input.timeoutMs),
     });
 
     if (!dispatched.ok) {

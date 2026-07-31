@@ -16071,6 +16071,86 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       ]
     }
   },
+  "devices.artifacts.list": {
+    "methodId": "devices.artifacts.list",
+    "http": {
+      "method": "GET",
+      "path": "/api/devices/artifacts"
+    },
+    "status": 200,
+    "body": {
+      "artifacts": [
+        {
+          "artifactId": "sample",
+          "nodeId": "sample",
+          "capabilityId": "sample",
+          "kind": "sample",
+          "mediaType": "sample",
+          "byteLength": 0,
+          "capturedAt": 0,
+          "expiresAt": 0,
+          "reason": "sample",
+          "daemonPath": "sample"
+        }
+      ],
+      "retained": 0,
+      "retentionHours": 0
+    }
+  },
+  "devices.artifacts.read": {
+    "methodId": "devices.artifacts.read",
+    "http": {
+      "method": "GET",
+      "path": "/api/devices/artifacts/{artifactId}"
+    },
+    "status": 200,
+    "body": {
+      "artifact": {
+        "artifactId": "sample",
+        "nodeId": "sample",
+        "capabilityId": "sample",
+        "kind": "sample",
+        "mediaType": "sample",
+        "byteLength": 0,
+        "capturedAt": 0,
+        "expiresAt": 0,
+        "reason": "sample",
+        "daemonPath": "sample"
+      },
+      "dataBase64": "sample"
+    }
+  },
+  "devices.capability.request": {
+    "methodId": "devices.capability.request",
+    "http": {
+      "method": "POST",
+      "path": "/api/devices/capability/request"
+    },
+    "status": 200,
+    "body": {
+      "ok": false,
+      "nodeId": "sample",
+      "capabilityId": "sample",
+      "capabilityTitle": "sample",
+      "authority": "sample",
+      "grantId": "sample",
+      "data": "sample",
+      "artifact": {
+        "artifactId": "sample",
+        "nodeId": "sample",
+        "capabilityId": "sample",
+        "kind": "sample",
+        "mediaType": "sample",
+        "byteLength": 0,
+        "capturedAt": 0,
+        "expiresAt": 0,
+        "reason": "sample",
+        "daemonPath": "sample"
+      },
+      "refusal": "sample",
+      "detail": "sample"
+    }
+  },
   "devices.grants.list": {
     "methodId": "devices.grants.list",
     "http": {

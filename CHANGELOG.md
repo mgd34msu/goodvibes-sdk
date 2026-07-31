@@ -4,6 +4,45 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 ### Added
 
+- **A route to a paired phone for a surface that does not host the device
+  runtime.** The `devices.*` family could list paired nodes, list the durable
+  grants and revoke them, and run the housekeeping sweep. It could not ask a
+  phone for anything: `DeviceCapabilityService.request` was reachable only
+  in-process, through the `phone` tool, so a client with no device posture
+  runtime of its own had a grants surface it could read and a camera it could
+  never open. Three verbs close that.
+
+  `devices.capability.request` (POST `/api/devices/capability/request`,
+  `write:remote`) takes a node id, a capability id, the capability's inputs, a
+  required reason, and an optional shorter deadline, and returns the runtime's
+  own outcome. It re-decides nothing: the durable-grant lookup, the confirmation
+  prompt, the configuration gate, the capture retention and the disclosure all
+  stay inside the runtime, which is the point — a second copy of the grant rule
+  living at a route is a second copy that can disagree with the first. A refusal
+  comes back as `ok: false` with the runtime's reason and a machine-readable
+  code rather than an HTTP error, because a person declining to hand over their
+  camera is an answer, not a fault.
+
+  `devices.artifacts.list` and `devices.artifacts.read` (`read:remote`) are the
+  capture half. The in-process tool read capture bytes straight off the daemon's
+  disk, which a surface on another machine cannot do; `read` returns them
+  base64-encoded, and the store re-hashes them against the digest recorded when
+  the capture was taken, so a torn or half-written file is a 404 naming the
+  mismatch rather than bytes presented as the picture that was taken.
+
+  Two supporting changes in `platform/devices`. `DeviceCapabilityService.request`
+  now accepts an optional `timeoutMs` that can only SHORTEN the configured
+  device deadline (`resolveDeviceRequestTimeoutMs`, exported) — a surface that
+  stops waiting after ten seconds should not leave a phone working for sixty,
+  and a caller that could extend it would be setting the posture from the wire.
+  The prompt keeps the configured deadline either way, because the person
+  answering it is not the caller. And the host half of the input check that
+  `device-peer-work.ts` describes ("runs on the host before dispatch AND on the
+  node") moved into `request` itself, ahead of the prompt, with a new
+  `invalid-input` refusal: it used to live in the `phone` tool, so the verb path
+  would have had no host-side check at all, and asking someone to approve a
+  request that cannot run spends their attention on nothing.
+
 - **A composition shape for a product that runs its own conversation loop and
   nothing else.** `RuntimeServices` is the daemon-grade graph: a hundred-odd
   required fields, several of them concretely-typed daemon furniture — the

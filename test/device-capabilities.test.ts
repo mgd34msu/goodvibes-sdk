@@ -48,6 +48,7 @@ import { DeviceHousekeeper } from '../packages/sdk/src/platform/devices/device-h
 import {
   DeviceCapabilityService,
   isAllowAlwaysOffered,
+  resolveDeviceRequestTimeoutMs,
   DEFAULT_DEVICE_CAPABILITY_POLICY,
 } from '../packages/sdk/src/platform/devices/device-capability-service.ts';
 import type {
@@ -60,7 +61,14 @@ import {
   validateDeviceCapabilityInput,
   parseDeviceCapabilityWorkRequest,
   parseDeviceCapabilityWorkResult,
+  decodeDeviceCapabilityMedia,
 } from '../packages/sdk/src/platform/devices/device-peer-work.ts';
+import { GatewayMethodCatalog } from '../packages/sdk/src/platform/control-plane/method-catalog.ts';
+import { registerDevicesGatewayMethods } from '../packages/sdk/src/platform/control-plane/routes/devices.ts';
+import {
+  GatewayVerbError,
+  isGatewayVerbError,
+} from '../packages/sdk/src/platform/control-plane/routes/gateway-verb-error.ts';
 
 let root = '';
 
@@ -820,5 +828,303 @@ describe('device posture runtime', () => {
       for (const timer of spawned) clearInterval(timer);
       globalThis.setInterval = realSetInterval;
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The control-plane verbs — the path a surface that does NOT host the device
+// posture runtime reaches a paired phone through. Exercised over a real
+// GatewayMethodCatalog with the handlers attached the way a daemon attaches
+// them, so the descriptors, the required-field arrays and the handler wiring
+// are all in the assertion path rather than assumed.
+// ---------------------------------------------------------------------------
+
+function verbHarness(options: Parameters<typeof harness>[0] = {}): {
+  readonly catalog: GatewayMethodCatalog;
+  readonly service: DeviceCapabilityService;
+  readonly artifacts: DeviceCaptureArtifactStore;
+  readonly prompts: DeviceConfirmationRequest[];
+  setDecision(decision: DeviceConfirmationDecision): void;
+  setBytes(bytes: Uint8Array | null): void;
+} {
+  const h = harness(options);
+  const catalog = new GatewayMethodCatalog();
+  registerDevicesGatewayMethods(catalog, {
+    capabilities: h.service,
+    grants: h.grants,
+    artifacts: h.artifacts,
+    housekeeper: new DeviceHousekeeper({
+      grants: h.grants,
+      artifacts: h.artifacts,
+      disclosurePath: join(root, 'verb-housekeeping.json'),
+    }),
+  });
+  return {
+    catalog,
+    service: h.service,
+    artifacts: h.artifacts,
+    prompts: h.prompts,
+    setDecision: h.setDecision,
+    setBytes: h.setBytes,
+  };
+}
+
+const VERB_CONTEXT = { context: { admin: true } } as const;
+
+describe('device capability verbs', () => {
+  test('every device verb is cataloged, handled, and carries one device-family scope', () => {
+    const { catalog } = verbHarness();
+    const expected: Readonly<Record<string, string>> = {
+      'devices.nodes.list': 'read:remote',
+      'devices.capability.request': 'write:remote',
+      'devices.artifacts.list': 'read:remote',
+      'devices.artifacts.read': 'read:remote',
+      'devices.grants.list': 'read:remote',
+      'devices.grants.revoke': 'write:config',
+      'devices.housekeeping.run': 'write:config',
+    };
+    for (const [id, scope] of Object.entries(expected)) {
+      const descriptor = catalog.get(id);
+      expect(descriptor, `${id} is not cataloged`).not.toBeNull();
+      expect(catalog.hasHandler(id), `${id} has no handler`).toBe(true);
+      expect(descriptor?.scopes).toEqual([scope]);
+      // Authenticated, never public: reaching somebody's phone is not anonymous.
+      expect(descriptor?.access).toBe('authenticated');
+    }
+  });
+
+  test('a request runs the same gate the in-process tool runs: the person is asked, verbatim', async () => {
+    const h = verbHarness();
+    const result = await h.catalog.invoke('devices.capability.request', {
+      ...VERB_CONTEXT,
+      body: {
+        nodeId: 'node-a',
+        capabilityId: 'device.command.vibrate',
+        reason: 'confirming the phone is the one on the desk',
+      },
+    }) as { ok: boolean; authority: string; capabilityTitle: string };
+    expect(result.ok).toBe(true);
+    expect(result.authority).toBe('confirmed-once');
+    expect(h.prompts).toHaveLength(1);
+    // The caller's stated reason reaches the prompt unaltered — the verb adds
+    // nothing to it and takes nothing away.
+    expect(h.prompts[0]?.reason).toBe('confirming the phone is the one on the desk');
+  });
+
+  test('a declined request is an ok:false answer with the reason, not a server error', async () => {
+    const h = verbHarness();
+    h.setDecision('deny');
+    const result = await h.catalog.invoke('devices.capability.request', {
+      ...VERB_CONTEXT,
+      body: { nodeId: 'node-a', capabilityId: 'device.camera.rear.capture', reason: 'no thanks' },
+    }) as { ok: boolean; refusal: string; detail: string; authority: string };
+    expect(result.ok).toBe(false);
+    expect(result.refusal).toBe('denied-by-person');
+    expect(result.detail.length).toBeGreaterThan(0);
+    expect(result.authority).toBe('');
+  });
+
+  test('an unknown node and an unknown capability are refused as answers, before any prompt', async () => {
+    const h = verbHarness();
+    const node = await h.catalog.invoke('devices.capability.request', {
+      ...VERB_CONTEXT,
+      body: { nodeId: 'not-paired', capabilityId: 'device.command.vibrate', reason: 'x' },
+    }) as { ok: boolean; refusal: string };
+    const capability = await h.catalog.invoke('devices.capability.request', {
+      ...VERB_CONTEXT,
+      body: { nodeId: 'node-a', capabilityId: 'device.telepathy', reason: 'x' },
+    }) as { ok: boolean; refusal: string };
+    expect(node.refusal).toBe('node-unknown');
+    expect(capability.refusal).toBe('capability-unknown');
+    expect(h.prompts).toHaveLength(0);
+  });
+
+  test('a request missing a required capability input is refused before the person is asked', async () => {
+    const h = verbHarness();
+    const result = await h.catalog.invoke('devices.capability.request', {
+      ...VERB_CONTEXT,
+      body: { nodeId: 'node-a', capabilityId: 'device.clipboard.write', reason: 'paste it over' },
+    }) as { ok: boolean; refusal: string; detail: string };
+    expect(result.ok).toBe(false);
+    expect(result.refusal).toBe('invalid-input');
+    expect(result.detail).toContain('text');
+    // Nobody was asked to approve a request that could never have run.
+    expect(h.prompts).toHaveLength(0);
+  });
+
+  test('nodeId, capabilityId and reason are refused by name when missing', async () => {
+    const h = verbHarness();
+    for (const [field, body] of [
+      ['nodeId', { capabilityId: 'device.command.vibrate', reason: 'x' }],
+      ['capabilityId', { nodeId: 'node-a', reason: 'x' }],
+      ['reason', { nodeId: 'node-a', capabilityId: 'device.command.vibrate' }],
+    ] as const) {
+      let caught: unknown;
+      try {
+        await h.catalog.invoke('devices.capability.request', { ...VERB_CONTEXT, body });
+      } catch (error) {
+        caught = error;
+      }
+      expect(isGatewayVerbError(caught), `${field} was not refused`).toBe(true);
+      expect((caught as GatewayVerbError).field).toBe(field);
+      expect((caught as GatewayVerbError).status).toBe(400);
+    }
+    // Every one of those fields is declared required, so a consumer gets a
+    // compile error rather than a runtime 400.
+    expect(h.catalog.get('devices.capability.request')?.inputSchema?.required)
+      .toEqual(['nodeId', 'capabilityId', 'reason']);
+  });
+
+  test('a caller may shorten the device deadline but can never extend it past the posture', async () => {
+    const policy = { ...DEFAULT_DEVICE_CAPABILITY_POLICY, requestTimeoutMs: 30_000 };
+    expect(resolveDeviceRequestTimeoutMs(policy, 5_000)).toBe(5_000);
+    expect(resolveDeviceRequestTimeoutMs(policy, 900_000)).toBe(30_000);
+    expect(resolveDeviceRequestTimeoutMs(policy, undefined)).toBe(30_000);
+    expect(resolveDeviceRequestTimeoutMs(policy, 0)).toBe(30_000);
+    expect(resolveDeviceRequestTimeoutMs(policy, Number.NaN)).toBe(30_000);
+
+    const seen: number[] = [];
+    const grants = new DeviceGrantStore(join(root, 'deadline-grants.json'));
+    const artifacts = new DeviceCaptureArtifactStore(join(root, 'deadline-captures'));
+    const service = new DeviceCapabilityService({
+      grants,
+      artifacts,
+      dispatcher: { async dispatch(input) { seen.push(input.timeoutMs); return { ok: true }; } },
+      confirm: async () => ({ decision: 'once', actor: 'operator' }),
+      listNodes: () => [profile()],
+      policy,
+    });
+    const catalog = new GatewayMethodCatalog();
+    registerDevicesGatewayMethods(catalog, {
+      capabilities: service,
+      grants,
+      artifacts,
+      housekeeper: new DeviceHousekeeper({ grants, artifacts, disclosurePath: join(root, 'deadline-hk.json') }),
+    });
+    await catalog.invoke('devices.capability.request', {
+      ...VERB_CONTEXT,
+      body: { nodeId: 'node-a', capabilityId: 'device.command.vibrate', reason: 'x', timeoutMs: 4_000 },
+    });
+    await catalog.invoke('devices.capability.request', {
+      ...VERB_CONTEXT,
+      body: { nodeId: 'node-a', capabilityId: 'device.command.vibrate', reason: 'x', timeoutMs: 600_000 },
+    });
+    expect(seen).toEqual([4_000, 30_000]);
+  });
+
+  test('a capture comes back as a reference, and its bytes are fetched by id', async () => {
+    const h = verbHarness();
+    const bytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3]);
+    h.setBytes(bytes);
+    const requested = await h.catalog.invoke('devices.capability.request', {
+      ...VERB_CONTEXT,
+      body: { nodeId: 'node-a', capabilityId: 'device.screen.capture', reason: 'read my screen' },
+    }) as { ok: boolean; artifact: { artifactId: string; mediaType: string; byteLength: number } | null };
+    expect(requested.ok).toBe(true);
+    expect(requested.artifact).not.toBeNull();
+    expect(requested.artifact?.mediaType).toBe('image/png');
+    expect(requested.artifact?.byteLength).toBe(bytes.byteLength);
+
+    const listed = await h.catalog.invoke('devices.artifacts.list', { ...VERB_CONTEXT, body: {} }) as {
+      artifacts: readonly { artifactId: string; daemonPath: string }[];
+      retained: number;
+      retentionHours: number;
+    };
+    expect(listed.retained).toBe(1);
+    expect(listed.retentionHours).toBe(24);
+    expect(listed.artifacts[0]?.artifactId).toBe(requested.artifact?.artifactId);
+    expect(listed.artifacts[0]?.daemonPath).toContain(requested.artifact?.artifactId ?? '');
+
+    const read = await h.catalog.invoke('devices.artifacts.read', {
+      ...VERB_CONTEXT,
+      body: { artifactId: requested.artifact?.artifactId },
+    }) as { dataBase64: string; artifact: { byteLength: number } };
+    expect(read.artifact.byteLength).toBe(bytes.byteLength);
+    // The bytes that come back over the wire are the bytes that were captured.
+    expect([...(decodeDeviceCapabilityMedia({
+      contractVersion: DEVICE_CAPABILITY_CONTRACT_VERSION,
+      capabilityId: 'device.screen.capture',
+      ok: true,
+      mediaBase64: read.dataBase64,
+    }) ?? new Uint8Array())]).toEqual([...bytes]);
+  });
+
+  test('a capture whose bytes were corrupted is a 404 naming the mismatch, never served', async () => {
+    const h = verbHarness();
+    h.setBytes(new Uint8Array([1, 2, 3, 4]));
+    const requested = await h.catalog.invoke('devices.capability.request', {
+      ...VERB_CONTEXT,
+      body: { nodeId: 'node-a', capabilityId: 'device.screen.capture', reason: 'x' },
+    }) as { artifact: { artifactId: string } | null };
+    const artifactId = requested.artifact?.artifactId ?? '';
+    const stored = (await h.artifacts.list()).find((entry) => entry.id === artifactId);
+    if (!stored) throw new Error('the capture was not retained');
+    writeFileSync(h.artifacts.pathFor(stored), Buffer.from([9, 9, 9, 9]));
+
+    let caught: unknown;
+    try {
+      await h.catalog.invoke('devices.artifacts.read', { ...VERB_CONTEXT, body: { artifactId } });
+    } catch (error) {
+      caught = error;
+    }
+    expect(isGatewayVerbError(caught)).toBe(true);
+    expect((caught as GatewayVerbError).status).toBe(404);
+    expect((caught as GatewayVerbError).field).toBe('artifactId');
+    expect((caught as GatewayVerbError).message).toContain('digest');
+  });
+
+  test('an unknown capture id is a 404 attributed to artifactId', async () => {
+    const h = verbHarness();
+    let caught: unknown;
+    try {
+      await h.catalog.invoke('devices.artifacts.read', { ...VERB_CONTEXT, body: { artifactId: 'nope' } });
+    } catch (error) {
+      caught = error;
+    }
+    expect(isGatewayVerbError(caught)).toBe(true);
+    expect((caught as GatewayVerbError).status).toBe(404);
+    expect((caught as GatewayVerbError).field).toBe('artifactId');
+  });
+
+  test('a durable grant already given is honoured by the verb without asking again', async () => {
+    const h = verbHarness();
+    h.setDecision('always');
+    const first = await h.catalog.invoke('devices.capability.request', {
+      ...VERB_CONTEXT,
+      body: { nodeId: 'node-a', capabilityId: 'device.location.coarse', reason: 'first' },
+    }) as { authority: string; grantId: string | null };
+    expect(first.authority).toBe('confirmed-always');
+    expect(first.grantId).not.toBeNull();
+
+    const second = await h.catalog.invoke('devices.capability.request', {
+      ...VERB_CONTEXT,
+      body: { nodeId: 'node-a', capabilityId: 'device.location.coarse', reason: 'second' },
+    }) as { authority: string };
+    expect(second.authority).toBe('existing-grant');
+    expect(h.prompts).toHaveLength(1);
+
+    // And revoking it through the same surface makes the next request ask again.
+    await h.catalog.invoke('devices.grants.revoke', {
+      ...VERB_CONTEXT,
+      body: { nodeId: 'node-a', capabilityId: 'device.location.coarse' },
+    });
+    const third = await h.catalog.invoke('devices.capability.request', {
+      ...VERB_CONTEXT,
+      body: { nodeId: 'node-a', capabilityId: 'device.location.coarse', reason: 'third' },
+    }) as { authority: string };
+    expect(third.authority).toBe('confirmed-always');
+    expect(h.prompts).toHaveLength(2);
+  });
+
+  test('a capability turned off by configuration is refused by the verb with the key that turned it off', async () => {
+    const h = verbHarness({ policy: { clipboardReadMode: 'off' } });
+    const result = await h.catalog.invoke('devices.capability.request', {
+      ...VERB_CONTEXT,
+      body: { nodeId: 'node-a', capabilityId: 'device.clipboard.read', reason: 'x' },
+    }) as { ok: boolean; refusal: string; detail: string };
+    expect(result.ok).toBe(false);
+    expect(result.refusal).toBe('disabled-by-config');
+    expect(result.detail).toContain('device.clipboard.readMode');
+    expect(h.prompts).toHaveLength(0);
   });
 });
