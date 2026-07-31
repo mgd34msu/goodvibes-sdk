@@ -89535,23 +89535,18 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "sessions.hosted.attach",
         "title": "Attach to a Daemon-Hosted Session",
-        "description": "Join a hosted session and receive its transcript so far, so a client that was never connected — or one reconnecting after the daemon restarted — renders what it missed instead of an empty screen. A session restored from disk has its loop rebuilt on this call, with a system line in the transcript stating that its in-flight turn did not survive the restart. Live output continues on the `turn` and `tools` event domains, filtered on this session id. Attaching is what keeps a `kill`-policy session alive: the policy is applied when the LAST client detaches.",
+        "description": "Join a hosted session and receive its transcript so far, so a client that was never connected — or one reconnecting after the daemon restarted — renders what it missed instead of an empty screen. A session restored from disk has its loop rebuilt on this call, with a system line in the transcript stating that its in-flight turn did not survive the restart. Live output continues on the `turn` and `tools` event domains, filtered on this session id. Attaching is what keeps a `kill`-policy session alive: the policy is applied when the LAST client detaches. ws-only invoke verb; no REST binding.",
         "category": "sessions",
         "source": "builtin",
         "access": "authenticated",
         "transport": [
-          "http",
           "ws"
         ],
         "scopes": [
           "write:sessions"
         ],
-        "http": {
-          "method": "POST",
-          "path": "/api/sessions/hosted/{sessionId}/attach"
-        },
         "events": [
-          "runtime.session"
+          "control.hosted_session_update"
         ],
         "inputSchema": {
           "type": "object",
@@ -89706,23 +89701,19 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "sessions.hosted.create",
         "title": "Create a Daemon-Hosted Session",
-        "description": "Compose a full conversation loop INSIDE the daemon for a workspace: the same orchestrator, tool registry and permission gate a terminal runs, hosted here so the conversation does not depend on the client that started it staying open. `workspaceRoot` must be absolute — a relative path would resolve against the daemon's own directory, which is never what the caller meant. `modelId` is resolved against this daemon's live model registry when given, so an unknown or ambiguous id is refused here rather than at the first turn; omitted, the session follows the daemon's current selection. `detachPolicy` overrides the `hostedSessions.detachPolicy` setting for this session alone. `initialPrompt` is submitted as the first user message and the call does NOT wait for that turn — watch the `turn` and `tools` event domains filtered on the returned session id. Refused with the live count and the setting named when `hostedSessions.maxSessions` is already reached.",
+        "description": "Compose a full conversation loop INSIDE the daemon for a workspace: the same orchestrator, tool registry and permission gate a terminal runs, hosted here so the conversation does not depend on the client that started it staying open. `workspaceRoot` must be absolute — a relative path would resolve against the daemon's own directory, which is never what the caller meant. `modelId` is resolved against this daemon's live model registry when given, so an unknown or ambiguous id is refused here rather than at the first turn; omitted, the session follows the daemon's current selection. `detachPolicy` overrides the `hostedSessions.detachPolicy` setting for this session alone. `initialPrompt` is submitted as the first user message and the call does NOT wait for that turn — watch the `turn` and `tools` event domains filtered on the returned session id. Refused with the live count and the setting named when `hostedSessions.maxSessions` is already reached. ws-only invoke verb; no REST binding.",
         "category": "sessions",
         "source": "builtin",
         "access": "authenticated",
         "transport": [
-          "http",
           "ws"
         ],
         "scopes": [
           "write:sessions"
         ],
-        "http": {
-          "method": "POST",
-          "path": "/api/sessions/hosted"
-        },
         "events": [
-          "runtime.session"
+          "control.hosted_session_update",
+          "control.session_update"
         ],
         "inputSchema": {
           "type": "object",
@@ -89863,23 +89854,18 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "sessions.hosted.detach",
         "title": "Detach from a Daemon-Hosted Session",
-        "description": "Leave a hosted session. When other clients are still attached, nothing else happens. When this was the LAST client, the effective detach policy decides: `kill` (the default, and what closing a client has always done) terminates the session with the reason `detached`; `survive` leaves it idle and reattachable. The policy is the session's own override when it was created with one and the `hostedSessions.detachPolicy` setting otherwise, and the returned record says which applied and what the session now is — never a guess by the caller.",
+        "description": "Leave a hosted session. When other clients are still attached, nothing else happens. When this was the LAST client, the effective detach policy decides: `kill` (the default, and what closing a client has always done) terminates the session with the reason `detached`; `survive` leaves it idle and reattachable. The policy is the session's own override when it was created with one and the `hostedSessions.detachPolicy` setting otherwise, and the returned record says which applied and what the session now is — never a guess by the caller. ws-only invoke verb; no REST binding.",
         "category": "sessions",
         "source": "builtin",
         "access": "authenticated",
         "transport": [
-          "http",
           "ws"
         ],
         "scopes": [
           "write:sessions"
         ],
-        "http": {
-          "method": "POST",
-          "path": "/api/sessions/hosted/{sessionId}/detach"
-        },
         "events": [
-          "runtime.session"
+          "control.hosted_session_update"
         ],
         "inputSchema": {
           "type": "object",
@@ -90005,23 +89991,19 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "sessions.hosted.kill",
         "title": "End a Daemon-Hosted Session",
-        "description": "End a hosted session regardless of who is attached or what its detach policy says: the in-flight turn is interrupted, its loop is taken apart, its workspace floor is released when it was the last session using it, and the record is kept — terminated, with the reason `killed` — until `hostedSessions.terminatedRetentionMs` retires it. Killing an already-terminated session returns that record unchanged rather than reporting an error for work that is already done.",
+        "description": "End a hosted session regardless of who is attached or what its detach policy says: the in-flight turn is interrupted, its loop is taken apart, its workspace floor is released when it was the last session using it, and the record is kept — terminated, with the reason `killed` — until `hostedSessions.terminatedRetentionMs` retires it. Killing an already-terminated session returns that record unchanged rather than reporting an error for work that is already done. ws-only invoke verb; no REST binding.",
         "category": "sessions",
         "source": "builtin",
         "access": "authenticated",
         "transport": [
-          "http",
           "ws"
         ],
         "scopes": [
           "write:sessions"
         ],
-        "http": {
-          "method": "POST",
-          "path": "/api/sessions/hosted/{sessionId}/kill"
-        },
         "events": [
-          "runtime.session"
+          "control.hosted_session_update",
+          "control.session_update"
         ],
         "inputSchema": {
           "type": "object",
@@ -90143,21 +90125,16 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       {
         "id": "sessions.hosted.list",
         "title": "List Daemon-Hosted Sessions",
-        "description": "Every session this daemon hosts, most recently updated first. Terminated sessions are excluded unless `includeTerminated` is set — they are kept, with the reason they ended, until the retention window retires them, so a session that stopped can be asked about instead of having simply vanished. Each record carries the policy that would apply on the next detach, so a client can show what leaving will do before it leaves.",
+        "description": "Every session this daemon hosts, most recently updated first. Terminated sessions are excluded unless `includeTerminated` is set — they are kept, with the reason they ended, until the retention window retires them, so a session that stopped can be asked about instead of having simply vanished. Each record carries the policy that would apply on the next detach, so a client can show what leaving will do before it leaves. ws-only invoke verb; no REST binding.",
         "category": "sessions",
         "source": "builtin",
         "access": "authenticated",
         "transport": [
-          "http",
           "ws"
         ],
         "scopes": [
           "read:sessions"
         ],
-        "http": {
-          "method": "GET",
-          "path": "/api/sessions/hosted"
-        },
         "inputSchema": {
           "type": "object",
           "properties": {

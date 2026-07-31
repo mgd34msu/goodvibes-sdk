@@ -233,6 +233,14 @@ describe('S2c re-point — session mutators advertise control.session_update', (
       'sessions.toolCalls.cancel': 'runtime.tools',
       'sessions.queuedMessages.edit': 'runtime.session',
       'sessions.queuedMessages.delete': 'runtime.session',
+      // Attaching to or detaching from a daemon-hosted session changes who is
+      // watching it, not the shared session record, so these drive the hosted
+      // lifecycle channel and claim nothing they do not fire.
+      // sessions.hosted.create and .kill are absent from this map on purpose:
+      // they DO register and close a shared-spine record, so they advertise
+      // control.session_update as well and the gate above covers them.
+      'sessions.hosted.attach': 'control.hosted_session_update',
+      'sessions.hosted.detach': 'control.hosted_session_update',
     };
     const missing = writeSessionMethods
       .filter((m) => !(m.id in RUNTIME_CHANNEL_MUTATORS))

@@ -17234,10 +17234,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
   },
   "sessions.hosted.attach": {
     "methodId": "sessions.hosted.attach",
-    "http": {
-      "method": "POST",
-      "path": "/api/sessions/hosted/{sessionId}/attach"
-    },
+    "http": null,
     "status": 200,
     "body": {
       "session": {
@@ -17272,10 +17269,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
   },
   "sessions.hosted.create": {
     "methodId": "sessions.hosted.create",
-    "http": {
-      "method": "POST",
-      "path": "/api/sessions/hosted"
-    },
+    "http": null,
     "status": 200,
     "body": {
       "session": {
@@ -17303,10 +17297,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
   },
   "sessions.hosted.detach": {
     "methodId": "sessions.hosted.detach",
-    "http": {
-      "method": "POST",
-      "path": "/api/sessions/hosted/{sessionId}/detach"
-    },
+    "http": null,
     "status": 200,
     "body": {
       "session": {
@@ -17334,10 +17325,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
   },
   "sessions.hosted.kill": {
     "methodId": "sessions.hosted.kill",
-    "http": {
-      "method": "POST",
-      "path": "/api/sessions/hosted/{sessionId}/kill"
-    },
+    "http": null,
     "status": 200,
     "body": {
       "session": {
@@ -17365,10 +17353,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
   },
   "sessions.hosted.list": {
     "methodId": "sessions.hosted.list",
-    "http": {
-      "method": "GET",
-      "path": "/api/sessions/hosted"
-    },
+    "http": null,
     "status": 200,
     "body": {
       "sessions": [

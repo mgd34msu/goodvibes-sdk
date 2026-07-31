@@ -331,8 +331,8 @@
     "rationale": "public facade; measured 408 B gzip @ commit 4e5a5e2; headroom max(ceil(408*1.2)=490, 408+50=458) \u2192 490 (1.2x dominates by 32 B)"
   },
   "./platform/hosted-sessions": {
-    "gzip_bytes": 1000,
-    "rationale": "new public package export budget; the daemon-hosted session engine \u2014 lifecycle manager with the detach policy, the per-workspace floor cache, the per-session loop composition, the bounded/validated disk store and the per-session model route. Provisional budget pending the first measured dist baseline; re-anchor to max(ceil(actual*1.2), actual+50) at that measurement"
+    "gzip_bytes": 807,
+    "rationale": "new public package export budget; the daemon-hosted session engine \u2014 lifecycle manager with the detach policy, the per-workspace floor cache, the per-session loop composition, the bounded/validated disk store and the per-session model route; measured 672 B gzip at the engine's initial landing; headroom max(ceil(672*1.2)=807, 672+50=722) -> 807 (1.2x dominates)"
   },
   "./platform/knowledge": {
     "gzip_bytes": 1204,
