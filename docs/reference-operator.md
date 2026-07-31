@@ -91269,15 +91269,15 @@ Return metadata for a shared session.
 
 #### `sessions.hosted.attach`
 
-Join a hosted session and receive its transcript so far, so a client that was never connected — or one reconnecting after the daemon restarted — renders what it missed instead of an empty screen. A session restored from disk has its loop rebuilt on this call, with a system line in the transcript stating that its in-flight turn did not survive the restart. Live output continues on the `turn` and `tools` event domains, filtered on this session id. Attaching is what keeps a `kill`-policy session alive: the policy is applied when the LAST client detaches.
+Join a hosted session and receive its transcript so far, so a client that was never connected — or one reconnecting after the daemon restarted — renders what it missed instead of an empty screen. A session restored from disk has its loop rebuilt on this call, with a system line in the transcript stating that its in-flight turn did not survive the restart. Live output continues on the `turn` and `tools` event domains, filtered on this session id. Attaching is what keeps a `kill`-policy session alive: the policy is applied when the LAST client detaches. ws-only invoke verb; no REST binding.
 
 - Title: `Attach to a Daemon-Hosted Session`
 - Source: `builtin`
 - Access: `authenticated`
-- Transport: `http`, `ws`
-- HTTP: `POST /api/sessions/hosted/{sessionId}/attach`
+- Transport: `ws`
+- HTTP: none
 - Scopes: `write:sessions`
-- Emits events: `runtime.session`
+- Emits events: `control.hosted_session_update`
 - Dangerous: `no`
 - Invokable: `yes`
 
@@ -91441,15 +91441,15 @@ Join a hosted session and receive its transcript so far, so a client that was ne
 
 #### `sessions.hosted.create`
 
-Compose a full conversation loop INSIDE the daemon for a workspace: the same orchestrator, tool registry and permission gate a terminal runs, hosted here so the conversation does not depend on the client that started it staying open. `workspaceRoot` must be absolute — a relative path would resolve against the daemon's own directory, which is never what the caller meant. `modelId` is resolved against this daemon's live model registry when given, so an unknown or ambiguous id is refused here rather than at the first turn; omitted, the session follows the daemon's current selection. `detachPolicy` overrides the `hostedSessions.detachPolicy` setting for this session alone. `initialPrompt` is submitted as the first user message and the call does NOT wait for that turn — watch the `turn` and `tools` event domains filtered on the returned session id. Refused with the live count and the setting named when `hostedSessions.maxSessions` is already reached.
+Compose a full conversation loop INSIDE the daemon for a workspace: the same orchestrator, tool registry and permission gate a terminal runs, hosted here so the conversation does not depend on the client that started it staying open. `workspaceRoot` must be absolute — a relative path would resolve against the daemon's own directory, which is never what the caller meant. `modelId` is resolved against this daemon's live model registry when given, so an unknown or ambiguous id is refused here rather than at the first turn; omitted, the session follows the daemon's current selection. `detachPolicy` overrides the `hostedSessions.detachPolicy` setting for this session alone. `initialPrompt` is submitted as the first user message and the call does NOT wait for that turn — watch the `turn` and `tools` event domains filtered on the returned session id. Refused with the live count and the setting named when `hostedSessions.maxSessions` is already reached. ws-only invoke verb; no REST binding.
 
 - Title: `Create a Daemon-Hosted Session`
 - Source: `builtin`
 - Access: `authenticated`
-- Transport: `http`, `ws`
-- HTTP: `POST /api/sessions/hosted`
+- Transport: `ws`
+- HTTP: none
 - Scopes: `write:sessions`
-- Emits events: `runtime.session`
+- Emits events: `control.hosted_session_update`, `control.session_update`
 - Dangerous: `no`
 - Invokable: `yes`
 
@@ -91599,15 +91599,15 @@ Compose a full conversation loop INSIDE the daemon for a workspace: the same orc
 
 #### `sessions.hosted.detach`
 
-Leave a hosted session. When other clients are still attached, nothing else happens. When this was the LAST client, the effective detach policy decides: `kill` (the default, and what closing a client has always done) terminates the session with the reason `detached`; `survive` leaves it idle and reattachable. The policy is the session's own override when it was created with one and the `hostedSessions.detachPolicy` setting otherwise, and the returned record says which applied and what the session now is — never a guess by the caller.
+Leave a hosted session. When other clients are still attached, nothing else happens. When this was the LAST client, the effective detach policy decides: `kill` (the default, and what closing a client has always done) terminates the session with the reason `detached`; `survive` leaves it idle and reattachable. The policy is the session's own override when it was created with one and the `hostedSessions.detachPolicy` setting otherwise, and the returned record says which applied and what the session now is — never a guess by the caller. ws-only invoke verb; no REST binding.
 
 - Title: `Detach from a Daemon-Hosted Session`
 - Source: `builtin`
 - Access: `authenticated`
-- Transport: `http`, `ws`
-- HTTP: `POST /api/sessions/hosted/{sessionId}/detach`
+- Transport: `ws`
+- HTTP: none
 - Scopes: `write:sessions`
-- Emits events: `runtime.session`
+- Emits events: `control.hosted_session_update`
 - Dangerous: `no`
 - Invokable: `yes`
 
@@ -91742,15 +91742,15 @@ Leave a hosted session. When other clients are still attached, nothing else happ
 
 #### `sessions.hosted.kill`
 
-End a hosted session regardless of who is attached or what its detach policy says: the in-flight turn is interrupted, its loop is taken apart, its workspace floor is released when it was the last session using it, and the record is kept — terminated, with the reason `killed` — until `hostedSessions.terminatedRetentionMs` retires it. Killing an already-terminated session returns that record unchanged rather than reporting an error for work that is already done.
+End a hosted session regardless of who is attached or what its detach policy says: the in-flight turn is interrupted, its loop is taken apart, its workspace floor is released when it was the last session using it, and the record is kept — terminated, with the reason `killed` — until `hostedSessions.terminatedRetentionMs` retires it. Killing an already-terminated session returns that record unchanged rather than reporting an error for work that is already done. ws-only invoke verb; no REST binding.
 
 - Title: `End a Daemon-Hosted Session`
 - Source: `builtin`
 - Access: `authenticated`
-- Transport: `http`, `ws`
-- HTTP: `POST /api/sessions/hosted/{sessionId}/kill`
+- Transport: `ws`
+- HTTP: none
 - Scopes: `write:sessions`
-- Emits events: `runtime.session`
+- Emits events: `control.hosted_session_update`, `control.session_update`
 - Dangerous: `no`
 - Invokable: `yes`
 
@@ -91881,13 +91881,13 @@ End a hosted session regardless of who is attached or what its detach policy say
 
 #### `sessions.hosted.list`
 
-Every session this daemon hosts, most recently updated first. Terminated sessions are excluded unless `includeTerminated` is set — they are kept, with the reason they ended, until the retention window retires them, so a session that stopped can be asked about instead of having simply vanished. Each record carries the policy that would apply on the next detach, so a client can show what leaving will do before it leaves.
+Every session this daemon hosts, most recently updated first. Terminated sessions are excluded unless `includeTerminated` is set — they are kept, with the reason they ended, until the retention window retires them, so a session that stopped can be asked about instead of having simply vanished. Each record carries the policy that would apply on the next detach, so a client can show what leaving will do before it leaves. ws-only invoke verb; no REST binding.
 
 - Title: `List Daemon-Hosted Sessions`
 - Source: `builtin`
 - Access: `authenticated`
-- Transport: `http`, `ws`
-- HTTP: `GET /api/sessions/hosted`
+- Transport: `ws`
+- HTTP: none
 - Scopes: `read:sessions`
 - Emits events: none
 - Dangerous: `no`
