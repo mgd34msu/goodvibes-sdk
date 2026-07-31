@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { installTuiTerminalOutputGuard } from '@pellux/goodvibes-terminal-shell';
+import { installFullScreenTerminalOutputGuard } from '@pellux/goodvibes-terminal-shell';
 
 /**
  * The `notify` contract: a formatted, human-readable notice naming how many
@@ -12,7 +12,7 @@ describe('terminal-output guard formatted notice (notify)', () => {
     const fakeStdout = { write: () => true };
     const notices: string[] = [];
 
-    const guard = installTuiTerminalOutputGuard({
+    const guard = installFullScreenTerminalOutputGuard({
       stdout: fakeStdout as never,
       active: true,
       notify: (message) => { notices.push(message); },
@@ -32,7 +32,7 @@ describe('terminal-output guard formatted notice (notify)', () => {
     const fakeStdout = { write: () => true };
     const notices: string[] = [];
 
-    const guard = installTuiTerminalOutputGuard({
+    const guard = installFullScreenTerminalOutputGuard({
       stdout: fakeStdout as never,
       active: true,
       notify: (message) => { notices.push(message); },
@@ -55,7 +55,7 @@ describe('terminal-output guard formatted notice (notify)', () => {
 
     // Only onCapture wired — notify absent entirely, so it must never be an
     // error for it to be missing, and no notice-shaped side effect occurs.
-    const guard = installTuiTerminalOutputGuard({
+    const guard = installFullScreenTerminalOutputGuard({
       stdout: fakeStdout as never,
       active: true,
       onCapture: (total) => { captures.push(total); },

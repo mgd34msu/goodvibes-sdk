@@ -12,7 +12,7 @@
  * first guard's wrapper, and disposing the second would leave the first's
  * patch installed forever.
  *
- * `installTuiTerminalOutputGuard` is the full-screen-renderer wrapper: it adds
+ * `installFullScreenTerminalOutputGuard` is the full-screen-renderer wrapper: it adds
  * a rate limit (at most once per 5s) over the raw intercept stream, so a burst
  * of captured writes produces one on-screen notice rather than a line per
  * write. It exposes two independent, optional ways for a caller to learn about
@@ -66,7 +66,7 @@ export type TerminalOutputGuardOptions = {
   readonly onIntercept?: (event: TerminalOutputIntercept) => void;
 };
 
-export type TuiTerminalOutputGuardOptions = {
+export type FullScreenTerminalOutputGuardOptions = {
   readonly stdout: WritableStreamLike;
   readonly stderr?: WritableStreamLike;
   readonly active?: boolean;
@@ -260,7 +260,7 @@ export function installTerminalOutputGuard(options: TerminalOutputGuardOptions):
   return guard;
 }
 
-export function installTuiTerminalOutputGuard(options: TuiTerminalOutputGuardOptions): TerminalOutputGuard {
+export function installFullScreenTerminalOutputGuard(options: FullScreenTerminalOutputGuardOptions): TerminalOutputGuard {
   let totalInterceptedWrites = 0;
   let sinceLastNotifyCount = 0;
   let lastNoticeAt = 0;

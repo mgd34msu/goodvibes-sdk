@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { installTuiTerminalOutputGuard } from '@pellux/goodvibes-terminal-shell';
+import { installFullScreenTerminalOutputGuard } from '@pellux/goodvibes-terminal-shell';
 
 // direct terminal writes that would corrupt a full-screen renderer are
 // captured and counted (surfaced by e.g. /debug), NOT pushed as repeated
@@ -10,7 +10,7 @@ describe('terminal-output guard cumulative counter (onCapture)', () => {
     const fakeStdout = { write: (s: string | Uint8Array) => { written.push(String(s)); return true; } };
     const captures: number[] = [];
 
-    const guard = installTuiTerminalOutputGuard({
+    const guard = installFullScreenTerminalOutputGuard({
       stdout: fakeStdout as never,
       stderr: fakeStdout as never,
       active: true,
@@ -31,7 +31,7 @@ describe('terminal-output guard cumulative counter (onCapture)', () => {
     const fakeStdout = { write: () => true };
     const captures: number[] = [];
 
-    const guard = installTuiTerminalOutputGuard({
+    const guard = installFullScreenTerminalOutputGuard({
       stdout: fakeStdout as never,
       active: true,
       onCapture: (total) => { captures.push(total); },
