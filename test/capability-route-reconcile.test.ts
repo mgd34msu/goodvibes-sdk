@@ -53,10 +53,11 @@ import {
  * some OTHER method in those same files that wasn't already on this list.
  *
  * Retired to empty, and it has stayed empty as the debt was actually paid:
- * calendar.* and the channels.routing and channels.drafts families are now SERVED, and
- * channels.inbox.list is marked `invokable: false` at the source, so the gate
- * guards all of them for real instead of grandfathering them. Re-add an entry
- * only if a new, genuinely pre-existing, out-of-ownership case shows up —
+ * calendar.*, channels.routing.*, channels.drafts.* and — last of the eight —
+ * channels.inbox.list are all SERVED, the inbox one from the host's synced
+ * provider mirror through the gateway REST table. Nothing in this file is
+ * grandfathered any more; the gate guards every one of them for real. Re-add an
+ * entry only if a new, genuinely pre-existing, out-of-ownership case shows up —
  * shrink this list, don't grow it.
  */
 const KNOWN_PRE_EXISTING_ROUTE_DEBT: readonly string[] = [];
