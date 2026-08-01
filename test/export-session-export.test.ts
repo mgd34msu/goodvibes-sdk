@@ -35,13 +35,13 @@ const HOME_ROOT = '/tmp';
 
 describe('redactSensitiveData', () => {
   test('redacts generic sk- API keys', () => {
-    const result = redactSensitiveData('key=sk-abcdefghijklmnopqrst12345');
+    const result = redactSensitiveData('key=sk-abcdefghijklmnopqrst12345'); // gitleaks:allow — deliberately key-shaped fixture; the assertion below proves it never survives redaction
     expect(result).toContain('[REDACTED_API_KEY]');
     expect(result).not.toContain('sk-abcdefghijklmnopqrst12345');
   });
 
   test('redacts key- tokens', () => {
-    const result = redactSensitiveData('token: key-1234567890abcdef');
+    const result = redactSensitiveData('token: key-1234567890abcdef'); // gitleaks:allow — deliberately key-shaped fixture; the assertion below proves it never survives redaction
     expect(result).toContain('[REDACTED_API_KEY]');
   });
 

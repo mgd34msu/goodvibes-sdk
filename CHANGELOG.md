@@ -1,6 +1,8 @@
 # Changelog
 
-This file tracks breaking changes, additions, fixes, and migration steps for each release of `@pellux/goodvibes-sdk`. Every release **must** have a corresponding `## [Unreleased]
+This file tracks breaking changes, additions, fixes, and migration steps for each release of `@pellux/goodvibes-sdk`. Every release **must** have a corresponding `## [x.y.z] - YYYY-MM-DD` section before it can publish — the changelog gate refuses a release the file does not describe.
+
+## [2.0.0] - 2026-08-01
 
 ### Added
 

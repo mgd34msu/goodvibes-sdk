@@ -5,6 +5,24 @@ import { summarizeError } from '../utils/error-display.js';
 import { openVersionedSchema, sqlJsVersionHandle } from './store-versioning.js';
 import { restoreStoreSnapshot, snapshotStoreFile } from './store-snapshots.js';
 
+// The sql.js engine loads exactly once per process, however many stores open.
+// Its WASM loader is not re-entrant: two concurrent initSqlJs() calls race the
+// module's internal resolver and one of them dies with "resolveModule is not a
+// function". A failed load clears the memo so the next open can retry.
+let sqlJsEnginePromise: Promise<SqlJsStatic> | null = null;
+
+function loadSqlJsEngine(): Promise<SqlJsStatic> {
+  if (!sqlJsEnginePromise) {
+    sqlJsEnginePromise = import('sql.js')
+      .then((mod) => mod.default() as Promise<SqlJsStatic>)
+      .catch((err: unknown) => {
+        sqlJsEnginePromise = null;
+        throw err;
+      });
+  }
+  return sqlJsEnginePromise;
+}
+
 export interface SqlDatabase {
   run(sql: string, params?: (string | number | Uint8Array | null)[]): void;
   exec(sql: string, params?: (string | number)[]): Array<{ columns: string[]; values: unknown[][] }>;
@@ -121,8 +139,7 @@ export class SQLiteStore {
 
   private async initialize(schema: (db: SqlDatabase) => void, options: SqliteStoreInitOptions): Promise<void> {
     try {
-      const initSqlJs = (await import('sql.js')).default;
-      const SQL = await initSqlJs() as SqlJsStatic;
+      const SQL = await loadSqlJsEngine();
       const dbPath = this.dbPath;
       const persistent = Boolean(dbPath && !isEphemeralDbPath(dbPath));
       const existedOnDisk = persistent && existsSync(dbPath!);
