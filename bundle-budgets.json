@@ -263,8 +263,8 @@
     "rationale": "new public package export budget; measured 158 B gzip @ v0.33.0 release verification; headroom max(ceil(158*1.2)=190, 158+50=208) -> 208 (+50 B floor dominates)"
   },
   "./platform/config": {
-    "gzip_bytes": 2462,
-    "rationale": "config facade with secrets, services, subscriptions, helper model, tool LLM, the daemon-served shared-config tier + admin-scoped credential-status read, and the config-ownership surface (scope resolution, daemon-tier paths, the daemon-owned migration and the derived control-plane base-url readers); re-anchored after the credential-custody expansion added the secret-ref refusal vocabulary, the credential-scope registry, the daemon-needed credential migration and its receipt, the secret-bearing config-key declaration, the plaintext credential sweep and the connector config-section defaults; measured 2051 B gzip @ commit 625afa04; headroom max(ceil(2051*1.2)=2462, 2051+50=2101) \u2192 2462 (1.2x dominates by 361 B)"
+    "gzip_bytes": 3796,
+    "rationale": "config facade with secrets, services, subscriptions, helper model, tool LLM, the daemon-served shared-config tier + admin-scoped credential-status read, and the config-ownership surface (scope resolution, daemon-tier paths, the daemon-owned migration and the derived control-plane base-url readers); re-anchored when the tree-root and daemon-home resolution policy (goodvibes-home.ts: the GOODVIBES_HOME / GOODVIBES_DAEMON_HOME readers, the derived tree directory, the ownership record and the relocated-process question) moved here from the two products that each carried a copy, together with the getConfiguredProviderId and isEffectiveDangerMode derivations; measured 3163 B gzip @ the config-twin hoist; headroom max(ceil(3163*1.2)=3796, 3163+50=3213) \u2192 3796 (1.2x dominates by 583 B)"
   },
   "./platform/control-plane": {
     "gzip_bytes": 1494,
