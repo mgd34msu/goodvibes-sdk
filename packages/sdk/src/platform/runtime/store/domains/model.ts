@@ -40,6 +40,17 @@ export interface FallbackChainEntry {
   providerId: string;
   /** Model ID on that provider. */
   modelId: string;
+  /**
+   * Registry key used for config lookup — the same stored key the active model
+   * carries, not a key recomposed from providerId and modelId.
+   *
+   * The chain's own entries are what a fallover switches the session to, so the
+   * key a fallback node reports has to be the key the registry actually knows
+   * it by. Recomposing `${providerId}:${modelId}` guesses that shape, and the
+   * guess disagrees with the stored key for any model whose id already carries
+   * a namespace (an OpenRouter `vendor/model`, a Bedrock ARN-ish id).
+   */
+  registryKey: string;
   /** Human-readable name for display. */
   displayName: string;
   /** Reason this fallback was configured. */

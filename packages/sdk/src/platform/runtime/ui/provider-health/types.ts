@@ -23,7 +23,8 @@ export interface ProviderHealthEntry {
   readonly isConfigured: boolean;
   readonly successRate: number;
   readonly errorRate: number;
-  readonly p95LatencyMs: number;
+  /** Maximum observed latency in ms (max of recent observations, not a percentile). */
+  readonly maxLatencyMs: number;
   readonly avgLatencyMs: number;
   readonly totalCalls: number;
   readonly cacheHitRate?: number | undefined;

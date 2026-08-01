@@ -76,7 +76,7 @@ function buildHealthContext(record: ProviderHealthRecord | undefined): ProviderH
   if (record.stats.totalCalls > 0) {
     latency = {
       avgMs: record.stats.avgLatencyMs,
-      p95Ms: record.stats.maxLatencyMs,
+      maxMs: record.stats.maxLatencyMs,
       minMs: record.stats.minLatencyMs,
     };
   }
@@ -142,7 +142,11 @@ function buildFallbackPositionMap(modelState: ModelDomainState): Map<string, num
   map.set(modelState.registryKey, 0);
   for (let i = 0; i < modelState.fallbackChain.length; i++) {
     const entry = modelState.fallbackChain[i]!;
-    const key = `${entry.providerId}:${entry.modelId}`;
+    // The entry's own stored key, for the same reason the primary uses
+    // modelState.registryKey: these keys are matched against the registry's
+    // ModelDefinition.registryKey, and a recomposed `provider:model` misses
+    // any model whose id already carries a namespace.
+    const key = entry.registryKey;
     if (!map.has(key)) {
       map.set(key, i + 1);
     }

@@ -131,7 +131,7 @@ export class ProviderHealthDataProvider {
         isConfigured: record.isConfigured,
         successRate,
         errorRate,
-        p95LatencyMs: record.stats.maxLatencyMs,
+        maxLatencyMs: record.stats.maxLatencyMs,
         avgLatencyMs: record.stats.avgLatencyMs,
         totalCalls: total,
         cacheHitRate: record.cacheMetrics?.hitRate,
