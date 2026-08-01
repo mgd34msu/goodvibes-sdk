@@ -277,3 +277,27 @@ export {
   type McpRuntimeReloadHandle,
   type McpRuntimeReloadOptions,
 } from './mcp-runtime-reload.js';
+
+export { TRANSCRIPT_LAYOUT } from './transcript-layout.js';
+
+export { InfiniteBuffer } from './conversation-history.js';
+
+export {
+  SelectionManager,
+  type SelectionPoint,
+} from './text-selection.js';
+
+export {
+  createBottomBarLine,
+  writeBottomBarText,
+  type BottomBarStyle,
+} from './bottom-bar.js';
+
+export {
+  drawTreeRails,
+  treeBranchCol,
+  treeContentCol,
+  treeIndentCols,
+  treeTextCol,
+  writeTreeStatusMarker,
+} from './conversation-tree.js';

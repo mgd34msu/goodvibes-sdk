@@ -54,6 +54,14 @@ export function getDisplayWidth(text: string): number {
       code === 0x2717 || // ✗ ballot x
       code === 0x2714 || // ✔ heavy check mark
       code === 0x2718 || // ✘ heavy ballot x
+      // ✕ (0x2715) and ✖ (0x2716) — the multiplication-X cross family. GLYPHS
+      // .status.failure is ✕, so this is the character every failed row's
+      // marker uses. Terminals draw them one cell wide, but they sit inside the
+      // 0x2600–0x27bf emoji block below and would otherwise be counted as width
+      // 2, desyncing the styled cell grid from the physical glyph and corrupting
+      // the following text (the "✕t" glitch on the steer error line).
+      code === 0x2715 ||
+      code === 0x2716 ||
       code === 0x2022 || // • bullet
       code === 0x258D || // ▍ left five eighths block
       (code >= 0x2500 && code <= 0x257F) // box drawing block (all single-width)
