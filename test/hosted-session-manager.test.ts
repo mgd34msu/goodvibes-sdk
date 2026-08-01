@@ -435,7 +435,15 @@ test('a steer queued on the spine reaches the hosted loop, and the participant s
   live.runtime!.submit = async (text: string): Promise<void> => { submitted.push(text); };
 
   queued.set(created.id, [{ id: 'input-1', body: 'steer this hosted session' }]);
-  for (let attempt = 0; attempt < 50 && submitted.length === 0; attempt += 1) {
+  // The submit lands first and the delivery/consumption acknowledgements land
+  // on their own later ticks — wait for all three, or the assertions race the
+  // acknowledgements they assert.
+  const steerKey = `${created.id}:input-1`;
+  for (
+    let attempt = 0;
+    attempt < 250 && (submitted.length === 0 || !delivered.includes(steerKey) || !consumed.includes(steerKey));
+    attempt += 1
+  ) {
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
 

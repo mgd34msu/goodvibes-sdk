@@ -1,0 +1,5 @@
+# Historical findings on rewritten commits: the same two deliberately key-shaped
+# redaction fixtures already inline-allowed in the current file. The rewrite gave
+# their pre-allow historical versions new hashes, which the scanner sees as new.
+4abd8bfbbf6066bb3fb8cbc5bcc622020b9eb1c6:test/export-session-export.test.ts:generic-api-key:38
+4abd8bfbbf6066bb3fb8cbc5bcc622020b9eb1c6:test/export-session-export.test.ts:generic-api-key:44
