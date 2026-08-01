@@ -9,15 +9,12 @@
  * mode (`disabled`, `blocked`, `incompatible`, `unavailable`) means the same
  * honest thing — no daemon, local only, nothing mirrored.
  *
- * `HostServiceMode` still carries an `embedded` member, and it means something
- * real: the in-process HTTP listener reports it, and an EMBEDDER composing a
- * daemon directly through `startHostServices({ embedDaemonInProcess: true })`
- * gets it for the daemon too. What no longer exists is a product-facing setting
- * that could select it — a surface has no switch that makes it host a daemon.
- * So this file branches on "is there a daemon to mirror to", not on "who is
- * hosting it", and an embedder that hosts its own is served by the same adopted
- * path, because from the spine's point of view a daemon it can reach is a
- * daemon it can reach.
+ * `HostServiceMode` still carries an `embedded` member, and it means one real
+ * thing: the in-process HTTP listener reports it. No daemon does — a host never
+ * hosts a daemon, it adopts one running separately or spawns the standalone
+ * `goodvibes-daemon` binary as a detached process and adopts that. So this file
+ * branches on "is there a daemon to mirror to", never on "who is hosting it":
+ * from the spine's point of view a daemon it can reach is a daemon it can reach.
  *
  * ── What crosses the wire ──────────────────────────────────────────────────
  *

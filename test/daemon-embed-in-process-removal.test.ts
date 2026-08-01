@@ -8,11 +8,11 @@
  * schema-driven settings UI presented it as a live toggle complete with a "NOT
  * RECOMMENDED" warning.
  *
- * Hosting a daemon in-process is still possible; it is an argument to the
- * composition API (`startHostServices({ embedDaemonInProcess })`), which is what
- * an embedder or a test uses. These tests pin both halves: the key is gone from
- * the schema and swept from disk with a receipt, and the composition option
- * still reaches the embed branch.
+ * Hosting a daemon in-process is not possible at all any more: the daemon is its
+ * own product, composed only by `goodvibes-daemon`, and the composition option
+ * that once let a host embed one is gone with it. These tests pin both halves:
+ * the key is gone from the schema and swept from disk with a receipt, and the
+ * adoption policy's port-free ruling has no embed outcome left to reach.
  */
 import { describe, expect, test } from 'bun:test';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
@@ -170,7 +170,7 @@ describe('applyDaemonEmbedInProcessMigrationPass', () => {
   });
 });
 
-describe('the embed capability itself survives as composition machinery', () => {
+describe('the embed capability is gone from composition too', () => {
   const base = {
     localVersion: '1.0.0',
     versionCompatible: () => true,
@@ -179,19 +179,30 @@ describe('the embed capability itself survives as composition machinery', () => 
     identity: null,
   };
 
-  test('an embedder asking to host in-process still reaches the embed branch', () => {
-    const decision = decideDaemonAdoption({ ...base, embedInProcess: true, adoptOnly: false });
-    expect(decision.action).toBe('embed');
-    // And the reason no longer cites a settings key, because none selects it.
-    expect(decision.reason).not.toContain('daemon.embedInProcess');
+  test('the port-free ruling is a detached spawn — the only way a host starts a daemon', () => {
+    const decision = decideDaemonAdoption({ ...base, adoptOnly: false });
+    expect(decision.action).toBe('spawn');
+    expect(decision.reason).toContain('detached');
   });
 
-  test('a product surface — adopt-only — never embeds', () => {
-    const decision = decideDaemonAdoption({ ...base, embedInProcess: true, adoptOnly: true });
+  test('a product surface — adopt-only — runs without one instead', () => {
+    const decision = decideDaemonAdoption({ ...base, adoptOnly: true });
     expect(decision.action).toBe('adopt-only-idle');
   });
 
-  test('without the composition option the port-free default is a detached spawn', () => {
-    expect(decideDaemonAdoption({ ...base, embedInProcess: false, adoptOnly: false }).action).toBe('spawn');
+  test('no ruling names an embed outcome', () => {
+    const rulings = [
+      decideDaemonAdoption({ ...base, adoptOnly: false }),
+      decideDaemonAdoption({ ...base, adoptOnly: true }),
+      decideDaemonAdoption({ ...base, enabled: false, adoptOnly: false }),
+      decideDaemonAdoption({ ...base, portInUse: true, identity: { kind: 'goodvibes', status: 'running', version: '1.0.0' }, adoptOnly: false }),
+      decideDaemonAdoption({ ...base, portInUse: true, identity: { kind: 'unknown', reason: 'HTTP 404' }, adoptOnly: false }),
+    ];
+    // Read through `string` deliberately: `DaemonAdoptionAction` no longer
+    // contains the literal, so a direct comparison is a type error rather than a
+    // test. That the type rejects it is the stronger half of the guarantee.
+    for (const ruling of rulings) {
+      expect(ruling.action as string).not.toBe('embed');
+    }
   });
 });

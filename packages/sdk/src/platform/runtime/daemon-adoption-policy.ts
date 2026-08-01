@@ -61,7 +61,6 @@ export type DaemonAdoptionAction =
   | 'incompatible'  // a GoodVibes daemon is running on an incompatible band — refuse both adopt and spawn
   | 'blocked'       // the port is occupied by an unverified process — continue without a daemon
   | 'spawn'         // port free — spawn a detached daemon (default lifecycle ownership)
-  | 'embed'         // port free — host the daemon in this process (embedder composition, no product setting selects it)
   | 'adopt-only-idle'; // port free + adopt-only policy — do not spawn; run without a local daemon
 
 export interface DaemonAdoptionDecision {
@@ -82,28 +81,18 @@ export interface DaemonAdoptionPolicyInput {
   readonly localVersion: string;
   readonly versionCompatible: (localVersion: string, remoteVersion: string | undefined) => boolean;
   /**
-   * Host the daemon in-process when the port is free.
-   *
-   * An embedder's composition choice, passed through from
-   * `startHostServices({ embedDaemonInProcess })`. No settings key reaches this:
-   * a product surface cannot ask to host a daemon. Ignored under adopt-only,
-   * which is answered first — which is why every shipped surface resolves the
-   * port-free case to `adopt-only-idle` and never to `embed`.
-   */
-  readonly embedInProcess: boolean;
-  /**
-   * Adopt-only policy: attach to a compatible running daemon but NEVER spawn or
-   * embed one. This surface does not own the daemon lifecycle. Default false.
+   * Adopt-only policy: attach to a compatible running daemon but NEVER spawn
+   * one. This surface does not own the daemon lifecycle. Default false.
    */
   readonly adoptOnly: boolean;
 }
 
 /**
  * Decide adopt-or-spawn from probe results + config. Pure. The caller maps the
- * returned action onto its I/O (adopt = keep external status, spawn = detached
- * spawn, embed = in-process, etc.) and supplies the surface-specific status
- * strings — this function owns only the ruling, so it is identical for every
- * consumer.
+ * returned action onto its I/O (adopt = keep external status, spawn = launch the
+ * detached `goodvibes-daemon` binary, etc.) and supplies the surface-specific
+ * status strings — this function owns only the ruling, so it is identical for
+ * every consumer.
  */
 export function decideDaemonAdoption(input: DaemonAdoptionPolicyInput): DaemonAdoptionDecision {
   if (!input.enabled) {
@@ -129,9 +118,6 @@ export function decideDaemonAdoption(input: DaemonAdoptionPolicyInput): DaemonAd
   // Port is free.
   if (input.adoptOnly) {
     return { action: 'adopt-only-idle', reason: 'adopt-only policy: no compatible daemon on the configured host/port, and this surface does not spawn one' };
-  }
-  if (input.embedInProcess) {
-    return { action: 'embed', reason: 'Embedded daemon started in this host instance (embedder composition)' };
   }
   return { action: 'spawn', reason: 'No daemon on the configured host/port; spawning a detached daemon for this session' };
 }

@@ -2,6 +2,32 @@
 
 This file tracks breaking changes, additions, fixes, and migration steps for each release of `@pellux/goodvibes-sdk`. Every release **must** have a corresponding `## [x.y.z] - YYYY-MM-DD` section before it can publish — the changelog gate refuses a release the file does not describe.
 
+## [2.0.2] - 2026-08-01
+
+### Fixed
+
+- Client bundles can no longer reach in-process daemon composition code. The
+  shared runtime bootstrap still carried two pre-split remnants — default
+  service factories that dynamically imported `platform/daemon`'s server and
+  HTTP listener — kept for an `embedDaemonInProcess` option nothing has passed
+  since the daemon became its own product. Bundled into a client, those
+  dynamic imports fractured the bundler's module-initialization graph: the
+  turn engine could call functions from modules whose constants were never
+  initialized, and every conversation turn in the packaged Agent died on its
+  first message classification with a swallowed error. The default factories,
+  the embed option, and the embed branch are gone; a host that enables the
+  HTTP listener without injecting a factory now gets an honest "composed by
+  the daemon product" status instead of a silent in-process composition. A
+  source-level test pins that no static or dynamic import from the bootstrap
+  reaches `platform/daemon` again.
+
+### Changed
+
+- The daemon adoption policy no longer has an embed input or an embed ruling:
+  a host adopts an external daemon or spawns the detached standalone binary,
+  and a failed detached spawn reports `unavailable` instead of quietly
+  standing up an embedded daemon that the split retired.
+
 ## [2.0.1] - 2026-08-01
 
 ### Fixed

@@ -31,16 +31,17 @@ describe('classifyDaemonProbe', () => {
 });
 
 describe('decideDaemonAdoption', () => {
-  const base = { localVersion: '1.0.0', versionCompatible: compatible, embedInProcess: false, adoptOnly: false };
+  const base = { localVersion: '1.0.0', versionCompatible: compatible, adoptOnly: false };
 
   test('disabled when not enabled', () => {
     expect(decideDaemonAdoption({ ...base, enabled: false, portInUse: false, identity: null }).action).toBe('disabled');
   });
-  test('port free → spawn by default', () => {
-    expect(decideDaemonAdoption({ ...base, enabled: true, portInUse: false, identity: null }).action).toBe('spawn');
-  });
-  test('port free + embedInProcess → embed', () => {
-    expect(decideDaemonAdoption({ ...base, enabled: true, portInUse: false, identity: null, embedInProcess: true }).action).toBe('embed');
+  test('port free → spawn the standalone daemon; there is no in-process option', () => {
+    // The whole port-free ruling: spawn, or (under adopt-only) run without one.
+    // Hosting a daemon inside the calling process is not one of the outcomes.
+    const decision = decideDaemonAdoption({ ...base, enabled: true, portInUse: false, identity: null });
+    expect(decision.action).toBe('spawn');
+    expect(decision.reason).toContain('detached');
   });
   test('port in use + compatible → adopt', () => {
     expect(decideDaemonAdoption({ ...base, enabled: true, portInUse: true, identity: goodvibes('1.0.0') }).action).toBe('adopt');
@@ -55,9 +56,6 @@ describe('decideDaemonAdoption', () => {
   describe('adopt-only policy', () => {
     test('port free → adopt-only-idle (never spawns)', () => {
       expect(decideDaemonAdoption({ ...base, enabled: true, portInUse: false, identity: null, adoptOnly: true }).action).toBe('adopt-only-idle');
-    });
-    test('port free + embedInProcess is still adopt-only-idle (never embeds either)', () => {
-      expect(decideDaemonAdoption({ ...base, enabled: true, portInUse: false, identity: null, embedInProcess: true, adoptOnly: true }).action).toBe('adopt-only-idle');
     });
     test('compatible daemon present → adopt', () => {
       expect(decideDaemonAdoption({ ...base, enabled: true, portInUse: true, identity: goodvibes('1.0.0'), adoptOnly: true }).action).toBe('adopt');
@@ -95,7 +93,6 @@ describe('startHostServices — adopt-only policy', () => {
       adoptOnly: true,
       probeDaemonPortInUse: async () => false,
       spawnDetachedDaemon: () => { spawnCalled = true; return { pid: 1, unref() {} }; },
-      createDaemonServer: () => { throw new Error('must not embed under adopt-only'); },
     });
     expect(spawnCalled).toBe(false);
     expect(handle.daemonServer).toBeNull();

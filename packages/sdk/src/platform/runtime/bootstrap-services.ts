@@ -65,16 +65,11 @@ export const DETACHED_DAEMON_INSTALL_HINT =
   'daemon started for this session — it installs itself as a system service at its first idle moment when the platform supports it; if it stays session-only, run: goodvibes-daemon --install-service';
 
 interface ServiceFactories {
-  createDaemonServer?: (
-    runtimeBus: RuntimeEventBus,
-    userAuth: RuntimeServices['localUserAuthManager'],
-    runtimeServices: RuntimeServices,
-  ) => DaemonService;
   /**
-   * Injectable spawn seam for the detached standalone daemon (Layer 2 default).
-   * Defaults to `child_process.spawn`. Tests stub this to assert that detached
-   * spawn — not in-process embedding — is chosen by default, and that the options
-   * carry `detached: true` (the caller then `unref()`s the returned child).
+   * Injectable spawn seam for the detached standalone daemon — the only way this
+   * host starts a daemon. Defaults to `child_process.spawn`. Tests stub this to
+   * assert the spawn happens and that the options carry `detached: true` (the
+   * caller then `unref()`s the returned child).
    */
   spawnDetachedDaemon?: (
     command: string,
@@ -95,6 +90,13 @@ interface ServiceFactories {
   detachedSpawnProbeIntervalMs?: number | undefined;
   /** Sleep function (injectable so tests drive the probe loop deterministically). */
   sleep?: ((ms: number) => Promise<void>) | undefined;
+  /**
+   * Injectable HTTP-listener constructor. There is no default: the listener
+   * class lives in the daemon product's composition surface, and a client host
+   * does not reach into it. With `danger.httpListener` enabled and no factory
+   * here, the listener reports `unavailable` with that reason rather than
+   * silently appearing to be off.
+   */
   createHttpListener?: (
     hookDispatcher: HookDispatcher,
     userAuth: RuntimeServices['localUserAuthManager'],
@@ -109,11 +111,10 @@ interface ServiceFactories {
   ) => Promise<DaemonIdentityProbeResult>;
   probeHttpListenerPortInUse?: ((host: string, port: number) => Promise<boolean>) | undefined;
   /**
-   * Shared bearer token the daemon should accept on inbound HTTP requests.
-   * When set, `daemon.enable()` registers this token and requests carrying
-   * `Authorization: Bearer <token>` authenticate without a login session.
-   * Surfaces that generate companion-app pairing tokens should pass the token
-   * here so the embedded daemon accepts scanned QR credentials.
+   * Shared bearer token used when probing and when launching the detached
+   * daemon, so requests carrying `Authorization: Bearer <token>` authenticate
+   * without a login session. Surfaces that generate companion-app pairing tokens
+   * pass the token here so the daemon they adopt accepts scanned QR credentials.
    */
   sharedDaemonToken?: string | undefined;
   /**
@@ -135,31 +136,13 @@ interface ServiceFactories {
    */
   isDaemonVersionCompatible?: ((localVersion: string, remoteVersion: string | undefined) => boolean) | undefined;
   /**
-   * Adopt-only policy: attach to a compatible running daemon but NEVER spawn or
-   * embed one when the port is free. Expresses the "this surface does not own the
-   * daemon lifecycle" stance (e.g. the agent connecting to an externally-owned
-   * host) as configuration rather than a wholesale override of this function.
-   * The version band-check still applies before adopting. Default false.
+   * Adopt-only policy: attach to a compatible running daemon but NEVER spawn one
+   * when the port is free. Expresses the "this surface does not own the daemon
+   * lifecycle" stance (e.g. the agent connecting to an externally-owned host) as
+   * configuration rather than a wholesale override of this function. The version
+   * band-check still applies before adopting. Default false.
    */
   adoptOnly?: boolean | undefined;
-  /**
-   * Host the daemon INSIDE this process when the configured port is free,
-   * instead of spawning a detached one.
-   *
-   * Composition machinery for an EMBEDDER — a host that owns the daemon's
-   * lifetime deliberately, and tests that need a real daemon without a detached
-   * child process outliving the run. It is not a user preference and no product
-   * passes it: the shipped surfaces all set `adoptOnly`, which is answered
-   * first, so they never reach this at all.
-   *
-   * What it buys and what it costs are the same fact: the daemon lives and dies
-   * with this process. For an embedder that is the point; for a product it would
-   * mean exiting one surface takes down every other surface sharing the daemon,
-   * which is why it is an argument here rather than a setting anyone can file.
-   *
-   * Default false — spawn a detached, reboot-independent daemon.
-   */
-  embedDaemonInProcess?: boolean | undefined;
 }
 
 export type HostServiceMode = 'disabled' | 'embedded' | 'external' | 'blocked' | 'incompatible' | 'unavailable';
@@ -176,6 +159,12 @@ export interface HostServiceStatus {
 }
 
 export interface HostServicesHandle {
+  /**
+   * Always null from this function: a host does not compose a daemon. It adopts
+   * an external one or spawns the detached `goodvibes-daemon` binary, so there
+   * is no in-process daemon object to hand back. The field stays so callers that
+   * build their own pre-start handle keep one shape.
+   */
   readonly daemonServer: DaemonService | null;
   readonly httpListener: HttpListenerService | null;
   readonly daemonStatus: HostServiceStatus;
@@ -184,7 +173,7 @@ export interface HostServicesHandle {
    * One-time, honest hint the surface can display ONCE after this host instance
    * spawned a detached daemon for the session. Present only when a detached
    * daemon was just started (Layer 2); undefined when a daemon was adopted,
-   * embedded, disabled, or unavailable. See {@link DETACHED_DAEMON_INSTALL_HINT}.
+   * disabled, or unavailable. See {@link DETACHED_DAEMON_INSTALL_HINT}.
    */
   readonly daemonStartHint?: string | undefined;
   listRecentControlPlaneEvents(limit: number): readonly import('../control-plane/gateway.js').ControlPlaneRecentEvent[];
@@ -423,24 +412,20 @@ async function startWithTimeout(
   }
 }
 
-async function createDefaultDaemonServer(
-  runtimeBus: RuntimeEventBus,
-  userAuth: RuntimeServices['localUserAuthManager'],
-  runtimeServices: RuntimeServices,
-): Promise<DaemonService> {
-  const { DaemonServer } = await import('../daemon/server.js');
-  return new DaemonServer({ runtimeBus, userAuth, runtimeServices });
-}
-
-async function createDefaultHttpListener(
-  hookDispatcher: HookDispatcher,
-  userAuth: RuntimeServices['localUserAuthManager'],
-  configManager: RuntimeServices['configManager'],
-): Promise<HttpListenerService> {
-  const { HttpListener } = await import('../daemon/http-listener.js');
-  return new HttpListener({ hookDispatcher, userAuth, configManager });
-}
-
+/**
+ * Start the host-side services a client surface can own: none of them is the
+ * daemon itself.
+ *
+ * This module reaches `platform/daemon` neither statically nor dynamically. The
+ * daemon's composition (DaemonServer, HttpListener) belongs to the
+ * `goodvibes-daemon` product, which imports those classes directly in its own
+ * entrypoint. A client that could reach them — even behind an `await import()`
+ * never taken at runtime — drags the whole daemon graph into its bundle, and the
+ * lazy module wrappers a bundler emits to make that possible are what left
+ * shared platform constants uninitialized when hoisted functions read them.
+ * So the daemon paths here are: adopt one already running, or spawn the detached
+ * standalone binary. Nothing constructs one in this process.
+ */
 export async function startHostServices(
   config: HostServicesConfig,
   runtimeBus: RuntimeEventBus,
@@ -599,7 +584,11 @@ export async function startHostServices(
     }
   };
 
-  let embeddedDaemonServer: DaemonService | null = null;
+  // A host never constructs a daemon, so there is never one to hold: the daemon
+  // is either already running elsewhere (adopted) or running as a detached child
+  // process (spawned). Kept as a typed constant so the handle's shape — which
+  // callers also build by hand before startup — stays one shape.
+  const hostedDaemonServer: DaemonService | null = null;
   let embeddedHttpListener: HttpListenerService | null = null;
   let daemonStartHint: string | undefined;
   let daemonStatus = createServiceStatus('disabled', daemonHost, daemonPort, { reason: 'daemon.enabled is false' });
@@ -608,48 +597,12 @@ export async function startHostServices(
   });
 
   if (resolveDaemonEnabled(config)) {
-    // Port is free. Owner ruling (D7a): the daemon is a SYSTEM SERVICE, so
-    // starting a surface must NOT couple the daemon's lifetime to this process.
-    // DEFAULT: spawn the daemon as a detached standalone process and adopt it as
-    // 'external'. In-process embedding is something an EMBEDDER asks for through
-    // `embedDaemonInProcess` on this function's options — composition, not a
-    // setting a user can file.
-    const startEmbeddedDaemon = async (): Promise<{ readonly service: DaemonService | null; readonly status: HostServiceStatus }> => {
-      const pendingDaemonServer = factories.createDaemonServer
-        ? factories.createDaemonServer(runtimeBus, sharedUserAuth, runtimeServices)
-        : await createDefaultDaemonServer(runtimeBus, sharedUserAuth, runtimeServices);
-      const service = pendingDaemonServer;
-      service.enable({ daemon: true }, factories.sharedDaemonToken);
-      return startGuardedService({
-        label: 'Daemon server',
-        service,
-        timeoutMs: startupTimeoutMs,
-        timedOutStatus: () => createServiceStatus('unavailable', daemonHost, daemonPort, {
-          reason: 'Daemon server startup timed out',
-        }),
-        startedStatus: () => createServiceStatus('embedded', daemonHost, daemonPort, {
-          reason: 'Embedded daemon started in this host instance (embedder composition)',
-        }),
-        bindConflictStatus: async (message) => {
-          const identity = await probeDaemonIdentity(daemonHost, daemonPort, factories.sharedDaemonToken);
-          if (identity.kind === 'goodvibes') {
-            const verified = resolveVerifiedDaemonStatus(identity, 'Existing GoodVibes daemon verified after bind conflict');
-            if (verified.mode === 'external') {
-              logger.info(
-                'Existing GoodVibes daemon detected after bind conflict; continuing without embedded daemon in this host instance',
-                { host: daemonHost, port: daemonPort, version: identity.version },
-              );
-            }
-            return verified;
-          }
-          logger.warn('Daemon server port already in use; continuing without local daemon in this host instance', { error: message });
-          return createServiceStatus('blocked', daemonHost, daemonPort, {
-            authenticated: identity.kind !== 'unauthorized' ? undefined : false,
-            reason: identity.reason ?? message,
-          });
-        },
-      });
-    };
+    // Owner ruling (D7a): the daemon is a SYSTEM SERVICE, so starting a surface
+    // must NOT couple the daemon's lifetime to this process. With the port free
+    // the host spawns the standalone `goodvibes-daemon` binary as a detached
+    // child and adopts it as 'external'; with the port occupied by a compatible
+    // daemon it adopts that one. There is no third option here — this process
+    // does not construct a daemon.
 
     // ONE shared adopt-or-spawn decision (daemon-adoption-policy.ts). Probe the
     // port + identity, then map the pure ruling onto this surface's I/O. The
@@ -665,7 +618,6 @@ export async function startHostServices(
       identity,
       localVersion: localDaemonVersion,
       versionCompatible,
-      embedInProcess: factories.embedDaemonInProcess === true,
       adoptOnly: factories.adoptOnly === true,
     });
 
@@ -674,7 +626,7 @@ export async function startHostServices(
       case 'incompatible': {
         daemonStatus = resolveVerifiedDaemonStatus(decision.identity!, 'Existing GoodVibes daemon verified on configured host/port');
         if (daemonStatus.mode === 'external') {
-          logger.info('Existing GoodVibes daemon detected; continuing without embedded daemon in this host instance', {
+          logger.info('Existing GoodVibes daemon detected; continuing without a local daemon in this host instance', {
             host: daemonHost,
             port: daemonPort,
             version: decision.identity?.version,
@@ -688,7 +640,7 @@ export async function startHostServices(
           reason: decision.identity?.reason ?? 'Configured daemon port is occupied by an unverified process',
         });
         logger.warn(
-          'Daemon server port already in use by an unverified process; continuing without embedded daemon in this host instance',
+          'Daemon server port already in use by an unverified process; continuing without a local daemon in this host instance',
           { host: daemonHost, port: daemonPort, reason: decision.identity?.reason },
         );
         break;
@@ -699,15 +651,6 @@ export async function startHostServices(
           host: daemonHost,
           port: daemonPort,
         });
-        break;
-      }
-      case 'embed': {
-        logger.warn(
-          'This host asked to embed the daemon in-process: its lifetime is tied to this process, so exiting stops the daemon for every surface sharing it',
-        );
-        const started = await startEmbeddedDaemon();
-        embeddedDaemonServer = started.service;
-        daemonStatus = started.status;
         break;
       }
       case 'spawn': {
@@ -721,13 +664,15 @@ export async function startHostServices(
             version: detached.status.version,
           });
         } else {
+          // No in-process fallback exists to fall back to: this host cannot
+          // construct a daemon. Report the spawn failure as-is and run local-only.
+          daemonStatus = createServiceStatus('unavailable', daemonHost, daemonPort, {
+            reason: `Detached daemon spawn did not become reachable: ${detached.reason}`,
+          });
           logger.warn(
-            'Detached daemon spawn did not become reachable; falling back to in-process embedded daemon for this session',
-            { reason: detached.reason },
+            'Detached daemon spawn did not become reachable; running without a daemon in this host instance',
+            { host: daemonHost, port: daemonPort, reason: detached.reason },
           );
-          const started = await startEmbeddedDaemon();
-          embeddedDaemonServer = started.service;
-          daemonStatus = started.status;
         }
         break;
       }
@@ -745,11 +690,19 @@ export async function startHostServices(
         host: httpListenerHost,
         port: httpListenerPort,
       });
+    } else if (!factories.createHttpListener) {
+      // Enabled, port free, and nothing to build it with. The HttpListener class
+      // is part of the daemon product's composition, not this host's, so say that
+      // instead of returning a 'disabled' status the setting contradicts.
+      httpListenerStatus = createServiceStatus('unavailable', httpListenerHost, httpListenerPort, {
+        reason: 'The HTTP listener is composed by the daemon product (goodvibes-daemon); this host does not compose one',
+      });
+      logger.warn(
+        'danger.httpListener is enabled but this host does not compose an HTTP listener; it is composed by the daemon product (goodvibes-daemon)',
+        { host: httpListenerHost, port: httpListenerPort },
+      );
     } else {
-      const pendingHttpListener = factories.createHttpListener
-        ? factories.createHttpListener(hookDispatcher, sharedUserAuth, runtimeServices.configManager)
-        : await createDefaultHttpListener(hookDispatcher, sharedUserAuth, runtimeServices.configManager);
-      const service = pendingHttpListener;
+      const service = factories.createHttpListener(hookDispatcher, sharedUserAuth, runtimeServices.configManager);
       service.enable({ httpListener: true }, factories.sharedHttpListenerToken);
       const started = await startGuardedService({
         label: 'HTTP listener',
@@ -772,19 +725,21 @@ export async function startHostServices(
   }
 
   return {
-    daemonServer: embeddedDaemonServer,
+    daemonServer: hostedDaemonServer,
     httpListener: embeddedHttpListener,
     daemonStatus,
     httpListenerStatus,
     ...(daemonStartHint !== undefined ? { daemonStartHint } : {}),
-    listRecentControlPlaneEvents(limit: number): readonly import('../control-plane/gateway.js').ControlPlaneRecentEvent[] {
-      return embeddedDaemonServer?.listRecentControlPlaneEvents(limit) ?? [];
+    listRecentControlPlaneEvents(): readonly import('../control-plane/gateway.js').ControlPlaneRecentEvent[] {
+      // Control-plane events live in the daemon. With no daemon in this process
+      // there is no local ring to read; a surface that wants them asks the daemon
+      // it adopted over the wire.
+      return [];
     },
     async stop(): Promise<void> {
-      await Promise.allSettled([
-        embeddedDaemonServer?.stop(),
-        embeddedHttpListener?.stop(),
-      ]);
+      // allSettled, as before: a listener that fails to stop must not turn
+      // shutdown into a rejection the caller has to catch.
+      await Promise.allSettled([embeddedHttpListener?.stop()]);
     },
   };
 }
