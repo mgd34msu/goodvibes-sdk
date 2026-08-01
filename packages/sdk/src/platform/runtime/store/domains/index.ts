@@ -225,3 +225,10 @@ export type {
   SurfacePerfDomainState,
 } from './surface-perf.js';
 export { createInitialSurfacePerfState } from './surface-perf.js';
+
+// The cross-domain read authorization these slices are governed by. It is the
+// single source of truth a boundary contract test scans against, so it has to
+// be reachable from outside this directory — a rule nothing can import is a
+// rule each surface re-types by hand.
+export type { DomainName } from './domain-read-matrix.js';
+export { DOMAINS, DOMAIN_READ_MATRIX, getAllowedReadsFor } from './domain-read-matrix.js';
