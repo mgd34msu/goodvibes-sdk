@@ -115,6 +115,10 @@ function pruneOrphanedDistFiles(emitted: ReadonlySet<string>): void {
     // there — and deleting those just to have them rewritten seconds later
     // reintroduces, in miniature, the very gap this rewrite removed.
     if (!TSC_OUTPUT_SUFFIXES.some((suffix) => file.endsWith(suffix))) continue;
+    // Ambient declarations are hand-written .d.ts inputs that prepare:sdk copies
+    // into dist so consumers can reference them. They carry a tsc output suffix
+    // without being tsc output, so they need naming rather than filtering.
+    if (PREPARED_DECLARATION_PATHS.has(relative(SDK_ROOT, file))) continue;
     // Nor anything written since this build started, for the same reason.
     try {
       if (statSync(file).mtimeMs > buildStartedAt) continue;
@@ -130,6 +134,14 @@ function pruneOrphanedDistFiles(emitted: ReadonlySet<string>): void {
 
 /** What `tsc` emits, and therefore the only thing the orphan sweep may delete. */
 const TSC_OUTPUT_SUFFIXES = ['.js', '.mjs', '.cjs', '.d.ts', '.d.mts', '.d.cts', '.js.map', '.d.ts.map'];
+
+/**
+ * Hand-written declarations `prepare:sdk` places in dist. Kept in step with
+ * AMBIENT_DECLARATIONS in scripts/prepare-sdk-package.ts.
+ */
+const PREPARED_DECLARATION_PATHS = new Set<string>([
+  'packages/sdk/dist/platform/types/sql-js.d.ts',
+]);
 
 let buildStartedAt = 0;
 

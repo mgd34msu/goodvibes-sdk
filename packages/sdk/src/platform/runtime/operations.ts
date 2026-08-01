@@ -169,6 +169,18 @@ export type {
 } from './transcript-journal-replay.js';
 
 export {
+  applyRecoverySnapshot,
+  confirmRecoveryRestore,
+} from './recovery-snapshot-apply.js';
+export type {
+  ApplyRecoverySnapshotOptions,
+  ApplyRecoverySnapshotResult,
+  RecoveryApplyRefusal,
+  RecoveryRestoreConfirmation,
+  RestorableConversation,
+} from './recovery-snapshot-apply.js';
+
+export {
   checkSessionLiveness,
   isPidAlive,
   LIVENESS_MARKER_MAX_FILES,

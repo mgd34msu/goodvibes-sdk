@@ -605,6 +605,9 @@
       "types": "./dist/react-native.d.ts",
       "import": "./dist/react-native.js"
     },
+    "./sql-js": {
+      "types": "./dist/platform/types/sql-js.d.ts"
+    },
     "./transport-core": {
       "types": "./dist/transport-core.d.ts",
       "import": "./dist/transport-core.js"

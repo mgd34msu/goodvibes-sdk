@@ -449,6 +449,61 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   validated by this package and its neighbour by a transcription of what this
   package used to do before `resolveWebBinding` existed.
 
+- **The tree-root and daemon-home resolution policy (`platform/config`,
+  `goodvibes-home.ts`).** `resolveGoodVibesHome`, `resolveGoodVibesDaemonHome`,
+  `resolveGoodVibesTreeDirectory`, `resolveGoodVibesHomeOwnership` and
+  `hasOverriddenGoodVibesHome`. What `GOODVIBES_HOME` and
+  `GOODVIBES_DAEMON_HOME` mean is a platform contract, not a per-product one:
+  the terminal app and the daemon each carried a byte-identical copy, which is
+  two places for one meaning to drift in — and the incident that produced the
+  module was exactly one entry point disagreeing with another about which tree
+  it was running out of.
+
+- **Tolerant `provider:model` parsing (`platform/providers`,
+  `provider-model.ts`).** `getProviderIdFromModel`,
+  `getModelIdFromProviderModel` and `formatProviderModel`, for reading the
+  configured `provider.model` value where it may be blank, bare or half-typed.
+  `splitModelRegistryKey` next door stays the STRICT reader for a value already
+  established as a registry key; the two now sit together with the line between
+  them written down instead of one of them living in each product.
+
+- **`getConfiguredProviderId` and `isEffectiveDangerMode`
+  (`platform/config`).** The two config-derivation helpers the terminal app's
+  barrel had that this one did not, so the barrel itself carries nothing a
+  product cannot get here.
+
+- **The prompted crash-restore mechanism (`platform/runtime`,
+  `recovery-snapshot-apply.ts`): `applyRecoverySnapshot` and
+  `confirmRecoveryRestore`.** Reading the recovery snapshot, checking what came
+  back is actually a conversation, putting it on an injected conversation
+  (`RestorableConversation`), folding in the journal tail, and reporting the
+  restored count — beside the journal-replay seam it builds on. Three products
+  run conversation loops now, and ask-then-retire and never-auto-load are
+  behavioral contract rather than terminal idiom, so both are structural here:
+  the entry point will not run without a confirmation token that only a user's
+  answer produces, and retirement happens inside the same call that applies, so
+  a caller cannot restore a snapshot and leave it on disk to be offered again.
+  An adopting surface supplies the surface, the session id, a conversation with
+  `resetAll`/`fromJSON`/`toJSON`/`title`/`getTitleSource`/`getMessageCount`
+  (plus an optional `rebuildHistory`), a persist callback, and the answer to its
+  own ask. The ask itself stays with the product.
+
+- **The `sql.js` ambient declaration now ships (`./sql-js`).** `sql.js`
+  publishes no types, and tsc treats an ambient declaration as an input it
+  never emits, so this package's copy never reached dist and each consumer kept
+  its own. `prepare:sdk` copies it into dist and the `./sql-js` export makes it
+  reachable: a consumer writes
+  `/// <reference types="@pellux/goodvibes-sdk/sql-js" />` once and has no
+  declaration of its own to keep in step.
+
+- **`DOMAINS`, `DOMAIN_READ_MATRIX`, `getAllowedReadsFor` and `DomainName`
+  (`platform/runtime/store`).** The cross-domain read authorization the store's
+  domain slices are governed by was written down, correctly parameterized, and
+  exported from nothing — reachable only by a file inside the same directory. A
+  rule no consumer can import is a rule each surface re-types by hand, which is
+  the opposite of a single source of truth. It now leaves the barrel with the
+  domain state factories it governs.
+
 ### Fixed
 
 - **A conversation the daemon dispatches to a surface now gets its answer back
@@ -480,6 +535,38 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   depending on which process happened to execute it.
 
 ### Changed
+
+- **The provider-health latency field says what it holds: a MAXIMUM, not a
+  percentile (`platform/runtime/ui`).** `ProviderHealthEntry.p95LatencyMs` is
+  now `maxLatencyMs` and `ProviderLatencyStats.p95Ms` is now `maxMs`. Both were
+  populated from `record.stats.maxLatencyMs` — the largest observation, which
+  the domain state has always documented as such — so every surface rendering a
+  "p95" latency was showing the worst call it had ever seen under a label that
+  claimed 95 percent of calls were at least that fast. The genuine computed
+  percentiles elsewhere (diagnostics panels, the state inspector, the hotspot
+  sampler) are untouched and keep their names.
+
+- **`getConfiguredSystemPrompt` degrades instead of throwing.** An unreadable
+  `provider.systemPromptFile` now reads back as "no configured system prompt"
+  with a debug line, rather than propagating the read failure. The setting names
+  a file the user may have moved or deleted, and a boot that dies over an
+  optional preference strands the session. This is the behaviour the terminal
+  app's copy already had; adopting it is what made deleting that copy safe.
+
+- **Every node in the provider-health fallback chain reports its STORED registry
+  key (`platform/runtime/ui/provider-health`, `platform/runtime/ui/model-picker`).**
+  Node 0 read `modelState.registryKey` while nodes 1..N recomposed
+  `${providerId}:${modelId}`, so one model was described by two different keys
+  depending on whether it happened to be active or a fallback — and for any id
+  that already carries a namespace (an OpenRouter `vendor/model`, a Bedrock-style
+  id) the recomposed form matches nothing in the registry. `FallbackChainEntry`
+  now carries `registryKey`, and both the visualizer and the model picker's
+  position map read it.
+
+- **`loadPlugin` takes three parameters and `PluginPathOptions` has no
+  `entryDefault`.** Neither was read by anything: no caller passed a fourth
+  argument and no reader consulted the option, so `manifest.main ?? 'index.js'`
+  was already the whole rule.
 
 - **The daemon updates itself from the daemon's own repository.** The shipped
   default of `update.releasesUrl` is now

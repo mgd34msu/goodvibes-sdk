@@ -1,4 +1,19 @@
-/** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
+/**
+ * SDK-owned platform module. This implementation is maintained in goodvibes-sdk.
+ *
+ * `sql.js` ships no types of its own, so this is the one place its shape is
+ * written. It is an ambient declaration, which means tsc treats it as an input
+ * and never emits it — `scripts/prepare-sdk-package.ts` copies it into dist
+ * after the build so it reaches the published package.
+ *
+ * A consumer that imports `sql.js` picks this up with one line, anywhere in
+ * its own sources:
+ *
+ *     /// <reference types="@pellux/goodvibes-sdk/sql-js" />
+ *
+ * Editing this file changes the shape for every surface at once; there are no
+ * per-repo copies to keep in step.
+ */
 
 declare module 'sql.js' {
   interface Database {

@@ -273,13 +273,22 @@ export function buildSnapshot(program: ts.Program, entryPoints: ReadonlyMap<stri
 /**
  * Subpaths that publish types but whose recorded surface is empty.
  *
- * Every subpath in this package currently exports at least one symbol, so the
- * allowlist is empty and a zero-export subpath means the entry point failed to
- * resolve — which is precisely the case that used to pass silently. If a
- * genuinely empty entry point is ever published, add it here WITH a reason
- * rather than weakening the check.
+ * Nearly every subpath in this package exports at least one symbol, so a
+ * zero-export subpath normally means the entry point failed to resolve — which
+ * is precisely the case that used to pass silently. A genuinely empty entry
+ * point goes here WITH a reason rather than weakening the check.
  */
-export const EMPTY_SUBPATH_ALLOWLIST: ReadonlyMap<string, string> = new Map();
+export const EMPTY_SUBPATH_ALLOWLIST: ReadonlyMap<string, string> = new Map([
+  [
+    './sql-js',
+    'Ambient module declaration for the untyped `sql.js` package. Its whole '
+      + 'content is a `declare module` block, which contributes no exported '
+      + 'symbol to this package — a consumer picks it up with '
+      + '`/// <reference types="@pellux/goodvibes-sdk/sql-js" />`, not by '
+      + 'importing from it. An empty recorded surface is correct here, not a '
+      + 'resolution failure.',
+  ],
+]);
 
 export function coverageProblems(
   snapshot: Snapshot,
