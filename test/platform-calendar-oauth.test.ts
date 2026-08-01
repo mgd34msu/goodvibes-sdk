@@ -289,7 +289,7 @@ function makeLoopback(state: ServerState, code = 'auth-code-1'): {
   };
 }
 
-/** A resolved config for a provider with a REAL (non-placeholder) client id. */
+/** A resolved config for a provider whose operator registered a real OAuth app. */
 function realConfig(provider: 'google' | 'microsoft'): ResolvedClientConfig {
   return resolveClientConfig(providerProfile(provider), { clientId: `real-${provider}-client-id` });
 }
@@ -301,29 +301,138 @@ const noSleep = async () => {};
 // ---------------------------------------------------------------------------
 
 describe('client-config resolution', () => {
-  test('a placeholder bundled default resolves isPlaceholder and refuses a flow', async () => {
+  // Bring your own OAuth app: nothing ships with the product, so an environment
+  // where nobody has registered one resolves to "not configured" and every flow
+  // refuses before touching the network.
+  test('no configured client id resolves isConfigured:false and refuses a flow', async () => {
     const config = resolveClientConfig(providerProfile('google'));
-    expect(config.usingBundledDefault).toBe(true);
-    expect(config.isPlaceholder).toBe(true);
+    expect(config.isConfigured).toBe(false);
+    expect(config.clientId).toBe('');
 
     const connector = new CalendarConnector({ secrets: makeSecrets(), fetchImpl: makeFakeFetch(freshState()), listenerFactory: makeLoopback(freshState()).factory });
     await expect(connector.beginConnectAuthCode(config)).rejects.toMatchObject({ reason: 'client-not-configured' });
   });
 
-  test('a registered project default resolves as bundled but not placeholder', () => {
-    const profile = { ...providerProfile('microsoft'), bundledClientId: 'project-registered-id' };
-    const config = resolveClientConfig(profile);
-    expect(config.usingBundledDefault).toBe(true);
-    expect(config.isPlaceholder).toBe(false);
-    expect(config.clientId).toBe('project-registered-id');
+  test('the refusal names the exact config keys to set', async () => {
+    const connector = new CalendarConnector({ secrets: makeSecrets(), fetchImpl: makeFakeFetch(freshState()), listenerFactory: makeLoopback(freshState()).factory });
+
+    for (const provider of ['google', 'microsoft'] as const) {
+      const config = resolveClientConfig(providerProfile(provider));
+      // Both connect entry points refuse, not just the loopback one.
+      const failures = [
+        await connector.beginConnectAuthCode(config).then(() => null, (err: Error) => err),
+        await connector.beginConnectDeviceCode(config).then(() => null, (err: Error) => err),
+      ];
+      for (const failure of failures) {
+        expect(failure).toBeInstanceOf(Error);
+        expect(failure!.message).toContain(`calendar.${provider}.clientId`);
+        expect(failure!.message).toContain(`calendar.${provider}.clientSecretRef`);
+        // Honest about whose app it is — never "this build ships no default yet".
+        expect(failure!.message).toContain('register your own OAuth app');
+      }
+    }
   });
 
-  test('a user override wins over the bundled default and is not treated as bundled', () => {
+  test('no provider profile carries a client id of its own', () => {
+    for (const provider of ['google', 'microsoft'] as const) {
+      const profile = providerProfile(provider);
+      expect(profile.clientIdConfigKey).toBe(`calendar.${provider}.clientId`);
+      expect(profile.clientSecretRefConfigKey).toBe(`calendar.${provider}.clientSecretRef`);
+      // The whole profile, serialized, must not contain anything shaped like a
+      // baked credential — this is what stops one being reintroduced quietly.
+      expect(JSON.stringify(profile)).not.toContain('apps.googleusercontent.com');
+      expect(JSON.stringify(profile)).not.toContain('REPLACE_WITH');
+    }
+  });
+
+  test("the operator's own client id and secret resolve into the flow config", () => {
     const config = resolveClientConfig(providerProfile('google'), { clientId: 'my-own-id', clientSecret: 's3cret' });
-    expect(config.usingBundledDefault).toBe(false);
-    expect(config.isPlaceholder).toBe(false);
+    expect(config.isConfigured).toBe(true);
     expect(config.clientId).toBe('my-own-id');
     expect(config.clientSecret).toBe('s3cret');
+  });
+
+  test('a blank or whitespace-only client id counts as unconfigured', () => {
+    for (const clientId of ['', '   ']) {
+      const config = resolveClientConfig(providerProfile('microsoft'), { clientId });
+      expect(config.isConfigured).toBe(false);
+      expect(config.clientId).toBe('');
+    }
+  });
+
+  test('a configured client id is trimmed — a pasted id with stray whitespace still works', () => {
+    const config = resolveClientConfig(providerProfile('microsoft'), { clientId: '  pasted-id\n' });
+    expect(config.isConfigured).toBe(true);
+    expect(config.clientId).toBe('pasted-id');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Reading the operator's registered app out of config
+// ---------------------------------------------------------------------------
+
+describe('client credentials from settings', () => {
+  function connector(): CalendarConnector {
+    return new CalendarConnector({ secrets: makeSecrets(), fetchImpl: makeFakeFetch(freshState()), listenerFactory: makeLoopback(freshState()).factory });
+  }
+
+  test('a configured client id makes the flow proceed with the operator id', async () => {
+    const values: Record<string, unknown> = { 'calendar.google.clientId': 'operator-registered-id' };
+    const resolved = await connector().resolveConfigFromSettings('google', {
+      config: { get: (key) => values[key] },
+    });
+    expect(resolved.isConfigured).toBe(true);
+    expect(resolved.clientId).toBe('operator-registered-id');
+
+    // And it actually reaches the provider request rather than just resolving.
+    const state = freshState();
+    const loopback = makeLoopback(state);
+    const live = new CalendarConnector({ secrets: makeSecrets(), fetchImpl: makeFakeFetch(state), listenerFactory: loopback.factory });
+    const { start, waiter } = await live.beginConnectAuthCode(resolved);
+    expect(start.authorizationUrl).toContain('client_id=operator-registered-id');
+    waiter.close();
+  });
+
+  test('an empty settings store leaves it unconfigured and the flow refuses by name', async () => {
+    const resolved = await connector().resolveConfigFromSettings('google', { config: { get: () => undefined } });
+    expect(resolved.isConfigured).toBe(false);
+    await expect(connector().beginConnectAuthCode(resolved)).rejects.toMatchObject({ reason: 'client-not-configured' });
+  });
+
+  test('a config section that does not exist reads as unset rather than throwing', async () => {
+    // `calendar.*` is app-layer, and ConfigManager throws `Invalid config path`
+    // for a section absent from the live config object. On a machine where
+    // nobody ran setup that is the normal state, not a broken status read.
+    const resolved = await connector().resolveConfigFromSettings('microsoft', {
+      config: { get: () => { throw new Error("Invalid config path: section 'calendar' does not exist"); } },
+    });
+    expect(resolved.isConfigured).toBe(false);
+  });
+
+  test('the client secret comes from the secret store under the derived name, never from config', async () => {
+    const values: Record<string, unknown> = {
+      'calendar.google.clientId': 'operator-registered-id',
+      'calendar.google.clientSecretRef': 'goodvibes://secrets/goodvibes/GOODVIBES_CALENDAR_GOOGLE_CLIENT_SECRET_REF',
+    };
+    const asked: string[] = [];
+    const resolved = await connector().resolveConfigFromSettings('google', {
+      config: { get: (key) => values[key] },
+      secretGet: async (key) => { asked.push(key); return 'stored-secret'; },
+    });
+    expect(asked).toEqual(['GOODVIBES_CALENDAR_GOOGLE_CLIENT_SECRET_REF']);
+    expect(resolved.clientSecret).toBe('stored-secret');
+  });
+
+  test('a public-client registration with no secret reference reads no secret at all', async () => {
+    const values: Record<string, unknown> = { 'calendar.microsoft.clientId': 'public-client-id' };
+    let secretReads = 0;
+    const resolved = await connector().resolveConfigFromSettings('microsoft', {
+      config: { get: (key) => values[key] },
+      secretGet: async () => { secretReads += 1; return 'unused'; },
+    });
+    expect(secretReads).toBe(0);
+    expect(resolved.clientSecret).toBeUndefined();
+    expect(resolved.isConfigured).toBe(true);
   });
 });
 

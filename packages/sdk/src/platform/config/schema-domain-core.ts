@@ -116,7 +116,6 @@ export const coreConfigDefaults = {
   },
   daemon: {
     enabled: true,
-    embedInProcess: false,
     timezone: '',
   },
   danger: {
@@ -698,14 +697,7 @@ export const coreTailConfigSettings: ConfigSettingDefinition[] = [
     type: 'boolean',
     default: true,
     description:
-      'Run the local session daemon (background service that hosts the shared session broker and companion chat). Default on; binds loopback (127.0.0.1) only. Set false to run fully local with no background service.',
-  },
-  {
-    key: 'daemon.embedInProcess',
-    type: 'boolean',
-    default: false,
-    description:
-      'NOT RECOMMENDED. When true, and no daemon is already running, host the daemon INSIDE this surface process instead of spawning it as a detached background process. In-process embedding couples the daemon lifetime to this one surface: exiting the surface kills the daemon and every other surface sharing it (single point of failure). Default false — the surface spawns a detached, reboot-independent daemon (install it as a system service via POST /api/service/install on the daemon HTTP API).',
+      'Whether THIS surface uses a session daemon at all. On (the default), the surface adopts a running daemon — the background service hosting the shared session broker and companion chat, bound to loopback (127.0.0.1) — and every daemon-backed feature (approvals, operator commands, voice, memory diagnostics, fleet, tasks) works through it. Off, the surface runs fully local: it makes no adoption attempt, probes no port, and each of those features refuses plainly with "the daemon is disabled" instead of failing at a connection. It does not control the daemon process itself: a daemon started on its own runs regardless of this setting, which is a per-surface choice about talking to one.',
   },
   {
     key: 'danger.httpListener',

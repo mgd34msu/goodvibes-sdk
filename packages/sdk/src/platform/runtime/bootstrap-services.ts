@@ -142,6 +142,24 @@ interface ServiceFactories {
    * The version band-check still applies before adopting. Default false.
    */
   adoptOnly?: boolean | undefined;
+  /**
+   * Host the daemon INSIDE this process when the configured port is free,
+   * instead of spawning a detached one.
+   *
+   * Composition machinery for an EMBEDDER — a host that owns the daemon's
+   * lifetime deliberately, and tests that need a real daemon without a detached
+   * child process outliving the run. It is not a user preference and no product
+   * passes it: the shipped surfaces all set `adoptOnly`, which is answered
+   * first, so they never reach this at all.
+   *
+   * What it buys and what it costs are the same fact: the daemon lives and dies
+   * with this process. For an embedder that is the point; for a product it would
+   * mean exiting one surface takes down every other surface sharing the daemon,
+   * which is why it is an argument here rather than a setting anyone can file.
+   *
+   * Default false — spawn a detached, reboot-independent daemon.
+   */
+  embedDaemonInProcess?: boolean | undefined;
 }
 
 export type HostServiceMode = 'disabled' | 'embedded' | 'external' | 'blocked' | 'incompatible' | 'unavailable';
@@ -177,7 +195,6 @@ export interface HostServicesConfig {
   get(
     key:
       | 'daemon.enabled'
-      | 'daemon.embedInProcess'
       | 'danger.httpListener'
       | 'controlPlane.host'
       | 'controlPlane.port'
@@ -200,15 +217,6 @@ function readBooleanSetting(config: HostServicesConfig, key: 'danger.httpListene
     throw new ConfigurationError(`Expected ${key} to be a boolean, got ${typeof value}.`);
   }
   return value;
-}
-
-/**
- * Whether the daemon should be hosted IN THIS PROCESS (Layer 3 opt-in). Default
- * false: the surface spawns a detached daemon instead. Reads leniently so an
- * unset value (undefined) means false rather than throwing.
- */
-function readDaemonEmbedInProcess(config: HostServicesConfig): boolean {
-  return config.get('daemon.embedInProcess') === true;
 }
 
 function readHostSetting(
@@ -602,9 +610,10 @@ export async function startHostServices(
   if (resolveDaemonEnabled(config)) {
     // Port is free. Owner ruling (D7a): the daemon is a SYSTEM SERVICE, so
     // starting a surface must NOT couple the daemon's lifetime to this process.
-    // DEFAULT (Layer 2): spawn the daemon as a detached standalone process and
-    // adopt it as 'external'. In-process embedding is an explicit opt-in
-    // (Layer 3: daemon.embedInProcess).
+    // DEFAULT: spawn the daemon as a detached standalone process and adopt it as
+    // 'external'. In-process embedding is something an EMBEDDER asks for through
+    // `embedDaemonInProcess` on this function's options — composition, not a
+    // setting a user can file.
     const startEmbeddedDaemon = async (): Promise<{ readonly service: DaemonService | null; readonly status: HostServiceStatus }> => {
       const pendingDaemonServer = factories.createDaemonServer
         ? factories.createDaemonServer(runtimeBus, sharedUserAuth, runtimeServices)
@@ -619,7 +628,7 @@ export async function startHostServices(
           reason: 'Daemon server startup timed out',
         }),
         startedStatus: () => createServiceStatus('embedded', daemonHost, daemonPort, {
-          reason: 'Embedded daemon started in this host instance (daemon.embedInProcess opt-in)',
+          reason: 'Embedded daemon started in this host instance (embedder composition)',
         }),
         bindConflictStatus: async (message) => {
           const identity = await probeDaemonIdentity(daemonHost, daemonPort, factories.sharedDaemonToken);
@@ -656,7 +665,7 @@ export async function startHostServices(
       identity,
       localVersion: localDaemonVersion,
       versionCompatible,
-      embedInProcess: readDaemonEmbedInProcess(config),
+      embedInProcess: factories.embedDaemonInProcess === true,
       adoptOnly: factories.adoptOnly === true,
     });
 
@@ -694,7 +703,7 @@ export async function startHostServices(
       }
       case 'embed': {
         logger.warn(
-          'daemon.embedInProcess is enabled: hosting the daemon in-process couples its lifetime to this surface (single point of failure)',
+          'This host asked to embed the daemon in-process: its lifetime is tied to this process, so exiting stops the daemon for every surface sharing it',
         );
         const started = await startEmbeddedDaemon();
         embeddedDaemonServer = started.service;

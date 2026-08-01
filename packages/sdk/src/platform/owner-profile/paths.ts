@@ -7,7 +7,12 @@
  *
  * Daemon scope, not surface scope, and resolved exactly the way every other
  * daemon-home file is (`workspace/daemon-home.ts`, `config/daemon-config-tier.ts`):
- * `--daemon-home`, then `GOODVIBES_DAEMON_HOME`, then `~/.goodvibes/daemon/`.
+ * `--daemon-home`, then `GOODVIBES_DAEMON_HOME`, then the daemon directory under
+ * the tree root — which is what `GOODVIBES_HOME` names, falling back to the
+ * login home. "Exactly the way" is load-bearing: this resolver and
+ * `resolveDaemonHomeDir` both used to end at a bare `homedir()`, so a process
+ * running under a redirected tree root wrote its profile into the real home.
+ * Both derive from the one tree-root resolution now.
  *
  * The scope matters. A fact written from the agent must be readable by the
  * daemon with every surface closed, and by the TUI tomorrow. A surface-scoped
@@ -15,9 +20,9 @@
  * round: a value written successfully into a silo the daemon never reads,
  * reporting success and configuring nothing.
  */
-import { homedir } from 'node:os';
 import { isAbsolute, join, resolve } from 'node:path';
 import { DAEMON_CONFIG_ROOT } from '../config/daemon-config-tier.js';
+import { resolveGoodVibesHome } from '../config/goodvibes-home.js';
 
 /** File name of the owner profile within the daemon home. */
 export const OWNER_PROFILE_FILE = 'owner-profile.md';
@@ -55,7 +60,9 @@ export interface OwnerProfilePathOptions {
  *   1. an explicit `profile.path` override
  *   2. `--daemon-home`
  *   3. `GOODVIBES_DAEMON_HOME`
- *   4. `~/.goodvibes/daemon/`
+ *   4. `<tree root>/.goodvibes/daemon/` — an injected `homeDir` when a caller
+ *      supplied one, else the tree root `GOODVIBES_HOME` names, else the login
+ *      home.
  *
  * A relative path in any of the overrides resolves against the current working
  * directory, matching `resolveDaemonHomeDir` so the two cannot disagree about
@@ -68,10 +75,11 @@ export function resolveOwnerProfilePath(options: OwnerProfilePathOptions = {}): 
   const arg = options.daemonHomeArg?.trim();
   if (arg) return ownerProfilePathForHome(absolute(arg));
 
-  const env = (options.env ?? process.env)['GOODVIBES_DAEMON_HOME']?.trim();
+  const environment = options.env ?? process.env;
+  const env = environment['GOODVIBES_DAEMON_HOME']?.trim();
   if (env) return ownerProfilePathForHome(absolute(env));
 
-  return ownerProfilePath(options.homeDir ?? homedir());
+  return ownerProfilePath(options.homeDir ?? resolveGoodVibesHome(environment));
 }
 
 function absolute(path: string): string {

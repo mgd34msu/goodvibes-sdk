@@ -87,7 +87,6 @@ describe('config ownership classification', () => {
       // These decide whether THIS installation runs a daemon at all. If the
       // daemon owned them, the agent would start a daemon because the TUI does.
       'daemon.enabled',
-      'daemon.embedInProcess',
       'service.enabled',
       'voice.wake.enabled',
     ]) {

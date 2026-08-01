@@ -132,7 +132,7 @@ describe('what may cross the network', () => {
       // a daemon", while the timezone answers where the operator is and the
       // group must agree on it. Accepting only the domain form here would force
       // that key to be replicated by widening `daemon.` — which would drag
-      // `daemon.enabled` and `daemon.embedInProcess` across the network with it.
+      // `daemon.enabled` across the network with it.
       const ruledByDomain = REPLICATED_CONFIG_DOMAINS.some((domain) => path.startsWith(domain));
       const ruledByKey = REPLICATED_CONFIG_KEYS.includes(path);
       expect(ruledByDomain || ruledByKey, `${path} replicates without a ruling`).toBe(true);

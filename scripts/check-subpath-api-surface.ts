@@ -57,6 +57,16 @@
  * two, so a module whose declarations failed to resolve looked identical to a
  * module with no public surface and stayed green forever. That is how the next
  * module added would have landed outside the report unnoticed.
+ *
+ * ## Which packages it covers
+ *
+ * Every package in TRACKED_PACKAGES below, each with its own committed snapshot
+ * under `etc/`. `packages/sdk` is the reason the gate exists, and
+ * `packages/terminal-shell` is here because it is the other package consumers
+ * import directly: it publishes three entry points (`.`, `./conformance`,
+ * `./terminal-output-guard`) and had nothing watching them, so a change to its
+ * public surface could reach a consumer with no review step in between. A
+ * package joins by appending one entry — the mechanism is identical for all.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
@@ -76,98 +86,148 @@ import {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SDK_ROOT = resolve(__dirname, '..');
-const PACKAGE_DIR = resolve(SDK_ROOT, 'packages', 'sdk');
-const SNAPSHOT_PATH = resolve(SDK_ROOT, 'etc', 'subpath-api-surface.json');
+
+/**
+ * A package whose published subpath surface is recorded and gated.
+ *
+ * Each package keeps its OWN committed baseline rather than sharing one report,
+ * so a change in one package produces a diff naming only that package, and
+ * adding a package cannot rewrite another's baseline.
+ */
+interface TrackedPackage {
+  readonly name: string;
+  readonly dir: string;
+  readonly snapshot: string;
+}
+
+const TRACKED_PACKAGES: readonly TrackedPackage[] = [
+  {
+    name: '@pellux/goodvibes-sdk',
+    dir: resolve(SDK_ROOT, 'packages', 'sdk'),
+    snapshot: resolve(SDK_ROOT, 'etc', 'subpath-api-surface.json'),
+  },
+  {
+    name: '@pellux/goodvibes-terminal-shell',
+    dir: resolve(SDK_ROOT, 'packages', 'terminal-shell'),
+    snapshot: resolve(SDK_ROOT, 'etc', 'subpath-api-surface-terminal-shell.json'),
+  },
+];
 
 function fail(message: string): never {
   console.error(message);
   process.exit(1);
 }
 
-const manifest = readManifest(join(PACKAGE_DIR, 'package.json'));
-const { entryPoints, problems } = resolveSubpathEntryPoints(manifest, PACKAGE_DIR);
-
-if (problems.length > 0) {
-  fail(
-    ['subpath-api-surface FAILED: an export map entry publishes no reportable types.', '', ...problems.map((p) => `  ${p}`)]
-      .join('\n'),
-  );
+/** The entry points a package publishes, refusing an export map that hides types. */
+function entryPointsFor(pkg: TrackedPackage): ReadonlyMap<string, string> {
+  const manifest = readManifest(join(pkg.dir, 'package.json'));
+  const { entryPoints, problems } = resolveSubpathEntryPoints(manifest, pkg.dir);
+  if (problems.length > 0) {
+    fail(
+      [
+        `subpath-api-surface FAILED (${pkg.name}): an export map entry publishes no reportable types.`,
+        '',
+        ...problems.map((p) => `  ${p}`),
+      ].join('\n'),
+    );
+  }
+  return entryPoints;
 }
 
-const program = ts.createProgram([...entryPoints.values()], {
-  target: ts.ScriptTarget.ESNext,
-  module: ts.ModuleKind.ESNext,
-  moduleResolution: ts.ModuleResolutionKind.Bundler,
-  skipLibCheck: true,
-  noEmit: true,
-});
+/** Build the current snapshot for one package's entry points. */
+function snapshotFor(pkg: TrackedPackage, entryPoints: ReadonlyMap<string, string>): Snapshot {
+  const program = ts.createProgram([...entryPoints.values()], {
+    target: ts.ScriptTarget.ESNext,
+    module: ts.ModuleKind.ESNext,
+    moduleResolution: ts.ModuleResolutionKind.Bundler,
+    skipLibCheck: true,
+    noEmit: true,
+  });
 
-const snapshot = buildSnapshot(program, entryPoints);
+  const snapshot = buildSnapshot(program, entryPoints);
 
-const empty = coverageProblems(snapshot);
-if (empty.length > 0) {
-  fail(
-    [
-      'subpath-api-surface FAILED: a published subpath contributes nothing to the report.',
-      '',
-      ...empty.map((p) => `  ${p}`),
-      '',
-      'A subpath that exports nothing is almost always an entry point that failed to resolve.',
-      'Rebuild (`bun run build`) and re-run. If the entry point is genuinely empty, add it to',
-      'EMPTY_SUBPATH_ALLOWLIST in scripts/subpath-api-surface-rule.ts with a reason.',
-    ].join('\n'),
-  );
+  const empty = coverageProblems(snapshot);
+  if (empty.length > 0) {
+    fail(
+      [
+        `subpath-api-surface FAILED (${pkg.name}): a published subpath contributes nothing to the report.`,
+        '',
+        ...empty.map((p) => `  ${p}`),
+        '',
+        'A subpath that exports nothing is almost always an entry point that failed to resolve.',
+        'Rebuild (`bun run build`) and re-run. If the entry point is genuinely empty, add it to',
+        'EMPTY_SUBPATH_ALLOWLIST in scripts/subpath-api-surface-rule.ts with a reason.',
+      ].join('\n'),
+    );
+  }
+
+  return snapshot;
 }
 
-const rendered = render(snapshot);
-const checkOnly = process.argv.includes('--check');
-
-if (!checkOnly) {
-  writeFileSync(SNAPSHOT_PATH, rendered);
+/** Record one package's baseline. */
+function record(pkg: TrackedPackage): void {
+  const entryPoints = entryPointsFor(pkg);
+  const snapshot = snapshotFor(pkg, entryPoints);
+  writeFileSync(pkg.snapshot, render(snapshot));
   console.log(
-    `subpath-api-surface: wrote ${relative(SDK_ROOT, SNAPSHOT_PATH)}`
-    + ` — ${entryPoints.size} subpaths, ${Object.values(snapshot).reduce((n, e) => n + e.length, 0)} exports.`,
-  );
-  process.exit(0);
-}
-
-let committedText: string;
-try {
-  committedText = readFileSync(SNAPSHOT_PATH, 'utf8');
-} catch {
-  fail(
-    `subpath-api-surface FAILED: ${relative(SDK_ROOT, SNAPSHOT_PATH)} is missing.\n`
-    + 'Fix: bun run api:subpath',
+    `subpath-api-surface: wrote ${relative(SDK_ROOT, pkg.snapshot)}`
+    + ` — ${pkg.name}, ${entryPoints.size} subpaths,`
+    + ` ${Object.values(snapshot).reduce((n, e) => n + e.length, 0)} exports.`,
   );
 }
 
-const committed = JSON.parse(committedText) as Snapshot;
+/** Verify one package against its committed baseline. */
+function check(pkg: TrackedPackage): void {
+  const entryPoints = entryPointsFor(pkg);
+  const rendered = render(snapshotFor(pkg, entryPoints));
 
-const missing = missingFromReport(entryPoints, committed);
-if (missing.length > 0) {
+  let committedText: string;
+  try {
+    committedText = readFileSync(pkg.snapshot, 'utf8');
+  } catch {
+    fail(
+      `subpath-api-surface FAILED (${pkg.name}): ${relative(SDK_ROOT, pkg.snapshot)} is missing.\n`
+      + 'Fix: bun run api:subpath',
+    );
+  }
+
+  const committed = JSON.parse(committedText) as Snapshot;
+
+  const missing = missingFromReport(entryPoints, committed);
+  if (missing.length > 0) {
+    fail(
+      [
+        `subpath-api-surface FAILED (${pkg.name}): a published subpath is absent from the committed report.`,
+        '',
+        ...missing.map((p) => `  ${p}`),
+        '',
+        'Record it: bun run api:subpath',
+      ].join('\n'),
+    );
+  }
+
+  if (committedText === rendered) {
+    const exports = Object.values(committed).reduce((n, e) => n + e.length, 0);
+    console.log(
+      `subpath-api-surface: OK — ${pkg.name}, ${Object.keys(committed).length} subpaths,`
+      + ` ${exports} exports match the committed surface.`,
+    );
+    return;
+  }
+
   fail(
     [
-      'subpath-api-surface FAILED: a published subpath is absent from the committed report.',
+      `subpath-api-surface FAILED (${pkg.name}): the published subpath surface changed.`,
       '',
-      ...missing.map((p) => `  ${p}`),
+      ...diffSnapshots(committed, JSON.parse(rendered) as Snapshot),
       '',
-      'Record it: bun run api:subpath',
+      'If the change is intended, re-record it: bun run api:subpath',
     ].join('\n'),
   );
 }
 
-if (committedText === rendered) {
-  const exports = Object.values(committed).reduce((n, e) => n + e.length, 0);
-  console.log(`subpath-api-surface: OK — ${Object.keys(committed).length} subpaths, ${exports} exports match the committed surface.`);
-  process.exit(0);
+const checkOnly = process.argv.includes('--check');
+for (const pkg of TRACKED_PACKAGES) {
+  if (checkOnly) check(pkg);
+  else record(pkg);
 }
-
-fail(
-  [
-    'subpath-api-surface FAILED: the published subpath surface changed.',
-    '',
-    ...diffSnapshots(committed, snapshot),
-    '',
-    'If the change is intended, re-record it: bun run api:subpath',
-  ].join('\n'),
-);

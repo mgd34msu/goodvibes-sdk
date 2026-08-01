@@ -396,3 +396,55 @@ export function migrateControlPlaneBaseUrlRemoval(
     ...(typeof legacy === 'string' ? { removedValue: legacy } : {}),
   };
 }
+
+/** Outcome of dropping a stored `daemon.embedInProcess`. */
+export interface DaemonEmbedInProcessMigrationResult {
+  readonly config: Record<string, unknown>;
+  /** True when a stored `daemon.embedInProcess` was present and removed. */
+  readonly migrated: boolean;
+  /** The value that was on disk, so the receipt can say what was set. */
+  readonly removedValue?: boolean | undefined;
+}
+
+/**
+ * Remove the stored `daemon.embedInProcess`.
+ *
+ * The key offered a choice no shipped surface could act on. Every product starts
+ * host services in adopt-only mode, and the adoption policy answers adopt-only
+ * before it ever looks at the embed preference — so a settings file with
+ * `embedInProcess: true` produced exactly the same behaviour as one without it.
+ * A toggle the settings UI presented as live, with a "NOT RECOMMENDED" warning
+ * attached, for a branch that could not run, is worse than an inert key: it
+ * described a topology the product does not have.
+ *
+ * Hosting a daemon inside another process is still possible — it is how an
+ * embedder composes one and how tests build one without a port — but that is an
+ * argument to the composition API, not a preference a user files in settings.
+ *
+ * The value is not carried anywhere. There is no setting left that means what it
+ * meant, and inventing one to receive it would recreate the same false choice.
+ * The receipt says what was set and why it is gone.
+ *
+ * Idempotent; a file with no such key is returned untouched.
+ */
+export function migrateDaemonEmbedInProcessRemoval(
+  parsed: Record<string, unknown>,
+): DaemonEmbedInProcessMigrationResult {
+  const daemon = parsed.daemon;
+  if (daemon === null || typeof daemon !== 'object' || Array.isArray(daemon)) {
+    return { config: parsed, migrated: false };
+  }
+  if (!('embedInProcess' in (daemon as Record<string, unknown>))) {
+    return { config: parsed, migrated: false };
+  }
+  const legacy = (daemon as Record<string, unknown>).embedInProcess;
+  const config = structuredClone(parsed);
+  const section = config.daemon as Record<string, unknown>;
+  delete section.embedInProcess;
+  if (Object.keys(section).length === 0) delete config.daemon;
+  return {
+    config,
+    migrated: true,
+    ...(typeof legacy === 'boolean' ? { removedValue: legacy } : {}),
+  };
+}

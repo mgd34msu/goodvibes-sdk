@@ -29,9 +29,9 @@ describe('migrateDangerDaemonAlias (pure function)', () => {
   test('explicit danger.daemon:false preserves other existing daemon.* fields', () => {
     const result = migrateDangerDaemonAlias({
       danger: { daemon: false },
-      daemon: { embedInProcess: true },
+      daemon: { timezone: 'Europe/Berlin' },
     });
-    expect(result.config['daemon']).toEqual({ embedInProcess: true, enabled: false });
+    expect(result.config['daemon']).toEqual({ timezone: 'Europe/Berlin', enabled: false });
   });
 
   test('explicit danger.daemon:true removes the alias without rewriting daemon.enabled (already default true)', () => {

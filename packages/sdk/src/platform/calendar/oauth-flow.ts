@@ -35,12 +35,25 @@ export class OAuthFlowError extends Error {
   }
 }
 
+/**
+ * Refuse, by name, before any flow that cannot succeed.
+ *
+ * No client id ships with the product — whoever sets up the environment registers
+ * their own OAuth app with the provider. So "not configured" is a normal state with
+ * a concrete next step, and the message says exactly which key to set rather than
+ * leaving the operator to guess whether the build is broken. It is thrown BEFORE
+ * the first network call, so an unconfigured environment never produces a provider
+ * error that has to be decoded backwards.
+ */
 function assertClientConfigured(config: ResolvedClientConfig): void {
-  if (config.isPlaceholder) {
+  if (!config.isConfigured) {
     throw new OAuthFlowError(
       'client-not-configured',
-      `No ${config.provider} client id is configured. Either this build ships no project default yet, ` +
-        'or supply your own client id under advanced settings.',
+      `No ${config.provider} OAuth client id is configured, so this connection cannot be attempted. `
+        + 'GoodVibes ships no client id of its own: register your own OAuth app with the provider, then set '
+        + `${config.clientIdConfigKey} to its client id. A desktop/public-client registration needs no secret; `
+        + `if you registered a confidential client, store its secret and reference it in ${config.clientSecretRefConfigKey}. `
+        + 'See docs/calendar-oauth-setup.md for the provider-console walkthrough.',
     );
   }
 }

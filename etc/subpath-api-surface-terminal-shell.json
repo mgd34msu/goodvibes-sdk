@@ -1,0 +1,1236 @@
+{
+  ".": [
+    {
+      "name": "ArchivableProcessRegistry",
+      "kind": "type",
+      "text": "export type ArchivableProcessRegistry = ProcessRegistry & FleetArchiveView; ;; via FleetArchiveView = export interface FleetArchiveView { archive(id: string): FleetArchiveResult; unarchive(id: string): number; archiveFinished(): number; listArchived(): FleetSnapshot; archivedCount(): number; } ;; ProcessRegistry = export interface ProcessRegistry { query(filter?: FleetQueryFilter): FleetSnapshot; getNode(id: string): ProcessNode | null; subscribe(listener: (snapshot: FleetSnapshot) => void): () => void; interrupt(id: string): boolean; resume(id: string): boolean; kill(id: string, opts?: ProcessKillOptions): readonly string[]; steer(id: string, text: string): SteerResult; dispose(): void; }"
+    },
+    {
+      "name": "BindPosture",
+      "kind": "interface",
+      "required": [
+        "kind",
+        "label",
+        "networkFacing"
+      ],
+      "text": "export interface BindPosture { readonly kind: BindPostureKind; readonly label: string; readonly networkFacing: boolean; }"
+    },
+    {
+      "name": "BindPostureKind",
+      "kind": "type",
+      "text": "export type BindPostureKind = 'local' | 'local-network' | 'custom-network';"
+    },
+    {
+      "name": "BookmarkModal",
+      "kind": "class",
+      "publicMembers": [
+        "DEFAULT_VISIBLE_ROWS",
+        "VISIBLE_ROWS",
+        "active",
+        "close",
+        "constructor",
+        "entries",
+        "getSelected",
+        "moveDown",
+        "moveUp",
+        "open",
+        "openSelectedFile",
+        "removeSelected",
+        "scrollOffset",
+        "selectedIndex",
+        "setVisibleRows",
+        "visibleRows"
+      ],
+      "text": "export declare class BookmarkModal { private readonly bookmarkManager; static readonly DEFAULT_VISIBLE_ROWS = 8; static readonly VISIBLE_ROWS = 8; active: boolean; entries: BookmarkEntry[]; selectedIndex: number; scrollOffset: number; visibleRows: number; constructor(bookmarkManager: BookmarkManager); open(): void; close(): void; setVisibleRows(rows: number): void; moveUp(): void; moveDown(): void; getSelected(): BookmarkEntry | null; removeSelected(): BookmarkEntry | null; openSelectedFile(): string | null; private _clampScroll; } ;; via BookmarkEntry = export interface BookmarkEntry { key: string; label: string; timestamp: number; }"
+    },
+    {
+      "name": "BottomBarStyle",
+      "kind": "interface",
+      "required": [
+        "bg",
+        "fg"
+      ],
+      "text": "export interface BottomBarStyle { readonly fg: string; readonly bg: string; readonly bold?: boolean; readonly dim?: boolean; readonly underline?: boolean; }"
+    },
+    {
+      "name": "CLUSTER_SUBCOMMANDS",
+      "kind": "const",
+      "text": "CLUSTER_SUBCOMMANDS: readonly [\"status\", \"create\", \"join\", \"key\", \"nodes\", \"forget\", \"rotate\", \"leave\", \"rename\", \"groups\"]"
+    },
+    {
+      "name": "CliCatalog",
+      "kind": "interface",
+      "required": [
+        "commands",
+        "createDefaultFlags",
+        "defaultCommand",
+        "globalFlags",
+        "unmatchedFirstToken"
+      ],
+      "text": "export interface CliCatalog<TCommand extends string, TField extends string, TFlags> { readonly commands: readonly CommandSpec<TCommand, TField>[]; readonly globalFlags: readonly CommandFlagSpec<TField>[]; readonly rejectedFlags?: Readonly<Record<string, RejectedFlagSpec>> | undefined; readonly defaultCommand: TCommand; readonly unmatchedFirstToken: 'reject' | 'passthrough'; readonly unresolvedCommandSentinel?: TCommand | undefined; readonly createDefaultFlags: () => TFlags; readonly postProcess?: ((result: EngineParseResult<TCommand, TFlags>) => EngineParseResult<TCommand, TFlags>) | undefined; } ;; via Readonly = type Readonly<T> = { readonly [P in keyof T]: T[P]; }; ;; Record = type Record<K extends keyof any, T> = { [P in K]: T; };"
+    },
+    {
+      "name": "CliCommandOutput",
+      "kind": "interface",
+      "required": [
+        "exitCode",
+        "output"
+      ],
+      "text": "export interface CliCommandOutput { readonly output: string; readonly exitCode: number; }"
+    },
+    {
+      "name": "CliCommandRuntime",
+      "kind": "interface",
+      "required": [
+        "cli",
+        "configManager",
+        "homeDirectory",
+        "workingDirectory"
+      ],
+      "text": "export interface CliCommandRuntime { readonly cli: GoodVibesCliParseResult; readonly configManager: ConfigManager; readonly workingDirectory: string; readonly homeDirectory: string; }"
+    },
+    {
+      "name": "CliFlagKind",
+      "kind": "type",
+      "text": "export type CliFlagKind = 'boolean' | 'string' | 'port' | 'string-list' | 'string-optional' | 'const' | 'enum';"
+    },
+    {
+      "name": "CliFlagValue",
+      "kind": "type",
+      "text": "export type CliFlagValue = string | number | boolean | readonly string[] | undefined;"
+    },
+    {
+      "name": "ClusterCommandResult",
+      "kind": "interface",
+      "required": [
+        "exitCode",
+        "lines"
+      ],
+      "text": "export interface ClusterCommandResult { readonly lines: readonly string[]; readonly exitCode: number; readonly rawOutput?: string | undefined; }"
+    },
+    {
+      "name": "ClusterSubcommand",
+      "kind": "type",
+      "text": "export type ClusterSubcommand = (typeof CLUSTER_SUBCOMMANDS)[number];"
+    },
+    {
+      "name": "ColorCapability",
+      "kind": "type",
+      "text": "export type ColorCapability = 'none' | 'basic16' | 'ansi256' | 'truecolor';"
+    },
+    {
+      "name": "CommandFlagSpec",
+      "kind": "interface",
+      "required": [
+        "field",
+        "kind",
+        "summary",
+        "tokens"
+      ],
+      "text": "export interface CommandFlagSpec<TField extends string> { readonly tokens: readonly string[]; readonly field: TField; readonly kind: CliFlagKind; readonly valueName?: string | undefined; readonly summary: string; readonly bareValue?: string | true | undefined; readonly constValue?: CliFlagValue | undefined; readonly enumValues?: readonly string[] | undefined; readonly enumDefault?: string | undefined; readonly warning?: string | undefined; }"
+    },
+    {
+      "name": "CommandSpec",
+      "kind": "interface",
+      "required": [
+        "aliases",
+        "flags",
+        "name",
+        "passthrough",
+        "subcommands"
+      ],
+      "text": "export interface CommandSpec<TCommand extends string, TField extends string> { readonly name: TCommand; readonly aliases: readonly string[]; readonly summary?: string | undefined; readonly usage?: string | undefined; readonly detail?: readonly string[] | undefined; readonly flags: readonly CommandFlagSpec<TField>[]; readonly passthrough: boolean; readonly lenientUnknownFlags?: boolean | undefined; readonly subcommands: readonly string[]; }"
+    },
+    {
+      "name": "ConformanceOptions",
+      "kind": "interface",
+      "text": "export interface ConformanceOptions { readonly onlyIds?: readonly string[]; readonly ignoreIds?: readonly string[]; }"
+    },
+    {
+      "name": "DaemonFetch",
+      "kind": "type",
+      "text": "export type DaemonFetch = (input: string, init?: RequestInit) => Promise<Response>; ;; via Promise = interface Promise<T> { then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): Promise<TResult1 | TResult2>; catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): Promise<T | TResult>; } ;; RequestInit = interface RequestInit { body?: BodyInit | null; cache?: RequestCache; credentials?: RequestCredentials; headers?: HeadersInit; integrity?: string; keepalive?: boolean; method?: string; mode?: RequestMode; priority?: RequestPriority; redirect?: RequestRedirect; referrer?: string; referrerPolicy?: ReferrerPolicy; signal?: AbortSignal | null; window?: null; } ;; Response = interface Response extends Body { readonly headers: Headers; readonly ok: boolean; readonly redirected: boolean; readonly status: number; readonly statusText: string; readonly type: ResponseType; readonly url: string; clone(): Response; }"
+    },
+    {
+      "name": "DaemonVerbOutcome",
+      "kind": "type",
+      "text": "export type DaemonVerbOutcome<T> = { readonly ok: true; readonly data: T; } | { readonly ok: false; readonly error: string; readonly fix: string; };"
+    },
+    {
+      "name": "EngineParseResult",
+      "kind": "interface",
+      "required": [
+        "binary",
+        "command",
+        "commandArgs",
+        "errors",
+        "flags",
+        "positionals",
+        "rawCommand",
+        "warnings"
+      ],
+      "text": "export interface EngineParseResult<TCommand extends string, TFlags> { readonly binary: string; readonly command: TCommand; readonly rawCommand: string | undefined; readonly commandArgs: readonly string[]; readonly positionals: readonly string[]; readonly flags: TFlags; readonly errors: readonly string[]; readonly warnings: readonly string[]; }"
+    },
+    {
+      "name": "FEATURE_SETTINGS_BY_ID",
+      "kind": "const",
+      "text": "FEATURE_SETTINGS_BY_ID: ReadonlyMap<string, FeatureSetting> ;; via FeatureSetting = export interface FeatureSetting { readonly id: string; readonly name: string; readonly description: string; readonly domain: string; readonly enablement: { readonly key: ConfigKey; readonly kind: FeatureEnablementKind; readonly enabledValues?: readonly string[]; }; readonly settings: readonly ConfigKey[]; readonly restartRequired: boolean; readonly defaultEnabled: boolean; readonly operable: boolean; readonly inoperableDetail: string | null; } ;; ReadonlyMap = interface ReadonlyMap<K, V> { forEach(callbackfn: (value: V, key: K, map: ReadonlyMap<K, V>) => void, thisArg?: any): void; get(key: K): V | undefined; has(key: K): boolean; readonly size: number; }"
+    },
+    {
+      "name": "FeatureEnablementWrite",
+      "kind": "interface",
+      "required": [
+        "key",
+        "value"
+      ],
+      "text": "export interface FeatureEnablementWrite { readonly key: ConfigKey; readonly value: boolean | string; } ;; via ConfigKey = export type ConfigKey = 'display.stream' | 'display.lineNumbers' | 'display.collapseThreshold' | 'display.theme' | 'display.showThinking' | 'display.showReasoningSummary' | 'display.showTokenSpeed' | 'display.showToolPreview' | 'provider.reasoningEffort' | 'provider.model' | 'provider.embeddingProvider' | 'provider.systemPromptFile' | 'provider.optimizerMode' | 'provider.optimizerPinnedModel' | 'provider.localContextIngestion' | 'behavior.autoApprove' | 'behavior.autoCompactThreshold' | 'behavior.compactionStrategy' | 'behavior.staleContextWarnings' | 'behavior.saveHistory' | 'behavior.notifyOnComplete' | 'behavior.suggestAlternativeOnProviderFail' | 'behavior.hitlMode' | 'behavior.toolResultReconciliation' | 'behavior.returnContextMode' | 'behavior.guidanceMode' | 'storage.secretPolicy' | 'storage.artifacts.maxBytes' | 'permissions.mode' | 'permissions.backgroundAgents' | 'permissions.engine' | 'permissions.simulation' | 'permissions.divergenceDashboard' | 'permissions.commandParser' | 'permissions.divergenceThreshold' | 'permissions.maxDivergenceRecords' | 'permissions.tools.read' | 'permissions.tools.write' | 'permissions.tools.edit' | 'permissions.tools.exec' | 'permissions.tools.find' | 'permissions.tools.fetch' | 'permissions.tools.analyze' | 'permissions.tools.inspect' | 'permissions.tools.agent' | 'permissions.tools.state' | 'permissions.tools.workflow' | 'permissions.tools.registry' | 'permissions.tools.delegate' | 'permissions.tools.mcp' | 'diagnostics.postEdit' | 'orchestration.recursionEnabled' | 'orchestration.maxDepth' | 'planner.decomposition' | 'planner.maxTurns' | 'planner.tokenCeiling' | 'planner.wallTimeoutMs' | 'planner.adaptive' | 'sandbox.enabled' | 'sandbox.judgment' | 'sandbox.replIsolation' | 'sandbox.mcpIsolation' | 'sandbox.windowsMode' | 'sandbox.vmBackend' | 'sandbox.qemuBinary' | 'sandbox.qemuImagePath' | 'sandbox.qemuExecWrapper' | 'sandbox.qemuGuestHost' | 'sandbox.qemuGuestPort' | 'sandbox.qemuGuestUser' | 'sandbox.qemuWorkspacePath' | 'sandbox.qemuSessionMode' | 'sandbox.replJavaScriptCommand' | 'ui.voiceEnabled' | 'ui.systemMessages' | 'ui.operationalMessages' | 'ui.wrfcMessages' | 'tts.provider' | 'tts.voice' | 'tts.llmProvider' | 'tts.llmModel' | 'tts.speed' | 'release.channel' | PaymentsConfigKey | DaemonProcessConfigKey | 'danger.httpListener' | 'tools.llmEnabled' | 'tools.llmProvider' | 'tools.llmModel' | 'tools.autoHeal' | 'tools.defaultTokenBudget' | 'tools.hooksFile' | 'tools.overflowSpillBackend' | 'tools.contractVerification' | 'tools.outputSchemaFingerprints' | 'wrfc.scoreThreshold' | 'wrfc.maxFixAttempts' | 'wrfc.autoCommit' | 'wrfc.commitScope' | 'wrfc.agentHeartbeatTimeoutMs' | 'wrfc.transportRetryLimit' | 'wrfc.transportRetryDelayMs' | 'cache.enabled' | 'cache.stableTtl' | 'cache.monitorHitRate' | 'cache.hitRateWarningThreshold' | 'helper.enabled' | 'helper.globalProvider' | 'helper.globalModel' | 'automation.enabled' | 'automation.maxConcurrentRuns' | 'automation.runHistoryLimit' | 'automation.defaultTimeoutMs' | 'automation.catchUpWindowMinutes' | 'automation.failureCooldownMs' | 'automation.deleteAfterRun' | 'controlPlane.enabled' | 'controlPlane.gateway' | 'controlPlane.hostMode' | 'controlPlane.host' | 'controlPlane.port' | 'controlPlane.publicBaseUrl' | 'conversationGate.mode' | 'conversationGate.proposalTtlMs' | 'conversationGate.maxPendingProposals' | 'hostedSessions.detachPolicy' | 'hostedSessions.maxSessions' | 'hostedSessions.maxMessagesPerSession' | 'hostedSessions.terminatedRetentionMs' | 'hostedSessions.attachmentTtlMs' | 'hostedSessions.promoteInboundConversations' | 'controlPlane.streamMode' | 'controlPlane.allowRemote' | 'controlPlane.trustProxy' | 'controlPlane.openaiCompatible.enabled' | 'controlPlane.openaiCompatible.pathPrefix' | 'controlPlane.webui.serve' | 'controlPlane.webui.bundleDir' | 'controlPlane.cors.enabled' | 'controlPlane.cors.allowedOrigins' | 'controlPlane.tls.mode' | 'controlPlane.tls.certFile' | 'controlPlane.tls.keyFile' | 'httpListener.hostMode' | 'httpListener.host' | 'httpListener.port' | 'httpListener.trustProxy' | 'httpListener.trustCloudflare' | 'httpListener.tls.mode' | 'httpListener.tls.certFile' | 'httpListener.tls.keyFile' | 'web.enabled' | 'web.hostMode' | 'web.host' | 'web.port' | 'web.publicBaseUrl' | 'web.staticAssetsDir' | 'surfaces.slack.enabled' | 'surfaces.slack.signingSecret' | 'surfaces.slack.botToken' | 'surfaces.slack.appToken' | 'surfaces.slack.defaultChannel' | 'surfaces.slack.workspaceId' | 'surfaces.discord.enabled' | 'surfaces.discord.publicKey' | 'surfaces.discord.botToken' | 'surfaces.discord.applicationId' | 'surfaces.discord.defaultChannelId' | 'surfaces.discord.guildId' | 'surfaces.ntfy.enabled' | 'surfaces.ntfy.baseUrl' | 'surfaces.ntfy.topic' | 'surfaces.ntfy.chatTopic' | 'surfaces.ntfy.agentTopic' | 'surfaces.ntfy.remoteTopic' | 'surfaces.ntfy.token' | 'surfaces.ntfy.defaultPriority' | 'surfaces.webhook.enabled' | 'surfaces.webhook.defaultTarget' | 'surfaces.webhook.timeoutMs' | 'surfaces.webhook.secret' | 'surfaces.homeassistant.enabled' | 'surfaces.homeassistant.instanceUrl' | 'surfaces.homeassistant.accessToken' | 'surfaces.homeassistant.webhookSecret' | 'surfaces.homeassistant.defaultConversationId' | 'surfaces.homeassistant.deviceId' | 'surfaces.homeassistant.deviceName' | 'surfaces.homeassistant.eventType' | 'surfaces.homeassistant.remoteSessionTtlMs' | 'surfaces.telegram.enabled' | 'surfaces.telegram.botToken' | 'surfaces.telegram.webhookSecret' | 'surfaces.telegram.defaultChatId' | 'surfaces.telegram.botUsername' | 'surfaces.telegram.discoveredBotTokenId' | 'surfaces.telegram.mode' | 'surfaces.googleChat.enabled' | 'surfaces.googleChat.webhookUrl' | 'surfaces.googleChat.verificationToken' | 'surfaces.googleChat.appId' | 'surfaces.googleChat.spaceId' | 'surfaces.signal.enabled' | 'surfaces.signal.bridgeUrl' | 'surfaces.signal.account' | 'surfaces.signal.token' | 'surfaces.signal.defaultRecipient' | 'surfaces.whatsapp.enabled' | 'surfaces.whatsapp.provider' | 'surfaces.whatsapp.accessToken' | 'surfaces.whatsapp.verifyToken' | 'surfaces.whatsapp.signingSecret' | 'surfaces.whatsapp.phoneNumberId' | 'surfaces.whatsapp.businessAccountId' | 'surfaces.whatsapp.defaultRecipient' | 'surfaces.telephony.enabled' | 'surfaces.telephony.provider' | 'surfaces.telephony.mode' | 'surfaces.telephony.bridgeUrl' | 'surfaces.telephony.token' | 'surfaces.telephony.accountSid' | 'surfaces.telephony.authToken' | 'surfaces.telephony.fromNumber' | 'surfaces.telephony.defaultRecipient' | 'surfaces.telephony.webhookSecret' | 'surfaces.telephony.voiceLanguage' | 'surfaces.imessage.enabled' | 'surfaces.imessage.bridgeUrl' | 'surfaces.imessage.account' | 'surfaces.imessage.token' | 'surfaces.imessage.defaultChatId' | 'surfaces.msteams.enabled' | 'surfaces.msteams.appId' | 'surfaces.msteams.appPassword' | 'surfaces.msteams.tenantId' | 'surfaces.msteams.serviceUrl' | 'surfaces.msteams.botId' | 'surfaces.msteams.defaultConversationId' | 'surfaces.msteams.defaultChannelId' | 'surfaces.bluebubbles.enabled' | 'surfaces.bluebubbles.serverUrl' | 'surfaces.bluebubbles.password' | 'surfaces.bluebubbles.account' | 'surfaces.bluebubbles.defaultChatGuid' | 'surfaces.mattermost.enabled' | 'surfaces.mattermost.baseUrl' | 'surfaces.mattermost.botToken' | 'surfaces.mattermost.teamId' | 'surfaces.mattermost.defaultChannelId' | 'surfaces.matrix.enabled' | 'surfaces.matrix.homeserverUrl' | 'surfaces.matrix.accessToken' | 'surfaces.matrix.userId' | 'surfaces.matrix.defaultRoomId' | 'surfaces.email.host' | 'surfaces.email.user' | 'surfaces.email.username' | 'surfaces.email.from' | 'surfaces.email.password' | 'surfaces.email.imapHost' | 'surfaces.email.imapPort' | 'surfaces.email.imapUser' | 'surfaces.email.imapPassword' | 'surfaces.email.imap.host' | 'surfaces.email.imap.port' | 'surfaces.email.imap.user' | 'surfaces.email.imap.password' | 'surfaces.email.imap.secure' | 'surfaces.email.imap.mailbox' | 'surfaces.email.imap.draftsMailbox' | 'surfaces.email.smtp.host' | 'surfaces.email.smtp.port' | 'surfaces.email.smtp.password' | 'surfaces.email.smtp.secure' | 'surfaces.email.inbound.enabled' | 'surfaces.email.inbound.accounts' | 'surfaces.email.inbound.source' | 'surfaces.email.inbound.gmailPollSecondsExpecting' | 'surfaces.email.inbound.gmailPollSecondsIdle' | 'surfaces.email.inbound.mode' | 'surfaces.email.inbound.pollIntervalSeconds' | 'surfaces.email.inbound.idleReissueMinutes' | 'surfaces.email.inbound.reconnect.maxBackoffSeconds' | 'surfaces.email.inbound.notice.route' | 'surfaces.email.inbound.notice.mode' | 'surfaces.email.inbound.expectationWindowMinutes' | 'surfaces.email.inbound.dedupTtlMinutes' | 'surfaces.email.inbound.retentionDays' | 'surfaces.email.inbound.maxRecords' | 'surfaces.email.inbound.capabilityRecheckMinutes' | 'surfaces.email.inbound.onInsufficientCapability' | 'surfaces.calendar.caldavUrl' | 'surfaces.calendar.caldavUser' | 'surfaces.calendar.caldavPassword' | 'surfaces.calendar.defaultCalendarId' | 'surfaces.calendar.calendars' | 'watchers.enabled' | 'watchers.pollIntervalMs' | 'watchers.heartbeatIntervalMs' | 'watchers.recoveryWindowMinutes' | 'watchers.ciPollIntervalMs' | 'watchers.triggers.enabled' | 'watchers.triggers.backoffLadderMs' | 'watchers.triggers.breakerStrikes' | 'watchers.triggers.defaultCheckIntervalMs' | 'watchers.triggers.probeTimeoutMs' | 'watchers.triggers.maxConcurrentChecks' | 'watchers.triggers.observationRingSize' | 'watchers.triggers.runHistoryLimit' | 'watchers.triggers.runHistoryTtlHours' | 'watchers.triggers.eventLogLimit' | 'watchers.triggers.eventLogTtlHours' | 'watchers.triggers.sweepIntervalMs' | 'watchers.triggers.supervisionTickMs' | 'watchers.triggers.streamQueueLimit' | 'watchers.triggers.streamBatchLines' | 'watchers.triggers.streamBatchIntervalMs' | 'watchers.triggers.onExitMaxDurationMs' | 'watchers.triggers.onExitStdin' | 'watchers.triggers.outputTailBytes' | 'service.enabled' | 'service.autostart' | 'service.restartOnFailure' | 'service.platform' | 'service.serviceName' | 'service.logPath' | 'update.auto' | 'update.intervalMinutes' | 'update.firstCheckSeconds' | 'update.releasesUrl' | 'update.rollbackAfterFailedStarts' | 'update.alertAfterFailedChecks' | 'network.outboundTls.mode' | 'network.outboundTls.customCaFile' | 'network.outboundTls.customCaDir' | 'network.outboundTls.allowInsecureLocalhost' | 'network.remoteFetch.allowPrivateHosts' | 'relay.enabled' | 'relay.url' | 'relay.rendezvousId' | 'relay.label' | 'relay.requireStepUpForMutations' | 'runtime.companionChatLimiter.perSessionLimit' | 'runtime.eventBus.maxListeners' | 'runtime.unifiedTasks' | 'runtime.pluginLifecycle' | 'runtime.mcpLifecycle' | 'runtime.toolBudget.enforced' | 'runtime.toolBudget.maxMs' | 'runtime.toolBudget.maxTokens' | 'runtime.toolBudget.maxCostUsd' | 'telemetry.includeRawPrompts' | 'telemetry.decisionOtlpEnabled' | 'telemetry.decisionOtlpEndpoint' | 'telemetry.decisionOtlpSignal' | 'telemetry.otelMode' | 'atRest.redactionEnabled' | 'atRest.retentionMaxAgeDays' | 'atRest.retentionMaxTotalMb' | 'batch.mode' | 'batch.fallback' | 'batch.queueBackend' | 'batch.tickIntervalMs' | 'batch.maxDelayMs' | 'batch.maxJobsPerProviderBatch' | 'batch.maxQueuePayloadBytes' | 'batch.maxQueueMessagesPerDay' | 'cloudflare.enabled' | 'cloudflare.freeTierMode' | 'cloudflare.accountId' | 'cloudflare.apiTokenRef' | 'cloudflare.zoneId' | 'cloudflare.zoneName' | 'cloudflare.workerName' | 'cloudflare.workerSubdomain' | 'cloudflare.workerHostname' | 'cloudflare.workerBaseUrl' | 'cloudflare.daemonBaseUrl' | 'cloudflare.daemonHostname' | 'cloudflare.workerTokenRef' | 'cloudflare.workerClientTokenRef' | 'cloudflare.workerCron' | 'cloudflare.queueName' | 'cloudflare.deadLetterQueueName' | 'cloudflare.tunnelName' | 'cloudflare.tunnelId' | 'cloudflare.tunnelTokenRef' | 'cloudflare.accessAppId' | 'cloudflare.accessServiceTokenId' | 'cloudflare.accessServiceTokenRef' | 'cloudflare.kvNamespaceName' | 'cloudflare.kvNamespaceId' | 'cloudflare.durableObjectNamespaceName' | 'cloudflare.durableObjectNamespaceId' | 'cloudflare.r2BucketName' | 'cloudflare.secretsStoreName' | 'cloudflare.secretsStoreId' | 'cloudflare.maxQueueOpsPerDay' | 'notifications.adaptiveSuppression' | 'notifications.burstWindowMs' | 'notifications.burstThreshold' | 'notifications.burstCooldownMs' | 'notifications.pushApproval' | 'notifications.pushNeedsInput' | 'notifications.pushCompletion' | 'notifications.blockedEscalationGraceMs' | 'notifications.blockedEscalationFollowUpMs' | 'notifications.blockedEscalationMaxFollowUps' | 'fetch.sanitizeMode' | 'fetch.trustedHosts' | 'fetch.blockedHosts' | 'fetch.allowLocalhost' | 'security.tokenAudit.enabled' | 'security.tokenAudit.rotationCadenceDays' | 'security.tokenAudit.rotationWarningDays' | 'security.tokenAudit.managed' | 'integrations.routeBinding' | 'integrations.deliveryTracking' | 'integrations.delivery.maxRetries' | 'integrations.delivery.initialDelayMs' | 'integrations.delivery.maxDelayMs' | 'integrations.delivery.maxDlqSize' | 'integrations.delivery.sloEnforced' | 'policy.registryEnabled' | 'policy.requireSignedBundles' | 'policy.bundleSource' | 'policy.bundlePath' | 'agents.passiveInjection.knowledge' | 'agents.passiveInjection.code' | 'agents.passiveInjection.budgetTokens' | 'agents.passiveInjection.relevanceFloor' | 'agents.passiveInjection.codeLimit' | 'agents.contextWindowGuard' | 'agents.contextCompactThreshold' | 'agents.maxTurns' | 'agents.maxTurnsCap' | 'pricing.modelPrices' | 'checkin.enabled' | 'checkin.cadence' | 'checkin.deliveryChannel' | 'checkin.quietHours' | 'learning.consolidation.enabled' | 'learning.consolidation.intervalMs' | 'learning.consolidation.minIdleMs' | 'learning.consolidation.maxMergesPerRun' | 'learning.consolidation.maxDecaysPerRun' | 'learning.consolidation.maxProposalsPerRun' | 'learning.consolidation.decayAgeDays' | 'learning.consolidation.decayConfidenceStep' | 'learning.consolidation.archiveConfidenceFloor' | 'power.keepAwake' | 'power.inhibitWhileWorking' | 'power.workInhibitMaxMinutes' | 'memory.budgetMb' | 'memory.tier.elevatedPct' | 'memory.tier.highPct' | 'memory.tier.criticalPct' | 'memory.tripwire.rateMbPerSec' | 'memory.tripwire.sustainSec' | 'memory.hardLimitPct' | 'voice.local.sttEngine' | 'voice.local.sttBinary' | 'voice.local.sttModelPath' | 'voice.local.ttsEngine' | 'voice.local.ttsBinary' | 'voice.local.ttsModelPath' | 'voice.wake.enabled' | 'voice.wake.models' | 'voice.wake.threshold' | 'voice.wake.patienceFrames' | 'voice.wake.cooldownMs' | 'voice.wake.vadThreshold' | 'voice.wake.noiseSuppression' | 'voice.wake.inputDevice' | 'voice.wake.captureCommand' | 'voice.wake.surfaces.tui' | 'voice.wake.surfaces.agent' | 'voice.wake.surfaces.webui' | 'voice.wake.activationSound' | 'voice.wake.activationSoundPath' | 'voice.wake.indicator' | 'voice.wake.preRollMs' | 'voice.wake.captureMaxSeconds' | 'voice.wake.silenceStopMs' | 'voice.wake.autoSubmit' | 'voice.wake.retainAudio' | 'voice.wake.customModelDir' | 'voice.wake.maxRestarts' | 'voice.wake.restartBackoffMs' | 'voice.wake.crashWindowSeconds' | 'voice.wake.browserBackend' | 'device.capabilities.mode' | 'device.capabilities.allowAlwaysOffer' | 'device.capabilities.requestTimeoutSeconds' | 'device.location.precision' | 'device.clipboard.readMode' | 'device.capture.retentionHours' | 'device.capture.maxArtifacts' | 'device.capture.sweepIntervalMinutes' | 'device.grants.expiryDays' | 'device.grants.maxPerNode' | 'device.grants.auditRetentionDays' | 'device.nodes.maxPaired' | 'push.vapidSubject' | 'push.subscriptions.warnAbovePerPrincipal' | 'push.subscriptions.failureThreshold' | 'push.subscriptions.sweepIntervalMinutes' | 'fleet.maxSize' | 'cluster.enabled' | 'cluster.heartbeatSeconds' | 'cluster.masterTimeoutSeconds' | 'cluster.bootProbeSeconds' | 'cluster.port' | 'cluster.multicastGroup' | 'cluster.secret' | 'cluster.keyRotationHours' | 'cluster.keyRotationGraceMinutes' | 'cluster.beaconSeconds' | 'cluster.rosterGossipSeconds' | ProfileConfigKey | OccasionsConfigKey;"
+    },
+    {
+      "name": "FleetServicesDeps",
+      "kind": "interface",
+      "required": [
+        "providerRegistry"
+      ],
+      "text": "export interface FleetServicesDeps extends Omit<ProcessRegistryDeps, 'observedAgents' | 'priceUsage'> { readonly observeExternalAgents?: boolean | undefined; readonly providerRegistry: Pick<ProviderRegistry, 'resolveModelPricing'>; } ;; via Pick = type Pick<T, K extends keyof T> = { [P in K]: T[P]; };"
+    },
+    {
+      "name": "FullScreenTerminalOutputGuardOptions",
+      "kind": "type",
+      "text": "export type FullScreenTerminalOutputGuardOptions = { readonly stdout: WritableStreamLike; readonly stderr?: WritableStreamLike; readonly active?: boolean; readonly onCapture?: (total: number) => void; readonly notify?: (message: string) => void; }; ;; via WritableStreamLike = type WritableStreamLike = { write: { (buffer: string | Uint8Array, cb?: (error?: Error | null) => void): boolean; (buffer: string | Uint8Array, encoding?: BufferEncoding, cb?: (error?: Error | null) => void): boolean; }; };"
+    },
+    {
+      "name": "GOODVIBES_CLI_CATALOG",
+      "kind": "const",
+      "text": "GOODVIBES_CLI_CATALOG: CliCatalog<GoodVibesCliCommand, GoodVibesCliFlagField, GoodVibesCliFlags>"
+    },
+    {
+      "name": "GatewayCatalogConformanceView",
+      "kind": "interface",
+      "required": [
+        "hasHandler",
+        "list"
+      ],
+      "text": "export interface GatewayCatalogConformanceView { list(): ReadonlyArray<{ readonly id: string; }>; hasHandler(id: string): boolean; } ;; via ReadonlyArray = interface ReadonlyArray<T> { readonly length: number; toString(): string; toLocaleString(): string; concat(...items: ConcatArray<T>[]): T[]; concat(...items: (T | ConcatArray<T>)[]): T[]; join(separator?: string): string; slice(start?: number, end?: number): T[]; indexOf(searchElement: T, fromIndex?: number): number; lastIndexOf(searchElement: T, fromIndex?: number): number; every<S extends T>(predicate: (value: T, index: number, array: readonly T[]) => value is S, thisArg?: any): this is readonly S[]; every(predicate: (value: T, index: number, array: readonly T[]) => unknown, thisArg?: any): boolean; some(predicate: (value: T, index: number, array: readonly T[]) => unknown, thisArg?: any): boolean; forEach(callbackfn: (value: T, index: number, array: readonly T[]) => void, thisArg?: any): void; map<U>(callbackfn: (value: T, index: number, array: readonly T[]) => U, thisArg?: any): U[]; filter<S extends T>(predicate: (value: T, index: number, array: readonly T[]) => value is S, thisArg?: any): S[]; filter(predicate: (value: T, index: number, array: readonly T[]) => unknown, thisArg?: any): T[]; reduce(callbackfn: (previousValue: T, currentValue: T, currentIndex: number, array: readonly T[]) => T): T; reduce(callbackfn: (previousValue: T, currentValue: T, currentIndex: number, array: readonly T[]) => T, initialValue: T): T; reduce<U>(callbackfn: (previousValue: U, currentValue: T, currentIndex: number, array: readonly T[]) => U, initialValue: U): U; reduceRight(callbackfn: (previousValue: T, currentValue: T, currentIndex: number, array: readonly T[]) => T): T; reduceRight(callbackfn: (previousValue: T, currentValue: T, currentIndex: number, array: readonly T[]) => T, initialValue: T): T; reduceRight<U>(callbackfn: (previousValue: U, currentValue: T, currentIndex: number, array: readonly T[]) => U, initialValue: U): U; readonly [n: number]: T; }"
+    },
+    {
+      "name": "GatewayVerbGroupDeps",
+      "kind": "interface",
+      "required": [
+        "approvalBroker",
+        "configManager",
+        "runtimeStore",
+        "secretsManager",
+        "shellPaths"
+      ],
+      "text": "export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps { readonly secretsManager: VapidSecretStore; readonly disposal?: DisposalRegistry | undefined; readonly approvalBroker: ApprovalSource; readonly stampFixSessionOnApproval?: ((offerCallId: string, outcome: FixSessionStartOutcome) => Promise<unknown>) | undefined; readonly requestApproval?: ((input: { readonly request: PermissionPromptRequest; readonly metadata?: Record<string, unknown> | undefined; }) => Promise<PermissionPromptDecision>) | undefined; readonly watcherRegistry?: CiPollingHost | undefined; readonly userPermissionRuleStore?: Pick<UserPermissionRuleStore, 'list' | 'delete'> | undefined; readonly shellPaths: { resolveUserPath(...segments: string[]): string; }; readonly vapidSubject?: string | undefined; readonly runtimeBus?: Pick<RuntimeEventBus, 'onDomain' | 'emit'> | undefined; readonly sessionPresence?: NeedsInputPresence | undefined; readonly pairingTokens?: PairingGatewayService | undefined; readonly relayAvailable?: (() => boolean) | undefined; readonly pairingWebOrigin?: (() => string | undefined) | undefined; readonly tailscaleRunner?: TailscaleCommandRunner | undefined; readonly acpHost?: Pick<AcpHostService, 'spawnAgent' | 'list'> | undefined; readonly acpDiscover?: (() => ReturnType<typeof discoverAcpAgents>) | undefined; readonly configManager: Pick<ConfigManager, 'get' | 'set' | 'attachProfileFallback'>; readonly runtimeStore: Pick<RuntimeStore, 'getState'>; readonly sessionLiveTurnControls?: SessionLiveTurnControlsHolder | undefined; readonly powerManager?: PowerGatewayService | undefined; readonly deviceCapabilities?: DevicesGatewayService | undefined; readonly memoryGovernor?: MemoryGatewayService | undefined; readonly voiceSetup?: VoiceSetupGatewayService | undefined; readonly calendarGateway?: CalendarGatewayService | undefined; readonly browserGateway?: BrowserCompositionDeps['browserGateway']; readonly browserUntrusted?: BrowserCompositionDeps['browserUntrusted']; readonly homeDirectory?: string | undefined; readonly emailGateway?: EmailGatewayService | undefined; readonly emailServiceDeps?: EmailCompositionDeps['emailServiceDeps']; readonly describeEmailConfigProblem?: EmailCompositionDeps['describeEmailConfigProblem']; readonly emailLog?: EmailCompositionDeps['emailLog']; readonly channelDeliveryRouter?: Pick<ChannelDeliveryRouter, 'deliver'> | undefined; readonly providerRegistry?: ProviderRegistry | undefined; readonly automationManager?: Pick<AutomationManager, 'listJobs' | 'createJob' | 'updateJob' | 'setEnabled' | 'attachCheckinEvaluator' | 'listRuns' | 'runNow'> | undefined; readonly sessionLister?: { listSessions(limit?: number): readonly CheckinSessionView[]; } | undefined; readonly sessionIntake?: InboundIntakeBroker | undefined; readonly workingDirectory?: string | undefined; readonly onCiAutoWatch?: ((observer: (toolName: string, args: Record<string, unknown>, success: boolean) => void) => void) | undefined; readonly conversationRewindPort?: RewindConversationPort | null | undefined; readonly stepUpService?: StepUpGatewayService | undefined; readonly memoryRegistry?: MemoryProjectionSource | undefined; readonly credentialWrites?: { readonly config: CredentialWriteConfig; readonly secrets: CredentialWriteSecrets; readonly additionalSecretKeys?: readonly string[] | undefined; } | undefined; readonly approvalRaise?: ApprovalRaiseService | undefined; } ;; via ApprovalRaiseService = export interface ApprovalRaiseService { raiseApproval(input: RequestSharedApprovalInput): Promise<RaisedApproval>; getApproval(approvalId: string): SharedApprovalRecord | null; } ;; ApprovalSource = export interface ApprovalSource { subscribe(listener: (approval: ApprovalNotice) => void): () => void; } ;; BrowserCompositionDeps = export interface BrowserCompositionDeps { readonly homeDirectory?: string | undefined; readonly browserGateway?: DaemonBrowserGatewayService | undefined; readonly browserUntrusted?: UntrustedContentPort | undefined; } ;; CalendarGatewayService = export interface CalendarGatewayService { listEvents(input: CalendarGatewayListInput): Promise<readonly CalendarGatewayEventSummary[]>; getEvent(eventId: string, calendarId?: string | undefined): Promise<CalendarGatewayEventDetail>; createEvent(input: CalendarGatewayCreateInput): Promise<CalendarGatewayCreated>; exportIcs(input: CalendarGatewayListInput): Promise<CalendarGatewayIcsExport>; importIcs(icsContent: string, calendarId?: string | undefined): Promise<CalendarGatewayIcsImport>; } ;; CheckinSessionView = export interface CheckinSessionView { readonly status: string; readonly activeAgentId?: string | undefined; readonly pendingInputCount: number; readonly title: string; readonly surfaceKinds: readonly string[]; } ;; CiPollingHost = export interface CiPollingHost { registerPollingWatcher(input: { id: string; label: string; source: { id: string; kind: 'watcher'; label: string; enabled: boolean; createdAt: number; updatedAt: number; metadata: Record<string, never>; }; intervalMs: number; run: () => Promise<string | void> | string | void; }): unknown; startWatcher(id: string): unknown; } ;; CredentialWriteConfig = export interface CredentialWriteConfig { get(key: string): unknown; setDynamic(key: string, value: unknown): void; } ;; CredentialWriteSecrets = export interface CredentialWriteSecrets { set(key: string, value: string, options?: { scope?: SecretScope | undefined; }): Promise<void>; get(key: string): Promise<string | null>; delete(key: string, options?: { scope?: SecretScope | undefined; }): Promise<void>; } ;; DevicesGatewayService = export interface DevicesGatewayService { readonly capabilities: Pick<DeviceCapabilityService, 'listDeviceNodes' | 'getPolicy' | 'request'>; readonly grants: Pick<DeviceGrantStore, 'list' | 'listAudit' | 'revoke'>; readonly housekeeper: Pick<DeviceHousekeeper, 'sweep'>; readonly artifacts: Pick<DeviceCaptureArtifactStore, 'list' | 'read' | 'getPolicy' | 'pathFor'>; } ;; DisposalRegistry = export interface DisposalRegistry { add(label: string, dispose: () => void): void; } ;; EmailCompositionDeps = export interface EmailCompositionDeps { readonly emailGateway?: EmailGatewayService | undefined; readonly emailServiceDeps?: EmailServiceDeps | undefined; readonly untrustedContentLedger?: UntrustedContentLedger | undefined; readonly describeEmailConfigProblem?: (() => Promise<SurfaceEmailConfigProblem | null>) | undefined; readonly emailLog?: EmailGatewayLog | undefined; } ;; EmailGatewayService = export interface EmailGatewayService { listInbox(input: EmailGatewayListInput): Promise<EmailGatewayListResult>; readMessage(uid: number): Promise<EmailGatewayMessageDetail | null>; createDraft(input: EmailGatewayDraftInput): Promise<EmailGatewayDraftResult>; send(input: EmailGatewaySendInput): Promise<EmailGatewaySendResult>; } ;; FixSessionStartOutcome = export type FixSessionStartOutcome = { readonly sessionId: string; } | { readonly error: string; }; ;; InboundIntakeBroker = export interface InboundIntakeBroker { submitMessage(input: SubmitSharedSessionMessageInput): Promise<SharedSessionSubmission>; } ;; MemoryGatewayService = export type MemoryGatewayService = Pick<MemoryGovernor, 'snapshot'>; ;; MemoryProjectionSource = export interface MemoryProjectionSource { getAll(): readonly MemoryRecord[]; } ;; NeedsInputPresence = export interface NeedsInputPresence { isAttached(sessionId: string): boolean; } ;; PairingGatewayService = export type PairingGatewayService = Pick<PairingTokenManager, 'list' | 'mint' | 'mintForMigration' | 'rename' | 'revoke' | 'isLegacyRevoked' | 'revokeLegacyShared'>; ;; PermissionPromptDecision = export interface PermissionPromptDecision { approved: boolean; remember?: boolean | undefined; rememberTier?: RememberTier | undefined; reason?: string | undefined; modifiedArgs?: Record<string, unknown> | undefined; } ;; PermissionPromptRequest = export interface PermissionPromptRequest { callId: string; tool: string; args: Record<string, unknown>; category: PermissionCategory; analysis: PermissionRequestAnalysis; workingDirectory?: string | undefined; attribution?: PermissionAttribution | undefined; rememberOptions?: readonly RememberTierOption[] | undefined; } ;; Pick = type Pick<T, K extends keyof T> = { [P in K]: T[P]; }; ;; PowerGatewayService = export type PowerGatewayService = Pick<PowerManager, 'getState' | 'setKeepAwake'>; ;; Promise = interface Promise<T> { then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): Promise<TResult1 | TResult2>; catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): Promise<T | TResult>; } ;; Record = type Record<K extends keyof any, T> = { [P in K]: T; }; ;; ReturnType = type ReturnType<T extends (...args: any) => any> = T extends (...args: any) => infer R ? R : any; ;; RewindConversationPort = export interface RewindConversationPort { preview(anchor: RewindAnchor): Promise<RewindConversationPreview>; rewind(anchor: RewindAnchor): Promise<RewindConversationOutcome>; } ;; RuntimeStore = export type RuntimeStore = StoreApi<RuntimeState>; ;; StepUpGatewayService = export type StepUpGatewayService = Pick<StepUpService, 'registerCredential' | 'mintChallenge'>; ;; TailscaleCommandRunner = export interface TailscaleCommandRunner { run(command: string, args: readonly string[]): { readonly status: number | null; readonly stdout: string; readonly stderr: string; }; } ;; VapidSecretStore = export interface VapidSecretStore { get(key: string): Promise<string | null>; set(key: string, value: string): Promise<void>; } ;; VoiceSetupGatewayService = export interface VoiceSetupGatewayService { status(): unknown; install(): Promise<VoiceLocalInstallResult>; wakeStatus(): unknown; wakeProvision(): Promise<unknown>; wakeModelChunk(request: { component: string; offset?: number | undefined; maxBytes?: number | undefined; }): WakeModelChunkPayload; }"
+    },
+    {
+      "name": "GoodVibesCliCommand",
+      "kind": "type",
+      "text": "export type GoodVibesCliCommand = 'tui' | 'run' | 'serve' | 'web' | 'service' | 'status' | 'doctor' | 'onboarding' | 'models' | 'providers' | 'auth' | 'subscription' | 'secrets' | 'sessions' | 'tasks' | 'pair' | 'surfaces' | 'listener' | 'control-plane' | 'support-bundle' | 'remote' | 'bridge' | 'hooks' | 'plugin' | 'completion' | 'help' | 'version' | 'unknown';"
+    },
+    {
+      "name": "GoodVibesCliFlagField",
+      "kind": "type",
+      "text": "export type GoodVibesCliFlagField = keyof GoodVibesCliFlags;"
+    },
+    {
+      "name": "GoodVibesCliFlags",
+      "kind": "interface",
+      "required": [
+        "configOverrides",
+        "continueLast",
+        "daemonHome",
+        "disableFeatures",
+        "enableFeatures",
+        "fork",
+        "help",
+        "hostname",
+        "model",
+        "noAltScreen",
+        "nonInteractive",
+        "open",
+        "outputFormat",
+        "port",
+        "print",
+        "prompt",
+        "provider",
+        "resume",
+        "session",
+        "strict",
+        "version",
+        "workingDir",
+        "yes"
+      ],
+      "text": "export interface GoodVibesCliFlags { readonly provider: string | undefined; readonly model: string | undefined; readonly daemonHome: string | undefined; readonly workingDir: string | undefined; readonly help: boolean; readonly version: boolean; readonly prompt: string | undefined; readonly print: boolean; readonly outputFormat: GoodVibesCliOutputFormat; readonly configOverrides: readonly string[]; readonly enableFeatures: readonly string[]; readonly disableFeatures: readonly string[]; readonly noAltScreen: boolean; readonly port: number | undefined; readonly hostname: string | undefined; readonly open: boolean; readonly continueLast: boolean; readonly resume: string | undefined; readonly session: string | undefined; readonly fork: string | true | undefined; readonly yes: boolean; readonly nonInteractive: boolean; readonly strict: boolean; }"
+    },
+    {
+      "name": "GoodVibesCliOutputFormat",
+      "kind": "type",
+      "text": "export type GoodVibesCliOutputFormat = 'text' | 'json' | 'stream-json';"
+    },
+    {
+      "name": "GoodVibesCliParseResult",
+      "kind": "interface",
+      "required": [
+        "binary",
+        "command",
+        "commandArgs",
+        "errors",
+        "flags",
+        "positionals",
+        "rawCommand",
+        "warnings"
+      ],
+      "text": "export interface GoodVibesCliParseResult { readonly binary: string; readonly command: GoodVibesCliCommand; readonly rawCommand: string | undefined; readonly commandArgs: readonly string[]; readonly positionals: readonly string[]; readonly flags: GoodVibesCliFlags; readonly errors: readonly string[]; readonly warnings: readonly string[]; }"
+    },
+    {
+      "name": "InfiniteBuffer",
+      "kind": "class",
+      "publicMembers": [
+        "addLine",
+        "addLines",
+        "clear",
+        "getAllLines",
+        "getLineCount",
+        "getSnapshot",
+        "truncateToLine"
+      ],
+      "text": "export declare class InfiniteBuffer { private lines; addLine(line: Line): void; addLines(lines: Line[]): void; getLineCount(): number; getAllLines(): Line[]; getSnapshot(startLine: number, height: number, width: number): Line[]; clear(): void; truncateToLine(lineIndex: number): void; } ;; via Line = export type Line = Cell[];"
+    },
+    {
+      "name": "JoinKeyRendering",
+      "kind": "interface",
+      "required": [
+        "clipboardSequence",
+        "lines"
+      ],
+      "text": "export interface JoinKeyRendering { readonly lines: string[]; readonly clipboardSequence: string | null; }"
+    },
+    {
+      "name": "McpRuntimeReloadHandle",
+      "kind": "interface",
+      "required": [
+        "stop"
+      ],
+      "text": "export interface McpRuntimeReloadHandle { stop(): void; }"
+    },
+    {
+      "name": "McpRuntimeReloadOptions",
+      "kind": "interface",
+      "required": [
+        "registry",
+        "roots"
+      ],
+      "text": "export interface McpRuntimeReloadOptions { readonly roots: McpConfigRoots; readonly registry: Pick<McpRegistry, 'reload' | 'listServerSecurity'>; readonly onReload?: (summary: { connected: number; total: number; }) => void; readonly onError?: (error: unknown) => void; readonly intervalMs?: number; } ;; via McpConfigRoots = export type McpConfigRoots = Pick<ShellPathService, 'workingDirectory' | 'homeDirectory'>; ;; Pick = type Pick<T, K extends keyof T> = { [P in K]: T[P]; };"
+    },
+    {
+      "name": "OverlaySurfaceMetrics",
+      "kind": "interface",
+      "required": [
+        "boxWidth",
+        "contentRows",
+        "contentWidth",
+        "margin"
+      ],
+      "text": "export interface OverlaySurfaceMetrics { readonly margin: number; readonly boxWidth: number; readonly contentWidth: number; readonly contentRows: number; }"
+    },
+    {
+      "name": "OverlaySurfaceMetricsOptions",
+      "kind": "interface",
+      "required": [
+        "chromeRows"
+      ],
+      "text": "export interface OverlaySurfaceMetricsOptions { readonly margin?: number | undefined; readonly maxWidth?: number | undefined; readonly chromeRows: number; readonly minContentRows?: number | undefined; readonly maxContentRows?: number | undefined; readonly targetRatio?: number | undefined; readonly minTotalRows?: number | undefined; readonly maxTotalRows?: number | undefined; }"
+    },
+    {
+      "name": "OverlayViewportBudgetOptions",
+      "kind": "interface",
+      "required": [
+        "chromeRows"
+      ],
+      "text": "export interface OverlayViewportBudgetOptions { readonly chromeRows: number; readonly minContentRows?: number | undefined; readonly maxContentRows?: number | undefined; readonly targetRatio?: number | undefined; readonly minTotalRows?: number | undefined; readonly maxTotalRows?: number | undefined; }"
+    },
+    {
+      "name": "OverlayWidthClass",
+      "kind": "type",
+      "text": "export type OverlayWidthClass = 'narrow' | 'medium' | 'wide';"
+    },
+    {
+      "name": "POPULAR_PROVIDERS",
+      "kind": "const",
+      "text": "POPULAR_PROVIDERS: ReadonlySet<string> ;; via ReadonlySet = interface ReadonlySet<T> { forEach(callbackfn: (value: T, value2: T, set: ReadonlySet<T>) => void, thisArg?: any): void; has(value: T): boolean; readonly size: number; }"
+    },
+    {
+      "name": "ParsedClusterCommand",
+      "kind": "interface",
+      "required": [
+        "errors",
+        "group",
+        "host",
+        "json",
+        "key",
+        "name",
+        "now",
+        "passphrase",
+        "port",
+        "positional",
+        "qr",
+        "subcommand",
+        "token",
+        "yes"
+      ],
+      "text": "export interface ParsedClusterCommand { readonly subcommand: ClusterSubcommand | null; readonly positional: string | null; readonly name: string | null; readonly passphrase: string | null; readonly group: string | null; readonly key: string | null; readonly host: string | null; readonly port: number | null; readonly token: string | null; readonly json: boolean; readonly yes: boolean; readonly qr: boolean; readonly now: boolean; readonly errors: readonly string[]; }"
+    },
+    {
+      "name": "ProcessRegistryDeps",
+      "kind": "interface",
+      "required": [
+        "agentManager",
+        "processManager",
+        "watcherRegistry",
+        "workflow",
+        "wrfcController"
+      ],
+      "text": "export interface ProcessRegistryDeps { readonly agentManager: Pick<AgentManager, 'list' | 'cancel'> & Partial<Pick<AgentManager, 'wakeWithSteer'>>; readonly wrfcController: Pick<WrfcController, 'listChains'>; readonly orchestrationEngine?: Pick<OrchestrationEngine, 'listWorkstreams' | 'kill'> | undefined; readonly processManager: Pick<ProcessManager, 'list' | 'stop' | 'getStatus'>; readonly watcherRegistry: Pick<WatcherRegistry, 'list' | 'stopWatcher'>; readonly workflow: { readonly workflowManager: Pick<WorkflowManager, 'list' | 'cancel'>; readonly triggerManager: Pick<TriggerManager, 'list' | 'remove' | 'disable' | 'enable'>; readonly scheduleManager: Pick<ScheduleManager, 'list' | 'remove' | 'disable' | 'enable'>; }; readonly triggerSupervisor?: Pick<WatcherTriggerManager, 'list' | 'cancel' | 'reset'> | undefined; readonly approvalBroker?: Pick<ApprovalBroker, 'listApprovals'> | undefined; readonly sessionBroker?: Pick<SharedSessionBroker, 'listSessions'> | undefined; readonly codeIndexService?: CodeIndexProcessSource | undefined; readonly acpHost?: Pick<AcpHostService, 'list' | 'prompt' | 'stop'> | undefined; readonly observedAgents?: Pick<ObservedAgentSource, 'list' | 'steer'> | undefined; readonly automationManager?: Pick<AutomationManager, 'listJobs' | 'setEnabled' | 'removeJob'> | undefined; readonly messageBus?: Pick<AgentMessageBus, 'send'> | undefined; readonly runtimeBus?: RuntimeEventBus | undefined; readonly priceUsage?: ((model: string | undefined, usage: ProcessUsage) => number | null) | undefined; readonly priceProvenance?: ((model: string | undefined) => { readonly source: 'user' | 'provider' | 'catalog'; readonly asOf?: string | undefined; } | null) | undefined; readonly now?: (() => number) | undefined; readonly stalledThresholdMs?: number | undefined; readonly stallTellMs?: number | undefined; readonly tickIntervalMs?: number | undefined; readonly timers?: RegistryTimers | undefined; } ;; via CodeIndexProcessSource = export interface CodeIndexProcessSource { isBuilding(): boolean; buildProgress(): CodeIndexBuildProgress | null; buildStartedAt(): number | null; stats(): CodeIndexStats; } ;; OrchestrationEngine = export interface OrchestrationEngine { createWorkstream(input: CreateWorkstreamInput): Workstream; getWorkstream(id: string): Workstream | null; listWorkstreams(): Workstream[]; insertPhase(workstreamId: string, afterOrdinal: number, spec: PhaseSpec): Phase | null; start(workstreamId: string): void; kill(itemId: string): boolean; updateBudget(workstreamId: string, ceiling: BudgetCeiling | undefined): boolean; retryItem(itemId: string): boolean; getPhaseResults(workstreamId: string): readonly PhaseResult[]; listHeldMergeGroups(workstreamId?: string): Promise<HeldMergeGroup[]>; pickAttemptWinner(groupId: string, winnerItemId: string): Promise<AttemptPickResult>; proposeAttemptWinner(groupId: string): Promise<AttemptJudgment>; stampConflictSession(itemId: string, sessionId: string): boolean; retryItemIntegration(itemId: string): Promise<'merged' | 'conflict' | 'not-conflicted'>; addDependency(itemId: string, dependsOnId: string, reason: string): EdgeAddResult | null; requeueItem(itemId: string, reason: string): boolean; getGraphSnapshot(workstreamId: string): WorkstreamGraphSnapshot | null; serializeWorkstream(workstreamId: string): string | null; importWorkstream(snapshotJson: string, force?: boolean): boolean; resumeWorkstream(workstreamId: string): boolean; resumeAllFromDisk(): number; on(listener: OrchestrationEventListener): () => void; dispose(): void; } ;; Partial = type Partial<T> = { [P in keyof T]?: T[P]; }; ;; Pick = type Pick<T, K extends keyof T> = { [P in K]: T[P]; }; ;; ProcessUsage = export interface ProcessUsage { readonly inputTokens: number; readonly outputTokens: number; readonly cacheReadTokens: number; readonly cacheWriteTokens: number; readonly reasoningTokens?: number | undefined; readonly llmCallCount: number; readonly turnCount: number; readonly toolCallCount: number; } ;; RegistryTimers = export interface RegistryTimers { setInterval(callback: () => void, intervalMs: number): unknown; clearInterval(handle: unknown): void; }"
+    },
+    {
+      "name": "REDACTED_VALUE",
+      "kind": "const",
+      "text": "REDACTED_VALUE = \"<redacted>\""
+    },
+    {
+      "name": "RUNTIME_ENDPOINT_CONFIG_KEYS",
+      "kind": "const",
+      "text": "RUNTIME_ENDPOINT_CONFIG_KEYS: Record<RuntimeEndpointId, { readonly hostMode: ConfigKey; readonly host: ConfigKey; readonly port: ConfigKey; }> ;; via ConfigKey = export type ConfigKey = 'display.stream' | 'display.lineNumbers' | 'display.collapseThreshold' | 'display.theme' | 'display.showThinking' | 'display.showReasoningSummary' | 'display.showTokenSpeed' | 'display.showToolPreview' | 'provider.reasoningEffort' | 'provider.model' | 'provider.embeddingProvider' | 'provider.systemPromptFile' | 'provider.optimizerMode' | 'provider.optimizerPinnedModel' | 'provider.localContextIngestion' | 'behavior.autoApprove' | 'behavior.autoCompactThreshold' | 'behavior.compactionStrategy' | 'behavior.staleContextWarnings' | 'behavior.saveHistory' | 'behavior.notifyOnComplete' | 'behavior.suggestAlternativeOnProviderFail' | 'behavior.hitlMode' | 'behavior.toolResultReconciliation' | 'behavior.returnContextMode' | 'behavior.guidanceMode' | 'storage.secretPolicy' | 'storage.artifacts.maxBytes' | 'permissions.mode' | 'permissions.backgroundAgents' | 'permissions.engine' | 'permissions.simulation' | 'permissions.divergenceDashboard' | 'permissions.commandParser' | 'permissions.divergenceThreshold' | 'permissions.maxDivergenceRecords' | 'permissions.tools.read' | 'permissions.tools.write' | 'permissions.tools.edit' | 'permissions.tools.exec' | 'permissions.tools.find' | 'permissions.tools.fetch' | 'permissions.tools.analyze' | 'permissions.tools.inspect' | 'permissions.tools.agent' | 'permissions.tools.state' | 'permissions.tools.workflow' | 'permissions.tools.registry' | 'permissions.tools.delegate' | 'permissions.tools.mcp' | 'diagnostics.postEdit' | 'orchestration.recursionEnabled' | 'orchestration.maxDepth' | 'planner.decomposition' | 'planner.maxTurns' | 'planner.tokenCeiling' | 'planner.wallTimeoutMs' | 'planner.adaptive' | 'sandbox.enabled' | 'sandbox.judgment' | 'sandbox.replIsolation' | 'sandbox.mcpIsolation' | 'sandbox.windowsMode' | 'sandbox.vmBackend' | 'sandbox.qemuBinary' | 'sandbox.qemuImagePath' | 'sandbox.qemuExecWrapper' | 'sandbox.qemuGuestHost' | 'sandbox.qemuGuestPort' | 'sandbox.qemuGuestUser' | 'sandbox.qemuWorkspacePath' | 'sandbox.qemuSessionMode' | 'sandbox.replJavaScriptCommand' | 'ui.voiceEnabled' | 'ui.systemMessages' | 'ui.operationalMessages' | 'ui.wrfcMessages' | 'tts.provider' | 'tts.voice' | 'tts.llmProvider' | 'tts.llmModel' | 'tts.speed' | 'release.channel' | PaymentsConfigKey | DaemonProcessConfigKey | 'danger.httpListener' | 'tools.llmEnabled' | 'tools.llmProvider' | 'tools.llmModel' | 'tools.autoHeal' | 'tools.defaultTokenBudget' | 'tools.hooksFile' | 'tools.overflowSpillBackend' | 'tools.contractVerification' | 'tools.outputSchemaFingerprints' | 'wrfc.scoreThreshold' | 'wrfc.maxFixAttempts' | 'wrfc.autoCommit' | 'wrfc.commitScope' | 'wrfc.agentHeartbeatTimeoutMs' | 'wrfc.transportRetryLimit' | 'wrfc.transportRetryDelayMs' | 'cache.enabled' | 'cache.stableTtl' | 'cache.monitorHitRate' | 'cache.hitRateWarningThreshold' | 'helper.enabled' | 'helper.globalProvider' | 'helper.globalModel' | 'automation.enabled' | 'automation.maxConcurrentRuns' | 'automation.runHistoryLimit' | 'automation.defaultTimeoutMs' | 'automation.catchUpWindowMinutes' | 'automation.failureCooldownMs' | 'automation.deleteAfterRun' | 'controlPlane.enabled' | 'controlPlane.gateway' | 'controlPlane.hostMode' | 'controlPlane.host' | 'controlPlane.port' | 'controlPlane.publicBaseUrl' | 'conversationGate.mode' | 'conversationGate.proposalTtlMs' | 'conversationGate.maxPendingProposals' | 'hostedSessions.detachPolicy' | 'hostedSessions.maxSessions' | 'hostedSessions.maxMessagesPerSession' | 'hostedSessions.terminatedRetentionMs' | 'hostedSessions.attachmentTtlMs' | 'hostedSessions.promoteInboundConversations' | 'controlPlane.streamMode' | 'controlPlane.allowRemote' | 'controlPlane.trustProxy' | 'controlPlane.openaiCompatible.enabled' | 'controlPlane.openaiCompatible.pathPrefix' | 'controlPlane.webui.serve' | 'controlPlane.webui.bundleDir' | 'controlPlane.cors.enabled' | 'controlPlane.cors.allowedOrigins' | 'controlPlane.tls.mode' | 'controlPlane.tls.certFile' | 'controlPlane.tls.keyFile' | 'httpListener.hostMode' | 'httpListener.host' | 'httpListener.port' | 'httpListener.trustProxy' | 'httpListener.trustCloudflare' | 'httpListener.tls.mode' | 'httpListener.tls.certFile' | 'httpListener.tls.keyFile' | 'web.enabled' | 'web.hostMode' | 'web.host' | 'web.port' | 'web.publicBaseUrl' | 'web.staticAssetsDir' | 'surfaces.slack.enabled' | 'surfaces.slack.signingSecret' | 'surfaces.slack.botToken' | 'surfaces.slack.appToken' | 'surfaces.slack.defaultChannel' | 'surfaces.slack.workspaceId' | 'surfaces.discord.enabled' | 'surfaces.discord.publicKey' | 'surfaces.discord.botToken' | 'surfaces.discord.applicationId' | 'surfaces.discord.defaultChannelId' | 'surfaces.discord.guildId' | 'surfaces.ntfy.enabled' | 'surfaces.ntfy.baseUrl' | 'surfaces.ntfy.topic' | 'surfaces.ntfy.chatTopic' | 'surfaces.ntfy.agentTopic' | 'surfaces.ntfy.remoteTopic' | 'surfaces.ntfy.token' | 'surfaces.ntfy.defaultPriority' | 'surfaces.webhook.enabled' | 'surfaces.webhook.defaultTarget' | 'surfaces.webhook.timeoutMs' | 'surfaces.webhook.secret' | 'surfaces.homeassistant.enabled' | 'surfaces.homeassistant.instanceUrl' | 'surfaces.homeassistant.accessToken' | 'surfaces.homeassistant.webhookSecret' | 'surfaces.homeassistant.defaultConversationId' | 'surfaces.homeassistant.deviceId' | 'surfaces.homeassistant.deviceName' | 'surfaces.homeassistant.eventType' | 'surfaces.homeassistant.remoteSessionTtlMs' | 'surfaces.telegram.enabled' | 'surfaces.telegram.botToken' | 'surfaces.telegram.webhookSecret' | 'surfaces.telegram.defaultChatId' | 'surfaces.telegram.botUsername' | 'surfaces.telegram.discoveredBotTokenId' | 'surfaces.telegram.mode' | 'surfaces.googleChat.enabled' | 'surfaces.googleChat.webhookUrl' | 'surfaces.googleChat.verificationToken' | 'surfaces.googleChat.appId' | 'surfaces.googleChat.spaceId' | 'surfaces.signal.enabled' | 'surfaces.signal.bridgeUrl' | 'surfaces.signal.account' | 'surfaces.signal.token' | 'surfaces.signal.defaultRecipient' | 'surfaces.whatsapp.enabled' | 'surfaces.whatsapp.provider' | 'surfaces.whatsapp.accessToken' | 'surfaces.whatsapp.verifyToken' | 'surfaces.whatsapp.signingSecret' | 'surfaces.whatsapp.phoneNumberId' | 'surfaces.whatsapp.businessAccountId' | 'surfaces.whatsapp.defaultRecipient' | 'surfaces.telephony.enabled' | 'surfaces.telephony.provider' | 'surfaces.telephony.mode' | 'surfaces.telephony.bridgeUrl' | 'surfaces.telephony.token' | 'surfaces.telephony.accountSid' | 'surfaces.telephony.authToken' | 'surfaces.telephony.fromNumber' | 'surfaces.telephony.defaultRecipient' | 'surfaces.telephony.webhookSecret' | 'surfaces.telephony.voiceLanguage' | 'surfaces.imessage.enabled' | 'surfaces.imessage.bridgeUrl' | 'surfaces.imessage.account' | 'surfaces.imessage.token' | 'surfaces.imessage.defaultChatId' | 'surfaces.msteams.enabled' | 'surfaces.msteams.appId' | 'surfaces.msteams.appPassword' | 'surfaces.msteams.tenantId' | 'surfaces.msteams.serviceUrl' | 'surfaces.msteams.botId' | 'surfaces.msteams.defaultConversationId' | 'surfaces.msteams.defaultChannelId' | 'surfaces.bluebubbles.enabled' | 'surfaces.bluebubbles.serverUrl' | 'surfaces.bluebubbles.password' | 'surfaces.bluebubbles.account' | 'surfaces.bluebubbles.defaultChatGuid' | 'surfaces.mattermost.enabled' | 'surfaces.mattermost.baseUrl' | 'surfaces.mattermost.botToken' | 'surfaces.mattermost.teamId' | 'surfaces.mattermost.defaultChannelId' | 'surfaces.matrix.enabled' | 'surfaces.matrix.homeserverUrl' | 'surfaces.matrix.accessToken' | 'surfaces.matrix.userId' | 'surfaces.matrix.defaultRoomId' | 'surfaces.email.host' | 'surfaces.email.user' | 'surfaces.email.username' | 'surfaces.email.from' | 'surfaces.email.password' | 'surfaces.email.imapHost' | 'surfaces.email.imapPort' | 'surfaces.email.imapUser' | 'surfaces.email.imapPassword' | 'surfaces.email.imap.host' | 'surfaces.email.imap.port' | 'surfaces.email.imap.user' | 'surfaces.email.imap.password' | 'surfaces.email.imap.secure' | 'surfaces.email.imap.mailbox' | 'surfaces.email.imap.draftsMailbox' | 'surfaces.email.smtp.host' | 'surfaces.email.smtp.port' | 'surfaces.email.smtp.password' | 'surfaces.email.smtp.secure' | 'surfaces.email.inbound.enabled' | 'surfaces.email.inbound.accounts' | 'surfaces.email.inbound.source' | 'surfaces.email.inbound.gmailPollSecondsExpecting' | 'surfaces.email.inbound.gmailPollSecondsIdle' | 'surfaces.email.inbound.mode' | 'surfaces.email.inbound.pollIntervalSeconds' | 'surfaces.email.inbound.idleReissueMinutes' | 'surfaces.email.inbound.reconnect.maxBackoffSeconds' | 'surfaces.email.inbound.notice.route' | 'surfaces.email.inbound.notice.mode' | 'surfaces.email.inbound.expectationWindowMinutes' | 'surfaces.email.inbound.dedupTtlMinutes' | 'surfaces.email.inbound.retentionDays' | 'surfaces.email.inbound.maxRecords' | 'surfaces.email.inbound.capabilityRecheckMinutes' | 'surfaces.email.inbound.onInsufficientCapability' | 'surfaces.calendar.caldavUrl' | 'surfaces.calendar.caldavUser' | 'surfaces.calendar.caldavPassword' | 'surfaces.calendar.defaultCalendarId' | 'surfaces.calendar.calendars' | 'watchers.enabled' | 'watchers.pollIntervalMs' | 'watchers.heartbeatIntervalMs' | 'watchers.recoveryWindowMinutes' | 'watchers.ciPollIntervalMs' | 'watchers.triggers.enabled' | 'watchers.triggers.backoffLadderMs' | 'watchers.triggers.breakerStrikes' | 'watchers.triggers.defaultCheckIntervalMs' | 'watchers.triggers.probeTimeoutMs' | 'watchers.triggers.maxConcurrentChecks' | 'watchers.triggers.observationRingSize' | 'watchers.triggers.runHistoryLimit' | 'watchers.triggers.runHistoryTtlHours' | 'watchers.triggers.eventLogLimit' | 'watchers.triggers.eventLogTtlHours' | 'watchers.triggers.sweepIntervalMs' | 'watchers.triggers.supervisionTickMs' | 'watchers.triggers.streamQueueLimit' | 'watchers.triggers.streamBatchLines' | 'watchers.triggers.streamBatchIntervalMs' | 'watchers.triggers.onExitMaxDurationMs' | 'watchers.triggers.onExitStdin' | 'watchers.triggers.outputTailBytes' | 'service.enabled' | 'service.autostart' | 'service.restartOnFailure' | 'service.platform' | 'service.serviceName' | 'service.logPath' | 'update.auto' | 'update.intervalMinutes' | 'update.firstCheckSeconds' | 'update.releasesUrl' | 'update.rollbackAfterFailedStarts' | 'update.alertAfterFailedChecks' | 'network.outboundTls.mode' | 'network.outboundTls.customCaFile' | 'network.outboundTls.customCaDir' | 'network.outboundTls.allowInsecureLocalhost' | 'network.remoteFetch.allowPrivateHosts' | 'relay.enabled' | 'relay.url' | 'relay.rendezvousId' | 'relay.label' | 'relay.requireStepUpForMutations' | 'runtime.companionChatLimiter.perSessionLimit' | 'runtime.eventBus.maxListeners' | 'runtime.unifiedTasks' | 'runtime.pluginLifecycle' | 'runtime.mcpLifecycle' | 'runtime.toolBudget.enforced' | 'runtime.toolBudget.maxMs' | 'runtime.toolBudget.maxTokens' | 'runtime.toolBudget.maxCostUsd' | 'telemetry.includeRawPrompts' | 'telemetry.decisionOtlpEnabled' | 'telemetry.decisionOtlpEndpoint' | 'telemetry.decisionOtlpSignal' | 'telemetry.otelMode' | 'atRest.redactionEnabled' | 'atRest.retentionMaxAgeDays' | 'atRest.retentionMaxTotalMb' | 'batch.mode' | 'batch.fallback' | 'batch.queueBackend' | 'batch.tickIntervalMs' | 'batch.maxDelayMs' | 'batch.maxJobsPerProviderBatch' | 'batch.maxQueuePayloadBytes' | 'batch.maxQueueMessagesPerDay' | 'cloudflare.enabled' | 'cloudflare.freeTierMode' | 'cloudflare.accountId' | 'cloudflare.apiTokenRef' | 'cloudflare.zoneId' | 'cloudflare.zoneName' | 'cloudflare.workerName' | 'cloudflare.workerSubdomain' | 'cloudflare.workerHostname' | 'cloudflare.workerBaseUrl' | 'cloudflare.daemonBaseUrl' | 'cloudflare.daemonHostname' | 'cloudflare.workerTokenRef' | 'cloudflare.workerClientTokenRef' | 'cloudflare.workerCron' | 'cloudflare.queueName' | 'cloudflare.deadLetterQueueName' | 'cloudflare.tunnelName' | 'cloudflare.tunnelId' | 'cloudflare.tunnelTokenRef' | 'cloudflare.accessAppId' | 'cloudflare.accessServiceTokenId' | 'cloudflare.accessServiceTokenRef' | 'cloudflare.kvNamespaceName' | 'cloudflare.kvNamespaceId' | 'cloudflare.durableObjectNamespaceName' | 'cloudflare.durableObjectNamespaceId' | 'cloudflare.r2BucketName' | 'cloudflare.secretsStoreName' | 'cloudflare.secretsStoreId' | 'cloudflare.maxQueueOpsPerDay' | 'notifications.adaptiveSuppression' | 'notifications.burstWindowMs' | 'notifications.burstThreshold' | 'notifications.burstCooldownMs' | 'notifications.pushApproval' | 'notifications.pushNeedsInput' | 'notifications.pushCompletion' | 'notifications.blockedEscalationGraceMs' | 'notifications.blockedEscalationFollowUpMs' | 'notifications.blockedEscalationMaxFollowUps' | 'fetch.sanitizeMode' | 'fetch.trustedHosts' | 'fetch.blockedHosts' | 'fetch.allowLocalhost' | 'security.tokenAudit.enabled' | 'security.tokenAudit.rotationCadenceDays' | 'security.tokenAudit.rotationWarningDays' | 'security.tokenAudit.managed' | 'integrations.routeBinding' | 'integrations.deliveryTracking' | 'integrations.delivery.maxRetries' | 'integrations.delivery.initialDelayMs' | 'integrations.delivery.maxDelayMs' | 'integrations.delivery.maxDlqSize' | 'integrations.delivery.sloEnforced' | 'policy.registryEnabled' | 'policy.requireSignedBundles' | 'policy.bundleSource' | 'policy.bundlePath' | 'agents.passiveInjection.knowledge' | 'agents.passiveInjection.code' | 'agents.passiveInjection.budgetTokens' | 'agents.passiveInjection.relevanceFloor' | 'agents.passiveInjection.codeLimit' | 'agents.contextWindowGuard' | 'agents.contextCompactThreshold' | 'agents.maxTurns' | 'agents.maxTurnsCap' | 'pricing.modelPrices' | 'checkin.enabled' | 'checkin.cadence' | 'checkin.deliveryChannel' | 'checkin.quietHours' | 'learning.consolidation.enabled' | 'learning.consolidation.intervalMs' | 'learning.consolidation.minIdleMs' | 'learning.consolidation.maxMergesPerRun' | 'learning.consolidation.maxDecaysPerRun' | 'learning.consolidation.maxProposalsPerRun' | 'learning.consolidation.decayAgeDays' | 'learning.consolidation.decayConfidenceStep' | 'learning.consolidation.archiveConfidenceFloor' | 'power.keepAwake' | 'power.inhibitWhileWorking' | 'power.workInhibitMaxMinutes' | 'memory.budgetMb' | 'memory.tier.elevatedPct' | 'memory.tier.highPct' | 'memory.tier.criticalPct' | 'memory.tripwire.rateMbPerSec' | 'memory.tripwire.sustainSec' | 'memory.hardLimitPct' | 'voice.local.sttEngine' | 'voice.local.sttBinary' | 'voice.local.sttModelPath' | 'voice.local.ttsEngine' | 'voice.local.ttsBinary' | 'voice.local.ttsModelPath' | 'voice.wake.enabled' | 'voice.wake.models' | 'voice.wake.threshold' | 'voice.wake.patienceFrames' | 'voice.wake.cooldownMs' | 'voice.wake.vadThreshold' | 'voice.wake.noiseSuppression' | 'voice.wake.inputDevice' | 'voice.wake.captureCommand' | 'voice.wake.surfaces.tui' | 'voice.wake.surfaces.agent' | 'voice.wake.surfaces.webui' | 'voice.wake.activationSound' | 'voice.wake.activationSoundPath' | 'voice.wake.indicator' | 'voice.wake.preRollMs' | 'voice.wake.captureMaxSeconds' | 'voice.wake.silenceStopMs' | 'voice.wake.autoSubmit' | 'voice.wake.retainAudio' | 'voice.wake.customModelDir' | 'voice.wake.maxRestarts' | 'voice.wake.restartBackoffMs' | 'voice.wake.crashWindowSeconds' | 'voice.wake.browserBackend' | 'device.capabilities.mode' | 'device.capabilities.allowAlwaysOffer' | 'device.capabilities.requestTimeoutSeconds' | 'device.location.precision' | 'device.clipboard.readMode' | 'device.capture.retentionHours' | 'device.capture.maxArtifacts' | 'device.capture.sweepIntervalMinutes' | 'device.grants.expiryDays' | 'device.grants.maxPerNode' | 'device.grants.auditRetentionDays' | 'device.nodes.maxPaired' | 'push.vapidSubject' | 'push.subscriptions.warnAbovePerPrincipal' | 'push.subscriptions.failureThreshold' | 'push.subscriptions.sweepIntervalMinutes' | 'fleet.maxSize' | 'cluster.enabled' | 'cluster.heartbeatSeconds' | 'cluster.masterTimeoutSeconds' | 'cluster.bootProbeSeconds' | 'cluster.port' | 'cluster.multicastGroup' | 'cluster.secret' | 'cluster.keyRotationHours' | 'cluster.keyRotationGraceMinutes' | 'cluster.beaconSeconds' | 'cluster.rosterGossipSeconds' | ProfileConfigKey | OccasionsConfigKey; ;; Record = type Record<K extends keyof any, T> = { [P in K]: T; };"
+    },
+    {
+      "name": "RUNTIME_ENDPOINT_DEFAULT_PORTS",
+      "kind": "const",
+      "text": "RUNTIME_ENDPOINT_DEFAULT_PORTS: Record<RuntimeEndpointId, number> ;; via Record = type Record<K extends keyof any, T> = { [P in K]: T; };"
+    },
+    {
+      "name": "Rect",
+      "kind": "interface",
+      "required": [
+        "height",
+        "width",
+        "x",
+        "y"
+      ],
+      "text": "export interface Rect { readonly x: number; readonly y: number; readonly width: number; readonly height: number; }"
+    },
+    {
+      "name": "RedactedConfigResult",
+      "kind": "interface",
+      "required": [
+        "redactedPaths",
+        "value"
+      ],
+      "text": "export interface RedactedConfigResult<T> { readonly value: T; readonly redactedPaths: readonly string[]; }"
+    },
+    {
+      "name": "RejectedFlagSpec",
+      "kind": "interface",
+      "required": [
+        "reason",
+        "takesValue"
+      ],
+      "text": "export interface RejectedFlagSpec { readonly reason: string; readonly takesValue: boolean; }"
+    },
+    {
+      "name": "RemoteDaemonTarget",
+      "kind": "interface",
+      "required": [
+        "baseUrl",
+        "isLocal",
+        "token"
+      ],
+      "text": "export interface RemoteDaemonTarget { readonly baseUrl: string; readonly token: string; readonly isLocal: boolean; }"
+    },
+    {
+      "name": "RemoteTargetFlags",
+      "kind": "interface",
+      "text": "export interface RemoteTargetFlags { readonly host?: string | undefined; readonly port?: number | undefined; readonly token?: string | undefined; }"
+    },
+    {
+      "name": "RemoteTargetResolution",
+      "kind": "type",
+      "text": "export type RemoteTargetResolution = { readonly ok: true; readonly target: RemoteDaemonTarget; } | { readonly ok: false; readonly error: string; readonly fix: string; };"
+    },
+    {
+      "name": "RenderScheduler",
+      "kind": "interface",
+      "required": [
+        "flushNow",
+        "schedule"
+      ],
+      "text": "export interface RenderScheduler { readonly schedule: () => void; readonly flushNow: () => void; }"
+    },
+    {
+      "name": "ResolveRemoteTargetInput",
+      "kind": "interface",
+      "required": [
+        "configManager",
+        "daemonHomeDir",
+        "flags"
+      ],
+      "text": "export interface ResolveRemoteTargetInput { readonly flags: RemoteTargetFlags; readonly configManager: Pick<ConfigManager, 'get'>; readonly daemonHomeDir: string; readonly readToken?: ((daemonHomeDir: string) => string | undefined) | undefined; } ;; via Pick = type Pick<T, K extends keyof T> = { [P in K]: T[P]; };"
+    },
+    {
+      "name": "RunClusterCommandInput",
+      "kind": "interface",
+      "required": [
+        "argv",
+        "configManager",
+        "daemonHomeDir"
+      ],
+      "text": "export interface RunClusterCommandInput { readonly argv: readonly string[]; readonly configManager: Pick<ConfigManager, 'get'>; readonly daemonHomeDir: string; readonly now?: (() => number) | undefined; readonly isTerminal?: boolean | undefined; readonly fetchImpl?: DaemonFetch | undefined; readonly readToken?: ((daemonHomeDir: string) => string | undefined) | undefined; readonly prompt?: ((question: string) => Promise<string>) | undefined; } ;; via Pick = type Pick<T, K extends keyof T> = { [P in K]: T[P]; }; ;; Promise = interface Promise<T> { then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): Promise<TResult1 | TResult2>; catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): Promise<T | TResult>; }"
+    },
+    {
+      "name": "RuntimeEndpointBinding",
+      "kind": "interface",
+      "required": [
+        "configuredHost",
+        "host",
+        "hostMode",
+        "port",
+        "recognized"
+      ],
+      "text": "export interface RuntimeEndpointBinding { readonly hostMode: string; readonly configuredHost: string; readonly host: string; readonly port: number; readonly recognized: boolean; }"
+    },
+    {
+      "name": "RuntimeEndpointId",
+      "kind": "type",
+      "text": "export type RuntimeEndpointId = 'controlPlane' | 'httpListener' | 'web';"
+    },
+    {
+      "name": "RuntimeHostMode",
+      "kind": "type",
+      "text": "export type RuntimeHostMode = 'local' | 'network' | 'custom';"
+    },
+    {
+      "name": "SYNC_BEGIN",
+      "kind": "const",
+      "text": "SYNC_BEGIN = \"\\u001B[?2026h\""
+    },
+    {
+      "name": "SYNC_END",
+      "kind": "const",
+      "text": "SYNC_END = \"\\u001B[?2026l\""
+    },
+    {
+      "name": "SelectionManager",
+      "kind": "class",
+      "publicMembers": [
+        "anchor",
+        "clearSelection",
+        "endSelection",
+        "extendSelection",
+        "focus",
+        "getSelectedText",
+        "hasSelection",
+        "isCellSelected",
+        "isDragging",
+        "startSelection"
+      ],
+      "text": "export declare class SelectionManager { anchor: SelectionPoint | null; focus: SelectionPoint | null; isDragging: boolean; private screenToAbsoluteRow; startSelection(col: number, viewportRow: number, scrollTop: number, vHeight: number, lineCount: number): void; extendSelection(col: number, viewportRow: number, scrollTop: number, vHeight: number, lineCount: number): void; endSelection(): void; clearSelection(): void; hasSelection(): boolean; getSelectedText(history: InfiniteBuffer): string; private findLineNumberGutterEnd; private stripDecorativePrefix; isCellSelected(col: number, absoluteRow: number): boolean; }"
+    },
+    {
+      "name": "SelectionPoint",
+      "kind": "interface",
+      "required": [
+        "col",
+        "row"
+      ],
+      "text": "export interface SelectionPoint { col: number; row: number; }"
+    },
+    {
+      "name": "ShellLayout",
+      "kind": "interface",
+      "required": [
+        "body",
+        "conversation",
+        "footer",
+        "header",
+        "screen"
+      ],
+      "text": "export interface ShellLayout { readonly screen: Rect; readonly header: Rect; readonly body: Rect; readonly footer: Rect; readonly conversation: Rect; readonly panel?: Rect | undefined; readonly separatorX?: number | undefined; }"
+    },
+    {
+      "name": "ShellLayoutRequest",
+      "kind": "interface",
+      "required": [
+        "footerHeight",
+        "headerHeight",
+        "height",
+        "width"
+      ],
+      "text": "export interface ShellLayoutRequest { readonly width: number; readonly height: number; readonly headerHeight: number; readonly footerHeight: number; readonly panelWidth?: number | undefined; }"
+    },
+    {
+      "name": "SplitPaneLayout",
+      "kind": "interface",
+      "required": [
+        "bottomContentRows",
+        "bottomTabRows",
+        "separatorRows",
+        "topContentRows",
+        "topTabRows",
+        "totalRows"
+      ],
+      "text": "export interface SplitPaneLayout { readonly totalRows: number; readonly topTabRows: number; readonly bottomTabRows: number; readonly separatorRows: number; readonly topContentRows: number; readonly bottomContentRows: number; }"
+    },
+    {
+      "name": "SurfaceViewportRequest",
+      "kind": "interface",
+      "required": [
+        "chromeRows",
+        "viewportHeight"
+      ],
+      "text": "export interface SurfaceViewportRequest { readonly viewportHeight: number; readonly chromeRows: number; readonly minContentRows?: number | undefined; readonly maxContentRows?: number | undefined; readonly targetRatio?: number | undefined; readonly minTotalRows?: number | undefined; readonly maxTotalRows?: number | undefined; }"
+    },
+    {
+      "name": "TERMINAL_ESCAPES",
+      "kind": "const",
+      "text": "TERMINAL_ESCAPES: { readonly ALT_SCREEN_ENTER: \"\\u001B[?1049h\"; readonly ALT_SCREEN_EXIT: \"\\u001B[?1049l\"; readonly MOUSE_ENABLE: \"\\u001B[?1000h\\u001B[?1002h\\u001B[?1006h\"; readonly MOUSE_DISABLE: \"\\u001B[?1006l\\u001B[?1002l\\u001B[?1000l\"; readonly CURSOR_HIDE: \"\\u001B[?25l\"; readonly CURSOR_SHOW: \"\\u001B[?25h\"; readonly KEYBOARD_EXT_ENABLE: \"\\u001B[>4;2m\\u001B[?1u\"; readonly KEYBOARD_EXT_DISABLE: \"\\u001B[>4;0m\\u001B[?1l\"; readonly PASTE_ENABLE: \"\\u001B[?2004h\"; readonly PASTE_DISABLE: \"\\u001B[?2004l\"; readonly FOCUS_ENABLE: \"\\u001B[?1004h\"; readonly FOCUS_DISABLE: \"\\u001B[?1004l\"; readonly CLEAR_VIEWPORT_HOME: \"\\u001B[2J\\u001B[H\"; }"
+    },
+    {
+      "name": "TRANSCRIPT_LAYOUT",
+      "kind": "const",
+      "text": "TRANSCRIPT_LAYOUT: { readonly LEFT_MARGIN: 4; readonly RIGHT_MARGIN: 2; readonly contentWidth: (termWidth: number) => number; readonly USER_BOX_MARGIN: 2; }"
+    },
+    {
+      "name": "TermColorCaps",
+      "kind": "interface",
+      "required": [
+        "capability",
+        "syncedOutput"
+      ],
+      "text": "export interface TermColorCaps { capability: ColorCapability; syncedOutput: boolean; }"
+    },
+    {
+      "name": "TerminalEscapes",
+      "kind": "type",
+      "text": "export type TerminalEscapes = typeof TERMINAL_ESCAPES;"
+    },
+    {
+      "name": "TerminalLifecycle",
+      "kind": "interface",
+      "required": [
+        "enterTerminal",
+        "isTerminalRestored",
+        "restoreTerminal"
+      ],
+      "text": "export interface TerminalLifecycle { readonly enterTerminal: () => void; readonly restoreTerminal: () => void; readonly isTerminalRestored: () => boolean; }"
+    },
+    {
+      "name": "TerminalLifecycleDeps",
+      "kind": "interface",
+      "required": [
+        "noAltScreen",
+        "write"
+      ],
+      "text": "export interface TerminalLifecycleDeps { readonly write: (data: string) => void; readonly noAltScreen: boolean; readonly guardedWrite?: (write: () => void) => void; readonly disposeOutputGuard?: () => void; readonly setRawMode?: (enabled: boolean) => void; readonly escapes?: TerminalSequenceSet; }"
+    },
+    {
+      "name": "TerminalOutputGuard",
+      "kind": "type",
+      "text": "export type TerminalOutputGuard = { setActive(active: boolean): void; allowTerminalWrite<T>(fn: () => T): T; dispose(): void; };"
+    },
+    {
+      "name": "TerminalOutputGuardOptions",
+      "kind": "type",
+      "text": "export type TerminalOutputGuardOptions = { readonly stdout: WritableStreamLike; readonly stderr?: WritableStreamLike; readonly active?: boolean; readonly onIntercept?: (event: TerminalOutputIntercept) => void; }; ;; via WritableStreamLike = type WritableStreamLike = { write: { (buffer: string | Uint8Array, cb?: (error?: Error | null) => void): boolean; (buffer: string | Uint8Array, encoding?: BufferEncoding, cb?: (error?: Error | null) => void): boolean; }; };"
+    },
+    {
+      "name": "TerminalOutputIntercept",
+      "kind": "type",
+      "text": "export type TerminalOutputIntercept = { readonly source: TerminalOutputInterceptSource; readonly text: string; readonly preview: string; };"
+    },
+    {
+      "name": "TerminalOutputInterceptSource",
+      "kind": "type",
+      "text": "export type TerminalOutputInterceptSource = 'stdout' | 'stderr' | 'console.debug' | 'console.error' | 'console.info' | 'console.log' | 'console.warn';"
+    },
+    {
+      "name": "TerminalSequenceSet",
+      "kind": "interface",
+      "required": [
+        "ALT_SCREEN_ENTER",
+        "ALT_SCREEN_EXIT",
+        "CLEAR_VIEWPORT_HOME",
+        "CURSOR_HIDE",
+        "CURSOR_SHOW",
+        "FOCUS_DISABLE",
+        "FOCUS_ENABLE",
+        "KEYBOARD_EXT_DISABLE",
+        "KEYBOARD_EXT_ENABLE",
+        "MOUSE_DISABLE",
+        "MOUSE_ENABLE",
+        "PASTE_DISABLE",
+        "PASTE_ENABLE"
+      ],
+      "text": "export interface TerminalSequenceSet { readonly ALT_SCREEN_ENTER: string; readonly ALT_SCREEN_EXIT: string; readonly MOUSE_ENABLE: string; readonly MOUSE_DISABLE: string; readonly CURSOR_HIDE: string; readonly CURSOR_SHOW: string; readonly KEYBOARD_EXT_ENABLE: string; readonly KEYBOARD_EXT_DISABLE: string; readonly PASTE_ENABLE: string; readonly PASTE_DISABLE: string; readonly FOCUS_ENABLE: string; readonly FOCUS_DISABLE: string; readonly CLEAR_VIEWPORT_HOME: string; }"
+    },
+    {
+      "name": "VisibleWindow",
+      "kind": "interface",
+      "required": [
+        "count",
+        "end",
+        "start",
+        "total"
+      ],
+      "text": "export interface VisibleWindow { readonly start: number; readonly end: number; readonly count: number; readonly total: number; }"
+    },
+    {
+      "name": "allowTerminalWrite",
+      "kind": "function",
+      "text": "export declare function allowTerminalWrite<T>(fn: () => T): T;"
+    },
+    {
+      "name": "applyConfiguredHitlMode",
+      "kind": "function",
+      "text": "export declare function applyConfiguredHitlMode(configManager: ConfigManager, modeManager: { setHITLMode(mode: 'quiet' | 'balanced' | 'operator'): void; }): void;"
+    },
+    {
+      "name": "applyRuntimeCommandEndpointFlagOverrides",
+      "kind": "function",
+      "text": "export declare function applyRuntimeCommandEndpointFlagOverrides(configManager: ConfigManager, command: GoodVibesCliCommand, flags: Pick<GoodVibesCliFlags, 'hostname' | 'port'>): readonly string[]; ;; via Pick = type Pick<T, K extends keyof T> = { [P in K]: T[P]; };"
+    },
+    {
+      "name": "applyRuntimeConfigDefault",
+      "kind": "function",
+      "text": "export declare function applyRuntimeConfigDefault(configManager: ConfigManager, key: ConfigKey, defaultValue: unknown): void; ;; via ConfigKey = export type ConfigKey = 'display.stream' | 'display.lineNumbers' | 'display.collapseThreshold' | 'display.theme' | 'display.showThinking' | 'display.showReasoningSummary' | 'display.showTokenSpeed' | 'display.showToolPreview' | 'provider.reasoningEffort' | 'provider.model' | 'provider.embeddingProvider' | 'provider.systemPromptFile' | 'provider.optimizerMode' | 'provider.optimizerPinnedModel' | 'provider.localContextIngestion' | 'behavior.autoApprove' | 'behavior.autoCompactThreshold' | 'behavior.compactionStrategy' | 'behavior.staleContextWarnings' | 'behavior.saveHistory' | 'behavior.notifyOnComplete' | 'behavior.suggestAlternativeOnProviderFail' | 'behavior.hitlMode' | 'behavior.toolResultReconciliation' | 'behavior.returnContextMode' | 'behavior.guidanceMode' | 'storage.secretPolicy' | 'storage.artifacts.maxBytes' | 'permissions.mode' | 'permissions.backgroundAgents' | 'permissions.engine' | 'permissions.simulation' | 'permissions.divergenceDashboard' | 'permissions.commandParser' | 'permissions.divergenceThreshold' | 'permissions.maxDivergenceRecords' | 'permissions.tools.read' | 'permissions.tools.write' | 'permissions.tools.edit' | 'permissions.tools.exec' | 'permissions.tools.find' | 'permissions.tools.fetch' | 'permissions.tools.analyze' | 'permissions.tools.inspect' | 'permissions.tools.agent' | 'permissions.tools.state' | 'permissions.tools.workflow' | 'permissions.tools.registry' | 'permissions.tools.delegate' | 'permissions.tools.mcp' | 'diagnostics.postEdit' | 'orchestration.recursionEnabled' | 'orchestration.maxDepth' | 'planner.decomposition' | 'planner.maxTurns' | 'planner.tokenCeiling' | 'planner.wallTimeoutMs' | 'planner.adaptive' | 'sandbox.enabled' | 'sandbox.judgment' | 'sandbox.replIsolation' | 'sandbox.mcpIsolation' | 'sandbox.windowsMode' | 'sandbox.vmBackend' | 'sandbox.qemuBinary' | 'sandbox.qemuImagePath' | 'sandbox.qemuExecWrapper' | 'sandbox.qemuGuestHost' | 'sandbox.qemuGuestPort' | 'sandbox.qemuGuestUser' | 'sandbox.qemuWorkspacePath' | 'sandbox.qemuSessionMode' | 'sandbox.replJavaScriptCommand' | 'ui.voiceEnabled' | 'ui.systemMessages' | 'ui.operationalMessages' | 'ui.wrfcMessages' | 'tts.provider' | 'tts.voice' | 'tts.llmProvider' | 'tts.llmModel' | 'tts.speed' | 'release.channel' | PaymentsConfigKey | DaemonProcessConfigKey | 'danger.httpListener' | 'tools.llmEnabled' | 'tools.llmProvider' | 'tools.llmModel' | 'tools.autoHeal' | 'tools.defaultTokenBudget' | 'tools.hooksFile' | 'tools.overflowSpillBackend' | 'tools.contractVerification' | 'tools.outputSchemaFingerprints' | 'wrfc.scoreThreshold' | 'wrfc.maxFixAttempts' | 'wrfc.autoCommit' | 'wrfc.commitScope' | 'wrfc.agentHeartbeatTimeoutMs' | 'wrfc.transportRetryLimit' | 'wrfc.transportRetryDelayMs' | 'cache.enabled' | 'cache.stableTtl' | 'cache.monitorHitRate' | 'cache.hitRateWarningThreshold' | 'helper.enabled' | 'helper.globalProvider' | 'helper.globalModel' | 'automation.enabled' | 'automation.maxConcurrentRuns' | 'automation.runHistoryLimit' | 'automation.defaultTimeoutMs' | 'automation.catchUpWindowMinutes' | 'automation.failureCooldownMs' | 'automation.deleteAfterRun' | 'controlPlane.enabled' | 'controlPlane.gateway' | 'controlPlane.hostMode' | 'controlPlane.host' | 'controlPlane.port' | 'controlPlane.publicBaseUrl' | 'conversationGate.mode' | 'conversationGate.proposalTtlMs' | 'conversationGate.maxPendingProposals' | 'hostedSessions.detachPolicy' | 'hostedSessions.maxSessions' | 'hostedSessions.maxMessagesPerSession' | 'hostedSessions.terminatedRetentionMs' | 'hostedSessions.attachmentTtlMs' | 'hostedSessions.promoteInboundConversations' | 'controlPlane.streamMode' | 'controlPlane.allowRemote' | 'controlPlane.trustProxy' | 'controlPlane.openaiCompatible.enabled' | 'controlPlane.openaiCompatible.pathPrefix' | 'controlPlane.webui.serve' | 'controlPlane.webui.bundleDir' | 'controlPlane.cors.enabled' | 'controlPlane.cors.allowedOrigins' | 'controlPlane.tls.mode' | 'controlPlane.tls.certFile' | 'controlPlane.tls.keyFile' | 'httpListener.hostMode' | 'httpListener.host' | 'httpListener.port' | 'httpListener.trustProxy' | 'httpListener.trustCloudflare' | 'httpListener.tls.mode' | 'httpListener.tls.certFile' | 'httpListener.tls.keyFile' | 'web.enabled' | 'web.hostMode' | 'web.host' | 'web.port' | 'web.publicBaseUrl' | 'web.staticAssetsDir' | 'surfaces.slack.enabled' | 'surfaces.slack.signingSecret' | 'surfaces.slack.botToken' | 'surfaces.slack.appToken' | 'surfaces.slack.defaultChannel' | 'surfaces.slack.workspaceId' | 'surfaces.discord.enabled' | 'surfaces.discord.publicKey' | 'surfaces.discord.botToken' | 'surfaces.discord.applicationId' | 'surfaces.discord.defaultChannelId' | 'surfaces.discord.guildId' | 'surfaces.ntfy.enabled' | 'surfaces.ntfy.baseUrl' | 'surfaces.ntfy.topic' | 'surfaces.ntfy.chatTopic' | 'surfaces.ntfy.agentTopic' | 'surfaces.ntfy.remoteTopic' | 'surfaces.ntfy.token' | 'surfaces.ntfy.defaultPriority' | 'surfaces.webhook.enabled' | 'surfaces.webhook.defaultTarget' | 'surfaces.webhook.timeoutMs' | 'surfaces.webhook.secret' | 'surfaces.homeassistant.enabled' | 'surfaces.homeassistant.instanceUrl' | 'surfaces.homeassistant.accessToken' | 'surfaces.homeassistant.webhookSecret' | 'surfaces.homeassistant.defaultConversationId' | 'surfaces.homeassistant.deviceId' | 'surfaces.homeassistant.deviceName' | 'surfaces.homeassistant.eventType' | 'surfaces.homeassistant.remoteSessionTtlMs' | 'surfaces.telegram.enabled' | 'surfaces.telegram.botToken' | 'surfaces.telegram.webhookSecret' | 'surfaces.telegram.defaultChatId' | 'surfaces.telegram.botUsername' | 'surfaces.telegram.discoveredBotTokenId' | 'surfaces.telegram.mode' | 'surfaces.googleChat.enabled' | 'surfaces.googleChat.webhookUrl' | 'surfaces.googleChat.verificationToken' | 'surfaces.googleChat.appId' | 'surfaces.googleChat.spaceId' | 'surfaces.signal.enabled' | 'surfaces.signal.bridgeUrl' | 'surfaces.signal.account' | 'surfaces.signal.token' | 'surfaces.signal.defaultRecipient' | 'surfaces.whatsapp.enabled' | 'surfaces.whatsapp.provider' | 'surfaces.whatsapp.accessToken' | 'surfaces.whatsapp.verifyToken' | 'surfaces.whatsapp.signingSecret' | 'surfaces.whatsapp.phoneNumberId' | 'surfaces.whatsapp.businessAccountId' | 'surfaces.whatsapp.defaultRecipient' | 'surfaces.telephony.enabled' | 'surfaces.telephony.provider' | 'surfaces.telephony.mode' | 'surfaces.telephony.bridgeUrl' | 'surfaces.telephony.token' | 'surfaces.telephony.accountSid' | 'surfaces.telephony.authToken' | 'surfaces.telephony.fromNumber' | 'surfaces.telephony.defaultRecipient' | 'surfaces.telephony.webhookSecret' | 'surfaces.telephony.voiceLanguage' | 'surfaces.imessage.enabled' | 'surfaces.imessage.bridgeUrl' | 'surfaces.imessage.account' | 'surfaces.imessage.token' | 'surfaces.imessage.defaultChatId' | 'surfaces.msteams.enabled' | 'surfaces.msteams.appId' | 'surfaces.msteams.appPassword' | 'surfaces.msteams.tenantId' | 'surfaces.msteams.serviceUrl' | 'surfaces.msteams.botId' | 'surfaces.msteams.defaultConversationId' | 'surfaces.msteams.defaultChannelId' | 'surfaces.bluebubbles.enabled' | 'surfaces.bluebubbles.serverUrl' | 'surfaces.bluebubbles.password' | 'surfaces.bluebubbles.account' | 'surfaces.bluebubbles.defaultChatGuid' | 'surfaces.mattermost.enabled' | 'surfaces.mattermost.baseUrl' | 'surfaces.mattermost.botToken' | 'surfaces.mattermost.teamId' | 'surfaces.mattermost.defaultChannelId' | 'surfaces.matrix.enabled' | 'surfaces.matrix.homeserverUrl' | 'surfaces.matrix.accessToken' | 'surfaces.matrix.userId' | 'surfaces.matrix.defaultRoomId' | 'surfaces.email.host' | 'surfaces.email.user' | 'surfaces.email.username' | 'surfaces.email.from' | 'surfaces.email.password' | 'surfaces.email.imapHost' | 'surfaces.email.imapPort' | 'surfaces.email.imapUser' | 'surfaces.email.imapPassword' | 'surfaces.email.imap.host' | 'surfaces.email.imap.port' | 'surfaces.email.imap.user' | 'surfaces.email.imap.password' | 'surfaces.email.imap.secure' | 'surfaces.email.imap.mailbox' | 'surfaces.email.imap.draftsMailbox' | 'surfaces.email.smtp.host' | 'surfaces.email.smtp.port' | 'surfaces.email.smtp.password' | 'surfaces.email.smtp.secure' | 'surfaces.email.inbound.enabled' | 'surfaces.email.inbound.accounts' | 'surfaces.email.inbound.source' | 'surfaces.email.inbound.gmailPollSecondsExpecting' | 'surfaces.email.inbound.gmailPollSecondsIdle' | 'surfaces.email.inbound.mode' | 'surfaces.email.inbound.pollIntervalSeconds' | 'surfaces.email.inbound.idleReissueMinutes' | 'surfaces.email.inbound.reconnect.maxBackoffSeconds' | 'surfaces.email.inbound.notice.route' | 'surfaces.email.inbound.notice.mode' | 'surfaces.email.inbound.expectationWindowMinutes' | 'surfaces.email.inbound.dedupTtlMinutes' | 'surfaces.email.inbound.retentionDays' | 'surfaces.email.inbound.maxRecords' | 'surfaces.email.inbound.capabilityRecheckMinutes' | 'surfaces.email.inbound.onInsufficientCapability' | 'surfaces.calendar.caldavUrl' | 'surfaces.calendar.caldavUser' | 'surfaces.calendar.caldavPassword' | 'surfaces.calendar.defaultCalendarId' | 'surfaces.calendar.calendars' | 'watchers.enabled' | 'watchers.pollIntervalMs' | 'watchers.heartbeatIntervalMs' | 'watchers.recoveryWindowMinutes' | 'watchers.ciPollIntervalMs' | 'watchers.triggers.enabled' | 'watchers.triggers.backoffLadderMs' | 'watchers.triggers.breakerStrikes' | 'watchers.triggers.defaultCheckIntervalMs' | 'watchers.triggers.probeTimeoutMs' | 'watchers.triggers.maxConcurrentChecks' | 'watchers.triggers.observationRingSize' | 'watchers.triggers.runHistoryLimit' | 'watchers.triggers.runHistoryTtlHours' | 'watchers.triggers.eventLogLimit' | 'watchers.triggers.eventLogTtlHours' | 'watchers.triggers.sweepIntervalMs' | 'watchers.triggers.supervisionTickMs' | 'watchers.triggers.streamQueueLimit' | 'watchers.triggers.streamBatchLines' | 'watchers.triggers.streamBatchIntervalMs' | 'watchers.triggers.onExitMaxDurationMs' | 'watchers.triggers.onExitStdin' | 'watchers.triggers.outputTailBytes' | 'service.enabled' | 'service.autostart' | 'service.restartOnFailure' | 'service.platform' | 'service.serviceName' | 'service.logPath' | 'update.auto' | 'update.intervalMinutes' | 'update.firstCheckSeconds' | 'update.releasesUrl' | 'update.rollbackAfterFailedStarts' | 'update.alertAfterFailedChecks' | 'network.outboundTls.mode' | 'network.outboundTls.customCaFile' | 'network.outboundTls.customCaDir' | 'network.outboundTls.allowInsecureLocalhost' | 'network.remoteFetch.allowPrivateHosts' | 'relay.enabled' | 'relay.url' | 'relay.rendezvousId' | 'relay.label' | 'relay.requireStepUpForMutations' | 'runtime.companionChatLimiter.perSessionLimit' | 'runtime.eventBus.maxListeners' | 'runtime.unifiedTasks' | 'runtime.pluginLifecycle' | 'runtime.mcpLifecycle' | 'runtime.toolBudget.enforced' | 'runtime.toolBudget.maxMs' | 'runtime.toolBudget.maxTokens' | 'runtime.toolBudget.maxCostUsd' | 'telemetry.includeRawPrompts' | 'telemetry.decisionOtlpEnabled' | 'telemetry.decisionOtlpEndpoint' | 'telemetry.decisionOtlpSignal' | 'telemetry.otelMode' | 'atRest.redactionEnabled' | 'atRest.retentionMaxAgeDays' | 'atRest.retentionMaxTotalMb' | 'batch.mode' | 'batch.fallback' | 'batch.queueBackend' | 'batch.tickIntervalMs' | 'batch.maxDelayMs' | 'batch.maxJobsPerProviderBatch' | 'batch.maxQueuePayloadBytes' | 'batch.maxQueueMessagesPerDay' | 'cloudflare.enabled' | 'cloudflare.freeTierMode' | 'cloudflare.accountId' | 'cloudflare.apiTokenRef' | 'cloudflare.zoneId' | 'cloudflare.zoneName' | 'cloudflare.workerName' | 'cloudflare.workerSubdomain' | 'cloudflare.workerHostname' | 'cloudflare.workerBaseUrl' | 'cloudflare.daemonBaseUrl' | 'cloudflare.daemonHostname' | 'cloudflare.workerTokenRef' | 'cloudflare.workerClientTokenRef' | 'cloudflare.workerCron' | 'cloudflare.queueName' | 'cloudflare.deadLetterQueueName' | 'cloudflare.tunnelName' | 'cloudflare.tunnelId' | 'cloudflare.tunnelTokenRef' | 'cloudflare.accessAppId' | 'cloudflare.accessServiceTokenId' | 'cloudflare.accessServiceTokenRef' | 'cloudflare.kvNamespaceName' | 'cloudflare.kvNamespaceId' | 'cloudflare.durableObjectNamespaceName' | 'cloudflare.durableObjectNamespaceId' | 'cloudflare.r2BucketName' | 'cloudflare.secretsStoreName' | 'cloudflare.secretsStoreId' | 'cloudflare.maxQueueOpsPerDay' | 'notifications.adaptiveSuppression' | 'notifications.burstWindowMs' | 'notifications.burstThreshold' | 'notifications.burstCooldownMs' | 'notifications.pushApproval' | 'notifications.pushNeedsInput' | 'notifications.pushCompletion' | 'notifications.blockedEscalationGraceMs' | 'notifications.blockedEscalationFollowUpMs' | 'notifications.blockedEscalationMaxFollowUps' | 'fetch.sanitizeMode' | 'fetch.trustedHosts' | 'fetch.blockedHosts' | 'fetch.allowLocalhost' | 'security.tokenAudit.enabled' | 'security.tokenAudit.rotationCadenceDays' | 'security.tokenAudit.rotationWarningDays' | 'security.tokenAudit.managed' | 'integrations.routeBinding' | 'integrations.deliveryTracking' | 'integrations.delivery.maxRetries' | 'integrations.delivery.initialDelayMs' | 'integrations.delivery.maxDelayMs' | 'integrations.delivery.maxDlqSize' | 'integrations.delivery.sloEnforced' | 'policy.registryEnabled' | 'policy.requireSignedBundles' | 'policy.bundleSource' | 'policy.bundlePath' | 'agents.passiveInjection.knowledge' | 'agents.passiveInjection.code' | 'agents.passiveInjection.budgetTokens' | 'agents.passiveInjection.relevanceFloor' | 'agents.passiveInjection.codeLimit' | 'agents.contextWindowGuard' | 'agents.contextCompactThreshold' | 'agents.maxTurns' | 'agents.maxTurnsCap' | 'pricing.modelPrices' | 'checkin.enabled' | 'checkin.cadence' | 'checkin.deliveryChannel' | 'checkin.quietHours' | 'learning.consolidation.enabled' | 'learning.consolidation.intervalMs' | 'learning.consolidation.minIdleMs' | 'learning.consolidation.maxMergesPerRun' | 'learning.consolidation.maxDecaysPerRun' | 'learning.consolidation.maxProposalsPerRun' | 'learning.consolidation.decayAgeDays' | 'learning.consolidation.decayConfidenceStep' | 'learning.consolidation.archiveConfidenceFloor' | 'power.keepAwake' | 'power.inhibitWhileWorking' | 'power.workInhibitMaxMinutes' | 'memory.budgetMb' | 'memory.tier.elevatedPct' | 'memory.tier.highPct' | 'memory.tier.criticalPct' | 'memory.tripwire.rateMbPerSec' | 'memory.tripwire.sustainSec' | 'memory.hardLimitPct' | 'voice.local.sttEngine' | 'voice.local.sttBinary' | 'voice.local.sttModelPath' | 'voice.local.ttsEngine' | 'voice.local.ttsBinary' | 'voice.local.ttsModelPath' | 'voice.wake.enabled' | 'voice.wake.models' | 'voice.wake.threshold' | 'voice.wake.patienceFrames' | 'voice.wake.cooldownMs' | 'voice.wake.vadThreshold' | 'voice.wake.noiseSuppression' | 'voice.wake.inputDevice' | 'voice.wake.captureCommand' | 'voice.wake.surfaces.tui' | 'voice.wake.surfaces.agent' | 'voice.wake.surfaces.webui' | 'voice.wake.activationSound' | 'voice.wake.activationSoundPath' | 'voice.wake.indicator' | 'voice.wake.preRollMs' | 'voice.wake.captureMaxSeconds' | 'voice.wake.silenceStopMs' | 'voice.wake.autoSubmit' | 'voice.wake.retainAudio' | 'voice.wake.customModelDir' | 'voice.wake.maxRestarts' | 'voice.wake.restartBackoffMs' | 'voice.wake.crashWindowSeconds' | 'voice.wake.browserBackend' | 'device.capabilities.mode' | 'device.capabilities.allowAlwaysOffer' | 'device.capabilities.requestTimeoutSeconds' | 'device.location.precision' | 'device.clipboard.readMode' | 'device.capture.retentionHours' | 'device.capture.maxArtifacts' | 'device.capture.sweepIntervalMinutes' | 'device.grants.expiryDays' | 'device.grants.maxPerNode' | 'device.grants.auditRetentionDays' | 'device.nodes.maxPaired' | 'push.vapidSubject' | 'push.subscriptions.warnAbovePerPrincipal' | 'push.subscriptions.failureThreshold' | 'push.subscriptions.sweepIntervalMinutes' | 'fleet.maxSize' | 'cluster.enabled' | 'cluster.heartbeatSeconds' | 'cluster.masterTimeoutSeconds' | 'cluster.bootProbeSeconds' | 'cluster.port' | 'cluster.multicastGroup' | 'cluster.secret' | 'cluster.keyRotationHours' | 'cluster.keyRotationGraceMinutes' | 'cluster.beaconSeconds' | 'cluster.rosterGossipSeconds' | ProfileConfigKey | OccasionsConfigKey;"
+    },
+    {
+      "name": "applyRuntimeConfigOverrides",
+      "kind": "function",
+      "text": "export declare function applyRuntimeConfigOverrides(configManager: ConfigManager, overrides: readonly string[]): readonly string[];"
+    },
+    {
+      "name": "applyRuntimeConfigValue",
+      "kind": "function",
+      "text": "export declare function applyRuntimeConfigValue(configManager: ConfigManager, key: ConfigKey, value: unknown): void; ;; via ConfigKey = export type ConfigKey = 'display.stream' | 'display.lineNumbers' | 'display.collapseThreshold' | 'display.theme' | 'display.showThinking' | 'display.showReasoningSummary' | 'display.showTokenSpeed' | 'display.showToolPreview' | 'provider.reasoningEffort' | 'provider.model' | 'provider.embeddingProvider' | 'provider.systemPromptFile' | 'provider.optimizerMode' | 'provider.optimizerPinnedModel' | 'provider.localContextIngestion' | 'behavior.autoApprove' | 'behavior.autoCompactThreshold' | 'behavior.compactionStrategy' | 'behavior.staleContextWarnings' | 'behavior.saveHistory' | 'behavior.notifyOnComplete' | 'behavior.suggestAlternativeOnProviderFail' | 'behavior.hitlMode' | 'behavior.toolResultReconciliation' | 'behavior.returnContextMode' | 'behavior.guidanceMode' | 'storage.secretPolicy' | 'storage.artifacts.maxBytes' | 'permissions.mode' | 'permissions.backgroundAgents' | 'permissions.engine' | 'permissions.simulation' | 'permissions.divergenceDashboard' | 'permissions.commandParser' | 'permissions.divergenceThreshold' | 'permissions.maxDivergenceRecords' | 'permissions.tools.read' | 'permissions.tools.write' | 'permissions.tools.edit' | 'permissions.tools.exec' | 'permissions.tools.find' | 'permissions.tools.fetch' | 'permissions.tools.analyze' | 'permissions.tools.inspect' | 'permissions.tools.agent' | 'permissions.tools.state' | 'permissions.tools.workflow' | 'permissions.tools.registry' | 'permissions.tools.delegate' | 'permissions.tools.mcp' | 'diagnostics.postEdit' | 'orchestration.recursionEnabled' | 'orchestration.maxDepth' | 'planner.decomposition' | 'planner.maxTurns' | 'planner.tokenCeiling' | 'planner.wallTimeoutMs' | 'planner.adaptive' | 'sandbox.enabled' | 'sandbox.judgment' | 'sandbox.replIsolation' | 'sandbox.mcpIsolation' | 'sandbox.windowsMode' | 'sandbox.vmBackend' | 'sandbox.qemuBinary' | 'sandbox.qemuImagePath' | 'sandbox.qemuExecWrapper' | 'sandbox.qemuGuestHost' | 'sandbox.qemuGuestPort' | 'sandbox.qemuGuestUser' | 'sandbox.qemuWorkspacePath' | 'sandbox.qemuSessionMode' | 'sandbox.replJavaScriptCommand' | 'ui.voiceEnabled' | 'ui.systemMessages' | 'ui.operationalMessages' | 'ui.wrfcMessages' | 'tts.provider' | 'tts.voice' | 'tts.llmProvider' | 'tts.llmModel' | 'tts.speed' | 'release.channel' | PaymentsConfigKey | DaemonProcessConfigKey | 'danger.httpListener' | 'tools.llmEnabled' | 'tools.llmProvider' | 'tools.llmModel' | 'tools.autoHeal' | 'tools.defaultTokenBudget' | 'tools.hooksFile' | 'tools.overflowSpillBackend' | 'tools.contractVerification' | 'tools.outputSchemaFingerprints' | 'wrfc.scoreThreshold' | 'wrfc.maxFixAttempts' | 'wrfc.autoCommit' | 'wrfc.commitScope' | 'wrfc.agentHeartbeatTimeoutMs' | 'wrfc.transportRetryLimit' | 'wrfc.transportRetryDelayMs' | 'cache.enabled' | 'cache.stableTtl' | 'cache.monitorHitRate' | 'cache.hitRateWarningThreshold' | 'helper.enabled' | 'helper.globalProvider' | 'helper.globalModel' | 'automation.enabled' | 'automation.maxConcurrentRuns' | 'automation.runHistoryLimit' | 'automation.defaultTimeoutMs' | 'automation.catchUpWindowMinutes' | 'automation.failureCooldownMs' | 'automation.deleteAfterRun' | 'controlPlane.enabled' | 'controlPlane.gateway' | 'controlPlane.hostMode' | 'controlPlane.host' | 'controlPlane.port' | 'controlPlane.publicBaseUrl' | 'conversationGate.mode' | 'conversationGate.proposalTtlMs' | 'conversationGate.maxPendingProposals' | 'hostedSessions.detachPolicy' | 'hostedSessions.maxSessions' | 'hostedSessions.maxMessagesPerSession' | 'hostedSessions.terminatedRetentionMs' | 'hostedSessions.attachmentTtlMs' | 'hostedSessions.promoteInboundConversations' | 'controlPlane.streamMode' | 'controlPlane.allowRemote' | 'controlPlane.trustProxy' | 'controlPlane.openaiCompatible.enabled' | 'controlPlane.openaiCompatible.pathPrefix' | 'controlPlane.webui.serve' | 'controlPlane.webui.bundleDir' | 'controlPlane.cors.enabled' | 'controlPlane.cors.allowedOrigins' | 'controlPlane.tls.mode' | 'controlPlane.tls.certFile' | 'controlPlane.tls.keyFile' | 'httpListener.hostMode' | 'httpListener.host' | 'httpListener.port' | 'httpListener.trustProxy' | 'httpListener.trustCloudflare' | 'httpListener.tls.mode' | 'httpListener.tls.certFile' | 'httpListener.tls.keyFile' | 'web.enabled' | 'web.hostMode' | 'web.host' | 'web.port' | 'web.publicBaseUrl' | 'web.staticAssetsDir' | 'surfaces.slack.enabled' | 'surfaces.slack.signingSecret' | 'surfaces.slack.botToken' | 'surfaces.slack.appToken' | 'surfaces.slack.defaultChannel' | 'surfaces.slack.workspaceId' | 'surfaces.discord.enabled' | 'surfaces.discord.publicKey' | 'surfaces.discord.botToken' | 'surfaces.discord.applicationId' | 'surfaces.discord.defaultChannelId' | 'surfaces.discord.guildId' | 'surfaces.ntfy.enabled' | 'surfaces.ntfy.baseUrl' | 'surfaces.ntfy.topic' | 'surfaces.ntfy.chatTopic' | 'surfaces.ntfy.agentTopic' | 'surfaces.ntfy.remoteTopic' | 'surfaces.ntfy.token' | 'surfaces.ntfy.defaultPriority' | 'surfaces.webhook.enabled' | 'surfaces.webhook.defaultTarget' | 'surfaces.webhook.timeoutMs' | 'surfaces.webhook.secret' | 'surfaces.homeassistant.enabled' | 'surfaces.homeassistant.instanceUrl' | 'surfaces.homeassistant.accessToken' | 'surfaces.homeassistant.webhookSecret' | 'surfaces.homeassistant.defaultConversationId' | 'surfaces.homeassistant.deviceId' | 'surfaces.homeassistant.deviceName' | 'surfaces.homeassistant.eventType' | 'surfaces.homeassistant.remoteSessionTtlMs' | 'surfaces.telegram.enabled' | 'surfaces.telegram.botToken' | 'surfaces.telegram.webhookSecret' | 'surfaces.telegram.defaultChatId' | 'surfaces.telegram.botUsername' | 'surfaces.telegram.discoveredBotTokenId' | 'surfaces.telegram.mode' | 'surfaces.googleChat.enabled' | 'surfaces.googleChat.webhookUrl' | 'surfaces.googleChat.verificationToken' | 'surfaces.googleChat.appId' | 'surfaces.googleChat.spaceId' | 'surfaces.signal.enabled' | 'surfaces.signal.bridgeUrl' | 'surfaces.signal.account' | 'surfaces.signal.token' | 'surfaces.signal.defaultRecipient' | 'surfaces.whatsapp.enabled' | 'surfaces.whatsapp.provider' | 'surfaces.whatsapp.accessToken' | 'surfaces.whatsapp.verifyToken' | 'surfaces.whatsapp.signingSecret' | 'surfaces.whatsapp.phoneNumberId' | 'surfaces.whatsapp.businessAccountId' | 'surfaces.whatsapp.defaultRecipient' | 'surfaces.telephony.enabled' | 'surfaces.telephony.provider' | 'surfaces.telephony.mode' | 'surfaces.telephony.bridgeUrl' | 'surfaces.telephony.token' | 'surfaces.telephony.accountSid' | 'surfaces.telephony.authToken' | 'surfaces.telephony.fromNumber' | 'surfaces.telephony.defaultRecipient' | 'surfaces.telephony.webhookSecret' | 'surfaces.telephony.voiceLanguage' | 'surfaces.imessage.enabled' | 'surfaces.imessage.bridgeUrl' | 'surfaces.imessage.account' | 'surfaces.imessage.token' | 'surfaces.imessage.defaultChatId' | 'surfaces.msteams.enabled' | 'surfaces.msteams.appId' | 'surfaces.msteams.appPassword' | 'surfaces.msteams.tenantId' | 'surfaces.msteams.serviceUrl' | 'surfaces.msteams.botId' | 'surfaces.msteams.defaultConversationId' | 'surfaces.msteams.defaultChannelId' | 'surfaces.bluebubbles.enabled' | 'surfaces.bluebubbles.serverUrl' | 'surfaces.bluebubbles.password' | 'surfaces.bluebubbles.account' | 'surfaces.bluebubbles.defaultChatGuid' | 'surfaces.mattermost.enabled' | 'surfaces.mattermost.baseUrl' | 'surfaces.mattermost.botToken' | 'surfaces.mattermost.teamId' | 'surfaces.mattermost.defaultChannelId' | 'surfaces.matrix.enabled' | 'surfaces.matrix.homeserverUrl' | 'surfaces.matrix.accessToken' | 'surfaces.matrix.userId' | 'surfaces.matrix.defaultRoomId' | 'surfaces.email.host' | 'surfaces.email.user' | 'surfaces.email.username' | 'surfaces.email.from' | 'surfaces.email.password' | 'surfaces.email.imapHost' | 'surfaces.email.imapPort' | 'surfaces.email.imapUser' | 'surfaces.email.imapPassword' | 'surfaces.email.imap.host' | 'surfaces.email.imap.port' | 'surfaces.email.imap.user' | 'surfaces.email.imap.password' | 'surfaces.email.imap.secure' | 'surfaces.email.imap.mailbox' | 'surfaces.email.imap.draftsMailbox' | 'surfaces.email.smtp.host' | 'surfaces.email.smtp.port' | 'surfaces.email.smtp.password' | 'surfaces.email.smtp.secure' | 'surfaces.email.inbound.enabled' | 'surfaces.email.inbound.accounts' | 'surfaces.email.inbound.source' | 'surfaces.email.inbound.gmailPollSecondsExpecting' | 'surfaces.email.inbound.gmailPollSecondsIdle' | 'surfaces.email.inbound.mode' | 'surfaces.email.inbound.pollIntervalSeconds' | 'surfaces.email.inbound.idleReissueMinutes' | 'surfaces.email.inbound.reconnect.maxBackoffSeconds' | 'surfaces.email.inbound.notice.route' | 'surfaces.email.inbound.notice.mode' | 'surfaces.email.inbound.expectationWindowMinutes' | 'surfaces.email.inbound.dedupTtlMinutes' | 'surfaces.email.inbound.retentionDays' | 'surfaces.email.inbound.maxRecords' | 'surfaces.email.inbound.capabilityRecheckMinutes' | 'surfaces.email.inbound.onInsufficientCapability' | 'surfaces.calendar.caldavUrl' | 'surfaces.calendar.caldavUser' | 'surfaces.calendar.caldavPassword' | 'surfaces.calendar.defaultCalendarId' | 'surfaces.calendar.calendars' | 'watchers.enabled' | 'watchers.pollIntervalMs' | 'watchers.heartbeatIntervalMs' | 'watchers.recoveryWindowMinutes' | 'watchers.ciPollIntervalMs' | 'watchers.triggers.enabled' | 'watchers.triggers.backoffLadderMs' | 'watchers.triggers.breakerStrikes' | 'watchers.triggers.defaultCheckIntervalMs' | 'watchers.triggers.probeTimeoutMs' | 'watchers.triggers.maxConcurrentChecks' | 'watchers.triggers.observationRingSize' | 'watchers.triggers.runHistoryLimit' | 'watchers.triggers.runHistoryTtlHours' | 'watchers.triggers.eventLogLimit' | 'watchers.triggers.eventLogTtlHours' | 'watchers.triggers.sweepIntervalMs' | 'watchers.triggers.supervisionTickMs' | 'watchers.triggers.streamQueueLimit' | 'watchers.triggers.streamBatchLines' | 'watchers.triggers.streamBatchIntervalMs' | 'watchers.triggers.onExitMaxDurationMs' | 'watchers.triggers.onExitStdin' | 'watchers.triggers.outputTailBytes' | 'service.enabled' | 'service.autostart' | 'service.restartOnFailure' | 'service.platform' | 'service.serviceName' | 'service.logPath' | 'update.auto' | 'update.intervalMinutes' | 'update.firstCheckSeconds' | 'update.releasesUrl' | 'update.rollbackAfterFailedStarts' | 'update.alertAfterFailedChecks' | 'network.outboundTls.mode' | 'network.outboundTls.customCaFile' | 'network.outboundTls.customCaDir' | 'network.outboundTls.allowInsecureLocalhost' | 'network.remoteFetch.allowPrivateHosts' | 'relay.enabled' | 'relay.url' | 'relay.rendezvousId' | 'relay.label' | 'relay.requireStepUpForMutations' | 'runtime.companionChatLimiter.perSessionLimit' | 'runtime.eventBus.maxListeners' | 'runtime.unifiedTasks' | 'runtime.pluginLifecycle' | 'runtime.mcpLifecycle' | 'runtime.toolBudget.enforced' | 'runtime.toolBudget.maxMs' | 'runtime.toolBudget.maxTokens' | 'runtime.toolBudget.maxCostUsd' | 'telemetry.includeRawPrompts' | 'telemetry.decisionOtlpEnabled' | 'telemetry.decisionOtlpEndpoint' | 'telemetry.decisionOtlpSignal' | 'telemetry.otelMode' | 'atRest.redactionEnabled' | 'atRest.retentionMaxAgeDays' | 'atRest.retentionMaxTotalMb' | 'batch.mode' | 'batch.fallback' | 'batch.queueBackend' | 'batch.tickIntervalMs' | 'batch.maxDelayMs' | 'batch.maxJobsPerProviderBatch' | 'batch.maxQueuePayloadBytes' | 'batch.maxQueueMessagesPerDay' | 'cloudflare.enabled' | 'cloudflare.freeTierMode' | 'cloudflare.accountId' | 'cloudflare.apiTokenRef' | 'cloudflare.zoneId' | 'cloudflare.zoneName' | 'cloudflare.workerName' | 'cloudflare.workerSubdomain' | 'cloudflare.workerHostname' | 'cloudflare.workerBaseUrl' | 'cloudflare.daemonBaseUrl' | 'cloudflare.daemonHostname' | 'cloudflare.workerTokenRef' | 'cloudflare.workerClientTokenRef' | 'cloudflare.workerCron' | 'cloudflare.queueName' | 'cloudflare.deadLetterQueueName' | 'cloudflare.tunnelName' | 'cloudflare.tunnelId' | 'cloudflare.tunnelTokenRef' | 'cloudflare.accessAppId' | 'cloudflare.accessServiceTokenId' | 'cloudflare.accessServiceTokenRef' | 'cloudflare.kvNamespaceName' | 'cloudflare.kvNamespaceId' | 'cloudflare.durableObjectNamespaceName' | 'cloudflare.durableObjectNamespaceId' | 'cloudflare.r2BucketName' | 'cloudflare.secretsStoreName' | 'cloudflare.secretsStoreId' | 'cloudflare.maxQueueOpsPerDay' | 'notifications.adaptiveSuppression' | 'notifications.burstWindowMs' | 'notifications.burstThreshold' | 'notifications.burstCooldownMs' | 'notifications.pushApproval' | 'notifications.pushNeedsInput' | 'notifications.pushCompletion' | 'notifications.blockedEscalationGraceMs' | 'notifications.blockedEscalationFollowUpMs' | 'notifications.blockedEscalationMaxFollowUps' | 'fetch.sanitizeMode' | 'fetch.trustedHosts' | 'fetch.blockedHosts' | 'fetch.allowLocalhost' | 'security.tokenAudit.enabled' | 'security.tokenAudit.rotationCadenceDays' | 'security.tokenAudit.rotationWarningDays' | 'security.tokenAudit.managed' | 'integrations.routeBinding' | 'integrations.deliveryTracking' | 'integrations.delivery.maxRetries' | 'integrations.delivery.initialDelayMs' | 'integrations.delivery.maxDelayMs' | 'integrations.delivery.maxDlqSize' | 'integrations.delivery.sloEnforced' | 'policy.registryEnabled' | 'policy.requireSignedBundles' | 'policy.bundleSource' | 'policy.bundlePath' | 'agents.passiveInjection.knowledge' | 'agents.passiveInjection.code' | 'agents.passiveInjection.budgetTokens' | 'agents.passiveInjection.relevanceFloor' | 'agents.passiveInjection.codeLimit' | 'agents.contextWindowGuard' | 'agents.contextCompactThreshold' | 'agents.maxTurns' | 'agents.maxTurnsCap' | 'pricing.modelPrices' | 'checkin.enabled' | 'checkin.cadence' | 'checkin.deliveryChannel' | 'checkin.quietHours' | 'learning.consolidation.enabled' | 'learning.consolidation.intervalMs' | 'learning.consolidation.minIdleMs' | 'learning.consolidation.maxMergesPerRun' | 'learning.consolidation.maxDecaysPerRun' | 'learning.consolidation.maxProposalsPerRun' | 'learning.consolidation.decayAgeDays' | 'learning.consolidation.decayConfidenceStep' | 'learning.consolidation.archiveConfidenceFloor' | 'power.keepAwake' | 'power.inhibitWhileWorking' | 'power.workInhibitMaxMinutes' | 'memory.budgetMb' | 'memory.tier.elevatedPct' | 'memory.tier.highPct' | 'memory.tier.criticalPct' | 'memory.tripwire.rateMbPerSec' | 'memory.tripwire.sustainSec' | 'memory.hardLimitPct' | 'voice.local.sttEngine' | 'voice.local.sttBinary' | 'voice.local.sttModelPath' | 'voice.local.ttsEngine' | 'voice.local.ttsBinary' | 'voice.local.ttsModelPath' | 'voice.wake.enabled' | 'voice.wake.models' | 'voice.wake.threshold' | 'voice.wake.patienceFrames' | 'voice.wake.cooldownMs' | 'voice.wake.vadThreshold' | 'voice.wake.noiseSuppression' | 'voice.wake.inputDevice' | 'voice.wake.captureCommand' | 'voice.wake.surfaces.tui' | 'voice.wake.surfaces.agent' | 'voice.wake.surfaces.webui' | 'voice.wake.activationSound' | 'voice.wake.activationSoundPath' | 'voice.wake.indicator' | 'voice.wake.preRollMs' | 'voice.wake.captureMaxSeconds' | 'voice.wake.silenceStopMs' | 'voice.wake.autoSubmit' | 'voice.wake.retainAudio' | 'voice.wake.customModelDir' | 'voice.wake.maxRestarts' | 'voice.wake.restartBackoffMs' | 'voice.wake.crashWindowSeconds' | 'voice.wake.browserBackend' | 'device.capabilities.mode' | 'device.capabilities.allowAlwaysOffer' | 'device.capabilities.requestTimeoutSeconds' | 'device.location.precision' | 'device.clipboard.readMode' | 'device.capture.retentionHours' | 'device.capture.maxArtifacts' | 'device.capture.sweepIntervalMinutes' | 'device.grants.expiryDays' | 'device.grants.maxPerNode' | 'device.grants.auditRetentionDays' | 'device.nodes.maxPaired' | 'push.vapidSubject' | 'push.subscriptions.warnAbovePerPrincipal' | 'push.subscriptions.failureThreshold' | 'push.subscriptions.sweepIntervalMinutes' | 'fleet.maxSize' | 'cluster.enabled' | 'cluster.heartbeatSeconds' | 'cluster.masterTimeoutSeconds' | 'cluster.bootProbeSeconds' | 'cluster.port' | 'cluster.multicastGroup' | 'cluster.secret' | 'cluster.keyRotationHours' | 'cluster.keyRotationGraceMinutes' | 'cluster.beaconSeconds' | 'cluster.rosterGossipSeconds' | ProfileConfigKey | OccasionsConfigKey;"
+    },
+    {
+      "name": "applyRuntimeEndpointFlagOverrides",
+      "kind": "function",
+      "text": "export declare function applyRuntimeEndpointFlagOverrides(configManager: ConfigManager, endpoint: RuntimeEndpointId, flags: Pick<GoodVibesCliFlags, 'hostname' | 'port'>): readonly string[]; ;; via Pick = type Pick<T, K extends keyof T> = { [P in K]: T[P]; };"
+    },
+    {
+      "name": "applyRuntimeFeatureFlagOverrides",
+      "kind": "function",
+      "text": "export declare function applyRuntimeFeatureFlagOverrides(configManager: ConfigManager, options: { readonly enableFeatures: readonly string[]; readonly disableFeatures: readonly string[]; }): readonly string[];"
+    },
+    {
+      "name": "applyTerminalRuntimeConfigDefaults",
+      "kind": "function",
+      "text": "export declare function applyTerminalRuntimeConfigDefaults(configManager: ConfigManager): void;"
+    },
+    {
+      "name": "assertEveryDescriptorHasHandler",
+      "kind": "function",
+      "text": "export declare function assertEveryDescriptorHasHandler(catalog: GatewayCatalogConformanceView, options?: ConformanceOptions): void;"
+    },
+    {
+      "name": "attachWsOnlyGatewayVerbHandlers",
+      "kind": "function",
+      "text": "export declare function attachWsOnlyGatewayVerbHandlers(gatewayMethods: GatewayMethodCatalog, deps: GatewayVerbGroupDeps): void;"
+    },
+    {
+      "name": "callDaemonVerb",
+      "kind": "function",
+      "text": "export declare function callDaemonVerb<T>(target: RemoteDaemonTarget, path: string, init?: { method: 'GET' | 'POST'; body?: unknown; }, fetchImpl?: DaemonFetch): Promise<DaemonVerbOutcome<T>>; ;; via Promise = interface Promise<T> { then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): Promise<TResult1 | TResult2>; catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): Promise<T | TResult>; }"
+    },
+    {
+      "name": "catalogCommandSpec",
+      "kind": "function",
+      "text": "export declare function catalogCommandSpec<TCommand extends string, TField extends string>(catalog: Pick<CliCatalog<TCommand, TField, unknown>, 'commands'>, command: TCommand): CommandSpec<TCommand, TField>; ;; via Pick = type Pick<T, K extends keyof T> = { [P in K]: T[P]; };"
+    },
+    {
+      "name": "catalogFlagArity",
+      "kind": "function",
+      "text": "export declare function catalogFlagArity<TCommand extends string, TField extends string>(catalog: Pick<CliCatalog<TCommand, TField, unknown>, 'commands' | 'globalFlags'>): ReadonlyMap<string, CliFlagKind>; ;; via Pick = type Pick<T, K extends keyof T> = { [P in K]: T[P]; }; ;; ReadonlyMap = interface ReadonlyMap<K, V> { forEach(callbackfn: (value: V, key: K, map: ReadonlyMap<K, V>) => void, thisArg?: any): void; get(key: K): V | undefined; has(key: K): boolean; readonly size: number; }"
+    },
+    {
+      "name": "catalogFlagsForCommand",
+      "kind": "function",
+      "text": "export declare function catalogFlagsForCommand<TCommand extends string, TField extends string>(catalog: Pick<CliCatalog<TCommand, TField, unknown>, 'commands' | 'globalFlags'>, command: TCommand): readonly CommandFlagSpec<TField>[]; ;; via Pick = type Pick<T, K extends keyof T> = { [P in K]: T[P]; };"
+    },
+    {
+      "name": "classifyBindPosture",
+      "kind": "function",
+      "text": "export declare function classifyBindPosture(binding: Pick<RuntimeEndpointBinding, 'hostMode' | 'host'>): BindPosture; ;; via Pick = type Pick<T, K extends keyof T> = { [P in K]: T[P]; };"
+    },
+    {
+      "name": "clipboardEscapeSequence",
+      "kind": "function",
+      "text": "export declare function clipboardEscapeSequence(value: string): string;"
+    },
+    {
+      "name": "collectSensitiveConfigValues",
+      "kind": "function",
+      "text": "export declare function collectSensitiveConfigValues(config: unknown): readonly string[];"
+    },
+    {
+      "name": "computePromptContentWidth",
+      "kind": "function",
+      "text": "export declare function computePromptContentWidth(terminalColumns: number): number;"
+    },
+    {
+      "name": "createArchivableFleetRegistry",
+      "kind": "function",
+      "text": "export declare function createArchivableFleetRegistry(deps: ProcessRegistryDeps): ArchivableProcessRegistry;"
+    },
+    {
+      "name": "createBottomBarLine",
+      "kind": "function",
+      "text": "export declare function createBottomBarLine(width: number, style: BottomBarStyle): Line; ;; via Line = export type Line = Cell[];"
+    },
+    {
+      "name": "createFleetServices",
+      "kind": "function",
+      "text": "export declare function createFleetServices(deps: FleetServicesDeps): { processRegistry: ArchivableProcessRegistry; };"
+    },
+    {
+      "name": "createRenderScheduler",
+      "kind": "function",
+      "text": "export declare function createRenderScheduler(renderNow: () => void, scheduleFlush?: (flush: () => void) => void, isReleased?: () => boolean): RenderScheduler;"
+    },
+    {
+      "name": "createShellLayout",
+      "kind": "function",
+      "text": "export declare function createShellLayout(request: ShellLayoutRequest): ShellLayout;"
+    },
+    {
+      "name": "createSplitPaneLayout",
+      "kind": "function",
+      "text": "export declare function createSplitPaneLayout(totalRows: number, ratio: number, options?: { readonly topTabRows?: number | undefined; readonly bottomTabRows?: number | undefined; readonly separatorRows?: number | undefined; }): SplitPaneLayout;"
+    },
+    {
+      "name": "createTerminalLifecycle",
+      "kind": "function",
+      "text": "export declare function createTerminalLifecycle(deps: TerminalLifecycleDeps): TerminalLifecycle;"
+    },
+    {
+      "name": "describeAge",
+      "kind": "function",
+      "text": "export declare function describeAge(at: number, now: number): string;"
+    },
+    {
+      "name": "downsampleColor",
+      "kind": "function",
+      "text": "export declare function downsampleColor(rawColor: string, caps: TermColorCaps, role: 'fg' | 'bg'): string | null;"
+    },
+    {
+      "name": "drawTreeRails",
+      "kind": "function",
+      "text": "export declare function drawTreeRails(lines: readonly Line[], depth: number, connector: string | undefined, openAncestorDepths: readonly number[], width: number, fg: string): void; ;; via Line = export type Line = Cell[];"
+    },
+    {
+      "name": "extractOperatorToken",
+      "kind": "function",
+      "text": "export declare function extractOperatorToken(contents: string | undefined): string | undefined;"
+    },
+    {
+      "name": "featureEnablementWrite",
+      "kind": "function",
+      "text": "export declare function featureEnablementWrite(featureId: string, enabled: boolean): FeatureEnablementWrite | null;"
+    },
+    {
+      "name": "featuresForEnablementKey",
+      "kind": "function",
+      "text": "export declare function featuresForEnablementKey(key: string): readonly FeatureSetting[]; ;; via FeatureSetting = export interface FeatureSetting { readonly id: string; readonly name: string; readonly description: string; readonly domain: string; readonly enablement: { readonly key: ConfigKey; readonly kind: FeatureEnablementKind; readonly enabledValues?: readonly string[]; }; readonly settings: readonly ConfigKey[]; readonly restartRequired: boolean; readonly defaultEnabled: boolean; readonly operable: boolean; readonly inoperableDetail: string | null; }"
+    },
+    {
+      "name": "filterProviders",
+      "kind": "function",
+      "text": "export declare function filterProviders(providers: readonly string[], query: string): string[];"
+    },
+    {
+      "name": "findCatalogFlagArityConflicts",
+      "kind": "function",
+      "text": "export declare function findCatalogFlagArityConflicts<TCommand extends string, TField extends string>(catalog: Pick<CliCatalog<TCommand, TField, unknown>, 'commands' | 'globalFlags'>): readonly string[]; ;; via Pick = type Pick<T, K extends keyof T> = { [P in K]: T[P]; };"
+    },
+    {
+      "name": "findMethodsMissingHandlers",
+      "kind": "function",
+      "text": "export declare function findMethodsMissingHandlers(catalog: GatewayCatalogConformanceView, options?: ConformanceOptions): string[];"
+    },
+    {
+      "name": "fitLabelDetailColumns",
+      "kind": "function",
+      "text": "export declare function fitLabelDetailColumns(label: string, detail: string, totalWidth: number, labelRatio?: number): { labelWidth: number; detailWidth: number; };"
+    },
+    {
+      "name": "formatRuntimeEndpointBinding",
+      "kind": "function",
+      "text": "export declare function formatRuntimeEndpointBinding(binding: RuntimeEndpointBinding): string;"
+    },
+    {
+      "name": "getConfigSchemaSetting",
+      "kind": "function",
+      "text": "export declare function getConfigSchemaSetting(key: string): ConfigSetting | null; ;; via ConfigSetting = export interface ConfigSetting { key: ConfigKey; type: 'boolean' | 'number' | 'string' | 'enum' | 'object'; default: unknown; description: string; enumValues?: string[] | undefined; validate?: ((value: unknown) => boolean) | undefined; validationHint?: string | undefined; }"
+    },
+    {
+      "name": "getFeatureSetting",
+      "kind": "function",
+      "text": "export declare function getFeatureSetting(featureId: string): FeatureSetting | null; ;; via FeatureSetting = export interface FeatureSetting { readonly id: string; readonly name: string; readonly description: string; readonly domain: string; readonly enablement: { readonly key: ConfigKey; readonly kind: FeatureEnablementKind; readonly enabledValues?: readonly string[]; }; readonly settings: readonly ConfigKey[]; readonly restartRequired: boolean; readonly defaultEnabled: boolean; readonly operable: boolean; readonly inoperableDetail: string | null; }"
+    },
+    {
+      "name": "getOverlayContentBudget",
+      "kind": "function",
+      "text": "export declare function getOverlayContentBudget(viewportHeight: number, options: OverlayViewportBudgetOptions): number;"
+    },
+    {
+      "name": "getOverlayMaxWidth",
+      "kind": "function",
+      "text": "export declare function getOverlayMaxWidth(terminalWidth: number, margin: number, requestedMaxWidth: number): number;"
+    },
+    {
+      "name": "getOverlaySurfaceMetrics",
+      "kind": "function",
+      "text": "export declare function getOverlaySurfaceMetrics(viewportWidth: number, viewportHeight: number, options: OverlaySurfaceMetricsOptions): OverlaySurfaceMetrics;"
+    },
+    {
+      "name": "getOverlayWidthClass",
+      "kind": "function",
+      "text": "export declare function getOverlayWidthClass(viewportWidth: number): OverlayWidthClass;"
+    },
+    {
+      "name": "getStableOverlayContentRows",
+      "kind": "function",
+      "text": "export declare function getStableOverlayContentRows(contentRows: number, minRows?: number): number;"
+    },
+    {
+      "name": "getSurfaceContentRows",
+      "kind": "function",
+      "text": "export declare function getSurfaceContentRows(request: SurfaceViewportRequest): number;"
+    },
+    {
+      "name": "getTrackedVisibleWindow",
+      "kind": "function",
+      "text": "export declare function getTrackedVisibleWindow(total: number, selectedIndex: number, visibleCount: number, previousStart: number, guardRows?: number): VisibleWindow;"
+    },
+    {
+      "name": "getVisibleWindow",
+      "kind": "function",
+      "text": "export declare function getVisibleWindow(total: number, selectedIndex: number, visibleCount: number): VisibleWindow;"
+    },
+    {
+      "name": "groupProviders",
+      "kind": "function",
+      "text": "export declare function groupProviders(providers: readonly string[]): { popular: string[]; all: string[]; };"
+    },
+    {
+      "name": "hostModeForHostname",
+      "kind": "function",
+      "text": "export declare function hostModeForHostname(hostname: string): RuntimeHostMode;"
+    },
+    {
+      "name": "installFullScreenTerminalOutputGuard",
+      "kind": "function",
+      "text": "export declare function installFullScreenTerminalOutputGuard(options: FullScreenTerminalOutputGuardOptions): TerminalOutputGuard;"
+    },
+    {
+      "name": "installTerminalOutputGuard",
+      "kind": "function",
+      "text": "export declare function installTerminalOutputGuard(options: TerminalOutputGuardOptions): TerminalOutputGuard;"
+    },
+    {
+      "name": "isClusterSubcommand",
+      "kind": "function",
+      "text": "export declare function isClusterSubcommand(value: string | undefined): value is ClusterSubcommand;"
+    },
+    {
+      "name": "isFeatureConfigEnabled",
+      "kind": "function",
+      "text": "export declare function isFeatureConfigEnabled(configManager: Pick<ConfigManager, 'get'>, featureId: string): boolean; ;; via Pick = type Pick<T, K extends keyof T> = { [P in K]: T[P]; };"
+    },
+    {
+      "name": "isFeatureDefaultEnabled",
+      "kind": "function",
+      "text": "export declare function isFeatureDefaultEnabled(featureId: string): boolean;"
+    },
+    {
+      "name": "isFeatureValueEnabled",
+      "kind": "function",
+      "text": "export declare function isFeatureValueEnabled(feature: FeatureSetting, value: unknown): boolean; ;; via FeatureSetting = export interface FeatureSetting { readonly id: string; readonly name: string; readonly description: string; readonly domain: string; readonly enablement: { readonly key: ConfigKey; readonly kind: FeatureEnablementKind; readonly enabledValues?: readonly string[]; }; readonly settings: readonly ConfigKey[]; readonly restartRequired: boolean; readonly defaultEnabled: boolean; readonly operable: boolean; readonly inoperableDetail: string | null; }"
+    },
+    {
+      "name": "isLoopbackHost",
+      "kind": "function",
+      "text": "export declare function isLoopbackHost(host: string): boolean;"
+    },
+    {
+      "name": "isNetworkFacing",
+      "kind": "function",
+      "text": "export declare function isNetworkFacing(enabled: unknown, binding: Pick<RuntimeEndpointBinding, 'hostMode' | 'host'>): boolean; ;; via Pick = type Pick<T, K extends keyof T> = { [P in K]: T[P]; };"
+    },
+    {
+      "name": "isRedactedValue",
+      "kind": "function",
+      "text": "export declare function isRedactedValue(value: unknown): boolean;"
+    },
+    {
+      "name": "isSensitiveConfigPath",
+      "kind": "function",
+      "text": "export declare function isSensitiveConfigPath(path: string): boolean;"
+    },
+    {
+      "name": "isTextBackspace",
+      "kind": "function",
+      "text": "export declare function isTextBackspace(key: string): boolean;"
+    },
+    {
+      "name": "isTextForwardDelete",
+      "kind": "function",
+      "text": "export declare function isTextForwardDelete(key: string): boolean;"
+    },
+    {
+      "name": "nearestAnsi16Fg",
+      "kind": "function",
+      "text": "export declare function nearestAnsi16Fg(r: number, g: number, b: number): number;"
+    },
+    {
+      "name": "nearestAnsi256",
+      "kind": "function",
+      "text": "export declare function nearestAnsi256(r: number, g: number, b: number): number;"
+    },
+    {
+      "name": "parseClusterCommand",
+      "kind": "function",
+      "text": "export declare function parseClusterCommand(argv: readonly string[]): ParsedClusterCommand;"
+    },
+    {
+      "name": "parseConfigValueText",
+      "kind": "function",
+      "text": "export declare function parseConfigValueText(value: string): unknown;"
+    },
+    {
+      "name": "parseGoodVibesCli",
+      "kind": "function",
+      "text": "export declare function parseGoodVibesCli(argv: readonly string[], binary?: string): GoodVibesCliParseResult;"
+    },
+    {
+      "name": "parseWithCatalog",
+      "kind": "function",
+      "text": "export declare function parseWithCatalog<TCommand extends string, TField extends string, TFlags>(argv: readonly string[], catalog: CliCatalog<TCommand, TField, TFlags>, binary: string): EngineParseResult<TCommand, TFlags>;"
+    },
+    {
+      "name": "probeTermCaps",
+      "kind": "function",
+      "text": "export declare function probeTermCaps(stdout: NodeJS.WriteStream): TermColorCaps;"
+    },
+    {
+      "name": "redactConfig",
+      "kind": "function",
+      "text": "export declare function redactConfig<T>(config: T): RedactedConfigResult<T>;"
+    },
+    {
+      "name": "redactSerializedSecrets",
+      "kind": "function",
+      "text": "export declare function redactSerializedSecrets(serialized: string, secretValues: readonly string[]): string;"
+    },
+    {
+      "name": "redactText",
+      "kind": "function",
+      "text": "export declare function redactText(input: string): string;"
+    },
+    {
+      "name": "renderCreated",
+      "kind": "function",
+      "text": "export declare function renderCreated(result: CreateGroupResult): string[]; ;; via CreateGroupResult = export interface CreateGroupResult { readonly groupId: string; readonly groupName: string; readonly joinKey: string; readonly generatedKey: boolean; }"
+    },
+    {
+      "name": "renderDiscovered",
+      "kind": "function",
+      "text": "export declare function renderDiscovered(groups: readonly DiscoveredGroup[], now: number): string[]; ;; via DiscoveredGroup = export interface DiscoveredGroup { readonly groupId: string; readonly displayName: string; readonly nodeCount: number; readonly version: string; readonly lastSeenAt: number; }"
+    },
+    {
+      "name": "renderFailure",
+      "kind": "function",
+      "text": "export declare function renderFailure(error: string, fix: string): string[];"
+    },
+    {
+      "name": "renderForgotten",
+      "kind": "function",
+      "text": "export declare function renderForgotten(result: ForgetNodeResult): string[]; ;; via ForgetNodeResult = export interface ForgetNodeResult { readonly nodeId: string; readonly displayName: string; readonly memberCount: number; readonly keyGeneration: number; }"
+    },
+    {
+      "name": "renderJoinKey",
+      "kind": "function",
+      "text": "export declare function renderJoinKey(result: JoinKeyResult, isTerminal: boolean): JoinKeyRendering; ;; via JoinKeyResult = export interface JoinKeyResult { readonly groupId: string; readonly groupName: string; readonly joinKey: string; }"
+    },
+    {
+      "name": "renderJoinKeyQr",
+      "kind": "function",
+      "text": "export declare function renderJoinKeyQr(joinKey: string): string[];"
+    },
+    {
+      "name": "renderJoined",
+      "kind": "function",
+      "text": "export declare function renderJoined(result: JoinGroupResult): string[]; ;; via JoinGroupResult = export interface JoinGroupResult { readonly groupId: string; readonly groupName: string; readonly memberCount: number; }"
+    },
+    {
+      "name": "renderNodes",
+      "kind": "function",
+      "text": "export declare function renderNodes(result: NodesResult, now: number): string[]; ;; via NodesResult = export interface NodesResult { readonly groupId: string; readonly groupName: string; readonly members: readonly NodeReport[]; readonly removed: readonly RemovedNodeReport[]; }"
+    },
+    {
+      "name": "renderRotated",
+      "kind": "function",
+      "text": "export declare function renderRotated(result: RotateKeyResult): string[]; ;; via RotateKeyResult = export interface RotateKeyResult { readonly groupId: string; readonly keyGeneration: number; readonly memberCount: number; readonly immediate: boolean; readonly acceptedGenerations: readonly number[]; }"
+    },
+    {
+      "name": "renderStatus",
+      "kind": "function",
+      "text": "export declare function renderStatus(report: GroupStatusReport, now: number): string[]; ;; via GroupStatusReport = export interface GroupStatusReport { readonly membership: 'no-group' | 'member' | 'unreadable-key-material'; readonly groupId: string | null; readonly groupName: string | null; readonly nodeId: string; readonly nodeName: string; readonly version: string; readonly memberCount: number; readonly surfaces: readonly SurfaceHolding[] | null; readonly keyGeneration: number | null; readonly keyGenerationsHeld: number; readonly keyGenerationCap: number; readonly acceptedGenerations: readonly number[]; readonly removedNodeCount: number; readonly rotationHours: number; readonly replication: { readonly revision: number; readonly entries: number; readonly secrets: number; readonly tombstones: number; readonly lastAppliedFrom: string | null; readonly lastAppliedAt: number | null; readonly pendingProposals: number; } | null; readonly wire: { readonly sent: number; readonly received: number; readonly droppedOtherGroup: number; readonly droppedBadSignature: number; readonly droppedMalformed: number; readonly droppedOldGeneration: number; readonly droppedNoGroup: number; } | null; readonly advice: string | null; }"
+    },
+    {
+      "name": "resolveCatalogCommand",
+      "kind": "function",
+      "text": "export declare function resolveCatalogCommand<TCommand extends string, TField extends string>(catalog: Pick<CliCatalog<TCommand, TField, unknown>, 'commands'>, token: string): TCommand | undefined; ;; via Pick = type Pick<T, K extends keyof T> = { [P in K]: T[P]; };"
+    },
+    {
+      "name": "resolveRemoteDaemonTarget",
+      "kind": "function",
+      "text": "export declare function resolveRemoteDaemonTarget(input: ResolveRemoteTargetInput): RemoteTargetResolution;"
+    },
+    {
+      "name": "resolveRuntimeEndpointBinding",
+      "kind": "function",
+      "text": "export declare function resolveRuntimeEndpointBinding(config: Pick<ConfigManager, 'get'>, endpoint: RuntimeEndpointId): RuntimeEndpointBinding; ;; via Pick = type Pick<T, K extends keyof T> = { [P in K]: T[P]; };"
+    },
+    {
+      "name": "runClusterCommand",
+      "kind": "function",
+      "text": "export declare function runClusterCommand(input: RunClusterCommandInput): Promise<ClusterCommandResult>; ;; via Promise = interface Promise<T> { then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): Promise<TResult1 | TResult2>; catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): Promise<T | TResult>; }"
+    },
+    {
+      "name": "sliceVisibleWindow",
+      "kind": "function",
+      "text": "export declare function sliceVisibleWindow<T>(items: readonly T[], selectedIndex: number, visibleCount: number): { readonly items: readonly T[]; readonly window: VisibleWindow; };"
+    },
+    {
+      "name": "startMcpConfigAutoReload",
+      "kind": "function",
+      "text": "export declare function startMcpConfigAutoReload(options: McpRuntimeReloadOptions): McpRuntimeReloadHandle;"
+    },
+    {
+      "name": "stripDangerousAnsi",
+      "kind": "function",
+      "text": "export declare function stripDangerousAnsi(input: string): string;"
+    },
+    {
+      "name": "treeBranchCol",
+      "kind": "function",
+      "text": "export declare function treeBranchCol(indentCols: number): number;"
+    },
+    {
+      "name": "treeContentCol",
+      "kind": "function",
+      "text": "export declare function treeContentCol(indentCols: number): number;"
+    },
+    {
+      "name": "treeIndentCols",
+      "kind": "function",
+      "text": "export declare function treeIndentCols(depth: number, width: number): number;"
+    },
+    {
+      "name": "treeTextCol",
+      "kind": "function",
+      "text": "export declare function treeTextCol(indentCols: number): number;"
+    },
+    {
+      "name": "wrapSynced",
+      "kind": "function",
+      "text": "export declare function wrapSynced(diff: string, caps: TermColorCaps): string;"
+    },
+    {
+      "name": "wrapWithHangingIndent",
+      "kind": "function",
+      "text": "export declare function wrapWithHangingIndent(text: string, width: number, indent: string, maxLines?: number): string[];"
+    },
+    {
+      "name": "writeBottomBarText",
+      "kind": "function",
+      "text": "export declare function writeBottomBarText(line: Line, startX: number, maxWidth: number, text: string, style: BottomBarStyle): void; ;; via Line = export type Line = Cell[];"
+    },
+    {
+      "name": "writeTreeStatusMarker",
+      "kind": "function",
+      "text": "export declare function writeTreeStatusMarker(line: Line, glyph: string | null, fg: string, width: number): void; ;; via Line = export type Line = Cell[];"
+    }
+  ],
+  "./conformance": [
+    {
+      "name": "ConformanceOptions",
+      "kind": "interface",
+      "text": "export interface ConformanceOptions { readonly onlyIds?: readonly string[]; readonly ignoreIds?: readonly string[]; }"
+    },
+    {
+      "name": "GatewayCatalogConformanceView",
+      "kind": "interface",
+      "required": [
+        "hasHandler",
+        "list"
+      ],
+      "text": "export interface GatewayCatalogConformanceView { list(): ReadonlyArray<{ readonly id: string; }>; hasHandler(id: string): boolean; } ;; via ReadonlyArray = interface ReadonlyArray<T> { readonly length: number; toString(): string; toLocaleString(): string; concat(...items: ConcatArray<T>[]): T[]; concat(...items: (T | ConcatArray<T>)[]): T[]; join(separator?: string): string; slice(start?: number, end?: number): T[]; indexOf(searchElement: T, fromIndex?: number): number; lastIndexOf(searchElement: T, fromIndex?: number): number; every<S extends T>(predicate: (value: T, index: number, array: readonly T[]) => value is S, thisArg?: any): this is readonly S[]; every(predicate: (value: T, index: number, array: readonly T[]) => unknown, thisArg?: any): boolean; some(predicate: (value: T, index: number, array: readonly T[]) => unknown, thisArg?: any): boolean; forEach(callbackfn: (value: T, index: number, array: readonly T[]) => void, thisArg?: any): void; map<U>(callbackfn: (value: T, index: number, array: readonly T[]) => U, thisArg?: any): U[]; filter<S extends T>(predicate: (value: T, index: number, array: readonly T[]) => value is S, thisArg?: any): S[]; filter(predicate: (value: T, index: number, array: readonly T[]) => unknown, thisArg?: any): T[]; reduce(callbackfn: (previousValue: T, currentValue: T, currentIndex: number, array: readonly T[]) => T): T; reduce(callbackfn: (previousValue: T, currentValue: T, currentIndex: number, array: readonly T[]) => T, initialValue: T): T; reduce<U>(callbackfn: (previousValue: U, currentValue: T, currentIndex: number, array: readonly T[]) => U, initialValue: U): U; reduceRight(callbackfn: (previousValue: T, currentValue: T, currentIndex: number, array: readonly T[]) => T): T; reduceRight(callbackfn: (previousValue: T, currentValue: T, currentIndex: number, array: readonly T[]) => T, initialValue: T): T; reduceRight<U>(callbackfn: (previousValue: U, currentValue: T, currentIndex: number, array: readonly T[]) => U, initialValue: U): U; readonly [n: number]: T; }"
+    },
+    {
+      "name": "assertEveryDescriptorHasHandler",
+      "kind": "function",
+      "text": "export declare function assertEveryDescriptorHasHandler(catalog: GatewayCatalogConformanceView, options?: ConformanceOptions): void;"
+    },
+    {
+      "name": "findMethodsMissingHandlers",
+      "kind": "function",
+      "text": "export declare function findMethodsMissingHandlers(catalog: GatewayCatalogConformanceView, options?: ConformanceOptions): string[];"
+    }
+  ],
+  "./terminal-output-guard": [
+    {
+      "name": "FullScreenTerminalOutputGuardOptions",
+      "kind": "type",
+      "text": "export type FullScreenTerminalOutputGuardOptions = { readonly stdout: WritableStreamLike; readonly stderr?: WritableStreamLike; readonly active?: boolean; readonly onCapture?: (total: number) => void; readonly notify?: (message: string) => void; }; ;; via WritableStreamLike = type WritableStreamLike = { write: { (buffer: string | Uint8Array, cb?: (error?: Error | null) => void): boolean; (buffer: string | Uint8Array, encoding?: BufferEncoding, cb?: (error?: Error | null) => void): boolean; }; };"
+    },
+    {
+      "name": "TerminalOutputGuard",
+      "kind": "type",
+      "text": "export type TerminalOutputGuard = { setActive(active: boolean): void; allowTerminalWrite<T>(fn: () => T): T; dispose(): void; };"
+    },
+    {
+      "name": "TerminalOutputGuardOptions",
+      "kind": "type",
+      "text": "export type TerminalOutputGuardOptions = { readonly stdout: WritableStreamLike; readonly stderr?: WritableStreamLike; readonly active?: boolean; readonly onIntercept?: (event: TerminalOutputIntercept) => void; }; ;; via WritableStreamLike = type WritableStreamLike = { write: { (buffer: string | Uint8Array, cb?: (error?: Error | null) => void): boolean; (buffer: string | Uint8Array, encoding?: BufferEncoding, cb?: (error?: Error | null) => void): boolean; }; };"
+    },
+    {
+      "name": "TerminalOutputIntercept",
+      "kind": "type",
+      "text": "export type TerminalOutputIntercept = { readonly source: TerminalOutputInterceptSource; readonly text: string; readonly preview: string; };"
+    },
+    {
+      "name": "TerminalOutputInterceptSource",
+      "kind": "type",
+      "text": "export type TerminalOutputInterceptSource = 'stdout' | 'stderr' | 'console.debug' | 'console.error' | 'console.info' | 'console.log' | 'console.warn';"
+    },
+    {
+      "name": "allowTerminalWrite",
+      "kind": "function",
+      "text": "export declare function allowTerminalWrite<T>(fn: () => T): T;"
+    },
+    {
+      "name": "installFullScreenTerminalOutputGuard",
+      "kind": "function",
+      "text": "export declare function installFullScreenTerminalOutputGuard(options: FullScreenTerminalOutputGuardOptions): TerminalOutputGuard;"
+    },
+    {
+      "name": "installTerminalOutputGuard",
+      "kind": "function",
+      "text": "export declare function installTerminalOutputGuard(options: TerminalOutputGuardOptions): TerminalOutputGuard;"
+    }
+  ]
+}
