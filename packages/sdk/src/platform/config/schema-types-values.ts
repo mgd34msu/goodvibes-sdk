@@ -128,7 +128,6 @@ export type ConfigValue<K extends ConfigKey> =
   K extends keyof PaymentsConfigValueMap ? PaymentsConfigValueMap[K] :
   K extends keyof DaemonProcessConfigValueMap ? DaemonProcessConfigValueMap[K] :
   K extends 'daemon.enabled' ? boolean :
-  K extends 'daemon.embedInProcess' ? boolean :
   K extends 'danger.httpListener' ? boolean :
   K extends 'tools.llmEnabled' ? boolean :
   K extends 'tools.llmProvider' ? string :

@@ -88,14 +88,22 @@ export type {
 export {
   GOOGLE_PROFILE,
   MICROSOFT_PROFILE,
-  GOOGLE_PLACEHOLDER_CLIENT_ID,
-  MICROSOFT_PLACEHOLDER_CLIENT_ID,
   GOOGLE_SCOPES_DEFAULT,
   MICROSOFT_SCOPES_DEFAULT,
   PROVIDER_SETUP_STEPS,
   providerProfile,
   resolveClientConfig,
 } from './oauth-providers.js';
+
+// Reading the operator's own registered OAuth app out of config. No client id
+// ships with the product, so this is how a flow gets one.
+export {
+  clientSecretStoreKey,
+  readCalendarClientOverrides,
+  readConfiguredClientId,
+  type CalendarConfigReader,
+  type CalendarSecretReader,
+} from './oauth-client-config.js';
 
 export {
   OAuthFlowError,

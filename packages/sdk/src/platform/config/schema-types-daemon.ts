@@ -106,17 +106,14 @@ export interface RuntimeConfig {
  */
 export interface DaemonProcessConfig {
   enabled: boolean;         // default: true — run the local session daemon (loopback only)
-  embedInProcess: boolean;  // default: false — detached process, not inside a surface
   timezone: string;         // default: '' — IANA name; empty means UTC
 }
 
 export type DaemonProcessConfigKey =
   | 'daemon.enabled'
-  | 'daemon.embedInProcess'
   | 'daemon.timezone';
 
 export interface DaemonProcessConfigValueMap {
   'daemon.enabled': boolean;
-  'daemon.embedInProcess': boolean;
   'daemon.timezone': string;
 }

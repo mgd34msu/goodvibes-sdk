@@ -106,3 +106,42 @@ refresh-on-expiry and the refresh-failure → reconnect-needed flip; Google + Mi
 revoke/disconnect; paginated calendar + event listing normalized and source-labeled;
 event creation; and the 401/403/429 degraded states each named. A9's existing
 `test/platform-calendar.test.ts` purity test now also covers these files.
+
+## Addendum — 2026-07-31: no first-party client ids; the operator brings their own app
+
+Owner ruling: *"i will not be shipping first-party oauth ids — that is for whoever is
+setting up their goodvibes environment to do."*
+
+This supersedes the "Divergence ruling: bundled default vs user-registered app"
+section above, and the "verification-pending until Mike registers the two project
+apps" wording in the Flag section. There are no project apps to register. The
+least-friction default that ruling chose is withdrawn: registering an app is now the
+setup, not an advanced override.
+
+What changed in the code:
+
+- `OAuthProviderProfile` no longer carries `bundledClientId` or
+  `placeholderClientId`. It carries `clientIdConfigKey` and
+  `clientSecretRefConfigKey` — the names of the config keys the operator's own
+  credentials are read from. The `GOOGLE_PLACEHOLDER_CLIENT_ID` and
+  `MICROSOFT_PLACEHOLDER_CLIENT_ID` constants are gone, along with their exports.
+- `ResolvedClientConfig` replaces `usingBundledDefault` / `isPlaceholder` with
+  `isConfigured`, plus the two config-key names carried through so a refusal can name
+  them without rebuilding the strings.
+- `calendar.google.clientId` and `calendar.microsoft.clientId` (with the
+  `...clientSecretRef` keys beside them) are the configured credentials. The first
+  pair already existed — the Google connector's setup flow writes them — so this
+  threads an existing key family into the OAuth layer rather than inventing one.
+  `calendar.microsoft.clientId` was added to the daemon-owned config paths, closing a
+  split where Microsoft's client SECRET was daemon-owned while its client ID was not.
+- `CalendarConnector.resolveConfigFromSettings()` and
+  `calendar/oauth-client-config.ts` read those keys (and the secret from the secret
+  store under the derived name) into the overrides the flows already accepted.
+- The refusal is unchanged in kind and sharper in content: still
+  `client-not-configured`, still thrown before any network call, now naming the exact
+  keys to set and pointing at `docs/calendar-oauth-setup.md`.
+
+What did not change: the honesty contract, the injected boundaries, the purity of the
+module, and the fact that a flow never fakes a success. The reason the refusal exists
+is simply different — not "the project has not registered its apps yet" but "this
+environment's operator registers their own app, and has not yet."

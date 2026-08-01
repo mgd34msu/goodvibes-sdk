@@ -10,7 +10,7 @@ import { getManagedSettingLock } from '../runtime/settings/control-plane.js';
 import { requireSurfaceRoot, resolveSharedDirectory, resolveSurfaceDirectory, resolveSurfaceSharedFile } from '../runtime/surface-root.js';
 import { summarizeError } from '../utils/error-display.js';
 import { FeatureAnnouncementStore, featureAnnouncementsPath } from '../runtime/feature-announcements.js';
-import { applyControlPlaneBaseUrlMigrationPass, applyDangerDaemonMigrationPass, applyDefaultStripMigrationPass, applyFleetMaxSizeMigrationPass, applyLegacySettingsMigrationPass } from './manager-migration-passes.js';
+import { runLoadMigrationPasses } from './manager-migration-passes.js';
 import {
   SHARED_CONFIG_KEYS,
   isSharedConfigKey,
@@ -667,35 +667,20 @@ export class ConfigManager {
     });
   }
 
-  /** Load-time migration passes (see manager-migration-passes.ts), in order. */
+  /**
+   * Run the load-time settings migrations over a parsed file.
+   *
+   * The passes and their ORDER live together in manager-migration-passes.ts —
+   * the sequence is a property of the passes, not of this caller. All this
+   * supplies is the receipt sink, which is the one part that needs the manager:
+   * a receipt is announce-once, keyed to this config's own announcement file.
+   */
   private applyLoadMigrations(parsed: Record<string, unknown>, sourcePath: string): Record<string, unknown> {
-    return this.applyDefaultStripMigration(
-      this.applyControlPlaneBaseUrlMigration(
-        this.applyFleetMaxSizeMigration(
-          this.applyLegacySettingsMigration(
-            this.applyDangerDaemonMigration(parsed, sourcePath), sourcePath,
-          ), sourcePath,
-        ), sourcePath,
-      ), sourcePath);
+    return runLoadMigrationPasses(parsed, sourcePath, (id, text) => this.migrationReceipt(id, text));
   }
-  /** Load-time migration passes (see manager-migration-passes.ts). */
+  /** File a receipt against this config's own announce-once store. */
   private migrationReceipt(id: string, text: string): void {
     new FeatureAnnouncementStore(featureAnnouncementsPath(this)).record(id, text);
-  }
-  private applyDangerDaemonMigration(parsed: Record<string, unknown>, sourcePath: string): Record<string, unknown> {
-    return applyDangerDaemonMigrationPass(parsed, sourcePath);
-  }
-  private applyLegacySettingsMigration(parsed: Record<string, unknown>, sourcePath: string): Record<string, unknown> {
-    return applyLegacySettingsMigrationPass(parsed, sourcePath, (id, text) => this.migrationReceipt(id, text));
-  }
-  private applyFleetMaxSizeMigration(parsed: Record<string, unknown>, sourcePath: string): Record<string, unknown> {
-    return applyFleetMaxSizeMigrationPass(parsed, sourcePath, (id, text) => this.migrationReceipt(id, text));
-  }
-  private applyControlPlaneBaseUrlMigration(parsed: Record<string, unknown>, sourcePath: string): Record<string, unknown> {
-    return applyControlPlaneBaseUrlMigrationPass(parsed, sourcePath, (id, text) => this.migrationReceipt(id, text));
-  }
-  private applyDefaultStripMigration(parsed: Record<string, unknown>, sourcePath: string): Record<string, unknown> {
-    return applyDefaultStripMigrationPass(parsed, sourcePath, (id, text) => this.migrationReceipt(id, text));
   }
 
   /**
