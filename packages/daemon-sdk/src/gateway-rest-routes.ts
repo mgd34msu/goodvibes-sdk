@@ -119,6 +119,13 @@ export const GATEWAY_REST_ROUTES: readonly GatewayRestRoute[] = [
   // and draft store (sdk platform/channel-sync). Both families advertised these
   // paths long before anything served them and carried `invokable: false` to
   // say so; the store and handlers exist now, so the paths resolve here.
+  // channels.inbox.list — the merged inbound feed, served by the host that
+  // holds the provider credentials from its synced mirror. Same treatment as
+  // its two siblings below: the advertised path dispatches to the same
+  // methodId, so the REST call and the methodId invoke are one handler. A build
+  // with no inbox composition attaches no handler and answers 501 NOT_INVOKABLE
+  // here rather than a bare 404, which names the missing step.
+  route('GET', '/api/channels/inbox', 'channels.inbox.list'),
   route('GET', '/api/channels/routing', 'channels.routing.list'),
   route('POST', '/api/channels/routing', 'channels.routing.assign'),
   route('DELETE', '/api/channels/routing/{assignmentId}', 'channels.routing.delete'),

@@ -23440,7 +23440,7 @@ Mirror a channel draft to the daemon-side store. Webhook values must be redacted
 
 #### `channels.inbox.list`
 
-Return per-provider inbound message feeds (Slack DMs, Discord messages, email threads) fetched live from provider APIs. Read-only; no provider write.
+Return the merged inbound message feed (Slack DMs, Discord messages, email threads) from the host's synced provider mirror, newest first. Read-only; no provider write. Every known provider reports its own state in `providers` — including the unconfigured and the failing ones — so a short list is never ambiguous, and `partial` is true whenever a configured provider's items are missing because its last sync failed. Page with ?limit and ?cursor (opaque, from nextCursor); ?since=<epoch-ms> returns only items newer than a previous answer's `cursor` watermark; ?provider=<id> narrows to one provider.
 
 - Title: `List Channel Inbox`
 - Source: `builtin`
@@ -23450,7 +23450,7 @@ Return per-provider inbound message feeds (Slack DMs, Discord messages, email th
 - Scopes: `read:channels`
 - Emits events: none
 - Dangerous: `no`
-- Invokable: `no`
+- Invokable: `yes`
 
 ##### Input schema
 
@@ -23466,6 +23466,9 @@ Return per-provider inbound message feeds (Slack DMs, Discord messages, email th
     },
     "since": {
       "type": "number"
+    },
+    "cursor": {
+      "type": "string"
     }
   },
   "additionalProperties": false
@@ -23518,6 +23521,18 @@ Return per-provider inbound message feeds (Slack DMs, Discord messages, email th
           },
           "attachmentCount": {
             "type": "number"
+          },
+          "triageScore": {
+            "type": "number"
+          },
+          "triageLabel": {
+            "type": "string"
+          },
+          "triageTags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
@@ -23538,14 +23553,65 @@ Return per-provider inbound message feeds (Slack DMs, Discord messages, email th
     "truncated": {
       "type": "boolean"
     },
+    "hasMore": {
+      "type": "boolean"
+    },
     "cursor": {
       "type": "string"
+    },
+    "nextCursor": {
+      "type": "string"
+    },
+    "providers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "itemCount": {
+            "type": "number"
+          },
+          "storedCount": {
+            "type": "number"
+          },
+          "configured": {
+            "type": "boolean"
+          },
+          "lastSyncAt": {
+            "type": "number"
+          },
+          "syncing": {
+            "type": "boolean"
+          },
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "state",
+          "itemCount",
+          "storedCount"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "partial": {
+      "type": "boolean"
     }
   },
   "required": [
     "items",
     "total",
-    "truncated"
+    "truncated",
+    "hasMore",
+    "providers",
+    "partial"
   ],
   "additionalProperties": false
 }

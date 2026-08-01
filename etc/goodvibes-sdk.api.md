@@ -3374,6 +3374,7 @@ export interface OperatorMethodInputMap {
         provider?: string;
         limit?: number;
         since?: number;
+        cursor?: string;
     };
     // (undocumented)
     "channels.lifecycle.get": {
@@ -10517,10 +10518,26 @@ export interface OperatorMethodOutputMap {
             routeId?: string;
             threadId?: string;
             attachmentCount?: number;
+            triageScore?: number;
+            triageLabel?: string;
+            triageTags?: readonly string[];
         })[];
         total: number;
         truncated: boolean;
+        hasMore: boolean;
         cursor?: string;
+        nextCursor?: string;
+        providers: readonly ({
+            provider: string;
+            state: string;
+            itemCount: number;
+            storedCount: number;
+            configured?: boolean;
+            lastSyncAt?: number;
+            syncing?: boolean;
+            error?: string;
+        })[];
+        partial: boolean;
     };
     // (undocumented)
     "channels.lifecycle.get": {
