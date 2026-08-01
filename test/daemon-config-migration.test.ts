@@ -305,7 +305,7 @@ describe('migration against the live machine layout that motivated this change',
       },
     },
     watchers: { enabled: true, pollIntervalMs: 60000 },
-    daemon: { enabled: true, embedInProcess: false },
+    daemon: { enabled: true },
     service: { enabled: true, autostart: true },
     voice: { local: { ttsEngine: 'piper', ttsBinary: '/opt/piper/piper' } },
   };
@@ -365,7 +365,7 @@ describe('migration against the live machine layout that motivated this change',
     expect(store['service']).toBeUndefined();
     // They stay exactly where each installation put them.
     expect(readJson(join(h, '.goodvibes', 'agent', 'settings.json'))['daemon']).toEqual({ enabled: false });
-    expect(readJson(join(h, '.goodvibes', 'tui', 'settings.json'))['daemon']).toEqual({ enabled: true, embedInProcess: false });
+    expect(readJson(join(h, '.goodvibes', 'tui', 'settings.json'))['daemon']).toEqual({ enabled: true });
   });
 
   test('each surface keeps its own model and theme', () => {

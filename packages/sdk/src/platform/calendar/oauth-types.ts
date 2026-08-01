@@ -15,9 +15,10 @@
  *    `connection-state: 'reconnect-needed'` naming the reason.
  *  - a 403 that names a missing scope surfaces as `insufficient-scope` naming the
  *    exact scope, not a generic failure.
- *  - the bundled project client id is an honest placeholder until Mike registers the
- *    project apps; a flow attempted against the placeholder reports
- *    `client-not-configured`, never a fake success.
+ *  - there is no bundled project client id. The operator registers their own OAuth
+ *    app with the provider and sets its client id in config; until they do, a flow
+ *    refuses with `client-not-configured` and names the config key to set. No
+ *    default is baked in, so the refusal cannot be mistaken for a broken build.
  */
 
 import type { CalendarEvent, EventDateTime } from './types.js';
@@ -38,9 +39,11 @@ export type CalendarSource = 'google-api' | 'microsoft-graph' | 'ics-feed' | 'lo
 
 /**
  * A provider profile: the fixed OAuth + API endpoints and defaults for one provider.
- * Everything a user does NOT supply (endpoints, default scopes, the bundled project
- * client id) lives here; what the user CAN supply (their own client id/secret,
- * scope overrides) arrives as OAuthClientOverrides and is merged in at resolve time.
+ * Everything an operator does NOT supply (endpoints, default scopes, the names of
+ * the config keys their credentials live under) lives here; what the operator MUST
+ * supply — the client id of the OAuth app they registered, and a client secret if
+ * they registered a confidential one — arrives as OAuthClientOverrides and is merged
+ * in at resolve time.
  */
 export interface OAuthProviderProfile {
   readonly provider: CalendarProviderId;
@@ -57,30 +60,48 @@ export interface OAuthProviderProfile {
   /** Default scopes when the user does not override them. */
   readonly defaultScopes: readonly string[];
   /**
-   * The project-level ("bundled") client id shipped in config defaults — the
-   * rclone/gh pattern. Native-app client ids are not secrets (RFC 8252); paired
-   * with PKCE no client secret is needed for the installed-app / public-client
-   * profile. Ships as an honest PLACEHOLDER until Mike registers the project apps.
+   * The config key the operator's own client id is read from, e.g.
+   * `calendar.google.clientId`.
+   *
+   * No client id ships with the product. Native-app client ids are not secrets
+   * (RFC 8252) and could technically be bundled, but whoever sets up a GoodVibes
+   * environment registers their own provider app — so this names WHERE their id
+   * goes rather than carrying one. It is data on the profile, not a string built
+   * at the call site, so the refusal message, the setup steps and the docs all
+   * quote the same key and cannot drift apart.
    */
-  readonly bundledClientId: string;
+  readonly clientIdConfigKey: string;
   /**
-   * The literal placeholder value bundledClientId holds before real registration.
-   * When the resolved client id still equals this, the flow reports
-   * `client-not-configured` instead of attempting a doomed round-trip.
+   * The config key holding a reference to the operator's client secret, e.g.
+   * `calendar.google.clientSecretRef`. The secret itself lives in the secret
+   * store; config holds only the reference. Only a confidential-client
+   * registration needs one — a desktop/public client with PKCE does not.
    */
-  readonly placeholderClientId: string;
+  readonly clientSecretRefConfigKey: string;
   /** Extra fixed authorization-request params (e.g. Google's access_type=offline). */
   readonly extraAuthParams?: Readonly<Record<string, string>>;
 }
 
-/** What a user MAY override — never required; surfaced only under "advanced". */
+/**
+ * The operator's own OAuth app credentials, plus the optional knobs around them.
+ *
+ * `clientId` is REQUIRED for any flow to run — nothing is bundled to fall back on.
+ * It is optional at the type level because this shape is also what a caller passes
+ * when it only wants to override scopes or the redirect port, and because the
+ * not-configured state has to be representable: `resolveClientConfig` returns a
+ * config with `isConfigured: false` and the flow refuses by name rather than the
+ * type system making the state unconstructable and the failure a crash.
+ */
 export interface OAuthClientOverrides {
-  /** A user's own registered client id (confidential- or public-client). */
+  /**
+   * The client id of the OAuth app the operator registered with the provider,
+   * normally read from the profile's `clientIdConfigKey`.
+   */
   readonly clientId?: string;
   /**
-   * A user's own client secret, for a confidential-client registration. Absent for
-   * the default public native-app profile (PKCE, no secret). Secret-stored, never
-   * echoed.
+   * The operator's client secret, for a confidential-client registration. Absent
+   * for a desktop/public-client registration (PKCE, no secret). Secret-stored,
+   * never echoed.
    */
   readonly clientSecret?: string;
   /** Scope override; when absent the profile's defaultScopes are used. */
@@ -104,14 +125,20 @@ export interface ResolvedClientConfig {
   readonly extraAuthParams?: Readonly<Record<string, string>>;
   readonly redirectHost?: string;
   readonly redirectPort?: number;
-  /** True when clientId came from the bundled project default, not a user override. */
-  readonly usingBundledDefault: boolean;
   /**
-   * True when the resolved clientId is still the honest placeholder — i.e. neither
-   * Mike's project registration nor a user override supplied a real id. A flow must
-   * refuse with `client-not-configured` in this state.
+   * True when a real client id was supplied. False means nobody has registered a
+   * provider app for this environment yet and `clientId` is the empty string — a
+   * flow must refuse with `client-not-configured` in that state rather than
+   * attempting a round-trip that can only fail.
    */
-  readonly isPlaceholder: boolean;
+  readonly isConfigured: boolean;
+  /**
+   * The config key the client id is expected in, carried through from the profile
+   * so a refusal can name the exact key to set without re-deriving it.
+   */
+  readonly clientIdConfigKey: string;
+  /** The config key a client-secret reference is expected in. */
+  readonly clientSecretRefConfigKey: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -212,8 +239,8 @@ export type ConnectionState =
 
 /** Why a flow could not even start or complete, named honestly. */
 export type FlowFailureReason =
-  /** The resolved client id is still the placeholder (project app not registered
-   *  and no user override). */
+  /** No client id is configured: nobody has registered a provider OAuth app for
+   *  this environment and set its id in config. */
   | 'client-not-configured'
   /** The provider rejected the token request (bad code, expired device code, etc.). */
   | 'token-request-rejected'

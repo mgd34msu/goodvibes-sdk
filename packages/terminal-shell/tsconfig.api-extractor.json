@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false
+  },
+  // api-extractor runs its own tsc pass. Without this file that pass inherits
+  // the package's composite build settings and writes into dist/, stomping the
+  // real build output — the same reason packages/sdk carries one. See
+  // scripts/api-extractor.SETUP.md.
+  "references": []
+}

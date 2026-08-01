@@ -136,11 +136,12 @@ describe('startHostServices daemon lifecycle', () => {
       throw new Error('listen EADDRINUSE: address already in use 127.0.0.1:3421');
     };
     const handle = await startHostServices(
-      baseConfig({ 'daemon.embedInProcess': true }),
+      baseConfig(),
       runtimeBus,
       hookDispatcher,
       runtimeServices,
       {
+        embedDaemonInProcess: true,
         localDaemonVersion: '0.38.0',
         probeDaemonPortInUse: async () => false,
         probeDaemonIdentity: async () => ({ kind: 'goodvibes' as const, status: 'running', version: '0.35.0' }),
@@ -164,11 +165,12 @@ describe('startHostServices daemon lifecycle', () => {
       throw new Error('listen EADDRINUSE: address already in use 127.0.0.1:3421');
     };
     const handle = await startHostServices(
-      baseConfig({ 'daemon.embedInProcess': true }),
+      baseConfig(),
       runtimeBus,
       hookDispatcher,
       runtimeServices,
       {
+        embedDaemonInProcess: true,
         localDaemonVersion: '0.38.1',
         probeDaemonPortInUse: async () => false,
         probeDaemonIdentity: async () => ({ kind: 'goodvibes' as const, status: 'running', version: '0.38.9' }),
@@ -201,14 +203,15 @@ describe('startHostServices daemon lifecycle', () => {
     expect(handle.daemonStatus.reason).toBe('Identity probe returned HTTP 404');
   });
 
-  test('reports embedded daemon status when daemon.embedInProcess opt-in is set (Layer 3)', async () => {
+  test('reports embedded daemon status when an embedder asks to host the daemon in-process', async () => {
     const events: string[] = [];
     const handle = await startHostServices(
-      baseConfig({ 'daemon.embedInProcess': true }),
+      baseConfig(),
       runtimeBus,
       hookDispatcher,
       runtimeServices,
       {
+        embedDaemonInProcess: true,
         probeDaemonPortInUse: async () => false,
         createDaemonServer: () => createFakeService(events),
       },
@@ -220,9 +223,9 @@ describe('startHostServices daemon lifecycle', () => {
     expect(handle.daemonStartHint).toBeUndefined();
   });
 
-  test('runs the daemon when daemon.enabled is true — embed opt-in path', async () => {
+  test('runs the daemon when daemon.enabled is true — embedder-hosted path', async () => {
     // The daemon-by-default ruling: daemon.enabled (default true) governs, so the
-    // host enters the port-free daemon branch. daemon.embedInProcess=true here
+    // host enters the port-free daemon branch. The embedDaemonInProcess option
     // asserts the branch is reached via the embedded path (the detached-default
     // path is covered separately below). The deprecated danger.daemon alias that
     // used to override this was removed (see config-migrations.test.ts
@@ -230,7 +233,6 @@ describe('startHostServices daemon lifecycle', () => {
     const defaultOnConfig: HostServicesConfig = {
       get: (key) => {
         if (key === 'daemon.enabled') return true;
-        if (key === 'daemon.embedInProcess') return true;
         if (key === 'danger.httpListener') return false;
         if (key === 'controlPlane.host' || key === 'httpListener.host') return '127.0.0.1';
         if (key === 'controlPlane.port') return 3421;
@@ -245,6 +247,7 @@ describe('startHostServices daemon lifecycle', () => {
       hookDispatcher,
       runtimeServices,
       {
+        embedDaemonInProcess: true,
         probeDaemonPortInUse: async () => false,
         createDaemonServer: () => createFakeService(events),
       },
@@ -309,11 +312,12 @@ describe('startHostServices daemon lifecycle', () => {
       throw new Error('listen EADDRINUSE: address already in use 127.0.0.1:3421');
     };
     const handle = await startHostServices(
-      baseConfig({ 'daemon.embedInProcess': true }),
+      baseConfig(),
       runtimeBus,
       hookDispatcher,
       runtimeServices,
       {
+        embedDaemonInProcess: true,
         probeDaemonPortInUse: async () => false,
         probeDaemonIdentity: async () => ({ kind: 'unknown' as const, reason: 'port occupied' }),
         createDaemonServer: () => service,
@@ -369,7 +373,7 @@ describe('startHostServices detached daemon spawn (Layer 2 default)', () => {
     const runtimeDir = tempRuntimeDir();
     let createDaemonCalled = false;
     const handle = await startHostServices(
-      baseConfig(), // no daemon.embedInProcess → default detached path
+      baseConfig(), // no embedDaemonInProcess option → default detached path
       runtimeBus,
       hookDispatcher,
       runtimeServices,

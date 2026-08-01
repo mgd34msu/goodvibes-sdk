@@ -156,9 +156,9 @@ export interface GoodVibesConfig {
   service: ServiceConfig;
   network: NetworkConfig;
   relay: RelayConfig;
-  daemon: { enabled: boolean; embedInProcess: boolean; timezone: string };
+  daemon: { enabled: boolean; timezone: string };
   payments: PaymentsConfig;
-    // default: enabled true — run the local session daemon (loopback only); embedInProcess false — daemon runs as a detached process, not inside this surface; timezone '' — IANA name the daemon reckons calendar days in, empty means UTC
+    // default: enabled true — run the local session daemon (loopback only); timezone '' — IANA name the daemon reckons calendar days in, empty means UTC
   danger: {
     httpListener: boolean;          // default: false — enable HTTP webhook listener
   };

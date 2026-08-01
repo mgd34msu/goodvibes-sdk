@@ -8,6 +8,7 @@
 import { writeFileSync } from 'fs';
 import {
   migrateControlPlaneBaseUrlRemoval,
+  migrateDaemonEmbedInProcessRemoval,
   migrateDangerDaemonAlias,
   migrateFleetMaxSizeRename,
   migrateLegacyFeatureToggles,
@@ -128,4 +129,49 @@ export function applyDefaultStripMigrationPass(
     logger.warn(`Settings default-strip receipt could not be queued: ${summarizeError(err)}`);
   }
   return stripped;
+}
+
+/** daemon.embedInProcess (a choice no surface could act on) is dropped, with a receipt. */
+export function applyDaemonEmbedInProcessMigrationPass(
+  parsed: Record<string, unknown>,
+  sourcePath: string,
+  receipt: MigrationReceiptSink,
+): Record<string, unknown> {
+  const result = migrateDaemonEmbedInProcessRemoval(parsed);
+  if (!result.migrated) return parsed;
+  persistMigratedFile(sourcePath, result.config, 'daemon.embedInProcess removal');
+  const quoted = result.removedValue === undefined ? '' : ` (it was ${String(result.removedValue)})`;
+  const receiptText =
+    `Setting removed: daemon.embedInProcess${quoted} is gone from ${sourcePath}. `
+    + 'It offered a choice no surface could act on — every product adopts a running daemon, and that '
+    + 'is decided before any embed preference is read, so the value never changed what happened. '
+    + 'Hosting a daemon inside another process remains available to an embedder composing one '
+    + 'directly; it is not a setting. Nothing about how your daemon runs changes.';
+  logger.info(receiptText);
+  try {
+    receipt(`settings-migration-daemon-embed-in-process:${sourcePath}`, receiptText);
+  } catch (err) {
+    logger.warn(`daemon.embedInProcess removal receipt could not be queued: ${summarizeError(err)}`);
+  }
+  return result.config;
+}
+
+/**
+ * Every load-time pass, in order, over one parsed settings file.
+ *
+ * The order lives here rather than at the call site because it is a property of
+ * the passes: each runs on the output of the one before it, and the default-strip
+ * pass has to come last so it sees the shape the others leave behind.
+ */
+export function runLoadMigrationPasses(
+  parsed: Record<string, unknown>,
+  sourcePath: string,
+  receipt: MigrationReceiptSink,
+): Record<string, unknown> {
+  let config = applyDangerDaemonMigrationPass(parsed, sourcePath);
+  config = applyLegacySettingsMigrationPass(config, sourcePath, receipt);
+  config = applyFleetMaxSizeMigrationPass(config, sourcePath, receipt);
+  config = applyControlPlaneBaseUrlMigrationPass(config, sourcePath, receipt);
+  config = applyDaemonEmbedInProcessMigrationPass(config, sourcePath, receipt);
+  return applyDefaultStripMigrationPass(config, sourcePath, receipt);
 }

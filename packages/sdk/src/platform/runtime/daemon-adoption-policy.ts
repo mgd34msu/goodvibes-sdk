@@ -61,7 +61,7 @@ export type DaemonAdoptionAction =
   | 'incompatible'  // a GoodVibes daemon is running on an incompatible band — refuse both adopt and spawn
   | 'blocked'       // the port is occupied by an unverified process — continue without a daemon
   | 'spawn'         // port free — spawn a detached daemon (default lifecycle ownership)
-  | 'embed'         // port free — host the daemon in this process (embedInProcess opt-in)
+  | 'embed'         // port free — host the daemon in this process (embedder composition, no product setting selects it)
   | 'adopt-only-idle'; // port free + adopt-only policy — do not spawn; run without a local daemon
 
 export interface DaemonAdoptionDecision {
@@ -81,7 +81,15 @@ export interface DaemonAdoptionPolicyInput {
   readonly identity: DaemonIdentityProbeResult | null;
   readonly localVersion: string;
   readonly versionCompatible: (localVersion: string, remoteVersion: string | undefined) => boolean;
-  /** Host the daemon in-process when the port is free (Layer 3 opt-in). Ignored under adopt-only. */
+  /**
+   * Host the daemon in-process when the port is free.
+   *
+   * An embedder's composition choice, passed through from
+   * `startHostServices({ embedDaemonInProcess })`. No settings key reaches this:
+   * a product surface cannot ask to host a daemon. Ignored under adopt-only,
+   * which is answered first — which is why every shipped surface resolves the
+   * port-free case to `adopt-only-idle` and never to `embed`.
+   */
   readonly embedInProcess: boolean;
   /**
    * Adopt-only policy: attach to a compatible running daemon but NEVER spawn or
@@ -123,7 +131,7 @@ export function decideDaemonAdoption(input: DaemonAdoptionPolicyInput): DaemonAd
     return { action: 'adopt-only-idle', reason: 'adopt-only policy: no compatible daemon on the configured host/port, and this surface does not spawn one' };
   }
   if (input.embedInProcess) {
-    return { action: 'embed', reason: 'Embedded daemon started in this host instance (daemon.embedInProcess opt-in)' };
+    return { action: 'embed', reason: 'Embedded daemon started in this host instance (embedder composition)' };
   }
   return { action: 'spawn', reason: 'No daemon on the configured host/port; spawning a detached daemon for this session' };
 }
