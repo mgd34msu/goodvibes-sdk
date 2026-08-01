@@ -9,10 +9,11 @@
  * back again: the store behaves, the descriptors no longer claim to be
  * uncallable, and the advertised REST paths actually resolve.
  *
- * `channels.inbox.list` is asserted to STILL carry the flag. It promises live
- * per-provider inbound feeds and nothing here reads a provider's inbox; a test
- * that let it quietly become "callable" would be the same dishonesty in the
- * other direction.
+ * `channels.inbox.list` was the eighth, and it is served now too — by the host
+ * that holds the provider credentials, from its synced mirror. What is asserted
+ * here is the split: the flag is gone and the advertised path is routed, while
+ * registering THESE handlers still attaches nothing for it, because an SDK-only
+ * build has no mailbox to answer from.
  */
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -206,10 +207,22 @@ describe('the verbs are callable, and say so', () => {
     expect(answer).toEqual({ notFound: true });
   });
 
-  // The other half of the honesty: a verb nothing serves must keep saying so.
-  test('channels.inbox.list is still marked uncallable, because nothing reads a provider inbox', () => {
+  // The eighth verb, and the last of this debt. It is served now — by the host
+  // that holds the provider credentials, not by this module — so the flag is
+  // gone and the path is in the table. What stays true is that registering the
+  // routing/drafts handlers attaches no handler for it: an SDK-only build has
+  // no mailbox, and the 501 it answers names the composition step that is
+  // missing rather than pretending the verb does not exist.
+  test('channels.inbox.list no longer claims to be uncallable, and its path is routed', () => {
     const catalog = catalogWithHandlers();
-    expect(catalog.get('channels.inbox.list')?.invokable).toBe(false);
+    expect(catalog.get('channels.inbox.list')?.invokable).not.toBe(false);
+    expect(catalog.get('channels.inbox.list')?.http).toEqual({
+      method: 'GET',
+      path: '/api/channels/inbox',
+    });
+    const tableIds = new Set(GATEWAY_REST_ROUTES.map((entry) => entry.methodId));
+    expect(tableIds.has('channels.inbox.list')).toBe(true);
+    // Registering channel-sync attaches nothing for it; the host does that.
     expect(catalog.hasHandler('channels.inbox.list')).toBe(false);
   });
 });
