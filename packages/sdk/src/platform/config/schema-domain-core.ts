@@ -6,6 +6,7 @@ export const coreConfigDefaults = {
     lineNumbers: 'off',
     collapseThreshold: 30,
     theme: 'vaporwave',
+    themeMode: 'auto',
     showThinking: false,
     showReasoningSummary: false,
     showTokenSpeed: false,
@@ -197,7 +198,14 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
     key: 'display.theme',
     type: 'string',
     default: 'vaporwave',
-    description: 'Color theme name',
+    description: 'Color theme name — the color palette (e.g. vaporwave). Independent of display.themeMode, which controls light/dark appearance.',
+  },
+  {
+    key: 'display.themeMode',
+    type: 'enum',
+    default: 'auto',
+    description: 'Light/dark appearance: auto probes the terminal background colour (OSC 11) once at startup and picks light or dark; dark/light force a fixed appearance regardless of terminal background. Independent of display.theme, which picks the color palette.',
+    enumValues: ['auto', 'dark', 'light'],
   },
   {
     key: 'display.showThinking',

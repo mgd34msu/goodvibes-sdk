@@ -53,6 +53,7 @@ export interface GoodVibesConfig {
     lineNumbers: LineNumberMode; // default: 'off'
     collapseThreshold: number;  // default: 30
     theme: string;              // default: 'vaporwave'
+    themeMode: 'auto' | 'dark' | 'light'; // default: 'auto'
     showThinking: boolean;      // default: false
     showReasoningSummary: boolean; // default: false
     showTokenSpeed: boolean;    // default: false
@@ -238,6 +239,7 @@ export type ConfigKey =
   | 'display.lineNumbers'
   | 'display.collapseThreshold'
   | 'display.theme'
+  | 'display.themeMode'
   | 'display.showThinking'
   | 'display.showReasoningSummary'
   | 'display.showTokenSpeed'

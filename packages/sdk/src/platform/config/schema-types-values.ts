@@ -46,6 +46,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'display.lineNumbers' ? LineNumberMode :
   K extends 'display.collapseThreshold' ? number :
   K extends 'display.theme' ? string :
+  K extends 'display.themeMode' ? 'auto' | 'dark' | 'light' :
   K extends 'display.showThinking' ? boolean :
   K extends 'display.showReasoningSummary' ? boolean :
   K extends 'display.showTokenSpeed' ? boolean :
