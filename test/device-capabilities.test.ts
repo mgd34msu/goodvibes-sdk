@@ -549,10 +549,8 @@ describe('peer work payloads', () => {
 
 // ---------------------------------------------------------------------------
 // The `device.*` settings → policy mapping, and the runtime a host composes
-// from it. This mapping used to live in one consumer, so every other daemon
-// host ran the feature on the struct defaults and ignored what the owner set.
-// These tests hold the mapping itself: each key, at two values, changing the
-// policy a store or the capability service actually applies.
+// from it. These tests hold the mapping itself: each key, at two values,
+// changing the policy a store or the capability service actually applies.
 // ---------------------------------------------------------------------------
 
 /** A reader over a plain map, so a value the schema would reject can be tested. */

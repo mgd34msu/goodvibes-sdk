@@ -251,7 +251,7 @@ describe('approval-update — the push that replaces polling', () => {
   });
 });
 
-describe('the in-process path is unchanged by the split', () => {
+describe('the in-process path still resolves', () => {
   test('requestApproval still resolves with the decision', async () => {
     const { broker, cleanup } = makeBroker();
     try {

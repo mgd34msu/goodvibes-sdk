@@ -13,9 +13,8 @@
  * What stays here is the `phone` TOOL. A tool is called by the conversation
  * loop, the loop runs in this process, so the tool is registered in this
  * process's registry — and every capability it exercises goes to the daemon over
- * the `devices.*` verbs rather than to an in-process service. That is the split
- * the seam map prescribes for Phase A: the tool follows the loop, the runtime
- * follows the daemon.
+ * the `devices.*` verbs rather than to an in-process service. The tool follows
+ * the loop; the runtime follows the daemon.
  *
  * ── The verbs ─────────────────────────────────────────────────────────────
  *
