@@ -89,7 +89,12 @@ describe('ConfigManager persistence', () => {
     expect(() => manager.removeCategoryKey('helper', 'never-set')).not.toThrow();
   });
 
-  test('configured system prompt file read failures are surfaced', () => {
+  test('an unreadable system prompt file degrades to "none configured" instead of throwing', () => {
+    // `provider.systemPromptFile` names a file the user may have moved or
+    // deleted since setting it. Propagating the read failure takes down whatever
+    // is booting over an optional preference, so it reads back as undefined and
+    // says so at debug level. This is the behaviour the terminal app's copy of
+    // this helper already had; the SDK adopted it when that copy was deleted.
     const configDir = tempDir('missing-system-prompt');
     mkdirSync(configDir, { recursive: true });
     const manager = new ConfigManager({
@@ -97,6 +102,18 @@ describe('ConfigManager persistence', () => {
       systemPromptFile: join(configDir, 'missing-prompt.md'),
     });
 
-    expect(() => getConfiguredSystemPrompt(manager)).toThrow();
+    expect(() => getConfiguredSystemPrompt(manager)).not.toThrow();
+    expect(getConfiguredSystemPrompt(manager)).toBeUndefined();
+  });
+
+  test('a readable system prompt file is still returned', () => {
+    // The other half: degrading on failure must not mean degrading always.
+    const configDir = tempDir('present-system-prompt');
+    mkdirSync(configDir, { recursive: true });
+    const promptFile = join(configDir, 'prompt.md');
+    writeFileSync(promptFile, 'be concise', 'utf-8');
+    const manager = new ConfigManager({ configDir, systemPromptFile: promptFile });
+
+    expect(getConfiguredSystemPrompt(manager)).toBe('be concise');
   });
 });

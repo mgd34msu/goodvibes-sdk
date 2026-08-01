@@ -221,6 +221,11 @@ export type { ModelLimitsServiceOptions } from './model-limits.js';
 export { findClosestModelIds, resolveModelReference } from './model-id-resolution.js';
 export type { ModelIdCandidate, ModelIdResolutionOptions } from './model-id-resolution.js';
 export {
+  formatProviderModel,
+  getModelIdFromProviderModel,
+  getProviderIdFromModel,
+} from './provider-model.js';
+export {
   computeUsageCostUsd,
   computeUsageCostUsdCents,
   resolveModelPricing,

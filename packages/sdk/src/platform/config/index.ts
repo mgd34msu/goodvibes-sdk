@@ -125,12 +125,23 @@ export type {
 export type { GoodVibesConfig, ConfigKey, ConfigValue, ConfigSetting, PermissionMode, PermissionAction, PermissionsToolConfig, NotificationsConfig } from './schema.js';
 export { DEFAULT_CONFIG, CONFIG_KEYS, CONFIG_SCHEMA, isValidConfigKey } from './schema.js';
 export { ConfigError } from '../types/errors.js';
+export {
+  hasOverriddenGoodVibesHome,
+  resolveGoodVibesDaemonHome,
+  resolveGoodVibesHome,
+  resolveGoodVibesHomeOwnership,
+  resolveGoodVibesTreeDirectory,
+} from './goodvibes-home.js';
+export type { GoodVibesHomeOwnership } from './goodvibes-home.js';
 export { migrateDangerDaemonAlias, migrateLegacyFeatureToggles } from './migrations.js';
 export type { DangerDaemonMigrationResult, LegacySettingsMigrationResult } from './migrations.js';
 
 import { readFileSync } from 'fs';
 import { ConfigManager } from './manager.js';
 import type { GoodVibesConfig } from './schema.js';
+import { getProviderIdFromModel } from '../providers/provider-model.js';
+import { logger } from '../utils/logger.js';
+import { summarizeError } from '../utils/error-display.js';
 
 export function getConfigSnapshot(configManager: Pick<ConfigManager, 'getRaw'>): Readonly<GoodVibesConfig> {
   return configManager.getRaw();
@@ -144,8 +155,35 @@ export function getConfiguredEmbeddingProviderId(configManager: Pick<ConfigManag
   return configManager.get('provider.embeddingProvider');
 }
 
+/**
+ * The provider half of the configured `provider.model` value.
+ *
+ * Reads through the tolerant parser (providers/provider-model.ts), so a config
+ * that holds a bare model id or a blank value still yields a provider id
+ * instead of throwing the way the strict registry-key reader would.
+ */
+export function getConfiguredProviderId(configManager: Pick<ConfigManager, 'get'>): string {
+  return getProviderIdFromModel(configManager.get('provider.model'));
+}
+
 export function isAutoApproveEnabled(configManager: Pick<ConfigManager, 'get'>): boolean {
   return configManager.get('behavior.autoApprove');
+}
+
+/**
+ * True when the current permission posture effectively auto-approves everything:
+ * auto-approve on, permission mode `allow-all`, or a `custom` mode whose every
+ * tool action is `allow`. Drives a surface's danger indicator.
+ */
+export function isEffectiveDangerMode(configManager: Pick<ConfigManager, 'get' | 'getCategory'>): boolean {
+  if (configManager.get('behavior.autoApprove')) return true;
+  const permMode = configManager.get('permissions.mode');
+  if (permMode === 'allow-all') return true;
+  if (permMode === 'custom') {
+    const tools = configManager.getCategory('permissions').tools;
+    if (Object.values(tools).every((action) => action === 'allow')) return true;
+  }
+  return false;
 }
 
 /**
@@ -179,10 +217,24 @@ export function getWorkingDirectory(configManager: Pick<ConfigManager, 'getWorki
   return configManager.getWorkingDirectory();
 }
 
+/**
+ * The contents of `provider.systemPromptFile`, or undefined when no file is
+ * configured or the configured file cannot be read.
+ *
+ * An unreadable file degrades to "no configured system prompt" and says so at
+ * debug level rather than throwing: the setting names a file the user may have
+ * since moved or deleted, and a boot that dies because of it strands the
+ * session over an optional preference.
+ */
 export function getConfiguredSystemPrompt(configManager: Pick<ConfigManager, 'get'>): string | undefined {
   const file = configManager.get('provider.systemPromptFile');
   if (!file) return undefined;
-  return readFileSync(file, 'utf-8');
+  try {
+    return readFileSync(file, 'utf-8');
+  } catch (err) {
+    logger.debug('systemPrompt file read failed (non-fatal)', { file, error: summarizeError(err) });
+    return undefined;
+  }
 }
 
 export { getConfiguredApiKeys, resolveApiKeys } from './api-keys.js';
