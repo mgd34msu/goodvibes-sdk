@@ -19,8 +19,6 @@ export interface PluginPathOptions {
   readonly homeDir: string;
   /** Additional plugin directories to search, appended after the standard directories. */
   readonly additionalDirectories?: readonly string[] | undefined;
-  /** Default entry point filename when a plugin manifest does not specify `main`. Defaults to 'index.js'. */
-  readonly entryDefault?: string | undefined;
 }
 
 const PLUGIN_ROOT = 'plugins';
@@ -194,10 +192,9 @@ export async function loadPlugin(
   discovered: DiscoveredPlugin,
   deps: PluginLoaderDeps,
   cacheBust?: number,
-  entryDefault?: string,
 ): Promise<LoadedPlugin | null> {
   const { manifest, pluginDir } = discovered;
-  const entryFile = manifest.main ?? entryDefault ?? 'index.js';
+  const entryFile = manifest.main ?? 'index.js';
   const entryPath = join(pluginDir, entryFile);
 
   // Path traversal guard: resolved entry must remain within pluginDir
