@@ -27,8 +27,8 @@
  * is that gap closed: one resolution, handed to every consumer.
  */
 
-import { homedir } from 'node:os';
 import { daemonConfigPathForHome } from '../config/daemon-config-tier.js';
+import { resolveGoodVibesHome } from '../config/goodvibes-home.js';
 import { readDaemonSetting, resolveDaemonHomeDir } from '../workspace/daemon-home.js';
 
 /** Every path a daemon process derives from its flags and environment. */
@@ -88,7 +88,10 @@ export function resolveDaemonCliPaths(input: DaemonCliPathInput = {}): DaemonCli
 
   return {
     workingDirectory,
-    homeDirectory: input.homeDirectory ?? homedir(),
+    // The tree root, not `homedir()`: the user and project config tiers hang
+    // off this, and resolving it independently is how a process under a
+    // redirected `GOODVIBES_HOME` read the real home's tiers.
+    homeDirectory: input.homeDirectory ?? resolveGoodVibesHome(env),
     daemonHomeDir,
     daemonTierPath: daemonConfigPathForHome(daemonHomeDir),
   };

@@ -536,6 +536,96 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 ### Changed
 
+- **BREAKING: no first-party OAuth client ids ship with the product
+  (`platform/calendar`).** `OAuthProviderProfile` no longer carries
+  `bundledClientId` or `placeholderClientId`, and the
+  `GOOGLE_PLACEHOLDER_CLIENT_ID` / `MICROSOFT_PLACEHOLDER_CLIENT_ID` exports are
+  gone. A profile now carries `clientIdConfigKey` and `clientSecretRefConfigKey`
+  — the names of the config keys the OPERATOR's own registered app is read from
+  (`calendar.google.clientId`, `calendar.microsoft.clientId`, and the
+  `...clientSecretRef` keys beside them). `ResolvedClientConfig` replaces
+  `usingBundledDefault` / `isPlaceholder` with `isConfigured` plus those two key
+  names, so a refusal can quote the exact key without rebuilding the string.
+
+  **Who is affected:** anyone reading `isPlaceholder` / `usingBundledDefault`, or
+  importing the two placeholder constants, from
+  `@pellux/goodvibes-sdk/platform/calendar`. **What changes for an operator:**
+  nothing that was working stops working — the previous default was a
+  placeholder string that could never authenticate. Connecting a calendar
+  requires registering your own OAuth app with the provider and setting its
+  client id; until then the flow refuses with `client-not-configured`, before any
+  network call, naming the key to set. `CalendarConnector.resolveConfigFromSettings()`
+  and `platform/calendar`'s `readCalendarClientOverrides` read those keys (and the
+  client secret from the secret store under the derived name). See
+  `docs/calendar-oauth-setup.md` for the provider-console walkthrough.
+  `calendar.microsoft.clientId` joins the daemon-owned config paths, closing a
+  split where Microsoft's client SECRET was daemon-owned while its client id was
+  not — the daemon held half a credential and reported no account connected.
+
+- **BREAKING: the `daemon.embedInProcess` setting is removed (`platform/config`,
+  `platform/runtime`).** The key offered a choice no surface could act on: every
+  product starts host services adopt-only, and the adoption policy answers
+  adopt-only before it reads any embed preference — so a settings file with
+  `embedInProcess: true` behaved exactly like one without it, while the
+  schema-driven settings UI presented it as a live toggle carrying a "NOT
+  RECOMMENDED" warning for a branch that could not run.
+
+  A stored value is swept on load by a receipted migration
+  (`migrateDaemonEmbedInProcessRemoval`), which rewrites the settings file once
+  and files a one-line announce-once receipt naming the key, quoting the value it
+  removed, and stating that nothing about how the daemon runs changes. No
+  replacement setting is invented to receive the value.
+
+  **The embed capability itself stays**, re-scoped to what it always really was:
+  composition machinery. `startHostServices` takes `embedDaemonInProcess` in its
+  options, for an embedder that owns the daemon's lifetime deliberately and for
+  tests that need a real daemon without a detached child outliving the run. No
+  settings key reaches it. **Who is affected:** a caller reading or writing
+  `daemon.embedInProcess` through `ConfigManager`, or typing against
+  `DaemonProcessConfig` / `ConfigKey`; the key is gone from all of them. An
+  embedder that relied on the setting passes the option instead.
+
+  `daemon.enabled` is unaffected and keeps a live meaning, now stated precisely
+  in its schema description: whether THIS surface uses a daemon at all — adoption
+  plus every daemon-backed feature gate — as distinct from how one is hosted. It
+  does not control the daemon process, which runs regardless.
+
+- **BREAKING: the daemon's identity home follows a redirected tree root
+  (`platform/workspace`, `platform/owner-profile`, `platform/daemon`).**
+  `resolveDaemonHomeDir` derived its default from `homedir()` directly, ignoring
+  `GOODVIBES_HOME`. Since `GOODVIBES_HOME` relocates the tree root for
+  everything else — settings, workspace state, every secret tier — a daemon
+  started under a redirected root kept its identity files (auth users, operator
+  tokens, daemon settings) in the REAL `~/.goodvibes/daemon`. An isolation
+  boundary a process can walk out of is not a boundary. The resolver now derives
+  from the platform's one tree-root resolution; precedence is unchanged in shape:
+  an explicit `--daemon-home` first, then `GOODVIBES_DAEMON_HOME`, then
+  `<tree root>/.goodvibes/daemon`. `resolveOwnerProfilePath` and
+  `resolveDaemonCliPaths` had the same gap and are fixed with it.
+
+  **Who is affected:** only a process running under a `GOODVIBES_HOME` redirect —
+  test harnesses, sandboxes, and service units that set it. Such a daemon now
+  reads and writes its identity under the redirect instead of under the real
+  home; if it had identity state at the real path, point `GOODVIBES_DAEMON_HOME`
+  at that path to keep using it. **A default install sees no change at all**:
+  with no redirect set the tree root is the login home, which is exactly what
+  `homedir()` returned.
+
+- **Terminal-shell's public surface is gated
+  (`packages/terminal-shell`, tooling).** `packages/terminal-shell` is the other
+  package consumers import directly and nothing watched its exports, so a change
+  to its public surface could reach a consumer with no review step in between. It
+  now has both mechanisms the SDK has: an api-extractor rollup
+  (`api-extractor.terminal-shell.json` with its own
+  `packages/terminal-shell/tsconfig.api-extractor.json`, reporting to
+  `etc/goodvibes-terminal-shell.api.md`) and coverage in
+  `scripts/check-subpath-api-surface.ts`, which is now driven by a table of
+  tracked packages rather than one hardcoded path and records
+  `etc/subpath-api-surface-terminal-shell.json`. The subpath gate is what covers
+  `./conformance` and `./terminal-output-guard`, which a rollup config cannot
+  see. Both run inside `api:check`, so an unreviewed surface change fails
+  `validate`.
+
 - **The provider-health latency field says what it holds: a MAXIMUM, not a
   percentile (`platform/runtime/ui`).** `ProviderHealthEntry.p95LatencyMs` is
   now `maxLatencyMs` and `ProviderLatencyStats.p95Ms` is now `maxMs`. Both were

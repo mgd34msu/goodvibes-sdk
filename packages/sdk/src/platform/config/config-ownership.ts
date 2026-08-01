@@ -212,6 +212,12 @@ export const DAEMON_OWNED_NON_SCHEMA_CONFIG_PATHS = [
   'email.username',
   'email.fromAddress',
   'calendar.google.clientId',
+  // Microsoft's client id, for the same reason and by the same argument. Its
+  // SECRET was already daemon-owned above while the id was not, which is the
+  // half-a-credential split the paragraph above describes: the daemon could hold
+  // the secret and still report no Microsoft account connected, because the id
+  // stayed in whichever surface ran setup.
+  'calendar.microsoft.clientId',
   'google.oauth.projectId',
   'google.oauth.publishingStatus',
   'google.credentials.migratedFrom',

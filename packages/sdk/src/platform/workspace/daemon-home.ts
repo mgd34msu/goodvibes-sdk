@@ -12,7 +12,17 @@
  * Resolution order (first match wins):
  *   1. --daemon-home=<path> CLI arg (passed as daemonHomeArg)
  *   2. GOODVIBES_DAEMON_HOME environment variable
- *   3. ~/.goodvibes/daemon/
+ *   3. <tree root>/.goodvibes/daemon/ — the tree root being what
+ *      `GOODVIBES_HOME` names, falling back to the login home.
+ *
+ * That third step used to call `homedir()` directly, which is the defect this
+ * header now records. `GOODVIBES_HOME` relocates the tree root for every other
+ * part of the platform (settings, workspace state, every secret tier — see
+ * config/goodvibes-home.ts), so a daemon started under a redirected root kept
+ * its identity files — auth users, operator tokens, daemon settings — in the
+ * REAL `~/.goodvibes/daemon`. A relocation one resolver ignores is not a
+ * relocation; the tree root is resolved in exactly one place now and this
+ * module derives from it rather than recomputing a home of its own.
  *
  * The daemon home is canonical. Startup creates it when absent, but does not
  * import identity state from other surfaces or workspace-scoped paths.
@@ -20,7 +30,7 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, chmodSync } from 'node:fs';
 import { join, isAbsolute, resolve, dirname } from 'node:path';
-import { homedir } from 'node:os';
+import { resolveGoodVibesDaemonHome, resolveGoodVibesHome } from '../config/goodvibes-home.js';
 import { logger } from '../utils/logger.js';
 
 // ---------------------------------------------------------------------------
@@ -46,25 +56,27 @@ export interface DaemonHomeOptions {
 // ---------------------------------------------------------------------------
 
 /**
- * Resolve the daemon home directory from CLI flag, environment variable, or default.
+ * Resolve the daemon home directory from CLI flag, environment variable, or the
+ * tree root.
+ *
+ * The explicit `--daemon-home` argument wins outright because it names THIS
+ * process's identity directory and nothing else. Everything below it is the
+ * platform's one home resolution: `GOODVIBES_DAEMON_HOME` names the identity
+ * directory specifically, and absent that the directory falls under the tree
+ * root `GOODVIBES_HOME` names — so a redirected tree takes its daemon identity
+ * with it instead of reaching back into the login home.
  */
 export function resolveDaemonHomeDir(options: DaemonHomeOptions = {}): string {
   const env = options.env ?? process.env;
 
-  // 1. CLI arg
+  // 1. CLI arg — names this directory outright, above both env vars.
   if (options.daemonHomeArg) {
     const p = options.daemonHomeArg.trim();
     if (p) return isAbsolute(p) ? resolve(p) : resolve(process.cwd(), p);
   }
 
-  // 2. Env var
-  const envVal = env['GOODVIBES_DAEMON_HOME']?.trim();
-  if (envVal) {
-    return isAbsolute(envVal) ? resolve(envVal) : resolve(process.cwd(), envVal);
-  }
-
-  // 3. Default: ~/.goodvibes/daemon/
-  return join(homedir(), '.goodvibes', 'daemon');
+  // 2/3. GOODVIBES_DAEMON_HOME, else <tree root>/.goodvibes/daemon.
+  return resolveGoodVibesDaemonHome(resolveGoodVibesHome(env), env);
 }
 
 // ---------------------------------------------------------------------------

@@ -15,6 +15,11 @@ import {
   pollDeviceCodeFlow,
   type Sleep,
 } from './oauth-flow.js';
+import {
+  readCalendarClientOverrides,
+  type CalendarConfigReader,
+  type CalendarSecretReader,
+} from './oauth-client-config.js';
 import { providerProfile, resolveClientConfig } from './oauth-providers.js';
 import { CalendarTokenStore, type CalendarTokenStoreOptions } from './oauth-token-store.js';
 import {
@@ -100,9 +105,31 @@ export class CalendarConnector {
     this.store = new CalendarTokenStore(storeOptions);
   }
 
-  /** Resolve the client config for a provider (profile + optional user overrides). */
+  /** Resolve the client config for a provider (profile + the operator's credentials). */
   resolveConfig(provider: CalendarProviderId, overrides?: OAuthClientOverrides): ResolvedClientConfig {
     return resolveClientConfig(providerProfile(provider), overrides);
+  }
+
+  /**
+   * Resolve the client config from the operator's SETTINGS — the normal path.
+   *
+   * `resolveConfig` takes credentials a caller already holds; this reads them
+   * from `calendar.<provider>.clientId` and the client-secret reference beside
+   * it, which is where registering your own OAuth app puts them. A config with
+   * nothing set resolves to `isConfigured: false`, so a status view can render
+   * "not set up" and a connect attempt refuses naming the key — neither of them
+   * has to know the key string itself.
+   */
+  async resolveConfigFromSettings(
+    provider: CalendarProviderId,
+    sources: {
+      readonly config: CalendarConfigReader;
+      readonly secretGet?: CalendarSecretReader | undefined;
+      readonly extra?: Omit<OAuthClientOverrides, 'clientId' | 'clientSecret'> | undefined;
+    },
+  ): Promise<ResolvedClientConfig> {
+    const profile = providerProfile(provider);
+    return resolveClientConfig(profile, await readCalendarClientOverrides(profile, sources));
   }
 
   // --- Accounts / state -----------------------------------------------------

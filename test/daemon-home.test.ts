@@ -55,6 +55,39 @@ describe('resolveDaemonHomeDir', () => {
     // Should end with .goodvibes/daemon
     expect(result.endsWith('.goodvibes/daemon') || result.endsWith('.goodvibes\\daemon')).toBe(true);
   });
+
+  // The tree root, not the login home. GOODVIBES_HOME relocates the whole
+  // GoodVibes tree — settings, workspace state, every secret tier — and this
+  // resolver used to call homedir() directly, so a daemon started under a
+  // redirected root kept its identity files in the REAL home.
+  test('derives the default from GOODVIBES_HOME when it names a tree root', () => {
+    const root = '/redirected/tree/root';
+    expect(resolveDaemonHomeDir({ env: { GOODVIBES_HOME: root } }))
+      .toBe(join(root, '.goodvibes', 'daemon'));
+  });
+
+  test('GOODVIBES_DAEMON_HOME still names the identity directory outright, above GOODVIBES_HOME', () => {
+    const env = { GOODVIBES_HOME: '/redirected/tree/root', GOODVIBES_DAEMON_HOME: '/elsewhere/identity' };
+    expect(resolveDaemonHomeDir({ env })).toBe('/elsewhere/identity');
+  });
+
+  test('an explicit --daemon-home outranks both home variables', () => {
+    const env = { GOODVIBES_HOME: '/redirected/tree/root', GOODVIBES_DAEMON_HOME: '/elsewhere/identity' };
+    expect(resolveDaemonHomeDir({ daemonHomeArg: '/flag/identity', env })).toBe('/flag/identity');
+  });
+
+  test('a redirected tree root does not reach back into the login home', () => {
+    const loginHome = '/login/home';
+    const root = '/redirected/tree/root';
+    const redirected = resolveDaemonHomeDir({ env: { HOME: loginHome, GOODVIBES_HOME: root } });
+    expect(redirected.startsWith(root)).toBe(true);
+    expect(redirected.startsWith(loginHome)).toBe(false);
+  });
+
+  test('without GOODVIBES_HOME the login home from the environment answers', () => {
+    expect(resolveDaemonHomeDir({ env: { HOME: '/login/home' } }))
+      .toBe(join('/login/home', '.goodvibes', 'daemon'));
+  });
 });
 
 // ---------------------------------------------------------------------------

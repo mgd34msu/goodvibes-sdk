@@ -2,19 +2,22 @@
  * spine-adoption.ts — wiring a surface's session and memory spines to the
  * daemon it adopted.
  *
- * ── What the branch used to be, and what it is now ─────────────────────────
+ * ── The one branch here ────────────────────────────────────────────────────
  *
- * There were two supported topologies and this was the one selection point
- * between them: `embedded` meant the surface's own `SharedSessionBroker` WAS
- * the daemon's broker, so there was nothing to mirror to and the spine stayed
- * dormant; `external` meant a separately-running daemon the surface adopted,
- * and only then did the wire mirror come up.
+ * Adopted, or not. A surface does not host a daemon: it adopts one running
+ * separately, and the wire mirror comes up for exactly that case. Every other
+ * mode (`disabled`, `blocked`, `incompatible`, `unavailable`) means the same
+ * honest thing — no daemon, local only, nothing mirrored.
  *
- * `embedded` is gone. A surface never hosts a daemon, so there is exactly one
- * live topology — adopted — and every other mode (`disabled`, `blocked`,
- * `incompatible`, `unavailable`) means the same honest thing: no daemon, local
- * only, nothing mirrored. The branch that remains is "adopted or not", not "who
- * is hosting".
+ * `HostServiceMode` still carries an `embedded` member, and it means something
+ * real: the in-process HTTP listener reports it, and an EMBEDDER composing a
+ * daemon directly through `startHostServices({ embedDaemonInProcess: true })`
+ * gets it for the daemon too. What no longer exists is a product-facing setting
+ * that could select it — a surface has no switch that makes it host a daemon.
+ * So this file branches on "is there a daemon to mirror to", not on "who is
+ * hosting it", and an embedder that hosts its own is served by the same adopted
+ * path, because from the spine's point of view a daemon it can reach is a
+ * daemon it can reach.
  *
  * ── What crosses the wire ──────────────────────────────────────────────────
  *

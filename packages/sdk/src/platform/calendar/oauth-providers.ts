@@ -2,18 +2,23 @@
  * oauth-providers.ts — the fixed provider profiles for Google Calendar and
  * Microsoft Outlook (Graph), plus client-config resolution.
  *
- * Design (see CHANGELOG 1.0.0, A10, per Mike's least-friction rule): the DEFAULT
- * experience uses a bundled project-level client id (rclone/gh pattern). A native-
- * app / public-client id is not a secret (RFC 8252), so paired with PKCE no client
- * secret is needed. Power users MAY override with their own client id (+ secret for
- * a confidential registration) — surfaced only under an "advanced" affordance, never
- * as a required step.
+ * Bring your own OAuth app. No first-party client id ships with the product: the
+ * person setting up a GoodVibes environment registers the provider app themselves
+ * and sets its client id in config. A profile therefore carries the ENDPOINTS and
+ * the NAMES OF THE CONFIG KEYS the credentials are read from, and no credential of
+ * its own.
  *
- * The bundledClientId ships as an honest PLACEHOLDER. Mike registers the two project
- * apps once and drops the real ids into config defaults; after that every user's flow
- * is just: connect -> browser opens -> approve -> done. Until then, resolveClientConfig
- * reports isPlaceholder:true and flows refuse with `client-not-configured` rather than
- * faking a success.
+ * This replaces an earlier design that carried a "bundled project client id"
+ * shipping as a literal placeholder string, on the plan that real ids would be
+ * dropped into config defaults later. They will not be. A baked default is exactly
+ * what an operator cannot audit or rotate, and a placeholder that reaches a provider
+ * produces a failure that reads like a broken build rather than an unfinished setup.
+ * `resolveClientConfig` reports `isConfigured: false` when no id is set, and flows
+ * refuse with `client-not-configured` naming the key to set.
+ *
+ * A desktop / public-client registration needs no client secret when paired with
+ * PKCE (RFC 8252/7636), which is the recommended registration for both providers;
+ * an operator who registers a confidential client supplies a secret as well.
  */
 
 import type {
@@ -22,12 +27,6 @@ import type {
   OAuthProviderProfile,
   ResolvedClientConfig,
 } from './oauth-types.js';
-
-/** Honest placeholders — replaced once the project apps are registered. */
-export const GOOGLE_PLACEHOLDER_CLIENT_ID =
-  'REPLACE_WITH_PROJECT_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
-export const MICROSOFT_PLACEHOLDER_CLIENT_ID =
-  'REPLACE_WITH_PROJECT_MICROSOFT_CLIENT_ID';
 
 /** Google Calendar read scope and read/write events scope. Read-write is the default
  *  so event creation works; a user may narrow to read-only via overrides. */
@@ -51,8 +50,8 @@ export const GOOGLE_PROFILE: OAuthProviderProfile = {
   revocationEndpoint: 'https://oauth2.googleapis.com/revoke',
   apiBaseUrl: 'https://www.googleapis.com/calendar/v3',
   defaultScopes: GOOGLE_SCOPES_DEFAULT,
-  bundledClientId: GOOGLE_PLACEHOLDER_CLIENT_ID,
-  placeholderClientId: GOOGLE_PLACEHOLDER_CLIENT_ID,
+  clientIdConfigKey: 'calendar.google.clientId',
+  clientSecretRefConfigKey: 'calendar.google.clientSecretRef',
   // access_type=offline + prompt=consent so Google returns a refresh token on the
   // first authorization and re-issues one on re-consent.
   extraAuthParams: { access_type: 'offline', prompt: 'consent' },
@@ -68,8 +67,8 @@ export const MICROSOFT_PROFILE: OAuthProviderProfile = {
   // Microsoft has no OAuth revocation endpoint; disconnect is local token deletion.
   apiBaseUrl: 'https://graph.microsoft.com/v1.0',
   defaultScopes: MICROSOFT_SCOPES_DEFAULT,
-  bundledClientId: MICROSOFT_PLACEHOLDER_CLIENT_ID,
-  placeholderClientId: MICROSOFT_PLACEHOLDER_CLIENT_ID,
+  clientIdConfigKey: 'calendar.microsoft.clientId',
+  clientSecretRefConfigKey: 'calendar.microsoft.clientSecretRef',
 };
 
 const PROFILES: Readonly<Record<CalendarProviderId, OAuthProviderProfile>> = {
@@ -83,18 +82,21 @@ export function providerProfile(provider: CalendarProviderId): OAuthProviderProf
 }
 
 /**
- * Merge a profile with a user's optional overrides into the config a flow runs with.
- * A bundled profile whose id is still the placeholder resolves isPlaceholder:true
- * UNLESS the user supplied their own clientId.
+ * Merge a profile with the operator's supplied credentials into the config a flow
+ * runs with.
+ *
+ * Resolving is total: it never throws and never invents an id. With no client id
+ * supplied the result carries the empty string and `isConfigured: false`, so a
+ * caller can ASK about the state — render "not connected, set this key" — without
+ * having to catch an exception. Refusing is the flow's job, not the resolver's
+ * (see `assertClientConfigured` in oauth-flow.ts).
  */
 export function resolveClientConfig(
   profile: OAuthProviderProfile,
   overrides?: OAuthClientOverrides,
 ): ResolvedClientConfig {
-  const overrodeClientId = typeof overrides?.clientId === 'string' && overrides.clientId.trim().length > 0;
-  const clientId = overrodeClientId ? overrides!.clientId!.trim() : profile.bundledClientId;
-  const usingBundledDefault = !overrodeClientId;
-  const isPlaceholder = usingBundledDefault && clientId === profile.placeholderClientId;
+  const clientId = typeof overrides?.clientId === 'string' ? overrides.clientId.trim() : '';
+  const isConfigured = clientId.length > 0;
   const scopes = overrides?.scopes && overrides.scopes.length > 0 ? overrides.scopes : profile.defaultScopes;
   return {
     provider: profile.provider,
@@ -111,15 +113,20 @@ export function resolveClientConfig(
     ...(profile.extraAuthParams ? { extraAuthParams: profile.extraAuthParams } : {}),
     ...(overrides?.redirectHost ? { redirectHost: overrides.redirectHost } : {}),
     ...(typeof overrides?.redirectPort === 'number' ? { redirectPort: overrides.redirectPort } : {}),
-    usingBundledDefault,
-    isPlaceholder,
+    isConfigured,
+    clientIdConfigKey: profile.clientIdConfigKey,
+    clientSecretRefConfigKey: profile.clientSecretRefConfigKey,
   };
 }
 
 /**
- * The exact provider-console steps a user (or Mike, registering the project apps)
- * follows. Surfaced verbatim by the wizard's "advanced" help and copied into the
- * module docs. Kept as data so the wizard and docs never drift.
+ * The exact provider-console steps whoever is setting up this GoodVibes
+ * environment follows to register their own OAuth app.
+ *
+ * These are not "advanced" steps any more — they are THE setup, because no client
+ * id ships with the product. Surfaced verbatim by the connect flow's refusal help
+ * and copied into docs/calendar-oauth-setup.md. Kept as data so the surfaces and
+ * the docs never drift.
  */
 export const PROVIDER_SETUP_STEPS: Readonly<Record<CalendarProviderId, readonly string[]>> = {
   google: [
@@ -128,7 +135,7 @@ export const PROVIDER_SETUP_STEPS: Readonly<Record<CalendarProviderId, readonly 
     'APIs & Services -> OAuth consent screen -> configure (External is fine for personal use); add your Google account under Test users while the app is unverified.',
     'APIs & Services -> Credentials -> Create Credentials -> OAuth client ID -> Application type "Desktop app".',
     'Copy the generated Client ID. A Desktop-app client needs NO client secret with PKCE; leave the secret field blank unless you deliberately use a Web-app client.',
-    'Paste the Client ID into the wizard under "advanced", or (project owner) drop it into the config default calendar.google.clientId.',
+    'Set it: `goodvibes config set calendar.google.clientId <CLIENT_ID>`. If you registered a Web-app (confidential) client instead, store its secret and put the reference in calendar.google.clientSecretRef.',
   ],
   microsoft: [
     'Open the Azure portal (portal.azure.com) -> Microsoft Entra ID -> App registrations -> New registration.',
@@ -136,6 +143,6 @@ export const PROVIDER_SETUP_STEPS: Readonly<Record<CalendarProviderId, readonly 
     'Under "Redirect URI" add a "Mobile and desktop applications" platform and the entry http://localhost (the loopback flow supplies its own 127.0.0.1 port).',
     'Registration -> Authentication -> enable "Allow public client flows" = Yes (this is the public-client / device-code property; no client secret is needed).',
     'Registration -> API permissions -> Add a permission -> Microsoft Graph -> Delegated -> add Calendars.ReadWrite and offline_access.',
-    'Copy the "Application (client) ID". Paste it into the wizard under "advanced", or (project owner) drop it into the config default calendar.microsoft.clientId.',
+    'Copy the "Application (client) ID" and set it: `goodvibes config set calendar.microsoft.clientId <CLIENT_ID>`. A confidential registration additionally needs its secret stored and referenced in calendar.microsoft.clientSecretRef.',
   ],
 };
