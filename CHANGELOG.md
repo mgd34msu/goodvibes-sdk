@@ -2,6 +2,22 @@
 
 This file tracks breaking changes, additions, fixes, and migration steps for each release of `@pellux/goodvibes-sdk`. Every release **must** have a corresponding `## [x.y.z] - YYYY-MM-DD` section before it can publish — the changelog gate refuses a release the file does not describe.
 
+## [2.0.1] - 2026-08-01
+
+### Fixed
+
+- `display.themeMode` is a declared setting. The light/dark appearance
+  preference (auto | dark | light) existed only as a terminal-app-private
+  descriptor, so every other component reading a settings file that carried it
+  reported an unknown key on boot. It is a schema key now, beside
+  `display.theme` (the color palette — the two are independent and their
+  descriptions say so), with the same values and default it always had; stored
+  values keep working unchanged.
+- The hosted-session steer test waits for the acknowledgements it asserts
+  instead of racing them, and the secret scanner carries fingerprints for the
+  two deliberately key-shaped redaction fixtures at their rewritten-history
+  hashes.
+
 ## [2.0.0] - 2026-08-01
 
 ### Added
