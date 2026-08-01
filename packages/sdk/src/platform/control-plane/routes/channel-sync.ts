@@ -10,10 +10,14 @@
  * `channels.profiles.*` uses, so the plain-REST path and the methodId-invoke
  * endpoint reach one handler rather than two implementations of one idea.
  *
- * `channels.inbox.list` is deliberately NOT here. It promises per-provider
- * inbound feeds fetched live from Slack, Discord and email APIs, and nothing in
- * this SDK reads a provider's inbox. It keeps `invokable: false` — an honest
- * "cataloged, not callable" — until something serves it.
+ * `channels.inbox.list` is not here either, and for a reason that outlived the
+ * other seven: its answer needs the provider credentials and the synced mirror
+ * behind them, which live in the host, not in this SDK. It is no longer marked
+ * `invokable: false` — the host attaches a handler over the catalog descriptor
+ * and its advertised path is in the gateway REST table with these — but the
+ * handler is composed there rather than registered here. A build with no inbox
+ * composition answers 501 NOT_INVOKABLE naming the missing step, which is the
+ * honest answer for a process that holds no mailbox.
  */
 import type { GatewayMethodCatalog } from '../method-catalog.js';
 import type { GatewayMethodHandler } from '../method-catalog-shared.js';

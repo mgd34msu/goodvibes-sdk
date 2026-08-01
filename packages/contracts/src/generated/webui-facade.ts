@@ -6322,7 +6322,8 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
     "input": {
       "provider": "sample",
       "limit": 0,
-      "since": 0
+      "since": 0,
+      "cursor": "sample"
     },
     "output": {
       "items": [
@@ -6338,12 +6339,32 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
           "unread": false,
           "routeId": "sample",
           "threadId": "sample",
-          "attachmentCount": 0
+          "attachmentCount": 0,
+          "triageScore": 0,
+          "triageLabel": "sample",
+          "triageTags": [
+            "sample"
+          ]
         }
       ],
       "total": 0,
       "truncated": false,
-      "cursor": "sample"
+      "hasMore": false,
+      "cursor": "sample",
+      "nextCursor": "sample",
+      "providers": [
+        {
+          "provider": "sample",
+          "state": "sample",
+          "itemCount": 0,
+          "storedCount": 0,
+          "configured": false,
+          "lastSyncAt": 0,
+          "syncing": false,
+          "error": "sample"
+        }
+      ],
+      "partial": false
     }
   },
   "channels.lifecycle.get": {

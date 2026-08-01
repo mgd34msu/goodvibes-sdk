@@ -33,58 +33,16 @@ import {
   WATCHER_LIST_OUTPUT_SCHEMA,
   WATCHER_RECORD_SCHEMA,
 } from './operator-contract-schemas.js';
+import {
+  CHANNEL_DRAFT_GET_OUTPUT_SCHEMA,
+  CHANNEL_DRAFT_PROPERTIES,
+  CHANNEL_DRAFT_REQUIRED,
+  CHANNEL_DRAFT_SCHEMA,
+  CHANNEL_INBOX_ITEM_SCHEMA,
+  CHANNEL_INBOX_PROVIDER_STATUS_SCHEMA,
+  CHANNEL_ROUTING_RULE_SCHEMA,
+} from './operator-contract-schemas-channel-sync.js';
 
-const CHANNEL_INBOX_ITEM_SCHEMA = objectSchema({
-  id: STRING_SCHEMA,
-  provider: STRING_SCHEMA,
-  kind: STRING_SCHEMA,
-  from: STRING_SCHEMA,
-  fromAddress: STRING_SCHEMA,
-  subject: STRING_SCHEMA,
-  bodyPreview: STRING_SCHEMA,
-  receivedAt: NUMBER_SCHEMA,
-  unread: BOOLEAN_SCHEMA,
-  routeId: STRING_SCHEMA,
-  threadId: STRING_SCHEMA,
-  attachmentCount: NUMBER_SCHEMA,
-}, ['id', 'provider', 'kind', 'from', 'bodyPreview', 'receivedAt', 'unread']);
-
-const CHANNEL_ROUTING_RULE_SCHEMA = objectSchema({
-  id: STRING_SCHEMA,
-  createdAt: STRING_SCHEMA,
-  updatedAt: STRING_SCHEMA,
-  surfaceKind: STRING_SCHEMA,
-  routeId: STRING_SCHEMA,
-  profileId: STRING_SCHEMA,
-  label: STRING_SCHEMA,
-}, ['id', 'createdAt', 'updatedAt', 'surfaceKind', 'profileId']);
-
-const CHANNEL_DRAFT_PROPERTIES = {
-  version: NUMBER_SCHEMA,
-  id: STRING_SCHEMA,
-  createdAt: STRING_SCHEMA,
-  updatedAt: STRING_SCHEMA,
-  status: STRING_SCHEMA,
-  title: STRING_SCHEMA,
-  message: STRING_SCHEMA,
-  channel: STRING_SCHEMA,
-  route: STRING_SCHEMA,
-  webhook: STRING_SCHEMA,
-  link: STRING_SCHEMA,
-  tags: arraySchema(STRING_SCHEMA),
-  sentResponseId: STRING_SCHEMA,
-  sendError: STRING_SCHEMA,
-} as const;
-
-const CHANNEL_DRAFT_REQUIRED = ['version', 'id', 'createdAt', 'updatedAt', 'status', 'message'] as const;
-
-const CHANNEL_DRAFT_SCHEMA = objectSchema({ ...CHANNEL_DRAFT_PROPERTIES }, [...CHANNEL_DRAFT_REQUIRED]);
-
-const CHANNEL_DRAFT_GET_OUTPUT_SCHEMA = objectSchema(
-  { ...CHANNEL_DRAFT_PROPERTIES, notFound: BOOLEAN_SCHEMA },
-  [],
-  { additionalProperties: true },
-);
 
 export const builtinGatewayChannelMethodDescriptors: readonly GatewayMethodDescriptor[] = [
   methodDescriptor({
@@ -617,34 +575,39 @@ export const builtinGatewayChannelMethodDescriptors: readonly GatewayMethodDescr
     dangerous: true,
   }),
   /**
-   * Route-reconcile debt, mostly retired.
+   * Route-reconcile debt, retired in full.
    *
-   * Eight methods here — channels.inbox.*, channels.routing.*,
+   * Eight methods here — channels.inbox.list, channels.routing.*,
    * channels.drafts.* — advertised http paths that no dispatch route served,
    * and were marked `invokable: false` so the published contract and the live
    * method-dispatch path both said "cataloged, not callable" rather than
    * letting a caller find the 404 on their own.
    *
-   * SEVEN OF THEM ARE NOW SERVED. The routing table and the draft mirror have
-   * a store (platform/channel-sync), handlers (control-plane/routes/channel-
-   * sync.ts) and entries in the gateway REST table, so their advertised paths
-   * resolve and the flag is gone from each.
+   * Seven were served first: the routing table and the draft mirror got a store
+   * (platform/channel-sync), handlers (control-plane/routes/channel-sync.ts)
+   * and entries in the gateway REST table.
    *
-   * `channels.inbox.list` KEEPS IT, and the reason is worth stating rather than
-   * leaving as an omission: it promises per-provider inbound feeds fetched LIVE
-   * from Slack, Discord and email APIs, and nothing in this SDK reads a
-   * provider's inbox. Serving it means building that aggregator, not adding a
-   * route; until then the honest answer is the one the flag already gives.
-   * Un-mark it once something serves it — the route-reconcile regression gate
-   * (method-catalog-route-reconcile.ts, exercised in
-   * test/capability-route-reconcile.test.ts) catches the reverse mistake, a
-   * route appearing while the flag stays on.
+   * `channels.inbox.list` was the eighth and the last, because it needed an
+   * aggregator rather than a route. It has one now. The host that holds the
+   * provider credentials — the daemon — keeps a synced mirror of what its
+   * Slack / Discord / IMAP adapters have pulled in, and attaches a handler for
+   * this id over the descriptor below. The advertised path is in the gateway
+   * REST table alongside its routing/drafts siblings, so the plain-REST call
+   * and the methodId invoke reach the same handler.
+   *
+   * What that means for the shape: the answer is served from the host's mirror,
+   * not from a fresh remote fetch per call, so freshness is a fact a caller has
+   * to be told rather than assume. `providers` carries it — one entry per
+   * provider the host knows about, every call, whether or not it contributed an
+   * item. A host that attaches no handler answers 501 NOT_INVOKABLE naming the
+   * missing composition step (daemon/gateway-self-dispatch.ts), which is an
+   * honest answer for a build that does not hold provider credentials.
    */
   methodDescriptor({
     id: 'channels.inbox.list',
     title: 'List Channel Inbox',
     description:
-      'Return per-provider inbound message feeds (Slack DMs, Discord messages, email threads) fetched live from provider APIs. Read-only; no provider write.',
+      'Return the merged inbound message feed (Slack DMs, Discord messages, email threads) from the host\'s synced provider mirror, newest first. Read-only; no provider write. Every known provider reports its own state in `providers` — including the unconfigured and the failing ones — so a short list is never ambiguous, and `partial` is true whenever a configured provider\'s items are missing because its last sync failed. Page with ?limit and ?cursor (opaque, from nextCursor); ?since=<epoch-ms> returns only items newer than a previous answer\'s `cursor` watermark; ?provider=<id> narrows to one provider.',
     category: 'channels',
     scopes: ['read:channels'],
     http: { method: 'GET', path: '/api/channels/inbox' },
@@ -652,14 +615,32 @@ export const builtinGatewayChannelMethodDescriptors: readonly GatewayMethodDescr
       provider: STRING_SCHEMA,
       limit: NUMBER_SCHEMA,
       since: NUMBER_SCHEMA,
+      cursor: STRING_SCHEMA,
     }),
     outputSchema: objectSchema({
       items: arraySchema(CHANNEL_INBOX_ITEM_SCHEMA),
+      /** Items matching the filter across the whole mirror, not just this page. */
       total: NUMBER_SCHEMA,
+      /** Retained spelling of `hasMore`; both are set and always agree. */
       truncated: BOOLEAN_SCHEMA,
+      hasMore: BOOLEAN_SCHEMA,
+      /**
+       * Freshness watermark: the newest receivedAt in the filtered mirror. Feed
+       * it back as `since` to ask only for what has arrived since. NOT a page
+       * cursor — that is `nextCursor`, and the two are deliberately separate
+       * because "what is new" and "the next page down" are different questions.
+       */
       cursor: STRING_SCHEMA,
-    }, ['items', 'total', 'truncated']),
-    invokable: false,
+      /** Opaque page cursor; present only when hasMore. Pass back as `cursor`. */
+      nextCursor: STRING_SCHEMA,
+      providers: arraySchema(CHANNEL_INBOX_PROVIDER_STATUS_SCHEMA),
+      /**
+       * True when at least one CONFIGURED provider failed its last sync, so the
+       * list is missing items that exist. An unconfigured provider does not set
+       * it: nothing is missing from a provider nobody wired up.
+       */
+      partial: BOOLEAN_SCHEMA,
+    }, ['items', 'total', 'truncated', 'hasMore', 'providers', 'partial']),
   }),
   methodDescriptor({
     id: 'channels.routing.list',
