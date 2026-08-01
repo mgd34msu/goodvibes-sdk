@@ -64,6 +64,14 @@ function resolveExportBackingPath(dir: string, target: string): string | null {
     return resolve(SDK_ROOT, dir, target);
   }
   if (target.endsWith('.js') || target.endsWith('.d.ts')) {
+    // A hand-written ambient declaration keeps its own name on both sides: tsc
+    // never emits it, so prepare:sdk copies src/**/x.d.ts to dist/**/x.d.ts
+    // unchanged. Check that form first; everything else in dist is emitted from
+    // a .ts of the same stem.
+    if (target.endsWith('.d.ts')) {
+      const declarationSource = resolve(SDK_ROOT, dir, target.replace('./dist/', './src/'));
+      if (existsSync(declarationSource)) return declarationSource;
+    }
     const sourcePath = target
       .replace('./dist/', './src/')
       .replace(/\.d\.ts$/, '.ts')

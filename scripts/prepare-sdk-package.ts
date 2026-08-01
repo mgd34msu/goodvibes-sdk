@@ -33,6 +33,25 @@ const DIST_ARTIFACTS = resolve(
  */
 const RUNTIME_ASSETS: readonly string[] = ['platform/browser/browser-host.mjs'];
 
+/**
+ * Ambient module declarations that must reach dist so CONSUMERS can use them.
+ *
+ * `sql-js.d.ts` declares the shape of `sql.js`, which ships no types of its
+ * own. tsc treats an ambient .d.ts as an input, never an output, so it never
+ * appeared under dist and never reached the published package — and every
+ * surface that imports `sql.js` (the daemon's sqlite store, the TUI's
+ * dependency probe) had to keep its own byte-identical copy of the declaration
+ * to typecheck at all. Copying it here makes the SDK the one place the shape
+ * is written; consumers reach it through the `./sql-js` export with a single
+ * `/// <reference types="@pellux/goodvibes-sdk/sql-js" />`.
+ *
+ * Ambient declarations are global by nature, so this list stays deliberately
+ * short: only declarations a consumer genuinely needs. The other files in
+ * `platform/types/` (peer-deps, vendor-deps, wasm-files, pdfjs-dist) describe
+ * the SDK's own build inputs and are not shipped.
+ */
+const AMBIENT_DECLARATIONS: readonly string[] = ['platform/types/sql-js.d.ts'];
+
 function ensureExists(path: string): void {
   if (!existsSync(path)) {
     throw new Error(`Expected path to exist: ${path}`);
@@ -46,7 +65,7 @@ rmSync(DIST_ARTIFACTS, { recursive: true, force: true });
 mkdirSync(resolve(SDK_DIST, 'contracts'), { recursive: true });
 cpSync(SOURCE_ARTIFACTS, DIST_ARTIFACTS, { recursive: true });
 
-for (const asset of RUNTIME_ASSETS) {
+for (const asset of [...RUNTIME_ASSETS, ...AMBIENT_DECLARATIONS]) {
   const source = resolve(SDK_ROOT, 'packages/sdk/src', asset);
   ensureExists(source);
   const target = resolve(SDK_DIST, asset);
