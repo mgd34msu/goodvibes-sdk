@@ -504,6 +504,39 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   the opposite of a single source of truth. It now leaves the barrel with the
   domain state factories it governs.
 
+- **`channels.inbox.list` is callable, and its advertised path is served
+  (`platform/control-plane/method-catalog-channels`, `daemon-sdk/gateway-rest-routes`).**
+  It was the eighth and last of the channels route-reconcile debt: seven of
+  those verbs got a store and handlers here, and this one kept `invokable:
+  false` because its answer needs provider credentials and the synced mirror
+  behind them, which live in a host and not in this SDK. Serving it meant
+  building the aggregator, not adding a route, and a host has now built one — so
+  the flag is off, `GET /api/channels/inbox` is in `GATEWAY_REST_ROUTES` beside
+  its `channels.routing.*` / `channels.drafts.*` siblings, and the plain-REST
+  call and the methodId invoke reach the same handler.
+
+  Removing the flag did not move the lie: a build that composes no inbox
+  attaches no handler and answers 501 `NOT_INVOKABLE` naming the missing
+  composition step, which is the truthful answer for a process holding no
+  mailbox — the same self-dispatch guard `runtime.metrics.get` rides.
+
+  The descriptor's shape says what a mirror-backed answer has to say. Alongside
+  `items` / `total` / `truncated` (unchanged, so an already-shipped reader keeps
+  working) the output carries `hasMore` and an opaque `nextCursor` for paging,
+  `cursor` kept as the freshness watermark you feed back as `since`, `partial`,
+  and `providers` — one entry per provider the host knows about, on every call,
+  including the ones that returned nothing. Its `state` distinguishes `ready`,
+  `empty`, `unconfigured`, `error` and `pending`, because zero Slack items can
+  mean "nothing arrived", "no token was ever set" or "Slack refused the last
+  four polls", and a client acts differently on each. `partial` is true when a
+  CONFIGURED provider's items are missing because its sync failed; an
+  unconfigured provider never sets it, since nothing is missing from a provider
+  nobody wired up. Input gains `cursor` beside `provider` / `limit` / `since`.
+  `CHANNEL_INBOX_ITEM_SCHEMA` also names the triage overlay
+  (`triageScore` / `triageLabel` / `triageTags`) it was already carrying — an
+  item field a client receives and the schema does not name is the contract
+  lying by omission.
+
 ### Fixed
 
 - **A conversation the daemon dispatches to a surface now gets its answer back
