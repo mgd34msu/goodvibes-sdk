@@ -12,11 +12,10 @@
  * never take the whole server down"; it does not mean "swallows bind
  * failures" — those stay honest.
  *
- * Hoisted from goodvibes-tui's `daemon/safe-serve.ts` (used identically by
- * both the embedded and the standalone daemon topologies there) so every
- * daemon host — TUI-embedded, TUI-standalone, agent, and the SDK's own
- * `platform/daemon` CLI — shares one implementation instead of each
- * maintaining its own copy of the same wrapper.
+ * Lives in the SDK so every daemon host — the standalone daemon binary, its
+ * embedded-runtime callers, and the SDK's own `platform/daemon` CLI — shares
+ * one implementation instead of each maintaining its own copy of the same
+ * wrapper.
  */
 import { summarizeError } from '../utils/error-display.js';
 import { logger } from '../utils/logger.js';
@@ -63,7 +62,7 @@ export function createHostRequestFailureResponse(
 /**
  * Build a `Bun.serve`-shaped factory that wraps only the `fetch` callback in
  * the failure boundary above. `surface` names the host in log lines and
- * failure responses (e.g. "Standalone daemon", "Embedded HTTP listener") so a
+ * failure responses (e.g. "Daemon HTTP listener", "Control-plane listener") so a
  * multi-listener process can tell which one failed.
  */
 export function createSafeHostServeFactory(

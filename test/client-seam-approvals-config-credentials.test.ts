@@ -2,13 +2,11 @@
  * client-seam-approvals-config-credentials.test.ts — the three seams where a
  * surface stops being allowed to answer for itself.
  *
- * These were the terminal app's and had no equivalent anywhere else, which is
- * the reason they are here: a chat host raising an ask into its own in-process
- * broker made that ask invisible to every other surface, and a chat host writing
- * `surfaces.telegram.botToken` into its own settings file configured nothing at
- * all while reporting success. Both are silent, and both are the class of
- * failure the daemon split exists to end — so the policy is pinned once, for
- * every surface that adopts it.
+ * A chat host raising an ask into its own in-process broker makes that ask
+ * invisible to every other surface, and a chat host writing
+ * `surfaces.telegram.botToken` into its own settings file configures nothing
+ * at all while reporting success. Both are silent failure modes, so the
+ * policy is pinned once here, for every surface that adopts it.
  *
  * What each test is really about:
  *
