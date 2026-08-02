@@ -40,8 +40,21 @@ import { logger } from '../../utils/logger.js';
 export interface OwnerProfileCompositionDeps {
   /** Reads the `profile.*` policy and receives the consumer read fallback. */
   readonly configManager: Pick<ConfigManager, 'get' | 'attachProfileFallback'>;
-  /** `--daemon-home`, when the host parsed one. Absent ⇒ env, then `~/.goodvibes`. */
+  /** `--daemon-home`, when the host parsed one. Absent ⇒ env, then `homeDir`. */
   readonly daemonHome?: string | undefined;
+  /**
+   * The home directory the RUNTIME is actually using — `runtimeServices
+   * .homeDirectory` — not the login user's.
+   *
+   * A runtime constructed with an injected home (a test suite, an isolated
+   * daemon, a second instance under a scratch root) had no way to say so here:
+   * the resolver fell through to the login home and this composition read the
+   * profile of whoever was logged in. That is how the daemon test suite came to
+   * read the owner's real profile. Threaded through to the resolver's `homeDir`
+   * option so an injected home decides the file, in the same position the login
+   * home occupied — `profile.path` and `--daemon-home` still win over it.
+   */
+  readonly homeDir?: string | undefined;
   /**
    * What the occasions loop needs, when this process is running one.
    *
@@ -69,12 +82,15 @@ export function composeOwnerProfile(
   const config = deps.configManager;
   const store = new OwnerProfileStore({
     // One resolver, honouring `profile.path`, then `--daemon-home`, then
-    // GOODVIBES_DAEMON_HOME, then `~/.goodvibes/daemon/`. Deliberately not a
-    // second computation of that order here: the daemon-home round has already
-    // been paid for once by exactly that kind of duplicate.
+    // GOODVIBES_DAEMON_HOME, then the runtime's own home directory (falling
+    // back to the login home only when the runtime never injected one).
+    // Deliberately not a second computation of that order here: the
+    // daemon-home round has already been paid for once by exactly that kind of
+    // duplicate.
     path: resolveOwnerProfilePath({
       override: config.get('profile.path'),
       ...(deps.daemonHome === undefined ? {} : { daemonHomeArg: deps.daemonHome }),
+      ...(deps.homeDir === undefined ? {} : { homeDir: deps.homeDir }),
     }),
     enabled: config.get('profile.enabled'),
     reloadThrottleMs: config.get('profile.reloadThrottleMs'),

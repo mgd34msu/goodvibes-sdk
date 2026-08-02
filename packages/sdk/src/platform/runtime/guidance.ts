@@ -1,5 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
-import { dirname } from 'path';
+import { readJsonFileOrQuarantine, writeJsonFileAtomic } from '../utils/atomic-json-store.js';
 import type { ConfigManager } from '../config/manager.js';
 import type { SessionMaintenanceStatus } from './session-maintenance.js';
 import type { EcosystemRecommendation } from './ecosystem/recommendations.js';
@@ -52,19 +51,31 @@ function resolveGuidancePath(options?: GuidancePersistenceOptions): string {
 }
 
 function readDismissals(options?: GuidancePersistenceOptions): GuidanceDismissalStore {
+  const empty: GuidanceDismissalStore = { version: 1, dismissed: {} };
   try {
-    const guidanceFile = resolveGuidancePath(options);
-    if (!existsSync(guidanceFile)) return { version: 1, dismissed: {} };
-    return JSON.parse(readFileSync(guidanceFile, 'utf-8')) as GuidanceDismissalStore;
+    return (
+      readJsonFileOrQuarantine<GuidanceDismissalStore>(resolveGuidancePath(options), {
+        label: 'runtime/guidance',
+        recovery: 'Previously dismissed guidance messages may appear once more; dismissing them again is all that is needed.',
+        validate: (parsed) => {
+          if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+            throw new Error('guidance dismissal store is not a JSON object');
+          }
+          const store = parsed as Partial<GuidanceDismissalStore>;
+          if (!store.dismissed || typeof store.dismissed !== 'object' || Array.isArray(store.dismissed)) {
+            throw new Error('guidance dismissal store is missing its dismissed map');
+          }
+          return { version: 1, dismissed: store.dismissed as Record<string, number> };
+        },
+      }) ?? empty
+    );
   } catch {
-    return { version: 1, dismissed: {} };
+    return empty;
   }
 }
 
 function writeDismissals(store: GuidanceDismissalStore, options?: GuidancePersistenceOptions): void {
-  const guidanceFile = resolveGuidancePath(options);
-  mkdirSync(dirname(guidanceFile), { recursive: true });
-  writeFileSync(guidanceFile, `${JSON.stringify(store, null, 2)}\n`, 'utf-8');
+  writeJsonFileAtomic(resolveGuidancePath(options), store);
 }
 
 export function dismissGuidance(id: string, options?: GuidancePersistenceOptions): void {

@@ -6,9 +6,10 @@
  * orchestrator dependency.
  */
 
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
+import { readJsonFileOrQuarantine, writeJsonFileAtomic } from '../utils/atomic-json-store.js';
 import { logger } from '../utils/logger.js';
-import { join, dirname } from 'node:path';
+import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 
 export type PlanItemStatus = 'pending' | 'in_progress' | 'complete' | 'failed' | 'skipped';
@@ -160,10 +161,17 @@ export class ExecutionPlanManager {
   /** Load plan from disk (.goodvibes/plans/<id>.json). Returns null if not found. */
   load(planId: string): ExecutionPlan | null {
     const filePath = join(this.plansDir, `${planId}.json`);
-    if (!existsSync(filePath)) return null;
     try {
-      const raw = readFileSync(filePath, 'utf-8');
-      return JSON.parse(raw) as ExecutionPlan;
+      return readJsonFileOrQuarantine<ExecutionPlan>(filePath, {
+        label: 'core/execution-plan',
+        recovery: 'This plan is gone; the session continues without it and a new plan can be created at any time.',
+        validate: (parsed) => {
+          if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+            throw new Error('plan file is not a JSON object');
+          }
+          return parsed as ExecutionPlan;
+        },
+      });
     } catch (err) {
       logger.warn('ExecutionPlanManager: failed to load plan', { planId: filePath, error: String(err) });
       return null;
@@ -172,17 +180,24 @@ export class ExecutionPlanManager {
 
   /** Save plan to disk. Creates directories as needed. */
   save(plan: ExecutionPlan): void {
-    mkdirSync(this.plansDir, { recursive: true });
-    const filePath = join(this.plansDir, `${plan.id}.json`);
-    writeFileSync(filePath, JSON.stringify(plan, null, 2) + '\n', 'utf-8');
+    writeJsonFileAtomic(join(this.plansDir, `${plan.id}.json`), plan);
   }
 
   /** Get the active plan for the current session, if any. */
   getActive(sessionId?: string): ExecutionPlan | null {
-    if (!existsSync(this.activeFile)) return null;
     try {
-      const raw = readFileSync(this.activeFile, 'utf-8');
-      const { planId, sessionId: activeSessionId } = JSON.parse(raw) as { planId: string | null; sessionId?: string | null };
+      const pointer = readJsonFileOrQuarantine<{ planId: string | null; sessionId?: string | null }>(this.activeFile, {
+        label: 'core/execution-plan-pointer',
+        recovery: 'No plan is marked active; the next plan created or resumed becomes the active one.',
+        validate: (parsed) => {
+          if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+            throw new Error('active-plan pointer is not a JSON object');
+          }
+          return parsed as { planId: string | null; sessionId?: string | null };
+        },
+      });
+      if (!pointer) return null;
+      const { planId, sessionId: activeSessionId } = pointer;
       if (!planId) return null;
       if (sessionId && activeSessionId && activeSessionId !== sessionId) return null;
       if (sessionId && !activeSessionId) return null;
@@ -198,15 +213,14 @@ export class ExecutionPlanManager {
   }
 
   private setActive(planId: string | null, sessionId?: string | null): void {
-    mkdirSync(this.plansDir, { recursive: true });
     if (planId === null) {
+      // Only rewrite an existing pointer — absence already means "no active plan".
       if (existsSync(this.activeFile)) {
-        // Remove tracking entry when no active plan
-        writeFileSync(this.activeFile, JSON.stringify({ planId: null, sessionId: sessionId ?? null }, null, 2) + '\n', 'utf-8');
+        writeJsonFileAtomic(this.activeFile, { planId: null, sessionId: sessionId ?? null });
       }
       return;
     }
-    writeFileSync(this.activeFile, JSON.stringify({ planId, sessionId: sessionId ?? null }, null, 2) + '\n', 'utf-8');
+    writeJsonFileAtomic(this.activeFile, { planId, sessionId: sessionId ?? null });
   }
 
   // --------------------------------------------------------------------------

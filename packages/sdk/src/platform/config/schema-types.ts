@@ -231,6 +231,17 @@ export interface ConfigSetting {
   validate?: ((value: unknown) => boolean) | undefined;
   /** Hint appended to the validation-failure message when `validate` returns false, e.g. `'finite number in [0.25, 4.0]'`. */
   validationHint?: string | undefined;
+  /**
+   * What kind of quantity a numeric key holds, when knowing that changes how a
+   * value is read or shown.
+   *
+   * `'money'` marks a key holding an amount of `payments.currency`, written the
+   * way a person says it (`100`, `19.99`). Consumers ask the SCHEMA for this
+   * mark rather than pattern-matching the key's NAME: the previous scheme
+   * encoded the unit in a name suffix, which tied every surface that touched
+   * one of these keys to that spelling. See ./money-value.ts.
+   */
+  unit?: 'money' | undefined;
 }
 
 /** Dot-path config keys for all settings. */

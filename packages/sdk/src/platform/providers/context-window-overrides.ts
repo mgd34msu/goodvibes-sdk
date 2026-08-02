@@ -21,8 +21,8 @@
  * The file lives in the control-plane config dir, so both layers reach every
  * consumer of the same home (TUI, daemon, agent) without extra wiring.
  */
-import { dirname, join } from 'node:path';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { readJsonFileOrQuarantine, writeJsonFileAtomic } from '../utils/atomic-json-store.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 import type { ModelDefinition } from './registry-types.js';
@@ -73,24 +73,25 @@ interface LoadedContextWindowState {
  */
 export function loadContextWindowOverrides(filePath: string): LoadedContextWindowState {
   const empty: LoadedContextWindowState = { overrides: new Map(), observed: new Map() };
-  let raw: string;
   try {
-    raw = readFileSync(filePath, 'utf-8');
-  } catch {
-    return empty; // missing file = no overrides (first run)
-  }
-  try {
-    const parsed = JSON.parse(raw) as Partial<ContextWindowOverridesFile> | null;
-    if (!parsed || (parsed.version !== 1 && parsed.version !== 2) || typeof parsed.overrides !== 'object' || parsed.overrides === null) {
-      logger.warn('[context-window-overrides] Ignoring malformed overrides file', { filePath });
-      return empty;
-    }
-    return {
-      overrides: readValidEntries(parsed.overrides, 'override'),
-      observed: readValidEntries(parsed.observed, 'observed-limit'),
-    };
+    return (
+      readJsonFileOrQuarantine<LoadedContextWindowState>(filePath, {
+        label: 'providers/context-window-overrides',
+        recovery: 'Context windows fall back to the shipped per-model limits, and an observed limit is re-learned the first time a model reports one.',
+        validate: (raw) => {
+          const parsed = raw as Partial<ContextWindowOverridesFile> | null;
+          if (!parsed || (parsed.version !== 1 && parsed.version !== 2) || typeof parsed.overrides !== 'object' || parsed.overrides === null) {
+            throw new Error('overrides file is missing a supported version or its overrides object');
+          }
+          return {
+            overrides: readValidEntries(parsed.overrides, 'override'),
+            observed: readValidEntries(parsed.observed, 'observed-limit'),
+          };
+        },
+      }) ?? empty
+    );
   } catch (error) {
-    logger.warn('[context-window-overrides] Failed to parse overrides file', {
+    logger.warn('[context-window-overrides] Failed to read overrides file', {
       filePath,
       error: summarizeError(error),
     });
@@ -108,8 +109,7 @@ export function saveContextWindowOverrides(filePath: string, state: LoadedContex
     observed: sorted(state.observed),
   };
   try {
-    mkdirSync(dirname(filePath), { recursive: true });
-    writeFileSync(filePath, `${JSON.stringify(file, null, 2)}\n`, 'utf-8');
+    writeJsonFileAtomic(filePath, file);
   } catch (error) {
     logger.warn('[context-window-overrides] Failed to persist overrides', {
       filePath,

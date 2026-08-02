@@ -1,5 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { readJsonFileOrQuarantine, writeJsonFileAtomic } from '../utils/atomic-json-store.js';
 import {
   buildOAuthAuthorizationStart,
   createOAuthState,
@@ -86,22 +85,39 @@ export class SubscriptionManager {
     this.path = path;
   }
 
+  /**
+   * Read the subscription store, never throwing.
+   *
+   * Corrupt content is quarantined (moved aside with a `.why` receipt and
+   * logged at error level) instead of being silently discarded the way the
+   * bare `catch` here used to discard it — the caller still gets the same
+   * empty store, but the evidence of what went wrong survives on disk. A read
+   * failure that leaves nothing to quarantine (permissions) also degrades to
+   * the empty store, preserving this method's never-throws contract.
+   */
   private read(): SubscriptionStore {
+    const empty: SubscriptionStore = { version: 1, subscriptions: {}, pending: {} };
     try {
-      const raw = readFileSync(this.path, 'utf-8');
-      return JSON.parse(raw) as SubscriptionStore;
+      return (
+        readJsonFileOrQuarantine<SubscriptionStore>(this.path, {
+          label: 'config/subscriptions',
+          recovery:
+            'Provider subscriptions are re-recorded the next time a provider subscription login completes; no stored credential is lost, because subscription secrets live in the secrets store, not here.',
+          validate: (parsed) => {
+            if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+              throw new Error('subscription store is not a JSON object');
+            }
+            return parsed as SubscriptionStore;
+          },
+        }) ?? empty
+      );
     } catch {
-      return {
-        version: 1,
-        subscriptions: {},
-        pending: {},
-      };
+      return empty;
     }
   }
 
   private write(store: SubscriptionStore): void {
-    mkdirSync(dirname(this.path), { recursive: true });
-    writeFileSync(this.path, `${JSON.stringify(store, null, 2)}\n`, 'utf-8');
+    writeJsonFileAtomic(this.path, store);
   }
 
   public list(): ProviderSubscription[] {

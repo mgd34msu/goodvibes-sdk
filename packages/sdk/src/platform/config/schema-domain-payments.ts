@@ -25,9 +25,7 @@
  */
 import type { ConfigSetting } from './schema-types.js';
 import { intRange } from './schema-shared.js';
-
-/** No sane single item costs more than this; the cap stops a typo becoming a car. */
-const MAX_MINOR_UNITS = 100_000_000;
+import { moneyAmount } from './money-value.js';
 
 export const paymentsConfigDefaults = {
   payments: {
@@ -36,12 +34,12 @@ export const paymentsConfigDefaults = {
     currency: 'USD',
     cvvHandling: 'stored' as const,
     budget: {
-      dailyItemCents: 0,
-      dailyOverageCents: 0,
+      dailyItem: 0,
+      dailyOverage: 0,
       perPurchaseCeilingEnabled: true,
-      perPurchaseCeilingCents: 0,
+      perPurchaseCeiling: 0,
       overageToleranceEnabled: false,
-      overageToleranceDailyAllowanceCents: 0,
+      overageToleranceDailyAllowance: 0,
     },
     shipping: {
       preferredTier: 'normal' as const,
@@ -99,35 +97,35 @@ export const paymentsConfigSettings: ConfigSetting[] = [
 
   // ── Budgets ────────────────────────────────────────────────────────────
   {
-    key: 'payments.budget.dailyItemCents',
+    key: 'payments.budget.dailyItem',
     type: 'number',
     default: 0,
     description:
-      "Most that may be spent on ITEM PRICES in one calendar day, in minor units (cents). The item price alone is checked against this; tax, mandatory fees and delivery draw on the separate overage budget below. Resets at midnight in daemon.timezone (UTC when unset) — the boundary is real, so $100 at 23:59 and $100 at 00:00 both go through. Default 0: nothing is bought until you set this.",
-    ...intRange(0, MAX_MINOR_UNITS),
+      "Most that may be spent on ITEM PRICES in one calendar day, written the way you would say it: 100 is a hundred, 19.99 is nineteen ninety-nine, in whatever payments.currency is set to. The item price alone is checked against this; tax, mandatory fees and delivery draw on the separate overage budget below. Resets at midnight in daemon.timezone (UTC when unset) — the boundary is real, so 100 at 23:59 and 100 at 00:00 both go through. Default 0: nothing is bought until you set this.",
+    ...moneyAmount(),
   },
   {
-    key: 'payments.budget.dailyOverageCents',
+    key: 'payments.budget.dailyOverage',
     type: 'number',
     default: 0,
     description:
-      'Daily allowance in minor units for charges that CANNOT BE AVOIDED on a purchase you already approved: sales tax, mandatory handling or booking fees, and the delivery option actually used. Discretionary add-ons — expedited shipping beyond what the ladder picks, insurance, gift wrap, extended warranties — are purchase decisions, not delivery costs, and never draw on this. Default 0.',
-    ...intRange(0, MAX_MINOR_UNITS),
+      'Daily allowance for charges that CANNOT BE AVOIDED on a purchase you already approved: sales tax, mandatory handling or booking fees, and the delivery option actually used. Written the way you would say it — 25 is twenty-five, 7.50 is seven fifty. Discretionary add-ons — expedited shipping beyond what the ladder picks, insurance, gift wrap, extended warranties — are purchase decisions, not delivery costs, and never draw on this. Default 0.',
+    ...moneyAmount(),
   },
   {
     key: 'payments.budget.perPurchaseCeilingEnabled',
     type: 'boolean',
     default: true,
     description:
-      'When true (DEFAULT), no single purchase may exceed payments.budget.perPurchaseCeilingCents no matter how much of the daily budget is left. A separate question from the daily budget: both must pass. Turn it off only if you want one purchase to be able to consume the whole day at once.',
+      'When true (DEFAULT), no single purchase may exceed payments.budget.perPurchaseCeiling no matter how much of the daily budget is left. A separate question from the daily budget: both must pass. Turn it off only if you want one purchase to be able to consume the whole day at once.',
   },
   {
-    key: 'payments.budget.perPurchaseCeilingCents',
+    key: 'payments.budget.perPurchaseCeiling',
     type: 'number',
     default: 0,
     description:
-      'The per-purchase ceiling in minor units, applied when perPurchaseCeilingEnabled is true. Default 0, so with the ceiling on and this unset every purchase needs your explicit approval — the safe direction until you choose a number.',
-    ...intRange(0, MAX_MINOR_UNITS),
+      'The most any single purchase may come to, applied when perPurchaseCeilingEnabled is true. Written the way you would say it — 100 is a hundred, 19.99 is nineteen ninety-nine. Default 0, so with the ceiling on and this unset every purchase needs your explicit approval — the safe direction until you choose a number.',
+    ...moneyAmount(),
   },
   {
     key: 'payments.budget.overageToleranceEnabled',
@@ -137,12 +135,12 @@ export const paymentsConfigSettings: ConfigSetting[] = [
       'When true, a purchase whose unavoidable charges cannot fit the overage budget even at the CHEAPEST delivery option may draw the shortfall from the tolerance allowance below instead of being refused. Default FALSE. Enabling it alone changes nothing — the allowance also starts at 0.',
   },
   {
-    key: 'payments.budget.overageToleranceDailyAllowanceCents',
+    key: 'payments.budget.overageToleranceDailyAllowance',
     type: 'number',
     default: 0,
     description:
-      'Daily tolerance allowance in minor units, used only when overageToleranceEnabled is true. This is a third pool, drawn on only after the shipping ladder has stepped delivery all the way down and the unavoidable charges still do not fit. Every use is recorded in the purchase audit record.',
-    ...intRange(0, MAX_MINOR_UNITS),
+      'Daily tolerance allowance, used only when overageToleranceEnabled is true. Written the way you would say it — 5 is five, 2.50 is two fifty. This is a third pool, drawn on only after the shipping ladder has stepped delivery all the way down and the unavoidable charges still do not fit. Every use is recorded in the purchase audit record.',
+    ...moneyAmount(),
   },
 
   // ── Shipping ───────────────────────────────────────────────────────────

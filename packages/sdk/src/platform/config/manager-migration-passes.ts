@@ -5,13 +5,14 @@
  * once, a one-line receipt rides the announce-once queue, and an unwritable
  * file keeps the in-memory result (idempotent re-run next start).
  */
-import { writeFileSync } from 'fs';
+import { writeJsonFileAtomic } from '../utils/atomic-json-store.js';
 import {
   migrateControlPlaneBaseUrlRemoval,
   migrateDaemonEmbedInProcessRemoval,
   migrateDangerDaemonAlias,
   migrateFleetMaxSizeRename,
   migrateLegacyFeatureToggles,
+  migratePaymentsBudgetAmounts,
 } from './migrations.js';
 import { isFrozenDefaultDump, stripFrozenDefaults } from './settings-io.js';
 import { logger } from '../utils/logger.js';
@@ -22,7 +23,9 @@ export type MigrationReceiptSink = (id: string, text: string) => void;
 
 function persistMigratedFile(sourcePath: string, config: Record<string, unknown>, label: string): void {
   try {
-    writeFileSync(sourcePath, JSON.stringify(config, null, 2) + '\n', 'utf-8');
+    // Atomic: a migration rewrites the whole settings file, and a torn one
+    // would leave the reader a file that parses as neither shape.
+    writeJsonFileAtomic(sourcePath, config);
   } catch (err) {
     logger.warn(`${label} could not be persisted to ${sourcePath}: ${summarizeError(err)}`);
   }
@@ -116,7 +119,7 @@ export function applyDefaultStripMigrationPass(
   const { config: stripped, changed } = stripFrozenDefaults(parsed);
   if (!changed) return parsed;
   try {
-    writeFileSync(sourcePath, JSON.stringify(stripped, null, 2) + '\n', 'utf-8');
+    writeJsonFileAtomic(sourcePath, stripped);
   } catch (err) {
     logger.warn(`Settings default-strip could not be persisted to ${sourcePath}: ${summarizeError(err)}`);
     return stripped;
@@ -157,6 +160,41 @@ export function applyDaemonEmbedInProcessMigrationPass(
 }
 
 /**
+ * The payments budget amounts move onto their new names, with their numbers
+ * converted, and a receipt naming every key and both values.
+ *
+ * These four settings used to be named for — and stored as — the count of the
+ * currency's smallest division, so a hundred was written `10000` and a limit
+ * was one missing zero away from being a hundred times what its owner meant.
+ * They now hold the amount itself. The receipt quotes what each key was and
+ * what it is, because a spending limit silently changing shape is the one thing
+ * this migration must never do quietly.
+ */
+export function applyPaymentsBudgetMigrationPass(
+  parsed: Record<string, unknown>,
+  sourcePath: string,
+  receipt: MigrationReceiptSink,
+): Record<string, unknown> {
+  const result = migratePaymentsBudgetAmounts(parsed);
+  if (!result.migrated) return parsed;
+  persistMigratedFile(sourcePath, result.config, 'payments budget migration');
+  const moved = result.moves
+    .map((move) => `${move.from} ${move.oldValue} is now ${move.to} ${move.newValue}`)
+    .join('; ');
+  const receiptText =
+    `Settings renamed: your payment limits now hold the amount you would say out loud, `
+    + `so you enter 100 for a hundred and 19.99 for nineteen ninety-nine. `
+    + `${moved} (${sourcePath}). Your limits are unchanged — only how they are written.`;
+  logger.info(receiptText);
+  try {
+    receipt(`settings-migration-payments-budget-amounts:${sourcePath}`, receiptText);
+  } catch (err) {
+    logger.warn(`payments budget migration receipt could not be queued: ${summarizeError(err)}`);
+  }
+  return result.config;
+}
+
+/**
  * Every load-time pass, in order, over one parsed settings file.
  *
  * The order lives here rather than at the call site because it is a property of
@@ -173,5 +211,6 @@ export function runLoadMigrationPasses(
   config = applyFleetMaxSizeMigrationPass(config, sourcePath, receipt);
   config = applyControlPlaneBaseUrlMigrationPass(config, sourcePath, receipt);
   config = applyDaemonEmbedInProcessMigrationPass(config, sourcePath, receipt);
+  config = applyPaymentsBudgetMigrationPass(config, sourcePath, receipt);
   return applyDefaultStripMigrationPass(config, sourcePath, receipt);
 }

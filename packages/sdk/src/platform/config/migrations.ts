@@ -448,3 +448,101 @@ export function migrateDaemonEmbedInProcessRemoval(
     ...(typeof legacy === 'boolean' ? { removedValue: legacy } : {}),
   };
 }
+
+
+/** One amount key carried across the payments budget rename. */
+export interface PaymentsBudgetKeyMove {
+  /** The name that was on disk. */
+  readonly from: string;
+  /** The name it now has. */
+  readonly to: string;
+  /** The number that was stored under the old name. */
+  readonly oldValue: number;
+  /** The number stored under the new name. */
+  readonly newValue: number;
+}
+
+/** Outcome of moving the payments budget amounts onto their new names. */
+export interface PaymentsBudgetMigrationResult {
+  readonly config: Record<string, unknown>;
+  /** True when at least one old key was present and moved. */
+  readonly migrated: boolean;
+  /** Every key that moved, in schema order, for the receipt. */
+  readonly moves: readonly PaymentsBudgetKeyMove[];
+}
+
+/**
+ * The four payments budget amounts, old name to new.
+ *
+ * Exported because the settings-honesty screen has to recognise the old names
+ * as keys that are ON THEIR WAY somewhere rather than keys nobody knows — a
+ * file being migrated must not also be reported as carrying unknown settings.
+ */
+export const PAYMENTS_BUDGET_RENAMES: ReadonlyArray<readonly [string, string]> = [
+  ['dailyItemCents', 'dailyItem'],
+  ['dailyOverageCents', 'dailyOverage'],
+  ['perPurchaseCeilingCents', 'perPurchaseCeiling'],
+  ['overageToleranceDailyAllowanceCents', 'overageToleranceDailyAllowance'],
+];
+
+/** The old full dot-path names, for the ingestion screen. */
+export const LEGACY_PAYMENTS_BUDGET_KEYS: readonly string[] =
+  PAYMENTS_BUDGET_RENAMES.map(([from]) => `payments.budget.${from}`);
+
+/**
+ * Move the payments budget amounts onto their new names, converting the number.
+ *
+ * What was stored was the count of the currency's smallest division: `10000`
+ * meant a hundred. What is stored now is the amount itself, written the way the
+ * owner would say it, so `10000` becomes `100` and `1999` becomes `19.99`. The
+ * new number is the simplest exact form of the old one — a whole amount stays
+ * whole, and one that needs a decimal keeps exactly the decimal it needs.
+ *
+ * A value already sitting under the new name is left alone and the old key is
+ * still removed: the new name is the one the reader uses, so a file carrying
+ * both must not have the new value overwritten by the old one.
+ *
+ * Idempotent; a file with none of the old keys is returned untouched.
+ */
+export function migratePaymentsBudgetAmounts(
+  parsed: Record<string, unknown>,
+): PaymentsBudgetMigrationResult {
+  const payments = parsed.payments;
+  if (payments === null || typeof payments !== 'object' || Array.isArray(payments)) {
+    return { config: parsed, migrated: false, moves: [] };
+  }
+  const budget = (payments as Record<string, unknown>).budget;
+  if (budget === null || typeof budget !== 'object' || Array.isArray(budget)) {
+    return { config: parsed, migrated: false, moves: [] };
+  }
+  const source = budget as Record<string, unknown>;
+  if (!PAYMENTS_BUDGET_RENAMES.some(([from]) => from in source)) {
+    return { config: parsed, migrated: false, moves: [] };
+  }
+
+  const config = structuredClone(parsed);
+  const section = (config.payments as Record<string, unknown>).budget as Record<string, unknown>;
+  const moves: PaymentsBudgetKeyMove[] = [];
+
+  for (const [from, to] of PAYMENTS_BUDGET_RENAMES) {
+    if (!(from in section)) continue;
+    const stored = section[from];
+    delete section[from];
+    if (typeof stored !== 'number' || !Number.isFinite(stored) || stored < 0) continue;
+    if (to in section) continue;
+    // Two decimal places, exactly: the stored count was hundredths, and
+    // rounding here removes the trailing binary dust a plain divide leaves
+    // (1999 / 100 is 19.990000000000002 before this).
+    const converted = Math.round(stored) / 100;
+    const newValue = Number(converted.toFixed(2));
+    section[to] = newValue;
+    moves.push({
+      from: `payments.budget.${from}`,
+      to: `payments.budget.${to}`,
+      oldValue: stored,
+      newValue,
+    });
+  }
+
+  return { config, migrated: moves.length > 0, moves };
+}

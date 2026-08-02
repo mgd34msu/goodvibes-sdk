@@ -1,5 +1,5 @@
-import { dirname, join } from 'node:path';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { readJsonFileOrQuarantine, writeJsonFileAtomic } from '../utils/atomic-json-store.js';
 import type { ModelDefinition, TokenLimits } from './registry.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
@@ -70,14 +70,15 @@ function validateModelLimitsCache(value: unknown): { cache: ModelLimitsCache | n
 
 function loadCachedLimits(cachePath: string): ModelLimitsCache | null {
   try {
-    const raw = readFileSync(cachePath, 'utf-8');
-    const parsed = JSON.parse(raw) as unknown;
-    const { cache, reason } = validateModelLimitsCache(parsed);
-    if (!cache) {
-      logger.warn('[model-limits] Ignoring malformed cache', { cachePath, reason: reason ?? 'unknown' });
-      return null;
-    }
-    return cache;
+    return readJsonFileOrQuarantine<ModelLimitsCache>(cachePath, {
+      label: 'providers/model-limits',
+      recovery: 'Model limits are re-fetched on the next refresh; until then the shipped per-model limits apply.',
+      validate: (parsed) => {
+        const { cache, reason } = validateModelLimitsCache(parsed);
+        if (!cache) throw new Error(`model limits cache envelope is invalid: ${reason ?? 'unknown'}`);
+        return cache;
+      },
+    });
   } catch (error) {
     const message = summarizeError(error);
     if (message.includes('ENOENT') || message.includes('no such file')) {
@@ -91,8 +92,7 @@ function loadCachedLimits(cachePath: string): ModelLimitsCache | null {
 
 function saveCachedLimits(cache: ModelLimitsCache, cachePath: string): void {
   try {
-    mkdirSync(dirname(cachePath), { recursive: true });
-    writeFileSync(cachePath, JSON.stringify(cache, null, 2), 'utf-8');
+    writeJsonFileAtomic(cachePath, cache, { trailingNewline: false });
   } catch (error) {
     logger.warn('[model-limits] Cache write failed', { error: summarizeError(error) });
   }

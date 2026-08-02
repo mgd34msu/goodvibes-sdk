@@ -1,5 +1,6 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import { dirname, join } from 'path';
+import { readFileSync, existsSync } from 'fs';
+import { join } from 'path';
+import { writeJsonFileAtomic } from '../utils/atomic-json-store.js';
 import type { GoodVibesConfig, ConfigKey, ConfigValue, ConfigSetting } from './schema.js';
 import { DEFAULT_CONFIG, CONFIG_SCHEMA } from './schema.js';
 import { ConfigError } from '../types/errors.js';
@@ -10,7 +11,7 @@ import { getManagedSettingLock } from '../runtime/settings/control-plane.js';
 import { requireSurfaceRoot, resolveSharedDirectory, resolveSurfaceDirectory, resolveSurfaceSharedFile } from '../runtime/surface-root.js';
 import { summarizeError } from '../utils/error-display.js';
 import { FeatureAnnouncementStore, featureAnnouncementsPath } from '../runtime/feature-announcements.js';
-import { runLoadMigrationPasses } from './manager-migration-passes.js';
+import { applyPaymentsBudgetMigrationPass, runLoadMigrationPasses } from './manager-migration-passes.js';
 import {
   SHARED_CONFIG_KEYS,
   isSharedConfigKey,
@@ -31,7 +32,7 @@ import { isDaemonOwnedConfigKey, listDaemonOwnedConfigPaths, type DaemonOwnedCon
 import { resolveOrCreateDaemonPath } from './daemon-tier-paths.js';
 import { clearDaemonTierForReset, daemonConfigPath, overlayDaemonTierFrom, persistDaemonKey, readDaemonTierFile } from './daemon-config-tier.js';
 import { describeKeySource, type ConfigKeySource } from './manager-key-source.js';
-import { DEFAULT_CONFIG_SNAPSHOT, cloneDefaultConfig, ensureSharedConfig, requireAbsoluteOwnedPath, sanitizeConfigShape } from './manager-bootstrap.js';
+import { DEFAULT_CONFIG_SNAPSHOT, cloneDefaultConfig, coerceSchemaValue, ensureSharedConfig, requireAbsoluteOwnedPath, sanitizeConfigShape } from './manager-bootstrap.js';
 import { resolveWithProfileFallback, type ConfigProfileFallbackReader } from './profile-fallback.js';
 import { ingestManagerSettings, toConfigLoadFailure, type IngestionNoticeSink, type SettingsIngestionNotice } from './manager-ingestion.js';
 import { persistCategoryKeyRemoval, persistCategoryPatch, type CategoryIoDeps } from './manager-category-io.js';
@@ -260,6 +261,7 @@ export class ConfigManager {
   /** Set a config value by dot-path key and auto-save to disk. */
   set<K extends ConfigKey>(key: K, value: ConfigValue<K>, options: ConfigSetOptions = {}): void {
     const schema = CONFIG_SCHEMA.find(s => s.key === key);
+    value = coerceSchemaValue(key, schema, value) as ConfigValue<K>;
     if (schema?.validate && !schema.validate(value)) {
       const hint = schema.validationHint ? ` (${schema.validationHint})` : '';
       throw new ConfigError(`Invalid value for ${key}: ${String(value)}${hint}`);
@@ -313,6 +315,7 @@ export class ConfigManager {
       return;
     }
     const schema = CONFIG_SCHEMA.find(s => s.key === key);
+    value = coerceSchemaValue(key, schema, value) as ConfigValue<K>;
     if (schema?.validate && !schema.validate(value)) {
       const hint = schema.validationHint ? ` (${schema.validationHint})` : '';
       throw new ConfigError(`Invalid value for ${key}: ${String(value)}${hint}`);
@@ -329,14 +332,10 @@ export class ConfigManager {
     const { parent, field } = this.resolvePath(key);
     const previousValue = parent[field];
     parent[field] = value;
-    let raw: Record<string, unknown> = {};
-    try {
-      if (existsSync(this.projectConfigPath)) {
-        raw = JSON.parse(readFileSync(this.projectConfigPath, 'utf-8')) as Record<string, unknown>;
-      }
-    } catch {
-      raw = {};
-    }
+    // Read-merge-write: a file this cannot parse is quarantined (moved aside
+    // with a receipt) rather than silently discarded, because the write below
+    // would otherwise destroy the only copy of it.
+    const raw: Record<string, unknown> = readRawSettingsFile(this.projectConfigPath);
     const segments = key.split('.');
     let cursor: Record<string, unknown> = raw;
     for (const segment of segments.slice(0, -1)) {
@@ -346,8 +345,7 @@ export class ConfigManager {
     }
     cursor[segments[segments.length - 1] as string] = value;
     try {
-      mkdirSync(dirname(this.projectConfigPath), { recursive: true });
-      writeFileSync(this.projectConfigPath, JSON.stringify(raw, null, 2) + '\n', 'utf-8');
+      writeJsonFileAtomic(this.projectConfigPath, raw);
     } catch (error) {
       parent[field] = previousValue;
       throw error;
@@ -485,8 +483,7 @@ export class ConfigManager {
   }
 
   private writeRawGlobal(raw: Record<string, unknown>): void {
-    mkdirSync(dirname(this.configPath), { recursive: true });
-    writeFileSync(this.configPath, JSON.stringify(raw, null, 2) + '\n', 'utf-8');
+    writeJsonFileAtomic(this.configPath, raw);
   }
 
   /**
@@ -521,8 +518,7 @@ export class ConfigManager {
     const { config: minimal } = stripFrozenDefaults(
       structuredClone(this.config) as unknown as Record<string, unknown>,
     );
-    mkdirSync(dirname(this.projectConfigPath), { recursive: true });
-    writeFileSync(this.projectConfigPath, JSON.stringify(this.withoutDaemonOwned(minimal), null, 2) + '\n', 'utf-8');
+    writeJsonFileAtomic(this.projectConfigPath, this.withoutDaemonOwned(minimal));
   }
 
   /**
@@ -602,7 +598,14 @@ export class ConfigManager {
     this.daemonKeysPresent.clear();
     if (!this.daemonTierPath) return;
     try {
-      const stored = this.ingest(readDaemonTierFile(this.daemonTierPath), this.daemonTierPath);
+      // Daemon-owned keys live ONLY here, so a rename of one has to be applied
+      // here too. Only the rename pass runs: the other passes describe
+      // surface-file shapes this file does not have.
+      const stored = this.ingest(
+        readDaemonTierFile(this.daemonTierPath),
+        this.daemonTierPath,
+        (raw) => applyPaymentsBudgetMigrationPass(raw, this.daemonTierPath!, (id, text) => this.migrationReceipt(id, text)),
+      );
       const applied = overlayDaemonTierFrom(stored, (key, value) => {
         const { parent, field } = resolveOrCreateDaemonPath(this.config as unknown as Record<string, unknown>, key);
         parent[field] = value;

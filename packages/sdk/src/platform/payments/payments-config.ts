@@ -25,13 +25,17 @@
  * needs a definite day boundary, and refusing to have one would be worse than
  * picking the one everything else already defaults to.
  *
- * ══ Cents in config, minor units in code ══════════════════════════════════
+ * ══ Amounts in config, whole units in code ════════════════════════════════
  *
- * The config keys are named `...Cents` because that is what the owner types.
- * Everything past this module is `MinorUnits`, which for a two-decimal currency
- * is the same integer and for JPY or BHD is not. The conversion happens here,
- * once, so no other module has to know which of the two it is holding.
+ * A budget key holds the amount the owner would say out loud — `100` is a
+ * hundred, `19.99` is nineteen ninety-nine, in whatever `payments.currency` is.
+ * Everything past this module works in `MinorUnits`: whole counts of the
+ * currency's smallest division, so the arithmetic is integer-exact and no
+ * comparison can turn on a rounding artefact. The multiplication happens here,
+ * once, and that vocabulary never travels back out to a key name, a settings
+ * screen, or a message.
  */
+import { parseMoneyAmount } from '../config/money-value.js';
 import { minorUnitExponent } from './money-parsing.js';
 import { merchantPolicyFromConfig, type MerchantPolicy } from './merchant-recourse.js';
 import { parseCurrencyCode, type CurrencyCode, type ShippingTier } from './types.js';
@@ -63,18 +67,26 @@ function readBoolean(config: PaymentsConfigReader, key: string, fallback: boolea
 }
 
 /**
- * Convert a cents-denominated setting into this currency's minor units.
+ * Read one budget amount and return it as whole units of the currency's
+ * smallest division.
  *
- * For USD, EUR, GBP and most others this is the identity. For JPY (no minor
- * unit) 500 "cents" is 5 yen, and for BHD (three decimals) it is 5000 fils.
- * Getting this wrong is a factor-of-ten or -hundred error on a spending limit,
- * so it is done in one place with the exponent table the parser and the
- * renderer already share.
+ * The stored value is the amount itself, so `100` with USD is 10000 (hundredths
+ * of a dollar), with JPY is 100 (yen have no smaller division), and with BHD is
+ * 100000 (thousandths). One multiplication with the exponent table the parser
+ * and the renderer already share, rounded once, so `19.99` lands on exactly
+ * 1999 rather than the 1998.9999999999998 a bare multiply produces.
+ *
+ * An unreadable setting reads as the fallback rather than being coerced.
+ * Rounding someone's budget silently is how a limit stops meaning what the
+ * person who typed it believes it means. A value stored as text (a hand edit
+ * that wrote "$100") is read the same way the set path reads it, so a file
+ * edited by hand behaves like one written through the settings screen.
  */
-function centsToMinorUnits(cents: number, currency: string): number {
+function readMoneyMinorUnits(config: PaymentsConfigReader, key: string, currency: string): number {
+  const parsed = parseMoneyAmount(config.get(key));
+  if (!parsed.ok) return 0;
   const exponent = minorUnitExponent(currency);
-  if (exponent === 2) return cents;
-  return Math.round((cents / 100) * 10 ** exponent);
+  return Math.round(parsed.value * 10 ** exponent);
 }
 
 /** `payments.shipping.preferredTier`, defaulting to the cheapest rung. */
@@ -121,23 +133,20 @@ export function readNotifyChannels(config: PaymentsConfigReader): readonly strin
  */
 export function readBudgetLimits(config: PaymentsConfigReader, currency: string): BudgetLimits {
   return {
-    dailyItemMinorUnits: centsToMinorUnits(readInteger(config, 'payments.budget.dailyItemCents', 0), currency),
-    dailyOverageMinorUnits: centsToMinorUnits(readInteger(config, 'payments.budget.dailyOverageCents', 0), currency),
+    dailyItemMinorUnits: readMoneyMinorUnits(config, 'payments.budget.dailyItem', currency),
+    dailyOverageMinorUnits: readMoneyMinorUnits(config, 'payments.budget.dailyOverage', currency),
     perPurchaseCeiling: {
       // ON by default: the owner's "default to most safe, the user can change
       // affirmatively" ruling. A ceiling that defaults off is a ceiling nobody
       // notices is missing.
       enabled: readBoolean(config, 'payments.budget.perPurchaseCeilingEnabled', true),
-      minorUnits: centsToMinorUnits(readInteger(config, 'payments.budget.perPurchaseCeilingCents', 0), currency),
+      minorUnits: readMoneyMinorUnits(config, 'payments.budget.perPurchaseCeiling', currency),
     },
     overageTolerance: {
       // OFF by default, with a zero allowance, so enabling it without setting
       // an amount changes nothing.
       enabled: readBoolean(config, 'payments.budget.overageToleranceEnabled', false),
-      dailyAllowanceMinorUnits: centsToMinorUnits(
-        readInteger(config, 'payments.budget.overageToleranceDailyAllowanceCents', 0),
-        currency,
-      ),
+      dailyAllowanceMinorUnits: readMoneyMinorUnits(config, 'payments.budget.overageToleranceDailyAllowance', currency),
     },
   };
 }

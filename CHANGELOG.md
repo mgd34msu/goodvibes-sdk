@@ -2,6 +2,35 @@
 
 This file tracks breaking changes, additions, fixes, and migration steps for each release of `@pellux/goodvibes-sdk`. Every release **must** have a corresponding `## [x.y.z] - YYYY-MM-DD` section before it can publish — the changelog gate refuses a release the file does not describe.
 
+## [2.0.5] - 2026-08-02
+
+### Changed
+
+- **Money settings hold the amount you would say out loud.** The payment
+  budget keys drop their unit suffix — `payments.budget.perPurchaseCeiling`,
+  `dailyItem`, `dailyOverage`, `overageToleranceDailyAllowance` — and hold
+  plain amounts in the configured currency: `100` is a hundred dollars,
+  `19.99` is nineteen ninety-nine, written exactly as you gave them, decimals
+  allowed and never forced. `$100`, `100.00` and `100` all mean the same
+  hundred. Existing files migrate on load with a receipt; your limits are
+  unchanged, only how they are written. Money detection is schema-typed now
+  (`unit: 'money'`), not name-sniffed.
+
+### Fixed
+
+- **Every platform state store writes atomically and survives corruption.**
+  The watcher-store fix is now the platform rule: one shared helper gives
+  every JSON store the temp-fsync-rename write and the quarantine-with-
+  receipt load, so a power loss mid-write can never leave a torn file, and a
+  corrupt file from any cause costs a rebuilt cache with the evidence
+  preserved beside it. Eighteen stores converted outright; a handful keep
+  deliberately stronger contracts (the secrets store refuses writes to an
+  unreadable store rather than moving your secrets aside; the daemon settings
+  tier still refuses to boot on an unparseable file, because defaults may be
+  more permissive than what the file held).
+- The owner-profile composition honors an injected home directory — an
+  embedder's runtime can no longer fall through to the login home's profile.
+
 ## [2.0.4] - 2026-08-02
 
 ### Fixed

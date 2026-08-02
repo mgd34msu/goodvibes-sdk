@@ -23,8 +23,7 @@
  * synchronous — one in-memory index, flushed on every mutation.
  */
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { readFileSync, writeFileSync, mkdirSync, existsSync, chmodSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { readJsonFileOrQuarantine, writeJsonFileAtomic } from '../utils/atomic-json-store.js';
 import { logger } from '../utils/logger.js';
 
 const TOKEN_PREFIX = 'gvp_';
@@ -168,16 +167,28 @@ export class PairingTokenManager {
   }
 
   private load(): PairingTokenSnapshot {
-    if (!existsSync(this.filePath)) return { tokens: [] };
+    // A corrupt file must not brick auth: start clean rather than throw. The
+    // unreadable file is quarantined (moved aside with a receipt) instead of
+    // being silently overwritten by the next flush, so the operator can see
+    // which device tokens were lost and re-pair those devices.
     try {
-      const raw = readFileSync(this.filePath, 'utf-8');
-      const parsed = JSON.parse(raw) as PairingTokenSnapshot;
-      return {
-        tokens: Array.isArray(parsed.tokens) ? parsed.tokens : [],
-        legacyRevoked: parsed.legacyRevoked === true,
-      };
+      return (
+        readJsonFileOrQuarantine<PairingTokenSnapshot>(this.filePath, {
+          label: 'pairing/pairing-token-store',
+          recovery: 'Every previously paired device must pair again; no device keeps access on a token this store can no longer verify.',
+          validate: (parsed) => {
+            if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+              throw new Error('pairing token store is not a JSON object');
+            }
+            const snapshot = parsed as Partial<PairingTokenSnapshot>;
+            if (!Array.isArray(snapshot.tokens)) {
+              throw new Error('pairing token store is missing its tokens array');
+            }
+            return { tokens: snapshot.tokens, legacyRevoked: snapshot.legacyRevoked === true };
+          },
+        }) ?? { tokens: [] }
+      );
     } catch {
-      // A corrupt file must not brick auth: start clean rather than throw.
       return { tokens: [] };
     }
   }
@@ -188,13 +199,7 @@ export class PairingTokenManager {
 
   private flush(): void {
     try {
-      mkdirSync(dirname(this.filePath), { recursive: true });
-      writeFileSync(this.filePath, JSON.stringify(this.snapshot, null, 2), { encoding: 'utf-8', mode: 0o600 });
-      try {
-        chmodSync(this.filePath, 0o600);
-      } catch (error) {
-        logger.warn('Pairing token chmod failed after write', { path: this.filePath, error: String(error) });
-      }
+      writeJsonFileAtomic(this.filePath, this.snapshot, { mode: 0o600, trailingNewline: false });
     } catch (error) {
       logger.warn('Pairing token store flush failed', { path: this.filePath, error: String(error) });
     }

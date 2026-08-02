@@ -1,6 +1,6 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { readJsonFileOrQuarantine, writeJsonFileAtomic } from '../../utils/atomic-json-store.js';
 import { randomUUID } from 'node:crypto';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import { ConfigManager } from '../../config/manager.js';
 import { CONFIG_SCHEMA } from '../../config/index.js';
 import type { ConfigKey } from '../../config/index.js';
@@ -184,16 +184,20 @@ function migrateStore(raw: unknown): SettingsControlPlaneStore {
 
 export function readStore(configDir: string): SettingsControlPlaneStore {
   try {
-    return migrateStore(JSON.parse(readFileSync(getSettingsControlPath(configDir), 'utf-8')));
+    return (
+      readJsonFileOrQuarantine<SettingsControlPlaneStore>(getSettingsControlPath(configDir), {
+        label: 'runtime/settings-control-plane',
+        recovery: 'The settings control-plane history starts empty: recorded events and failures are gone, and every managed lock is released until the control plane reapplies it.',
+        validate: (parsed) => migrateStore(parsed),
+      }) ?? defaultStore()
+    );
   } catch {
     return defaultStore();
   }
 }
 
 export function writeStore(store: SettingsControlPlaneStore, configDir: string): void {
-  const path = getSettingsControlPath(configDir);
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, `${JSON.stringify(store, null, 2)}\n`, 'utf-8');
+  writeJsonFileAtomic(getSettingsControlPath(configDir), store);
 }
 
 export function trimStore(store: SettingsControlPlaneStore): SettingsControlPlaneStore {

@@ -1,5 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
-import { dirname } from 'path';
+import { readJsonFileOrQuarantine, writeJsonFileAtomic } from '../utils/atomic-json-store.js';
 import { logger } from '../utils/logger.js';
 import {
   discoverPlugins,
@@ -424,9 +423,17 @@ export class PluginManager {
 
   private loadState(): void {
     try {
-      if (existsSync(this.stateFilePath)) {
-        const raw = readFileSync(this.stateFilePath, 'utf-8');
-        const parsed = JSON.parse(raw) as Partial<PluginState>;
+      const parsed = readJsonFileOrQuarantine<Partial<PluginState>>(this.stateFilePath, {
+        label: 'plugins/state',
+        recovery: 'Every plugin returns to its default enabled state, trust decisions must be made again, and any recorded quarantine is cleared.',
+        validate: (raw) => {
+          if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+            throw new Error('plugin state file is not a JSON object');
+          }
+          return raw as Partial<PluginState>;
+        },
+      });
+      if (parsed) {
         this.state.enabled = parsed.enabled ?? {};
         this.state.config = parsed.config ?? {};
         this.state.trust = parsed.trust ?? {};
@@ -445,8 +452,7 @@ export class PluginManager {
 
   private saveState(): void {
     try {
-      mkdirSync(dirname(this.stateFilePath), { recursive: true });
-      writeFileSync(this.stateFilePath, JSON.stringify(this.state, null, 2), 'utf-8');
+      writeJsonFileAtomic(this.stateFilePath, this.state, { trailingNewline: false });
     } catch (err) {
       logger.warn(`[plugins] Could not save state: ${summarizeError(err)}`);
     }

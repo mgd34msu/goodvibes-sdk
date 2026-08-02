@@ -14,8 +14,8 @@
  * all surfaces agree.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { writeJsonFileAtomic } from '../utils/atomic-json-store.js';
 import type { ConfigKey } from './schema.js';
 import { raiseSettingsReaderFloor } from './settings-reader-floor.js';
 
@@ -71,9 +71,28 @@ function writeDotPath(root: Record<string, unknown>, key: string, value: unknown
 }
 
 /**
- * Load the shared tier file into a plain object (empty object when the file does
- * not exist yet). Throws when the file exists but is not a JSON object — an honest
- * loud failure rather than a silent reset, matching the surface-settings loader.
+ * Load a settings tier file into a plain object (empty object when the file does
+ * not exist yet). Throws when the file exists but cannot be read as a JSON
+ * object.
+ *
+ * ── Why this one does NOT quarantine and carry on ─────────────────────────
+ *
+ * Every other JSON store in the platform now treats content it cannot trust as
+ * "absent": the file is moved aside with a receipt and the caller rebuilds. This
+ * store is the exception, deliberately.
+ *
+ * It backs the DAEMON tier, which is where every daemon-owned key lives —
+ * permissions, the payment limits, the gates that decide what may run and what
+ * may be spent. A reader cannot tell whether the bytes it could not parse held
+ * one of those, so it cannot know that starting on the shipped defaults is safe;
+ * defaults are frequently MORE permissive than what the operator stored. The
+ * ruled behaviour is to refuse to start and say which file and why (see
+ * settings-ingestion.ts for the same reasoning applied per key, and
+ * test/daemon-isolation-guards.ts for the daemon's side of it).
+ *
+ * The torn-write half of the problem is solved at the writer instead: every
+ * write through this module is atomic (temp file, fsync, rename), so a crash
+ * mid-save can no longer produce the half-file that made this refusal fire.
  */
 export function readSharedTierFile(path: string, label = 'shared tier'): Record<string, unknown> {
   if (!existsSync(path)) return {};
@@ -97,8 +116,7 @@ export function writeTierDotPath(root: Record<string, unknown>, key: string, val
 export function persistSharedKey(path: string, key: string, value: unknown): void {
   const existing = readSharedTierFile(path);
   writeDotPath(existing, key, value);
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, JSON.stringify(existing, null, 2) + '\n', 'utf-8');
+  writeJsonFileAtomic(path, existing);
 }
 
 /**
@@ -124,8 +142,7 @@ export function raiseReaderFloorInFile(path: string, minReaderVersion: string, s
   const existing = readSharedTierFile(path);
   const { raised } = raiseSettingsReaderFloor(existing, minReaderVersion, setBy);
   if (!raised) return false;
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, JSON.stringify(existing, null, 2) + '\n', 'utf-8');
+  writeJsonFileAtomic(path, existing);
   return true;
 }
 
@@ -161,6 +178,5 @@ export function removeSharedKey(path: string, key: string): void {
       break;
     }
   }
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, JSON.stringify(existing, null, 2) + '\n', 'utf-8');
+  writeJsonFileAtomic(path, existing);
 }

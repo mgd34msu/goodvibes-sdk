@@ -5,7 +5,8 @@
  * resume's confirm gate both build on.
  */
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { basename, dirname } from 'node:path';
 import { makeProjectTempDir } from './_helpers/project-temp.ts';
 import { TEST_SURFACE_ROOT, makeTestSurface } from './_helpers/session-surface.ts';
 import type { SessionSurface } from '../packages/sdk/src/platform/runtime/session-surface.ts';
@@ -153,5 +154,30 @@ describe('checkSessionLiveness', () => {
     removeLivenessMarker(surface, 'ses-removed');
     const result = checkSessionLiveness(surface, 'ses-removed', { isPidAliveFn: () => true });
     expect(result).toEqual({ live: false, pid: null });
+  });
+});
+
+describe('the marker is written atomically', () => {
+  test('a marker write leaves no temp file and keeps the owner-only mode', () => {
+    writeLivenessMarker(surface, 'atomic-session', 4242);
+
+    const path = livenessMarkerPathFor(surface, 'atomic-session');
+    expect(statSync(path).mode & 0o777).toBe(0o600);
+    const temps = readdirSync(dirname(path)).filter((name) => name.startsWith(`${basename(path)}.tmp-`));
+    expect(temps).toEqual([]);
+  });
+
+  test('a refresh replaces the marker whole — the zero-byte file a crash used to leave cannot be produced', () => {
+    writeLivenessMarker(surface, 'refresh-session', 1);
+    const path = livenessMarkerPathFor(surface, 'refresh-session');
+    const first = readFileSync(path, 'utf-8');
+    expect(JSON.parse(first).pid).toBe(1);
+
+    writeLivenessMarker(surface, 'refresh-session', 2);
+    const second = readFileSync(path, 'utf-8');
+    // Complete JSON either way, never a mixture of the two writes.
+    expect(JSON.parse(second).pid).toBe(2);
+    expect(second.trim().length).toBeGreaterThan(0);
+    expect(readdirSync(dirname(path)).filter((name) => name.includes('.tmp-'))).toEqual([]);
   });
 });

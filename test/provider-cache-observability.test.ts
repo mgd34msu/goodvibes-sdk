@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, spyOn, test, type Mock } from 'bun:test';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { FavoritesStore } from '../packages/sdk/src/platform/providers/favorites.js';
 import { GitHubCopilotProvider, getGitHubCopilotTokenCachePath } from '../packages/sdk/src/platform/providers/github-copilot.js';
 import { BenchmarkStore } from '../packages/sdk/src/platform/providers/model-benchmarks.js';
@@ -19,6 +19,20 @@ afterEach(() => {
 
 function warningMessages(warnSpy: Mock<typeof logger.warn>): string[] {
   return warnSpy.mock.calls.map((call) => String(call[0]));
+}
+
+function errorMessages(errorSpy: Mock<typeof logger.error>): string[] {
+  return errorSpy.mock.calls.map((call) => String(call[0]));
+}
+
+/** The `.corrupt-*` copies sitting beside a store path. */
+function quarantinedCopies(path: string): string[] {
+  const prefix = `${basename(path)}.corrupt-`;
+  try {
+    return readdirSync(dirname(path)).filter((name) => name.startsWith(prefix) && !name.endsWith('.why'));
+  } catch {
+    return [];
+  }
 }
 
 function makeCatalogModel(overrides: Partial<CatalogModel> = {}): CatalogModel {
@@ -88,9 +102,12 @@ describe('provider cache observability', () => {
     }
   });
 
-  test('model limits cache warns when persisted shape is malformed', () => {
+  test('a malformed model limits cache is quarantined and disclosed at error level, not warned about and left in place', () => {
+    // This store now routes through the shared atomic/quarantine helper: a
+    // cache it cannot trust is moved aside with a receipt rather than being
+    // read again on every start and re-warned about forever.
     const tmp = mkdtempSync(join(tmpdir(), 'gv-provider-limits-'));
-    const warnSpy = spyOn(logger, 'warn') as Mock<typeof logger.warn>;
+    const errorSpy = spyOn(logger, 'error') as Mock<typeof logger.error>;
     try {
       const cachePath = join(tmp, 'model-limits.json');
       writeFileSync(cachePath, JSON.stringify({ version: 1, fetchedAt: Date.now(), ttlMs: 1000, models: [] }), 'utf-8');
@@ -98,9 +115,10 @@ describe('provider cache observability', () => {
       globalThis.fetch = (async () => new Response(JSON.stringify({ data: [] }), { status: 200 })) as unknown as typeof fetch;
       new ModelLimitsService({ cachePath }).init();
 
-      expect(warningMessages(warnSpy)).toContain('[model-limits] Ignoring malformed cache');
+      expect(errorMessages(errorSpy).some((message) => message.includes('providers/model-limits'))).toBe(true);
+      expect(quarantinedCopies(cachePath).length).toBe(1);
     } finally {
-      warnSpy.mockRestore();
+      errorSpy.mockRestore();
       rmSync(tmp, { recursive: true, force: true });
     }
   });
@@ -138,9 +156,9 @@ describe('provider cache observability', () => {
     }
   });
 
-  test('github copilot token exchange warns when persisted token cache is malformed', async () => {
+  test('a malformed copilot token cache is quarantined and disclosed at error level', async () => {
     const tmp = mkdtempSync(join(tmpdir(), 'gv-provider-copilot-'));
-    const warnSpy = spyOn(logger, 'warn') as Mock<typeof logger.warn>;
+    const errorSpy = spyOn(logger, 'error') as Mock<typeof logger.error>;
     try {
       const tokenCachePath = getGitHubCopilotTokenCachePath(tmp);
       mkdirSync(dirname(tokenCachePath), { recursive: true });
@@ -155,9 +173,10 @@ describe('provider cache observability', () => {
 
       await provider.chat({ model: 'gpt-4o', messages: [{ role: 'user', content: 'hello' }] }).catch(() => undefined);
 
-      expect(warningMessages(warnSpy)).toContain('[github-copilot] Ignoring malformed token cache');
+      expect(errorMessages(errorSpy).some((message) => message.includes('providers/github-copilot-token-cache'))).toBe(true);
+      expect(quarantinedCopies(tokenCachePath).length).toBe(1);
     } finally {
-      warnSpy.mockRestore();
+      errorSpy.mockRestore();
       rmSync(tmp, { recursive: true, force: true });
     }
   });

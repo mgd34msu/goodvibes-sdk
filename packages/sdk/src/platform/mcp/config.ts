@@ -1,8 +1,9 @@
 /**
  * MCP server configuration — scans multiple locations in precedence order.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
-import { dirname, join } from 'path';
+import { existsSync } from 'fs';
+import { readJsonFileOrQuarantine, writeJsonFileAtomic } from '../utils/atomic-json-store.js';
+import { join } from 'path';
 import { logger } from '../utils/logger.js';
 import type { ShellPathService } from '../runtime/shell-paths.js';
 import { summarizeError } from '../utils/error-display.js';
@@ -144,9 +145,19 @@ function parseMcpServers(raw: unknown): McpServerConfig[] | null {
 }
 
 function readMcpConfigAtPath(path: string): McpConfig {
-  if (!existsSync(path)) return { servers: [] };
-  const raw = JSON.parse(readFileSync(path, 'utf-8')) as unknown;
-  const servers = parseMcpServers(raw);
+  // This file is read-modify-written by every add/remove, so an unparseable
+  // one would be destroyed by the next write. Quarantine it instead: the
+  // operator keeps the file to recover server definitions from, and this
+  // reader reports the same empty config it reports for "no file yet".
+  const servers = readJsonFileOrQuarantine<McpServerConfig[]>(path, {
+    label: 'mcp/config',
+    recovery: 'No MCP servers are configured from this file; each server must be added again, and the next add recreates the file.',
+    validate: (raw) => {
+      const parsed = parseMcpServers(raw);
+      if (!parsed) throw new Error('MCP config file does not hold a recognized server list');
+      return parsed;
+    },
+  });
   return { servers: servers ?? [] };
 }
 
@@ -162,7 +173,6 @@ function assertServerConfig(server: McpServerConfig): void {
 }
 
 function writeMcpConfigFile(path: string, config: McpConfig): void {
-  mkdirSync(dirname(path), { recursive: true });
   const normalized = {
     servers: config.servers.map((server) => {
       assertServerConfig(server);
@@ -179,7 +189,7 @@ function writeMcpConfigFile(path: string, config: McpConfig): void {
       };
     }),
   };
-  writeFileSync(path, `${JSON.stringify(normalized, null, 2)}\n`);
+  writeJsonFileAtomic(path, normalized);
 }
 
 /**

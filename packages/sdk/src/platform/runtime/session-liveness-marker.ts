@@ -24,8 +24,9 @@
  * recovery snapshots they describe — mirrors the transcript-journal.ts
  * convention (homeDirectory-scoped, under the surface's own directory).
  */
-import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { existsSync, readFileSync, readdirSync, unlinkSync } from 'node:fs';
+import { writeJsonFileAtomic } from '../utils/atomic-json-store.js';
+import { join } from 'node:path';
 import type { SessionSurface } from './session-surface.js';
 
 export interface LivenessMarker {
@@ -56,9 +57,11 @@ export function livenessMarkerPathFor(surface: SessionSurface, sessionId: string
 export function writeLivenessMarker(surface: SessionSurface, sessionId: string, pid: number = process.pid): void {
   try {
     const path = livenessMarkerPathFor(surface, sessionId);
-    mkdirSync(dirname(path), { recursive: true });
     const marker: LivenessMarker = { sessionId, pid, updatedAt: Date.now() };
-    writeFileSync(path, JSON.stringify(marker), { mode: 0o600 });
+    // Atomic: the zero-byte/torn marker that parseMarkerFile below tolerates
+    // is produced by a crash between create and write, and writing through a
+    // temp file plus rename removes that window at the source.
+    writeJsonFileAtomic(path, marker, { mode: 0o600, indent: null, trailingNewline: false });
   } catch {
     // Best-effort — a missed liveness refresh never blocks anything.
   }

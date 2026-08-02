@@ -22,12 +22,12 @@ export type ShippingTierPreference = 'normal' | 'fast' | 'fastest';
 export type CvvHandling = 'stored' | 'prompt';
 
 export interface PaymentsBudgetConfig {
-  dailyItemCents: number;                        // default: 0
-  dailyOverageCents: number;                     // default: 0
-  perPurchaseCeilingEnabled: boolean;            // default: true
-  perPurchaseCeilingCents: number;               // default: 0
-  overageToleranceEnabled: boolean;              // default: false
-  overageToleranceDailyAllowanceCents: number;   // default: 0
+  dailyItem: number;                    // default: 0
+  dailyOverage: number;                 // default: 0
+  perPurchaseCeilingEnabled: boolean;   // default: true
+  perPurchaseCeiling: number;           // default: 0
+  overageToleranceEnabled: boolean;     // default: false
+  overageToleranceDailyAllowance: number; // default: 0
 }
 
 export interface PaymentsWindowsConfig {
@@ -82,12 +82,12 @@ export type PaymentsConfigKey =
   | 'payments.defaultCardId'
   | 'payments.currency'
   | 'payments.cvvHandling'
-  | 'payments.budget.dailyItemCents'
-  | 'payments.budget.dailyOverageCents'
+  | 'payments.budget.dailyItem'
+  | 'payments.budget.dailyOverage'
   | 'payments.budget.perPurchaseCeilingEnabled'
-  | 'payments.budget.perPurchaseCeilingCents'
+  | 'payments.budget.perPurchaseCeiling'
   | 'payments.budget.overageToleranceEnabled'
-  | 'payments.budget.overageToleranceDailyAllowanceCents'
+  | 'payments.budget.overageToleranceDailyAllowance'
   | 'payments.shipping.preferredTier'
   | 'payments.windows.vetoMinutes'
   | 'payments.windows.approvalMinutes'
@@ -117,12 +117,12 @@ export interface PaymentsConfigValueMap {
   'payments.defaultCardId': string;
   'payments.currency': string;
   'payments.cvvHandling': CvvHandling;
-  'payments.budget.dailyItemCents': number;
-  'payments.budget.dailyOverageCents': number;
+  'payments.budget.dailyItem': number;
+  'payments.budget.dailyOverage': number;
   'payments.budget.perPurchaseCeilingEnabled': boolean;
-  'payments.budget.perPurchaseCeilingCents': number;
+  'payments.budget.perPurchaseCeiling': number;
   'payments.budget.overageToleranceEnabled': boolean;
-  'payments.budget.overageToleranceDailyAllowanceCents': number;
+  'payments.budget.overageToleranceDailyAllowance': number;
   'payments.shipping.preferredTier': ShippingTierPreference;
   'payments.windows.vetoMinutes': number;
   'payments.windows.approvalMinutes': number;

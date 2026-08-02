@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
+import { readJsonFileOrQuarantine, writeJsonFileAtomic } from '../../utils/atomic-json-store.js';
 import { dirname, join, resolve } from 'node:path';
 import { VERSION } from '../../version.js';
 
@@ -199,20 +200,32 @@ function backupArchivePath(
 }
 
 function loadReceipt(path: string): EcosystemInstallReceipt | null {
-  if (!existsSync(path)) return null;
   try {
-    const parsed = JSON.parse(readFileSync(path, 'utf-8')) as EcosystemInstallReceipt;
-    return parsed?.version === 1 ? parsed : null;
+    return readJsonFileOrQuarantine<EcosystemInstallReceipt>(path, {
+      label: 'runtime/ecosystem-install-receipt',
+      recovery: 'This entry reads as not installed: its installed files are untouched on disk, but reinstalling it is what re-establishes a receipt (and with it, rollback).',
+      validate: (raw) => {
+        const parsed = raw as EcosystemInstallReceipt | null;
+        if (parsed?.version !== 1) throw new Error('install receipt is not a version 1 receipt');
+        return parsed;
+      },
+    });
   } catch {
     return null;
   }
 }
 
 function loadBackup(path: string): EcosystemInstallBackup | null {
-  if (!existsSync(path)) return null;
   try {
-    const parsed = JSON.parse(readFileSync(path, 'utf-8')) as EcosystemInstallBackup;
-    return parsed?.version === 1 ? parsed : null;
+    return readJsonFileOrQuarantine<EcosystemInstallBackup>(path, {
+      label: 'runtime/ecosystem-install-backup',
+      recovery: 'This backup is not offered for rollback; the archived copy of the files it described is still on disk beside it and can be restored by hand.',
+      validate: (raw) => {
+        const parsed = raw as EcosystemInstallBackup | null;
+        if (parsed?.version !== 1) throw new Error('install backup is not a version 1 backup');
+        return parsed;
+      },
+    });
   } catch {
     return null;
   }
@@ -243,8 +256,7 @@ function createBackupFromReceipt(
     receipt,
     reason,
   };
-  const metaPath = backupMetaPath(receipt.kind, receipt.entry.id, createdAt, options, receipt.scope);
-  writeFileSync(metaPath, `${JSON.stringify(backup, null, 2)}\n`, 'utf-8');
+  writeJsonFileAtomic(backupMetaPath(receipt.kind, receipt.entry.id, createdAt, options, receipt.scope), backup);
   return backup;
 }
 
@@ -290,29 +302,35 @@ function hashPath(path: string): string {
 }
 
 function readCatalogFile(path: string): EcosystemCatalogEntry[] {
-  if (!existsSync(path)) return [];
-  try {
-    const parsed = JSON.parse(readFileSync(path, 'utf-8')) as EcosystemCatalogFile;
-    if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.entries)) return [];
-    return parsed.entries.filter((entry) => entry && typeof entry.id === 'string' && typeof entry.name === 'string' && entry.kind !== undefined);
-  } catch {
-    return [];
-  }
+  return readCatalogDocument(path).entries;
 }
 
+/**
+ * Read a curated catalog document. The document is read-modify-written by
+ * every upsert and removal, so an unparseable one is quarantined rather than
+ * silently replaced by the next write.
+ */
 function readCatalogDocument(path: string): EcosystemCatalogFile {
-  if (!existsSync(path)) return { version: 1, entries: [] };
+  const empty: EcosystemCatalogFile = { version: 1, entries: [] };
   try {
-    const parsed = JSON.parse(readFileSync(path, 'utf-8')) as EcosystemCatalogFile;
-    if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.entries)) {
-      return { version: 1, entries: [] };
-    }
-    return {
-      version: 1,
-      entries: parsed.entries.filter((entry) => entry && typeof entry.id === 'string' && typeof entry.name === 'string' && entry.kind !== undefined),
-    };
+    return (
+      readJsonFileOrQuarantine<EcosystemCatalogFile>(path, {
+        label: 'runtime/ecosystem-catalog',
+        recovery: 'The curated catalog for this entry kind reads as empty; already-installed entries keep working, and the catalog is rebuilt by importing a bundle or adding entries again.',
+        validate: (raw) => {
+          const parsed = raw as EcosystemCatalogFile | null;
+          if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.entries)) {
+            throw new Error('catalog file is not a version 1 document with an entries array');
+          }
+          return {
+            version: 1,
+            entries: parsed.entries.filter((entry) => entry && typeof entry.id === 'string' && typeof entry.name === 'string' && entry.kind !== undefined),
+          };
+        },
+      }) ?? empty
+    );
   } catch {
-    return { version: 1, entries: [] };
+    return empty;
   }
 }
 
@@ -464,9 +482,7 @@ export function installEcosystemCatalogEntry(
       reasons: review.runtimeFit.reasons,
     },
   };
-  const path = receiptPath(kind, entry.id, options, scope);
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, `${JSON.stringify(receipt, null, 2)}\n`, 'utf-8');
+  writeJsonFileAtomic(receiptPath(kind, entry.id, options, scope), receipt);
   return { ok: true, receipt };
 }
 
@@ -546,11 +562,7 @@ export function rollbackInstalledEcosystemEntry(
   mkdirSync(dirname(backup.targetPath), { recursive: true });
   rmSync(backup.targetPath, { recursive: true, force: true });
   cpSync(backup.archivedTargetPath, backup.targetPath, { recursive: true });
-  writeFileSync(
-    receiptPath(kind, entryId, options, scope),
-    `${JSON.stringify(backup.receipt, null, 2)}\n`,
-    'utf-8',
-  );
+  writeJsonFileAtomic(receiptPath(kind, entryId, options, scope), backup.receipt);
   return { ok: true, receipt: backup.receipt, restoredFrom: backup };
 }
 
@@ -628,8 +640,7 @@ export function importEcosystemCatalogBundle(
   for (const kind of ['plugin', 'skill', 'hook-pack', 'policy-pack'] as const) {
     if (byKind[kind].length === 0) continue;
     const path = catalogPath(kind, options, scope);
-    mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, `${JSON.stringify({ version: 1, entries: byKind[kind].sort((a, b) => a.name.localeCompare(b.name)) }, null, 2)}\n`, 'utf-8');
+    writeJsonFileAtomic(path, { version: 1, entries: byKind[kind].sort((a, b) => a.name.localeCompare(b.name)) });
     pathByKind[kind] = path;
     imported += byKind[kind].length;
   }
@@ -646,8 +657,7 @@ export function upsertEcosystemCatalogEntry(
   const nextEntries = document.entries.filter((candidate) => candidate.id !== entry.id || candidate.kind !== entry.kind);
   nextEntries.push(entry);
   nextEntries.sort((a, b) => a.name.localeCompare(b.name));
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, `${JSON.stringify({ version: 1, entries: nextEntries }, null, 2)}\n`, 'utf-8');
+  writeJsonFileAtomic(path, { version: 1, entries: nextEntries });
   return { ok: true, path, entry };
 }
 
@@ -663,7 +673,6 @@ export function removeEcosystemCatalogEntry(
   if (nextEntries.length === document.entries.length) {
     return { ok: false, error: `Curated ${kind} catalog entry not found: ${entryId}` };
   }
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, `${JSON.stringify({ version: 1, entries: nextEntries }, null, 2)}\n`, 'utf-8');
+  writeJsonFileAtomic(path, { version: 1, entries: nextEntries });
   return { ok: true, path };
 }

@@ -457,7 +457,13 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   // groups use — instead of one optional family throwing and taking every other
   // verb group in this registrar down with it.
   if (deps.configManager?.attachProfileFallback !== undefined) {
-    const ownerProfile = composeOwnerProfile(catalog, { configManager: deps.configManager, occasions: deps });
+    const ownerProfile = composeOwnerProfile(catalog, {
+      configManager: deps.configManager,
+      occasions: deps,
+      // The runtime's own home, so an injected home resolves the profile under
+      // it instead of falling through to whoever is logged in.
+      ...(deps.homeDirectory === undefined ? {} : { homeDir: deps.homeDirectory }),
+    });
     deps.disposal?.add('owner profile', ownerProfile.dispose);
   }
 

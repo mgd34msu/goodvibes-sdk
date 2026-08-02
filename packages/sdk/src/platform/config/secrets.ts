@@ -33,7 +33,8 @@
  */
 
 import { dirname, isAbsolute, resolve } from 'path';
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync } from 'fs';
+import { writeJsonFileAtomic } from '../utils/atomic-json-store.js';
 import type { ConfigManager } from './manager.js';
 import {
   SecretStoreUnreadableError,
@@ -749,9 +750,10 @@ export class SecretsManager {
     // one after restart). A missing keyfile is restored from the cached key.
     assertCachedKeyIsCurrent(this.keyFilePath, key);
     const store = encrypt(JSON.stringify(secrets), key);
+    // The 0700 directory mode is this store's own; the helper only creates the
+    // directory when it is missing, so establishing it here keeps the mode.
     mkdirSync(dirname(filePath), { recursive: true, mode: 0o700 });
-    writeFileSync(filePath, `${JSON.stringify(store, null, 2)}\n`, { encoding: 'utf-8', mode: 0o600 });
-    chmodSync(filePath, 0o600);
+    writeJsonFileAtomic(filePath, store, { mode: 0o600 });
   }
 
   private readPlaintextStore(filePath: string): PlaintextStoreReadResult {
@@ -790,7 +792,6 @@ export class SecretsManager {
   private writePlaintextFile(filePath: string, secrets: Record<string, string>): void {
     mkdirSync(dirname(filePath), { recursive: true, mode: 0o700 });
     const payload: PlaintextStore = { version: 1, secrets };
-    writeFileSync(filePath, `${JSON.stringify(payload, null, 2)}\n`, { encoding: 'utf-8', mode: 0o600 });
-    chmodSync(filePath, 0o600);
+    writeJsonFileAtomic(filePath, payload, { mode: 0o600 });
   }
 }

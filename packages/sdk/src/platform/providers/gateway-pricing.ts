@@ -17,8 +17,8 @@
  * from the payload resolves to null (unpriced), never $0.
  */
 
-import { dirname, join } from 'node:path';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { readJsonFileOrQuarantine, writeJsonFileAtomic } from '../utils/atomic-json-store.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 import { TTL_24H_MS, isTtlCacheStale, validateTtlCacheEnvelope } from './json-ttl-cache.js';
@@ -162,13 +162,15 @@ export class GatewayPricingService {
 
   private loadCache(providerId: string): GatewayPricingCache | null {
     try {
-      const raw = readFileSync(this.cachePath(providerId), 'utf-8');
-      const { cache, reason } = validateTtlCacheEnvelope<GatewayPricingCache>(JSON.parse(raw) as unknown, 'models', 'object');
-      if (!cache) {
-        logger.warn('[gateway-pricing] Ignoring malformed cache', { providerId, reason: reason ?? 'unknown' });
-        return null;
-      }
-      return cache;
+      return readJsonFileOrQuarantine<GatewayPricingCache>(this.cachePath(providerId), {
+        label: 'providers/gateway-pricing',
+        recovery: 'Pricing is re-fetched from the provider on the next refresh; until it lands, costs are reported from the shipped rates rather than from this cache.',
+        validate: (raw) => {
+          const { cache, reason } = validateTtlCacheEnvelope<GatewayPricingCache>(raw, 'models', 'object');
+          if (!cache) throw new Error(`pricing cache envelope is invalid: ${reason ?? 'unknown'}`);
+          return cache;
+        },
+      });
     } catch (error) {
       const message = summarizeError(error);
       if (!message.includes('ENOENT') && !message.includes('no such file')) {
@@ -206,8 +208,7 @@ export class GatewayPricingService {
     const models = adapter.parse(await response.json() as unknown);
     const cache: GatewayPricingCache = { version: 1, fetchedAt: Date.now(), ttlMs: TTL_24H_MS, models };
     try {
-      mkdirSync(dirname(this.cachePath(providerId)), { recursive: true });
-      writeFileSync(this.cachePath(providerId), JSON.stringify(cache, null, 2), 'utf-8');
+      writeJsonFileAtomic(this.cachePath(providerId), cache, { trailingNewline: false });
     } catch (error) {
       logger.warn('[gateway-pricing] Cache write failed', { providerId, error: summarizeError(error) });
     }

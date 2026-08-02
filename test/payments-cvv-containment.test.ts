@@ -55,7 +55,7 @@ describe('the stored CVV goes to the daemon secret tier and nowhere else', () =>
   test('the payments prefix is daemon-owned, so a surface cannot write it to its own tier', () => {
     expect(DAEMON_OWNED_CONFIG_PREFIXES).toContain('payments.');
     expect(isDaemonOwnedConfigKey('payments.cards.card-1.cvv')).toBe(true);
-    expect(isDaemonOwnedConfigKey('payments.budget.dailyItemCents')).toBe(true);
+    expect(isDaemonOwnedConfigKey('payments.budget.dailyItem')).toBe(true);
   });
 
   test('the secret key is derived from the config path, not hand-picked', () => {

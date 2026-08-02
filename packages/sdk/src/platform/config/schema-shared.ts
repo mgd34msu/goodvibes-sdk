@@ -14,6 +14,18 @@ export interface ConfigSettingDefinition {
    * e.g. `'finite number in [0.25, 4.0]'`.
    */
   validationHint?: string | undefined;
+  /**
+   * What kind of quantity the number is, when knowing that changes how a value
+   * is read or shown.
+   *
+   * `'money'` marks a key holding an amount of `payments.currency`, written the
+   * way a person says it. It exists so a surface (a settings screen, a set
+   * command, a formatter) can ask the SCHEMA what a key holds instead of
+   * pattern-matching the key's NAME — the old keys were detected by a suffix on
+   * the name, which is exactly what tied every consumer to a naming scheme and
+   * broke them all when the names changed.
+   */
+  unit?: 'money' | undefined;
 }
 
 /**

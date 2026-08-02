@@ -8,19 +8,38 @@
  * files. Keeping them out of manager.ts keeps that file under the line cap and
  * makes the persistence rules independently testable.
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { readJsonFileOrQuarantine } from '../utils/atomic-json-store.js';
 import { DEFAULT_CONFIG } from './schema.js';
 import type { GoodVibesConfig } from './schema.js';
 
 const DEFAULT_CONFIG_SNAPSHOT = structuredClone(DEFAULT_CONFIG) as GoodVibesConfig;
 
-/** Read a settings JSON file into a plain object; a missing/invalid file reads as {}. */
+/**
+ * Read a settings JSON file into a plain object; a missing file reads as `{}`.
+ *
+ * This read backs read-merge-write persistence, so a file it cannot parse is
+ * about to be overwritten by the merge that follows. Discarding it silently
+ * (what the bare `catch` here used to do) destroyed the only copy of whatever
+ * the user had on disk. The unparseable file is now quarantined first — moved
+ * aside with a `.why` receipt and logged at error level — and the merge starts
+ * from `{}` as before, so the settings the caller is writing still land while
+ * the previous file survives for inspection.
+ */
 export function readRawSettingsFile(path: string): Record<string, unknown> {
-  if (!existsSync(path)) return {};
   try {
-    const parsed = JSON.parse(readFileSync(path, 'utf-8')) as unknown;
-    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
-    return parsed as Record<string, unknown>;
+    return (
+      readJsonFileOrQuarantine<Record<string, unknown>>(path, {
+        label: 'config/settings',
+        recovery:
+          'The setting being written is persisted into a fresh file; any other settings the quarantined file held are not applied and can be recovered from the quarantined copy by hand.',
+        validate: (parsed) => {
+          if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+            throw new Error('settings file is not a JSON object');
+          }
+          return parsed as Record<string, unknown>;
+        },
+      }) ?? {}
+    );
   } catch {
     return {};
   }

@@ -13,9 +13,9 @@
  * announce-once store (so "once" survives restarts), a startup collector, a
  * pure empty-state builder, and a first-contained-run announcer callback.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { readJsonFileOrQuarantine, writeJsonFileAtomic } from '../utils/atomic-json-store.js';
 import { resolveWebBinding } from '../daemon/host-resolver.js';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import { logger } from '../utils/logger.js';
 import type { ConfigManager } from '../config/manager.js';
 
@@ -53,34 +53,40 @@ export class FeatureAnnouncementStore {
   constructor(private readonly path: string) {}
 
   private read(): AnnouncementFileState {
+    const empty: AnnouncementFileState = { announced: {}, pending: [] };
     try {
-      if (!existsSync(this.path)) return { announced: {}, pending: [] };
-      const parsed = JSON.parse(readFileSync(this.path, 'utf-8')) as unknown;
-      if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-        return { announced: {}, pending: [] };
-      }
-      const record = parsed as Record<string, unknown>;
-      if (record.announced !== null && typeof record.announced === 'object' && !Array.isArray(record.announced)) {
-        return {
-          announced: record.announced as Record<string, number>,
-          pending: Array.isArray(record.pending)
-            ? (record.pending as PendingFeatureAnnouncement[]).filter(
-                (entry) => entry !== null && typeof entry === 'object' && typeof entry.id === 'string' && typeof entry.text === 'string' && typeof entry.at === 'number',
-              )
-            : [],
-        };
-      }
-      // Legacy format: a plain id -> timestamp map. Announced, nothing pending.
-      return { announced: record as Record<string, number>, pending: [] };
+      return (
+        readJsonFileOrQuarantine<AnnouncementFileState>(this.path, {
+          label: 'runtime/feature-announcements',
+          recovery: 'Announce-once state is empty, so an already-seen announcement may be shown one more time; nothing else depends on this file.',
+          validate: (parsed) => {
+            if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+              throw new Error('announcement state file is not a JSON object');
+            }
+            const record = parsed as Record<string, unknown>;
+            if (record.announced !== null && typeof record.announced === 'object' && !Array.isArray(record.announced)) {
+              return {
+                announced: record.announced as Record<string, number>,
+                pending: Array.isArray(record.pending)
+                  ? (record.pending as PendingFeatureAnnouncement[]).filter(
+                      (entry) => entry !== null && typeof entry === 'object' && typeof entry.id === 'string' && typeof entry.text === 'string' && typeof entry.at === 'number',
+                    )
+                  : [],
+              };
+            }
+            // Legacy format: a plain id -> timestamp map. Announced, nothing pending.
+            return { announced: record as Record<string, number>, pending: [] };
+          },
+        }) ?? empty
+      );
     } catch {
-      return { announced: {}, pending: [] };
+      return empty;
     }
   }
 
   private persist(state: AnnouncementFileState, context: string): void {
     try {
-      mkdirSync(dirname(this.path), { recursive: true });
-      writeFileSync(this.path, JSON.stringify(state, null, 2) + '\n', 'utf-8');
+      writeJsonFileAtomic(this.path, state);
     } catch (err) {
       // An unwritable store must never block the feature; the announcement
       // may repeat on the next start, which is noisy but honest.

@@ -1,4 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, unlinkSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync } from 'fs';
+import { writeJsonFileAtomic } from '../utils/atomic-json-store.js';
 import { join } from 'path';
 import { logger } from '../utils/logger.js';
 import type { GoodVibesConfig } from '../config/schema.js';
@@ -58,7 +59,7 @@ export class ProfileManager {
       provider: data.provider ?? {},
       behavior: data.behavior ?? {},
     };
-    writeFileSync(filePath, JSON.stringify(record, null, 2), 'utf-8');
+    writeJsonFileAtomic(filePath, record, { trailingNewline: false });
     logger.debug('ProfileManager: saved profile', { name: sanitizedName, filePath });
     return filePath;
   }

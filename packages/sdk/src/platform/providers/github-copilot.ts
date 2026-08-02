@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { readJsonFileOrQuarantine, writeJsonFileAtomic } from '../utils/atomic-json-store.js';
+import { join } from 'node:path';
 import type { ChatRequest, ChatResponse, LLMProvider, ProviderModelSource, ProviderRuntimeMetadata, ProviderRuntimeMetadataDeps } from './interface.js';
 import { OpenAICompatProvider } from './openai-compat.js';
 import { AnthropicCompatProvider } from './anthropic-compat.js';
@@ -161,25 +161,28 @@ async function resolveCopilotToken(options: GitHubCopilotProviderOptions): Promi
   }
 
   const cachePath = options.tokenCachePath;
-  if (existsSync(cachePath)) {
-    try {
-      const cached = parseCachedCopilotToken(JSON.parse(readFileSync(cachePath, 'utf-8')));
-      if (cached && isTokenUsable(cached)) {
-        return {
-          token: cached.token,
-          baseUrl: deriveCopilotApiBaseUrlFromToken(cached.token) ?? DEFAULT_COPILOT_API_BASE_URL,
-          expiresAt: cached.expiresAt,
-        };
-      }
-      if (!cached) {
-        logger.warn('[github-copilot] Ignoring malformed token cache', { cachePath });
-      }
-    } catch (error) {
-      logger.warn('[github-copilot] Token cache load failed', {
-        cachePath,
-        error: summarizeError(error),
-      });
+  try {
+    const cached = readJsonFileOrQuarantine<CachedCopilotToken>(cachePath, {
+      label: 'providers/github-copilot-token-cache',
+      recovery: 'A fresh Copilot token is exchanged from the GitHub token in the environment on this call and re-cached; nothing is lost beyond one extra token exchange.',
+      validate: (raw) => {
+        const parsed = parseCachedCopilotToken(raw);
+        if (!parsed) throw new Error('token cache does not hold a usable token record');
+        return parsed;
+      },
+    });
+    if (cached && isTokenUsable(cached)) {
+      return {
+        token: cached.token,
+        baseUrl: deriveCopilotApiBaseUrlFromToken(cached.token) ?? DEFAULT_COPILOT_API_BASE_URL,
+        expiresAt: cached.expiresAt,
+      };
     }
+  } catch (error) {
+    logger.warn('[github-copilot] Token cache load failed', {
+      cachePath,
+      error: summarizeError(error),
+    });
   }
 
   const response = await fetchFn(COPILOT_TOKEN_URL, {
@@ -199,8 +202,7 @@ async function resolveCopilotToken(options: GitHubCopilotProviderOptions): Promi
     expiresAt: parsed.expiresAt,
     updatedAt: Date.now(),
   };
-  mkdirSync(dirname(cachePath), { recursive: true });
-  writeFileSync(cachePath, JSON.stringify(cachePayload, null, 2));
+  writeJsonFileAtomic(cachePath, cachePayload, { trailingNewline: false });
   return {
     token: parsed.token,
     baseUrl: deriveCopilotApiBaseUrlFromToken(parsed.token) ?? DEFAULT_COPILOT_API_BASE_URL,

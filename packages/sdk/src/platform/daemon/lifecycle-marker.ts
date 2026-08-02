@@ -35,22 +35,50 @@
  *
  * Filesystem and clock are injectable so the contract is provable in tests.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { quarantineCorruptFile, writeFileAtomic } from '../utils/atomic-json-store.js';
 import { isRecord } from '../utils/record-coerce.js';
 
 export interface LifecycleMarkerIo {
   read(path: string): string | null;
   write(path: string, contents: string): void;
+  /**
+   * Move a marker whose content this module cannot trust aside, preserving it
+   * for inspection. Optional so an injected in-memory io (tests, the daemon's
+   * own fakes) needs no filesystem behaviour; absent, a bad marker is simply
+   * read as "no marker" exactly as before.
+   */
+  quarantine?(path: string, reason: string): void;
 }
 
 export const realLifecycleMarkerIo: LifecycleMarkerIo = {
   read: (path) => (existsSync(path) ? readFileSync(path, 'utf-8') : null),
   write: (path, contents) => {
-    mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, contents, 'utf-8');
+    writeFileAtomic(path, contents);
+  },
+  quarantine: (path, reason) => {
+    quarantineCorruptFile(path, {
+      label: 'daemon/lifecycle-marker',
+      reason,
+      recovery: 'The daemon treats this start as if no previous marker existed: the crash streak resets to zero and an automatic rollback that was pending is not resumed.',
+    });
   },
 };
+
+/**
+ * Read and validate the marker at `markerPath`. Content the parser rejects is
+ * quarantined (never deleted) so the record of what a crashing daemon last
+ * wrote survives, and the caller still gets the "no marker" answer.
+ */
+function readMarkerAt(io: LifecycleMarkerIo, markerPath: string): LifecycleMarker | null {
+  const raw = io.read(markerPath);
+  if (raw === null) return null;
+  const marker = parseMarker(raw);
+  if (!marker) {
+    io.quarantine?.(markerPath, 'marker content is not a valid lifecycle marker');
+  }
+  return marker;
+}
 
 /**
  * Upper bound on the persisted failed-start counter. The counter only ever
@@ -153,7 +181,7 @@ function parseMarker(raw: string | null): LifecycleMarker | null {
  */
 export function readLifecycleMarker(markerPath: string, io: LifecycleMarkerIo = realLifecycleMarkerIo): LifecycleMarker | null {
   try {
-    return parseMarker(io.read(markerPath));
+    return readMarkerAt(io, markerPath);
   } catch {
     // An unreadable marker is "no marker", never a throw into a boot path.
     return null;
@@ -209,7 +237,7 @@ export function recordDaemonStartAttempt(
 ): StartAttemptResult {
   const io = options.io ?? realLifecycleMarkerIo;
   const now = (options.now ?? Date.now)();
-  const previous = parseMarker(io.read(markerPath));
+  const previous = readMarkerAt(io, markerPath);
   const windowMs = Math.max(1_000, options.windowMs ?? DEFAULT_CRASH_LOOP_WINDOW_MS);
 
   const version = readVersion(options.version);
@@ -262,7 +290,7 @@ export function recordDaemonStartAttempt(
 export function recordDaemonStart(markerPath: string, options: MarkerCallOptions = {}): StartupMarkerResult {
   const io = options.io ?? realLifecycleMarkerIo;
   const now = options.now ?? Date.now;
-  const previous = parseMarker(io.read(markerPath));
+  const previous = readMarkerAt(io, markerPath);
   const version = readVersion(options.version) ?? previous?.version;
   // A rejected version outlives the boot that rejected it — the whole point is
   // that the self-update loop, running on the RESTORED build moments from now,
@@ -289,7 +317,7 @@ export function recordDaemonStart(markerPath: string, options: MarkerCallOptions
 export function recordDaemonCleanShutdown(markerPath: string, options: MarkerCallOptions = {}): void {
   const io = options.io ?? realLifecycleMarkerIo;
   const now = options.now ?? Date.now;
-  const previous = parseMarker(io.read(markerPath));
+  const previous = readMarkerAt(io, markerPath);
   const version = readVersion(options.version) ?? previous?.version;
   writeMarker(io, markerPath, {
     state: 'clean-shutdown',
@@ -317,7 +345,7 @@ export function recordDaemonAutoRollback(
 ): void {
   const io = options.io ?? realLifecycleMarkerIo;
   const now = (options.now ?? Date.now)();
-  const previous = parseMarker(io.read(markerPath));
+  const previous = readMarkerAt(io, markerPath);
   const rejectedVersion = readVersion(options.rejectedVersion) ?? previous?.rejectedVersion;
   writeMarker(io, markerPath, {
     state: previous?.state ?? 'clean-shutdown',

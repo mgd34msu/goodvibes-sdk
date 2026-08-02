@@ -7,9 +7,9 @@
  * proven against a temp file.
  */
 import { afterEach, describe, expect, test } from 'bun:test';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { PairingTokenManager } from '../packages/sdk/src/platform/pairing/pairing-token-store.ts';
 
 const dirs: string[] = [];
@@ -87,5 +87,38 @@ describe('PairingTokenManager', () => {
     mgr.revokeLegacyShared();
     expect(mgr.isLegacyRevoked()).toBe(true);
     expect(new PairingTokenManager(file).isLegacyRevoked()).toBe(true);
+  });
+});
+
+describe('PairingTokenManager: the store file itself', () => {
+  test('the store is written owner-only, through a temp file that never survives the write', () => {
+    const file = tempFile();
+    new PairingTokenManager(file).mint({ name: 'Pixel' });
+
+    expect(statSync(file).mode & 0o777).toBe(0o600);
+    const temps = readdirSync(dirname(file)).filter((name) => name.startsWith(`${basename(file)}.tmp-`));
+    expect(temps).toEqual([]);
+  });
+
+  test('a corrupt store does not brick auth, and is preserved rather than overwritten', () => {
+    const file = tempFile();
+    mkdirSync(dirname(file), { recursive: true });
+    // A torn write: valid JSON with a zero tail, the shape a crash leaves.
+    writeFileSync(file, Buffer.concat([Buffer.from('{"tokens":[]}', 'utf-8'), Buffer.from([0, 0])]));
+
+    const mgr = new PairingTokenManager(file);
+    // Auth still works — it starts clean rather than throwing on construction.
+    expect(mgr.list()).toEqual([]);
+
+    // And the bytes it could not read were moved aside with a receipt, so the
+    // operator can see which devices have to pair again.
+    const quarantined = readdirSync(dirname(file))
+      .filter((name) => name.startsWith(`${basename(file)}.corrupt-`) && !name.endsWith('.why'));
+    expect(quarantined.length).toBe(1);
+    expect(existsSync(join(dirname(file), `${quarantined[0]}.why`))).toBe(true);
+
+    // A fresh mint then round-trips through the new file.
+    const minted = mgr.mint({ name: 'Pixel' });
+    expect(new PairingTokenManager(file).authenticate(minted.token)).not.toBeNull();
   });
 });

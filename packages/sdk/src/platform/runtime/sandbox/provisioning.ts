@@ -1,9 +1,22 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
+import { writeFileAtomic, writeJsonFileAtomic } from '../../utils/atomic-json-store.js';
 import { dirname, join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { getSandboxConfigSnapshot, type ConfigManagerLike } from './manager.js';
 import { requireSurfaceRoot } from '../surface-root.js';
 import { renderQemuWrapperTemplate } from './qemu-wrapper-template.js';
+
+/**
+ * Modes for the scaffold this module writes into the operator's own workspace.
+ *
+ * These are not platform state stores under `~/.goodvibes` — they are files an
+ * operator reads, edits, runs, and may commit — so they keep the ordinary
+ * readable modes they have always had rather than the owner-only mode the
+ * atomic-write helper defaults to. Stating them explicitly also makes the
+ * result independent of the process umask.
+ */
+const SCAFFOLD_FILE_MODE = 0o644;
+const SCAFFOLD_SCRIPT_MODE = 0o755;
 
 export interface SandboxDoctorCheck {
   readonly label: string;
@@ -164,8 +177,7 @@ export function exportSandboxGuestBundle(
       'Run /sandbox guest-test <profile> to validate transport and workspace projection.',
     ],
   };
-  mkdirSync(dirname(targetPath), { recursive: true });
-  writeFileSync(targetPath, `${JSON.stringify(bundle, null, 2)}\n`, 'utf-8');
+  writeJsonFileAtomic(targetPath, bundle, { mode: SCAFFOLD_FILE_MODE });
   return { path: targetPath, bundle };
 }
 
@@ -194,7 +206,7 @@ export function scaffoldSandboxQemuInitBundle(
   const wrapperPath = join(targetDir, 'qemu-wrapper.sh');
   const guestBundlePath = join(targetDir, 'guest-bundle.json');
   const readmePath = join(targetDir, 'README.txt');
-  writeFileSync(wrapperPath, renderQemuWrapperTemplate(), { encoding: 'utf-8', mode: 0o755 });
+  writeFileAtomic(wrapperPath, renderQemuWrapperTemplate(), { mode: SCAFFOLD_SCRIPT_MODE });
   exportSandboxGuestBundle(manager, workspaceRoot, guestBundlePath, options);
   const config = getSandboxConfigSnapshot(manager);
   const readme = [
@@ -216,7 +228,7 @@ export function scaffoldSandboxQemuInitBundle(
     '     /sandbox doctor',
     '     /sandbox guest-test eval-js',
   ].join('\n');
-  writeFileSync(readmePath, `${readme}\n`, 'utf-8');
+  writeFileAtomic(readmePath, `${readme}\n`, { mode: SCAFFOLD_FILE_MODE });
   return { directory: targetDir, wrapperPath, guestBundlePath, readmePath };
 }
 
@@ -253,7 +265,7 @@ export function scaffoldSandboxQemuSetupBundle(
     '',
     'exec "$QEMU_IMG_BIN" create -f qcow2 "$IMAGE_PATH" "${SIZE_GB}G"',
   ].join('\n');
-  writeFileSync(imageCreateScriptPath, `${imageCreateScript}\n`, { encoding: 'utf-8', mode: 0o755 });
+  writeFileAtomic(imageCreateScriptPath, `${imageCreateScript}\n`, { mode: SCAFFOLD_SCRIPT_MODE });
 
   const guestBootstrap = [
     '#!/usr/bin/env bash',
@@ -273,7 +285,7 @@ export function scaffoldSandboxQemuSetupBundle(
     'sudo systemctl enable ssh || true',
     'sudo systemctl restart ssh || true',
   ].join('\n');
-  writeFileSync(guestBootstrapScriptPath, `${guestBootstrap}\n`, { encoding: 'utf-8', mode: 0o755 });
+  writeFileAtomic(guestBootstrapScriptPath, `${guestBootstrap}\n`, { mode: SCAFFOLD_SCRIPT_MODE });
 
   const projectionPolicy = {
     version: 1,
@@ -285,7 +297,7 @@ export function scaffoldSandboxQemuSetupBundle(
       'The wrapper syncs the filtered project root into the guest over tar+ssh.',
     ],
   };
-  writeFileSync(projectionPolicyPath, `${JSON.stringify(projectionPolicy, null, 2)}\n`, 'utf-8');
+  writeJsonFileAtomic(projectionPolicyPath, projectionPolicy, { mode: SCAFFOLD_FILE_MODE });
 
   const sshConfig = [
     'Host goodvibes-sandbox',
@@ -296,7 +308,7 @@ export function scaffoldSandboxQemuSetupBundle(
     `  UserKnownHostsFile ~/.goodvibes/${requireSurfaceRoot(options.surfaceRoot, 'Sandbox provisioning surfaceRoot')}/known_hosts`,
     '  LogLevel ERROR',
   ].join('\n');
-  writeFileSync(sshConfigPath, `${sshConfig}\n`, 'utf-8');
+  writeFileAtomic(sshConfigPath, `${sshConfig}\n`, { mode: SCAFFOLD_FILE_MODE });
 
   const manifest: SandboxQemuSetupManifest = {
     version: 1,
@@ -318,7 +330,7 @@ export function scaffoldSandboxQemuSetupBundle(
       sessionMode: config.qemuSessionMode,
     },
   };
-  writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf-8');
+  writeJsonFileAtomic(manifestPath, manifest, { mode: SCAFFOLD_FILE_MODE });
 
   const readme = [
     'GoodVibes QEMU Sandbox Setup Bundle',
@@ -349,7 +361,7 @@ export function scaffoldSandboxQemuSetupBundle(
     `     /sandbox set-qemu-workspace ${config.qemuWorkspacePath || '/workspace'}`,
     '  6. Validate with /sandbox doctor and /sandbox guest-test eval-js',
   ].join('\n');
-  writeFileSync(base.readmePath, `${readme}\n`, 'utf-8');
+  writeFileAtomic(base.readmePath, `${readme}\n`, { mode: SCAFFOLD_FILE_MODE });
 
   return {
     ...base,

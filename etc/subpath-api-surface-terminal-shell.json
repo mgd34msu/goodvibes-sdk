@@ -892,7 +892,7 @@
     {
       "name": "getConfigSchemaSetting",
       "kind": "function",
-      "text": "export declare function getConfigSchemaSetting(key: string): ConfigSetting | null; ;; via ConfigSetting = export interface ConfigSetting { key: ConfigKey; type: 'boolean' | 'number' | 'string' | 'enum' | 'object'; default: unknown; description: string; enumValues?: string[] | undefined; validate?: ((value: unknown) => boolean) | undefined; validationHint?: string | undefined; }"
+      "text": "export declare function getConfigSchemaSetting(key: string): ConfigSetting | null; ;; via ConfigSetting = export interface ConfigSetting { key: ConfigKey; type: 'boolean' | 'number' | 'string' | 'enum' | 'object'; default: unknown; description: string; enumValues?: string[] | undefined; validate?: ((value: unknown) => boolean) | undefined; validationHint?: string | undefined; unit?: 'money' | undefined; }"
     },
     {
       "name": "getFeatureSetting",

@@ -45,8 +45,8 @@ describe('the service configuration is read from live config', () => {
       'payments.currency': 'GBP',
       'daemon.timezone': 'America/Detroit',
       'payments.shipping.preferredTier': 'fastest',
-      'payments.budget.dailyItemCents': 25_000,
-      'payments.budget.dailyOverageCents': 4_000,
+      'payments.budget.dailyItem': 250,
+      'payments.budget.dailyOverage': 40,
       'payments.windows.approvalMinutes': 45,
       'payments.windows.vetoMinutes': 15,
     }));
@@ -69,25 +69,38 @@ describe('the service configuration is read from live config', () => {
   });
 
   test('a mid-session change is visible on the next read, because nothing is cached', () => {
-    const values: Record<string, unknown> = { 'payments.budget.dailyItemCents': 10_000 };
+    const values: Record<string, unknown> = { 'payments.budget.dailyItem': 100 };
     const reader = config(values);
     expect(readPaymentsServiceConfig(reader).limits.dailyItemMinorUnits).toBe(10_000);
     // He raises it in the settings UI while a session is open.
-    values['payments.budget.dailyItemCents'] = 90_000;
+    values['payments.budget.dailyItem'] = 900;
     expect(readPaymentsServiceConfig(reader).limits.dailyItemMinorUnits).toBe(90_000);
   });
 
-  test('cents become the currency\'s minor units, not always cents', () => {
-    // 50000 cents is $500.00 -> 50000 minor units.
-    expect(readBudgetLimits(config({ 'payments.budget.dailyItemCents': 50_000 }), 'USD').dailyItemMinorUnits)
+  test('the amount is an amount of the configured currency, whatever its smallest division is', () => {
+    // 500 with USD is 500 dollars -> 50000 hundredths.
+    expect(readBudgetLimits(config({ 'payments.budget.dailyItem': 500 }), 'USD').dailyItemMinorUnits)
       .toBe(50_000);
-    // JPY has no minor unit: 50000 cents is 500 yen -> 500 minor units. A
-    // daemon that treated this as 50000 yen would have a 100x budget.
-    expect(readBudgetLimits(config({ 'payments.budget.dailyItemCents': 50_000 }), 'JPY').dailyItemMinorUnits)
+    // JPY has no smaller division: 500 is 500 yen -> 500.
+    expect(readBudgetLimits(config({ 'payments.budget.dailyItem': 500 }), 'JPY').dailyItemMinorUnits)
       .toBe(500);
-    // BHD has three: 50000 cents is 500 dinar -> 500000 fils.
-    expect(readBudgetLimits(config({ 'payments.budget.dailyItemCents': 50_000 }), 'BHD').dailyItemMinorUnits)
+    // BHD has three: 500 is 500 dinar -> 500000 fils.
+    expect(readBudgetLimits(config({ 'payments.budget.dailyItem': 500 }), 'BHD').dailyItemMinorUnits)
       .toBe(500_000);
+  });
+
+  test('a decimal amount lands on an exact whole count, with no floating-point dust', () => {
+    // 19.99 * 100 is 1998.9999999999998 as a bare multiply; the reader rounds
+    // once so the limit is exactly 1999.
+    expect(readBudgetLimits(config({ 'payments.budget.dailyItem': 19.99 }), 'USD').dailyItemMinorUnits)
+      .toBe(1999);
+    expect(readBudgetLimits(config({ 'payments.budget.perPurchaseCeiling': 0.29 }), 'USD').perPurchaseCeiling.minorUnits)
+      .toBe(29);
+  });
+
+  test('an amount hand-written into the file as text reads the same as one set through a surface', () => {
+    expect(readBudgetLimits(config({ 'payments.budget.dailyItem': '$250.50' }), 'USD').dailyItemMinorUnits)
+      .toBe(25_050);
   });
 
   test('the safe defaults ship: ceiling ON, tolerance OFF with nothing allowed', () => {
@@ -99,8 +112,8 @@ describe('the service configuration is read from live config', () => {
 
   test('a malformed setting falls back rather than being coerced', () => {
     const limits = readBudgetLimits(config({
-      'payments.budget.dailyItemCents': -500,
-      'payments.budget.dailyOverageCents': 'lots',
+      'payments.budget.dailyItem': -500,
+      'payments.budget.dailyOverage': 'lots',
     }), 'USD');
     // Neither becomes a spending limit. Rounding or coercing someone's budget
     // is how a limit stops meaning what the person who typed it believes.

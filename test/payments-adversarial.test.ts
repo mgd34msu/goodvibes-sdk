@@ -786,7 +786,7 @@ describe('the decision order', () => {
     expect(outcome.kind).toBe('refuse');
     if (outcome.kind !== 'refuse') return;
     expect(outcome.code).toBe('zero-budget');
-    expect(outcome.reason).toContain('dailyItemCents');
+    expect(outcome.reason).toContain('dailyItem');
   });
 
   test('a checkout in another currency is refused rather than converted', () => {

@@ -1,7 +1,7 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { writeJsonFileAtomic } from '../../utils/atomic-json-store.js';
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { dirname } from 'node:path';
 import net from 'node:net';
 import { buildSandboxLaunchPlan, executeSandboxCommand, executeSandboxManagedCommand, resolveSandboxCommandPlan, type SandboxCommandResult } from './backend.js';
 import { getSandboxConfigSnapshot, listSandboxProfiles, renderSandboxReview, type ConfigManagerLike } from './manager.js';
@@ -299,8 +299,7 @@ export class SandboxSessionRegistry {
       session,
       reviewText: renderSandboxReview(configManager),
     };
-    mkdirSync(dirname(targetPath), { recursive: true });
-    writeFileSync(targetPath, `${JSON.stringify(artifact, null, 2)}\n`, 'utf-8');
+    writeJsonFileAtomic(targetPath, artifact);
     return artifact;
   }
 

@@ -115,7 +115,7 @@ export function decidePurchase(input: DecisionInput): DecisionOutcome {
       code: 'zero-budget',
       reason:
         'Refused: the daily item budget is 0, so nothing can be bought yet. '
-        + 'Set payments.budget.dailyItemCents to the most you want spent on items in a day.',
+        + 'Set payments.budget.dailyItem to the most you want spent on items in a day.',
     };
   }
 

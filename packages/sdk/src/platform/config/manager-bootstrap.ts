@@ -11,8 +11,10 @@
  */
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { dirname, isAbsolute, resolve } from 'path';
-import type { GoodVibesConfig } from './schema.js';
+import type { ConfigSetting, GoodVibesConfig } from './schema.js';
 import { DEFAULT_CONFIG } from './schema.js';
+import { ConfigError } from '../types/errors.js';
+import { coerceMoneyAmount } from './money-value.js';
 
 /**
  * Cloned ONCE at module load, then cloned again per manager.
@@ -64,5 +66,31 @@ export function ensureSharedConfig(sharedPath: string): void {
   if (!existsSync(sharedPath)) {
     mkdirSync(dirname(sharedPath), { recursive: true });
     writeFileSync(sharedPath, '{}\n', 'utf-8');
+  }
+}
+
+/**
+ * Normalize an incoming value against what the SCHEMA says the key holds,
+ * before validation runs.
+ *
+ * Today that is money: an amount key accepts the number the owner would say out
+ * loud and tolerates the ordinary ways a person writes one — a leading currency
+ * symbol, thousands grouping. Coercing here rather than at each caller means
+ * `config set`, a settings screen, and a programmatic `set()` all reach the same
+ * stored number, and a value that is not a number is refused with an example
+ * before anything is written.
+ *
+ * Keyed off `setting.unit`, never off the shape of the key's NAME — a naming
+ * scheme is what tied every consumer of these keys to one spelling.
+ *
+ * The refusal is raised as a ConfigError so it reads like every other rejected
+ * setting rather than surfacing as an unhandled parser error.
+ */
+export function coerceSchemaValue(key: string, schema: ConfigSetting | undefined, value: unknown): unknown {
+  if (schema?.unit !== 'money') return value;
+  try {
+    return coerceMoneyAmount(key, value);
+  } catch (error) {
+    throw new ConfigError(error instanceof Error ? error.message : String(error));
   }
 }

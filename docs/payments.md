@@ -122,19 +122,19 @@ interface PaymentsConfig {
   billingAddress: PostalAddress;            // default: all fields ''
   shippingAddress: PostalAddress;           // default: all fields ''
 
+  // Every amount below is written the way you would say it: 100 is a hundred,
+  // 19.99 is nineteen ninety-nine, in whatever `currency` is set to.
   budget: {
-    /** The item price is checked against this. Minor units. */
-    dailyItemCents: number;                 // default 0
-    /** Unavoidable charges only: tax, mandatory fees, delivery. Minor units. */
-    dailyOverageCents: number;              // default 0
-    perPurchaseCeiling: {
-      enabled: boolean;                     // default TRUE  (owner ruling)
-      cents: number;                        // default 0
-    };
-    overageTolerance: {
-      enabled: boolean;                     // default FALSE (owner ruling)
-      dailyAllowanceCents: number;          // default 0
-    };
+    /** The item price is checked against this. */
+    dailyItem: number;                      // default 0
+    /** Unavoidable charges only: tax, mandatory fees, delivery. */
+    dailyOverage: number;                   // default 0
+    perPurchaseCeilingEnabled: boolean;     // default TRUE  (owner ruling)
+    /** The most any single purchase may come to. */
+    perPurchaseCeiling: number;             // default 0
+    overageToleranceEnabled: boolean;       // default FALSE (owner ruling)
+    /** The third pool, drawn on only after the delivery ladder bottoms out. */
+    overageToleranceDailyAllowance: number; // default 0
   };
 
   shipping: {
@@ -249,9 +249,9 @@ Three pools, all keyed by day:
 
 | Pool | Covers | Config |
 |---|---|---|
-| **Item** | The item price. | `budget.dailyItemCents` |
-| **Overage** | Only charges that cannot be avoided on an approved purchase: sales tax, mandatory handling or booking fees, and the delivery option actually used. | `budget.dailyOverageCents` |
-| **Tolerance** | The shortfall when the overage pool cannot cover even the cheapest delivery — only when `overageTolerance.enabled`. | `budget.overageTolerance.dailyAllowanceCents` |
+| **Item** | The item price. | `budget.dailyItem` |
+| **Overage** | Only charges that cannot be avoided on an approved purchase: sales tax, mandatory handling or booking fees, and the delivery option actually used. | `budget.dailyOverage` |
+| **Tolerance** | The shortfall when the overage pool cannot cover even the cheapest delivery — only when `overageToleranceEnabled`. | `budget.overageToleranceDailyAllowance` |
 
 **What the overage pool does not cover:** expedited shipping beyond what the
 ladder in §7 selects, shipping insurance, gift wrap, extended warranties,
@@ -259,13 +259,13 @@ priority handling, and anything else offered as an option. Those are purchase
 decisions, not delivery costs. A purchase that includes one is treated as an item
 price change and re-enters the decision order at step 1.
 
-**Per-purchase ceiling** (`perPurchaseCeiling.enabled`, default **on**) caps a
+**Per-purchase ceiling** (`perPurchaseCeilingEnabled`, default **on**) caps a
 single purchase's item price independently of what remains in the daily pool. It
 is a separate question from the daily budget and both must pass.
 
 **Overage tolerance** (default **off**) ships as a real configurable feature
 rather than a bare switch: enabling it without setting
-`dailyAllowanceCents` changes nothing, because the allowance is still 0.
+`overageToleranceDailyAllowance` changes nothing, because the allowance is still 0.
 
 ### 5.1 Reservations — two concurrent purchases must not both fit
 

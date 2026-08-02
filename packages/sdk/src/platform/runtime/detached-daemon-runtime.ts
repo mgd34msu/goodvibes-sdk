@@ -8,8 +8,8 @@
  * identity probe is the source of truth for "is it actually alive and mine".
  */
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { readJsonFileOrQuarantine, writeJsonFileAtomic } from '../utils/atomic-json-store.js';
+import { join } from 'node:path';
 
 /** File name of the detached-daemon runtime record within the daemon home dir. */
 export const DETACHED_DAEMON_RUNTIME_FILE = 'detached-daemon.json';
@@ -35,8 +35,7 @@ export function recordDetachedDaemonRuntime(
 ): string | null {
   const path = detachedDaemonRuntimePath(runtimeDir);
   try {
-    mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, `${JSON.stringify(record, null, 2)}\n`, 'utf-8');
+    writeJsonFileAtomic(path, record);
     return path;
   } catch {
     return null;
@@ -46,17 +45,24 @@ export function recordDetachedDaemonRuntime(
 /** Read the detached-daemon runtime record, or null if missing/unparseable. */
 export function readDetachedDaemonRuntime(runtimeDir: string): DetachedDaemonRuntimeRecord | null {
   try {
-    const raw = readFileSync(detachedDaemonRuntimePath(runtimeDir), 'utf-8');
-    const parsed = JSON.parse(raw) as Partial<DetachedDaemonRuntimeRecord>;
-    if (typeof parsed.port !== 'number' || typeof parsed.host !== 'string') return null;
-    return {
-      pid: typeof parsed.pid === 'number' ? parsed.pid : undefined,
-      host: parsed.host,
-      port: parsed.port,
-      command: typeof parsed.command === 'string' ? parsed.command : '',
-      startedAt: typeof parsed.startedAt === 'string' ? parsed.startedAt : '',
-      logFilePath: typeof parsed.logFilePath === 'string' ? parsed.logFilePath : undefined,
-    };
+    return readJsonFileOrQuarantine<DetachedDaemonRuntimeRecord>(detachedDaemonRuntimePath(runtimeDir), {
+      label: 'runtime/detached-daemon-runtime',
+      recovery: 'The detached daemon is treated as not running from this record; the next daemon start rewrites it, and an already-running daemon is still reachable through its configured host and port.',
+      validate: (raw) => {
+        const parsed = raw as Partial<DetachedDaemonRuntimeRecord> | null;
+        if (!parsed || typeof parsed.port !== 'number' || typeof parsed.host !== 'string') {
+          throw new Error('runtime record is missing a numeric port or a host');
+        }
+        return {
+          pid: typeof parsed.pid === 'number' ? parsed.pid : undefined,
+          host: parsed.host,
+          port: parsed.port,
+          command: typeof parsed.command === 'string' ? parsed.command : '',
+          startedAt: typeof parsed.startedAt === 'string' ? parsed.startedAt : '',
+          logFilePath: typeof parsed.logFilePath === 'string' ? parsed.logFilePath : undefined,
+        };
+      },
+    });
   } catch {
     return null;
   }
