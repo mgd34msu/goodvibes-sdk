@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { AgentMessageBus } from './message-bus.js';
 import { evaluateAcceptanceChecklistGate, type CompletionReport, type Constraint, type EngineerReport, type ReviewerReport } from './completion-report.js';
+import { describeCommitOutcome, describeReviewOutcome, renderWrfcChainAnswer, WRFC_CHAIN_PASSED_WITHOUT_OUTPUT } from './wrfc-chain-answer.js';
 import {
   buildGateFailureTask,
   buildReviewTask,
@@ -1525,7 +1526,7 @@ export class WrfcController {
       }
       const headHash = mergedCount > 0 && worktree.currentHead ? await worktree.currentHead() : commitResult.hash;
       emitWrfcAutoCommitted(this.runtimeBus, this.sessionId, chain.id, headHash ?? undefined);
-      const commitNote = this.describeCommitOutcome(headHash, commitResult.skippedIgnored, ledgerEmpty);
+      const commitNote = describeCommitOutcome(headHash, commitResult.skippedIgnored, ledgerEmpty);
       this.completeChainAsPassed(chain, commitNote);
       logger.debug('WrfcController.autoCommit: success', {
         chainId: chain.id,
@@ -1558,25 +1559,6 @@ export class WrfcController {
         });
       }
     }
-  }
-
-  /**
-   * Render the commit outcome as an honest, single-line note for the chain-completion message.
-   * Distinguishes a real commit (with any gitignored paths that were skipped) from the several
-   * "nothing was committed" cases, so the completion message states the commit result plainly
-   * instead of implying a commit happened when it did not.
-   */
-  private describeCommitOutcome(headHash: string | null, skippedIgnored: readonly string[], ledgerEmpty: boolean): string {
-    const ignoredNote = skippedIgnored.length > 0
-      ? `${skippedIgnored.length} ignored path${skippedIgnored.length === 1 ? '' : 's'} skipped`
-      : null;
-    if (headHash) {
-      const shortHash = headHash.slice(0, 8);
-      return ignoredNote ? `committed ${shortHash} (${ignoredNote})` : `committed ${shortHash}`;
-    }
-    if (ignoredNote) return `commit skipped: ${ignoredNote}`;
-    if (ledgerEmpty) return 'commit skipped: chain edit ledger empty';
-    return 'commit skipped: nothing to stage';
   }
 
   private autoCommitCandidateAgentIds(chain: WrfcChain): string[] {
@@ -2691,33 +2673,36 @@ export class WrfcController {
     this.activeChainCount = Math.max(0, this.activeChainCount - 1);
     this.transition(chain, 'passed');
     chain.completedAt = Date.now();
-    const reviewOutcome = this.describeReviewOutcome(chain);
-    const summary = commitNote
+    const reviewOutcome = describeReviewOutcome(chain);
+    const status = commitNote
       ? `WRFC chain ${chain.id} passed (${reviewOutcome}); ${commitNote}`
       : `WRFC chain ${chain.id} passed (${reviewOutcome})`;
     this.appendOwnerDecision(chain, 'chain_passed', 'WRFC full-scope review and quality gates passed', { agentId: chain.ownerAgentId });
     this.setWrfcWorkPlanTaskStatus(chain, chain.ownerAgentId, 'done', 'WRFC full-scope review and quality gates passed');
-    this.completeOwnerAgent(chain, 'completed', summary);
+    this.completeOwnerAgent(chain, 'completed', status, renderWrfcChainAnswer(chain, (id) => this.agentManager.getStatus(id)));
+    this.workmap.append({ ts: new Date().toISOString(), wrfcId: chain.id, event: 'chain_passed', reason: status });
     emitWrfcChainPassed(this.runtimeBus, this.sessionId, chain.id);
     this.scheduleChainCleanup(chain);
     this.safeDequeueNext();
   }
 
-  /** The review outcome for the completion message — the last recorded review score out of 10, or a plain "review passed" for a chain with no numeric score on record. */
-  private describeReviewOutcome(chain: WrfcChain): string {
-    const lastScore = chain.reviewScores.at(-1);
-    return typeof lastScore === 'number' ? `review ${lastScore}/10` : 'review passed';
-  }
-
-  private completeOwnerAgent(chain: WrfcChain, status: 'completed' | 'failed', message: string): void {
+  /**
+   * `message` is the chain STATUS (what the workflow did); `answer` is what the
+   * work produced. Readers of this agent get the ANSWER — the session
+   * transcript, and through it the chat surface the request came from. The
+   * status stays on `progress` under the 'operator' audience, which the channel
+   * delivery path never forwards to a person.
+   */
+  private completeOwnerAgent(chain: WrfcChain, status: 'completed' | 'failed', message: string, answer?: string): void {
     if (chain.ownerTerminalEmitted) return;
     const owner = this.agentManager.getStatus(chain.ownerAgentId);
     if (!owner) return;
+    const reply = status === 'completed' ? (answer?.trim() || WRFC_CHAIN_PASSED_WITHOUT_OUTPUT) : message;
     this.applyWrfcAgentMetadata(chain, owner, 'owner');
     owner.status = status;
     owner.completedAt = Date.now();
-    setAgentProgress(owner, message, 'operator'); // reader gets it via fullOutput
-    owner.fullOutput = message;
+    setAgentProgress(owner, message, 'operator'); // the status line, for operator surfaces only
+    owner.fullOutput = reply;
     // The owner never runs an LLM turn itself (it only supervises phase
     // children), so its own usage/toolCallCount stay at the spawn-time zero
     // default forever unless rolled up here from the real numbers its phase
@@ -2738,7 +2723,7 @@ export class WrfcController {
       emitAgentCompleted(this.runtimeBus, context, {
         agentId: owner.id,
         durationMs: Math.max(0, owner.completedAt - owner.startedAt),
-        output: message,
+        output: reply, // the answer; the broker writes this into the transcript
         toolCallsMade: owner.toolCallCount,
         usage: owner.usage,
       });

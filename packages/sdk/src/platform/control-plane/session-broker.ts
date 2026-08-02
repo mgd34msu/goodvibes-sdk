@@ -54,6 +54,7 @@ import {
   appendSharedSessionMessage,
   buildSharedSessionContinuationTask,
   listSharedSessionMessages,
+  shouldStoreAgentCompletion,
   type AppendSharedSessionMessageInput,
 } from './session-broker-messages.js';
 import {
@@ -522,12 +523,11 @@ export class SharedSessionBroker {
     await this.start();
     const session = this.sessions.get(sessionId);
     if (!session) return null;
-    await this.appendMessage(sessionId, {
-      role: metadata.status === 'failed' || metadata.status === 'cancelled' ? 'system' : 'assistant',
-      body,
-      agentId,
-      metadata,
-    });
+    // One stored completion per agent (see shouldStoreAgentCompletion); the rest of this method still runs for the second reporter.
+    const role = metadata.status === 'failed' || metadata.status === 'cancelled' ? 'system' : 'assistant';
+    if (shouldStoreAgentCompletion(this.messageStore(), sessionId, agentId)) {
+      await this.appendMessage(sessionId, { role, body, agentId, metadata });
+    }
     const now = Date.now();
     const updated: SharedSessionRecord = {
       ...(this.sessions.get(sessionId) ?? session),
