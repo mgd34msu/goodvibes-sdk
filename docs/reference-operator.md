@@ -95564,6 +95564,7 @@ Idempotently register (or heartbeat) a session keyed on a caller-supplied id, ca
         "companion-task",
         "companion-chat",
         "automation",
+        "channel",
         "acp",
         "hosted"
       ]
